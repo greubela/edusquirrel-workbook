@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackOp, PythonRunConfig, PythonRunReport}
 import it.evadid.vm.BeProgram
-import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport
+import it.evadid.vm.io.stringPrinter.python.{JavaTurtlePythonExport, JavaTurtlePythonHelpers}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateSnapXml
@@ -126,11 +126,30 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       assertEquals(allocations, 1)
       assertEquals(executor.registrations.size, 2)
       assert(executor.registrations.forall((module, methods) => module == "turtle" && methods.contains("forward")))
-      assertEquals(executor.requests.map(_._1), Vector("from turtle import *\nforward(10)", "from turtle import *\nforward(20)"))
+      assertEquals(executor.requests.map(_._1), Vector("forward(10)", "forward(20)")
+        .map(code => s"${JavaTurtlePythonHelpers.installationSource}from turtle import *\n$code"))
       assert(executor.requests.forall(_._2.resetGlobals))
       runner.close()
       runner.close()
       assertEquals(executor.closes, 1)
+  }
+
+  test("typed Java comparisons retain NaN infinity and signed zero semantics") {
+    for op <- Seq("lt", "le", "gt", "ge", "eq") do {
+      assert(!JavaTurtleSnapPrimitives.compare(op, Double.NaN, 1.0, true), clue = op)
+      assert(!JavaTurtleSnapPrimitives.compare(op, 1.0, Double.NaN, true), clue = op)
+      assert(!JavaTurtleSnapPrimitives.compare(op, Double.NaN, Double.NaN, true), clue = op)
+    }
+    assert(JavaTurtleSnapPrimitives.compare("ne", Double.NaN, Double.NaN, true))
+    for op <- Seq("eq", "le", "ge") do assert(JavaTurtleSnapPrimitives.compare(op, 0.0, -0.0, true), clue = op)
+    assert(JavaTurtleSnapPrimitives.compare("eq", Double.PositiveInfinity, Double.PositiveInfinity, true))
+    assert(JavaTurtleSnapPrimitives.compare("lt", Double.NegativeInfinity, Double.PositiveInfinity, true))
+    assert(JavaTurtleSnapPrimitives.compare("lt", Int.MinValue, Int.MaxValue, false))
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.compare("eq", true, 1, false))
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.compare("eq", true, 1.0, true))
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.compare("eq", 0.5, 1, false))
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.compare("eq", 1, 1, 0))
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.compare("eval", 1, 1, false))
   }
 
   test("Python execution refuses overlap without disturbing the active request") {
@@ -379,7 +398,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
         Future.successful(())
 
       override def run(code: String, config: PythonRunConfig): Future[PythonRunReport] =
-        assertEquals(code, s"from turtle import *\n$python")
+        assertEquals(code, s"${JavaTurtlePythonHelpers.installationSource}from turtle import *\n$python")
         assert(config.resetGlobals)
         Future.successful(PythonRunReport(
           calls.map { case (name, args) =>
@@ -453,7 +472,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       .execute("for i in range(1, 4):\n    forward(i * 10)")
       .map { commands =>
         assert(installedMethods.contains("forward"))
-        assert(executedCode.startsWith("from turtle import *\n"), clue = executedCode)
+        assert(executedCode.startsWith(s"${JavaTurtlePythonHelpers.installationSource}from turtle import *\n"), clue = executedCode)
         assertEquals(
           commands,
           List(
@@ -555,6 +574,132 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       assertEquals(commands.count(_.name == "forward"), 48)
       assertEquals(commands.length, 96)
     }
+  }
+
+  test("native Java numeric operations retain int32 and IEEE semantics") {
+    val native = JavaTurtleSnapPrimitives
+    assertEquals(native.intOperation("add", Int.MaxValue, 1), Int.MinValue.toDouble)
+    assertEquals(native.intOperation("mul", Int.MaxValue, Int.MaxValue), 1.0)
+    assertEquals(native.intOperation("neg", Int.MinValue, 0), Int.MinValue.toDouble)
+    assertEquals(native.intOperation("div", -7, 3), -2.0)
+    assertEquals(native.intOperation("rem", -7, 3), -1.0)
+    assertEquals(native.intOperation("div", Int.MinValue, -1), Int.MinValue.toDouble)
+    intercept[js.JavaScriptException](native.intOperation("div", 1, 0))
+    intercept[js.JavaScriptException](native.intOperation("add", true, 1))
+    intercept[js.JavaScriptException](native.intOperation("add", 0.5, 1))
+    intercept[js.JavaScriptException](native.intOperation("eval", 1, 2))
+    assertEquals(native.doubleOperation("div", 1.0, -0.0), Double.NegativeInfinity)
+    assert(native.doubleOperation("div", 0.0, 0.0).isNaN)
+    assertEquals(native.doubleOperation("rem", -7.5, 2.0), -1.5)
+    intercept[js.JavaScriptException](native.doubleOperation("add", false, 1.0))
+  }
+
+  test("native Java updates read and write the active lexical variable once") {
+    var current: js.Any = JavaTurtleSnapPrimitives.cell(Int.MaxValue)
+    var writes = 0
+    val get: js.Function2[String, js.Any, js.Any] = (name: String, owner: js.Any) => {
+      assertEquals(name, "n")
+      current
+    }
+    val set: js.Function2[String, js.Any, Unit] = (name: String, value: js.Any) => {
+      assertEquals(name, "n")
+      writes += 1
+      current = value
+    }
+    val process = js.Dynamic.literal(context = js.Dynamic.literal(variables = js.Dynamic.literal(getVar = get)), doSetVar = set)
+    assertEquals(JavaTurtleSnapPrimitives.update(process, "n", 1, false, false), Int.MaxValue.toDouble)
+    assertEquals(JavaTurtleSnapPrimitives.read(process, "n"), Int.MinValue.toDouble)
+    assertEquals(JavaTurtleSnapPrimitives.update(process, "n", -1, true, false), Int.MaxValue.toDouble)
+    assertEquals(writes, 2)
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.update(process, "n", true, false, false))
+    current = false
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.update(process, "n", 1, false, false))
+    assertEquals(writes, 2)
+  }
+
+  test("native Java numeric cells preserve NaN and signed zero across Snap variable binding") {
+    def normalized(value: js.Any): js.Any =
+      if js.typeOf(value) == "number" && value.asInstanceOf[Double] == 0.0 then 0
+      else if js.typeOf(value) == "boolean" && !value.asInstanceOf[Boolean] then false
+      else if js.typeOf(value) == "string" && value.asInstanceOf[String].isEmpty then ""
+      else if js.Dynamic.global.Boolean(value).asInstanceOf[Boolean] then value
+      else 0
+    assertEquals(normalized(Double.NaN).asInstanceOf[Double], 0.0)
+    assertEquals(1.0 / normalized(-0.0).asInstanceOf[Double], Double.PositiveInfinity)
+    var current: js.Any = normalized(JavaTurtleSnapPrimitives.cell(Double.NaN))
+    var writes = 0
+    val get: js.Function2[String, js.Any, js.Any] = (_: String, _: js.Any) => normalized(current)
+    val set: js.Function2[String, js.Any, Unit] = (_: String, value: js.Any) => { current = value; writes += 1 }
+    val process = js.Dynamic.literal(context = js.Dynamic.literal(variables = js.Dynamic.literal(getVar = get)), doSetVar = set)
+    assert(JavaTurtleSnapPrimitives.read(process, "n").isNaN)
+    assert(JavaTurtleSnapPrimitives.update(process, "n", 1, false, true).isNaN)
+    assert(JavaTurtleSnapPrimitives.read(process, "n").isNaN)
+    current = normalized(JavaTurtleSnapPrimitives.cell(-0.0))
+    assertEquals(1.0 / JavaTurtleSnapPrimitives.read(process, "n"), Double.NegativeInfinity)
+    val previous = JavaTurtleSnapPrimitives.update(process, "n", 1, false, true)
+    assertEquals(1.0 / previous, Double.NegativeInfinity)
+    assertEquals(JavaTurtleSnapPrimitives.read(process, "n"), 1.0)
+    assertEquals(writes, 2)
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.cell(false))
+    current = 0
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.read(process, "n"))
+    current = js.Dynamic.literal(value = 1)
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.read(process, "n"))
+  }
+
+  test("native Java numeric parameter cells keep caller and callee updates separate") {
+    val caller = JavaTurtleSnapPrimitives.cell(-0.0)
+    var argument: js.Any = caller
+    val get: js.Function2[String, js.Any, js.Any] = (_: String, _: js.Any) => argument
+    val set: js.Function2[String, js.Any, Unit] = (_: String, value: js.Any) => { argument = value }
+    val process = js.Dynamic.literal(context = js.Dynamic.literal(variables = js.Dynamic.literal(getVar = get)), doSetVar = set)
+    argument = JavaTurtleSnapPrimitives.cell(JavaTurtleSnapPrimitives.read(process, "n"))
+    assertEquals(JavaTurtleSnapPrimitives.update(process, "n", 1, true, true), 1.0)
+    assertEquals(JavaTurtleSnapPrimitives.read(process, "n"), 1.0)
+    argument = caller
+    assertEquals(1.0 / JavaTurtleSnapPrimitives.read(process, "n"), Double.NegativeInfinity)
+  }
+
+  test("native Java motion rejects invalid values before drawing") {
+    var commands = Vector.empty[(String, Double)]
+    val move: js.Function1[Double, Unit] = (value: Double) => { commands :+= ("forward" -> value) }
+    val turn: js.Function1[Double, Unit] = (value: Double) => { commands :+= ("right" -> value) }
+    val sprite = js.Dynamic.literal(forward = move, turn = turn)
+    val getReceiver: js.Function0[js.Dynamic] = () => sprite
+    val process = js.Dynamic.literal(blockReceiver = getReceiver)
+    JavaTurtleSnapPrimitives.forward(process, 0.5)
+    JavaTurtleSnapPrimitives.turnRight(process, -90)
+    for invalid <- Seq[js.Any](Double.PositiveInfinity, Double.NegativeInfinity, Double.NaN, true, "10") do {
+      intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.forward(process, invalid))
+      intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.turnRight(process, invalid))
+    }
+    assertEquals(commands, Vector("forward" -> 0.5, "right" -> -90.0))
+  }
+
+  test("native Java reset initializes the current sprite without drawing a connecting line") {
+    var calls = Vector.empty[(String, Vector[Double])]
+    var receivers = 0
+    def command(name: String): js.Function0[Unit] = () => { calls :+= (name -> Vector.empty[Double]) }
+    def scalar(name: String): js.Function1[Double, Unit] = (value: Double) => { calls :+= (name -> Vector(value)) }
+    val position: js.Function2[Double, Double, Unit] = (x: Double, y: Double) => {
+      calls :+= ("gotoXY" -> Vector(x, y))
+    }
+    val color: js.Function2[Double, Double, Unit] = (dimension: Double, value: Double) => {
+      calls :+= ("setColorDimension" -> Vector(dimension, value))
+    }
+    val sprite = js.Dynamic.literal(up = command("up"), gotoXY = position,
+      setHeading = scalar("setHeading"), setColorRGBA = scalar("setColorRGBA"), setColorDimension = color,
+      setSize = scalar("setSize"), clear = command("clear"), down = command("down"))
+    val getReceiver: js.Function0[js.Dynamic] = () => { receivers += 1; sprite }
+    val process = js.Dynamic.literal(blockReceiver = getReceiver)
+
+    JavaTurtleSnapPrimitives.reset(process)
+
+    assertEquals(receivers, 1)
+    assertEquals(calls, Vector(
+      "up" -> Vector.empty[Double], "gotoXY" -> Vector(0.0, 0.0), "setHeading" -> Vector(90.0),
+      "setColorRGBA" -> Vector(0.0), "setColorDimension" -> Vector(3.0, 0.0), "setSize" -> Vector(1.0),
+      "clear" -> Vector.empty[Double], "down" -> Vector.empty[Double]))
   }
 
   test("Java worker decoding retains status, command order and signed integer values") {

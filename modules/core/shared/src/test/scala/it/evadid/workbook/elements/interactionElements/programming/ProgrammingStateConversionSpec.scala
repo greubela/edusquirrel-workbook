@@ -356,7 +356,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(ProgrammingState.fingerprint(state), fingerprint)
   }
 
-  test("full Java classes remain readable but reject legacy turtle execution and Snap conversion") {
+  test("full Java classes have checked editable Python and Snap views while rejecting legacy execution") {
     val state = ProgrammingStateJavaString(squareJava())
     val stored = ProgrammingExercise.StateSerializer.serialize(state)
     val fingerprint = ProgrammingState.fingerprint(state)
@@ -364,10 +364,13 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assert(state.isClassProgram)
     val readable = ProgrammingStateJavaString("class Main { public static void main(String[] args) { Turtle.forward(12); } }")
     assert(readable.toBeExpressionState.expression != null)
-    assert(readable.toPython.code.contains("class "), clue = readable.toPython.code)
     assert(readable.toPython.code.contains("def main("), clue = readable.toPython.code)
+    assert(readable.toPython.code.contains("turtle.forward(12)"), clue = readable.toPython.code)
     intercept[IllegalArgumentException](state.toLegacyTurtleCommands)
-    intercept[IllegalArgumentException](state.toSnapXml)
+    val snap = state.toSnapXml
+    assert(JavaTurtleEditingBridge.hasSnapMetadata(snap.snapXml))
+    assertEquals(T.runVm(snap.toJava.toJavaVmProgram.toOption.get).commands, squareCommands(25))
+    assertEquals(T.runVm(state.toPython.toJava.toJavaVmProgram.toOption.get).commands, squareCommands(25))
     assertEquals(state.toJava, state)
     assertEquals(state.code, squareJava())
     assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
@@ -582,6 +585,362 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assert(converted.code.startsWith("from datetime import date\n"), clue = converted.code)
     assert(converted.code.contains("day : date"), clue = converted.code)
     assertEquals(normalized(converted.toBeExpressionState), converted.code.trim)
+  }
+
+  private def checked(source: String): P.Program = P.compile(source).fold(diagnostic => fail(diagnostic.message), identity)
+  private def bridgePython(program: P.Program): ProgrammingStatePythonString =
+    JavaTurtleEditingBridge.toPython(program).fold(message => fail(message), identity)
+  private def bridgeSnap(program: P.Program): ProgrammingStateSnapXml =
+    JavaTurtleEditingBridge.toSnap(program).fold(message => fail(message), identity)
+  private def bridgeJava(result: Either[String, ProgrammingStateJavaString]): P.Program =
+    checked(result.fold(message => fail(message), identity).code)
+
+  test("clean Python AST recognizes None return annotations on editable Java methods") {
+    val source = "def draw(length: float) -> None:\n    return\n\ndef main() -> None:\n    draw(2.0)\n"
+    val parsed = it.evadid.vm.parsing.python.clean.PythonAstParserSimple.parse(source).fold(error => fail(error.getMessage), identity)
+    val methods = parsed.statements.collect { case it.evadid.vm.parsing.python.clean.model.PyAST.StatementWithLineNumber(method: it.evadid.vm.parsing.python.clean.model.PyAST.PyFunctionDef, _) => method.name }
+    assertEquals(methods.toList, List("draw", "main"))
+  }
+
+  test("typed editing bridge preserves arithmetic scopes mutable parameters and for updates") {
+    val source = """class Arithmetic {
+      |  static void draw(int count, double length, boolean enabled) {
+      |    int value = 2147483647;
+      |    value += 1;
+      |    if (enabled) {
+      |      Turtle.forward(value);
+      |      Turtle.forward(-9 / 2);
+      |      Turtle.forward(-9 % 2);
+      |    }
+      |    for (int i = 0; i < count; i++) {
+      |      Turtle.forward(length / 2.0);
+      |      Turtle.turnRight(30);
+      |    }
+      |  }
+      |  public static void main(String[] args) { draw(3, 5.0, true); }
+      |}
+      |""".stripMargin
+    val program = checked(source)
+    val expected = T.runVm(program).commands
+    val python = bridgePython(program)
+    val snap = bridgeSnap(program)
+    assert(python.code.contains("def draw(count: int, length: float, enabled: bool) -> None:"))
+    assert(python.code.contains("java_turtle.int_op(\"div\""))
+    assert(python.code.contains("java_turtle.int_op(\"rem\""))
+    assert(!python.code.contains("exec("))
+    assert(snap.snapXml.contains("s=\"reportJavaInt\""))
+    assert(snap.snapXml.contains("s=\"doDeclareVariables\""))
+    assert(snap.snapXml.contains("s=\"doJavaForward\""))
+    assert(!snap.snapXml.contains("s=\"doFor\""))
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromPython(python.code))).commands, expected)
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromSnap(snap))).commands, expected)
+  }
+
+  test("typed editing bridge preserves recursive locals early return and mutual method calls") {
+    val source = """class Branching {
+      |  static void left(int depth, double length) {
+      |    double saved = length;
+      |    if (depth <= 0) { Turtle.forward(saved); return; }
+      |    right(depth - 1, length / 2.0);
+      |    Turtle.forward(saved);
+      |  }
+      |  static void right(int depth, double length) {
+      |    if (depth <= 0) { Turtle.forward(length); return; }
+      |    left(depth - 1, length / 2.0);
+      |    Turtle.turnRight(45);
+      |  }
+      |  public static void main(String[] args) { left(3, 16.0); }
+      |}
+      |""".stripMargin
+    val program = checked(source)
+    val expected = T.runVm(program).commands
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromPython(bridgePython(program).code))).commands, expected)
+    val snap = bridgeSnap(program)
+    assert(snap.snapXml.contains("<option>this block</option>"))
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromSnap(snap))).commands, expected)
+  }
+
+  test("typed editing views preserve prefix postfix ordering and local names in sibling scopes") {
+    val source = """class Ordering {
+      |  static void draw(int counter) {
+      |    Turtle.forward(counter++ + ++counter);
+      |    counter++;
+      |    if (counter > 0) { int length = 4; Turtle.forward(length); }
+      |    if (counter > 0) { int length = 5; Turtle.forward(length); }
+      |  }
+      |  public static void main(String[] args) { draw(2); }
+      |}
+      |""".stripMargin
+    val program = checked(source)
+    val expected = T.runVm(program).commands
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromPython(bridgePython(program).code))).commands, expected)
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromSnap(bridgeSnap(program)))).commands, expected)
+  }
+
+  test("edited typed Snap and Python views reconstruct changed programs instead of replaying hidden Java") {
+    val program = checked("class Changed { public static void main(String[] args) { Turtle.forward(12); } }")
+    val python = bridgePython(program).code.replace("turtle.forward(12)", "turtle.forward(19)")
+    val snap = bridgeSnap(program)
+    val changedXml = snap.snapXml.replace("<l>12</l>", "<l>23</l>")
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromPython(python))).commands.map(_.value), Vector(19.0))
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = changedXml)))).commands.map(_.value), Vector(23.0))
+    assert(!snap.snapXml.contains("Turtle.forward"))
+    assertEquals(snap.snapXml, bridgeSnap(program).snapXml)
+  }
+
+  test("typed bridge rejects lossy edits unknown blocks loose scripts and malformed metadata without mutation") {
+    val program = checked(squareJava())
+    val python = bridgePython(program)
+    val snap = bridgeSnap(program)
+    val badPython = List(
+      python.code.replace("java_turtle.int_op(\"add\", i[0], 1)", "i[0] + 1"),
+      python.code.replace("square(25)", "square(25, 1)"),
+      python.code.replace("\\\"version\\\":1", "\\\"version\\\":2"),
+      python.code + "print(1)\n",
+      python.code + "#" + "x" * JavaTurtleEditingBridge.MaxRepresentationCharacters
+    )
+    badPython.foreach { code =>
+      assert(code != python.code, clue = "The unsupported edit must change its source fixture.")
+      assert(JavaTurtleEditingBridge.fromPython(code).isLeft, clue = code.take(200))
+    }
+    val badXml = List(
+      snap.snapXml.replace("s=\"doJavaForward\"", "s=\"wait\""),
+      snap.snapXml.replace("</sprite>", "<scripts><script><block s=\"doJavaForward\"><l>1</l></block></script></scripts></sprite>"),
+      snap.snapXml.replace("</project>", "<unknown-extension/></project>"),
+      snap.snapXml.replace("s=\"doJavaForward\"", "s=\"doJavaForward\" unknown=\"kept\""),
+      snap.snapXml.replace("<l>add</l>", "<l> add </l>"),
+      snap.snapXml.replace("<block s=\"doSetVar\"><l>i</l>", "<block s=\"doSetVar\"><l> i </l>"),
+      snap.snapXml.replace("<block s=\"receiveGo\"></block>", "<block s=\"receiveGo\"><l>1</l></block>"),
+      snap.snapXml.replace("<block s=\"reportJavaRead\"><l>i</l></block>", "<block var=\"i\"/>"),
+      snap.snapXml.replace("<block s=\"reportJavaCell\"><l>25</l></block>", "<l>25</l>"),
+      snap.snapXml.replace("<block s=\"doJavaReset\"></block>", ""),
+      snap.snapXml.replace("category=\"variables\"", "category=\"control\""),
+      snap.snapXml.replace("</block-definition>", "<comment>authored</comment></block-definition>"),
+      snap.snapXml.replace("</block-definition>", "<header>authored</header></block-definition>"),
+      snap.snapXml.replace("</block-definition>", "<translations>authored</translations></block-definition>"),
+      snap.snapXml.replace("</project>", "<notes>authored</notes></project>"),
+      snap.snapXml.replace("&quot;version&quot;:1", "&quot;version&quot;:2"),
+      snap.snapXml.dropRight(10)
+    )
+    badXml.foreach { xml =>
+      assert(xml != snap.snapXml, clue = "The unsupported edit must change its XML fixture.")
+      assert(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = xml)).isLeft, clue = xml.take(200))
+    }
+    assert(JavaTurtleEditingBridge.fromSnap(snap.copy(legacyFloatingObjects = List("kept"))).isLeft)
+    assertEquals(bridgePython(program), python)
+    assertEquals(bridgeSnap(program), snap)
+  }
+
+  test("editing metadata recognition does not capture ordinary text mentions and retains malformed bridge headers") {
+    assert(!JavaTurtleEditingBridge.hasPythonMetadata("print(\"__java_turtle_metadata\")\n"))
+    assert(!JavaTurtleEditingBridge.hasSnapMetadata("<project><notes>A text about EduSquirrel Java Turtle 1.</notes></project>"))
+    assert(JavaTurtleEditingBridge.hasPythonMetadata("import java_turtle\n__java_turtle_metadata = unfinished"))
+    assert(JavaTurtleEditingBridge.hasPythonMetadata("import turtle\n\n__java_turtle_metadata = unfinished"))
+    assert(!JavaTurtleEditingBridge.hasPythonMetadata("def ordinary():\n    __java_turtle_metadata = \"a local name\"\n"))
+    assert(JavaTurtleEditingBridge.hasSnapMetadata("<project><notes>EduSquirrel Java Turtle 1\n{"))
+    assert(JavaTurtleEditingBridge.fromPython("import java_turtle\n__java_turtle_metadata = unfinished").isLeft)
+    assert(JavaTurtleEditingBridge.fromSnap(ProgrammingStateSnapXml("<project><notes>EduSquirrel Java Turtle 1\n{")).isLeft)
+  }
+
+  test("for bodies ending their method never emit unreachable updates in editable views") {
+    val bodies = List(
+      "Turtle.forward(9); return;",
+      "if (enabled) { Turtle.forward(10); return; } else { Turtle.forward(20); return; }"
+    )
+    bodies.foreach { body =>
+      val source = s"""class EndsMethod {
+        |  static void draw(boolean enabled) {
+        |    for (int i = 0; i < 2; i++) { $body }
+        |  }
+        |  public static void main(String[] args) { draw(true); draw(false); Turtle.forward(7); }
+        |}
+        |""".stripMargin
+      val program = checked(source)
+      val expected = T.runVm(program).commands
+      val python = bridgePython(program)
+      val snap = bridgeSnap(program)
+      assert(!python.code.contains("java_turtle.update(i,"), clue = python.code)
+      assert(!snap.snapXml.contains("s=\"reportJavaUpdate\""), clue = snap.snapXml)
+      assert(snap.snapXml.contains("s=\"doJavaReset\""), clue = snap.snapXml)
+      assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromPython(python.code))).commands, expected)
+      assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromSnap(snap))).commands, expected)
+    }
+  }
+
+  test("native scene notes empty method bodies and baseline numeric defaults preserve the typed bridge") {
+    val program = checked("class EmptyMethod { static void idle(int count) {} public static void main(String[] args) { idle(1); } }")
+    val snap = bridgeSnap(program)
+    val globals = SnapCustomBlockRules.globalDefinitions(snap.snapXml)
+    val all = SnapCustomBlockRules.allDefinitions(snap.snapXml)
+    assertEquals(globals.map(_.element.start), all.map(_.element.start))
+    assertEquals(SnapCustomBlockRules.localDefinitions(snap.snapXml), Nil)
+    val metadataNotes = SnapXmlParser.elements(snap.snapXml, "notes").filter(node => SnapXmlParser.unescape(node.inner).startsWith(JavaTurtleEditingBridge.NotesPrefix))
+    assertEquals(metadataNotes.size, 2)
+    val native = snap.snapXml.replace("<script></script>", "")
+      .replace("<input type=\"%n\"></input>", "<input type=\"%n\">0</input>")
+    val restored = bridgeJava(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = native)))
+    assertEquals(T.runVm(restored).commands, Vector.empty[T.Command])
+    assertEquals(restored.root.methods.map(_.binding.originalName), Vector("idle", "main"))
+    val projectNoteAt = native.indexOf(metadataNotes.head.outer)
+    val onlySceneNotes = native.substring(0, projectNoteAt) + native.substring(projectNoteAt + metadataNotes.head.outer.length)
+    assert(JavaTurtleEditingBridge.hasSnapMetadata(onlySceneNotes))
+    assert(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = onlySceneNotes)).isRight)
+  }
+
+  test("numeric comparison views retain NaN infinities signed zero and integer comparisons on every route") {
+    val source = """class Comparisons {
+      |  public static void main(String[] args) {
+      |    double missing = 0.0 / 0.0;
+      |    double infinite = 1.0 / 0.0;
+      |    double negativeZero = -0.0;
+      |    int count = 4;
+      |    boolean enabled = true;
+      |    if (missing <= 1.0) { Turtle.forward(99); } else { Turtle.forward(1); }
+      |    if (missing >= 1.0) { Turtle.forward(99); } else { Turtle.forward(2); }
+      |    if (missing == missing) { Turtle.forward(99); } else { Turtle.forward(3); }
+      |    if (missing != missing) { Turtle.forward(4); }
+      |    if (negativeZero == 0.0) { Turtle.forward(5); }
+      |    if (infinite > 1.0) { Turtle.forward(6); }
+      |    if (infinite == infinite) { Turtle.forward(7); }
+      |    if (missing < infinite || missing > infinite) { Turtle.forward(99); } else { Turtle.forward(8); }
+      |    if (count < 5 && enabled == true) { Turtle.forward(9); }
+      |  }
+      |}
+      |""".stripMargin
+    val program = checked(source)
+    val expected = (1 to 9).map(value => T.Command(R.TurtleCommand.Forward, value.toDouble)).toVector
+    assertEquals(T.runVm(program).commands, expected)
+    val python = bridgePython(program)
+    val snap = bridgeSnap(program)
+    assert(python.code.contains("java_turtle.compare(\"le\""), clue = python.code)
+    assert(python.code.contains("java_turtle.compare(\"ge\""), clue = python.code)
+    assert(snap.snapXml.contains("s=\"reportJavaCompare\""), clue = snap.snapXml)
+    assert(!snap.snapXml.contains("s=\"reportVariadicLessThanOrEquals\""), clue = snap.snapXml)
+    assert(!snap.snapXml.contains("s=\"reportVariadicGreaterThanOrEquals\""), clue = snap.snapXml)
+    val pythonJava = bridgeJava(JavaTurtleEditingBridge.fromPython(python.code))
+    val snapJava = bridgeJava(JavaTurtleEditingBridge.fromSnap(snap))
+    assertEquals(T.runVm(pythonJava).commands, expected)
+    assertEquals(T.runVm(snapJava).commands, expected)
+    val pythonViaSnap = bridgePython(bridgeJava(JavaTurtleEditingBridge.fromSnap(bridgeSnap(pythonJava))))
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromPython(pythonViaSnap.code))).commands, expected)
+  }
+
+  test("repeated mixed numeric view changes retain meaning within the existing Java input limits") {
+    val program = checked("""class Repeated {
+      |  static void draw(int count, double side) {
+      |    int twice = count * 2;
+      |    double mixed = side + count;
+      |    if (mixed >= twice) { Turtle.forward(mixed / 2.0); } else { Turtle.forward(side); }
+      |  }
+      |  public static void main(String[] args) { draw(2, 7.0); }
+      |}
+      |""".stripMargin)
+    val expected = T.runVm(program).commands
+    var viaPython = program
+    var viaSnap = program
+    (1 to 4).foreach { cycle =>
+      viaPython = bridgeJava(JavaTurtleEditingBridge.fromPython(bridgePython(viaPython).code))
+      viaSnap = bridgeJava(JavaTurtleEditingBridge.fromSnap(bridgeSnap(viaSnap)))
+      assertEquals(T.runVm(viaPython).commands, expected, clue = s"Python cycle $cycle")
+      assertEquals(T.runVm(viaSnap).commands, expected, clue = s"Snap cycle $cycle")
+    }
+  }
+
+  test("method names remain callable when Java parameters and locals use those names") {
+    val program = checked("""class Names {
+      |  static void draw(int draw) {
+      |    if (draw > 0) { draw(draw - 1); }
+      |    Turtle.forward(draw);
+      |  }
+      |  public static void main(String[] args) { int draw = 2; draw(draw); }
+      |}
+      |""".stripMargin)
+    val expected = T.runVm(program).commands
+    val python = bridgePython(program)
+    assert(python.code.contains("def draw(draw_java_0: int)"), clue = python.code)
+    assert(!python.code.contains("\n    draw ="), clue = python.code)
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromPython(python.code))).commands, expected)
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromSnap(bridgeSnap(program)))).commands, expected)
+    val shadowing = python.code.replace("draw_java_0", "draw")
+    assert(shadowing != python.code)
+    assert(JavaTurtleEditingBridge.fromPython(shadowing).isLeft)
+  }
+
+  test("native negative-zero literals retain their sign and cannot enter an int cell") {
+    val program = checked("class Zero { static void draw(double length) { Turtle.forward(length); } public static void main(String[] args) { draw(0.0); Turtle.forward(0); } }")
+    val snap = bridgeSnap(program)
+    val changed = snap.snapXml.replace("<l>0.0</l>", "<l>-0</l>")
+      .replace("<block s=\"doJavaForward\"><l>0</l></block>", "<block s=\"doJavaForward\"><l>-0</l></block>")
+    assert(changed != snap.snapXml)
+    val execution = T.runVm(bridgeJava(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = changed))))
+    assertEquals(execution.commands.size, 2)
+    assert(execution.commands.forall(command => command.value == 0.0 && 1.0 / command.value == Double.NegativeInfinity))
+    val integers = bridgeSnap(checked("class ZeroInt { static void draw(int length) { Turtle.forward(length); } public static void main(String[] args) { draw(0); } }"))
+    val badInteger = integers.snapXml.replace("<l>0</l>", "<l>-0</l>")
+    assert(badInteger != integers.snapXml)
+    assert(JavaTurtleEditingBridge.fromSnap(integers.copy(snapXml = badInteger)).isLeft)
+  }
+
+  test("typed projects cannot move global Java methods into local sprite blocks by removing the global container") {
+    val snap = bridgeSnap(checked("class Localized { public static void main(String[] args) { Turtle.forward(12); } }"))
+    val scene = SnapXmlParser.elements(snap.snapXml, "scene").head
+    val globals = SnapXmlParser.child(scene.inner, "blocks").get
+    val withoutGlobals = snap.snapXml.replace(globals.outer, "")
+    val sprite = SnapXmlParser.elements(withoutGlobals, "sprite").head
+    val localBlocks = SnapXmlParser.child(sprite.inner, "blocks").get
+    val localAt = sprite.start + sprite.outer.indexOf('>') + 1 + localBlocks.start
+    val malformed = withoutGlobals.substring(0, localAt) + s"<blocks>${globals.inner}</blocks>" +
+      withoutGlobals.substring(localAt + localBlocks.outer.length)
+    assert(malformed != snap.snapXml)
+    assertEquals(SnapCustomBlockRules.allDefinitions(malformed).size, 1)
+    assertEquals(SnapCustomBlockRules.globalDefinitions(malformed), Nil)
+    assertEquals(SnapCustomBlockRules.localDefinitions(malformed).size, 1)
+    assert(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = malformed)).isLeft)
+  }
+
+  test("native encoded note newlines and registered Variables category retain typed project metadata") {
+    val program = checked(squareJava())
+    val snap = bridgeSnap(program)
+    val native = snap.snapXml.replace("\n", "&#xD;")
+      .replace("category=\"variables\"", "category=\"Variables\"")
+      .replace("<hidden></hidden>", "<palette><category name=\"Variables\" color=\"243,118,29,1\"/></palette><hidden></hidden>")
+    assert(native != snap.snapXml)
+    assert(JavaTurtleEditingBridge.hasSnapMetadata(native))
+    assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = native)))).commands, squareCommands(25))
+    val aliases = List("\r", "\r\n", "&#13;", "&#xA;", "&#10;")
+    aliases.foreach { newline =>
+      val normalized = native.replace("&#xD;", newline)
+      assert(JavaTurtleEditingBridge.hasSnapMetadata(normalized), clue = newline)
+      assert(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = normalized)).isRight, clue = newline)
+    }
+    val doubleEncoded = native.replace("&#xD;", "&amp;#xD;")
+    assert(!JavaTurtleEditingBridge.hasSnapMetadata(doubleEncoded))
+    assert(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = doubleEncoded)).isLeft)
+    val authoredCategory = native.replace("category=\"Variables\"", "category=\"Author category\"")
+    assert(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = authoredCategory)).isLeft)
+  }
+
+  test("native generated preview images do not change conversion or mutate stored XML") {
+    val snap = bridgeSnap(checked("class Preview { public static void main(String[] args) { Turtle.forward(12); } }"))
+    val image = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB"
+    val previews = List(s"<pentrails>$image</pentrails>", s"<pentrail>$image</pentrail>",
+      s"<pentrails><pentrail>$image</pentrail></pentrails>")
+    previews.foreach { preview =>
+      val xml = snap.snapXml.replace("</stage>", preview + "</stage>")
+        .replace("<scenes", s"<thumbnail>$image</thumbnail><scenes")
+      val state = snap.copy(snapXml = xml)
+      val stored = ProgrammingExercise.StateSerializer.serialize(state)
+      val fingerprint = ProgrammingState.fingerprint(state)
+      val restored = bridgeJava(JavaTurtleEditingBridge.fromSnap(state))
+      assertEquals(T.runVm(restored).commands.map(_.value), Vector(12.0))
+      assertEquals(state.snapXml, xml)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+      assertEquals(ProgrammingState.fingerprint(state), fingerprint)
+    }
+    val authored = snap.snapXml.replace("</sprite>", s"<costume name=\"authored\">$image</costume></sprite>")
+    assert(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = authored)).isLeft)
+    val oversized = snap.snapXml.replace("</stage>", "<pentrails>" + "a" * JavaTurtleEditingBridge.MaxRepresentationCharacters + "</pentrails></stage>")
+    assert(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = oversized)).isLeft)
   }
 
 }

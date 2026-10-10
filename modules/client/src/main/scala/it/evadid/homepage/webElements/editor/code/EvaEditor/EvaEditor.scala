@@ -89,10 +89,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
 
   private def convert(state: ProgrammingState, tab: Tab): ProgrammingState = tab match
     case Tab.Snap => state.toSnapXml
-    case Tab.Python => state match
-      case java: ProgrammingStateJavaString if java.isClassProgram =>
-        throw IllegalArgumentException("Full Java classes require the checked Java runner instead of the Python view.")
-      case _ => state.toPython
+    case Tab.Python => state.toPython
     case Tab.Java => state.toJava
 
   private def show(next: ProgrammingState): Unit = next match

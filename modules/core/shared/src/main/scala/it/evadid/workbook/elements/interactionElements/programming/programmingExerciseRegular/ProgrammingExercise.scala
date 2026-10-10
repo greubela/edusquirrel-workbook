@@ -59,6 +59,8 @@ object ProgrammingExercise {
   /** Versioned tagged format. The previous Snap XML and Python formats remain readable. */
   object StateSerializer extends Serializer[ProgrammingState] {
     override def serialize(obj: ProgrammingState): String = obj match
+      case ProgrammingStateBeExpression(root: it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms.Root) =>
+        serialize(ProgrammingStateJavaString(root.bindings.source.source))
       case snap: ProgrammingStateSnapXml if snap.hasLegacyFloatingObjects =>
         s"$StateHeader\nSNAP_XML_WITH_FLOATING\n${write(snap.legacyFloatingObjects)}\n${snap.snapXml}"
       case ProgrammingStateSnapXml(xml) => s"$StateHeader\nSNAP_XML\n$xml"

@@ -116,6 +116,74 @@ class PythonTypeHintConversionSpec extends FunSuite {
     assert(SnapTurtlePythonBridge.applyPython("import os\nforward(10)").isLeft)
   }
 
+  test("a printer-shaped comment cannot bypass checked compilation of a static Java main") {
+    val source = """class Drawing {
+      |  //EvaEntityName(drawing)
+      |  public static void main(String[] args) { float distance = 1; }
+      |}
+      |""".stripMargin
+    val java = ProgrammingStateJavaString(source)
+    val stored = ProgrammingExercise.StateSerializer.serialize(java)
+    assert(java.isClassProgram)
+    assert(java.toJavaVmProgram.isLeft)
+    intercept[IllegalArgumentException](java.toBeExpressionState)
+    intercept[IllegalArgumentException](java.toPython)
+    intercept[IllegalArgumentException](java.toSnapXml)
+    assertEquals(java.code, source)
+    assertEquals(ProgrammingExercise.StateSerializer.serialize(java), stored)
+  }
+
+  test("printer hints do not enable unchecked Turtle-qualified calls") {
+    val source = """class Legacy {
+      |  //EvaEntityName(legacy)
+      |  void line() { Turtle.forward(12); }
+      |}
+      |""".stripMargin
+    val java = ProgrammingStateJavaString(source)
+    assert(java.isClassProgram)
+    assert(java.toJavaVmProgram.isLeft)
+    intercept[IllegalArgumentException](java.toBeExpressionState)
+    intercept[IllegalArgumentException](java.toPython)
+    intercept[IllegalArgumentException](java.toSnapXml)
+    assertEquals(java.code, source)
+  }
+
+  test("an entity hint inside a string cannot enable legacy class conversion") {
+    val source = """class Legacy { String label() { return "//EvaEntityName(label)"; } }"""
+    val java = ProgrammingStateJavaString(source)
+    assert(java.isClassProgram)
+    assert(java.toJavaVmProgram.isLeft)
+    intercept[IllegalArgumentException](java.toBeExpressionState)
+    intercept[IllegalArgumentException](java.toPython)
+    intercept[IllegalArgumentException](java.toSnapXml)
+    assertEquals(java.code, source)
+  }
+
+  test("printer hints do not permit unsupported nodes in a legacy class") {
+    val source = """class Legacy {
+      |  //EvaEntityName(legacy)
+      |  Object create() { return new Object(); }
+      |}
+      |""".stripMargin
+    val java = ProgrammingStateJavaString(source)
+    assert(java.isClassProgram)
+    assert(java.toJavaVmProgram.isLeft)
+    intercept[IllegalArgumentException](java.toBeExpressionState)
+    intercept[IllegalArgumentException](java.toPython)
+    intercept[IllegalArgumentException](java.toSnapXml)
+    assertEquals(java.code, source)
+  }
+
+  test("a printer-generated instance method named main remains convertible") {
+    val original = ProgrammingStatePythonString("class Calculator:\n    def main(self, value: float) -> float:\n        return value\n").toBeExpressionState
+    val java = original.toJava
+    assert(java.code.contains("//EvaEntityName("), clue = java.code)
+    assert(java.isClassProgram)
+    assert(java.toJavaVmProgram.isLeft)
+    assertEquals(java.toPython.code.trim, original.toPython.code.trim)
+    intercept[IllegalArgumentException](java.toSnapXml)
+  }
+
   test("Python class with two typed methods round trips through Java") {
     val source =
       """class Calculator:
@@ -135,6 +203,10 @@ class PythonTypeHintConversionSpec extends FunSuite {
     assert(java.code.contains("class calculator"), clue = java.code)
     assert(java.code.contains("double twice("), clue = java.code)
     assert(java.code.contains("String label("), clue = java.code)
+    assert(java.code.contains("//EvaEntityName("), clue = java.code)
+    assert(java.isClassProgram)
+    assert(java.toJavaVmProgram.isLeft)
+    intercept[IllegalArgumentException](java.toSnapXml)
     assertEquals(roundTripped.code.trim, original.toPython.code.trim, clue = java.code)
 
     val parsed = PythonParser.parsePythonWithDetails(roundTripped.code)

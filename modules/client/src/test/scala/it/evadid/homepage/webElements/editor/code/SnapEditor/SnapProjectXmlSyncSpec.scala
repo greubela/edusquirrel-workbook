@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import munit.FunSuite
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaString
 
 class SnapProjectXmlSyncSpec extends FunSuite {
   private def xml(code: String, image: String): String =
@@ -48,5 +49,32 @@ class SnapProjectXmlSyncSpec extends FunSuite {
     sync.clear()
     assert(!sync.isLoaded(clean("program")))
     assertEquals(sync.changedSnapshot(xml("program", "image")), Some(clean("program")))
+  }
+
+  test("running a typed Java project does not publish its sprite pose as a source edit") {
+    val source = ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { Turtle.forward(12); } }").toSnapXml.snapXml
+    val moved = source.replace("x=\"0\" y=\"0\" heading=\"90\"", "x=\"12\" y=\"3\" heading=\"180\"")
+    assert(moved != source)
+    val sync = new SnapProjectXmlSync
+    sync.markLoaded(source)
+    sync.resetSnapshot(source)
+    assertEquals(sync.changedSnapshot(moved), None)
+    assert(sync.isLoaded(source))
+    assert(!sync.isLoaded(moved))
+    val edited = moved.replace("<l>12</l>", "<l>23</l>")
+    assert(edited != moved)
+    assertEquals(sync.changedSnapshot(edited), Some(edited))
+    assertEquals(sync.changedSnapshot(edited), None)
+    val layout = edited.replace("x=\"156\" y=\"66\"", "x=\"160\" y=\"70\"")
+    assert(layout != edited)
+    assertEquals(sync.changedSnapshot(layout), Some(layout))
+  }
+
+  test("ordinary Snap projects continue to retain sprite pose changes") {
+    val source = "<project><notes>ordinary</notes><sprite x=\"0\" y=\"0\" heading=\"90\"><scripts/></sprite></project>"
+    val moved = source.replace("x=\"0\"", "x=\"12\"")
+    val sync = new SnapProjectXmlSync
+    sync.resetSnapshot(source)
+    assertEquals(sync.changedSnapshot(moved), Some(moved))
   }
 }

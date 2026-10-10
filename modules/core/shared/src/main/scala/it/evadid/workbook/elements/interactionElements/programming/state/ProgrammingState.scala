@@ -5,14 +5,18 @@ import it.evadid.core.datastructures.vectorShapes.svg.BeExpressionToTurtleComman
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
+import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
+import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.parsing.generic.abstractions.GenericAST
 import it.evadid.vm.parsing.java.clean.JavaParser
-import it.evadid.vm.parsing.java.clean.model.JavaAST.{JavaClassDef, JavaUnparsableStatement}
+import it.evadid.vm.parsing.java.clean.model.JavaAST.{JavaAttributeAccess, JavaCallExpression, JavaClassDef, JavaFunctionCall, JavaMethodDef, JavaTarget, JavaUnparsableStatement}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleInputLimits, JavaTurtleSource, JavaTurtleVmPrograms}
+import it.evadid.vm.simulation.java.JavaTurtleRuntime
+import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeScope}
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateBeExpression
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingStateSnapXmlHelper, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{JavaTurtleEditingBridge, ProgrammingStateSnapXmlHelper, SnapTurtlePythonBridge}
 import upickle.default.*
 import scala.reflect.ClassTag
 
@@ -28,6 +32,7 @@ sealed trait ProgrammingState {
   def toJava: ProgrammingStateJavaString
 
   def fingerprint(): String = this match
+    case ProgrammingStateBeExpression(root: JavaTurtleVmPrograms.Root) => s"java:${root.bindings.source.source}"
     case ProgrammingStateBeExpression(expression) => s"expression:${expression.toString}"
     case snap: ProgrammingStateSnapXml if snap.hasLegacyFloatingObjects =>
       s"snap-legacy:${write((snap.snapXml, snap.legacyFloatingObjects))}"
@@ -38,6 +43,9 @@ sealed trait ProgrammingState {
 
 object ProgrammingState {
   export ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
+
+  private def converted[A](result: Either[String, A]): A =
+    result.fold(message => throw IllegalArgumentException(message), identity)
 
   private val legacySnapTag = "ProgrammingStateSnapXMLWithAdditionalFloatingObjects"
   private val tagPrefixes = List(
@@ -55,6 +63,8 @@ object ProgrammingState {
   given derived$ReadWriter: ReadWriter[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState] =
     readwriter[ujson.Value].bimap(
       {
+        case ProgrammingStateBeExpression(root: JavaTurtleVmPrograms.Root) =>
+          ujson.Obj("$type" -> "ProgrammingStateJavaString", "code" -> root.bindings.source.source)
         case snap: ProgrammingStateSnapXml if snap.hasLegacyFloatingObjects =>
           ujson.Obj("$type" -> legacySnapTag, "snapXml" -> snap.snapXml,
             "additionalFloatingObjects" -> writeJs(snap.legacyFloatingObjects))
@@ -99,15 +109,36 @@ object ProgrammingState {
   final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState {
     override def toBeExpressionState: ProgrammingStateBeExpression = this
 
-    override def toSnapXml: ProgrammingStateSnapXml = ProgrammingStateSnapXmlHelper.fromProgram(BeProgram(expression))
+    override def toSnapXml: ProgrammingStateSnapXml = expression match {
+      case root: JavaTurtleVmPrograms.Root => converted(JavaTurtleEditingBridge.toSnap(JavaTurtleVmPrograms.fromRoot(root)))
+      case _ => ProgrammingStateSnapXmlHelper.fromProgram(BeProgram(expression))
+    }
 
-    override def toPython: ProgrammingStatePythonString =
-      ProgrammingStatePythonString(SnapTurtlePythonBridge.printedPython(expression))
+    override def toPython: ProgrammingStatePythonString = expression match {
+      case root: JavaTurtleVmPrograms.Root => converted(JavaTurtleEditingBridge.toPython(JavaTurtleVmPrograms.fromRoot(root)))
+      case _ => ProgrammingStatePythonString(SnapTurtlePythonBridge.printedPython(expression))
+    }
 
-    override def toJava: ProgrammingStateJavaString =
-      ProgrammingStateJavaString(expression.structureInfo.toStringInLanguage(Java, English, false))
+    override def toJava: ProgrammingStateJavaString = expression match {
+      case root: JavaTurtleVmPrograms.Root => ProgrammingStateJavaString(root.bindings.source.source)
+      case _ => ProgrammingStateJavaString(expression.structureInfo.toStringInLanguage(Java, English, false))
+    }
 
-    def deriveTurtleCommands: List[TurtleCommand[Double]] = BeExpressionToTurtleCommands(expression)
+    def deriveTurtleCommands: List[TurtleCommand[Double]] = expression match {
+      case root: JavaTurtleVmPrograms.Root =>
+        val execution = JavaTurtleRuntime.runVm(JavaTurtleVmPrograms.fromRoot(root))
+        if execution.status != JavaTurtleRuntime.Status.Completed then
+          throw IllegalArgumentException(s"Java execution did not complete: ${execution.status}.")
+        execution.commands.toList.map { command =>
+          if !command.value.isFinite then throw IllegalArgumentException("A drawing command needs a finite number.")
+          val name = command.command match {
+            case it.evadid.vm.parsing.java.turtle.JavaTurtleResolution.TurtleCommand.Forward => "forward"
+            case it.evadid.vm.parsing.java.turtle.JavaTurtleResolution.TurtleCommand.TurnRight => "right"
+          }
+          TurtleCommand[Double](name, List(command.value))
+        }
+      case _ => BeExpressionToTurtleCommands(expression)
+    }
 
     def executedTurtleCommands(): List[TurtleCommand[Double]] = deriveTurtleCommands
 
@@ -116,7 +147,11 @@ object ProgrammingState {
   }
 
   object ProgrammingStateBeExpression {
-    given ReadWriter[ProgrammingStateBeExpression] = subtypeReadWriter[ProgrammingStateBeExpression]
+    given ReadWriter[ProgrammingStateBeExpression] = derived$ReadWriter.bimap[ProgrammingStateBeExpression](identity, {
+      case expression: ProgrammingStateBeExpression => expression
+      case java: ProgrammingStateJavaString if java.isClassProgram => java.toBeExpressionState
+      case _ => throw IllegalArgumentException("Unexpected programming state type.")
+    })
   }
 
   object ProgrammingState {
@@ -135,7 +170,8 @@ object ProgrammingState {
       }
 
       override def toBeExpressionState: ProgrammingStateBeExpression =
-        ProgrammingStateBeExpression(SnapStateConversion.expressionFromXml(snapXml))
+        if JavaTurtleEditingBridge.hasSnapMetadata(snapXml) then toJava.toBeExpressionState
+        else ProgrammingStateBeExpression(SnapStateConversion.expressionFromXml(snapXml))
 
       override def toSnapXml: ProgrammingStateSnapXml = this
 
@@ -145,7 +181,11 @@ object ProgrammingState {
 
       override def toPython: ProgrammingStatePythonString = { requireTextConversion(); toBeExpressionState.toPython }
 
-      override def toJava: ProgrammingStateJavaString = { requireTextConversion(); toBeExpressionState.toJava }
+      override def toJava: ProgrammingStateJavaString = {
+        requireTextConversion()
+        if JavaTurtleEditingBridge.hasSnapMetadata(snapXml) then converted(JavaTurtleEditingBridge.fromSnap(this))
+        else toBeExpressionState.toJava
+      }
 
       override val toString: String = s"ProgrammingStateSnapXml(${snapXml.toString.take(300)})"
     }
@@ -164,14 +204,18 @@ object ProgrammingState {
 
     final case class ProgrammingStatePythonString(code: String) extends ProgrammingState {
       override def toBeExpressionState: ProgrammingStateBeExpression =
-        ProgrammingStateBeExpression(BeProgram.fromPythonString(code).fullProgram)
+        if JavaTurtleEditingBridge.hasPythonMetadata(code) then toJava.toBeExpressionState
+        else ProgrammingStateBeExpression(BeProgram.fromPythonString(code).fullProgram)
 
       override def toSnapXml: ProgrammingStateSnapXml =
-        SnapTurtlePythonBridge.applyPython(code).fold(message => throw IllegalArgumentException(message), identity)
+        if JavaTurtleEditingBridge.hasPythonMetadata(code) then toJava.toSnapXml
+        else converted(SnapTurtlePythonBridge.applyPython(code))
 
       override def toPython: ProgrammingStatePythonString = this
 
-      override def toJava: ProgrammingStateJavaString = toBeExpressionState.toJava
+      override def toJava: ProgrammingStateJavaString =
+        if JavaTurtleEditingBridge.hasPythonMetadata(code) then converted(JavaTurtleEditingBridge.fromPython(code))
+        else toBeExpressionState.toJava
 
       override val toString: String = s"ProgrammingStatePythonString(${code.toString.take(300)})"
     }
@@ -181,7 +225,7 @@ object ProgrammingState {
     }
 
     final case class ProgrammingStateJavaString(code: String) extends ProgrammingState {
-      def isClassProgram: Boolean = {
+      private lazy val classDetails: (Boolean, Boolean, Boolean) = {
         JavaTurtleInputLimits.checkParserInput(code).fold(
           diagnostic => throw IllegalArgumentException(diagnostic.message), identity)
         val sourceForAst = JavaToBeExpressionParser.withoutEntityHints(code)
@@ -192,6 +236,8 @@ object ProgrammingState {
           identity)
         var pending: List[GenericAST] = List(parsed)
         var hasClass = false
+        var hasStaticMain = false
+        var hasTurtleCalls = false
         while pending.nonEmpty do {
           val node = pending.head
           pending = pending.tail
@@ -199,11 +245,28 @@ object ProgrammingState {
             case _: JavaUnparsableStatement =>
               throw IllegalArgumentException("This Java source contains unsupported or unfinished syntax.")
             case _: JavaClassDef => hasClass = true
+            case method: JavaMethodDef if method.name == "main" && method.modifiers.contains("static") => hasStaticMain = true
+            case JavaFunctionCall(JavaTarget(_, Seq("Turtle"), _), _) => hasTurtleCalls = true
+            case JavaCallExpression(JavaAttributeAccess(JavaTarget("Turtle", locations, _), _), _) if locations.isEmpty => hasTurtleCalls = true
             case _ => ()
           }
           pending = node.getChildren().toList ::: pending
         }
-        hasClass
+        (hasClass, hasStaticMain, hasTurtleCalls)
+      }
+
+      def isClassProgram: Boolean = classDetails._1
+
+      private def legacyPrinterExpression(): ProgrammingStateBeExpression = {
+        val expression = JavaToBeExpressionParser.parse(code)
+        val nodes = expression.recToTree(false, BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())).values
+        val unsupported = nodes.exists {
+          case BeExpressionReference(_, _: BeExpressionUnsupported) => true
+          case BeExpressionReference(_, _: BeExpressionUnparsable) => true
+          case _ => false
+        }
+        if unsupported then throw IllegalArgumentException("This legacy Java class cannot be converted completely.")
+        ProgrammingStateBeExpression(expression)
       }
 
       def toLegacyTurtleCommands: List[TurtleCommand[Double]] = {
@@ -215,12 +278,17 @@ object ProgrammingState {
         JavaTurtleVmPrograms.compile(code)
 
       override def toBeExpressionState: ProgrammingStateBeExpression =
-        ProgrammingStateBeExpression(JavaToBeExpressionParser.parse(code))
+        if !isClassProgram then ProgrammingStateBeExpression(JavaToBeExpressionParser.parse(code))
+        else toJavaVmProgram match {
+          case Right(program) => ProgrammingStateBeExpression(program.root)
+          case Left(_) if JavaToBeExpressionParser.withoutEntityHints(code) != code && !classDetails._2 && !classDetails._3 =>
+            legacyPrinterExpression()
+          case Left(diagnostic) => throw IllegalArgumentException(diagnostic.message)
+        }
 
-      override def toSnapXml: ProgrammingStateSnapXml = {
-        if isClassProgram then throw IllegalArgumentException("Full Java classes cannot be converted to Snap yet.")
-        toBeExpressionState.toSnapXml
-      }
+      override def toSnapXml: ProgrammingStateSnapXml =
+        if isClassProgram then converted(toJavaVmProgram.left.map(_.message).flatMap(JavaTurtleEditingBridge.toSnap))
+        else toBeExpressionState.toSnapXml
 
       override def toPython: ProgrammingStatePythonString = toBeExpressionState.toPython
 

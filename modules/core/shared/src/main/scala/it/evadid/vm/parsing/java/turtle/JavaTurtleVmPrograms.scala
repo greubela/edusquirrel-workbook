@@ -91,7 +91,7 @@ object JavaTurtleVmPrograms {
       } :+ (BeChildRole.BodySequence(0) -> body)
   }
 
-  final class Root private[JavaTurtleVmPrograms](val methods: Vector[Method], val entryPoint: Method) extends Element {
+  final class Root private[JavaTurtleVmPrograms](val bindings: V.Bindings, val methods: Vector[Method], val entryPoint: Method) extends Element {
     protected def children: Vector[(BeChildRole, BeExpression)] = methods.zipWithIndex.map { (method, index) =>
       BeChildRole.MethodInClass(index) -> method
     }
@@ -113,6 +113,8 @@ object JavaTurtleVmPrograms {
       program <- adapt(resolved)
     } yield program
 
+  def fromRoot(root: Root): Program = new Program(root.bindings, root)
+
   // Only a checked source can supply statements; arbitrary blocks would bypass Java scope checks.
   def adapt(source: R.ResolvedSource): Either[Diagnostic, Program] = {
     val bindings = V.bind(source)
@@ -120,7 +122,7 @@ object JavaTurtleVmPrograms {
     traverse(source.methods) { method =>
       methodBinding(bindings, method.id).flatMap(binding => compiler.block(method.body).map(body => new Method(binding, body)))
     }.map { methods =>
-      new Program(bindings, new Root(methods, methods.find(_.binding.id == source.entryPoint).get))
+      new Program(bindings, new Root(bindings, methods, methods.find(_.binding.id == source.entryPoint).get))
     }
   }
 

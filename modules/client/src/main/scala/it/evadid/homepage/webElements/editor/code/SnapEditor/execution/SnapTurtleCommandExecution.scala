@@ -3,6 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapProgramDerivation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackOp, PythonRunConfig, PythonRunReport}
+import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonHelpers
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
@@ -22,6 +23,8 @@ trait TurtleCommandRunner:
 /** Derives and executes a Snap project without modifying editor state. */
 final class SnapTurtleCommandExecution(runner: TurtleCommandRunner):
   def commandsFor(state: ProgrammingStateSnapXml): Future[List[TurtleCommand[Double]]] =
+    if it.evadid.workbook.elements.interactionElements.programming.state.snap.JavaTurtleEditingBridge.hasSnapMetadata(state.snapXml) then
+      return Try(state.toPython.code).fold(Future.failed, runner.execute)
     val derived = SnapProgramDerivation.fromState(state)
     if !derived.pythonCompatible then
       Future.failed(IllegalArgumentException(
@@ -108,7 +111,7 @@ final class PyodideTurtleCommandRunner(
           .fold(Future.failed, identity).onComplete {
             case Success(_) if current(run) =>
               deadline(run, executionTimeoutMs, "execution")
-              Try(transport.run(s"from ${PyodideTurtleCommandRunner.ModuleName} import *\n$python",
+              Try(transport.run(s"${JavaTurtlePythonHelpers.installationSource}from ${PyodideTurtleCommandRunner.ModuleName} import *\n$python",
                 PythonRunConfig(resetGlobals = true))).fold(Future.failed, identity).onComplete {
                   case Success(report) if current(run) =>
                     val commands = Try {

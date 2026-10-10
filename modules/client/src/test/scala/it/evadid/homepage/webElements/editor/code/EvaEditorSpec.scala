@@ -594,7 +594,7 @@ class EvaEditorSpec extends FunSuite {
 
   test("a prepared Java tab opens a full class without deriving another representation") {
     val source = ProgrammingStateJavaString(
-      "\npublic class Drawing {\r\n\tpublic static void main(String[] args) {}\r\n}\r\n\t ")
+      "\npublic class Drawing {\r\n\tpublic void draw() {}\r\n\tpublic static void main(String[] args) {}\r\n}\r\n\t ")
     intercept[IllegalArgumentException](source.toSnapXml)
     val local = Var[ProgrammingState](source)
     var published = List.empty[ProgrammingState]
@@ -863,7 +863,7 @@ class EvaEditorSpec extends FunSuite {
 
   test("failed switches retain raw unsupported Java classes and unfinished drafts") {
     val sources = List(
-      ProgrammingStateJavaString("\npublic class Drawing {\r\n\tpublic static void main(String[] args) { double side = 25; }\r\n}\r\n\t "),
+      ProgrammingStateJavaString("\npublic class Drawing {\r\n\tpublic static void main(String[] args) { double turtle = 25; }\r\n}\r\n\t "),
       ProgrammingStateJavaString("\npublic class Drawing {\r\n\t")
     )
     sources.foreach { source =>
@@ -878,6 +878,24 @@ class EvaEditorSpec extends FunSuite {
       }
       assertEquals(published, Nil)
     }
+  }
+
+  test("full Java classes switch editable views without publishing a converted answer") {
+    val source = ProgrammingStateJavaString("\r\npublic class Drawing { " +
+      "static void line(int side) { for (int i = 0; i < 3; i++) { Turtle.forward(side); } } " +
+      "public static void main(String[] args) { line(4); } }\r\n\t ")
+    var published = List.empty[ProgrammingState]
+    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
+      next => published = published :+ next)
+    val stored = ProgrammingExercise.StateSerializer.serialize(source)
+    List(EvaEditor.Tab.Python, EvaEditor.Tab.Snap, EvaEditor.Tab.Java).foreach { tab =>
+      editor.select(tab)
+      assertEquals(editor.activeTab.now(), tab)
+      assertEquals(editor.conversionError.now(), None)
+      assertEquals(editor.currentState(), source)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), stored)
+    }
+    assertEquals(published, Nil)
   }
 
   test("viewing converted source does not publish or normalize the stored draft") {
@@ -1343,7 +1361,7 @@ class EvaEditorSpec extends FunSuite {
   }
 
   test("a failed tab switch leaves the pending Java run and its raw source intact") {
-    val source = javaSource()
+    val source = ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { int turtle = 12; Turtle.forward(turtle); } }")
     val factory = new ControlledRunnerFactory
     val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
       runnerFactory = factory.create)

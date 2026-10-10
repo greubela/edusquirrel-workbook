@@ -344,4 +344,23 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     assert(restored.toSnapXml.snapXml.contains("""s="wait""""), clue = restored.toSnapXml.snapXml)
     assertEquals(restored.toSnapXml.snapXml, xml)
   }
+
+  test("checked Java VM states keep their original source in the existing Java wire format") {
+    val source = ProgrammingStateJavaString("\r\npublic class Drawing { public static void main(String[] args) { " +
+      "int n = 2147483647; Turtle.forward(n++); Turtle.forward(n); } }\r\n\t ")
+    val expression = source.toBeExpressionState
+    val stored = ProgrammingExercise.StateSerializer.serialize(expression)
+    assertEquals(stored, ProgrammingExercise.StateSerializer.serialize(source))
+    val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
+    assertEquals(restored.toJava, source)
+    assertEquals(restored.toBeExpressionState.deriveTurtleCommands, expression.deriveTurtleCommands)
+    assertEquals(ProgrammingState.fingerprint(expression), ProgrammingState.fingerprint(source))
+
+    val json = upickle.default.write[ProgrammingState](expression)
+    assertEquals(upickle.default.read[ProgrammingState](json), source)
+    val subtypeJson = upickle.default.write[ProgrammingStateBeExpression](expression)
+    val subtype = upickle.default.read[ProgrammingStateBeExpression](subtypeJson)
+    assertEquals(subtype.toJava, source)
+    assertEquals(subtype.deriveTurtleCommands, expression.deriveTurtleCommands)
+  }
 }

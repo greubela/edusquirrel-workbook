@@ -3,6 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 import com.raquo.airstream.ownership.Owner
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorImpl, SnapProjectXmlSync}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
@@ -679,6 +680,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private def restorePrimitiveBlockDictionary(): Unit =
     try
       spriteMorphPrototype.applyDynamic("initBlocks")()
+      JavaTurtleSnapPrimitives.install()
       injectExtraPrimitives()
     catch case _: Throwable => ()
 

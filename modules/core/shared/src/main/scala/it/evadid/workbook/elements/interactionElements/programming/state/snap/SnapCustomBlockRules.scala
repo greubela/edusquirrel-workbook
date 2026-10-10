@@ -171,8 +171,13 @@ object SnapCustomBlockRules {
    * A bare `<blocks>` library fragment has no scene, so every definition counts.
    */
   def globalDefinitions(xml: String): List[SnapCustomBlock] =
-    sceneInner(xml).flatMap(inner => SnapXmlParser.child(inner, "blocks")) match
-      case Some(blocks) => SnapXmlParser.children(blocks.inner).filter(_.tag == "block-definition").map(definition)
+    SnapXmlParser.elements(xml, "scene").headOption match
+      case Some(scene) =>
+        SnapXmlParser.child(scene.inner, "blocks").toList.flatMap { blocks =>
+          val contentStart = scene.start + scene.outer.indexOf('>') + 1 + blocks.start + blocks.outer.indexOf('>') + 1
+          SnapXmlParser.children(blocks.inner).filter(_.tag == "block-definition").map(element =>
+            definition(element.copy(start = contentStart + element.start, end = contentStart + element.end)))
+        }
       case None => allDefinitions(xml)
 
   def localDefinitions(xml: String): List[SnapCustomBlock] = {
