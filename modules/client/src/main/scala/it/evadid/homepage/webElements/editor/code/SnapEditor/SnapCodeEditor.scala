@@ -87,11 +87,13 @@ case class SnapCodeEditor(
 
   override def getDomElement(): L.Element = domElement
 
-  def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] = {
+  def captureCurrentProject(): ProgrammingStateSnapXml = {
     impl.flushPendingProjectChanges()
-    val current = impl.currentProjectXml().map(ProgrammingStateSnapXml(_)).getOrElse(state.now().toSnapXml)
-    SnapCodeEditor.commandsFor(current)
+    impl.currentProjectXml().map(ProgrammingStateSnapXml(_)).getOrElse(state.now().toSnapXml)
   }
+
+  def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] =
+    SnapCodeEditor.commandsFor(captureCurrentProject())
 
   override def onFullscreenOpen(): Unit =
     impl.loadProgramIfChanged(state.now().toSnapXml)

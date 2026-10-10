@@ -70,6 +70,69 @@ class EvaEditorSpec extends FunSuite {
     panel.activate()
   }
 
+  test("run and task checking follow the same policy for Java, Python and Snap sources") {
+    val sources: List[ProgrammingState] = List(ProgrammingStateJavaString("forward(5); forward(5);"),
+      ProgrammingStatePythonString("forward(5)\nforward(5)"), ProgrammingStateSnapXml.empty)
+    val commands = List(TurtleCommand[Double]("forward", List(5.0)), TurtleCommand[Double]("forward", List(5.0)))
+    val target = TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand[Double]("forward", List(10.0))))
+    Future.sequence(for {
+      original <- sources
+      policy <- TurtleDrawingPolicy.values.toList
+    } yield {
+      val state = Var[ProgrammingState](original)
+      val stored = ProgrammingExercise.StateSerializer.serialize(original)
+      val assessment = TurtleExecutionPanel.Assessment(Vector(TurtleExecutionPanel.Case("line", target)),
+        () => Future.successful(Vector(commands)), "Draw a line.")
+      val panel = new TurtleExecutionPanel(state, () => Future.successful(commands), () => (), Some(target),
+        Some(assessment), policy)
+      panel.activate()
+      panel.run()
+      Future.unit.flatMap(_ => Future.unit.flatMap { _ =>
+        val matches = policy == TurtleDrawingPolicy.Coverage
+        assertEquals(panel.status.now(), TurtleExecutionPanel.Status.Ready(commands, Some(matches)))
+        panel.checkTask()
+        Future.unit.flatMap(_ => Future.unit.map { _ =>
+          assertEquals(panel.status.now(), TurtleExecutionPanel.Status.Assessed(Vector(commands), Vector(matches)))
+          assertEquals(ProgrammingExercise.StateSerializer.serialize(state.now()), stored)
+          panel.deactivate()
+        })
+      })
+    }).map(_ => ())
+  }
+
+  test("pending editor changes are captured before a drawing run starts") {
+    val state = Var[ProgrammingState](ProgrammingStatePythonString("forward(5)"))
+    var stops = 0
+    var captured = state.now()
+    val commands = List(TurtleCommand[Double]("forward", List(10.0)))
+    val panel = new TurtleExecutionPanel(state, () => {
+      assertEquals(captured, ProgrammingStatePythonString("forward(10)"))
+      Future.successful(commands)
+    }, () => stops += 1, prepare = () => {
+      state.set(ProgrammingStatePythonString("forward(10)"))
+      captured = state.now()
+    })
+    panel.activate()
+    panel.run()
+    Future.unit.flatMap(_ => Future.unit.map { _ =>
+      assertEquals(panel.status.now(), TurtleExecutionPanel.Status.Ready(commands, None))
+      assertEquals(stops, 0)
+      panel.deactivate()
+    })
+  }
+
+  test("a failed source capture prevents execution without losing the draft") {
+    val original = ProgrammingStateJavaString("class Drawing {")
+    val state = Var[ProgrammingState](original)
+    var runs = 0
+    val panel = new TurtleExecutionPanel(state, () => { runs += 1; Future.successful(Nil) }, () => (),
+      prepare = () => throw IllegalStateException("unavailable"))
+    panel.run()
+    assertEquals(panel.status.now(), TurtleExecutionPanel.Status.Failed("unavailable"))
+    assertEquals(runs, 0)
+    assertEquals(state.now(), original)
+  }
+
   test("Java drawing comparison rejects wrong lengths, turns, empty drawings and extra strokes") {
     val target = TurtleGraphic.TurtleGraphicProgram(squareDrawing())
     assert(TurtleExecutionPanel.compare(squareDrawing(), target))
@@ -1478,8 +1541,8 @@ class EvaEditorSpec extends FunSuite {
     val factory = new ControlledRunnerFactory
     val state = Var[ProgrammingState](source)
     val target = TurtleGraphic.TurtleGraphicProgram(Nil)
-    val extension = new JavaTurtleEditorExtension(state, target = Some(target), runnerFactory = factory.create)
-    val editor = EvaEditorTurtle(state, testingConfig, target, extensions = List(extension))
+    val extension = new JavaTurtleEditorExtension(state, runnerFactory = factory.create)
+    val editor = EvaEditorTurtle(state, testingConfig, target, editorExtensions = List(extension))
     val result = editor.getCurrentTurtleCommands()
     assertEquals(factory.runners.size, 1)
     factory.runners.head.complete()

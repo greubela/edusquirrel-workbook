@@ -173,8 +173,6 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         projectXmlSync.markLoaded(xml)
         repairCustomBlockParameterBindings(ide)
         ensureMissingGlobalVariables(ide, xml, refreshPalette = true)
-        projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
-        lastProjectXmlCheckAt = dom.window.performance.now()
         reinstallConfiguredLibraries(ide)
         retagCustomBlockCategories(ide)
         (editorWorld, mountedCanvas) match
@@ -184,6 +182,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
           case _ =>
             ide.fixLayout()
             ide.fullChanged()
+        projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
+        lastProjectXmlCheckAt = dom.window.performance.now()
       case None => ()
 
   override def acknowledgeProgramFromEditor(state: ProgrammingStateSnapXml): Unit =

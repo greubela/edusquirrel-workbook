@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCo
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{TurtleDrawingGrading, TurtleJsxGraphRenderer}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.Future
@@ -35,7 +35,9 @@ final class TurtleExecutionPanel(
     execute: () => Future[List[TurtleCommand[Double]]],
     cancel: () => Unit,
     target: Option[TurtleGraphic] = None,
-    assessment: Option[TurtleExecutionPanel.Assessment] = None
+    assessment: Option[TurtleExecutionPanel.Assessment] = None,
+    comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Coverage,
+    prepare: () => Unit = () => ()
 ) extends HtmlAppElement {
   import TurtleExecutionPanel.*
 
@@ -69,10 +71,9 @@ final class TurtleExecutionPanel(
   }
 
   private[code] def run(): Unit = start(execute) { commands =>
-    validateDrawing(commands)
-    val comparison = target.map(TurtleDrawingGrading.compare(commands, _))
+    val comparison = target.map(TurtleDrawingGrading.assess(commands, _, comparisonPolicy))
     scenes = Vector((target, comparison) match {
-      case (Some(graphic), Some(result)) => TurtleDrawingGrading.assessedScene(commands, graphic, result)
+      case (Some(_), Some(result)) => result.scene
       case _ => TurtleDrawingGrading.drawingScene(commands)
     })
     Status.Ready(commands, comparison.map(_.matches))
@@ -82,19 +83,23 @@ final class TurtleExecutionPanel(
     start(task.execute) { drawings =>
       if drawings.size != task.cases.size || drawings.isEmpty then
         throw IllegalStateException("The task could not be checked completely.")
-      drawings.foreach(validateDrawing)
       val results = drawings.zip(task.cases).map { (commands, example) =>
-        TurtleDrawingGrading.compare(commands, example.expected)
+        TurtleDrawingGrading.assess(commands, example.expected, comparisonPolicy)
       }
-      scenes = drawings.zip(task.cases).zip(results).map { case ((commands, example), result) =>
-        TurtleDrawingGrading.assessedScene(commands, example.expected, result)
-      }
+      scenes = results.map(_.scene)
       Status.Assessed(drawings, results.map(_.matches))
     }
   }
 
   private def start[A](execute: () => Future[A])(completed: A => Status): Unit = {
     if status.now() == Status.Running then return
+    Try(prepare()) match {
+      case Failure(error) =>
+        reset()
+        status.set(Status.Failed(Option(error.getMessage).getOrElse("This draft cannot be run.")))
+        return
+      case _ => ()
+    }
     revision += 1
     val requested = revision
     val original = source.now()
@@ -169,7 +174,7 @@ final class TurtleExecutionPanel(
         )
       }
       case _ => target.map { graphic =>
-        Try(TurtleDrawingGrading.targetScene(graphic)).fold(
+        Try(TurtleDrawingGrading.targetScene(graphic, comparisonPolicy)).fold(
           error => p(cls := "turtle-execution__error", role := "alert", error.getMessage),
           scene => picture(scene, "Target"))
       }

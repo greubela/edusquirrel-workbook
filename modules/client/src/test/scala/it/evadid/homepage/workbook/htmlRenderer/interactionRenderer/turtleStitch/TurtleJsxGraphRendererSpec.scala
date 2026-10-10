@@ -18,6 +18,18 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     }
   }
 
+  test("the program card recognizes Java classes and unfinished text without converting them") {
+    val sources: List[ProgrammingState] = List(ProgrammingStateJavaString("class Drawing {}"),
+      ProgrammingStateJavaString(" \r\nclass Drawing {\t "), ProgrammingStatePythonString("forward(\n\t "))
+    sources.foreach { source =>
+      val fingerprint = ProgrammingState.fingerprint(source)
+      assert(HtmlTurtleRecreateShapeRenderer.hasProgram(source))
+      assertEquals(ProgrammingState.fingerprint(source), fingerprint)
+    }
+    assert(!HtmlTurtleRecreateShapeRenderer.hasProgram(ProgrammingStateJavaString(" \r\n\t ")))
+    assert(!HtmlTurtleRecreateShapeRenderer.hasProgram(ProgrammingStatePythonString(" \r\n\t ")))
+  }
+
   test("preview conversion still derives supported turtle commands") {
     assertEquals(
       HtmlTurtleRecreateShapeRenderer.commandsForPreview(ProgrammingStatePythonString("forward(12)")).get,

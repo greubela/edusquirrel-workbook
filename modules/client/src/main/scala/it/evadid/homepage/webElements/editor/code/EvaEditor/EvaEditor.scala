@@ -8,7 +8,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCo
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
 import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
-import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.PyodideTurtleCommandRunner
+import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -72,6 +72,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     case _ => ProgrammingStateJavaString("")
   )
   private lazy val pythonRunner = new PyodideTurtleCommandRunner()
+  private lazy val snapExecution = new SnapTurtleCommandExecution(pythonRunner)
   private var mounted = false
 
   private def setViewAvailable(available: Boolean): Unit =
@@ -131,8 +132,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     CodeMirrorEditor(pythonState, code => publish(Tab.Python, ProgrammingStatePythonString(code)), language = AppLanguage.Python)
   )
   private lazy val javaEditor = Option.when(enabledTabs.contains(Tab.Java))(
-    new JavaFunctionBasedEditor(javaState, onStateEdited = next => publish(Tab.Java, next),
-      reference = extensions.iterator.flatMap(_.reference(AppLanguage.Java, () => currentViewState())).nextOption())
+    new JavaFunctionBasedEditor(javaState, onStateEdited = next => publish(Tab.Java, next))
   )
   private lazy val snapElement = snapEditor.map(_.getDomElement())
   private lazy val pythonElement = pythonEditor.map(_.getDomElement())
@@ -158,16 +158,31 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     extensions.iterator.flatMap(_.turtleCommands(source)).nextOption() match
       case Some(execute) => Try(execute()).fold(Future.failed, identity)
       case None => source match
-        case snap: ProgrammingStateSnapXml => SnapCodeEditor.commandsFor(snap)
-        case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => SnapCodeEditor.commandsFor(floating.toSnapXml)
+        case snap: ProgrammingStateSnapXml => snapExecution.commandsFor(snap)
+        case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => snapExecution.commandsFor(floating.toSnapXml)
         case ProgrammingStatePythonString(code) => pythonRunner.execute(code)
         case _ => deriveCommands(source)
 
-  def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] =
-    if mounted && !viewAvailable.now() then Future.failed(IllegalStateException("This draft cannot be run in the selected editor."))
+  private def captureSource(): ProgrammingState =
+    if mounted && !viewAvailable.now() then throw IllegalStateException("This draft cannot be run in the selected editor.")
     else if mounted && activeTab.now() == Tab.Snap then
-      snapEditor.fold(Future.failed[List[TurtleCommand[Double]]](IllegalStateException("Snap is not enabled.")))(_.getCurrentTurtleCommands())
-    else commandsFor(currentViewState())
+      snapEditor.getOrElse(throw IllegalStateException("Snap is not enabled.")).captureCurrentProject()
+    else currentViewState()
+
+  private def cancelExecution(): Unit = {
+    pythonRunner.close()
+    extensions.foreach(_.close())
+  }
+
+  private def stopExecution(): Unit = {
+    pythonRunner.close()
+    extensions.foreach(_.cancel())
+  }
+
+  protected lazy val turtleContext = EvaEditorExtension.Context(() => captureSource(), commandsFor, () => stopExecution())
+
+  def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] =
+    Try(captureSource()).fold(Future.failed, commandsFor)
 
   private def closeActiveView(): Unit = activeTab.now() match
     case Tab.Snap => snapEditor.foreach(_.onFullscreenClose())
@@ -180,7 +195,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     if closedSnap then closeActiveView()
     Try(convert(state.now(), tab)) match
       case Success(next) =>
-        extensions.foreach(_.close())
+        cancelExecution()
         if mounted && !closedSnap then closeActiveView()
         show(next)
         conversionError.set(None)
@@ -210,7 +225,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
       },
       state.signal --> receive,
       onMountCallback { _ => mounted = true },
-      onUnmountCallback { _ => mounted = false; extensions.foreach(_.close()) },
+      onUnmountCallback { _ => mounted = false; cancelExecution() },
       div(
         cls := "eva-editor__tabs",
         enabledTabs.map(createTabButton)
@@ -228,6 +243,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
             case Tab.Java => javaElement.getOrElse(div("Java is not enabled."))
         }
       ),
+      extensions.flatMap(_.panel(turtleContext)),
       furtherDomElements()
     )
 
@@ -240,7 +256,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
       case Tab.Python => ()
 
   override def onFullscreenClose(): Unit = {
-    extensions.foreach(_.close())
+    cancelExecution()
     closeActiveView()
   }
 

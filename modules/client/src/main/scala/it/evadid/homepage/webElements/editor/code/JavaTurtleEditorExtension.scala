@@ -2,16 +2,12 @@ package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.airstream.state.Var
-import com.raquo.laminar.api.L.Element
-import it.evadid.core.datastructures.language.AppLanguage
-import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorExtension
 import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution
 import it.evadid.vm.simulation.java.JavaTurtleRuntime
 import it.evadid.workbook.elements.interactionElements.programming.JavaTurtleTask
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.Future
@@ -20,12 +16,9 @@ import scala.util.{Success, Try}
 
 final class JavaTurtleEditorExtension(
     state: Var[ProgrammingState],
-    target: Option[TurtleGraphic] = None,
-    task: Option[JavaTurtleTask] = None,
     runnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
 ) extends EvaEditorExtension {
   private var session = Option.empty[JavaEditorSession]
-  private var panel = Option.empty[TurtleExecutionPanel]
   private class Attempt {
     val owner = new ManualOwner
     var invalidated = false
@@ -95,6 +88,8 @@ final class JavaTurtleEditorExtension(
     session.foreach(_.stop())
   }
 
+  override def cancel(): Unit = stop()
+
   override def close(): Unit = {
     val pending = running
     val discarded = session
@@ -102,29 +97,5 @@ final class JavaTurtleEditorExtension(
     session = None
     pending.foreach(_.invalidate())
     discarded.foreach(_.release())
-    panel.foreach(_.reset())
   }
-
-  override def reference(language: ProgrammingLanguage, currentSource: () => ProgrammingState): Option[() => Element] =
-    Option.when(language == AppLanguage.Java)(() => {
-      def source(): ProgrammingStateJavaString = currentSource() match {
-        case java: ProgrammingStateJavaString => java
-        case _ => throw IllegalStateException("Open the Java editor to check this task.")
-      }
-      val current = panel.getOrElse {
-        val created = new TurtleExecutionPanel(state, () => run(source()), () => stop(), target,
-          task.map { example =>
-            val emptyTargets = example.cases.filter(_.expectedShape.toTurtleProgram.isEmpty).map(_.call(example.methodName))
-            val prompt = s"Use the parameters of ${example.methodName} to draw the requested shape. " +
-              s"Check task calls ${example.cases.map(_.call(example.methodName)).mkString(", ")}. " +
-              (if emptyTargets.nonEmpty then s"${emptyTargets.mkString(", ")} should draw no lines." else "")
-            TurtleExecutionPanel.Assessment(
-              example.cases.map(entry => TurtleExecutionPanel.Case(entry.call(example.methodName), entry.expectedShape)).toVector,
-              () => checkTask(source(), example), prompt)
-          })
-        panel = Some(created)
-        created
-      }
-      current.getDomElement()
-    })
 }

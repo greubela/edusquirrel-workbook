@@ -14,13 +14,19 @@ import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRende
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.workbook.elements.interactionElements.Turtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import scala.util.Try
 
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
+
+  private[turtleStitch] def hasProgram(state: ProgrammingState): Boolean = state match {
+    case ProgrammingStateJavaString(code) => code.trim.nonEmpty
+    case ProgrammingStatePythonString(code) => code.trim.nonEmpty
+    case other => Try(other.toPython.code.trim.nonEmpty).getOrElse(true)
+  }
 
   private[turtleStitch] def commandsForPreview(state: ProgrammingState): Try[List[TurtleCommand[Double]]] =
     Try(state match
@@ -28,11 +34,13 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
       case _ => state.toBeExpressionState.deriveTurtleCommands
     )
 
-  def createInteractivePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic): ElementCard = {
+  def createInteractivePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic,
+      policy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes): ElementCard = {
     ElementCard(
       LanguageMapContentId("basic/turtleGradingPanel"),
       div(child <-- boundVar.signal.map { state =>
-        commandsForPreview(state).map(commands => TurtleJsxGraphRenderer.render(TurtleJsxGraphRenderer.buildScene(commands, expected, 1e-7, gradeJumps = false), "Turtle drawing"))
+        commandsForPreview(state).flatMap(commands => Try(TurtleDrawingGrading.assess(commands, expected, policy)))
+          .map(result => TurtleJsxGraphRenderer.render(result.scene, "Turtle drawing"))
           .getOrElse(div("Preview unavailable for this draft."))
       })
     )
@@ -49,10 +57,10 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
 
     val editorConfig = EvaEditorConfig(snapConfig = snapEditorConfig)
     val editor = EvaEditorTurtle(boundVar, editorConfig, workbookElement.desiredResult,
-      extensions = List(new JavaTurtleEditorExtension(boundVar, target = Some(workbookElement.desiredResult))))
+      editorExtensions = List(new JavaTurtleEditorExtension(boundVar)), comparisonPolicy = workbookElement.comparisonPolicy)
 
     lazy val codePreview = SnapPreviewEditor(boundVar, snapEditorConfig).getDomElement()
-    val programPreview = boundVar.signal.map(_.toPython.code.trim.nonEmpty).distinct.map { hasProgram =>
+    val programPreview = boundVar.signal.map(hasProgram).distinct.map { hasProgram =>
       if hasProgram then codePreview
       else p(text <-- laminarHelper.plaintextStringSignal("basic/turtleNoProgramYet"))
     }
@@ -63,6 +71,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
 
-    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, canvasCard, createInteractivePreview(boundVar, workbookElement.desiredResult)))
+    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, canvasCard,
+      createInteractivePreview(boundVar, workbookElement.desiredResult, workbookElement.comparisonPolicy)))
   }
 }
