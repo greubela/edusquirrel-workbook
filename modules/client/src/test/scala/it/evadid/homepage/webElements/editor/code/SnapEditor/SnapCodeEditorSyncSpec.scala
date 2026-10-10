@@ -43,6 +43,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   private class RecordingImpl extends SnapCodeEditorImpl {
     var listener: String => Unit = _ => ()
     var current: Option[ProgrammingStateSnapXml] = None
+    var pendingXml: Option[String] = None
     var mounts = 0
     var renders = 0
     var reloads = 0
@@ -65,7 +66,11 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     override def forceLoadProgram(state: ProgrammingStateSnapXml): Unit = { forcedLoads += 1 }
     override def setOnProjectXmlChangedListener(callback: String => Unit): Unit = { listener = callback }
     override def renderPreviewInto(state: ProgrammingStateSnapXml, canvas: Canvas, config: SnapCodeEditorConfig): Unit = ()
-    override def flushPendingProjectChanges(): Unit = ()
+    override def flushPendingProjectChanges(): Unit = {
+      val pending = pendingXml
+      pendingXml = None
+      pending.foreach(listener)
+    }
     override def currentProjectXml(): Option[String] = current.map(_.snapXml)
     override def startWorldCycles(): Unit = ()
     override def pauseWorldCycles(): Unit = ()
@@ -217,8 +222,8 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     } finally owner.killSubscriptions()
   }
 
-  test("cleaning regenerated Snap images retains floating objects and authored costumes") {
-    val source = ProgrammingStateSnapXMLWithAdditionalFloatingObjects("<project/>", List(" watcher ", "comment\nline two"))
+  test("cleaning regenerated Snap images retains legacy metadata and authored costumes") {
+    val source = ProgrammingStateSnapXml("<project/>", List(" watcher ", "comment\nline two"))
     val state = Var[ProgrammingState](source)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
@@ -228,7 +233,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       editor.mountEditorInto(null, owner)
       def liveXml(image: Int) =
         s"<project><thumbnail>image-$image</thumbnail><costumes><costume image=\"authored\"/></costumes><stage><pentrails>trails-$image</pentrails><scripts>edited</scripts></stage></project>"
-      val cleaned = source.copy(snapXml = "<project><costumes><costume image=\"authored\"/></costumes><stage><scripts>edited</scripts></stage></project>")
+      val cleaned = source.withProjectXml("<project><costumes><costume image=\"authored\"/></costumes><stage><scripts>edited</scripts></stage></project>")
       impl.listener(liveXml(0))
       impl.listener(liveXml(1))
       editor.onFullscreenOpen()
@@ -237,6 +242,53 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(impl.current, Some(cleaned.toSnapXml))
       assertEquals(impl.reloads, 0)
       assertEquals(impl.librariesCleared, 0)
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(state.now())), cleaned)
+    } finally owner.killSubscriptions()
+  }
+
+  test("Snap capture and fullscreen close preserve restored legacy metadata") {
+    val initial = ProgrammingStateSnapXml("<project/>", List(" watcher ", "comment\r\n\t "))
+    val state = Var[ProgrammingState](initial)
+    val impl = new RecordingImpl
+    var edits = List.empty[ProgrammingState]
+    val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val owner = new ManualOwner
+    try {
+      editor.mountEditorInto(null, owner)
+      val capturedXml = "<project name=\"captured\"/>"
+      impl.current = Some(ProgrammingStateSnapXml(capturedXml))
+      val captured = editor.captureCurrentProject()
+      assertEquals(captured, initial.withProjectXml(capturedXml))
+      assertEquals(state.now(), initial)
+      assertEquals(edits, Nil)
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(captured)), captured)
+
+      val closed = initial.withProjectXml("<project name=\"closed\"/>")
+      impl.pendingXml = Some(closed.snapXml)
+      editor.onFullscreenClose()
+      assertEquals(state.now(), closed)
+      assertEquals(edits, List(closed))
+      val restored = ProgrammingStateSnapXml("<project name=\"restored\"/>",
+        List(" restored watcher\n", " restored comment\r\n"))
+      state.set(ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(restored)))
+      editor.onFullscreenOpen()
+      assertEquals(state.now(), restored)
+      assertEquals(impl.current, Some(restored))
+      assertEquals(edits, List(closed))
+
+      val reopenedXml = "<project name=\"reopened edit\"/>"
+      impl.current = Some(ProgrammingStateSnapXml(reopenedXml))
+      assertEquals(editor.captureCurrentProject(), restored.withProjectXml(reopenedXml))
+      impl.pendingXml = Some(reopenedXml)
+      editor.onFullscreenClose()
+      val reopened = restored.withProjectXml(reopenedXml)
+      assertEquals(state.now(), reopened)
+      assertEquals(edits, List(closed, reopened))
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(state.now())), reopened)
     } finally owner.killSubscriptions()
   }
 }

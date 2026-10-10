@@ -5,7 +5,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 
 object ProgrammingStateSnapXmlHelper {
 
-   def removeGeneratedImages(xml: String): String = {
+  def removeGeneratedImages(xml: String): String = {
     val removableTags = Set("pentrails", "pentrail", "thumbnail")
     val result = new StringBuilder
     var keptFrom = 0
@@ -48,6 +48,7 @@ object ProgrammingStateSnapXmlHelper {
 
   def empty: ProgrammingStateSnapXml = ProgrammingStateSnapXml(SnapProjectXml.empty)
 
-  def fingerprint(state: ProgrammingStateSnapXml): String = state.snapXml
+  def fingerprint(state: ProgrammingStateSnapXml): String =
+    if state.hasLegacyFloatingObjects then state.fingerprint() else state.snapXml
 
 }

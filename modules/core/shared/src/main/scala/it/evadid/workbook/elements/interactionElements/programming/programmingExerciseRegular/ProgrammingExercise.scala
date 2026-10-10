@@ -5,7 +5,7 @@ import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXMLWithAdditionalFloatingObjects, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateBeExpression
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingEditorPalette, ProgrammingStateSnapXmlHelper, SnapTurtlePythonBridge}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
@@ -59,9 +59,9 @@ object ProgrammingExercise {
   /** Versioned tagged format. The previous Snap XML and Python formats remain readable. */
   object StateSerializer extends Serializer[ProgrammingState] {
     override def serialize(obj: ProgrammingState): String = obj match
+      case snap: ProgrammingStateSnapXml if snap.hasLegacyFloatingObjects =>
+        s"$StateHeader\nSNAP_XML_WITH_FLOATING\n${write(snap.legacyFloatingObjects)}\n${snap.snapXml}"
       case ProgrammingStateSnapXml(xml) => s"$StateHeader\nSNAP_XML\n$xml"
-      case ProgrammingStateSnapXMLWithAdditionalFloatingObjects(xml, objects) =>
-        s"$StateHeader\nSNAP_XML_WITH_FLOATING\n${write(objects)}\n$xml"
       case ProgrammingStatePythonString(code) => s"$StateHeader\nPYTHON\n$code"
       case ProgrammingStateJavaString(code) => s"$StateHeader\nJAVA\n$code"
       case ProgrammingStateBeExpression(expression) =>
@@ -97,10 +97,10 @@ object ProgrammingExercise {
           Try(BeProgram.fromPythonString(payload).fullProgram).toOption.map(ProgrammingStateBeExpression(_))
         case "SNAP_XML_WITH_FLOATING" =>
           val split = payload.indexOf('\n')
-          if split < 0 then None
-          else Try(read[List[String]](payload.take(split))).toOption.map(objects =>
-            ProgrammingStateSnapXMLWithAdditionalFloatingObjects(payload.drop(split + 1), objects)
-          )
+          if split < 0 then throw IllegalArgumentException("The legacy Snap project is incomplete.")
+          else Some(Try(ProgrammingStateSnapXml(payload.drop(split + 1),
+            ProgrammingState.readLegacyFloatingObjects(ujson.read(payload.take(split)))))
+            .getOrElse(throw IllegalArgumentException("The legacy Snap project contains invalid extra data.")))
         case _ => None
     }
 

@@ -61,4 +61,21 @@ class ProgrammingStateSnapXmlCleanupSpec extends FunSuite {
     assertEquals(bloated.removeBloatFromXml, original)
     assertEquals(bloated.removeBloatFromXml.toPython, original.toPython)
   }
+
+  test("XML cleanup and copies retain opaque legacy floating data exactly") {
+    val objects = List(" watcher ", "comment\nline two\r\n", "", "a" + 0.toChar + "b")
+    val original = ProgrammingStateSnapXml(
+      """<project><thumbnail>preview</thumbnail><notes>authored</notes><stage><pentrails>trails</pentrails><scripts/></stage></project>""",
+      objects)
+    val clean = original.removeBloatFromXml
+    assertEquals(clean.snapXml, "<project><notes>authored</notes><stage><scripts/></stage></project>")
+    assertEquals(clean.legacyFloatingObjects, objects)
+    assertEquals(clean.copy().legacyFloatingObjects, objects)
+    assertEquals(clean.copy(snapXml = "<project/>").legacyFloatingObjects, objects)
+    assertEquals(clean.removeBloatFromXml, clean)
+    assert(clean.removeBloatFromXml eq clean)
+    assertEquals(original.legacyFloatingObjects, objects)
+    assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+      ProgrammingExercise.StateSerializer.serialize(clean)), clean)
+  }
 }

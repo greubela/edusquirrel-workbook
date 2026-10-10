@@ -237,6 +237,40 @@ class EvaEditorSpec extends FunSuite {
     })
   }
 
+  test("Snap metadata-only A-to-B-to-A restores reject stale drawing results") {
+    import TurtleExecutionPanel.Status
+    val original = ProgrammingStateSnapXml(ProgrammingStateSnapXml.mini.snapXml, List(" watcher A "))
+    val changed = original.copy(legacyFloatingObjects = List(" watcher B "))
+    assertNotEquals(ProgrammingState.fingerprint(original), ProgrammingState.fingerprint(changed))
+    val source = Var[ProgrammingState](original)
+    var requests = Vector.empty[Promise[List[TurtleCommand[Double]]]]
+    var stops = 0
+    val panel = new TurtleExecutionPanel(source,
+      () => { val result = Promise[List[TurtleCommand[Double]]](); requests :+= result; result.future },
+      () => stops += 1)
+    panel.activate()
+    panel.run()
+    source.set(original.copy())
+    assertEquals(panel.status.now(), Status.Running)
+    assertEquals(stops, 0)
+    source.set(changed)
+    source.set(original)
+    assertEquals(panel.status.now(), Status.Idle)
+    assertEquals(stops, 1)
+    assertEquals(ProgrammingState.fingerprint(source.now()), ProgrammingState.fingerprint(original))
+    panel.run()
+    val newest = requests.last
+    requests.head.success(squareDrawing())
+    requests.head.future.flatMap(_ => Future.unit.map { _ =>
+      assertEquals(panel.status.now(), Status.Running)
+      newest.success(squareDrawing(24))
+    }).flatMap(_ => newest.future).flatMap(_ => Future.unit.map { _ =>
+      assertEquals(panel.status.now(), Status.Ready(squareDrawing(24), None))
+      assertEquals(source.now(), original)
+      panel.deactivate()
+    })
+  }
+
   test("Java execution panel unmount clears results and rejects late completion") {
     import TurtleExecutionPanel.Status
     val fixture = new PanelFixture
@@ -1471,16 +1505,57 @@ class EvaEditorSpec extends FunSuite {
     assertEquals(published, List(edited))
   }
 
-  test("Snap edits retain additional floating objects and publish the retained state") {
-    val source = ProgrammingStateSnapXMLWithAdditionalFloatingObjects(
+  test("Snap edits retain legacy floating metadata and publish the retained state") {
+    val source = ProgrammingStateSnapXml(
       "<project/>", List("\nwatcher\n", "comment\r\n\t "))
-    val edited = source.copy(snapXml = "<project name=\"changed\"/>")
+    val edited = source.withProjectXml("<project name=\"changed\"/>")
     var published = List.empty[ProgrammingState]
     val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
       next => published = published :+ next)
     editor.publish(EvaEditor.Tab.Snap, ProgrammingStateSnapXml(edited.snapXml))
     assertEquals(editor.currentState(), edited)
     assertEquals(published, List(edited))
+    assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+      ProgrammingExercise.StateSerializer.serialize(editor.currentState())), edited)
+    editor.publish(EvaEditor.Tab.Snap, ProgrammingStateSnapXml(edited.snapXml))
+    assertEquals(published, List(edited))
+  }
+
+  test("failed text conversions cannot replace Snap legacy metadata") {
+    val source = ProgrammingStateSnapXml(ProgrammingStateSnapXml.mini.snapXml,
+      List("\nwatcher\n", "comment\r\n\t "))
+    val stored = ProgrammingExercise.StateSerializer.serialize(source)
+    var published = List.empty[ProgrammingState]
+    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
+      next => published = published :+ next)
+    List(EvaEditor.Tab.Python -> ProgrammingStatePythonString("forward(99)"),
+      EvaEditor.Tab.Java -> ProgrammingStateJavaString("forward(99);")).foreach { (tab, edited) =>
+      editor.select(tab)
+      editor.publish(tab, edited)
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Snap)
+      assert(editor.conversionError.now().nonEmpty)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), stored)
+    }
+    assertEquals(published, Nil)
+  }
+
+  test("disabled Snap or text views cannot publish over legacy metadata") {
+    val source = ProgrammingStateSnapXml(ProgrammingStateSnapXml.mini.snapXml,
+      List(" watcher ", "comment\nline two"))
+    val stored = ProgrammingExercise.StateSerializer.serialize(source)
+    val languageSets: List[List[AppLanguage.ProgrammingLanguage]] =
+      List(List(AppLanguage.SnapLanguage), List(AppLanguage.Python))
+    languageSets.foreach { languages =>
+      var published = List.empty[ProgrammingState]
+      val editor = new EvaEditorPlain(Var[ProgrammingState](source),
+        testingConfig.copy(enabledLanguages = languages), next => published = published :+ next)
+      editor.publish(EvaEditor.Tab.Python, ProgrammingStatePythonString("forward(99)"))
+      editor.publish(EvaEditor.Tab.Java, ProgrammingStateJavaString("forward(99);"))
+      if !languages.contains(AppLanguage.SnapLanguage) then
+        editor.publish(EvaEditor.Tab.Snap, ProgrammingStateSnapXml.empty)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), stored)
+      assertEquals(published, Nil)
+    }
   }
 
   test("legacy Java snippets remain convertible without running a full Java class") {

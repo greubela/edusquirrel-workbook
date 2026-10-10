@@ -14,7 +14,7 @@ import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXMLWithAdditionalFloatingObjects, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import munit.FunSuite
 
 class ProgrammingExerciseStateSerializerSpec extends FunSuite {
@@ -57,7 +57,7 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     val states: List[ProgrammingState] = List(
       ProgrammingStatePythonString("print('hello')"),
       ProgrammingStateJavaString("class Main {}"),
-      ProgrammingStateSnapXMLWithAdditionalFloatingObjects("<project/>", List("watcher", "comment"))
+      ProgrammingStateSnapXml("<project/>", List("watcher", "comment"))
     )
 
     states.foreach { state =>
@@ -117,7 +117,7 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
       "\r\n\n\t "
     val states: List[ProgrammingState] = List(
       ProgrammingStateSnapXml(xml),
-      ProgrammingStateSnapXMLWithAdditionalFloatingObjects(xml, List(" watcher ", "comment\nline two\r\n", ""))
+      ProgrammingStateSnapXml(xml, List(" watcher ", "comment\nline two\r\n", ""))
     )
 
     states.foreach { state =>
@@ -142,9 +142,9 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
       assertEquals(ProgrammingExercise.StateSerializer.deserialize(stored), state)
     }
 
-    val floating = ProgrammingStateSnapXMLWithAdditionalFloatingObjects("\n<project/>\r\n ", List(" watcher\n"))
+    val floating = ProgrammingStateSnapXml("\n<project/>\r\n ", List(" watcher\n"))
     val stored = s"${ProgrammingExercise.StateHeader}\r\nSNAP_XML_WITH_FLOATING\r\n" +
-      upickle.default.write(floating.additionalFloatingObjects) + "\r\n" + floating.snapXml
+      upickle.default.write(floating.legacyFloatingObjects) + "\r\n" + floating.snapXml
     assertEquals(ProgrammingExercise.StateSerializer.deserialize(stored), floating)
   }
 
@@ -152,6 +152,162 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     val a = ProgrammingStateSnapXml("""<project><scripts><script x="70" y="80"></script></scripts></project>""")
     val b = ProgrammingStateSnapXml("""<project><scripts><script x="200" y="150"></script></scripts></project>""")
     assert(ProgrammingStateSnapXml.fingerprint(a) != ProgrammingStateSnapXml.fingerprint(b))
+  }
+
+  private val legacyFloatingTag = "ProgrammingStateSnapXMLWithAdditionalFloatingObjects"
+  private val historicalProgrammingPackage = "it.evadid.workbook.elements.interactionElements.programming."
+  private val nestedProgrammingPackage = historicalProgrammingPackage + "state.ProgrammingState.ProgrammingState."
+  private val exactLegacyXml =
+    "\n\t" + """<project name="Grüße"><notes>unknown &amp; saved</notes><scripts><script x="19" y="27"><block s="unrecognized"><l> \ </l></block></script></scripts></project>""" + "\r\n \t"
+  private val opaqueObjects = List(
+    " watcher ", "comment\nline two\r\n", "", """<unrecognized kind="opaque"/>""", "Grüße \\")
+  private val opaqueObjectsJson =
+    """[" watcher ","comment\nline two\r\n","","<unrecognized kind=\"opaque\"/>","Grüße \\"]"""
+
+  private def legacyJson(tag: String, objectsJson: String = opaqueObjectsJson): String =
+    """{"$type":""" + upickle.default.write(tag) +
+      ""","snapXml":""" + upickle.default.write(exactLegacyXml) +
+      ""","additionalFloatingObjects":""" + objectsJson + "}"
+
+  test("literal legacy version 2 floating state becomes one Snap state without losing opaque strings") {
+    val stored = "PROGRAMMING_STATE_V2\nSNAP_XML_WITH_FLOATING\n" + opaqueObjectsJson + "\n" + exactLegacyXml
+    val expected = ProgrammingStateSnapXml(exactLegacyXml, opaqueObjects)
+    val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
+    assertEquals(restored, expected)
+    assertEquals(restored.toSnapXml, expected)
+    assertEquals(ProgrammingExercise.StateSerializer.serialize(restored), stored)
+    assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+      ProgrammingExercise.StateSerializer.serialize(restored)), expected)
+    val ProgrammingStateSnapXml(extracted) = expected
+    assertEquals(extracted, exactLegacyXml)
+    assertEquals(expected.copy(), expected)
+  }
+
+  test("legacy floating JSON tags preserve XML and opaque strings and keep the older reader wire shape") {
+    val expected = ProgrammingStateSnapXml(exactLegacyXml, opaqueObjects)
+    val directJson = upickle.default.writeJs[ProgrammingStateSnapXml](expected)
+    assertEquals(directJson("$type").str, legacyFloatingTag)
+    assertEquals(directJson.obj.keySet.toSet, Set("$type", "snapXml", "additionalFloatingObjects"))
+    assertEquals(upickle.default.read[ProgrammingStateSnapXml](directJson), expected)
+    val tags = List(
+      legacyFloatingTag,
+      historicalProgrammingPackage + legacyFloatingTag,
+      nestedProgrammingPackage + legacyFloatingTag)
+    tags.foreach { tag =>
+      val restored = upickle.default.read[ProgrammingState](legacyJson(tag))
+      assertEquals(restored, expected)
+      val written = upickle.default.writeJs[ProgrammingState](restored)
+      assertEquals(written.obj.keySet.toSet, Set("$type", "snapXml", "additionalFloatingObjects"))
+      assertEquals(written("$type").str, legacyFloatingTag)
+      assertEquals(written("snapXml").str, exactLegacyXml)
+      assertEquals(upickle.default.read[List[String]](written("additionalFloatingObjects")), opaqueObjects)
+      assertEquals(upickle.default.read[ProgrammingState](written), expected)
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(restored)), expected)
+    }
+  }
+
+  test("empty legacy floating lists normalize to the ordinary Snap wire representation") {
+    val expected = ProgrammingStateSnapXml(exactLegacyXml)
+    val directJson = upickle.default.writeJs[ProgrammingStateSnapXml](expected)
+    assertEquals(directJson.obj.keySet.toSet, Set("$type", "snapXml"))
+    assertEquals(upickle.default.read[ProgrammingStateSnapXml](directJson), expected)
+    val restored = List(
+      ProgrammingExercise.StateSerializer.deserialize(
+        "PROGRAMMING_STATE_V2\nSNAP_XML_WITH_FLOATING\n[]\n" + exactLegacyXml),
+      upickle.default.read[ProgrammingState](legacyJson(legacyFloatingTag, "[]")))
+    restored.foreach { state =>
+      assertEquals(state, expected)
+      assertEquals(state.toSnapXml.legacyFloatingObjects, Nil)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(state),
+        "PROGRAMMING_STATE_V2\nSNAP_XML\n" + exactLegacyXml)
+      val json = upickle.default.writeJs[ProgrammingState](state)
+      assertEquals(json("$type").str, "ProgrammingStateSnapXml")
+      assertEquals(json.obj.keySet.toSet, Set("$type", "snapXml"))
+      assertEquals(upickle.default.read[ProgrammingState](json), expected)
+    }
+  }
+
+  test("malformed legacy floating payloads reject instead of replacing saved work with the mini project") {
+    val taggedPrefix = "PROGRAMMING_STATE_V2\nSNAP_XML_WITH_FLOATING\n"
+    val malformedTagged = List(
+      taggedPrefix + opaqueObjectsJson,
+      taggedPrefix + "[broken]\n" + exactLegacyXml,
+      taggedPrefix + """["keep",12]""" + "\n" + exactLegacyXml,
+      taggedPrefix + """{"objects":["keep"]}""" + "\n" + exactLegacyXml)
+    malformedTagged.foreach { stored =>
+      intercept[IllegalArgumentException](ProgrammingExercise.StateSerializer.deserialize(stored))
+    }
+    val malformedJson = List(
+      legacyJson(legacyFloatingTag, """["keep",12]"""),
+      legacyJson(legacyFloatingTag, "null"),
+      """{"$type":"ProgrammingStateSnapXMLWithAdditionalFloatingObjects","snapXml":"<project/>"}""",
+      """{"$type":"ProgrammingStateSnapXMLWithAdditionalFloatingObjects","additionalFloatingObjects":["keep"]}""",
+      """{"$type":"ProgrammingStateSnapXMLWithAdditionalFloatingObjects","snapXml":42,"additionalFloatingObjects":["keep"]}""")
+    malformedJson.foreach { stored =>
+      intercept[Exception](upickle.default.read[ProgrammingState](stored))
+    }
+  }
+
+  test("all four regular programming JSON states read historical and current type aliases") {
+    val states = List[(String, ProgrammingState)](
+      "ProgrammingStateSnapXml" -> ProgrammingStateSnapXml(exactLegacyXml),
+      "ProgrammingStatePythonString" -> ProgrammingStatePythonString("\tdef draw(\r\n\n "),
+      "ProgrammingStateJavaString" -> ProgrammingStateJavaString("\nclass Drawing {\r\n\t "),
+      "ProgrammingStateBeExpression" -> ProgrammingStateBeExpression(BeExpression.pass))
+    states.foreach { (simpleTag, state) =>
+      val json = upickle.default.writeJs[ProgrammingState](state)
+      assertEquals(upickle.default.read[ProgrammingState](json), state)
+      state match {
+        case value: ProgrammingStateSnapXml =>
+          assertEquals(upickle.default.writeJs(value), json)
+          assertEquals(upickle.default.read[ProgrammingStateSnapXml](json), value)
+        case value: ProgrammingStatePythonString =>
+          assertEquals(upickle.default.writeJs(value), json)
+          assertEquals(upickle.default.read[ProgrammingStatePythonString](json), value)
+        case value: ProgrammingStateJavaString =>
+          assertEquals(upickle.default.writeJs(value), json)
+          assertEquals(upickle.default.read[ProgrammingStateJavaString](json), value)
+        case value: ProgrammingStateBeExpression =>
+          assertEquals(upickle.default.writeJs(value), json)
+          assertEquals(upickle.default.read[ProgrammingStateBeExpression](json), value)
+      }
+      val currentPrefix =
+        if simpleTag == "ProgrammingStateBeExpression" then historicalProgrammingPackage + "state.ProgrammingState."
+        else nestedProgrammingPackage
+      List(simpleTag, historicalProgrammingPackage + simpleTag, currentPrefix + simpleTag).foreach { tag =>
+        val fixture = ujson.Obj.from(json.obj.iterator)
+        fixture("$type") = ujson.Str(tag)
+        assertEquals(upickle.default.read[ProgrammingState](fixture), state)
+      }
+    }
+  }
+
+  test("Snap fingerprints distinguish opaque list boundaries, empty strings and metadata-only changes") {
+    val states = List(
+      ProgrammingStateSnapXml(exactLegacyXml),
+      ProgrammingStateSnapXml(exactLegacyXml, List("a", "b")),
+      ProgrammingStateSnapXml(exactLegacyXml, List("a" + 0.toChar + "b")),
+      ProgrammingStateSnapXml(exactLegacyXml, List("")),
+      ProgrammingStateSnapXml(exactLegacyXml, List("b", "a")))
+    val fingerprints = states.map(ProgrammingState.fingerprint)
+    assertEquals(fingerprints.distinct.size, states.size)
+    states.foreach { state =>
+      val restored = ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(state))
+      assertEquals(ProgrammingState.fingerprint(restored), ProgrammingState.fingerprint(state))
+    }
+  }
+
+  test("opaque legacy data blocks editable text conversion while pure expression extraction still works") {
+    val plain = ProgrammingStateSnapXml.mini
+    val retained = plain.copy(legacyFloatingObjects = opaqueObjects)
+    val before = ProgrammingExercise.StateSerializer.serialize(retained)
+    intercept[IllegalArgumentException](retained.toPython)
+    intercept[IllegalArgumentException](retained.toJava)
+    assertEquals(retained.toBeExpressionState, plain.toBeExpressionState)
+    assertEquals(retained.toSnapXml, retained)
+    assertEquals(ProgrammingExercise.StateSerializer.serialize(retained), before)
   }
 
   test("numeric call literal survives python migrate then xml roundtrip") {

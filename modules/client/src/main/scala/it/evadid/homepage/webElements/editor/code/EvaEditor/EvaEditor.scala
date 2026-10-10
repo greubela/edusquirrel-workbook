@@ -60,7 +60,6 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   )
   private lazy val snapState = Var[ProgrammingState](state.now() match
     case snap: ProgrammingStateSnapXml => snap
-    case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => floating.toSnapXml
     case _ => ProgrammingStateSnapXml.empty
   )
   private lazy val pythonState = Var(state.now() match
@@ -81,8 +80,8 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   private[code] def publish(tab: Tab, next: ProgrammingState): Unit = {
     if !enabledTabs.contains(tab) || activeTab.now() != tab || !viewAvailable.now() then return
     val retained = (state.now(), next) match
-      case (floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects, snap: ProgrammingStateSnapXml) =>
-        floating.copy(snapXml = snap.snapXml)
+      case (previous: ProgrammingStateSnapXml, snap: ProgrammingStateSnapXml) =>
+        previous.withProjectXml(snap.snapXml)
       case _ => next
     conversionError.set(None)
     if state.now() != retained then {
@@ -101,7 +100,6 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
 
   private def show(next: ProgrammingState): Unit = next match
     case snap: ProgrammingStateSnapXml => snapState.set(snap)
-    case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => snapState.set(floating.toSnapXml)
     case ProgrammingStatePythonString(code) => pythonState.set(code)
     case java: ProgrammingStateJavaString => javaState.set(java)
     case expression: ProgrammingStateBeExpression => snapState.set(expression.toSnapXml)
@@ -159,7 +157,6 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
       case Some(execute) => Try(execute()).fold(Future.failed, identity)
       case None => source match
         case snap: ProgrammingStateSnapXml => snapExecution.commandsFor(snap)
-        case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => snapExecution.commandsFor(floating.toSnapXml)
         case ProgrammingStatePythonString(code) => pythonRunner.execute(code)
         case _ => deriveCommands(source)
 

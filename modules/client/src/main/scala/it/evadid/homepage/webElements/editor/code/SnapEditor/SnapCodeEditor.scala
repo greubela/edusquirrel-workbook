@@ -29,14 +29,13 @@ case class SnapCodeEditor(
 
 
   private def publishProgramFromSnapXml(xml: String): Unit = {
-    val snap = ProgrammingStateSnapXml(xml).removeBloatFromXml
     val next = state.now() match {
-      case floating: ProgrammingStateSnapXMLWithAdditionalFloatingObjects => floating.copy(snapXml = snap.snapXml)
-      case _ => snap
+      case snap: ProgrammingStateSnapXml => snap.withProjectXml(xml).removeBloatFromXml
+      case _ => ProgrammingStateSnapXml(xml).removeBloatFromXml
     }
     // Mark the retained project before publishing: the Var observers run as
     // part of this update and must not reload Snap's own serialized project.
-    impl.acknowledgeProgramFromEditor(snap)
+    impl.acknowledgeProgramFromEditor(next)
     if state.now() != next then
       state.set(next)
       onStateEdited(next)
@@ -89,7 +88,8 @@ case class SnapCodeEditor(
 
   def captureCurrentProject(): ProgrammingStateSnapXml = {
     impl.flushPendingProjectChanges()
-    impl.currentProjectXml().map(ProgrammingStateSnapXml(_)).getOrElse(state.now().toSnapXml)
+    val previous = state.now().toSnapXml
+    impl.currentProjectXml().map(previous.withProjectXml).getOrElse(previous)
   }
 
   def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] =
