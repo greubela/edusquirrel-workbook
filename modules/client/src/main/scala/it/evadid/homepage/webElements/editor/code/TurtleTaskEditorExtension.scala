@@ -3,8 +3,22 @@ package it.evadid.homepage.webElements.editor.code
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorExtension
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.HtmlTurtleRecreateShapeRenderer
+import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.JavaTurtleEditingBridge
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
+import scala.util.Try
+
+object TurtleTaskEditorExtension {
+  private[code] def requiresRun(source: ProgrammingState): Boolean = source match {
+    case java: ProgrammingStateJavaString => Try(java.isClassProgram).getOrElse(true)
+    case ProgrammingStatePythonString(code) => JavaTurtleEditingBridge.hasPythonMetadata(code)
+    case snap: ProgrammingStateSnapXml => JavaTurtleEditingBridge.hasSnapMetadata(snap.snapXml)
+    case ProgrammingStateBeExpression(_: JavaTurtleVmPrograms.Root) => true
+    case _ => false
+  }
+}
 
 final class TurtleTaskEditorExtension(
     state: Var[ProgrammingState],
@@ -21,7 +35,11 @@ final class TurtleTaskEditorExtension(
       view = Some(created)
       created
     }
-    Some(div(cls := "eva-editor__sidebar turtle-sidebar", current.getDomElement()))
+    Some(div(cls := "eva-editor__sidebar turtle-sidebar",
+      child <-- state.signal.map(source => target.isEmpty || TurtleTaskEditorExtension.requiresRun(source)).distinct.map {
+        case true => current.getDomElement()
+        case false => HtmlTurtleRecreateShapeRenderer.createInteractivePreview(state, target.get, policy).getDomElement()
+      }))
   }
 
   override def close(): Unit = view.foreach(_.reset())

@@ -37,6 +37,18 @@ import scala.scalajs.js
 class EvaEditorSpec extends FunSuite {
   private val testingConfig = EvaEditorConfig(snapConfig = SnapCodeEditorConfig.Testing)
 
+  test("ordinary turtle tasks retain live previews while typed Java views require a run") {
+    val source = javaSource()
+    List[ProgrammingState](source, source.toPython, source.toSnapXml, source.toBeExpressionState,
+      ProgrammingStateJavaString("class Drawing {")).foreach { typed =>
+      assert(TurtleTaskEditorExtension.requiresRun(typed))
+    }
+    List[ProgrammingState](ProgrammingStatePythonString("forward(12)"), ProgrammingStateSnapXml.empty,
+      ProgrammingStateJavaString("// class Drawing\nforward(12);")).foreach { legacy =>
+      assert(!TurtleTaskEditorExtension.requiresRun(legacy))
+    }
+  }
+
   private class RecordingSyncControl extends SyncControl {
     var stores = Vector.empty[List[InteractionVariable[?]]]
     override val syncLogger: SyncLogger = SyncLogger(
