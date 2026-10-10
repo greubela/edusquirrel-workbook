@@ -19,14 +19,18 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   private val jsdom = requireFn(root + "/node_modules/jsdom")
   private val window = js.Dynamic.newInstance(jsdom.JSDOM)("<html><body></body></html>").window
   private val names = List("window", "document", "Element", "Node")
-  private val previous = names.map(name => name -> globals.selectDynamic(name))
+  private var previous = List.empty[(String, js.Dynamic)]
 
   override def beforeAll(): Unit = {
+    previous = names.map(name => name -> js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, name))
     names.foreach(name => globals.updateDynamic(name)(window.selectDynamic(name)))
   }
 
   override def afterAll(): Unit = {
-    previous.foreach { (name, value) => globals.updateDynamic(name)(value) }
+    previous.foreach { (name, descriptor) =>
+      if js.isUndefined(descriptor) then js.special.delete(globals, name)
+      else js.Dynamic.global.Object.defineProperty(globals, name, descriptor)
+    }
     window.close()
   }
 

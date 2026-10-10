@@ -88,12 +88,34 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     val jsdom = requireFn(root + "/node_modules/jsdom")
     val window = js.Dynamic.newInstance(jsdom.JSDOM)("<html><body></body></html>").window
     val names = List("window", "document", "Element", "Node")
-    val previous = names.map(name => name -> globals.selectDynamic(name))
+    val previous = names.map(name => name -> js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, name))
     names.foreach(name => globals.updateDynamic(name)(window.selectDynamic(name)))
     try test
     finally
-      previous.foreach { (name, value) => globals.updateDynamic(name)(value) }
+      previous.foreach { (name, descriptor) =>
+        if js.isUndefined(descriptor) then js.special.delete(globals, name)
+        else js.Dynamic.global.Object.defineProperty(globals, name, descriptor)
+      }
       window.close()
+
+  test("DOM fixtures restore absent and explicitly undefined document properties") {
+    val globals = js.Dynamic.global.globalThis
+    val original = js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")
+    try
+      js.special.delete(globals, "document")
+      withDom { assert(!js.isUndefined(globals.selectDynamic("document"))) }
+      assert(js.isUndefined(js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")))
+      js.Dynamic.global.Object.defineProperty(globals, "document", js.Dynamic.literal(
+        configurable = true, enumerable = false, writable = true, value = js.undefined))
+      withDom { assert(!js.isUndefined(globals.selectDynamic("document"))) }
+      val restored = js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")
+      assert(!js.isUndefined(restored))
+      assert(js.isUndefined(restored.value))
+      assertEquals(restored.enumerable.asInstanceOf[Boolean], false)
+    finally
+      if js.isUndefined(original) then js.special.delete(globals, "document")
+      else js.Dynamic.global.Object.defineProperty(globals, "document", original)
+  }
 
   test("scene renderer preserves neutral lines and uses a nonempty accessible title") {
     val graph = new Graph
