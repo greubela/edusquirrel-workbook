@@ -25,20 +25,21 @@ test('monk stories and Koch practice render and can be navigated', async () => {
     });
     await page.goto(origin + '/homepage/monksWorkbook/index.html');
     await page.locator('.section-register .login-area').nth(1).locator('button').click({timeout:60000});
-    for (const [section, count] of [[0,69],[2,17]]) {
-      await page.locator('.section-block').nth(section).click();
-      const deck = page.locator('.slide-deck-container');
+    for (const [section, count] of [['Die Mönche von Mons Komputarius',69],['Rekursion verstehen',17]]) {
+      await page.locator('.section-block').filter({hasText:section}).click();
+      const deck = page.locator('.slide-deck-container').first();
       await page.waitForFunction(expected => document.querySelector('.slide-deck-counter')?.textContent === expected, `1/${count}`);
       for (let i=0;i<count;i++) {
         assert.equal(await deck.locator('.slide-deck-counter').innerText(), `${i+1}/${count}`);
-        assert.equal(await deck.locator('.slide-deck-column').count(), 1);
-        assert.equal(await deck.locator('.slide-deck-column-title').innerText(), 'Dialog');
+        assert.equal(await deck.locator('.workbook-exercise-group').count(), 1);
+        assert.equal(await deck.locator('.labeled_container_label').textContent(), 'Dialog');
+        assert((await deck.locator('.labeled_container_content').innerText()).trim().length > 0);
         await deck.locator('.slide-deck-image img').waitFor({timeout:10000});
         await page.waitForFunction(() => {const img=document.querySelector('.slide-deck-image img'); return img?.complete && img.naturalWidth>0;});
         if (i<count-1) await deck.locator('button').last().click();
       }
     }
-    await page.locator('.section-block').nth(3).click();
+    await page.locator('.section-block').filter({hasText:'Rekursion selbst programmieren'}).click();
     await page.waitForFunction(() => document.querySelectorAll('.turtle-gradig-panel').length === 3);
     const openButtons = page.getByRole('button', {name:/Editor.*öffnen|Open editor/i});
     assert.equal(await openButtons.count(), 3);

@@ -9,13 +9,14 @@ import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_TYPE
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
+import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.HintLabel
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.slideshow.*
-import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.elements.structureElements.{ExerciseGroup, Workbook}
 
 /** First digital edition of "Rekursion mit den Mönchen von Mons Komputarius" (29.04.2025).
  * Stable exercise IDs keep responses attached to their original PDF task numbers.
@@ -31,13 +32,16 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   private def key(name: String): String = "monksworkbook/" + name
 
   private def panel(scene: Scene): WorkbookDisplayElement =
-    LanguageMapBasedWorkbookImageElement(
-      "monks-panel-" + scene.id,
-      LanguageMapContentId(key(scene.imageKey)),
-      TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES,
-      Some(LanguageMapContentId(key(scene.dialogueKey))),
-      Some(CopyrightInfo.fromAi)
-    )
+    ExerciseGroup("monks-panel-" + scene.id, List(
+      LanguageMapBasedWorkbookImageElement(
+        "monks-image-" + scene.id,
+        LanguageMapContentId(key(scene.imageKey)),
+        TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES,
+        Some(LanguageMapContentId(key(scene.dialogueKey))),
+        Some(CopyrightInfo.fromAi)
+      ),
+      instructionLabeledPair(key("dialoguelabel"), key(scene.dialogueKey), HintLabel)
+    ))
 
   private def task(number: String): WorkbookElement =
     container(key("task" + number + "title"), List(
