@@ -6,7 +6,7 @@ import it.evadid.vm.BeProgram
 import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateSnapXml
 import munit.FunSuite
 import todomove.`export`.workers.PyodideWorkerClient
 
@@ -68,6 +68,261 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       s"""{"status":"$status","problem":$problem,"commands":$commands,"steps":$steps$evidence}""", "")
 
   private val completedJava = T.Execution(T.Status.Completed, Vector.empty, 2)
+
+  private def pythonReport(distance: Double = 10.0): PythonRunReport =
+    PythonRunReport(Vector(CallbackOp("turtle", "forward", Vector[js.Any](distance))), "", "")
+
+  private class ControlledPythonExecutor(initiallyReady: Boolean = false) extends PythonCallbackExecutor:
+    val readiness = Promise[Unit]()
+    if initiallyReady then readiness.success(())
+    var registrations = Vector.empty[(String, Seq[String])]
+    var closes = 0
+    var registrationFailure = Option.empty[Throwable]
+    var runFailure = Option.empty[Throwable]
+    var closeFailure = Option.empty[Throwable]
+    var requests = Vector.empty[(String, PythonRunConfig, Promise[PythonRunReport])]
+    private var signals = Map.empty[Int, Promise[Unit]]
+
+    def addCallbacks(moduleName: String, methodNames: Seq[String]): Future[Unit] =
+      registrations :+= ((moduleName, methodNames))
+      registrationFailure.foreach(error => throw error)
+      readiness.future
+
+    def run(code: String, config: PythonRunConfig): Future[PythonRunReport] =
+      runFailure.foreach(error => throw error)
+      val index = requests.size
+      val result = Promise[PythonRunReport]()
+      requests :+= ((code, config, result))
+      signals.get(index).foreach(_.trySuccess(()))
+      result.future
+
+    def started(index: Int = 0): Future[Unit] =
+      if requests.size > index then Future.successful(())
+      else
+        val result = signals.getOrElse(index, Promise[Unit]())
+        signals += index -> result
+        result.future
+
+    def complete(index: Int = 0, report: PythonRunReport = pythonReport()): Unit =
+      requests(index)._3.success(report)
+
+    override def close(): Unit =
+      closes += 1
+      closeFailure.foreach(error => throw error)
+
+  test("Python execution allocates lazily and reuses only its own ready transport") {
+    val executor = new ControlledPythonExecutor(initiallyReady = true)
+    var allocations = 0
+    val runner = new PyodideTurtleCommandRunner(() => { allocations += 1; executor })
+    runner.close()
+    runner.close()
+    assertEquals(allocations, 0)
+    val first = runner.execute("forward(10)")
+    for
+      _ <- executor.started()
+      _ = executor.complete()
+      actual <- first
+      _ = assertEquals(actual, List(TurtleCommand[Double]("forward", List(10.0))))
+      second = runner.execute("forward(20)")
+      _ <- executor.started(1)
+      _ = executor.complete(1, pythonReport(20))
+      again <- second
+    yield
+      assertEquals(again, List(TurtleCommand[Double]("forward", List(20.0))))
+      assertEquals(allocations, 1)
+      assertEquals(executor.registrations.size, 2)
+      assert(executor.registrations.forall((module, methods) => module == "turtle" && methods.contains("forward")))
+      assertEquals(executor.requests.map(_._1), Vector("from turtle import *\nforward(10)", "from turtle import *\nforward(20)"))
+      assert(executor.requests.forall(_._2.resetGlobals))
+      runner.close()
+      runner.close()
+      assertEquals(executor.closes, 1)
+  }
+
+  test("Python execution refuses overlap without disturbing the active request") {
+    val executor = new ControlledPythonExecutor
+    val runner = new PyodideTurtleCommandRunner(() => executor)
+    val first = runner.execute("forward(10)")
+    for
+      _ <- failedWith(runner.execute("forward(99)"))(error => assert(error.isInstanceOf[IllegalStateException]))
+      _ = executor.readiness.success(())
+      _ <- executor.started()
+      _ <- failedWith(runner.execute("forward(99)"))(error => assert(error.isInstanceOf[IllegalStateException]))
+      _ = assertEquals(executor.requests.size, 1)
+      _ = assertEquals(executor.closes, 0)
+      _ = executor.complete()
+      commands <- first
+    yield
+      assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+      runner.close()
+  }
+
+  test("Python startup cancellation settles the request and ignores late readiness") {
+    val old = new ControlledPythonExecutor
+    val fresh = new ControlledPythonExecutor(initiallyReady = true)
+    var allocations = 0
+    val runner = new PyodideTurtleCommandRunner(() => { allocations += 1; if allocations == 1 then old else fresh })
+    val first = runner.execute("forward(99)")
+    runner.close()
+    runner.close()
+    val second = runner.execute("forward(10)")
+    for
+      _ <- failedWith(first)(error => assert(error.isInstanceOf[CancellationException]))
+      _ <- fresh.started()
+      _ = old.readiness.success(())
+      _ <- delayed(0)
+      _ = assertEquals(old.requests.size, 0)
+      _ = assertEquals(old.closes, 1)
+      _ = assert(!second.isCompleted)
+      _ = fresh.complete()
+      commands <- second
+    yield
+      assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+      assertEquals(allocations, 2)
+      runner.close()
+      assertEquals(fresh.closes, 1)
+  }
+
+  test("Python execution cancellation ignores an old result and restarts with a fresh transport") {
+    val old = new ControlledPythonExecutor(initiallyReady = true)
+    val fresh = new ControlledPythonExecutor(initiallyReady = true)
+    var allocations = 0
+    val runner = new PyodideTurtleCommandRunner(() => { allocations += 1; if allocations == 1 then old else fresh })
+    val first = runner.execute("forward(99)")
+    for
+      _ <- old.started()
+      _ = runner.close()
+      _ <- failedWith(first)(error => assert(error.isInstanceOf[CancellationException]))
+      second = runner.execute("forward(10)")
+      _ <- fresh.started()
+      _ = old.complete(report = pythonReport(99))
+      _ <- delayed(0)
+      _ = assert(!second.isCompleted)
+      _ = assertEquals(old.closes, 1)
+      _ = assertEquals(fresh.closes, 0)
+      _ = fresh.complete()
+      commands <- second
+    yield
+      assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+      assertEquals(allocations, 2)
+      runner.close()
+  }
+
+  test("Python startup and execution timeouts discard their transport before retry") {
+    List(false, true).foldLeft(Future.successful(())) { (previous, execution) =>
+      previous.flatMap { _ =>
+        val old = new ControlledPythonExecutor(initiallyReady = execution)
+        val fresh = new ControlledPythonExecutor(initiallyReady = true)
+        var allocations = 0
+        val runner = new PyodideTurtleCommandRunner(() => { allocations += 1; if allocations == 1 then old else fresh },
+          startupTimeoutMs = if execution then 1000 else 20, executionTimeoutMs = if execution then 20 else 1000)
+        val first = runner.execute("forward(99)")
+        for
+          _ <- failedWith(first)(error => assert(error.isInstanceOf[TimeoutException]))
+          _ = assertEquals(old.closes, 1)
+          second = runner.execute("forward(10)")
+          _ <- fresh.started()
+          _ = if execution then old.complete(report = pythonReport(99)) else old.readiness.success(())
+          _ <- delayed(0)
+          _ = assert(!second.isCompleted)
+          _ = assertEquals(old.requests.size, if execution then 1 else 0)
+          _ = fresh.complete()
+          commands <- second
+        yield
+          assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+          assertEquals(allocations, 2)
+          runner.close()
+      }
+    }
+  }
+
+  test("Python synchronous factory, registration, run and cleanup failures permit retry") {
+    List("factory", "registration", "run", "close").foldLeft(Future.successful(())) { (previous, stage) =>
+      previous.flatMap { _ =>
+        val error = IllegalStateException(s"$stage unavailable")
+        val old = new ControlledPythonExecutor(initiallyReady = true)
+        val fresh = new ControlledPythonExecutor(initiallyReady = true)
+        if stage == "registration" then old.registrationFailure = Some(error)
+        if stage == "run" then old.runFailure = Some(error)
+        if stage == "close" then old.closeFailure = Some(error)
+        var allocations = 0
+        val runner = new PyodideTurtleCommandRunner(() => {
+          allocations += 1
+          if allocations == 1 && stage == "factory" then throw error
+          if allocations == 1 then old else fresh
+        })
+        val first = runner.execute("forward(99)")
+        val settled = if stage == "close" then old.started().flatMap { _ =>
+          runner.close()
+          failedWith(first)(error => assert(error.isInstanceOf[CancellationException]))
+        } else failedWith(first)(actual => assert(actual eq error))
+        for
+          _ <- settled
+          _ = assertEquals(old.closes, if stage == "factory" then 0 else 1)
+          second = runner.execute("forward(10)")
+          _ <- fresh.started()
+          _ = fresh.complete()
+          commands <- second
+        yield
+          assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+          assertEquals(allocations, 2)
+          runner.close()
+      }
+    }
+  }
+
+  test("Python runners do not cancel or share another editor's requests") {
+    val firstExecutor = new ControlledPythonExecutor(initiallyReady = true)
+    val secondExecutor = new ControlledPythonExecutor(initiallyReady = true)
+    val firstRunner = new PyodideTurtleCommandRunner(() => firstExecutor)
+    val secondRunner = new PyodideTurtleCommandRunner(() => secondExecutor)
+    val first = firstRunner.execute("forward(99)")
+    val second = secondRunner.execute("forward(20)")
+    for
+      _ <- firstExecutor.started()
+      _ <- secondExecutor.started()
+      _ = firstRunner.close()
+      _ <- failedWith(first)(error => assert(error.isInstanceOf[CancellationException]))
+      _ = assert(!second.isCompleted)
+      _ = assertEquals(secondExecutor.closes, 0)
+      _ = firstExecutor.complete(report = pythonReport(99))
+      _ = secondExecutor.complete(report = pythonReport(20))
+      commands <- second
+    yield
+      assertEquals(commands, List(TurtleCommand[Double]("forward", List(20.0))))
+      secondRunner.close()
+      assertEquals(firstExecutor.closes, 1)
+      assertEquals(secondExecutor.closes, 1)
+  }
+
+  test("Python malformed callbacks and oversized reports fail closed and discard the transport") {
+    val invalid = List(
+      pythonReport(Double.NaN), pythonReport(Double.PositiveInfinity), pythonReport(Double.NegativeInfinity),
+      pythonReport().copy(callbackOps = Vector(CallbackOp("turtle", "unsupported", Vector.empty))),
+      pythonReport().copy(callbackOps = Vector(CallbackOp("turtle", "forward", Vector[js.Any](js.Dynamic.literal(value = 1))))),
+      pythonReport().copy(callbackOps = Vector.fill(10001)(CallbackOp("turtle", "forward", Vector[js.Any](1)))))
+    invalid.foldLeft(Future.successful(())) { (previous, report) =>
+      previous.flatMap { _ =>
+        val old = new ControlledPythonExecutor(initiallyReady = true)
+        val fresh = new ControlledPythonExecutor(initiallyReady = true)
+        var allocations = 0
+        val runner = new PyodideTurtleCommandRunner(() => { allocations += 1; if allocations == 1 then old else fresh })
+        val first = runner.execute("forward(99)")
+        for
+          _ <- old.started()
+          _ = old.complete(report = report)
+          _ <- failedWith(first)(error => assert(error.isInstanceOf[IllegalArgumentException]))
+          _ = assertEquals(old.closes, 1)
+          second = runner.execute("forward(10)")
+          _ <- fresh.started()
+          _ = fresh.complete()
+          commands <- second
+        yield
+          assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+          runner.close()
+      }
+    }
+  }
 
   private class ControlledJavaWorker(initiallyReady: Boolean = false) extends JavaTurtlePythonWorker:
     val readiness = Promise[Unit]()
