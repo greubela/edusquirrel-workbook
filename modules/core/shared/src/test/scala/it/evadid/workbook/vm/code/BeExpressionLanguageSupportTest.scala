@@ -44,6 +44,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     case X.Node.Widen(inner) => R.Widen(restoredJavaExpression(inner))
     case X.Node.BooleanLiteral(value) => R.BooleanLiteral(value)
     case X.Node.Read(variable, _) => R.Read(variable)
+    case X.Node.Update(variable, _, operator, prefix) => R.Update(variable, operator, prefix)
     case X.Node.Group(inner) => R.Group(restoredJavaExpression(inner))
     case X.Node.Unary(operator, operand) => R.Unary(operator, restoredJavaExpression(operand))
     case X.Node.Binary(operator, left, right) => R.Binary(operator, restoredJavaExpression(left), restoredJavaExpression(right))
@@ -55,6 +56,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     case P.Node.Return => R.Return
     case P.Node.Declare(variable, _, initial) => R.Declare(variable, initial.map(value => restoredJavaExpression(value.expression)))
     case P.Node.Assign(variable, _, operator, value) => R.Assign(variable, operator, restoredJavaExpression(value.expression))
+    case P.Node.Evaluate(value) => R.Evaluate(restoredJavaExpression(value.expression))
     case P.Node.Call(target, arguments) =>
       val call = target match {
         case P.CallTarget.Helper(method) => R.CallTarget.Helper(method.id)
@@ -1721,8 +1723,10 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(exported.methods, Map("drawSquare" -> R.MethodId(0), "draw_square" -> R.MethodId(1)))
     assert(exported.source.contains("def _method_0(_variable_0_0):"))
     assert(exported.source.contains("def _method_1(_variable_1_0):"))
-    assert(exported.source.contains("_variable_0_1 = _value(lambda: _variable_0_0)"))
-    assert(exported.source.contains("_variable_1_1 = _value(lambda: _variable_1_0)"))
+    assert(exported.source.contains("_variable_0_0 = [_variable_0_0]"))
+    assert(exported.source.contains("_variable_1_0 = [_variable_1_0]"))
+    assert(exported.source.contains("_variable_0_1 = [_value(lambda: _variable_0_0[0])]"))
+    assert(exported.source.contains("_variable_1_1 = [_value(lambda: _variable_1_0[0])]"))
     assert(!exported.source.contains("drawSquare"))
     assert(!exported.source.contains("draw_square"))
     assert(!exported.source.contains("match" + " ="))
@@ -1733,8 +1737,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       int n = 2147483647; n += 1; n -= 1; n *= 3; n /= -2; n %= 2;
       Turtle.forward(+n + -n - n * (n / 2) % 3);
     """)).toOption.get).source
-    for operation <- Seq("_int32(_variable_0_1 +", "_int32(_variable_0_1 -", "_int32(_variable_0_1 *",
-      "_divide(_variable_0_1,", "_remainder(_variable_0_1,", "_int32(-_value(") do assert(source.contains(operation))
+    for operation <- Seq("_int32(_variable_0_1[0] +", "_int32(_variable_0_1[0] -", "_int32(_variable_0_1[0] *",
+      "_divide(_variable_0_1[0],", "_remainder(_variable_0_1[0],", "_int32(-_value(") do assert(source.contains(operation))
     assert(source.contains("quotient = abs(left) // abs(right)"))
     assert(source.contains("return _int32(left - _divide(left, right) * right)"))
     val integerRuntime = source.substring(source.indexOf("def _divide("), source.indexOf("def _double_divide("))
@@ -1759,11 +1763,11 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val source = Y.render(P.adapt(javaProgram("""
       for (int i = 0; i < 4; i += 1, Turtle.turnRight(i)) { Turtle.forward(i); return; }
     """)).toOption.get).source
-    assert(source.contains("_block(2)\n            _gate()\n            _variable_0_1 = _value(lambda: 0)"))
+    assert(source.contains("_block(2)\n            _gate()\n            _variable_0_1 = [_value(lambda: 0)]"))
     assert(source.contains("while _loop() and _value(lambda:"))
     assert(source.contains("                _block(3)"))
     val returned = source.indexOf("                return\n")
-    val updated = source.indexOf("                _variable_0_1 = _int32(_variable_0_1 +")
+    val updated = source.indexOf("                _variable_0_1[0] = _int32(_variable_0_1[0] +")
     assert(returned >= 0 && updated > returned)
     assertEquals(source.linesIterator.count(_.trim == "_block(2)"), 1)
     val endless = Y.render(P.adapt(javaProgram("for (;;) { ; }")).toOption.get).source
@@ -1777,11 +1781,11 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       if (true) { int x = 2; Turtle.forward(x); }
       while (n < 0) {}
     """)).toOption.get).source
-    assert(source.contains("_variable_0_1 = None"))
-    assert(source.contains("_variable_0_2 = _value(lambda: _variable_0_1)"))
-    assert(source.contains("_variable_0_3 = _value(lambda: 2)"))
+    assert(source.contains("_variable_0_1 = [None]"))
+    assert(source.contains("_variable_0_2 = [_value(lambda: _variable_0_1[0])]"))
+    assert(source.contains("_variable_0_3 = [_value(lambda: 2)]"))
     assert(source.contains("            else:\n                _block(2)"))
-    assert(source.contains("while _loop() and _value(lambda: (_value(lambda: _variable_0_1) < _value(lambda: 0))):\n                _block(2)"))
+    assert(source.contains("while _loop() and _value(lambda: (_value(lambda: _variable_0_1[0]) < _value(lambda: 0))):\n                _block(2)"))
   }
 
   test("Java Python export uses the actual main and exact helper parameter types") {

@@ -34,6 +34,10 @@ object JavaTurtleResolution {
     case Set, Add, Subtract, Multiply, Divide, Remainder
   }
 
+  enum UpdateOperator {
+    case Increment, Decrement
+  }
+
   enum TurtleCommand {
     case Forward, TurnRight
   }
@@ -61,6 +65,9 @@ object JavaTurtleResolution {
   case class Read(variable: Variable) extends Expression {
     def valueType: ValueType = variable.valueType
   }
+  case class Update(variable: Variable, operator: UpdateOperator, prefix: Boolean) extends Expression {
+    def valueType: ValueType = variable.valueType
+  }
   case class Group(expression: Expression) extends Expression {
     def valueType: ValueType = expression.valueType
   }
@@ -85,6 +92,7 @@ object JavaTurtleResolution {
   case object Return extends Statement
   case class Declare(variable: Variable, initialValue: Option[Expression]) extends Statement
   case class Assign(variable: Variable, operator: AssignmentOperator, value: Expression) extends Statement
+  case class Evaluate(expression: Expression) extends Statement
   case class Call(target: CallTarget, arguments: Vector[Expression]) extends Statement
   case class If(condition: Expression, thenBlock: Block, elseBlock: Option[Block]) extends Statement
   case class While(condition: Expression, body: Block) extends Statement
@@ -193,6 +201,7 @@ object JavaTurtleResolution {
       case JavaAssignment(target, value) => assignment(target, "=", value, env).map(_ -> env)
       case JavaAugAssignment(target, operator, value) => assignment(target, operator, value, env).map(_ -> env)
       case JavaAssignmentExpression(target, operator, value) => assignment(target, operator, value, env).map(_ -> env)
+      case update: JavaUpdateExpression => expression(update, env).map(value => Evaluate(value) -> env)
       case call: JavaFunctionCall => resolveCall(call, env).map(_ -> env)
       case call: JavaCallExpression => resolveCall(call, env).map(_ -> env)
       case JavaIfStatement(condition, thenBlock, elseBlock) =>
@@ -228,9 +237,24 @@ object JavaTurtleResolution {
         converted <- widen(resolved, variable.valueType)
       } yield Assign(variable, operation, converted)
 
+    private def updateVariable(operand: JavaExpression, env: Env): Result[Variable] = operand match {
+      case target: JavaTarget => local(target, env)
+      case JavaParenthesizedExpression(inner) => updateVariable(inner, env)
+      case _ => Left(unsupported)
+    }
+
     private def expression(value: JavaExpression, env: Env): Result[Expression] = value match {
       case JavaParenthesizedExpression(inner) => expression(inner, env).map(Group(_))
       case target: JavaTarget => local(target, env).map(Read(_))
+      case JavaUpdateExpression(operand, operator, prefix) =>
+        for {
+          variable <- updateVariable(operand, env)
+          operation <- operator match {
+            case "++" => Right(UpdateOperator.Increment)
+            case "--" => Right(UpdateOperator.Decrement)
+            case _ => Left(unsupported)
+          }
+        } yield Update(variable, operation, prefix)
       case JavaLiteral(raw, _: JAVA_INTEGER) => raw.toIntOption.toRight(unsupported).map(IntLiteral(_))
       case JavaLiteral(raw, _: JAVA_FLOAT) => raw.toDoubleOption.filter(_.isFinite).toRight(unsupported).map(DoubleLiteral(_))
       case JavaLiteral(raw, _: JAVA_BOOL) => Right(BooleanLiteral(raw == "true"))

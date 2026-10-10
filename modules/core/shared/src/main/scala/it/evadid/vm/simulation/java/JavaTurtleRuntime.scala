@@ -73,6 +73,9 @@ object JavaTurtleRuntime {
     var pending: List[Action] = List(Action.EnterBlock(body, 1))
 
     val read: E.Reader = variable => values.get(variable.id).toRight(E.Failure.MissingValue(variable.id))
+    val write: E.Writer = (variable, value) => E.widen(value, variable.valueType).map { widened =>
+      values.update(variable.id, widened)
+    }
 
     def schedule(actions: Action*): Unit = pending = actions.toList ::: pending
   }
@@ -111,7 +114,7 @@ object JavaTurtleRuntime {
     private def step(): Result[Unit] = gate().left.map(status)
 
     private def evaluate(frame: Frame, expression: R.Expression): Result[E.Value] =
-      E.evaluateWithGate(expression, frame.read, E.Limits(), () => gate()).left.map(status)
+      E.evaluateWithGate(expression, frame.read, E.Limits(), () => gate(), frame.write).left.map(status)
 
     private def condition(frame: Frame, expression: R.Expression): Result[Boolean] =
       evaluate(frame, expression).flatMap {
@@ -201,6 +204,7 @@ object JavaTurtleRuntime {
           result <- assigned(operator, old, value)
           _ <- write(frame, variable, result)
         } yield ()
+      case R.Evaluate(expression) => evaluate(frame, expression).map(_ => ())
       case R.Call(target, expressions) => arguments(frame, expressions).flatMap { values =>
         target match {
           case R.CallTarget.Helper(id) => start(id, values)

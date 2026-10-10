@@ -50,7 +50,12 @@ object JavaTurtlePythonExport {
       case X.Node.IntLiteral(number) => number.toString
       case X.Node.DoubleLiteral(number) => doubleLiteral(number)
       case X.Node.BooleanLiteral(flag) => if flag then "True" else "False"
-      case X.Node.Read(bound, _) => variable(bound)
+      case X.Node.Read(bound, _) => s"${variable(bound)}[0]"
+      case X.Node.Update(bound, _, operator, prefix) =>
+        val delta = if operator == R.UpdateOperator.Increment then 1 else -1
+        val before = if prefix then "True" else "False"
+        val floating = if bound.valueType == R.ValueType.DoubleValue then "True" else "False"
+        s"_update(${variable(bound)}, $delta, $before, $floating)"
       case X.Node.Group(inner) => expression(inner)
       case X.Node.Widen(inner) => s"float(${expression(inner)})"
       case X.Node.Unary(operator, operand) =>
@@ -124,6 +129,12 @@ object JavaTurtlePythonExport {
     def _int32(value):
         return (value + 2147483648) % 4294967296 - 2147483648
 
+    def _update(cell, delta, prefix, floating):
+        old = cell[0]
+        updated = old + delta if floating else _int32(old + delta)
+        cell[0] = updated
+        return updated if prefix else old
+
     def _divide(left, right):
         if right == 0:
             raise _Stop("Failed", "DivisionByZero")
@@ -193,9 +204,16 @@ object JavaTurtlePythonExport {
       line("")
       val bindings = value.binding.parameters.filterNot(_.variable.valueType == R.ValueType.MainArguments)
       val parameters = bindings.map(parameter => variable(parameter.variable)).mkString(", ")
+      val initial = bindings.map { parameter =>
+        val name = variable(parameter.variable)
+        if parameter.variable.valueType == R.ValueType.DoubleValue then s"float($name)" else name
+      }
       line(s"def ${methodName(value.binding.id)}($parameters):")
       nested {
         line("_enter()")
+        bindings.zip(initial).foreach { (parameter, converted) =>
+          line(s"${variable(parameter.variable)} = [$converted]")
+        }
         line("try:")
         nested { block(value.body, 1) }
         line("finally:")
@@ -215,10 +233,11 @@ object JavaTurtlePythonExport {
         case P.Node.Return => line("return")
         case P.Node.Declare(bound, _, initial) =>
           val value = initial.map(value => expression(value.expression)).getOrElse("None")
-          line(s"${variable(bound)} = $value")
+          line(s"${variable(bound)} = [$value]")
         case P.Node.Assign(bound, _, operator, value) =>
-          val target = variable(bound)
+          val target = s"${variable(bound)}[0]"
           line(s"$target = ${assignment(operator, target, expression(value.expression), bound.valueType == R.ValueType.DoubleValue)}")
+        case P.Node.Evaluate(value) => line(expression(value.expression))
         case P.Node.Call(target, arguments) =>
           val values = arguments.map(value => expression(value.expression)).mkString(", ")
           target match {

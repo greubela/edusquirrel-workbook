@@ -21,6 +21,7 @@ object JavaTurtleVmExpressions {
     case Widen(expression: Expression)
     case BooleanLiteral(value: Boolean)
     case Read(variable: R.Variable, reference: BeUseValue)
+    case Update(variable: R.Variable, reference: BeUseValue, operator: R.UpdateOperator, prefix: Boolean)
     case Group(expression: Expression)
     case Unary(operator: R.UnaryOperator, operand: Expression)
     case Binary(operator: R.BinaryOperator, left: Expression, right: Expression)
@@ -32,6 +33,7 @@ object JavaTurtleVmExpressions {
     private def children: Vector[BeExpression] = node match {
       case Node.IntLiteral(_) | Node.DoubleLiteral(_) | Node.BooleanLiteral(_) => Vector.empty
       case Node.Read(_, reference) => Vector(reference)
+      case Node.Update(_, reference, _, _) => Vector(reference)
       case Node.Group(expression) => Vector(expression)
       case Node.Widen(expression) => Vector(expression)
       case Node.Unary(_, operand) => Vector(operand)
@@ -40,6 +42,11 @@ object JavaTurtleVmExpressions {
     }
 
     override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
+      override def hasSideEffects: Boolean = node match {
+        case _: Node.Update => true
+        case _ => children.exists(_.staticInformationExpression.hasSideEffects)
+      }
+
       override def staticType: BeDataType =
         valueType match {
           case R.ValueType.IntValue => BeDataType.Int
@@ -73,6 +80,7 @@ object JavaTurtleVmExpressions {
       private[vm] val resolved: R.Expression, private[vm] val definitions: Map[R.Variable, BeDefineVariable])
 
   type Reader = BeDefineVariable => Either[E.Failure, E.Value]
+  type Writer = (BeDefineVariable, E.Value) => Either[E.Failure, Unit]
 
   // This binds one expression; it does not validate a complete program or enable legacy exporters.
   def adapt(bindings: Bindings, expression: R.Expression): Either[Diagnostic, BoundExpression] =
@@ -86,6 +94,13 @@ object JavaTurtleVmExpressions {
   def evaluate(expression: BoundExpression, read: Reader, limits: E.Limits = E.Limits()): Either[E.Failure, E.Value] =
     E.evaluate(expression.resolved, variable =>
       expression.definitions.get(variable).toRight(E.Failure.MissingValue(variable.id)).flatMap(read), limits)
+
+  def evaluateMutating(expression: BoundExpression, read: Reader, write: Writer,
+      limits: E.Limits = E.Limits()): Either[E.Failure, E.Value] =
+    E.evaluateMutating(expression.resolved,
+      variable => expression.definitions.get(variable).toRight(E.Failure.MissingValue(variable.id)).flatMap(read),
+      (variable, value) => expression.definitions.get(variable).toRight(E.Failure.MissingValue(variable.id))
+        .flatMap(definition => write(definition, value)), limits)
 
   private def mismatch: Diagnostic =
     Diagnostic(Problem.TypeMismatch, "Use matching numeric or boolean operands for this Java expression.", None)
@@ -104,6 +119,11 @@ object JavaTurtleVmExpressions {
       case R.Read(variable) => bindings.reference(variable).map { reference =>
         new Expression(Node.Read(variable, reference), variable.valueType)
       }
+      case R.Update(variable, operator, prefix) =>
+        if !R.isNumeric(variable.valueType) then Left(mismatch)
+        else bindings.reference(variable).map { reference =>
+          new Expression(Node.Update(variable, reference, operator, prefix), variable.valueType)
+        }
       case R.Group(inner) => compile(inner).map(child => new Expression(Node.Group(child), child.valueType))
       case R.Unary(operator, operand) =>
         compile(operand).flatMap { child =>
@@ -139,7 +159,7 @@ object JavaTurtleVmExpressions {
       if visited > JavaTurtleInputLimits.MaxAstNodes || depth > JavaTurtleInputLimits.MaxAstDepth then
         return Left(Diagnostic(Problem.InputLimit, "Split this Java expression into smaller expressions.", None))
       node match {
-        case R.IntLiteral(_) | R.DoubleLiteral(_) | R.BooleanLiteral(_) | R.Read(_) => ()
+        case R.IntLiteral(_) | R.DoubleLiteral(_) | R.BooleanLiteral(_) | R.Read(_) | R.Update(_, _, _) => ()
         case R.Widen(inner) => pending = (inner -> (depth + 1)) :: pending
         case R.Group(inner) => pending = (inner -> (depth + 1)) :: pending
         case R.Unary(_, operand) => pending = (operand -> (depth + 1)) :: pending
@@ -161,6 +181,10 @@ object JavaTurtleVmExpressions {
           case BeUseValueReference(definition) => definitions = definitions.updated(variable, definition)
           case _ => throw new IllegalStateException("Expected a bound Java variable reference.")
         }
+        case Node.Update(variable, reference, _, _) => reference.value match {
+          case BeUseValueReference(definition) => definitions = definitions.updated(variable, definition)
+          case _ => throw new IllegalStateException("Expected a bound Java variable reference.")
+        }
         case Node.Group(inner) => pending = inner :: pending
         case Node.Widen(inner) => pending = inner :: pending
         case Node.Unary(_, operand) => pending = operand :: pending
@@ -178,6 +202,7 @@ object JavaTurtleVmExpressions {
     case Node.Widen(inner) => R.Widen(restore(inner))
     case Node.BooleanLiteral(value) => R.BooleanLiteral(value)
     case Node.Read(variable, _) => R.Read(variable)
+    case Node.Update(variable, _, operator, prefix) => R.Update(variable, operator, prefix)
     case Node.Group(inner) => R.Group(restore(inner))
     case Node.Unary(operator, operand) => R.Unary(operator, restore(operand))
     case Node.Binary(operator, left, right) => R.Binary(operator, restore(left), restore(right))

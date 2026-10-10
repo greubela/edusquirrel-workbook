@@ -81,6 +81,7 @@ object JavaTurtleSemantics {
       case JavaAssignment(target, value) => assign(target, "=", value, env).map(Some(_))
       case JavaAugAssignment(target, operator, value) => assign(target, operator, value, env).map(Some(_))
       case JavaAssignmentExpression(target, operator, value) => assign(target, operator, value, env).map(Some(_))
+      case update: JavaUpdateExpression => value(update, env).map(_ => Some(env))
       case call: JavaFunctionCall => checkCall(call, env).map(_ => Some(env))
       case call: JavaCallExpression => checkCall(call, env).map(_ => Some(env))
       case JavaReturnStatement(None) => Right(None)
@@ -157,6 +158,12 @@ object JavaTurtleSemantics {
       if env.initialized.contains(name) then Right(())
       else Left(problem(Problem.UninitializedVariable, s"Give ${name} a value on every path before using it."))
 
+    private def updateTarget(expression: JavaExpression): Result[JavaTarget] = expression match {
+      case target: JavaTarget => Right(target)
+      case JavaParenthesizedExpression(inner) => updateTarget(inner)
+      case _ => Left(unsupported("Increment or decrement an initialized local variable."))
+    }
+
     private def assign(target: JavaTarget, operator: String, expression: JavaExpression, env: Env): Result[Env] =
       for {
         targetKind <- local(target, env)
@@ -205,6 +212,14 @@ object JavaTurtleSemantics {
 
     private def value(expression: JavaExpression, env: Env): Result[Value] = expression match {
       case JavaParenthesizedExpression(inner) => value(inner, env)
+      case JavaUpdateExpression(operand, operator, _) =>
+        for {
+          _ <- Either.cond(operator == "++" || operator == "--", (), unsupported("This update operator is not supported."))
+          target <- updateTarget(operand)
+          actual <- local(target, env)
+          _ <- initialized(target.name, env)
+          _ <- requireNumeric(actual, "Increment and decrement need an int or double variable.")
+        } yield plain(actual, None, env)
       case target: JavaTarget =>
         for {
           actual <- local(target, env)

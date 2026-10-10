@@ -23,6 +23,7 @@ object JavaTurtleEvaluation {
 
   private type Result[A] = Either[Failure, A]
   type Reader = R.Variable => Either[Failure, Value]
+  type Writer = (R.Variable, Value) => Either[Failure, Unit]
 
   def widen(value: Value, expected: R.ValueType): Either[Failure, Value] = (expected, value) match {
     case (R.ValueType.IntValue, _: Value.IntValue) | (R.ValueType.DoubleValue, _: Value.DoubleValue) |
@@ -37,13 +38,17 @@ object JavaTurtleEvaluation {
   def evaluate(expression: R.Expression, read: Reader, limits: Limits = Limits()): Either[Failure, Value] =
     evaluateWithGate(expression, read, limits, () => Right(()))
 
+  def evaluateMutating(expression: R.Expression, read: Reader, write: Writer,
+      limits: Limits = Limits()): Either[Failure, Value] =
+    evaluateWithGate(expression, read, limits, () => Right(()), write)
+
   private[java] def evaluateWithGate(expression: R.Expression, read: Reader, limits: Limits,
-      beforeNode: () => Either[Failure, Unit]): Either[Failure, Value] =
+      beforeNode: () => Either[Failure, Unit], write: Writer = (_, _) => Left(Failure.TypeMismatch)): Either[Failure, Value] =
     if limits.maxDepth <= 0 || limits.maxDepth > Limits.MaxDepth ||
         limits.maxNodes <= 0 || limits.maxNodes > Limits.MaxNodes then Left(Failure.LimitExceeded)
-    else new Evaluator(read, limits, beforeNode).visit(expression, 1)
+    else new Evaluator(read, write, limits, beforeNode).visit(expression, 1)
 
-  private class Evaluator(read: Reader, limits: Limits, beforeNode: () => Either[Failure, Unit]) {
+  private class Evaluator(read: Reader, write: Writer, limits: Limits, beforeNode: () => Either[Failure, Unit]) {
     private var visited = 0
 
     def visit(expression: R.Expression, depth: Int): Result[Value] =
@@ -59,6 +64,13 @@ object JavaTurtleEvaluation {
           }
           case R.BooleanLiteral(value) => Right(Value.BooleanValue(value))
           case R.Read(variable) => readVariable(variable)
+          case R.Update(variable, operator, prefix) =>
+            for {
+              old <- readVariable(variable)
+              updated <- binary(if operator == R.UpdateOperator.Increment then R.BinaryOperator.Add else R.BinaryOperator.Subtract,
+                old, Value.IntValue(1))
+              _ <- write(variable, updated)
+            } yield if prefix then updated else old
           case R.Group(inner) => visit(inner, depth + 1)
           case R.Unary(operator, operand) =>
             visit(operand, depth + 1).flatMap { value =>

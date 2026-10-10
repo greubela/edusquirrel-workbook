@@ -137,6 +137,10 @@ object JavaAST {
     override def getChildren(): Seq[GenericAST] = Seq(operand)
   }
 
+  case class JavaUpdateExpression(operand: JavaExpression, operator: String, prefix: Boolean) extends JavaExpression {
+    override def getChildren(): Seq[GenericAST] = Seq(operand)
+  }
+
   case class JavaParenthesizedExpression(expression: JavaExpression) extends JavaExpression {
     override def getChildren(): Seq[GenericAST] = Seq(expression)
   }

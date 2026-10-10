@@ -22,6 +22,7 @@ object JavaTurtleVmPrograms {
     case Empty, Return
     case Declare(variable: R.Variable, definition: BeDefineVariable, initial: Option[X.BoundExpression])
     case Assign(variable: R.Variable, definition: BeDefineVariable, operator: R.AssignmentOperator, value: X.BoundExpression)
+    case Evaluate(value: X.BoundExpression)
     case Call(target: CallTarget, arguments: Vector[X.BoundExpression])
     case If(condition: X.BoundExpression, positive: Block, negative: Option[Block])
     case While(condition: X.BoundExpression, body: Block)
@@ -61,6 +62,7 @@ object JavaTurtleVmPrograms {
           BeChildRole.ValueForVariable(definition) -> value.expression)
       case Node.Assign(_, definition, _, value) =>
         Vector(BeChildRole.NoRole -> definition, BeChildRole.ValueInAssignment -> value.expression)
+      case Node.Evaluate(value) => Vector(BeChildRole.NoRole -> value.expression)
       case Node.Call(_, arguments) => arguments.zipWithIndex.map { (argument, index) =>
         BeChildRole.FunctionParameter(index) -> argument.expression
       }
@@ -150,6 +152,7 @@ object JavaTurtleVmPrograms {
         case R.Assign(variable, operator, value) =>
           for { definition <- bindings.definition(variable); compiled <- expression(value) }
             yield Node.Assign(variable, definition, operator, compiled)
+        case R.Evaluate(value) => expression(value).map(Node.Evaluate(_))
         case R.Call(target, arguments) =>
           val boundTarget: Result[CallTarget] = target match {
             case R.CallTarget.Helper(id) => methodBinding(bindings, id).map(CallTarget.Helper(_))
@@ -177,6 +180,7 @@ object JavaTurtleVmPrograms {
     case Node.Return => R.Return
     case Node.Declare(variable, _, initial) => R.Declare(variable, initial.map(_.resolved))
     case Node.Assign(variable, _, operator, value) => R.Assign(variable, operator, value.resolved)
+    case Node.Evaluate(value) => R.Evaluate(value.resolved)
     case Node.Call(target, arguments) =>
       val resolved = target match {
         case CallTarget.Helper(method) => R.CallTarget.Helper(method.id)

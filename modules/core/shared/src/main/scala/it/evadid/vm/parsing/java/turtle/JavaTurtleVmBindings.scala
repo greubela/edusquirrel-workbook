@@ -69,7 +69,7 @@ object JavaTurtleVmBindings {
         case R.While(_, body) => pending = body.statements.toList ::: pending
         case R.For(init, _, update, body) =>
           pending = init.statements.toList ::: body.statements.toList ::: update.statements.toList ::: pending
-        case R.Empty | R.Return | _: R.Assign | _: R.Call => ()
+        case R.Empty | R.Return | _: R.Assign | _: R.Evaluate | _: R.Call => ()
       }
     }
     variables.result()

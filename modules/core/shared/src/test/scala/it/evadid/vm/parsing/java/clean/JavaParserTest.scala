@@ -4,6 +4,8 @@ import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleInputLimits, JavaTurtleResolution, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
 import it.evadid.vm.simulation.java.JavaTurtleEvaluation as E
+import it.evadid.vm.simulation.java.JavaTurtleRuntime as T
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {
@@ -218,10 +220,7 @@ class JavaParserTest extends FunSuite {
 
   test("does not split unsupported operators into supported prefixes") {
     val sources = Seq(
-      "++i;", "--i;", "i++;", "i--;", "a+++b;", "a---b;",
-      "a << b;", "a >> b;", "a >>> b;", "a <<= b;", "a >>= b;", "a >>>= b;", "a -> b;",
-      "class Example { void run() { ++i; } }",
-      "for (int i = 0; i < 4; i++) { forward(i); }"
+      "a << b;", "a >> b;", "a >>> b;", "a <<= b;", "a >>= b;", "a >>>= b;", "a -> b;"
     )
     for source <- sources do
       val parsed = JavaParser.parse(source)
@@ -405,7 +404,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("turtle source rejects unsupported statements nested inside methods") {
-    for body <- Seq("++sideLength;", "Turtle.forward(sideLength << 1);") do {
+    for body <- Seq("sideLength <<= 1;", "Turtle.forward(sideLength << 1);") do {
       val source = turtleSource(body)
       val problem = sourceProblem(source)
       assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedSyntax)
@@ -493,7 +492,7 @@ class JavaParserTest extends FunSuite {
     assert(JavaTurtleSource.parse("Turtle.forward(" + "1 + " * 30 + "1);").isRight)
     assert(JavaTurtleSource.parse("a" + ".a" * 62 + " = 1;").isRight)
     assertEquals(sourceProblem("a" + ".a" * 63 + " = 1;").problem, JavaTurtleSource.Problem.InputLimit)
-    assertEquals(sourceProblem("++value;").problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+    assert(JavaTurtleSource.parse("++value;").isRight)
   }
 
   test("turtle input bounds token count independently of syntax node count") {
@@ -1309,6 +1308,97 @@ class JavaParserTest extends FunSuite {
     assertEquals(declarations.size, 2)
     assertEquals(declarations.head.value.get.asInstanceOf[JavaOperationBinary].op, "&&")
     assertEquals(declarations(1).value.get.asInstanceOf[JavaOperationBinary].op, "+")
+  }
+
+  test("parses prefix and postfix updates without losing operator order or targets") {
+    val i = JavaTarget("i")
+    for (source, operator, prefix) <- Seq(
+      ("++i;", "++", true), ("--i;", "--", true), ("i++;", "++", false), ("i--;", "--", false)
+    ) do {
+      val update = JavaUpdateExpression(i, operator, prefix)
+      assertEquals(statement(source), update)
+      assertEquals(update.getChildren(), Seq(i))
+    }
+    assertEquals(statement("a+++b;"), JavaOperationBinary(JavaUpdateExpression(JavaTarget("a"), "++", false), "+", JavaTarget("b")))
+    assertEquals(statement("a---b;"), JavaOperationBinary(JavaUpdateExpression(JavaTarget("a"), "--", false), "-", JavaTarget("b")))
+    assertEquals(statement("-i++;"), JavaOperationUnary("-", JavaUpdateExpression(i, "++", false)))
+    assertEquals(statement("++/* before */i;"), JavaUpdateExpression(i, "++", true))
+    assertEquals(statement("i/* after */++;"), JavaUpdateExpression(i, "++", false))
+    val loop = statement("for (i++, --i; i < 3; i++, --i) {}").asInstanceOf[JavaForStatement]
+    assertEquals(loop.init, Seq(JavaUpdateExpression(i, "++", false), JavaUpdateExpression(i, "--", true)))
+    assertEquals(loop.update, Seq(JavaUpdateExpression(i, "++", false), JavaUpdateExpression(i, "--", true)))
+  }
+
+  test("turtle semantics permits only initialized numeric local update targets") {
+    checkedSource(semanticSource(
+      "int n = 0; ++n; n--; (n)++; double value = 0.5; value++; " +
+        "for (n++; n < 3; ++n) { Turtle.forward(n); } Turtle.forward(++distance + value--);"
+    ))
+    for (body, expected) <- Seq(
+      "int n; n++;" -> JavaTurtleSource.Problem.UninitializedVariable,
+      "int n; ++n;" -> JavaTurtleSource.Problem.UninitializedVariable,
+      "flag++;" -> JavaTurtleSource.Problem.TypeMismatch,
+      "++flag;" -> JavaTurtleSource.Problem.TypeMismatch,
+      "unknown++;" -> JavaTurtleSource.Problem.UnknownVariable,
+      "int n = 0; (n + 1)++;" -> JavaTurtleSource.Problem.UnsupportedSyntax,
+      "int n = 0; ++(n++);" -> JavaTurtleSource.Problem.UnsupportedSyntax,
+      "int n = 0; n++++;" -> JavaTurtleSource.Problem.UnsupportedSyntax,
+      "int n = 0; n.field++;" -> JavaTurtleSource.Problem.UnsupportedSyntax,
+      "int n = 0; n[0]++;" -> JavaTurtleSource.Problem.UnsupportedSyntax,
+      "Turtle.forward(1)++;" -> JavaTurtleSource.Problem.UnsupportedSyntax,
+      "++1;" -> JavaTurtleSource.Problem.UnsupportedSyntax
+    ) do assertEquals(semanticProblem(semanticSource(body)).problem, expected, clue = body)
+    assertEquals(semanticProblem(turtleClass("public static void main(String[] args) { args++; }")).problem,
+      JavaTurtleSource.Problem.UnsupportedType)
+  }
+
+  test("turtle updates preserve old and new values evaluation order short circuit and overflow") {
+    val source = turtleClass(
+      "static void pair(int a, int b) { Turtle.forward(a); Turtle.forward(b); } " +
+        "public static void main(String[] args) { " +
+        "int i = 1; Turtle.forward(i++); Turtle.forward(++i); Turtle.forward(i--); Turtle.forward(--i); Turtle.forward(i); " +
+        "pair(i++, ++i); Turtle.forward(i); Turtle.forward(i++ + i++ * ++i); Turtle.forward(i); " +
+        "i += i++; Turtle.forward(i); i = i++; Turtle.forward(i); " +
+        "double d = 0.5; Turtle.forward(d++ + ++d); Turtle.forward(d--); Turtle.forward(--d); Turtle.forward(d); " +
+        "int max = 2147483647; Turtle.forward(max++); Turtle.forward(max); Turtle.forward(--max); " +
+        "int min = -2147483648; Turtle.forward(min--); Turtle.forward(min); Turtle.forward(++min); " +
+        "boolean skipped = false && i++ > 0; skipped = true || ++i > 0; Turtle.forward(i); " +
+        "for (int n = 0; n < 3; n++) { Turtle.forward(n); } " +
+        "for (i = 0; i < 2; ++i) { Turtle.forward(i); } " +
+        "i = 0; while (i++ < 2) { Turtle.forward(i); } Turtle.forward(i); " +
+        "for (i--; i > 0; --i) { Turtle.forward(i); } Turtle.forward(i); }"
+    )
+    val resolved = resolvedSource(source)
+    val program = P.adapt(resolved).fold(problem => fail(problem.message), identity)
+    val execution = T.runVm(program)
+    assertEquals(execution.status, T.Status.Completed)
+    assertEquals(execution, T.run(resolved))
+    val expected = Vector(1.0, 3.0, 3.0, 1.0, 1.0, 1.0, 3.0, 3.0, 27.0, 6.0, 12.0, 12.0,
+      3.0, 2.5, 0.5, 0.5, Int.MaxValue.toDouble, Int.MinValue.toDouble, Int.MaxValue.toDouble,
+      Int.MinValue.toDouble, Int.MaxValue.toDouble, Int.MinValue.toDouble, 12.0,
+      0.0, 1.0, 2.0, 0.0, 1.0, 1.0, 2.0, 3.0, 2.0, 1.0, 0.0)
+    assertEquals(execution.commands.map(_.value), expected)
+  }
+
+  test("mutating Java expression adapters preserve binding identity and failures after updates") {
+    import JavaTurtleResolution.*
+    val source = resolvedSource(turtleClass("public static void main(String[] args) { int n = 2; Turtle.forward(n++ + ++n); }"))
+    val program = P.adapt(source).fold(problem => fail(problem.message), identity)
+    val n = resolvedMethod(source, "main").body.statements.head.asInstanceOf[Declare].variable
+    val definition = program.bindings.definition(n).fold(problem => fail(problem.message), identity)
+    val expression = program.root.entryPoint.body.statements(1).node.asInstanceOf[P.Node.Call].arguments.head
+    assert(expression.expression.staticInformationExpression.hasSideEffects)
+    var current: E.Value = E.Value.IntValue(2)
+    val read: X.Reader = actual => { assert(actual eq definition); Right(current) }
+    val write: X.Writer = (actual, value) => { assert(actual eq definition); current = value; Right(()) }
+    assertEquals(X.evaluateMutating(expression, read, write), Right(E.Value.IntValue(6)))
+    assertEquals(current, E.Value.IntValue(4))
+    val failed = Binary(BinaryOperator.Divide, Update(n, UpdateOperator.Increment, prefix = false), IntLiteral(0))
+    assertEquals(E.evaluateMutating(failed, _ => Right(current), (_, value) => { current = value; Right(()) }),
+      Left(E.Failure.DivisionByZero))
+    assertEquals(current, E.Value.IntValue(5))
+    assertEquals(E.evaluate(Update(n, UpdateOperator.Increment, prefix = true), _ => Right(current)), Left(E.Failure.TypeMismatch))
+    assertEquals(current, E.Value.IntValue(5))
   }
 
 }
