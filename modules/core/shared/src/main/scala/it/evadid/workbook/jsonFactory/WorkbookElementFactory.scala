@@ -141,7 +141,12 @@ object WorkbookElementFactory {
   }
 
 
+  import it.evadid.workbook.elements.displayElements.TwoColumnPanel
+  import it.evadid.workbook.elements.structureElements.ExerciseGroup
+
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
+    classOf[TwoColumnPanel].getSimpleName -> TwoColumnPanel.factory,
+    classOf[ExerciseGroup].getSimpleName -> ExerciseGroup.factory,
     classOf[CompressionExperimentInteraction].getSimpleName -> CompressionExperimentInteraction.factory,
     classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
     classOf[MailInteraction].getSimpleName -> MailInteraction.factory,

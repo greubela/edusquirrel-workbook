@@ -33,8 +33,8 @@ import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInt
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
-import it.evadid.workbook.elements.interactionElements.slideshow.{PanelTwoColumnImage, Slideshow}
-import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook}
+import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
+import it.evadid.workbook.elements.structureElements.{ExerciseContainer, ExerciseGroup, Workbook}
 import org.scalajs.dom.HTMLDivElement
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
@@ -122,6 +122,8 @@ object HtmlRenderFactory {
 
   def renderWorkbookElement[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = {
     anyElement match {
+      case p: TwoColumnPanel => HtmlTwoColumnPanelRenderer.renderWorkbookElement(p)
+      case g: ExerciseGroup => HtmlExerciseGroupRenderer.renderWorkbookElement(g)
       case c: DisplayLangMapContent => HtmlDisplayLangMapContentRenderer.renderWorkbookElement(c)
       case b: LabeledWorkbookElement[?] => HtmlLabeledWorkbookElementRenderer(b).renderWorkbookElement(b)
       case c: CollapsibleInstructionElement => HtmlCollapsibleInstructionRenderer.renderWorkbookElement(c)

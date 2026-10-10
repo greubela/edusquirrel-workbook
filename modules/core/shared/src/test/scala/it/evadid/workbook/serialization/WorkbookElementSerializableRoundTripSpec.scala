@@ -83,6 +83,8 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       workbook, section,
       ExerciseContainer("container", content("container/title"), List(input)),
       LabeledWorkbookElement("labeled", input, WorkbookLabel(content("label/hint"), HintLabel)),
+      it.evadid.workbook.elements.displayElements.TwoColumnPanel("columns", image, input),
+      it.evadid.workbook.elements.structureElements.ExerciseGroup("group", List(image, input)),
       image, Slideshow("slideshow", List(image)),
       GptInteractionElement("gpt", input, content("exercise/text"), List(content("hint/text")), List(content("criterion/text"))),
       TurtleStitchExploreProjectElement("turtle-explore", special),
