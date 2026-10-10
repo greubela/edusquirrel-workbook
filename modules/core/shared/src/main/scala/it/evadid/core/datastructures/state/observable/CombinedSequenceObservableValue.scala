@@ -9,12 +9,12 @@ case class CombinedSequenceObservableValue[A](observables: List[ObservableValue[
 
   private var lastValues: List[Option[Try[A]]] = observables.map(_ => None)
 
-  private val outObs: ObservableValueImpl[List[A]] = ObservableValueImpl[List[A]](None)
+  private val outObs: ObservableValueImpl[List[A]] = ObservableValueImpl[List[A]](if (observables.isEmpty) Some(Nil) else None)
 
   private[state] def onUpdatedAtIndex(index: Int, newValue: Try[A]): Unit = syncLock.synchronized {
-    if (index >= 0 || index < lastValues.size) {
-      lastValues = lastValues.updated(index, Some(newValue))
-    }
+    if (index < 0 || index >= lastValues.size) throw new IndexOutOfBoundsException(s"Observable index $index outside ${lastValues.size} inputs")
+    lastValues = lastValues.updated(index, Some(newValue))
+    onValueChanged()
   }
 
   private[state] def onValueChanged(): Unit = syncLock.synchronized {
