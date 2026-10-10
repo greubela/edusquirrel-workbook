@@ -3,13 +3,13 @@ package it.evadid.workbook.elements.interactionElements.programming.programmingE
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
-import it.evadid.workbook.abstractions.grading.{GradingGrade, GradingResult}
+import it.evadid.workbook.abstractions.grading.{GradingStatus, GradingResult}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
 case class RecreateShapeGradingResult
 (
   override val gradedState: ProgrammingState,
-  override val gradingGrade: GradingGrade,
+  override val gradingStatus: GradingStatus,
   override val feedbackInformation: Option[LanguageMap[AppLanguage.HumanLanguage]]
 
 

@@ -13,7 +13,7 @@ trait GradingResult[T] {
 
   val gradedState: T
   val gradingEntity: FeedbackEntity
-  val gradingGrade: GradingGrade
+  val gradingStatus: GradingStatus
   val feedbackInformation: Option[LanguageMap[HumanLanguage]]
 
 }

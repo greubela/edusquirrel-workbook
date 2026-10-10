@@ -8,4 +8,6 @@ trait WorkbookInteractionGrader[T, G <: GradingResult[T]] {
 
   def importance: GradingImportance
 
+  def runningBehavior: GraderRunningBehavior
+
 }

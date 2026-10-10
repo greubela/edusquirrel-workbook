@@ -3,8 +3,8 @@ package it.evadid.workbook.elements.interactionElements.slideshow
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
-import it.evadid.workbook.abstractions.grading.GradingGrade.*
-import it.evadid.workbook.abstractions.grading.{GradingGrade, GradingResult}
+import it.evadid.workbook.abstractions.grading.GradingStatus.*
+import it.evadid.workbook.abstractions.grading.{GradingStatus, GradingResult}
 import upickle.default.*
 
 case class SlideshowGradingResult(
@@ -12,9 +12,9 @@ case class SlideshowGradingResult(
                                  ) extends GradingResult[SlideshowState] derives ReadWriter {
 
   override val gradingEntity: FeedbackEntity = TestEntity()
-  override val gradingGrade: GradingGrade = if (gradedState.unseenPanels.isEmpty) GradingGrade.CORRECT else GradingGrade.PARTIALLY_CORRECT
+  override val gradingStatus: GradingStatus = if (gradedState.unseenPanels.isEmpty) GradingStatus.CORRECT else GradingStatus.PARTIALLY_CORRECT
 
-  override val feedbackInformation: Option[LanguageMap[AppLanguage.HumanLanguage]] = Some(gradingGrade.match {
+  override val feedbackInformation: Option[LanguageMap[AppLanguage.HumanLanguage]] = Some(gradingStatus.match {
     case CORRECT => LanguageMap.universalMap("All done!")
     case _ => LanguageMap.universalMap(s"Missing ${gradedState.unseenPanels} Panels!")
   })
