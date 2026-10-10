@@ -33,8 +33,8 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   // BODY
 
   private lazy val workbookBodyDomSignal: Signal[Element] = {
-    val workbookSignal = fullInfo.signals.workbook
-    val userSignal = fullInfo.signals.user
+    val workbookSignal = fullInfo.signals.workbook.distinct
+    val userSignal = fullInfo.signals.user.distinct
     val watchSignal = workbookSignal.combineWith(userSignal)
 
     watchSignal.map {

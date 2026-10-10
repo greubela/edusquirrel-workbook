@@ -39,7 +39,8 @@ object SnapControlFlow {
     "reportVariadicSum",
     "reportDifference",
     "reportVariadicProduct",
-    "reportQuotient"
+    "reportQuotient",
+    "reportModulus"
   )
 
   final class VariableInterner {
@@ -69,7 +70,7 @@ object SnapControlFlow {
 
   private val SupportedOperators: Set[String] = Set(
     "<", ">", "==", "and", "or", "not",
-    "+", "-", "*", "/",
+    "+", "-", "*", "/", "%",
     "<=", ">=", "!="
   )
 
@@ -91,7 +92,8 @@ object SnapControlFlow {
     "+" -> SnapReporter("reportVariadicSum", SnapReporterKind.Variadic),
     "-" -> SnapReporter("reportDifference", SnapReporterKind.Binary),
     "*" -> SnapReporter("reportVariadicProduct", SnapReporterKind.Variadic),
-    "/" -> SnapReporter("reportQuotient", SnapReporterKind.Binary)
+    "/" -> SnapReporter("reportQuotient", SnapReporterKind.Binary),
+    "%" -> SnapReporter("reportModulus", SnapReporterKind.Binary)
   )
 
   private val SnapReporterToOperator: Map[String, String] =
@@ -255,7 +257,7 @@ object SnapControlFlow {
         call.funcDef.functionTypeInfo.funcType match
           case BeDefineFunction.Operator(_) =>
             val op = operatorSymbol(call)
-            Set("+", "-", "*", "/", "<", ">", "==", "<=", ">=", "!=", "and", "or", "not").contains(op) &&
+            SupportedOperators.contains(op) &&
               orderedArgs(call).forall(isSupportedValue)
           case _ =>
             false
