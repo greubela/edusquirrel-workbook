@@ -16,7 +16,7 @@ object MailCommands {
 
   case class SendMailResponse(associatedUser: Option[User], sent: Boolean) derives ReadWriter
 
-  val sendMailCommand: ExecutionCommandFactory[SendMailRequest, SendMailResponse] = ExecutionCommandFactory(
+  lazy val sendMailCommand: ExecutionCommandFactory[SendMailRequest, SendMailResponse] = ExecutionCommandFactory(
     "send-mail-request"
   )
 

@@ -38,7 +38,7 @@ class DefaultValueCodecsSpec extends FunSuite {
     val sync = usage.toSyncContext("variable")
     roundTrip(usage)
     roundTrip(sync)
-    val history = it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized.empty
+    val history = write(it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[Int, Int, Int])
     roundTrip(SyncCache(java.time.LocalDateTime.of(2025, 1, 1, 12, 0), usage, Map(sync -> history)))
   }
   test("registry descriptors have a default codec") {
@@ -61,7 +61,7 @@ class DefaultValueCodecsSpec extends FunSuite {
     import it.evadid.core.datastructures.chat.*
     SenderRole.allRoles.foreach(roundTrip(_))
     val basic = ChatParticipant.BasicPerson("Ada", "id", SenderRole.USER, Some("AD"))
-    val serializable = ChatParticipant.SerializablePerson("Agent", "agent", SenderRole.AGENT, "AI")
+    val serializable = ChatParticipant.BasicPerson("Agent", "agent", SenderRole.AGENT, Some("AI"))
     roundTrip(basic)
     roundTrip(serializable)
     assertEquals(basic.toSerializable.abbreviation, basic.abbreviation)

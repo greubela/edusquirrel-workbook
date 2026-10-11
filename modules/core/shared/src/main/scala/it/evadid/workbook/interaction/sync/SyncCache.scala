@@ -9,7 +9,7 @@ import it.evadid.workbook.interaction.variable.InteractionVariableHistory.Intera
 
 import java.time.LocalDateTime
 
-case class SyncCache(createdAt: LocalDateTime, createdForContext: UsageContext, contextMaps: Map[SyncContext, InteractionVariableHistoryUntyped])  {
+case class SyncCache(createdAt: LocalDateTime, createdForContext: UsageContext, contextMaps: Map[SyncContext, String]) derives ReadWriter {
 /*
   def typedHistory[T](key: String, serializer: Serializer[T]): SyncFetchedHistory[T] = {
     typedHistory(createdForContext.toSyncContext(key), serializer)

@@ -27,6 +27,6 @@ object ChatParticipant {
   case class BasicPerson(name: String, personId: String, role: SenderRole, abbreviation: Option[String]) extends ChatParticipant derives ReadWriter {
   }
 
-  def apply(name: String, personId: String, role: SenderRole, abbreviation: Option[String] = None): ChatParticipant = BasicPerson(name, personId, role, abbreviation.map(_.strip()))
+  def apply(name: String, personId: String, role: SenderRole, abbreviation: Option[String] = None): ChatParticipant = BasicPerson(name, personId, role, abbreviation.flatMap(value => Option(value).map(_.strip()).filter(_.nonEmpty)))
 
 }

@@ -1,9 +1,15 @@
 package it.evadid.core.serialization
 
+import it.evadid.workbook.interaction.sync.model.*
 import munit.FunSuite
 import upickle.default.*
 
 class AdditionalDefaultCodecsSpec extends FunSuite {
+  private def DataEntryReadFromServer[K, D](key: K, value: D, time: java.time.LocalDateTime): DataEntryToSync[K, D] =
+    DataEntryToSync(key, value, time, SyncDirection.SERVER_TO_CLIENT)
+  private def DataEntryToWriteToServer[K, D](key: K, value: D, time: java.time.LocalDateTime): DataEntryToSync[K, D] =
+    DataEntryToSync(key, value, time, SyncDirection.CLIENT_TO_SERVER)
+
   // A data-only destination identity. Reader/writer behavior is reconstructed, never serialized.
   private case class ReadOnlyDestination(name: String)
       extends it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey[String, Int] derives ReadWriter {
@@ -140,11 +146,12 @@ class AdditionalDefaultCodecsSpec extends FunSuite {
   }
   test("fetched workbook histories and response records have default codecs") {
     import it.evadid.workbook.interaction.sync.*
-    import it.evadid.workbook.interaction.sync.SyncInformation.*
     import it.evadid.workbook.interaction.variable.*
     val time = java.time.LocalDateTime.of(2025, 1, 1, 0, 0)
-    restore(SyncFetchedHistory(InteractionVariableHistory.empty[Int], time, InteractionVariableHistorySerialized.empty))
-    restore(InteractionVariableFetchResponse(time, Set.empty))
+    val context = UsageContext("program", "scenario", "user").toSyncContext("answer")
+    val history = InteractionVariableHistory.empty[Int, Int, Int]
+    restore(FetchResponse(time, Set(DataEntryReadFromServer(context, history, time))))
+    restore(FetchResponse[SyncContext, String](time, Set.empty))
   }
   test("cache reports derive a codec when the concrete destination identity has one") {
     import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheCollectionReport

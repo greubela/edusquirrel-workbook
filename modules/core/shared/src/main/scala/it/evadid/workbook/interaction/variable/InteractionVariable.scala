@@ -74,6 +74,24 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     innerState.now()
   }
 
+  def serializeHistory(value: InteractionVariableHistory[T, GA, SA]): String = write(value)
+
+  def deserializeHistory(json: String): InteractionVariableHistory[T, GA, SA] = {
+    val payload = it.evadid.workbook.interaction.sync.model.HistoryJson.payload(json)
+    require(payload.obj.contains("events") || payload.obj.contains("states"), "Missing history events")
+    val typed = if (payload.obj.contains("events")) read[InteractionVariableHistory[T, GA, SA]](payload)
+      else InteractionVariableHistory.empty[T, GA, SA]
+    val legacyEvents = payload.obj.get("states").toList.flatMap(_.arr).map { state =>
+      InteractionVariableState[T](
+        scala.util.Try(read[T](ujson.Str(state("serializedValue").str)))
+          .getOrElse(underlyingInteraction.serializerInteractionContent.deserialize(state("serializedValue").str)),
+        UpdateImportance.valueOf(state("updateImportance").str),
+        LocalDateTime.parse(state("timestamp").str)
+      )
+    }.toSet
+    typed.copy(events = typed.events ++ legacyEvents)
+  }
+
   /*def serializedHistory: InteractionVariableHistorySerialized = this.synchronized {
     innerState.now().serialized(underlyingInteraction.serializerInteractionContent)
   }*/
@@ -88,8 +106,10 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
 
   def withAddedEvents(logger: Logger, serializedHistory: String): Unit = {
     try {
-      val res: InteractionVariableHistory[T, GA, SA] = read[InteractionVariableHistory[T, GA, SA]](serializedHistory)
-      innerState.update(_.withAddedEvents(res.events))
+      val res = deserializeHistory(serializedHistory)
+      innerState.update(current => current.withAddedEvents(res.events).copy(
+        gradings = current.gradings ++ res.gradings, scaffoldings = current.scaffoldings ++ res.scaffoldings
+      ))
     } catch case (err: Throwable) => {
       logger.logExceptionWarn(s"InteractionVariableHistory -> withAddedEvents: cannot parse serializedHistory, ignoring content'${serializedHistory}'", err)
       this

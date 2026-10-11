@@ -50,7 +50,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
     val requestFuture = systemPromptFuture.map { systemPrompt => MessengerChatCompletionRequest(systemPrompt.getWithLanguagePreference(langPreferences), messageState) }(using ExecutionContext.global)
     LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.defaults.backendExecutor, requestFuture, None).onComplete {
-      case Success(result) => mmState.update(_.addMessage(result.resultTyped.result))
+      case Success(result) => mmState.update(_.addMessage(result.result))
       case Failure(err) => sendError(err, mmState)
     }(using ExecutionContext.global)
 
@@ -81,7 +81,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
     val elements: mutable.ListBuffer[Element] = mutable.ListBuffer()
 
-    val interactionVariable: InteractionVariable[MessengerModelScaffolding] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
+    val interactionVariable: InteractionVariable[MessengerModelScaffolding, Any, Any] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
     if (workbookElement.scaffoldingInteractionOp.nonEmpty) {
       val boundState = interactionVariable
         .createBoundStateWithUpdateImportance(fullInfo.syncControl, MAJOR)

@@ -40,7 +40,7 @@ object PythonType {
 
   // case object PYTHON_COMPLEX extends PythonType("complex") with Numeric
 
-  sealed class PYTHON_STRING extends PythonTypeImpl[String]("str", Serializer.fromImplicitRW[String], Serializer.fromImplicitRW[String])
+  sealed class PYTHON_STRING extends PythonTypeImpl[String]("str", Serializer.stringLiteralIO(), Serializer.stringLiteralIO())
 
   sealed class PYTHON_BOOL extends PythonTypeImpl[Boolean]("bool", Serializer.pythonBooleanIO, Serializer.fromImplicitRW[Boolean])
 

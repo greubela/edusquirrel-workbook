@@ -21,11 +21,11 @@ trait SyncDestinationHistory extends SyncDestination {
 
   def isLocal: Boolean
 
-  def fetchAll(logger: SyncLogger, context: UsageContext): Future[FetchResponse[SyncContext, InteractionVariableHistoryUntyped]]
+  def fetchAll(logger: SyncLogger, context: UsageContext): Future[FetchResponse[SyncContext, String]]
 
-  def storeTo[T, GA, SA](logger: SyncLogger, context: SyncContext, request: InteractionVariableHistory[T, GA, SA]): Future[SyncSuccess]
+  def storeTo(logger: SyncLogger, context: SyncContext, historyJson: String): Future[SyncSuccess]
 
-  def fetchFrom(logger: SyncLogger, context: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, InteractionVariableHistoryUntyped]] = fetchAll(logger, context.toUsageContext)
+  def fetchFrom(logger: SyncLogger, context: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = fetchAll(logger, context.toUsageContext)
 
   def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess]
 

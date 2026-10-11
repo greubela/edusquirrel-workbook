@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.exercise
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import TurtleProgrammingInteraction.given
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -71,4 +73,11 @@ case class TurtleProgrammingInteraction(fullInfo: FullInfo, elementId: String, e
     )
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+}
+
+object TurtleProgrammingInteraction {
+  given upickle.default.ReadWriter[BeProgram] = upickle.default.readwriter[String].bimap(
+    _.fullProgram.structureInfo.toStringInLanguage(AppLanguage.Python, AppLanguage.English, false),
+    BeProgram.fromPythonString
+  )
 }

@@ -234,6 +234,24 @@ object Serializer {
   val intHexIO: Serializer[BigInt] = integerBaseIO(16, "0x", Map("Ox" -> 8))
   val intOctalIO: Serializer[BigInt] = integerBaseIO(8, "0o", Map("O" -> 8))
 
+  /** Source-code string literals accept both quote styles; this is not a JSON codec. */
+  def stringLiteralIO(parseEverything: Boolean = false): Serializer[String] = new Serializer[String] {
+    override def serialize(value: String): String =
+      if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'")) || parseEverything) value
+      else s"\"$value\""
+
+    override def deserialize(value: String): String = {
+      val trimmed = value.trim
+      if (trimmed.startsWith("\"\"\"") && trimmed.endsWith("\"\"\"") && trimmed.length >= 6)
+        trimmed.substring(3, trimmed.length - 3)
+      else if (((trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))) && trimmed.length >= 2)
+        trimmed.substring(1, trimmed.length - 1)
+      else if (parseEverything) trimmed
+      else throw new IllegalArgumentException("Expected a quoted string literal")
+    }
+  }
+
   def integerBaseIO(base: Int, prefix: String = "", legacyPrefixes: Map[String, Int] = Map.empty): Serializer[BigInt] = new Serializer[BigInt] {
     override def serialize(obj: BigInt): String =
       (if (obj < 0) "-" else "") + prefix + obj.abs.toString(base)

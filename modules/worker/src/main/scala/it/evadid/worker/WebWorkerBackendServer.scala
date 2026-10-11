@@ -10,6 +10,11 @@ import java.time.LocalDateTime
 import scala.util.*
 
 object WebWorkerBackendServer {
+  given mapRW: ReadWriter[Map[String, String]] =
+    readwriter[ujson.Value].bimap[Map[String, String]](
+      values => ujson.Obj.from(values.view.mapValues(ujson.Str(_))),
+      json => json.obj.iterator.map { case (key, value) => key -> value.str }.toMap
+    )
 
 
 /*

@@ -21,7 +21,8 @@ sealed trait WorkbookElement {
   lazy val asRef = WorkbookElementReference(elementId, Option(this.getClass.getSimpleName))
 
   lazy val childrenOfThisElement: List[WorkbookElement]
-  lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped]
+  lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] =
+    childrenOfThisElement.flatMap(_.allInteractionsInThisInstance)
 
   lazy val allChildrenFullSubtree: List[WorkbookElement] = childrenOfThisElement ++ childrenOfThisElement.flatMap(_.allChildrenFullSubtree)
 
@@ -36,7 +37,6 @@ sealed trait WorkbookElement {
 
 trait WorkbookDisplayElement extends WorkbookElement {
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] = List()
 }
 
 trait WorkbookStructureElement[T <: WorkbookElement] extends WorkbookElement {
@@ -45,12 +45,12 @@ trait WorkbookStructureElement[T <: WorkbookElement] extends WorkbookElement {
 
   def groupElements: List[T]
 
-  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] = List()
 }
 
 trait WorkbookInteractionElementFull[T: ReadWriter, GA: ReadWriter, SA: ReadWriter] extends WorkbookElement {
 
-  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] = List(this)
+  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] =
+    List(this) ++ childrenOfThisElement.flatMap(_.allInteractionsInThisInstance)
   lazy val isDisabledState: State[Boolean] = State(false)
   // needs to be lazy or defaultValue (from subclass) might not be inited!
   lazy val interactionVariable: InteractionVariable[T, GA, SA] = InteractionVariable[T, GA, SA](this)

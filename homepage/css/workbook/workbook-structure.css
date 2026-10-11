@@ -1205,3 +1205,13 @@ textarea.workbook-interaction {
     color: var(--color-text-primary);
     font-size: 0.92rem;
 }
+
+.workbook-exercise-group {
+    display: grid;
+    gap: var(--space-lg);
+}
+
+.workbook-exercise-group > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}

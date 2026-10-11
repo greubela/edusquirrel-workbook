@@ -11,7 +11,6 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.elements.structureElements.Workbook
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory.InteractionVariableHistoryUntyped
-import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import upickle.default.ReadWriter.join
 
@@ -37,9 +36,9 @@ case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDi
   def downloadAllData(): Unit = {
     logger.logInfo("WorkbookUserDataAnalyzer: now downloading all session data!")
     val allInteractions: List[WorkbookInteractionUntyped] = workbookInfo.loadedWorkbook.allInteractionsInThisInstance
-    val history: Map[String, InteractionVariableHistoryUntyped] = allInteractions.map(interaction => interaction.interactionVariable.keyForSerialization -> interaction.interactionVariable.history).toMap
+    val history: Map[String, String] = allInteractions.map(interaction => interaction.interactionVariable.keyForSerialization -> interaction.interactionVariable.serializeHistory(interaction.interactionVariable.history)).toMap
     val data = SessionData(userInfo, history, workbookInfo.loadedWorkbook, System.currentTimeMillis())
-    val str = upickle.default.write(data)
+    val str = serializerSessionData.serialize(data)
     val name = s"${data.currentUserInfo}-${data.workbook.workbookId}-${data.epochTimestampMillis}.json"
     downloadToDisc.downloadFile(name, str)
   }
@@ -48,8 +47,8 @@ case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDi
     logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
     if (sessionData.currentUserInfo.user.id == userInfo.user.id) {
       workbookInfo.loadedWorkbook.allInteractionsInThisInstance.foreach(curInteraction => {
-        sessionData.interactionHistory.foreach(historyTup => if (historyTup._1 == curInteraction.interactionVariable.keyForSerialization) {
-          curInteraction.interactionVariable.updateHistory(_.withAddedEvents(historyTup._2, curInteraction.serializerInteractionContent))
+        sessionData.interactionHistorySerialized.foreach(historyTup => if (historyTup._1 == curInteraction.interactionVariable.keyForSerialization) {
+          curInteraction.interactionVariable.withAddedEvents(logger, historyTup._2)
         })
       })
     }

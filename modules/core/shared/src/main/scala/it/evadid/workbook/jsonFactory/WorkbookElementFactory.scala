@@ -17,7 +17,7 @@ import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.*
-import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structureElements.{ExerciseContainer, ExerciseGroup, Workbook, WorkbookSection}
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailEditor, MailInteraction}
 import upickle.default
 import upickle.default.*
@@ -142,6 +142,7 @@ object WorkbookElementFactory {
 
 
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
+    classOf[ExerciseGroup].getSimpleName -> ExerciseGroup.factory,
     classOf[CompressionExperimentInteraction].getSimpleName -> CompressionExperimentInteraction.factory,
     classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
     classOf[MailInteraction].getSimpleName -> MailInteraction.factory,

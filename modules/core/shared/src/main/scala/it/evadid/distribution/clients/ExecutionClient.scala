@@ -17,6 +17,10 @@ trait ExecutionClient {
 
   private[clients] def handleCommandExecution(logger: Logger, executionCommand: ExecutionCommand): Future[ExecutionClientResponse]
 
+  /** Serialized response for transport servers, without requiring the result type. */
+  final def executeResponse(logger: Logger, command: ExecutionCommand): Future[ExecutionClientResponse] =
+    handleCommandExecution(logger, command)
+
   protected def defaultLogger: Logger = Logger.withNameAndPrefixes(Some(this.toString), PrintToStdLogger.printWarnAndError)
 
   def handleCommand[T: ReadWriter](logger: Logger, executionCommand: ExecutionCommand): Future[ExecutionInfo[T]] = {

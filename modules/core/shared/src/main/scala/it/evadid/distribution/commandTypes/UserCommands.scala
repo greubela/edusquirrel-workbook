@@ -23,7 +23,7 @@ object UserCommands {
     }.toOption
   }
 
-  val loginCommand: ExecutionCommandFactory[LoginRequest, LoginResponse] = ExecutionCommandFactory(
+  lazy val loginCommand: ExecutionCommandFactory[LoginRequest, LoginResponse] = ExecutionCommandFactory(
     "login-command"
   )
 
@@ -31,7 +31,7 @@ object UserCommands {
 
   case class UpdateAccountResponse(accountChanged: Boolean, token: SignedToken) derives ReadWriter
 
-  val updateAccountCommand: ExecutionCommandFactory[UpdateAccountRequest, UpdateAccountResponse] = ExecutionCommandFactory(
+  lazy val updateAccountCommand: ExecutionCommandFactory[UpdateAccountRequest, UpdateAccountResponse] = ExecutionCommandFactory(
     "create-account"
   )
 
@@ -39,7 +39,7 @@ object UserCommands {
 
   case class CreateAccountResponse(accountCreated: Boolean, token: Option[SignedToken]) derives ReadWriter
 
-  val createAccountCommand: ExecutionCommandFactory[CreateAccountRequest, CreateAccountResponse] = ExecutionCommandFactory(
+  lazy val createAccountCommand: ExecutionCommandFactory[CreateAccountRequest, CreateAccountResponse] = ExecutionCommandFactory(
     "create-account"
   )
 
@@ -47,7 +47,7 @@ object UserCommands {
                               userMail: String
                             ) derives ReadWriter
 
-  val authMailCommand: ExecutionCommandFactory[AuthMailRequest, SendMailResponse] = ExecutionCommandFactory(
+  lazy val authMailCommand: ExecutionCommandFactory[AuthMailRequest, SendMailResponse] = ExecutionCommandFactory(
     "auth-mail-request"
   )
 

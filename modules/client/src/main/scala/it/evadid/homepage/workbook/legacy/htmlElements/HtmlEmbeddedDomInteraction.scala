@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.legacy.htmlElements
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import com.raquo.laminar.api.L.Element
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
@@ -11,6 +12,6 @@ case class HtmlEmbeddedDomInteraction(override val elementId: String, domElement
   // faithful data representation; replace this legacy wrapper with declarative workbook elements.
   override val associatedFactory = WorkbookElementFactory.unsupportedFactory[HtmlEmbeddedDomInteraction](getClass.getSimpleName)
   override val defaultValue: String = ""
-  override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
+  override val serializerInteractionContent: Serializer[String] = Serializer.fromImplicitRW[String]
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 }

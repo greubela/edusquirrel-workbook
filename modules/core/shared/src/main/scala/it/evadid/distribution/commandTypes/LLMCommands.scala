@@ -15,13 +15,13 @@ object LLMCommands {
 
   }
 
-  val completeLLMCommandFactory: ExecutionCommandFactory[MessengerChatCompletionRequest, Message] = ExecutionCommandFactory[MessengerChatCompletionRequest, Message](
+  lazy val completeLLMCommandFactory: ExecutionCommandFactory[MessengerChatCompletionRequest, Message] = ExecutionCommandFactory[MessengerChatCompletionRequest, Message](
     "complete-llm-request"
   )
 
   case class FeedbackLlmRequest(prompt: String, systemPrompt: String) derives ReadWriter
 
-  val feedbackLlmCommandFactory: ExecutionCommandFactory[FeedbackLlmRequest, String] =
+  lazy val feedbackLlmCommandFactory: ExecutionCommandFactory[FeedbackLlmRequest, String] =
     ExecutionCommandFactory[FeedbackLlmRequest, String](
       "feedback-llm-request"
     )

@@ -25,9 +25,11 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      # Scala.js DOM suites require jsdom while constructing their fixtures.
+      - name: Install Node test dependencies
+        run: npm ci
       - name: Test every Scala module and build browser artifacts
         run: sbt -batch -J-Xmx4G -Dsbt.supershell=false coreJVM/test coreJS/test client/test server/test worker/test buildClientDev buildWorkerDev
-      - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:static
       - run: npm run test:workbooks
