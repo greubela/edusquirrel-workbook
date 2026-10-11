@@ -1,4 +1,5 @@
 @import url("qr-editor.css");
+@import url("editor-appearance.css");
 /* Editor layout and chrome share the workbook's color and dimension tokens. */
 .eva-editor,
 .be-program-snap-fullscreen {
@@ -33,8 +34,11 @@
     overflow-wrap: anywhere;
 }
 
-.eva-editor__tabs {
+.eva-editor__toolbar {
     grid-column: 1 / -1;
+}
+
+.eva-editor__tabs {
     display: flex;
     flex-wrap: wrap;
     align-items: center;

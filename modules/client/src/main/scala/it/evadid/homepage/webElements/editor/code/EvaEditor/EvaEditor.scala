@@ -7,6 +7,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
@@ -70,6 +71,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   private lazy val pythonRunner = new PyodideTurtleCommandRunner()
   private lazy val snapExecution = new SnapTurtleCommandExecution(pythonRunner)
   private var mounted = false
+  private lazy val appearance = new EditorAppearance
 
   private def setViewAvailable(available: Boolean): Unit =
     if viewAvailable.now() != available then viewAvailable.set(available)
@@ -118,13 +120,13 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   }
 
   private lazy val snapEditor = Option.when(enabledTabs.contains(Tab.Snap))(
-    EvaProgrammingTab.prepared(config, SnapLanguage, snapState, next => publish(Tab.Snap, next))
+    EvaProgrammingTab.prepared(config, SnapLanguage, snapState, next => publish(Tab.Snap, next), Some(appearance))
   )
   private lazy val pythonEditor = Option.when(enabledTabs.contains(Tab.Python))(
-    EvaProgrammingTab.prepared(config, AppLanguage.Python, pythonState, next => publish(Tab.Python, next))
+    EvaProgrammingTab.prepared(config, AppLanguage.Python, pythonState, next => publish(Tab.Python, next), Some(appearance))
   )
   private lazy val javaEditor = Option.when(enabledTabs.contains(Tab.Java))(
-    EvaProgrammingTab.prepared(config, AppLanguage.Java, javaState, next => publish(Tab.Java, next))
+    EvaProgrammingTab.prepared(config, AppLanguage.Java, javaState, next => publish(Tab.Java, next), Some(appearance))
   )
   private lazy val snapElement = snapEditor.map(_.domElement)
   private lazy val pythonElement = pythonEditor.map(_.domElement)
@@ -203,7 +205,13 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
       typ := "button",
       aria.pressed <-- activeTab.signal.map(active => (active == tab).toString),
       aria.selected <-- activeTab.signal.map(_ == tab),
-      tab.label,
+      aria.label := tab.label,
+      title := tab.label,
+      if tab == Tab.Java then svg.svg(svg.cls := "eva-editor__language-icon", svg.viewBox := "0 0 24 24",
+        svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.6",
+        svg.strokeLineCap := "round", svg.strokeLineJoin := "round",
+        svg.path(svg.d := "M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6"))
+      else span(tab.label),
       onClick --> (_ => select(tab)),
       disabled <-- state.signal.map(source => EvaEditor.tabFor(source) != tab && Try(convert(source, tab)).isFailure)
     )
@@ -211,15 +219,17 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   private lazy val domElement: Element =
     div(
       cls <-- activeTab.signal.combineWith(conversionError.signal).map { (tab, error) =>
-        "eva-editor" + (if tab == Tab.Java then " eva-editor--java" else "") +
+        "eva-editor editor-appearance" + (if tab == Tab.Java then " eva-editor--java" else "") +
           (if error.nonEmpty then " eva-editor--error" else "")
       },
+      dataAttr("editor-theme") <-- appearance.theme,
       state.signal --> receive,
       onMountCallback { _ => mounted = true },
       onUnmountCallback { _ => mounted = false; cancelExecution() },
       div(
-        cls := "eva-editor__tabs",
-        enabledTabs.map(createTabButton)
+        cls := "eva-editor__toolbar",
+        div(cls := "eva-editor__tabs", aria.label := "Programming language", enabledTabs.map(createTabButton)),
+        appearance.toggleButton()
       ),
       child.maybe <-- conversionError.signal.map(_.map(message =>
         div(cls := "eva-editor__error", role := "alert", message)

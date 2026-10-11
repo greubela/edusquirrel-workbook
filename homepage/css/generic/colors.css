@@ -301,3 +301,83 @@
     }
 
 }
+
+.editor-appearance {
+    --editor-shell: #e9eef8;
+    --editor-atmosphere-pearl: #e8dff8;
+    --editor-atmosphere-blue: #d2e5f5;
+    --editor-chrome-surface: #f1f4fb;
+    --editor-glass-surface: rgba(241, 244, 251, 0.78);
+    --editor-glass-lens: rgba(255, 255, 255, 0.67);
+    --editor-glass-shine: rgba(255, 255, 255, 0.93);
+    --editor-shadow: rgba(59, 79, 119, 0.22);
+    --editor-border: #d0d8e8;
+    --editor-border-strong: #a4b5df;
+    --editor-ink: #25304a;
+    --editor-muted: #5f6d87;
+    --editor-accent: #3e5dcb;
+    --editor-button-primary: #395bd2;
+    --editor-on-primary: #ffffff;
+    --editor-selected: #e7ecfb;
+    --editor-hover: #e2e9f8;
+    --editor-focus: #395bd2;
+    --editor-scrollbar: #8b9bb8;
+    --editor-error: #b42337;
+    --editor-warning-surface: #fff5e5;
+    --editor-warning-border: #e4c58f;
+    --editor-warning-ink: #86551d;
+    --editor-dialog-backdrop: rgba(18, 29, 50, 0.48);
+    --editor-code-surface: #fdfdff;
+    --editor-code-ink: #25304a;
+    --editor-code-muted: #66738a;
+    --editor-code-comment: #66738a;
+    --editor-code-accent: #3e5dcb;
+    --editor-code-active-line: #f0f3fb;
+    --editor-code-selection: #dce5ff;
+    --editor-code-indent: rgba(61, 83, 127, 0.13);
+    --editor-code-indent-active: rgba(61, 83, 127, 0.32);
+    --editor-diagnostic-warning: 151, 97, 29;
+    --editor-diagnostic-error: 180, 35, 55;
+    --editor-diagnostic-soft: 55, 103, 193;
+    --editor-reference-figure-surface: #f8fafc;
+    --editor-reference-figure-ink: #26364b;
+}
+
+.editor-appearance[data-editor-theme="dark"] {
+    --editor-shell: #0d1321;
+    --editor-atmosphere-pearl: #242540;
+    --editor-atmosphere-blue: #152f44;
+    --editor-chrome-surface: #172033;
+    --editor-glass-surface: rgba(23, 32, 51, 0.8);
+    --editor-glass-lens: rgba(220, 229, 255, 0.12);
+    --editor-glass-shine: rgba(237, 243, 255, 0.32);
+    --editor-shadow: rgba(0, 0, 0, 0.56);
+    --editor-border: #323d55;
+    --editor-border-strong: #6078ad;
+    --editor-ink: #e7edf9;
+    --editor-muted: #a3b1ca;
+    --editor-accent: #abc0ff;
+    --editor-button-primary: #a7bcff;
+    --editor-on-primary: #132553;
+    --editor-selected: #2a3756;
+    --editor-hover: #283651;
+    --editor-focus: #abc0ff;
+    --editor-scrollbar: #7286ab;
+    --editor-error: #ffb8bd;
+    --editor-warning-surface: #322b22;
+    --editor-warning-border: #79613e;
+    --editor-warning-ink: #f0d5a7;
+    --editor-dialog-backdrop: rgba(3, 8, 18, 0.72);
+    --editor-code-surface: #151c2a;
+    --editor-code-ink: #e7edf9;
+    --editor-code-muted: #a3b1ca;
+    --editor-code-comment: #98a6b7;
+    --editor-code-accent: #abc0ff;
+    --editor-code-active-line: #242e44;
+    --editor-code-selection: #354666;
+    --editor-code-indent: rgba(220, 229, 255, 0.12);
+    --editor-code-indent-active: rgba(220, 229, 255, 0.3);
+    --editor-diagnostic-warning: 255, 190, 88;
+    --editor-diagnostic-error: 255, 125, 139;
+    --editor-diagnostic-soft: 141, 177, 255;
+}

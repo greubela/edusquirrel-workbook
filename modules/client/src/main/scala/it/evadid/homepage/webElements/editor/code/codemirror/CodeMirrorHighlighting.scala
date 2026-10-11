@@ -16,16 +16,16 @@ private[code] object CodeMirrorHighlighting {
   )
   private val accentIdentifiers = Set("HIGH", "LOW", "INPUT", "OUTPUT", "INPUT_PULLUP", "LED_BUILTIN")
 
-  def extension: Extension = {
+  def extension(styleComments: Boolean = false): Extension = {
     val decorations: js.Function1[IdentifierPlugin, DecorationSet] = _.decorations
     Libraries.ViewPlugin.define(
-      (view: View) => new IdentifierPlugin(view),
+      (view: View) => new IdentifierPlugin(view, styleComments),
       js.Dynamic.literal(decorations = decorations)
     )
   }
 
-  private class IdentifierPlugin(view: View) extends js.Object {
-    var decorations: DecorationSet = buildDecorations(view)
+  private class IdentifierPlugin(view: View, styleComments: Boolean) extends js.Object {
+    var decorations: DecorationSet = buildDecorations(view, styleComments)
 
     def update(update: ViewUpdate): Unit = {
       var reconfigured = false
@@ -35,7 +35,7 @@ private[code] object CodeMirrorHighlighting {
         index += 1
       }
       if (update.docChanged || update.viewportChanged || reconfigured)
-        decorations = buildDecorations(update.view)
+        decorations = buildDecorations(update.view, styleComments)
     }
   }
 
@@ -56,7 +56,7 @@ private[code] object CodeMirrorHighlighting {
     if (matched == null) "" else matched(1).getOrElse("")
   }
 
-  private def buildDecorations(view: View): DecorationSet = {
+  private def buildDecorations(view: View, styleComments: Boolean): DecorationSet = {
     val ranges = new js.Array[js.Object]()
     val doc = view.state.doc
     val identifiers = new js.RegExp("\\b[A-Za-z_][A-Za-z0-9_]*\\b", "g")
@@ -64,6 +64,17 @@ private[code] object CodeMirrorHighlighting {
     var rangeIndex = 0
     while (rangeIndex < view.visibleRanges.length) {
       val visible = view.visibleRanges(rangeIndex)
+      if styleComments then Libraries.syntaxTree(view.state).iterate(js.Dynamic.literal(
+        from = visible.from, to = visible.to,
+        enter = ((node: SyntaxNode) => {
+          if node.name.contains("Comment") then {
+            val from = math.max(node.from, visible.from)
+            val to = math.min(node.to, visible.to)
+            if from < to then ranges.push(Libraries.Decoration.mark(js.Dynamic.literal(`class` = "cm-comment")).range(from, to))
+            false
+          } else true
+        }): js.Function1[SyntaxNode, Boolean]
+      ))
       val text = doc.sliceString(visible.from, visible.to)
       identifiers.lastIndex = 0
       var matched = identifiers.exec(text)

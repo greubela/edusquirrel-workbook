@@ -91,10 +91,13 @@ private[code] object CodeMirrorApi {
   }
   @js.native trait SyntaxNode extends js.Object {
     val name: String = js.native
+    val from: Int = js.native
+    val to: Int = js.native
     val parent: SyntaxNode | Null = js.native
   }
   @js.native trait SyntaxTree extends js.Object {
     def resolveInner(pos: Int, side: Int): SyntaxNode = js.native
+    def iterate(config: js.Object): Unit = js.native
   }
   @js.native trait JavaModule extends js.Object {
     def java(): Extension = js.native

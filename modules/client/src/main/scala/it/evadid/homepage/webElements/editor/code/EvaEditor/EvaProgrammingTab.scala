@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
-import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.code.{CodeMirrorEditor, EditorAppearance}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStatePythonString}
 
@@ -23,9 +23,9 @@ object EvaProgrammingTab {
     prepared(evaConfig, programmingLanguage, Var(convert(programmingLanguage, centralState.now())), handleOnStateChanged)
 
   private[code] def prepared(config: EvaEditorConfig, language: ProgrammingLanguage, localState: Var[ProgrammingState],
-      onStateChanged: ProgrammingState => Unit): EvaEditorProgrammingTab[ProgrammingState] = {
+      onStateChanged: ProgrammingState => Unit, appearance: Option[EditorAppearance] = None): EvaEditorProgrammingTab[ProgrammingState] = {
     val create: Var[ProgrammingState] => HtmlAppElement = language match {
-      case Java => current => new JavaFunctionBasedEditor(current, onStateEdited = onStateChanged)
+      case Java => current => new JavaFunctionBasedEditor(current, onStateEdited = onStateChanged, appearance = appearance)
       case Python => current => CodeMirrorEditor(
         current.bimap[String](_.toPython.code)(ProgrammingStatePythonString(_)),
         code => onStateChanged(ProgrammingStatePythonString(code)), language = AppLanguage.Python)

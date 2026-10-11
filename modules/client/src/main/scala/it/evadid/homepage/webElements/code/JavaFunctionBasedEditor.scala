@@ -3,9 +3,10 @@ package it.evadid.homepage.webElements.code
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{label as labelTag, *}
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
-import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.code.{CodeMirrorEditor, EditorAppearance}
 import it.evadid.vm.parsing.java.clean.JavaParser
 import org.scalajs.dom
+import scala.scalajs.js
 import scala.util.Try
 import java.util.UUID
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateJavaString
@@ -14,7 +15,8 @@ import it.evadid.workbook.elements.interactionElements.programming.state.{Progra
 final class JavaFunctionBasedEditor(
     val state: Var[ProgrammingState],
     onStateEdited: ProgrammingState => Unit = _ => (),
-    reference: Option[() => Element] = None
+    reference: Option[() => Element] = None,
+    appearance: Option[EditorAppearance] = None
 ) extends HtmlAppElement with FullscreenLifecycle {
   import JavaFunctionBasedEditor.*
 
@@ -31,6 +33,7 @@ final class JavaFunctionBasedEditor(
   private val structureReady = Var(structurallyBalanced(sourceCode))
   private val sourceView = Var(initialSelection.isEmpty)
   private val structureOpen = Var(true)
+  private var compactLayout = false
   private val editorRevision = Var(0)
   private val dialogMode = Var(Option.empty[DialogMode])
   private val dialogClassName = Var(Option.empty[String])
@@ -40,6 +43,7 @@ final class JavaFunctionBasedEditor(
   private val parametersDraft = Var("")
   private val staticMethodDraft = Var(true)
   private val dialogError = Var("")
+  private val presentation = appearance.getOrElse(new EditorAppearance)
 
   override def dismissOnOutsideClick: Boolean = false
   override def onFullscreenClose(): Unit = dialogMode.set(None)
@@ -107,6 +111,7 @@ final class JavaFunctionBasedEditor(
   private def selectFunction(function: JavaFunction): Unit =
     if currentSourceAvailable() && structurallyBalanced(sourceCode) && discover(sourceCode).exists(_.functions.contains(function)) then
       showFunction(function)
+      if compactLayout then structureOpen.set(false)
 
   private def showFunction(function: JavaFunction): Unit =
     if FunctionRange(function.start, function.end).isWithin(sourceCode) then
@@ -279,15 +284,28 @@ final class JavaFunctionBasedEditor(
 
   override def getDomElement(): Element = {
     val navigationId = s"java-navigation-${UUID.randomUUID()}"
+    var releaseLayout: () => Unit = () => ()
     div(
       cls <-- structureOpen.signal.map { open =>
-        "java-function-based-editor" +
+        "java-function-based-editor editor-appearance" +
           (if reference.isDefined then " java-function-based-editor--with-reference" else "") +
           (if open then "" else " java-function-based-editor--structure-collapsed")
       },
+      dataAttr("editor-theme") <-- presentation.theme,
       onMountCallback { ctx =>
         state.signal.foreach(commitExternalState)(using ctx.owner)
+        Try(dom.window.matchMedia("(min-width: 761px) and (min-height: 601px)")).toOption.foreach { query =>
+          def adapt(): Unit = {
+            compactLayout = !query.matches
+            if compactLayout then structureOpen.set(false)
+          }
+          val listener: js.Function1[dom.Event, Unit] = _ => adapt()
+          adapt()
+          query.addEventListener("change", listener)
+          releaseLayout = () => query.removeEventListener("change", listener)
+        }
       },
+      onUnmountCallback(_ => releaseLayout()),
       div(
         cls := "java-function-editor__topbar",
         div(
@@ -296,6 +314,7 @@ final class JavaFunctionBasedEditor(
         ),
         div(
           cls := "java-function-editor__topbar-actions",
+          if appearance.isEmpty then presentation.toggleButton() else emptyNode,
           button(
             typ := "button",
             cls := "java-function-editor__button java-function-editor__button--secondary",
@@ -332,8 +351,8 @@ final class JavaFunctionBasedEditor(
         ),
         div(
           cls := "java-function-editor__class-row",
-          children <-- Signal.combine(classes.signal, selectedFunction.signal, structureReady.signal).map {
-            case (currentClasses, selected, isSynced) =>
+          children <-- classes.signal.combineWith(structureReady.signal).map {
+            case (currentClasses, isSynced) =>
               if currentClasses.isEmpty then List(
                 div(
                   cls := "java-function-editor__empty-diagram",
@@ -367,8 +386,11 @@ final class JavaFunctionBasedEditor(
                           else "java-function-editor__function"
                         },
                         disabled := !isSynced,
-                        aria.pressed := selected.exists(current => sameFunction(current, function) && current.start == function.start).toString,
-                        s"${function.returnType} ${function.name}(${function.parameters})",
+                        aria.pressed <-- selectedFunction.signal.map(_.exists(current =>
+                          sameFunction(current, function) && current.start == function.start).toString),
+                        title := s"${function.returnType} ${function.name}(${function.parameters})",
+                        span(cls := "java-function-editor__function-name", s"${function.name}()"),
+                        span(cls := "java-function-editor__function-signature", s"${function.returnType} · ${function.parameters}"),
                         onClick --> (_ => selectFunction(function))
                       )
                     }
@@ -398,6 +420,8 @@ final class JavaFunctionBasedEditor(
               aria.pressed <-- sourceView.signal.map(!_).map(_.toString),
               disabled <-- structureReady.signal.combineWith(sourceAvailable.signal).map { (ready, available) => !ready || !available },
               "Method",
+              aria.label := "Method",
+              title := "Method view",
               onClick --> (_ => showMethod())
             ),
             button(
@@ -408,7 +432,26 @@ final class JavaFunctionBasedEditor(
               aria.pressed <-- sourceView.signal.map(_.toString),
               disabled <-- sourceAvailable.signal.map(!_),
               "Full source",
+              aria.label := "Full source",
+              title := "Full Java source",
               onClick --> (_ => if currentSourceAvailable() then showSource())
+            )
+          ),
+          labelTag(
+            cls := "java-function-editor__compact-navigation",
+            span("Method"),
+            select(
+              aria.label := "Java method",
+              disabled <-- structureReady.signal.combineWith(sourceAvailable.signal).map { (ready, available) => !ready || !available },
+              children <-- classes.signal.map { current =>
+                option(value := "", "Choose a method") :: current.flatMap(_.functions).map { fn =>
+                  option(value := functionKey(fn), s"${fn.className}.${fn.name}(${fn.parameters})")
+                }
+              },
+              value <-- selectedFunction.signal.combineWith(classes.signal).map { (selected, _) => selected.fold("")(functionKey) },
+              onChange.mapToValue --> { key =>
+                classes.now().flatMap(_.functions).find(fn => functionKey(fn) == key).foreach(selectFunction)
+              }
             )
           )
         ),
@@ -459,6 +502,9 @@ object JavaFunctionBasedEditor {
   )
 
   private[code] final case class JavaClass(name: String, bodyStart: Int, bodyEnd: Int, functions: List[JavaFunction])
+
+  private def functionKey(function: JavaFunction): String =
+    s"${function.className}:${function.start}:${function.end}"
 
   private[code] final case class FunctionRange(start: Int, end: Int) {
     def isWithin(source: String): Boolean = start >= 0 && end >= start && end <= source.length

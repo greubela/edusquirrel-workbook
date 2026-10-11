@@ -46,7 +46,7 @@ private[code] object CodeMirrorRuntime {
       key = "Tab", run = ((target: js.Object) => indentWithSpaces(target)): js.Function1[js.Object, Boolean],
       shift = ((target: js.Object) => Libraries.indentLess(target)): js.Function1[js.Object, Boolean]
     )).concat(Libraries.defaultKeymap, Libraries.historyKeymap, Libraries.foldKeymap, Libraries.searchKeymap)),
-    diagnostics.field, CodeMirrorHighlighting.extension
+    diagnostics.field
   )
 
   private def languageExtension(language: String): Extension = language match {
@@ -74,16 +74,19 @@ private[code] object CodeMirrorRuntime {
     private val javaHistory = new Compartment
     private val theme = new Compartment
     private val editorLanguage = new Compartment
+    private val editorTheme = Option(config.parent.closest("[data-editor-theme]"))
     private val followsPageTheme = config.parent.closest(".fd-page") != null
+    private val themeTarget = editorTheme.orElse(Option.when(followsPageTheme)(dom.document.documentElement))
+    private val themeAttribute = if editorTheme.nonEmpty then "data-editor-theme" else "data-theme"
     private def currentTheme(): Extension =
-      if followsPageTheme && dom.document.documentElement.getAttribute("data-theme") == "light" then js.Array[Extension]()
+      if themeTarget.exists(_.getAttribute(themeAttribute) == "light") then js.Array[Extension]()
       else Libraries.oneDark
     private def prepare(source: String): String = if isJava then source else source.replace("\t", indent)
     private def text(source: String): js.Any = if isJava then CodeMirrorJavaLineEndings.text(source) else prepare(source)
 
     private val state = Libraries.EditorState.create(js.Dynamic.literal(
       doc = text(initial),
-      extensions = js.Array[Extension](sharedExtensions,
+      extensions = js.Array[Extension](sharedExtensions, CodeMirrorHighlighting.extension(editorTheme.nonEmpty),
         if isJava then js.Array[Extension](
           CodeMirrorJavaLineEndings.field.init((_: State) => CodeMirrorJavaLineEndings.parse(initial)),
           CodeMirrorJavaLineEndings.historyEffects, javaHistory.of(Libraries.history()))
@@ -108,10 +111,10 @@ private[code] object CodeMirrorRuntime {
       (): Unit
     }): js.Function1[scala.Any, Unit | js.Thenable[Unit]])
 
-    private val themeObserver = if followsPageTheme then Some(new dom.MutationObserver((_, _) =>
+    private val themeObserver = if themeTarget.nonEmpty then Some(new dom.MutationObserver((_, _) =>
       if !destroyed then view.dispatch(js.Dynamic.literal(effects = theme.reconfigure(currentTheme()))))) else None
-    themeObserver.foreach(_.observe(dom.document.documentElement,
-      new dom.MutationObserverInit { attributes = true; attributeFilter = js.Array("data-theme") }))
+    themeObserver.foreach(_.observe(themeTarget.get,
+      new dom.MutationObserverInit { attributes = true; attributeFilter = js.Array(themeAttribute) }))
 
     def setDoc(value: String): Unit = {
       val next = prepare(default(value, ""))

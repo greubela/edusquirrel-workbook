@@ -38,7 +38,8 @@ final class TurtleTaskEditorExtension(
     Some(div(cls := "eva-editor__sidebar turtle-sidebar",
       child <-- state.signal.map(source => target.isEmpty || TurtleTaskEditorExtension.requiresRun(source)).distinct.map {
         case true => current.getDomElement()
-        case false => HtmlTurtleRecreateShapeRenderer.createInteractivePreview(state, target.get, policy).getDomElement()
+        case false => div(cls := "turtle-live-preview",
+          HtmlTurtleRecreateShapeRenderer.createInteractivePreview(state, target.get, policy).getDomElement())
       }))
   }
 

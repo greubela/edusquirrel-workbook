@@ -111,7 +111,8 @@ final class TurtleExecutionPanel(
   }
 
   private def picture(scene: TurtleJsxGraphRenderer.Scene, caption: String): Element =
-    figure(cls := "turtle-execution__figure", figCaption(caption), TurtleJsxGraphRenderer.render(scene, caption))
+    figure(cls := "turtle-execution__figure", figCaption(caption),
+      div(cls := "turtle-execution__canvas", TurtleJsxGraphRenderer.render(scene, caption)))
 
   private lazy val domElement = div(
     cls := "turtle-execution",
