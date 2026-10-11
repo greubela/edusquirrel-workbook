@@ -1,5 +1,5 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
-
+/*
 import TurtleStitchProgramModel.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
 
@@ -156,3 +156,4 @@ object TurtleStitchProgramRenderer {
       .replace("\"", "&quot;")
       .replace("'", "&apos;")
 }
+*/

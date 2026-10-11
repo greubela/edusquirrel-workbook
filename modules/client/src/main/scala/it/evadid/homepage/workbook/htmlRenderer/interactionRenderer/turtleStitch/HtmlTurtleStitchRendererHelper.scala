@@ -13,7 +13,7 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
-import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
+import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.*
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
 import todomove.datastructures.web.file.FullImage
@@ -37,7 +37,6 @@ object HtmlTurtleStitchRendererHelper {
   * Reusable Card Elements
    */
   def renderDownloadButton(label: LanguageMapContentId, projectRelativeToResources: String): Element = {
-
     val projectFromFile: file.FileDescription = fullInfo.contentControl.fileFactory.relativeToTechnicalResources(projectRelativeToResources)
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + projectFromFile.filenameWithExtension
     HtmlButtonElement.withTextLabel(label, event =>
@@ -45,7 +44,6 @@ object HtmlTurtleStitchRendererHelper {
         case Success(projectData) => fullInfo.contentControl.downloadToDisc.downloadFile(desiredFilename, projectData.data)
         case Failure(err) => println("HtmlExploreTurtleStitchExploreProjectRenderer::downloadButton error: " + err.getMessage)
       }(using ExecutionContext.global), HtmlButtonElement.stdConfig).getDomElement()
-
   }
 
   def renderDownloadButton(label: LanguageMapContentId, workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState]): Element = {
