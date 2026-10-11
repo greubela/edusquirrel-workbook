@@ -166,3 +166,16 @@ Timer scheduling is injected into the controller and owned by fullscreen lifecyc
 `TurtleGradingLogic.TurtleGraphicComparison` compares actual and expected geometry once, retaining actual movement order and appending missing targets in their original order. Matching accepts reversed endpoints within a finite, nonnegative tolerance and consumes each target occurrence once. Strict mode distinguishes travel from drawn strokes; stitch mode ignores travel for grading, so pen-up motion cannot satisfy a missing stroke. Segment subdivision remains significant. Expected movement indices give target angle overlays stable references even when targets are missing or duplicated.
 
 `TurtleJsxGraphRenderer.buildScene` projects these shared results into JSXGraph display objects. It handles coordinate conversion, board bounds, angle sectors, CSS classes and hover events, and does not interpret turtle commands or match segments. Hover is transient view state; it does not mutate geometry or grading results and is not stored with the workbook answer. Existing CSS controls presentation during redraw and hover. Core JVM/JS tests cover tracing and comparison, while renderer tests cover the projection, angle placement, hover, styling and scene serialization.
+
+### Composing display elements
+
+`TwoColumnPanel` is a display element containing arbitrary left and right workbook
+elements. `ExerciseGroup` is an untitled display element grouping a list vertically;
+it can therefore serve as a slideshow panel without adding an exercise-container
+heading. Both expose their children and serialize references through registered
+factories. Their HTML renderers delegate each child to `HtmlRenderFactory`, so
+nested images, text, groups and interactions retain their normal rendering.
+Layout lives in `homepage/css/workbook/workbook-structure.css`, already linked by
+workbook entry pages: two equal columns become a single column on small screens.
+PlantWorkshop groups each wiring image with its description and uses a
+`TwoColumnPanel` for the wiring/explanation pairs on slides 3, 4 and 8.

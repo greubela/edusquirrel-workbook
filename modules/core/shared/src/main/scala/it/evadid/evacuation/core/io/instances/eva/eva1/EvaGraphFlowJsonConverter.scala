@@ -10,9 +10,9 @@ import scala.io.{BufferedSource, Source}
 
 object EvaGraphFlowJsonConverter extends IO[EvaGraphModel, String] {
 
-  case class SimpleEdge(start: Router, dest: Router, content: ConnectionInfo)
+  case class SimpleEdge(start: Router, dest: Router, content: ConnectionInfo) derives RW
 
-  case class GraphData(nodes: List[Router], edges: List[SimpleEdge])
+  case class GraphData(nodes: List[Router], edges: List[SimpleEdge]) derives RW
 
   /*private def simpleConverter: IO[GraphData, String] = new IO[GraphData, String] {
     override def decode(out: String): GraphData = {
@@ -25,11 +25,11 @@ object EvaGraphFlowJsonConverter extends IO[EvaGraphModel, String] {
     }
   }*/
 
-  implicit val rp: RW[Position] = macroRW
-  implicit val ri: RW[ConnectionInfo] = macroRW
-  implicit val rr: RW[Router] = macroRW
-  implicit val rw: RW[SimpleEdge] = macroRW
-  implicit val rgd: RW[GraphData] = macroRW
+  implicit def rp: RW[Position] = Position.derived$ReadWriter
+  implicit def ri: RW[ConnectionInfo] = ConnectionInfo.derived$ReadWriter
+  implicit def rr: RW[Router] = Router.derived$ReadWriter
+  def rw: RW[SimpleEdge] = SimpleEdge.derived$ReadWriter
+  def rgd: RW[GraphData] = GraphData.derived$ReadWriter
 
   private def decodeSimple(out: String): GraphData = {
     read[GraphData](out)

@@ -1,6 +1,8 @@
 package it.evadid.evacuation.core.graphic.model
 
-case class EvaFont(sizeInPx: Double, name: String, bold: Boolean = false, italic: Boolean = false) {
+import upickle.default.ReadWriter
+
+case class EvaFont(sizeInPx: Double, name: String, bold: Boolean = false, italic: Boolean = false) derives ReadWriter {
 
 
   def toCSSString: String = {

@@ -13,12 +13,7 @@ object ExecutionMethod {
 
   case class ExecuteLocalSync() extends ExecutionMethod {
     override def handleExecution[I, O](func: I => O, input: I, callback: Try[O] => Any): Unit =
-      try {
-        val output = func(input)
-        callback.apply(Success(output))
-      } catch {
-        case e: Exception => callback.apply(Failure(e))
-      }
+      callback(Try(func(input)))
   }
 
   case class ExecuteLocalAsync(ec: ExecutionContext) extends ExecutionMethod {

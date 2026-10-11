@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.state.*
 import it.evadid.core.datastructures.state.async.AsyncDataState.AsyncDataSuccess
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncState}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.util.*
 
 trait ObservableValue[T] {
@@ -46,28 +46,26 @@ trait ObservableValue[T] {
 
   private[state] def removeObserver(observer: Observer[T]): Unit
 
+  /** Derive sequentially; queued inputs follow deriveLogic until the current Future completes. */
   def deriveAsync[O](withFunc: T => Future[O], executeFunctionWith: ExecutionMethod = ExecutionMethod.executeSync, deriveLogic: ObserverDerivationLogic = ObserverDerivationLogic.DeriveAllValues): ObservableValue[O] = {
-    val res = ObservableValueImpl[O](None)
-
-    def onNewBaseValueArrived(resTry: Try[T]): Unit = if (resTry.isSuccess) withFunc(resTry.get).onComplete(resTry => res.onNewValueArrived(resTry))(using ExecutionContext.global)
-
-    now().foreach(curVal => onNewBaseValueArrived(Success(curVal)))
-    addObserver(Observer(onNewBaseValueArrived, ExecutionMethod.executeSync, 10000))
+    val res = DerivedObservableValue[T, O](Right(withFunc), executeFunctionWith, deriveLogic)
+    addObserver(Observer(res.handleOnNewBaseValue, ExecutionMethod.executeSync, 10000))
     res
   }
 
+  /** None retains the last accepted value; failures propagate like deriveValue. */
   def deriveSome[O](withFunc: T => Option[O], executeFunctionWith: ExecutionMethod = ExecutionMethod.executeSync, deriveLogic: ObserverDerivationLogic = ObserverDerivationLogic.DeriveAllValues): ObservableValue[O] = {
     val res = ObservableValueImpl[O](None)
-
-    def onNewBaseValueArrived(resTry: Try[T]): Unit = if (resTry.isSuccess) withFunc(resTry.get).foreach((newVal: O) => res.onNewValueArrived(Success(newVal)))
-
-    now().foreach(curVal => onNewBaseValueArrived(Success(curVal)))
-    addObserver(Observer(onNewBaseValueArrived, ExecutionMethod.executeSync, 10000))
+    deriveValue(withFunc, executeFunctionWith, deriveLogic).addObserver(Observer[Option[O]]({
+      case Success(Some(value)) => res.onNewValueArrived(Success(value))
+      case Success(None) => ()
+      case Failure(error) => res.onNewValueArrived(Failure(error))
+    }, ExecutionMethod.executeSync, 10000))
     res
   }
 
   def deriveValue[O](withFunc: T => O, executeFunctionWith: ExecutionMethod = ExecutionMethod.executeSync, deriveLogic: ObserverDerivationLogic = ObserverDerivationLogic.DeriveOnlyLastValues): ObservableValue[O] = syncLock.synchronized {
-    val res = DerivedObservableValue(withFunc, executeFunctionWith, deriveLogic)
+    val res = DerivedObservableValue[T, O](Left(withFunc), executeFunctionWith, deriveLogic)
     addObserver(Observer(res.handleOnNewBaseValue, ExecutionMethod.executeSync, 10000))
     res
   }

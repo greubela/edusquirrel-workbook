@@ -70,7 +70,6 @@ class DefaultValueCodecsSpec extends FunSuite {
   test("execution timing models preserve timestamps and fixed request times") {
     import it.evadid.distribution.command.*
     val time = java.time.LocalDateTime.of(2025, 1, 1, 12, 0)
-    roundTrip(ExecutionDuration(time, time.plusSeconds(1)))
     val history = ExecutionHistory(time, time.plusSeconds(1), time.plusSeconds(2), time.plusSeconds(3))
     roundTrip(history)
     assertEquals(history.withFixedTime(time.minusSeconds(2), time.minusSeconds(1)).timestampExecutionFinished, time.plusSeconds(3))

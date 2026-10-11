@@ -132,9 +132,9 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
 
   def startGrading(syncControl: SyncControl, forceGrading: Boolean = false): Unit = this.synchronized {
     val curState = innerState.now()
-    val lastValue = curState.events.lastOption.map(_.value)
-    if (lastValue.isEmpty || curState.gradings.contains(lastValue.get)) {
-    } else {
+    val lastValue = curState.lastStateOption.map(_.value)
+    if (underlyingInteraction.gradingElements.nonEmpty && lastValue.nonEmpty &&
+      (forceGrading || !curState.gradings.contains(lastValue.get))) {
       val futures: Future[List[GradingResult[T, GA]]] = Future.traverse(underlyingInteraction.gradingElements)(_.gradeStateSafe(lastValue.get, forceGrading))
       futures.map(resList => GradedState[T, GA](lastValue.get, resList.toSet)).onComplete {
         case Success(res) => this.synchronized {

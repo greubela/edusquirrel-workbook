@@ -1,6 +1,8 @@
 package it.evadid.evacuation.core.graphic.spritemap
 
-case class FrameData(filename: String)
+import upickle.default.ReadWriter
+
+case class FrameData(filename: String) derives ReadWriter
 
 
 object FrameData{

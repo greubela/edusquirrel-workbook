@@ -3,12 +3,12 @@ package it.evadid.core.datastructures.state.observable
 import it.evadid.core.datastructures.state.*
 
 import scala.collection.mutable
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.*
 
 
 private case class DerivedObservableValue[I, O](
-                                                 deriveFunc: I => O,
+                                                 deriveFunc: Either[I => O, I => Future[O]],
                                                  executeDerivateFunctionWith: ExecutionMethod,
                                                  deriveLogic: ObserverDerivationLogic
                                                ) extends ObservableValue[O] {
@@ -29,7 +29,14 @@ private case class DerivedObservableValue[I, O](
 
       startDerivationOn.match {
         case Success(baseValue) => {
-          executeDerivateFunctionWith.handleExecution(deriveFunc, baseValue, finishedDerivation)
+          deriveFunc match {
+            case Left(function) => executeDerivateFunctionWith.handleExecution(function, baseValue, finishedDerivation)
+            case Right(function) =>
+              executeDerivateFunctionWith.handleExecution[I, Future[O]](function, baseValue, {
+                case Success(future) => future.onComplete(finishedDerivation)(using ExecutionContext.parasitic)
+                case Failure(error) => finishedDerivation(Failure(error))
+              })
+          }
         }
         case Failure(error) => {
           val throwException = new IllegalStateException("Derived Observable Value failed because of base value error", error)

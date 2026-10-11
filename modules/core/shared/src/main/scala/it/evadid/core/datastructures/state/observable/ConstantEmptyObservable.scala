@@ -6,7 +6,7 @@ import scala.concurrent.Future
 
 case class ConstantEmptyObservable[T]() extends ObservableValue[T] {
 
-  override def currentValueOrWaitForUpdate: Future[T] = Future.successful(throw new IllegalStateException("Empty Observable will never get a value!"))
+  override def currentValueOrWaitForUpdate: Future[T] = Future.failed(new IllegalStateException("Empty Observable will never get a value!"))
 
   override def addObserver(observer: Observer[T]): Subscription[T] = {
     Subscription(this, observer)
