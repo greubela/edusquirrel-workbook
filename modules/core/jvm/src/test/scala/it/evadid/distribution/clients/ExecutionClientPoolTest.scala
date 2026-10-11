@@ -9,17 +9,17 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class ExecutionClientPoolTest extends FunSuite {
 
-  private def failingClient(commandName: String): ExecutionClient = new LocalExecutionClient {
+  private def failingClient(commandName: String): ExecutionClient = new LocalExecutionClient[ujson.Value, Map[String, String]] {
     override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = executionCommand.name == commandName
 
-    override protected def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] =
+    override protected def rawExecution(logger: Logger, input: ujson.Value): Future[Map[String, String]] =
       Future.failed(new Exception("database connection failed"))
   }
 
-  private def failingClient(commandName: String, failure: Throwable): ExecutionClient = new LocalExecutionClient {
+  private def failingClient(commandName: String, failure: Throwable): ExecutionClient = new LocalExecutionClient[ujson.Value, Map[String, String]] {
     override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = executionCommand.name == commandName
 
-    override protected def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] =
+    override protected def rawExecution(logger: Logger, input: ujson.Value): Future[Map[String, String]] =
       Future.failed(failure)
   }
 
@@ -27,7 +27,7 @@ class ExecutionClientPoolTest extends FunSuite {
     val pool = ExecutionClientPool(List(failingClient("sync-to-db-request")))
 
     val error = intercept[SerializedException] {
-      pool.handleExecution(ExecutionCommand("missing-command", Map.empty), BasicLogger())
+      pool.handleCommand[Map[String, String]](BasicLogger(), ExecutionCommand("missing-command", ujson.Obj()))
     }
     assertEquals(error.getMessage, "ExecutionClientPool: no handler for command missing-command registered!")
   }
@@ -35,7 +35,7 @@ class ExecutionClientPoolTest extends FunSuite {
   test("reports matching handler failures without claiming the handler is missing") {
     val pool = ExecutionClientPool(List(failingClient("sync-to-db-request")))
 
-    pool.handleExecution(ExecutionCommand("sync-to-db-request", Map.empty), BasicLogger()).failed.map { error =>
+    pool.handleCommand[Map[String, String]](BasicLogger(), ExecutionCommand("sync-to-db-request", ujson.Obj())).failed.map { error =>
       assert(error.isInstanceOf[SerializedException])
       assert(error.getMessage.contains("ExecutionClientPool: all handlers for command sync-to-db-request failed"))
     }
@@ -46,7 +46,7 @@ class ExecutionClientPoolTest extends FunSuite {
     val handlerFailure = new Exception("Could not connect to database", rootCause)
     val pool = ExecutionClientPool(List(failingClient("sync-to-db-request", handlerFailure)))
 
-    pool.handleExecution(ExecutionCommand("sync-to-db-request", Map.empty), BasicLogger()).failed.map { error =>
+    pool.handleCommand[Map[String, String]](BasicLogger(), ExecutionCommand("sync-to-db-request", ujson.Obj())).failed.map { error =>
       assert(error.isInstanceOf[SerializedException])
       assert(error.getMessage.contains("ExecutionClientPool: all handlers for command sync-to-db-request failed"))
     }

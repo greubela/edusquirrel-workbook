@@ -2,6 +2,7 @@ package it.evadid.core.datastructures.storage
 
 import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
+import it.evadid.workbook.interaction.sync.model.*
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
 import it.evadid.workbook.interaction.sync.SyncSuccess
@@ -11,6 +12,11 @@ import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 class RemoteStoragePackageSpec extends FunSuite {
+  private def DataEntryReadFromServer[K, D](key: K, value: D, time: java.time.LocalDateTime): DataEntryToSync[K, D] =
+    DataEntryToSync(key, value, time, SyncDirection.SERVER_TO_CLIENT)
+  private def DataEntryToWriteToServer[K, D](key: K, value: D, time: java.time.LocalDateTime): DataEntryToSync[K, D] =
+    DataEntryToSync(key, value, time, SyncDirection.CLIENT_TO_SERVER)
+
   private given ExecutionContext = ExecutionContext.global
   private val logger = SyncLogger(Logger.withNameAndPrefixes(printMap = PrintToStdLogger.printNothing))
   private val time = LocalDateTime.of(2026, 1, 1, 0, 0)

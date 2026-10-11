@@ -1,6 +1,8 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.homepage.control.model.FullInfo
+import it.evadid.homepage.workbook.content.test.CreateEmbroideryPreviewWorkbook
+import it.evadid.homepage.workbook.content.wip.{CreateBlockchainWorkbook, CreateCompressionWorkbook, CreateEvacuationWorkbook, CreateImageRecognitionWorkbook, CreatePhishingWorkbook}
 
 /** Public digital offerings only. Developer demos and PDF-only workbooks are excluded.
   * Native entries also supply the factories used by direct workbook entry pages.

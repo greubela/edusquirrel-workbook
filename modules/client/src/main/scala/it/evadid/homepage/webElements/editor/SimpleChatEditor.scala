@@ -104,7 +104,7 @@ onKeyDown.filter(ev => ev.key == "Enter" && !ev.shiftKey) --> { ev =>
       val currentState = interactionVar.now()
       val nextState = currentState.addMessage(
         text = trimmed,
-        author = Person("Student", "it.evadid.student", SenderRole.USER, None),
+        author = ChatParticipant("Student", "it.evadid.student", SenderRole.USER, None),
         timestamp = LocalDateTime.now()
       )
       interactionVar.set(nextState) //setStateFromUserInteraction(nextState, UpdateImportance.MAJOR)

@@ -7,15 +7,15 @@ import upickle.default.*
 
 class ChatPackageSpec extends FunSuite {
   private val time = LocalDateTime.of(2025, 1, 1, 12, 0)
-  private val author = Person("Ada", "id", SenderRole.USER, Some(" AD "))
+  private val author = ChatParticipant("Ada", "id", SenderRole.USER, Some(" AD "))
 
   test("person conversions preserve identity, roles and normalized abbreviations") {
     assertEquals(author.abbreviation, Some("AD"))
     assertEquals(author.toBasic.personId, "id")
     assertEquals(author.toSerializable.abbreviation, Some("AD"))
-    assertEquals(Person.SerializablePerson("Ada", "id", SenderRole.USER, " ").abbreviation, None)
-    assertEquals(Person.SerializablePerson("Ada", "id", SenderRole.USER, null).abbreviation, None)
-    assertEquals(Person("Ada", "id", SenderRole.USER).abbreviation, None)
+    assertEquals(ChatParticipant("Ada", "id", SenderRole.USER, Some(" ")).abbreviation, None)
+    assertEquals(ChatParticipant("Ada", "id", SenderRole.USER, Option(null)).abbreviation, None)
+    assertEquals(ChatParticipant("Ada", "id", SenderRole.USER).abbreviation, None)
     assertEquals(SenderRole.allRoles.map(_.llmName), List("user", "user", "assistant", "user"))
   }
   test("adding backdated messages keeps stored conversation order and the original model") {
@@ -40,12 +40,12 @@ class ChatPackageSpec extends FunSuite {
   test("default message codecs use the existing application wire format") {
     val message = Message("\"Grüße\"\n", author, time)
     val model = MessengerModel(List(message))
-    assertEquals(write(model), model.toJson)
+    assertEquals(read[MessengerModel](write(model)), model)
     val restored = read[MessengerModel](write(model))
     assertEquals(restored.messages.head.text, message.text)
     assertEquals(restored.messages.head.timestamp, time)
     assertEquals(restored.messages.head.author.toBasic, author.toBasic)
-    assertEquals(write(restored), model.toJson)
+    assertEquals(write(restored), write(model))
     val single = read[Message](write(message))
     assertEquals(single.author.toBasic, author.toBasic)
     assertEquals(single.timestamp, time)

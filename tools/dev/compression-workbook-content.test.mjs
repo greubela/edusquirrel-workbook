@@ -8,7 +8,7 @@ const root=path.resolve(import.meta.dirname,'../..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const base='resources/programs/20260907Datenkompression/';
 const inventory=JSON.parse(read('resources/workbookresources/compression/source-inventory.json'));
-const generated=read('modules/client/src/main/scala/it/evadid/homepage/workbook/content/CompressionSourceContent.scala');
+const generated=read('modules/client/src/main/scala/it/evadid/homepage/workbook/content/wip/CompressionSourceContent.scala');
 const map=JSON.parse(read('resources/languageMaps/eva/compressionworkbook/map-de.json'));
 const corrections=JSON.parse(read('resources/workbookresources/compression/source-corrections.json'));
 const doc=new JSDOM(read(base+'index.html')).window.document;
@@ -43,7 +43,7 @@ test('all original lesson text remains present; technical corrections are explic
  assert.match(map.src_filetypes_task4_intro,/ZIP komprimiert Dateien.*einzeln/);
 });
 test('materials, six illustrations and exact image data resolve without standalone scripts at runtime',()=>{
- const source=read('modules/client/src/main/scala/it/evadid/homepage/workbook/content/CreateCompressionWorkbook.scala');
+ const source=read('modules/client/src/main/scala/it/evadid/homepage/workbook/content/wip/CreateCompressionWorkbook.scala');
  assert(!/iframe|20260907Datenkompression\/js\//.test(source));
  for(const value of Object.values(map))for(const [,href] of value.matchAll(/href=['"]([^'"]+)['"]/g))if(href.startsWith('../../resources/'))
   assert(fs.existsSync(path.resolve(root,'homepage/compressionWorkbook',decodeURIComponent(href))),href);

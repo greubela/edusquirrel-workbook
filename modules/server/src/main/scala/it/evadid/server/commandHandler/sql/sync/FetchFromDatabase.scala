@@ -1,19 +1,18 @@
 package it.evadid.server.commandHandler.sql.sync
 
+import it.evadid.workbook.interaction.sync.model.HistoryJson
+
 import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, FetchAllFromDbRequest}
 import it.evadid.server.commandHandler.sql.{DatabaseConfig, GenericSqlFunctionality}
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
 import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
-import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 
 import java.sql.*
 
 case class FetchFromDatabase(
                               connection: Connection,
                               usageContext: UsageContext,
-                              logger: Logger,
-                              formatter: RichInteractionVariableFormatter
+                              logger: Logger
                             ) {
 
   private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection,  logger)
@@ -35,7 +34,7 @@ case class FetchFromDatabase(
     stmt.setString(2, usageContext.scenarioId)
     stmt.setString(3, usageContext.userId)
 
-    val asList: List[RichDatabaseEntry] = generic.executeSyncQuere(stmt, List("eventid", "serializeddata"), usageContext, formatter)
+    val asList: List[RichDatabaseEntry] = generic.executeSyncQuere(stmt, List("eventid", "serializeddata"), usageContext)
     asList.groupBy(_.syncContext).toMap
   }
 
@@ -56,7 +55,7 @@ case class FetchFromDatabase(
     stmt.setString(2, usageContext.scenarioId)
     stmt.setString(3, usageContext.userId)
 
-    val asList: List[RichDatabaseEntry] = generic.executeSyncQuere(stmt, List("eventid", "eventkey", "serializeddata"), usageContext, formatter)
+    val asList: List[RichDatabaseEntry] = generic.executeSyncQuere(stmt, List("eventid", "eventkey", "serializeddata"), usageContext)
     asList.groupBy(_.syncContext).toMap
   }
 
@@ -78,7 +77,7 @@ case class FetchFromDatabase(
     stmt.setString(3, usageContext.userId)
     stmt.setString(4, keyForSerialisation)
 
-    val asList: List[RichDatabaseEntry] = generic.executeSyncQuere(stmt, List("eventid", "eventkey", "serializeddata"), usageContext, formatter)
+    val asList: List[RichDatabaseEntry] = generic.executeSyncQuere(stmt, List("eventid", "eventkey", "serializeddata"), usageContext)
 
     if (asList.isEmpty) logger.logWarn("No events found for key: " + keyForSerialisation)
     else if (asList.size > 1) logger.logWarn("Multiple events found for key: " + keyForSerialisation + ", discarded events " + asList.tail.map(_.eventId).mkString(", "))
@@ -92,15 +91,13 @@ case class FetchFromDatabase(
 
 object FetchFromDatabase {
 
-  private def union(list: List[InteractionVariableHistorySerialized]): InteractionVariableHistorySerialized = {
-    InteractionVariableHistorySerialized(list.flatMap(_.states).toSet)
-  }
+  private def union(list: List[String]): String = HistoryJson.merge(list)
 
   def handleRequest(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
     val config = DatabaseConfig.readFromEnv(Some(request.databaseName))
     val connection = config.newConnection()
 
-    val control = FetchFromDatabase(connection, request.usageContext, logger, request.formatter)
+    val control = FetchFromDatabase(connection, request.usageContext, logger)
 
     val resMap: Map[SyncContext, List[RichDatabaseEntry]] = {
       if (!request.hasDatabaseKeyColumn) control.fetchAllInDbWithoutKeys("events")
@@ -108,7 +105,7 @@ object FetchFromDatabase {
       else control.fetchForKeyInDbWithKey(request.mayLimitToKey.get).map(e => Map(e.syncContext -> List(e))).getOrElse(Map.empty)
     }
 
-    DbFetchResponse(resMap.iterator.map(tup => tup._1 -> union(tup._2.map(_.richHistory.fullHistory))).toMap)
+    DbFetchResponse(resMap.iterator.map(tup => tup._1 -> union(tup._2.map(_.historyJson))).toMap)
   }
 
 }

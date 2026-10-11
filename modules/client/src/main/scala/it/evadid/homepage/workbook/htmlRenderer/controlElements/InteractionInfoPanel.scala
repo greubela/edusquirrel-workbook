@@ -8,21 +8,20 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
-import it.evadid.workbook.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
+import it.evadid.workbook.abstractions.grading.{GradingResult, WorkbookInteractionGrader}
 import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
 import org.scalajs.dom.{HTMLDivElement, SVGPathElement, SVGSVGElement}
 
-case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionElement[Any]) extends HtmlAppElement {
+case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionUntyped) extends HtmlAppElement {
 
-  lazy val syncReport: EventStream[InteractionVariableSyncReport[Any]] = fullInfo.syncControl.createObservableReport[Any](workbookInteractionElement.interactionVariable).toEventStream()
+  lazy val syncReport = fullInfo.syncControl.createObservableReport(workbookInteractionElement.interactionVariable).toEventStream()
 
   lazy val domElement: Element = {
-
-
     div(
       cls := interactionInfoCssString,
       div(
-        cls := "current-value-icon",
+        cls := "current-grading-icon",
 
       ),
       div(
@@ -37,7 +36,7 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionE
 
 
 
-  def deriveSyncSymbol(report: InteractionVariableSyncReport[?]): Element = {
+  def deriveSyncSymbol(report: InteractionVariableSyncReport[?, ?, ?]): Element = {
 
     val svgSyncIcon: ReactiveSvgElement[org.scalajs.dom.SVGSVGElement] =
       if (report.allSyncLocations.isEmpty) createCloudDisabledSvg()

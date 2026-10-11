@@ -38,7 +38,7 @@ class DefaultValueCodecsSpec extends FunSuite {
     val sync = usage.toSyncContext("variable")
     roundTrip(usage)
     roundTrip(sync)
-    val history = it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized.empty
+    val history = write(it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[Int, Int, Int])
     roundTrip(SyncCache(java.time.LocalDateTime.of(2025, 1, 1, 12, 0), usage, Map(sync -> history)))
   }
   test("registry descriptors have a default codec") {
@@ -60,8 +60,8 @@ class DefaultValueCodecsSpec extends FunSuite {
   test("chat value models and every sender role have default codecs") {
     import it.evadid.core.datastructures.chat.*
     SenderRole.allRoles.foreach(roundTrip(_))
-    val basic = Person.BasicPerson("Ada", "id", SenderRole.USER, Some("AD"))
-    val serializable = Person.SerializablePerson("Agent", "agent", SenderRole.AGENT, "AI")
+    val basic = ChatParticipant.BasicPerson("Ada", "id", SenderRole.USER, Some("AD"))
+    val serializable = ChatParticipant.BasicPerson("Agent", "agent", SenderRole.AGENT, Some("AI"))
     roundTrip(basic)
     roundTrip(serializable)
     assertEquals(basic.toSerializable.abbreviation, basic.abbreviation)
@@ -70,7 +70,6 @@ class DefaultValueCodecsSpec extends FunSuite {
   test("execution timing models preserve timestamps and fixed request times") {
     import it.evadid.distribution.command.*
     val time = java.time.LocalDateTime.of(2025, 1, 1, 12, 0)
-    roundTrip(ExecutionDuration(time, time.plusSeconds(1)))
     val history = ExecutionHistory(time, time.plusSeconds(1), time.plusSeconds(2), time.plusSeconds(3))
     roundTrip(history)
     assertEquals(history.withFixedTime(time.minusSeconds(2), time.minusSeconds(1)).timestampExecutionFinished, time.plusSeconds(3))

@@ -7,6 +7,7 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSe
 import it.evadid.workbook.model.blockchain.TeachingChain
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class BlockchainInteraction(elementId: String, title: LanguageMapContentId, initial: TeachingChain, difficultyZeros: Int = 1)
   extends WorkbookInteractionElement[TeachingChain] {
   TeachingChain.validateDifficulty(difficultyZeros)

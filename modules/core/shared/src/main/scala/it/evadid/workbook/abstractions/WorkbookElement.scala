@@ -2,10 +2,13 @@ package it.evadid.workbook.abstractions
 
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.io.*
-import it.evadid.workbook.abstractions.grading.{GradingResult, WorkbookInteractionGrader}
-import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, WorkbookInteractionScaffolder}
+import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
+import it.evadid.workbook.abstractions.scaffolding.WorkbookInteractionScaffolder
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import upickle.default.*
+
+import scala.reflect.ClassTag.Nothing
 
 object WorkbookElement {
 
@@ -18,10 +21,8 @@ sealed trait WorkbookElement {
   lazy val asRef = WorkbookElementReference(elementId, Option(this.getClass.getSimpleName))
 
   lazy val childrenOfThisElement: List[WorkbookElement]
-  lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = allChildrenFullSubtree.flatMap {
-    case i: WorkbookInteractionElement[?] => List(i)
-    case _ => List()
-  }
+  lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] =
+    childrenOfThisElement.flatMap(_.allInteractionsInThisInstance)
 
   lazy val allChildrenFullSubtree: List[WorkbookElement] = childrenOfThisElement ++ childrenOfThisElement.flatMap(_.allChildrenFullSubtree)
 
@@ -39,7 +40,6 @@ trait WorkbookDisplayElement extends WorkbookElement {
 }
 
 trait WorkbookStructureElement[T <: WorkbookElement] extends WorkbookElement {
-
   lazy val structureType: WorkbookStructuringType
   override lazy val childrenOfThisElement: List[WorkbookElement] = groupElements
 
@@ -47,22 +47,21 @@ trait WorkbookStructureElement[T <: WorkbookElement] extends WorkbookElement {
 
 }
 
-trait WorkbookInteractionElement[T] extends WorkbookElement {
-  override lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = List(this)
+trait WorkbookInteractionElementFull[T: ReadWriter, GA: ReadWriter, SA: ReadWriter] extends WorkbookElement {
+
+  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] =
+    List(this) ++ childrenOfThisElement.flatMap(_.allInteractionsInThisInstance)
   lazy val isDisabledState: State[Boolean] = State(false)
   // needs to be lazy or defaultValue (from subclass) might not be inited!
-  lazy val interactionVariable: InteractionVariable[T] = InteractionVariable[T](this)
+  lazy val interactionVariable: InteractionVariable[T, GA, SA] = InteractionVariable[T, GA, SA](this)
 
   val defaultValue: T
-  val serializerInteractionContent: Serializer[T]
+  val serializerInteractionContent: Serializer[T] = Serializer.fromImplicitRW
 
-
+  val gradingElements: List[WorkbookInteractionGrader[T, GA]] = List()
+  val scaffoldingElement: Option[WorkbookInteractionScaffolder[T, SA]] = None
 }
 
-trait WorkbookInteractionElementWithGrader[T, G <: GradingResult[T]] extends WorkbookInteractionElement[T] {
-  val gradingElements: List[WorkbookInteractionGrader[T, G]] = List()
-}
+type WorkbookInteractionElement[T] = WorkbookInteractionElementFull[T, Any, Any]
 
-trait WorkbookInteractionElementWithScaffolder[T, S <: ScaffoldingResult[T]] extends WorkbookInteractionElement[T] {
-  val scaffoldingElement: WorkbookInteractionScaffolder[T, S]
-}
+type WorkbookInteractionUntyped = WorkbookInteractionElementFull[?, ?, ?]

@@ -3,7 +3,7 @@ package it.evadid.homepage.control.info
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
-import it.evadid.workbook.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.abstractions.{WorkbookInteractionElement, WorkbookInteractionUntyped}
 import it.evadid.workbook.interaction.sync.{SyncInformation, UsageContext}
 import it.evadid.workbook.interaction.sync.SyncInformation.*
 import it.evadid.workbook.interaction.sync.*
@@ -34,9 +34,9 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().userInfo
   }
 
-  def allAvailableInteractions: List[WorkbookInteractionElement[?]] = fullInfo.synchronized {
+  def allAvailableInteractions: List[WorkbookInteractionUntyped] = fullInfo.synchronized {
     val default = List()
-    now().workbookInfo.map(_.loadedWorkbook.allContainedInteractions).getOrElse(default)
+    now().workbookInfo.map(_.loadedWorkbook.allInteractionsInThisInstance).getOrElse(default)
   }
 
   def allAvailableLanguages: List[HumanLanguage] = fullInfo.synchronized {
