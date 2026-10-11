@@ -16,7 +16,7 @@ import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
-import it.evadid.workbook.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.abstractions.{WorkbookInteractionElement, WorkbookInteractionUntyped}
 
 import scala.concurrent.*
 import scala.scalajs.js
@@ -135,8 +135,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     sessionData.interactionHistorySerialized.foreachEntry((varId, serHist) => {
       interactions.map(_.interactionVariable).foreach(curInteraction => {
         if (curInteraction.keyForSerialization == varId) {
-          given rw6 = curInteraction.rw1
-          curInteraction.updateHistory(_.withAddedEvents(logger, serHist))
+          curInteraction.withAddedEvents(logger, serHist)
         }
       })
     })

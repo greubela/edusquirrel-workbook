@@ -10,7 +10,7 @@ import it.evadid.vm.code.defining.KnownBeDefineStructures.variables
 import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncControl, SyncInformation, UsageContext}
-import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableHistorySerialized}
+import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 
 import java.time
 import java.time.LocalDateTime

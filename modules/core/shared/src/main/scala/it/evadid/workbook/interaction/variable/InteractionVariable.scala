@@ -5,10 +5,13 @@ import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, Asy
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic.DeriveOnlyLastValues
 import it.evadid.core.datastructures.state.{ExecutionMethod, State}
-import it.evadid.workbook.abstractions.{WorkbookInteractionElement, WorkbookInteractionElementFull}
+import it.evadid.util.logging.Logger
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult}
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
+
+import upickle.default.*
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,7 +23,8 @@ object InteractionVariable {
 
 type InteractionVariableUntyped = InteractionVariable[?, ?, ?]
 
-case class InteractionVariable[T, GA, SA](underlyingInteraction: WorkbookInteractionElementFull[T, GA, SA], debug: Boolean = false) {
+
+case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](underlyingInteraction: WorkbookInteractionElementFull[T, GA, SA], debug: Boolean = false) {
 
   given ec: ExecutionContext = ExecutionContext.global
 
@@ -80,6 +84,16 @@ case class InteractionVariable[T, GA, SA](underlyingInteraction: WorkbookInterac
 
   def updateHistory(func: InteractionVariableHistory[T, GA, SA] => InteractionVariableHistory[T, GA, SA]): Unit = this.synchronized {
     innerState.update(func)
+  }
+
+  def withAddedEvents(logger: Logger, serializedHistory: String): Unit = {
+    try {
+      val res: InteractionVariableHistory[T, GA, SA] = read[InteractionVariableHistory[T, GA, SA]](serializedHistory)
+      innerState.update(_.withAddedEvents(res.events))
+    } catch case (err: Throwable) => {
+      logger.logExceptionWarn(s"InteractionVariableHistory -> withAddedEvents: cannot parse serializedHistory, ignoring content'${serializedHistory}'", err)
+      this
+    }
   }
 
   def executeLoad(syncControl: SyncControl): Unit = this.synchronized {

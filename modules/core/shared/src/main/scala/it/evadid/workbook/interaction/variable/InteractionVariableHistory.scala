@@ -40,16 +40,6 @@ case class InteractionVariableHistory[T, GA, SA]
     updateEvents(eventFunc = syncStrategy.selectEventsToSync)
   }
 
-  def withAddedEvents(logger: Logger, serializedHistory: String)(using ReadWriter[T], ReadWriter[GA], ReadWriter[SA]): InteractionVariableHistory[T, GA, SA] = {
-    try {
-      val res: InteractionVariableHistory[T, GA, SA] = read[InteractionVariableHistory[T, GA, SA]](serializedHistory)
-      withAddedEvents(res.events)
-    } catch case (err: Throwable) => {
-      logger.logExceptionWarn(s"InteractionVariableHistory -> withAddedEvents: cannot parse serializedHistory, ignoring content'${serializedHistory}'", err)
-      this
-    }
-
-  }
 
   def withAddedEvents(newEvents: Set[InteractionVariableState[T]]): InteractionVariableHistory[T, GA, SA] = {
     updateEvents(curEvents => (curEvents ++ newEvents)).cleanedHistory()
@@ -59,10 +49,6 @@ case class InteractionVariableHistory[T, GA, SA]
     withAddedEvents(Set(event))
   }
 
-  def withAddedEvents(newEvents: InteractionVariableHistory[T, GA, SA]): InteractionVariableHistory[T, GA, SA] = {
-    withAddedEvents(newEvents.events)
-  }
-
   override val toString: String = s"InteractionVariableHistory(${events.size} events, latest: ${InfoUtil.datetimeFormattedForLog(lastStateOption.map(_.timestamp))})"
 
 }
@@ -70,8 +56,6 @@ case class InteractionVariableHistory[T, GA, SA]
 object InteractionVariableHistory {
 
   given [T: ReadWriter, GA: ReadWriter, SA: ReadWriter]: ReadWriter[InteractionVariableHistory[T, GA, SA]] = macroRW
-
-
 
   type InteractionVariableHistoryUntyped = InteractionVariableHistory[?, ?, ?]
 

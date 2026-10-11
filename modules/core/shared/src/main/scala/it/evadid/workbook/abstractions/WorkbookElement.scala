@@ -50,17 +50,13 @@ trait WorkbookStructureElement[T <: WorkbookElement] extends WorkbookElement {
 
 trait WorkbookInteractionElementFull[T: ReadWriter, GA: ReadWriter, SA: ReadWriter] extends WorkbookElement {
 
-  given rw1: ReadWriter[T] = summon[ReadWriter[T]]
-  given rw2: ReadWriter[GA] = summon[ReadWriter[GA]]
-  given rw3: ReadWriter[SA] = summon[ReadWriter[SA]]
-
   override lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] = List(this)
   lazy val isDisabledState: State[Boolean] = State(false)
   // needs to be lazy or defaultValue (from subclass) might not be inited!
   lazy val interactionVariable: InteractionVariable[T, GA, SA] = InteractionVariable[T, GA, SA](this)
 
   val defaultValue: T
-  val serializerInteractionContent: Serializer[T] = Serializer.fromUpickleJson(rw1)
+  val serializerInteractionContent: Serializer[T] = Serializer.fromImplicitRW
 
   val gradingElements: List[WorkbookInteractionGrader[T, GA]] = List()
   val scaffoldingElement: Option[WorkbookInteractionScaffolder[T, SA]] = None
