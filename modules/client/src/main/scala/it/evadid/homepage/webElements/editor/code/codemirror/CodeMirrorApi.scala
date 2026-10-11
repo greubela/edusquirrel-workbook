@@ -153,6 +153,7 @@ private[code] object CodeMirrorApi {
   }
   @js.native trait ViewFactory extends js.Object {
     val decorations: DecorationsFacet = js.native
+    val editorAttributes: Facet[js.Object] = js.native
     val updateListener: Facet[js.Function1[ViewUpdate, Unit]] = js.native
   }
   @js.native trait DecorationsFacet extends js.Object {

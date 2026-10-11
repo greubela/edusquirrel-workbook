@@ -35,6 +35,7 @@ private[code] object CodeMirrorRuntime {
   }
 
   private lazy val sharedExtensions: js.Array[Extension] = js.Array(
+    Libraries.EditorView.editorAttributes.of(js.Dynamic.literal(`class` = "edusquirrel-code-mirror")),
     Libraries.EditorState.tabSize.of(4), Libraries.indentUnit.of(indent),
     Libraries.lineNumbers(), Libraries.highlightActiveLineGutter(), Libraries.drawSelection(),
     Libraries.foldGutter(), Libraries.indentOnInput(), Libraries.bracketMatching(),
@@ -99,7 +100,6 @@ private[code] object CodeMirrorRuntime {
           }
         }))))
     private val view = new EditorView(js.Dynamic.literal(state = state, parent = config.parent))
-    view.dom.classList.add("edusquirrel-code-mirror")
 
     if isJava then Libraries.loadJavaModule().`then`[Unit]((module: JavaModule) => {
       if !destroyed then view.dispatch(js.Dynamic.literal(effects = editorLanguage.reconfigure(module.java())))
