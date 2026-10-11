@@ -292,6 +292,8 @@
 }
 .java-function-editor__dialog-error { min-height: 20px; color: #ffb8b2; }
 .java-function-editor__dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.java-function-editor__method-option { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
+.java-function-based-editor .java-function-editor__method-option input { width: 18px; height: 18px; padding: 0; margin: 0; accent-color: var(--editor-accent, var(--color-focus)); }
 .java-function-based-editor--with-reference {
     grid-template-columns: 218px minmax(0, 1fr) minmax(280px, 320px);
     grid-template-areas: "header header header" "navigation workspace reference";

@@ -38,6 +38,7 @@ final class JavaFunctionBasedEditor(
   private val functionNameDraft = Var("newFunction")
   private val returnTypeDraft = Var("void")
   private val parametersDraft = Var("")
+  private val staticMethodDraft = Var(true)
   private val dialogError = Var("")
 
   override def dismissOnOutsideClick: Boolean = false
@@ -153,6 +154,7 @@ final class JavaFunctionBasedEditor(
       functionNameDraft.set("newFunction")
       returnTypeDraft.set("void")
       parametersDraft.set("")
+      staticMethodDraft.set(true)
       dialogError.set("")
       dialogMode.set(Some(DialogMode.AddFunction))
 
@@ -185,7 +187,8 @@ final class JavaFunctionBasedEditor(
       dialogClassName.now()
         .flatMap(className => classes.now().find(_.name == className))
         .foreach { targetClass =>
-          val declaration = s"public $returnType $name($parameters) {\n    \n  }"
+          val declaration = functionDeclaration(returnType = returnType, name = name,
+            parameters = parameters, isStatic = staticMethodDraft.now())
           val candidate = insertFunction(sourceCode, targetClass, declaration)
           if parses(candidate) then {
             val refreshedClasses = discover(candidate)
@@ -243,7 +246,13 @@ final class JavaFunctionBasedEditor(
       else div(cls := "java-function-editor__dialog-fields",
         modalField("Function name", functionNameDraft),
         modalField("Return type", returnTypeDraft),
-        modalField("Parameters (for example: int count, String label)", parametersDraft)
+        modalField("Parameters (for example: int count, String label)", parametersDraft),
+        labelTag(
+          cls := "java-function-editor__method-option",
+          input(typ := "checkbox", checked <-- staticMethodDraft.signal,
+            onChange.mapToChecked --> staticMethodDraft.writer),
+          span("Static method")
+        )
       ),
       p(
         cls := "java-function-editor__dialog-error",
@@ -604,6 +613,11 @@ object JavaFunctionBasedEditor {
 
   private def lineSeparator(source: String): String =
     "\r\n|\r|\n".r.findFirstIn(source).getOrElse("\n")
+
+  private[code] def functionDeclaration(returnType: String, name: String, parameters: String, isStatic: Boolean): String = {
+    val modifiers = if isStatic then "public static" else "public"
+    s"$modifiers $returnType $name($parameters) {\n    \n  }"
+  }
 
   private[code] def insertFunction(source: String, clazz: JavaClass, declaration: String): String = {
     val beforeClosingBrace = source.substring(0, clazz.bodyEnd)

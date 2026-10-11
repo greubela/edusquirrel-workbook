@@ -1,6 +1,8 @@
 package it.evadid.homepage.webElements.code
 
 import munit.FunSuite
+import it.evadid.vm.parsing.java.clean.JavaParser
+import it.evadid.vm.parsing.java.clean.model.JavaAST.{JavaClassDef, JavaMethodDef}
 
 class JavaFunctionBasedEditorSpec extends FunSuite {
   import JavaFunctionBasedEditor.*
@@ -61,6 +63,49 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
       JavaFunctionBasedEditor.discover(withNewFunction).head.functions.map(_.name),
       List("sum", "keep", "reset")
     )
+  }
+
+  test("function declarations include static only when selected and remain parseable") {
+    List(true, false).foreach { isStatic =>
+      val declaration = functionDeclaration(returnType = "void", name = "draw",
+        parameters = "int distance", isStatic = isStatic)
+      val modifiers = if isStatic then "public static" else "public"
+      assertEquals(declaration, s"$modifiers void draw(int distance) {\n    \n  }")
+      val program = JavaParser.parse(s"class Drawing { $declaration }")
+        .fold(error => fail(error.getMessage), identity)
+      assertEquals(program.statements.size, 1)
+      val clazz = program.statements.head.statement match {
+        case value: JavaClassDef => value
+        case other => fail(s"Expected a class definition, got $other")
+      }
+      assertEquals(clazz.body.statements.size, 1)
+      val method = clazz.body.statements.head match {
+        case value: JavaMethodDef => value
+        case other => fail(s"Expected a method definition, got $other")
+      }
+      assertEquals(method.name, "draw")
+      assertEquals(method.parameters.map(_.name), Seq("distance"))
+      assertEquals(method.modifiers, if isStatic then Seq("public", "static") else Seq("public"))
+    }
+  }
+
+  test("inserting static and instance declarations preserves surrounding source and separators") {
+    val original = "// \ud83d\ude42 unchanged\nclass Drawing {\n\tpublic static void main(String[] args) {}\n\tprivate void keep() {}\n\t \n}  \t\n\nclass Other { public void keepOther() {} }\n\t "
+    for {
+      separator <- List("\n", "\r\n", "\r")
+      isStatic <- List(true, false)
+    } {
+      val source = original.replace("\n", separator)
+      val clazz = discover(source).head
+      val declaration = functionDeclaration(returnType = "void", name = "draw",
+        parameters = "double distance", isStatic = isStatic)
+      val inserted = insertFunction(source, clazz, declaration)
+      val normalized = declaration.replace("\n", separator)
+      assertEquals(inserted, source.substring(0, clazz.bodyEnd) + separator + "  " + normalized + separator + source.substring(clazz.bodyEnd))
+      assert(parses(inserted))
+      assertEquals(discover(inserted).head.functions.map(_.name), List("main", "keep", "draw"))
+      assertEquals(discover(inserted).map(_.name), List("Drawing", "Other"))
+    }
   }
 
   test("owned ranges preserve surrounding source across invalid edits and recovery") {
