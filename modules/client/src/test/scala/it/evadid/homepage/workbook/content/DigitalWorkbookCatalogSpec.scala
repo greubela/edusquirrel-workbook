@@ -25,4 +25,16 @@ class DigitalWorkbookCatalogSpec extends FunSuite {
       }
     }
   }
+  test("every native digital workbook advertises both German and English") {
+    import it.evadid.core.datastructures.language.AppLanguage.{German, English}
+    DigitalWorkbookCatalog.entries.flatMap(_.native).foreach { entry =>
+      val workbook = entry.factory(null).createWorkbook
+      assert(workbook.metadata.availableLanguages.contains(German), entry.page)
+      assert(workbook.metadata.availableLanguages.contains(English), entry.page)
+    }
+    val demo = CreateTestWorkbook(null).createWorkbook
+    assert(demo.metadata.availableLanguages.contains(German))
+    assert(demo.metadata.availableLanguages.contains(English))
+  }
+
 }
