@@ -37,7 +37,7 @@ const quoted = source => [...source.matchAll(/"([^"\n]+)"/g)].flatMap(match => m
 function nativeCompressionKeys() {
   const required = new Set(['workbookTitle', 'materialsDownloads', 'inspectorFormattedLetter', 'screenshotFormatNote']);
   const files = ['CreateCompressionWorkbook.scala', 'CompressionSourceContent.scala'].map(file =>
-    `modules/client/src/main/scala/it/evadid/homepage/workbook/content/${file}`);
+    `modules/client/src/main/scala/it/evadid/homepage/workbook/content/wip/${file}`);
   const editor = 'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/compression';
   files.push(...fs.readdirSync(path.join(root, editor)).filter(file => file.endsWith('.scala')).map(file => `${editor}/${file}`));
   for (const file of files) for (const value of quoted(read(file))) {

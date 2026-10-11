@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
 import munit.FunSuite
 
 class DigitalWorkbookCatalogSpec extends FunSuite {
