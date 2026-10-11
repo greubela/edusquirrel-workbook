@@ -5,7 +5,7 @@ import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXMLWithAdditionalFloatingObjects, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateBeExpression
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingEditorPalette, ProgrammingStateSnapXmlHelper, SnapTurtlePythonBridge}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
@@ -61,8 +61,6 @@ object ProgrammingExercise {
   object StateSerializer extends Serializer[ProgrammingState] {
     override def serialize(obj: ProgrammingState): String = obj match
       case ProgrammingStateSnapXml(xml) => s"$StateHeader\nSNAP_XML\n$xml"
-      case ProgrammingStateSnapXMLWithAdditionalFloatingObjects(xml, objects) =>
-        s"$StateHeader\nSNAP_XML_WITH_FLOATING\n${write(objects)}\n$xml"
       case ProgrammingStatePythonString(code) => s"$StateHeader\nPYTHON\n$code"
       case ProgrammingStateJavaString(code) => s"$StateHeader\nJAVA\n$code"
       case ProgrammingStateBeExpression(expression) =>
@@ -100,7 +98,7 @@ object ProgrammingExercise {
           val split = payload.indexOf('\n')
           if split < 0 then None
           else Try(read[List[String]](payload.take(split))).toOption.map(objects =>
-            ProgrammingStateSnapXMLWithAdditionalFloatingObjects(payload.drop(split + 1), objects)
+            ProgrammingStateSnapXml(payload.drop(split + 1)) // , objects
           )
         case _ => None
     }
