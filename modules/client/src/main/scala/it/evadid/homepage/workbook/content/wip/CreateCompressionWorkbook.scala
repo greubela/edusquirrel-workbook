@@ -16,7 +16,7 @@ import it.evadid.workbook.model.compression.*
 
 /** Native reconstruction of every chapter and activity in the retained standalone workbook. */
 case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
-  override val availableLanguages: List[HumanLanguage] = List(German)
+  override val availableLanguages: List[HumanLanguage] = List(German, English)
   override val workbookId = "CompressionWorkbook"
 
   private def t(key: String): String = s"CompressionWorkbook/$key"

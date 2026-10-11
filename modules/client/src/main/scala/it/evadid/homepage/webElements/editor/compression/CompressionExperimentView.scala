@@ -6,6 +6,11 @@ import it.evadid.workbook.model.compression.*
 
 object CompressionExperimentView {
   def localized(key: String): Signal[String] = LaminarRenderHelper.singleton.plaintextStringSignal(s"CompressionWorkbook/$key")
+  def format(key: String, fields: (String, String)*): Signal[String] =
+    localized(key).map(template => fields.foldLeft(template) { case (text, (field, value)) =>
+      text.replace(s"{$field}", value)
+    })
+
   def summary(value: CompressionExperiment): Signal[String] = {
     val (key, fields) = value match {
       case v: PhotoBudget => ("photoSummary",Map("count" -> v.count.toString,"size" -> v.photoMB.toString,"capacity" -> v.capacityMB.toString))

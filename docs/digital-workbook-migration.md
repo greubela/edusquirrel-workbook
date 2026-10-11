@@ -179,3 +179,35 @@ Validation: `CoordinatePlotSpec` on core JVM/JS, the exhaustive interaction seri
 ## Separate embroidery preview edition
 
 `homepage/embroideryPreviewWorkbook/` duplicates the original under a distinct workbook ID. All thirteen raster-based recreation interactions now use geometric turtle targets. Digital chapter 5 covers modulo and conditionals (PDF task 4), and chapter 6 covers Koch levels, constant-width curves, Koch snowflakes and a branching star (PDF task 5). The final open-ended design task covers PDF task 6. The new edition is available in German and English. Geometry grading does not verify the use of particular algorithms, command limits, physical stitch spacing or machine export. The original workbook and PDF remain available. See [the edition notes](embroidery-preview-workbook.md) for task mapping and validation.
+
+## German and English native editions
+
+Every native entry in `DigitalWorkbookCatalog` must advertise German and English
+in its workbook metadata and provide translated lesson and editor text. The
+language selector switches the same workbook and its bound answers; changing
+language does not create a separate exercise state.
+
+The Monks edition includes English dialogue, recursion explanations, questions
+and Koch exercises. Compression includes English text for all seven migrated
+chapters, slideshow captions, sorting explanations, hints and native editor
+controls. Its English map covers native runtime references; the German map also
+retains unused entries imported from the older standalone interface. Those
+unused entries do not need translations until reused by a native component.
+Preserve placeholders and download URLs when translating. Encoded text examples
+must correspond to the translated plaintext, including the existing Base64
+technical correction.
+
+Original downloadable documents, illustrations, evidence files and simulator
+sample data remain source materials, including their original German text and
+filenames. The five older standalone catalogue offerings, including remotely
+hosted applications, have separate implementations and require their own
+localization/adaptation work. The native-language guarantee applies to the nine
+workbooks constructed by this repository's workbook factories and their shared
+components, plus the developer test workbook.
+
+`DigitalWorkbookCatalogSpec` verifies language metadata.
+`tools/dev/workbook-languages.test.mjs` checks native map coverage, dynamic
+Compression references, placeholders, links and encoded examples.
+`tools/dev/workbook-languages.browser.test.mjs` switches all nine entry pages
+between languages and checks English Compression controls and answer retention.
+Both test files are discovered by the existing static/browser test runners.

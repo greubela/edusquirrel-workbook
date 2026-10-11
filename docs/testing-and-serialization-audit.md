@@ -375,3 +375,27 @@ or ignored tests. The final non-finite Snap default correction passes all 29 tes
 in `SystematicDerivedCodecSpec` on both platforms; client and worker development
 artifacts are rebuilt successfully afterward. The inventory check and its seven
 scanner regressions pass.
+
+## Integration with the typed API and legacy cleanup
+
+Main `13c6ee28` includes the typed execution/history APIs, legacy deletions and
+package moves from `729077c2`, plus the bilingual workbook updates. The integration
+keeps those deletions and updated wire contracts, adapting the workbook snapshot
+codec to `WorkbookInteractionElementFull[T, GA, SA]`. The former untyped execution
+codec and rich `SyncFormatter` history contract described above have been replaced
+by main's typed execution results and history JSON; their obsolete tests are
+removed or rewritten around the replacement APIs. The moved Snap project model
+retains its codec tests. New execution-success and grading-status variants expose
+derived defaults, and exception payload tests compare their serialized data rather
+than throwable object identity.
+
+The maintained inventory now accounts for 1,155 declarations: 834 derived codecs,
+92 explicit codecs and 229 reviewed exceptions. Deleted exceptions are removed,
+and exceptions for moved workbook factories use their current paths.
+
+All five suites pass on the integrated tree: shared JVM 1,116, shared JavaScript
+1,104, client 482, server 9 and worker 3, with no failures or ignored tests. Client
+and worker development artifacts build successfully. Six language/compression
+checks and two browser checks also pass, including German/English headings across
+all nine native digital workbook pages and preserved compression edits while
+switching language. The inventory check and seven scanner regressions pass.

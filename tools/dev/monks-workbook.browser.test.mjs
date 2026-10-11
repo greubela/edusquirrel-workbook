@@ -25,6 +25,8 @@ test('monk stories and Koch practice render and can be navigated', async () => {
     });
     await page.goto(origin + '/homepage/monksWorkbook/index.html');
     await page.locator('.section-register .login-area').nth(1).locator('button').click({timeout:60000});
+    await page.locator('.select-language-line > div').first().click();
+    await page.getByRole('heading', {name: 'Rekursion mit den Mönchen von Mons Komputarius', exact: true}).waitFor();
     for (const [section, count] of [['Die Mönche von Mons Komputarius',69],['Rekursion verstehen',17]]) {
       await page.locator('.section-block').filter({hasText:section}).click();
       const deck = page.locator('.slide-deck-container').first();
