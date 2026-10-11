@@ -1,9 +1,10 @@
-package it.evadid.homepage.workbook.content
+package it.evadid.homepage.workbook.content.wip
 
-import it.evadid.core.datastructures.user.User
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailInteraction, MailEditor}
+import it.evadid.homepage.workbook.content.WorkbookFactory
+import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailEditor, MailInteraction}
 import it.evadid.workbook.elements.interactionElements.table.*
 import it.evadid.workbook.elements.interactionElements.text.*
 import it.evadid.workbook.elements.structureElements.Workbook

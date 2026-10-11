@@ -1,16 +1,17 @@
-package it.evadid.homepage.workbook.content
+package it.evadid.homepage.workbook.content.wip
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
+import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookElement}
+import it.evadid.workbook.elements.displayElements.CollapsibleInstructionElement
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
-import it.evadid.workbook.elements.structureElements.Workbook
-import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, WorkbookImageElement}
-import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.*
+import it.evadid.workbook.elements.structureElements.Workbook
 import it.evadid.workbook.model.compression.*
 
 /** Native reconstruction of every chapter and activity in the retained standalone workbook. */

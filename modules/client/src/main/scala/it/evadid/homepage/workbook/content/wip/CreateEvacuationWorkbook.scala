@@ -1,14 +1,15 @@
-package it.evadid.homepage.workbook.content
+package it.evadid.homepage.workbook.content.wip
 
-import it.evadid.core.datastructures.user.User
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
-import it.evadid.workbook.model.plot.PlotAxis
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
+import it.evadid.homepage.workbook.content.WorkbookFactory
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.evacuation.*
-import it.evadid.workbook.model.evacuation.*
+import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
 import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.model.evacuation.*
+import it.evadid.workbook.model.plot.PlotAxis
 
 /** Partial adaptation of the original grid-automaton PDF. The classic PDF remains available. */
 case class CreateEvacuationWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
