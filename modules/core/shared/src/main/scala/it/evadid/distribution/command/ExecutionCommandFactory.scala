@@ -2,7 +2,6 @@ package it.evadid.distribution.command
 
 import it.evadid.distribution.clients.{ExecutionClient, LocalExecutionClient}
 import it.evadid.distribution.command.ExecutionInfo.*
-import it.evadid.distribution.command.ExecutionResult.*
 import it.evadid.distribution.formats.ExecutionClientResponse.AdditionalLoggingOutput
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger

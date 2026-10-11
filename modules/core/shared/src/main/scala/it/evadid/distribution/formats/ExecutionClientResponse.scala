@@ -10,8 +10,6 @@ import java.time.LocalDateTime
 
 object ExecutionClientResponse {
 
-  //type ExecutionClientResponseUntyped = ExecutionClientResponse[?]
-
   case class ExecutionClientResponseTimestamps(timestampReceived: LocalDateTime, timestampStarted: LocalDateTime, timestampFinished: LocalDateTime) derives ReadWriter {
     def toHistory(timestampRequested: LocalDateTime): ExecutionHistory = {
       ExecutionHistory(timestampRequested, timestampReceived, timestampStarted, timestampFinished)

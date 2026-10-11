@@ -10,7 +10,6 @@ import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserTo
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.*
 import it.evadid.distribution.command.ExecutionInfo.*
-import it.evadid.distribution.command.ExecutionResult.*
 import it.evadid.distribution.command.SerializedException.SimpleStackTraceElement
 import it.evadid.distribution.commandTypes.LLMCommands.*
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}

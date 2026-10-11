@@ -8,7 +8,6 @@ import upickle.default.*
 
 object LLMCommands {
 
-
   case class MessengerChatCompletionResponse(newTextGenerated: String)  derives ReadWriter
 
   case class MessengerChatCompletionRequest(systemPrompt: String, messengerModel: MessengerModel)  derives ReadWriter {

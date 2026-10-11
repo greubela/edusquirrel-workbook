@@ -10,7 +10,6 @@ import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult}
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
-
 import upickle.default.*
 
 import java.time.LocalDateTime
@@ -80,7 +79,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     val payload = it.evadid.workbook.interaction.sync.model.HistoryJson.payload(json)
     require(payload.obj.contains("events") || payload.obj.contains("states"), "Missing history events")
     val typed = if (payload.obj.contains("events")) read[InteractionVariableHistory[T, GA, SA]](payload)
-      else InteractionVariableHistory.empty[T, GA, SA]
+    else InteractionVariableHistory.empty[T, GA, SA]
     val legacyEvents = payload.obj.get("states").toList.flatMap(_.arr).map { state =>
       InteractionVariableState[T](
         scala.util.Try(read[T](ujson.Str(state("serializedValue").str)))
@@ -132,14 +131,19 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
   }
 
   def startGrading(syncControl: SyncControl, forceGrading: Boolean = false): Unit = this.synchronized {
-    val curState = currentValue
-    val futures: Future[List[GradingResult[T, GA]]] = Future.traverse(underlyingInteraction.gradingElements)(_.gradeStateSafe(curState, forceGrading))
-    futures.map(resList => GradedState[T, GA](curState, resList.toSet)).onComplete {
-      case Success(res) => this.synchronized {
-        innerState.update(_.updateGradings(_ ++ Map(curState -> res)))
+    val curState = innerState.now()
+    val lastValue = curState.events.lastOption.map(_.value)
+    if (lastValue.isEmpty || curState.gradings.contains(lastValue.get)) {
+    } else {
+      val futures: Future[List[GradingResult[T, GA]]] = Future.traverse(underlyingInteraction.gradingElements)(_.gradeStateSafe(lastValue.get, forceGrading))
+      futures.map(resList => GradedState[T, GA](lastValue.get, resList.toSet)).onComplete {
+        case Success(res) => this.synchronized {
+          innerState.update(_.updateGradings(_ ++ Map(lastValue.get -> res)))
+        }
+        case Failure(err) => syncControl.controlLogger.logExceptionWarn("Ignore Grading after error at Grading", err)
       }
-      case Failure(err) => syncControl.controlLogger.logExceptionWarn("Ignore Grading after error at Grading", err)
     }
+
 
   }
 
