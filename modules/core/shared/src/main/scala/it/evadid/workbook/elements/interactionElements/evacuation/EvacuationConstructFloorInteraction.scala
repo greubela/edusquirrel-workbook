@@ -6,6 +6,7 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSe
 import it.evadid.workbook.model.evacuation.EvacuationFloorPlan
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 /** Construction criteria only; they do not certify reachability or evacuation safety. */
 case class EvacuationFloorRequirements(minPeople: Int = 1, minExits: Int = 1) derives ReadWriter {
   require(minPeople >= 0 && minExits >= 0, "Minimum counts must be non-negative")

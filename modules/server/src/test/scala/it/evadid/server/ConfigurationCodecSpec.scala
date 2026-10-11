@@ -19,22 +19,18 @@ class ConfigurationCodecSpec extends FunSuite {
     assertEquals(readBinary[SendMailCommand.MailConfig](writeBinary(value)), value)
   }
 
-  test("database entry sums preserve rich histories and both key variants") {
+  test("database entry sums preserve history JSON and both key variants") {
     import it.evadid.server.commandHandler.sql.sync.RichDatabaseEntry
-    import it.evadid.workbook.interaction.sync.{SyncFormatter, UpdateImportance, UsageContext}
-    import it.evadid.workbook.interaction.variable.{InteractionVariableHistorySerialized, InteractionVariableStateSerialized}
+    import it.evadid.workbook.interaction.sync.UsageContext
     val context = UsageContext("program", "scenario", "fixture")
-    val formatter = SyncFormatter.RichInteractionVariableFormatter()
-    val history = InteractionVariableHistorySerialized(Set(InteractionVariableStateSerialized("学校", UpdateImportance.DEFAULT,
-      java.time.LocalDateTime.parse("2025-01-02T03:04:05"))))
-    val serialized = formatter.serialize(context.toSyncContext("original-key"), history)
-    val values = List(RichDatabaseEntry.withoutKey(context, formatter, List("event", serialized)),
-      RichDatabaseEntry.withKey(context, formatter, List("event", "explicit-key", serialized)))
+    val history = """{"keyForSerialisation":"original-key","value":"学校"}"""
+    val values = List(RichDatabaseEntry.withoutKey(context, List("event", history)),
+      RichDatabaseEntry.withKey(context, List("event", "explicit-key", history)))
     values.foreach { value =>
       for (decoded <- List(read[RichDatabaseEntry](write(value)), readBinary[RichDatabaseEntry](writeBinary(value)))) {
         assertEquals(decoded, value)
         assertEquals(decoded.syncContext, value.syncContext)
-        assertEquals(decoded.richHistory.fullHistory, history)
+        assertEquals(decoded.historyJson, history)
       }
     }
   }

@@ -55,7 +55,7 @@ final case class SqlEditor(state: Var[String], databaseConfig: SqlDatabaseConfig
     generation += 1
     val current = generation
     SqlEditorCommands.execute.sendCommandTo(backend, Request(databaseConfig, if run then Some(state.now()) else None))
-      .map(info => info.resultTyped.result)
+      .map(info => info.result)
       .onComplete { result =>
         if mounted && current == generation then {
           busy.set(false)

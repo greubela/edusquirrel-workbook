@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
 import com.raquo.airstream.ownership.Owner
+import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorImpl, SnapProjectXmlSync}
 import it.evadid.workbook.elements.interactionElements.programming.*
@@ -1205,3 +1206,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   override def destroy(): Unit =
     stopEditorSession()
+
+  override def changeLanguage(humanLanguage: AppLanguage.HumanLanguage): Unit = {
+    // todo
+  }

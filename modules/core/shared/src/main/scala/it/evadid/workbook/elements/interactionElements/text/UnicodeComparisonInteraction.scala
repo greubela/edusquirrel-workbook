@@ -6,6 +6,7 @@ import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class UnicodeComparisonAnswer(first: String = "", second: String = "") derives ReadWriter {
   require(first.length <= UnicodeComparisonInteraction.maxTextLength && second.length <= UnicodeComparisonInteraction.maxTextLength)
 }

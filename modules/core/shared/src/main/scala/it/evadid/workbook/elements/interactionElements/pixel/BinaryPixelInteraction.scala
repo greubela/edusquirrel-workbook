@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.pixel
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}

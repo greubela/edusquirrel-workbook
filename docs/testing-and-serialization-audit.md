@@ -303,8 +303,9 @@ exceptions. `--json` emits every declaration with its file, line and classificat
 The scanner's regression tests run with
 `python3 tools/dev/audit-scala-serialization.test.py`.
 
-The current inventory contains 1,201 declarations: 859 use `derives ReadWriter`,
-92 have explicit codecs in their source file, and 250 are reviewed exceptions.
+After integrating the main cleanup, the inventory contains 1,155 declarations:
+834 use `derives ReadWriter`, 92 have explicit codecs in their source file, and
+229 are reviewed exceptions.
 This pass adds 573 derived codecs, including supporting snapshot records. These
 counts describe source declarations, including private helpers; generic codecs
 still require writers for their type parameters. The scanner is a maintenance
@@ -343,7 +344,7 @@ sum Mirror:
   independent state. The decoded simulation can continue to safety.
 - Snap block defaults have a local, tagged primitive codec for string, Boolean, Int
   and Double values. Unsupported executable/object values and malformed integer
-  payloads fail; there is no global permissive `ReadWriter[Any]`.
+  payloads fail. This local codec is independent of main's general `Any` codec.
 - Execution-info roots retain their existing untyped wire contract; callers recover
   typed results with the existing converter. URL policies persist only the URL.
 

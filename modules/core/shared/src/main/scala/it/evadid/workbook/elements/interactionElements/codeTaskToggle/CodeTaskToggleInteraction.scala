@@ -7,6 +7,7 @@ import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderIn
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import upickle.default.{ReadWriter, macroRW}
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class CodeTaskToggleInteraction(
                                       override val elementId: String,
                                       reorder: ReorderInteraction.ReorderCodeInteraction,
@@ -22,11 +23,9 @@ case class CodeTaskToggleInteraction(
     advancedCode = advancedCodeTemplate
   )
 
-  override val serializerInteractionContent: Serializer[CodeTaskToggleState] = CodeTaskToggleState.serializer
-
   override lazy val childrenOfThisElement: List[WorkbookElement] = List(reorder)
 
-  override lazy val allContainedInteractions: List[WorkbookInteractionElement[?]] = List(this, reorder)
+  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionElement[?]] = List(this, reorder)
 
 }
 

@@ -48,14 +48,14 @@ object AuthHandling {
   def findAuthCookies(cookies: Cookies, headers: Headers): Seq[SignedToken] = {
     val claimedAuth: Seq[String] = cookies.filter(_.name == SignedToken.cookieKey).map(_.value).toList ++ headers.toSimpleMap.get(SignedToken.cookieKey).toList
     println("claimAuth: " + claimedAuth)
-    val deserialized = DefaultSerializer.serializerSignedUserTokenInfo.tryDeserializeAll(claimedAuth)
+    val deserialized = it.evadid.core.util.io.Serializer.fromImplicitRW[SignedToken].tryDeserializeAll(claimedAuth)
     deserialized.inputAfterOperation.toList
   }
 
   def isTokenValid(logger: Logger, givenToken: SignedToken): Boolean = {
     JwtJson.decodeJson(givenToken.tokenStringWithSignature, serverSecret, Seq(JwtAlgorithm.HS256)) match {
       case Success(jsonClaims) => try {
-        val parsedUserInfo = DefaultSerializer.serializerUserTokenInfo.deserialize(jsonClaims.toString)
+        val parsedUserInfo = upickle.default.read[UserTokenInfo](jsonClaims.toString)
 
         if (parsedUserInfo.expiresAt.isBefore(LocalDateTime.now())) {
           logger.logWarn(s"Dismissed token because it expired at ${parsedUserInfo.expiresAt}!")

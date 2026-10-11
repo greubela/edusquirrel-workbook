@@ -6,6 +6,7 @@ import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class ChoiceAnswer(selected: List[Int] = Nil) derives ReadWriter {
   require(selected.forall(_ >= 0) && selected.distinct == selected, "Selections must be unique nonnegative indices")
 }

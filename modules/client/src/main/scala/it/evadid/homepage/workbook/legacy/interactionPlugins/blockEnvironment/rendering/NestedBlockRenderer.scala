@@ -12,7 +12,6 @@ import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowShape
 
 import scala.collection.mutable
 
-
 case class LineForRendering(lineNr: Int, segment: NestedBlockSegment, line: NestedBlockLine, controlFlowStack: List[ControlFlowShape]) {
   /*lazy val lineExprBox: BeShape = {
     val boxContent = line.expressionShape.map(List(_)).getOrElse(List())

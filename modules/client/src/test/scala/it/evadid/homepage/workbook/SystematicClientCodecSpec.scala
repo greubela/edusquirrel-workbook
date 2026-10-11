@@ -3,9 +3,8 @@ package it.evadid.homepage.workbook
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineToRender
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
+import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.TurtleStitchProgramModel.*
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
-import todomove.webElementsOld.webElements.shapes.meta.*
 import munit.FunSuite
 import upickle.default.*
 
@@ -33,16 +32,7 @@ class SystematicClientCodecSpec extends FunSuite {
     roundTrip(LineToRender(Point(1.0, 2.0), Point(3.0, 4.0), jump = true))
   }
 
-  test("position policies retain both variants and subsequent movement") {
-    val values: List[PositionInformation[Double]] = List(PositionUnknown(), PositionIsOffset(Point(2.0, 3.0)))
-    values.foreach { value =>
-      roundTrip(value)
-      val decoded = read[PositionInformation[Double]](write(value))
-      assertEquals(decoded.setToOrMoveBy(Point(4.0, 5.0)), value.setToOrMoveBy(Point(4.0, 5.0)))
-    }
-    roundTrip(PositionUnknown[Double]())
-    roundTrip(PositionIsOffset(Point(2.0, 3.0)))
-  }
+
 
   test("session export records expose their default codec without eager initialization cycles") {
     import it.evadid.core.datastructures.user.*

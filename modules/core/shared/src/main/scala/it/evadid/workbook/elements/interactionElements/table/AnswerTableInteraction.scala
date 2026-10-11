@@ -6,6 +6,7 @@ import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 sealed trait AnswerTableCell derives ReadWriter
 
 case class FixedTableCell(content: LanguageMapContentId) extends AnswerTableCell derives ReadWriter

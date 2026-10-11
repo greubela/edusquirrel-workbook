@@ -1,11 +1,12 @@
 package it.evadid.vm.parsing.python.clean.model
 
 import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.Serializer.anySerializer
 import it.evadid.vm.parsing.generic.abstractions.GenericAST.*
 import it.evadid.vm.parsing.python.clean.model.PyAST.{PyExpression, PythonLiteral}
+import upickle.default.*
 
-
-sealed trait PythonType[ScalaType] extends GenericAstType[ScalaType, PythonType[ScalaType], PythonLiteral[ScalaType]] with PyExpression {
+sealed trait PythonType[ScalaType] extends GenericAstType[ScalaType, PythonType[ScalaType], PythonLiteral[ScalaType]] with PyExpression  {
   def typeStringInPython: String
 
   def serializerPythonValue: Serializer[ScalaType]
@@ -71,6 +72,7 @@ object PythonType {
     }
   }
 
+
   abstract class PythonTypeImpl[ScalaType](
                                             val typeStringInPython: String,
                                             val serializerPythonValue: Serializer[ScalaType],
@@ -78,7 +80,6 @@ object PythonType {
                                           ) extends GenericAstType[ScalaType, PythonType[ScalaType], PythonLiteral[ScalaType]] with PythonType[ScalaType] {
     override val serializeTargetLanguageValue: Serializer[ScalaType] = serializerPythonValue
     override val typenameInCode: String = typeStringInPython
-
   }
 
 
@@ -90,13 +91,13 @@ object PythonType {
 
   sealed class PYTHON_INTEGER_BIN extends PythonTypeImpl[BigInt]("int", Serializer.intBinaryIO, Serializer.intBinaryIO) with GenericNumericalInteger
 
-  sealed class PYTHON_FLOAT extends PythonTypeImpl[Double]("float", Serializer.floatIO, Serializer.floatIO) with GenericNumericalFractional
+  sealed class PYTHON_FLOAT extends PythonTypeImpl[Double]("float", Serializer.fromImplicitRW[Double], Serializer.fromImplicitRW[Double]) with GenericNumericalFractional
 
   // case object PYTHON_COMPLEX extends PythonType("complex") with Numeric
 
   sealed class PYTHON_STRING extends PythonTypeImpl[String]("str", Serializer.stringLiteralIO(), Serializer.stringLiteralIO())
 
-  sealed class PYTHON_BOOL extends PythonTypeImpl[Boolean]("bool", Serializer.pythonBooleanIO, Serializer.booleanIO)
+  sealed class PYTHON_BOOL extends PythonTypeImpl[Boolean]("bool", Serializer.pythonBooleanIO, Serializer.fromImplicitRW[Boolean])
 
   sealed class PYTHON_NONE extends PythonTypeImpl[Option[Unit]]("None", Serializer.noneParser(), Serializer.noneParser())
 
@@ -146,9 +147,10 @@ object PythonType {
     override def serializerScalaValue: Serializer[Option[ScalaType]] = Serializer.optionProjectionIO(child.serializerScalaValue)
   }
 
-  sealed class PYTHON_ANY extends PythonTypeImpl[Any]("Any", Serializer.parseAnyAsUnderlyingString, Serializer.parseAnyAsUnderlyingString)
 
-  sealed class PYTHON_UNPARSABLE_TYPE(val str: String) extends PythonTypeImpl[Any](str, Serializer.parseAnyAsUnderlyingString, Serializer.parseAnyAsUnderlyingString) {
+  sealed class PYTHON_ANY extends PythonTypeImpl[Any]("Any", anySerializer, anySerializer)
+
+  sealed class PYTHON_UNPARSABLE_TYPE(val str: String) extends PythonTypeImpl[Any](str, anySerializer, anySerializer) {
 
   }
 

@@ -136,6 +136,6 @@ class MonksWorkbookSpec extends FunSuite {
     val serializer = WorkbookElementFactory.serializerRegularJsonWorkbook
     val restored = serializer.deserialize(serializer.serialize(original))
     assertEquals(restored, original)
-    assertEquals(restored.allContainedInteractions.map(_.elementId), original.allContainedInteractions.map(_.elementId))
+    assertEquals(restored.allInteractionsInThisInstance.map(_.elementId), original.allInteractionsInThisInstance.map(_.elementId))
   }
 }

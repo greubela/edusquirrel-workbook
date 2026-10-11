@@ -2,13 +2,16 @@ package it.evadid.workbook.elements.interactionElements.basic
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
+import it.evadid.distribution.command.ExecutionCommandFactory
+import it.evadid.distribution.commandTypes.SqlEditorCommands.{Request, Response}
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import upickle.default.ReadWriter
 
-
+import upickle.default.*
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 object LabeledNumberInteraction {
 
   /**
@@ -57,6 +60,6 @@ case class LabeledNumberInteraction(
   override val associatedFactory = LabeledNumberInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
+  override val serializerInteractionContent: Serializer[String] = Serializer.fromUpickleJson(summon[ReadWriter[String]])
 
 }

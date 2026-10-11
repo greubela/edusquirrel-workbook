@@ -6,6 +6,7 @@ import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class NeuronParameters(weights: List[Double], threshold: Double) derives ReadWriter {
   require(weights.nonEmpty && weights.forall(_.isFinite) && threshold.isFinite, "Neuron parameters must be finite")
   def weightedSum(inputs: List[Double]): Double = {

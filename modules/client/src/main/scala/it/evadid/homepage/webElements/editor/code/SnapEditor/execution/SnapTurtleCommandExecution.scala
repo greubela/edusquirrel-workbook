@@ -6,7 +6,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
-import todomove.`export`.workers.PyodideWorkerClient
+import todomove.`export`.workers.*
 
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue

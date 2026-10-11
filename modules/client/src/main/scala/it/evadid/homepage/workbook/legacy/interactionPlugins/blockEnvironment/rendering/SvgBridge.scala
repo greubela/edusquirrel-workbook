@@ -9,8 +9,6 @@ import todomove.webElementsOld.webElements.svg.shapes.BeShape.BeShapeAtomic
 
 object SvgBridge {
 
-
-
   private def renderDirectly[T: Fractional](builder: SvgPathBuilder[T]): AppSvgElement = {
     //val controlLines = absoluteCommands.flatMap(_.controlPointsAbsolute) // todo: fix to re-introduce control lines
     AppPathSvgElement[T](builder.toSvgPathD, builder.pathPoints, List())

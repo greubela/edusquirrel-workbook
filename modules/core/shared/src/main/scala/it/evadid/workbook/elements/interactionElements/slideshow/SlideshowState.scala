@@ -7,6 +7,7 @@ import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowState.
 import it.evadid.workbook.jsonFactory.WorkbookElementReference
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import java.time.LocalDateTime
 
 /**
@@ -16,7 +17,7 @@ import java.time.LocalDateTime
 case class SlideshowState(
                            allPanels: List[WorkbookElementReference],
                            events: Set[SlideshowProceededEvent]
-                         ) derives upickle.default.ReadWriter {
+                         ) {
 
   lazy val seenPanels: Set[WorkbookElementReference] = events.flatMap(state => List(state.newPanel, state.oldPanel)).toSet
 
@@ -57,6 +58,6 @@ object SlideshowState {
 
   }
 
-  private[slideshow] given ldt: ReadWriter[LocalDateTime] = DefaultSerializer.serializerLocalDateTimeString.uPickleReadWrite
+   given ReadWriter[SlideshowState] = macroRW
 
 }

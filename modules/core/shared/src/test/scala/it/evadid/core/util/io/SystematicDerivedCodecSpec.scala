@@ -232,8 +232,8 @@ class SystematicDerivedCodecSpec extends FunSuite {
     compatible(FillInBlanksState(List("学校", "")), FillInBlanksState.serializer)
     compatible(MatchingInteractionState(List(Some(1), None)), MatchingInteractionState.serializer)
     compatible(TableFillInState(List("one\ntwo", "")), TableFillInState.serializer)
-    compatible(CodeTaskToggleState(false, "print('hello')"), CodeTaskToggleState.serializer)
-    compatible(SortingReasonInteractionState.initial(3), SortingReasonInteractionState.serializer)
+    roundTrip(CodeTaskToggleState(false, "print('hello')"))
+    roundTrip(SortingReasonInteractionState.initial(3))
   }
 
   test("factory and language-storage transfer records have default codecs") {
@@ -255,11 +255,13 @@ class SystematicDerivedCodecSpec extends FunSuite {
     roundTrip(BeDataType.BeSerializableAtomicType("Int"))
   }
 
-  test("rich synchronization histories expose a default codec with timestamps and legacy history format") {
-    import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableHistorySerialized
-    import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
-    val value = RichInteractionVariableHistorySerialized("fixture", java.time.LocalDateTime.parse("2025-01-02T03:04:05"),
-      "学校", InteractionVariableHistorySerialized.empty)
+  test("typed execution successes retain command JSON, results and history") {
+    import it.evadid.distribution.command.{ExecutionCommand, ExecutionHistory, ExecutionInfo}
+    import ExecutionInfo.ExecutionSuccess
+    val timestamp = java.time.LocalDateTime.parse("2025-01-02T03:04:05")
+    val value = ExecutionSuccess(ExecutionCommand("fixture", ujson.Obj("argument" -> "学校")),
+      ExecutionHistory(timestamp, timestamp, timestamp, timestamp), "result")
     roundTrip(value)
+    copies[ExecutionInfo[String]](value).foreach(decoded => assertEquals(decoded.successOrThrow(), value))
   }
 }

@@ -8,8 +8,13 @@ import upickle.default.*
 /** A database name resolved against the backend's exercise database configuration.
  * Connection credentials deliberately never travel in workbook JSON.
  */
-final case class SqlDatabaseConfig(databaseName: String) derives upickle.default.ReadWriter
+final case class SqlDatabaseConfig(databaseName: String)
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+
+object SqlDatabaseConfig {
+  given ReadWriter[SqlDatabaseConfig] = macroRW
+}
 
 final case class SqlCommandExercise(
                                      override val elementId: String,
@@ -18,7 +23,7 @@ final case class SqlCommandExercise(
                                    ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
   override val associatedFactory = SqlCommandExercise.factory
   override val defaultValue: String = initialSql
-  override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
+
   override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
 }
 

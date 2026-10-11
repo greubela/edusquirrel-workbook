@@ -1,6 +1,6 @@
 package it.evadid.core.datastructures.user
 
-import it.evadid.core.datastructures.chat.{Person, SenderRole}
+import it.evadid.core.datastructures.chat.{ChatParticipant, SenderRole}
 import upickle.default.*
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
@@ -86,7 +86,7 @@ object User {
 
 }
 
-case class User(name: String, id: String, mail: String) extends Person derives ReadWriter {
+case class User(name: String, id: String, mail: String) extends ChatParticipant derives ReadWriter {
 
   def initials: String = {
     val parts = name.trim.split("\\s+").filter(_.nonEmpty).toList

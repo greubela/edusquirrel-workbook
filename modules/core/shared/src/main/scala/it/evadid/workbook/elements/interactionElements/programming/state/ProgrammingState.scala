@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCo
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.workbook.elements.interactionElements.programming.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXMLWithAdditionalFloatingObjects, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateBeExpression
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingStateSnapXmlHelper, SnapTurtlePythonBridge}
 import upickle.default.*
@@ -24,8 +24,6 @@ sealed trait ProgrammingState derives ReadWriter {
   def fingerprint(): String = this match
     case ProgrammingStateBeExpression(expression) => s"expression:${expression.toString}"
     case ProgrammingStateSnapXml(xml) => s"snap:$xml"
-    case ProgrammingStateSnapXMLWithAdditionalFloatingObjects(xml, objects) =>
-      s"snap-floating:$xml\u0000${objects.mkString("\u0000")}"
     case ProgrammingStatePythonString(code) => s"python:$code"
     case ProgrammingStateJavaString(code) => s"java:$code"
 }
@@ -72,7 +70,7 @@ object ProgrammingState {
       override val toString: String = s"ProgrammingStateSnapXml(${snapXml.toString.take(300)})"
     }
 
-    final case class ProgrammingStateSnapXMLWithAdditionalFloatingObjects(
+  /*  final case class ProgrammingStateSnapXMLWithAdditionalFloatingObjects(
                                                                            val snapXml: String,
                                                                            additionalFloatingObjects: List[String]
                                                                          ) extends ProgrammingState derives upickle.default.ReadWriter {
@@ -84,7 +82,7 @@ object ProgrammingState {
 
       override def toJava: ProgrammingStateJavaString = toBeExpressionState.toJava
 
-    }
+    }*/
 
     final case class ProgrammingStatePythonString(code: String) extends ProgrammingState derives upickle.default.ReadWriter {
       override def toBeExpressionState: ProgrammingStateBeExpression =

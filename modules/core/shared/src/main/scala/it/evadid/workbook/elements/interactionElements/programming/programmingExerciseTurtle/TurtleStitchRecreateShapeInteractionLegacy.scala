@@ -6,6 +6,7 @@ import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookEleme
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 object TurtleStitchRecreateShapeInteractionLegacy {
   val factory = new SimpleWorkbookElementFactory[TurtleStitchRecreateShapeInteractionLegacy]() {
     override protected val constructorFieldOrder = List("elementId", "filenameRelToResources")

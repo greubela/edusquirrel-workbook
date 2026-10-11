@@ -3,7 +3,6 @@ package it.evadid.server.commandHandler.sql.sync
 import it.evadid.distribution.commandTypes.SQLCommands.DeleteInDbRequest
 import it.evadid.server.commandHandler.sql.{DatabaseConfig, GenericSqlFunctionality}
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
 
@@ -13,12 +12,11 @@ import java.time.LocalDateTime
 case class DeleteInDatabase(
                              connection: Connection,
                              usageContext: UsageContext,
-                             logger: Logger,
-                             formatter: RichInteractionVariableFormatter
+                             logger: Logger
                            ) {
 
   private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection,  logger)
-  private lazy val fetch: FetchFromDatabase = new FetchFromDatabase(connection, usageContext, logger, formatter)
+  private lazy val fetch: FetchFromDatabase = new FetchFromDatabase(connection, usageContext, logger)
 
   private def deleteEventsById(ids: Set[Long], tableName: String): SyncSuccess = {
     logger.logInfo(s"deleting ${ids.size} events from database")
@@ -94,7 +92,7 @@ object DeleteInDatabase {
     val config = DatabaseConfig.readFromEnv(Some(request.databaseName))
     val connection = config.newConnection()
 
-    val control = DeleteInDatabase(connection, request.usageContext, logger, request.formatter)
+    val control = DeleteInDatabase(connection, request.usageContext, logger)
 
     if (request.limitToKey.isEmpty) {
       if (request.hasDatabaseKeyColumn) control.deleteAllEventsOfUsage("eventsWithKey")

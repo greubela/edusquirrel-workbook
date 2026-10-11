@@ -19,7 +19,5 @@ object SqlEditorCommands {
   final case class Response(status: Status, message: String = "", results: List[Result] = Nil,
       schema: List[Table] = Nil, schemaError: Option[String] = None) derives upickle.default.ReadWriter
   lazy val execute = ExecutionCommandFactory[Request, Response](
-    "sql-editor-execute", Serializer.fromImplicitRW[Request], Serializer.fromImplicitRW[Response],
-    request => s"SQL editor database: ${request.databaseConfig.databaseName}",
-    response => s"SQL editor status: ${response.status}")
+    "sql-editor-execute")
 }

@@ -7,6 +7,7 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSe
 import it.evadid.workbook.model.blockchain.*
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 sealed trait SquareMiddleHashTask derives ReadWriter
 
 case class ExploreSquareMiddleHash() extends SquareMiddleHashTask derives ReadWriter

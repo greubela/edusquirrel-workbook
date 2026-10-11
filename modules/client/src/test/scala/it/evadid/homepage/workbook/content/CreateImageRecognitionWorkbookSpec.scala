@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.homepage.workbook.content.wip.CreateImageRecognitionWorkbook
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.*
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory

@@ -1,13 +1,14 @@
 package it.evadid.workbook.elements.interactionElements.slideshow
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElementWithGrader}
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class Slideshow(
                       override val elementId: String,
                       private val panels: List[WorkbookDisplayElement]
-                    ) extends WorkbookInteractionElementWithGrader[SlideshowState, SlideshowGradingResult] derives upickle.default.ReadWriter {
+                    ) extends WorkbookInteractionElement[SlideshowState] derives upickle.default.ReadWriter {
 
 
   val panelSize: Int = panels.length

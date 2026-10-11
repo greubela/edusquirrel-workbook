@@ -1,27 +1,21 @@
 package it.evadid.workbook.elements.interactionElements.reorderExercise
 
-import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.DefaultSerializer
-import ReorderInteractionState.ReorderInteractionStateSerialized
-import ReorderType.CODELINES
-import it.evadid.workbook.interaction.variable.{InteractionVariableState, InteractionVariableStateSerialized}
-import upickle.{ReadWriter, macroRW}
+import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderType.CODELINES
+import upickle.default.*
 
-import java.lang.annotation.ElementType
 import scala.util.Random
 
 /**
  * Captures the model state for an interaction where a learner reorders a fixed list of elements.
  * The state owns all order-validation and order-update rules so renderers can focus on collecting UI gestures and displaying the current order.
  */
+
 case class ReorderInteractionState[T](
-                                       elements: List[T],
+                                       elements: Seq[T],
                                        currentOrder: List[Int],
                                        correctOrder: List[Int],
-                                       elementType: ReorderType,
-                                       elementSerializer: Serializer[T]
+                                       elementType: ReorderType
                                      ) {
 
   assert(elements.size == correctOrder.size, "elements and correct order must have the same size!")
@@ -65,58 +59,25 @@ case class ReorderInteractionState[T](
     }
   }
 
-  lazy val toSerialized: ReorderInteractionStateSerialized = ReorderInteractionStateSerialized(elements.map(elementSerializer.serialize), currentOrder, correctOrder, elementType)
-
-  lazy val serializer: Serializer[ReorderInteractionState[T]] = new Serializer[ReorderInteractionState[T]] {
-
-    override def serialize(obj: ReorderInteractionState[T]): String = {
-      ReorderInteractionState.serializer.serialize(obj.toSerialized)
-    }
-
-    override def deserialize(str: String): ReorderInteractionState[T] = {
-      val serializedState = ReorderInteractionState.serializer.deserialize(str)
-      ReorderInteractionState(elementSerializer, serializedState)
-    }
-  }
 }
 
 object ReorderInteractionState {
 
-  def initStateFromElementsAndSeed[T](elementsInCorrectOrder: List[T], seed: Long, elementSerializer: Serializer[T], reorderType: ReorderType): ReorderInteractionState[T] = {
+  given [T: ReadWriter]: ReadWriter[ReorderInteractionState[T]] = macroRW
+
+  def initStateFromElementsAndSeed[T: ReadWriter](elementsInCorrectOrder: List[T], seed: Long, reorderType: ReorderType): ReorderInteractionState[T] = {
     val shuffled: List[Int] = Random(seed).shuffle(elementsInCorrectOrder.indices.toList)
-    ReorderInteractionState[T](elementsInCorrectOrder, shuffled, elementsInCorrectOrder.indices.toList, reorderType, elementSerializer)
+    ReorderInteractionState[T](elementsInCorrectOrder, shuffled, elementsInCorrectOrder.indices.toList, reorderType)
   }
 
-  /*
-
-                                       elements: List[T],
-                                       currentOrder: List[Int],
-                                       correctOrder: List[Int],
-                                       elementType: ReorderType,
-                                       elementSerializer: Serializer[T]
-   */
-  case class ReorderInteractionStateSerialized(elements: List[String], currentOrder: List[Int], correctOrder: List[Int], elementType: ReorderType) derives upickle.default.ReadWriter {
-    def toTyped[T](serializer: Serializer[T]): ReorderInteractionState[T] = ReorderInteractionState(serializer, this)
-  }
-
-  def apply[T](elementSerializer: Serializer[T], serializedInteraction: ReorderInteractionStateSerialized): ReorderInteractionState[T] = {
-    val elements = serializedInteraction.elements.map(elementSerializer.deserialize)
-    ReorderInteractionState[T](elements, serializedInteraction.currentOrder, serializedInteraction.correctOrder, serializedInteraction.elementType, elementSerializer)
-  }
 
   def forCode(lines: List[String], currentOrder: List[Int], correctOrder: List[Int], codelineType: CODELINES): ReorderInteractionState[String] = {
-    ReorderInteractionState[String](lines, currentOrder, correctOrder, codelineType, Serializer.stringIO)
+    ReorderInteractionState[String](lines, currentOrder, correctOrder, codelineType)
   }
 
   def forIds(ids: List[LanguageMapContentId], currentOrder: List[Int], correctOrder: List[Int]): ReorderInteractionState[LanguageMapContentId] = {
     //val ids = ids.map(LanguageMapContentId.apply)
-    ReorderInteractionState[LanguageMapContentId](ids, currentOrder, correctOrder, ReorderType.LANGUAGE_MAP_IDS, LanguageMapContentId.serializerLangMapId)
+    ReorderInteractionState[LanguageMapContentId](ids, currentOrder, correctOrder, ReorderType.LANGUAGE_MAP_IDS)
   }
-
-  private[reorderExercise] given et: ReadWriter[ReorderType] = ReorderType.serializer.uPickleReadWrite
-
-  private[reorderExercise] given ris: ReadWriter[ReorderInteractionStateSerialized] = macroRW
-
-  private[reorderExercise] val serializer: Serializer[ReorderInteractionStateSerialized] = Serializer.fromUpickleJson(ris)
 
 }
