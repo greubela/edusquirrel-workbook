@@ -9,6 +9,7 @@ import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookEleme
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import upickle.default.ReadWriter
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 sealed trait ReorderInteraction[T] extends WorkbookInteractionElement[ReorderInteractionState[T]] {
   val elements: List[T]
 }
@@ -19,8 +20,8 @@ object ReorderInteraction {
   case class ReorderCodeInteraction(override val elementId: String, lines: List[String], programmingLanguage: ProgrammingLanguage, seed: Long = 0, hints: List[LanguageMapContentId] = List.empty, orderConstraints: List[(Int, Int)] = Nil) extends ReorderInteraction[String] {
     override val associatedFactory = ReorderCodeInteraction.factory
     override val elements = lines
-    override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(lines, seed, Serializer.stringIO, ReorderType.CODELINES(programmingLanguage))
-    override val serializerInteractionContent = defaultValue.serializer
+    override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(lines, seed, ReorderType.CODELINES(programmingLanguage))
+
     override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   }
 
@@ -54,8 +55,8 @@ object ReorderInteraction {
   case class ReorderMapIdInteraction(override val elementId: String, ids: List[LanguageMapContentId], seed: Long = 0) extends ReorderInteraction[LanguageMapContentId] {
     override val associatedFactory = ReorderMapIdInteraction.factory
     override val elements = ids
-    override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(ids, seed, LanguageMapContentId.serializerLangMapId, ReorderType.LANGUAGE_MAP_IDS)
-    override val serializerInteractionContent = defaultValue.serializer
+    override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(ids, seed,ReorderType.LANGUAGE_MAP_IDS)
+
     override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   }
 

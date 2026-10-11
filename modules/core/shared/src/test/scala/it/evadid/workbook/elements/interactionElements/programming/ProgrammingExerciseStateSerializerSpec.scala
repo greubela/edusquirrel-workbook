@@ -13,7 +13,7 @@ import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXMLWithAdditionalFloatingObjects, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import munit.FunSuite
 
 class ProgrammingExerciseStateSerializerSpec extends FunSuite {
@@ -55,8 +55,7 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
   test("all textual programming states roundtrip with their representation") {
     val states: List[ProgrammingState] = List(
       ProgrammingStatePythonString("print('hello')"),
-      ProgrammingStateJavaString("class Main {}"),
-      ProgrammingStateSnapXMLWithAdditionalFloatingObjects("<project/>", List("watcher", "comment"))
+      ProgrammingStateJavaString("class Main {}")
     )
 
     states.foreach { state =>
@@ -96,16 +95,13 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     val states: List[ProgrammingState] = List(
       ProgrammingStatePythonString("same source\n"),
       ProgrammingStateJavaString("same source\n"),
-      ProgrammingStateSnapXml("same source\n"),
-      ProgrammingStateSnapXMLWithAdditionalFloatingObjects("same source\n", List("watcher", "comment"))
+      ProgrammingStateSnapXml("same source\n")
     )
     assertEquals(states.map(_.fingerprint()).distinct.size, states.size)
     states.foreach { state =>
       assertEquals(read[ProgrammingState](write(state)).fingerprint(), state.fingerprint())
       assertEquals(readBinary[ProgrammingState](writeBinary(state)).fingerprint(), state.fingerprint())
     }
-    val floating = ProgrammingStateSnapXMLWithAdditionalFloatingObjects("same source\n", List("watcher", "comment"))
-    assert(floating.copy(additionalFloatingObjects = List("watcher")).fingerprint() != floating.fingerprint())
   }
 
   test("numeric call literal survives python migrate then xml roundtrip") {

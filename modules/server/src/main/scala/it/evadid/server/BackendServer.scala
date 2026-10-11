@@ -2,6 +2,8 @@ package it.evadid.server
 
 import it.evadid.distribution.command.*
 import it.evadid.distribution.formats.ExecutionClientResponse
+import it.evadid.distribution.formats.ExecutionClientResponse.{AdditionalLoggingOutput, ExecutionClientResponseTimestamps}
+import upickle.default.write
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
@@ -29,7 +31,11 @@ object BackendServer {
 
   def fail(commandReceived: LocalDateTime, msg: String, cause: Option[SerializedException], command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
     logger.logError(msg)
-    ExecutionClientResponse(commandReceived, commandReceived, msg, cause, command, logger.getOut(), logger.getErr())
+    ExecutionClientResponse(
+      ExecutionClientResponseTimestamps(commandReceived, commandReceived, LocalDateTime.now()),
+      Left(cause.getOrElse(SerializedException(msg))), command,
+      AdditionalLoggingOutput(logger.getOut(), logger.getErr())
+    )
   }
 
   private def handleExecuteCommand(bodyOption: Option[String], cookies: Cookies, headers: Headers, remoteAddress: InetAddress): Future[ExecutionClientResponse] = {
@@ -83,8 +89,7 @@ object BackendServer {
             val authInfo = AuthHandling.findAuthCookies(request.cookies, request.headers)
             handleExecuteCommand(bodyAsText, request.cookies, request.headers, request.connection.remoteAddress).map {
               (response: ExecutionClientResponse) => {
-                val (status, responseBody) = response.sendFormat
-                Status(status)(responseBody).as("application/json")
+                Ok(write(response)).as("application/json")
               }
             }.recover {
               case err => fail(err)

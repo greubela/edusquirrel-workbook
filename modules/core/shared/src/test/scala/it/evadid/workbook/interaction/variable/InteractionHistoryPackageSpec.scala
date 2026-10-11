@@ -12,40 +12,32 @@ class InteractionHistoryPackageSpec extends FunSuite {
   private def state(value: Int, importance: it.evadid.workbook.interaction.sync.UpdateImportance, seconds: Long) =
     InteractionVariableState(value, importance, time.plusSeconds(seconds))
   test("empty histories and all-default histories clean predictably") {
-    assertEquals(InteractionVariableHistory.empty[Int].lastStateOption, None)
-    assertEquals(InteractionVariableHistory.empty[Int].cleanedHistory().events, Set.empty[InteractionVariableState[Int]])
+    assertEquals(InteractionVariableHistory.empty[Int, Int, Int].lastStateOption, None)
+    assertEquals(InteractionVariableHistory.empty[Int, Int, Int].cleanedHistory().events, Set.empty[InteractionVariableState[Int]])
     val first = state(1, DEFAULT, 0)
     val last = state(2, DEFAULT, 1)
-    assertEquals(InteractionVariableHistory(Set(first, last)).cleanedHistory().events, Set(last))
+    assertEquals(InteractionVariableHistory[Int, Int, Int](Set(first, last), Map.empty, Map.empty).cleanedHistory().events, Set(last))
   }
   test("history merges deduplicate events and drop defaults after a meaningful update") {
     val initial = state(1, DEFAULT, 0)
     val update = state(2, MINOR, 1)
-    val history = InteractionVariableHistory(Set(initial)).withAddedEvent(update)
+    val history = InteractionVariableHistory[Int, Int, Int](Set(initial), Map.empty, Map.empty).withAddedEvent(update)
     assertEquals(history.events, Set(update))
     assertEquals(history.withAddedEvents(Set(update)).events, Set(update))
-    assertEquals(history.withAddedEvents(InteractionVariableHistory(Set(update))).events, Set(update))
-    assertEquals(history.map(_.filter(_.value > 2)).events, Set.empty[InteractionVariableState[Int]])
+    assertEquals(history.withAddedEvents(Set(update)).events, Set(update))
+    assertEquals(history.updateEvents(_.filter(_.value > 2)).events, Set.empty[InteractionVariableState[Int]])
   }
-  test("serialized histories partition bad values and retain valid states") {
-    val original = state(2, MINOR, 0)
-    val serialized = original.serialized(Serializer.intDecimalIO.map(_.toInt, BigInt(_)))
-    val invalid = serialized.copy(serializedValue = "not a number", timestamp = time.plusSeconds(1))
-    val history = InteractionVariableHistorySerialized(Set(serialized, invalid))
-    val io = Serializer.intDecimalIO.map(_.toInt, BigInt(_))
-    val (valid, failed) = history.tryDeserialize(io)
-    assertEquals(valid.events, Set(original))
-    assertEquals(failed.states, Set(invalid))
-    assertEquals(history.deserializeIgnoreErrors(io), valid)
-    assertEquals(InteractionVariableHistory.empty[Int].withAddedEvents(history, io), valid)
-    assertEquals(history.lastStateOption, Some(invalid))
-    assertEquals(InteractionVariableState(io, serialized), original)
+  test("typed histories reject malformed state values rather than silently changing types") {
+    val invalid = ujson.Obj("events" -> ujson.Arr(ujson.Obj("value" -> "not a number",
+      "updateImportance" -> "MINOR", "timestamp" -> time.toString)),
+      "gradings" -> ujson.Arr(), "scaffoldings" -> ujson.Arr())
+    intercept[Exception](read[InteractionVariableHistory[Int, Int, Int]](invalid))
   }
   test("typed histories and nested change models have default codecs") {
     val original = state(2, MINOR, 0)
-    val history = InteractionVariableHistory(Set(original))
+    val history = InteractionVariableHistory[Int, Int, Int](Set(original), Map.empty, Map.empty)
     assertEquals(read[InteractionVariableState[Int]](write(original)), original)
-    assertEquals(read[InteractionVariableHistory[Int]](write(history)), history)
+    assertEquals(read[InteractionVariableHistory[Int, Int, Int]](write(history)), history)
     val designated = DesignatedInteractionState(3, time.plusSeconds(1))
     val changed = InteractionVariableStateChanged(original, designated)
     assertEquals(read[DesignatedInteractionState[Int]](write(designated)), designated)

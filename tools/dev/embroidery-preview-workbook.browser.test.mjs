@@ -99,7 +99,12 @@ test('all sections render, solutions match previews and answers persist after re
     for(const [section,count] of [[2,8],[3,3],[4,2],[5,4],[6,13]]) {
       await sections.nth(section).click();
       console.log("Checking section",section,"expected previews",count);
-      await page.waitForFunction(count => document.querySelectorAll(".turtle-gradig-panel:not(dialog *)").length===count,count,{timeout:60000});
+      // Chapter selection and its reactive contents can settle in separate updates.
+      await page.waitForFunction(({section,count}) =>
+        document.querySelectorAll('.section-block')[section]?.classList.contains('active') &&
+        document.querySelectorAll('.turtle-gradig-panel:not(dialog *)').length===count &&
+        (![2,3,4].includes(section) || document.querySelectorAll('.be-program-snap-renderer__canvas').length===0),
+        {section,count},{timeout:60000});
       assert.equal(await page.locator('.turtle-gradig-panel:not(dialog *)').count(),count);
       if(section===2 || section===3 || section===4) assert.equal(await page.locator(".be-program-snap-renderer__canvas").count(),0,"unsolved exercises defer Snap thumbnails");
     }

@@ -7,6 +7,7 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSe
 import it.evadid.workbook.model.compression.CompressionExperiment
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class CompressionExperimentInteraction(elementId: String, title: LanguageMapContentId, initial: CompressionExperiment)
     extends WorkbookInteractionElement[CompressionExperiment] {
   override val defaultValue = initial

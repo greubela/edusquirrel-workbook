@@ -7,6 +7,7 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSe
 import it.evadid.workbook.model.blockchain.Sha256
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 sealed trait Sha256Task derives ReadWriter
 
 case class CompareSha256() extends Sha256Task derives ReadWriter

@@ -7,6 +7,7 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSe
 import it.evadid.workbook.model.plot.*
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 /** A learner-authored graph. Bounds validate the answer; they do not grade a hypothesis. */
 case class CoordinatePlotInteraction(elementId: String, title: LanguageMapContentId,
     xLabel: LanguageMapContentId, yLabel: LanguageMapContentId, xAxis: PlotAxis, yAxis: PlotAxis)

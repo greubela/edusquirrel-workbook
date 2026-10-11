@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.qr
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}

@@ -1,6 +1,7 @@
 package it.evadid.vm.parsing.java.clean.model
 
 import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.Serializer.anySerializer
 import it.evadid.vm.parsing.generic.abstractions.GenericAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaAST.JavaLiteral
 
@@ -26,13 +27,13 @@ object JavaType {
 
   sealed class JAVA_INTEGER_BIN extends JavaType[BigInt]("int", Serializer.intBinaryIO, Serializer.intBinaryIO) with GenericNumericalInteger
 
-  sealed class JAVA_FLOAT extends JavaType[Double]("double", Serializer.floatIO, Serializer.floatIO) with GenericNumericalFractional
+  sealed class JAVA_FLOAT extends JavaType[Double]("double", Serializer.fromImplicitRW[Double], Serializer.fromImplicitRW[Double]) with GenericNumericalFractional
 
-  sealed class JAVA_STRING extends JavaType[String]("String", Serializer.stringLiteralIO(), Serializer.stringLiteralIO())
+  sealed class JAVA_STRING extends JavaType[String]("String", Serializer.fromImplicitRW[String], Serializer.fromImplicitRW[String])
 
-  sealed class JAVA_BOOL extends JavaType[Boolean]("boolean", Serializer.booleanIO, Serializer.booleanIO)
+  sealed class JAVA_BOOL extends JavaType[Boolean]("boolean", Serializer.fromImplicitRW[Boolean], Serializer.fromImplicitRW[Boolean])
 
-  sealed class JAVA_ANY extends JavaType[Any]("Object", Serializer.parseAnyAsUnderlyingString, Serializer.parseAnyAsUnderlyingString)
+  sealed class JAVA_ANY extends JavaType[Any]("Object", anySerializer, anySerializer)
 
   sealed class JAVA_LIST[Element](val elementType: JavaType[Element]) extends JavaType[List[Element]](
     s"List<${elementType.typenameInCode}>",
@@ -47,9 +48,7 @@ object JavaType {
   )
 
 
-  sealed class JAVA_UNPARSABLE_TYPE(str: String) extends JavaType[Any](str, Serializer.parseAnyAsUnderlyingString, Serializer.parseAnyAsUnderlyingString)
-
-
+  sealed class JAVA_UNPARSABLE_TYPE(str: String) extends JavaType[Any](str, anySerializer, anySerializer)
 
 
 }

@@ -1,11 +1,12 @@
 package it.evadid.distribution.clients
 
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
-import it.evadid.distribution.command.{ExecutionCommand, ExecutionResult}
+import it.evadid.distribution.command.{ExecutionCommand}
 import it.evadid.util.logging.{BasicLogger, Logger}
 import munit.FunSuite
 import it.evadid.distribution.formats.ExecutionClientResponse
 import upickle.default.write
+import it.evadid.distribution.formats.ExecutionClientResponse.{AdditionalLoggingOutput, ExecutionClientResponseTimestamps}
 
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
@@ -38,9 +39,9 @@ class ServerExecutionTest extends FunSuite {
         java.time.LocalDateTime.parse("2026-01-01T08:00:02"),
         java.time.LocalDateTime.parse("2026-01-01T08:00:03")
       )
-      val response = ExecutionClientResponse(history.timestampCommandReceived, history.timestampExecutionStarted, history.timestampExecutionFinished, Right(command.params), Some(command), "ok", "")
+      val response = ExecutionClientResponse.forValue(ExecutionClientResponseTimestamps(history.timestampCommandReceived, history.timestampExecutionStarted, history.timestampExecutionFinished), command.json, command, AdditionalLoggingOutput("ok", ""))
 
-      val bytes = write(response.serializedToMap()).getBytes(StandardCharsets.UTF_8)
+      val bytes = write(response).getBytes(StandardCharsets.UTF_8)
       exchange.getResponseHeaders.add("Content-Type", "application/json")
       exchange.sendResponseHeaders(200, bytes.length)
       val os = exchange.getResponseBody
@@ -48,13 +49,13 @@ class ServerExecutionTest extends FunSuite {
       os.close()
     } { port =>
       val client = JvmRemoteExecutionClient("127.0.0.1", port)
-      val command = ExecutionCommand("echo", Map("x" -> "1"))
+      val command = ExecutionCommand("echo", ujson.Obj("x" -> "1"))
 
-      val info = Await.result(client.handleExecution(command, BasicLogger()), 5.seconds)
+      val info = Await.result(client.executeResponse(BasicLogger(), command), 5.seconds)
 
-      assertEquals(info.parsedExecutionCommand, Some(command))
-      assertEquals(info.response, Right(Map("x" -> "1")))
-      assert(info.loggerOut.contains("ok"))
+      assertEquals(info.receivedExecutionCommand, Some(command))
+      assertEquals(info.result.toOption.get.getAs[ujson.Value], command.json)
+      assert(info.additionalOutput.loggerOut.contains("ok"))
     }
   }
 }

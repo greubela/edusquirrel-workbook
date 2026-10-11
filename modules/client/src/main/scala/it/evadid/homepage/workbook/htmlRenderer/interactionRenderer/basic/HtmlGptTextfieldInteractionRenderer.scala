@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import it.evadid.core.datastructures.chat.{Message, MessengerModel, Person}
+import it.evadid.core.datastructures.chat.{Message, MessengerModel, ChatParticipant}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.State
@@ -50,7 +50,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
     val requestFuture = systemPromptFuture.map { systemPrompt => MessengerChatCompletionRequest(systemPrompt.getWithLanguagePreference(langPreferences), messageState) }(using ExecutionContext.global)
     LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.defaults.backendExecutor, requestFuture, None).onComplete {
-      case Success(result) => mmState.update(_.addMessage(result.resultTyped.result))
+      case Success(result) => mmState.update(_.addMessage(result.result))
       case Failure(err) => sendError(err, mmState)
     }(using ExecutionContext.global)
 
@@ -81,7 +81,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
     val elements: mutable.ListBuffer[Element] = mutable.ListBuffer()
 
-    val interactionVariable: InteractionVariable[MessengerModelScaffolding] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
+    val interactionVariable: InteractionVariable[MessengerModelScaffolding, Any, Any] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
     if (workbookElement.scaffoldingInteractionOp.nonEmpty) {
       val boundState = interactionVariable
         .createBoundStateWithUpdateImportance(fullInfo.syncControl, MAJOR)
@@ -89,7 +89,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
       val scaffoldingChat = SimpleChatEditor(boundState, State(""), msg => onUserSendMessage(msg, boundState))
       val openChatButton = HtmlButtonElement.withSvgContent(createScaffoldingButtonSvg(), event => {
 
-        val currentUser: Person = fullInfo.current.userInfo.map(_.user).getOrElse(MessengerModel.pFallbackStudent)
+        val currentUser: ChatParticipant = fullInfo.current.userInfo.map(_.user).getOrElse(MessengerModel.pFallbackStudent)
 
         workbookElement.initScaffoldingIfEmpty(currentUser,fullInfo.syncControl, fullInfo.signals.idResolver).onComplete {
           case Success(bool) => if (bool) requestCompletion(workbookElement.scaffoldingInteractionOp.get.interactionVariable.currentValue.messengerModel, boundState)
