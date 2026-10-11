@@ -127,7 +127,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
   def updateStateFromUserInteraction(syncControl: SyncControl, updater: T => T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
     val nextState: T = updater(safeLastState.value)
     setStateFromUserInteraction(syncControl, nextState, updateSize, timestamp)
-
+    startGrading(syncControl, false)
   }
 
   def startGrading(syncControl: SyncControl, forceGrading: Boolean = false): Unit = this.synchronized {
@@ -143,8 +143,6 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
         case Failure(err) => syncControl.controlLogger.logExceptionWarn("Ignore Grading after error at Grading", err)
       }
     }
-
-
   }
 
   def setStateFromUserInteraction(syncControl: SyncControl, newValue: T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
