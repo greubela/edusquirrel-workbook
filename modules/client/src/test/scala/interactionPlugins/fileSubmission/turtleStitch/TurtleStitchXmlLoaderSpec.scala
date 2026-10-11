@@ -1,11 +1,7 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.{
-  TurtleStitchToBeExpressionParser,
-  TurtleStitchXmlLoader
-}
 import munit.FunSuite
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
+import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.{TurtleStitchToBeExpressionParser, TurtleStitchXmlLoader}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
 
 class TurtleStitchXmlLoaderSpec extends FunSuite {

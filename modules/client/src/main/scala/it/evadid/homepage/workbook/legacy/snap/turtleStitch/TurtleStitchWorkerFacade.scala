@@ -1,9 +1,9 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin
+package it.evadid.homepage.workbook.legacy.snap.turtleStitch
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.datastructures.storage.AsyncDataCache
-import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchEditor.turtleLang
+import it.evadid.homepage.workbook.legacy.snap.turtleStitch.TurtleStitchEditor.turtleLang
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import todomove.`export`.workers.TurtleStitchWorker
@@ -11,7 +11,6 @@ import todomove.datastructures.web.file.FullImage
 import todomove.datastructures.web.file.FullImage.DataSourceImage
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.scalajs.js.JSConverters.*
 import scala.util.{Failure, Success}
 
 object TurtleStitchWorkerFacade {

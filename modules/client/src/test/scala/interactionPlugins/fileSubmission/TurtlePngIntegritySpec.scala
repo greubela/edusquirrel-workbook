@@ -1,7 +1,7 @@
 package interactionPlugins.fileSubmission
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleLogic.TurtleRenderer
-import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
+import it.evadid.homepage.workbook.legacy.interactionPlugins.snap.turtleLogic.TurtleRenderer
+import it.evadid.homepage.workbook.legacy.snap.turtleStitch.TurtleStitchWorkerFacade
 import munit.FunSuite
 
 import java.nio.charset.StandardCharsets

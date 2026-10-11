@@ -1,10 +1,9 @@
 package interactionPlugins.fileSubmission.turtleStitch
 
 import interactionPlugins.fileSubmission.XmlFactory
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramRenderer
+import it.evadid.homepage.workbook.legacy.interactionPlugins.snap.TurtleFileSubmission
+import it.evadid.homepage.workbook.legacy.interactionPlugins.snap.turtleLogic.TurtleXmlParser
+import it.evadid.homepage.workbook.legacy.interactionPlugins.snap.turtleStitch.TurtleStitchProgramRenderer
 import munit.FunSuite
 
 class TurtleStitchProgramRendererSpec extends FunSuite {

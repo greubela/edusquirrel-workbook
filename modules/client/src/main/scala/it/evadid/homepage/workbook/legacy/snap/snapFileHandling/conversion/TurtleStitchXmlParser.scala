@@ -1,6 +1,5 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
+package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.NodeDomSupport
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapXmlParser
 import org.scalajs.dom
 

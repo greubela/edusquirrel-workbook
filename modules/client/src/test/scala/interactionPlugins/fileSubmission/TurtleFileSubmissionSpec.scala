@@ -1,9 +1,10 @@
 package interactionPlugins.fileSubmission
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchProgramModel.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleLogic.TurtleXmlParser
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.{TurtleFileSubmission, turtleStitch}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser
+import it.evadid.homepage.workbook.legacy.interactionPlugins.snap.snapFileHandling.conversion
+import it.evadid.homepage.workbook.legacy.interactionPlugins.snap.turtleLogic.TurtleXmlParser
+import it.evadid.homepage.workbook.legacy.interactionPlugins.snap.{TurtleFileSubmission, snapFileHandling, turtleStitch}
+import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
+import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.TurtleStitchToBeExpressionParser
 import it.evadid.vm.BeProgram
 import munit.FunSuite
 
@@ -243,7 +244,7 @@ class TurtleFileSubmissionSpec extends FunSuite {
     val results = XmlFactory.all.zipWithIndex.map { case (xml, index) =>
       val roundTripTry = Try {
         val initialProject = TurtleFileSubmission.loadProject(xml)
-        val expression = turtleStitch.TurtleStitchToBeExpressionParser.parseProject(initialProject)
+        val expression = conversion.TurtleStitchToBeExpressionParser.parseProject(initialProject)
         val roundTrippedXml = TurtleFileSubmission.serializeFromBeExpression(expression, s"roundTrip-${index + 1}")
         val roundTrippedProject = TurtleFileSubmission.loadProject(roundTrippedXml)
 

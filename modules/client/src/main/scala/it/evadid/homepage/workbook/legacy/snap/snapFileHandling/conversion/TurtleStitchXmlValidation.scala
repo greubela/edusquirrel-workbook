@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
+package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
 
 object TurtleStitchXmlValidation {
 

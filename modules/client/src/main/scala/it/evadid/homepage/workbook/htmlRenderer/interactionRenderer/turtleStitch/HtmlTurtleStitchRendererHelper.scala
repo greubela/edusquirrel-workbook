@@ -13,7 +13,8 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
-import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.*
+import it.evadid.homepage.workbook.legacy.interactionPlugins.*
+import it.evadid.homepage.workbook.legacy.snap.turtleStitch.TurtleStitchWorkerFacade
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
 import todomove.datastructures.web.file.FullImage

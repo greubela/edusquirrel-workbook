@@ -2,8 +2,9 @@ package interactionPlugins.fileSubmission.turtleStitch
 
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapProgramDerivation
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.TurtleFileSubmission
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.{TurtleStitchFromBeExpressionSerializer, TurtleStitchToBeExpressionParser}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.snap.TurtleFileSubmission
+import it.evadid.homepage.workbook.legacy.interactionPlugins.snap.turtleStitch.TurtleStitchFromBeExpressionSerializer
+import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.TurtleStitchToBeExpressionParser
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.BeDefineFunction

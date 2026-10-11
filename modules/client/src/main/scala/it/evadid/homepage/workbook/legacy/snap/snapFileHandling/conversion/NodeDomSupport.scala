@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission
+package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
 
 import org.scalajs.dom
 

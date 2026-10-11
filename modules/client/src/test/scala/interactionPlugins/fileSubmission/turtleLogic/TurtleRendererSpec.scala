@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleLogic
+package it.evadid.homepage.workbook.legacy.interactionPlugins.snap.turtleLogic
 
 import munit.FunSuite
 

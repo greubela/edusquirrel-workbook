@@ -1,6 +1,7 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
+package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
 
-import TurtleStitchProgramModel.*
+import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.TurtleStitchProgramModel.Project
+
 import scala.scalajs.js
 
 object TurtleStitchXmlLoader {

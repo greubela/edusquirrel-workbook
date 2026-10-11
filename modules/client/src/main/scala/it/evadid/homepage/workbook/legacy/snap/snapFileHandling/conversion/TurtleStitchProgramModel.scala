@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
+package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
 
 /**
  * Scala.js data model mirroring the TurtleStitch/Snap! project XML structure.

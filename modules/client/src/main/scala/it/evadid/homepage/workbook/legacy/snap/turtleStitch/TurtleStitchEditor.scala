@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin
+package it.evadid.homepage.workbook.legacy.snap.turtleStitch
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -123,7 +123,9 @@ case class TurtleStitchEditor(projektXml: Var[String]) extends HtmlAppElement {
           .flatMap { temporary =>
             task(temporary).andThen { case _ =>
               try temporary.destroy()
-              catch { case _: Throwable => () }
+              catch {
+                case _: Throwable => ()
+              }
             }
           }
     }
@@ -144,28 +146,37 @@ object TurtleStitchEditor {
   @js.native
   trait JsEditorHandle extends js.Object {
     def calcProgramSvg(xml_content: String, language: String): JsPromise[String] = js.native
+
     def simulateGreenFlag(xml_content: String): JsPromise[String] = js.native
+
     def getGreenFlagAsLispCode(xml_content: String): JsPromise[String] = js.native
+
     def downloadDst(xml_content: String): JsPromise[Unit] = js.native
+
     def setProjectXml(xml_content: String): JsPromise[Unit] = js.native
+
     def getProjectXml(): JsPromise[String] = js.native
+
     def setProjectChangeListener(callback: js.Function1[String, Unit]): Unit = js.native
+
     def clearProjectChangeListener(): Unit = js.native
+
     def destroy(): Unit = js.native
   }
 
-  private[turtleStitchPlugin] def editorOptions(
-                                                  hidden: Boolean,
-                                                  parentNode: Option[dom.Node] = None,
-                                                  width: Option[Int] = None,
-                                                  height: Option[Int] = None
-                                                ): js.Object = {
+  def editorOptions(
+                     hidden: Boolean,
+                     parentNode: Option[dom.Node] = None,
+                     width: Option[Int] = None,
+                     height: Option[Int] = None
+                   ): js.Object = {
     val raw = js.Dynamic.literal(hidden = hidden)
     parentNode.foreach(node => raw.updateDynamic("parentNode")(node))
     width.foreach(w => raw.updateDynamic("width")(w))
     height.foreach(h => raw.updateDynamic("height")(h))
     raw.asInstanceOf[js.Object]
   }
+
   private def getOrCreateSingletonEditor()(using ec: ExecutionContext): Future[JsEditorHandle] = synchronized {
     singletonEditor match {
       case Some(editor) => Future.successful(editor)
@@ -211,7 +222,7 @@ object TurtleStitchEditor {
     }
     result.future
   }
-  
+
   private def withFreshEditor[T](task: JsEditorHandle => Future[T])(using ec: ExecutionContext): Future[T] = {
     TurtleStitchPoCNative
       .createEditor(editorOptions(hidden = true))
@@ -219,11 +230,13 @@ object TurtleStitchEditor {
       .flatMap { editor =>
         task(editor).andThen { case _ =>
           try editor.destroy()
-          catch { case _: Throwable => () }
+          catch {
+            case _: Throwable => ()
+          }
         }
       }
   }
-  
+
   def turtleLang(language: HumanLanguage): String =
     AppLanguage.turtleStitchLangMap.getOrElse(language, "en")
 
@@ -236,12 +249,12 @@ object TurtleStitchEditor {
     protected def defaultValueWhileLoading(in: String): Option[String] = None
 
     protected def formatInputForLogging(in: String): String = {
-      if(in.length > 60) s"XmlInput(${in.length}, ${in.substring(0, 60)})"
+      if (in.length > 60) s"XmlInput(${in.length}, ${in.substring(0, 60)})"
       else s"XmlInput($in)"
     }
 
     protected def formatOutputForLogging(out: String): String = {
-      if(out.length > 60) s"PngOutput(${out.length}, ${out.substring(0, 60)} ...)"
+      if (out.length > 60) s"PngOutput(${out.length}, ${out.substring(0, 60)} ...)"
       else s"PngOutput($out)"
     }
   }

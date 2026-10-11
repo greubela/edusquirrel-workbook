@@ -1,14 +1,14 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch
+package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
 
-import TurtleStitchProgramModel.*
+import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.TurtleStitchProgramModel.{BlockLike, BoolLiteral, ColorLiteral, CustomBlockCall, CustomBlockDefinition, InputValue, ListLiteral, Literal, NestedBlock, NestedScript, PrimitiveBlock, Project, Script}
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
+import it.evadid.vm.code.controlStructures.*
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript, SnapControlFlow, SnapInputCodec, SnapTurtleCatalog, SnapTurtlePythonBridge, SnapXmlParser}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 
 import scala.collection.mutable.ListBuffer
 
