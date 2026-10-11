@@ -12,7 +12,7 @@ object TurtleStitchXmlValidation {
 
     val scenes = child(document.root, "scenes")
     if (scenes.isEmpty) errors += "Missing <scenes> container."
-    else if (!childrenNamed(scenes.get, "scene").nonEmpty) errors += "No <scene> entries found."
+    else if (childrenNamed(scenes.get, "scene").isEmpty) errors += "No <scene> entries found."
 
     ValidationResult(errors.result())
   }
