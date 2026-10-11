@@ -3,7 +3,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.renderOnDomContentLoaded
 import it.evadid.homepage.control.startup.HomepageStartupLogic
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
-import it.evadid.homepage.workbook.legacy.plantworkshop.*
+
 import org.scalajs.dom
 
 import scala.scalajs.js
