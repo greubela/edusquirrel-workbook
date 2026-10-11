@@ -2,11 +2,8 @@ package it.evadid.distribution.commandTypes
 
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionCommandFactory
-import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
-import it.evadid.workbook.interaction.sync.SyncInformation.*
-import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
 import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
+import upickle.default.*
 
 object SQLCommands {
 
@@ -16,19 +13,16 @@ object SQLCommands {
     def usageContext: UsageContext
 
     def hasDatabaseKeyColumn: Boolean
-
-    lazy val formatter: RichInteractionVariableFormatter = RichInteractionVariableFormatter()
   }
 
   case class StoreToDbRequest(
                                syncContext: SyncContext,
-                               historySerialized: InteractionVariableHistorySerialized,
+                               historyJson: String,
                                databaseName: String,
                                hasDatabaseKeyColumn: Boolean
-                             ) extends DbRequest {
+                             ) extends DbRequest derives ReadWriter {
 
     lazy val usageContext: UsageContext = syncContext.toUsageContext
-    lazy val serializedValueString: String = formatter.serialize(syncContext, historySerialized)
 
   }
 
@@ -37,7 +31,7 @@ object SQLCommands {
                                     databaseName: String,
                                     mayLimitToKey: Option[String],
                                     hasDatabaseKeyColumn: Boolean
-                                  ) extends DbRequest
+                                  ) extends DbRequest derives ReadWriter
 
 
   case class DeleteInDbRequest(
@@ -45,31 +39,25 @@ object SQLCommands {
                                 limitToKey: Option[String],
                                 databaseName: String,
                                 hasDatabaseKeyColumn: Boolean
-                              ) extends DbRequest {
+                              ) extends DbRequest derives ReadWriter {
   }
 
 
-  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionVariableHistorySerialized]) {
+  case class DbFetchResponse(fetchedElements: Map[SyncContext, String]) derives ReadWriter {
 
 
   }
 
-  val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory(
-    "sync-to-db-request",
-    DefaultSerializer.serializerStoreToDbRequestJson,
-    DefaultSerializer.serializerSyncSuccess
+  val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory[StoreToDbRequest, SyncSuccess](
+    "sync-to-db-request"
   )
 
-  val fetchFromDbCommand: ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse] = ExecutionCommandFactory(
-    "fetch-from-db-request",
-    DefaultSerializer.serializerFetchAllFromDbRequestJson,
-    DefaultSerializer.serializerDbFetchResponse
+  val fetchFromDbCommand: ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse](
+    "fetch-from-db-request"
   )
 
-  val clearValuesDbCommand: ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess] = ExecutionCommandFactory(
-    "clear-values-in-db-request",
-    DefaultSerializer.serializerDeleteInDbRequestJson,
-    DefaultSerializer.serializerSyncSuccess
+  val clearValuesDbCommand: ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess] = ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess](
+    "clear-values-in-db-request"
   )
 
 }

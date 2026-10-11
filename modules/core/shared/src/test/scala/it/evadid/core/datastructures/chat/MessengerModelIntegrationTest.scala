@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 
 class MessengerModelIntegrationTest extends FunSuite {
   test("serialization roundtrip preserves message data") {
-    val user = Person("Teacher", "42", SenderRole.TEACHER, None)
+    val user = ChatParticipant("Teacher", "42", SenderRole.TEACHER, None)
     val model = MessengerModel(List(Message("hello", user, LocalDateTime.parse("2026-01-01T12:00:00"))))
     val restored = MessengerModel.fromJson(model.toJson)
 

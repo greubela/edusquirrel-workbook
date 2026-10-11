@@ -25,7 +25,5 @@ object SqlEditorCommands {
       schema: List[Table] = Nil, schemaError: Option[String] = None)
   object Response { given ReadWriter[Response] = macroRW }
   lazy val execute = ExecutionCommandFactory[Request, Response](
-    "sql-editor-execute", Serializer.fromImplicitRW[Request], Serializer.fromImplicitRW[Response],
-    request => s"SQL editor database: ${request.databaseConfig.databaseName}",
-    response => s"SQL editor status: ${response.status}")
+    "sql-editor-execute")
 }

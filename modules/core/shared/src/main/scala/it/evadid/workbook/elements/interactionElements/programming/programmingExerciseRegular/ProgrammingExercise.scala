@@ -13,6 +13,7 @@ import upickle.default.*
 
 import scala.util.Try
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class ProgrammingExercise(
                                 override val elementId: String,
                                 testSuite: Option[BeTestSuite] = None,

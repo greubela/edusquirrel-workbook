@@ -5,10 +5,9 @@ import it.evadid.core.datastructures.language.LanguageMap
 
 import scala.concurrent.Future
 
-trait WorkbookInteractionScaffolder[T, S <: ScaffoldingResult[T]] {
+trait WorkbookInteractionScaffolder[T, A] {
 
-
-  def generateFeedback(currentState: T): Future[S]
+  def generateFeedback(currentState: T): Future[ScaffoldingResult[T, A]]
 
 
 }

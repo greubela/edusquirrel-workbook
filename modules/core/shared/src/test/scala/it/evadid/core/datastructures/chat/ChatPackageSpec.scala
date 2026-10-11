@@ -7,15 +7,15 @@ import upickle.default.*
 
 class ChatPackageSpec extends FunSuite {
   private val time = LocalDateTime.of(2025, 1, 1, 12, 0)
-  private val author = Person("Ada", "id", SenderRole.USER, Some(" AD "))
+  private val author = ChatParticipant("Ada", "id", SenderRole.USER, Some(" AD "))
 
   test("person conversions preserve identity, roles and normalized abbreviations") {
     assertEquals(author.abbreviation, Some("AD"))
     assertEquals(author.toBasic.personId, "id")
     assertEquals(author.toSerializable.abbreviation, Some("AD"))
-    assertEquals(Person.SerializablePerson("Ada", "id", SenderRole.USER, " ").abbreviation, None)
-    assertEquals(Person.SerializablePerson("Ada", "id", SenderRole.USER, null).abbreviation, None)
-    assertEquals(Person("Ada", "id", SenderRole.USER).abbreviation, None)
+    assertEquals(ChatParticipant.SerializablePerson("Ada", "id", SenderRole.USER, " ").abbreviation, None)
+    assertEquals(ChatParticipant.SerializablePerson("Ada", "id", SenderRole.USER, null).abbreviation, None)
+    assertEquals(ChatParticipant("Ada", "id", SenderRole.USER).abbreviation, None)
     assertEquals(SenderRole.allRoles.map(_.llmName), List("user", "user", "assistant", "user"))
   }
   test("adding backdated messages keeps stored conversation order and the original model") {

@@ -1,7 +1,7 @@
 package it.evadid.worker
 
 import it.evadid.distribution.command.*
-import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoUntyped
+import it.evadid.distribution.command.ExecutionInfo.*
 import org.scalajs.dom
 import upickle.ReadWriter
 import upickle.default.*
@@ -12,11 +12,6 @@ import scala.util.*
 object WebWorkerBackendServer {
 
 
-  given mapRW: ReadWriter[Map[String, String]] =
-    readwriter[ujson.Value].bimap[Map[String, String]](
-      m => ujson.Obj.from(m.view.mapValues(ujson.Str(_))),
-      json => json.obj.view.map { case (k, v) => k -> v.str }.toMap
-    )
 /*
   def onExecuteCommandReceived(rawCommand: String): ExecutionInfo = {
     val executionCommand = ExecutionCommand.fromJson(rawCommand)

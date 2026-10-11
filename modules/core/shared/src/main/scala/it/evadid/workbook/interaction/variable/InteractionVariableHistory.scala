@@ -1,66 +1,80 @@
 package it.evadid.workbook.interaction.variable
 
-import upickle.default.*
-
 import it.evadid.core.util.InfoUtil
-import it.evadid.core.util.io.Serializer
 import it.evadid.util.logging.Logger
+import it.evadid.workbook.abstractions.grading.GradedState
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.interaction.sync.SyncStrategy
 import it.evadid.workbook.interaction.sync.UpdateImportance.DEFAULT
+import upickle.default.*
 
-case class InteractionVariableHistory[T](events: Set[InteractionVariableState[T]]) derives ReadWriter {
+
+case class InteractionVariableHistory[T, GA, SA]
+(
+  events: Set[InteractionVariableState[T]],
+  gradings: Map[T, GradedState[T, GA]],
+  scaffoldings: Map[T, ScaffoldingResult[T, SA]]
+) {
 
   def lastStateOption: Option[InteractionVariableState[T]] = events.maxByOption(_.timestamp)
 
-  def cleanedHistory(): InteractionVariableHistory[T] = {
+  def cleanedHistory(): InteractionVariableHistory[T, GA, SA] = {
     val nonDefault = events.filter(_.updateImportance != DEFAULT)
-    if (nonDefault.nonEmpty) InteractionVariableHistory(nonDefault)
-    else InteractionVariableHistory(lastStateOption.toSet)
+    if (nonDefault.nonEmpty) this.copy(events = nonDefault)
+    else this.copy(events = lastStateOption.toSet)
   }
 
-  def map(func: Set[InteractionVariableState[T]] => Set[InteractionVariableState[T]]): InteractionVariableHistory[T] = {
-    InteractionVariableHistory(func(events.toSet))
+  def updateEvents(eventFunc: Set[InteractionVariableState[T]] => Set[InteractionVariableState[T]]): InteractionVariableHistory[T, GA, SA] = {
+    this.copy(events = eventFunc(events))
   }
 
-  def serialized(serializer: Serializer[T]): InteractionVariableHistorySerialized = {
-    InteractionVariableHistorySerialized(events.map(_.serialized(serializer)))
+  def updateGradings(gradingFunc: Map[T, GradedState[T, GA]] => Map[T, GradedState[T, GA]]): InteractionVariableHistory[T, GA, SA] = {
+    this.copy(gradings = gradingFunc(gradings))
   }
 
-  def serializedWithStrategy(syncStrategy: SyncStrategy, serializer: Serializer[T]): InteractionVariableHistorySerialized = {
-    val historyToSync: InteractionVariableHistory[T] = syncStrategy.selectEventsToSync(this)
-    println(s"SerializedWithStrategy: ${this.toString} -> ${historyToSync.toString} (last importance: ${historyToSync.lastStateOption.map(_.updateImportance)}, lastValue: ${historyToSync.lastStateOption.map(_.value)})")
-    historyToSync.cleanedHistory().serialized(serializer)
+  def updateScaffoldings(scaffoldingFunc: Map[T, ScaffoldingResult[T, SA]] => Map[T, ScaffoldingResult[T, SA]]): InteractionVariableHistory[T, GA, SA] = {
+    this.copy(scaffoldings = scaffoldingFunc(scaffoldings))
   }
 
-  def withAddedEvents(newEvents: Set[InteractionVariableState[T]]): InteractionVariableHistory[T] = {
-    InteractionVariableHistory(events ++ newEvents).cleanedHistory()
+  def filterWithStrategy(syncStrategy: SyncStrategy): InteractionVariableHistory[T, GA, SA] = {
+    updateEvents(eventFunc = syncStrategy.selectEventsToSync)
   }
 
-  def withAddedEvent(event: InteractionVariableState[T]): InteractionVariableHistory[T] = {
+  def withAddedEvents(logger: Logger, serializedHistory: String)(using ReadWriter[T], ReadWriter[GA], ReadWriter[SA]): InteractionVariableHistory[T, GA, SA] = {
+    try {
+      val res: InteractionVariableHistory[T, GA, SA] = read[InteractionVariableHistory[T, GA, SA]](serializedHistory)
+      withAddedEvents(res.events)
+    } catch case (err: Throwable) => {
+      logger.logExceptionWarn(s"InteractionVariableHistory -> withAddedEvents: cannot parse serializedHistory, ignoring content'${serializedHistory}'", err)
+      this
+    }
+
+  }
+
+  def withAddedEvents(newEvents: Set[InteractionVariableState[T]]): InteractionVariableHistory[T, GA, SA] = {
+    updateEvents(curEvents => (curEvents ++ newEvents)).cleanedHistory()
+  }
+
+  def withAddedEvent(event: InteractionVariableState[T]): InteractionVariableHistory[T, GA, SA] = {
     withAddedEvents(Set(event))
   }
 
-  def withAddedEvents(serializedHistory: InteractionVariableHistorySerialized, serializer: Serializer[T]): InteractionVariableHistory[T] = {
-    withAddedEvents(serializedHistory.deserializeIgnoreErrors(serializer))
-  }
-
-  def withAddedEvents(newEvents: InteractionVariableHistory[T]): InteractionVariableHistory[T] = {
+  def withAddedEvents(newEvents: InteractionVariableHistory[T, GA, SA]): InteractionVariableHistory[T, GA, SA] = {
     withAddedEvents(newEvents.events)
   }
 
-  def withAddedEvents(logger: Logger, serializer: Serializer[T], serializedHistory: InteractionVariableHistorySerialized): InteractionVariableHistory[T] = {
-    val (success, failed) = serializedHistory.tryDeserialize(serializer)
-    if (failed.states.nonEmpty) logger.logWarn("Could not deserialize " + failed.states.size + " states in InteractionVariableHistory::withAddedEvents!")
-    withAddedEvents(success)
-  }
-
-  override val toString: String = s"InteractionVariableHistoryTyped(${events.size} events, latest: ${InfoUtil.datetimeFormattedForLog(lastStateOption.map(_.timestamp))})"
-
+  override val toString: String = s"InteractionVariableHistory(${events.size} events, latest: ${InfoUtil.datetimeFormattedForLog(lastStateOption.map(_.timestamp))})"
 
 }
 
 object InteractionVariableHistory {
 
-  def empty[T]: InteractionVariableHistory[T] = InteractionVariableHistory(Set())
+  given [T: ReadWriter, GA: ReadWriter, SA: ReadWriter]: ReadWriter[InteractionVariableHistory[T, GA, SA]] = macroRW
+
+
+
+  type InteractionVariableHistoryUntyped = InteractionVariableHistory[?, ?, ?]
+
+  def empty[T, GA, SA]: InteractionVariableHistory[T, GA, SA] = InteractionVariableHistory(Set(), Map(), Map())
 
 }

@@ -1,13 +1,15 @@
 package it.evadid.workbook.interaction.sync.destination
 
-import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
+import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializable
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.{SyncContext, SyncFormatter, SyncSuccess, UsageContext}
-import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
+import it.evadid.workbook.interaction.sync.model.FetchResponse
+import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
+import it.evadid.workbook.interaction.variable.*
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory.InteractionVariableHistoryUntyped
 
 import scala.concurrent.{ExecutionContext, Future}
-
 
 trait SyncDestinationHistory extends SyncDestination {
 
@@ -19,11 +21,11 @@ trait SyncDestinationHistory extends SyncDestination {
 
   def isLocal: Boolean
 
-  def fetchAll(logger: SyncLogger, context: UsageContext, formatter: SyncFormatter): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]]
+  def fetchAll(logger: SyncLogger, context: UsageContext): Future[FetchResponse[SyncContext, InteractionVariableHistoryUntyped]]
 
-  def storeTo(logger: SyncLogger, context: SyncContext, request: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncSuccess]
+  def storeTo[T, GA, SA](logger: SyncLogger, context: SyncContext, request: InteractionVariableHistory[T, GA, SA]): Future[SyncSuccess]
 
-  def fetchFrom(logger: SyncLogger, context: SyncContext, formatter: SyncFormatter)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = fetchAll(logger, context.toUsageContext, formatter)
+  def fetchFrom(logger: SyncLogger, context: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, InteractionVariableHistoryUntyped]] = fetchAll(logger, context.toUsageContext)
 
   def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess]
 

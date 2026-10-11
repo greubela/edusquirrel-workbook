@@ -6,6 +6,7 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSe
 import it.evadid.workbook.model.evacuation.EvacuationExperiment
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 /** Saves the editable scenario/settings and explicitly recorded runs, not transient playback. */
 case class EvacuationSimulationInteraction(elementId: String, initial: EvacuationExperiment = EvacuationExperiment.initial)
     extends WorkbookInteractionElement[EvacuationExperiment] {

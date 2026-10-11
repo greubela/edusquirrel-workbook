@@ -8,7 +8,8 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
-import it.evadid.workbook.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.abstractions.{WorkbookInteractionElement, WorkbookInteractionElementWithGrader}
+import it.evadid.workbook.abstractions.grading.{GradingResult, WorkbookInteractionGrader}
 import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
 import org.scalajs.dom.{HTMLDivElement, SVGPathElement, SVGSVGElement}
 
@@ -16,13 +17,20 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionE
 
   lazy val syncReport: EventStream[InteractionVariableSyncReport[Any]] = fullInfo.syncControl.createObservableReport[Any](workbookInteractionElement.interactionVariable).toEventStream()
 
+  lazy val gradingReport: Signal[WorkbookInteractionGrader[Any, ? <: GradingResult[?]]] = {
+    val allGraders: List[WorkbookInteractionGrader[Any, ? <: GradingResult[?]]] = workbookInteractionElement match {
+      case value1: WorkbookInteractionElementWithGrader[Any, ? <: GradingResult[?]] => value1.gradingElements
+      case _ => List()
+    }
+    workbookInteractionElement.interactionVariable.observableValue
+
+  }
+
   lazy val domElement: Element = {
-
-
     div(
       cls := interactionInfoCssString,
       div(
-        cls := "current-value-icon",
+        cls := "current-grading-icon",
 
       ),
       div(

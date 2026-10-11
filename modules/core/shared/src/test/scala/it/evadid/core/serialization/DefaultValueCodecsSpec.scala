@@ -60,8 +60,8 @@ class DefaultValueCodecsSpec extends FunSuite {
   test("chat value models and every sender role have default codecs") {
     import it.evadid.core.datastructures.chat.*
     SenderRole.allRoles.foreach(roundTrip(_))
-    val basic = Person.BasicPerson("Ada", "id", SenderRole.USER, Some("AD"))
-    val serializable = Person.SerializablePerson("Agent", "agent", SenderRole.AGENT, "AI")
+    val basic = ChatParticipant.BasicPerson("Ada", "id", SenderRole.USER, Some("AD"))
+    val serializable = ChatParticipant.SerializablePerson("Agent", "agent", SenderRole.AGENT, "AI")
     roundTrip(basic)
     roundTrip(serializable)
     assertEquals(basic.toSerializable.abbreviation, basic.abbreviation)

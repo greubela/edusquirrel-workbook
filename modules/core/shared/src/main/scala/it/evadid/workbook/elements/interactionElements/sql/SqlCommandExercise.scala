@@ -10,6 +10,8 @@ import upickle.default.*
  */
 final case class SqlDatabaseConfig(databaseName: String)
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+
 object SqlDatabaseConfig {
   given ReadWriter[SqlDatabaseConfig] = macroRW
 }
@@ -21,7 +23,7 @@ final case class SqlCommandExercise(
                                    ) extends WorkbookInteractionElement[String] {
   override val associatedFactory = SqlCommandExercise.factory
   override val defaultValue: String = initialSql
-  override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
+
   override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
 }
 

@@ -16,7 +16,7 @@ private case class SynchronizedExecutionClient(baseHandler: ExecutionClient, ec:
   private val queue = mutable.Queue.empty[QueuedCommand]
   private var running = false
 
-  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse] = queue.synchronized {
+  override private[clients] def handleCommandExecution(logger: Logger, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = queue.synchronized {
     val promise = Promise[ExecutionClientResponse]()
     queue.enqueue(QueuedCommand(executionCommand, promise, LocalDateTime.now(), logger))
     ensureRunning()
@@ -35,10 +35,9 @@ private case class SynchronizedExecutionClient(baseHandler: ExecutionClient, ec:
       running = true
       val timestampStarted: LocalDateTime = LocalDateTime.now()
       queuedCommand.logger.logInfo(s"ExecutionClient: start to execute command ${queuedCommand.command.name} at ${timestampStarted}")
-      baseHandler.handleExecutionRaw(queuedCommand.command, queuedCommand.logger).onComplete {
-        case Success(resMap) => {
-          val result: ExecutionClientResponse = ExecutionClientResponse(queuedCommand.timeReceived, timestampStarted, LocalDateTime.now(), Right(resMap), Some(queuedCommand.command), queuedCommand.logger.getOut(), queuedCommand.logger.getErr())
-          queuedCommand.promise.success(result)
+      baseHandler.handleCommandExecution(queuedCommand.logger, queuedCommand.command).onComplete {
+        case Success(res) => {
+          queuedCommand.promise.success(res.fixReceived(queuedCommand.timeReceived))
           afterFinished()
         }
         case Failure(err) => {
@@ -54,5 +53,4 @@ private case class SynchronizedExecutionClient(baseHandler: ExecutionClient, ec:
 
   override def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = baseHandler.canExecuteCommand(executionCommand)
 
-  override private[distribution] def handleExecutionRaw(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = baseHandler.handleExecutionRaw(executionCommand, logger)
 }

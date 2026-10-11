@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import it.evadid.core.datastructures.chat.{Message, MessengerModel, Person}
+import it.evadid.core.datastructures.chat.{Message, MessengerModel, ChatParticipant}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.State
@@ -89,7 +89,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
       val scaffoldingChat = SimpleChatEditor(boundState, State(""), msg => onUserSendMessage(msg, boundState))
       val openChatButton = HtmlButtonElement.withSvgContent(createScaffoldingButtonSvg(), event => {
 
-        val currentUser: Person = fullInfo.current.userInfo.map(_.user).getOrElse(MessengerModel.pFallbackStudent)
+        val currentUser: ChatParticipant = fullInfo.current.userInfo.map(_.user).getOrElse(MessengerModel.pFallbackStudent)
 
         workbookElement.initScaffoldingIfEmpty(currentUser,fullInfo.syncControl, fullInfo.signals.idResolver).onComplete {
           case Success(bool) => if (bool) requestCompletion(workbookElement.scaffoldingInteractionOp.get.interactionVariable.currentValue.messengerModel, boundState)
