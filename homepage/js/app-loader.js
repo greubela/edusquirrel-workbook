@@ -96,7 +96,7 @@
 
   function preloadBackendWorkers(config) {
     var workerCount = asPositiveInt(configValue(config, "EDUSQUIRREL_BACKEND_MODULE_WORKERS"), 1);
-    var workerPath = config.EDUSQUIRREL_BACKEND_MODULE_WORKER_SCRIPT || "../../artifacts/newest/backend-worker.js";
+    var workerPath = config.EDUSQUIRREL_BACKEND_MODULE_WORKER_SCRIPT || "../../artifacts/newest/worker.js";
     window.EDUSQUIRREL_BACKEND_WORKERS = window.EDUSQUIRREL_BACKEND_WORKERS || [];
     for (var i = 0; i < workerCount; i++) {
       try {
