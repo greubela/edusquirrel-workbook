@@ -26,6 +26,8 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 
 Keep temporary workbook extracts and development captures under `tmp/`, grouped by their actual subject. The reference copies are retained for migration work; duplicate extracts have been consolidated here. Image-recognition PDFs belong in `tmp/image-recognition/`; the evacuation handoff plan belongs in `tmp/evacuation/`. `tmp/work/` is ignored by Git: use subject subdirectories such as `tmp/work/evacuation/`, `tmp/work/image-recognition/` and `tmp/work/compression/` for scratch files, with `analysis/` for extracted research material. Cross-workbook checks belong in `tmp/work/integration/`, reusable interaction experiments in `tmp/work/shared-interactions/`, and temporary tool dependencies in `tmp/work/tooling/`. Published teaching materials and classic PDF/ZIP downloads remain under `resources/` and are independent of these reference copies. Neither site assembly includes `tmp/`.
 
+The [worker execution backend](docs/worker-execution-backend.md) documents background command execution, the shared transport protocol and the worker client in `HomepageDefaults`.
+
 ### Choosing a location for new content
 
 | Content | Location |

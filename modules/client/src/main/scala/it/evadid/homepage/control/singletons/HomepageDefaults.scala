@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{English, German, Huma
 import it.evadid.core.datastructures.user.UserConfig
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.util.io.Serializer
-import it.evadid.distribution.clients.{ExecutionClient, RemoteExecutionConfig}
+import it.evadid.distribution.clients.{ExecutionClient, RemoteExecutionConfig, WebWorkerExecutionClient}
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer, LocalIndexedDbStorageSync, LocalStorageSync}
 import it.evadid.workbook.interaction.sync.SyncStrategy.{SYNC_LAST, SYNC_LAST_AND_MAJOR, SYNC_MAJOR}
@@ -72,6 +72,16 @@ case class HomepageDefaults(fullInfo: FullInfo) {
 
   private[control] lazy val defaultBackend: RemoteExecutionConfig = RemoteExecutionConfig("ypcgzj23.trafficplex.cloud", 443)
 
+
+  /** Reuse a worker preheated by app-loader.js; otherwise start the built worker bundle. */
+  lazy val workerBackendExecutor: WebWorkerExecutionClient = {
+    import scala.scalajs.js
+    import org.scalajs.dom
+    val preheated = js.Dynamic.global.window.selectDynamic("EDUSQUIRREL_BACKEND_WORKERS")
+    if !js.isUndefined(preheated) && preheated != null && preheated.asInstanceOf[js.Array[dom.Worker]].nonEmpty then
+      WebWorkerExecutionClient.fromWorker(preheated.asInstanceOf[js.Array[dom.Worker]].shift())
+    else WebWorkerExecutionClient(fullInfo.contentControl.fileFactory.relativeToArtifactsFolder("newest/worker.js").asUrlString)
+  }
 
   def backendExecutorWithCredentials(signedToken: Option[SignedToken]): ExecutionClient = defaultBackend.executor(signedToken)
 

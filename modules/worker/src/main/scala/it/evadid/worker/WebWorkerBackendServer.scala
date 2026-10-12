@@ -1,69 +1,56 @@
 package it.evadid.worker
 
-import it.evadid.distribution.command.*
-import it.evadid.distribution.command.ExecutionInfo.*
+import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.command.{ExecutionCommand, SerializedException}
+import it.evadid.distribution.formats.ExecutionClientResponse
+import it.evadid.distribution.formats.ExecutionClientResponse.{AdditionalLoggingOutput, ExecutionClientResponseTimestamps}
+import it.evadid.distribution.formats.WorkerExecutionProtocol.{Request, Response}
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import org.scalajs.dom
-import upickle.ReadWriter
 import upickle.default.*
-
 import java.time.LocalDateTime
-import scala.util.*
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
+/** Message-based counterpart of BackendServer, using the ExecutionClient wire format. */
 object WebWorkerBackendServer {
-  given mapRW: ReadWriter[Map[String, String]] =
-    readwriter[ujson.Value].bimap[Map[String, String]](
-      values => ujson.Obj.from(values.view.mapValues(ujson.Str(_))),
-      json => json.obj.iterator.map { case (key, value) => key -> value.str }.toMap
-    )
+  private given ExecutionContext = ExecutionContext.global
 
-
-/*
-  def onExecuteCommandReceived(rawCommand: String): ExecutionInfo = {
-    val executionCommand = ExecutionCommand.fromJson(rawCommand)
-    val now = LocalDateTime.now()
-    val result = ExecutionResult(
-      data = executionCommand.params,
-      stdOut = s"Worker executed command '${executionCommand.name}'",
-      stdErr = ""
-    )
-    ExecutionInfoUntyped(executionCommand,result,ExecutionHistory(now, now, now, now)    )
+  def fail(received: LocalDateTime, err: Throwable, command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
+    logger.logError(Option(err.getMessage).getOrElse(err.getClass.getSimpleName))
+    ExecutionClientResponse(ExecutionClientResponseTimestamps(received, received, LocalDateTime.now()),
+      Left(SerializedException(err)), command, AdditionalLoggingOutput(logger.getOut(), logger.getErr()))
   }
 
-  private def handleMessage(rawPayload: String): String = {
-    val payload = read[Map[String, String]](rawPayload)
-    val requestId = payload.getOrElse("requestId", throw new IllegalArgumentException("Missing requestId"))
-    val rawCommand = payload.getOrElse("command", throw new IllegalArgumentException("Missing command"))
-
-    val executionInfoStr: Option[String] = try{
-      Some(onExecuteCommandReceived(rawCommand).toJson)
-    } catch {
-      case e: Exception => None
+  def handleMessage(raw: String, executor: ExecutionClient = WorkerCommandHandler.executor): Future[String] = {
+    val received = LocalDateTime.now()
+    val logger = Logger.withNameAndPrefixes(Some(s"WorkerBackendServerLogger(Request@$received)"), PrintToStdLogger.printWarnAndError)
+    Try(read[Request](raw)) match {
+      case Failure(err) =>
+        val requestId = Try(ujson.read(raw)("requestId").str).getOrElse("unknown")
+        Future.successful(write(Response(requestId, fail(received, err, None, logger))))
+      case Success(request) =>
+        val handled = Try {
+          require(request.requestId.nonEmpty, "Missing requestId")
+          require(executor.canExecuteCommand(request.command), s"Unsupported worker command: ${request.command.name}")
+          executor.executeResponse(logger, request.command)
+        }.fold(Future.failed, identity)
+        handled.map(response => response.fixReceived(received).copy(
+          additionalOutput = AdditionalLoggingOutput(response.additionalOutput.loggerOut + logger.getOut(), response.additionalOutput.loggerError + logger.getErr())))
+          .recover { case err => fail(received, err, Some(request.command), logger) }
+          .map(response => write(Response(request.requestId, response)))
     }
-
-    write(Map(
-      "requestId" -> requestId,
-      "executionInfo" -> executionInfoStr.getOrElse("[error!]")
-    ))(using mapRW)
   }
-*/
+
   def main(args: Array[String]): Unit = {
-  /*
-    dom.DedicatedWorkerGlobalScope.self.onmessage = (event: dom.MessageEvent) => {
-      event.data match {
-        case text: String =>
-          dom.DedicatedWorkerGlobalScope.self.postMessage(handleMessage(text))
-        case _ =>
-          dom.DedicatedWorkerGlobalScope.self.postMessage(
-            write(Map("requestId" -> "unknown", "executionInfo" ->
-              ExecutionInfo(
-                command = ExecutionCommand("invalid", Map.empty),
-                result = scala.util.Failure(new IllegalArgumentException("Worker expects string messages")),
-                meta = None
-              ).toJson
-            )))
+    val scope = dom.DedicatedWorkerGlobalScope.self
+    scope.onmessage = (event: dom.MessageEvent) => {
+      val raw = event.data match {
+        case text: String => text
+        case _ => "null"
       }
+      handleMessage(raw).foreach(value => scope.postMessage(value))
     }
-	*/
   }
-  
 }
