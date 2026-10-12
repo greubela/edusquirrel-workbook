@@ -38,6 +38,7 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/SimpleTextEditor.scala#SimpleTextEditor:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blockchain/BlockchainEditor.scala#BlockchainEditor:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/CodeMirrorEditor.scala#CodeMirrorEditor:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/CodeMirrorEditorFlowchart.scala#CodeMirrorEditorFlowchart:1": "Live editor holds reactive state, signals, and an input callback; serialize its document and configuration instead",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaEditorPlain.scala#EvaEditorPlain:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaEditorTurtle.scala#EvaEditorTurtle:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaProgrammingTab.scala#EvaEditorProgrammingTab:1": "Constructor contains runtime services, callbacks, state, or an open service interface",

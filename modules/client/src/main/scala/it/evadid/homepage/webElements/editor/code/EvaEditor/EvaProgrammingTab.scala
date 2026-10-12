@@ -18,7 +18,7 @@ object EvaProgrammingTab {
           programmingLanguage,
           curVar => {
             val bound: Var[String] = curVar.bimap[String](_.code)(ProgrammingStateJavaString(_))
-            CodeMirrorEditor(bound, code => handleOnStateChanged(ProgrammingStateJavaString(code)), language = AppLanguage.Java)
+            CodeMirrorEditor(bound, code => handleOnStateChanged(ProgrammingStateJavaString(code)), language = AppLanguage.Java, editorConfig = evaConfig.codeMirrorConfig)
           },
           _.toJava
         )
@@ -29,7 +29,7 @@ object EvaProgrammingTab {
           programmingLanguage,
           curVar => {
             val bound: Var[String] = curVar.bimap[String](_.code)(ProgrammingStatePythonString(_))
-            CodeMirrorEditor(bound, code => handleOnStateChanged(ProgrammingStatePythonString(code)), language = AppLanguage.Python)
+            CodeMirrorEditor(bound, code => handleOnStateChanged(ProgrammingStatePythonString(code)), editorConfig = evaConfig.codeMirrorConfig)
           },
           _.toPython
         )

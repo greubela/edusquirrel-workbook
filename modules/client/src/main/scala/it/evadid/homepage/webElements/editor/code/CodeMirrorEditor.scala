@@ -6,7 +6,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{ProgrammingLanguage, Python}
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
-import it.evadid.homepage.webElements.editor.config.CodeEditorConfig
+import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import org.scalajs.dom
 import it.evadid.core.datastructures.font.AppFont
 
@@ -16,15 +16,18 @@ case class CodeMirrorEditor(
                              content: Var[String],
                              onUserInput: String => Unit = _ => (),
                              editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14)),
-                             language: ProgrammingLanguage = Python
-                           ) extends SimpleWebEditor[String, CodeEditorConfig] {
+                             language: ProgrammingLanguage = Python,
+                             editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default
+                           ) extends SimpleWebEditor[String, CodeMirrorEditorConfig] {
 
   import CodeMirrorEditor.*
 
   private var handle: Option[CodeMirrorHandle] = None
   private var pendingDiagnostics = Option.empty[(String, Seq[Diagnostic])]
   private var updatingFromEditor: Boolean = false
-  private val useTextareaFallback: Var[Boolean] = Var(false)
+  private val useTextareaFallback: Var[Boolean] = Var(true)
+  private var mountVersion = 0
+  private val flowchart = Option.when(editorConfig.showFlowchartGutter && language == Python)(CodeMirrorEditorFlowchart.chartForDoc)
 
   def focus(): Unit = handle.foreach(_.focus())
 
@@ -38,7 +41,7 @@ case class CodeMirrorEditor(
 
   override def getDomElement(): L.Element = {
     div(
-      cls := "code-editor code-mirror-editor",
+      cls := ("code-editor code-mirror-editor" + (if (flowchart.nonEmpty) " code-mirror-editor-flowchart" else "")),
       styleAttr <-- editorFont.map(font =>
         s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"
       ),
@@ -52,57 +55,60 @@ case class CodeMirrorEditor(
         }
       ),
       onMountCallback { ctx =>
-        waitForFacade {
-          case Some(cmFacade) =>
-            useTextareaFallback.set(false)
-            val container = ctx.thisNode.ref
-            val initialValue = content.now()
+        mountVersion += 1
+        val version = mountVersion
+        useTextareaFallback.set(true)
+        waitForFacade { loaded =>
+          if (version == mountVersion && ctx.thisNode.ref.isConnected) loaded match {
+            case Some(cmFacade) =>
+              val container = ctx.thisNode.ref
+              val initialValue = content.now()
 
-            var updatingFromVar = false
+              var updatingFromVar = false
 
-            val createdHandle = cmFacade.createEditor(
-              EditorConfig(
-                parent = container,
-                doc = initialValue,
-                language = languageToJs(language),
-                onDocChange = value =>
-                  if (!updatingFromVar) {
-                    pendingDiagnostics = None
-                    updatingFromEditor = true
-                    content.writer.onNext(value)
-                    onUserInput(value)
-                    updatingFromEditor = false
-                  }
+              val createdHandle = cmFacade.createEditor(
+                EditorConfig(
+                  parent = container,
+                  doc = initialValue,
+                  language = languageToJs(language),
+                  flowchart = flowchart,
+                  onDocChange = value =>
+                    if (!updatingFromVar) {
+                      pendingDiagnostics = None
+                      updatingFromEditor = true
+                      content.writer.onNext(value)
+                      onUserInput(value)
+                      updatingFromEditor = false
+                    }
+                )
               )
-            )
 
-            handle = Some(createdHandle)
-            pendingDiagnostics.filter(_._1 == initialValue).foreach { case (_, diagnostics) =>
-              createdHandle.setDiagnostics(js.Array(diagnostics.map(_.toJs) *))
-            }
-
-            content.signal.foreach { value =>
-              handle.foreach { editorHandle =>
-                if (!updatingFromEditor && editorHandle.getDoc() != value) {
-                  pendingDiagnostics = None
-                  updatingFromVar = true
-                  editorHandle.setDoc(value)
-                  updatingFromVar = false
-                }
+              handle = Some(createdHandle)
+              useTextareaFallback.set(false)
+              pendingDiagnostics.filter(_._1 == initialValue).foreach { case (_, diagnostics) =>
+                createdHandle.setDiagnostics(js.Array(diagnostics.map(_.toJs) *))
               }
-            }(using ctx.owner)
 
-          case None =>
-            // Some workbook entry pages do not load CodeMirrorLoader.js. Keep
-            // the editor usable and, crucially, do not fail the fullscreen
-            // Laminar mount just because this optional enhancement is absent.
-            useTextareaFallback.set(true)
-            dom.console.warn(
-              "CodeMirror facade is not available; using a textarea fallback"
-            )
+              content.signal.foreach { value =>
+                handle.foreach { editorHandle =>
+                  if (!updatingFromEditor && editorHandle.getDoc() != value) {
+                    pendingDiagnostics = None
+                    updatingFromVar = true
+                    editorHandle.setDoc(value)
+                    updatingFromVar = false
+                  }
+                }
+              }(using ctx.owner)
+
+            case None =>
+              // A CDN failure affects only this editor enhancement.
+              useTextareaFallback.set(true)
+
+          }
         }
       },
       onUnmountCallback { _ =>
+        mountVersion += 1
         handle.foreach(_.destroy())
         handle = None
         pendingDiagnostics = None
@@ -112,7 +118,7 @@ case class CodeMirrorEditor(
 
   override def underlyingVar: Var[String] = content
 
-  override def config: Val[CodeEditorConfig] = Val(CodeEditorConfig.defaultConfig)
+  override def config: Val[CodeMirrorEditorConfig] = Val(editorConfig)
 }
 
 object CodeMirrorEditor {
@@ -128,7 +134,7 @@ object CodeMirrorEditor {
     }
 
   @js.native
-  private trait CodeMirrorFacade extends js.Object {
+  private[code] trait CodeMirrorFacade extends js.Object {
     def createEditor(config: EditorConfig): CodeMirrorHandle = js.native
   }
 
@@ -169,6 +175,7 @@ object CodeMirrorEditor {
     var doc: String
     var language: String
     var onDocChange: js.Function1[String, Unit]
+    var flowchart: js.UndefOr[js.Function1[String, js.Object]]
   }
 
   object EditorConfig {
@@ -176,45 +183,28 @@ object CodeMirrorEditor {
                parent: dom.Element,
                doc: String,
                onDocChange: String => Unit,
-               language: String = "python"
+               language: String = "python",
+               flowchart: Option[String => js.Object] = None
              ): EditorConfig = {
       js.Dynamic.literal(
         parent = parent,
         doc = doc,
         language = language,
-        onDocChange = (value: String) => onDocChange(value)
+        onDocChange = (value: String) => onDocChange(value),
+        flowchart = flowchart.fold[js.UndefOr[js.Function1[String, js.Object]]](js.undefined)(
+          callback => ((value: String) => callback(value)): js.Function1[String, js.Object]
+        )
       ).asInstanceOf[EditorConfig]
     }
   }
 
-  private def facade: Option[CodeMirrorFacade] = {
-    // Access through `window[...]`: a direct global lookup can compile to an
-    // identifier reference and throw ReferenceError when the loader is absent.
-    val maybeFacade =
-      dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirror")
-    if (js.isUndefined(maybeFacade) || maybeFacade == null) None
-    else Some(maybeFacade.asInstanceOf[CodeMirrorFacade])
-  }
-
   private def waitForFacade(callback: Option[CodeMirrorFacade] => Unit): Unit = {
-    facade match {
-      case some@Some(_) =>
-        callback(some)
-      case None =>
-        val readyPromise =
-          dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirrorReady")
-        if (js.isUndefined(readyPromise) || readyPromise == null) {
-          callback(None)
-        } else {
-          readyPromise
-            .asInstanceOf[js.Promise[js.Any]]
-            .`then`[Unit]((_: js.Any) => callback(facade))
-            .`catch`(((error: scala.Any) => {
-              dom.console.error("Failed to initialize CodeMirror facade", error.asInstanceOf[js.Any])
-              callback(None)
-              (): Unit
-            }): js.Function1[scala.Any, Unit | js.Thenable[Unit]])
-        }
+    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+    CodeMirrorEditorLoading.load().flatMap { facade =>
+      CodeMirrorEditorLoading.inBackground(callback(Some(facade)))
+    }.recover { case error =>
+      dom.console.warn("CodeMirror is unavailable; retaining the textarea editor", error.getMessage)
+      callback(None)
     }
   }
 }
