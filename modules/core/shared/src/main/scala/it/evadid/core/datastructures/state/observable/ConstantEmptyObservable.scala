@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.state.{ExecutionMethod, Subscription}
 
 import scala.concurrent.Future
 
-case class ConstantEmptyObservable[T]() extends ObservableValue[T] {
+case class ConstantEmptyObservable[T]() extends ObservableValue[T] derives upickle.default.ReadWriter {
 
   override def currentValueOrWaitForUpdate: Future[T] = Future.failed(new IllegalStateException("Empty Observable will never get a value!"))
 

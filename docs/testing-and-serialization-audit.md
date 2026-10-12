@@ -248,3 +248,154 @@ simulation state/event snapshots still need a deliberate format.
 Verification against main `2fdd2f47`: shared JVM 1,055, shared Scala.js 1,043,
 client 512, server 5 and worker 3 tests passed, with no failures or ignored tests.
 Both development browser artifacts build successfully.
+
+## Value-codec follow-up and remaining scope
+
+Default uPickle serialization is not universal. A source search for `ReadWriter`
+alone cannot establish coverage: workbook elements use registered factories,
+distribution messages have custom serializer contracts, and some declarations in
+source files are comments or internal implementation details. Compile-time writer
+resolution and JSON/MessagePack round-trip tests establish the new APIs below.
+
+This pass adds 15 default codecs: `MailDraft`, `RecreateShapeGradingResult`,
+`BeProgram`, `WorkbookStructuringType`, `NumberType`, `NumberInteractionConfig`,
+`VariableDisplayConfig`, `LoggingLevel`, `RenderingDimension[T]`,
+`AlignmentInParent`, its horizontal and vertical enums, and the runnable
+`BFS[N]`, `Dijkstra[N]` and `AStar[N]` policy values. Existing workbook factory
+formats remain unchanged. Rendering dimensions use the two constructor dimensions
+as their tuple payload, supplying the numeric instance at decode time and running
+constructor validation. Alignment decoding restores the canonical singletons,
+including the nine grid positions, and rejects unknown names.
+
+Two new suites and three routing regressions add 19 tests. They cover JSON and
+MessagePack, Unicode/multiline drafts, omitted constructor defaults, all grading
+statuses and preserved feedback, canonical alignments (including directly
+constructed positions), malformed dimensions, non-Double numeric types, runnable
+algorithm policies, a 10,001-node cached route and repeated unreachable queries.
+The routing regressions pass without changing the implementation.
+
+Remaining concrete candidates include SVG path command records/builders,
+node-based immutable tree positions, and Python/Java parser ASTs. The parser
+families are left untouched in this batch because their refactor is being worked
+on separately. These are candidates for further work, not claims that every public
+value type has been exhaustively inventoried.
+
+Runtime-only objects are a separate scope: observable subscriptions carry callbacks;
+rendering configurations carry loggers and click handlers; user sync configurations
+carry destination/formatter implementations; pathfinding caches carry graph access
+functions and mutable cached results. EVA1 states/events need a graph snapshot
+contract. Serializing constructor fields of those objects without preserving their
+runtime dependencies would be misleading. Existing registered workbook serializers
+remain the supported route for workbook definitions.
+
+All five suites pass: shared JVM 1,074, shared Scala.js 1,062, client 512,
+server 5 and worker 3, with no failures or ignored tests. Both development browser
+artifacts build successfully. The final alignment encoder also passes the affected
+shared suite on JVM and JavaScript, followed by rebuilt browser artifacts.
+
+## Systematic production declaration audit
+
+`python3 tools/dev/audit-scala-serialization.py --check` inventories active case
+classes, sealed traits and enums in every module's production source tree. It
+ignores comments and string literals, handles multiline and private constructors,
+and checks `docs/serialization-exceptions.json` for missing codecs and stale
+exceptions. `--json` emits every declaration with its file, line and classification.
+The scanner's regression tests run with
+`python3 tools/dev/audit-scala-serialization.test.py`.
+
+After integrating the main cleanup, the inventory contains 1,155 declarations:
+834 use `derives ReadWriter`, 92 have explicit codecs in their source file, and
+229 are reviewed exceptions.
+This pass adds 573 derived codecs, including supporting snapshot records. These
+counts describe source declarations, including private helpers; generic codecs
+still require writers for their type parameters. The scanner is a maintenance
+check, rather than proof that every instantiated generic type has a writer or that
+existing wire formats are interchangeable. Compilation and round-trip tests are
+required alongside it.
+
+The additions cover immutable trees and positions, Python/Java AST records, VM
+state, protocol messages, workbook definitions, browser feedback and project data,
+configuration records, and evacuation snapshots. Existing explicit formats remain
+in place. The parser grammar and dispatch logic are unchanged. Name collection in
+`GenericAST` now skips unnamed nodes instead of throwing a `MatchError`, uncovered
+by a nested AST round-trip test.
+
+Supporting codecs use deliberate contracts where Scala cannot derive a product or
+sum Mirror:
+
+- Numeric-context SVG commands, path builders, turtle state and drawing policies
+  rebuild their `Fractional` instance at decode time. Mutable path builders snapshot
+  the current path, points, subpath start and controls, rather than their seed alone.
+- Value-class JSON nodes use ordinary derived storage records, preserving duplicate
+  object keys and array/object order. Language types use type descriptors to rebuild
+  their literal serializers, without serializing executable serializer functions.
+- Open AST, segmented-code and sprite interfaces support their built-in variants,
+  rejecting unknown implementation/tag combinations. Open sprite-map layout codecs
+  restore the canonical default and top-down policies.
+- `WorkbookElement` stores a self-contained registry for a container's children and
+  section prerequisites, then resolves it with the existing factories. Concrete
+  definitions mostly derive; `WorkbookSection` uses the registry codec because its
+  legacy metadata format contains references. Existing factory JSON formats remain
+  unchanged. Unsupported factories and conflicting element IDs fail explicitly.
+- Evacuation states include graph data, person events and routing maps. Graph
+  snapshots require connection-delay weights and reject different edge weights;
+  arbitrary weight functions are not persisted.
+  Mutable multi-maps retain empty buckets, ordering and duplicates and reconstruct
+  independent state. The decoded simulation can continue to safety.
+- Snap block defaults have a local, tagged primitive codec for string, Boolean, Int
+  and Double values. Unsupported executable/object values and malformed integer
+  payloads fail. This local codec is independent of main's general `Any` codec.
+- Execution-info roots retain their existing untyped wire contract; callers recover
+  typed results with the existing converter. URL policies persist only the URL.
+
+Feedback and asynchronous loading timestamps are now constructor fields, so derived
+codecs retain the original timestamp. Loading records written before `startedAt` was
+added still read using its constructor default.
+
+The remaining exceptions are not forgotten data models. They include callbacks and
+execution contexts; futures/promises; DOM/canvas/image/worker handles; reactive
+subscriptions and controllers; database connections; dynamic serializers and
+formatters; mutable parser frames; empty/open service hierarchies; and private inner
+records already captured by their owner's snapshot. In particular, a live
+`InteractionVariable` must persist its history, and an observable or logger must not
+be reconstructed from its initial constructor seed while silently losing updates,
+listeners or accumulated output. Numeric shape-rendering configurations also carry
+click handlers and loggers. These need explicit persistence contracts if persistence
+is ever required, not a derived constructor-only codec.
+
+New round-trip suites exercise JSON and MessagePack, both direct and interface
+writers, malformed payloads, numeric types, restored literal parsing, mutable builder
+continuation, nested workbook references, timestamps and resumed evacuation. Client
+and server tests use synthetic configuration data and never open a connection or
+send mail.
+
+Verification after rebasing onto main `44b1ac1d`: all five full suites pass (shared
+JVM 1,108; shared JavaScript 1,096; client 517; server 8; worker 3), with no failures
+or ignored tests. The final non-finite Snap default correction passes all 29 tests
+in `SystematicDerivedCodecSpec` on both platforms; client and worker development
+artifacts are rebuilt successfully afterward. The inventory check and its seven
+scanner regressions pass.
+
+## Integration with the typed API and legacy cleanup
+
+Main `13c6ee28` includes the typed execution/history APIs, legacy deletions and
+package moves from `729077c2`, plus the bilingual workbook updates. The integration
+keeps those deletions and updated wire contracts, adapting the workbook snapshot
+codec to `WorkbookInteractionElementFull[T, GA, SA]`. The former untyped execution
+codec and rich `SyncFormatter` history contract described above have been replaced
+by main's typed execution results and history JSON; their obsolete tests are
+removed or rewritten around the replacement APIs. The moved Snap project model
+retains its codec tests. New execution-success and grading-status variants expose
+derived defaults, and exception payload tests compare their serialized data rather
+than throwable object identity.
+
+The maintained inventory now accounts for 1,155 declarations: 834 derived codecs,
+92 explicit codecs and 229 reviewed exceptions. Deleted exceptions are removed,
+and exceptions for moved workbook factories use their current paths.
+
+All five suites pass on the integrated tree: shared JVM 1,116, shared JavaScript
+1,104, client 482, server 9 and worker 3, with no failures or ignored tests. Client
+and worker development artifacts build successfully. Six language/compression
+checks and two browser checks also pass, including German/English headings across
+all nine native digital workbook pages and preserved compression edits while
+switching language. The inventory check and seven scanner regressions pass.

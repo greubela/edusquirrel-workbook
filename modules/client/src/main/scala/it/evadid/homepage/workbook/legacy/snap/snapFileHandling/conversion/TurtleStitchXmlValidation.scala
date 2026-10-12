@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
 
 object TurtleStitchXmlValidation {
 
-  final case class ValidationResult(errors: Vector[String]) {
+  final case class ValidationResult(errors: Vector[String]) derives upickle.default.ReadWriter {
     def isValid: Boolean = errors.isEmpty
   }
 

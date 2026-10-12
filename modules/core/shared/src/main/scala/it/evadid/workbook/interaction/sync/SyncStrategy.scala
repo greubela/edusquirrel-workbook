@@ -19,7 +19,7 @@ object SyncStrategy {
     override val toString: String = "SYNC_EVERYTHING"
   }
 
-  private case class DesiredRelevance(desired: List[UpdateImportance]) extends SyncStrategy {
+  private case class DesiredRelevance(desired: List[UpdateImportance]) extends SyncStrategy derives upickle.default.ReadWriter {
     override def selectEventsToSync[T](history: Set[InteractionVariableState[T]]): Set[InteractionVariableState[T]] = history.filter(e => desired.contains(e.updateImportance))
 
     override val toString: String = "SYNC_ONLY(" + desired.mkString(", ") + ")"

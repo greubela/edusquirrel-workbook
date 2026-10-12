@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.shapes.BeShapeDecoration
 
-case class TriangleOverlay() extends BeShapeDecoration {
+case class TriangleOverlay() extends BeShapeDecoration derives upickle.default.ReadWriter {
 
   override def getAmends(renderingConfig: BeRenderingConfig): Seq[L.Modifier[L.SvgElement]] = renderingConfig.amendFactory.activeDecorationElements
 

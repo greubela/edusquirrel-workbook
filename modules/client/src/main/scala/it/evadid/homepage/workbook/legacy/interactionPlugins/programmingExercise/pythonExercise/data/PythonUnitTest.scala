@@ -3,4 +3,4 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercis
 final case class PythonUnitTest(
                                testCode: String,
                                testName: String 
-                               )
+                               ) derives upickle.default.ReadWriter

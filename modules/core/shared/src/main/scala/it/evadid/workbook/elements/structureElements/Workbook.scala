@@ -17,7 +17,7 @@ case class Workbook(
                      elementId: String,
                      metadata: WorkbookMetadata,
                      sections: List[WorkbookSection],
-                   ) extends WorkbookStructureElement[WorkbookSection] {
+                   ) extends WorkbookStructureElement[WorkbookSection] derives upickle.default.ReadWriter {
 
   val workbookId: String = elementId
 

@@ -11,7 +11,7 @@ sealed trait ReorderType  {
 
 object ReorderType {
 
-  case class CODELINES(associatedLanguage: ProgrammingLanguage) extends ReorderType
+  case class CODELINES(associatedLanguage: ProgrammingLanguage) extends ReorderType derives upickle.default.ReadWriter
 
   case object BASIC_STRINGS extends ReorderType
   

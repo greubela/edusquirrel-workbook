@@ -8,7 +8,7 @@ import upickle.default.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class MailInteraction(elementId: String, initialInbox: InboxState = InboxState.empty,
                         account: String = "opa.jürgen@gmail.com", allowCompose: Boolean = false)
-    extends WorkbookInteractionElement[InboxStateScaffolding] {
+    extends WorkbookInteractionElement[InboxStateScaffolding] derives upickle.default.ReadWriter {
   override val associatedFactory = MailInteraction.factory
   override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
   override val defaultValue = InboxStateScaffolding(initialInbox.normalized)

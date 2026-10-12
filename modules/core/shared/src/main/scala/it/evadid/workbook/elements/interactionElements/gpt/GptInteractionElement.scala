@@ -53,7 +53,7 @@ case class GptInteractionElement(
                                   exerciseText: LanguageMapContentId,
                                   scaffoldingHints: List[LanguageMapContentId],
                                   gradingCriteria: List[LanguageMapContentId]
-                                ) extends WorkbookDisplayElement {
+                                ) extends WorkbookDisplayElement derives upickle.default.ReadWriter {
   override val associatedFactory = GptInteractionElement.factory
   println("[WARN] creating messaging interaction for id '" + elementId + "' with no grading!")
 

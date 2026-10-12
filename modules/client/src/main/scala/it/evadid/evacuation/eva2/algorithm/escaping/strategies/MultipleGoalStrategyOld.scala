@@ -96,7 +96,7 @@ object MultipleGoalStrategyOld {
 
   case class MGSimulationInformation(floor: FloorMatrix, pathfinding: ReveresedCachedPathfinding[PositionInMatrix, DijkstraInformation])
 
-  case class MGStepInformation()
+  case class MGStepInformation() derives upickle.default.ReadWriter
 
 
   //  val notMovedSinceOrdering: Ordering[Person] = Ordering.by(person => notMovedSinceSteps(person.id))

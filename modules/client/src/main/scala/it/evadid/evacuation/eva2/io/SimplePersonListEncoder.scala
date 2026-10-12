@@ -9,7 +9,7 @@ import it.evadid.evacuation.eva2.model.Person
 
 import scala.collection.immutable.HashSet
 
-case class SimplePersonListEncoder(spriteMap: EvaSpriteMap, dim: MatrixDimension) extends IO[Set[Person], Array[Byte]] {
+case class SimplePersonListEncoder(spriteMap: EvaSpriteMap, dim: MatrixDimension) extends IO[Set[Person], Array[Byte]] derives upickle.default.ReadWriter {
 
   private def encode(in: Person): Array[Byte] = ByteFixedLengthIntIO.encode(in.pos.cPos.x) ++ ByteFixedLengthIntIO.encode(in.pos.cPos.y) ++ ByteFixedLengthIntIO.encode(in.sprite.id)
 

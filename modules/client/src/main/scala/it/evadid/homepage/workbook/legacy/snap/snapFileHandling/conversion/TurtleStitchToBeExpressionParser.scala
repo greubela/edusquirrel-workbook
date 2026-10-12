@@ -14,7 +14,7 @@ import scala.collection.mutable.ListBuffer
 
 object TurtleStitchToBeExpressionParser {
 
-  final case class ParseWithLayout(expression: BeExpression, canvasLayout: SnapCanvasLayout)
+  final case class ParseWithLayout(expression: BeExpression, canvasLayout: SnapCanvasLayout) derives upickle.default.ReadWriter
 
   private val OperatorSymbols = Set(
     "+", "-", "*", "/", "//", "%", "**",
@@ -22,19 +22,19 @@ object TurtleStitchToBeExpressionParser {
     "and", "or", "not", "is", "is not", "&", "|", "^", "<<", ">>", "~"
   )
 
-  private sealed trait BlockInput
-  private final case class InputLiteral(value: String) extends BlockInput
-  private final case class InputScript(body: String) extends BlockInput
-  private final case class InputBlock(attrs: String, body: String) extends BlockInput
-  private final case class InputList(items: List[BlockInput]) extends BlockInput
+  private sealed trait BlockInput derives upickle.default.ReadWriter
+  private final case class InputLiteral(value: String) extends BlockInput derives upickle.default.ReadWriter
+  private final case class InputScript(body: String) extends BlockInput derives upickle.default.ReadWriter
+  private final case class InputBlock(attrs: String, body: String) extends BlockInput derives upickle.default.ReadWriter
+  private final case class InputList(items: List[BlockInput]) extends BlockInput derives upickle.default.ReadWriter
 
-  private case class Signature(name: String, arity: Int, isOperator: Boolean)
+  private case class Signature(name: String, arity: Int, isOperator: Boolean) derives upickle.default.ReadWriter
   private case class PhaseOneResult(
       orderedDefinitions: List[BeDefineFunction],
       definitionBySignature: Map[Signature, BeDefineFunction],
       userDefinitions: List[BeDefineFunction]
-  )
-  private case class ScriptParse(statements: List[BeExpression], layout: SnapCanvasScript)
+  ) derives upickle.default.ReadWriter
+  private case class ScriptParse(statements: List[BeExpression], layout: SnapCanvasScript) derives upickle.default.ReadWriter
 
   private var currentVars = new SnapControlFlow.VariableInterner
 

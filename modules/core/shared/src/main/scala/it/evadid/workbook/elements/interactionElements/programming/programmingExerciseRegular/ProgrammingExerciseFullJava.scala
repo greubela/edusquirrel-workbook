@@ -12,7 +12,7 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class ProgrammingExerciseFullJava(
     override val elementId: String,
     testSuite: Option[BeTestSuite] = None
-) extends WorkbookInteractionElement[ProgrammingState] {
+) extends WorkbookInteractionElement[ProgrammingState] derives upickle.default.ReadWriter {
   override val associatedFactory = ProgrammingExerciseFullJava.factory
 
   override val defaultValue: ProgrammingState =

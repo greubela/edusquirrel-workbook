@@ -8,3 +8,7 @@ trait PersonSprite extends Sprite {
   def getFrame(nr: Long, dir: Direction): FrameData
 
 }
+
+object PersonSprite {
+  given upickle.default.ReadWriter[PersonSprite] = Sprite.subtypeCodec
+}

@@ -12,3 +12,8 @@ case class NumericShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[
 
   override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }
+
+object NumericShape {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[NumericShape[T]] =
+    upickle.default.readwriter[Unit].bimap(value => (), _ => NumericShape[T]())
+}

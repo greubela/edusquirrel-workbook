@@ -105,6 +105,40 @@ class EvacuationGraphicSpec extends FunSuite {
     roundTrip(AnimatedOverlaySprite(6, "animated overlay", List(frame), 128))
     roundTrip(AnimatedPersonSprite(7, "moving", Map(Direction.BOTTOM -> List(frame), Direction.TOP -> List(FrameData("up")))))
   }
+
+  test("sprite interface codecs retain every built-in variant and validate subtypes") {
+    import it.evadid.evacuation.core.graphic.sprites.traits.*
+    val frame = FrameData("floor")
+    val values: List[Sprite] = List(BasicSprite(1, "basic", frame), BasicPersonSprite(2, "person", frame),
+      BasicOverlaySprite(3, "overlay", frame, 127), BasicFloorSprite(4, "floor", frame, FloorSpriteProperties.open, true),
+      BasicAnimatedSprite(5, "animated", List(frame)), AnimatedOverlaySprite(6, "overlay", List(frame), 128),
+      AnimatedPersonSprite(7, "person", Map(Direction.BOTTOM -> List(frame))))
+    values.foreach(roundTrip(_))
+    roundTrip[FloorSprite](values(3).asInstanceOf[FloorSprite])
+    roundTrip[PersonSprite](values(6).asInstanceOf[PersonSprite])
+    roundTrip[AnimatedSprite](values(4).asInstanceOf[AnimatedSprite])
+    roundTrip[OverlaySprite](values(5).asInstanceOf[OverlaySprite])
+    intercept[Exception](read[FloorSprite](write(values(1))))
+    intercept[Exception](read[Sprite]("""{"kind":"unknown","payload":null}"""))
+  }
+
+  test("sprite-map snapshots restore canonical layouts and sprite classifications") {
+    import it.evadid.core.datastructures.matrix.MatrixDimension
+    import it.evadid.evacuation.core.io.instances.eva.config.*
+    val floor = BasicFloorSprite(1, "floor", FrameData("floor"), FloorSpriteProperties.open, true)
+    val person = BasicPersonSprite(2, "person", FrameData("person"))
+    for (layout <- List(DefaultMetaConfig, TopDownMetaConfig)) {
+      val value = EvaSpriteMap(SpriteMapResourceIdentifier("fixture", "default", 16, "tiles", None),
+        List(floor, person), floor, layout, MatrixDimension(2, 1))
+      roundTrip(value)
+      val decoded = read[SpriteMap](write[SpriteMap](value)).asInstanceOf[EvaSpriteMap]
+      assertEquals(decoded.tiles, List(floor))
+      assertEquals(decoded.persons, List(person))
+      assert(decoded.config eq layout)
+      roundTrip[SpriteMapMetaConfig](layout)
+    }
+    intercept[Exception](read[SpriteMapMetaConfig]("\"unknown\""))
+  }
   test("animated person frames wrap and retain direction") {
     val down = List(FrameData("d0"), FrameData("d1"))
     val sprite = AnimatedPersonSprite(1, "person", Map(Direction.BOTTOM -> down, Direction.TOP -> List(FrameData("u0"))))

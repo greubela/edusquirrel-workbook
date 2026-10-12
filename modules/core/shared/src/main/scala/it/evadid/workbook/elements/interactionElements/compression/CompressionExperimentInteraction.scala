@@ -9,7 +9,7 @@ import upickle.default.*
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class CompressionExperimentInteraction(elementId: String, title: LanguageMapContentId, initial: CompressionExperiment)
-    extends WorkbookInteractionElement[CompressionExperiment] {
+    extends WorkbookInteractionElement[CompressionExperiment] derives upickle.default.ReadWriter {
   override val defaultValue = initial
   override lazy val childrenOfThisElement = Nil
   private def checked(value: CompressionExperiment): CompressionExperiment = {

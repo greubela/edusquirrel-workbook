@@ -10,7 +10,7 @@ import it.evadid.vm.types.BeScope.GlobalScope
 
 object PythonCodeMirrorDiagnostics:
 
-  final case class SourceProblem(originalSource: String, message: String, severity: String)
+  final case class SourceProblem(originalSource: String, message: String, severity: String) derives upickle.default.ReadWriter
 
   private val FramePattern = """^\s+File "([^"]+)", line (\d+)(?:, in .*)?$""".r
   private val ChainSeparators = Set(

@@ -19,7 +19,7 @@ object SnapProgramDerivation {
       python: String,
       pythonCompatible: Boolean,
       unsupportedSelectors: List[String]
-  ) {
+  ) derives upickle.default.ReadWriter {
     def applyBlockedMessage: Option[String] =
       if pythonCompatible then None
       else

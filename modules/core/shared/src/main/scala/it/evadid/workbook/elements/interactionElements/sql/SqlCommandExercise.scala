@@ -20,7 +20,7 @@ final case class SqlCommandExercise(
                                      override val elementId: String,
                                      databaseConfig: SqlDatabaseConfig,
                                      initialSql: String = "SELECT * FROM table_name;"
-                                   ) extends WorkbookInteractionElement[String] {
+                                   ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
   override val associatedFactory = SqlCommandExercise.factory
   override val defaultValue: String = initialSql
 

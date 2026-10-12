@@ -32,7 +32,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.{S
 object SnapPythonPopup {
 
   /** One Snap top-level script rendered as Python (plus canvas position). */
-  final case class ScriptView(index: Int, x: Int, y: Int, python: String)
+  final case class ScriptView(index: Int, x: Int, y: Int, python: String) derives upickle.default.ReadWriter
 
   /** Example signatures for the turtle allow-list (Python snake_case). */
   val OverviewExamples: List[String] =

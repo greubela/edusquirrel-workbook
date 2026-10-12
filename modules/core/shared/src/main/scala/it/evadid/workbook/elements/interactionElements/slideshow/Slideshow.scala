@@ -8,7 +8,7 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class Slideshow(
                       override val elementId: String,
                       private val panels: List[WorkbookDisplayElement]
-                    ) extends WorkbookInteractionElement[SlideshowState] {
+                    ) extends WorkbookInteractionElement[SlideshowState] derives upickle.default.ReadWriter {
 
 
   val panelSize: Int = panels.length

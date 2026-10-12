@@ -11,7 +11,7 @@ import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import java.time.Duration
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-case class TextInteraction(override val elementId: String) extends WorkbookInteractionElement[String] {
+case class TextInteraction(override val elementId: String) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
   override val associatedFactory = TextInteraction.factory
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val defaultValue: String = ""

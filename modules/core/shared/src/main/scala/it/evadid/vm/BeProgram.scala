@@ -1,5 +1,7 @@
 package it.evadid.vm
 
+import upickle.default.ReadWriter
+
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.vm.code.tree.BeExtensionPoint
@@ -21,7 +23,7 @@ type BeBlockContext = TreeStructureContext[NodeBasedTreePosition, BeBlock]
 type BeExpressionContext = TreeStructureContext[NodeBasedTreePosition, BeExpressionNode]
 
 */
-case class BeProgram(fullProgram: BeExpression) {
+case class BeProgram(fullProgram: BeExpression) derives ReadWriter {
 
   /*
   def expressionTree(displayConfig: BeTreeDisplayConfig): BeExpressionTree =

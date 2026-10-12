@@ -8,7 +8,7 @@ import it.evadid.evacuation.core.graphic.spritemap.SpriteMapResourceIdentifier
 import it.evadid.evacuation.eva2.model.ProgramState
 import org.scalajs.dom.document
 
-case class Eva2GraphicConfig() {
+case class Eva2GraphicConfig() derives upickle.default.ReadWriter {
 
 
   val animationCounter: ObservableConfigProperty[Long] = ObservableConfigProperty.fromLongProperty(BasicConfigProperty[Long]("animTick", 1, "Animation Ticker"))

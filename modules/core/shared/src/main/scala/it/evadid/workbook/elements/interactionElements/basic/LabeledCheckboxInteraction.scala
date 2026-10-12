@@ -10,7 +10,7 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class LabeledCheckboxInteraction(
                                        override val elementId: String,
                                        checkboxLabel: LanguageMapContentId
-                                     ) extends WorkbookInteractionElement[Boolean] {
+                                     ) extends WorkbookInteractionElement[Boolean] derives upickle.default.ReadWriter {
 
   override val associatedFactory: WorkbookElementFactory[LabeledCheckboxInteraction] = LabeledCheckboxInteraction.factory
 

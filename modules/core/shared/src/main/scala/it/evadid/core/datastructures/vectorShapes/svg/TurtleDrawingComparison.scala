@@ -13,7 +13,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
  */
 object TurtleDrawingComparison {
 
-  final case class Segment(from: Point[Double], to: Point[Double]) {
+  final case class Segment(from: Point[Double], to: Point[Double]) derives upickle.default.ReadWriter {
     def length: Double = math.hypot(to.x - from.x, to.y - from.y)
   }
 
@@ -23,7 +23,7 @@ object TurtleDrawingComparison {
       extra: List[Segment],
       maxDeviation: Double,
       tolerance: Double
-  )
+  ) derives upickle.default.ReadWriter
 
   /** Floor so tiny drawings are not judged on sub-pixel noise. */
   val MinTolerance: Double = 2.0

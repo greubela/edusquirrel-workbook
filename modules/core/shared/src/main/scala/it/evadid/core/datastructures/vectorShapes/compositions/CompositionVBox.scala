@@ -33,3 +33,8 @@ case class CompositionVBox[T: Fractional](alignment: AlignmentInParent) extends 
 
   override def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)] = None
 }
+
+object CompositionVBox {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[CompositionVBox[T]] =
+    upickle.default.readwriter[AlignmentInParent].bimap(value => value.alignment, value => CompositionVBox[T](value))
+}

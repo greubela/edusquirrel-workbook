@@ -10,7 +10,7 @@ import upickle.ReadWriter
 import upickle.default.macroRW
 import upickle.default.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-case class MessagingInteraction(override val elementId: String) extends WorkbookInteractionElement[MessengerModelScaffolding] {
+case class MessagingInteraction(override val elementId: String) extends WorkbookInteractionElement[MessengerModelScaffolding] derives upickle.default.ReadWriter {
   override val associatedFactory: NoContentElementFactory[MessagingInteraction] = MessagingInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()

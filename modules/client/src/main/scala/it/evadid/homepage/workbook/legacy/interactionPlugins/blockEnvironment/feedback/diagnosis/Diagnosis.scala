@@ -18,9 +18,9 @@ final case class Diagnosis(
   evidence: Seq[EvidenceItem],
   taskProfile: TaskProfile,
   recommendedNextChecks: Seq[String]
-)
+) derives upickle.default.ReadWriter
 
-enum DiagnosisCategory:
+enum DiagnosisCategory derives upickle.default.ReadWriter:
   case Syntax
   case Runtime
   case Spec
@@ -32,7 +32,7 @@ final case class DiagnosisHypothesis(
   issue: DecisionLayer.IssueType,
   confidence: Double,
   rationale: String
-)
+) derives upickle.default.ReadWriter
 
 /**
  * Evidence is intentionally "small" and referenceable.
@@ -45,9 +45,9 @@ final case class EvidenceItem(
   kind: EvidenceKind,
   title: String,
   details: String
-)
+) derives upickle.default.ReadWriter
 
-enum EvidenceKind:
+enum EvidenceKind derives upickle.default.ReadWriter:
   case VisibleTest
   case HiddenTest
   case RuntimeError
@@ -69,7 +69,7 @@ final case class TaskProfile(
   ioLikelyForbidden: Boolean,
   expectsReturnValue: Boolean,
   outputFormatSensitive: Boolean
-)
+) derives upickle.default.ReadWriter
 
 object TaskProfile:
   val Empty: TaskProfile =

@@ -71,9 +71,9 @@ case class StorageStudy(packages: List[StoragePackage], selected: Int = 0, capac
   def current: StoragePackage = packages(selected)
 }
 
-case class CharacterRun(symbol: String, count: Int)
-case class DictionaryToken(literal: Option[String], reference: Option[Int])
-case class DictionaryResult(dictionary: List[String], encoded: List[DictionaryToken]) {
+case class CharacterRun(symbol: String, count: Int) derives upickle.default.ReadWriter
+case class DictionaryToken(literal: Option[String], reference: Option[Int]) derives upickle.default.ReadWriter
+case class DictionaryResult(dictionary: List[String], encoded: List[DictionaryToken]) derives upickle.default.ReadWriter {
   def decoded: String = encoded.map(t => t.literal.getOrElse(dictionary(t.reference.get - 1))).mkString
   def display: String = encoded.map(t => t.literal.getOrElse(s"W${t.reference.get}")).mkString
   // Explicit teaching representation: UTF-8 words + NUL separators, bracketed decimal references.

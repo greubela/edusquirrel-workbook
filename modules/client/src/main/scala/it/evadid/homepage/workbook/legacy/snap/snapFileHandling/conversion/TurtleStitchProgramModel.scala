@@ -28,7 +28,7 @@ object TurtleStitchProgramModel {
       creator: Option[String] = None,
       origCreator: Option[String] = None,
       origName: Option[String] = None
-  )
+  ) derives upickle.default.ReadWriter
 
   /**
    * Mirrors `<scene ...>`.
@@ -49,7 +49,7 @@ object TurtleStitchProgramModel {
       primitiveBlocks: Vector[CustomBlockDefinition] = Vector.empty,
       stage: Stage = Stage(),
       variables: Vector[Variable] = Vector.empty
-  )
+  ) derives upickle.default.ReadWriter
 
   /**
    * Mirrors `<stage ...>` attributes and child elements.
@@ -82,7 +82,7 @@ object TurtleStitchProgramModel {
       sprites: Vector[Sprite] = Vector.empty,
       selectedSprite: Int = 1,
       id: Option[String] = None
-  )
+  ) derives upickle.default.ReadWriter
 
   /**
    * Mirrors `<sprite ...>` attributes and child elements.
@@ -114,7 +114,7 @@ object TurtleStitchProgramModel {
       dispatches: Vector[Dispatch] = Vector.empty,
       scripts: Vector[Script] = Vector.empty,
       id: Option[String] = None
-  )
+  ) derives upickle.default.ReadWriter
 
   /**
    * `<script x="..." y="...">...</script>`.
@@ -123,9 +123,9 @@ object TurtleStitchProgramModel {
       x: Option[Double] = None,
       y: Option[Double] = None,
       blocks: Vector[BlockLike] = Vector.empty
-  )
+  ) derives upickle.default.ReadWriter
 
-  sealed trait BlockLike
+  sealed trait BlockLike derives upickle.default.ReadWriter
 
   /** `<block s="selector"> ... </block>` and `<block var="..."/>`. */
   final case class PrimitiveBlock(
@@ -133,7 +133,7 @@ object TurtleStitchProgramModel {
       variable: Option[String] = None,
       inputs: Vector[InputValue] = Vector.empty,
       comment: Option[Comment] = None
-  ) extends BlockLike
+  ) extends BlockLike derives upickle.default.ReadWriter
 
   /** `<custom-block s="..." ...> ... </custom-block>`. */
   final case class CustomBlockCall(
@@ -142,15 +142,15 @@ object TurtleStitchProgramModel {
       inputs: Vector[InputValue] = Vector.empty,
       variables: Vector[Variable] = Vector.empty,
       comment: Option[Comment] = None
-  ) extends BlockLike
+  ) extends BlockLike derives upickle.default.ReadWriter
 
-  sealed trait InputValue
-  final case class Literal(value: String) extends InputValue
-  final case class BoolLiteral(value: Boolean) extends InputValue
-  final case class ColorLiteral(value: Rgba) extends InputValue
-  final case class ListLiteral(items: Vector[InputValue]) extends InputValue
-  final case class NestedScript(value: Script) extends InputValue
-  final case class NestedBlock(value: BlockLike) extends InputValue
+  sealed trait InputValue derives upickle.default.ReadWriter
+  final case class Literal(value: String) extends InputValue derives upickle.default.ReadWriter
+  final case class BoolLiteral(value: Boolean) extends InputValue derives upickle.default.ReadWriter
+  final case class ColorLiteral(value: Rgba) extends InputValue derives upickle.default.ReadWriter
+  final case class ListLiteral(items: Vector[InputValue]) extends InputValue derives upickle.default.ReadWriter
+  final case class NestedScript(value: Script) extends InputValue derives upickle.default.ReadWriter
+  final case class NestedBlock(value: BlockLike) extends InputValue derives upickle.default.ReadWriter
 
   final case class CustomBlockDefinition(
       spec: String,
@@ -169,7 +169,7 @@ object TurtleStitchProgramModel {
       variables: Vector[String] = Vector.empty,
       body: Vector[Script] = Vector.empty,
       comment: Option[Comment] = None
-  )
+  ) derives upickle.default.ReadWriter
 
   final case class BlockInputDefinition(
       inputType: String,
@@ -177,14 +177,14 @@ object TurtleStitchProgramModel {
       defaultValue: Option[String] = None,
       options: Vector[String] = Vector.empty,
       readonly: Option[Boolean] = None
-  )
+  ) derives upickle.default.ReadWriter
 
   final case class Variable(
       name: String,
       value: Option[InputValue] = None,
       transient: Boolean = false,
       hidden: Boolean = false
-  )
+  ) derives upickle.default.ReadWriter
 
   final case class Costume(
       name: String,
@@ -193,15 +193,15 @@ object TurtleStitchProgramModel {
       image: String,
       embed: Option[String] = None,
       id: Option[String] = None
-  )
+  ) derives upickle.default.ReadWriter
 
   final case class Sound(
       name: String,
       sound: String,
       id: Option[String] = None
-  )
+  ) derives upickle.default.ReadWriter
 
-  final case class Dispatch(name: String)
+  final case class Dispatch(name: String) derives upickle.default.ReadWriter
 
   final case class Comment(
       text: String,
@@ -209,20 +209,20 @@ object TurtleStitchProgramModel {
       y: Option[Double] = None,
       width: Option[Double] = None,
       collapsed: Boolean = false
-  )
+  ) derives upickle.default.ReadWriter
 
-  final case class SpriteSolution(scripts: Vector[Script])
+  final case class SpriteSolution(scripts: Vector[Script]) derives upickle.default.ReadWriter
 
   final case class SpriteInheritance(
       exemplar: String,
       inheritedAttributes: Vector[String] = Vector.empty
-  )
+  ) derives upickle.default.ReadWriter
 
   final case class SpriteNesting(
       anchor: String,
       synch: Boolean,
       scale: Option[Double] = None
-  )
+  ) derives upickle.default.ReadWriter
 
-  final case class Rgba(r: Int, g: Int, b: Int, a: Double)
+  final case class Rgba(r: Int, g: Int, b: Int, a: Double) derives upickle.default.ReadWriter
 }

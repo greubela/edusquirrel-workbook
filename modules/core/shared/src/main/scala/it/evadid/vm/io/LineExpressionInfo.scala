@@ -8,4 +8,4 @@ case class LineExpressionInfo
   expression: BeExpression,
   roleInParent: Option[BeChildRole],
   scope: BeScope,
-)
+) derives upickle.default.ReadWriter

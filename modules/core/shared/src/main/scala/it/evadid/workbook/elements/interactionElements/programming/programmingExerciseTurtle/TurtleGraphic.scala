@@ -36,7 +36,7 @@ object TurtleGraphic {
   }
   /** Signed turtle turn, with references to the adjacent nonzero movements. */
   case class Angle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int, lineAfter: Int) derives ReadWriter
-  private case class PendingAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int)
+  private case class PendingAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int) derives upickle.default.ReadWriter
 
   private def trace(program: Seq[TurtleCommand[Double]]): (List[Movement], List[Angle]) = {
     var position = Point(0.0, 0.0)
@@ -147,7 +147,7 @@ object TurtleGraphic {
   /** A turtle graphic represented directly by an SVG path D string.
    * The SVG path is converted to turtle commands when needed.
    */
-  case class TurtleGraphicSvgString(svgPathDString: String) extends TurtleGraphic {
+  case class TurtleGraphicSvgString(svgPathDString: String) extends TurtleGraphic derives upickle.default.ReadWriter {
     lazy val toTurtleProgram: Seq[TurtleCommand[Double]] = convert(svgPathDString)
 
     lazy val toSvgPathDString: String = svgPathDString
@@ -155,7 +155,7 @@ object TurtleGraphic {
 
   /** A turtle graphic represented directly as a list of turtle commands.
    */
-  case class TurtleGraphicProgram(program: Seq[TurtleCommand[Double]]) extends TurtleGraphic {
+  case class TurtleGraphicProgram(program: Seq[TurtleCommand[Double]]) extends TurtleGraphic derives upickle.default.ReadWriter {
     lazy val toTurtleProgram: Seq[TurtleCommand[Double]] = program
 
     lazy val toSvgPathDString: String = {
@@ -169,7 +169,7 @@ object TurtleGraphic {
    * Lines are drawn with the pen down; jumps between lines (pen up/down) are automatically calculated
    * following the same rules as SVG to turtle conversion (no rotation > 180°).
    */
-  case class TurtleLineBasedProgram(lines: List[Line[Double]]) extends TurtleGraphic {
+  case class TurtleLineBasedProgram(lines: List[Line[Double]]) extends TurtleGraphic derives upickle.default.ReadWriter {
     lazy val toTurtleProgram: Seq[TurtleCommand[Double]] =
       TurtleLineBasedProgram.toTurtleProgram(lines)
 

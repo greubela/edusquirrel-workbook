@@ -16,7 +16,7 @@ import org.scalajs.dom.Element
 
 class ControllableHtmlFloorMap(spriteMap: SpriteMap, matrix: Matrix[Sprite], pTileMapController: TileMapController) extends FloorMap {
 
-  private case class TileDrawingInfo(sprite: Sprite, pim: PositionInMatrix, overlays: List[Sprite])
+  private case class TileDrawingInfo(sprite: Sprite, pim: PositionInMatrix, overlays: List[Sprite]) derives upickle.default.ReadWriter
 
   private val tileCache: collection.mutable.HashMap[TileDrawingInfo, Element] = new collection.mutable.HashMap()
 
