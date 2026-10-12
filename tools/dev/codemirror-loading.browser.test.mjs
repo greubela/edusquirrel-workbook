@@ -39,15 +39,15 @@ async function fixture(browser, fail = false) {
       await route.fulfill({body, contentType: mime[path.extname(file)] || 'application/octet-stream'});
     } catch { await route.fulfill({status:404,body:'Not found'}); }
   });
-  await page.goto(origin + '/homepage/embroideryPreviewWorkbook/index.html');
+  await page.goto(origin + '/homepage/workbookDesign/index.html');
   await page.locator('.section-register .login-area').nth(1).locator('button').click();
-  await page.locator('.section-block').nth(2).click();
+  await page.locator('.section-block').first().click();
   await page.getByRole('button', {name:/Editor.*öffnen|Open editor/i}).first().click();
   return {page, release, requests: () => requests, errors};
 }
 
 test('slow CodeMirror loading leaves the app usable, shares one load and ignores unmounted editors', async () => {
-  const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),args:['--no-sandbox']});
+  const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
   try {
     const {page, release, requests, errors} = await fixture(browser);
     assert.equal(requests(), 0, 'workbook and Snap editor start without fetching CodeMirror');
@@ -56,7 +56,7 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     const fallback = dialog.locator('.code-mirror-editor__fallback');
     await fallback.fill('forward(77)\n');
     await page.waitForFunction(() => document.querySelector('script[src$="CodeMirrorLoader.js"]'));
-    await dialog.getByRole('button', {name:'Snap',exact:true}).click();
+    await dialog.getByRole('button', {name:'Snap!',exact:true}).click();
     release();
     await page.waitForFunction(() => !!window.EduSquirrelCodeMirror);
     await page.waitForTimeout(300);
@@ -74,7 +74,7 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
 });
 
 test('a failed CodeMirror request leaves the fallback editable and other tabs usable', async () => {
-  const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),args:['--no-sandbox']});
+  const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
   try {
     const {page, release, errors} = await fixture(browser, true);
     const dialog = page.locator('dialog[open]');
@@ -82,7 +82,7 @@ test('a failed CodeMirror request leaves the fallback editable and other tabs us
     release();
     const fallback = dialog.locator('.code-mirror-editor__fallback');
     await fallback.fill('forward(88)\n');
-    await dialog.getByRole('button', {name:'Snap',exact:true}).click();
+    await dialog.getByRole('button', {name:'Snap!',exact:true}).click();
     await dialog.getByRole('button', {name:'Python',exact:true}).click();
     assert.match(await fallback.inputValue(), /forward\(88\)/);
     assert.equal(await dialog.locator('.cm-editor').count(), 0);

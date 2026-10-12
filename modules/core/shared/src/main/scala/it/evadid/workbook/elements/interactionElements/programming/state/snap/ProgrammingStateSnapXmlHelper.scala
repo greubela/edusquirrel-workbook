@@ -48,6 +48,7 @@ object ProgrammingStateSnapXmlHelper {
 
   def empty: ProgrammingStateSnapXml = ProgrammingStateSnapXml(SnapProjectXml.empty)
 
-  def fingerprint(state: ProgrammingStateSnapXml): String = state.snapXml
+  def fingerprint(state: ProgrammingStateSnapXml): String =
+    if state.hasLegacyFloatingObjects then state.fingerprint() else state.snapXml
 
 }

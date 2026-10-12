@@ -23,10 +23,10 @@ case class CodeMirrorEditor(
   import CodeMirrorEditor.*
 
   private var handle: Option[CodeMirrorHandle] = None
+  private var activeMount: Option[AnyRef] = None
   private var pendingDiagnostics = Option.empty[(String, Seq[Diagnostic])]
   private var updatingFromEditor: Boolean = false
   private val useTextareaFallback: Var[Boolean] = Var(true)
-  private var mountVersion = 0
   private val flowchart = Option.when(editorConfig.showFlowchartGutter && language == Python)(CodeMirrorEditorFlowchart.chartForDoc)
 
   def focus(): Unit = handle.foreach(_.focus())
@@ -40,6 +40,8 @@ case class CodeMirrorEditor(
   def clearDiagnostics(): Unit = setDiagnostics(Nil)
 
   override def getDomElement(): L.Element = {
+    var mountedToken: Option[AnyRef] = None
+    var mountedHandle: Option[CodeMirrorHandle] = None
     div(
       cls := ("code-editor code-mirror-editor" + (if (flowchart.nonEmpty) " code-mirror-editor-flowchart" else "")),
       styleAttr <-- editorFont.map(font =>
@@ -50,39 +52,47 @@ case class CodeMirrorEditor(
         hidden <-- useTextareaFallback.signal.map(show => !show),
         value <-- content.signal,
         onInput.mapToValue --> { value =>
-          content.writer.onNext(value)
-          onUserInput(value)
+          if mountedToken.exists(activeMount.contains) then
+            content.writer.onNext(value)
+            onUserInput(value)
         }
       ),
       onMountCallback { ctx =>
-        mountVersion += 1
-        val version = mountVersion
+        val token = new Object
+        mountedToken = Some(token)
+        activeMount = Some(token)
+        handle = None
         useTextareaFallback.set(true)
-        waitForFacade { loaded =>
-          if (version == mountVersion && ctx.thisNode.ref.isConnected) loaded match {
-            case Some(cmFacade) =>
-              val container = ctx.thisNode.ref
-              val initialValue = content.now()
+        def isActive: Boolean =
+          mountedToken.contains(token) && activeMount.contains(token) && ctx.thisNode.ref.isConnected
+        waitForFacade {
+          case Some(cmFacade) if isActive =>
+            val container = ctx.thisNode.ref
+            val initialValue = content.now()
 
-              var updatingFromVar = false
+            var updatingFromVar = false
 
-              val createdHandle = cmFacade.createEditor(
-                EditorConfig(
-                  parent = container,
-                  doc = initialValue,
-                  language = languageToJs(language),
-                  flowchart = flowchart,
-                  onDocChange = value =>
-                    if (!updatingFromVar) {
-                      pendingDiagnostics = None
-                      updatingFromEditor = true
+            val createdHandle = cmFacade.createEditor(
+              EditorConfig(
+                parent = container,
+                doc = initialValue,
+                language = languageToJs(language),
+                flowchart = flowchart,
+                onDocChange = value =>
+                  if (isActive && !updatingFromVar) {
+                    pendingDiagnostics = None
+                    updatingFromEditor = true
+                    try {
                       content.writer.onNext(value)
                       onUserInput(value)
-                      updatingFromEditor = false
-                    }
-                )
+                    } finally updatingFromEditor = false
+                  }
               )
+            )
 
+            if !isActive then createdHandle.destroy()
+            else {
+              mountedHandle = Some(createdHandle)
               handle = Some(createdHandle)
               useTextareaFallback.set(false)
               pendingDiagnostics.filter(_._1 == initialValue).foreach { case (_, diagnostics) =>
@@ -90,28 +100,29 @@ case class CodeMirrorEditor(
               }
 
               content.signal.foreach { value =>
-                handle.foreach { editorHandle =>
-                  if (!updatingFromEditor && editorHandle.getDoc() != value) {
-                    pendingDiagnostics = None
-                    updatingFromVar = true
-                    editorHandle.setDoc(value)
-                    updatingFromVar = false
-                  }
+                if (isActive && !updatingFromEditor && createdHandle.getDoc() != value) {
+                  pendingDiagnostics = None
+                  updatingFromVar = true
+                  try createdHandle.setDoc(value)
+                  finally updatingFromVar = false
                 }
               }(using ctx.owner)
+            }
 
-            case None =>
-              // A CDN failure affects only this editor enhancement.
-              useTextareaFallback.set(true)
-
-          }
+          case None if isActive =>
+            useTextareaFallback.set(true)
+          case _ => ()
         }
       },
       onUnmountCallback { _ =>
-        mountVersion += 1
-        handle.foreach(_.destroy())
-        handle = None
-        pendingDiagnostics = None
+        val wasActive = mountedToken.exists(activeMount.contains)
+        mountedToken = None
+        if wasActive then
+          activeMount = None
+          handle = None
+          pendingDiagnostics = None
+        mountedHandle.foreach(_.destroy())
+        mountedHandle = None
       }
     )
   }
@@ -172,8 +183,8 @@ object CodeMirrorEditor {
 
   trait EditorConfig extends js.Object {
     var parent: dom.Element
-    var doc: String
-    var language: String
+    var doc: js.UndefOr[String]
+    var language: js.UndefOr[String]
     var onDocChange: js.Function1[String, Unit]
     var flowchart: js.UndefOr[js.Function1[String, js.Object]]
   }

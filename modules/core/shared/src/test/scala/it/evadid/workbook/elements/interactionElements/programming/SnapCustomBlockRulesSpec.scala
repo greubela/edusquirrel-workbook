@@ -1,4 +1,8 @@
 package it.evadid.workbook.elements.interactionElements.programming
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCustomBlockRules, SnapTurtlePythonBridge}
 import munit.FunSuite
@@ -138,6 +142,17 @@ class SnapCustomBlockRulesSpec extends FunSuite {
     assertEquals(SnapCustomBlockRules.localDefinitions(xml).map(_.spec), List("square %size"))
     assertEquals(SnapCustomBlockRules.globalDefinitions(xml), Nil)
     assertEquals(SnapCustomBlockRules.obsoleteCalls(xml).map(_.spec), List("square %n"))
+  }
+
+  test("a scene without a global block container does not promote sprite-local definitions") {
+    val local = definition("square %size", """<input type="%n"></input>""")
+    val xml = s"""<project><scenes><scene><stage><sprites><sprite><blocks>$local</blocks><scripts>${script("""<custom-block s="square %n"><l>1</l></custom-block>""")}</scripts></sprite></sprites></stage></scene></scenes></project>"""
+    assertEquals(SnapCustomBlockRules.globalDefinitions(xml), Nil)
+    assertEquals(SnapCustomBlockRules.localDefinitions(xml).map(_.spec), List("square %size"))
+    assertEquals(SnapCustomBlockRules.obsoleteCalls(xml).map(_.spec), List("square %n"))
+    val library = s"<blocks>$local</blocks>"
+    assertEquals(SnapCustomBlockRules.globalDefinitions(library).map(_.spec), List("square %size"))
+    assertEquals(SnapCustomBlockRules.localDefinitions(library), Nil)
   }
 
   test("allCategories combines built-ins, palette entries and host-registered tabs") {

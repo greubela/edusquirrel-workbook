@@ -147,7 +147,9 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   private lazy val dialogElement: Element = {
     dialogTag(
       cls := "fullscreen-overlay-dialog",
-      onCloseDialog --> (_ => fullInfo.displayControl.closeFullscreen()),
+      onCloseDialog --> { ev =>
+        if !ev.currentTarget.asInstanceOf[dom.html.Dialog].open then fullInfo.displayControl.closeFullscreen()
+      },
       // Light-dismiss (backdrop) of <dialog> — skip for editors that opt out.
       onCancelDialog --> { ev =>
         if !currentAllowsOutsideDismiss then ev.preventDefault()

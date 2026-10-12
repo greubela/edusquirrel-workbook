@@ -16,7 +16,7 @@ object CodeMirrorEditorLoading {
 
   private def facade: Option[CodeMirrorEditor.CodeMirrorFacade] = {
     val value = dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirror")
-    if (js.isUndefined(value) || value == null) None
+    if (js.isUndefined(value) || value == null || js.typeOf(value.selectDynamic("createEditor")) != "function") None
     else Some(value.asInstanceOf[CodeMirrorEditor.CodeMirrorFacade])
   }
 

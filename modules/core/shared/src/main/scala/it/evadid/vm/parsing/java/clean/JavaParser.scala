@@ -8,7 +8,9 @@ import it.evadid.vm.parsing.java.clean.JavaLexer.*
 import it.evadid.vm.parsing.java.clean.model.JavaType.*
 import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
 
-object JavaParser extends GenericAstScanner[JavaAST] {
+object JavaParser extends JavaParser(retainParentheses = false)
+
+class JavaParser(private val retainParentheses: Boolean) extends GenericAstScanner[JavaAST] {
 
   // ==========================================
   // 1. HELPER
@@ -139,7 +141,7 @@ object JavaParser extends GenericAstScanner[JavaAST] {
     }
 
   private def forInit[$: P]: P[Seq[JavaStatement]] =
-    P(variableDeclarationNoSemi.map(Seq(_)) | assignmentNoSemi.rep(1, sep = ws ~ COMMA ~ ws))
+    P(variableDeclarationNoSemi.map(Seq(_)) | (assignmentNoSemi | expression).rep(1, sep = ws ~ COMMA ~ ws))
 
   // ==========================================
   // 7. EXPRESSION TYPES
@@ -160,7 +162,14 @@ object JavaParser extends GenericAstScanner[JavaAST] {
   def comparison[$: P]: P[JavaExpression] = binary(sum, "<=", ">=", "<", ">")
   def sum[$: P]: P[JavaExpression] = binary(term, "+", "-")
   def term[$: P]: P[JavaExpression] = binary(factor, "*", "/", "%")
-  def factor[$: P]: P[JavaExpression] = P(operator("!", "-", "+") ~ ws ~ factor).map(JavaOperationUnary(_, _)) | primary
+  def factor[$: P]: P[JavaExpression] =
+    P(operator("++", "--") ~ ws ~ factor).map { (operator, operand) => JavaUpdateExpression(operand, operator, prefix = true) } |
+      P(operator("!", "-", "+") ~ ws ~ factor).map(JavaOperationUnary(_, _)) | postfix
+
+  private def postfix[$: P]: P[JavaExpression] =
+    P(primary ~ (ws ~ operator("++", "--")).rep).map { (operand, operators) =>
+      operators.foldLeft(operand) { (expression, operator) => JavaUpdateExpression(expression, operator, prefix = false) }
+    }
 
   private def binary[$: P](next: => P[JavaExpression], ops: String*): P[JavaExpression] =
     P(next ~ (ws ~ operator(ops*) ~ ws ~ next).rep).map { case (first, rest) =>
@@ -177,7 +186,10 @@ object JavaParser extends GenericAstScanner[JavaAST] {
 
   def atom[$: P]: P[JavaExpression] = P(newExpression | literal | parenthesized | targetAtom)
 
-  def parenthesized[$: P]: P[JavaExpression] = P(LPAR ~ ws ~ expression ~ ws ~ RPAR)
+  def parenthesized[$: P]: P[JavaExpression] =
+    P(LPAR ~ ws ~ expression ~ ws ~ RPAR).map { expression =>
+      if retainParentheses then JavaParenthesizedExpression(expression) else expression
+    }
 
   private def trailer[$: P]: P[JavaExpression => JavaExpression] = P(attributeTrailer | callTrailer | subscriptTrailer)
 

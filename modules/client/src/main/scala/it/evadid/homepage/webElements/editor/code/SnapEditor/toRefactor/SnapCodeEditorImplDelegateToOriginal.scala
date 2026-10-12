@@ -4,7 +4,11 @@ import com.raquo.airstream.ownership.Owner
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorImpl, SnapProjectXmlSync}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
 import it.evadid.workbook.elements.interactionElements.programming.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
@@ -116,34 +120,37 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     // so mid-edit keystrokes are not wiped / overwritten.
     if cyclesRunning then return
 
-    val sourceCanvas = dom.document.createElement("canvas").asInstanceOf[Canvas]
-    sourceCanvas.width = config.visuals.CanvasWidth
-    sourceCanvas.height = config.visuals.CanvasHeight
+    SnapCodeEditorImplDelegateToOriginal.preserveKeyboardState {
+      val sourceCanvas = dom.document.createElement("canvas").asInstanceOf[Canvas]
+      sourceCanvas.width = config.visuals.CanvasWidth
+      sourceCanvas.height = config.visuals.CanvasHeight
 
-    val world = new WorldMorph(sourceCanvas, false)
-    // A preview is an image of the scripts themselves, not another configured
-    // IDE. Pane-hiding and palette settings can otherwise collapse the source
-    // ScriptsMorph before scriptsPicture() takes its snapshot.
-    val ide = createPreviewEditor(world, state)
-    layoutEditor(world, ide, sourceCanvas)
-    runStartupCycles(world)
+      val world = new WorldMorph(sourceCanvas, false)
+      try {
+        // A preview is an image of the scripts themselves, not another configured
+        // IDE. Pane-hiding and palette settings can otherwise collapse the source
+        // ScriptsMorph before scriptsPicture() takes its snapshot.
+        val ide = createPreviewEditor(world, state)
+        try {
+          layoutEditor(world, ide, sourceCanvas)
+          runStartupCycles(world)
 
-    // fullImage() includes the ScriptsMorph workspace at its absolute Morphic
-    // position and can consequently contain only its background. Snap's own
-    // export path uses scriptsPicture(), which crops and composites its visible
-    // script children instead.
-    val scriptsImage = ide.currentSprite.scripts.scriptsPicture().getOrElse(
-      dom.document.createElement("canvas").asInstanceOf[Canvas]
-    )
-    canvas.width = math.max(1, scriptsImage.width)
-    canvas.height = math.max(1, scriptsImage.height)
-    canvas.style.width = s"${canvas.width}px"
-    canvas.style.height = s"${canvas.height}px"
-    canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D].drawImage(scriptsImage, 0, 0)
-    CanvasVisibility.warnIfUnexpectedlyEmpty(this, state.snapXml, canvas)
-
-    ide.destroy()
-    world.destroy()
+          // fullImage() includes the ScriptsMorph workspace at its absolute Morphic
+          // position and can consequently contain only its background. Snap's own
+          // export path uses scriptsPicture(), which crops and composites its visible
+          // script children instead.
+          val scriptsImage = ide.currentSprite.scripts.scriptsPicture().getOrElse(
+            dom.document.createElement("canvas").asInstanceOf[Canvas]
+          )
+          canvas.width = math.max(1, scriptsImage.width)
+          canvas.height = math.max(1, scriptsImage.height)
+          canvas.style.width = s"${canvas.width}px"
+          canvas.style.height = s"${canvas.height}px"
+          canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D].drawImage(scriptsImage, 0, 0)
+          CanvasVisibility.warnIfUnexpectedlyEmpty(this, state.snapXml, canvas)
+        } finally ide.destroy()
+      } finally world.destroy()
+    }
 
   override def loadProgramIfChanged(state: ProgrammingStateSnapXml): Unit =
     applyProgramToEditor(state, force = false)
@@ -168,8 +175,6 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         projectXmlSync.markLoaded(xml)
         repairCustomBlockParameterBindings(ide)
         ensureMissingGlobalVariables(ide, xml, refreshPalette = true)
-        projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
-        lastProjectXmlCheckAt = dom.window.performance.now()
         reinstallConfiguredLibraries(ide)
         retagCustomBlockCategories(ide)
         (editorWorld, mountedCanvas) match
@@ -179,6 +184,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
           case _ =>
             ide.fixLayout()
             ide.fullChanged()
+        projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
+        lastProjectXmlCheckAt = dom.window.performance.now()
       case None => ()
 
   override def acknowledgeProgramFromEditor(state: ProgrammingStateSnapXml): Unit =
@@ -674,6 +681,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private def restorePrimitiveBlockDictionary(): Unit =
     try
       spriteMorphPrototype.applyDynamic("initBlocks")()
+      JavaTurtleSnapPrimitives.install()
       injectExtraPrimitives()
     catch case _: Throwable => ()
 
@@ -1207,6 +1215,30 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   override def destroy(): Unit =
     stopEditorSession()
 
-  override def changeLanguage(humanLanguage: AppLanguage.HumanLanguage): Unit = {
-    // todo
+  override def changeLanguage(humanLanguage: AppLanguage.HumanLanguage): Unit = ()
+
+object SnapCodeEditorImplDelegateToOriginal {
+  @js.native
+  private[SnapEditor] trait KeyboardInput extends dom.HTMLTextAreaElement {
+    var selectionDirection: String = js.native
+    def setSelectionRange(start: Int, end: Int, direction: String): Unit = js.native
   }
+
+  private[SnapEditor] def preserveKeyboardState[A](render: => A): A = {
+    val restore = Option(dom.document.getElementById("morphic_keyboard")).map { element =>
+      val keyboard = element.asInstanceOf[KeyboardInput]
+      val value = keyboard.value
+      val start = keyboard.selectionStart
+      val end = keyboard.selectionEnd
+      val direction = keyboard.selectionDirection
+      val style = keyboard.style.cssText
+      () => {
+        keyboard.value = value
+        keyboard.setSelectionRange(start, end, direction)
+        keyboard.style.cssText = style
+      }
+    }
+    try render
+    finally restore.foreach(_())
+  }
+}

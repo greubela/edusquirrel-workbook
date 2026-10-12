@@ -12,6 +12,7 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingEditorPalette, SnapProjectXml}
 import it.evadid.workbook.elements.interactionElements.qr.{CreateQrCodeInteraction, QrCodeRequirements}
 import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, SqlDatabaseConfig}
@@ -57,7 +58,17 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
           Map("forward" -> 2)
         ),
         ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.BeginnerTurtle),
-        ProgrammingExerciseFullJava("prog-full-java")
+        ProgrammingExerciseFullJava("prog-full-java"),
+        ProgrammingExerciseFullJava("java-square-pilot", startingProgram = """public class Drawing {
+          |  static void square(int side) {
+          |
+          |  }
+          |
+          |  public static void main(String[] args) {
+          |    square(25);
+          |  }
+          |}
+          |""".stripMargin)
       )
       )))
   }

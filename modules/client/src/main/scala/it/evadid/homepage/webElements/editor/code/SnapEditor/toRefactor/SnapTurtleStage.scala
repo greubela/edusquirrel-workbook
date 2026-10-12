@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 /*
 import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
 import todomove.datastructures.web.file.FullImage
 
 /**
@@ -14,7 +14,7 @@ import todomove.datastructures.web.file.FullImage
  */
 object SnapTurtleStage {
 
-  def run(state: ProgrammingExerciseState): AsyncData[Nothing, FullImage] =
+  def run(state: ProgrammingStateSnapXml): AsyncData[Nothing, FullImage] =
     TurtleStitchWorkerFacade.getExecutedStageSnapshotDataSrc(state.snapXml)
 }
 */

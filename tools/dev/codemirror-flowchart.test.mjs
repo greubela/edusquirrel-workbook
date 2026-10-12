@@ -1,24 +1,24 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
-import {resolve} from 'node:path';
+import {resolve, extname, sep} from 'node:path';
 import {test} from 'node:test';
 import {chromium} from 'playwright';
 
 // Uses the production CDN modules by default. An optional bundle of the same
 // loader/modules lets restricted/offline environments run the browser check.
 test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', async () => {
+  const root = resolve(import.meta.dirname, '../..');
+  const mime = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+    '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png'};
   const server = createServer(async (request, response) => {
     try {
-      if (request.url === "/") {
-        response.setHeader("Content-Type", "text/html");
-        response.end("<!doctype html><html><body></body></html>");
-        return;
-      }
-      const name = request.url === '/loader.js' && process.env.CODEMIRROR_TEST_BUNDLE
+      const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+      const name = pathname === '/homepage/js/loader.js' && process.env.CODEMIRROR_TEST_BUNDLE
         ? resolve(process.env.CODEMIRROR_TEST_BUNDLE)
-        : resolve('homepage/js', request.url.slice(1));
-      response.setHeader('Content-Type', 'text/javascript');
+        : resolve(root, '.' + pathname + (pathname.endsWith('/') ? 'index.html' : ''));
+      if (pathname !== '/homepage/js/loader.js' && !name.startsWith(root + sep)) throw new Error('Outside repository');
+      response.setHeader('Content-Type', mime[extname(name)] || 'application/octet-stream');
       response.end(await readFile(name));
     } catch { response.writeHead(404).end(); }
   });
@@ -26,15 +26,19 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
   const base = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch({
     ...(process.env.CHROMIUM_PATH ? {executablePath: process.env.CHROMIUM_PATH} : {}),
-    headless: true, args: ['--no-sandbox']
+    headless: true, chromiumSandbox: true
   });
   try {
     const page = await browser.newPage({viewport: {width: 900, height: 600}});
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.goto(base);
-    await page.setContent('<style>.cm-editor {height:260px}.cm-scroller {overflow:auto} #flow {--code-font-size:14px}</style><div id="flow"></div><div id="plain"></div>');
-    await page.addScriptTag({type: 'module', url: `${base}/${process.env.CODEMIRROR_TEST_BUNDLE ? 'loader.js' : 'CodeMirrorLoader.js'}`});
+    await page.goto(base + '/homepage/workbookDesign/');
+    await page.waitForFunction(() => typeof globalThis.EduSquirrelCodeMirrorScala?.createEditor === 'function');
+    await page.evaluate(() => {
+      document.body.replaceChildren();
+      document.body.insertAdjacentHTML('beforeend', '<style>#flow .cm-editor, #plain .cm-editor {height:260px} #flow .cm-scroller, #plain .cm-scroller {overflow:auto} #flow {--code-font-size:14px}</style><div id="flow"></div><div id="plain"></div>');
+    });
+    await page.addScriptTag({type: 'module', url: `${base}/homepage/js/${process.env.CODEMIRROR_TEST_BUNDLE ? 'loader.js' : 'CodeMirrorLoader.js'}`});
     await page.waitForFunction(() => !!globalThis.EduSquirrelCodeMirror);
     await page.evaluate(() => {
       window.changes = [];
@@ -54,8 +58,11 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
         doc: Array.from({length: 100}, (_, index) => index === 2 ? '' : `print(${index})`).join('\n'),
         flowchart: chart, onDocChange: doc => window.changes.push(doc)});
       window.plain = EduSquirrelCodeMirror.createEditor({parent: document.querySelector('#plain'), doc: 'print(1)'});
+      const emptyHost = document.body.appendChild(document.createElement('div'));
+      window.empty = EduSquirrelCodeMirror.createEditor({parent: emptyHost});
     });
     assert.equal(await page.locator('#plain .cm-flowchart-gutter').count(), 0, 'regular editor stays unchanged');
+    assert.equal(await page.evaluate(() => empty.getDoc()), '', 'omitted document and language retain their defaults');
     await page.waitForTimeout(100);
     const initialCalls = await page.evaluate(() => window.graphCalls);
     const aligned = async () => {
@@ -76,7 +83,7 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
       });
       assert(result.order, 'flowchart precedes line numbers and code');
       assert(result.differences.length > 5, 'visible rows have gutter markers');
-      assert(result.differences.every(value => value < 1), 'SVG and number gutters share physical row bounds');
+      assert(result.differences.every(value => value < 1), `SVG and number gutters share physical row bounds: ${JSON.stringify(result)}`);
     };
     await aligned();
     await page.evaluate(() => { document.querySelector('#flow').style.setProperty('--code-font-size', '22px'); });
@@ -101,7 +108,7 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
     await page.evaluate(() => editor.setDoc('INVALID'));
     await page.waitForTimeout(100);
     assert.equal(await page.locator('#flow .cm-flowchart-row[title]').count(), 0, 'unsupported source clears stale nodes');
-    await page.evaluate(() => { editor.destroy(); plain.destroy(); });
+    await page.evaluate(() => { editor.destroy(); plain.destroy(); empty.destroy(); });
     assert.equal(await page.locator('.cm-editor').count(), 0, 'destroy removes the editors');
     assert.deepEqual(errors, []);
   } finally {

@@ -9,6 +9,9 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.workbook.elements.interactionElements.programming.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasScript, SnapTurtlePythonBridge}
@@ -30,6 +33,12 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.{S
  * the current project contains blocks outside the Python-compatible allow-list.
  */
 object SnapPythonPopup {
+
+  private[SnapEditor] def applyPython(current: ProgrammingStateSnapXml, python: String): Either[String, ProgrammingStateSnapXml] = {
+    val derived = SnapProgramDerivation.fromState(current)
+    SnapTurtlePythonBridge.applyPython(python, derived.canvasLayout, current.snapXml)
+      .map(next => current.withProjectXml(next.snapXml))
+  }
 
   /** One Snap top-level script rendered as Python (plus canvas position). */
   final case class ScriptView(index: Int, x: Int, y: Int, python: String) derives upickle.default.ReadWriter
@@ -127,7 +136,7 @@ object SnapPythonPopup {
       val current = state.now()
       val derived = SnapProgramDerivation.fromState(current)
       val pythonSource = textVar.now()
-      SnapTurtlePythonBridge.applyPython(pythonSource, derived.canvasLayout, current.snapXml) match
+      SnapPythonPopup.applyPython(current, pythonSource) match
         case Left(message) =>
           warningVar.set(Some(message))
         case Right(next) =>

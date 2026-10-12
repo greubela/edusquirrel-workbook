@@ -175,7 +175,8 @@ test('native compression experiments use bound answers and survive fullscreen, c
     await open(1);assert.match(await editor.innerText(), /Geschafft!/);
     await page.setViewportSize({width:390,height:844});
     assert(await editor.evaluate(e=>e.scrollWidth<=e.clientWidth+1),'mobile editor fits its viewport');
-    await close();await open(0);assert.equal(await editor.getByLabel('Datenpaket').inputValue(),'1');
+    await close();await page.locator('.workbook-header-toggle').click();
+    await open(0);assert.equal(await editor.getByLabel('Datenpaket').inputValue(),'1');
     assert.equal(await page.locator('iframe').count(),0);
     assert(!/Kommt bald|\[ Widget:/.test(await page.locator('body').innerText()));
     assert.deepEqual(errors,[]);

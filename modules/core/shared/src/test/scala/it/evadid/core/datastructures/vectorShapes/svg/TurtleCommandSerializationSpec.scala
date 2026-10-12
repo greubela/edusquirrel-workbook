@@ -29,3 +29,21 @@ class TurtleCommandSerializationSpec extends FunSuite:
     val builder = TurtlePathBuilder[Double]().handleStringCommand(TurtleCommand("color", List(12.0, 34.0, 56.0)))
     assertEquals(builder.turtleState.penColor, "rgb(12,34,56)")
   }
+
+  test("saved commands reject malformed tuple arities") {
+    List("[]", "[\"forward\"]", "[\"forward\",[10],[],[]]").foreach { serialized =>
+      intercept[Exception](read[TurtleCommand[Double]](serialized))
+    }
+  }
+
+  test("saved commands reject invalid field types") {
+    List(
+      "[1,[]]",
+      "[\"forward\",{}]",
+      "[\"forward\",[{}]]",
+      "[\"color\",[],{}]",
+      "[\"color\",[],[{}]]"
+    ).foreach { serialized =>
+      intercept[Exception](read[TurtleCommand[Double]](serialized))
+    }
+  }

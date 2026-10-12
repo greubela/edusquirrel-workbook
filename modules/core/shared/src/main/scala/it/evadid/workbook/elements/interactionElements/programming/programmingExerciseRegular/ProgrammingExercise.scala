@@ -60,6 +60,10 @@ object ProgrammingExercise {
   /** Versioned tagged format. The previous Snap XML and Python formats remain readable. */
   object StateSerializer extends Serializer[ProgrammingState] {
     override def serialize(obj: ProgrammingState): String = obj match
+      case ProgrammingStateBeExpression(root: it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms.Root) =>
+        serialize(ProgrammingStateJavaString(root.bindings.source.source))
+      case snap: ProgrammingStateSnapXml if snap.hasLegacyFloatingObjects =>
+        s"$StateHeader\nSNAP_XML_WITH_FLOATING\n${write(snap.legacyFloatingObjects)}\n${snap.snapXml}"
       case ProgrammingStateSnapXml(xml) => s"$StateHeader\nSNAP_XML\n$xml"
       case ProgrammingStatePythonString(code) => s"$StateHeader\nPYTHON\n$code"
       case ProgrammingStateJavaString(code) => s"$StateHeader\nJAVA\n$code"
@@ -88,7 +92,7 @@ object ProgrammingExercise {
       val body = stored.drop(StateHeader.length).stripLeading
       val newline = body.indexOf('\n')
       val (kind, payload) = if newline < 0 then (body, "") else (body.take(newline), body.drop(newline + 1))
-      kind match
+      kind.stripSuffix("\r") match
         case "SNAP_XML" => Some(ProgrammingStateSnapXml(payload))
         case "PYTHON" => Some(ProgrammingStatePythonString(payload))
         case "JAVA" => Some(ProgrammingStateJavaString(payload))
@@ -96,10 +100,10 @@ object ProgrammingExercise {
           Try(BeProgram.fromPythonString(payload).fullProgram).toOption.map(ProgrammingStateBeExpression(_))
         case "SNAP_XML_WITH_FLOATING" =>
           val split = payload.indexOf('\n')
-          if split < 0 then None
-          else Try(read[List[String]](payload.take(split))).toOption.map(objects =>
-            ProgrammingStateSnapXml(payload.drop(split + 1)) // , objects
-          )
+          if split < 0 then throw IllegalArgumentException("The legacy Snap project is incomplete.")
+          else Some(Try(ProgrammingStateSnapXml(payload.drop(split + 1),
+            ProgrammingState.readLegacyFloatingObjects(ujson.read(payload.take(split)))))
+            .getOrElse(throw IllegalArgumentException("The legacy Snap project contains invalid extra data.")))
         case _ => None
     }
 

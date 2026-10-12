@@ -1,4 +1,8 @@
 package it.evadid.workbook.elements.interactionElements.programming
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, KnownBeDefineStructures}

@@ -213,4 +213,5 @@ class TurtleDrawingComparisonSpec extends FunSuite {
     assert(!result.matches, clue = result)
     assert(result.extra.nonEmpty, clue = result)
   }
+
 }

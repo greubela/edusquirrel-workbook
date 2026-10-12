@@ -9,6 +9,7 @@ import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorPlain}
+import it.evadid.homepage.webElements.editor.code.JavaTurtleEditorExtension
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -16,15 +17,17 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLine
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.util.{Failure, Success}
+import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[ProgrammingExercise] {
 
@@ -38,7 +41,8 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
       case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
 
-    val editor = EvaEditorPlain(boundVar, EvaEditorConfig(snapConfig = editorConfig))
+    val editor = EvaEditorPlain(boundVar, EvaEditorConfig(snapConfig = editorConfig),
+      extensions = List(new JavaTurtleEditorExtension(boundVar)))
 
     def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)
 
@@ -55,25 +59,43 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
     val staticRendering = ElementCard(
       LanguageMapContentId("basic/staticPreviewProgram"),
-      SvgLaminarRenderer.render(
-        shapeLogger,
-        VmToSvg.renderBeExpression(
+      Try {
+        val current = editor.state.now()
+        current match
+          case java: ProgrammingStateJavaString if java.isClassProgram =>
+            throw IllegalArgumentException("Full Java classes require the checked Java runner.")
+          case _ => ()
+        SvgLaminarRenderer.render(
           shapeLogger,
-          editor.state.now().toBeExpressionState.expression
+          VmToSvg.renderBeExpression(
+            shapeLogger,
+            current.toBeExpressionState.expression
+          )
         )
-      )
+      }.getOrElse(div("Preview unavailable for this draft."))
     )
 
 
     // Run → TurtleStitchWorker.simulateGreenFlag → stage PNG
     val stageImageVar: Var[Option[FullImage]] = Var(None)
+    val runError = Var(Option.empty[String])
+    var runId = 0
 
     def runProgram(): Unit = {
-      val res = editor.state.now().toBeExpressionState.deriveTurtleCommands
-      val path = TurtlePathBuilder[Double](Point(0, 0), res, 90)
-      val img = FullImage(path.svgPathBuilder)
-      stageImageVar.set(Some(img))
-      val pathD = path.svgPathBuilder.toSvgPathD
+      runId += 1
+      val requestedRun = runId
+      stageImageVar.set(None)
+      runError.set(None)
+      val running = Try(editor.getCurrentTurtleCommands()).fold(Future.failed, identity)
+      val source = ProgrammingState.fingerprint(editor.currentState())
+      running.onComplete {
+        case _ if requestedRun != runId || source != ProgrammingState.fingerprint(editor.currentState()) => ()
+        case Success(commands) =>
+          val path = TurtlePathBuilder[Double](Point(0, 0), commands, 90)
+          stageImageVar.set(Some(FullImage(path.svgPathBuilder)))
+        case Failure(error) =>
+          runError.set(Some(Option(error.getMessage).getOrElse("The program could not be run.")))
+      }
     }
 
     val runButton: HtmlButtonElement =
@@ -81,6 +103,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val stageOutput: Element = div(
       cls := "prog-ex-stage-output",
+      child.maybe <-- runError.signal.map(_.map(message => div(role := "alert", message))),
       child <-- stageImageVar.signal.map {
         case None =>
           div(cls := "prog-ex-stage-output__placeholder")

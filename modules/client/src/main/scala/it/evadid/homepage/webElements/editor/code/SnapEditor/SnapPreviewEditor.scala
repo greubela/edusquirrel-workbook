@@ -4,10 +4,15 @@ import com.raquo.laminar.api.L.{canvasTag, *}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
 import it.evadid.workbook.elements.interactionElements.programming.*
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
+import scala.util.Try
 
 object SnapPreviewEditor {
   def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapPreviewEditor =
@@ -38,7 +43,9 @@ case class SnapPreviewEditor(
   private lazy val previewCanvas: Element = {
     div(
       cls := "be-program-snap-renderer",
-      child <-- stateSignal.map(_.toSnapXml).map(createCanvas),
+      child <-- stateSignal.map { state =>
+        Try(state.toSnapXml).map(createCanvas).getOrElse(div("Preview unavailable for this draft."))
+      },
     )
   }
   override def getDomElement(): Element = previewCanvas

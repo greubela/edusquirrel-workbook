@@ -1,14 +1,29 @@
 package it.evadid.core.datastructures.state
 
-import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic
+import it.evadid.core.datastructures.state.observable.{ObservableValueImpl, ObserverDerivationLogic}
+import it.evadid.core.datastructures.storage.RemoteCacheController
+import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey
+import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
+import it.evadid.util.logging.{Logger, LoggingLevel}
+import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.interaction.sync.SyncSuccess
+import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse, SyncDirection}
 import munit.FunSuite
 
+import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{CountDownLatch, Executors, TimeUnit}
+import scala.collection.mutable
 import scala.concurrent.duration.*
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
+import scala.util.{Failure, Success}
 
 class StateObservableValueJvmAsyncTest extends FunSuite {
+
+  private def DataEntryReadFromServer[K, D](key: K, value: D, time: LocalDateTime): DataEntryToSync[K, D] =
+    DataEntryToSync(key, value, time, SyncDirection.SERVER_TO_CLIENT)
+  private def DataEntryToWriteToServer[K, D](key: K, value: D, time: LocalDateTime): DataEntryToSync[K, D] =
+    DataEntryToSync(key, value, time, SyncDirection.CLIENT_TO_SERVER)
 
   test("DerivedObservableValue currentValueOrWaitForUpdate resolves while async derivation is still running") {
     val gate = Promise[Unit]()
@@ -71,6 +86,445 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
     } finally {
       ec.shutdown()
       assert(ec.awaitTermination(2, TimeUnit.SECONDS))
+    }
+  }
+
+  private given ExecutionContext = ExecutionContext.global
+  private val fetchedAt = LocalDateTime.of(2099, 1, 1, 0, 0)
+  private val dataAt = fetchedAt.minusSeconds(100)
+  private val invalidJava = "int result = ;"
+  private val editedJava = "int result = 7;"
+  private val silentLogger = SyncLogger(new Logger {
+    override def log(message: String, level: LoggingLevel): Unit = ()
+    override def getOut(): String = ""
+    override def getErr(): String = ""
+  })
+
+  private class Calls[A] {
+    private val entries = mutable.ArrayBuffer.empty[A]
+    private val waiting = mutable.Map.empty[Int, Promise[A]]
+    def add(entry: A): Unit = synchronized {
+      val index = entries.size
+      entries += entry
+      waiting.remove(index).foreach(_.success(entry))
+    }
+    def at(index: Int): Future[A] = synchronized {
+      if (index < entries.size) Future.successful(entries(index))
+      else waiting.getOrElseUpdate(index, Promise[A]()).future
+    }
+    def snapshot: List[A] = synchronized(entries.toList)
+    def size: Int = synchronized(entries.size)
+  }
+
+  private class Source(val name: String, initiallyAutomatic: Boolean = false) extends CacheKey[String, String] {
+    private var automatic = initiallyAutomatic
+    val reads = new Calls[Promise[FetchResponse[String, String]]]
+    val writes = new Calls[(Map[String, String], Promise[SyncSuccess])]
+    val committedWrites = new Calls[Map[String, String]]
+    def stopAutomaticReads(): Unit = synchronized { automatic = false }
+    def startAutomaticReads(): Unit = synchronized { automatic = true }
+    def storedValues: Map[String, String] = committedWrites.snapshot.foldLeft(Map.empty[String, String])(_ ++ _)
+    def response(at: LocalDateTime = fetchedAt, value: String = invalidJava): FetchResponse[String, String] =
+      FetchResponse(at, Set(
+        DataEntryReadFromServer("exercise", value, dataAt),
+        DataEntryReadFromServer(s"$name-only", name, dataAt)
+      ))
+    override val reader: RemoteDataReader[String, String] = new RemoteDataReader[String, String] {
+      override def fetchByKey(logger: SyncLogger, key: String): Future[FetchResponse[String, String]] = fetchAll(logger)
+      override def fetchAll(logger: SyncLogger): Future[FetchResponse[String, String]] = Source.this.synchronized {
+        val result = Promise[FetchResponse[String, String]]()
+        reads.add(result)
+        if (automatic) result.success(response(value = storedValues.getOrElse("exercise", invalidJava)))
+        result.future
+      }
+    }
+    override val writer: RemoteDataWriter[String, String] = new RemoteDataWriter[String, String] {
+      override def writeForKey(logger: SyncLogger, key: String, value: String): Future[SyncSuccess] = writeAll(logger, Map(key -> value))
+      override def writeAll(logger: SyncLogger, values: Map[String, String]): Future[SyncSuccess] = {
+        val result = Promise[SyncSuccess]()
+        writes.add(values -> result)
+        result.future.map { success =>
+          committedWrites.add(values)
+          success
+        }
+      }
+    }
+    override def toString: String = name
+  }
+
+  private case class Hook(keys: List[Source], known: Set[String], done: Promise[Unit])
+  private class Hooks {
+    val calls = new Calls[Hook]
+    private val actions = mutable.Queue.empty[Hook => Unit]
+    def next(action: Hook => Unit): Unit = synchronized { actions.enqueue(action) }
+    def invoke(keys: List[Source], known: Set[String]): Future[Unit] = {
+      val hook = Hook(keys, known, Promise[Unit]())
+      val action = synchronized {
+        if (actions.nonEmpty) actions.dequeue() else (h: Hook) => { h.done.success(()); () }
+      }
+      calls.add(hook)
+      action(hook)
+      hook.done.future
+    }
+  }
+
+  private class CacheFixture(initialKeys: Option[List[Source]] = None) {
+    val keys = ObservableValueImpl[List[Source]](initialKeys)
+    val hooks = new Hooks
+    val controller = new RemoteCacheController[String, String, Source](silentLogger, keys) {
+      override protected def onCacheKeyChange(newKeys: List[Source], knownKeys: Set[String]): Future[?] =
+        hooks.invoke(newKeys, knownKeys)
+    }
+    def rebind(sources: Source*): Unit = keys.onNewValueArrived(Success(sources.toList))
+    def ready(source: Source): Future[Unit] = {
+      val result = Promise[Unit]()
+      controller.observableCache.addObserver { cache =>
+        val report = cache.createReportFor("exercise")
+        if (report.allAvailableCacheKeys == List(source) && report.cacheStatus(source).lastKnownRemoteValue.exists(_.dataValue == invalidJava))
+          result.trySuccess(())
+      }
+      result.future
+    }
+    def assertCurrent(source: Source, value: String = invalidJava): Unit = {
+      val report = controller.currentReport("exercise")
+      assertEquals(report.allAvailableCacheKeys, List(source))
+      assertEquals(report.cacheStatus(source).lastKnownRemoteValue.map(_.dataValue), Some(value))
+    }
+  }
+
+  private def withLoadedSource(): Future[(CacheFixture, Source)] = {
+    val fixture = new CacheFixture
+    val source = new Source("A", initiallyAutomatic = true)
+    fixture.rebind(source)
+    fixture.ready(source).flatMap(_ => fixture.controller.ensureMaxAgeSafe(fetchedAt)).map { _ =>
+      source.stopAutomaticReads()
+      fixture -> source
+    }
+  }
+
+  private def entry = List(DataEntryToWriteToServer("exercise", editedJava, dataAt.plusSeconds(1)))
+
+  test("RemoteCacheController loads nonempty initial keys for an immediate update") {
+    val source = new Source("initial", initiallyAutomatic = true)
+    val fixture = new CacheFixture(Some(List(source)))
+    assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(source))
+    fixture.controller.requestCacheDependentUpdate(_ => fetchedAt).map { _ =>
+      fixture.assertCurrent(source)
+      assert(source.reads.size > 0)
+    }
+  }
+
+  test("RemoteCacheController new requests progress while the key-change hook is pending") {
+    val fixture = new CacheFixture
+    val source = new Source("user")
+    val evaluated = new Calls[Source]
+    fixture.hooks.next(_ => ())
+    fixture.rebind(source)
+    for {
+      hook <- fixture.hooks.calls.at(0)
+      _ = assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(source))
+      ensure = fixture.controller.ensureMaxAgeSafe(fetchedAt)
+      update = fixture.controller.requestCacheDependentUpdate { key => evaluated.add(key); fetchedAt }
+      store = fixture.controller.requestCacheDependentStore { key => evaluated.add(key); entry }
+      read <- source.reads.at(0)
+      _ = assert(!hook.done.isCompleted)
+      _ = assertEquals(evaluated.snapshot, Nil)
+      _ = assertEquals(source.writes.size, 0)
+      _ = read.success(source.response())
+      _ <- ensure
+      _ <- update
+      _ = assertEquals(evaluated.snapshot.headOption, Some(source))
+      write <- source.writes.at(0)
+      _ = assertEquals(write._1, Map("exercise" -> editedJava))
+      _ = write._2.success(SyncSuccess.emptyNow())
+      _ <- store
+      _ = assert(!hook.done.isCompleted)
+      _ = hook.done.success(())
+    } yield {
+      assertEquals(evaluated.snapshot, List(source, source))
+      fixture.assertCurrent(source)
+    }
+  }
+
+  test("RemoteCacheController a new context can store before the old fetch completes") {
+    withLoadedSource().flatMap { (fixture, oldSource) =>
+      val source = new Source("B")
+      val evaluated = new Calls[Source]
+      val firstRead = oldSource.reads.size
+      val update = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt.plusSeconds(1))
+      for {
+        oldRead <- oldSource.reads.at(firstRead)
+        _ = fixture.rebind(source)
+        _ = assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(source))
+        ensure = fixture.controller.ensureMaxAgeSafe(fetchedAt)
+        store = fixture.controller.requestCacheDependentStore { key => evaluated.add(key); entry }
+        newRead <- source.reads.at(0)
+        _ = newRead.success(source.response())
+        _ <- ensure
+        write <- source.writes.at(0)
+        _ = assertEquals(write._1, Map("exercise" -> editedJava))
+        _ = write._2.success(SyncSuccess.emptyNow())
+        _ <- store
+        _ = assert(!update.isCompleted)
+        _ = fixture.assertCurrent(source)
+        _ = oldRead.success(oldSource.response(fetchedAt.plusSeconds(1)))
+        _ <- update
+      } yield {
+        assertEquals(evaluated.snapshot, List(source))
+        assertEquals(oldSource.writes.size, 0)
+        fixture.assertCurrent(source)
+      }
+    }
+  }
+
+  test("RemoteCacheController A-to-B-to-A keeps the new context despite old hook and fetch completions") {
+    withLoadedSource().flatMap { (fixture, sourceA) =>
+      val sourceB = new Source("B")
+      val firstHook = fixture.hooks.calls.size
+      val firstReadA = sourceA.reads.size
+      val oldUpdateA = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt.plusSeconds(1))
+      for {
+        oldReadA <- sourceA.reads.at(firstReadA)
+        _ = fixture.hooks.next(_ => ())
+        _ = fixture.rebind(sourceB)
+        hookB <- fixture.hooks.calls.at(firstHook)
+        _ = assertEquals(hookB.known, Set("exercise", "A-only"))
+        updateB = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt)
+        _ = fixture.rebind(sourceA)
+        hookA <- fixture.hooks.calls.at(firstHook + 1)
+        _ = assertEquals(hookA.known, Set.empty[String])
+        _ = assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(sourceA))
+        updateA = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt.plusSeconds(2))
+        readB <- sourceB.reads.at(0)
+        _ = readB.success(sourceB.response())
+        _ <- updateB
+        _ = assert(!oldUpdateA.isCompleted)
+        _ = assert(!updateA.isCompleted)
+        _ = assert(!hookB.done.isCompleted)
+        _ = hookB.done.success(())
+        _ = oldReadA.success(sourceA.response(fetchedAt.plusSeconds(1)))
+        _ <- oldUpdateA
+        readA <- sourceA.reads.at(firstReadA + 1)
+        _ = assertEquals(fixture.controller.currentReport("exercise").cacheStatus(sourceA).lastKnownRemoteValue, None)
+        _ = readA.success(sourceA.response(fetchedAt.plusSeconds(2), editedJava))
+        _ <- updateA
+      } yield fixture.assertCurrent(sourceA, editedJava)
+    }
+  }
+
+  test("RemoteCacheController failed update propagates and a queued retry still succeeds") {
+    withLoadedSource().flatMap { (fixture, source) =>
+      val firstRead = source.reads.size
+      val failure = new IllegalStateException("fetch failed")
+      val update = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt.plusSeconds(1))
+      for {
+        read <- source.reads.at(firstRead)
+        retry = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt.plusSeconds(1))
+        _ = read.failure(failure)
+        result <- update.transform(result => Success(result))
+        _ = assertEquals(result, Failure(failure))
+        nextRead <- source.reads.at(firstRead + 1)
+        _ = nextRead.success(source.response(fetchedAt.plusSeconds(1)))
+        _ <- retry
+      } yield fixture.assertCurrent(source)
+    }
+  }
+
+  test("RemoteCacheController queued updates use the latest cache in their context") {
+    withLoadedSource().flatMap { (fixture, source) =>
+      val firstRead = source.reads.size
+      val freshUntil = fetchedAt.plusSeconds(1)
+      val update = fixture.controller.requestCacheDependentUpdate(_ => freshUntil)
+      for {
+        read <- source.reads.at(firstRead)
+        nextUpdate = fixture.controller.requestCacheDependentUpdate(_ => freshUntil)
+        _ = read.success(source.response(freshUntil))
+        _ <- update
+        _ <- nextUpdate
+      } yield {
+        assertEquals(source.reads.size, firstRead + 1)
+        assertEquals(fixture.controller.currentReport("exercise").cacheStatus(source).lastCacheRequest, Some(freshUntil))
+        fixture.assertCurrent(source)
+      }
+    }
+  }
+
+  List(false, true).foreach { synchronous =>
+    test(s"RemoteCacheController recovers ${if (synchronous) "synchronous" else "asynchronous"} hook failures and continues") {
+      val fixture = new CacheFixture
+      val source = new Source("user")
+      val evaluated = new Calls[Source]
+      fixture.hooks.next { hook =>
+        val failure = new IllegalStateException("hook failed")
+        if (synchronous) throw failure else hook.done.failure(failure)
+      }
+      fixture.rebind(source)
+      val update = fixture.controller.requestCacheDependentUpdate { key => evaluated.add(key); fetchedAt }
+      for {
+        read <- source.reads.at(0)
+        _ = read.success(source.response())
+        _ <- update
+      } yield {
+        assertEquals(evaluated.snapshot, List(source))
+        fixture.assertCurrent(source)
+      }
+    }
+  }
+
+  test("RemoteCacheController allows a key-change hook to emit the next rebind") {
+    val fixture = new CacheFixture
+    val sourceA = new Source("A")
+    val sourceB = new Source("B")
+    val oldUpdate = Promise[Future[Unit]]()
+    fixture.hooks.next { hook =>
+      oldUpdate.success(fixture.controller.requestCacheDependentUpdate(_ => fetchedAt).map(_ => ()))
+      hook.done.completeWith(sourceA.reads.at(0).map(_ => fixture.rebind(sourceB)))
+      ()
+    }
+    fixture.rebind(sourceA)
+    val updateA = oldUpdate.future.flatten
+    for {
+      hookB <- fixture.hooks.calls.at(1)
+      _ = assertEquals(hookB.known, Set.empty[String])
+      readA <- sourceA.reads.at(0)
+      _ = assert(!readA.isCompleted)
+      _ = assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(sourceB))
+      readB <- sourceB.reads.at(0)
+      update = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt)
+      _ = readB.success(sourceB.response())
+      _ <- update
+      _ = fixture.assertCurrent(sourceB)
+      _ = assert(!updateA.isCompleted)
+      _ = readA.success(sourceA.response())
+      _ <- updateA
+    } yield fixture.assertCurrent(sourceB)
+  }
+
+  test("RemoteCacheController a new context loads before the old write completes") {
+    withLoadedSource().flatMap { (fixture, oldSource) =>
+      val source = new Source("B")
+      val evaluated = new Calls[Source]
+      val store = fixture.controller.requestCacheDependentStore(_ => entry)
+      for {
+        write <- oldSource.writes.at(0)
+        _ = fixture.rebind(source)
+        update = fixture.controller.requestCacheDependentUpdate { key => evaluated.add(key); fetchedAt }
+        read <- source.reads.at(0)
+        _ = read.success(source.response())
+        _ <- update
+        _ = assert(!store.isCompleted)
+        _ = fixture.assertCurrent(source)
+        _ = write._2.success(SyncSuccess.emptyNow())
+        _ <- store
+      } yield {
+        assertEquals(write._1, Map("exercise" -> editedJava))
+        assertEquals(evaluated.snapshot, List(source))
+        assertEquals(source.writes.size, 0)
+        fixture.assertCurrent(source)
+      }
+    }
+  }
+
+  test("RemoteCacheController a store queued before a rebind keeps its original destination") {
+    withLoadedSource().flatMap { (fixture, sourceA) =>
+      val sourceB = new Source("B")
+      val evaluatedA = new Calls[Source]
+      val privateDraft = "int userA = 13;"
+      val firstReadA = sourceA.reads.size
+      val updateA = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt.plusSeconds(1))
+      for {
+        readA <- sourceA.reads.at(firstReadA)
+        storeA = fixture.controller.requestCacheDependentStore { key =>
+          evaluatedA.add(key)
+          List(DataEntryToWriteToServer("exercise", privateDraft, dataAt.plusSeconds(1)))
+        }
+        _ = fixture.rebind(sourceB)
+        ensureB = fixture.controller.ensureMaxAgeSafe(fetchedAt)
+        storeB = fixture.controller.requestCacheDependentStore(_ => entry)
+        readB <- sourceB.reads.at(0)
+        _ = readB.success(sourceB.response())
+        _ <- ensureB
+        writeB <- sourceB.writes.at(0)
+        _ = assertEquals(writeB._1, Map("exercise" -> editedJava))
+        _ = writeB._2.success(SyncSuccess.emptyNow())
+        _ <- storeB
+        _ = assertEquals(evaluatedA.snapshot, Nil)
+        _ = assertEquals(sourceA.writes.size, 0)
+        _ = assert(!storeA.isCompleted)
+        _ = fixture.assertCurrent(sourceB)
+        _ = readA.success(sourceA.response(fetchedAt.plusSeconds(1)))
+        _ <- updateA
+        writeA <- sourceA.writes.at(0)
+        _ = assertEquals(writeA._1, Map("exercise" -> privateDraft))
+        _ = writeA._2.success(SyncSuccess.emptyNow())
+        _ <- storeA
+      } yield {
+        assertEquals(evaluatedA.snapshot, List(sourceA))
+        assertEquals(sourceB.writes.snapshot.map(_._1), List(Map("exercise" -> editedJava)))
+        fixture.assertCurrent(sourceB)
+      }
+    }
+  }
+
+  test("RemoteCacheController A-to-B-to-A serializes writes to the reused destination") {
+    withLoadedSource().flatMap { (fixture, sourceA) =>
+      val sourceB = new Source("B")
+      val olderDraft = "int version = 1;"
+      val newerDraft = "int version = 2;"
+      val firstReadA = sourceA.reads.size
+      val updateA = fixture.controller.requestCacheDependentUpdate(_ => fetchedAt.plusSeconds(1))
+      for {
+        readA <- sourceA.reads.at(firstReadA)
+        oldStoreA = fixture.controller.requestStore(List(DataEntryToWriteToServer("exercise", olderDraft, dataAt.plusSeconds(1))))
+        _ = fixture.rebind(sourceB)
+        ensureB = fixture.controller.ensureMaxAgeSafe(fetchedAt)
+        storeB = fixture.controller.requestStore(entry)
+        readB <- sourceB.reads.at(0)
+        _ = readB.success(sourceB.response())
+        _ <- ensureB
+        writeB <- sourceB.writes.at(0)
+        _ = writeB._2.success(SyncSuccess.emptyNow())
+        _ <- storeB
+        _ = assert(!updateA.isCompleted)
+        _ = assertEquals(sourceB.storedValues, Map("exercise" -> editedJava))
+        _ = sourceA.startAutomaticReads()
+        _ = fixture.rebind(sourceA)
+        newStoreA = fixture.controller.requestStore(List(DataEntryToWriteToServer("exercise", newerDraft, dataAt.plusSeconds(2))))
+        _ = assertEquals(fixture.controller.currentReport("exercise").allAvailableCacheKeys, List(sourceA))
+        _ = intercept[java.util.concurrent.TimeoutException](Await.result(sourceA.writes.at(0), 1.second))
+        _ = assert(!newStoreA.isCompleted)
+        _ = readA.success(sourceA.response(fetchedAt.plusSeconds(1)))
+        _ <- updateA
+        oldWriteA <- sourceA.writes.at(0)
+        _ = assertEquals(oldWriteA._1, Map("exercise" -> olderDraft))
+        _ = oldWriteA._2.success(SyncSuccess.emptyNow())
+        _ <- oldStoreA
+        newWriteA <- sourceA.writes.at(1)
+        _ = assertEquals(newWriteA._1, Map("exercise" -> newerDraft))
+        _ = newWriteA._2.success(SyncSuccess.emptyNow())
+        _ <- newStoreA
+      } yield {
+        assertEquals(sourceA.committedWrites.snapshot, List(Map("exercise" -> olderDraft), Map("exercise" -> newerDraft)))
+        assertEquals(sourceA.storedValues, Map("exercise" -> newerDraft))
+        assertEquals(sourceB.storedValues, Map("exercise" -> editedJava))
+      }
+    }
+  }
+
+  test("RemoteCacheController synchronous update callback failure becomes a failed future and does not stop the queue") {
+    withLoadedSource().flatMap { (fixture, source) =>
+      val failure = new IllegalStateException("update callback failed")
+      val evaluated = new Calls[Source]
+      val update = fixture.controller.requestCacheDependentUpdate(_ => throw failure)
+      val retry = fixture.controller.requestCacheDependentUpdate { key => evaluated.add(key); fetchedAt }
+      for {
+        result <- update.transform(result => Success(result))
+        _ = assertEquals(result, Failure(failure))
+        _ <- retry
+      } yield {
+        assertEquals(evaluated.snapshot, List(source))
+        fixture.assertCurrent(source)
+      }
     }
   }
 }

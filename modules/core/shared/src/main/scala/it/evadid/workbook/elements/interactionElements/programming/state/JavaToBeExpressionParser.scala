@@ -53,7 +53,7 @@ final class JavaToBeExpressionParser {
     // The Java printer places stable entity-name hints directly after parameters. They look like
     // line comments even when another parameter follows, so remove only those machine hints before
     // applying normal Java line-comment rules.
-    val withoutEntityHints = source.replaceAll("//EvaEntityName\\([^)]*\\)", "")
+    val withoutEntityHints = JavaToBeExpressionParser.withoutEntityHints(source)
     withoutEntityHints.foreach { char =>
       if lineComment then
         if char == '\n' then lineComment = false
@@ -171,5 +171,37 @@ final class JavaToBeExpressionParser {
 }
 
 object JavaToBeExpressionParser {
+  private[programming] def withoutEntityHints(source: String): String = {
+    val output = new StringBuilder
+    var offset = 0
+    while offset < source.length do {
+      val start = offset
+      var hint = false
+      if source.charAt(offset) == '"' || source.charAt(offset) == '\'' then {
+        val delimiter = source.charAt(offset)
+        offset += 1
+        var closed = false
+        while offset < source.length && !closed do {
+          if source.charAt(offset) == '\\' then offset = (offset + 2).min(source.length)
+          else if source.charAt(offset) == delimiter then { offset += 1; closed = true }
+          else offset += 1
+        }
+      } else if source.startsWith("/*", offset) then {
+        val end = source.indexOf("*/", offset + 2)
+        offset = if end < 0 then source.length else end + 2
+      } else if source.startsWith("//", offset) then {
+        offset += 2
+        if source.startsWith("EvaEntityName(", offset) then {
+          while offset < source.length && !")\r\n".contains(source.charAt(offset)) do offset += 1
+          if offset < source.length && source.charAt(offset) == ')' then { offset += 1; hint = true }
+        }
+        if !hint then
+          while offset < source.length && !"\r\n".contains(source.charAt(offset)) do offset += 1
+      } else offset += 1
+      if !hint then output.append(source.substring(start, offset))
+    }
+    output.result()
+  }
+
   def parse(source: String): BeExpression = new JavaToBeExpressionParser().parseExpression(source)
 }

@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import com.raquo.airstream.state.Var
+import com.raquo.laminar.api.L
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.*
@@ -28,38 +30,235 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     var bounds = js.Array[Double]()
     var renderer = ""
     var containerClass = ""
+    var title = ""
+    var axisLabelDisplay = ""
+    var rejectCreation = false
+    val initialized = ListBuffer.empty[(dom.html.Div, js.Dynamic)]
+    val freed = ListBuffer.empty[js.Dynamic]
     val updateCalls = ListBuffer.empty[(String, Int)]
-    val board: js.Dynamic = js.Dynamic.literal(
-      create = ((kind: String, parents: js.Array[js.Dynamic], attrs: js.Dynamic) => {
-        val obj = new Obj(kind, parents, attrs)
-        objects += obj
-        obj.value
-      }): js.Function3[String, js.Array[js.Dynamic], js.Dynamic, js.Dynamic],
-      update = (() => { updateCalls += (("update", objects.size)); () }): js.Function0[Unit]
-    )
-    if batchUpdates then
-      board.updateDynamic("suspendUpdate")((() => { updateCalls += (("suspend", objects.size)); () }): js.Function0[Unit])
-      board.updateDynamic("unsuspendUpdate")((() => { updateCalls += (("resume", objects.size)); () }): js.Function0[Unit])
-    def render(program: List[TurtleCommand[Double]], expected: List[LineToRender[Double]] = Nil, graphic: Option[TurtleGraphic] = None): Unit =
+    private def board(): js.Dynamic =
+      val created = js.Dynamic.literal(
+        create = ((kind: String, parents: js.Array[js.Dynamic], attrs: js.Dynamic) => {
+          if rejectCreation then throw IllegalStateException("renderer unavailable")
+          val obj = new Obj(kind, parents, attrs)
+          objects += obj
+          obj.value
+        }): js.Function3[String, js.Array[js.Dynamic], js.Dynamic, js.Dynamic],
+        update = (() => { updateCalls += (("update", objects.size)); () }): js.Function0[Unit]
+      )
+      if batchUpdates then
+        created.updateDynamic("suspendUpdate")((() => { updateCalls += (("suspend", objects.size)); () }): js.Function0[Unit])
+        created.updateDynamic("unsuspendUpdate")((() => { updateCalls += (("resume", objects.size)); () }): js.Function0[Unit])
+      created
+    def withLibrary[A](test: => A): A =
       val previous = js.Dynamic.global.globalThis.selectDynamic("JXG")
       js.Dynamic.global.globalThis.updateDynamic("JXG")(js.Dynamic.literal(JSXGraph = js.Dynamic.literal(
-        initBoard = ((id: String, attrs: js.Dynamic) => {
+        initBoard = ((container: dom.html.Div, attrs: js.Dynamic) => {
           bounds = attrs.boundingbox.asInstanceOf[js.Array[Double]]
           renderer = attrs.renderer.asInstanceOf[String]
-          board
-        }): js.Function2[String, js.Dynamic, js.Dynamic]
+          title = attrs.title.asInstanceOf[String]
+          axisLabelDisplay = attrs.defaultAxes.x.ticks.label.display.asInstanceOf[String]
+          val created = board()
+          initialized += ((container, created))
+          created
+        }): js.Function2[dom.html.Div, js.Dynamic, js.Dynamic],
+        freeBoard = ((board: js.Dynamic) => freed += board): js.Function1[js.Dynamic, Unit]
       )))
-      try
-        val container = js.Dynamic.literal(id = "test-board", classList = js.Dynamic.literal(
-          add = ((value: String) => containerClass = value): js.Function1[String, Unit]
-        )).asInstanceOf[dom.html.Div]
-        graphic match
-          case Some(value) => TurtleJsxGraphRenderer.render(container, program, value)
-          case None => TurtleJsxGraphRenderer.render(container, program, expected)
+      try test
       finally js.Dynamic.global.globalThis.updateDynamic("JXG")(previous)
+    private def container(): dom.html.Div = js.Dynamic.literal(id = "test-board", classList = js.Dynamic.literal(
+      add = ((value: String) => containerClass = value): js.Function1[String, Unit]
+    )).asInstanceOf[dom.html.Div]
+    def render(program: List[TurtleCommand[Double]], expected: List[LineToRender[Double]] = Nil, graphic: Option[TurtleGraphic] = None): Unit =
+      withLibrary {
+        graphic match
+          case Some(value) => TurtleJsxGraphRenderer.render(container(), program, value)
+          case None => TurtleJsxGraphRenderer.render(container(), program, expected)
+      }
+    def renderScene(scene: Scene, label: String): Unit =
+      withLibrary { TurtleJsxGraphRenderer.render(container(), scene, label) }
     def ofKind(kind: String): List[Obj] = objects.filter(_.kind == kind).toList
     def parent(obj: Obj, index: Int): Obj = objects.find(_.value == obj.parents(index)).get
     def coords(obj: Obj): Point[Double] = Point(obj.parents(0).asInstanceOf[Double], obj.parents(1).asInstanceOf[Double])
+
+  private def withDom[A](test: => A): A =
+    val globals = js.Dynamic.global.globalThis
+    val requireFn = js.Dynamic.global.selectDynamic("require")
+    val root = js.Dynamic.global.process.cwd().asInstanceOf[String]
+    val jsdom = requireFn(root + "/node_modules/jsdom")
+    val window = js.Dynamic.newInstance(jsdom.JSDOM)("<html><body></body></html>").window
+    val names = List("window", "document", "Element", "Node")
+    val previous = names.map(name => name -> js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, name))
+    names.foreach(name => globals.updateDynamic(name)(window.selectDynamic(name)))
+    try test
+    finally
+      previous.foreach { (name, descriptor) =>
+        if js.isUndefined(descriptor) then js.special.delete(globals, name)
+        else js.Dynamic.global.Object.defineProperty(globals, name, descriptor)
+      }
+      window.close()
+
+  test("DOM fixtures restore absent and explicitly undefined document properties") {
+    val globals = js.Dynamic.global.globalThis
+    val original = js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")
+    try
+      js.special.delete(globals, "document")
+      withDom { assert(!js.isUndefined(globals.selectDynamic("document"))) }
+      assert(js.isUndefined(js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")))
+      js.Dynamic.global.Object.defineProperty(globals, "document", js.Dynamic.literal(
+        configurable = true, enumerable = false, writable = true, value = js.undefined))
+      withDom { assert(!js.isUndefined(globals.selectDynamic("document"))) }
+      val restored = js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")
+      assert(!js.isUndefined(restored))
+      assert(js.isUndefined(restored.value))
+      assertEquals(restored.enumerable.asInstanceOf[Boolean], false)
+    finally
+      if js.isUndefined(original) then js.special.delete(globals, "document")
+      else js.Dynamic.global.Object.defineProperty(globals, "document", original)
+  }
+
+  test("scene renderer preserves neutral lines and uses a nonempty accessible title") {
+    val graph = new Graph
+    val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(10.0, 0.0), LineResult.Neutral, false)), Nil)
+    graph.renderScene(scene, "square(25): your drawing")
+    assertEquals(graph.title, "square(25): your drawing")
+    assertEquals(graph.ofKind("segment").head.attrs.cssClass.asInstanceOf[String], "turtle-line turtle-line--neutral")
+    graph.renderScene(Scene(Nil, Nil), "  ")
+    assertEquals(graph.title, "Turtle drawing")
+  }
+
+  test("mounting multiple scenes passes distinct DOM containers and frees their own boards") {
+    withDom {
+      val graph = new Graph
+      graph.withLibrary {
+        val host = dom.document.createElement("div")
+        dom.document.body.appendChild(host)
+        val mounted = L.render(host, L.div(
+          TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target"),
+          TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Your drawing")
+        ))
+        try
+          assertEquals(graph.initialized.size, 2)
+          assert(graph.initialized.head._1 ne graph.initialized.last._1)
+          assert(graph.initialized.head._2 != graph.initialized.last._2)
+          assertEquals(graph.freed.toList, Nil)
+        finally mounted.unmount()
+        assertEquals(graph.freed.toSet, graph.initialized.map(_._2).toSet)
+        assertEquals(graph.freed.size, 2)
+      }
+    }
+  }
+
+  test("replacing and remounting a scene frees each concrete board once") {
+    withDom {
+      import L.*
+      val graph = new Graph
+      graph.withLibrary {
+        val host = dom.document.createElement("div")
+        dom.document.body.appendChild(host)
+        val shown = Var(true)
+        val scene = TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target")
+        val mounted = L.render(host, div(child.maybe <-- shown.signal.map(value => Option.when(value)(scene))))
+        try
+          assertEquals(graph.initialized.size, 1)
+          shown.set(false)
+          assertEquals(graph.freed.toList, List(graph.initialized.head._2))
+          shown.set(false)
+          assertEquals(graph.freed.size, 1)
+          shown.set(true)
+          assertEquals(graph.initialized.size, 2)
+        finally mounted.unmount()
+        assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
+      }
+    }
+  }
+
+  test("reactive stroke rendering releases each replaced board through the shared scene lifecycle") {
+    withDom {
+      import L.*
+      val graph = new Graph
+      graph.withLibrary {
+        val host = dom.document.createElement("div")
+        dom.document.body.appendChild(host)
+        val commands = Var(List(cmd("forward", 10)))
+        val expected = TurtleGraphic.TurtleGraphicProgram(commands.now())
+        val preview = TurtleJsxGraphRenderer.renderStrokes(commands.signal, expected)
+        val mounted = L.render(host, div(children <-- preview.allElementsSignal))
+        try
+          assertEquals(graph.initialized.size, 1)
+          commands.set(List(cmd("forward", 5)))
+          assertEquals(graph.initialized.size, 2)
+          assertEquals(graph.freed.toList, List(graph.initialized.head._2))
+        finally mounted.unmount()
+        assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
+      }
+    }
+  }
+
+  test("missing JSXGraph produces a visible warning without failing the mount") {
+    withDom {
+      val globals = js.Dynamic.global.globalThis
+      val previous = globals.selectDynamic("JXG")
+      globals.updateDynamic("JXG")(js.undefined)
+      try
+        val host = dom.document.createElement("div")
+        dom.document.body.appendChild(host)
+        val mounted = L.render(host, TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target"))
+        try
+          assert(host.textContent.contains("drawing preview is unavailable"))
+          assert(host.firstElementChild.classList.contains("turtle-gradig-panel--unavailable"))
+        finally mounted.unmount()
+      finally globals.updateDynamic("JXG")(previous)
+    }
+  }
+
+  test("a failed scene mount releases its partially created board") {
+    withDom {
+      val graph = new Graph
+      graph.rejectCreation = true
+      graph.withLibrary {
+        val host = dom.document.createElement("div")
+        dom.document.body.appendChild(host)
+        val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(10.0, 0.0), LineResult.Neutral, false)), Nil)
+        val mounted = L.render(host, TurtleJsxGraphRenderer.render(scene, "Target"))
+        try
+          assert(host.textContent.contains("drawing preview is unavailable"))
+          assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
+        finally mounted.unmount()
+        assertEquals(graph.freed.size, 1)
+      }
+    }
+  }
+
+  test("nonfinite coordinates and overflowing bounds never initialize a board") {
+    for (start, end) <- List(
+      Point(0.0, 0.0) -> Point(Double.NaN, 1.0),
+      Point(0.0, 0.0) -> Point(Double.PositiveInfinity, 1.0),
+      Point(-Double.MaxValue, 0.0) -> Point(Double.MaxValue, 1.0),
+      Point(Double.MaxValue, 0.0) -> Point(Double.MaxValue, 1.0)
+    ) do
+      val graph = new Graph
+      val scene = Scene(List(RenderedLine(start, end, LineResult.Neutral, false)), Nil)
+      intercept[IllegalArgumentException](graph.renderScene(scene, "Your drawing"))
+      assertEquals(graph.initialized.size, 0)
+  }
+
+  test("invalid display bounds produce a warning rather than a mounted board") {
+    withDom {
+      val graph = new Graph
+      graph.withLibrary {
+        val host = dom.document.createElement("div")
+        dom.document.body.appendChild(host)
+        val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(Double.NaN, 0.0), LineResult.Neutral, false)), Nil)
+        val mounted = L.render(host, TurtleJsxGraphRenderer.render(scene, "Your drawing"))
+        try
+          assert(host.textContent.contains("outside the supported display range"))
+          assertEquals(graph.initialized.size, 0)
+        finally mounted.unmount()
+        assertEquals(graph.freed.size, 0)
+      }
+    }
+  }
 
   for
     heading <- List(0.0, 90.0, 180.0, 270.0)
@@ -281,6 +480,15 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     val fallback = new Graph
     fallback.render(List(cmd("forward", 10)))
     assertEquals(fallback.updateCalls.toList, List(("update", fallback.objects.size)))
+  }
+
+  test("axis and endpoint labels use internal SVG rendering") {
+    val graph = new Graph
+    graph.render(List(cmd("forward", 10)))
+    assertEquals(graph.axisLabelDisplay, "internal")
+    graph.ofKind("point").foreach { point =>
+      assertEquals(point.attrs.label.display.asInstanceOf[String], "internal")
+    }
   }
 
   test("dense repeating patterns retain all lines with representative angle overlays") {

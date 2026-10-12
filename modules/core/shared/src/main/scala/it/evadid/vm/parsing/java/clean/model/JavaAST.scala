@@ -139,6 +139,14 @@ object JavaAST {
     override def getChildren(): Seq[GenericAST] = Seq(operand)
   }
 
+  case class JavaUpdateExpression(operand: JavaExpression, operator: String, prefix: Boolean) extends JavaExpression {
+    override def getChildren(): Seq[GenericAST] = Seq(operand)
+  }
+
+  case class JavaParenthesizedExpression(expression: JavaExpression) extends JavaExpression {
+    override def getChildren(): Seq[GenericAST] = Seq(expression)
+  }
+
   /** Attribute/member access on any expression, e.g. `object.field` or `factory().value`. */
   case class JavaAttributeAccess(receiver: JavaExpression, name: String) extends JavaExpression derives upickle.default.ReadWriter {
     override def getChildren(): Seq[GenericAST] = Seq(receiver)

@@ -26,6 +26,9 @@ sealed trait TurtleGraphic derives ReadWriter{
 
 object TurtleGraphic {
 
+  type Line[T] = it.evadid.core.datastructures.geometry.Line[T]
+  val Line: it.evadid.core.datastructures.geometry.Line.type = it.evadid.core.datastructures.geometry.Line
+
   def apply[T: Fractional](lines: Seq[TurtleCommand[T]]): TurtleGraphic = {
     val res : Seq[TurtleCommand[Double]] = lines.map(_.asDouble)
     TurtleGraphicProgram(res)

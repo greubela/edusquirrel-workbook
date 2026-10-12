@@ -87,4 +87,14 @@ class TurtlePathBuilderSpec extends FunSuite {
     assertEquals(segments.head.style.color, "black")
     assertEquals(segments.head.style.size, 1.0)
   }
+
+  test("circle accepts Vector arguments with the same geometry as List arguments") {
+    List(Vector(10.0), Vector(10.0, 90.0), Vector(10.0, 90.0, 12.0)).foreach { args =>
+      val expected = TurtlePathBuilder[Double]().handleStringCommand(TurtleCommand("circle", args.toList))
+      val actual = TurtlePathBuilder[Double]().handleStringCommand(TurtleCommand("circle", args))
+      assert(expected.completedStyledSegments.nonEmpty)
+      assertEquals(actual.svgPathBuilder.toSvgPathD, expected.svgPathBuilder.toSvgPathD)
+      assertEquals(actual.turtleState, expected.turtleState)
+    }
+  }
 }

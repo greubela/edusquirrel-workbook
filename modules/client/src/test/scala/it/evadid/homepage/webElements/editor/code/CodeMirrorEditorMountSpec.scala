@@ -26,7 +26,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
       createEditor = ((config: CodeMirrorEditor.EditorConfig) => {
         received = received :+ !js.isUndefined(config.flowchart)
         if (received.size == 3) completed.success(())
-        var doc = config.doc
+        var doc = config.doc.getOrElse("")
         js.Dynamic.literal(
           getDoc = (() => doc): js.Function0[String],
           setDoc = ((value: String) => { doc = value }): js.Function1[String, Unit],
