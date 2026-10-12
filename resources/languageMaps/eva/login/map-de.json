@@ -18,8 +18,20 @@
   "localBenefit1": "✓ Daten verlassen Gerät nicht",
   "localBenefit2": "✗ Kein Zugriff auf LLM-Feedback",
   "localBenefit3": "✗ Kein Backup Kein Mitleid",
-
   "privacyFooterNoLogin": "Datenschutzhinweis: Sie sind nicht eingeloggt, es werden keine Daten über Sie oder Ihre Nutzung gespeichert. Diese Seite benutzt keine Third-Party-Cookies. Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)",
   "privacyFooterLocalLogin": "Datenschutzhinweis: Sie nutzen gerade einen lokalen Account und ihre Interaktionen werden ausschließlich lokal im Browser. Diese Seite benutzt keine Third-Party-Cookies. Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)",
-  "privacyFooterOnlineLogin": "Datenschutzhinweis: Sie nutzen gerade einen Online-Account und ihre Interaktionen werden an _ Stellen _ gespeichert. Wenn Sie das nicht möchten, benutzen Sie bitte einen lokalen Account. Diese Seite benutzt keine Third-Party-Cookies.Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)"
+  "privacyFooterOnlineLogin": "Datenschutzhinweis: Sie nutzen gerade einen Online-Account und ihre Interaktionen werden an _ Stellen _ gespeichert. Wenn Sie das nicht möchten, benutzen Sie bitte einen lokalen Account. Diese Seite benutzt keine Third-Party-Cookies.Kontakt: LS Informatik und Gesellschaft, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin)",
+  "statusPending": "Bitte warten…",
+  "statusRegistered": "Registrierung abgeschlossen.",
+  "statusLoggedIn": "Anmeldung abgeschlossen.",
+  "statusTokenSent": "Ein Anmelde-Token wurde gesendet. Prüfe deinen Posteingang und Spam-Ordner.",
+  "errorEmail": "Bitte gib eine gültige E-Mail-Adresse ein.",
+  "errorName": "Bitte gib deinen Namen ein.",
+  "errorAccountExists": "Dieses Konto existiert bereits. Fordere unten einen Anmelde-Token an, um fortzufahren.",
+  "errorRegistration": "Registrierung fehlgeschlagen. Bitte versuche es später erneut.",
+  "errorUnknownUser": "Für diese E-Mail-Adresse wurde kein Konto gefunden. Bitte registriere dich zuerst.",
+  "errorInvalidToken": "Dieser Token ist ungültig oder abgelaufen. Fordere einen neuen Anmelde-Token an.",
+  "errorTokenRequired": "Bitte füge den Token aus deiner E-Mail ein.",
+  "errorTokenRequest": "Der Anmelde-Token konnte nicht gesendet werden. Prüfe deine E-Mail-Adresse und versuche es erneut.",
+  "errorLogin": "Anmeldung fehlgeschlagen. Bitte versuche es später erneut."
 }
