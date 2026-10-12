@@ -117,6 +117,11 @@
     max-width: 100%;
 }
 
+.be-program-snap-renderer:not(.be-program-snap-renderer--editor) > canvas {
+    width: auto;
+    height: auto;
+}
+
 .be-program-snap-renderer--editor {
     flex: 1;
 }

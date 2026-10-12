@@ -52,6 +52,7 @@ case class SnapCodeEditor(
   }
 
   lazy val editorCanvas: Element = {
+    var mountGeneration = 0
     canvasTag(
       cls := "be-program-snap-renderer__canvas",
       aria.label := "Block program editor",
@@ -61,15 +62,25 @@ case class SnapCodeEditor(
       // avoiding an ambiguous descendant query, this guarantees that Snap
       // installs its listeners only after this exact canvas is connected.
       onMountCallback { ctx =>
+        mountGeneration += 1
+        val generation = mountGeneration
         val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
-        mountEditorInto(canvas, ctx.owner)
-      }
+        impl.whenReady(() => {
+          if generation == mountGeneration then
+            renderingError.set(None)
+            mountEditorInto(canvas, ctx.owner)
+        }, error => {
+          if generation == mountGeneration then renderingError.set(Some(s"Block editor unavailable: ${error.getMessage}"))
+        })
+      },
+      onUnmountCallback(_ => mountGeneration += 1)
     )
   }
 
   lazy val editorDom: L.Element = {
     div(
       cls := "code-editor be-program-snap-renderer be-program-snap-renderer--editor",
+      child.maybe <-- renderingError.signal.map(_.map(message => p(role := "alert", message))),
       editorCanvas,
       onUnmountCallback { _ =>
         impl.flushPendingProjectChanges()
@@ -77,6 +88,8 @@ case class SnapCodeEditor(
       }
     )
   }
+
+  private val renderingError = Var(Option.empty[String])
 
   lazy val domElement: L.Element =
     div(

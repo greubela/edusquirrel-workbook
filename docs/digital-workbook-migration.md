@@ -4,9 +4,11 @@ Reviewed on 2026-10-09 against the downloads linked in `homepage/index.html`, pl
 
 ## Intentional classic/digital coexistence
 
-Every existing classic PDF/ZIP remains downloadable under **Analoge Workbooks (PDF /ZIP)**. Each partial digital adaptation has a separate card under **Digitale Workbooks (In Arbeit)**; titles with both versions intentionally appear twice. Keep both links until full content equivalence has been checked, including tasks, explanatory material, figures, hints and teacher resources. A working simulator or passing software tests alone does not establish content equivalence. The Mons Komputarius draft also belongs in work in progress; no classic PDF/ZIP for it is currently stored in this repository, so no download link is invented.
+Every existing classic PDF/ZIP remains downloadable under **Analoge Workbooks (PDF /ZIP)** on the central landing page. Partial native adaptations are listed separately in the [digital catalogue](../homepage/workbooks/index.html), which the central page links under **Digitale Workbooks (In Arbeit)**. A few digital cards also remain directly on the central page. `DigitalWorkbookCatalog` marks native adaptations as work in progress.
 
-Do not replace classic links when adding a digital page or promote a migration to the finished list without that content review. The landing page states this policy for readers, and `workbook-migration-links.test.mjs` protects the paired cards and existing downloads.
+Titles with classic and digital versions intentionally remain available in both forms until full content equivalence has been checked, including tasks, explanatory material, figures, hints and teacher resources. A working simulator or passing software tests alone does not establish content equivalence. The Mons Komputarius draft also belongs in work in progress; no classic PDF/ZIP for it is currently stored in this repository, so no download link is invented.
+
+Do not replace classic links when adding a digital page or promote a migration to the finished list without that content review. `workbook-migration-links.test.mjs` protects the existing downloads, the link to the digital catalogue and native adaptation registrations; browser catalogue tests check the rendered cards. It does not require duplicating every digital card on the central landing page.
 
 ## Resource-to-interaction map
 
