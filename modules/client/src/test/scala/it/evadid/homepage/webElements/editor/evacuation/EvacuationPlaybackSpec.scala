@@ -15,7 +15,7 @@ class EvacuationPlaybackSpec extends FunSuite {
     EvacuationFloorAdapter.decode(plan), Neighbourhood.neumann,
     ClosestGoalStrategy(PersonOrderSelector.getIdSelector[CGSimInfo, CGStepInfo], stableRoutes = true), limit)
   test("workbook comparison presets are bounded, repeatable and evacuate without discarding people") {
-    import it.evadid.homepage.workbook.content.CreateEvacuationWorkbook
+    import it.evadid.homepage.workbook.content.wip.CreateEvacuationWorkbook
     val baseline = CreateEvacuationWorkbook.lockerHall
     val removed = baseline.copy(tiles = baseline.tiles.updated(3 * 11 + 6, EvacuationTile.Floor)
       .updated(5 * 11 + 6, EvacuationTile.Floor))
@@ -30,7 +30,7 @@ class EvacuationPlaybackSpec extends FunSuite {
     }
   }
   test("diagonal audit preset isolates neighbourhood effects with one person") {
-    import it.evadid.homepage.workbook.content.CreateEvacuationWorkbook
+    import it.evadid.homepage.workbook.content.wip.CreateEvacuationWorkbook
     val observed = List(EvacuationNeighbourhood.Four, EvacuationNeighbourhood.Eight).map { neighbours =>
       val player = controller
       player.prepare(EvacuationExperiment(CreateEvacuationWorkbook.diagonalRoom, EvacuationSettings(neighbours)))

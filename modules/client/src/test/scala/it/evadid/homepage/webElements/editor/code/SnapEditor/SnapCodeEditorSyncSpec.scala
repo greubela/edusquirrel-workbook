@@ -13,6 +13,7 @@ import org.scalajs.dom.html.Canvas
 
 class SnapCodeEditorSyncSpec extends FunSuite {
   private class RecordingImpl extends SnapCodeEditorImpl {
+    override def changeLanguage(language: it.evadid.core.datastructures.language.AppLanguage.HumanLanguage): Unit = ()
     var listener: String => Unit = _ => ()
     var current: Option[ProgrammingStateSnapXml] = None
     var mounts = 0

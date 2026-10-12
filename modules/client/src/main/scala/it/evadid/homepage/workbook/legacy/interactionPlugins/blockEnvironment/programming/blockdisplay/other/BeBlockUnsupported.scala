@@ -10,7 +10,7 @@ import todomove.webElementsOld.webElements.svg.shapes.composite.ShapeAroundShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowDirected
 import todomove.webElementsOld.webElements.svg.shapes.datatypes.RectangleShape
 
-case class BeBlockUnsupported(beExpressionUnsupported: BeExpressionUnsupported) extends BeBlockSingleShape {
+case class BeBlockUnsupported(beExpressionUnsupported: BeExpressionUnsupported) extends BeBlockSingleShape derives upickle.default.ReadWriter {
 
   override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
 

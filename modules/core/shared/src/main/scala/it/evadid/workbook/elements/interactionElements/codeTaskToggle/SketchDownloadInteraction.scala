@@ -5,19 +5,21 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class SketchDownloadInteraction(
                                       override val elementId: String,
                                       buttonLabel: LanguageMapContentId,
                                       filenameRelativeToWorkbookResources: String,
                                       sketchContent: String,
                                       unlockWhenReorderCorrect: String
-                                    ) extends WorkbookInteractionElement[String] {
+                                    ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
   override val associatedFactory = SketchDownloadInteraction.factory
 
   override val defaultValue: String = ""
 
-  override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
+  override val serializerInteractionContent: Serializer[String] = Serializer.fromUpickleJson(summon[ReadWriter[String]])
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 

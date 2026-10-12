@@ -1,46 +1,43 @@
 package it.evadid.distribution.command
 
-import it.evadid.core.util.io.TypeConverter
-import it.evadid.core.util.io.serializer.DefaultSerializer
-import it.evadid.distribution.command.ExecutionInfo.{ExecutionInfoTyped, ExecutionInfoUntyped}
-import it.evadid.distribution.command.ExecutionResult.ExecutionResultTyped
+import it.evadid.distribution.command.ExecutionInfo.ExecutionSuccess
+import upickle.default.*
 
 import java.time.LocalDateTime
 
-
-sealed trait ExecutionInfo {
+sealed trait ExecutionInfo[T] derives ReadWriter {
 
   val command: ExecutionCommand
-  val result: ExecutionResult
-  val history: ExecutionHistory
+  val resultOp: Option[T]
+  val historyOp: Option[ExecutionHistory]
 
-  def toJson: String = DefaultSerializer.serializerExecutionInfoJson.serialize(this.toUntyped)
+  def withFixedTime(timeRequested: LocalDateTime, timeReceived: LocalDateTime): ExecutionInfo[T]
 
-  def toTyped[O](converter: TypeConverter[Map[String, String], O]): ExecutionInfoTyped[O] = ExecutionInfoTyped(command, result, history, result.toTyped(converter))
-
-  def toTyped[O](converter: Map[String, String] => O): ExecutionInfoTyped[O] = ExecutionInfoTyped[O](command, result, history, result.toTyped(converter))
-
-  def toUntyped: ExecutionInfoUntyped = ExecutionInfoUntyped(command, result, history)
-
-  def withFixedTime(timeRequested: LocalDateTime, timeReceived: LocalDateTime): ExecutionInfoUntyped = ExecutionInfoUntyped(command, result, history.withFixedTime(timeRequested, timeReceived))
+  def successOrThrow(): ExecutionSuccess[T]
 }
 
 object ExecutionInfo {
 
-  def fromJson(json: String): ExecutionInfo = DefaultSerializer.serializerExecutionInfoJson.deserialize(json)
+  case class ExecutionSuccess[T](command: ExecutionCommand, history: ExecutionHistory, result: T) extends ExecutionInfo[T] derives upickle.default.ReadWriter {
+    override val resultOp: Option[T] = Some(result)
+    override val historyOp: Option[ExecutionHistory] = Some(history)
 
-  case class ExecutionInfoUntyped(command: ExecutionCommand, result: ExecutionResult, history: ExecutionHistory) extends ExecutionInfo{
-    override val toUntyped: ExecutionInfoUntyped = this
+    override def withFixedTime(timeRequested: LocalDateTime, timeReceived: LocalDateTime): ExecutionInfo[T] = this.copy(history = history.withFixedTime(timeRequested, timeReceived))
+
+    override def successOrThrow(): ExecutionSuccess[T] = this
   }
 
-  case class ExecutionInfoTyped[T](command: ExecutionCommand, result: ExecutionResult, history: ExecutionHistory, resultTyped: ExecutionResultTyped[T]) extends ExecutionInfo {
-  }
-
-  case class ExecutionFailure(command: ExecutionCommand, historyOp: Option[ExecutionHistory], error: SerializedException) extends Throwable(s"Command ${command.name} failed with error: ${error.msg}") {
+  case class ExecutionFailure[T](command: ExecutionCommand, historyOp: Option[ExecutionHistory], error: SerializedException) extends ExecutionInfo[T] derives upickle.default.ReadWriter {
     override val toString: String = s"ExecutionFailure(command=${command.name}, error=${error.msg}, history=${historyOp.map(_.toString).getOrElse("None")}"
+    override val resultOp: Option[T] = None
+
+    override def withFixedTime(timeRequested: LocalDateTime, timeReceived: LocalDateTime): ExecutionInfo[T] = this.copy(historyOp = historyOp.map(curHistory => curHistory.withFixedTime(timeRequested, timeReceived)))
+
+    override def successOrThrow(): ExecutionSuccess[T] = throw error
   }
 
 }
+
 /*
 
 sealed trait ExecutionInfo2 {

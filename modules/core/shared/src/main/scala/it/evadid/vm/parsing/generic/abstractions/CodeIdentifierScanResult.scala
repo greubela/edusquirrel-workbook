@@ -7,18 +7,18 @@ case class CodeIdentifierScanResult[RI <: GenericAST, RC <: GenericAST, RF <: Ge
                                                                                                              identifiedClasses: List[RecognizedClass[RC, RF, RV]],
                                                                                                              identifiedFunction: List[RecognizedFunction[RF, RV]],
                                                                                                              identifiedVariables: List[RecognizedVariables[RV]],
-                                                                                                           ) {
+                                                                                                           ) derives upickle.default.ReadWriter {
 }
 
 object CodeIdentifierScanResult {
 
-  case class RecognizedImport[RI <: GenericAST](importIdentifier: String, ast: RI)
+  case class RecognizedImport[RI <: GenericAST](importIdentifier: String, ast: RI) derives upickle.default.ReadWriter
 
-  case class RecognizedClass[RC <: GenericAST, RF <: GenericAST, RV <: GenericAST](classIdentifier: String, methodIdentifier: List[RecognizedFunction[RF, RV]], attributeIdentifier: List[RecognizedVariables[RV]], ast: RC)
+  case class RecognizedClass[RC <: GenericAST, RF <: GenericAST, RV <: GenericAST](classIdentifier: String, methodIdentifier: List[RecognizedFunction[RF, RV]], attributeIdentifier: List[RecognizedVariables[RV]], ast: RC) derives upickle.default.ReadWriter
 
-  case class RecognizedFunction[RF <: GenericAST, RV <: GenericAST](functionIdentifier: String, parameterIdentifier: List[RecognizedVariables[RV]], returnTypeString: Option[String], ast: RF)
+  case class RecognizedFunction[RF <: GenericAST, RV <: GenericAST](functionIdentifier: String, parameterIdentifier: List[RecognizedVariables[RV]], returnTypeString: Option[String], ast: RF) derives upickle.default.ReadWriter
 
-  case class RecognizedVariables[RV <: GenericAST](functionIdentifier: String, variableTypeString: Option[String], variableValueString: Option[String], ast: RV)
+  case class RecognizedVariables[RV <: GenericAST](functionIdentifier: String, variableTypeString: Option[String], variableValueString: Option[String], ast: RV) derives upickle.default.ReadWriter
 
 }
 

@@ -2,7 +2,7 @@ package it.evadid.workbook.elements.interactionElements.emailSimulator
 
 import upickle.default.*
 
-case class MailSortingResult(total: Int, sorted: Int, correct: Int) {
+case class MailSortingResult(total: Int, sorted: Int, correct: Int) derives upickle.default.ReadWriter {
   def completed: Boolean = total > 0 && sorted == total
   def passed: Boolean = completed && correct == total
 }

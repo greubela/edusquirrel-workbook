@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.shapes.{BeShapeDecoration, ShapeFactory}
 
-case class CommandShape() extends BeShapePathBased {
+case class CommandShape() extends BeShapePathBased derives upickle.default.ReadWriter {
 
   override protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = ShapeFactory.buildCommandShape(bounds, config.controlSegmentSize)
 

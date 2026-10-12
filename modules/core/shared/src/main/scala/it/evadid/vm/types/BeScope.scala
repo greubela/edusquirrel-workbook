@@ -12,19 +12,19 @@ sealed trait BeScope derives ReadWriter{
 
 object BeScope {
 
-  case class GlobalScope() extends BeScope {
+  case class GlobalScope() extends BeScope derives upickle.default.ReadWriter {
     def parentScopes: List[BeScope] = List()
   }
 
-  case class InFunctionScope(funcDef: BeDefineFunction, parentScope: BeScope) extends BeScope {
+  case class InFunctionScope(funcDef: BeDefineFunction, parentScope: BeScope) extends BeScope derives upickle.default.ReadWriter {
     def parentScopes: List[BeScope] = parentScope :: parentScope.parentScopes
   }
 
-  case class InClassScope(classDef: BeDefineClass, parentScope: BeScope) extends BeScope {
+  case class InClassScope(classDef: BeDefineClass, parentScope: BeScope) extends BeScope derives upickle.default.ReadWriter {
     def parentScopes: List[BeScope] = parentScope :: parentScope.parentScopes
   }
 
-  case class InSequenceScope(seq: BeSequence, parentScope: BeScope) extends BeScope {
+  case class InSequenceScope(seq: BeSequence, parentScope: BeScope) extends BeScope derives upickle.default.ReadWriter {
     def parentScopes: List[BeScope] = parentScope :: parentScope.parentScopes
   }
 

@@ -4,4 +4,4 @@ import it.evadid.core.datastructures.graph.{Positionable}
 import it.evadid.evacuation.core.datastructures.graphs.{Position}
 
 
-case class GraphObjectSelectorState[E <: Positionable](curMousePos: Option[Position], curHighlightDest: Seq[E], curSelected: Seq[E])
+case class GraphObjectSelectorState[E <: Positionable](curMousePos: Option[Position], curHighlightDest: Seq[E], curSelected: Seq[E]) derives upickle.default.ReadWriter

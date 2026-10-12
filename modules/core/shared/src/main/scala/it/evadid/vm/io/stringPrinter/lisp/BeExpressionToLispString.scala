@@ -10,7 +10,7 @@ import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.NamingStyle.SnakeCase
 import it.evadid.vm.types.{BeDataValueLiteral, BeDataValueUnit, BeUseValueReference}
 
-case class BeExpressionToLispString(language: HumanLanguage, skipUnparsable: Boolean) {
+case class BeExpressionToLispString(language: HumanLanguage, skipUnparsable: Boolean) derives upickle.default.ReadWriter {
   def forExpression(expression: BeExpression): String = render(expression, 0)
 
   private def name(entityName: it.evadid.vm.naming.BeEntityName): String = entityName.getNameIn(language, SnakeCase)

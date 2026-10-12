@@ -6,13 +6,14 @@ import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class ChoiceAnswer(selected: List[Int] = Nil) derives ReadWriter {
   require(selected.forall(_ >= 0) && selected.distinct == selected, "Selections must be unique nonnegative indices")
 }
 
 /** expected=None is an opinion/reflection question, with no invented correct answer. */
 case class ChoiceInteraction(elementId: String, prompt: LanguageMapContentId, options: List[LanguageMapContentId],
-    allowMultiple: Boolean = false, expected: Option[List[Int]] = None) extends WorkbookInteractionElement[ChoiceAnswer] {
+    allowMultiple: Boolean = false, expected: Option[List[Int]] = None) extends WorkbookInteractionElement[ChoiceAnswer] derives upickle.default.ReadWriter {
   require(options.nonEmpty && options.distinct == options, "Provide distinct choices")
   require(expected.forall(xs => xs.nonEmpty && xs.distinct == xs && xs.forall(i => i >= 0 && i < options.size)
     && (allowMultiple || xs.size == 1)), "Invalid expected selection")

@@ -318,7 +318,7 @@ final class JavaFunctionBasedEditor(
 }
 
 object JavaFunctionBasedEditor {
-  private enum DialogMode {
+  private enum DialogMode derives upickle.default.ReadWriter {
     case AddClass, AddFunction
   }
 
@@ -329,9 +329,9 @@ object JavaFunctionBasedEditor {
       parameters: String,
       start: Int,
       end: Int
-  )
+  ) derives upickle.default.ReadWriter
 
-  private[code] final case class JavaClass(name: String, bodyStart: Int, bodyEnd: Int, functions: List[JavaFunction])
+  private[code] final case class JavaClass(name: String, bodyStart: Int, bodyEnd: Int, functions: List[JavaFunction]) derives upickle.default.ReadWriter
 
   private val classDeclaration = """\bclass\s+([A-Za-z_$][A-Za-z0-9_$]*)""".r
   private val functionHeader =

@@ -137,4 +137,20 @@ class WorkbookSerializerSpec extends FunSuite {
     }
   }
 
+  test("workbooks discover interactions inside sections, exercise containers and display wrappers") {
+    import it.evadid.workbook.elements.structureElements.{ExerciseContainer, WorkbookSection}
+    import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
+    import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement
+    import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, WorkbookLabel}
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+    val answer = TextInteraction("saved-answer")
+    val wrapped = LabeledWorkbookElement("label", answer, WorkbookLabel(LanguageMapContentId("serializer/goal"), GoalLabel))
+    val container = ExerciseContainer("exercise", LanguageMapContentId("serializer/exercise"), List(wrapped))
+    val section = WorkbookSection("section", WorkbookSectionMetadata(LanguageMapContentId("serializer/section")), List(container))
+    val populated = workbook.copy(sections = List(section))
+    assertEquals(populated.allInteractionsInThisInstance.map(_.elementId), List(answer.elementId))
+    assertEquals(populated.allContainedInteractionsById.keySet, Set(answer.elementId))
+    assert(populated.allContainedInteractionsById(answer.elementId) eq answer)
+  }
+
 }

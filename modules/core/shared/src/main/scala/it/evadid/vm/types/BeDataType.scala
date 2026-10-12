@@ -144,7 +144,7 @@ object BeDataType {
   lazy val allAtomic = namedAtomicTypes.map(_._2)
 
 
-  case class BeSerializableAtomicType(name: String) extends AutoSerializableSubType[BeDataTypeAtomic, BeSerializableAtomicType] {
+  case class BeSerializableAtomicType(name: String) extends AutoSerializableSubType[BeDataTypeAtomic, BeSerializableAtomicType] derives upickle.default.ReadWriter {
     lazy val toTypedMainType: BeDataTypeAtomic =
       namedAtomicTypes.find(_._1 == name).map(_._2)
         // Earlier atomic representations used the same class name for every
@@ -185,6 +185,10 @@ object BeDataType {
     }
 
     def isValidLiteral(valueStr: String): Boolean = pIsValidLiteral(valueStr)
+  }
+
+  object BeDataTypeAtomic {
+    given ReadWriter[BeDataTypeAtomic] = rwAtom
   }
 
 

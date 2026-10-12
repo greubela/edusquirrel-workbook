@@ -13,7 +13,7 @@ class WorkbookDisplayCompositionSpec extends FunSuite {
     val group = ExerciseGroup("group", List(panel))
     assertEquals(panel.childrenOfThisElement, List(left, right))
     assertEquals(group.allChildrenFullSubtree, List(panel, left, right))
-    assertEquals(group.allContainedInteractions, List(left, right))
+    assertEquals(group.allInteractionsInThisInstance, List(left, right))
     assertEquals(TwoColumnPanel.factory.idsRequiredForDeserialization(panel.toSerialized), Set("left", "right"))
     assertEquals(ExerciseGroup.factory.idsRequiredForDeserialization(group.toSerialized), Set("columns"))
   }
@@ -21,7 +21,7 @@ class WorkbookDisplayCompositionSpec extends FunSuite {
   test("an empty exercise group has no children or serialization dependencies") {
     val group = ExerciseGroup("empty", Nil)
     assertEquals(group.allChildrenFullSubtree, Nil)
-    assertEquals(group.allContainedInteractions, Nil)
+    assertEquals(group.allInteractionsInThisInstance, Nil)
     assertEquals(ExerciseGroup.factory.idsRequiredForDeserialization(group.toSerialized), Set.empty[String])
   }
 }

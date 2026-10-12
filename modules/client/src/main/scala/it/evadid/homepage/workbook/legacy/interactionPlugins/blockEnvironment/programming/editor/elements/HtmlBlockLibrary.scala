@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 
 
-case class HtmlBlockLibrary() {
+case class HtmlBlockLibrary() derives upickle.default.ReadWriter {
 
 
 }

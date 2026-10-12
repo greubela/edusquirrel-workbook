@@ -9,6 +9,7 @@ for (const name of candidates) {
   const source = await readFile(new URL(name, import.meta.url), 'utf8');
   if (!source.includes("from 'playwright'")) files.push(`tools/dev/${name}`);
 }
-const result = spawnSync(process.execPath, ['--test', '--test-isolation=none', ...files], {stdio: 'inherit'});
+// Node 22 exposes isolation under its experimental name; Node 24 retains this alias.
+const result = spawnSync(process.execPath, ['--test', '--experimental-test-isolation=none', ...files], {stdio: 'inherit'});
 if (result.error) throw result.error;
 process.exitCode = result.status ?? 1;

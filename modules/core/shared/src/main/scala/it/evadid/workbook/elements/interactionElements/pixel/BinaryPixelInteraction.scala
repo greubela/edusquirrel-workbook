@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.pixel
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
@@ -18,7 +19,7 @@ case class PixelPreset(label: LanguageMapContentId, image: BinaryPixelImage) der
 
 case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId, initial: BinaryPixelImage,
     expected: Option[BinaryPixelImage] = None, probes: List[PixelThresholdProbe] = Nil, presets: List[PixelPreset] = Nil)
-    extends WorkbookInteractionElement[BinaryPixelImage] {
+    extends WorkbookInteractionElement[BinaryPixelImage] derives upickle.default.ReadWriter {
   require(expected.forall(initial.sameDimensions) && presets.forall(p => initial.sameDimensions(p.image)),
     "Targets and presets must match the canvas dimensions")
   probes.foreach(_.cells.foreach(initial.index))

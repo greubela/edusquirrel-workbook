@@ -17,7 +17,7 @@ import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.*
-import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structureElements.{ExerciseContainer, ExerciseGroup, Workbook, WorkbookSection}
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailEditor, MailInteraction}
 import upickle.default
 import upickle.default.*

@@ -274,4 +274,132 @@ object SvgPathBuilderCommand {
     def toAbsoluteCommand(start: Point[T]): AbsoluteCommand[T] = AddControlLinesCommand(start, Nil)
   }
 
+
+  object AddControlLinesCommand {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[AddControlLinesCommand[T]] =
+    upickle.default.readwriter[(Point[T], List[Point[T]])].bimap(value => (value.predecessorPos, value.controlPointsAbsolute), value => AddControlLinesCommand[T](value._1, value._2))
+  }
+
+  object ArcAbs {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[ArcAbs[T]] =
+    upickle.default.readwriter[(T, T, T, Boolean, Boolean, Point[T])].bimap(value => (value.rx, value.ry, value.xAxisRotationDeg, value.largeArc, value.sweep, value.end), value => ArcAbs[T](value._1, value._2, value._3, value._4, value._5, value._6))
+  }
+
+  object ArcRel {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[ArcRel[T]] =
+    upickle.default.readwriter[(T, T, T, Boolean, Boolean, Dimension[T])].bimap(value => (value.rx, value.ry, value.xAxisRotationDeg, value.largeArc, value.sweep, value.d), value => ArcRel[T](value._1, value._2, value._3, value._4, value._5, value._6))
+  }
+
+  object CenteredCircleControl {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[CenteredCircleControl[T]] =
+    upickle.default.readwriter[T].bimap(value => value.radius, value => CenteredCircleControl[T](value))
+  }
+
+  object ClosePath {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[ClosePath[T]] =
+    upickle.default.readwriter[Unit].bimap(value => (), _ => ClosePath[T]())
+  }
+
+  object CubicAbs {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[CubicAbs[T]] =
+    upickle.default.readwriter[(Point[T], Point[T], Point[T])].bimap(value => (value.cp1, value.cp2, value.end), value => CubicAbs[T](value._1, value._2, value._3))
+  }
+
+  object CubicRel {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[CubicRel[T]] =
+    upickle.default.readwriter[(Dimension[T], Dimension[T], Dimension[T])].bimap(value => (value.cp1, value.cp2, value.end), value => CubicRel[T](value._1, value._2, value._3))
+  }
+
+  object HorizontalRel {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[HorizontalRel[T]] =
+    upickle.default.readwriter[T].bimap(value => value.w, value => HorizontalRel[T](value))
+  }
+
+  object LineAbs {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[LineAbs[T]] =
+    upickle.default.readwriter[Point[T]].bimap(value => value.p, value => LineAbs[T](value))
+  }
+
+  object LineRel {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[LineRel[T]] =
+    upickle.default.readwriter[Dimension[T]].bimap(value => value.d, value => LineRel[T](value))
+  }
+
+  object MoveAbs {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[MoveAbs[T]] =
+    upickle.default.readwriter[Point[T]].bimap(value => value.p, value => MoveAbs[T](value))
+  }
+
+  object MoveRel {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[MoveRel[T]] =
+    upickle.default.readwriter[Dimension[T]].bimap(value => value.d, value => MoveRel[T](value))
+  }
+
+  object QuadAbs {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[QuadAbs[T]] =
+    upickle.default.readwriter[(Point[T], Point[T])].bimap(value => (value.cp, value.end), value => QuadAbs[T](value._1, value._2))
+  }
+
+  object QuadRel {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[QuadRel[T]] =
+    upickle.default.readwriter[(Dimension[T], Dimension[T])].bimap(value => (value.cp, value.end), value => QuadRel[T](value._1, value._2))
+  }
+
+  object RawAppend {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[RawAppend[T]] =
+    upickle.default.readwriter[String].bimap(value => value.chunk, value => RawAppend[T](value))
+  }
+
+  object StartPathCommand {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[StartPathCommand[T]] =
+    upickle.default.readwriter[Point[T]].bimap(value => value.absoluteStartPos, value => StartPathCommand[T](value))
+  }
+
+  object VerticalRel {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[VerticalRel[T]] =
+    upickle.default.readwriter[T].bimap(value => value.h, value => VerticalRel[T](value))
+  }
+
+  private case class StoredCommand(kind: String, payload: ujson.Value) derives upickle.default.ReadWriter
+
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[SvgPathBuilderCommand[T]] =
+    upickle.default.readwriter[StoredCommand].bimap(
+      command => command match {
+        case value: AddControlLinesCommand[T] => StoredCommand("AddControlLinesCommand", upickle.default.writeJs(value))
+        case value: MoveAbs[T] => StoredCommand("MoveAbs", upickle.default.writeJs(value))
+        case value: MoveRel[T] => StoredCommand("MoveRel", upickle.default.writeJs(value))
+        case value: ClosePath[T] => StoredCommand("ClosePath", upickle.default.writeJs(value))
+        case value: LineAbs[T] => StoredCommand("LineAbs", upickle.default.writeJs(value))
+        case value: LineRel[T] => StoredCommand("LineRel", upickle.default.writeJs(value))
+        case value: HorizontalRel[T] => StoredCommand("HorizontalRel", upickle.default.writeJs(value))
+        case value: VerticalRel[T] => StoredCommand("VerticalRel", upickle.default.writeJs(value))
+        case value: CubicAbs[T] => StoredCommand("CubicAbs", upickle.default.writeJs(value))
+        case value: CubicRel[T] => StoredCommand("CubicRel", upickle.default.writeJs(value))
+        case value: QuadAbs[T] => StoredCommand("QuadAbs", upickle.default.writeJs(value))
+        case value: QuadRel[T] => StoredCommand("QuadRel", upickle.default.writeJs(value))
+        case value: ArcAbs[T] => StoredCommand("ArcAbs", upickle.default.writeJs(value))
+        case value: ArcRel[T] => StoredCommand("ArcRel", upickle.default.writeJs(value))
+        case value: CenteredCircleControl[T] => StoredCommand("CenteredCircleControl", upickle.default.writeJs(value))
+        case value: RawAppend[T] => StoredCommand("RawAppend", upickle.default.writeJs(value))
+        case other => throw new IllegalArgumentException(s"Unsupported SVG command: ${other.getClass.getName}")
+      },
+      stored => stored.kind match {
+        case "AddControlLinesCommand" => upickle.default.read[AddControlLinesCommand[T]](stored.payload)
+        case "MoveAbs" => upickle.default.read[MoveAbs[T]](stored.payload)
+        case "MoveRel" => upickle.default.read[MoveRel[T]](stored.payload)
+        case "ClosePath" => upickle.default.read[ClosePath[T]](stored.payload)
+        case "LineAbs" => upickle.default.read[LineAbs[T]](stored.payload)
+        case "LineRel" => upickle.default.read[LineRel[T]](stored.payload)
+        case "HorizontalRel" => upickle.default.read[HorizontalRel[T]](stored.payload)
+        case "VerticalRel" => upickle.default.read[VerticalRel[T]](stored.payload)
+        case "CubicAbs" => upickle.default.read[CubicAbs[T]](stored.payload)
+        case "CubicRel" => upickle.default.read[CubicRel[T]](stored.payload)
+        case "QuadAbs" => upickle.default.read[QuadAbs[T]](stored.payload)
+        case "QuadRel" => upickle.default.read[QuadRel[T]](stored.payload)
+        case "ArcAbs" => upickle.default.read[ArcAbs[T]](stored.payload)
+        case "ArcRel" => upickle.default.read[ArcRel[T]](stored.payload)
+        case "CenteredCircleControl" => upickle.default.read[CenteredCircleControl[T]](stored.payload)
+        case "RawAppend" => upickle.default.read[RawAppend[T]](stored.payload)
+        case other => throw new IllegalArgumentException(s"Unknown SVG command: $other")
+      })
 }

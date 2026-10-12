@@ -7,7 +7,7 @@ import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElemen
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 
-sealed trait WorkbookImageElement extends WorkbookDisplayElement
+sealed trait WorkbookImageElement extends WorkbookDisplayElement derives upickle.default.ReadWriter
 
 object WorkbookImageElement {
 
@@ -43,7 +43,7 @@ object WorkbookImageElement {
                                                    howToResolveUrl: URL_TYPE,
                                                    description: Option[LanguageMapContentId] = None,
                                                    copyright: Option[CopyrightInfo] = None
-                                                 ) extends WorkbookImageElement {
+                                                 ) extends WorkbookImageElement derives upickle.default.ReadWriter {
     override val associatedFactory: WorkbookElementFactory[LanguageMapBasedWorkbookImageElement] = LanguageMapBasedWorkbookImageElement.factory
   }
 

@@ -5,7 +5,7 @@ import test from 'node:test';
 
 const root = path.resolve(import.meta.dirname, '../..');
 test('evacuation tasks are translated in both languages and preserve source quotation costs', async () => {
-  const source = await readFile(path.join(root, 'modules/client/src/main/scala/it/evadid/homepage/workbook/content/CreateEvacuationWorkbook.scala'), 'utf8');
+  const source = await readFile(path.join(root, 'modules/client/src/main/scala/it/evadid/homepage/workbook/content/wip/CreateEvacuationWorkbook.scala'), 'utf8');
   const keys = [...source.matchAll(/"digitalWorkbooks\/(evacuation\w+)"/g)].map(match => match[1]);
   const costs = {Training:8000, MoveAssembly:1500, AddAssembly:2000, WidenDoor:14000,
     RemoveObstacles:4000, HalfPeople:18000, AddObstacles:2000, Custom:18000};

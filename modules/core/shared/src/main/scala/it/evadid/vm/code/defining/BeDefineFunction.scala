@@ -22,7 +22,7 @@ case class BeDefineFunction(
                              outputs: Option[BeDefineVariable],
                              body: BeSequence,
                              functionTypeInfo: BeFunctionTypeInfo
-                           ) extends BeDefineStructure{
+                           ) extends BeDefineStructure derives upickle.default.ReadWriter{
 
   /*
   toSnapPattern
@@ -98,13 +98,13 @@ object BeDefineFunction {
 
   sealed trait BeFunctionType derives ReadWriter
 
-  case class Lambda() extends BeFunctionType
+  case class Lambda() extends BeFunctionType derives upickle.default.ReadWriter
 
-  case class Method() extends BeFunctionType
+  case class Method() extends BeFunctionType derives upickle.default.ReadWriter
 
-  case class Function() extends BeFunctionType
+  case class Function() extends BeFunctionType derives upickle.default.ReadWriter
 
-  case class Operator(nameBeforeChildNr: Int) extends BeFunctionType
+  case class Operator(nameBeforeChildNr: Int) extends BeFunctionType derives upickle.default.ReadWriter
 
   def methodFunctionInfo(methodInClass: BeDefineClass, name: BeEntityName): BeFunctionTypeInfo = {
     BeFunctionTypeInfo(Some(methodInClass), Some(name), Method())

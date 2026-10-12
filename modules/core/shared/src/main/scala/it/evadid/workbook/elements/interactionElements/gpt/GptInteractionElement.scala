@@ -1,7 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
 import it.evadid.core.datastructures.chat.SenderRole.USER
-import it.evadid.core.datastructures.chat.{MessengerModel, Person}
+import it.evadid.core.datastructures.chat.{MessengerModel, ChatParticipant}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
@@ -53,7 +53,7 @@ case class GptInteractionElement(
                                   exerciseText: LanguageMapContentId,
                                   scaffoldingHints: List[LanguageMapContentId],
                                   gradingCriteria: List[LanguageMapContentId]
-                                ) extends WorkbookDisplayElement {
+                                ) extends WorkbookDisplayElement derives upickle.default.ReadWriter {
   override val associatedFactory = GptInteractionElement.factory
   println("[WARN] creating messaging interaction for id '" + elementId + "' with no grading!")
 
@@ -66,7 +66,7 @@ case class GptInteractionElement(
 
   private given ExecutionContext = ExecutionContext.global
 
-  def initScaffoldingIfEmpty(curUser: Person, syncControl: SyncControl, resolver: LanguageMapIdResolver): Future[Boolean] = {
+  def initScaffoldingIfEmpty(curUser: ChatParticipant, syncControl: SyncControl, resolver: LanguageMapIdResolver): Future[Boolean] = {
     val curMessages = scaffoldingInteraction.interactionVariable.currentValue.messengerModel.orderedMessages
     if (curMessages.nonEmpty) Future.successful(curMessages.last.author.role == USER)
     val res = Promise[Unit]()
@@ -80,7 +80,7 @@ case class GptInteractionElement(
     }
   }
 
-  def initScaffoldingIfEmpty(curUser: Person, syncControl: SyncControl, resolvedIds: Map[LanguageMapContentId, String], resolvedLanguage: HumanLanguage): Boolean =
+  def initScaffoldingIfEmpty(curUser: ChatParticipant, syncControl: SyncControl, resolvedIds: Map[LanguageMapContentId, String], resolvedLanguage: HumanLanguage): Boolean =
     if (scaffoldingInteraction.interactionVariable.currentValue.messengerModel.orderedMessages.nonEmpty) false else {
       //logger.logInfo("GptInteractionElement has resolved the following ids: " + resolvedIds.keys.mkString(", "))
 

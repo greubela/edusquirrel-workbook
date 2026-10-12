@@ -2,7 +2,6 @@ package it.evadid.server.commandHandler.sql
 
 import it.evadid.server.commandHandler.sql.sync.RichDatabaseEntry
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.SyncFormatter.RichInteractionVariableFormatter
 import it.evadid.workbook.interaction.sync.UsageContext
 
 import java.sql.*
@@ -44,13 +43,13 @@ private[sql] case class GenericSqlFunctionality(
 
   def parseDatabaseTimestamp(databaseTimestampString: String): LocalDateTime = {
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-    val localDateTime: LocalDateTime = LocalDateTime.parse(databaseTimestampString, formatter)
+    val localDateTime: LocalDateTime = LocalDateTime.parse(databaseTimestampString)
     localDateTime
   }
 
-  def executeSyncQuere(preparedStatement: PreparedStatement, fieldsToRead: List[String], usageContext: UsageContext, formatter: RichInteractionVariableFormatter): List[RichDatabaseEntry] = {
+  def executeSyncQuere(preparedStatement: PreparedStatement, fieldsToRead: List[String], usageContext: UsageContext): List[RichDatabaseEntry] = {
     val asList = executeQuery(preparedStatement, fieldsToRead)
-    convertAll(asList, tup => RichDatabaseEntry(usageContext, formatter, tup))
+    convertAll(asList, tup => RichDatabaseEntry(usageContext, tup))
   }
 
   private def readOne(resultSet: ResultSet, fields: List[String]): Option[List[String]] = try {

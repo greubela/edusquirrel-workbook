@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCo
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.workbook.elements.interactionElements.programming.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXMLWithAdditionalFloatingObjects, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateBeExpression
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingStateSnapXmlHelper, SnapTurtlePythonBridge}
 import upickle.default.*
@@ -24,15 +24,13 @@ sealed trait ProgrammingState derives ReadWriter {
   def fingerprint(): String = this match
     case ProgrammingStateBeExpression(expression) => s"expression:${expression.toString}"
     case ProgrammingStateSnapXml(xml) => s"snap:$xml"
-    case ProgrammingStateSnapXMLWithAdditionalFloatingObjects(xml, objects) =>
-      s"snap-floating:$xml\u0000${objects.mkString("\u0000")}"
     case ProgrammingStatePythonString(code) => s"python:$code"
     case ProgrammingStateJavaString(code) => s"java:$code"
 }
 
 object ProgrammingState {
 
-  final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState {
+  final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState derives upickle.default.ReadWriter {
     override def toBeExpressionState: ProgrammingStateBeExpression = this
 
     override def toSnapXml: ProgrammingStateSnapXml = ProgrammingStateSnapXmlHelper.fromProgram(BeProgram(expression))
@@ -53,7 +51,7 @@ object ProgrammingState {
 
   object ProgrammingState {
 
-    final case class ProgrammingStateSnapXml(val snapXml: String) extends ProgrammingState {
+    final case class ProgrammingStateSnapXml(val snapXml: String) extends ProgrammingState derives upickle.default.ReadWriter {
       /** Drop regenerated preview/pen images without changing scripts or authored costumes. */
       def removeBloatFromXml: ProgrammingStateSnapXml = {
         val cleaned = ProgrammingStateSnapXmlHelper.removeGeneratedImages(snapXml)
@@ -72,10 +70,10 @@ object ProgrammingState {
       override val toString: String = s"ProgrammingStateSnapXml(${snapXml.toString.take(300)})"
     }
 
-    final case class ProgrammingStateSnapXMLWithAdditionalFloatingObjects(
+  /*  final case class ProgrammingStateSnapXMLWithAdditionalFloatingObjects(
                                                                            val snapXml: String,
                                                                            additionalFloatingObjects: List[String]
-                                                                         ) extends ProgrammingState {
+                                                                         ) extends ProgrammingState derives upickle.default.ReadWriter {
       override def toBeExpressionState: ProgrammingStateBeExpression = ProgrammingStateSnapXml(snapXml).toBeExpressionState
 
       override def toSnapXml: ProgrammingStateSnapXml = ProgrammingStateSnapXml(snapXml)
@@ -84,9 +82,9 @@ object ProgrammingState {
 
       override def toJava: ProgrammingStateJavaString = toBeExpressionState.toJava
 
-    }
+    }*/
 
-    final case class ProgrammingStatePythonString(code: String) extends ProgrammingState {
+    final case class ProgrammingStatePythonString(code: String) extends ProgrammingState derives upickle.default.ReadWriter {
       override def toBeExpressionState: ProgrammingStateBeExpression =
         ProgrammingStateBeExpression(BeProgram.fromPythonString(code).fullProgram)
 
@@ -100,7 +98,7 @@ object ProgrammingState {
       override val toString: String = s"ProgrammingStatePythonString(${code.toString.take(300)})"
     }
 
-    final case class ProgrammingStateJavaString(code: String) extends ProgrammingState {
+    final case class ProgrammingStateJavaString(code: String) extends ProgrammingState derives upickle.default.ReadWriter {
       override def toBeExpressionState: ProgrammingStateBeExpression =
         ProgrammingStateBeExpression(JavaToBeExpressionParser.parse(code))
 

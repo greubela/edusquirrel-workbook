@@ -4,7 +4,7 @@ import it.evadid.core.util.io.Serializer
 import upickle.default.{ReadWriter, macroRW}
 
 /** State shared by single- and multiple-choice workbook interactions. */
-case class ChoiceSelectionState(selectedOptionIndices: List[Int]) {
+case class ChoiceSelectionState(selectedOptionIndices: List[Int]) derives upickle.default.ReadWriter {
   def sanitized(optionCount: Int, allowMultiple: Boolean): ChoiceSelectionState = {
     val valid = selectedOptionIndices.distinct.filter(index => index >= 0 && index < optionCount)
     ChoiceSelectionState(if allowMultiple then valid else valid.take(1))
@@ -25,6 +25,5 @@ case class ChoiceSelectionState(selectedOptionIndices: List[Int]) {
 }
 
 object ChoiceSelectionState {
-  private given ReadWriter[ChoiceSelectionState] = macroRW
   val serializer: Serializer[ChoiceSelectionState] = Serializer.fromUpickleJson(summon[ReadWriter[ChoiceSelectionState]])
 }

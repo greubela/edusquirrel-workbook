@@ -5,7 +5,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 
 object ProgrammingStateSnapXmlHelper {
 
-   def removeGeneratedImages(xml: String): String = {
+  def removeGeneratedImages(xml: String): String = {
     val removableTags = Set("pentrails", "pentrail", "thumbnail")
     val result = new StringBuilder
     var keptFrom = 0

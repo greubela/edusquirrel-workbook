@@ -19,7 +19,7 @@ object ExerciseContainer {
   }
 }
 
-case class ExerciseContainer(override val elementId: String, containerTitle: LanguageMapContentId, containerContent: List[WorkbookElement]) extends WorkbookStructureElement[WorkbookElement] {
+case class ExerciseContainer(override val elementId: String, containerTitle: LanguageMapContentId, containerContent: List[WorkbookElement]) extends WorkbookStructureElement[WorkbookElement] derives upickle.default.ReadWriter {
   override val associatedFactory = ExerciseContainer.factory
 
   override val groupElements: List[WorkbookElement] = containerContent

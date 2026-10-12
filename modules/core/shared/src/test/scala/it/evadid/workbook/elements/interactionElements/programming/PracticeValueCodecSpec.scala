@@ -6,11 +6,8 @@ import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDispl
 import it.evadid.vm.BeProgram
 import it.evadid.workbook.abstractions.WorkbookStructuringType
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.{NumberType, NumberInteractionConfig}
-import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
 import it.evadid.workbook.abstractions.grading.GradingStatus
 import it.evadid.workbook.elements.interactionElements.emailSimulator.MailDraft
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGradingResult
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStatePythonString, ProgrammingStateJavaString}
 import munit.FunSuite
 import upickle.default.*
 
@@ -36,18 +33,21 @@ class PracticeValueCodecSpec extends FunSuite {
       assert(write(level).contains(level.toString))
     }
   }
-  test("turtle grading results retain status, source state and grading entity") {
-    GradingStatus.values.foreach { status =>
-      val result = RecreateShapeGradingResult(ProgrammingStatePythonString("forward(10)\n"), status, None)
-      val restored = roundTrip(result)
-      assertEquals(restored.gradingEntity, TestEntity())
-      assertEquals(restored.gradedState.fingerprint(), result.gradedState.fingerprint())
+  test("grading status codecs preserve each refactored status variant") {
+    import GradingStatus.*
+    import it.evadid.distribution.command.SerializedException
+    val values: List[GradingStatus] = List(Correct(), PartiallyCorrect(), Incorrect(), NotExecuted(),
+      TestError(SerializedException(new IllegalArgumentException("fixture"))))
+    values.foreach { value =>
+      for (decoded <- List(read[GradingStatus](write(value)), readBinary[GradingStatus](writeBinary(value)))) {
+        assertEquals(decoded.getClass, value.getClass)
+        assertEquals(writeJs(decoded), writeJs(value))
+      }
     }
+    roundTrip(Correct())
+    roundTrip(Incorrect())
   }
-  test("turtle grading results preserve language feedback and Java source") {
-    val feedback = LanguageMap.universalMap[AppLanguage.HumanLanguage]("Try again: 学校")
-    roundTrip(RecreateShapeGradingResult(ProgrammingStateJavaString("forward(10);"), GradingStatus.INCORRECT, Some(feedback)))
-  }
+
   test("program containers preserve their expression tree and display") {
     val program = BeProgram.empty
     assertEquals(roundTrip(program).toString, program.toString)

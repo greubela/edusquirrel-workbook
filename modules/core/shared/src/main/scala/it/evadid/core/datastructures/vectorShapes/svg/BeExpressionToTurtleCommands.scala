@@ -32,7 +32,7 @@ object BeExpressionToTurtleCommands {
       env: Map[String, Double],
       defs: Map[String, BeDefineFunction],
       commands: List[TurtleCommand[Double]]
-  )
+  ) derives upickle.default.ReadWriter
 
   private object InterpState {
     def initial(expression: BeExpression): InterpState = {

@@ -251,6 +251,9 @@ case class TurtlePathBuilder[T : Fractional](
 }
 
 object TurtlePathBuilder {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[TurtlePathBuilder[T]] =
+    upickle.default.readwriter[(Point[T], TurtleState[T], List[TurtleCommand[T]], SvgPathBuilderImmutable[T], List[TurtleStyledSegment[T]], SvgPathBuilderImmutable[T])].bimap(value => (value.startPoint, value.turtleState, value.turtleCommands, value.svgPathBuilder, value.styledSegments, value.currentSegmentPath), value => TurtlePathBuilder[T](value._1, value._2, value._3, value._4, value._5, value._6))
+
 
   case class TurtleCommand[T : Fractional](name: String, args: Seq[T] = Nil, stringArgs: Seq[String] = Nil) {
 
@@ -275,7 +278,7 @@ object TurtlePathBuilder {
 
 
 
-  case class TurtlePenStyle[T](color: String, size: T)
+  case class TurtlePenStyle[T](color: String, size: T) derives upickle.default.ReadWriter
 
   case class TurtleStyledSegment[T: Fractional](pathBuilder: SvgPathBuilderImmutable[T], style: TurtlePenStyle[T])
 
@@ -293,6 +296,9 @@ object TurtlePathBuilder {
 
 
   object TurtleState {
+    given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[TurtleState[T]] =
+      upickle.default.readwriter[(T, T, T, Boolean, Boolean, String, T, String, T)].bimap(value => (value.x, value.y, value.headingDeg, value.penDown, value.visible, value.penColor, value.penSize, value.stitchMode, value.homeHeadingDeg), value => TurtleState[T](value._1, value._2, value._3, value._4, value._5, value._6, value._7, value._8, value._9))
+
     def initial[T: Fractional](
                                 x: T,
                                 y: T,
@@ -342,4 +348,9 @@ object TurtlePathBuilder {
     TurtlePathBuilder[T](start, TurtleState.initial(zero, zero, zero), List(), initialPath, Nil, initialPath)
   }
 
+
+  object TurtleStyledSegment {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[TurtleStyledSegment[T]] =
+    upickle.default.readwriter[(SvgPathBuilderImmutable[T], TurtlePenStyle[T])].bimap(value => (value.pathBuilder, value.style), value => TurtleStyledSegment[T](value._1, value._2))
+  }
 }

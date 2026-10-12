@@ -12,7 +12,7 @@ object QualityGate {
     passed: Boolean,
     reasons: Seq[String],
     finalText: String
-  )
+  ) derives upickle.default.ReadWriter
 
   /**
    * Maximum number of times the LLM is asked to rewrite its own response when

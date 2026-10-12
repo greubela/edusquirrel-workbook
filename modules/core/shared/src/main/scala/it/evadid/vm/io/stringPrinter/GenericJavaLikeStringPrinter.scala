@@ -19,12 +19,12 @@ abstract class GenericJavaLikeStringPrinter(
                                              sepLogic: SeparateStructures,
                                              skipUnparsable: Boolean
                                            ) {
-  private case class NameInfo(entityName: BeEntityName) {
+  private case class NameInfo(entityName: BeEntityName) derives upickle.default.ReadWriter {
     val inCurLanguage: String = entityName.getNameIn(humLang, sepLogic.preferedDisplayStyle)
     val associatedComment: String = s"${sepLogic.startSingleLineComment}EvaEntityName(${entityName.universalInterpretation()})"
   }
 
-  private case class TypeInfo(dataType: BeDataType) {
+  private case class TypeInfo(dataType: BeDataType) derives upickle.default.ReadWriter {
     val inCurLanguage: String = dataType.formatTypeForDisplay.getInLanguage(progLang)
   }
 
@@ -228,7 +228,7 @@ abstract class GenericJavaLikeStringPrinter(
 
 object GenericJavaLikeStringPrinter {
 
-  sealed trait SeparateStructures {
+  sealed trait SeparateStructures derives upickle.default.ReadWriter {
     def startBlockWith: String
 
     def endBlockWith: String
@@ -244,7 +244,7 @@ object GenericJavaLikeStringPrinter {
     def endLineWith: String
   }
 
-  case class JavaSeparation() extends SeparateStructures {
+  case class JavaSeparation() extends SeparateStructures derives upickle.default.ReadWriter {
 
     override def startBlockWith: String = "{"
 
@@ -262,7 +262,7 @@ object GenericJavaLikeStringPrinter {
     override def endLineWith: String = ";"
   }
 
-  case class JavaScriptSeparation() extends SeparateStructures {
+  case class JavaScriptSeparation() extends SeparateStructures derives upickle.default.ReadWriter {
     override def startBlockWith: String = "{"
     override def endBlockWith: String = "}"
     override def startSingleLineComment: String = "//"
@@ -272,7 +272,7 @@ object GenericJavaLikeStringPrinter {
     override def endLineWith: String = ";"
   }
 
-  case class PythonSeparation() extends SeparateStructures {
+  case class PythonSeparation() extends SeparateStructures derives upickle.default.ReadWriter {
 
     override def startBlockWith: String = ":"
 

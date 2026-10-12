@@ -72,6 +72,13 @@ object TurtleJsxGraphRenderer:
   /** A line segment used as the expected result of a turtle exercise. */
   final case class LineToRender[T: Fractional](start: Point[T], end: Point[T], jump: Boolean = false)
 
+  object LineToRender {
+    given [T: Fractional: ReadWriter]: ReadWriter[LineToRender[T]] =
+      upickle.default.readwriter[(Point[T], Point[T], Boolean)].bimap(
+        value => (value.start, value.end, value.jump),
+        value => LineToRender(value._1, value._2, value._3))
+  }
+
 
   enum LineResult derives ReadWriter:
     case Correct, Unexpected, Missing
@@ -82,7 +89,7 @@ object TurtleJsxGraphRenderer:
 
   final case class Scene(lines: List[RenderedLine], angles: List[RenderedAngle]) derives ReadWriter
 
-  private[turtleStitch] final case class AngleSector(first: Point[Double], last: Point[Double], degrees: Double)
+  private[turtleStitch] final case class AngleSector(first: Point[Double], last: Point[Double], degrees: Double) derives upickle.default.ReadWriter
 
   /** Rays point away from the vertex along both adjacent segments. Coordinates
     * are converted to JSXGraph here, and ordered to select the smaller sector.

@@ -16,7 +16,7 @@ import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeAmendFact
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.{ControlFlowProgramStarter, ControlFlowProgramStopper}
 
 case class BeBlockStarter(
-                         ) extends BeBlock {
+                         ) extends BeBlock derives upickle.default.ReadWriter {
 
   override def renderNested(
                              structure: TreeStructureContext[NodeBasedTreePosition, (BeExpressionNode, BeBlock)],

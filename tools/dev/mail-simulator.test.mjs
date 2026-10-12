@@ -146,7 +146,7 @@ test('mail simulator triages original messages, restores progress and composes o
     await folder('Inbox').click();
     await editor.getByRole('button',{name:'Check sorting',exact:true}).click();
     assert((await editor.locator('.mail-feedback').innerText()).includes('Sort all messages first'));
-    const dataFile=await fs.readFile(path.join(root,'modules/client/src/main/scala/it/evadid/homepage/workbook/content/PhishingMailboxData.scala'),'utf8');
+    const dataFile=await fs.readFile(path.join(root,'modules/client/src/main/scala/it/evadid/homepage/workbook/content/wip/PhishingMailboxData.scala'),'utf8');
     const originals=JSON.parse(dataFile.split('private val data = """')[1].split('"""')[0]);
     for (const original of originals.filter(m=>m.senderName!=='Postbank')) {
       await editor.locator('.mail-list-item').filter({hasText:original.subject}).click();

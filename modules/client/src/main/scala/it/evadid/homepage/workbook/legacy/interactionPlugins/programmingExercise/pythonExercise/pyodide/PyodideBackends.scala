@@ -13,7 +13,7 @@ object PyodideBackends {
       varName: String,
       jsTypeOf: String,
       stringRepresentation: String
-  )
+  ) derives upickle.default.ReadWriter
 
   trait SyncModuleBackend {
     def moduleName: String
@@ -52,6 +52,6 @@ object PyodideBackends {
                                         message: String,
                                         stdout: String,
                                         stderr: String
-                                      ) extends RuntimeException(message)
+                                      ) extends RuntimeException(message) derives upickle.default.ReadWriter
   
 }

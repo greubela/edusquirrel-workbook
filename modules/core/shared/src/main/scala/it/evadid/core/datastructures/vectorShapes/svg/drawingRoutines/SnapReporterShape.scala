@@ -23,3 +23,8 @@ case class SnapReporterShape[T: Fractional]() extends DrawingRoutineRelativeToMa
 
   override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }
+
+object SnapReporterShape {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[SnapReporterShape[T]] =
+    upickle.default.readwriter[Unit].bimap(value => (), _ => SnapReporterShape[T]())
+}

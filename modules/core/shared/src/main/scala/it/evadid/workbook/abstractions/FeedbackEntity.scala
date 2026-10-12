@@ -8,10 +8,10 @@ sealed trait FeedbackEntity derives ReadWriter {
 }
 
 object FeedbackEntity {
-  case class HumanEntity(user: User) extends FeedbackEntity
+  case class HumanEntity(user: User) extends FeedbackEntity derives upickle.default.ReadWriter
 
-  case class LlmEntity(fullChat: MessengerModel) extends FeedbackEntity
+  case class LlmEntity(fullChat: MessengerModel) extends FeedbackEntity derives upickle.default.ReadWriter
 
-  case class TestEntity() extends FeedbackEntity
+  case class TestEntity() extends FeedbackEntity derives upickle.default.ReadWriter
 
 }

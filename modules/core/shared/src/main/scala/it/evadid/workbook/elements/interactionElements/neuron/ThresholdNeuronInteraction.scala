@@ -6,6 +6,7 @@ import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class NeuronParameters(weights: List[Double], threshold: Double) derives ReadWriter {
   require(weights.nonEmpty && weights.forall(_.isFinite) && threshold.isFinite, "Neuron parameters must be finite")
   def weightedSum(inputs: List[Double]): Double = {
@@ -20,7 +21,7 @@ case class NeuronExample(label: LanguageMapContentId, inputs: List[Double], expe
   require(inputs.nonEmpty && inputs.forall(x => x == 0 || x == 1), "Worksheet inputs must be binary")
 }
 case class ThresholdNeuronInteraction(elementId: String, inputLabels: List[LanguageMapContentId], examples: List[NeuronExample],
-    initial: NeuronParameters) extends WorkbookInteractionElement[NeuronParameters] {
+    initial: NeuronParameters) extends WorkbookInteractionElement[NeuronParameters] derives upickle.default.ReadWriter {
   require(inputLabels.nonEmpty && inputLabels.size == initial.weights.size, "Labels must match weights")
   require(examples.nonEmpty && examples.forall(_.inputs.size == inputLabels.size), "Examples must match inputs")
   override lazy val childrenOfThisElement = Nil
