@@ -22,6 +22,7 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
   def pathPoints: List[Point[T]] = cornerPoints.toList
 
   private val cornerPoints = mutable.ListBuffer[Point[T]](absStartPoint)
+  private var subpathStart = absStartPoint
   private val controlLines = mutable.ListBuffer[ControlLine[T]]()
 
   // --- Helpers ---------------------------------------------------------------
@@ -43,6 +44,7 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
   }
 
   def moveToAbs(endPoint: Point[T]): this.type = {
+    subpathStart = endPoint
     cornerPoints += endPoint
     append(s" M ${pointStr(endPoint)}")
   }
@@ -55,7 +57,10 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
   // --- Z / z (closepath) -----------------------------------------------------
 
   /** Z: close path */
-  def closePath(): this.type = append(" Z")
+  def closePath(): this.type = {
+    cornerPoints += subpathStart
+    append(" Z")
+  }
 
   // --- L / l (lineto) --------------------------------------------------------
 
@@ -186,4 +191,28 @@ case class SvgPathBuilderMutable[T: Fractional](override val absStartPoint: Poin
     // so absolute points can be translated without parsing T values back from text.
     throw new UnsupportedOperationException("moveWholePath requires typed command storage in SvgPathBuilderMutable")
 
+}
+
+object SvgPathBuilderMutable {
+  private case class Snapshot[T](start: (T, T), path: String, corners: List[(T, T)],
+                                 subpathStart: (T, T), controls: List[((T, T), (T, T))]) derives upickle.default.ReadWriter
+
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[SvgPathBuilderMutable[T]] =
+    upickle.default.readwriter[Snapshot[T]].bimap(
+      builder => Snapshot((builder.absStartPoint.x, builder.absStartPoint.y), builder.toSvgPathD,
+        builder.cornerPoints.toList.map(p => (p.x, p.y)), (builder.subpathStart.x, builder.subpathStart.y),
+        builder.controlLines.toList.map(line => ((line.start.x, line.start.y), (line.end.x, line.end.y)))),
+      snapshot => {
+        require(snapshot.corners.nonEmpty, "SVG builder snapshot must contain its starting point")
+        val builder = SvgPathBuilderMutable(Point(snapshot.start._1, snapshot.start._2))
+        builder.pathD.clear()
+        builder.pathD.append(snapshot.path)
+        builder.cornerPoints.clear()
+        builder.cornerPoints ++= snapshot.corners.map(p => Point(p._1, p._2))
+        builder.subpathStart = Point(snapshot.subpathStart._1, snapshot.subpathStart._2)
+        builder.controlLines ++= snapshot.controls.map { (start, end) =>
+          builder.ControlLine(Point(start._1, start._2), Point(end._1, end._2))
+        }
+        builder
+      })
 }

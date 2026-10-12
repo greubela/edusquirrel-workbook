@@ -6,7 +6,7 @@ import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbook
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement
 
-case class HtmlLabeledWorkbookElementRenderer[T <: WorkbookElement](entry: LabeledWorkbookElement[T]) extends LineBasedRenderingFactory[LabeledWorkbookElement[T]] {
+case class HtmlLabeledWorkbookElementRenderer[T <: WorkbookElement](entry: LabeledWorkbookElement[T]) extends LineBasedRenderingFactory[LabeledWorkbookElement[T]] derives upickle.default.ReadWriter {
 
   /*override protected def createDomElement(workbookElement: LabeledInstructionElement): Element = div(
     cls := "workbook-element exercise-instruction ${workbookElement.labelType.associatedCssString}",
@@ -23,7 +23,6 @@ case class HtmlLabeledWorkbookElementRenderer[T <: WorkbookElement](entry: Label
   override protected def createRendering(workbookElement: LabeledWorkbookElement[T]): AtomarLineRendering = {
     val base: HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = HtmlRenderFactory.renderWorkbookElement(workbookElement.baseElement)
     RenderingWithLabel(workbookElement, base.rendering, workbookElement.label)
-
   }
 
 }

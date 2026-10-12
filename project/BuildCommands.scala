@@ -3,8 +3,8 @@ import sbt.*
 import sbt.Keys.*
 import sbtassembly.AssemblyPlugin.autoImport.*
 
-import java.security.MessageDigest
 import java.io.BufferedInputStream
+import java.security.MessageDigest
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -25,27 +25,29 @@ object BuildCommands {
 
   sealed trait ArtifactModule {
     def moduleName: String
+
     def projectRef: Project
+
     def distFileName: String
   }
 
   final case class JsArtifactModule(
-      moduleName: String,
-      projectRef: Project,
-      distFileName: String
-  ) extends ArtifactModule
+                                     moduleName: String,
+                                     projectRef: Project,
+                                     distFileName: String
+                                   ) extends ArtifactModule
 
   final case class JvmArtifactModule(
-      moduleName: String,
-      projectRef: Project,
-      distFileName: String
-  ) extends ArtifactModule
+                                      moduleName: String,
+                                      projectRef: Project,
+                                      distFileName: String
+                                    ) extends ArtifactModule
 
   final case class ArtifactBuildArchitecture(
-      client: JsArtifactModule,
-      worker: JsArtifactModule,
-      server: JvmArtifactModule
-  ) {
+                                              client: JsArtifactModule,
+                                              worker: JsArtifactModule,
+                                              server: JvmArtifactModule
+                                            ) {
     val modules: Seq[ArtifactModule] = Seq(client, worker, server)
   }
 
@@ -62,6 +64,8 @@ object BuildCommands {
   lazy val buildWorkerFast = taskKey[Unit]("Deprecated alias for buildWorkerDev")
   lazy val buildServerFast = taskKey[Unit]("Deprecated alias for buildServerDev")
   lazy val deployAll = taskKey[Unit]("Deprecated alias for buildAllDeploy")
+  lazy val build = taskKey[Unit]("Build the client anew")
+  lazy val buildJS = taskKey[Unit]("Build client and worker JS artifacts to artifacts/newest")
 
   private val TimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")
 
@@ -79,7 +83,12 @@ object BuildCommands {
     buildClientFast := buildClientDev.value,
     buildWorkerFast := buildWorkerDev.value,
     buildServerFast := buildServerDev.value,
-    deployAll := buildAllDeploy.value
+    deployAll := buildAllDeploy.value,
+    buildJS := Def.task {
+      buildClientDev.value
+      buildWorkerDev.value
+      ()
+    }.value
   )
 
   private def buildJsModuleDev(module: JsArtifactModule): Def.Initialize[Task[Unit]] = Def.taskDyn {
@@ -147,10 +156,10 @@ object BuildCommands {
   }
 
   private def publishArtifact(
-      sourceFile: File,
-      module: ArtifactModule,
-      mode: BuildMode
-  ): Def.Initialize[Task[Unit]] = Def.task {
+                               sourceFile: File,
+                               module: ArtifactModule,
+                               mode: BuildMode
+                             ): Def.Initialize[Task[Unit]] = Def.task {
     val log = streams.value.log
     val root = (ThisBuild / baseDirectory).value
     val artifactHash = sha256(sourceFile)

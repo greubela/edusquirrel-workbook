@@ -26,34 +26,33 @@ trait Logger {
   def log(msg: String, level: LoggingLevel): Unit
 
   def logException(exception: Throwable): Unit = logError(
+    exceptionToString(None, exception)
+  )
+
+  def logExceptionInfo(msgRecover: String, expectedBecause: String, exception: Throwable): Unit = logInfo(
+    exceptionToString(Some(msgRecover), exception)
+  )
+
+  def logExceptionWarn(msgRecover: String, exception: Throwable): Unit = logWarn(
+    exceptionToString(Some(msgRecover), exception)
+  )
+
+  protected def exceptionToString(msgRecover: Option[String], exception: Throwable): String = if (msgRecover.nonEmpty) {
+    s"""
+       |Recovered from exception by: ${msgRecover.get}
+       |    Exception message: ${exception.getMessage}
+       |    Exception StackTrace:
+       |    ${exception.getStackTrace.mkString("\n    ")}
+       |
+       | """.stripMargin
+  } else {
     s"""
        |Logging Exception: ${exception.getMessage}
        |    Exception StackTrace:
        |    ${exception.getStackTrace.mkString("\n    ")}
        |
        | """.stripMargin
-  )
-
-  def logExceptionInfo(msgRecover: String, expectedBecause: String, exception: Throwable): Unit = logInfo(
-    s"""
-       |Recovered from expected exception by: $msgRecover
-       |    Exception was expected because: ${expectedBecause}
-       |    Exception message: ${exception.getMessage}
-       |    Exception StackTrace:
-       |    ${exception.getStackTrace.mkString("\n    ")}
-       |
-       | """.stripMargin
-  )
-
-  def logExceptionWarn(msgRecover: String, exception: Throwable): Unit = logWarn(
-    s"""
-       |Recovered from exception by: $msgRecover
-       |    Exception message: ${exception.getMessage}
-       |    Exception StackTrace:
-       |    ${exception.getStackTrace.mkString("\n    ")}
-       |
-       | """.stripMargin
-  )
+  }
 
   def logInfo(msg: String): Unit = log(msg, LoggingLevel.INFO)
 

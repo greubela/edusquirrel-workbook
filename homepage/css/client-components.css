@@ -1,0 +1,109 @@
+@import url("generic/colors.css");
+@import url("generic/dimensions.css");
+
+/* Shared client presentation. Keep geometry and runtime state in Scala. */
+.turtle-gradig-panel .turtle-line {
+    fill: none;
+    stroke: var(--color-text-primary);
+    stroke-width: var(--space-xs);
+}
+
+.turtle-gradig-panel .turtle-line--correct { stroke: var(--color-green-6); }
+.turtle-gradig-panel .turtle-line--unexpected { stroke: var(--color-accent-error); }
+.turtle-gradig-panel .turtle-line--jump { stroke-dasharray: var(--space-sm) var(--space-sm); }
+
+.turtle-gradig-panel .turtle-point {
+    fill: var(--color-accent-error);
+    stroke: var(--color-accent-error);
+    stroke-width: 2px;
+    fill-opacity: 0.1;
+    stroke-opacity: 0.1;
+}
+
+.turtle-gradig-panel .turtle-angle {
+    fill: var(--color-text-muted-light);
+    stroke: var(--color-text-muted-light);
+    stroke-width: 1px;
+    fill-opacity: 0.9;
+    stroke-opacity: 0.1;
+}
+
+.turtle-gradig-panel .is-emphasized {
+    fill-opacity: 1;
+    stroke-opacity: 1;
+}
+
+.safety-warning {
+    margin-bottom: var(--space-lg);
+    background: var(--color-red-0);
+    border: var(--space-borders) solid var(--color-accent-error);
+    padding: var(--space-lg);
+}
+
+.client-todo, .client-stderr { color: var(--color-accent-error); }
+.client-todo { font-weight: 700; }
+.fullscreen-overlay-dialog { position: relative; }
+.turtle-stitch-editor { width: 100%; min-height: min(620px, 75vh); height: 75vh; }
+.be-program-snap-fullscreen__turtle-stage { display: block; max-width: 100%; height: auto; }
+
+.wiring-diagram > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    align-items: center;
+}
+.wiring-diagram > div > div:first-child { display: flex; gap: var(--space-md); align-items: center; }
+.wiring-diagram > div > div:first-child > span { font-weight: 600; }
+.wiring-diagram > div > img, .wiring-diagram > div > div:not(:first-child) { width: min(100%, 820px); box-sizing: border-box; }
+.wiring-diagram > div > img { border: 2px solid var(--color-border-soft); border-radius: var(--radius-sm); }
+.wiring-diagram .wiring-step { display: flex; gap: var(--space-lg); }
+.wiring-diagram .wiring-step > .info-box { flex: 1; }
+
+.turtle-exercise-demo { display: flex; gap: var(--space-lg); }
+.turtle-exercise-demo__controls { width: min(100%, 750px); display: flex; flex-direction: column; gap: var(--space-md); }
+
+.svg-button { fill: none; }
+.svg-button path { stroke: var(--color-text-primary); stroke-width: 2px; stroke-linecap: round; stroke-linejoin: round; }
+.chat-avatar { width: var(--space-2xl); height: var(--space-2xl); fill: var(--color-background-neutral); }
+
+.svg-overlay { fill: var(--color-accent-error); stroke: var(--color-accent-error); stroke-width: 2px; }
+.svg-underlay { fill: none; stroke: var(--color-accent-error); stroke-dasharray: 4 2; }
+.svg-coordinate-background { fill: var(--color-surface-base); stroke: var(--color-gray-12); stroke-width: 1px; rx: 4px; ry: 4px; }
+.svg-coordinate-text { fill: var(--color-text-primary); }
+.svg-corner-point { fill: var(--color-accent-error); stroke: var(--color-red-8); stroke-width: 1.5px; cursor: pointer; }
+.svg-control-line { stroke: var(--color-accent-error); stroke-dasharray: 6 4; stroke-width: 1.5px; opacity: 0.75; pointer-events: none; }
+.svg-highlight-path { fill: none; stroke: var(--color-yellow-7); stroke-width: 6px; opacity: 0.5; pointer-events: none; }
+
+.turtle-graphics-section > img { width: 100%; }
+.turtle-exercise-demo > div:first-child { flex: 1; }
+.be-program-snap-renderer--editor > .snap-keyboard-handler { opacity: 0; pointer-events: none; }
+
+/* Language picker flag artwork. */
+.flag-fill-black { fill: var(--color-flag-black); }
+.flag-fill-british-blue { fill: var(--color-flag-british-blue); }
+.flag-fill-british-red { fill: var(--color-flag-british-red); }
+.flag-fill-french-blue { fill: var(--color-flag-french-blue); }
+.flag-fill-french-red { fill: var(--color-flag-french-red); }
+.flag-fill-german-red { fill: var(--color-flag-german-red); }
+.flag-fill-german-yellow { fill: var(--color-flag-german-yellow); }
+.flag-fill-russian-blue { fill: var(--color-flag-russian-blue); }
+.flag-fill-russian-red { fill: var(--color-flag-russian-red); }
+.flag-fill-turkish-red { fill: var(--color-flag-turkish-red); }
+.flag-fill-ukrainian-blue { fill: var(--color-flag-ukrainian-blue); }
+.flag-fill-ukrainian-yellow { fill: var(--color-flag-ukrainian-yellow); }
+.flag-fill-white { fill: var(--color-flag-white); }
+.flag-stroke-british-red { stroke: var(--color-flag-british-red); }
+.flag-stroke-white { stroke: var(--color-flag-white); }
+.flag-stroke-width- { stroke: var(--color-flag-width-); }
+.flag-stroke-width-2 { stroke-width: 2px; }
+.flag-stroke-width-4 { stroke-width: 4px; }
+.flag-stroke-width-6 { stroke-width: 6px; }
+
+.wiring-diagram .wiring-step > .info-box:nth-child(2) { flex: 2; }
+.editor-container .token.todo-token, .editor-container .todo-token-inline { color: var(--color-accent-error); font-weight: 700; }
+.grading-gradient stop:nth-child(1) { stop-color: var(--color-accent-success); }
+.grading-gradient stop:nth-child(2) { stop-color: var(--color-yellow-5); }
+.grading-gradient stop:nth-child(3) { stop-color: var(--color-accent-error); }
+@media (max-width: 860px) {
+    .wiring-diagram .wiring-step, .turtle-exercise-demo { flex-direction: column; }
+}

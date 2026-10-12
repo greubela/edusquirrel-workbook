@@ -12,6 +12,10 @@ trait PersonOrderSelector[I, J] {
 
 object PersonOrderSelector {
 
+  def getIdSelector[I, J]: PersonOrderSelector[I, J] = new PersonOrderSelector[I, J] {
+    override def setOrderOfMicroMovement(currentState: EvaFloorMap, notMovedYet: Seq[Person]): Seq[Person] = notMovedYet.sortBy(_.id)
+  }
+
   private val universalRandom = new Random()
 
   def getRandomSelector[I, J]: PersonOrderSelector[I, J] = new PersonOrderSelector[I, J] {

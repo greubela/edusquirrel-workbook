@@ -1,15 +1,17 @@
 package it.evadid.evacuation.core.graphic.model
 
-sealed trait EvaImage {
+import upickle.default.ReadWriter
+
+sealed trait EvaImage derives ReadWriter {
 
 }
 
 object EvaImage {
 
 
-  case class PathBasedEvaImage(fullFilePath: String) extends EvaImage
+  case class PathBasedEvaImage(fullFilePath: String) extends EvaImage derives ReadWriter
 
-  case class DataBasedEvaImage(fullFileName: String, fileType: String, data: Array[Byte]) extends EvaImage
+  case class DataBasedEvaImage(fullFileName: String, fileType: String, data: Array[Byte]) extends EvaImage derives ReadWriter
 
 
   def fromPath(pFullFilePath: String): PathBasedEvaImage = new PathBasedEvaImage(pFullFilePath)

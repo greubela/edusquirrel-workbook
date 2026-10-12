@@ -1,0 +1,39 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      # Scala.js DOM suites require jsdom while constructing their fixtures.
+      - name: Install Node test dependencies
+        run: npm ci
+      - name: Test every Scala module and build browser artifacts
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false coreJVM/test coreJS/test client/test server/test worker/test buildClientDev buildWorkerDev
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:static
+      - run: npm run test:workbooks

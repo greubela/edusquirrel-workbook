@@ -6,6 +6,8 @@ import it.evadid.evacuation.eva1.model.evagraph.Router
 
 class MultipleGoalStrategy(threshold: Double = 1.3) extends FlowStrategy{
   override def decideRouting(allRoutingOptions: Seq[RoutingOption[Router]], freeRoutingOptions: Seq[RoutingOption[Router]]): Option[RoutingOption[Router]] = {
+    if (allRoutingOptions.isEmpty || freeRoutingOptions.isEmpty) return None
+
     val minFree = freeRoutingOptions.minBy(_.remainingDistance)
     val minTotal = allRoutingOptions.minBy(_.remainingDistance)
 

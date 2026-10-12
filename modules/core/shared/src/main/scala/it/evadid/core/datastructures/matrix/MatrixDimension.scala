@@ -1,9 +1,11 @@
 package it.evadid.core.datastructures.matrix
 
+import upickle.default.*
+
 import scala.language.implicitConversions
 
 
-case class MatrixDimension(cols: Int, rows: Int, wrapAround: Boolean) {
+case class MatrixDimension(cols: Int, rows: Int, wrapAround: Boolean) derives ReadWriter {
 
   assert(cols > 0 && rows > 0, "Dimension must be positive")
 

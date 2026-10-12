@@ -1,5 +1,5 @@
 package it.evadid.core.util.io
-
+/*
 object AutoSerializable {
 
 
@@ -22,3 +22,4 @@ trait AutoSerializable[MyBaseType <: AutoSerializable[MyBaseType, SerializableTy
   lazy val toJson: String = serializer.serialize(this.toSerializableType)
 
 }
+*/

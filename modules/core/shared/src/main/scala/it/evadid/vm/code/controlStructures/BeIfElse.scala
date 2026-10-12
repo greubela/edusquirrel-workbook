@@ -9,12 +9,12 @@ import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeChildRole.ConditionInControlStructure
 import it.evadid.vm.types.BeScope.InSequenceScope
-
+import upickle.default.*
 case class BeIfElse(
                      condition: BeSequence,
                      thenBody: BeSequence,
                      elseBody: BeSequence
-                   ) extends BeControlStructure {
+                   ) extends BeControlStructure derives ReadWriter{
 
   private val myRef: BeIfElse = this
 
@@ -55,15 +55,15 @@ case class BeIfElse(
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = {
       val childrenRef = getChildrenAsReference(myInfo.myScope)
       val ifThen: Seq[BeSegmentedCodeElement] = List(
-        BeControlFlowLine(IfElseBranch),
-        childrenRef(0).toSegment(Some(ControlFlowDown))
+        BeControlFlowLine(IfElseBranch()),
+        childrenRef(0).toSegment(Some(ControlFlowDown()))
       )
       val elseBlock: Seq[BeSegmentedCodeElement] = List(
-        BeControlFlowLine(IfElseCross),
-        childrenRef(1).toSegment(Some(ControlFlowDown))
+        BeControlFlowLine(IfElseCross()),
+        childrenRef(1).toSegment(Some(ControlFlowDown()))
       )
       val finish: Seq[BeSegmentedCodeElement] = List(
-        BeControlFlowLine(IfElseUnion)
+        BeControlFlowLine(IfElseUnion())
       )
       if (elseBody.body.nonEmpty) ifThen ++ elseBlock ++ finish
       else ifThen ++ finish

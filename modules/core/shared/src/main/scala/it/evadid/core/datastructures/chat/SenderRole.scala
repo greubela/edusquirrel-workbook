@@ -1,8 +1,10 @@
 package it.evadid.core.datastructures.chat
 
+import upickle.default.*
+
 import it.evadid.workbook.abstractions.WorkbookStructuringType.WORKBOOK
 
-sealed trait SenderRole(val llmName: String, val showName: String) {
+sealed trait SenderRole(val llmName: String, val showName: String) derives ReadWriter {
 
 }
 

@@ -10,14 +10,14 @@ import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.naming.{BeEntityName, CodeRepresentationConfig}
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
-
+import upickle.default.*
 case class BeDefineClass(
                           name: BeEntityName,
                           attributes: List[BeDefineVariable],
                           methods: List[BeDefineFunction],
                        //   bodyExtras: List[BeExpression] = Nil
                         )
-  extends BeDefineStructure {
+  extends BeDefineStructure derives upickle.default.ReadWriter {
 
   override def definedClasses: List[BeDefineClass] = List(this)
 
@@ -46,7 +46,7 @@ case class BeDefineClass(
       )
     )
 
-    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown(), myInfo)
 
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] =
       attributes.zipWithIndex.map((attribute, index) =>
@@ -60,7 +60,7 @@ case class BeDefineClass(
 }
 
 object BeDefineClass {
-  case class MethodSignature(name: BeEntityName, inputs: List[BeDefineVariable], output: Option[BeDefineVariable])
+  case class MethodSignature(name: BeEntityName, inputs: List[BeDefineVariable], output: Option[BeDefineVariable]) derives upickle.default.ReadWriter
 
   def apply(name: LanguageMap[HumanLanguage], attributes: List[BeDefineVariable], methods: List[BeDefineFunction]): BeDefineClass =
     BeDefineClass(BeEntityName.fromMapInCodeNotation(name.asInstanceOf[LanguageMap[HumanLanguage]]), attributes, methods)

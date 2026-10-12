@@ -1,0 +1,57 @@
+/* Keep the long story title and scene panels readable in this workbook's mobile view. */
+.monks-workbook .section-navigation,
+.monks-workbook .workbook-header-toggle,
+.monks-workbook .slide-deck-image {
+    box-sizing: border-box;
+}
+
+.monks-workbook .slide-deck-column {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+    .monks-workbook .workbook-title-line {
+        box-sizing: border-box;
+        width: 100%;
+        padding: var(--space-md) 70px 0 var(--space-md);
+    }
+
+    .monks-workbook .workbook-title-line h1 {
+        font-size: 1.25rem;
+        line-height: 1.3;
+    }
+
+    .monks-workbook .section-overview {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-sm);
+        width: calc(100% - 2 * var(--space-md));
+    }
+
+    .monks-workbook .section-block-part {
+        box-sizing: border-box;
+    }
+
+    .monks-workbook .section-block-number {
+        width: 2.5rem;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .monks-workbook .section-block-description {
+        width: auto;
+        flex: 1;
+        justify-content: flex-start;
+        text-align: left;
+        font-size: 0.9rem;
+    }
+
+    .monks-workbook .slide-deck-container {
+        margin: var(--space-sm);
+    }
+
+    .monks-workbook .slide-deck-text {
+        padding: var(--space-sm);
+    }
+}

@@ -38,6 +38,6 @@ object MultipleGoalStrategy {
 
   case class MgSimInfo(routingMap: RoutingMap)
 
-  case class MgStepInfo()
+  case class MgStepInfo() derives upickle.default.ReadWriter
 
 }

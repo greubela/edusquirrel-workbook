@@ -1,0 +1,13 @@
+Die Durchführung ist folgendermaßen gedacht:
+
+1. Folie FürLehrkraft/Einstieg zeigen 
+2. SuS Aufgabe im Simulator bearbeiten lassen (*)
+3. Arbeitsheft Module/WorkbookPhishing austeilen und bearbeiten lassen
+4. Teilmodule (Module/...) bereitlegen. Die SuS brauchen einige, aber nicht alle davon (steht im Heft)
+
+(*) Vorher auf Schul-PCs testen! Python muss ausführbar sein und PySide6 muss installiert sein (pip install PySide6)
+
+Zielgruppe: Späte Sek 1 (9.-10. Klasse)
+Zeitdauer: Ca. 6 Stunden â 45 Minuten 
+
+Autor: Marcel Kretschmer

@@ -7,6 +7,8 @@ import it.evadid.core.datastructures.vectorShapes.renderer.VmToSvg
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.util.logging.Logger
 import it.evadid.vm.BeProgram
+import it.evadid.workbook.elements.interactionElements.programming.state.snap
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import munit.FunSuite
 
 class BeExpressionToTurtleCommandsSpec extends FunSuite {
@@ -14,9 +16,9 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   private val logger = Logger.withNameAndPrefixes(Some("BeExpressionToTurtleCommandsSpec"))
 
   test("catalog aliases map to turtle commands") {
-    assertEquals(it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog.snapSelectorByPythonName("right"), "turn")
-    assertEquals(it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog.snapSelectorByPythonName("penup"), "up")
-    assertEquals(it.evadid.workbook.elements.interactionElements.programming.SnapTurtleCatalog.turtleCommandByPythonName("turn_left"), "left")
+    assertEquals(SnapTurtleCatalog.snapSelectorByPythonName("right"), "turn")
+    assertEquals(snap.SnapTurtleCatalog.snapSelectorByPythonName("penup"), "up")
+    assertEquals(snap.SnapTurtleCatalog.turtleCommandByPythonName("turn_left"), "left")
   }
 
   test("forward and repeat unroll into turtle commands") {
@@ -95,4 +97,38 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
     assertEquals(commands.map(_.name), List("forward", "right"))
     assertEquals(commands.head.args, List(20.0))
   }
+  test("recursive calls restore their caller's parameters and local variables") {
+    val program = BeProgram.fromPythonString(
+      """def branch(length, depth):
+        |    if depth == 0:
+        |        forward(length)
+        |    else:
+        |        branch(length / 2, depth - 1)
+        |        branch(length / 2, depth - 1)
+        |branch(80, 2)
+        |forward(7)
+        |""".stripMargin)
+    val commands = BeExpressionToTurtleCommands(program.fullProgram)
+    assertEquals(commands.filter(_.name == "forward").map(_.args),
+      List(List(20.0), List(20.0), List(20.0), List(20.0), List(7.0)))
+  }
+  test("modulo drives alternating shapes and every-fourth branches") {
+    for (period <- List(2, 4)) {
+      val program = BeProgram.fromPythonString(s"""for i in range(1, 8):
+        |    if i % $period == 0:
+        |        forward(40)
+        |    else:
+        |        forward(10)
+        |""".stripMargin)
+      val commands = BeExpressionToTurtleCommands(program.fullProgram)
+      assertEquals(commands.map(_.args.head), (1 to 7).map(i => if i % period == 0 then 40.0 else 10.0).toList)
+    }
+  }
+
+  test("remainder agrees with Python for signed integer and fractional operands") {
+    val program = BeProgram.fromPythonString("negative_divisor = -3\nforward(-5 % 3)\nforward(5 % negative_divisor)\nforward(5.5 % 2)\n")
+    assertEquals(BeExpressionToTurtleCommands(program.fullProgram).map(_.args),
+      List(List(1.0), List(-1.0), List(1.5)))
+  }
+
 }

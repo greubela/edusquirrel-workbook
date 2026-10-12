@@ -1,13 +1,13 @@
 package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.file.LoadedFile
-import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.AppLanguage.{ser, *}
 import it.evadid.core.datastructures.user.User.SingleAccessToken
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
-import it.evadid.distribution.command.ExecutionInfo.ExecutionInfoTyped
+import it.evadid.distribution.command.ExecutionInfo.ExecutionSuccess
 import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.commandTypes.UserCommands
 import it.evadid.distribution.commandTypes.UserCommands.{AuthMailRequest, CreateAccountRequest, LoginRequest, LoginResponse}
@@ -16,7 +16,7 @@ import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
-import it.evadid.workbook.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.abstractions.{WorkbookInteractionElement, WorkbookInteractionUntyped}
 
 import scala.concurrent.*
 import scala.scalajs.js
@@ -27,7 +27,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   private given ExecutionContext = ExecutionContext.global
 
-  private def interactions: List[WorkbookInteractionElement[?]] = fullInfo.current.allAvailableInteractions
+  private def interactions: List[WorkbookInteractionUntyped] = fullInfo.current.allAvailableInteractions
 
   private val logger = fullInfo.loggerSystemInfo.contentControlLogger
 
@@ -84,7 +84,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   private val serializer: Serializer[AllUserInfo] = DefaultSerializer.serializerAllUserInfo(HomepageDefaults.defaultSerializerUserConfig)
 
   def tryParsingExistingUser(): Option[AllUserInfo] = {
-    val value: Option[String] = LocalStorageSync.fetchAllRaw(logger).get(allUserInfoStorageKey)
+    val value: Option[String] = LocalStorageSync.fetchAllRawSync(logger).get(allUserInfoStorageKey)
     serializer.tryDeserializeAll(value).inputAfterOperation.headOption
   }
 
@@ -94,10 +94,10 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
       case Left(sat) => fullInfo.defaults.backendExecutor
       case Right(sig) => fullInfo.defaults.backendExecutorWithCredentials(Some(sig))
     }
-    val loginRes: Future[ExecutionInfoTyped[LoginResponse]] = UserCommands.loginCommand.sendCommandTo(backend, loginReq)
+    val loginRes: Future[ExecutionSuccess[LoginResponse]] = UserCommands.loginCommand.sendCommandTo(backend, loginReq)
     loginRes.map {
-      case (exInfo: ExecutionInfoTyped[LoginResponse]) =>
-        val loginResponse = exInfo.resultTyped.result
+      case (exInfo: ExecutionSuccess[LoginResponse]) =>
+        val loginResponse = exInfo.result
         val userInfoOp = loginResponse.toInfo(HomepageDefaults.defaultSerializerUserConfig)
         if (!loginResponse.userKnown) {
           removeUserFromLocalStorage()
@@ -132,10 +132,10 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
       changeUser(Some(sessionData.currentUserInfo))
     }
 
-    sessionData.interactionHistory.foreachEntry((varId, serHist) => {
+    sessionData.interactionHistorySerialized.foreachEntry((varId, serHist) => {
       interactions.map(_.interactionVariable).foreach(curInteraction => {
         if (curInteraction.keyForSerialization == varId) {
-          curInteraction.updateHistory(_.withAddedEvents(serHist, curInteraction.underlyingInteraction.serializerInteractionContent))
+          curInteraction.withAddedEvents(logger, serHist)
         }
       })
     })
@@ -153,10 +153,10 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
       val userConfig = UserConfig(HomepageDefaults.useDefaultOnlineSyncLocations, true)
       val user = AllUserInfo.createNewUser(name, email, userConfig)
       val configJson = HomepageDefaults.defaultSerializerUserConfig.serialize(user.config)
-      val createAccFuture: Future[ExecutionInfoTyped[UserCommands.CreateAccountResponse]] = UserCommands.createAccountCommand.sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user.user, configJson))
+      val createAccFuture: Future[ExecutionSuccess[UserCommands.CreateAccountResponse]] = UserCommands.createAccountCommand.sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user.user, configJson))
       createAccFuture.transform {
         case Success(exInfo) =>
-          val result = exInfo.resultTyped.result
+          val result = exInfo.result
           if (!result.accountCreated || result.token.isEmpty) {
             logger.logWarn(s"registration attempt ignored (account created: ${result.accountCreated} / token: ${result.token}")
             Failure(SerializedException("could not create account, see logs!"))
@@ -198,7 +198,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
         val allUserInfo = newUserInfo.get
         logger.logInfo(s"Loading user ${allUserInfo.toString}")
         val serialized = serializer.serialize(allUserInfo)
-        LocalStorageSync.storeRaw(logger, allUserInfoStorageKey, serialized)
+        LocalStorageSync.storeToRawSync(logger, allUserInfoStorageKey, serialized)
       }
       fullInfo.homepageInfoState.update(_.copy(userInfo = newUserInfo))
     } catch case (err: Throwable) => logger.logException(err)

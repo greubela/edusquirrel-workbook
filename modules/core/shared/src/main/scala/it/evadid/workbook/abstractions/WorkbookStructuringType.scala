@@ -1,6 +1,8 @@
 package it.evadid.workbook.abstractions
 
-enum WorkbookStructuringType {
+import upickle.default.ReadWriter
+
+enum WorkbookStructuringType derives ReadWriter {
   case EXERCISE_CONTAINER
   case SECTION
   case WORKBOOK

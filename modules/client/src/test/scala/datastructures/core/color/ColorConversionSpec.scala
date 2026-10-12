@@ -36,8 +36,8 @@ class ColorConversionSpec extends FunSuite {
 
   test("RGBColor toHSB/toRGB round-trips representative colors") {
     val expectedRoundTrips = Seq(
-      RGBColor.black -> RGBColor(0, 0, 0, 0),
-      RGBColor.white -> RGBColor(255, 255, 255, 0),
+      RGBColor.black -> RGBColor.black,
+      RGBColor.white -> RGBColor.white,
       RGBColor.red -> RGBColor.red,
       RGBColor.green -> RGBColor.green,
       RGBColor.blue -> RGBColor.blue,
@@ -62,9 +62,9 @@ class ColorConversionSpec extends FunSuite {
     val aboveOne = RGBColor.getColorGradientRGB(start, end, 1.5)
     val midpoint = RGBColor.getColorGradientRGB(start, end, 0.5)
 
-    assertEquals(belowZero, RGBColor(0, 0, 0, 0))
-    assertEquals(aboveOne, RGBColor(255, 255, 255, 0))
-    assertEquals(midpoint, RGBColor(128, 128, 128, 0))
+    assertEquals(belowZero, RGBColor.black)
+    assertEquals(aboveOne, RGBColor.white)
+    assertEquals(midpoint, RGBColor(128, 128, 128))
     assertEquals(midpoint.toHex(), "#808080")
     assertEquals(midpoint.toWebColor.webStyleRgbString, "rgb(128, 128, 128, 1)")
 

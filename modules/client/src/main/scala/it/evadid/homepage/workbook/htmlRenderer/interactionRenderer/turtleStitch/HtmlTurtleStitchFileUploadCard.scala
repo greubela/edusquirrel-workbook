@@ -8,7 +8,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.elements.interactionElements.TurtleStitch.TurtleStitchProjectState
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
@@ -22,7 +22,7 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteract
   private val acceptedTypes: List[String] = List("text/turtle", "text/xml")
 
   private lazy val uploadInput: ReactiveHtmlElement[HTMLInputElement] = input(
-    styleAttr := "display:none;",
+    hidden := true,
     typ := "file",
     accept := acceptedTypes.mkString(","),
     onChange --> { event =>

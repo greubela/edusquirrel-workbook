@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import munit.FunSuite
 
 class ProgrammingExerciseFactorySpec extends FunSuite {
@@ -43,34 +45,23 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(restored.editorPalette, ProgrammingEditorPalette.Default)
     assertEquals(restored.referencePython, None)
     assertEquals(restored.testSuite, None)
-    assertEquals(restored.allowedEditors, List(ProgrammingEditorKind.Snap))
   }
 
-  test("factory roundtrips allowedEditors") {
-    val original = ProgrammingExercise(
-      "prog-both",
-      allowedEditors = List(ProgrammingEditorKind.Snap, ProgrammingEditorKind.Python)
+  test("full Java exercise is registered and preserves its type and test suite") {
+    val original = ProgrammingExerciseFullJava("full-java")
+    val serialized = it.evadid.workbook.jsonFactory.WorkbookElementFactory.serializerRefBasedJson.serialize(original)
+    val restored =
+      it.evadid.workbook.jsonFactory.WorkbookElementFactory.serializerRefBasedJson.deserialize(serialized)
+
+    assertEquals(restored.getClass.getSimpleName, "ProgrammingExerciseFullJava")
+    val fullJava = restored.asInstanceOf[ProgrammingExerciseFullJava]
+    assertEquals(fullJava.elementId, original.elementId)
+    assertEquals(fullJava.testSuite, None)
+    assertEquals(fullJava.defaultValue, original.defaultValue)
+    assert(fullJava.defaultValue.toJava.code.contains("class Main"))
+    assertEquals(
+      fullJava.serializerInteractionContent.deserialize(fullJava.serializerInteractionContent.serialize(fullJava.defaultValue)),
+      fullJava.defaultValue
     )
-    val serialized = ProgrammingExercise.factory.toSerializableElement(original)
-    val restored = ProgrammingExercise.factory.fromSerializedElement(serialized, Map.empty)
-    assertEquals(restored.allowedEditors, List(ProgrammingEditorKind.Snap, ProgrammingEditorKind.Python))
-  }
-
-  test("python editor forces a python-compatible palette") {
-    val native = ProgrammingExercise(
-      "prog-native",
-      editorPalette = ProgrammingEditorPalette.Default,
-      allowedEditors = List(ProgrammingEditorKind.Snap, ProgrammingEditorKind.Python)
-    )
-    assertEquals(native.effectiveEditorPalette, ProgrammingEditorPalette.PythonCompatibleSnap)
-
-    val beginner = native.copy(editorPalette = ProgrammingEditorPalette.BeginnerTurtle)
-    assertEquals(beginner.effectiveEditorPalette, ProgrammingEditorPalette.BeginnerTurtle)
-
-    val embroidery = native.copy(editorPalette = ProgrammingEditorPalette.Embroidery)
-    assertEquals(embroidery.effectiveEditorPalette, ProgrammingEditorPalette.Embroidery)
-
-    val snapOnly = ProgrammingExercise("prog-snap", editorPalette = ProgrammingEditorPalette.Default)
-    assertEquals(snapOnly.effectiveEditorPalette, ProgrammingEditorPalette.Default)
   }
 }

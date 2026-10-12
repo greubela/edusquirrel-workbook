@@ -33,13 +33,13 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   // BODY
 
   private lazy val workbookBodyDomSignal: Signal[Element] = {
-    val workbookSignal = fullInfo.signals.workbook
-    val userSignal = fullInfo.signals.user
+    val workbookSignal = fullInfo.signals.workbook.distinct
+    val userSignal = fullInfo.signals.user.distinct
     val watchSignal = workbookSignal.combineWith(userSignal)
 
     watchSignal.map {
-      case (_, None) => HtmlLoginElement().getDomElement()
       case (None, _) => HtmlSelectWorkbookElement().getDomElement()
+      case (_, None) => HtmlLoginElement().getDomElement()
       case (Some(workbookInfo), Some(userInfo)) => HtmlWorkbookBodyElement(workbookInfo, userInfo).getDomElement()
     }
   }
@@ -105,16 +105,16 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   )
 
   private def createTitleLine(workbook: Option[AllWorkbookInfo], user: Option[AllUserInfo]): Element = {
-    if (user.isEmpty) {
+    if (workbook.isEmpty) {
+      div(
+        cls := "workbook-title-line",
+        h1(text <-- laminarHelper.plaintextStringSignal("workbookSelection/title")),
+      )
+    }
+    else if (user.isEmpty)
       div(
         cls := "workbook-title-line",
         h1(text <-- laminarHelper.plaintextStringSignal("login/titleLoginPage")),
-      )
-    }
-    else if (workbook.isEmpty)
-      div(
-        cls := "workbook-title-line",
-        h1(text <-- laminarHelper.plaintextStringSignal("basic/titleWorkbookSelectionPage")),
       )
     else {
       div(
@@ -134,9 +134,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   // on every open. Retain the last child while the dialog itself is closed;
   // selecting a different fullscreen element still replaces and unmounts it.
   private lazy val retainedFullscreenElementSignal: Signal[Option[HtmlAppElement]] =
-    fullscreenActiveElementSignal
-      .scanLeft(identity[Option[HtmlAppElement]])((retained, active) => active.orElse(retained))
-      .distinct
+    HtmlWorkbookDomElement.retainFullscreenElements(fullscreenActiveElementSignal)
 
   private val onCloseDialog = new EventProp[dom.Event]("close")
   private val onCancelDialog = new EventProp[dom.Event]("cancel")
@@ -149,7 +147,6 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   private lazy val dialogElement: Element = {
     dialogTag(
       cls := "fullscreen-overlay-dialog",
-      position.relative,
       onCloseDialog --> (_ => fullInfo.displayControl.closeFullscreen()),
       // Light-dismiss (backdrop) of <dialog> — skip for editors that opt out.
       onCancelDialog --> { ev =>
@@ -184,6 +181,16 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
     )
   }
 
+}
+
+object HtmlWorkbookDomElement {
+  private[controlElements] def retainFullscreenElements(active: Signal[Option[HtmlAppElement]]): Signal[Option[HtmlAppElement]] =
+    active.scanLeft(identity[Option[HtmlAppElement]])((retained, current) => current.orElse(retained))
+      .distinctByFn {
+        case (Some(previous), Some(current)) => previous eq current
+        case (None, None) => true
+        case _ => false
+      }
 }
 
 

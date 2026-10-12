@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
-import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement, WorkbookStructureElement}
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionUntyped, WorkbookStructureElement}
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel
 case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssStr: String) extends AtomarLineRendering {
@@ -13,7 +13,7 @@ case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, conten
 
   protected def getCssString(workbookElement: WorkbookElement): String = workbookElement.match {
     case d: WorkbookDisplayElement => displayCssString
-    case i: WorkbookInteractionElement[?] => interactionCssString
+    case i: WorkbookInteractionUntyped => interactionCssString
     case s: WorkbookStructureElement[?] => structureCssString
   }
 
@@ -24,7 +24,7 @@ case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, conten
         cls := elementCssString + " " + displayCssString + " " + additionalCssStr,
         children <-- content.allElementsSignal
       )
-    case i: WorkbookInteractionElement[Any] =>
+    case i: WorkbookInteractionUntyped =>
       val interactionInfoPanel: InteractionInfoPanel = InteractionInfoPanel(i)
       div(
         cls := elementCssString + " " + interactionCssString ,

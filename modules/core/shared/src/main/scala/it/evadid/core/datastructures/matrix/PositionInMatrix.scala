@@ -1,8 +1,10 @@
 package it.evadid.core.datastructures.matrix
 
+import upickle.default.*
+
 import MatrixPosition._
 
-case class PositionInMatrix(cPos: MatrixPosition, dim: MatrixDimension, unused: Boolean) {
+case class PositionInMatrix(cPos: MatrixPosition, dim: MatrixDimension, unused: Boolean) derives ReadWriter {
 
   override val hashCode: Int = {
     var hash: Int = 7;

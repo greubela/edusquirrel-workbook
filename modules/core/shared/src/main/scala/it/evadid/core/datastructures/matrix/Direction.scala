@@ -1,7 +1,9 @@
 package it.evadid.core.datastructures.matrix
 
+import upickle.default.*
 
-case class Direction(name: String, toPosition: MatrixPosition) {
+
+case class Direction(name: String, toPosition: MatrixPosition) derives ReadWriter {
 
 }
 

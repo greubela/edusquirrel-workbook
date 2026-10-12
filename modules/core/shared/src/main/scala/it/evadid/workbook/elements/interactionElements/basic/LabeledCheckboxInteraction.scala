@@ -6,18 +6,17 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SingleContentElementFactory
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class LabeledCheckboxInteraction(
                                        override val elementId: String,
                                        checkboxLabel: LanguageMapContentId
-                                     ) extends WorkbookInteractionElement[Boolean] {
+                                     ) extends WorkbookInteractionElement[Boolean] derives upickle.default.ReadWriter {
 
   override val associatedFactory: WorkbookElementFactory[LabeledCheckboxInteraction] = LabeledCheckboxInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
   override val defaultValue: Boolean = false
-
-  override val serializerInteractionContent: Serializer[Boolean] = Serializer.booleanIO
 
 
 }

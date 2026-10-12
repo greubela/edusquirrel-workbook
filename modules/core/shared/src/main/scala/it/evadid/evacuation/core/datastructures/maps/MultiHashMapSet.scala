@@ -46,7 +46,8 @@ class MultiHashMapSet[K, V] {
   }
 
   def apply(k: K): mutable.HashSet[V] = {
-    get(k).get
+    ensureKey(k)
+    map(k)
   }
 
   def getOrElse(k: K, v: mutable.HashSet[V]): mutable.HashSet[V] = {
@@ -63,7 +64,6 @@ class MultiHashMapSet[K, V] {
   }
 
   def get(key: K): Option[mutable.HashSet[V]] = this.synchronized {
-    ensureKey(key)
     map.get(key)
   }
 
@@ -80,7 +80,7 @@ class MultiHashMapSet[K, V] {
   }
 
   def -=(kv: (K, V)): MultiHashMapSet.this.type = this.synchronized {
-    ensureKey(kv._1).get(kv._1).get -= kv._2
+    map.get(kv._1).foreach(_ -= kv._2)
     this
   }
 
@@ -103,7 +103,10 @@ class MultiHashMapSet[K, V] {
   }
   override def hashCode(): Int = map.hashCode()
 
-  override def equals(obj: Any): Boolean = ???
+  override def equals(obj: Any): Boolean = obj match {
+    case other: MultiHashMapSet[?, ?] => map == other.map
+    case _ => false
+  }
 
 
 }

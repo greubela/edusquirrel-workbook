@@ -134,8 +134,6 @@ trait AppSvgElement {
 object AppSvgElement {
   // ---- custom SVG attributes (note the third param = None) ----
   private val pointerEventsAttr   = SvgAttr("pointer-events",   StringAsIsCodec, None)
-  private val strokeDasharrayAttr = SvgAttr("stroke-dasharray", StringAsIsCodec, None)
-  private val cursorAttr          = SvgAttr("cursor",           StringAsIsCodec, None)
 
   // ---- convenience modifiers using those attrs ----
   private val pointerEventsNone: L.Modifier[L.SvgElement] =
@@ -150,11 +148,10 @@ object AppSvgElement {
     List(svg.visibility := "hidden", pointerEventsNone)
 
   val DefaultOverlayMods: Seq[L.Modifier[L.SvgElement]] =
-    List(svg.fill := "#e53935", svg.stroke := "#e53935", svg.strokeWidth := "2")
+    List(svg.cls := "svg-overlay")
 
-  // Replace L.style("stroke-dasharray") with our custom attr
   val DefaultUnderlayMods: Seq[L.Modifier[L.SvgElement]] =
-    List(svg.stroke := "#e53935", svg.fill := "none", strokeDasharrayAttr := "4 2")
+    List(svg.cls := "svg-underlay")
 
   private[svg] def overlayVisibilityModifier(isVisible: Boolean): L.Modifier[L.SvgElement] =
     if (isVisible) svg.visibility := "visible" else svg.visibility := "hidden"
@@ -178,19 +175,19 @@ object AppSvgElement {
   private val coordinateOffsetX: Double = 14.0
   private val coordinateMinDimension: Dimension[Double] = Dimension(48.0, 24.0)
   private val coordinateBackgroundMods: Seq[L.Modifier[L.SvgElement]] =
-    List(svg.fill := "#ffffff", svg.stroke := "#424242", svg.strokeWidth := "1", svg.rx := "4", svg.ry := "4")
+    List(svg.cls := "svg-coordinate-background")
   private val coordinateTextMods: Seq[L.Modifier[L.SvgElement]] =
-    List(svg.fill := "#212121")
+    List(svg.cls := "svg-coordinate-text")
   private val cornerPointRadius: Double = 4.5
 
   private val cornerPointMods: Seq[L.Modifier[L.SvgElement]] =
-    List(svg.fill := "#e53935", svg.stroke := "#b71c1c", svg.strokeWidth := "1.5", cursorAttr := "pointer")
+    List(svg.cls := "svg-corner-point")
 
   private val controlLineMods: Seq[L.Modifier[L.SvgElement]] =
-    List(svg.stroke := "#d32f2f", strokeDasharrayAttr := "6 4", svg.strokeWidth := "1.5", svg.opacity := "0.75", pointerEventsNone)
+    List(svg.cls := "svg-control-line")
 
   private val highlightPathMods: Seq[L.Modifier[L.SvgElement]] =
-    List(svg.stroke := "#ff7043", svg.strokeWidth := "6", svg.fill := "none", svg.opacity := "0.5", pointerEventsNone)
+    List(svg.cls := "svg-highlight-path")
 
   private def decoratePath[T](path: AppPathSvgElement[T], original: AppSvgElement): AppDecoratedSvgElement =
     original.withOverlayInformation(

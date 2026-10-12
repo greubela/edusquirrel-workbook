@@ -6,6 +6,9 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 import scala.collection.mutable
 
 object SvgPathBuilderImmutable {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[SvgPathBuilderImmutable[T]] =
+    upickle.default.readwriter[(StartPathCommand[T], List[SvgPathBuilderCommand[T]])].bimap(value => (value.startCommand, value.furtherCommands), value => SvgPathBuilderImmutable[T](value._1, value._2))
+
   
   def apply[T: Fractional](start: Point[T]): SvgPathBuilderImmutable[T] = SvgPathBuilderImmutable[T](StartPathCommand(start), List())
   
@@ -25,9 +28,17 @@ case class SvgPathBuilderImmutable[T: Fractional](
 
   lazy val absoluteCommands: List[AbsoluteCommand[T]] = {
     var curPoint = startCommand.absoluteStartPos
+    var subpathStart = curPoint
     var res = mutable.ListBuffer[AbsoluteCommand[T]]()
     for (curCommand <- furtherCommands) {
-      val absCommand = curCommand.toAbsoluteCommand(curPoint)
+      val absCommand = curCommand match {
+        case _: ClosePath[T] => AddControlLinesCommand(subpathStart, Nil)
+        case other => other.toAbsoluteCommand(curPoint)
+      }
+      curCommand match {
+        case _: MoveAbs[T] | _: MoveRel[T] => subpathStart = absCommand.positionAfterCommand
+        case _ => ()
+      }
       res += absCommand
       curPoint = absCommand.positionAfterCommand
     }
@@ -37,10 +48,13 @@ case class SvgPathBuilderImmutable[T: Fractional](
   lazy val relativeCommands: List[RelativeCommand[T]] = {
     var curPoint = startCommand.absoluteStartPos
     var res = mutable.ListBuffer[RelativeCommand[T]]()
-    for (curCommand <- furtherCommands) {
-      val relCommand = curCommand.toRelativeCommand(curPoint)
+    for ((curCommand, absoluteCommand) <- furtherCommands.zip(absoluteCommands)) {
+      val relCommand = curCommand match {
+        case _: ClosePath[T] => AddControlLinesCommand(absoluteCommand.positionAfterCommand, Nil)
+        case other => other.toRelativeCommand(curPoint)
+      }
       res += relCommand
-      curPoint = curCommand.toAbsoluteCommand(curPoint).positionAfterCommand
+      curPoint = absoluteCommand.positionAfterCommand
     }
     res.toList
   }
@@ -141,7 +155,7 @@ case class SvgPathBuilderImmutable[T: Fractional](
     head + furtherCommands.map(_.getPathDString()).mkString
   }
 
-  lazy val current: Point[T] = absoluteCommands.last.positionAfterCommand
+  lazy val current: Point[T] = absoluteCommands.lastOption.map(_.positionAfterCommand).getOrElse(absStartPoint)
 
   def calcNextPoint(dimension: Dimension[T]): Point[T] =
     current.withDimension(dimension).endPoint

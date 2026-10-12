@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette, SnapPaletteCatalog}
 import munit.FunSuite
 
 class ProgrammingEditorPaletteSpec extends FunSuite {

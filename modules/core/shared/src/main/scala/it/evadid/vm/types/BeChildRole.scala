@@ -2,8 +2,9 @@ package it.evadid.vm.types
 
 import it.evadid.vm.code.defining.BeDefineVariable
 
+import upickle.default.*
 
-sealed trait BeChildRole {
+sealed trait BeChildRole derives ReadWriter {
 
   def withIncrementedNrOrThis: BeChildRole = this
 
@@ -19,50 +20,52 @@ object BeChildRole {
  // case object IfElseBranch extends BeChildControlFlowRole
 
   /* SEQUENCE ROLES */
-  sealed trait BeChildSequenceRole extends BeChildRole
+  sealed trait BeChildSequenceRole extends BeChildRole derives ReadWriter
 
-  case class BodySequence(nr: Int) extends BeChildSequenceRole {
+  case class BodySequence(nr: Int) extends BeChildSequenceRole derives upickle.default.ReadWriter {
     override def withIncrementedNrOrThis: BeChildRole = BodySequence(nr + 1)
   }
 
   /* EXPRESSION ROLES */
-  sealed trait BeChildExpressionRole extends BeChildRole
+  sealed trait BeChildExpressionRole extends BeChildRole derives ReadWriter
 
-  case class ExpressionInSequence(nr: Int) extends BeChildExpressionRole {
+  case class ExpressionInSequence(nr: Int) extends BeChildExpressionRole derives upickle.default.ReadWriter {
     override def withIncrementedNrOrThis: BeChildRole = ExpressionInSequence(nr + 1)
 
   }
 
   case object ConditionInControlStructure extends BeChildExpressionRole
 
-  case class AttributeInClass(nr: Int) extends BeChildExpressionRole {
+  case class AttributeInClass(nr: Int) extends BeChildExpressionRole derives upickle.default.ReadWriter {
     override def withIncrementedNrOrThis: BeChildRole = AttributeInClass(nr + 1)
   }
 
-  case class MethodInClass(nr: Int) extends BeChildExpressionRole {
+  case class MethodInClass(nr: Int) extends BeChildExpressionRole derives upickle.default.ReadWriter {
     override def withIncrementedNrOrThis: BeChildRole = MethodInClass(nr + 1)
   }
 
 
   /* DATA ROLES */
-  sealed trait BeChildDataRole extends BeChildRole
+  sealed trait BeChildDataRole extends BeChildRole derives ReadWriter {
+    
+  }
 
-  case class FunctionParameter(nr: Int) extends BeChildDataRole {
+  case class FunctionParameter(nr: Int) extends BeChildDataRole derives upickle.default.ReadWriter {
     override def withIncrementedNrOrThis: BeChildRole = FunctionParameter(nr + 1)
   }
 
-  case class ReturnValue(nr: Int) extends BeChildDataRole {
+  case class ReturnValue(nr: Int) extends BeChildDataRole derives upickle.default.ReadWriter {
     override def withIncrementedNrOrThis: BeChildRole = ReturnValue(nr + 1)
   }
 
-  case class ValueForVariable(associatedVariable: BeDefineVariable) extends BeChildDataRole
+  case class ValueForVariable(associatedVariable: BeDefineVariable) extends BeChildDataRole derives upickle.default.ReadWriter
 
   case object ValueInAssignment extends BeChildDataRole
 
   /* EDITOR ROLES */
-  sealed trait BeChildEditorRole extends BeChildRole
+  sealed trait BeChildEditorRole extends BeChildRole derives ReadWriter
 
-  case class RecentlyInsertedInto(intoRole: BeChildRole) extends BeChildEditorRole
+  case class RecentlyInsertedInto(intoRole: BeChildRole) extends BeChildEditorRole derives upickle.default.ReadWriter
 
 
 }

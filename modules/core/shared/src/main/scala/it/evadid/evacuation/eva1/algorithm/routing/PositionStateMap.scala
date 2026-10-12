@@ -12,7 +12,7 @@ import it.evadid.evacuation.eva1.model.evagraph.{ConnectionInfo, EvaGraphTypes, 
 
 import scala.collection.mutable
 
-case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[RouterOrEdge, EvaPerson]) {
+case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[RouterOrEdge, EvaPerson]) derives upickle.default.ReadWriter {
 
   def edgesMap(): MultiHashMapList[EvaEdge, EvaPerson] = positionStateMap.getCopyWithFilteredKeys(_.getEither().isRight).getCopyWithMappedKeys(_.getEither().getOrElse(throw new NoSuchElementException("Expected edge position")))
 
@@ -35,7 +35,7 @@ case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[
   def routerMap(): MultiHashMapList[Router, EvaPerson] = positionStateMap.getCopyWithFilteredKeys(_.getEither().isLeft).getCopyWithMappedKeys(_.getEither().swap.getOrElse(throw new NoSuchElementException("Expected router position")))
 
   def getPersonAtPositions(pos: RouterOrEdge): Seq[EvaPerson] = {
-    positionStateMap.get(pos).get.toSeq
+    positionStateMap.get(pos).map(_.toSeq).getOrElse(Seq.empty)
   }
 
   private def capacityInformationForEdge(router1: Router, router2: Router): CapacityInformation = {
@@ -77,7 +77,7 @@ case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[
 
   private def tryToRoute(person: EvaPerson, currentPositionOfPerson: Router, routingMap: FlowRoutingMap, evacuationStrategy: FlowStrategy): Option[(EvaPerson, RoutingOption[Router])] = {
 
-    val allRoutingOptions: mutable.Seq[RoutingOption[Router]] = routingMap.getMap(currentPositionOfPerson).filter(_.nextStep.isDefined)
+    val allRoutingOptions: Seq[RoutingOption[Router]] = routingMap.getMap.get(currentPositionOfPerson).map(_.toList).getOrElse(Nil).filter(_.nextStep.isDefined)
 
     val freeRoutingOptions = allRoutingOptions.filter(option => {
       val capacityInformation = capacityInformationForEdge(currentPositionOfPerson, option.nextStep.get)

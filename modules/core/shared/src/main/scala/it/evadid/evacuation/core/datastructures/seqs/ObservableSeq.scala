@@ -38,7 +38,7 @@ class ObservableSeq[T] extends Seq[T] {
   }
 
   override def iterator: Iterator[T] = this.synchronized {
-    decoratedSeq.iterator
+    decoratedSeq.toList.iterator
   }
 
   override def hashCode(): Int = this.synchronized {

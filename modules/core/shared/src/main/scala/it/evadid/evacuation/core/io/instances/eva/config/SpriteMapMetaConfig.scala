@@ -15,3 +15,16 @@ trait SpriteMapMetaConfig {
   def getEmptySprite(sprites: Seq[Sprite]): FloorSprite
 
 }
+
+object SpriteMapMetaConfig {
+  given upickle.default.ReadWriter[SpriteMapMetaConfig] = upickle.default.readwriter[String].bimap(
+    config => config match {
+      case DefaultMetaConfig => "default"
+      case TopDownMetaConfig => "top-down"
+      case other => throw new IllegalArgumentException(s"Unsupported sprite layout: ${other.getClass.getName}")
+    }, name => name match {
+      case "default" => DefaultMetaConfig
+      case "top-down" => TopDownMetaConfig
+      case other => throw new IllegalArgumentException(s"Unknown sprite layout: $other")
+    })
+}

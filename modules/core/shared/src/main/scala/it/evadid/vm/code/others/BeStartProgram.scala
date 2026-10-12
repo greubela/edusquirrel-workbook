@@ -8,8 +8,8 @@ import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.BeChildRole.BodySequence
 import it.evadid.vm.types.BeScope.InSequenceScope
 import it.evadid.vm.types.*
-
-case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpression {
+import upickle.default.*
+case class BeStartProgram(startSequence: Option[BeSequence]) extends BeExpression derives ReadWriter{
 
   override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {}
 

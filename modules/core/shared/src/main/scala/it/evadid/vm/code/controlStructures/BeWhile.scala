@@ -10,11 +10,11 @@ import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeChildRole.ConditionInControlStructure
 import it.evadid.vm.types.BeScope.InSequenceScope
-
+import upickle.default.*
 case class BeWhile(
                     condition: BeSequence,
                     body: BeSequence)
-  extends BeControlStructure {
+  extends BeControlStructure derives ReadWriter{
 
   override def allPossibleBodies: Seq[BeExpression] = List(body)
 
@@ -30,9 +30,9 @@ case class BeWhile(
     }
 
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = List(
-      BeControlFlowLine(RepeatBranch),
-      getChildrenAsReference(myInfo.myScope).head.toSegment(Some(ControlFlowUp)),
-      BeControlFlowLine(RepeatUnion)
+      BeControlFlowLine(RepeatBranch()),
+      getChildrenAsReference(myInfo.myScope).head.toSegment(Some(ControlFlowUp())),
+      BeControlFlowLine(RepeatUnion())
     )
 
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = List(

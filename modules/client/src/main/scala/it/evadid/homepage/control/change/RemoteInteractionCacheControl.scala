@@ -8,9 +8,9 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.vm.code.defining.KnownBeDefineStructures.variables
 import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncInformationWithContext
+import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncControl, SyncInformation, UsageContext}
-import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableHistorySerialized}
+import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableUntyped}
 
 import java.time
 import java.time.LocalDateTime
@@ -20,8 +20,8 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
 
   private given ExecutionContext = ExecutionContext.global
 
-  private lazy val remoteCache: RemoteCacheController[SyncContext, InteractionVariableHistorySerialized, SyncInformationWithContext] =
-    new RemoteCacheController[SyncContext, InteractionVariableHistorySerialized, SyncInformationWithContext](
+  private lazy val remoteCache: RemoteCacheController[SyncContext, String, SyncInformationWithContext] =
+    new RemoteCacheController[SyncContext, String, SyncInformationWithContext](
       SyncLogger(fullInfo.loggerSystemInfo.syncCacheLogger),
       fullInfo.signals.currentSyncDestinationObservable
     ) {
@@ -31,40 +31,55 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
       }
     }
 
+  private def decodeStatuses[T, GA, SA](variable: InteractionVariable[T, GA, SA],
+      statuses: Map[SyncInformationWithContext, it.evadid.workbook.interaction.sync.model.SyncStatus[SyncContext, String]]) = {
+    import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, SyncStatus}
+    statuses.map { (location, status) =>
+      val decoded = status.lastKnownRemoteValue.flatMap { entry =>
+        scala.util.Try(variable.deserializeHistory(entry.dataValue)).fold(
+          error => { controlLogger.logExceptionWarn("Ignoring invalid history for " + entry.dataKey, error); None },
+          history => Some(DataEntryToSync(entry.dataKey, history, entry.timestamp, entry.direction)))
+      }
+      location -> SyncStatus(status.lastCacheRequest, status.associatedKey, decoded)
+    }
+  }
+
   override def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[?] = remoteCache.syncLock.synchronized {
     remoteCache.ensureMaxAgeSafe(maxAge)
   }
 
-  override def createCurrentReport[T](forVariable: InteractionVariable[T]): InteractionVariableSyncReport[T] = remoteCache.syncLock.synchronized {
+  override def createCurrentReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): InteractionVariableSyncReport[T, GA, SA] = remoteCache.syncLock.synchronized {
     val syncContext = fullInfo.current.currentHomepageContext.toSyncContext(forVariable.keyForSerialization)
     val res = remoteCache.currentReport(syncContext)
-    InteractionVariableSyncReport(forVariable.underlyingInteraction.serializerInteractionContent, forVariable.history, res.cacheStatus, res.allAvailableCacheKeys)
+    InteractionVariableSyncReport(forVariable.history, decodeStatuses(forVariable, res.cacheStatus), res.allAvailableCacheKeys)
   }
 
-  override def createObservableReport[T](forVariable: InteractionVariable[T]): ObservableValue[InteractionVariableSyncReport[T]] = remoteCache.syncLock.synchronized {
+  override def createObservableReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): ObservableValue[InteractionVariableSyncReport[T, GA, SA]] = remoteCache.syncLock.synchronized {
     val observableContext: ObservableValue[UsageContext] = fullInfo.signals.currentUsageContext.toObservableValue
-    val observableHistory: ObservableValue[InteractionVariableHistory[T]] = forVariable.observableState
+    val observableHistory: ObservableValue[InteractionVariableHistory[T, GA, SA]] = forVariable.observableState
     val observableCache = remoteCache.observableCache
 
     observableCache.combineWith(observableContext, observableHistory).deriveValue(tup => {
       val report = tup._1.createReportFor(tup._2.toSyncContext(forVariable.keyForSerialization))
-      InteractionVariableSyncReport(forVariable.underlyingInteraction.serializerInteractionContent, tup._3, report.cacheStatus, report.allAvailableCacheKeys)
+      InteractionVariableSyncReport(tup._3, decodeStatuses(forVariable, report.cacheStatus), report.allAvailableCacheKeys)
     })
   }
 
-  override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariable[?]]): Future[?]  = remoteCache.syncLock.synchronized {
+  override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariableUntyped]): Future[?]  = remoteCache.syncLock.synchronized {
 
     def shouldSyncUntil(syncInfo: SyncInformationWithContext): LocalDateTime = variables.flatMap(curVar => {
-      val history = curVar.history.serializedWithStrategy(syncInfo.syncStrategy, curVar.underlyingInteraction.serializerInteractionContent)
+      val history = curVar.history.filterWithStrategy(syncInfo.syncInformation.syncStrategy)
       history.lastStateOption.map(_.timestamp)
     }).maxOption.getOrElse(LocalDateTime.now())
 
     remoteCache.requestCacheDependentUpdate(shouldSyncUntil)
   }
 
-  override def requestStore(from: List[InteractionVariable[?]]): Future[?] = remoteCache.syncLock.synchronized {
+  override def requestStore(from: List[InteractionVariableUntyped]): Future[?] = remoteCache.syncLock.synchronized {
     remoteCache.requestCacheDependentStore(curSyncInfo => from.flatMap(curSyncInfo.dataToStore(_)))
   }
+
+  override def controlLogger: it.evadid.util.logging.Logger = fullInfo.loggerSystemInfo.syncControlLogger
 
   override def syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
 

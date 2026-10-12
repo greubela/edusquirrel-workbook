@@ -15,9 +15,11 @@ private[font] object PlatformFontMeasurer extends FontMeasurer {
     val metrics = context.measureText(text)
     val ascent = metrics.asInstanceOf[js.Dynamic].actualBoundingBoxAscent
     val descent = metrics.asInstanceOf[js.Dynamic].actualBoundingBoxDescent
-    val height =
+    val glyphHeight =
       if (js.isUndefined(ascent) || js.isUndefined(descent)) 0.0
       else ascent.asInstanceOf[Double] + descent.asInstanceOf[Double]
+    // Spaces and older canvas implementations may have no glyph-height metrics.
+    val height = if glyphHeight.isFinite && glyphHeight > 0 then glyphHeight else font.sizeInPx
 
     Dimension(metrics.width, height)
   }

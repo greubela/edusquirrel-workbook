@@ -109,8 +109,7 @@ object StateHelper {
 
   }
 
-
-  implicit class InteractionVariableOnJS[T](interactionVariable: InteractionVariable[T]) {
+  implicit class InteractionVariableOnJS[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA]) {
 
     def createBoundVarWithUpdateImportance(syncControl: SyncControl, updateImportance: UpdateImportance): Var[T] = {
       val state = interactionVariable.createBoundStateWithUpdateImportance(syncControl, updateImportance)

@@ -128,8 +128,8 @@ class NodeBasedTreeImpl[D](protected val firstLayerNodes: List[NodeBasedTreeNode
 
     def insertNodes(oldNodes: List[NodeBasedTreeNode[D]], newNodes: List[(Int, D)]): List[NodeBasedTreeNode[D]] = {
       var transformedChildren = oldNodes
-      newNodes.reverse.foreach((index, data) => {
-        transformedChildren = oldNodes.slice(0, index) ++ List(NodeBasedTreeNode(data, List())) ++ transformedChildren.slice(index, transformedChildren.size)
+      newNodes.sortBy(_._1).reverse.foreach((index, data) => {
+        transformedChildren = transformedChildren.slice(0, index) ++ List(NodeBasedTreeNode(data, List())) ++ transformedChildren.slice(index, transformedChildren.size)
       })
       transformedChildren
     }

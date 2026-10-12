@@ -6,18 +6,18 @@ import it.evadid.core.datastructures.user.User
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
 import it.evadid.workbook.abstractions.WorkbookStructuringType.WORKBOOK
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement, WorkbookStructureElement, WorkbookStructuringType}
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement, WorkbookInteractionUntyped, WorkbookStructureElement, WorkbookStructuringType}
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import ujson.Value
 import upickle.default
 import upickle.default.*
-
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class Workbook(
                      elementId: String,
                      metadata: WorkbookMetadata,
                      sections: List[WorkbookSection],
-                   ) extends WorkbookStructureElement[WorkbookSection] {
+                   ) extends WorkbookStructureElement[WorkbookSection] derives upickle.default.ReadWriter {
 
   val workbookId: String = elementId
 
@@ -25,8 +25,8 @@ case class Workbook(
 
   override lazy val structureType: WorkbookStructuringType = WORKBOOK
 
-  lazy val allContainedInteractionsById: Map[String, WorkbookInteractionElement[?]] =
-    allContainedInteractions.map(interaction => interaction.elementId -> interaction).toMap
+  lazy val allContainedInteractionsById: Map[String, WorkbookInteractionUntyped] =
+    allInteractionsInThisInstance.map(interaction => interaction.elementId -> interaction).toMap
 
   override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = Workbook.factory
 
@@ -36,7 +36,7 @@ case class Workbook(
 object Workbook {
 
   case class WorkbookMetadata(
-                               author: User,
+                               author: Set[User],
                                contributors: Set[User],
                                workbookTitle: LanguageMapContentId,
                                availableLanguages: List[HumanLanguage]
@@ -87,7 +87,7 @@ object Workbook {
       }
       val requiredToSerialize = element.allChildrenFullSubtree.filter(child => allRequiredIds.contains(child.elementId))
       Map(
-        "serializedElements" -> writeJs(requiredToSerialize.map(el => el.toStringConstructorLike))
+        "serializedElements" -> writeJs(requiredToSerialize.map(_.toSerialized))
       )
     }
   }

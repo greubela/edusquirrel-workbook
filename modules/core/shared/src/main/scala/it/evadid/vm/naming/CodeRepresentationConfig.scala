@@ -1,5 +1,7 @@
 package it.evadid.vm.naming
 
+import upickle.default.*
+
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, ProgrammingLanguage}
 
 case class CodeRepresentationConfig(
@@ -7,6 +9,6 @@ case class CodeRepresentationConfig(
     humanLanguage: HumanLanguage,
     namingStyle: NamingStyle = NamingStyle.SnakeCase,
     skipUnparsable: Boolean = false
-) {
+) derives ReadWriter {
 
 }

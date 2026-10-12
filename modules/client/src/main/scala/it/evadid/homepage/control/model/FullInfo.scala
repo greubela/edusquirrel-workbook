@@ -16,6 +16,8 @@ case class FullInfo(
 
   private[control] val homepageInfoState: Var[HomepageInfo] = Var(defaultInfo)
 
+  
+  
   def homepageInfoNow(): HomepageInfo = homepageInfoState.now()
 
   /* INFO */

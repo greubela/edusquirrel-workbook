@@ -9,8 +9,9 @@ import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.elements.structureElements.WorkbookSection
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncInformationWithContext
+import it.evadid.workbook.interaction.sync.SyncInformation.*
 import it.evadid.workbook.interaction.sync.UsageContext
+import it.evadid.workbook.interaction.sync.*
 
 import scala.concurrent.*
 
@@ -49,7 +50,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   lazy val currentSyncDestinations: StrictSignal[List[SyncInformationWithContext]] = {
     baseSignal.mapLazy(homepageInfo => {
-      homepageInfo.userInfo.map(curUserInfo => curUserInfo.config.syncDestinations.map(_.forContext(homepageInfo.toContext, Option(curUserInfo)))).getOrElse(List())
+      homepageInfo.userInfo.map(curUserInfo => curUserInfo.config.syncDestinations.map(_.forContext(homepageInfo.toContext))).getOrElse(List())
     })
   }
 
@@ -70,8 +71,11 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
 
   def ensuredLanguageMapSignal(languageMapId: LanguageMapContentId): StrictSignal[LanguageMap[HumanLanguage]] = {
-    val res: Var[LanguageMap[HumanLanguage]] = Var(LanguageMapStorage.languageMapLoading(languageMapId))
-    ensuredLanguageMap(languageMapId).addObserver(newValue => res.set(newValue))
+    val source = ensuredLanguageMap(languageMapId)
+    // A fullscreen editor may create a label after the language map has loaded.
+    // Observers receive future changes, so also seed the signal from the current value.
+    val res: Var[LanguageMap[HumanLanguage]] = Var(source.now().getOrElse(LanguageMapStorage.languageMapLoading(languageMapId)))
+    source.addObserver(newValue => res.set(newValue))
     res.signal
   }
 

@@ -1,5 +1,7 @@
 # Aufgabenboard
 
+Historisches Aufgabenboard des ursprünglichen MathWorld-Teams (2026-06-13). Owner, Branches und Abschlussangaben sind keine aktuellen EduSquirrel-Aufgabenzuweisungen. Für den implementierten Stand dieser Kopie siehe README.md.
+
 Stand: 2026-06-13
 
 Dieses Dokument ist die gemeinsame Quelle fuer Aufgabenvergabe im MathWorld-Team. Es verhindert, dass mehrere Personen gleichzeitig dieselbe Aufgabe oder dieselben Dateien bearbeiten.

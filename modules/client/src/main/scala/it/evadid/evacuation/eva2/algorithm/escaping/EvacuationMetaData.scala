@@ -1,13 +1,13 @@
 package it.evadid.evacuation.eva2.algorithm.escaping
 
-case class EvacuationMetaData(success: Boolean, executionTimeInMs: Long, neighbourhoodFunc: String, strategyName: String) {
+case class EvacuationMetaData(success: Boolean, executionTimeInMs: Long, neighbourhoodFunc: String, strategyName: String) derives upickle.default.ReadWriter {
 
 }
 
 object EvacuationMetaData {
 
   def apply(eva: Evacuation, executionTimeInMs: Long, neighbourhoodFunc: String, strategyName: String): EvacuationMetaData = {
-    if (eva == null || eva.steps.size <= 1) {
+    if (eva == null || eva.states.isEmpty || eva.states.last.persons.nonEmpty) {
       EvacuationMetaData(false, executionTimeInMs, neighbourhoodFunc, strategyName)
     } else {
       EvacuationMetaData(true, executionTimeInMs, neighbourhoodFunc, strategyName)

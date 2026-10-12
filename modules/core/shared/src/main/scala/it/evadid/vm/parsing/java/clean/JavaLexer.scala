@@ -24,7 +24,7 @@ object JavaLexer {
   def keyword[$: P](value: String): P[Unit] = P(value ~ !ID_CONTINUE)
   def modifier[$: P]: P[String] = P(StringIn("public", "private", "protected", "static", "final", "abstract").! ~ !ID_CONTINUE)
   def qualifiedName[$: P]: P[String] = P(NAME.rep(1, sep = DOT).map(_.mkString(".")))
-  def operator[$: P](ops: String*): P[String] = ops.map(op => P(op).!).reduce(_ | _)
+  def operator[$: P](ops: String*): P[String] = P(StringIn("||", "&&", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "!", "-", "+", "*", "/", "%", "=", "<", ">").!).filter(ops.contains)
   def STRING_LITERAL[$: P]: P[String] = P(("\"" ~ (("\\" ~ AnyChar) | (!"\"" ~ AnyChar)).rep ~ "\"") | ("'" ~ (("\\" ~ AnyChar) | (!"'" ~ AnyChar)).rep ~ "'")).!
   def NUMBER_LITERAL[$: P]: P[String] = P(CharIn("0-9").rep(1) ~ ("." ~ CharIn("0-9").rep(1)).?).!
 }

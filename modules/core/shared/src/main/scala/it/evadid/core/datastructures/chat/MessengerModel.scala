@@ -2,39 +2,41 @@ package it.evadid.core.datastructures.chat
 
 import it.evadid.core.datastructures.chat.SenderRole.USER
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
+import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
+import upickle.ReadWriter
 
 import java.time.LocalDateTime
+import upickle.default.*
 
-case class MessengerModel(messages: List[Message]) {
+case class MessengerModel(messages: List[Message]) derives ReadWriter{
 
   def orderedMessages: List[Message] =
     messages.sortBy(_.timestamp)
 
   def addMessage(message: Message): MessengerModel = {
-    val newMessages: List[Message] = orderedMessages :+ message
+    val newMessages: List[Message] = (messages :+ message).sortBy(_.timestamp)
     MessengerModel(newMessages)
   }
 
-  def addMessage(text: String, author: Person, timestamp: LocalDateTime = LocalDateTime.now()): MessengerModel =
+  def addMessage(text: String, author: ChatParticipant, timestamp: LocalDateTime = LocalDateTime.now()): MessengerModel =
     addMessage(Message(text, author, timestamp))
 
-  def toJson: String = DefaultSerializer.serializerMessageModelJson.serialize(this)
 }
 
 object MessengerModel {
 
-  def fromJson(json: String): MessengerModel = DefaultSerializer.serializerMessageModelJson.deserialize(json)
+  def fromJson(json: String): MessengerModel = Serializer.fromUpickleJson(MessengerModel.derived$ReadWriter).deserialize(json)
 
   //def testCompletion: MessengerModel = MessengerModel(List(Message("Please write a short poem :)", Person("test", "test", SenderRole.USER, None))))
 
   lazy val empty: MessengerModel = MessengerModel(List())
 
-  val pWorkbook = Person("Workbook System", "workbook", SenderRole.SYSTEM, Some("SYS"))
+  val pWorkbook = ChatParticipant("Workbook System", "workbook", SenderRole.SYSTEM, Some("SYS"))
   //val pStudent = Person("Student", "student", SenderRole.USER, Some("ST"))
-  val pAgent = Person("AI Agent", "turtle-stitch-helper", SenderRole.AGENT, Some("AI"))
-  val pTeacher = Person("Teacher", "teacher", SenderRole.TEACHER, Some("T"))
-  val pFallbackStudent = Person("Student", "student", USER, Some("ST"))
+  val pAgent = ChatParticipant("AI Agent", "turtle-stitch-helper", SenderRole.AGENT, Some("AI"))
+  val pTeacher = ChatParticipant("Teacher", "teacher", SenderRole.TEACHER, Some("T"))
+  val pFallbackStudent = ChatParticipant("Student", "student", USER, Some("ST"))
 
   // may not be vals because of the implicit timestamp!
   def prefaceExercise = Message("@assistant: the current exercise reads as follows:", pWorkbook, LocalDateTime.now())
@@ -45,10 +47,10 @@ object MessengerModel {
 
   def langHint(lang: HumanLanguage) = Message(s"@assistant: Please provide feedback to the student. Do so in ${lang.name} or the language the student used last!", pWorkbook, LocalDateTime.now())
 
-  def getScaffoldingInitMessage(pStudent: Person, exerciseText: String, studentAnswer: String, scaffoldingHints: List[String], curLanguage: HumanLanguage): MessengerModel = {
+  def getScaffoldingInitMessage(pStudent: ChatParticipant, exerciseText: String, studentAnswer: String, scaffoldingHints: List[String], curLanguage: HumanLanguage): MessengerModel = {
     val exerciseMsgs = List(prefaceExercise, Message(exerciseText, pTeacher))
     val answerMsgs =
-      if (studentAnswer.replace("\\s", "").trim.isEmpty) List()
+      if (studentAnswer.trim.isEmpty) List()
       else List(prefaceStudentAnswer, Message(studentAnswer, pStudent))
     val guidelines = List(prefaceGuidelines) ++ scaffoldingHints.map(str => Message("@assistant: " + str, pTeacher))
     val langHints = List(langHint(curLanguage))

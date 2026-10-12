@@ -1,5 +1,7 @@
 # Setup fuer Mitarbeitende
 
+Diese Anleitung dokumentiert die Einrichtung des ursprünglichen HU-GitLab-Projekts. In der EduSquirrel-Kopie genügt für die App `cd resources/programs/20260907MathworldMain`, `npm ci` und `npm run dev`. Git-Remote-Änderungen und GitLab-Teamabläufe unten gelten für das ursprüngliche Repository, nicht für EduSquirrel.
+
 Diese Anleitung richtet das Projekt lokal auf einem Windows-Rechner ein. Das Repository enthaelt inzwischen ein erstes React/Vite/TypeScript-Grundgeruest fuer die Web-App. Es gibt keine Python-Umgebung und keine Ruff-Konfiguration.
 
 ## 1. Benoetigte Programme

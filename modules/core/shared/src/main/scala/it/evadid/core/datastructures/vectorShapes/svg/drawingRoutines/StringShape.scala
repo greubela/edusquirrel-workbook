@@ -12,3 +12,8 @@ case class StringShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T
 
   override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }
+
+object StringShape {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[StringShape[T]] =
+    upickle.default.readwriter[Unit].bimap(value => (), _ => StringShape[T]())
+}

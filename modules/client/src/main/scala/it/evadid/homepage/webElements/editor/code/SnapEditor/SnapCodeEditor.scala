@@ -5,253 +5,103 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.SnapCodeEditorImpl
-import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState.SnapXml
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal, SnapTurtleStagePanel}
+import it.evadid.workbook.elements.interactionElements.programming.*
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 
-import scala.concurrent.Future
-
 case class SnapCodeEditor(
-    state: Var[SnapXml],
-    config: SnapCodeEditorConfig,
-    impl: SnapCodeEditorImpl,
-    onStateEdited: SnapXml => Unit,
-    belowStage: L.Node
-) extends HtmlAppElement with FullscreenLifecycle {
+                           state: Var[ProgrammingState],
+                           config: SnapCodeEditorConfig,
+                           impl: SnapCodeEditorImpl,
+                           onStateEdited: ProgrammingState => Unit = _ => ()
+                         ) extends HtmlAppElement with FullscreenLifecycle {
 
-  private var previewTarget: Option[Canvas] = None
-  private var programObserversBound = false
-  /** Fingerprint of the last state written from Snap XML (skip inbound reload). */
-  private var lastFingerprintFromSnap: Option[String] = None
 
-  private def stateFingerprint(value: SnapXml): String =
-    value.fingerprint
 
-  private def bindProgramObservers(owner: Owner): Unit =
-    if programObserversBound then return
-    programObserversBound = true
-    // Skip the current value: renderEditorInto already loaded it. Only react to
-    // later sync restores / external Var updates — not Snap→state echoes.
-    state.signal.changes.foreach { next =>
-      if !lastFingerprintFromSnap.contains(stateFingerprint(next)) then
-        impl.loadProgramIfChanged(next)
-      previewTarget.foreach(canvas => impl.renderPreviewInto(next, canvas, config))
-    }(using owner)
-
-  private def publishProgramFromSnapXml(xml: String): Unit =
-    val next = SnapXml(xml)
-    val nextFingerprint = stateFingerprint(next)
-    val currentFingerprint = stateFingerprint(state.now())
-    if nextFingerprint == currentFingerprint then
-      impl.acknowledgeProgramFromEditor(next)
-      return
-    lastFingerprintFromSnap = Some(nextFingerprint)
+  private def publishProgramFromSnapXml(xml: String): Unit = {
+    val next = ProgrammingStateSnapXml(xml).removeBloatFromXml
+    // Mark the retained project before publishing: the Var observers run as
+    // part of this update and must not reload Snap's own serialized project.
     impl.acknowledgeProgramFromEditor(next)
-    onStateEdited(next)
+    if state.now() != next then
+      state.set(next)
+      onStateEdited(next)
+  }
 
-  lazy val editorCanvas: L.Element = {
+  private[SnapEditor] def mountEditorInto(canvas: Canvas, owner: Owner): Unit = {
+    impl.mount(owner)
+    impl.removeAllLibraries(true)
+    impl.setOnProjectXmlChangedListener(publishProgramFromSnapXml)
+    impl.renderEditorInto(state.now().toSnapXml, canvas, config)
+    // Mount once. Later updates only synchronize the retained project;
+    // acknowledgeProgramFromEditor makes Snap-originated echoes no-ops.
+    state.signal.changes.map(_.toSnapXml).distinct.foreach(impl.loadProgramIfChanged)(using owner)
+  }
+
+  lazy val editorCanvas: Element = {
+    canvasTag(
+      cls := "be-program-snap-renderer__canvas",
+      aria.label := "Block program editor",
+      widthAttr := config.visuals.CanvasWidth,
+      heightAttr := config.visuals.CanvasHeight,
+      // Construct WorldMorph from the canvas' own mount callback. Besides
+      // avoiding an ambiguous descendant query, this guarantees that Snap
+      // installs its listeners only after this exact canvas is connected.
+      onMountCallback { ctx =>
+        val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
+        mountEditorInto(canvas, ctx.owner)
+      }
+    )
+  }
+
+  lazy val editorDom: L.Element = {
     div(
-      cls := "be-program-snap-renderer be-program-snap-renderer--editor",
-      position.relative,
-      overflow.hidden,
-      border := "1px solid #d0d7de",
-      borderRadius := "10px",
-      backgroundColor := config.visuals.ColorWorkspace,
-      width := "100%",
-      height := "100%",
-      minHeight := "0",
-      flexGrow := 1,
-      flexShrink := 1,
-      flexBasis := "auto",
-      boxSizing.borderBox,
-      canvasTag(
-        cls := "be-program-snap-renderer__canvas",
-        aria.label := "Block program editor",
-        widthAttr := config.visuals.CanvasWidth,
-        heightAttr := config.visuals.CanvasHeight,
-        display.block,
-        width := "100%",
-        height := "100%",
-        // Construct WorldMorph from the canvas' own mount callback. Besides
-        // avoiding an ambiguous descendant query, this guarantees that Snap
-        // installs its listeners only after this exact canvas is connected.
-        onMountCallback { ctx =>
-          val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
-          impl.mount(ctx.owner)
-          impl.setOnProjectXmlChangedListener(publishProgramFromSnapXml)
-          impl.renderEditorInto(state.now(), canvas, config)
-          bindProgramObservers(ctx.owner)
-        }
-      ),
+      cls := "code-editor be-program-snap-renderer be-program-snap-renderer--editor",
+      editorCanvas,
       onUnmountCallback { _ =>
-        // The dialog reuses this lazy DOM element. Keep its WorldMorph and DOM
-        // event listeners intact between openings; only stop animation work
-        // while the canvas is detached.
         impl.flushPendingProjectChanges()
         impl.pauseWorldCycles()
       }
     )
   }
 
-  lazy val previewCanvas: L.Element = {
+  lazy val domElement: L.Element =
     div(
-      cls := "be-program-snap-renderer",
-      position.relative,
-      overflow.hidden,
-      border := "1px solid #d0d7de",
-      borderRadius := "10px",
-      backgroundColor := config.visuals.ColorWorkspace,
-      width := "fit-content",
-      maxWidth := "100%",
-      canvasTag(
-        cls := "be-program-snap-renderer__canvas",
-        aria.label := "Block program preview",
-        widthAttr := config.visuals.CanvasWidth,
-        heightAttr := config.visuals.CanvasHeight,
-        display.block,
-        onMountCallback { ctx =>
-          val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
-          previewTarget = Some(canvas)
-          // Only observe changes: signal.foreach would redraw the current value
-          // again and races with sync restore (flash then blank).
-          impl.renderPreviewInto(state.now(), canvas, config)
-          state.signal.changes.foreach { next =>
-            impl.renderPreviewInto(next, canvas, config)
-          }(using ctx.owner)
-        },
-        onUnmountCallback { _ =>
-          previewTarget = None
-        }
-      )
-    )
-  }
-
-  override def getDomElement(): L.Element =
-    div(
-      cls := "be-program-snap-fullscreen",
-      editorCanvas,
-      SnapTurtleStagePanel.chrome(
-        flushPending = () => impl.flushPendingProjectChanges(),
-        runOnStage = canvas => impl.runGreenFlagOnStage(canvas),
-        stopRun = () => impl.stopGreenFlagOnStage(),
-        belowStage = belowStage
-      )
+      cls := "code-editor-container be-program-snap-fullscreen",
+      editorDom
+      //SnapTurtleStagePanel.chrome(this, flushPending = () => impl.flushPendingProjectChanges(), runOnStage = canvas => impl.runGreenFlagOnStage(canvas), stopRun = () => impl.stopGreenFlagOnStage()      )
     )
 
-  /** Drop custom tabs, optionally removing Snap's default library as well. */
-  def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit =
-    impl.removeAllLibraries(includeDefaultLibraries)
-
-  /**
-   * Execute the Python derived from the live Snap project and return every
-   * turtle call in execution order. Pyodide is asynchronous, hence the Future.
-   */
-  def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] =
-    impl.flushPendingProjectChanges()
-    val current = impl.currentProjectXml()
-      .map(SnapXml(_))
-      .getOrElse(state.now())
-    SnapCodeEditor.turtleCommandExecution.commandsFor(current)
+  override def getDomElement(): L.Element = domElement
 
   override def onFullscreenOpen(): Unit =
-    impl.forceLoadProgram(state.now())
+    impl.loadProgramIfChanged(state.now().toSnapXml)
     impl.fitEditorToContainer()
     impl.startWorldCycles()
-
-  /** Refit after the editor becomes visible again and the parent has a real size. */
-  def refit(): Unit =
-    impl.fitEditorToContainer()
 
   override def onFullscreenClose(): Unit =
     // Poll is paused with the world; flush so the last edits reach the Var/sync.
     impl.flushPendingProjectChanges()
     impl.pauseWorldCycles()
 
-  /** Snap editing should only exit via the explicit close control. */
-  override def dismissOnOutsideClick: Boolean = false
 
+  override def dismissOnOutsideClick: Boolean = false
 }
+
 
 object SnapCodeEditor {
 
-  private lazy val turtleCommandExecution =
-    new SnapTurtleCommandExecution(new PyodideTurtleCommandRunner())
+  def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig, onStateEdited: ProgrammingState => Unit): SnapCodeEditor =
+    SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
 
-  def apply(
-      state: Var[SnapXml],
-      config: SnapCodeEditorConfig,
-      onStateEdited: SnapXml => Unit,
-      belowStage: L.Node
-  ): SnapCodeEditor =
-    SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited, belowStage)
+  def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapCodeEditor =
+    SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal())
 
-  def apply(state: Var[SnapXml]): SnapCodeEditor =
-    SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal(), _ => (), L.emptyNode)
-
-  def apply(state: Var[SnapXml], onStateEdited: SnapXml => Unit): SnapCodeEditor =
-    SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal(), onStateEdited, L.emptyNode)
-
-  def commandsFor(state: ProgrammingExerciseState): Future[List[TurtleCommand[Double]]] =
-    turtleCommandExecution.commandsFor(state)
-
-  trait SnapCodeEditorImpl {
-
-    /** Mount the complete interactive Snap editor and keep its Morphic world ticking. */
-    def renderEditorInto(initState: SnapXml, canvas: Canvas, config: SnapCodeEditorConfig): Unit
-
-    /** Render only the scripts as a static, tightly-sized preview. */
-    def renderPreviewInto(state: SnapXml, canvas: Canvas, config: SnapCodeEditorConfig): Unit
-
-    /** Apply an externally restored state to the retained editor without recreating the world. */
-    def loadProgramIfChanged(state: SnapXml): Unit
-
-    /** Like loadProgramIfChanged but always re-opens (fullscreen reopen / hard restore). */
-    def forceLoadProgram(state: SnapXml): Unit
-
-    /** Record that the live Snap project was just written into this state (skip lossy reload). */
-    def acknowledgeProgramFromEditor(state: SnapXml): Unit
-
-    /** Push any pending Snap XML edits into the change listener immediately. */
-    def flushPendingProjectChanges(): Unit
-
-    /** The retained IDE's exact live XML, when it has been mounted. */
-    def currentProjectXml(): Option[String]
-
-    def mount(ctx: Owner): Unit
-
-    /** Start driving the Morphic world. Snap controls only become responsive while cycles run. */
-    def startWorldCycles(): Unit
-
-    /** Pause Morphic updates without destroying the mounted editor. */
-    def pauseWorldCycles(): Unit
-
-    /**
-     * Green-flag the live (hidden) Snap stage and mirror frames onto `mirrorTarget`
-     * so turtle motion animates Scratch-style in the fullscreen panel.
-     */
-    def runGreenFlagOnStage(mirrorTarget: Canvas): Unit
-
-    /** Stop green-flag processes and cancel stage mirroring. */
-    def stopGreenFlagOnStage(): Unit
-
-    /** Pause between blocks during Execute, in milliseconds (>= 0). */
-    def setGreenFlagStepMs(ms: Double): Unit
-
-    /** Match canvas bitmap+CSS to the fullscreen parent and relayout Morphic. */
-    def fitEditorToContainer(): Unit
-
-    /** Register a listener for XML changes caused by edits in the mounted Snap project. */
-    def setOnProjectXmlChangedListener(callback: String => Unit): Unit
-
-    /** Remove custom tabs and, when requested, Snap's standard library too. */
-    def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit
-
-    def destroy(): Unit
-  }
+  def apply(state: Var[ProgrammingState]): SnapCodeEditor =
+    SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
 
 
 }

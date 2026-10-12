@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.sortingExercise
 
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.{AssignmentResult, SortingInteractionState}
 import munit.FunSuite
 
 class SortingInteractionStateSpec extends FunSuite {
@@ -79,7 +80,6 @@ class SortingInteractionStateSpec extends FunSuite {
     assertEquals(state.wrongPlacementPreview, None)
   }
 
-  /* Disabled until SortingInteractionState exposes a serializer again.
   test("serializer round-trips state including error counts") {
     val state = SortingInteractionState(
       List(
@@ -91,10 +91,7 @@ class SortingInteractionStateSpec extends FunSuite {
       lastSessionErrorCount = 4
     )
 
-    val roundTrip = SortingInteractionState.serializer.deserialize(
-      SortingInteractionState.serializer.serialize(state)
-    )
+    val roundTrip = upickle.default.read[SortingInteractionState](upickle.default.write(state))
     assertEquals(roundTrip, state)
   }
-  */
 }

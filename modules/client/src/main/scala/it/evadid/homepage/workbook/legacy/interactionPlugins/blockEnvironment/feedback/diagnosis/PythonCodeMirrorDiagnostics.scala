@@ -5,12 +5,12 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.types.BeChildInfo
-import it.evadid.vm.types.BeChildRole.NoRole
+import it.evadid.vm.types.BeChildRole.*
 import it.evadid.vm.types.BeScope.GlobalScope
 
 object PythonCodeMirrorDiagnostics:
 
-  final case class SourceProblem(originalSource: String, message: String, severity: String)
+  final case class SourceProblem(originalSource: String, message: String, severity: String) derives upickle.default.ReadWriter
 
   private val FramePattern = """^\s+File "([^"]+)", line (\d+)(?:, in .*)?$""".r
   private val ChainSeparators = Set(

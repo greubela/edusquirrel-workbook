@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.geometry
 
+import upickle.default.*
+
 
 import scala.math.Fractional.Implicits.infixFractionalOps
 import scala.math.Integral.Implicits.infixIntegralOps
@@ -37,7 +39,13 @@ case class Bounds[T: Fractional](startPoint: Point[T], dimension: Dimension[T]) 
 
   def area: T = width * height
 
-  def areaString: String = width.toString + " x " + height.toString
+  def areaString: String = {
+    def platformIndependentDoubleString(value: T): String = {
+      val rendered = N.toDouble(value).toString
+      if rendered.exists(ch => ch == '.' || ch == 'e' || ch == 'E') then rendered else rendered + ".0"
+    }
+    platformIndependentDoubleString(width) + " x " + platformIndependentDoubleString(height)
+  }
 
   def centerX = centerPoint.x
 
@@ -54,6 +62,10 @@ case class Bounds[T: Fractional](startPoint: Point[T], dimension: Dimension[T]) 
 
 
 object Bounds {
+  given [T: Fractional: ReadWriter]: ReadWriter[Bounds[T]] = readwriter[(Point[T], Dimension[T])].bimap(
+    b => (b.startPoint, b.dimension), pair => Bounds(pair._1, pair._2)
+  )
+
 
   def fromCenter[T: Fractional](centerPoint: Point[T], dim: Dimension[T]) = {
     val N = summon[Fractional[T]]
@@ -82,7 +94,5 @@ object Bounds {
   }
 
 }
-
-
 
 

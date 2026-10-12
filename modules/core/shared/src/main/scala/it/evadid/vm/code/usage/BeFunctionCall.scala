@@ -12,8 +12,8 @@ import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.BeChildRole.FunctionParameter
 import it.evadid.vm.types.*
-
-case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDefineVariable, BeExpression]) extends BeExpression {
+import upickle.default.*
+case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDefineVariable, BeExpression]) extends BeExpression derives ReadWriter {
 
   private lazy val parameterWithValues: List[(BeDefineVariable, Option[BeExpression])] = funcDef.inputs.map(curInput => (curInput, parameterValueMap.get(curInput)))
 
@@ -41,7 +41,7 @@ case class BeFunctionCall(funcDef: BeDefineFunction, parameterValueMap: Map[BeDe
       }
     }
 
-    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown(), myInfo)
 
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = parameterWithValues.zipWithIndex.collect {
       case ((_, Some(value)), index) => BeExpressionReference(BeChildInfo(FunctionParameter(index), myScope), value)

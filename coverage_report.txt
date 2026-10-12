@@ -1,0 +1,26 @@
+Das Verzeichnis oder die Datei kann nicht erstellt werden.
+java.nio.file.InvalidPathException: Illegal char <?> at index 13: C:\Users\Andr? Greubel\.sbt\1.0\java9-rt-ext-eclipse_adoptium_21_0_10\rt.jar
+	at java.base/sun.nio.fs.WindowsPathParser.normalize(WindowsPathParser.java:204)
+	at java.base/sun.nio.fs.WindowsPathParser.parse(WindowsPathParser.java:175)
+	at java.base/sun.nio.fs.WindowsPathParser.parse(WindowsPathParser.java:77)
+	at java.base/sun.nio.fs.WindowsPath.parse(WindowsPath.java:92)
+	at java.base/sun.nio.fs.WindowsFileSystem.getPath(WindowsFileSystem.java:231)
+	at java.base/java.nio.file.Path.of(Path.java:148)
+	at java.base/java.nio.file.Paths.get(Paths.java:69)
+	at xsbt.boot.Launch$.exportRt(Launch.scala:53)
+	at xsbt.boot.Launch$.apply(Launch.scala:28)
+	at xsbt.boot.Launch$.apply(Launch.scala:21)
+	at xsbt.boot.Boot$.runImpl(Boot.scala:78)
+	at xsbt.boot.Boot$.run(Boot.scala:73)
+	at xsbt.boot.Boot$.main(Boot.scala:21)
+	at xsbt.boot.Boot.main(Boot.scala)
+[error] [launcher] error during sbt launcher: java.nio.file.InvalidPathException: Illegal char <?> at index 13: C:\Users\Andr? Greubel\.sbt\1.0\java9-rt-ext-eclipse_adoptium_21_0_10\rt.jar
+[info] welcome to sbt 1.9.9 (Eclipse Adoptium Java 21.0.10)
+[info] loading global plugins from C:\Users\André Greubel\.sbt\1.0\plugins
+[info] loading settings for project edusquirrel-workbook-build from plugins.sbt ...
+[info] loading project definition from C:\Users\André Greubel\Documents\Git\edusquirrel-workbook\project
+[info] loading settings for project root from build.sbt ...
+[info] set current project to edusquirrel-workbook (in build file:/C:/Users/André%20Greubel/Documents/Git/edusquirrel-workbook/)
+[error] Not a valid key: coverage (similar: homepage, package, compilerCache)
+[error] coreJVM/test:coverage
+[error]                      ^

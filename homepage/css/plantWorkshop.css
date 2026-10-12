@@ -1,7 +1,8 @@
-@import url("./workbook.css");
+@import url("client-components.css");
+@import url("old/workbook.css");
 
 /* Legacy standalone plant workshop layout (plantWorkshop/index.html).
-   Shared component styles live in workbook.css; colors only in colors.css. */
+   Shared component styles live in old/workbook.css; colors only in colors.css. */
 
 body {
     padding: var(--padding-medium);

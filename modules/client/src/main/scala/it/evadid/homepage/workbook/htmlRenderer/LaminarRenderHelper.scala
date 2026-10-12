@@ -14,7 +14,7 @@ import org.scalajs.dom.{File, HTMLInputElement, MouseEvent, html}
 
 import scala.concurrent.ExecutionContext
 
-case class LaminarRenderHelper() {
+case class LaminarRenderHelper() derives upickle.default.ReadWriter {
 
   /* Logging */
   val uiAndDomLogger: Logger = fullInfo.loggerSystemInfo.uiAndDomLogger
@@ -95,7 +95,7 @@ case class LaminarRenderHelper() {
 
   def sessionFileUploadInput(logger: Logger, onNewUploadFileSelected: LoadedFile => Any): ReactiveHtmlElement[HTMLInputElement] = {
     input(
-      styleAttr := "display:none;",
+      hidden := true,
       typ := "file",
       accept := "json",
       onChange --> { event =>

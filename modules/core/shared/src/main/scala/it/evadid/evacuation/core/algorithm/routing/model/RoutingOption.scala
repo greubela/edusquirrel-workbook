@@ -1,6 +1,8 @@
 package it.evadid.evacuation.core.algorithm.routing.model
 
-case class RoutingOption[N](curPos: N, nextStep: Option[N], destination: N, remainingDistance: Double) {
+import upickle.default.ReadWriter
+
+case class RoutingOption[N](curPos: N, nextStep: Option[N], destination: N, remainingDistance: Double) derives ReadWriter {
 /*
   assert(path.nonEmpty, "path must not be empty!")
 

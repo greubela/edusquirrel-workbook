@@ -1,27 +1,43 @@
 package it.evadid.workbook.jsonFactory
 
+import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
+import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
+import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
-import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, ImageElement, LabeledWorkbookElement}
-import it.evadid.workbook.elements.interactionElements.TurtleStitch.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteraction}
+import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
+import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, WorkbookImageElement, LabeledWorkbookElement}
+import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
-import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
-import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
-import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
-import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook, WorkbookSection}
+import it.evadid.workbook.elements.interactionElements.slideshow.*
+import it.evadid.workbook.elements.structureElements.{ExerciseContainer, ExerciseGroup, Workbook, WorkbookSection}
+import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailEditor, MailInteraction}
 import upickle.default
 import upickle.default.*
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
+import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
+import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
+import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
+import it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHashInteraction
+import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction
+import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
+import it.evadid.workbook.elements.interactionElements.slideshow
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.SortingInteraction
+import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
+import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
 
 object WorkbookElementFactory {
 
@@ -88,12 +104,7 @@ object WorkbookElementFactory {
 
   val serializerConstructorLike: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
     override def serialize(obj: WorkbookElement): String = {
-      val ser = obj.associatedFactory.toSerializableElementUnsafe(obj)
-      val ord = obj.associatedFactory.elementMapAndOrderForConstructorLike
-      val wri = obj.associatedFactory.writerJsonRegularRefBased
-      val con = obj.getClass.getSimpleName
-      val res = ConstructorLikeSerializer.serialize(ord, obj, wri.asInstanceOf[Writer[WorkbookElement]], con)
-      res
+      obj.associatedFactory.toStringConstructorLikeUnsafe(obj)
     }
 
     override def deserialize(str: String): WorkbookElement = {
@@ -130,7 +141,27 @@ object WorkbookElementFactory {
   }
 
 
+  import it.evadid.workbook.elements.displayElements.TwoColumnPanel
+  import it.evadid.workbook.elements.structureElements.ExerciseGroup
+
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
+    classOf[TwoColumnPanel].getSimpleName -> TwoColumnPanel.factory,
+    classOf[ExerciseGroup].getSimpleName -> ExerciseGroup.factory,
+    classOf[CompressionExperimentInteraction].getSimpleName -> CompressionExperimentInteraction.factory,
+    classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
+    classOf[MailInteraction].getSimpleName -> MailInteraction.factory,
+    classOf[ChoiceInteraction].getSimpleName -> ChoiceInteraction.factory,
+    classOf[AnswerTableInteraction].getSimpleName -> AnswerTableInteraction.factory,
+    classOf[CoordinatePlotInteraction].getSimpleName -> CoordinatePlotInteraction.factory,
+    classOf[BinaryPixelInteraction].getSimpleName -> BinaryPixelInteraction.factory,
+    classOf[SquareMiddleHashInteraction].getSimpleName -> SquareMiddleHashInteraction.factory,
+    classOf[Sha256Interaction].getSimpleName -> Sha256Interaction.factory,
+    classOf[BlockchainInteraction].getSimpleName -> BlockchainInteraction.factory,
+    classOf[EvacuationSimulationInteraction].getSimpleName -> EvacuationSimulationInteraction.factory,
+    classOf[EvacuationConstructFloorInteraction].getSimpleName -> EvacuationConstructFloorInteraction.factory,
+    classOf[UnicodeComparisonInteraction].getSimpleName -> UnicodeComparisonInteraction.factory,
+    classOf[ThresholdNeuronInteraction].getSimpleName -> ThresholdNeuronInteraction.factory,
+    classOf[MailEditor].getSimpleName -> MailEditor.factory,
     classOf[Workbook].getSimpleName -> Workbook.factory,
     classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.factory,
     classOf[CollapsibleInstructionElement].getSimpleName -> CollapsibleInstructionElement.factory,
@@ -149,25 +180,31 @@ object WorkbookElementFactory {
     classOf[WorkbookSection].getSimpleName -> WorkbookSection.factory,
     classOf[ExerciseContainer].getSimpleName -> ExerciseContainer.factory,
     classOf[Slideshow].getSimpleName -> Slideshow.factory,
-    classOf[SlideshowPanel.TwoColumnImagePanel].getSimpleName -> SlideshowPanel.TwoColumnImagePanel.factory,
-    classOf[SlideshowPanel.ImageSlide].getSimpleName -> SlideshowPanel.ImageSlide.factory,
+    classOf[TurtleRecreateShapeInteraction].getSimpleName -> TurtleRecreateShapeInteraction.factory,
     classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.factory,
-    classOf[TurtleStitchRecreateShapeInteraction].getSimpleName -> TurtleStitchRecreateShapeInteraction.factory,
+    classOf[TurtleStitchRecreateShapeInteractionLegacy].getSimpleName -> TurtleStitchRecreateShapeInteractionLegacy.factory,
+    classOf[SqlCommandExercise].getSimpleName -> SqlCommandExercise.factory,
     classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.factory,
+    classOf[ProgrammingExerciseFullJava].getSimpleName -> ProgrammingExerciseFullJava.factory,
     //  classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
-    classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> LanguageMapBasedImageElement.factory
+    classOf[WorkbookImageElement.LanguageMapBasedWorkbookImageElement].getSimpleName -> LanguageMapBasedWorkbookImageElement.factory
   )
+
+  private[workbook] def registeredElementTypes: Set[String] = knownFactoriesMap.keySet
+
+  private[workbook] def factoryFor(elementType: String): WorkbookElementFactory[? <: WorkbookElement] =
+    knownFactoriesMap.getOrElse(elementType, throw SerializedException(s"No factory known for WorkbookElement with type $elementType"))
 
   def parse(element: WorkbookElementSerializable, knownElements: Map[String, WorkbookElement] = Map()): WorkbookElement = {
     parseAll(List(element), knownElements).head
   }
 
   def parseAll(elementsInOrder: List[WorkbookElementSerializable], knownElements: Map[String, WorkbookElement] = Map()): List[WorkbookElement] = {
-    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap)._1
+    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap, Set.empty[String])._1
   }
 
   def parseAllAsMap(elementsInOrder: List[WorkbookElementSerializable], knownElements: Map[String, WorkbookElement] = Map()): Map[String, WorkbookElement] = {
-    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap)._2
+    parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap, Set.empty[String])._2
   }
 
   @tailrec
@@ -175,7 +212,8 @@ object WorkbookElementFactory {
                         elementsInOrder: List[WorkbookElementSerializable],
                         open: List[WorkbookElementSerializable],
                         alreadyParsed: Map[String, WorkbookElement],
-                        knownFactories: Map[String, WorkbookElementFactory[? <: WorkbookElement]]
+                        knownFactories: Map[String, WorkbookElementFactory[? <: WorkbookElement]],
+                        expandedRegistryIds: Set[String]
                       ): (List[WorkbookElement], Map[String, WorkbookElement]) = {
     if (open.isEmpty) {
       val notYetParsed = elementsInOrder.filter(el => !alreadyParsed.contains(el.elementId))
@@ -190,11 +228,13 @@ object WorkbookElementFactory {
       val stillOpen: mutable.ListBuffer[WorkbookElementSerializable] = mutable.ListBuffer()
       val newlyProvided: mutable.ListBuffer[WorkbookElementSerializable] = mutable.ListBuffer()
 
+      val expanded = mutable.HashSet.from(expandedRegistryIds)
+
       open.foreach(curOpenElement => {
         val factory = knownFactories.get(curOpenElement.elementType)
         if (factory.isEmpty) {
           throw SerializedException(s"No factory known for WorkbookElement with type ${curOpenElement.elementType}")
-        } else {
+        } else if (expanded.add(curOpenElement.elementId)) {
           newlyProvided ++= factory.get.serializedElementKeysThatContainOtherSerializations(curOpenElement).flatMap(curOtherKey => {
             curOpenElement.getElementsAsSerializableElement(curOtherKey)
           })
@@ -210,7 +250,7 @@ object WorkbookElementFactory {
       if (stillOpen.nonEmpty && newlyFinished.isEmpty && newlyProvided.isEmpty) {
         throw SerializedException(s"Iteration with no progress, likely because of a cyclic dependency, stop parsing! (still open: ${open.map(_.elementId)})")
       } else {
-        parseAll(elementsInOrder, stillOpen.toList ++ newlyProvided, alreadyParsed ++ newlyFinished, knownFactories)
+        parseAll(elementsInOrder, stillOpen.toList ++ newlyProvided, alreadyParsed ++ newlyFinished, knownFactories, expanded.toSet)
       }
 
     }
@@ -246,7 +286,12 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
   }
 
   def toStringConstructorLike(element: T): String = {
-    ConstructorLikeSerializer.serialize(elementMapAndOrderForConstructorLike, element, writerJsonRegularRefBased, element.getClass.getSimpleName)
+    val serialized = toSerializableElement(element)
+    ConstructorLikeSerializer.serializeFields(
+      elementMapAndOrderForConstructorLike,
+      serialized.allConstructorFields + ("elementId" -> writeJs(serialized.elementId)),
+      serialized.elementType
+    )
   }
 
   def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String]

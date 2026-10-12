@@ -1,23 +1,32 @@
 package it.evadid.core.datastructures.storage
 
+import upickle.default.*
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.core.util.InfoUtil
 import it.evadid.util.logging.LoggingLevel.INFO
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.SyncInformation.SyncSuccess
+import it.evadid.workbook.interaction.sync.SyncInformation.*
+import it.evadid.workbook.interaction.sync.SyncSuccess
+import it.evadid.workbook.interaction.sync.model.DataEntryToSync.*
+import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse, SyncStatus}
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 
-case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheUpdate: Option[LocalDateTime], knownEntries: Set[DataEntryReadFromServer[K, D]]) {
+case class RemoteSyncDataCache[K , D ](
+                                      config: RemoteCacheConfig[K, D],
+                                      lastCacheUpdate: Option[LocalDateTime],
+                                      knownEntries: Set[DataEntryToSync[K, D]]
+                                    ) {
 
   private given ExecutionContext = ExecutionContext.global
 
   lazy val syncLock: RemoteSyncDataCache[K, D] = this
 
-  def writeIfNecessary(writeRequested: List[DataEntryToWriteToServer[K, D]]): Future[SyncSuccess] = {
+  def writeIfNecessary(writeRequested: List[DataEntryToSync[K, D]]): Future[SyncSuccess] = {
     if (writeRequested.isEmpty) Future.successful(SyncSuccess.emptyNow())
     else syncLock.synchronized {
       val elementsToWrite = writeRequested.filter(needsWriting)
@@ -25,7 +34,7 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
         Future.successful(SyncSuccess.emptyNow())
       } else {
         val mapToWrite = elementsToWrite.map(el => el.dataKey -> el.dataValue).toMap
-        val lastToWrite = elementsToWrite.maxByOption(_.timestampDataCreated).map(_.timestampDataCreated)
+        val lastToWrite = elementsToWrite.maxByOption(_.timestamp).map(_.timestamp)
         val msg1: String = s"Need to write ${elementsToWrite.size} elements (${writeRequested.size} total requests): elements out of sync."
         val msg2: String = s"Cache Time ${InfoUtil.datetimeFormattedForLog(lastCacheUpdate)} / latest element time ${InfoUtil.datetimeFormattedForLog(lastToWrite)}}"
         config.syncLogger.log(msg1 + " " + msg2, INFO, Some(true))
@@ -34,12 +43,12 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
     }
   }
 
-  def needsWriting(entry: DataEntryToWriteToServer[K, D]): Boolean = {
+  def needsWriting(entry: DataEntryToSync[K, D]): Boolean = {
     val curSyncStatus = getCurrentSyncStatus(entry.dataKey)
-    val isEntryNewerThanCache = curSyncStatus.isSubmittedTimeNewerThanLastRequest(entry.timestampDataCreated)
-    val isEntryNewerThanLastKnown = curSyncStatus.isSubmittedTimeNewerThanLastChangedTimestamp(entry.timestampDataCreated)
+    val isEntryNewerThanCache = curSyncStatus.isSubmittedTimeNewerThanLastRequest(entry.timestamp)
+    val isEntryNewerThanLastKnown = curSyncStatus.isSubmittedTimeNewerThanLastChangedTimestamp(entry.timestamp)
 
-    config.syncLogger.logInfo(s"needsWriting for entry at ${entry.timestampDataCreated} (${entry.dataValue})--> lastCacheUpdate: ${lastCacheUpdate} (newer: ${isEntryNewerThanCache}), lastKnown: ${curSyncStatus.lastKnownRemoteValue.map(_.timestampDataLastChanged)} (newer: ${isEntryNewerThanLastKnown}), value: ${curSyncStatus.lastKnownRemoteValue.map(_.dataValue)}")
+    config.syncLogger.logInfo(s"needsWriting for entry at ${entry.timestamp} (${entry.dataValue})--> lastCacheUpdate: ${lastCacheUpdate} (newer: ${isEntryNewerThanCache}), lastKnown: ${curSyncStatus.lastKnownRemoteValue.map(_.timestamp)} (newer: ${isEntryNewerThanLastKnown}), value: ${curSyncStatus.lastKnownRemoteValue.map(_.dataValue)}")
 
     isEntryNewerThanLastKnown || isEntryNewerThanCache
   }
@@ -48,7 +57,7 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
     if (lastCacheUpdate.nonEmpty && lastCacheUpdate.get.isAfter(other)) lastCacheUpdate else Some(other)
   }
 
-  def addAll(set: Set[DataEntryReadFromServer[K, D]], remoteTimestamp: LocalDateTime): RemoteSyncDataCache[K, D] = syncLock.synchronized {
+  def addAll(set: Set[DataEntryToSync[K, D]], remoteTimestamp: LocalDateTime): RemoteSyncDataCache[K, D] = syncLock.synchronized {
     RemoteSyncDataCache(config, chooseNewerTimestamp(remoteTimestamp), knownEntries ++ set)
   }
 
@@ -57,7 +66,7 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
     RemoteSyncDataCache(config, newEntries)
   }*/
 
-  lazy val asMap: Map[K, DataEntryReadFromServer[K, D]] = syncLock.synchronized {
+  lazy val asMap: Map[K, DataEntryToSync[K, D]] = syncLock.synchronized {
     knownEntries.map(en => (en.dataKey, en)).toMap
   }
 
@@ -68,20 +77,6 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
       case None => SyncStatus(None, key, None)
     }
   }
-
-  /*def ensureKeyWithMaxAge(key: K, maxAge: LocalDateTime): Future[RemoteSyncDataCache[K, D]] = syncLock.synchronized {
-    knownEntries.find(_.dataKey == key).match {
-      case Some(entry) if entry.timestampDataLastChanged.isBefore(maxAge) =>
-        config.baseLogger.log(s"Cache for key ${key} is up to date (${entry}), no need to update!", INFO, Some(false))
-        Future.successful(this)
-      case Some(entry) =>
-        config.baseLogger.log(s"Oldest element for key ${key} is outdated (${entry}), requesting fetch!", INFO, Some(false))
-        executeFetch()
-      case None =>
-        config.baseLogger.log(s"No value in Cache for key ${key}, requesting fetch!", INFO, Some(false))
-        executeFetch()
-    }
-  }*/
 
   def tryEnsureCacheIsAtLeastThisRecent(maxAge: LocalDateTime): Future[RemoteSyncDataCache[K, D]] = syncLock.synchronized {
     ensureCacheIsAtLeastThisRecent(maxAge).recover {
@@ -117,7 +112,6 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
 
   }
 
-
   private def formatKeyForLogging(key: K): String = syncLock.synchronized {
     key.toString
   }
@@ -131,11 +125,8 @@ case class RemoteSyncDataCache[K, D](config: RemoteCacheConfig[K, D], lastCacheU
 
 object RemoteSyncDataCache {
 
-  trait TimestampReader[T] {
-    def readTimestamp(value: T): LocalDateTime
-  }
 
-  trait RemoteDataReader[K, D] {
+  trait RemoteDataReader[K , D ] {
     def fetchByKey(logger: SyncLogger, key: K): Future[FetchResponse[K, D]]
 
     def fetchAll(logger: SyncLogger): Future[FetchResponse[K, D]]
@@ -147,67 +138,15 @@ object RemoteSyncDataCache {
     def writeAll(logger: SyncLogger, map: Map[K, D]): Future[SyncSuccess]
   }
 
-
-  sealed trait DataEntryToSync[K, D] {
-    val dataKey: K
-    val dataValue: D
-    val timestamp: LocalDateTime
-  }
-
-  case class DataEntryReadFromServer[K, D](dataKey: K, dataValue: D, timestampDataLastChanged: LocalDateTime) {
-    val timestamp: LocalDateTime = timestampDataLastChanged
-  }
-
-  case class DataEntryToWriteToServer[K, D](dataKey: K, dataValue: D, timestampDataCreated: LocalDateTime) {
-    val timestamp: LocalDateTime = timestampDataCreated
-  }
-
-  trait FetchResponse[K, D] {
-    def timestampFetchResponse: LocalDateTime
-
-    def fetchedValues: Set[DataEntryReadFromServer[K, D]]
-
-    protected def fetchedValuesFromMap(resMap: Map[K, D]): Set[DataEntryReadFromServer[K, D]] = fetchedValuesFromIterator(resMap.iterator)
-
-    protected def fetchedValuesFromIterator(resIt: Iterator[(K, D)]): Set[DataEntryReadFromServer[K, D]] = {
-      resIt.map(curTup => {
-        DataEntryReadFromServer(curTup._1, curTup._2, timestampFetchResponse)
-      }).toSet
-    }
-  }
-
-  object FetchResponse {
-
-    def fromMap[K, D](timestamp: LocalDateTime, map: Map[K, D], readTime: D => Option[LocalDateTime]): FetchResponse[K, D] = new FetchResponse[K, D]() {
-
-      override def timestampFetchResponse: LocalDateTime = timestamp
-
-      override def fetchedValues: Set[DataEntryReadFromServer[K, D]] = {
-        map.iterator.flatMap(tup => {
-          val time = readTime(tup._2)
-          if (time.isEmpty) None
-          else Some(DataEntryReadFromServer[K, D](tup._1, tup._2, time.get))
-        }).toSet
-      }
-    }
-  }
-
-
-  case class SyncStatus[K, V](lastCacheRequest: Option[LocalDateTime], associatedKey: K, lastKnownRemoteValue: Option[DataEntryReadFromServer[K, V]]) {
-    def isSubmittedTimeNewerThanLastRequest(timestamp: LocalDateTime): Boolean = if (lastCacheRequest.isEmpty) true else timestamp.isAfter(lastCacheRequest.get)
-
-    def isSubmittedTimeNewerThanLastChangedTimestamp(timestamp: LocalDateTime): Boolean = if (lastKnownRemoteValue.isEmpty) true else timestamp.isAfter(lastKnownRemoteValue.get.timestampDataLastChanged)
-  }
-
   trait RemoteCacheConfig[K, D] {
     def reader: RemoteDataReader[K, D]
 
     def writer: RemoteDataWriter[K, D]
 
-    //def readTimestamp(value: D): LocalDateTime
-
     def syncLogger: SyncLogger
   }
+
+
 }
 
 

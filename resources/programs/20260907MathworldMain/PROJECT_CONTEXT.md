@@ -1,5 +1,7 @@
 # Projektkontext MathWorld
 
+Historischer MVP-Zuschnitt vom 2026-06-08. Die aktuelle Kampagne umfasst mehr als die ersten drei Missionen; den Stand dieser Kopie beschreibt README.md. Die Lernziele und ursprünglichen Anforderungen bleiben als konzeptionelle Referenz erhalten.
+
 Stand: 2026-06-08
 
 Dieses Dokument haelt den aktuellen MVP-Zuschnitt fuer MathWorld fest. Es ist die Grundlage fuer die naechsten technischen Aufgaben und kann spaeter erweitert werden, wenn weitere Missionen hinzukommen.

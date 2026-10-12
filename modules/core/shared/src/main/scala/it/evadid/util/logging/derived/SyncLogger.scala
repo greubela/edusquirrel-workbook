@@ -32,4 +32,8 @@ case class SyncLogger(underlyingLogger: Logger, namedSyncDest: Option[String] = 
 
   override def log(msg: String, level: LoggingLevel): Unit = log(msg, level, None)
 
+  def logException(ignoredBecause: String, err: Throwable, isOutgoingOption: Option[Boolean], level: LoggingLevel = WARN): Unit = {
+    log(exceptionToString(Some(ignoredBecause), err), level, isOutgoingOption)
+  }
+  
 }

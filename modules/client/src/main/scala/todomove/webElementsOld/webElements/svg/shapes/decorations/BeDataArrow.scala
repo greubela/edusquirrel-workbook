@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.shapes.{BeShapeDecoration, DecorationFactory}
 
-case class BeDataArrow(pointsLeft: Boolean = true) extends BeShapeDecoration {
+case class BeDataArrow(pointsLeft: Boolean = true) extends BeShapeDecoration derives upickle.default.ReadWriter {
 
   override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = Dimension[Double](rendererConfig.controlSegmentSize / 5.0 * 8.0, rendererConfig.controlSegmentSize / 5.0 * 8.0)
 

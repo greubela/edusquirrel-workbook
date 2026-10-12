@@ -9,11 +9,15 @@ import it.evadid.vm.naming.{BeEntityName, CodeRepresentationConfig}
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 
+import upickle.default.*
+
+object BeDefineVariable
+
 case class BeDefineVariable(
                              name: BeEntityName,
                              variableType: BeDataType,
                              initValue: Option[BeExpression] = None
-                           ) extends BeDefineStructure {
+                           ) extends BeDefineStructure derives ReadWriter{
 
 
 
@@ -31,7 +35,7 @@ case class BeDefineVariable(
         .getOrElse(BeDefineVariable.this)
 
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] =
-      asExpressionLine(ControlFlowDown, myInfo)
+      asExpressionLine(ControlFlowDown(), myInfo)
 
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] =
       initValue.map(value => BeExpressionReference(BeChildInfo(BeChildRole.ValueForVariable(BeDefineVariable.this), myScope), value)).toSeq

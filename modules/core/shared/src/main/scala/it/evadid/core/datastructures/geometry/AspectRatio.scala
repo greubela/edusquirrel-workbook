@@ -1,6 +1,8 @@
 package it.evadid.core.datastructures.geometry
 
-case class AspectRatio(widthToHeight: Double) {
+import upickle.default.*
+
+case class AspectRatio(widthToHeight: Double) derives ReadWriter {
 
 }
 

@@ -58,20 +58,15 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
   }
 
   private val outputStdOut: Element = pre(child.text <-- stdoutVar.signal)
-  private val outputStdErr: Element = pre(color := "#b00020", child.text <-- stderrVar.signal)
+  private val outputStdErr: Element = pre(cls := "client-stderr", child.text <-- stderrVar.signal)
   private val globalVariables: Element = pre(child.text <-- globalsVar.signal)
 
   override def getDomElement(): L.Element = {
     div(
       cls := "turtle-exercise-demo",
-      display.flex,
-      gap := "1rem",
-      div(flex := "1", inputEditorElement.getDomElement()),
+      div(inputEditorElement.getDomElement()),
       div(
-        width := "750px",
-        display.flex,
-        flexDirection.column,
-        gap := "0.75rem",
+        cls := "turtle-exercise-demo__controls",
         startButton,
         outputCanvas.getDomElement(),
         h4("stdout"),

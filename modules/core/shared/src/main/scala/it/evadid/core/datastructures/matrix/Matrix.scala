@@ -1,10 +1,12 @@
 package it.evadid.core.datastructures.matrix
 
+import upickle.default.*
+
 import scala.language.implicitConversions
 
 import MatrixPosition._
 
-case class Matrix[T](dim: MatrixDimension, elements: List[T]) {
+case class Matrix[T](dim: MatrixDimension, elements: List[T]) derives ReadWriter {
 
   val elementsAtPosition: Seq[(T, PositionInMatrix)] = dim.positions.map(pim => ((get(pim)).get, pim))
 

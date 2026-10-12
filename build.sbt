@@ -52,7 +52,8 @@ lazy val server = (project in file("./modules/server"))
     // Dependencies exported by core.jvm are already on this project's classpath.
     libraryDependencies ++= Seq(
       "com.mysql" % "mysql-connector-j" % "9.7.0",
-      "org.eclipse.angus" % "jakarta.mail" % "2.0.3"
+      "org.eclipse.angus" % "jakarta.mail" % "2.0.3",
+      "org.scalameta" %% "munit" % "1.3.3" % Test
     )
   )
 
@@ -76,5 +77,6 @@ lazy val worker = (project in file("./modules/worker"))
     name := "worker",
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("it.evadid.worker.WebWorkerBackendServer"),
+    libraryDependencies += "org.scalameta" %%% "munit" % "1.3.3" % Test,
     Test / jsEnv := new NodeJSEnv()
   )

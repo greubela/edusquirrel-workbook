@@ -1,67 +1,27 @@
-# Snap turtle-command execution: existing behaviour
+# Snap turtle-command execution service
 
-This document records the repository behaviour inspected before adding command
-extraction to the Snap block editor.
+[SnapTurtleCommandExecution.scala](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/execution/SnapTurtleCommandExecution.scala) provides asynchronous execution of a saved `ProgrammingStateSnapXml` snapshot. It is implemented and unit tested, but the current `SnapCodeEditor` does not call it or expose a command-extraction method. Editor consumers must flush the live IDE before taking a snapshot if they integrate this service.
 
-## State and block-to-Python path
+## Derivation and execution
 
-* `SnapCodeEditor` owns a `Var[ProgrammingExerciseState]`; the durable state is
-  Snap project XML. Before consumers read it, `flushPendingProjectChanges()`
-  asks the retained IDE to publish its latest `getProjectXML()` value.
-* `SnapProgramDerivation.fromState` is the single existing XML derivation path.
-  It parses XML with `TurtleStitchToBeExpressionParser`, retains the script
-  layout, builds a `BeProgram`, and renders Python through
-  `SnapTurtlePythonBridge.printedPython`.
-* `SnapTurtleCatalog` is the canonical mapping between Snap selectors, Python
-  names and `TurtlePathBuilder.TurtleCommand` names. It includes aliases and
-  input kinds for motion, pen, control and embroidery blocks.
-* The Python popup already uses the derivation path for display and the inverse
-  `SnapTurtlePythonBridge.applyPython` path when applying edited Python. Command
-  extraction must reuse the former rather than introduce another XML parser or
-  printer.
+`SnapTurtleCommandExecution.commandsFor` derives Python through `SnapProgramDerivation.fromState`. Unsupported XML fails before execution instead of running a partial program. `TurtleCommandRunner` is the injected execution boundary.
 
-## Python execution and hooks
+`PyodideTurtleCommandRunner` reuses the existing `PyodideWorkerClient`, installs all Python names/aliases from `SnapTurtleCatalog` in a synthetic `turtle` module, and runs `from turtle import *` followed by the derived program. Globals reset for each run. Runtime callbacks, including repeated loop/function calls, determine the command sequence.
 
-* `PyodideWorkerClient` talks to the integrated `pyodide-worker.js`. Its
-  `addCallbacks` operation installs real JavaScript functions into a synthetic
-  Python module, while `run` executes Python and returns the ordered runtime
-  `CallbackOp` values. The worker functions use JavaScript rest parameters, so
-  calls with any supported arity retain every argument.
-* The older main-thread environment is not suitable for this feature: the
-  application loads Pyodide as an ES module inside the worker, rather than as a
-  main-thread `loadPyodide` global. Command extraction therefore reuses the
-  worker client and registers all names from `SnapTurtleCatalog`, including
-  aliases and embroidery commands.
-* `PyodideWorkerClient` owns the one worker-URL resolver used by command
-  extraction and the existing Python feedback runtime. It honors the optional
-  `globalThis.PYODIDE_WORKER_URL` override and otherwise uses
-  `../js/pyodide-worker.js`, which resolves to the site's `/js` directory from both the
-  `embroideryWorkbook/index.html` and `workbookDesign/index.html` entry pages.
-* Pyodide loading and execution return `Future`s. Consequently a truthful
-  editor API must return `Future[List[TurtleCommand[Double]]]`; a synchronous
-  `List` would either block the browser or return before execution completes.
+Callback decoding preserves order, ignores other modules, maps aliases to canonical command names, and separates finite numbers into `args` and strings/booleans into `stringArgs`. Unknown turtle callbacks, unsupported values and non-finite numbers fail explicitly. Derivation and execution failures propagate through the returned `Future[List[TurtleCommand[Double]]]`; callers must not treat a failed run as a complete empty or partial result.
 
-## Turtle command model
+## Worker lifecycle
 
-`TurtlePathBuilder.TurtleCommand[T]` is the existing model. It stores a command
-name, numeric arguments and string arguments. Extraction should preserve call
-order, map Python aliases to canonical turtle command names through
-`SnapTurtleCatalog`, and retain non-numeric values as strings (including color
-values and booleans) instead of silently dropping them.
+The worker URL resolver honors `globalThis.PYODIDE_WORKER_URL` and otherwise uses `../js/pyodide-worker.js`. The workbook pages load [config.js](../homepage/js/config.js), which sets that override. The worker owns Pyodide loading; this path does not rely on a main-thread `loadPyodide` global. It uses the existing Python worker, not the separate Scala.js backend worker.
 
-## Lifecycle and failure behaviour
+The service does not mount an IDE or change saved XML. Current synchronous derivation on `ProgrammingStateBeExpression` is a separate operation; see [Eva programming state](eva-editor-programming-state.md).
 
-The editor retains its Snap/Morphic world across fullscreen opens. Extraction
-must not create another world or mutate the project. It should flush pending
-edits, derive the current Python snapshot, execute that snapshot with a fresh
-Pyodide global namespace, and propagate parsing or Python execution failures in
-the returned `Future`. A failed run must never return a partial command list as
-if it were complete.
+## Verification
 
-## Test seams needed
+```sh
+sbt 'client/testOnly *SnapTurtleCommandExecutionSpec'
+sbt 'coreJVM/testOnly *SnapTurtleCatalogSpec *SnapTurtlePythonBridgeSpec'
+sbt 'coreJS/testOnly *SnapTurtleCatalogSpec *SnapTurtlePythonBridgeSpec'
+```
 
-Browser Pyodide is unavailable in the Scala.js Node test environment. The
-command-extraction orchestration therefore needs a small injected runner seam.
-Unit tests can then verify Python forwarding, the actual worker callback report
-decoding, alias/canonical-name conversion, argument conversion, ordering and
-failure propagation without replacing the production worker transport.
+The client suite injects a runner/callback executor to check Python forwarding, namespace reset, decoding, ordering and failure propagation. It runs under Node without downloading or starting browser Pyodide. A real worker integration needs browser verification when this service is wired into an editor flow.

@@ -16,7 +16,7 @@ import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowAndEx
 
 import scala.collection.mutable
 
-case class BeBlockSequence(sequence: BeSequence) extends BeBlock {
+case class BeBlockSequence(sequence: BeSequence) extends BeBlock derives upickle.default.ReadWriter {
 
   override def renderNested(
                              structure: TreeStructureContext[NodeBasedTreePosition, (BeExpressionNode, BeBlock)],

@@ -8,11 +8,12 @@ case class ValueDependentConstraints[I, T: Fractional](constraints: Set[I => Num
 
   def addConstraint(numberConstraint: NumberConstraint[T]): ValueDependentConstraints[I, T] = addConstraint(_ => numberConstraint)
 
-  def getConstraint(input: I): NumberConstraint[T] = new NumberConstraint[T] {
-    def minimum: Option[T] = constraints.map(_.apply(input)).flatMap(_.minimum).minOption
-
-    def maximum: Option[T] = constraints.map(_.apply(input)).flatMap(_.maximum).maxOption
+  /** Snapshot the intersection of all bounds for this input. */
+  def getConstraint(input: I): NumberConstraint[T] = {
+    val evaluated = constraints.iterator.map(_.apply(input)).toList
+    NumberConstraintImpl(evaluated.flatMap(_.minimum).maxOption, evaluated.flatMap(_.maximum).minOption)
   }
+
 }
 
 object ValueDependentConstraints {

@@ -67,7 +67,7 @@ case class HtmlFullscreenTurtleEditorElement(editorState: EditorState) extends H
     HtmlBlockLibraryTab.getDefaultTurtleLibraryTab(editorState).getDomElement()
   )
 
- 
+
 
 //  private val testShapes: List[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), ControlArrowUpDown(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
 //  private val testDims = testShapes.map(_.displaySize(editorState.rendererConfigVar.now()))
@@ -95,7 +95,7 @@ case class HtmlFullscreenTurtleEditorElement(editorState: EditorState) extends H
           img(
             src := "../resources/img/turtle_output.png",
             alt := "Actual turtle output",
-            styleAttr := "width: 100%;"
+
           ),
           button(
             cls := "turtle-toggle-button",
@@ -110,7 +110,7 @@ case class HtmlFullscreenTurtleEditorElement(editorState: EditorState) extends H
               h3("Expected Turtle Output"),
               img(
                 src := "../resources/img/expected_turtle_output.png",
-                styleAttr := "width: 100%;"
+
                 /*alt := "Expected turtle output"*/
               )
             )
@@ -119,7 +119,7 @@ case class HtmlFullscreenTurtleEditorElement(editorState: EditorState) extends H
         )
       )
     )
-    
+
 
   private val rootElement: Element = {
     div(

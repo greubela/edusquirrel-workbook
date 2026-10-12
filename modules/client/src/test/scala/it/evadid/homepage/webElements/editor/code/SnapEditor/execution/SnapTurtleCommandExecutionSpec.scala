@@ -1,10 +1,11 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
+
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackOp, PythonRunConfig, PythonRunReport}
 import it.evadid.vm.BeProgram
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseState.PythonSource
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import munit.FunSuite
 import todomove.`export`.workers.PyodideWorkerClient
 
@@ -57,27 +58,13 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
         executed = python
         Future.successful(expected)
 
-    val state = ProgrammingExerciseState.fromProgram(
+    val state = ProgrammingStateSnapXmlHelper.fromProgram(
       BeProgram.fromPythonString("for i in range(1, 4):\n    forward(i * 10)")
     )
     new SnapTurtleCommandExecution(runner).commandsFor(state).map { actual =>
       assertEquals(actual, expected)
       assert(executed.contains("for i in range(1, 3 + 1)"), clue = executed)
       assert(executed.contains("forward(i * 10)"), clue = executed)
-    }
-  }
-
-  test("executes stored Python without converting it through Snap") {
-    var executed = ""
-    val runner = new TurtleCommandRunner:
-      override def execute(python: String): Future[List[TurtleCommand[Double]]] =
-        executed = python
-        Future.successful(Nil)
-
-    val source = "print(1)\nforward(3)\n"
-    new SnapTurtleCommandExecution(runner).commandsFor(PythonSource(source)).map { actual =>
-      assertEquals(actual, Nil)
-      assertEquals(executed, source)
     }
   }
 

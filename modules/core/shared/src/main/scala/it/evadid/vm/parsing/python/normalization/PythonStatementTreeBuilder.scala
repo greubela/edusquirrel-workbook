@@ -242,18 +242,18 @@ object PythonStatementTreeBuilder {
   }
 
   private object ArithmeticNormalization {
-    sealed trait ArithmeticExpression {
+    sealed trait ArithmeticExpression derives upickle.default.ReadWriter {
       def precedence: Int
       def render: String
     }
 
-    final case class AtomicExpression(value: String) extends ArithmeticExpression {
+    final case class AtomicExpression(value: String) extends ArithmeticExpression derives upickle.default.ReadWriter {
       override val precedence: Int = Int.MaxValue
       override def render: String = value
     }
 
     final case class BinaryExpression(operator: String, left: ArithmeticExpression, right: ArithmeticExpression)
-        extends ArithmeticExpression {
+        extends ArithmeticExpression derives upickle.default.ReadWriter {
       override val precedence: Int = operatorPrecedence(operator)
 
       override def render: String = {

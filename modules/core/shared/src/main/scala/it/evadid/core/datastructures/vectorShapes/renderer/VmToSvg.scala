@@ -13,7 +13,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.{BeExpressionToTurtleComma
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtlePenStyle
 import it.evadid.util.logging.Logger
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.workbook.elements.interactionElements.programming.SnapInputCodec
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapInputCodec
 
 object VmToSvg {
 
@@ -91,7 +91,7 @@ object VmToSvg {
     AppShapeElementConfig.turtleSegment(stroke, style.size)
   }
 
-  private final case class PathPreviewRoutine(path: SvgPathBuilderImmutable[Double]) extends DrawingRoutine[Double] {
+  private final case class PathPreviewRoutine(path: SvgPathBuilderImmutable[Double]) extends DrawingRoutine[Double] derives upickle.default.ReadWriter {
     override def hasDesiredAspectRatio: Option[AspectRatio] = None
 
     override def appendPathToBuilder(

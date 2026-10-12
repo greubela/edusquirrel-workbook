@@ -227,7 +227,7 @@ class EvaWebCanvas(width: Double, height: Double) extends EvaCanvas[Canvas] {
 
 object EvaWebCanvas {
 
-  private case class DrawingInformation(x: Double, y: Double)
+  private case class DrawingInformation(x: Double, y: Double) derives upickle.default.ReadWriter
 
 
 }

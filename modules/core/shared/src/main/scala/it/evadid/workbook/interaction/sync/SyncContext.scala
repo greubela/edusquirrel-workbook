@@ -1,5 +1,7 @@
 package it.evadid.workbook.interaction.sync
 
+import upickle.default.*
+
 import it.evadid.core.util.io.Serializer
 import upickle.ReadWriter
 
@@ -8,7 +10,7 @@ case class SyncContext(
                         scenarioId: String,
                         userId: String,
                         keyForSerialisation: String
-                      ) {
+                      ) derives ReadWriter {
 
 
   def toUsageContext: UsageContext = UsageContext(programId, scenarioId, userId)
@@ -17,8 +19,7 @@ case class SyncContext(
 
 object SyncContext {
 
-  private given rw: ReadWriter[SyncContext] = upickle.default.macroRW
-  def serializer: Serializer[SyncContext] = Serializer.fromUpickleJson(rw)
+  def serializer: Serializer[SyncContext] = Serializer.fromImplicitRW[SyncContext]
 
 }
 

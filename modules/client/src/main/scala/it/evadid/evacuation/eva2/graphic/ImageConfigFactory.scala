@@ -17,7 +17,6 @@ object ImageConfigFactory {
   }
 
   def forExtensionButton(id: String, name: String, onClick: MouseEvent => Any): WebImageConfig = {
-    val size = ProgramState.spriteMap.spriteSize
     WebImageConfig(id, "./img/icons/" + name + ".svg", name, Map("click" -> onClick), Map(), Map("class" -> "map-editor-control-button"), true)
   }
 

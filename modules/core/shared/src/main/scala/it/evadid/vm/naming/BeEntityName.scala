@@ -3,8 +3,9 @@ package it.evadid.vm.naming
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
+import upickle.default.*
 
-sealed trait BeEntityName {
+sealed trait BeEntityName derives ReadWriter{
 
   def getNameIn(humanLanguage: HumanLanguage, namingStyle: NamingStyle): String
 
@@ -28,7 +29,7 @@ object BeEntityName {
 
   def fromMapInCodeNotation(partsMap: Map[HumanLanguage, String]): BeEntityName = BeEntityNamePartsBased(LanguageMap.mapBasedLanguageMap(partsMap))
 
-  private case class BeEntityNamePartsBased(languageMapWithPartsString: LanguageMap[HumanLanguage]) extends BeEntityName {
+  private case class BeEntityNamePartsBased(languageMapWithPartsString: LanguageMap[HumanLanguage]) extends BeEntityName derives upickle.default.ReadWriter {
 
     override def getNameIn(humanLanguage: HumanLanguage, namingStyle: NamingStyle): String = {
       val partsString: String = languageMapWithPartsString.getInLanguage(humanLanguage)
@@ -37,7 +38,7 @@ object BeEntityName {
     }
   }
 
-  private case class BeEntityNameLiteral(literalName: String) extends BeEntityName {
+  private case class BeEntityNameLiteral(literalName: String) extends BeEntityName derives upickle.default.ReadWriter {
     override def getNameIn(humanLanguage: HumanLanguage, namingStyle: NamingStyle): String = literalName
   }
 

@@ -1,138 +1,36 @@
-# Deployment-Optionen fuer eine statische Demo
+# MathWorld bereitstellen
 
-Stand: 2026-06-09
+## EduSquirrel GitHub Pages
 
-Dieses Dokument sammelt moegliche Wege, um den aktuellen MathWorld-Prototypen als statische Demo zu zeigen. Es beschreibt nur Optionen und trifft noch keine finale Entscheidung. Es werden keine Deployment-Konfigurationen angelegt.
+Diese Kopie wird zusammen mit EduSquirrel veröffentlicht. Der Workflow [scala.yml](../../../../.github/workflows/scala.yml) baut auf Pushes nach `main` den Scala.js-Client und -Worker sowie MathWorld:
 
-## Ausgangspunkt
+```sh
+cd resources/programs/20260907MathworldMain
+npm ci
+npm run build -- --base=./
+```
 
-MathWorld ist aktuell eine React/Vite/TypeScript-Web-App ohne Backend. Der Prototyp laeuft lokal im Browser und kann mit Vite als statische Anwendung gebaut werden.
+Diese Befehle werden vom EduSquirrel-Repository aus begonnen. Der relative Vite-Basispfad ist erforderlich, weil MathWorld unter `resources/programs/20260907MathworldMain/dist/` ausgeliefert wird. Anschließend führt der Workflow im Repository-Hauptverzeichnis `node tools/dev/assemble-pages.mjs` aus und veröffentlicht `_site/`. Das Assembly-Skript benötigt bereits erzeugte Client-/Worker-Artefakte und MathWorlds `dist/index.html`.
 
-Wichtige Befehle:
+Ein eigener GitLab-Pages-Workflow wird für diese Kopie nicht verwendet. Die GitLab-Adressen in den ursprünglichen Setup- und Teamdokumenten beziehen sich auf das Herkunftsprojekt.
 
-```bash
-npm install
-npm run dev
-npm run build
+## Lokale Vorschau
+
+Im MathWorld-Verzeichnis:
+
+```sh
+npm ci
+npm run build -- --base=./
 npm run preview
 ```
 
-Unter Windows PowerShell koennen stattdessen die `npm.cmd`-Befehle genutzt werden:
+Unter Windows kann `npm.cmd` verwendet werden. Die Vorschau-URL wird von Vite ausgegeben. Die Anwendung benötigt kein Backend; Fortschritt wird im jeweiligen Browser gespeichert. Ein erfolgreicher Build ersetzt keinen manuellen Durchlauf der Missionen.
 
-```powershell
-npm.cmd install
-npm.cmd run dev
-npm.cmd run build
-npm.cmd run preview
-```
+Für die gesamte EduSquirrel-Deployment-Struktur müssen danach beide Scala.js-Artefakte und der MathWorld-Build vorhanden sein. Im Repository-Hauptverzeichnis:
 
-## Option 1: Lokaler Vite-Preview
-
-Der lokale Vite-Preview ist die einfachste Option fuer eine Demo auf einem einzelnen Rechner.
-
-Ablauf:
-
-1. Abhaengigkeiten installieren.
-2. Statischen Build erzeugen.
-3. Build lokal mit Vite Preview anzeigen.
-
-Beispiel macOS:
-
-```bash
-npm install
-npm run build
+```sh
+node tools/dev/assemble-pages.mjs
 npm run preview
 ```
 
-Beispiel Windows PowerShell:
-
-```powershell
-npm.cmd install
-npm.cmd run build
-npm.cmd run preview
-```
-
-Vorteile:
-
-- sehr schnell fuer lokale Vorfuehrungen
-- keine Server- oder GitLab-Pages-Konfiguration noetig
-- gut geeignet fuer Tests vor einer Praesentation
-
-Nachteile:
-
-- Demo laeuft nur auf dem eigenen Rechner
-- Rechner muss waehrend der Vorfuehrung vorbereitet sein
-- nicht als Link fuer andere verfuegbar
-
-## Option 2: GitLab Pages
-
-GitLab Pages koennte spaeter genutzt werden, um die statische Demo als Weblink bereitzustellen. Dafuer waere eine GitLab-CI-Konfiguration noetig, die den Vite-Build erzeugt und den erzeugten `dist`-Ordner als Pages-Artefakt veroeffentlicht.
-
-Vorteile:
-
-- Demo ist als Link erreichbar
-- gut fuer Review, Abgabe oder Praesentation
-- passt zum bestehenden GitLab-Repository
-
-Nachteile:
-
-- benoetigt eine spaetere CI-/Pages-Konfiguration
-- kann je nach GitLab-Umgebung der Uni zusaetzliche Rechte oder Einstellungen brauchen
-- Pfad-/Base-URL-Fragen muessen fuer Vite sauber geprueft werden
-
-Offene Pruefpunkte:
-
-- Ist GitLab Pages im HU-GitLab-Projekt aktiviert?
-- Welche URL wuerde GitLab Pages fuer das Projekt erzeugen?
-- Muss in Vite ein spezieller `base`-Pfad gesetzt werden?
-- Soll die Pages-Konfiguration erst nach Review des MVP angelegt werden?
-
-## Option 3: Manuelles Build-Artefakt
-
-Eine weitere einfache Option ist ein manuell erzeugter Build. Dabei wird lokal `npm run build` ausgefuehrt und der erzeugte `dist`-Ordner als Artefakt weitergegeben, zum Beispiel als ZIP-Datei.
-
-Vorteile:
-
-- keine CI-Konfiguration noetig
-- gut fuer schnelle Weitergabe an Teammitglieder oder Lehrende
-- funktioniert unabhaengig von GitLab Pages
-
-Nachteile:
-
-- manuelle Schritte sind fehleranfaelliger
-- Artefakt kann veralten, wenn der Code weiterentwickelt wird
-- Empfaenger brauchen trotzdem eine Moeglichkeit, die statischen Dateien korrekt auszuliefern
-
-Hinweis:
-
-Die Dateien aus `dist` sollten nicht einfach dauerhaft ins Repository committed werden, solange das Team nicht ausdruecklich entscheidet, Build-Artefakte versioniert abzulegen.
-
-## Vorlaeufige Empfehlung
-
-Fuer die naechste Demo ist der lokale Vite-Preview wahrscheinlich ausreichend. GitLab Pages ist die sinnvollste spaetere Option, wenn das Team einen stabilen Link fuer Review oder Abgabe braucht. Ein manuelles Build-Artefakt kann als einfache Zwischenloesung genutzt werden, sollte aber nicht zur dauerhaften Hauptstrategie werden.
-
-## Lokaler Test am 2026-06-09
-
-Der statische Build und die lokale Preview wurden am 2026-06-09 erfolgreich getestet.
-
-Getestete Befehle:
-
-```bash
-npm run build
-npm run preview
-```
-
-Ergebnis:
-
-- Der Build wurde erfolgreich erzeugt.
-- Die statische Preview startet lokal.
-- Die App ist im Browser erreichbar.
-
-## Offene Entscheidung
-
-Das Team sollte klaeren:
-
-- Reicht eine lokale Demo fuer die naechste Praesentation?
-- Soll ein oeffentlich oder intern erreichbarer Link bereitgestellt werden?
-- Wer prueft, ob GitLab Pages im HU-GitLab-Projekt verfuegbar ist?
-- Wann soll eine echte Deployment-Konfiguration ins Repository aufgenommen werden?
+Das Assembly-Skript ersetzt `_site/`. Build-Artefakte werden aus Quellen erzeugt und nicht als Quelldateien bearbeitet.

@@ -8,23 +8,24 @@ import it.evadid.distribution.clients.{ExecutionClient, RemoteExecutionConfig}
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer, LocalIndexedDbStorageSync, LocalStorageSync}
 import it.evadid.workbook.interaction.sync.SyncStrategy.{SYNC_LAST, SYNC_LAST_AND_MAJOR, SYNC_MAJOR}
-import it.evadid.workbook.interaction.sync.{SyncFormatter, SyncInformation}
+import it.evadid.workbook.interaction.sync.SyncInformation
 import upickle.{ReadWriter, macroRW}
+import it.evadid.workbook.interaction.sync.*
 
 import scala.util.Random
 
 object HomepageDefaults {
 
-  private val localIndexStorage: SyncInformation = SyncInformation(LocalIndexedDbStorageSync.instance, SYNC_LAST_AND_MAJOR, SyncFormatter.RichInteractionVariableFormatter())
+  private val localIndexStorage: SyncInformation = SyncInformation(LocalIndexedDbStorageSync.instanceForHistory, SYNC_LAST_AND_MAJOR)
 
   val useDefaultLocalSyncLocations: List[SyncInformation] = List(localIndexStorage)
 
   def useDefaultOnlineSyncLocations: List[SyncInformation] = defaultSyncLocations.filter(_._1 != "localStorage").map(_._2)
 
   private lazy val defaultSyncLocations: List[(String, SyncInformation)] = List(
-    "localStorage" -> SyncInformation(LocalStorageSync(50000), SYNC_LAST, SyncFormatter.serializeHistory),
-    "db1" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", true), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter()),
-    "db2" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", false), SYNC_MAJOR, SyncFormatter.RichInteractionVariableFormatter()),
+    "localStorage" -> SyncInformation(LocalStorageSync(50000), SYNC_LAST),
+    "db1" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", true), SYNC_MAJOR),
+    "db2" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", false), SYNC_MAJOR),
     "localIndexedDb" -> localIndexStorage
   )
 

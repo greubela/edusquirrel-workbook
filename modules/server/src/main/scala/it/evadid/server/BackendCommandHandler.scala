@@ -10,7 +10,7 @@ import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.distribution.commandTypes.UserCommands.{AuthMailRequest, LoginRequest, *}
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.server.commandHandler.sql.sync.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
-import it.evadid.server.commandHandler.sql.{SqlLogCommands, SqlUserCommands}
+import it.evadid.server.commandHandler.sql.{SqlEditorExecution, SqlLogCommands, SqlUserCommands}
 import it.evadid.util.logging.Logger
 
 import java.net.InetAddress
@@ -49,6 +49,9 @@ object BackendCommandHandler {
     localHandlerNoLoginRequired,
 
     // SQL
+    SqlEditorCommands.execute.toLocalExecutionClient(
+      (request, logger) => Future { SqlEditorExecution.handle(request) }
+    ),
     SQLCommands.StoreToDbCommand.toLocalExecutionClient(
       (request: StoreToDbRequest, logger: Logger) => Future {
         UpsertToDatabase.handleRequest(request, logger)
@@ -88,22 +91,22 @@ object BackendCommandHandler {
 
 
   def handleExecution(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Future[ExecutionClientResponse] = {
-    logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.params.keys}")
-
-    SqlLogCommands.handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger)
-
     if (executionCommand.name.trim.isEmpty) {
-      logger.logError("ExecutionCommand.name must not be empty")
-      throw new IllegalArgumentException("ExecutionCommand.name must not be empty")
+      val message = "ExecutionCommand.name must not be empty"
+      logger.logError(message)
+      throw new IllegalArgumentException(message)
     }
+
+    logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.json.obj.keys}")
+    SqlLogCommands.handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger)
 
     if (verifiedToken.nonEmpty) {
       val user = verifiedToken.head.info.user
       logger.logInfo(s"User is authorized as user ${user.name} (${user.id} @ ${user.mail})")
-      localHandlerRequiringLogin(verifiedToken.head).handleExecution(executionCommand, logger)
+      localHandlerRequiringLogin(verifiedToken.head).executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
     } else if (localHandlerNoLoginRequired.canExecuteCommand(executionCommand)) {
       logger.logInfo(s"No authorized user found, only a subset of handlers are available!")
-      localHandlerNoLoginRequired.handleExecution(executionCommand, logger)
+      localHandlerNoLoginRequired.executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
     } else {
       throw new IllegalArgumentException(s"Functionality ${executionCommand.name} either does not exist or requires an account!")
     }

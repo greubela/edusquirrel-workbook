@@ -1,5 +1,7 @@
 # Manueller Regressionstestplan fuer MathWorld
 
+Die eingetragenen Ergebnisse dokumentieren die damaligen manuellen Testläufe. Für eine aktuelle Regression müssen die Schritte erneut durchgeführt werden; „Bestanden“ ist keine Aussage über den heutigen Build.
+
 Stand: 2026-06-25
 
 Dieses Dokument beschreibt manuelle Regressionstests fuer den aktuellen MathWorld-MVP mit 8 Garten-Missionen. Die Tests pruefen bestehende Funktionen systematisch, ohne neue Funktionen einzubauen.

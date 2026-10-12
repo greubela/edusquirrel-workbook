@@ -2,12 +2,16 @@ package it.evadid.workbook.elements.interactionElements.basic
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
+import it.evadid.distribution.command.ExecutionCommandFactory
+import it.evadid.distribution.commandTypes.SqlEditorCommands.{Request, Response}
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import upickle.default.ReadWriter
 
-
+import upickle.default.*
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 object LabeledNumberInteraction {
 
   /**
@@ -16,28 +20,30 @@ object LabeledNumberInteraction {
    * The value is stored as text so renderers can preserve exact algebraic input
    * such as "sin(3) + 4" while still offering numeric spinner controls.
    */
-  enum NumberType {
+  enum NumberType derives ReadWriter {
     case IntegerLike
     case FractionLike
     case AlgebraicLike
   }
 
-  case class NumberInteractionConfig(numberType: NumberType)
+  case class NumberInteractionConfig(numberType: NumberType) derives ReadWriter
 
   val factory: SimpleWorkbookElementFactory[LabeledNumberInteraction] = new SimpleWorkbookElementFactory[LabeledNumberInteraction]() {
-    override protected val constructorFieldOrder = List("elementId", "numberLabel", "numberType", "defaultNumber")
+    override protected val constructorFieldOrder = List("elementId", "numberLabel", "numberType", "defaultNumber", "diff")
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LabeledNumberInteraction): WorkbookElementSerializable = {
       baseElement
         .withElementAddedAs("numberLabel", infoElement.numberLabel)
         .withElementAdded("numberType", infoElement.numberType.toString)
         .withElementAdded("defaultNumber", infoElement.defaultValue)
+        .withElementAddedAs("diff", infoElement.diff)
     }
 
     override def finishDeserialization(element: WorkbookElementSerializable): LabeledNumberInteraction = {
       LabeledNumberInteraction(element.elementId,
         element.getElementAs[LanguageMapContentId]("numberLabel"),
         NumberType.valueOf(element.getOptionalElementAs("numberType", "IntegerLike")),
-        element.getOptionalElementAs("defaultNumber", "0")
+        element.getOptionalElementAs("defaultNumber", "0"),
+        element.getOptionalElementAs[BigDecimal]("diff", BigDecimal(1))
       )
     }
   }
@@ -50,10 +56,10 @@ case class LabeledNumberInteraction(
                                      numberType: NumberType,
                                      override val defaultValue: String = "0",
                                      diff: BigDecimal = BigDecimal(1),
-                                   ) extends WorkbookInteractionElement[String] {
+                                   ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
   override val associatedFactory = LabeledNumberInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override val serializerInteractionContent: Serializer[String] = Serializer.stringIO
+  override val serializerInteractionContent: Serializer[String] = Serializer.fromUpickleJson(summon[ReadWriter[String]])
 
 }

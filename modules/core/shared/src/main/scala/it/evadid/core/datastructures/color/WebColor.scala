@@ -1,6 +1,7 @@
 package it.evadid.core.datastructures.color
+import upickle.default.*
 
-trait WebColor extends AppColor {
+sealed trait WebColor extends AppColor derives ReadWriter{
 
   def webStyleRgbString: String = {
     val rgb = toRGB
@@ -13,7 +14,7 @@ trait WebColor extends AppColor {
 
 }
 
-private[color] case class WebColorHexString(sixDigitHexString: String) extends WebColor {
+private[color] case class WebColorHexString(sixDigitHexString: String) extends WebColor derives upickle.default.ReadWriter {
   assert(sixDigitHexString.length == 6 && sixDigitHexString.matches("[0-9a-fA-F]{6}"))
 
   val webStyleHexString: String = "#" + sixDigitHexString
@@ -26,7 +27,7 @@ private[color] case class WebColorHexString(sixDigitHexString: String) extends W
   override def toWebColor: WebColor = this
 }
 
-private case class WebColorNamed(name: String, sixDigitHexString: String) extends WebColor {
+private case class WebColorNamed(name: String, sixDigitHexString: String) extends WebColor derives upickle.default.ReadWriter {
   assert(sixDigitHexString.length == 6 && sixDigitHexString.matches("[0-9a-fA-F]{6}"))
 
   val webStyleHexString: String = "#" + sixDigitHexString

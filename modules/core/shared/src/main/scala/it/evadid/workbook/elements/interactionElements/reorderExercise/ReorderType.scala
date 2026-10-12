@@ -5,20 +5,20 @@ import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.util.io.Serializer
 import upickle.default.*
 
-sealed trait ReorderType derives ReadWriter{
+sealed trait ReorderType  {
 
 }
 
 object ReorderType {
 
-  case class CODELINES(associatedLanguage: ProgrammingLanguage) extends ReorderType
+  case class CODELINES(associatedLanguage: ProgrammingLanguage) extends ReorderType derives upickle.default.ReadWriter
 
   case object BASIC_STRINGS extends ReorderType
   
   case object LANGUAGE_MAP_IDS extends ReorderType
 
   private val allKnownTypes: List[ReorderType] =
-    List(BASIC_STRINGS) ++ AppLanguage.programmingLanguages.map(CODELINES(_))
+    List(BASIC_STRINGS, LANGUAGE_MAP_IDS) ++ AppLanguage.programmingLanguages.map(CODELINES(_))
 
   private[reorderExercise] val serializer: Serializer[ReorderType] = new Serializer[ReorderType] {
 
@@ -29,4 +29,7 @@ object ReorderType {
         .getOrElse(throw new RuntimeException(s"Unknown reorder type: $str"))
     }
   }
+
+  given rw: ReadWriter[ReorderType] = serializer.uPickleReadWrite
+
 }

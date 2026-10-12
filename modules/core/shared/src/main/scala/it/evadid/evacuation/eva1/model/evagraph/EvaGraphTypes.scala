@@ -12,7 +12,7 @@ object EvaGraphTypes {
   type EvaEdge = PositionableEdge[Router, ConnectionInfo]
   //type RouterOrEdge = Either[Router, EvaEdge]
 
-  case class RouterOrEdge(either: Either[Router, EvaEdge]) extends Positionable {
+  case class RouterOrEdge(either: Either[Router, EvaEdge]) extends Positionable derives upickle.default.ReadWriter {
     def getEither(): Either[Router, EvaEdge] = either
 
     override def pos: Position = either match {

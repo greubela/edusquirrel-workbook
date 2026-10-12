@@ -1,6 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.vm.BeProgram
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript, SnapControlFlow, SnapCustomBlockRules, SnapProjectXml, SnapTurtlePythonBridge}
 import munit.FunSuite
 
 class SnapTurtlePythonBridgeSpec extends FunSuite {
@@ -35,6 +38,30 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(xml.contains("""s="turn""""), clue = xml)
     assert(xml.contains("""s="gotoXY""""), clue = xml)
     assert(xml.contains("""s="setHeading""""), clue = xml)
+  }
+
+  test("applyPython puts all Python statements below one green-flag hat") {
+    val result = SnapTurtlePythonBridge.applyPython("forward(10)\nturn(90)")
+    assert(result.isRight, clue = result)
+    val xml = result.toOption.get.snapXml
+    val script = """(?s)<script x="156" y="66">(.*?)</script>""".r
+      .findFirstMatchIn(xml)
+      .map(_.group(1))
+      .getOrElse(fail(s"Missing generated script in $xml"))
+
+    assert(script.startsWith("""<block s="receiveGo"></block>"""), clue = script)
+    assertEquals("""s="receiveGo""".r.findAllIn(script).size, 1)
+    assert(script.indexOf("""s="receiveGo"""") < script.indexOf("""s="forward""""), clue = script)
+    assert(script.indexOf("""s="forward"""") < script.indexOf("""s="turn""""), clue = script)
+  }
+
+  test("green-flag hat is omitted when Snap generated from Python is converted back") {
+    val snap = ProgrammingStatePythonString("forward(10)\nturn(90)").toSnapXml
+    val python = snap.toPython.code
+
+    assert(!python.contains("receive_go"), clue = python)
+    assert(python.contains("forward(10)"), clue = python)
+    assert(python.contains("turn_right(90)"), clue = python)
   }
 
   test("applyPython rejects unknown calls") {
@@ -77,9 +104,9 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val result = SnapTurtlePythonBridge.applyPython(source)
     assert(result.isRight, clue = result)
     val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
-    assert(python.contains("i = 1"), clue = python)
+    assert(python.contains("i: float = 1"), clue = python)
     assert(python.contains("while i < 3:"), clue = python)
-    assert(python.contains("i = i + 1"), clue = python)
+    assert(python.contains("i: float = i + 1"), clue = python)
     assert(python.contains("forward(i)"), clue = python)
     val xml = result.toOption.get.snapXml
     assert(xml.contains("""s="doSetVar""""), clue = xml)
@@ -100,8 +127,8 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val result = SnapTurtlePythonBridge.applyPython(source)
     assert(result.isRight, clue = result)
     val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
-    assert(python.contains("steps = 1"), clue = python)
-    assert(python.contains("steps = steps + 2"), clue = python)
+    assert(python.contains("steps: float = 1"), clue = python)
+    assert(python.contains("steps: float = steps + 2"), clue = python)
     assert(result.toOption.get.snapXml.contains("""s="doChangeVar""""), clue = result.toOption.get.snapXml)
   }
 
@@ -156,8 +183,9 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     )
     assert(result.isRight, clue = result)
     val xml = result.toOption.get.snapXml
-    assert(xml.contains("""<script x="70" y="80">"""), clue = xml)
-    assert(xml.contains("""<script x="200" y="150">"""), clue = xml)
+    assert(xml.contains("""<script x="70" y="80"><block s="receiveGo"></block>"""), clue = xml)
+    assert(xml.contains("""<script x="200" y="150"><block s="receiveGo"></block>"""), clue = xml)
+    assertEquals("""s="receiveGo""".r.findAllIn(xml).size, 2)
   }
 
   test("reconcileLayout resets to single script when callCount changes") {
@@ -190,12 +218,9 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val stored = ProgrammingExercise.StateSerializer.serialize(a)
     val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
     assert(stored.contains("12345"), clue = stored)
-    assert(stored.startsWith("SNAP_XML_V1"), clue = stored.take(80))
-    val restoredXml = restored match
-      case ProgrammingExerciseState.SnapXml(xml) => xml
-      case other => fail(s"expected Snap XML, got $other")
-    assertEquals(restoredXml, a.snapXml)
-    assert(restoredXml.contains("""s="forward""""), clue = restoredXml)
+    assert(stored.startsWith("PROGRAMMING_STATE_V2\nSNAP_XML"), clue = stored.take(80))
+    assertEquals(restored.toSnapXml.snapXml, a.snapXml)
+    assert(restored.toSnapXml.snapXml.contains("""s="forward""""), clue = restored.toSnapXml.snapXml)
   }
 
   test("applyPython accepts full python-compatible palette program") {
@@ -221,7 +246,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(python.contains("receive_go()"), clue = python)
     assert(python.contains("do_wait(1)"), clue = python)
     assert(python.contains("down()"), clue = python)
-    assert(python.contains("steps = 10"), clue = python)
+    assert(python.contains("steps: float = 10"), clue = python)
     assert(python.contains("for _ in range(4):"), clue = python)
     assert(python.contains("forward(50)"), clue = python)
     assert(python.contains("turn(90)"), clue = python)
@@ -365,7 +390,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     val python = SnapTurtlePythonBridge.printedPython(
       it.evadid.vm.BeProgram.fromPythonString("def square(n):\n    pass\n").fullProgram
     )
-    assert(python.contains("def square(n):"), clue = python)
+    assert(python.contains("def square(n: Any) -> None:"), clue = python)
     assert(python.contains("pass"), clue = python)
   }
 

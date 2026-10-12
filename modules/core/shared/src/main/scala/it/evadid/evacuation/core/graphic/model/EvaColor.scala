@@ -1,6 +1,8 @@
 package it.evadid.evacuation.core.graphic.model
 
-case class EvaColor(red: Int, green: Int, blue: Int, alpha: Int = 255) {
+import upickle.default.ReadWriter
+
+case class EvaColor(red: Int, green: Int, blue: Int, alpha: Int = 255) derives ReadWriter {
 
 
   def toHSB: HSBColor = {
@@ -30,7 +32,7 @@ case class EvaColor(red: Int, green: Int, blue: Int, alpha: Int = 255) {
     // HUE
     var h: Double = if (s == 0.0) 0.0
     else {
-      val delta = (max - min) * 6;
+      val delta = (max - min) * 6.0;
       if (red == max) (green - blue) / delta;
       else if (green == max) 1.0 / 3 + (blue - red) / delta;
       else 2.0 / 3 + (red - green) / delta;

@@ -23,7 +23,7 @@ case class AsyncFuture[F, S](underlying: Future[Either[FailureInfo[F], S]]) exte
     }
 
     withFinishedFirstState {
-      case AsyncDataSuccess(data) => func(data).onComplete {
+      case AsyncDataSuccess(data) => scala.util.Try(func(data)).fold(Future.failed, identity).onComplete {
         case Success(value) => res.success(Right(value))
         case Failure(error) => fail("AsyncFuture failed because of future error: " + error.getMessage, error, None)
       }(using ExecutionContext.global)
@@ -34,8 +34,10 @@ case class AsyncFuture[F, S](underlying: Future[Either[FailureInfo[F], S]]) exte
   }
 
   val futureFirstState: Future[AsyncDataStateFinished[F, S]] = underlying.map {
-    case Left(failureInfo) => AsyncDataFailed[F, S](failureInfo.error)
+    case Left(failureInfo) => AsyncDataFailed[F, S](failureInfo.error, failureInfo.data)
     case Right(value) => AsyncDataSuccess[F, S](value)
+  }(using ExecutionContext.global).recover {
+    case error => AsyncDataFailed[F, S](error, None)
   }(using ExecutionContext.global)
 
   override lazy val observeAllStates: ObservableValue[AsyncDataState[F, S]] = {
@@ -44,5 +46,5 @@ case class AsyncFuture[F, S](underlying: Future[Either[FailureInfo[F], S]]) exte
     res
   }
 
-  override def stateNow(): AsyncDataState[F, S] = ???
+  override def stateNow(): AsyncDataState[F, S] = observeAllStates.now().getOrElse(AsyncDataLoading[F, S]())
 }

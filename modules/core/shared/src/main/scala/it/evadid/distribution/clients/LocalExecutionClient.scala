@@ -3,31 +3,42 @@ package it.evadid.distribution.clients
 
 import it.evadid.distribution.command.*
 import it.evadid.distribution.formats.ExecutionClientResponse
+import it.evadid.distribution.formats.ExecutionClientResponse.{AdditionalLoggingOutput, ExecutionClientResponseTimestamps}
 import it.evadid.util.logging.Logger
+import upickle.default.*
 
 import java.time.LocalDateTime
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.util.*
 
 /**
  * An execution client that executes commands locally (and, as such, builds the ExecutionInfo itself)
  */
-trait LocalExecutionClient extends ExecutionClient {
+trait LocalExecutionClient[I: ReadWriter, O: ReadWriter] extends ExecutionClient {
 
-  protected def executeCommand(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]]
+  protected def rawExecution(logger: Logger, input: I): Future[O]
 
-  private[distribution] override def handleExecutionRaw(executionCommand: ExecutionCommand, logger: Logger): Future[Map[String, String]] = {
-    executeCommand(executionCommand, logger)
-  }
-
-  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse] = {
-    val timestampReceived: LocalDateTime = LocalDateTime.now()
-    handleExecutionRaw(executionCommand, logger).map { (resMap: Map[String, String]) =>
-      ExecutionClientResponse(timestampReceived, timestampReceived, LocalDateTime.now(), Right(resMap), Some(executionCommand), logger.getOut(), logger.getErr())
-    }.recover { (err: Throwable) =>
-      val newErr = SerializedException("Error in executeCommand: " + err.getMessage, err)
-      ExecutionClientResponse(timestampReceived, timestampReceived, LocalDateTime.now(), Left(newErr), Some(executionCommand), logger.getOut(), logger.getErr())
+  private[clients] override def handleCommandExecution(logger: Logger, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
+    val recv = LocalDateTime.now()
+    val start = LocalDateTime.now()
+    val input: I = try {
+      read(executionCommand.json)
+    } catch case (err: Throwable) => {
+      throw SerializedException(s"${this.getClass.getSimpleName} could not parse ${executionCommand.json} as input!")
+    }
+    rawExecution(logger, input).transform {
+      case Success(res) => Try {
+        val finish = LocalDateTime.now()
+        val timestamps = ExecutionClientResponseTimestamps(recv, start, finish)
+        ExecutionClientResponse.forValue[O](timestamps, res, executionCommand)
+      }
+      case Failure(err) => Try {
+        val finish = LocalDateTime.now()
+        val timestamps = ExecutionClientResponseTimestamps(recv, start, finish)
+        ExecutionClientResponse.forError(timestamps, SerializedException(err), executionCommand)
+      }
     }
   }
+
 
 }

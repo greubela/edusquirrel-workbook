@@ -2,34 +2,31 @@ package it.evadid.vm.types
 
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction}
-
-sealed trait BeScope {
+import upickle.default.*
+sealed trait BeScope derives ReadWriter{
 
   def parentScopes: List[BeScope]
 
-  // todo: implemented wrong. think about direction...
-  def isSubScope(other: BeScope): Boolean = other.parentScopes.contains(other) 
+  def isSubScope(other: BeScope): Boolean = parentScopes.contains(other)
 }
 
 object BeScope {
 
-  case class GlobalScope() extends BeScope {
+  case class GlobalScope() extends BeScope derives upickle.default.ReadWriter {
     def parentScopes: List[BeScope] = List()
   }
 
-  case class InFunctionScope(funcDef: BeDefineFunction, parentScope: BeScope) extends BeScope {
+  case class InFunctionScope(funcDef: BeDefineFunction, parentScope: BeScope) extends BeScope derives upickle.default.ReadWriter {
     def parentScopes: List[BeScope] = parentScope :: parentScope.parentScopes
   }
 
-  case class InClassScope(classDef: BeDefineClass, parentScope: BeScope) extends BeScope {
+  case class InClassScope(classDef: BeDefineClass, parentScope: BeScope) extends BeScope derives upickle.default.ReadWriter {
     def parentScopes: List[BeScope] = parentScope :: parentScope.parentScopes
   }
 
-  case class InSequenceScope(seq: BeSequence, parentScope: BeScope) extends BeScope {
+  case class InSequenceScope(seq: BeSequence, parentScope: BeScope) extends BeScope derives upickle.default.ReadWriter {
     def parentScopes: List[BeScope] = parentScope :: parentScope.parentScopes
   }
 
 
 }
-
-
