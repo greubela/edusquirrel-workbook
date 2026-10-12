@@ -11,15 +11,17 @@ await access(path.join(root, 'artifacts/newest/client.js')).catch(() => {
 const scratch = path.join(root, 'tmp/work/browser-tests');
 await mkdir(scratch, {recursive: true});
 const bundle = path.join(scratch, 'CodeMirrorLoader.bundle.js');
-const source = await readFile(path.join(root, 'homepage/js/CodeMirrorLoader.js'), 'utf8');
 const packages = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).devDependencies;
-// Use the production loader with the exact CDN package versions, without network access in Chromium.
-const offlineSource = source.replace(/https:\/\/esm\.sh\/(@[^"?]+)@([^"?]+)(?:\?[^" ]*)?/g, (_, name, version) => {
-  if (packages[name] !== version) throw new Error(`Pin ${name}@${version} in package.json for the browser tests`);
-  return name;
-});
-await build({stdin: {contents: offlineSource, resolveDir: root, sourcefile: 'CodeMirrorLoader.js'},
-  outfile: bundle, bundle: true, format: 'esm', platform: 'browser'});
+// Resolve every CDN import (including the gutter module) to the same pinned local package.
+await build({entryPoints: [path.join(root, 'homepage/js/CodeMirrorLoader.js')],
+  outfile: bundle, bundle: true, format: 'esm', platform: 'browser',
+  plugins: [{name: 'offline-codemirror', setup(build) {
+    build.onResolve({filter: /^https:\/\/esm\.sh\//}, async args => {
+      const match = args.path.match(/^https:\/\/esm\.sh\/(@[^?]+)@([^?]+)(?:\?.*)?$/);
+      if (!match || packages[match[1]] !== match[2]) throw new Error('Unpinned CodeMirror module: ' + args.path);
+      return build.resolve(match[1], {resolveDir: root, kind: args.kind});
+    });
+  }}]});
 const files = [];
 const selected = process.argv.slice(2);
 for (const name of (await readdir(path.join(root, 'tools/dev'))).filter(name => name.endsWith('.test.mjs')).sort()) {

@@ -25,5 +25,5 @@ test('preview edition has complete bilingual content and retains the original wo
   assert(!source.includes('TurtleStitchRecreateShapeInteractionLegacy'));
   const html = await fs.readFile(path.join(root,'homepage/embroideryPreviewWorkbook/index.html'),'utf8');
   assert(html.includes('id="workbookEmbroideryPreview"'));
-  assert(html.includes('src="../js/CodeMirrorLoader.js"'));
+  assert(!html.includes('src="../js/CodeMirrorLoader.js"'), 'optional editor modules must not hold up DOMContentLoaded');
 });
