@@ -31,7 +31,7 @@ Mail HTML is parsed into an inert template and rebuilt from an allowlist. Suppli
 
 Compose validates recipient addresses, subject and body. Reply/forward preserve context, prevent repeated prefixes, and produce plain-text local drafts; only forwarding retains a simulated attachment filename. Invalid drafts stay visible and never overwrite mailbox state.
 
-Late-created fullscreen labels now initialize from the already loaded language map, avoiding stuck loading placeholders in the folder header and status footer.
+Fullscreen labels initialize from the current language map and update with language changes.
 
 ## Verification
 
@@ -43,4 +43,4 @@ No dependencies were added. The simulator page loads only the app bundle and sha
 - `tools/dev/workbook-stylesheets.test.mjs`: every workbook entry page links the dedicated simulator CSS exactly once, all local stylesheet links/imports resolve, authored CSS is reachable from a homepage entry page, and mail components contain no inline Laminar styling.
 - Full regression suites: `coreJVM/test`, `coreJS/test`, `client/test`, `server/test`, `worker/test`.
 
-The digital page implements the mailbox exercise and local writing practice. It does not yet migrate all explanatory chapters of the original PDF workbook.
+The digital Phishing workbook also includes warning-sign, domain/Unicode, attachment-risk and checklist chapters using shared interactions. Mailbox and compose functionality are implemented; remaining source-content differences are listed in the [migration inventory](digital-workbook-migration.md#phishing-warning-signs-domains-and-attachments).
