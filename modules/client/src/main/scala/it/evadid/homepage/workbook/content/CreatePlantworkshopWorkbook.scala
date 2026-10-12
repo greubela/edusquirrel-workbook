@@ -5,15 +5,15 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES
-import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.displayElements.ImageElement
-import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement}
+import it.evadid.workbook.elements.displayElements.{WorkbookImageElement, TwoColumnPanel}
+import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, SafetyLabel, TaskLabel}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.AdvancedCodeRequirement
-import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
+import it.evadid.workbook.elements.interactionElements.slideshow.*
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection, ExerciseGroup}
 
 case class CreatePlantworkshopWorkbook(
                                         override val fullInfo: FullInfo,
@@ -60,33 +60,24 @@ case class CreatePlantworkshopWorkbook(
     instructionPlaintext(s"PlantWorkshop/$contextKey")
   }
 
-  def wiringSlideImage(slideIndex: Int): ImageElement = {
-    LanguageMapBasedImageElement(nextId(), LanguageMapContentId(s"PlantWorkshop/fileWiringSlide${slideIndex}"), URL_RELATIVE_TO_WORKBOOK_RESOURCES)
+  def wiringSlideImage(slideIndex: Int): WorkbookImageElement = {
+    LanguageMapBasedWorkbookImageElement(nextId(), LanguageMapContentId(s"PlantWorkshop/fileWiringSlide${slideIndex}"), URL_RELATIVE_TO_WORKBOOK_RESOURCES)
   }
 
-  private def buildWiringPanel(i: Int): SlideshowPanel = {
+  private def buildWiringPanel(i: Int): WorkbookDisplayElement = {
     val image = wiringSlideImage(i)
-    if (i == 3 || i == 4 || i == 8) {
-      SlideshowPanel.TwoColumnImagePanel(nextId("wiring-panel"),
-        image,
-        LanguageMapContentId("PlantWorkshop/LLabel"),
-        LanguageMapContentId("PlantWorkshop/RLabel"),
-        LanguageMapContentId(s"PlantWorkshop/wiringSlideTextL${i}"),
-        LanguageMapContentId(s"PlantWorkshop/wiringSlideTextR${i}")
-      )
-    } else if (i == 5) {
-      SlideshowPanel.ImageSlide(nextId("wiring-panel"),
-        image,
-        LanguageMapContentId("PlantWorkshop/wiringSlideCurrentStatus"),
-        LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}")
+    val description = if (Set(3, 4, 8).contains(i)) {
+      TwoColumnPanel(nextId("wiring-columns"),
+        instructionLabeledPair("PlantWorkshop/LLabel", s"PlantWorkshop/wiringSlideTextL$i", HintLabel),
+        instructionLabeledPair("PlantWorkshop/RLabel", s"PlantWorkshop/wiringSlideTextR$i", HintLabel)
       )
     } else {
-      SlideshowPanel.ImageSlide(nextId("wiring-panel"),
-        image,
-        LanguageMapContentId("PlantWorkshop/wiringSlideHelp"),
-        LanguageMapContentId(s"PlantWorkshop/wiringSlideText${i}")
+      instructionLabeledPair(
+        if (i == 5) "PlantWorkshop/wiringSlideCurrentStatus" else "PlantWorkshop/wiringSlideHelp",
+        s"PlantWorkshop/wiringSlideText$i", HintLabel
       )
     }
+    ExerciseGroup(nextId("wiring-panel"), List(image, description))
   }
 
   // Phase A: Arduino, Sensor, Relais verdrahten (Slides 1–5)

@@ -36,7 +36,8 @@ class WorkbookSerializerSpec extends FunSuite {
     import it.evadid.workbook.elements.structureElements.WorkbookSection
     import WorkbookSection.WorkbookSectionMetadata
     import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-    import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingEditorPalette}
+    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
+    import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
     val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("section/first")), List(TextInteraction("text")))
     val second = WorkbookSection("second", WorkbookSectionMetadata(LanguageMapContentId("section/second"), List(first), List(first)),
       List(ProgrammingExercise("programming", editorPalette = ProgrammingEditorPalette.Embroidery, referencePython = Some("print(\"hello\")\n"))))
@@ -134,6 +135,22 @@ class WorkbookSerializerSpec extends FunSuite {
     for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)) {
       assertEquals(serializer.deserialize(serializer.serialize(restored)), populated)
     }
+  }
+
+  test("workbooks discover interactions inside sections, exercise containers and display wrappers") {
+    import it.evadid.workbook.elements.structureElements.{ExerciseContainer, WorkbookSection}
+    import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
+    import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement
+    import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, WorkbookLabel}
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+    val answer = TextInteraction("saved-answer")
+    val wrapped = LabeledWorkbookElement("label", answer, WorkbookLabel(LanguageMapContentId("serializer/goal"), GoalLabel))
+    val container = ExerciseContainer("exercise", LanguageMapContentId("serializer/exercise"), List(wrapped))
+    val section = WorkbookSection("section", WorkbookSectionMetadata(LanguageMapContentId("serializer/section")), List(container))
+    val populated = workbook.copy(sections = List(section))
+    assertEquals(populated.allInteractionsInThisInstance.map(_.elementId), List(answer.elementId))
+    assertEquals(populated.allContainedInteractionsById.keySet, Set(answer.elementId))
+    assert(populated.allContainedInteractionsById(answer.elementId) eq answer)
   }
 
 }

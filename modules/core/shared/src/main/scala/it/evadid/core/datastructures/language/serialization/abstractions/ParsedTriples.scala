@@ -40,11 +40,14 @@ object ParsedTriples {
                                     ) extends AutoSerializableSubType[ParsedTriples, ParsedTriplesSerialized] {
     lazy val toTypedMainType: ParsedTriples = try {
 
+      val ids = contentIds.toVector
+      val regular = regularLanguages.map(_.asInstanceOf[HumanLanguage]).toVector
+      val special = specialLanguages.map(_.asInstanceOf[SpecialLanguage]).toVector
       val allRegular = regularTriples.flatMap(trip => Try {
-        trip.resolveRegular(contentIds, regularLanguages.map(_.asInstanceOf[HumanLanguage]))
+        trip.resolveRegular(ids, regular)
       }.toOption).toSet
       val allSpecial = specialTriples.flatMap(trip => Try {
-        trip.resolveSpecial(contentIds, specialLanguages.map(_.asInstanceOf[SpecialLanguage]))
+        trip.resolveSpecial(ids, special)
       }.toOption).toSet
       ParsedTriples(allRegular, allSpecial)
     } catch case (err: Throwable) => {
@@ -61,6 +64,15 @@ object ParsedTriples {
 
 case class ParsedTriples(regularTriples: Set[LanguageMapEntry[HumanLanguage]], universalTriples: Set[LanguageMapEntry[SpecialLanguage]]) extends AutoSerializableMainType[ParsedTriples, ParsedTriplesSerialized] {
   def union(other: ParsedTriples) = ParsedTriples(regularTriples ++ other.regularTriples, universalTriples ++ other.universalTriples)
+
+  /** Fresh translations replace cached values for the same identifier/language. */
+  def withOverrides(other: ParsedTriples): ParsedTriples = {
+    val regularKeys = other.regularTriples.map(entry => entry.contentId -> entry.language)
+    val universalKeys = other.universalTriples.map(entry => entry.contentId -> entry.language)
+    ParsedTriples(
+      regularTriples.filterNot(entry => regularKeys.contains(entry.contentId -> entry.language)) ++ other.regularTriples,
+      universalTriples.filterNot(entry => universalKeys.contains(entry.contentId -> entry.language)) ++ other.universalTriples)
+  }
 
   lazy val size = regularTriples.size + universalTriples.size
 
@@ -90,8 +102,15 @@ case class ParsedTriples(regularTriples: Set[LanguageMapEntry[HumanLanguage]], u
     val regLanguages = regularTriples.map(_.language).toSet.toList
     val uniLanguages = universalTriples.map(_.language).toSet.toList
     val ids = (regularTriples.map(_.contentId) ++ universalTriples.map(_.contentId)).toSet.toList
+    // Building these indices once avoids a linear scan of every content ID
+    // for each entry while retaining the existing IndexedDB wire format.
+    val idIndices = ids.zipWithIndex.toMap
+    val regularIndices = regLanguages.zipWithIndex.toMap
+    val universalIndices = uniLanguages.zipWithIndex.toMap
     ParsedTriplesSerialized(
-      ids, regLanguages, uniLanguages, regularTriples.map(_.serializeWith(ids, regLanguages)).toList, universalTriples.map(_.serializeWith(ids, uniLanguages)).toList
+      ids, regLanguages, uniLanguages,
+      regularTriples.map(entry => LanguageTripel(regularIndices(entry.language), idIndices(entry.contentId), entry.value)).toList,
+      universalTriples.map(entry => LanguageTripel(universalIndices(entry.language), idIndices(entry.contentId), entry.value)).toList
     )
 
   }

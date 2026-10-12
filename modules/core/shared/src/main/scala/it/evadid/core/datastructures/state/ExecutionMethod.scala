@@ -11,14 +11,12 @@ private sealed trait ExecutionMethod {
 
 object ExecutionMethod {
 
-  case class ExecuteLocalSync() extends ExecutionMethod {
+  private given upickle.default.ReadWriter[URL] = upickle.default.readwriter[String].bimap(
+    _.toExternalForm, value => new URL(value))
+
+  case class ExecuteLocalSync() extends ExecutionMethod derives upickle.default.ReadWriter {
     override def handleExecution[I, O](func: I => O, input: I, callback: Try[O] => Any): Unit =
-      try {
-        val output = func(input)
-        callback.apply(Success(output))
-      } catch {
-        case e: Exception => callback.apply(Failure(e))
-      }
+      callback(Try(func(input)))
   }
 
   case class ExecuteLocalAsync(ec: ExecutionContext) extends ExecutionMethod {
@@ -36,6 +34,6 @@ object ExecutionMethod {
   val executeAsync = ExecuteLocalAsync(ExecutionContext.global)
 
 
-  private case class SendToServer(url: URL)
+  private case class SendToServer(url: URL) derives upickle.default.ReadWriter
 
 }

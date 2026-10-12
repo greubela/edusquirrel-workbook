@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.sortingReasonExercise
 
-import it.evadid.workbook.elements.interactionElements.sortingExercise.AssignmentResult
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.AssignmentResult
+import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteractionState
 import munit.FunSuite
 
 class SortingReasonInteractionStateSpec extends FunSuite {
@@ -54,8 +55,8 @@ class SortingReasonInteractionStateSpec extends FunSuite {
       lastSessionErrorCount = 3
     )
 
-    val roundTrip = SortingReasonInteractionState.serializer.deserialize(
-      SortingReasonInteractionState.serializer.serialize(state)
+    val roundTrip = it.evadid.core.util.io.Serializer.fromImplicitRW[SortingReasonInteractionState].deserialize(
+      it.evadid.core.util.io.Serializer.fromImplicitRW[SortingReasonInteractionState].serialize(state)
     )
     assertEquals(roundTrip, state)
   }

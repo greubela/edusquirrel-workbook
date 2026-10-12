@@ -15,7 +15,7 @@ case class CopyrightInfo(licenceInfo: LicenceInfo, authorInfo: AuthorInfo) deriv
 
 object CopyrightInfo {
 
-
+  lazy val fromAi = CopyrightInfo(CC_LICENCE, AiGenerated())
 
   sealed trait LicenceInfo(val licenceName: String, val licenceDescription: LanguageMap[HumanLanguage]) derives ReadWriter
 
@@ -33,6 +33,10 @@ object CopyrightInfo {
 
   case class AuthorNameInfo(name: String) extends AuthorInfo derives ReadWriter {
     override def getName: Option[String] = Some(name)
+  }
+
+  case class AiGenerated() extends AuthorInfo derives ReadWriter {
+    override def getName: Option[String] = Some("AiGenerated")
   }
   
   def plattformCopyrightInfo(authorName: String = "André Greubel"): CopyrightInfo = {

@@ -6,6 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.workbook.elements.interactionElements.programming.*
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
 import scala.concurrent.ExecutionContext
 

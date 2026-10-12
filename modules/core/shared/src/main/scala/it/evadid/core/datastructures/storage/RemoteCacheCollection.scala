@@ -1,15 +1,19 @@
 package it.evadid.core.datastructures.storage
 
+import upickle.default.ReadWriter
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.core.datastructures.storage.RemoteCacheCollection.{CacheCollectionReport, CacheKey}
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.interaction.sync.model.DataEntryToSync.*
+import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, SyncStatus}
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-case class RemoteCacheCollection[K, D, CK <: CacheKey[K, D]](baseLogger: SyncLogger, remoteCaches: Map[CK, RemoteSyncDataCache[K, D]]) {
+case class RemoteCacheCollection[K , D , CK <: CacheKey[K, D]](baseLogger: SyncLogger, remoteCaches: Map[CK, RemoteSyncDataCache[K, D]]) {
 
   private given ExecutionContext = ExecutionContext.global
 
@@ -65,13 +69,13 @@ case class RemoteCacheCollection[K, D, CK <: CacheKey[K, D]](baseLogger: SyncLog
     mapAllAsyncWithKey((cacheKey, cache) => cache.ensureCacheIsAtLeastThisRecent(func(cacheKey)))
   }
 
-  def requestCacheDependentStore(func: CK => List[DataEntryToWriteToServer[K, D]]): Future[RemoteCacheCollection[K, D, CK]] = {
+  def requestCacheDependentStore(func: CK => List[DataEntryToSync[K, D]]): Future[RemoteCacheCollection[K, D, CK]] = {
 
     Future.traverse(remoteCaches.iterator)((cacheKey, cache) => {
       val toWrite = func(cacheKey)
       if (toWrite.isEmpty) Future.successful(cacheKey -> cache)
       else {
-        val ensureCacheUntil = toWrite.map(_.timestampDataCreated).max
+        val ensureCacheUntil = toWrite.map(_.timestamp).max
         cache.writeIfNecessary(toWrite).transformWith {
           case Success(syncSuccess) => cache.ensureCacheIsAtLeastThisRecent(ensureCacheUntil).map(cacheKey -> _)
           case Failure(error) => cache.ensureCacheIsAtLeastThisRecent(ensureCacheUntil).map(cacheKey -> _)
@@ -96,7 +100,7 @@ case class RemoteCacheCollection[K, D, CK <: CacheKey[K, D]](baseLogger: SyncLog
 object RemoteCacheCollection {
 
 
-  def fromCacheKeys[K, D, CK <: CacheKey[K, D]](baseLogger: SyncLogger, keyForCaches: List[CK]): RemoteCacheCollection[K, D, CK] = {
+  def fromCacheKeys[K , D , CK <: CacheKey[K, D]](baseLogger: SyncLogger, keyForCaches: List[CK]): RemoteCacheCollection[K, D, CK] = {
     def buildRemoteCache(cacheKey: CK): (CK, RemoteSyncDataCache[K, D]) = {
 
       val config = new RemoteCacheConfig[K, D]() {
@@ -115,13 +119,13 @@ object RemoteCacheCollection {
     RemoteCacheCollection(baseLogger, remoteCaches)
   }
 
-  trait CacheKey[K, D] {
+  trait CacheKey[K , D ] {
     def reader: RemoteDataReader[K, D]
 
     def writer: RemoteDataWriter[K, D]
   }
 
-  case class CacheCollectionReport[K, D, CK <: CacheKey[K, D]](key: K, cacheStatus: Map[CK, SyncStatus[K, D]], allAvailableCacheKeys: List[CK])
+  case class CacheCollectionReport[K, D, CK <: CacheKey[K, D]](key: K, cacheStatus: Map[CK, SyncStatus[K, D]], allAvailableCacheKeys: List[CK]) derives ReadWriter
 
 }
 

@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config
 
-sealed trait ControlFlowDisplay
+sealed trait ControlFlowDisplay derives upickle.default.ReadWriter
 
 object ControlFlowDisplay {
   case object ControlFlowHidden extends ControlFlowDisplay
@@ -14,7 +14,7 @@ case class BeTreeDisplayConfig(
     controlFlowDisplay: ControlFlowDisplay,
     compactDefinitions: Boolean,
     compactFunctionCalls: Boolean
-)
+) derives upickle.default.ReadWriter
 
 object BeTreeDisplayConfig {
   val editorDefaults: BeTreeDisplayConfig = BeTreeDisplayConfig(

@@ -10,7 +10,7 @@
   "settings": "Settings",
   "logout": "Log out",
   "switchUser": "Switch user",
-   "previousSection": "← Previous section",
+  "previousSection": "← Previous section",
   "nextSection": "Next section →",
   "checkSolution": "Check solution",
   "beginnerMode": "Beginner",
@@ -81,5 +81,7 @@
   "qrRegionEncoding": "Encoding and byte count",
   "qrRegionData": "Data and padding",
   "qrRegionErrorCorrection": "Error correction",
-  "qrRegionRemainder": "Remainder bits"
+  "qrRegionRemainder": "Remainder bits",
+  "turtleNoProgramYet": "Open the editor to create your program. Your block program will appear here.",
+  "MessengerEditorInputPlaceholder": "Type a message…"
 }

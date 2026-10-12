@@ -23,7 +23,7 @@ trait SyncDestinationRaw extends SyncDestination {
     override def storeElement(obj: T): Future[Boolean] = {
       val serialized = serializer.serialize(obj)
     //  println(s"UGLY SYNCDESTINATION RAW. serialized:\n${serialized}")
-      storeToRaw(logger, usingKey, serializer.serialize(obj))
+      storeToRaw(logger, usingKey, serialized)
     }
 
     override def readElement: Future[T] = {

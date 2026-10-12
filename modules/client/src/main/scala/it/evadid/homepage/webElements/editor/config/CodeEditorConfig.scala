@@ -6,7 +6,7 @@ case class CodeEditorConfig(
   editorFont: String = "JetBrains Mono",
   fontSize: Int = 14,
   placeholder: String = ""
-) extends WebEditorConfig {
+) extends WebEditorConfig derives upickle.default.ReadWriter {
 
   protected def additionalCssClasses: List[String] = List("code-editor")
 

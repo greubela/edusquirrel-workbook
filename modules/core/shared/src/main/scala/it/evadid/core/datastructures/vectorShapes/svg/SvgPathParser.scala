@@ -9,7 +9,7 @@ object SvgPathParser {
 
   def parseString(pathDString: String): Option[SvgPathBuilder[Double]] = {
     // === Types ===
-    case class Tok(cmd: Char, args: List[Double])
+    case class Tok(cmd: Char, args: List[Double]) derives upickle.default.ReadWriter
 
     // === Tokenization ===
     val cmdLetters = "AaCcHhLlMmQqVvZz"

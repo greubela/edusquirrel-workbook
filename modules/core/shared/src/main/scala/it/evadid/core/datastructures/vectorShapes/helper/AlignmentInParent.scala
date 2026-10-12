@@ -1,44 +1,56 @@
 package it.evadid.core.datastructures.vectorShapes.helper
 
-import it.evadid.core.datastructures.vectorShapes.helper.AlignmentInParent.VerticalAlignment.*
-import it.evadid.core.datastructures.vectorShapes.helper.AlignmentInParent.HorizontalAlignment.*
+import upickle.default.*
 
 sealed trait AlignmentInParent
 
 object AlignmentInParent {
 
+  private val namedAlignments: Map[String, AlignmentInParent] = Map(
+    "DistortionAlignment" -> DistortionAlignment,
+    "TopLeft" -> TopLeft, "TopCenter" -> TopCenter, "TopRight" -> TopRight,
+    "MiddleLeft" -> MiddleLeft, "MiddleCenter" -> MiddleCenter, "MiddleRight" -> MiddleRight,
+    "BottomLeft" -> BottomLeft, "BottomCenter" -> BottomCenter, "BottomRight" -> BottomRight)
+
+  given ReadWriter[AlignmentInParent] = readwriter[String].bimap(
+    alignment => alignment match {
+      case DistortionAlignment => "DistortionAlignment"
+      case position: PositionInParent => position.vertical.toString + position.horizontal.toString
+    },
+    name => namedAlignments.getOrElse(name, throw new IllegalArgumentException(s"Unknown alignment: $name")))
+
   object DistortionAlignment extends AlignmentInParent
 
 
-  enum HorizontalAlignment:
+  enum HorizontalAlignment derives ReadWriter:
     case Left, Center, Right
 
-  enum VerticalAlignment:
+  enum VerticalAlignment derives ReadWriter:
     case Top, Middle, Bottom
 
 
   sealed class PositionInParent(val vertical: VerticalAlignment, val horizontal: HorizontalAlignment) extends AlignmentInParent
 
 
-  object TopLeft extends PositionInParent(Top, Left)
+  object TopLeft extends PositionInParent(VerticalAlignment.Top, HorizontalAlignment.Left)
 
-  object TopCenter extends PositionInParent(Top, Center)
+  object TopCenter extends PositionInParent(VerticalAlignment.Top, HorizontalAlignment.Center)
 
-  object TopRight extends PositionInParent(Top, Right)
-
-
-  object MiddleLeft extends PositionInParent(Middle, Left)
-
-  object MiddleCenter extends PositionInParent(Middle, Center)
-
-  object MiddleRight extends PositionInParent(Middle, Right)
+  object TopRight extends PositionInParent(VerticalAlignment.Top, HorizontalAlignment.Right)
 
 
-  object BottomLeft extends PositionInParent(Bottom, Left)
+  object MiddleLeft extends PositionInParent(VerticalAlignment.Middle, HorizontalAlignment.Left)
 
-  object BottomCenter extends PositionInParent(Bottom, Center)
+  object MiddleCenter extends PositionInParent(VerticalAlignment.Middle, HorizontalAlignment.Center)
 
-  object BottomRight extends PositionInParent(Bottom, Right)
+  object MiddleRight extends PositionInParent(VerticalAlignment.Middle, HorizontalAlignment.Right)
+
+
+  object BottomLeft extends PositionInParent(VerticalAlignment.Bottom, HorizontalAlignment.Left)
+
+  object BottomCenter extends PositionInParent(VerticalAlignment.Bottom, HorizontalAlignment.Center)
+
+  object BottomRight extends PositionInParent(VerticalAlignment.Bottom, HorizontalAlignment.Right)
 
 }
 

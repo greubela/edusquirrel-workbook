@@ -7,9 +7,10 @@ import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
-import todomove.webElementsOld.webElements.genericHtmlElements.editor.*
+import todomove.webElementsOld.webElements.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.{BeTreeControllerConfig, BeTreeDisplayConfig, ControlFlowDisplay}
 import org.scalajs.dom
+import todomove.webElementsOld.webElements.genericHtmlElements.editor.SimpleBooleanEditor
 
 case class HtmlEditorConfigPanel(editorState: EditorState) extends HtmlAppElement {
 

@@ -1,9 +1,13 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
 import com.raquo.airstream.ownership.Owner
+import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorImpl, SnapProjectXmlSync}
 import it.evadid.workbook.elements.interactionElements.programming.*
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
@@ -1202,3 +1206,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   override def destroy(): Unit =
     stopEditorSession()
+
+  override def changeLanguage(humanLanguage: AppLanguage.HumanLanguage): Unit = {
+    // todo
+  }

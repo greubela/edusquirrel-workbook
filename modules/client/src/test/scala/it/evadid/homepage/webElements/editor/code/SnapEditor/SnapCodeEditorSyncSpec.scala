@@ -1,14 +1,19 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
+
 import com.raquo.airstream.ownership.{ManualOwner, Owner}
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.*
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateSnapXml}
 import munit.FunSuite
 import org.scalajs.dom.html.Canvas
 
 class SnapCodeEditorSyncSpec extends FunSuite {
   private class RecordingImpl extends SnapCodeEditorImpl {
+    override def changeLanguage(language: it.evadid.core.datastructures.language.AppLanguage.HumanLanguage): Unit = ()
     var listener: String => Unit = _ => ()
     var current: Option[ProgrammingStateSnapXml] = None
     var mounts = 0
@@ -45,7 +50,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   test("mount once, publish Snap edits once, and reload only external changes") {
-    val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
+    val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
     val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
@@ -74,18 +79,18 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   test("a fresh mount owner observes restores after closing and reopening") {
-    val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
+    val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
     val impl = new RecordingImpl
     val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl)
     val first = new ManualOwner
     editor.mountEditorInto(null, first)
     first.killSubscriptions()
-    state.set(ProgrammingStateSnapXml.empty)
+    state.set(ProgrammingStateSnapXmlHelper.empty)
     assertEquals(impl.loadRequests, 0)
     val second = new ManualOwner
     try {
       editor.mountEditorInto(null, second)
-      state.set(ProgrammingStateSnapXml.mini)
+      state.set(ProgrammingStateSnapXmlHelper.mini)
       assertEquals(impl.mounts, 2)
       assertEquals(impl.loadRequests, 1)
       assertEquals(impl.reloads, 1)
@@ -93,7 +98,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   test("Snap image regeneration commits only cleaned code and never reloads its own edit") {
-    val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
+    val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
     val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)

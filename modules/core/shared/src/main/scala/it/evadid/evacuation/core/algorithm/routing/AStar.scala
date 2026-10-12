@@ -1,10 +1,12 @@
 package it.evadid.evacuation.core.algorithm.routing
 
+import upickle.default.ReadWriter
+
 import it.evadid.evacuation.core.algorithm.routing.AStar.AStarInformation
 import it.evadid.evacuation.core.algorithm.routing.model.SearchNode
 
 
-case class AStar[N](estDistStartDest: Double) extends Pathfinding[N, AStarInformation] {
+case class AStar[N](estDistStartDest: Double) extends Pathfinding[N, AStarInformation] derives ReadWriter {
   override def initStartNode(start: N): SearchNode[N, AStarInformation] = SearchNode(start, None, AStarInformation(0, estDistStartDest))
 
   override def getOrderingAscending: Ordering[SearchNode[N, AStarInformation]] = Ordering.by(sn => sn.info.distFromStart + sn.info.estDistToDest)
@@ -12,5 +14,5 @@ case class AStar[N](estDistStartDest: Double) extends Pathfinding[N, AStarInform
 
 object AStar{
 
-  case class AStarInformation(distFromStart: Double, estDistToDest: Double)
+  case class AStarInformation(distFromStart: Double, estDistToDest: Double) derives ReadWriter
 }

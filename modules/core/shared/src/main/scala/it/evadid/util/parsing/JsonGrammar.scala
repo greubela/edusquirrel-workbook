@@ -6,6 +6,8 @@ import fastparse._
 
 
 object Js {
+  given upickle.default.ReadWriter[Val] = JsonValueCodec.valueCodec
+
   sealed trait Val extends Any {
     def value: Any
     def apply(i: Int): Val = this.asInstanceOf[Arr].value(i)
@@ -16,6 +18,30 @@ object Js {
   case class Obj(value: (java.lang.String, Val)*) extends AnyVal with Val
   case class Arr(value: Val*) extends AnyVal with Val
   case class Num(value: Double) extends AnyVal with Val
+  object Str {
+    given upickle.default.ReadWriter[Str] = JsonValueCodec.concreteCodec {
+      case value: Str => Some(value)
+      case _ => None
+    }
+  }
+  object Obj {
+    given upickle.default.ReadWriter[Obj] = JsonValueCodec.concreteCodec {
+      case value: Obj => Some(value)
+      case _ => None
+    }
+  }
+  object Arr {
+    given upickle.default.ReadWriter[Arr] = JsonValueCodec.concreteCodec {
+      case value: Arr => Some(value)
+      case _ => None
+    }
+  }
+  object Num {
+    given upickle.default.ReadWriter[Num] = JsonValueCodec.concreteCodec {
+      case value: Num => Some(value)
+      case _ => None
+    }
+  }
   case object False extends Val{
     def value = false
   }

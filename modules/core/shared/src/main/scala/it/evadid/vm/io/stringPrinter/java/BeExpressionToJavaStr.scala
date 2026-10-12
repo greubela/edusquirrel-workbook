@@ -16,7 +16,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     language,
     if (targetLanguage == JavaScript) JavaScriptSeparation() else JavaSeparation(),
     skipUnparsable
-  ) {
+  ) derives upickle.default.ReadWriter {
 
   override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String = {
     if (targetLanguage == JavaScript) s"function $nameStr$parStr {"

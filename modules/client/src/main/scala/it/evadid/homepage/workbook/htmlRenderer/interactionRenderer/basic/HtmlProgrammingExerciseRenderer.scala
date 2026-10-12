@@ -16,8 +16,10 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLine
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingEditorPalette, ProgrammingExercise, ProgrammingState}
-import it.evadid.workbook.elements.interactionElements.programming.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
 

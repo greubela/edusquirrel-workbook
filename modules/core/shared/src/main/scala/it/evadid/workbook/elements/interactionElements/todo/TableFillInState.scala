@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.interactionElements.todo
 import it.evadid.core.util.io.Serializer
 import upickle.default.{ReadWriter, macroRW}
 
-case class TableFillInState(blankValues: List[String]) {
+case class TableFillInState(blankValues: List[String]) derives upickle.default.ReadWriter {
   def sanitized(blankCount: Int): TableFillInState = TableFillInState(blankValues.take(blankCount).padTo(blankCount, ""))
 
   def blankValue(blankIndex: Int, blankCount: Int): String = sanitized(blankCount).blankValues.lift(blankIndex).getOrElse("")
@@ -15,6 +15,5 @@ case class TableFillInState(blankValues: List[String]) {
 }
 
 object TableFillInState {
-  private given ReadWriter[TableFillInState] = macroRW
   val serializer: Serializer[TableFillInState] = Serializer.fromUpickleJson(summon[ReadWriter[TableFillInState]])
 }

@@ -125,6 +125,7 @@ object CodeMirrorEditor {
       case AppLanguage.C => "c"
       case AppLanguage.Python => "python"
       case AppLanguage.Java => "java"
+      case AppLanguage.SQL => "sql"
       case _ => "python"
     }
 
@@ -153,7 +154,7 @@ object CodeMirrorEditor {
                                toCh: Option[Int] = None,
                                message: String = "",
                                severity: String = "warning"
-                             ) {
+                             ) derives upickle.default.ReadWriter {
     def toJs: js.Object =
       js.Dynamic.literal(
         line = line,

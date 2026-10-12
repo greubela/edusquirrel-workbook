@@ -10,7 +10,7 @@ import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.Co
 import todomove.webElementsOld.webElements.svg.shapes.datatypes.{BeErrorShape, RectangleShape}
 import todomove.webElementsOld.webElements.svg.shapes.special.{CommandShape, CommentShape}
 
-case class BeBlockComment(comment: BeSingleLineComment) extends BeBlockSingleShape {
+case class BeBlockComment(comment: BeSingleLineComment) extends BeBlockSingleShape derives upickle.default.ReadWriter {
 
   override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
     val container = CommentShape()

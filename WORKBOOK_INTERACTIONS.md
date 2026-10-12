@@ -1,5 +1,7 @@
 # Workbook interaction roadmap
 
+The newer [PDF/ZIP migration inventory](docs/digital-workbook-migration.md) covers all linked downloads with page references and current implementation status. Use it for implementation planning; the suggestions below retain the earlier content roadmap.
+
 This document inventories teaching materials for the phishing, bitcoin and evacuation workbooks and proposes future digital exercises. It is a content roadmap, not a list of implemented APIs or committed requirements.
 
 The digital phishing mailbox and local writing practice are implemented; see [Email simulator](docs/email-simulator.md) and `homepage/phishingWorkbook/index.html`. Bitcoin/evacuation suggestions and the explanatory phishing chapters below still need authoring and integration. Existing general-purpose interactions should be reused before adding new types.

@@ -7,7 +7,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.co
 import todomove.webElementsOld.webElements.svg.builder.controlFlow.path.{ControlFlowPath, ControlFlowPathOverlay, ControlFlowPathSegment, PathStatus, PathType, SegmentType}
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
 
-case class RepetitionSplitType() extends ControlFlowTypeDoubleWidth {
+case class RepetitionSplitType() extends ControlFlowTypeDoubleWidth derives upickle.default.ReadWriter {
 
   override def minHeightInSegments: Int = 8
 

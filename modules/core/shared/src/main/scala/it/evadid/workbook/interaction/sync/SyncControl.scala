@@ -1,12 +1,11 @@
 package it.evadid.workbook.interaction.sync
 
 import it.evadid.core.datastructures.state.observable.ObservableValue
-import it.evadid.core.datastructures.storage.RemoteSyncDataCache.SyncStatus
-import it.evadid.core.util.io.Serializer
+import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
-import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableHistorySerialized, InteractionVariableState}
+import it.evadid.workbook.interaction.sync.model.SyncStatus
+import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableState, InteractionVariableUntyped}
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,59 +16,62 @@ trait SyncControl {
 
   def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[?]
 
-  def createObservableReport[T](forVariable: InteractionVariable[T]): ObservableValue[InteractionVariableSyncReport[T]]
+  def createObservableReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): ObservableValue[InteractionVariableSyncReport[T, GA, SA]]
 
-  def createCurrentReport[T](forVariable: InteractionVariable[T]): InteractionVariableSyncReport[T]
+  def createCurrentReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): InteractionVariableSyncReport[T, GA, SA]
 
-  def requestStore(from: List[InteractionVariable[?]]): Future[?]
+  def requestStore(from: List[InteractionVariableUntyped]): Future[?]
 
   def syncLogger: SyncLogger
 
+  def controlLogger: Logger
+
   def updateAllCaches(): Future[?] = ensureCachesAreAtLeastThisRecent(LocalDateTime.now())
 
-  def requestStore[T](from: InteractionVariable[T]): Future[?] = requestStore(List(from))
+  def requestStore[T, GA, SA](from: InteractionVariable[T, GA, SA]): Future[?] = requestStore(List(from))
 
-
-  def load(into: List[InteractionVariable[?]]): Future[?] = {
+  def load(into: List[InteractionVariableUntyped]): Future[?] = {
     into.foreach(_.executeLoad(this))
     Future.successful(())
   }
 
-  def updateAndStoreAll(from: List[InteractionVariable[?]]): Future[?] = updateAllCaches().transformWith(_ => requestStore(from))
+  def updateAndStoreAll(from: List[InteractionVariableUntyped]): Future[?] = updateAllCaches().transformWith(_ => requestStore(from))
 
-  def ensureFetchAndLoad(from: List[InteractionVariable[?]]): Future[?] = {
+  def ensureFetchAndLoad(from: List[InteractionVariableUntyped]): Future[?] = {
     updateAllCaches()
       .flatMap(_ => load(from))
   }
 
-  def ensureAllStored(from: List[InteractionVariable[?]]): Future[?] = {
+  def ensureAllStored(from: List[InteractionVariableUntyped]): Future[?] = {
     ensureCachesContainLastElementsToWrite(from)
       .flatMap(_ => load(from))
       .flatMap(_ => requestStore(from))
   }
 
-  def storeAndReset(from: List[InteractionVariable[?]]): Future[?] = {
+  def storeAndReset(from: List[InteractionVariableUntyped]): Future[?] = {
     ensureAllStored(from)
       .map(_ => from.foreach(_.resetLocalHistory()))
   }
 
-  def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariable[?]]): Future[?]
+  def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariableUntyped]): Future[?]
 
 }
 
 
 object SyncControl {
 
-  case class InteractionVariableSyncReport[T](serializer: Serializer[T], curLocalHistory: InteractionVariableHistory[T], curRemoteHistory: Map[SyncInformationWithContext, SyncStatus[SyncContext, InteractionVariableHistorySerialized]], allSyncLocations: List[SyncInformationWithContext]) {
+  case class InteractionVariableSyncReport[T, GA, SA](
+                                               curLocalHistory: InteractionVariableHistory[T, GA, SA],
+                                               curRemoteHistory: Map[SyncInformationWithContext, SyncStatus[SyncContext, InteractionVariableHistory[T, GA, SA]]],
+                                               allSyncLocations: List[SyncInformationWithContext]
+                                             ) {
 
-    lazy val typedMap: Map[SyncInformationWithContext, InteractionVariableHistory[T]] = {
-      curRemoteHistory.iterator.flatMap(remoteTup => {
-        remoteTup._2.lastKnownRemoteValue.map(_.dataValue.deserializeIgnoreErrors(serializer)).map(his => remoteTup._1 -> his)
-      }).toMap
+    lazy val lastRemoteStates: Map[SyncInformationWithContext, InteractionVariableState[T]] = {
+      def getOldestFrom(status: SyncStatus[SyncContext, InteractionVariableHistory[T, GA, SA]]): Option[InteractionVariableState[T]] =
+        status.lastKnownRemoteValue.flatMap(_.dataValue.lastStateOption)
+
+      curRemoteHistory.keySet.flatMap(curKey => getOldestFrom(curRemoteHistory(curKey)).map(curVal => curKey -> curVal)).toMap
     }
-
-    lazy val lastRemoteStates: Map[SyncInformationWithContext, Option[InteractionVariableState[T]]] =
-      curRemoteHistory.iterator.map(tup => tup._1 -> tup._2.lastKnownRemoteValue.flatMap(_.dataValue.lastStateOption).map(_.deserialize(serializer))).toMap
 
     lazy val latestSyncedAt: Map[SyncInformationWithContext, Boolean] =
       curRemoteHistory.map(tup => tup._1 -> {
@@ -84,7 +86,7 @@ object SyncControl {
 
     lazy val allStatesEverywhere: Set[InteractionVariableState[T]] = curLocalHistory.events ++ allRemoteStates
 
-    lazy val allRemoteStates: Set[InteractionVariableState[T]] = typedMap.flatMap(_._2.events).toSet
+    lazy val allRemoteStates: Set[InteractionVariableState[T]] = curRemoteHistory.values.flatMap(_.lastKnownRemoteValue).flatMap(_.dataValue.events).toSet
   }
 
 

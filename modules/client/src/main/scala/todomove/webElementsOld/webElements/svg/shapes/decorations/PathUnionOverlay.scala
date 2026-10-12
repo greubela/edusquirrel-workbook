@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.shapes.BeShapeDecoration
 
-case class PathUnionOverlay() extends BeShapeDecoration {
+case class PathUnionOverlay() extends BeShapeDecoration derives upickle.default.ReadWriter {
 
   override def getOverlayPath(rendererConfig: BeRenderingConfig, centeredAt: Point[Double]): SvgPathBuilder[Double] = {
     val seg = rendererConfig.controlSegmentSize

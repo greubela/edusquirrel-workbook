@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.font
 
+import upickle.default.ReadWriter
+
 import it.evadid.core.datastructures.geometry.Dimension
 
 /** A platform-independent description of a font used by the application. */
@@ -9,7 +11,7 @@ final case class AppFont(
     italic: Boolean = false,
     bold: Boolean = false,
     variant: String = "normal"
-) {
+) derives ReadWriter {
   def toCssString: String = {
     val style = if (italic) "italic" else "normal"
     val weight = if (bold) 700 else 400

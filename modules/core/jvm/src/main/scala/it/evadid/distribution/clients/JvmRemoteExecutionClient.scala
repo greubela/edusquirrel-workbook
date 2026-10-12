@@ -1,6 +1,7 @@
 package it.evadid.distribution.clients
 
 import it.evadid.distribution.command.*
+import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.logging.Logger
 import upickle.default.read
 
@@ -9,11 +10,11 @@ import java.net.http.*
 import scala.concurrent.Future
 import scala.util.Try
 
-case class JvmRemoteExecutionClient(hostname: String, port: Int) extends RemoteExecutionClient {
+case class JvmRemoteExecutionClient(hostname: String, port: Int) extends RemoteExecutionClient derives upickle.default.ReadWriter {
 
   private val httpClient = HttpClient.newHttpClient()
 
-  override protected def sendTo(logger: Logger, hostname: String, port: Int, executionCommand: ExecutionCommand): Future[Map[String, String]] = Future {
+  override protected def sendTo(logger: Logger, hostname: String, port: Int, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = Future {
     val commandJson = executionCommand.toJson
     val request = HttpRequest
       .newBuilder(URI.create(s"http://$hostname:$port/executeCommand"))
@@ -31,7 +32,7 @@ case class JvmRemoteExecutionClient(hostname: String, port: Int) extends RemoteE
       throw new RuntimeException(msg)
     }
     try {
-      read[Map[String, String]](response.body())
+      read[ExecutionClientResponse](response.body())
     } catch case e: Throwable => {
       logger.logException(e)
       throw e

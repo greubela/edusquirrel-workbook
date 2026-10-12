@@ -1,15 +1,14 @@
 package it.evadid.homepage.workbook.syncDestination
 
-import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
 import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
 import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
 import it.evadid.util.logging.LoggingLevel.WARN
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.interaction.sync.model.{FetchResponse, HistoryJson}
 import it.evadid.workbook.interaction.sync.SyncInformation.*
 import it.evadid.workbook.interaction.sync.destination.*
 import it.evadid.workbook.interaction.variable
-import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 import org.scalajs.dom
 import org.scalajs.dom.{IDBDatabase, IDBTransactionMode}
 
@@ -37,7 +36,11 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
   // --- Helper: Open DB Connection wrapped in a Scala Future ---
   private def openDatabase(): Future[IDBDatabase] = {
     val promise = Promise[IDBDatabase]()
-    val request = dom.window.indexedDB.get.open(dbName, dbVersion)
+    val request = try {
+      dom.window.indexedDB.get.open(dbName, dbVersion)
+    } catch {
+      case scala.util.control.NonFatal(error) => return Future.failed(error)
+    }
 
     def ensureStore(db: IDBDatabase): Unit = {
       if (!db.objectStoreNames.contains(storeName)) {
@@ -54,11 +57,15 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
 
     request.onsuccess = (_: dom.Event) => {
       val db = request.result.asInstanceOf[IDBDatabase]
-      promise.success(db)
+      db.onversionchange = (_: dom.IDBVersionChangeEvent) => db.close()
+      if (!promise.trySuccess(db)) db.close()
     }
 
     request.onerror = (_: dom.Event) => {
-      promise.failure(new RuntimeException(s"Failed to open IndexedDB: ${request.error.name}"))
+      promise.tryFailure(new RuntimeException(s"Failed to open IndexedDB: ${request.error.name}"))
+    }
+    request.onblocked = (_: dom.Event) => {
+      promise.tryFailure(new RuntimeException(s"IndexedDB opening blocked: $dbName"))
     }
 
     promise.future
@@ -70,12 +77,11 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
   override def storeTo(
                         logger: SyncLogger,
                         context: SyncContext,
-                        history: InteractionVariableHistorySerialized,
-                        formatter: SyncFormatter
+                        history: String
                       ): Future[SyncSuccess] = {
 
     val serializedKey = contextToKeySerializer.serialize(context)
-    val serializedValue = formatter.serialize(context, history)
+    val serializedValue = HistoryJson.stored(context.keyForSerialisation, history)
     val boolFut = storeToRaw(serializedKey, serializedValue)
 
     boolFut.map(boolRes => {
@@ -86,26 +92,25 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
 
   override def fetchAll(
                          logger: SyncLogger,
-                         context: UsageContext,
-                         formatter: SyncFormatter
-                       ): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
+                         context: UsageContext
+                       ): Future[FetchResponse[SyncContext, String]] = {
 
-    def parseTuple(browserKey: String, browserValue: String): Option[(SyncContext, InteractionVariableHistorySerialized)] = try {
+    def parseTuple(browserKey: String, browserValue: String): Option[(SyncContext, String)] = try {
       val syncCtx = contextToKeySerializer.deserialize(browserKey)
-      val history = formatter.deserialize(browserValue)
-      Some(syncCtx -> history)
+      val history = ujson.write(HistoryJson.payload(browserValue))
+      Option.when(syncCtx.toUsageContext == context)(syncCtx -> history)
     } catch case e: Exception => {
       logger.log(s"LocalIndexedDbStorageSync: Ignore tuple ($browserKey) because it was unparsable: ${e.getMessage}", WARN, Option(false))
       None
     }
 
-    def parseResMap(res: Map[String, String]): Map[SyncContext, InteractionVariableHistorySerialized] = {
+    def parseResMap(res: Map[String, String]): Map[SyncContext, String] = {
       res.toList.flatMap(tup => parseTuple(tup._1, tup._2)).toMap
     }
 
     readAllRaw(logger).map(strMap => {
-      val resMap: Map[SyncContext, InteractionVariableHistorySerialized] = parseResMap(strMap)
-      val res = FetchResponse.fromMap[SyncContext, InteractionVariableHistorySerialized](LocalDateTime.now(), resMap, _.lastStateOption.map(_.timestamp))
+      val resMap: Map[SyncContext, String] = parseResMap(strMap)
+      val res = FetchResponse.fromMap[SyncContext, String](LocalDateTime.now(), resMap, HistoryJson.lastTimestamp)
       logger.logInfo(s"Parsed ${strMap.knownSize} string elements and transformed them to ${resMap.knownSize} fetch response map elements!")
       res
     })
@@ -120,8 +125,8 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
 
       store.delete(serializedKey)
 
-      transaction.oncomplete = (_: dom.Event) => promise.success(SyncSuccess(0, 0, 1, LocalDateTime.now()))
-      transaction.onerror = (_: dom.Event) => promise.failure(new RuntimeException(transaction.error.name))
+      transaction.oncomplete = (_: dom.Event) => { db.close(); promise.trySuccess(SyncSuccess(0, 0, 1, LocalDateTime.now())) }
+      transaction.onabort = (_: dom.Event) => { db.close(); promise.tryFailure(new RuntimeException("IndexedDB transaction aborted")) }
       promise.future
     }
   }
@@ -134,19 +139,42 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
 
       store.clear()
 
-      transaction.oncomplete = (_: dom.Event) => promise.success(SyncSuccess(0, 0, 0, LocalDateTime.now()))
-      transaction.onerror = (_: dom.Event) => promise.failure(new RuntimeException(transaction.error.name))
+      transaction.oncomplete = (_: dom.Event) => { db.close(); promise.trySuccess(SyncSuccess(0, 0, 0, LocalDateTime.now())) }
+      transaction.onabort = (_: dom.Event) => { db.close(); promise.tryFailure(new RuntimeException("IndexedDB transaction aborted")) }
       promise.future
     }
   }
 
   override def toString: String = "LocalIndexedDbStorageSync()"
 
+  override protected def readRaw(key: String): Future[String] = openDatabase().flatMap { db =>
+    val promise = Promise[String]()
+    val transaction = db.transaction(js.Array(storeName), IDBTransactionMode.readonly)
+    val request = transaction.objectStore(storeName).get(key)
+    request.onsuccess = (_: dom.Event) => {
+      if (js.isUndefined(request.result)) promise.tryFailure(new NoSuchElementException(s"No IndexedDB value for $key"))
+      else promise.trySuccess(request.result.asInstanceOf[js.Dynamic].value.asInstanceOf[String])
+    }
+    request.onerror = (_: dom.Event) => promise.tryFailure(new RuntimeException(s"IndexedDB read failed: ${request.error.name}"))
+    transaction.oncomplete = (_: dom.Event) => db.close()
+    transaction.onabort = (_: dom.Event) => {
+      db.close()
+      promise.tryFailure(new RuntimeException(s"IndexedDB read aborted: $key"))
+    }
+    promise.future
+  }
+
   override protected def readAllRaw(): Future[Map[String, String]] = {
     openDatabase().flatMap { db =>
       val promise = Promise[Map[String, String]]()
       val transaction = db.transaction(js.Array(storeName), IDBTransactionMode.readonly)
       val store = transaction.objectStore(storeName)
+
+      transaction.oncomplete = (_: dom.Event) => db.close()
+      transaction.onabort = (_: dom.Event) => {
+        db.close()
+        promise.tryFailure(new RuntimeException("IndexedDB cursor transaction aborted"))
+      }
 
       // Use a cursor to step through the records asynchronously
       val request = store.openCursor()
@@ -163,12 +191,12 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
           cursor.continue()
         }
         else {
-          promise.success(mutableMap)
+          promise.trySuccess(mutableMap)
         }
       }
 
       request.onerror = (_: dom.Event) => {
-        promise.failure(new RuntimeException(s"Cursor parsing failed: ${request.error.name}"))
+        promise.tryFailure(new RuntimeException(s"Cursor parsing failed: ${request.error.name}"))
       }
 
       promise.future
@@ -187,11 +215,13 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
       val request = store.put(dataEntry)
 
       transaction.oncomplete = (_: dom.Event) => {
-        promise.success(true)
+        db.close()
+        promise.trySuccess(true)
       }
 
-      transaction.onerror = (_: dom.Event) => {
-        promise.failure(new RuntimeException(transaction.error.name))
+      transaction.onabort = (_: dom.Event) => {
+        db.close()
+        promise.tryFailure(new RuntimeException("IndexedDB write transaction aborted"))
       }
 
       promise.future

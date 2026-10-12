@@ -9,9 +9,8 @@
 // the script tag to be injected as a JS module (the workbook does), they can
 // set window.EDUSQUIRREL_APP_AS_MODULE = true.
 //
-// Pages that load CodeMirror before the Scala.js app can expose
-// window.EduSquirrelCodeMirrorReady. The loader waits briefly for that promise
-// when it sees a CodeMirror script tag, then continues even if CodeMirror fails.
+// CodeMirror is optional at startup. Its editor uses an available facade or a
+// textarea fallback, so a slow CDN must not delay the app shell.
 (function () {
   var cacheBust = "v=" + Date.now();
   var origin = window.location.origin || "";
@@ -121,40 +120,6 @@
     document.head.appendChild(script);
   }
 
-  function hasCodeMirrorScript() {
-    var scripts = document.getElementsByTagName("script");
-    for (var i = 0; i < scripts.length; i++) {
-      var src = scripts[i].src || "";
-      if (src.indexOf("/js/CodeMirrorLoader.js") !== -1 ||
-          src.indexOf("/js/feedback-demo-codemirror.js") !== -1) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function waitForCodeMirror(maxMs) {
-    if (!hasCodeMirrorScript()) return Promise.resolve();
-
-    var startTime = Date.now();
-    return new Promise(function (resolve) {
-      function tick() {
-        var ready = window.EduSquirrelCodeMirrorReady;
-        if (ready && typeof ready.then === "function") {
-          ready.then(resolve, resolve);
-          return;
-        }
-        if (Date.now() - startTime > maxMs) {
-          resolve();
-          return;
-        }
-        setTimeout(tick, 30);
-      }
-
-      tick();
-    });
-  }
-
   function start() {
     loadEnvAt(0).then(function (envConfig) {
       var config = Object.assign({}, defaultConfig, envConfig);
@@ -164,12 +129,10 @@
       );
       preloadBackendWorkers(config);
 
-      waitForCodeMirror(8000).then(function () {
-        var paths = (window.EDUSQUIRREL_APP_PATHS && window.EDUSQUIRREL_APP_PATHS.length)
-          ? window.EDUSQUIRREL_APP_PATHS
-          : configuredPaths(config);
-        loadAt(paths, 0);
-      });
+      var paths = (window.EDUSQUIRREL_APP_PATHS && window.EDUSQUIRREL_APP_PATHS.length)
+        ? window.EDUSQUIRREL_APP_PATHS
+        : configuredPaths(config);
+      loadAt(paths, 0);
     });
   }
 

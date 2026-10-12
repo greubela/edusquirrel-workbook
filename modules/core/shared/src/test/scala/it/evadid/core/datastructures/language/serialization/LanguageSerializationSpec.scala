@@ -165,4 +165,26 @@ class LanguageSerializationSpec extends FunSuite {
     val table = ParsedTriples(Set(regular), Set(universal)).toSerializableSubType
     assertEquals(read[ParsedTriples.ParsedTriplesSerialized](write(table)), table)
   }
+  test("refresh replaces cached text for the same key without losing other languages or keys") {
+    val old = ParsedTriples(Set(regular, regular.copy(language = German, value = "Hallo")), Set(universal))
+    val fresh = ParsedTriples(Set(regular.copy(value = "Updated")), Set(universal.copy(value = "new fallback")))
+    val replaced = old.withOverrides(fresh)
+    assertEquals(replaced.regularTriples.size, 2)
+    assertEquals(replaced.universalTriples.size, 1)
+    val store = it.evadid.core.datastructures.language.control.LanguageMapStorage(old, Set.empty)
+      .withLoadedTriples(BasicLogger(), Set.empty, fresh)
+    assertEquals(store.languageMaps(id).getInLanguage(English), "Updated")
+    assertEquals(store.languageMaps(id).getInLanguage(German), "Hallo")
+    assertEquals(replaced.withOverrides(empty), replaced)
+  }
+
+  test("a large indexed cache retains the existing wire format and all text") {
+    val entries = (0 until 3000).map(index => LanguageMapEntry[HumanLanguage](
+      LanguageMapContentId("large", index.toString), English, s"Text $index 🌳\n")).toSet
+    val triples = ParsedTriples(entries, Set(universal))
+    val serialized = ParsedTriples.serializer.serialize(triples)
+    assert(serialized.contains("Trip("))
+    assertEquals(ParsedTriples.serializer.deserialize(serialized), triples)
+  }
+
 }

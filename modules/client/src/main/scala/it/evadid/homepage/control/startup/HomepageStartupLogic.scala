@@ -5,7 +5,8 @@ import it.evadid.distribution.command.SerializedException
 import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY.CONTINUE_AFTER_LOCAL_CACHE_SUCCESS
 import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
-import it.evadid.homepage.workbook.content.{CreateMonksWorkbook, CreatePhishingWorkbook, CreateCompressionWorkbook, CreateEmbroideryWorkbook, CreatePlantworkshopWorkbook, CreateTestWorkbook}
+import it.evadid.homepage.workbook.content.DigitalWorkbookCatalog
+import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import org.scalajs.dom
@@ -15,13 +16,14 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.scalajs.js
 import scala.util.{Failure, Success}
 
+
 object HomepageStartupLogic {
 
   private given ExecutionContext = ExecutionContext.global
 
   private given ExecutionContextExecutor = ExecutionContext.global
 
-  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing")
+  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing", "workbookImageRecognition", "workbookBlockchain", "workbookEvacuation")
   private val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
 
   def renderElementIntoApp(logger: Logger, domElement: Element): Unit = {
@@ -49,10 +51,6 @@ object HomepageStartupLogic {
     } {
 
       val workbook: Option[AllWorkbookInfo] = canLoad.headOption.flatMap(loadWorkbookById)
-      workbook.foreach(workbook => {
-        print(s"Workbook regular: \n${workbook.loadedWorkbook.toStringRegularJson}\n\n")
-        print(s"Workbook constructor: \n${workbook.loadedWorkbook.toStringConstructorLike}\n\n")
-      })
       fullInfo.usageControl.changeWorkbook(workbook)
       // A workbook with only German content must not open with missing English labels.
       workbook.foreach { info =>
@@ -73,15 +71,10 @@ object HomepageStartupLogic {
     }
   }
 
-  def loadWorkbookById(workbookId: String): Option[AllWorkbookInfo] = workbookId match {
-    case "workbookEmbroidery" => Some(CreateEmbroideryWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
-    case "workbookPhishing" => Some(CreatePhishingWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
-    case "workbookTest" => Some(CreateTestWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
-    case "workbookPlantWorkshop" => Some(CreatePlantworkshopWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
-    case "workbookMonks" => Some(CreateMonksWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
-    case "workbookCompression" => Some(CreateCompressionWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
-    case _ => None
-  }
+  def loadWorkbookById(workbookId: String): Option[AllWorkbookInfo] =
+    if (workbookId == "workbookTest") Some(CreateTestWorkbook(HtmlFullWorkbookApp.fullInfo).createEverything)
+    else DigitalWorkbookCatalog.nativeWorkbook(workbookId)
+      .map(_.factory(HtmlFullWorkbookApp.fullInfo).createEverything)
 
   private def initWorkbookOnlyAfterDependenciesLoaded: Boolean = {
     val configValue = js.Dynamic.global.selectDynamic("EDUSQUIRREL_INIT_WORKBOOK_ONLY_AFTER_ALL_DEPENDENCIES_LOADED")

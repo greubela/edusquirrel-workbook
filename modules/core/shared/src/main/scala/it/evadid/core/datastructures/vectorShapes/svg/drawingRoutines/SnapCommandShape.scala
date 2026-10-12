@@ -23,3 +23,8 @@ case class SnapCommandShape[T: Fractional]() extends DrawingRoutineRelativeToMax
 
   override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }
+
+object SnapCommandShape {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[SnapCommandShape[T]] =
+    upickle.default.readwriter[Unit].bimap(value => (), _ => SnapCommandShape[T]())
+}

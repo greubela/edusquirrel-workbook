@@ -5,21 +5,21 @@ import it.evadid.core.datastructures.file
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.StateHelper.RichSignal
+import it.evadid.core.datastructures.state.StateHelper.{RichObservableValue, RichSignal}
 import it.evadid.core.datastructures.state.async.AsyncData
 import it.evadid.core.util.InfoUtil
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditor
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
-import it.evadid.homepage.workbook.legacy.interactionPlugins.turtleStitchPlugin.TurtleStitchWorkerFacade
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.elements.interactionElements.Turtle.TurtleStitchProjectState
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import todomove.datastructures.web.file.FullImage
 
 import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
 object HtmlTurtleStitchRendererHelper {
@@ -37,7 +37,6 @@ object HtmlTurtleStitchRendererHelper {
   * Reusable Card Elements
    */
   def renderDownloadButton(label: LanguageMapContentId, projectRelativeToResources: String): Element = {
-
     val projectFromFile: file.FileDescription = fullInfo.contentControl.fileFactory.relativeToTechnicalResources(projectRelativeToResources)
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + projectFromFile.filenameWithExtension
     HtmlButtonElement.withTextLabel(label, event =>
@@ -45,7 +44,6 @@ object HtmlTurtleStitchRendererHelper {
         case Success(projectData) => fullInfo.contentControl.downloadToDisc.downloadFile(desiredFilename, projectData.data)
         case Failure(err) => println("HtmlExploreTurtleStitchExploreProjectRenderer::downloadButton error: " + err.getMessage)
       }(using ExecutionContext.global), HtmlButtonElement.stdConfig).getDomElement()
-
   }
 
   def renderDownloadButton(label: LanguageMapContentId, workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState]): Element = {
@@ -76,30 +74,34 @@ object HtmlTurtleStitchRendererHelper {
 
   def renderProjectPreviewImage(filenameRelToResources: String): Element = {
     val fileDescription: FileDescription = fullInfo.contentControl.fileFactory.relativeToTechnicalResources(filenameRelToResources)
-    val xmlSignal: AsyncData[Nothing, String] = AsyncData.forFuture(fileDescription.loadData()).map(_.fileDataAsUtf8String)
-    renderProjectCodePreviewWithAsyncXml(xmlSignal)
+    val xmlAsync: AsyncData[Nothing, String] = AsyncData.forFuture(fileDescription.loadData()).map(_.fileDataAsUtf8String)
+    renderProjectCodePreviewWithAsyncXml(xmlAsync)
+
   }
 
   /*
   Project Preview Helper
    */
 
-  private def renderProjectCodePreviewWithAsyncXml(xmlSignal: AsyncData[Nothing, String]): Element = {
-    val signalForImg: AsyncData[Nothing, FullImage] = getImageSignal(xmlSignal, HtmlFullWorkbookApp.fullInfo.signals.currentLanguage)
+  private def renderProjectCodePreviewWithAsyncXml(xmlAsync: AsyncData[Nothing, String]): Element = {
+
+    val xmlSignal: EventStream[String] = xmlAsync.observeLoadedValues.toEventStream()
+    val asyncLanguage: AsyncData[Nothing, HumanLanguage] = HtmlFullWorkbookApp.fullInfo.signals.currentLanguage.toAsync
+    val combined: AsyncData[Nothing, (String, HumanLanguage)] = xmlAsync.combineIgnoreErrorData(asyncLanguage)
+
+
     div(
       cls := "preview-card",
       div(
         cls := "preview-content",
-        child <-- HtmlImageElement(signalForImg, None).getDomSignal
+        child <-- combined.observeLoadedValues.toEventStream().map((xml, lang) => {
+          val editor = SnapPreviewEditor(Var(ProgrammingStateSnapXml(xml)))
+          editor.impl.changeLanguage(lang)
+          editor.getDomElement()
+        })
       )
     )
-  }
 
-  private def getImageSignal(xmlSignal: AsyncData[Nothing, String], languageSignal: Signal[HumanLanguage]): AsyncData[Nothing, FullImage] = {
-    val asyncLanguage: AsyncData[Nothing, HumanLanguage] = languageSignal.toAsync
-    val combined: AsyncData[Nothing, (String, HumanLanguage)] = xmlSignal.combineIgnoreErrorData(asyncLanguage)
-    combined.mapAsync(tup => TurtleStitchWorkerFacade.getGreenFlagProgramSnapshotDataSrc(tup._1, tup._2).futureFirstValue)
   }
-
 
 }

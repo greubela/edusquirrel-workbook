@@ -40,11 +40,16 @@ trait Pathfinding[N, I] {
 object Pathfinding {
 
   def shortestPathFromMap[N, I](dest: N, map: Map[N, SearchNode[N, I]]): List[SearchNode[N, I]] = {
+    val visited = mutable.Set.empty[N]
     @scala.annotation.tailrec
     def go(last: N, path: List[SearchNode[N, I]]): List[SearchNode[N, I]] = {
       val cur = map.get(last)
-      if (cur.isEmpty) path
+      if (cur.isEmpty) {
+        require(path.isEmpty, "Missing predecessor in path map")
+        path
+      }
       else {
+        require(visited.add(last), "Cycle in predecessor map")
         val pre = cur.get.predecessor
         if (pre.isEmpty) cur.get :: path
         else go(pre.get, cur.get :: path)

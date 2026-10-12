@@ -3,6 +3,17 @@ package it.evadid.evacuation.core.datastructures.maps
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
+object MultiHashMapList {
+  given [K: upickle.default.ReadWriter, V: upickle.default.ReadWriter]: upickle.default.ReadWriter[MultiHashMapList[K, V]] =
+    upickle.default.readwriter[Map[K, List[V]]].bimap(
+      value => value.iterator.map((key, entries) => key -> entries.toList).toMap,
+      entries => {
+        val result = new MultiHashMapList[K, V]
+        entries.foreach { (key, values) => result(key) ++= values }
+        result
+      })
+}
+
 class MultiHashMapList[K, V] {
 
   private var map: mutable.Map[K, mutable.ListBuffer[V]] = mutable.HashMap[K, mutable.ListBuffer[V]]()
@@ -14,11 +25,8 @@ class MultiHashMapList[K, V] {
   def clear(): Unit = map.clear()
 
   def addAll(otherMap: MultiHashMapList[K, V]): Unit = {
-    otherMap.keys().foreach(key => {
-      otherMap(key).foreach(value => {
-        this.addElement((key, value))
-      })
-    })
+    val entries = otherMap.iterator.map { case (key, values) => key -> values.toList }.toList
+    entries.foreach { case (key, values) => values.foreach(value => addElement(key -> value)) }
   }
 
   def getAllEntries: Set[(K, V)] = {
@@ -97,7 +105,8 @@ class MultiHashMapList[K, V] {
   }
 
   def apply(k: K): ListBuffer[V] = {
-    get(k).get
+    ensureKey(k)
+    map(k)
   }
 
   def getOrElse(k: K, v: ListBuffer[V]): ListBuffer[V] = {
@@ -114,7 +123,6 @@ class MultiHashMapList[K, V] {
   }
 
   def get(key: K): Option[ListBuffer[V]] = this.synchronized {
-    ensureKey(key)
     map.get(key)
   }
 
@@ -131,7 +139,7 @@ class MultiHashMapList[K, V] {
   }
 
   def -=(kv: (K, V)): MultiHashMapList.this.type = this.synchronized {
-    ensureKey(kv._1).get(kv._1).get -= kv._2
+    map.get(kv._1).foreach(_ -= kv._2)
     this
   }
 
@@ -148,7 +156,10 @@ class MultiHashMapList[K, V] {
 
   override def hashCode(): Int = map.hashCode()
 
-  override def equals(obj: Any): Boolean = ???
+  override def equals(obj: Any): Boolean = obj match {
+    case other: MultiHashMapList[?, ?] => map == other.map
+    case _ => false
+  }
 
   def print(): Unit = {
     println(toString())

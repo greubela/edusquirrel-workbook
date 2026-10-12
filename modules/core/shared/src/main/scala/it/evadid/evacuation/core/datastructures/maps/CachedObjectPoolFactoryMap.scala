@@ -25,7 +25,7 @@ class CachedObjectPoolFactoryMap[K, V](factories: Seq[K => Option[V]]) extends M
     val getDirect = map.get(key)
     if (getDirect.isEmpty) {
       val value = getFromFactories(key, factories)
-      map += ((key, value.get))
+      value.foreach(v => map += (key -> v))
       value
     }
     else getDirect
@@ -48,9 +48,9 @@ class CachedObjectPoolFactoryMap[K, V](factories: Seq[K => Option[V]]) extends M
 
   override def equals(obj: Any): Boolean = map.equals(obj)
 
-  override def removed(key: K): Map[K, V] = ???
+  override def removed(key: K): Map[K, V] = Map.from(iterator).removed(key)
 
-  override def updated[V1 >: V](key: K, value: V1): Map[K, V1] = ???
+  override def updated[V1 >: V](key: K, value: V1): Map[K, V1] = Map.from(iterator).updated(key, value)
 }
 
 object CachedObjectPoolFactoryMap {

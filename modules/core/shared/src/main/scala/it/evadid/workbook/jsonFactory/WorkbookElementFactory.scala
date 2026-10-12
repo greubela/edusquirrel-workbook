@@ -1,29 +1,43 @@
 package it.evadid.workbook.jsonFactory
 
+import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
+import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
+import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.displayElements.ImageElement.LanguageMapBasedImageElement
-import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, ImageElement, LabeledWorkbookElement}
-import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
+import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
+import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, WorkbookImageElement, LabeledWorkbookElement}
 import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExercise, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
-import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowPanel}
-import it.evadid.workbook.elements.interactionElements.sortingExercise.SortingInteraction
-import it.evadid.workbook.elements.interactionElements.sortingReasonExercise.SortingReasonInteraction
-import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook, WorkbookSection}
-import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailInteraction, MailEditor}
+import it.evadid.workbook.elements.interactionElements.slideshow.*
+import it.evadid.workbook.elements.structureElements.{ExerciseContainer, ExerciseGroup, Workbook, WorkbookSection}
+import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailEditor, MailInteraction}
 import upickle.default
 import upickle.default.*
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
+import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
+import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
+import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
+import it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHashInteraction
+import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction
+import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
+import it.evadid.workbook.elements.interactionElements.slideshow
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.SortingInteraction
+import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
+import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
 
 object WorkbookElementFactory {
 
@@ -127,9 +141,26 @@ object WorkbookElementFactory {
   }
 
 
+  import it.evadid.workbook.elements.displayElements.TwoColumnPanel
+  import it.evadid.workbook.elements.structureElements.ExerciseGroup
+
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
+    classOf[TwoColumnPanel].getSimpleName -> TwoColumnPanel.factory,
+    classOf[ExerciseGroup].getSimpleName -> ExerciseGroup.factory,
+    classOf[CompressionExperimentInteraction].getSimpleName -> CompressionExperimentInteraction.factory,
     classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
     classOf[MailInteraction].getSimpleName -> MailInteraction.factory,
+    classOf[ChoiceInteraction].getSimpleName -> ChoiceInteraction.factory,
+    classOf[AnswerTableInteraction].getSimpleName -> AnswerTableInteraction.factory,
+    classOf[CoordinatePlotInteraction].getSimpleName -> CoordinatePlotInteraction.factory,
+    classOf[BinaryPixelInteraction].getSimpleName -> BinaryPixelInteraction.factory,
+    classOf[SquareMiddleHashInteraction].getSimpleName -> SquareMiddleHashInteraction.factory,
+    classOf[Sha256Interaction].getSimpleName -> Sha256Interaction.factory,
+    classOf[BlockchainInteraction].getSimpleName -> BlockchainInteraction.factory,
+    classOf[EvacuationSimulationInteraction].getSimpleName -> EvacuationSimulationInteraction.factory,
+    classOf[EvacuationConstructFloorInteraction].getSimpleName -> EvacuationConstructFloorInteraction.factory,
+    classOf[UnicodeComparisonInteraction].getSimpleName -> UnicodeComparisonInteraction.factory,
+    classOf[ThresholdNeuronInteraction].getSimpleName -> ThresholdNeuronInteraction.factory,
     classOf[MailEditor].getSimpleName -> MailEditor.factory,
     classOf[Workbook].getSimpleName -> Workbook.factory,
     classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.factory,
@@ -149,15 +180,14 @@ object WorkbookElementFactory {
     classOf[WorkbookSection].getSimpleName -> WorkbookSection.factory,
     classOf[ExerciseContainer].getSimpleName -> ExerciseContainer.factory,
     classOf[Slideshow].getSimpleName -> Slideshow.factory,
-    classOf[SlideshowPanel.TwoColumnImagePanel].getSimpleName -> SlideshowPanel.TwoColumnImagePanel.factory,
-    classOf[SlideshowPanel.ImageSlide].getSimpleName -> SlideshowPanel.ImageSlide.factory,
     classOf[TurtleRecreateShapeInteraction].getSimpleName -> TurtleRecreateShapeInteraction.factory,
     classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.factory,
     classOf[TurtleStitchRecreateShapeInteractionLegacy].getSimpleName -> TurtleStitchRecreateShapeInteractionLegacy.factory,
+    classOf[SqlCommandExercise].getSimpleName -> SqlCommandExercise.factory,
     classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.factory,
     classOf[ProgrammingExerciseFullJava].getSimpleName -> ProgrammingExerciseFullJava.factory,
     //  classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
-    classOf[ImageElement.LanguageMapBasedImageElement].getSimpleName -> LanguageMapBasedImageElement.factory
+    classOf[WorkbookImageElement.LanguageMapBasedWorkbookImageElement].getSimpleName -> LanguageMapBasedWorkbookImageElement.factory
   )
 
   private[workbook] def registeredElementTypes: Set[String] = knownFactoriesMap.keySet

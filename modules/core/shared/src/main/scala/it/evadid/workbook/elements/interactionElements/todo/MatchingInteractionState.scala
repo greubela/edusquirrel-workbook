@@ -4,7 +4,7 @@ import it.evadid.core.util.io.Serializer
 import upickle.default.{ReadWriter, macroRW}
 
 /** One selected right-side item for every left-side item; None means unanswered. */
-case class MatchingInteractionState(selectedRightIndicesByLeftIndex: List[Option[Int]]) {
+case class MatchingInteractionState(selectedRightIndicesByLeftIndex: List[Option[Int]]) derives upickle.default.ReadWriter {
 
 
   def sanitized(leftCount: Int, rightCount: Int): MatchingInteractionState = {
@@ -23,6 +23,5 @@ case class MatchingInteractionState(selectedRightIndicesByLeftIndex: List[Option
 }
 
 object MatchingInteractionState {
-  private given ReadWriter[MatchingInteractionState] = macroRW
   val serializer: Serializer[MatchingInteractionState] = Serializer.fromUpickleJson(summon[ReadWriter[MatchingInteractionState]])
 }

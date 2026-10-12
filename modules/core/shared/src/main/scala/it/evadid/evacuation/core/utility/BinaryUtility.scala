@@ -10,18 +10,26 @@ object BinaryUtility {
 
 
   def isBitSet(number: Integer, position: Integer): Boolean = {
-    if (position < 0 || position > 32) None
+    require(position >= 0 && position < 32, "Int bit position must be between 0 and 31")
     val mask = 1 << position
-    (mask & number) > 0
+    (mask & number) != 0
   }
 
 
-  def isBitSet(long: Long, pos: Int): Boolean =
+  def isBitSet(long: Long, pos: Int): Boolean = {
+    require(pos >= 0 && pos < 64, "Long bit position must be between 0 and 63")
     ((long >>> pos) & 1) % 2 == 1
+  }
 
-  def setBit(long: Long, pos: Int): Long = long | (1 << pos)
+  def setBit(long: Long, pos: Int): Long = {
+    require(pos >= 0 && pos < 64, "Long bit position must be between 0 and 63")
+    long | (1L << pos)
+  }
 
-  def flipBit(long: Long, pos: Int): Long = long ^ (1 << pos)
+  def flipBit(long: Long, pos: Int): Long = {
+    require(pos >= 0 && pos < 64, "Long bit position must be between 0 and 63")
+    long ^ (1L << pos)
+  }
 
 
 

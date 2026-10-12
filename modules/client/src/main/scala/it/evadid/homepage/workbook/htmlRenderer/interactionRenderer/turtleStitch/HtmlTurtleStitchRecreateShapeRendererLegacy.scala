@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
-import it.evadid.workbook.elements.interactionElements.Turtle.TurtleStitchRecreateShapeInteractionLegacy
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchRecreateShapeInteractionLegacy
 
 object HtmlTurtleStitchRecreateShapeRendererLegacy extends LineBasedRenderingFactory[TurtleStitchRecreateShapeInteractionLegacy] {
 

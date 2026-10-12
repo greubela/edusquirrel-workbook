@@ -1,0 +1,49 @@
+.compression-editor { padding: var(--space-xl); max-width: var(--workarea-width); margin: auto; }
+.compression-controls { display: flex; flex-wrap: wrap; gap: var(--space-lg); align-items: start; }
+.compression-control { display: grid; gap: var(--space-sm); flex: 1 1 12rem; margin-block: var(--space-md); }
+.compression-control input, .compression-control textarea, .compression-control select {
+  box-sizing: border-box; width: 100%; padding: var(--space-md); border: 1px solid var(--color-mail-border);
+  border-radius: var(--radius-sm); background: var(--color-surface-base); color: var(--color-text-primary);
+}
+.compression-control textarea { min-height: 8rem; }
+.compression-editor button, .compression-editor select { min-height: 44px; }
+.compression-editor button { padding: var(--space-sm) var(--space-md); cursor: pointer; }
+.compression-editor button:disabled { cursor: default; opacity: .6; }
+.compression-editor :focus-visible { outline: 2px solid var(--color-mail-selected-border); outline-offset: 2px; }
+.compression-error { color: var(--color-blockchain-invalid); }
+.compression-control input[aria-invalid="true"] { border-color: var(--color-blockchain-invalid); }
+.compression-output { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--color-surface-base); padding: var(--space-lg); }
+.compression-summary { border-top: 1px solid var(--color-mail-border); padding-block: var(--space-lg); }
+.compression-bit-grid { display: flex; flex-wrap: wrap; gap: var(--space-md); }
+.compression-byte { display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); }
+.compression-byte > code { grid-column: 1 / -1; text-align: center; }
+.compression-bit-selected { background: var(--color-mail-selected); border: 2px solid var(--color-mail-selected-border); }
+.compression-images canvas { display: block; width: min(100%, 28rem); height: auto; image-rendering: pixelated; margin: auto; }
+.compression-table-wrap { overflow-x: auto; max-width: 100%; }
+.compression-editor table, .compression-file-comparison table { width: 100%; border-collapse: collapse; }
+.compression-editor td, .compression-editor th, .compression-file-comparison td, .compression-file-comparison th {
+  border: 1px solid var(--color-mail-border); padding: var(--space-md); text-align: start; overflow-wrap: anywhere;
+}
+.compression-treemap { display: block; width: 100%; margin-block: var(--space-lg); }
+.compression-area { stroke: var(--color-surface-base); stroke-width: 2; }
+.compression-area-0 { fill: var(--color-blue-6); }
+.compression-area-1 { fill: var(--color-green-2); }
+.compression-area-2 { fill: var(--color-gray-11); }
+.compression-area-3 { fill: var(--color-mail-selected-border); }
+@media (max-width: 600px) { .compression-editor { padding: var(--space-md); } }
+
+.compression-written-answer { box-sizing: border-box; width: 100%; min-height: 9em; resize: vertical; }
+.compression-code { font-family: monospace; min-height: 16em; tab-size: 2; }
+.compression-image-comparison { min-width: 0; }
+.compression-original-image { max-width: 100%; max-height: 280px; object-fit: contain; }
+.compression-image-viewport { overflow: auto; max-height: 440px; width: 100%; }
+.compression-image-viewport canvas { height: auto; display: block; }
+.compression-bit-image { width: min(100%, 384px); image-rendering: pixelated; }
+.compression-file-selected { outline: 3px solid var(--color-mail-selected-border); }
+.compression-success { font-weight: bold; }
+.compression-inline label { display: block; margin-block: .4rem; }
+.compression-inline textarea { width: 100%; box-sizing: border-box; }
+.compression-inline blockquote { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.compression-dictionary-source { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; padding: var(--space-md); }
+.compression-active-word { background: var(--color-mail-selected); font-weight: bold; }

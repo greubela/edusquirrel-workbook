@@ -1,9 +1,11 @@
 package it.evadid.evacuation.eva1.model.evagraph
 
+import upickle.default.ReadWriter
+
 import it.evadid.core.datastructures.graph.{Positionable}
 import it.evadid.evacuation.core.datastructures.graphs.{Position}
 
-case class Router(pos: Position, initCapacity: Int, maxCapacity: Int, isExit: Boolean) extends Positionable {
+case class Router(pos: Position, initCapacity: Int, maxCapacity: Int, isExit: Boolean) extends Positionable derives ReadWriter {
   override def toString: String = "R[" + pos.x + "|" + pos.y + "]"
 
   def changeX(newVal: Int): Router = new Router(Position(newVal, pos.y), initCapacity, maxCapacity, isExit)
@@ -19,6 +21,12 @@ case class Router(pos: Position, initCapacity: Int, maxCapacity: Int, isExit: Bo
 }
 
 object Router {
+  given ReadWriter[EvaGraphTypes.EvaGraph] = upickle.default.readwriter[EvaGraphModel].bimap(
+    graph => {
+      require(graph.edges.forall(edge => graph.getDistFromEdge(edge) == edge.content.delayInMs.toDouble),
+        "An evacuation graph snapshot requires connection-delay weights")
+      EvaGraphModel(graph.nodes.toList, graph.edges.toList)
+    }, graph => graph)
   def apply(pos: Position, initCapacity: Int = 0, maxCapacity: Int = 10000, isExit: Boolean = false): Router = new Router(pos, initCapacity, maxCapacity, isExit)
 
   def apply(x: Double, y: Double): Router = apply(Position(x, y))

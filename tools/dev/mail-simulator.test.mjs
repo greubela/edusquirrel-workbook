@@ -80,6 +80,7 @@ test('mail simulator triages original messages, restores progress and composes o
     assert.equal(await editor.locator('.mail-list-item').count(), 1);
     await page.locator('.fullscreen-close-button').click();
     await open.first().click();
+    await page.waitForFunction(() => document.querySelectorAll('dialog[open] .mail-list-item').length === 14);
     assert.equal(await editor.locator('.mail-list-item').count(), 14, 'reopening keeps inbox placement');
     await folder('Trash').click();
     assert.equal(await editor.locator('.mail-list-item').count(), 1);
@@ -133,6 +134,8 @@ test('mail simulator triages original messages, restores progress and composes o
     });
     await page.reload();
     if (await login.isVisible()) await login.click();
+    await page.locator('.section-block').first().click({timeout:60000});
+    await page.getByText('Write emails – simulation',{exact:true}).waitFor();
     await open.nth(1).click();
     await folder('Sent').click();
     assert.equal(await editor.locator('.mail-list-item').count(),1,'sent mail survives a page reload');
@@ -143,7 +146,7 @@ test('mail simulator triages original messages, restores progress and composes o
     await folder('Inbox').click();
     await editor.getByRole('button',{name:'Check sorting',exact:true}).click();
     assert((await editor.locator('.mail-feedback').innerText()).includes('Sort all messages first'));
-    const dataFile=await fs.readFile(path.join(root,'modules/client/src/main/scala/it/evadid/homepage/workbook/content/PhishingMailboxData.scala'),'utf8');
+    const dataFile=await fs.readFile(path.join(root,'modules/client/src/main/scala/it/evadid/homepage/workbook/content/wip/PhishingMailboxData.scala'),'utf8');
     const originals=JSON.parse(dataFile.split('private val data = """')[1].split('"""')[0]);
     for (const original of originals.filter(m=>m.senderName!=='Postbank')) {
       await editor.locator('.mail-list-item').filter({hasText:original.subject}).click();
@@ -190,6 +193,8 @@ test('mail simulator triages original messages, restores progress and composes o
     assert(changed,'stored mailbox is available for renderer safety testing');
     await page.reload();
     if (await login.isVisible()) await login.click();
+    await page.locator('.section-block').first().click({timeout:60000});
+    await page.getByText('Write emails – simulation',{exact:true}).waitFor();
     await open.first().click();
     await editor.locator('.mail-list-item').filter({hasText:'HTML safety example'}).click();
     assert((await editor.locator('.mail-body').innerText()).includes('Safe content'));

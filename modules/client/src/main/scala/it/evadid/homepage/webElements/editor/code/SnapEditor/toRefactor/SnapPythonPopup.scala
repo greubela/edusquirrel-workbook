@@ -9,6 +9,9 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.workbook.elements.interactionElements.programming.*
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasScript, SnapTurtlePythonBridge}
 
 /**
  * FEATURE: Snap editable Python overlay (dual-mode with blocks).
@@ -29,7 +32,7 @@ import it.evadid.workbook.elements.interactionElements.programming.*
 object SnapPythonPopup {
 
   /** One Snap top-level script rendered as Python (plus canvas position). */
-  final case class ScriptView(index: Int, x: Int, y: Int, python: String)
+  final case class ScriptView(index: Int, x: Int, y: Int, python: String) derives upickle.default.ReadWriter
 
   /** Example signatures for the turtle allow-list (Python snake_case). */
   val OverviewExamples: List[String] =

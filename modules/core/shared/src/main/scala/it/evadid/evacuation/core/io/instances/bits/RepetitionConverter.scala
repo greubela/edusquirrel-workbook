@@ -40,6 +40,7 @@ object RepetitionConverter extends Converter[Seq[BitSequence]] {
     var res: ListBuffer[BitSequence] = ListBuffer()
     while (rem.nonEmpty) {
       val rep = rem.head
+      require(rep.size > 0 && rep.size <= 31 && rep.toLong > 0, "Run length must be a positive Int")
       val value = rem.tail.head
       1.to(rep.toInt).toList.foreach(_ => res += value)
       rem = rem.tail.tail

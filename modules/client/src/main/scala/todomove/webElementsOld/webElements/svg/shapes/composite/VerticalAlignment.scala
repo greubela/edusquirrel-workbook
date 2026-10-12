@@ -1,4 +1,4 @@
 package todomove.webElementsOld.webElements.svg.shapes.composite
 
-enum VerticalAlignment:
+enum VerticalAlignment derives upickle.default.ReadWriter:
   case Top, Center, Bottom

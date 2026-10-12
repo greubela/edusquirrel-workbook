@@ -5,7 +5,7 @@ import it.evadid.evacuation.config.value.ConfigValue
 import it.evadid.evacuation.eva1.algorithm.routing.FlowStrategy
 import it.evadid.evacuation.eva1.algorithm.strategy.{ClosestGoalStrategy, MultipleGoalStrategy}
 
-case class Eva1Config() {
+case class Eva1Config() derives upickle.default.ReadWriter {
 
   val evacuationStrategy: ObservableDiscreteConfigProperty[FlowStrategy] = BasicDiscreteObservableConfigProperty(Eva1Config.createStrategyProperty)
 

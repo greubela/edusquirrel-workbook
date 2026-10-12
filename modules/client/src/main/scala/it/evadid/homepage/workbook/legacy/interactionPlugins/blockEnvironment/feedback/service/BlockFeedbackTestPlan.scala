@@ -13,7 +13,7 @@ final case class BlockFeedbackTestPlan(
   packages: Seq[String],
   timeoutMs: Int,
   derivedHints: Seq[String]
-)
+) derives upickle.default.ReadWriter
 
 /**
  * Factory that derives a concrete test plan from the submission metadata.

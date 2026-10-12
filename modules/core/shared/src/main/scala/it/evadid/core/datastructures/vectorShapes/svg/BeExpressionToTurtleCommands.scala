@@ -8,7 +8,7 @@ import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
-import it.evadid.workbook.elements.interactionElements.programming.{SnapControlFlow, SnapTurtleCatalog, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapControlFlow, SnapTurtleCatalog, SnapTurtlePythonBridge}
 
 /**
  * Interprets a turtle-subset BeExpression into TurtleCommands for SVG preview.
@@ -32,7 +32,7 @@ object BeExpressionToTurtleCommands {
       env: Map[String, Double],
       defs: Map[String, BeDefineFunction],
       commands: List[TurtleCommand[Double]]
-  )
+  ) derives upickle.default.ReadWriter
 
   private object InterpState {
     def initial(expression: BeExpression): InterpState = {
@@ -99,7 +99,10 @@ object BeExpressionToTurtleCommands {
           val bound = defn.inputs.zip(args).map { (param, arg) =>
             SnapControlFlow.variableName(param) -> evalNumber(arg, state)
           }.toMap
-          interpret(defn.body, state.copy(env = state.env ++ bound))
+          // Each call has its own parameter/local-variable frame. A recursive
+          // child must not overwrite the parent's length/depth before the
+          // parent's remaining calls run. Drawing commands survive the return.
+          interpret(defn.body, state.copy(env = state.env ++ bound)).copy(env = state.env)
         case None =>
           val turtleName = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(python, python)
           val numeric = args.flatMap(arg => numericArg(arg, state))
@@ -147,6 +150,10 @@ object BeExpressionToTurtleCommands {
       case "/" =>
         val denom = args.drop(1).headOption.getOrElse(1.0)
         if denom == 0 then 0.0 else args.headOption.getOrElse(0.0) / denom
+      case "%" =>
+        val dividend = args.headOption.getOrElse(0.0)
+        val divisor = args.drop(1).headOption.getOrElse(1.0)
+        if divisor == 0 then 0.0 else dividend - divisor * math.floor(dividend / divisor)
       case "<" => if compare(args, _ < _) then 1.0 else 0.0
       case ">" => if compare(args, _ > _) then 1.0 else 0.0
       case "==" => if args.sliding(2).forall(pair => pair.size < 2 || pair.head == pair(1)) then 1.0 else 0.0

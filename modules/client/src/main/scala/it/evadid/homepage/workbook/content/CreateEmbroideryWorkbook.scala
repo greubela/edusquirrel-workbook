@@ -5,8 +5,8 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.interactionElements.Turtle.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {

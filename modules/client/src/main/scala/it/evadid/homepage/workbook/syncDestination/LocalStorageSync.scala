@@ -1,15 +1,13 @@
 package it.evadid.homepage.workbook.syncDestination
 
-import it.evadid.core.datastructures.storage.RemoteSyncDataCache
-import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
 import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
 import it.evadid.core.util.io.Serializer
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.LoggingLevel.WARN
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.interaction.sync.model.{FetchResponse, HistoryJson}
 import it.evadid.workbook.interaction.sync.destination.{SyncDestination, SyncDestinationHistory, SyncDestinationRaw}
-import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 import org.scalajs.dom
 import org.scalajs.dom.Storage
 import org.scalajs.dom.experimental.storage
@@ -50,9 +48,9 @@ case class LocalStorageSync(maxValueCharakterSize: Long = 100000) extends SyncDe
 
   private val contextToBrowserKeySerializer: Serializer[SyncContext] = SyncContext.serializer
 
-  override def storeTo(logger: SyncLogger, context: SyncContext, history: InteractionVariableHistorySerialized, formatter: SyncFormatter): Future[SyncSuccess] = Future {
+  override def storeTo(logger: SyncLogger, context: SyncContext, history: String): Future[SyncSuccess] = Future {
     try {
-      val value: String = formatter.serialize(context, history)
+      val value: String = HistoryJson.stored(context.keyForSerialisation, history)
       if (value.length > maxValueCharakterSize) {
         throw new IllegalArgumentException(s"Value exceeds ${maxValueCharakterSize} characters (has ${value.length}). Will not save to LocalStorage!")
       }
@@ -88,10 +86,10 @@ case class LocalStorageSync(maxValueCharakterSize: Long = 100000) extends SyncDe
     SyncSuccess(0, 0, dom.window.localStorage.length, LocalDateTime.now())
   }
 
-  private def transformBack(logger: SyncLogger, formatter: SyncFormatter, browserKey: String, browserValue: String): Option[(SyncContext, InteractionVariableHistorySerialized)] = try {
+  private def transformBack(logger: SyncLogger, browserKey: String, browserValue: String): Option[(SyncContext, String)] = try {
     if (!browserKey.startsWith(historyKeyPrefix)) None else {
       val browserKeyWithoutPrefix = browserKey.substring(historyKeyPrefix.length, browserKey.length)
-      Some(contextToBrowserKeySerializer.deserialize(browserKeyWithoutPrefix) -> formatter.deserialize(browserValue))
+      Some(contextToBrowserKeySerializer.deserialize(browserKeyWithoutPrefix) -> ujson.write(HistoryJson.payload(browserValue)))
     }
   } catch case (e: Exception) => {
     logger.log(s"LocalStorageSync: Ignore tuple (${browserKey}, ${browserValue}) because it was unparsable: ${e.getMessage}", WARN, Option(false))
@@ -99,14 +97,14 @@ case class LocalStorageSync(maxValueCharakterSize: Long = 100000) extends SyncDe
   }
 
 
-  override def fetchAll(logger: SyncLogger, context: UsageContext, formatter: SyncFormatter): Future[RemoteSyncDataCache.FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
-    val resMap: Map[SyncContext, InteractionVariableHistorySerialized] = (0 until storage.length).flatMap(i =>
+  override def fetchAll(logger: SyncLogger, context: UsageContext): Future[FetchResponse[SyncContext, String]] = {
+    val resMap: Map[SyncContext, String] = (0 until storage.length).flatMap(i =>
       val browserKey = storage.key(i)
       val browserValue = storage.getItem(browserKey)
-      transformBack(logger, formatter, browserKey, browserValue)
-    ).toMap
+      transformBack(logger, browserKey, browserValue)
+    ).filter(_._1.toUsageContext == context).toMap
 
-    val res = FetchResponse.fromMap[SyncContext, InteractionVariableHistorySerialized](time.LocalDateTime.now(), resMap, _.lastStateOption.map(_.timestamp))
+    val res = FetchResponse.fromMap[SyncContext, String](time.LocalDateTime.now(), resMap, HistoryJson.lastTimestamp)
     Future.successful(res)
   }
 

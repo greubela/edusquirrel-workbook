@@ -10,3 +10,7 @@ trait FloorSprite extends Sprite {
   override val toString: String = "FS(" + id + ": " + properties.toString + ")"
 
 }
+
+object FloorSprite {
+  given upickle.default.ReadWriter[FloorSprite] = Sprite.subtypeCodec
+}

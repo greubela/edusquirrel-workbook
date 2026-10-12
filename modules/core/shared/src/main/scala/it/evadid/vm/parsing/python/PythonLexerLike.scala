@@ -1,7 +1,7 @@
 package it.evadid.vm.parsing.python
 
 object PythonLexerLike {
-  final case class ParsedLine(indent: Int, content: String)
+  final case class ParsedLine(indent: Int, content: String) derives upickle.default.ReadWriter
 
   def toParsedLines(source: String): Vector[ParsedLine] = {
     val lines = source.split("\n", -1)

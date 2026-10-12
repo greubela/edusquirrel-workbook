@@ -6,6 +6,14 @@ import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import upickle.default.*
 
 class QrCodeSpec extends FunSuite {
+  test("QR symbol default codec preserves modules and their semantic regions") {
+    import upickle.default.*
+    val symbol = QrCodeSymbol(Vector(Vector(true, false), Vector(false, true)),
+      Vector(Vector(QrCodeRegion.Finder, QrCodeRegion.Format), Vector(QrCodeRegion.Data, QrCodeRegion.ErrorCorrection)))
+    assertEquals(read[QrCodeSymbol](write(symbol)), symbol)
+    assertEquals(readBinary[QrCodeSymbol](writeBinary(symbol)), symbol)
+  }
+
   private def checksum(matrix: Vector[Vector[Boolean]]): Int =
     matrix.flatten.foldLeft(0x811c9dc5)((value, dark) => (value ^ (if dark then 1 else 0)) * 16777619)
 

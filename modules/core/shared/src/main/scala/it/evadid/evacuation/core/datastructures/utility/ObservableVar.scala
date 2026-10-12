@@ -16,8 +16,8 @@ case class ObservableVar[T](initValue: T = null) {
     val oldValue = value
     value = newValue
 
-    if (oldValue == null) initListener.foreach(_.apply(newValue))
-    else changeListener.foreach(_.apply(oldValue, newValue))
+    if (oldValue == null) initListener.toList.foreach(_.apply(newValue))
+    else changeListener.toList.foreach(_.apply(oldValue, newValue))
   }
 
   def currentValue: T = if (value == null) {
