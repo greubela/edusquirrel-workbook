@@ -7,6 +7,7 @@ import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.workbook.content.DigitalWorkbookCatalog
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
+import it.evadid.homepage.webElements.editor.code.CodeMirrorEditorLoading
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import org.scalajs.dom
@@ -68,6 +69,7 @@ object HomepageStartupLogic {
       }
 
       renderElementIntoApp(logger, HtmlFullWorkbookApp.getDomElement())
+      CodeMirrorEditorLoading.preheat()
     }
   }
 

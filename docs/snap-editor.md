@@ -14,6 +14,8 @@ Snap edits publish project XML as `ProgrammingStateSnapXml`. Regenerated preview
 
 The static preview exports `ScriptsMorph.scriptsPicture()` from a temporary IDE; the fullscreen editor retains its live IDE. Preview canvas bitmap dimensions come from the exported script image, and its presentation/aspect ratio comes from `homepage/css/editors.css`, without inline width/height styles. Preview rendering preserves the shared Morphic keyboard contents and selection. Empty-canvas diagnostics distinguish actual primitive/custom block instances from the empty `<blocks>` containers present in every project.
 
+CodeMirror's shared module loader is also warmed immediately after the app shell mounts. Startup schedules this once with `requestIdleCallback` (a two-second deadline), or a delayed timer where idle callbacks are unavailable. The warmup request carries a low fetch-priority hint and never creates an editor or delays startup. Editors reuse the pending/completed load; a failed warmup leaves the editable fallback available and permits a later retry.
+
 ## Live IDE synchronization
 
 The editor mounts into its own canvas and retains the IDE across fullscreen sessions. Snap-originated XML is acknowledged before publication so the state observer does not reload an edit back into the same IDE. Later state changes use `loadProgramIfChanged`; pending edits are flushed before unmounting and fullscreen close. Morphic cycles pause when closed and resume when opened. Fullscreen open loads changed state and fits the editor to its container.
