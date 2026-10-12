@@ -13,6 +13,10 @@ import org.scalajs.dom.html.Canvas
 
 trait SnapCodeEditorImpl {
 
+  /** DOM consumers must wait for the asynchronously loaded Snap scripts. */
+  def whenReady(render: () => Unit, onError: Throwable => Unit): Unit =
+    scala.util.Try(render()).fold(onError, _ => ())
+
   def changeLanguage(humanLanguage: HumanLanguage): Unit
 
   /** Mount the complete interactive Snap editor and keep its Morphic world ticking. */

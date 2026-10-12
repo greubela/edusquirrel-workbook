@@ -22,6 +22,15 @@ import scala.scalajs.js.JSConverters.*
 /** A retained Snap/Morphic session for the interactive editor and exact previews. */
 final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
+  override def whenReady(render: () => Unit, onError: Throwable => Unit): Unit =
+    import scala.scalajs.js.Thenable.Implicits.*
+    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+    val ready = js.Dynamic.global.globalThis.selectDynamic("TurtleStitchPoCReady")
+    if !js.isUndefined(ready) && ready != null then
+      ready.asInstanceOf[js.Promise[Unit]].toFuture.map(_ => render()).failed.foreach(onError)
+    else
+      super.whenReady(render, onError)
+
   private var editorWorld: Option[WorldMorph] = None
   private var editor: Option[IDEMorph] = None
   private var mountedCanvas: Option[Canvas] = None
@@ -144,8 +153,6 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
           )
           canvas.width = math.max(1, scriptsImage.width)
           canvas.height = math.max(1, scriptsImage.height)
-          canvas.style.width = s"${canvas.width}px"
-          canvas.style.height = s"${canvas.height}px"
           canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D].drawImage(scriptsImage, 0, 0)
           CanvasVisibility.warnIfUnexpectedlyEmpty(this, state.snapXml, canvas)
         } finally ide.destroy()
@@ -1105,9 +1112,11 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       proto.updateDynamic("enableSingleStepping")(true)
 
   private def restoreGreenFlagStepping(): Unit =
-    val proto = js.Dynamic.global.Process.selectDynamic("prototype")
-    savedFlashTime.foreach(proto.updateDynamic("flashTime")(_))
-    savedSingleStepping.foreach(proto.updateDynamic("enableSingleStepping")(_))
+    // Closing a pending editor is valid even before threads.js defines Process.
+    if savedFlashTime.nonEmpty || savedSingleStepping.nonEmpty then
+      val proto = js.Dynamic.global.Process.selectDynamic("prototype")
+      savedFlashTime.foreach(proto.updateDynamic("flashTime")(_))
+      savedSingleStepping.foreach(proto.updateDynamic("enableSingleStepping")(_))
     savedFlashTime = None
     savedSingleStepping = None
 

@@ -21,8 +21,10 @@ private[SnapEditor] object CanvasVisibility:
           s"but the resulting canvas has at most $EmptyCanvasColorLimit unique colors and appears empty."
       )
 
-  private def looksLikeProgramWithBlocks(snapXml: String): Boolean =
-    snapXml.contains("<block")
+  private[SnapEditor] def looksLikeProgramWithBlocks(snapXml: String): Boolean =
+    // Every project has a <blocks> container, including an empty project.
+    // Only actual primitive/custom block instances should trigger this warning.
+    "<(?:block|custom-block)(?=[\\s/>])".r.findFirstIn(snapXml).nonEmpty
 
   private def uniqueColorCount(canvas: Canvas, stopAfter: Int): Int =
     val context = canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
