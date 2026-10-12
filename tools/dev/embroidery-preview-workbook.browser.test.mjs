@@ -103,10 +103,12 @@ test('all sections render, solutions match previews and answers persist after re
       await page.waitForFunction(({section,count}) =>
         document.querySelectorAll('.section-block')[section]?.classList.contains('active') &&
         document.querySelectorAll('.turtle-gradig-panel:not(dialog *)').length===count &&
-        (![2,3,4].includes(section) || document.querySelectorAll('.be-program-snap-renderer__canvas').length===0),
+        (![2,3,4].includes(section) || document.querySelectorAll('.interaction-element:has(.turtle-gradig-panel):not(dialog *) .be-program-snap-renderer__canvas').length===0),
         {section,count},{timeout:60000});
       assert.equal(await page.locator('.turtle-gradig-panel:not(dialog *)').count(),count);
-      if(section===2 || section===3 || section===4) assert.equal(await page.locator(".be-program-snap-renderer__canvas").count(),0,"unsolved exercises defer Snap thumbnails");
+      // Exploration examples have loaded programs and should render Snap previews.
+      // Only empty recreation exercises defer their thumbnails.
+      if(section===2 || section===3 || section===4) assert.equal(await page.locator('.interaction-element:has(.turtle-gradig-panel):not(dialog *) .be-program-snap-renderer__canvas').count(),0,'unsolved exercises defer Snap thumbnails');
     }
     if(process.env.EMBROIDERY_SCREENSHOT) {
       await sections.nth(6).click();
