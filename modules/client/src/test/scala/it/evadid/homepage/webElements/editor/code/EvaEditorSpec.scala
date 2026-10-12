@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.workbook.elements.interactionElements.programming.*
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorConfig, EvaProgrammingTab}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorConfig, EvaEditorSync, EvaProgrammingTab}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import munit.FunSuite
@@ -61,6 +61,45 @@ class EvaEditorSpec extends FunSuite {
     val snap = ProgrammingStatePythonString("forward(10)").toSnapXml
     assert(snap.snapXml.contains("<project"), clue = snap.snapXml.take(120))
     assert(snap.snapXml.contains("forward"), clue = snap.snapXml)
+  }
+
+  test("language switch commits the editor being left before reading shared state") {
+    val state = Var[ProgrammingState](ProgrammingStatePythonString("forward(10)"))
+    val pythonTab = EvaProgrammingTab.tabFor(EvaEditorConfig.Default, AppLanguage.Python, state, _ => ())
+    var events = List.empty[String]
+    val switched = EvaEditorSync.showLanguage(
+      commitLeaving = () => {
+        events = events :+ "commit"
+        state.set(ProgrammingStatePythonString("forward(25)"))
+      },
+      destinationAccepts = candidate => pythonTab.canSetStateTo(candidate).nonEmpty,
+      applyDestination = pythonTab.setStateTo,
+      revealDestination = () => events = events :+ "reveal",
+      afterReveal = () => (),
+      state = () => {
+        events = events :+ "read"
+        state.now()
+      }
+    )
+    assert(switched)
+    assertEquals(events, List("commit", "read", "reveal"))
+    assertEquals[ProgrammingState, ProgrammingState](pythonTab.associatedVar.now(), ProgrammingStatePythonString("forward(25)"))
+  }
+
+  test("language switch stays put when the committed program cannot convert") {
+    val state = Var[ProgrammingState](ProgrammingStatePythonString("forward(10)"))
+    var revealed = false
+    val switched = EvaEditorSync.showLanguage(
+      commitLeaving = () => state.set(ProgrammingStatePythonString("still here")),
+      destinationAccepts = _ => false,
+      applyDestination = _ => fail("destination must not receive an unacceptable program"),
+      revealDestination = () => revealed = true,
+      afterReveal = () => revealed = true,
+      state = () => state.now()
+    )
+    assert(!switched)
+    assert(!revealed)
+    assertEquals(state.now(), ProgrammingStatePythonString("still here"))
   }
 
   test("CodeMirror maps Java and Python independently") {

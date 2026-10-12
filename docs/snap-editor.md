@@ -10,7 +10,7 @@ Snap edits publish project XML as `ProgrammingStateSnapXml`. Regenerated preview
 
 ## Live IDE synchronization
 
-The editor mounts into its own canvas and retains the IDE across fullscreen sessions. Snap-originated XML is acknowledged before publication so the state observer does not reload an edit back into the same IDE. Later state changes use `loadProgramIfChanged`; pending edits are flushed before unmounting and fullscreen close. Morphic cycles pause when closed and resume when opened. Fullscreen open loads changed state and fits the editor to its container.
+The editor mounts into its own canvas and retains the IDE across fullscreen sessions. Snap-originated XML is acknowledged before publication so the state observer does not reload an edit back into the same IDE. Later state changes use `loadProgramIfChanged`. Leaving a language tab commits that editor, and opening the block tab reloads the retained IDE. Pending edits are also flushed before unmounting and when the block tab itself closes; closing from a text tab pauses Snap without publishing the retained project over that text. Morphic cycles pause when closed and resume when opened. Fullscreen open loads changed state and fits the editor to its container.
 
 `SnapCodeEditorImpl` also exposes `forceLoadProgram`, but the current fullscreen-open path uses `loadProgramIfChanged`. Configuration and implementation adapters remain in `SnapEditor/toRefactor/`.
 

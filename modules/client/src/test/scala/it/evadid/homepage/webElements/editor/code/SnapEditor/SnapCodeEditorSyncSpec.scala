@@ -41,6 +41,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     override def currentProjectXml(): Option[String] = current.map(_.snapXml)
     override def startWorldCycles(): Unit = ()
     override def pauseWorldCycles(): Unit = ()
+    override def pauseWithoutPublishing(): Unit = ()
     override def runGreenFlagOnStage(canvas: Canvas): Unit = ()
     override def stopGreenFlagOnStage(): Unit = ()
     override def setGreenFlagStepMs(ms: Double): Unit = ()
@@ -95,6 +96,21 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(impl.loadRequests, 1)
       assertEquals(impl.reloads, 1)
     } finally second.killSubscriptions()
+  }
+
+  test("fullscreen open reloads a program that changed while the canvas was unmounted") {
+    val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
+    val impl = new RecordingImpl
+    val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl)
+    val owner = new ManualOwner
+    editor.mountEditorInto(null, owner)
+    owner.killSubscriptions()
+    val edited = ProgrammingStateSnapXml("<project>edited-while-hidden</project>")
+    state.set(edited)
+    assertEquals(impl.loadRequests, 0)
+    editor.onFullscreenOpen()
+    assertEquals(impl.reloads, 1)
+    assertEquals(impl.current, Some(edited))
   }
 
   test("Snap image regeneration commits only cleaned code and never reloads its own edit") {

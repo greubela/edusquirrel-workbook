@@ -1023,6 +1023,9 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     // Always flush before stopping the poll loop so close/unmount cannot drop
     // edits that happened since the last 500ms check.
     flushPendingProjectChanges()
+    pauseWithoutPublishing()
+
+  override def pauseWithoutPublishing(): Unit =
     stopGreenFlagOnStage()
     cyclesRunning = false
     if frameHandle != 0 then dom.window.cancelAnimationFrame(frameHandle)

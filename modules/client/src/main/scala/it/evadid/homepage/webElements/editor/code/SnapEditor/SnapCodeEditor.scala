@@ -77,6 +77,12 @@ case class SnapCodeEditor(
 
   override def getDomElement(): L.Element = domElement
 
+  /** Publish in-progress block edits without pausing the Morphic world. */
+  def flushPendingEdits(): Unit = impl.flushPendingProjectChanges()
+
+  /** Stop the world while keeping a newer text representation in shared state. */
+  def pauseWithoutPublishing(): Unit = impl.pauseWithoutPublishing()
+
   override def onFullscreenOpen(): Unit =
     impl.loadProgramIfChanged(state.now().toSnapXml)
     impl.fitEditorToContainer()
