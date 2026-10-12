@@ -10,7 +10,7 @@ Snap edits publish project XML as `ProgrammingStateSnapXml`. Regenerated preview
 
 ## Runtime readiness and preview
 
-`fullturtle.js` loads Snap's scripts sequentially and exposes `TurtleStitchPoCReady`. A cached client can mount previews before `IDE_Morph` is defined. Creating a world at that point fails and leaves the preview empty; script loading alone does not retry the mount. Both `SnapPreviewEditor` and `SnapCodeEditor` now use the implementation's `whenReady` hook before rendering. Mount generations discard delayed callbacks after a state replacement, unmount or fullscreen close/reopen. A loading or rendering failure is shown as an accessible alert.
+`fullturtle.js` loads Snap's scripts sequentially and exposes `TurtleStitchPoCReady`. `SnapPreviewEditor` and `SnapCodeEditor` await the implementation's `whenReady` hook before creating a world or rendering, so cached app startup need not assume `IDE_Morph` is already defined. Mount generations discard delayed callbacks after a state replacement, unmount or fullscreen close/reopen. A loading or rendering failure is shown as an accessible alert.
 
 The static preview exports `ScriptsMorph.scriptsPicture()` from a temporary IDE; the fullscreen editor retains its live IDE. Preview canvas bitmap dimensions come from the exported script image, and its presentation/aspect ratio comes from `homepage/css/editors.css`, without inline width/height styles. Preview rendering preserves the shared Morphic keyboard contents and selection. Empty-canvas diagnostics distinguish actual primitive/custom block instances from the empty `<blocks>` containers present in every project.
 

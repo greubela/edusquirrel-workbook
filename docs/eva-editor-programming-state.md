@@ -22,3 +22,19 @@ Full Java classes use `ProgrammingStateJavaString.toJavaVmProgram`, which checks
 `JavaTurtleEditorExtension` supplies Java execution; `TurtleTaskEditorExtension` supplies the drawing/task panel for every enabled language. Each Eva editor owns its Python/Snap worker. Stop, close and successful language switches cancel owned work. Snap edits are flushed before a run captures its source.
 
 `TurtleDrawingPolicy` belongs to the task definition. `Segments` compares individual movements including pen-up routes, `Strokes` compares individual drawn lines, and `Coverage` compares geometric coverage with the existing 0.25 tolerance. Missing fields retain `Strokes` for shape-recreation tasks and `Coverage` for Java pilots. Learner-state serialization is unchanged. Unsupported drawing commands are rejected, not silently ignored.
+
+## Binding and persistence
+
+Eva receives a bound `Var[ProgrammingState]`; each language tab creates a `bimap`
+view or guarded external-editor adapter of that same value. It does not own a
+second workbook answer store. Source is preserved in its active representation;
+unsupported/lossy conversions must not overwrite it. `state.fingerprint()` includes
+representation/source information and is not a semantic-equality shortcut.
+See [state bindings](state-and-serialization.md#two-way-views-and-external-editors)
+for the current Python view and Snap echo-suppression boundary.
+
+CodeMirror's optional flowchart gutter is controlled by
+`EvaEditorConfig.codeMirrorConfig`, and its loader is asynchronous and editor-local;
+see [CodeMirror configuration](workbook-interaction-architecture.md#codemirror-configuration-and-asynchronous-loading).
+The generic Scala.js [worker backend](worker-execution-backend.md) is implemented,
+while the owned Pyodide execution workers use a separate runtime/protocol.

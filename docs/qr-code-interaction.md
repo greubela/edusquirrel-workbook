@@ -21,8 +21,10 @@ CreateQrCodeInteraction(
 Requirements can also specify a maximum byte count, an exact version, an exact
 mask and a minimum correction level. `evaluate` returns individual criteria;
 `isSatisfiedBy` and the interaction's `isPassed` expose aggregate completion.
-The current workbook architecture has no generic pass-condition interface, so
-this interaction exposes its own evaluator and renders its feedback directly.
+Shared interactions have generic grader/scaffolder contracts, but this interaction
+currently exposes its own requirement evaluator and renders feedback directly.
+Its requirement results are not automatically attached to `gradingElements`; see
+[the current grading integration](workbook-interaction-architecture.md#grading-and-scaffolding).
 
 ## Shared model
 

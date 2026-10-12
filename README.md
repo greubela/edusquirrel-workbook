@@ -54,9 +54,9 @@ The root sbt project aggregates client, server and worker. Client and worker dep
 
 Start with [MainApp.scala](modules/client/src/main/scala/MainApp.scala) and [HomepageStartupLogic.scala](modules/client/src/main/scala/it/evadid/homepage/control/startup/HomepageStartupLogic.scala) for page mounting.
 
-Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala): `WorkbookElement`, `WorkbookStructureElement[T]` and `WorkbookInteractionElement[T]`. The latter owns an `InteractionVariable[T]`, default value and content serializer. The structure models are [Workbook](modules/core/shared/src/main/scala/it/evadid/workbook/elements/structureElements/Workbook.scala), [WorkbookSection](modules/core/shared/src/main/scala/it/evadid/workbook/elements/structureElements/WorkbookSection.scala) and [ExerciseContainer](modules/core/shared/src/main/scala/it/evadid/workbook/elements/structureElements/ExerciseContainer.scala).
+Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala): `WorkbookElement`, `WorkbookStructureElement[T]` and `WorkbookInteractionElementFull[T, GA, SA]`. The interaction owns typed history through `InteractionVariable[T, GA, SA]`, a default value, content codec and grading/scaffolding definitions. `WorkbookInteractionElement[T]` is the compatibility alias with `Any` additional payloads. The structure models are [Workbook](modules/core/shared/src/main/scala/it/evadid/workbook/elements/structureElements/Workbook.scala), [WorkbookSection](modules/core/shared/src/main/scala/it/evadid/workbook/elements/structureElements/WorkbookSection.scala) and [ExerciseContainer](modules/core/shared/src/main/scala/it/evadid/workbook/elements/structureElements/ExerciseContainer.scala).
 
-[HtmlRenderFactory.scala](modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/HtmlRenderFactory.scala) maps shared elements to browser renderers. [CreateTestWorkbook.scala](modules/client/src/main/scala/it/evadid/homepage/workbook/content/CreateTestWorkbook.scala) provides small authoring examples, including QR and email interactions. Larger factories are in the same content directory. Runtime context and language/storage controls live under `modules/client/src/main/scala/it/evadid/homepage/control/`.
+[HtmlRenderFactory.scala](modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/HtmlRenderFactory.scala) maps shared elements to browser renderers. [CreateTestWorkbook.scala](modules/client/src/main/scala/it/evadid/homepage/workbook/content/test/CreateTestWorkbook.scala) provides small authoring examples, including QR and email interactions. Factories are organized under `content/`, `content/test/` and `content/wip/`; a package name alone does not establish which components are implemented. Runtime context and language/storage controls live under `modules/client/src/main/scala/it/evadid/homepage/control/`.
 
 ## Workbook entry pages
 
@@ -66,6 +66,7 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 | [workbooks](homepage/workbooks/index.html) | Laminar catalogue of available digital workbooks; browsing is public |
 | [evacuationWorkbook](homepage/evacuationWorkbook/index.html) | Partial evacuation adaptation with local EVA2 playback, locker/door comparisons with saved graphs, a budget plan and model critique |
 | [workbookDesign](homepage/workbookDesign/index.html) | Test workbook and interaction examples, including local EVA2 floor construction |
+| [monksWorkbook](homepage/monksWorkbook/index.html) | Mons Komputarius stories, sorting, towers and Koch recursion practice (DE/EN) |
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |
 | [embroideryPreviewWorkbook](homepage/embroideryPreviewWorkbook/index.html) | Separate embroidery edition with geometric turtle previews, conditionals and recursion (DE/EN) |
 | [compressionWorkbook](homepage/compressionWorkbook/index.html) | Data compression workbook |
@@ -73,7 +74,7 @@ Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared
 | [blockchainWorkbook](homepage/blockchainWorkbook/index.html) | Blockchain learner activities, mining simulator and energy/final assessment; equivalence review pending |
 | [imageRecognitionWorkbook](homepage/imageRecognitionWorkbook/index.html) | Partial image-recognition workbook with neuron/pixel experiments, robustness and school-chatbot assessment |
 | [phishingWorkbook](homepage/phishingWorkbook/index.html) | Mail simulator, warning/domain/Unicode analysis, attachment risks and checklist; partial adaptation |
-| [plantWorkshop](homepage/plantWorkshop/index.html) | Separate legacy plant application |
+| [plantWorkshop](homepage/plantWorkshop/index.html) | Retained legacy entry page; the former standalone Scala application was removed |
 | [feedback-demo](homepage/feedback-demo/index.html) | Feedback demonstration |
 
 See [catalogue and cache startup](docs/laminar-workbook-catalog-and-cache.md) for the public registry, IndexedDB lifecycle and startup checks.
@@ -108,7 +109,7 @@ Useful artifact tasks:
 | `sbt buildClientDeploy buildWorkerDeploy` | Optimized JS artifacts in newest/stable/history |
 | `sbt buildAllDeploy` | All deployment artifacts |
 
-Older `buildClientFast`, `buildWorkerFast`, `buildServerFast` and `deployAll` names remain deprecated aliases. Task definitions are in [BuildCommands.scala](project/BuildCommands.scala).
+Task definitions are in [BuildCommands.scala](project/BuildCommands.scala).
 
 ## Tests
 
@@ -154,18 +155,21 @@ LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js).
 ## Documentation
 
 - [Digital workbook migration](docs/digital-workbook-migration.md): analysis of linked PDF/ZIP exercises, missing editors and the Blockchain, image-recognition and Phishing adaptations.
-- [Interaction architecture](docs/workbook-interaction-architecture.md): dependency boundaries between shared models, renderers and optional editors; state and serialization flow.
+- [Interaction architecture](docs/workbook-interaction-architecture.md): module and editor boundaries, element types, grading/scaffolding, localization and dependency loading.
+- [State and serialization](docs/state-and-serialization.md): source-of-truth bindings, update importance, history and default uPickle codecs with examples.
+- [Execution clients](docs/execution-clients.md): local, HTTP and implemented worker backends; typed command definitions and calls.
+- [Worker execution](docs/worker-execution-backend.md): supported jobs, transport/lifecycle and browser verification.
 - [Native compression workbook](docs/compression-workbook.md): complete seven-chapter native copy, saved interactions and the retained standalone version.
 - [Email simulator](docs/email-simulator.md): state, grading, content handling and verification.
 - [QR interaction](docs/qr-code-interaction.md): encoding model, requirements, region colors and reference tests.
 - [Plant workshop](docs/PlantWorkshop_Quickstart.md): implemented sections and remaining migration work.
 - [Eva programming state](docs/eva-editor-programming-state.md) and [Snap editor](docs/snap-editor.md): representations and editor lifecycle.
-- [Snap command execution service](docs/snap-turtle-command-execution-overview.md): Pyodide boundary and current integration status.
+- [Snap command execution service](docs/snap-turtle-command-execution-overview.md): implemented snapshot extraction, Pyodide boundary and editor integration.
 - [Python parsing](docs/python-parsing-architecture.md): normalization and parser responsibilities.
-- [Core test audit](docs/core-package-unit-tests.md): historical coverage measurements and test commands.
+- [Core test audit](docs/core-package-unit-tests.md): representative behavioral suites and current verification commands.
 - [Testing and serialization audit](docs/testing-and-serialization-audit.md): regression coverage, default codecs and decisions about previously skipped/manual tests.
 - [Workbook interaction roadmap](WORKBOOK_INTERACTIONS.md): teaching-resource inventory and proposed future exercises.
 
 Markdown under bundled third-party libraries documents those distributions. Imported teaching projects retain their conceptual and historical documents; their upstream setup/team instructions do not describe the EduSquirrel repository workflow. MathWorld's README and deployment guide explain its integration here.
 
-Classic PDF/ZIP downloads intentionally coexist with their partial digital versions. Digital migrations are listed under “Digitale Workbooks (In Arbeit)” until full content equivalence has been reviewed; see the [migration policy](docs/digital-workbook-migration.md).
+Classic PDF/ZIP downloads coexist with digital editions. The public catalogue currently marks native editions as in development for content-review purposes; this is separate from the implementation status of their editors or the working worker backend. See the [migration policy](docs/digital-workbook-migration.md) for edition-specific scope.
