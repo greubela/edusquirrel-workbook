@@ -124,21 +124,31 @@ const assertPaneBounds = async (page, viewport, minimumCodeHeight = viewport.hei
   const panes = await page.evaluate(() => {
     const shell = document.querySelector('.fullscreen-content-container').getBoundingClientRect().toJSON();
     const selectors = '.eva-editor__toolbar, .eva-editor__content, .turtle-sidebar, .java-function-editor__topbar, .java-function-editor__diagram-section, .java-function-editor__workspace, .java-function-editor__compact-navigation, .java-function-editor__compact-navigation select, .java-function-editor__reference, .cm-editor, .cm-scroller, textarea:not([hidden]), canvas, .turtle-gradig-panel';
+    const box = element => element?.getBoundingClientRect().toJSON() ?? null;
     return {shell, panes: Array.from(document.querySelectorAll(selectors)).filter(element => element.getClientRects().length)
-      .map(element => ({name: element.className, box: element.getBoundingClientRect().toJSON(),
-        chain: element.matches('.cm-scroller, textarea') ? [element, element.parentElement, element.parentElement.parentElement,
-          element.parentElement.parentElement.parentElement, element.closest('.java-function-editor__workspace'),
-          element.closest('.java-function-based-editor')].filter(Boolean).map(owner => ({name: owner.className,
-            height: owner.clientHeight, cssHeight: getComputedStyle(owner).height, flex: getComputedStyle(owner).flex,
-            rows: getComputedStyle(owner).gridTemplateRows})) : []}))};
+      .map(element => {
+        const execution = element.matches('.turtle-gradig-panel') ? element.closest('.turtle-execution') : null;
+        const actions = execution?.querySelector('.turtle-execution__actions');
+        return {name: element.className, box: box(element), fontFamily: getComputedStyle(element).fontFamily,
+          drawingChrome: execution ? {rows: getComputedStyle(execution).gridTemplateRows,
+            status: box(execution.querySelector('.turtle-execution__status')), actions: box(actions),
+            buttons: Array.from(actions?.children ?? []).map(button => ({text: button.textContent, box: box(button),
+              fontFamily: getComputedStyle(button).fontFamily}))} : null,
+          chain: element.matches('.cm-scroller, textarea') ? [element, element.parentElement, element.parentElement.parentElement,
+            element.parentElement.parentElement.parentElement, element.closest('.java-function-editor__workspace'),
+            element.closest('.java-function-based-editor')].filter(Boolean).map(owner => ({name: owner.className,
+              height: owner.clientHeight, cssHeight: getComputedStyle(owner).height, flex: getComputedStyle(owner).flex,
+              rows: getComputedStyle(owner).gridTemplateRows})) : []};
+      })};
   });
-  for (const {name, box, chain} of panes.panes) {
+  for (const {name, box, fontFamily, drawingChrome, chain} of panes.panes) {
     assert(box.left >= panes.shell.left - 1 && box.right <= panes.shell.right + 1 &&
       box.top >= panes.shell.top - 1 && box.bottom <= panes.shell.bottom + 1,
     `${name} remains visible within the fixed editor frame at ${viewport.width}x${viewport.height}`);
     if (name.includes('cm-scroller') || name.includes('fallback')) assert(box.height >= minimumCodeHeight,
       `code retains a usable internal scrolling area: ${viewport.width}x${viewport.height}, ${box.height}px < ${minimumCodeHeight}px ${JSON.stringify(chain)}`);
-    if (name.includes('turtle-gradig-panel')) assert(box.width >= 64 && box.height >= 64, 'the bounded drawing pane remains visible');
+    if (name.includes('turtle-gradig-panel')) assert(box.width >= 64 && box.height >= 64,
+      `the bounded drawing pane remains visible at ${viewport.width}x${viewport.height}: ${JSON.stringify({name, fontFamily, box, drawingChrome})}`);
   }
 };
 
@@ -250,6 +260,19 @@ test('Java method, full-source and dialog chrome fit Eva and standalone editors'
             const close = await page.locator('.fullscreen-close-button').boundingBox();
             const buttons = await page.locator('.java-function-editor__topbar-actions button').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().toJSON()));
             assert(buttons.every(button => button.x + button.width <= close.x || button.y >= close.y + close.height || button.y + button.height <= close.y), 'Java controls do not overlap fullscreen close');
+            if (!standalone && viewport.width > 760 && viewport.height <= 600) {
+              for (const fontFamily of ['"Verdana", sans-serif', '"Courier New", monospace', '"Arial Black", sans-serif']) {
+                await page.addStyleTag({content: `
+                  .eva-editor--java.editor-appearance[data-editor-theme],
+                  .eva-editor--java .java-function-based-editor.editor-appearance[data-editor-theme] {
+                    font-family: ${fontFamily};
+                  }
+                `});
+                await assertHorizontalFit(page);
+                await assertEditorFrame(page);
+                await assertPaneBounds(page, viewport);
+              }
+            }
           }
           await page.locator('.java-function-editor__dialog').evaluate(dialog => dialog.showModal());
           const dialog = await page.locator('.java-function-editor__dialog').boundingBox();

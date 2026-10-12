@@ -245,6 +245,7 @@
 }
 
 @media (max-height: 600px) and (min-width: 761px) {
+    .editor-appearance .turtle-sidebar:has(.turtle-execution) { padding: 8px; }
     .eva-editor.editor-appearance:has(> .turtle-sidebar) {
         grid-template-columns: minmax(0, 1fr) minmax(200px, 30%);
         grid-template-rows: auto minmax(0, 1fr);
