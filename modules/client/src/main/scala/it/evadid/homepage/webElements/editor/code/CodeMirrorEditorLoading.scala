@@ -7,12 +7,13 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js.timers.{clearTimeout, setTimeout}
 import scala.util.Try
 
-/** One asynchronous module load shared by all editors; never a homepage startup dependency.
+/** One asynchronous module load shared by startup warmup and all editors; never a startup dependency.
   * CodeMirror itself requires the DOM, so mounting still runs on the browser thread,
   * in an idle task rather than inside a Laminar mount or a Promise microtask.
   */
 object CodeMirrorEditorLoading {
   private var pending: Option[Future[CodeMirrorEditor.CodeMirrorFacade]] = None
+  private var preheatScheduled = false
 
   private def facade: Option[CodeMirrorEditor.CodeMirrorFacade] = {
     val value = dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirror")
@@ -20,17 +21,31 @@ object CodeMirrorEditorLoading {
     else Some(value.asInstanceOf[CodeMirrorEditor.CodeMirrorFacade])
   }
 
-  private[code] def inBackground[A](work: => A): Future[A] = {
+  private def idleTask[A](timeoutMs: Int, fallbackDelayMs: Int)(work: => A): Future[A] = {
     val result = Promise[A]()
     val run: js.Function1[js.Any, Unit] = _ => { result.complete(Try(work)); () }
     val idle = dom.window.asInstanceOf[js.Dynamic].selectDynamic("requestIdleCallback")
     if (js.typeOf(idle) == "function")
-      dom.window.asInstanceOf[js.Dynamic].requestIdleCallback(run, js.Dynamic.literal(timeout = 200))
-    else setTimeout(0) { run(js.undefined) }
+      dom.window.asInstanceOf[js.Dynamic].requestIdleCallback(run, js.Dynamic.literal(timeout = timeoutMs))
+    else setTimeout(fallbackDelayMs) { run(js.undefined) }
     result.future
   }
 
-  private[code] def load(): Future[CodeMirrorEditor.CodeMirrorFacade] = facade match {
+  private[code] def inBackground[A](work: => A): Future[A] = idleTask(200, 0)(work)
+
+  /** Warm the shared module after the app shell mounts, without creating editors
+    * or making startup wait for the CDN. An early editor reuses the same load.
+    */
+  def preheat(): Unit = {
+    if !preheatScheduled then {
+      preheatScheduled = true
+      idleTask(2000, 250) {
+        load(background = true).failed.foreach(_ => ()) // A later editor can retry a failed warmup.
+      }.failed.foreach(_ => ())
+    }
+  }
+
+  private[code] def load(background: Boolean = false): Future[CodeMirrorEditor.CodeMirrorFacade] = facade match {
     case Some(value) => Future.successful(value)
     case None => pending.getOrElse {
       val result = Promise[CodeMirrorEditor.CodeMirrorFacade]()
@@ -39,6 +54,7 @@ object CodeMirrorEditorLoading {
         val script = dom.document.createElement("script").asInstanceOf[dom.html.Script]
         script.`type` = "module"
         script.async = true
+        if background then script.setAttribute("fetchpriority", "low")
         // Resolve beside the app bootstrap, including deployments under a subpath.
         val scripts = dom.document.querySelectorAll("script[src]")
         val bootstrap = (0 until scripts.length).iterator
