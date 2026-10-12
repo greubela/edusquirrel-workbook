@@ -80,8 +80,8 @@ case class SnapCodeEditor(
   /** Publish in-progress block edits without pausing the Morphic world. */
   def flushPendingEdits(): Unit = impl.flushPendingProjectChanges()
 
-  /** Stop the world while keeping a newer text representation in shared state. */
-  def pauseWithoutPublishing(): Unit = impl.pauseWithoutPublishing()
+  /** Flush pending block edits, then stop the Morphic world. */
+  def pauseWorldCycles(): Unit = impl.pauseWorldCycles()
 
   override def onFullscreenOpen(): Unit =
     impl.loadProgramIfChanged(state.now().toSnapXml)

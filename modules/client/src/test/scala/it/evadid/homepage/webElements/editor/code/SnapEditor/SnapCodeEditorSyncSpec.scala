@@ -41,7 +41,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     override def currentProjectXml(): Option[String] = current.map(_.snapXml)
     override def startWorldCycles(): Unit = ()
     override def pauseWorldCycles(): Unit = ()
-    override def pauseWithoutPublishing(): Unit = ()
     override def runGreenFlagOnStage(canvas: Canvas): Unit = ()
     override def stopGreenFlagOnStage(): Unit = ()
     override def setGreenFlagStepMs(ms: Double): Unit = ()

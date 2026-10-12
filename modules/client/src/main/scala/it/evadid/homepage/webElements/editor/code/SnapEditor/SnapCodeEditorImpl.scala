@@ -41,9 +41,6 @@ trait SnapCodeEditorImpl {
   /** Pause Morphic updates without destroying the mounted editor. */
   def pauseWorldCycles(): Unit
 
-  /** Pause Morphic updates without publishing the retained project. */
-  def pauseWithoutPublishing(): Unit
-
   /**
    * Green-flag the live (hidden) Snap stage and mirror frames onto `mirrorTarget`
    * so turtle motion animates Scratch-style in the fullscreen panel.

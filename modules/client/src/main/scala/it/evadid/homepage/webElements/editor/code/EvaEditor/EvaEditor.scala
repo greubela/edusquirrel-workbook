@@ -110,7 +110,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     if activeTab.now().associatedLanguage == SnapLanguage then snapEditor.onFullscreenClose()
     else
       commitActiveEditor()
-      snapEditor.pauseWithoutPublishing()
+      snapEditor.pauseWorldCycles()
 
   override def dismissOnOutsideClick: Boolean = false
 }
