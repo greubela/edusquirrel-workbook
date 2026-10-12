@@ -80,6 +80,7 @@ private[code] object CodeMirrorApi {
     def dispatch(spec: js.Object): Unit = js.native
     def dispatch(transactions: js.Array[Transaction]): Unit = js.native
     def focus(): Unit = js.native
+    def requestMeasure(): Unit = js.native
     def destroy(): Unit = js.native
   }
   @js.native trait DecorationSet extends js.Object {
@@ -149,6 +150,7 @@ private[code] object CodeMirrorApi {
     def cpp(): Extension = js.native
     def sql(config: js.Object): Extension = js.native
     def loadJavaModule(): js.Promise[JavaModule] = js.native
+    def flowchartExtension(chartForDoc: js.Function1[String, js.Object]): Extension = js.native
   }
   @js.native trait StateFactory extends js.Object {
     def create(config: js.Object): State = js.native

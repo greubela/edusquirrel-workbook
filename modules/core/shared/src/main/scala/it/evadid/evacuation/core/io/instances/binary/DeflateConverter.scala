@@ -6,7 +6,7 @@ import java.util.zip.Inflater
 
 import it.evadid.evacuation.core.io.traits.converter.Converter
 
-case class DeflateConverter() extends Converter[Array[Byte]] {
+case class DeflateConverter() extends Converter[Array[Byte]] derives upickle.default.ReadWriter {
 
 // Todo: Not working in ScalaJS???
 

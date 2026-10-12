@@ -25,10 +25,12 @@ object EvaProgrammingTab {
   private[code] def prepared(config: EvaEditorConfig, language: ProgrammingLanguage, localState: Var[ProgrammingState],
       onStateChanged: ProgrammingState => Unit, appearance: Option[EditorAppearance] = None): EvaEditorProgrammingTab[ProgrammingState] = {
     val create: Var[ProgrammingState] => HtmlAppElement = language match {
-      case Java => current => new JavaFunctionBasedEditor(current, onStateEdited = onStateChanged, appearance = appearance)
+      case Java => current => new JavaFunctionBasedEditor(current, onStateEdited = onStateChanged,
+        appearance = appearance, editorConfig = config.codeMirrorConfig)
       case Python => current => CodeMirrorEditor(
         current.bimap[String](_.toPython.code)(ProgrammingStatePythonString(_)),
-        code => onStateChanged(ProgrammingStatePythonString(code)), language = AppLanguage.Python)
+        code => onStateChanged(ProgrammingStatePythonString(code)), language = AppLanguage.Python,
+        editorConfig = config.codeMirrorConfig)
       case SnapLanguage => current => SnapCodeEditor(current, config.snapConfig, onStateChanged)
       case _ => throw UnsupportedOperationException(s"ProgrammingLanguage '$language' not supported yet in EvaEditor!")
     }

@@ -8,7 +8,7 @@ import it.evadid.workbook.model.compression.*
 /** Edits the renderer's bound value; invalid numeric drafts never replace saved settings. */
 case class CompressionEditor(answer: Var[CompressionExperiment], initial: CompressionExperiment, locked: Signal[Boolean])
     extends HtmlAppElement with FullscreenLifecycle {
-  import CompressionExperimentView.{localized, summary}
+  import CompressionExperimentView.{localized, summary, format}
   private lazy val activities = CompressionActivitiesEditor(answer, initial, locked)
   private val resetDrafts = new EventBus[Unit]
   private def numberControl(key: String, get: CompressionExperiment => Double, set: (CompressionExperiment, Double) => CompressionExperiment,
@@ -86,7 +86,7 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
         val shown = if expanded || entries.size <= 6 then entries else entries.take(3) ++ entries.takeRight(2)
         div(div(cls := "compression-table-wrap", table(thead(tr(th(text <-- localized("dictionaryIndex")), th(text <-- localized("dictionaryWord")))),
           tbody(shown.map((word, i) => tr(td(s"W${i+1}"), td(word)))))),
-          if shown.size < entries.size then p(s"… ${entries.size - shown.size} weitere Wörterbucheinträge") else span(),
+          if shown.size < entries.size then p(text <-- format("moreDictionaryEntries", "count" -> (entries.size - shown.size).toString)) else span(),
           pre(cls := "compression-output", result.display), h3(text <-- localized("decodedText")), pre(cls := "compression-output", result.decoded),
           p(text <-- localized("dictionaryCostNote").map(_.replace("{size}", result.modelBytes.toString))))
       })
@@ -112,14 +112,14 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
         val v = a.asInstanceOf[ImageBlocks]; v.copy(luminanceBlock = b, chromaBlock = if v.separateChannels then v.chromaBlock else b)
       }), if v.separateChannels then blockControl("colorBlocks", _.asInstanceOf[ImageBlocks].chromaBlock, (a, b) => a.asInstanceOf[ImageBlocks].copy(chromaBlock = b)) else span()),
       CompressionImageView(v.imageResource, answer.signal.map(_.asInstanceOf[ImageBlocks])).getDomElement(),
-      if v.comparison.nonEmpty then p(text <-- answer.signal.map { a =>
+      if v.comparison.nonEmpty then p(text <-- answer.signal.flatMapSwitch { a =>
         val state=a.asInstanceOf[ImageBlocks]
         val bytes=math.max(1L,math.round(v.comparison.get.imageBytes * state.estimatePercent / 100.0))
         val textBytes=v.comparison.get.textBytes
-        s"Lehrmodell-Schätzung: $bytes Bytes · Textdatei: $textBytes Bytes · Differenz: ${bytes-textBytes} Bytes. Prüfe selbst, ob der Text noch lesbar ist."
+        format("imageTextComparison", "size" -> bytes.toString, "textSize" -> textBytes.toString, "difference" -> (bytes-textBytes).toString)
       }) else span(),
       p(text <-- localized("jpegModelNote")),
-      child <-- answer.signal.map(a => { val v=a.asInstanceOf[ImageBlocks]; if v.comparison.nonEmpty then p(s"Schätzung: ~${v.estimatePercent}%") else if v.separateChannels then ul(v.challenges.zipWithIndex.map((done,i) => li(if done then "✓ " else "○ ", text <-- localized(s"src_lossy_task3_challenge${i+1}"))),li(s"Schätzung: ~${v.estimatePercent}%")) else p(s"Original: ${v.imageWidth * v.imageHeight * 24} Bit · Blockmodell: ${v.sampleBytes * 8} Bit · Ersparnis: ${(v.imageWidth*v.imageHeight*3-v.sampleBytes)*8} Bit") }))
+      child <-- answer.signal.map(a => { val v=a.asInstanceOf[ImageBlocks]; if v.comparison.nonEmpty then p(text <-- format("estimatedSize", "percent" -> v.estimatePercent.toString)) else if v.separateChannels then ul(v.challenges.zipWithIndex.map((done,i) => li(if done then "✓ " else "○ ", text <-- localized(s"src_lossy_task3_challenge${i+1}"))),li(text <-- format("estimatedSize", "percent" -> v.estimatePercent.toString))) else p(text <-- format("blockSizeSummary", "original" -> (v.imageWidth*v.imageHeight*24).toString, "encoded" -> (v.sampleBytes*8).toString, "saving" -> ((v.imageWidth*v.imageHeight*3-v.sampleBytes)*8).toString)) }))
     case _: ArchiveBudget => div(cls := "compression-controls",
       numberControl("fileCount", _.asInstanceOf[ArchiveBudget].fileCount, (a, v) => a.asInstanceOf[ArchiveBudget].copy(fileCount = v.toInt), 1, 10000),
       numberControl("fileSize", _.asInstanceOf[ArchiveBudget].bytesPerFile, (a, v) => a.asInstanceOf[ArchiveBudget].copy(bytesPerFile = v.toInt), 1, 10000000),

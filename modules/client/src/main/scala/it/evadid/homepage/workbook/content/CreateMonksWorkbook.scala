@@ -27,7 +27,7 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
 
   override val workbookId: String = "MonksWorkbook"
 
-  override def availableLanguages: List[AppLanguage.HumanLanguage] = List(AppLanguage.German)
+  override def availableLanguages: List[AppLanguage.HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
 
   private def key(name: String): String = "monksworkbook/" + name
 
@@ -103,7 +103,7 @@ object CreateMonksWorkbook {
    * the sequence; they are never displayed as stage directions.
    */
   case class Scene(id: String, imageKey: String, dialogueKey: String = "silence",
-                   speaker: Option[String] = None, action: Option[String] = None) {
+                   speaker: Option[String] = None, action: Option[String] = None) derives upickle.default.ReadWriter {
     require(speaker.isEmpty || action.isEmpty, "A speaking frame cannot also perform an action")
     require(speaker.nonEmpty || dialogueKey == "silence", "Silent frames use only an ellipsis")
   }

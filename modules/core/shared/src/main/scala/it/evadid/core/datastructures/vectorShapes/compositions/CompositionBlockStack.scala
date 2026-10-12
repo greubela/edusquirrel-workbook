@@ -22,3 +22,8 @@ case class CompositionBlockStack[T: Fractional](alignment: AlignmentInParent) ex
 
   override def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)] = None
 }
+
+object CompositionBlockStack {
+  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[CompositionBlockStack[T]] =
+    upickle.default.readwriter[AlignmentInParent].bimap(value => value.alignment, value => CompositionBlockStack[T](value))
+}

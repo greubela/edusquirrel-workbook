@@ -17,7 +17,7 @@ object TurtleGradingLogic {
                          expectedIndex: Option[Int] = None) derives ReadWriter
 
   case class TurtleGraphicComparison(actual: TurtleGraphic, expected: TurtleGraphic,
-                                     tolerance: Double = 1e-7, gradeJumps: Boolean = true) {
+                                     tolerance: Double = 1e-7, gradeJumps: Boolean = true) derives upickle.default.ReadWriter {
     require(tolerance.isFinite && tolerance >= 0, "Turtle tolerance must be finite and nonnegative")
     lazy val linesOfActual: Seq[Movement] = actual.renderMovements
     lazy val linesOfExpected: Seq[Movement] = expected.renderMovements

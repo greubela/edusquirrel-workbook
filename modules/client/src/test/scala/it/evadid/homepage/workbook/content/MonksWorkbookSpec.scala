@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.content
 
-import it.evadid.core.datastructures.language.AppLanguage.German
+import it.evadid.core.datastructures.language.AppLanguage.{German, English}
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
@@ -23,7 +23,7 @@ class MonksWorkbookSpec extends FunSuite {
       "2b", "2c", "2d", "2e", "2f", "2g", "2h", "2i", "2j").map("monks-answer-" + _)
     assertEquals(responses.map(_.elementId), expected)
     assert(responses.forall(_.defaultValue.isEmpty))
-    assertEquals(workbook.metadata.availableLanguages, List(German))
+    assertEquals(workbook.metadata.availableLanguages, List(German, English))
     assertEquals(workbook.sections.map(_.elementId), List("monks-story", "monks-recursion", "monks-koch"))
     assert(creator.createEverything.loadedWorkbook eq workbook)
     assertEquals(factory.createWorkbook, workbook)
@@ -136,6 +136,6 @@ class MonksWorkbookSpec extends FunSuite {
     val serializer = WorkbookElementFactory.serializerRegularJsonWorkbook
     val restored = serializer.deserialize(serializer.serialize(original))
     assertEquals(restored, original)
-    assertEquals(restored.allContainedInteractions.map(_.elementId), original.allContainedInteractions.map(_.elementId))
+    assertEquals(restored.allInteractionsInThisInstance.map(_.elementId), original.allInteractionsInThisInstance.map(_.elementId))
   }
 }

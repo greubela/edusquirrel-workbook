@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.content
 
-import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailInteraction, MailEditor}
+import it.evadid.homepage.workbook.content.wip.CreatePhishingWorkbook
+import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailEditor, MailInteraction}
 import it.evadid.workbook.elements.interactionElements.table.*
 import it.evadid.workbook.model.text.UnicodeText
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory

@@ -18,7 +18,7 @@ final class SvgToTurtleProgram {
 }
 
 object SvgToTurtleProgram {
-  private final case class Point(x: Double, y: Double) {
+  private final case class Point(x: Double, y: Double) derives upickle.default.ReadWriter {
     def +(other: Point): Point = Point(x + other.x, y + other.y)
     def -(other: Point): Point = Point(x - other.x, y - other.y)
   }

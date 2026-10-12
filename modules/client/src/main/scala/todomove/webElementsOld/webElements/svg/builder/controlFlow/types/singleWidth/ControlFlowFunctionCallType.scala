@@ -3,7 +3,7 @@ package todomove.webElementsOld.webElements.svg.builder.controlFlow.types.single
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.builder.controlFlow.path.ControlFlowPathOverlay
 
-case class ControlFlowFunctionCallType() extends ControlFlowTypeSingleWidth {
+case class ControlFlowFunctionCallType() extends ControlFlowTypeSingleWidth derives upickle.default.ReadWriter {
 
   private val ref = ControlFlowDirectedType(true, true)
 

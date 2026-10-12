@@ -44,7 +44,7 @@ object Position {
 
 
   def getNearestElements[T](list: Seq[T], pos: Position, posExtractor: T => Position, n: Int): Seq[(T, Double)] = {
-    case class Wrapper[T2](obj: T2, pos: Position) extends Positionable
+    case class Wrapper[T2](obj: T2, pos: Position) extends Positionable derives upickle.default.ReadWriter
     val wrappedSeq: Seq[Wrapper[T]] = list.map(obj => Wrapper(obj, posExtractor(obj)))
     val nearestElementSeq: Seq[(Wrapper[T], Double)] = getNearestElements(wrappedSeq, pos, n)
 

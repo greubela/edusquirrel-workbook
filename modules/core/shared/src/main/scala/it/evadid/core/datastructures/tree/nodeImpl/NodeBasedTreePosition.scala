@@ -2,7 +2,7 @@ package it.evadid.core.datastructures.tree.nodeImpl
 
 import it.evadid.core.datastructures.tree.TreePosition
 
-case class NodeBasedTreePosition(childIndices: List[Int]) extends TreePosition {
+case class NodeBasedTreePosition(childIndices: List[Int]) extends TreePosition derives upickle.default.ReadWriter {
 
   def forParent(): Option[NodeBasedTreePosition] = if (childIndices.isEmpty) None else Some(NodeBasedTreePosition(childIndices.init))
 

@@ -10,7 +10,7 @@ private[server] final case class DatabaseConfig(
                                                  database: String,
                                                  user: String,
                                                  password: String
-                                               ) {
+                                               ) derives upickle.default.ReadWriter {
   val jdbcUrl: String = s"jdbc:mysql://$host:$port/$database"
 
   def newConnection(): java.sql.Connection = {

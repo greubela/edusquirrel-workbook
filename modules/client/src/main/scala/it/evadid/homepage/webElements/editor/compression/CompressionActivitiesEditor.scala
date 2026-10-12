@@ -8,7 +8,7 @@ import org.scalajs.dom
 /** Native Laminar controls for the activities that accompany the compression models. */
 case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initial: CompressionExperiment, locked: Signal[Boolean]) extends HtmlAppElement {
   private val lockedValue = Var(false)
-  import CompressionExperimentView.localized
+  import CompressionExperimentView.{localized, format}
   private def src(key: String): Signal[String] = localized("src_" + key.replace('.', '_'))
   private def action(key: String)(run: => Unit): Element = button(typ := "button", disabled <-- locked,
     text <-- src(key), onClick --> (_ => run))
@@ -30,10 +30,10 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
       left += width; node
     }
     div(
-      p(cls := "compression-summary", s"${size(v.bytes)} / 16 GiB · ${v.fileCount} Dateien · Schritte: ${v.steps} · ",
+      p(cls := "compression-summary", span(text <-- format("fileSummary", "size" -> size(v.bytes), "count" -> v.fileCount.toString, "steps" -> v.steps.toString)),
         span(text <-- src(if v.hasProblematicMetadata then "widget.filesystemSimulator.metadataYes" else "widget.filesystemSimulator.metadataNo"))),
       div(role := "img", aria.label <-- localized("storageMap"), svg.svg(svg.viewBox := "0 0 1000 120", svg.cls := "compression-treemap", blocks)),
-      div(cls := "compression-table-wrap", table(thead(tr(th("Datei"),th("Größe"),th("Metadaten / Dateityp"))),
+      div(cls := "compression-table-wrap", table(thead(tr(List("storageName", "fileBytes", "fileMetadata").map(key => th(text <-- localized(key))))),
         tbody(v.files.zipWithIndex.map { (f,i) => tr(
           td(if editable then button(typ := "button", disabled <-- locked,
             cls := (if v.selected.contains(i) then "compression-file-selected" else ""), aria.pressed := v.selected.contains(i).toString,
@@ -41,7 +41,7 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
             onMouseOver --> (_ => if !lockedValue.now() && !answer.now().asInstanceOf[FileSimulation].hovered then answer.update(a => a.asInstanceOf[FileSimulation].copy(hovered = true))),
             onFocus --> (_ => if !lockedValue.now() && !answer.now().asInstanceOf[FileSimulation].hovered then answer.update(a => a.asInstanceOf[FileSimulation].copy(hovered = true))),
             onClick --> (_ => answer.update(a => a.asInstanceOf[FileSimulation].click(i)))) else span(f.name)),
-          td(size(f.bytes), if f.count > 1 then span(s" (${f.count} Dateien)") else span()),
+          td(size(f.bytes), if f.count > 1 then span(text <-- format("groupFileCount", "count" -> f.count.toString)) else span()),
           td(cls := (if f.problematic then "compression-error" else ""), f.metadata.mkString("; "), s" [${f.kind}]")) }))),
       if v.error then p(role := "alert", cls := "compression-error", text <-- src("widget.filesystemSimulator.archiveMetadataError")) else span(),
       if v.complete then p(role := "status", cls := "compression-success", text <-- src("widget.filesystemSimulator.success").map(_.replace("{steps}", v.steps.toString))) else span())
@@ -85,7 +85,7 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
             data.data(i*4) = gray;data.data(i*4+1)=gray;data.data(i*4+2)=gray;data.data(i*4+3)=255
           }; c.putImageData(data,0,0)
         }(using ctx.owner) })),
-      p(text <-- answer.signal.map(a => a.asInstanceOf[BitComparison].imageBit.fold("0 Bits geändert")(i => s"1 Bit geändert: $i"))),
+      p(text <-- answer.signal.flatMapSwitch(a => a.asInstanceOf[BitComparison].imageBit.fold(localized("bitsUnchanged"))(i => format("bitChangedAt", "index" -> i.toString)))),
       action("widget.bitflip.flipButton") { answer.update { a => val v = a.asInstanceOf[BitComparison]
         v.copy(imageBit = Some(List(8192,1337,12000,2048,10000)(v.imageFlips % 5)), imageFlips = v.imageFlips + 1) } })
     case v: FileInspection => div(
@@ -101,17 +101,17 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
       })
     case v: TransferSimulation => div(
       p(text <-- localized("transferNote")),
-      p(s"Einzelversand: ${v.files.size} Übertragungen, ${v.payload} Bytes. Archiv: 1 Übertragung, ${v.payload + 320} Bytes."),
+      p(text <-- format("transferSummary", "count" -> v.files.size.toString, "payload" -> v.payload.toString, "size" -> (v.payload + 320).toString)),
       child <-- answer.signal.map { a => val state = a.asInstanceOf[TransferSimulation]
         div(state.files.zipWithIndex.map((file,i) => p(file._1, " · ",
-          if state.step >= (i+1)*4 then "Fertig" else if state.step < i*4 then "Bereit" else List("Speicher reservieren","Datei öffnen","Daten kopieren","Datei schließen")(state.step % 4))),
-          p("beweise.zip · ", if state.step >= 20 then "Fertig" else if state.step == 0 then "Bereit" else List("Speicher reservieren","Datei öffnen","Daten kopieren","Datei schließen")(math.min(3,state.step/5)))) },
+          span(text <-- localized(if state.step >= (i+1)*4 then "transferDone" else if state.step < i*4 then "transferReady" else List("transferAllocate","transferOpen","transferCopy","transferClose")(state.step % 4))))),
+          p("beweise.zip · ", span(text <-- localized(if state.step >= 20 then "transferDone" else if state.step == 0 then "transferReady" else List("transferAllocate","transferOpen","transferCopy","transferClose")(math.min(3,state.step/5)))))) },
       action("widget.zipArchive.simulateButton") { answer.update(a => a.asInstanceOf[TransferSimulation].copy(step = 0)); running.set(true) },
       button(typ := "button", disabled <-- locked, text <-- localized("nextStep"), onClick --> (_ => transferStep())),
       onMountCallback(ctx => EventStream.periodic(250).foreach(_ => if running.now() && !lockedValue.now() then transferStep())(using ctx.owner)),
       v.files.map((file,content) => detailsTag(summaryTag(file),pre(cls := "compression-output",content))),
       (0 until 4).map(i => detailsTag(summaryTag(text <-- src(s"widget.zipArchive.faq.$i.q")),
-        p(text <-- src(s"widget.zipArchive.faq.$i.a").map(_.replace("{sizeHint}",s"${v.payload} / ${v.payload+320} Bytes").replace("{overhead}","Verwaltungsaufwand"))))))
+        p(text <-- format("src_" + s"widget.zipArchive.faq.$i.a".replace('.','_'), "sizeHint" -> s"${v.payload} / ${v.payload+320} Bytes").combineWith(localized("managementOverhead")).map((text,overhead) => text.replace("{overhead}",overhead))))))
     case _: FileSimulation => div(p(text <-- localized("modelAssumptions")), p(text <-- localized("binaryUnits")),
       div(cls := "compression-controls", CompressionSimulation.tools.map { tool => button(typ := "button", disabled <-- locked,
         text <-- src(s"widget.filesystemSimulator.tools.$tool.label"),

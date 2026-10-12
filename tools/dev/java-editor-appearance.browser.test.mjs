@@ -43,6 +43,7 @@ test('Java appearance changes preserve the live editor, undo history and drawing
     assert.equal((await javaTab.textContent()).trim(), '', 'Java uses its icon rather than visible tab text');
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
     await page.waitForFunction(() => !!globalThis.EduSquirrelCodeMirrorLibraries?.EditorView);
+    await editor.locator('.cm-content').waitFor();
     const original = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
     await page.evaluate(() => {
@@ -99,6 +100,7 @@ test('Java appearance changes preserve the live editor, undo history and drawing
       .selectOption({label: 'Drawing.square(int side)'});
     assert.equal(await editor.locator('.java-function-editor__workspace-heading h3').innerText(), 'Drawing.square');
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.locator('.cm-content').waitFor();
     assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), original,
     'compact method navigation preserves the full program');
@@ -150,6 +152,7 @@ test('Java appearance changes preserve the live editor, undo history and drawing
     assert.match(await addMethod('instanceMethod', '', false), /^public void instanceMethod\(\)/);
     assert.match(await addMethod('staticAgain', '', true), /^public static void staticAgain\(\)/);
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.locator('.cm-content').waitFor();
     const withMethods = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
     assert(withMethods.startsWith(original.slice(0, original.lastIndexOf('}'))), 'adding methods preserves the original class contents');

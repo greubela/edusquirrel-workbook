@@ -4,6 +4,7 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{label as labelTag, *}
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.webElements.editor.code.{CodeMirrorEditor, EditorAppearance}
+import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.vm.parsing.java.clean.JavaParser
 import org.scalajs.dom
 import scala.scalajs.js
@@ -16,7 +17,8 @@ final class JavaFunctionBasedEditor(
     val state: Var[ProgrammingState],
     onStateEdited: ProgrammingState => Unit = _ => (),
     reference: Option[() => Element] = None,
-    appearance: Option[EditorAppearance] = None
+    appearance: Option[EditorAppearance] = None,
+    editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default
 ) extends HtmlAppElement with FullscreenLifecycle {
   import JavaFunctionBasedEditor.*
 
@@ -51,13 +53,15 @@ final class JavaFunctionBasedEditor(
   private val functionEditor = CodeMirrorEditor(
     functionDraft,
     handleFunctionInput,
-    language = it.evadid.core.datastructures.language.AppLanguage.Java
+    language = it.evadid.core.datastructures.language.AppLanguage.Java,
+    editorConfig = editorConfig
   )
 
   private val sourceEditor = CodeMirrorEditor(
     sourceDraft,
     handleSourceInput,
-    language = it.evadid.core.datastructures.language.AppLanguage.Java
+    language = it.evadid.core.datastructures.language.AppLanguage.Java,
+    editorConfig = editorConfig
   )
 
   private def currentSourceAvailable(): Boolean =
@@ -488,7 +492,7 @@ final class JavaFunctionBasedEditor(
 }
 
 object JavaFunctionBasedEditor {
-  private enum DialogMode {
+  private enum DialogMode derives upickle.default.ReadWriter {
     case AddClass, AddFunction
   }
 
@@ -499,9 +503,9 @@ object JavaFunctionBasedEditor {
       parameters: String,
       start: Int,
       end: Int
-  )
+  ) derives upickle.default.ReadWriter
 
-  private[code] final case class JavaClass(name: String, bodyStart: Int, bodyEnd: Int, functions: List[JavaFunction])
+  private[code] final case class JavaClass(name: String, bodyStart: Int, bodyEnd: Int, functions: List[JavaFunction]) derives upickle.default.ReadWriter
 
   private def functionKey(function: JavaFunction): String =
     s"${function.className}:${function.start}:${function.end}"

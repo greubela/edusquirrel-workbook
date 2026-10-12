@@ -42,7 +42,7 @@ object TurtleStitchProjectState {
   }
 
 
-  enum StorageFormat {
+  enum StorageFormat derives upickle.default.ReadWriter {
     case BYTES_AS_RAW_STRING, BYTES_AS_BASE64_STRING
   }
 

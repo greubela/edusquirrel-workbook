@@ -73,6 +73,8 @@ object SnapCustomBlockMerge {
   }
 
   object CustomBlockPlans {
+    given upickle.default.ReadWriter[CustomBlockPlans] =
+      upickle.default.readwriter[List[CustomBlockPlan]].bimap(_.ordered, new CustomBlockPlans(_))
     val empty: CustomBlockPlans = new CustomBlockPlans(Nil)
   }
 

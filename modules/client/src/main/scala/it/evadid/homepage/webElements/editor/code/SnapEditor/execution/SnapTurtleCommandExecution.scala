@@ -7,7 +7,7 @@ import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonHelpers
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
-import todomove.`export`.workers.PyodideWorkerClient
+import todomove.`export`.workers.*
 
 import java.util.concurrent.{CancellationException, TimeoutException}
 import scala.concurrent.{Future, Promise}

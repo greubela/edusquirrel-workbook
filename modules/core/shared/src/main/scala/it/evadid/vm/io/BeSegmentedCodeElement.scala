@@ -14,26 +14,40 @@ trait BeSegmentedCodeElement {
 }
 
 object BeSegmentedCodeElement {
+  private case class StoredSegment(kind: String, payload: ujson.Value) derives upickle.default.ReadWriter
 
-  sealed trait BeCodeLine extends BeSegmentedCodeElement {
+  given upickle.default.ReadWriter[BeSegmentedCodeElement] = upickle.default.readwriter[StoredSegment].bimap(
+    element => element match {
+      case value: BeControlFlowLine => StoredSegment("control-flow", upickle.default.writeJs(value))
+      case value: BeExpressionLine => StoredSegment("expression", upickle.default.writeJs(value))
+      case value: BeSegment => StoredSegment("segment", upickle.default.writeJs(value))
+      case other => throw new IllegalArgumentException(s"Unsupported code segment: ${other.getClass.getName}")
+    }, stored => stored.kind match {
+      case "control-flow" => upickle.default.read[BeControlFlowLine](stored.payload)
+      case "expression" => upickle.default.read[BeExpressionLine](stored.payload)
+      case "segment" => upickle.default.read[BeSegment](stored.payload)
+      case other => throw new IllegalArgumentException(s"Unknown code segment: $other")
+    })
+
+  sealed trait BeCodeLine extends BeSegmentedCodeElement derives upickle.default.ReadWriter {
     override def allLines(): Seq[BeCodeLine] = List(this)
 
     def getExpression: Option[BeExpressionReference]
   }
 
-  case class BeControlFlowLine(cfType: ControlFlowType) extends BeCodeLine {
+  case class BeControlFlowLine(cfType: ControlFlowType) extends BeCodeLine derives upickle.default.ReadWriter {
     override def getExpression: Option[BeExpressionReference] = None
 
     override def allLinesWithExpressions: Seq[BeExpressionLine] = List()
   }
 
-  case class BeExpressionLine(cfType: ControlFlowType, exprRef: BeExpressionReference) extends BeCodeLine {
+  case class BeExpressionLine(cfType: ControlFlowType, exprRef: BeExpressionReference) extends BeCodeLine derives upickle.default.ReadWriter {
     override def getExpression: Option[BeExpressionReference] = Some(exprRef)
 
     override def allLinesWithExpressions: Seq[BeExpressionLine] = List(this)
   }
 
-  case class BeSegment(addToCfStack: Option[ControlFlowType], segmentInfo: BeChildInfo, myChildren: Seq[BeSegmentedCodeElement]) extends BeSegmentedCodeElement {
+  case class BeSegment(addToCfStack: Option[ControlFlowType], segmentInfo: BeChildInfo, myChildren: Seq[BeSegmentedCodeElement]) extends BeSegmentedCodeElement derives upickle.default.ReadWriter {
     override def allLines(): Seq[BeCodeLine] = myChildren.flatMap(_.allLines())
 
     override def allLinesWithExpressions: Seq[BeExpressionLine] = myChildren.flatMap(_.allLinesWithExpressions)
@@ -45,7 +59,7 @@ object BeSegmentedCodeElement {
                               controlFlowInfo: ControlFlowInfo,
                               associatedControlStructure: BeExpression,
                               associatedLineExpression: Option[BeExpression]
-                            ) {
+                            ) derives upickle.default.ReadWriter {
 
     def staticInfo: BeExpressionStaticInformation = associatedLineExpression.map(_.staticInformationSubtree).getOrElse(BeExpressionStaticInformation.empty)
 

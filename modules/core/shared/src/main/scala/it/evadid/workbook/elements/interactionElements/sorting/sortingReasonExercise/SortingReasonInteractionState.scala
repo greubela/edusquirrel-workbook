@@ -2,7 +2,7 @@ package it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExe
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.AssignmentResult
-import upickle.default.{ReadWriter, macroRW}
+import upickle.default.*
 
 case class SortingReasonInteractionState(
   placedFieldIndexByItem: List[Option[Int]],
@@ -12,7 +12,7 @@ case class SortingReasonInteractionState(
   lastSessionErrorCount: Int = 0,
   /** Temporary wrong drop shown in a field before the item returns to the source list. */
   wrongPlacementPreview: Option[(Int, Int)] = None
-) {
+) derives ReadWriter{
 
   def sanitized(itemCount: Int, fieldCount: Int): SortingReasonInteractionState = {
     val paddedPlacements = placedFieldIndexByItem.take(itemCount).padTo(itemCount, None)
@@ -112,7 +112,4 @@ object SortingReasonInteractionState {
       List.fill(itemCount)(false)
     )
 
-  private given ReadWriter[SortingReasonInteractionState] = macroRW
-  val serializer: Serializer[SortingReasonInteractionState] =
-    Serializer.fromUpickleJson(summon[ReadWriter[SortingReasonInteractionState]])
 }

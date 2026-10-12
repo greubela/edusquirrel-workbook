@@ -2,11 +2,13 @@ package it.evadid.distribution.clients
 
 import it.evadid.distribution.command.*
 import it.evadid.distribution.formats.ExecutionClientResponse
+import it.evadid.distribution.formats.ExecutionClientResponse.*
 import it.evadid.util.logging.Logger
 
 import java.time.LocalDateTime
 import scala.concurrent.*
-import scala.util.{Failure, Success}
+import scala.util.Success
+import upickle.default.*
 
 case class ExecutionClientPool(clients: List[ExecutionClient]) extends ExecutionClient {
 
@@ -23,11 +25,10 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
 
   override def allUnderlyingClients: List[ExecutionClient] = clients
 
-  override def handleExecution(executionCommand: ExecutionCommand, logger: Logger): Future[ExecutionClientResponse] = {
+  override private[clients] def handleCommandExecution(logger: Logger, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] =  {
     val timestampReceived: LocalDateTime = LocalDateTime.now()
     val allHandlers = allThatCanExecute(executionCommand)
     tryExecutionWithHandlers(timestampReceived, allHandlers, executionCommand, None, logger)
-      .map(response => response.copy(timestampReceived = timestampReceived))(using ExecutionContext.global)
   }
 
   private def tryExecutionWithHandlers(
@@ -46,22 +47,21 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
     } else {
       val timestampStarted: LocalDateTime = LocalDateTime.now()
       logger.logInfo("Tried execution with handler " + handlers.head + " at " + timestampStarted + " (prior failures: " + failures.map(_.getMessage).getOrElse("none") + ")")
-      handlers.head.handleExecutionRaw(command, logger)
-        .map(resMap => {
-          val timestampFinished: LocalDateTime = LocalDateTime.now()
-          logger.logInfo("ExecutionClientPool: execution succeeded with handler " + handlers.head + " at " + timestampFinished)
-          ExecutionClientResponse(timestampReceived, timestampStarted, timestampFinished, Right(resMap), Some(command), logger.getOut(), logger.getErr())
-        })(using ExecutionContext.global)
-        .transformWith {
-          case Success(exCliRes) => Future.successful(exCliRes)
-          case Failure(err) => {
+      val res: Future[ExecutionClientResponse] = handlers.head
+        .handleCommandExecution(logger, command)
+        .map(_.fixReceived(timestampReceived))
+        .map(_.throwIfContainsError)
+        .recoverWith {
+          case err: Throwable => {
             val msg = s"Execution Client ${handlers.head} failed execution at ${LocalDateTime.now()}, trying next handler!"
             logger.logError(msg + "\n" + err.getMessage + "\n" + err.getStackTrace.mkString("\n"))
             val newFailure: SerializedException = if (failures.isEmpty) SerializedException(err) else failures.get.asCauseOf(Exception(msg))
             tryExecutionWithHandlers(timestampReceived, handlers.tail, command, Some(newFailure), logger)
           }
         }
+      res
     }
+
   }
 
 }

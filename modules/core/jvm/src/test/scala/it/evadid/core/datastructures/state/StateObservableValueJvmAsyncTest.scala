@@ -7,6 +7,7 @@ import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
 import it.evadid.util.logging.{Logger, LoggingLevel}
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.SyncSuccess
+import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse, SyncDirection}
 import munit.FunSuite
 
 import java.time.LocalDateTime
@@ -18,6 +19,11 @@ import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
 class StateObservableValueJvmAsyncTest extends FunSuite {
+
+  private def DataEntryReadFromServer[K, D](key: K, value: D, time: LocalDateTime): DataEntryToSync[K, D] =
+    DataEntryToSync(key, value, time, SyncDirection.SERVER_TO_CLIENT)
+  private def DataEntryToWriteToServer[K, D](key: K, value: D, time: LocalDateTime): DataEntryToSync[K, D] =
+    DataEntryToSync(key, value, time, SyncDirection.CLIENT_TO_SERVER)
 
   test("DerivedObservableValue currentValueOrWaitForUpdate resolves while async derivation is still running") {
     val gate = Promise[Unit]()
@@ -118,13 +124,11 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
     def stopAutomaticReads(): Unit = synchronized { automatic = false }
     def startAutomaticReads(): Unit = synchronized { automatic = true }
     def storedValues: Map[String, String] = committedWrites.snapshot.foldLeft(Map.empty[String, String])(_ ++ _)
-    def response(at: LocalDateTime = fetchedAt, value: String = invalidJava): FetchResponse[String, String] = new FetchResponse[String, String] {
-      override def timestampFetchResponse: LocalDateTime = at
-      override def fetchedValues: Set[DataEntryReadFromServer[String, String]] = Set(
+    def response(at: LocalDateTime = fetchedAt, value: String = invalidJava): FetchResponse[String, String] =
+      FetchResponse(at, Set(
         DataEntryReadFromServer("exercise", value, dataAt),
         DataEntryReadFromServer(s"$name-only", name, dataAt)
-      )
-    }
+      ))
     override val reader: RemoteDataReader[String, String] = new RemoteDataReader[String, String] {
       override def fetchByKey(logger: SyncLogger, key: String): Future[FetchResponse[String, String]] = fetchAll(logger)
       override def fetchAll(logger: SyncLogger): Future[FetchResponse[String, String]] = Source.this.synchronized {

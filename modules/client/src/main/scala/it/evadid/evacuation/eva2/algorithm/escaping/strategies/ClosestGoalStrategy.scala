@@ -36,6 +36,6 @@ object ClosestGoalStrategy {
 
   case class CGSimInfo(routingMap: RoutingMap)
 
-  case class CGStepInfo()
+  case class CGStepInfo() derives upickle.default.ReadWriter
 
 }

@@ -13,7 +13,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 
-case class EvacuationStep(microSteps: Seq[EvaFloorMap]) {
+case class EvacuationStep(microSteps: Seq[EvaFloorMap]) derives upickle.default.ReadWriter {
 
   override def toString: String = "Evacuation Step with " + microSteps.size + " micro steps"
 

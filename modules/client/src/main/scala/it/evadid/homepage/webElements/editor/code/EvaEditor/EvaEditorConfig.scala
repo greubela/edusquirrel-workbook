@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{LibraryTab, SnapCodeEditorConfig}
 
 /** Configuration for the EvaEditor, which combines multiple language editors.
@@ -12,8 +13,9 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{Library
 case class EvaEditorConfig(
     snapConfig: SnapCodeEditorConfig = SnapCodeEditorConfig(),
     enabledLanguages: List[ProgrammingLanguage] = List(SnapLanguage, Python, Java),
-    additionalLibraryTabs: List[LibraryTab] = Nil
-)
+    additionalLibraryTabs: List[LibraryTab] = Nil,
+    codeMirrorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Flowchart
+) derives upickle.default.ReadWriter
 
 object EvaEditorConfig {
   val Default: EvaEditorConfig = EvaEditorConfig()

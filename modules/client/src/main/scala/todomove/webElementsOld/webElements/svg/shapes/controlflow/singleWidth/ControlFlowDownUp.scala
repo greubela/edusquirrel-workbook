@@ -6,7 +6,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.pr
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import todomove.webElementsOld.webElements.svg.shapes.decorations.ControlArrowUpDown
 
-case class ControlFlowDownUp(isActive: Boolean = false) extends ControlFlowShapeSingleWidth {
+case class ControlFlowDownUp(isActive: Boolean = false) extends ControlFlowShapeSingleWidth derives upickle.default.ReadWriter {
 
   override def minHeightInSegments: Int = 2
 

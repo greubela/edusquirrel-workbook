@@ -5,13 +5,13 @@ import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.util.io.Serializer
 import upickle.default.*
 
-sealed trait ReorderType derives ReadWriter{
+sealed trait ReorderType  {
 
 }
 
 object ReorderType {
 
-  case class CODELINES(associatedLanguage: ProgrammingLanguage) extends ReorderType
+  case class CODELINES(associatedLanguage: ProgrammingLanguage) extends ReorderType derives upickle.default.ReadWriter
 
   case object BASIC_STRINGS extends ReorderType
   
@@ -29,4 +29,7 @@ object ReorderType {
         .getOrElse(throw new RuntimeException(s"Unknown reorder type: $str"))
     }
   }
+
+  given rw: ReadWriter[ReorderType] = serializer.uPickleReadWrite
+
 }

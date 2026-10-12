@@ -55,14 +55,14 @@ object SnapProjectXml {
   private final case class RenderContext(
       plans: CustomBlockPlans,
       parameterSlots: Map[String, String] = Map.empty
-  ) {
+  ) derives upickle.default.ReadWriter {
     def forDefinition(plan: CustomBlockPlan): RenderContext = copy(parameterSlots = plan.parameterSlots)
 
     /** Python parameter names must be written as the slot names of their definition. */
     def slotName(variableName: String): String = parameterSlots.getOrElse(variableName, variableName)
   }
 
-  private case class ScriptOut(x: Int, y: Int, statements: List[BeExpression])
+  private case class ScriptOut(x: Int, y: Int, statements: List[BeExpression]) derives upickle.default.ReadWriter
 
   private def scriptsFromExpression(expression: BeExpression, layout: SnapCanvasLayout): List[ScriptOut] = {
     val body = expression match {

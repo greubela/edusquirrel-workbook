@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.fileSubmission.turtleStitch.TurtleStitchToBeExpressionParser
+import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.TurtleStitchToBeExpressionParser
 import it.evadid.vm.BeProgram
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
@@ -22,7 +22,7 @@ object SnapProgramDerivation {
       python: String,
       pythonCompatible: Boolean,
       unsupportedSelectors: List[String]
-  ) {
+  ) derives upickle.default.ReadWriter {
     def applyBlockedMessage: Option[String] =
       if pythonCompatible then None
       else

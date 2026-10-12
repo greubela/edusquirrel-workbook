@@ -10,6 +10,8 @@ trait OverlaySprite extends Sprite {
 
 
 object OverlaySprite {
+  given upickle.default.ReadWriter[OverlaySprite] = Sprite.subtypeCodec
+
 
   def fromSprite(sprite: Sprite, animationFrame: Int = 0, opacity: Int = 200): OverlaySprite = sprite match {
     case overlay: OverlaySprite => overlay

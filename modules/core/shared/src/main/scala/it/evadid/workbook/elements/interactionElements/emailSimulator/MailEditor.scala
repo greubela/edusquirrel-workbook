@@ -5,9 +5,10 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class MailEditor(elementId: String, initialInbox: InboxState = InboxState.empty,
                         account: String = "opa.jürgen@gmail.com", allowCompose: Boolean = true)
-    extends WorkbookInteractionElement[InboxStateScaffolding] {
+    extends WorkbookInteractionElement[InboxStateScaffolding] derives upickle.default.ReadWriter {
   override val associatedFactory = MailEditor.factory
   override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
   override val defaultValue = InboxStateScaffolding(initialInbox.normalized)

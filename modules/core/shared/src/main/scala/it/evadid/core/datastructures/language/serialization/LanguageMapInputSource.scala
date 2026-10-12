@@ -20,7 +20,7 @@ trait LanguageMapInputSource {
 object LanguageMapInputSource {
 
 
-  case class LanguageMapLocalStorageSourceInfo[T <: AppLanguage]() extends LanguageMapInputSource {
+  case class LanguageMapLocalStorageSourceInfo[T <: AppLanguage]() extends LanguageMapInputSource derives upickle.default.ReadWriter {
 
     override def loadAllTriples(logger: Logger): Future[ParsedTriples] = {
       ???

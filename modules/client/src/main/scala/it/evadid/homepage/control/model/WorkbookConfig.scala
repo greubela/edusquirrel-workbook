@@ -6,7 +6,7 @@ import it.evadid.homepage.control.model.AllWorkbookInfo.*
 import it.evadid.homepage.control.singletons.*
 import it.evadid.workbook.elements.structureElements.WorkbookSection
 
-case class WorkbookConfig(activeSection: Option[WorkbookSection]) {
+case class WorkbookConfig(activeSection: Option[WorkbookSection]) derives upickle.default.ReadWriter {
 
 
 }

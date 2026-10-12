@@ -8,18 +8,17 @@ import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookEleme
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class SortingReasonInteraction(
                                      override val elementId: String,
                                      fields: List[LanguageMapContentId],
                                      items: List[SortingReasonItem],
                                      openButtonLabel: LanguageMapContentId = LanguageMapContentId("basic/startSortingReasonActivity")
-                                   ) extends WorkbookInteractionElement[SortingReasonInteractionState] {
+                                   ) extends WorkbookInteractionElement[SortingReasonInteractionState] derives upickle.default.ReadWriter {
   override val associatedFactory = SortingReasonInteraction.factory
 
   override val defaultValue: SortingReasonInteractionState =
     SortingReasonInteractionState.initial(items.size)
-
-  override val serializerInteractionContent: Serializer[SortingReasonInteractionState] = SortingReasonInteractionState.serializer
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 

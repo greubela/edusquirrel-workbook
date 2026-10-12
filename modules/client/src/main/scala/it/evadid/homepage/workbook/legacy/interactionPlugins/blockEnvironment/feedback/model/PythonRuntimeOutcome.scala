@@ -12,7 +12,7 @@ final case class PythonRuntimeOutcome(
   runtimeError: Option[String],
   stdout: Option[String],
   stderr: Option[String]
-)
+) derives upickle.default.ReadWriter
 
 object PythonRuntimeOutcome:
   val empty: PythonRuntimeOutcome = PythonRuntimeOutcome(Seq.empty, None, None, None, None, None)

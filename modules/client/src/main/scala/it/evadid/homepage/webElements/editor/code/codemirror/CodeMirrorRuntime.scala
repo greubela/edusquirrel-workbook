@@ -56,8 +56,8 @@ private[code] object CodeMirrorRuntime {
     case _ => Libraries.python()
   }
 
-  private def default(value: String, fallback: String): String =
-    if value == null || js.isUndefined(value) then fallback else value
+  private def default(value: js.UndefOr[String], fallback: String): String =
+    value.toOption.filter(_ != null).getOrElse(fallback)
 
   def createEditor(config: EditorConfig): CodeMirrorHandle = {
     if !CodeMirrorApi.available then throw IllegalStateException("CodeMirror libraries are not loaded.")
@@ -83,10 +83,14 @@ private[code] object CodeMirrorRuntime {
       else Libraries.oneDark
     private def prepare(source: String): String = if isJava then source else source.replace("\t", indent)
     private def text(source: String): js.Any = if isJava then CodeMirrorJavaLineEndings.text(source) else prepare(source)
+    private val flowchart: Extension =
+      if language == "python" && js.typeOf(config.flowchart) == "function" then
+        Libraries.flowchartExtension(config.flowchart.get)
+      else js.Array[Extension]()
 
     private val state = Libraries.EditorState.create(js.Dynamic.literal(
       doc = text(initial),
-      extensions = js.Array[Extension](sharedExtensions, CodeMirrorHighlighting.extension(editorTheme.nonEmpty),
+      extensions = js.Array[Extension](flowchart, sharedExtensions, CodeMirrorHighlighting.extension(editorTheme.nonEmpty),
         if isJava then js.Array[Extension](
           CodeMirrorJavaLineEndings.field.init((_: State) => CodeMirrorJavaLineEndings.parse(initial)),
           CodeMirrorJavaLineEndings.historyEffects, javaHistory.of(Libraries.history()))
@@ -115,6 +119,10 @@ private[code] object CodeMirrorRuntime {
       if !destroyed then view.dispatch(js.Dynamic.literal(effects = theme.reconfigure(currentTheme()))))) else None
     themeObserver.foreach(_.observe(themeTarget.get,
       new dom.MutationObserverInit { attributes = true; attributeFilter = js.Array(themeAttribute) }))
+    private val fontObserver = new dom.MutationObserver((_, _) =>
+      if !destroyed then view.requestMeasure())
+    fontObserver.observe(config.parent,
+      new dom.MutationObserverInit { attributes = true; attributeFilter = js.Array("style", "class") })
 
     def setDoc(value: String): Unit = {
       val next = prepare(default(value, ""))
@@ -144,6 +152,7 @@ private[code] object CodeMirrorRuntime {
     def destroy(): Unit = if !destroyed then {
       destroyed = true
       themeObserver.foreach(_.disconnect())
+      fontObserver.disconnect()
       view.destroy()
     }
   }

@@ -3,11 +3,12 @@ package it.evadid.core.datastructures.storage
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.storage.RemoteCacheCollection.{CacheCollectionReport, CacheKey}
-import it.evadid.core.datastructures.storage.RemoteSyncDataCache.DataEntryToWriteToServer
+import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
 import it.evadid.util.logging.LoggingLevel.INFO
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.SyncInformation.*
 import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.interaction.sync.model.DataEntryToSync
 import upickle.legacy.transform
 
 import java.time.LocalDateTime
@@ -122,7 +123,7 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
 
   }
 
-  def requestCacheDependentStore(func: CK => List[DataEntryToWriteToServer[K, D]]): Future[?] = syncLock.synchronized {
+  def requestCacheDependentStore(func: CK => List[DataEntryToSync[K, D]]): Future[?] = syncLock.synchronized {
     val context = currentContext
     enqueue(context) {
       context.collection.requestCacheDependentStore(func).transform {
@@ -136,7 +137,7 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
     }
   }
 
-  def requestStore(writeRequested: List[DataEntryToWriteToServer[K, D]]): Future[?] = if (writeRequested.isEmpty) Future.successful(()) else syncLock.synchronized {
+  def requestStore(writeRequested: List[DataEntryToSync[K, D]]): Future[?] = if (writeRequested.isEmpty) Future.successful(()) else syncLock.synchronized {
     requestCacheDependentStore(_ => writeRequested)
   }
 

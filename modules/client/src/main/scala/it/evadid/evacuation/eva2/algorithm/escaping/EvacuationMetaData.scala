@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva2.algorithm.escaping
 
-case class EvacuationMetaData(success: Boolean, executionTimeInMs: Long, neighbourhoodFunc: String, strategyName: String) {
+case class EvacuationMetaData(success: Boolean, executionTimeInMs: Long, neighbourhoodFunc: String, strategyName: String) derives upickle.default.ReadWriter {
 
 }
 

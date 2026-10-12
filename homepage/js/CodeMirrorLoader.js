@@ -27,6 +27,8 @@ import {cpp} from "https://esm.sh/@codemirror/lang-cpp@6.0.2?deps=@codemirror/st
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
 import {indentationMarkers} from "https://esm.sh/@replit/codemirror-indentation-markers@6.5.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3";
 
+import {flowchartExtension} from "./CodeMirrorFlowchartGutter.js";
+
 let javaModulePromise;
 const loadJavaModule = () => {
   if (!javaModulePromise) {
@@ -46,7 +48,7 @@ globalThis.EduSquirrelCodeMirrorLibraries = Object.freeze({
   indentLess, indentMore, invertedEffects, bracketMatching, foldGutter, foldKeymap,
   indentUnit, indentOnInput, syntaxHighlighting, defaultHighlightStyle, syntaxTree,
   highlightSelectionMatches, searchKeymap, python, sql, MySQL, cpp, oneDark,
-  indentationMarkers, loadJavaModule
+  indentationMarkers, loadJavaModule, flowchartExtension
 });
 
 globalThis.EduSquirrelCodeMirror = globalThis.EduSquirrelCodeMirrorScala;

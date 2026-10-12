@@ -7,7 +7,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 const folder = path.join(root, 'resources/languageMaps/eva/embroiderypreviewworkbook');
 
 test('preview edition has complete bilingual content and retains the original workbook', async () => {
-  const source = await fs.readFile(path.join(root, 'modules/client/src/main/scala/it/evadid/homepage/workbook/content/CreateEmbroideryPreviewWorkbook.scala'), 'utf8');
+  const source = await fs.readFile(path.join(root, 'modules/client/src/main/scala/it/evadid/homepage/workbook/content/test/CreateEmbroideryPreviewWorkbook.scala'), 'utf8');
   const universal = JSON.parse(await fs.readFile(path.join(folder, 'map-universal.json')));
   const maps = await Promise.all(['de','en'].map(async language => JSON.parse(await fs.readFile(path.join(folder, `map-${language}.json`)))));
   for (const map of maps) {
@@ -25,5 +25,5 @@ test('preview edition has complete bilingual content and retains the original wo
   assert(!source.includes('TurtleStitchRecreateShapeInteractionLegacy'));
   const html = await fs.readFile(path.join(root,'homepage/embroideryPreviewWorkbook/index.html'),'utf8');
   assert(html.includes('id="workbookEmbroideryPreview"'));
-  assert(html.includes('src="../js/CodeMirrorLoader.js"'));
+  assert(!html.includes('src="../js/CodeMirrorLoader.js"'), 'optional editor modules must not hold up DOMContentLoaded');
 });

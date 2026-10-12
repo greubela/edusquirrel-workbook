@@ -9,7 +9,7 @@ import it.evadid.evacuation.core.graphic.sprites.traits.Sprite
 import it.evadid.evacuation.core.io.instances.eva.config.SpriteMapMetaConfig
 
 
-case class SpriteMapConfig(formatLines: Seq[String], config: SpriteMapMetaConfig) {
+case class SpriteMapConfig(formatLines: Seq[String], config: SpriteMapMetaConfig) derives upickle.default.ReadWriter {
 
   val linesCleaned: Seq[String] = formatLines.map(_.trim()).filterNot(_.isEmpty).filterNot(_.startsWith("#")).filterNot(_.startsWith("//"))
   val allSpriteLines: Seq[String] = linesCleaned.filterNot(_.contains("="))
@@ -88,7 +88,7 @@ object SpriteMapConfig {
 
   }
 
-  private case class PersonSpriteInfo(name: String, id: Int, frameData: FrameData, frameNr: Int, direction: Direction)
+  private case class PersonSpriteInfo(name: String, id: Int, frameData: FrameData, frameNr: Int, direction: Direction) derives upickle.default.ReadWriter
 
   private def parsePersonSpriteSingle(list: List[PersonSpriteInfo]): List[Sprite] = {
     list.map(info => BasicSprite(info.id, info.name, info.frameData))

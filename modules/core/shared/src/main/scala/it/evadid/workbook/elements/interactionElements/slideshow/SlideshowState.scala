@@ -7,6 +7,7 @@ import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowState.
 import it.evadid.workbook.jsonFactory.WorkbookElementReference
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import java.time.LocalDateTime
 
 /**
@@ -56,8 +57,6 @@ object SlideshowState {
   case class SlideshowProceededEvent(oldPanel: WorkbookElementReference, newPanel: WorkbookElementReference, proceededAt: LocalDateTime) derives ReadWriter {
 
   }
-
-  private[slideshow] given ldt: ReadWriter[LocalDateTime] = DefaultSerializer.serializerLocalDateTimeString.uPickleReadWrite
 
    given ReadWriter[SlideshowState] = macroRW
 

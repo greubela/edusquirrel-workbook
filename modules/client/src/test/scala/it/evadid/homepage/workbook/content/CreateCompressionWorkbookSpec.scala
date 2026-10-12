@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.homepage.workbook.content.wip.{CompressionSourceContent, CompressionSourceData, CreateCompressionWorkbook}
 import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow

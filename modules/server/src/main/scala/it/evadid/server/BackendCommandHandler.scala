@@ -97,16 +97,16 @@ object BackendCommandHandler {
       throw new IllegalArgumentException(message)
     }
 
-    logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.params.keys}")
+    logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.json.obj.keys}")
     SqlLogCommands.handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger)
 
     if (verifiedToken.nonEmpty) {
       val user = verifiedToken.head.info.user
       logger.logInfo(s"User is authorized as user ${user.name} (${user.id} @ ${user.mail})")
-      localHandlerRequiringLogin(verifiedToken.head).handleExecution(executionCommand, logger)
+      localHandlerRequiringLogin(verifiedToken.head).executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
     } else if (localHandlerNoLoginRequired.canExecuteCommand(executionCommand)) {
       logger.logInfo(s"No authorized user found, only a subset of handlers are available!")
-      localHandlerNoLoginRequired.handleExecution(executionCommand, logger)
+      localHandlerNoLoginRequired.executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
     } else {
       throw new IllegalArgumentException(s"Functionality ${executionCommand.name} either does not exist or requires an account!")
     }

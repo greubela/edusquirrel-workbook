@@ -14,7 +14,7 @@ final case class SoftmaxModel(
   bias: Array[Double],
   mean: Option[Array[Double]] = None,
   std: Option[Array[Double]] = None
-) {
+) derives upickle.default.ReadWriter {
 
   def numClasses: Int = labels.length
 

@@ -9,7 +9,7 @@ import it.evadid.evacuation.eva1.model.evagraph.{EvaPerson, Router}
 
 import scala.collection.mutable
 
-case class EvacuationState(curPositionsInState: PositionStateMap, persons: Set[EvaPerson], routingMap: FlowRoutingMap, currenTimestamp: Long, handledEvents: List[PersonEvent], remainingEvents: Set[PersonEvent]) {
+case class EvacuationState(curPositionsInState: PositionStateMap, persons: Set[EvaPerson], routingMap: FlowRoutingMap, currenTimestamp: Long, handledEvents: List[PersonEvent], remainingEvents: Set[PersonEvent]) derives upickle.default.ReadWriter {
 
   def lastEventMap(): Map[EvaPerson, PersonEvent] = {
     val lastActivityMap = mutable.HashMap[EvaPerson, PersonEvent]()

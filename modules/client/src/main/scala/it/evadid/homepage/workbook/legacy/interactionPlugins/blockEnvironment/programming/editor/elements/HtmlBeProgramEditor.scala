@@ -11,6 +11,7 @@ import it.evadid.vm.BeProgram
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.parsing.cpp.CppParser
 import it.evadid.vm.parsing.python.PythonParser
+import todomove.webElementsOld.webElements.*
 import todomove.webElementsOld.webElements.genericHtmlElements.other.{HtmlTab, HtmlTabElement}
 
 case class HtmlBeProgramEditor(

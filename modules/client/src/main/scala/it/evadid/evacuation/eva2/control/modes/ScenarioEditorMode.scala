@@ -27,7 +27,7 @@ case class ScenarioEditorMode(
   def selectSprite(sprite: Sprite): Unit = selectedTile = Some(sprite)
 
 
-  private case class SelectionSpriteArea(selectionSprites: Seq[Sprite]) {
+  private case class SelectionSpriteArea(selectionSprites: Seq[Sprite]) derives upickle.default.ReadWriter {
     val selectionMatrix: Matrix[Sprite] = Matrix(spriteMap.selectionDim, selectionSprites)
     val selectionFloorMap: FloorMap = new ControllableHtmlFloorMap(spriteMap, selectionMatrix, selectionTileMapController)
     //val selectionFloorMap: FloorMap = new ControllableCanvasFloorMap(spriteMap, selectionMatrix, selectionTileMapController)

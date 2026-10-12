@@ -31,6 +31,8 @@ test('native compression experiments use bound answers and survive fullscreen, c
     await page.goto(origin + '/homepage/compressionWorkbook/index.html');
     const login = page.locator('.section-register .login-area').nth(1).locator('button');
     await login.click();
+    await page.locator('.select-language-line > div').first().click();
+    await page.getByRole('heading', {name: 'Datenkompression und gesellschaftliche Verantwortung', exact: true}).waitFor();
     const chapter = text => page.locator('.section-block').filter({hasText:text});
     const editor = page.locator('dialog[open] .compression-editor');
     const close = async () => page.locator('.fullscreen-close-button').click();
@@ -158,6 +160,8 @@ test('native compression experiments use bound answers and survive fullscreen, c
       db.close();return rows.some(row=>JSON.stringify(row).includes('Video gezielt reduzieren'));
     });
     await page.reload();if(await login.isVisible())await login.click();
+    await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
+    await page.getByRole('heading',{name:'Datenkompression und gesellschaftliche Verantwortung',exact:true}).waitFor();
     await jump('Sektion 1',7);await open(0);
     assert.equal(await editor.locator('textarea').inputValue(),'AAAAAAAAAAAA');await close();
     assert.equal(await page.locator('.compression-code').first().inputValue(),'def encode(text):\n    return text');
@@ -171,7 +175,8 @@ test('native compression experiments use bound answers and survive fullscreen, c
     await open(1);assert.match(await editor.innerText(), /Geschafft!/);
     await page.setViewportSize({width:390,height:844});
     assert(await editor.evaluate(e=>e.scrollWidth<=e.clientWidth+1),'mobile editor fits its viewport');
-    await close();await open(0);assert.equal(await editor.getByLabel('Datenpaket').inputValue(),'1');
+    await close();await page.locator('.workbook-header-toggle').click();
+    await open(0);assert.equal(await editor.getByLabel('Datenpaket').inputValue(),'1');
     assert.equal(await page.locator('iframe').count(),0);
     assert(!/Kommt bald|\[ Widget:/.test(await page.locator('body').innerText()));
     assert.deepEqual(errors,[]);

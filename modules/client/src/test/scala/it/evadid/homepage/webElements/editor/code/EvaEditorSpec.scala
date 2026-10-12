@@ -19,7 +19,7 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlPr
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
-import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableState, InteractionVariableUntyped}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorConfig, EvaProgrammingTab}
@@ -50,20 +50,21 @@ class EvaEditorSpec extends FunSuite {
   }
 
   private class RecordingSyncControl extends SyncControl {
-    var stores = Vector.empty[List[InteractionVariable[?]]]
+    var stores = Vector.empty[List[InteractionVariableUntyped]]
     override val syncLogger: SyncLogger = SyncLogger(
       Logger.withNameAndPrefixes(Some("EvaEditorSpec"), PrintToStdLogger.printNothing))
-    override def requestStore(from: List[InteractionVariable[?]]): Future[?] = {
+    override def controlLogger: Logger = syncLogger.underlyingLogger
+    override def requestStore(from: List[InteractionVariableUntyped]): Future[?] = {
       stores :+= from
       Future.unit
     }
     override def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[?] =
       throw IllegalStateException("Unexpected cache refresh.")
-    override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariable[?]]): Future[?] =
+    override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariableUntyped]): Future[?] =
       throw IllegalStateException("Unexpected cache store check.")
-    override def createObservableReport[T](forVariable: InteractionVariable[T]): ObservableValue[SyncControl.InteractionVariableSyncReport[T]] =
+    override def createObservableReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): ObservableValue[SyncControl.InteractionVariableSyncReport[T, GA, SA]] =
       throw IllegalStateException("Unexpected observable sync report.")
-    override def createCurrentReport[T](forVariable: InteractionVariable[T]): SyncControl.InteractionVariableSyncReport[T] =
+    override def createCurrentReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): SyncControl.InteractionVariableSyncReport[T, GA, SA] =
       throw IllegalStateException("Unexpected current sync report.")
   }
 
@@ -444,7 +445,7 @@ class EvaEditorSpec extends FunSuite {
     val restored = ProgrammingStateJavaString("\n\tpublic class Restored {\r\n  public static void main(\r\n\t ")
     val remoteState = InteractionVariableState[ProgrammingState](restored, UpdateImportance.MAJOR,
       LocalDateTime.now().minusSeconds(10))
-    variable.updateHistory(_ => InteractionVariableHistory(Set(remoteState)))
+    variable.updateHistory(_ => InteractionVariableHistory(Set(remoteState), Map.empty, Map.empty))
     val sync = new RecordingSyncControl
     val bound = HtmlProgrammingExerciseFullJavaRenderer.editorState(element, sync)
     val javaEditor = new JavaFunctionBasedEditor(bound)
@@ -468,14 +469,14 @@ class EvaEditorSpec extends FunSuite {
     val history = variable.history
     editor.publish(EvaEditor.Tab.Java, edited)
     bound.set(edited.copy())
-    variable.updateHistory(_.withAddedEvents(history))
+    variable.updateHistory(_.withAddedEvents(history.events))
     assertEquals(variable.history, history)
     assertEquals(sync.stores.size, 1)
     assertEquals(element.elementId, "full-java-bound-draft")
     assert(variable.underlyingInteraction eq element)
     assertEquals(variable.keyForSerialization, "full-java-bound-draft_history")
-    assertEquals(variable.serializedHistory.lastStateOption.map(_.serializedValue),
-      Some(ProgrammingExercise.StateSerializer.serialize(edited)))
+    assertEquals(variable.deserializeHistory(variable.serializeHistory(variable.history)).lastStateOption.map(_.value),
+      Some(edited))
     editor.onFullscreenClose()
   }
 
@@ -485,7 +486,7 @@ class EvaEditorSpec extends FunSuite {
     val initial = javaSource()
     val initialState = InteractionVariableState[ProgrammingState](initial, UpdateImportance.MAJOR,
       LocalDateTime.now().minusSeconds(10))
-    variable.updateHistory(_ => InteractionVariableHistory(Set(initialState)))
+    variable.updateHistory(_ => InteractionVariableHistory(Set(initialState), Map.empty, Map.empty))
     val sync = new RecordingSyncControl
     val bound = HtmlProgrammingExerciseFullJavaRenderer.editorState(element, sync)
     val factory = new ControlledRunnerFactory
@@ -517,8 +518,8 @@ class EvaEditorSpec extends FunSuite {
           assertEquals(editor.currentState(), restored)
           assertEquals(variable.currentValue, restored)
           assertEquals(variable.keyForSerialization, "full-java-bound-restore_history")
-          assertEquals(variable.serializedHistory.lastStateOption.map(_.serializedValue),
-            Some(ProgrammingExercise.StateSerializer.serialize(restored)))
+          assertEquals(variable.deserializeHistory(variable.serializeHistory(variable.history)).lastStateOption.map(_.value),
+            Some(restored))
           assertEquals(sync.stores.size, 0)
           editor.onFullscreenClose()
         }

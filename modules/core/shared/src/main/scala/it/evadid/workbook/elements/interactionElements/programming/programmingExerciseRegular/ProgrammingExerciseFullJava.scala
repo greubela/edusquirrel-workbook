@@ -8,11 +8,12 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class ProgrammingExerciseFullJava(
     override val elementId: String,
     testSuite: Option[BeTestSuite] = None,
     startingProgram: String = ProgrammingExerciseFullJava.defaultStartingProgram
-) extends WorkbookInteractionElement[ProgrammingState] {
+) extends WorkbookInteractionElement[ProgrammingState] derives upickle.default.ReadWriter {
   override val associatedFactory = ProgrammingExerciseFullJava.factory
 
   override val defaultValue: ProgrammingState = ProgrammingStateJavaString(startingProgram)

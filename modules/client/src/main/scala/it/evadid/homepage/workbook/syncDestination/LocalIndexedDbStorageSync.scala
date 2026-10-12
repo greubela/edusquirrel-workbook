@@ -1,15 +1,14 @@
 package it.evadid.homepage.workbook.syncDestination
 
-import it.evadid.core.datastructures.storage.RemoteSyncDataCache.FetchResponse
 import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
 import it.evadid.core.util.io.{ConstructorLikeParserWithJsonElements, Serializer}
 import it.evadid.util.logging.LoggingLevel.WARN
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.interaction.sync.model.{FetchResponse, HistoryJson}
 import it.evadid.workbook.interaction.sync.SyncInformation.*
 import it.evadid.workbook.interaction.sync.destination.*
 import it.evadid.workbook.interaction.variable
-import it.evadid.workbook.interaction.variable.InteractionVariableHistorySerialized
 import org.scalajs.dom
 import org.scalajs.dom.{IDBDatabase, IDBTransactionMode}
 
@@ -78,12 +77,11 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
   override def storeTo(
                         logger: SyncLogger,
                         context: SyncContext,
-                        history: InteractionVariableHistorySerialized,
-                        formatter: SyncFormatter
+                        history: String
                       ): Future[SyncSuccess] = {
 
     val serializedKey = contextToKeySerializer.serialize(context)
-    val serializedValue = formatter.serialize(context, history)
+    val serializedValue = HistoryJson.stored(context.keyForSerialisation, history)
     val boolFut = storeToRaw(serializedKey, serializedValue)
 
     boolFut.map(boolRes => {
@@ -94,26 +92,25 @@ case class LocalIndexedDbStorageSync(dbName: String, storeName: String) extends 
 
   override def fetchAll(
                          logger: SyncLogger,
-                         context: UsageContext,
-                         formatter: SyncFormatter
-                       ): Future[FetchResponse[SyncContext, InteractionVariableHistorySerialized]] = {
+                         context: UsageContext
+                       ): Future[FetchResponse[SyncContext, String]] = {
 
-    def parseTuple(browserKey: String, browserValue: String): Option[(SyncContext, InteractionVariableHistorySerialized)] = try {
+    def parseTuple(browserKey: String, browserValue: String): Option[(SyncContext, String)] = try {
       val syncCtx = contextToKeySerializer.deserialize(browserKey)
-      val history = formatter.deserialize(browserValue)
-      Some(syncCtx -> history)
+      val history = ujson.write(HistoryJson.payload(browserValue))
+      Option.when(syncCtx.toUsageContext == context)(syncCtx -> history)
     } catch case e: Exception => {
       logger.log(s"LocalIndexedDbStorageSync: Ignore tuple ($browserKey) because it was unparsable: ${e.getMessage}", WARN, Option(false))
       None
     }
 
-    def parseResMap(res: Map[String, String]): Map[SyncContext, InteractionVariableHistorySerialized] = {
+    def parseResMap(res: Map[String, String]): Map[SyncContext, String] = {
       res.toList.flatMap(tup => parseTuple(tup._1, tup._2)).toMap
     }
 
     readAllRaw(logger).map(strMap => {
-      val resMap: Map[SyncContext, InteractionVariableHistorySerialized] = parseResMap(strMap)
-      val res = FetchResponse.fromMap[SyncContext, InteractionVariableHistorySerialized](LocalDateTime.now(), resMap, _.lastStateOption.map(_.timestamp))
+      val resMap: Map[SyncContext, String] = parseResMap(strMap)
+      val res = FetchResponse.fromMap[SyncContext, String](LocalDateTime.now(), resMap, HistoryJson.lastTimestamp)
       logger.logInfo(s"Parsed ${strMap.knownSize} string elements and transformed them to ${resMap.knownSize} fetch response map elements!")
       res
     })

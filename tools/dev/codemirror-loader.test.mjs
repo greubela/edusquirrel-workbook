@@ -7,7 +7,8 @@ const source = readFileSync(new URL('../../homepage/js/CodeMirrorLoader.js', imp
 const imports = /^import\s+\{([\s\S]*?)\}\s+from\s+"[^"]+";/gm;
 const dependencies = Object.fromEntries([...source.matchAll(imports)]
   .flatMap(match => match[1].split(',').map(name => name.trim()))
-  .map(name => [name, Object.freeze({name})]));
+  .map(name => [name, name === 'flowchartExtension'
+    ? Object.freeze(chartForDoc => [{chartForDoc}]) : Object.freeze({name})]));
 const bridge = source.replace(imports, '');
 
 function load(facade) {
@@ -39,4 +40,12 @@ test('the library namespace preserves the imported identities and optional Java 
   }
   assert.equal(libraries.MySQL, dependencies.MySQL);
   assert.equal(typeof libraries.loadJavaModule, 'function');
+});
+
+test('the bridge exposes the imported flowchart extension without implementing another editor', () => {
+  const globals = load(undefined);
+  const chartForDoc = () => ({nodes: [], edges: [], entries: []});
+  assert.equal(globals.EduSquirrelCodeMirrorLibraries.flowchartExtension, dependencies.flowchartExtension);
+  assert.equal(globals.EduSquirrelCodeMirrorLibraries.flowchartExtension(chartForDoc)[0].chartForDoc, chartForDoc);
+  assert.equal(globals.EduSquirrelCodeMirror, undefined);
 });

@@ -6,7 +6,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.co
 import todomove.webElementsOld.webElements.svg.builder.controlFlow.path.{ControlFlowPathOverlay, PathStatus, PathType, SegmentType}
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowStarterBackground
 
-case class ControlFlowProgramStarterType() extends ControlFlowTypeSingleWidth {
+case class ControlFlowProgramStarterType() extends ControlFlowTypeSingleWidth derives upickle.default.ReadWriter {
 
   override def backgroundShape: BeShapeContainerable = ControlFlowStarterBackground()
 

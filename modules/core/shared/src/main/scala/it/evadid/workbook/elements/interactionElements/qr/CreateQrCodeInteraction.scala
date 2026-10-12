@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.qr
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
@@ -25,10 +26,10 @@ case class QrCodeRequirements(minBytes: Int = 1, maxBytes: Option[Int] = None,
 
   def isSatisfiedBy(code: QrCode): Boolean = evaluate(code).forall(_.passed)
 }
-case class QrCodeRequirementResult(labelId: String, passed: Boolean, expected: String)
+case class QrCodeRequirementResult(labelId: String, passed: Boolean, expected: String) derives upickle.default.ReadWriter
 
 case class CreateQrCodeInteraction(elementId: String, requirements: QrCodeRequirements = QrCodeRequirements(),
-                                   initialCode: QrCode = QrCode.fromText("")) extends WorkbookInteractionElement[QrCode] {
+                                   initialCode: QrCode = QrCode.fromText("")) extends WorkbookInteractionElement[QrCode] derives upickle.default.ReadWriter {
   override val defaultValue: QrCode = initialCode
   override val serializerInteractionContent: Serializer[QrCode] = Serializer.fromUpickleJson(summon[ReadWriter[QrCode]])
   override lazy val childrenOfThisElement: List[WorkbookElement] = Nil

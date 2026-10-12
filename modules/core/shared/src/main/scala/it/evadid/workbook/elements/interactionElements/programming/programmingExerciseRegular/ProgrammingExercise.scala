@@ -13,6 +13,7 @@ import upickle.default.*
 
 import scala.util.Try
 
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class ProgrammingExercise(
                                 override val elementId: String,
                                 testSuite: Option[BeTestSuite] = None,
@@ -20,7 +21,7 @@ case class ProgrammingExercise(
 
                                 /** Optional Python turtle program whose drawing is the target for geometric matching. */
                                 referencePython: Option[String] = None
-                              ) extends WorkbookInteractionElement[ProgrammingState] {
+                              ) extends WorkbookInteractionElement[ProgrammingState] derives upickle.default.ReadWriter {
   override val associatedFactory = ProgrammingExercise.factory
 
   override val defaultValue: ProgrammingState = ProgrammingStateSnapXmlHelper.mini
