@@ -1,7 +1,9 @@
 package it.evadid.workbook.abstractions.grading
 
-import java.time.LocalDateTime
 import upickle.default.*
+
+import java.time.LocalDateTime
+
 case class GradedState[T, A]
 (
   state: T,
@@ -10,6 +12,7 @@ case class GradedState[T, A]
 
 
   val timestampLatestTest: LocalDateTime = testsWithResults.map(_.gradingTime).max
+
 
 }
 
