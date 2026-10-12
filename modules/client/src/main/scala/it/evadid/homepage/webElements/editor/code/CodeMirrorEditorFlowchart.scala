@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.font.AppFont
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
-import it.evadid.homepage.webElements.editor.config.CodeEditorConfig
+import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 
 import scala.scalajs.js
 
@@ -16,10 +16,11 @@ import scala.scalajs.js
 case class CodeMirrorEditorFlowchart(
     content: Var[String],
     onUserInput: String => Unit = _ => (),
-    editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14))
-) extends SimpleWebEditor[String, CodeEditorConfig] {
+    editorFont: Signal[AppFont] = Val(AppFont("JetBrains Mono", 14)),
+    editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Flowchart
+) extends SimpleWebEditor[String, CodeMirrorEditorConfig] {
   private val editor = CodeMirrorEditor(content, onUserInput, editorFont, Python,
-    flowchart = Some(CodeMirrorEditorFlowchart.chartForDoc))
+    editorConfig = editorConfig)
 
   def focus(): Unit = editor.focus()
   def currentDoc: Option[String] = editor.currentDoc
@@ -27,7 +28,7 @@ case class CodeMirrorEditorFlowchart(
   def clearDiagnostics(): Unit = editor.clearDiagnostics()
   override def getDomElement(): Element = editor.getDomElement()
   override def underlyingVar: Var[String] = content
-  override def config: Val[CodeEditorConfig] = editor.config
+  override def config: Val[CodeMirrorEditorConfig] = editor.config
 }
 
 object CodeMirrorEditorFlowchart {

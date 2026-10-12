@@ -179,3 +179,29 @@ Layout lives in `homepage/css/workbook/workbook-structure.css`, already linked b
 workbook entry pages: two equal columns become a single column on small screens.
 PlantWorkshop groups each wiring image with its description and uses a
 `TwoColumnPanel` for the wiring/explanation pairs on slides 3, 4 and 8.
+
+### CodeMirror configuration and asynchronous loading
+
+`CodeMirrorEditor` accepts `editorConfig: CodeMirrorEditorConfig`. The default
+omits the control-flow gutter; `CodeMirrorEditorConfig(showFlowchartGutter = true)`
+enables it for Python programs accepted by the shared parser. The compatibility
+`CodeMirrorEditorFlowchart` wrapper defaults to enabling it and also accepts the
+configuration. `EvaEditorConfig.codeMirrorConfig` defaults to enabling the gutter
+for Python and can disable it for all of Eva's editors. Java keeps its regular
+line-number gutter. The parser is unchanged.
+
+`CodeMirrorEditorLoading` coordinates one shared module load in Scala.js. It
+resolves the module beside `app-loader.js`, including deployments under a path
+prefix, and injects an asynchronous module script only when an editor mounts.
+Entry pages do not eagerly import CodeMirror: CDN latency does not delay
+`DOMContentLoaded` or workbook startup. The textarea remains bound to the document
+while loading, and enhancement uses the latest text and diagnostics. Network
+failure or a 15-second timeout retains the textarea. Mount generation checks
+prevent a late response from creating an editor in an obsolete language tab.
+Module loading and editor creation yield to an idle browser task (with a timer
+fallback); no other workbook action awaits them. DOM construction necessarily
+runs on the browser thread, rather than in a Web Worker.
+
+Run `npm run test:workbooks -- codemirror` for delayed/failed imports, stale mounts,
+shared loading, text preservation, and gutter alignment. The browser runner bundles
+the production modules with their pinned package versions for offline tests.

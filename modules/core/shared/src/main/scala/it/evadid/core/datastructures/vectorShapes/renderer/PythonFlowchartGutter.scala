@@ -14,15 +14,15 @@ import scala.util.control.NonFatal
   * supplies statement boundaries, including rewritten elif/augmented assignments.
   */
 object PythonFlowchartGutter {
-  case class Node(line: Int, kind: String, depth: Int, label: String)
-  case class Edge(from: Int, to: Int, kind: String = "next")
-  case class Chart(nodes: List[Node], edges: List[Edge], entries: List[Int])
+  case class Node(line: Int, kind: String, depth: Int, label: String) derives upickle.default.ReadWriter
+  case class Edge(from: Int, to: Int, kind: String = "next") derives upickle.default.ReadWriter
+  case class Chart(nodes: List[Node], edges: List[Edge], entries: List[Int]) derives upickle.default.ReadWriter
   val empty: Chart = Chart(Nil, Nil, Nil)
 
   private case class Positioned(line: Int, text: String, depth: Int,
                                 body: List[Positioned] = Nil,
                                 otherwise: List[Positioned] = Nil,
-                                kind: String = "process")
+                                kind: String = "process") derives upickle.default.ReadWriter
 
   def fromPython(source: String): Chart = try {
     val expression = PythonParser.parsePython(source)

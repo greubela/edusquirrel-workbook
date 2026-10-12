@@ -4,7 +4,7 @@ import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.editor.code.{CodeMirrorEditor, CodeMirrorEditorFlowchart}
+import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
@@ -18,7 +18,7 @@ object EvaProgrammingTab {
           programmingLanguage,
           curVar => {
             val bound: Var[String] = curVar.bimap[String](_.code)(ProgrammingStateJavaString(_))
-            CodeMirrorEditor(bound, code => handleOnStateChanged(ProgrammingStateJavaString(code)), language = AppLanguage.Java)
+            CodeMirrorEditor(bound, code => handleOnStateChanged(ProgrammingStateJavaString(code)), language = AppLanguage.Java, editorConfig = evaConfig.codeMirrorConfig)
           },
           _.toJava
         )
@@ -29,7 +29,7 @@ object EvaProgrammingTab {
           programmingLanguage,
           curVar => {
             val bound: Var[String] = curVar.bimap[String](_.code)(ProgrammingStatePythonString(_))
-            CodeMirrorEditorFlowchart(bound, code => handleOnStateChanged(ProgrammingStatePythonString(code)))
+            CodeMirrorEditor(bound, code => handleOnStateChanged(ProgrammingStatePythonString(code)), editorConfig = evaConfig.codeMirrorConfig)
           },
           _.toPython
         )
