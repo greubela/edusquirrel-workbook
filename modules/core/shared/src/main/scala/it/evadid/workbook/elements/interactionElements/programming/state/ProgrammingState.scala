@@ -111,7 +111,8 @@ object ProgrammingState {
 
     override def toSnapXml: ProgrammingStateSnapXml = expression match {
       case root: JavaTurtleVmPrograms.Root => converted(JavaTurtleEditingBridge.toSnap(JavaTurtleVmPrograms.fromRoot(root)))
-      case _ => ProgrammingStateSnapXmlHelper.fromProgram(BeProgram(expression))
+      case _ => converted(SnapTurtlePythonBridge.validateSubset(expression).map(_ =>
+        ProgrammingStateSnapXmlHelper.fromProgram(BeProgram(expression))))
     }
 
     override def toPython: ProgrammingStatePythonString = expression match {

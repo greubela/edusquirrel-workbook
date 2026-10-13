@@ -34,7 +34,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     Vector.fill(4)(Vector(T.Command(R.TurtleCommand.Forward, side), T.Command(R.TurtleCommand.TurnRight, 90))).flatten
 
   private val roundTripScenarios = List(
-    "recursive branching" ->
+    ("recursive branching",
       """def branch(length, depth):
         |    if depth == 0:
         |        forward(length)
@@ -44,8 +44,8 @@ class ProgrammingStateConversionSpec extends FunSuite {
         |        branch(length / 2, depth - 1)
         |
         |branch(64, 3)
-        |""".stripMargin,
-    "sum of primes" ->
+        |""".stripMargin, true),
+    ("sum of primes",
       """def sum_primes_below(limit):
         |    total = 0
         |    candidate = 2
@@ -62,7 +62,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
         |    print(total)
         |
         |sum_primes_below(30)
-        |""".stripMargin
+        |""".stripMargin, false)
   )
 
   private def normalized(state: ProgrammingState): String = state.toPython.code.trim
@@ -167,21 +167,22 @@ class ProgrammingStateConversionSpec extends FunSuite {
     }
   }
 
-  roundTripScenarios.foreach { (name, source) =>
-    test(s"$name round trips through BeExpression, Python, Java, and serialized Snap") {
+  roundTripScenarios.foreach { (name, source, snapSupported) =>
+    test(s"$name preserves text round trips and validates Snap conversion") {
       val original = ProgrammingStatePythonString(source).toBeExpressionState
       val throughPython = original.toPython.toBeExpressionState
       val java = original.toJava
       val loweredJava = new JavaToBeExpressionParser().toPython(java.code)
       val throughJava = java.toBeExpressionState
-      val snap = original.toSnapXml
-      val restoredSnap = ProgrammingExercise.StateSerializer.deserialize(
-        ProgrammingExercise.StateSerializer.serialize(snap)
-      ).toSnapXml
-
       assertEquals(normalized(throughPython), normalized(original))
       assertEquals(normalized(throughJava), normalized(original), clue = s"Java:\n${java.code}\nLowered:\n$loweredJava")
-      assertEquals(restoredSnap, snap)
+      if snapSupported then {
+        val snap = original.toSnapXml
+        val restoredSnap = ProgrammingExercise.StateSerializer.deserialize(
+          ProgrammingExercise.StateSerializer.serialize(snap)
+        ).toSnapXml
+        assertEquals(restoredSnap, snap)
+      } else intercept[IllegalArgumentException](original.toSnapXml)
     }
   }
 
@@ -243,6 +244,59 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val java = ProgrammingStateJavaString("int steps = 12; forward(steps);")
     assert(java.toPython.code.contains("forward(steps)"), clue = java.toPython.code)
     assert(java.toSnapXml.snapXml.contains("forward"), clue = java.toSnapXml.snapXml)
+  }
+
+  test("Java method fragments with returns reject Snap without changing their raw source") {
+    List(
+      "int value(int n) { return n; } value(2);",
+      "int draw(int n) { while (n > 0) { if (n == 2) { return n; } forward(n); n = n - 1; } return 0; } draw(3);"
+    ).foreach { fragment =>
+      val source = "\r\n" + fragment + "\r\n\t "
+      val state = ProgrammingStateJavaString(source)
+      val fingerprint = state.fingerprint()
+      val stored = ProgrammingExercise.StateSerializer.serialize(state)
+      val expression = state.toBeExpressionState
+      assert(!state.isClassProgram, clue = source)
+      assert(expression.toPython.code.contains("return"), clue = source)
+      assert(SnapTurtlePythonBridge.validateSubset(expression.expression).isLeft, clue = source)
+      intercept[IllegalArgumentException](state.toSnapXml)
+      assertEquals(state.toJava.code, source)
+      assertEquals(state.fingerprint(), fingerprint)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+    }
+  }
+
+  test("generic Python expression states with returns reject Snap without mutation") {
+    List(
+      "def value(n):\n    return n\nvalue(2)\n",
+      "def draw(n):\n    while n > 0:\n        if n == 2:\n            return\n        forward(n)\n        n = n - 1\ndraw(3)\n"
+    ).foreach { source =>
+      val raw = ProgrammingStatePythonString(source)
+      val rawFingerprint = raw.fingerprint()
+      val state = raw.toBeExpressionState
+      val fingerprint = state.fingerprint()
+      val rendered = state.toPython
+      assert(rendered.code.contains("return"), clue = source)
+      assert(SnapTurtlePythonBridge.validateSubset(state.expression).isLeft, clue = source)
+      intercept[IllegalArgumentException](state.toSnapXml)
+      assertEquals(state.toPython, rendered)
+      assertEquals(state.fingerprint(), fingerprint)
+      assertEquals(raw.code, source)
+      assertEquals(raw.fingerprint(), rawFingerprint)
+    }
+  }
+
+  test("supported Java method fragments still convert conditionals and loops to Snap") {
+    val source = "void draw(int count) { int i = 0; while (i < count) { if (i % 2 == 0) { forward(10); } else { forward(20); } i = i + 1; } } draw(3);"
+    val state = ProgrammingStateJavaString(source)
+    val fingerprint = state.fingerprint()
+    val expression = state.toBeExpressionState
+    assert(SnapTurtlePythonBridge.validateSubset(expression.expression).isRight, clue = source)
+    val commands = expression.deriveTurtleCommands
+    assertEquals(commands.flatMap(_.args), List(10.0, 20.0, 10.0))
+    assertEquals(state.toSnapXml.toBeExpressionState.deriveTurtleCommands, commands)
+    assertEquals(state.toJava.code, source)
+    assertEquals(state.fingerprint(), fingerprint)
   }
 
   test("Java and Snap round trip") {

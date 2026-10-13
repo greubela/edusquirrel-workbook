@@ -896,6 +896,47 @@ class EvaEditorSpec extends FunSuite {
     }
   }
 
+  test("a failed Snap switch retains a Java fragment with a value-returning method without publishing or storing") {
+    val source = ProgrammingStateJavaString(
+      "\r\n\tdouble distance(double length) {\r\n  return length;\r\n}\r\n\t ")
+    val element = ProgrammingExerciseFullJava("java-fragment-snap-return", startingProgram = source.code)
+    val variable = element.interactionVariable
+    val initial = InteractionVariableState[ProgrammingState](source, UpdateImportance.MAJOR,
+      LocalDateTime.now().minusSeconds(10))
+    variable.updateHistory(_ => InteractionVariableHistory(Set(initial), Map.empty, Map.empty))
+    val sync = new RecordingSyncControl
+    val bound = HtmlProgrammingExerciseFullJavaRenderer.editorState(element, sync)
+    var published = List.empty[ProgrammingState]
+    val editor = EvaEditorPlain(bound, testingConfig, next => published = published :+ next)
+    val history = variable.history
+    val stored = ProgrammingExercise.StateSerializer.serialize(source)
+    assertEquals(sync.stores.size, 0)
+
+    editor.select(EvaEditor.Tab.Snap)
+    assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+    assert(editor.conversionError.now().nonEmpty)
+    assertEquals(editor.currentState(), source)
+    assertEquals(bound.now(), source)
+    assertEquals(variable.currentValue, source)
+    assertEquals(variable.history, history)
+    assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), stored)
+    assertEquals(published, Nil)
+    assertEquals(sync.stores.size, 0)
+
+    editor.onFullscreenClose()
+    editor.onFullscreenOpen()
+    assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+    assertEquals(editor.currentState(), source)
+    assert(editor.conversionError.now().nonEmpty)
+    assertEquals(variable.deserializeHistory(variable.serializeHistory(variable.history)).lastStateOption.map(_.value),
+      Some(source))
+    assertEquals(ProgrammingExercise.StateSerializer.deserialize(stored), source)
+    assertEquals(variable.history, history)
+    assertEquals(published, Nil)
+    assertEquals(sync.stores.size, 0)
+    editor.onFullscreenClose()
+  }
+
   test("full Java classes switch editable views without publishing a converted answer") {
     val source = ProgrammingStateJavaString("\r\npublic class Drawing { " +
       "static void line(int side) { for (int i = 0; i < 3; i++) { Turtle.forward(side); } } " +
