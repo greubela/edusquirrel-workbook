@@ -2,8 +2,8 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.f
 
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.LlmClient
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackConfig
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.BlockFeedbackRequest
+import it.evadid.workbook.model.feedback.BlockFeedbackConfig
+import it.evadid.workbook.model.feedback.BlockFeedbackRequest
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.parsing.python.PythonParser
 import munit.FunSuite

@@ -2,18 +2,15 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.f
 
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.PythonTestResult
+import it.evadid.workbook.model.feedback.PythonTestResult
 /**
  * Central formatting helper for test result presentation.
  */
 object BlockFeedbackTestResultFormatter {
 
-  final case class ExpectedActual(
-    expectedLabel: String,
-    expected: String,
-    actualLabel: String,
-    actual: String
-  ) derives upickle.default.ReadWriter
+  // Source compatibility for consumers of the former nested presentation record.
+  type ExpectedActual = it.evadid.workbook.model.feedback.ExpectedActual
+  val ExpectedActual = it.evadid.workbook.model.feedback.ExpectedActual
 
   def expectedActual(
     test: PythonTestResult,

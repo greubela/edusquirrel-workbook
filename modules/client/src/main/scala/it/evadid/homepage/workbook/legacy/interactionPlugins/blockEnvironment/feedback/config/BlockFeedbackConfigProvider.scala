@@ -1,7 +1,9 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.RouterMode
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.BlockFeedbackMeta
+import it.evadid.workbook.model.feedback.BlockFeedbackConfig
+
+import it.evadid.workbook.model.feedback.RouterMode
+import it.evadid.workbook.model.feedback.BlockFeedbackMeta
 
 /**
  * Resolves per-exercise configuration based on [[BlockFeedbackMeta.exerciseId]].

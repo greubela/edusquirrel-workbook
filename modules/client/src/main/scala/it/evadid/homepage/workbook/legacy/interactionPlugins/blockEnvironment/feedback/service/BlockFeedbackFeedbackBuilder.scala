@@ -3,10 +3,10 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.f
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.BlockFeedbackTestResultFormatter
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackRequest, FeedbackTestDisplay, PythonRuntimeOutcome, PythonTestResult, UltrichsNewCoolFeedback}
+import it.evadid.workbook.model.feedback.{BlockFeedbackRequest, FeedbackTestDisplay, PythonRuntimeOutcome, PythonTestResult, UltrichsNewCoolFeedback}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.{RuleResult, RuleSeverity}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
-import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
+import it.evadid.workbook.model.feedback.runtime.PythonRunStatus
+import it.evadid.workbook.model.feedback.FeedbackStatus
 
 /**
  * Builds the final UI feedback from runtime outcomes and the derived test plan.

@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime
+package it.evadid.workbook.model.feedback.runtime
 
 final case class PythonRunRequest(
   code: String,

@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.f
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.CommandLlmClient
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.UltrichsNewCoolFeedback
+import it.evadid.workbook.model.feedback.UltrichsNewCoolFeedback
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.BlockFeedbackService
 import it.evadid.vm.code.abstractions.BeExpression
 

@@ -1,7 +1,7 @@
 package interactionPlugins.blockEnvironment.feedback.ml
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, FeatureExtractor}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.PythonRuntimeOutcome
+import it.evadid.workbook.model.feedback.PythonRuntimeOutcome
 import munit.FunSuite
 
 final class FeatureExtractorSpec extends FunSuite {

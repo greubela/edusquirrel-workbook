@@ -2,12 +2,12 @@ package interactionPlugins.blockEnvironment.feedback.service
 
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackConfig
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackRequest, PythonRuntimeOutcome, PythonTestResult}
+import it.evadid.workbook.model.feedback.BlockFeedbackConfig
+import it.evadid.workbook.model.feedback.{BlockFeedbackRequest, PythonRuntimeOutcome, PythonTestResult}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.{RuleResult, RuleSeverity}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
+import it.evadid.workbook.model.feedback.runtime.PythonRunStatus
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.{BlockFeedbackFeedbackBuilder, BlockFeedbackTestPlan}
-import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
+import it.evadid.workbook.model.feedback.FeedbackStatus
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.parsing.python.PythonParser
 import munit.FunSuite

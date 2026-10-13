@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.f
 
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.PythonTestResult
+import it.evadid.workbook.model.feedback.PythonTestResult
 /**
  * Detects function-name mismatches: the student named their function differently
  * from what the test suite expects.

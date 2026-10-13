@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model
+package it.evadid.workbook.model.feedback
 
 /**
  * Feedback-owned representation of a Python test case.

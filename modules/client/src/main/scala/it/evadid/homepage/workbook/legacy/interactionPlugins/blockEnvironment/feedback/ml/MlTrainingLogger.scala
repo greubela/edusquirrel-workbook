@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackMeta, BlockFeedbackRequest}
+import it.evadid.workbook.model.feedback.{BlockFeedbackMeta, BlockFeedbackRequest}
 import scala.scalajs.js
 
 /**

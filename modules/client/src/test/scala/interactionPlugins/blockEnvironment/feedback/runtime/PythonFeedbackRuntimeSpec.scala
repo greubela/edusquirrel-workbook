@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime
 
+import it.evadid.workbook.model.feedback.runtime.*
+
 import munit.FunSuite
 
 import scala.collection.mutable

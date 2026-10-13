@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime
 
+import it.evadid.workbook.model.feedback.runtime.*
+
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 import java.util.concurrent.TimeoutException

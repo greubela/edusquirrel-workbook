@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.f
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackConfig
+import it.evadid.workbook.model.feedback.BlockFeedbackConfig
 /**
  * Backend-oriented exercise definition for the feedback pipeline.
  *

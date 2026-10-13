@@ -120,6 +120,9 @@ currently store edits without calling `startGrading`. Importance alone does not
 schedule grading or debounce expensive tests. `SlideshowGrader` is an implementation
 example; an interaction must actually attach a grader to `gradingElements` to run it.
 Register new grader codecs in `WorkbookInteractionGrader.universalSerializer`.
+Portable feedback requests/configuration and Python runtime/result contracts now
+live in [shared feedback models](shared-feedback-models.md); execution adapters
+and the pipeline remain client-side.
 
 The scaffolder contract is `generateFeedback(currentState):
 Future[ScaffoldingResult[T, SA]]`, with feedback tied to the source value.

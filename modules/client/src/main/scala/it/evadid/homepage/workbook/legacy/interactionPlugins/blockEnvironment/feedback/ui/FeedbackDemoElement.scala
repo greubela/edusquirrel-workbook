@@ -10,10 +10,10 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackExerciseRegistry
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis.PythonCodeMirrorDiagnostics
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.MlRouter
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{FeedbackTestDisplay, UltrichsNewCoolFeedback}
+import it.evadid.workbook.model.feedback.{FeedbackTestDisplay, UltrichsNewCoolFeedback}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRuntimeService
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.BlockFeedbackService
-import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
+import it.evadid.workbook.model.feedback.FeedbackStatus
 import it.evadid.vm.code.others.BeStartProgram
 import org.scalajs.dom
 

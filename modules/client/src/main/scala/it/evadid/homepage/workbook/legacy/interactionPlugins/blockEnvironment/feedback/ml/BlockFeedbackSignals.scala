@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackRequest, PythonRuntimeOutcome}
+import it.evadid.workbook.model.feedback.{BlockFeedbackRequest, PythonRuntimeOutcome}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.{RuleResult, RuleSeverity}
 
 /**

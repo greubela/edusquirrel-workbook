@@ -1,9 +1,8 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model
+package it.evadid.workbook.model.feedback
 
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackConfig
 import it.evadid.vm.code.abstractions.BeExpression
 
 /**

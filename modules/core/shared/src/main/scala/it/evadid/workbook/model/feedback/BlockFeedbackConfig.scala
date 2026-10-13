@@ -1,7 +1,5 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config
+package it.evadid.workbook.model.feedback
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.RouterMode
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackPythonFixture, BlockFeedbackPythonTest}
 
 /**
  * Configuration of the feedback pipeline for a specific exercise/submission.

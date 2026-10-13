@@ -4,12 +4,14 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.{LlmClient, PromptTemplates, QualityGate}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.{BlockFeedbackConfig, BlockFeedbackConfigProvider, BlockFeedbackExerciseRegistry}
+import it.evadid.workbook.model.feedback.{BlockFeedbackConfig}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.{BlockFeedbackConfigProvider, BlockFeedbackExerciseRegistry}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis.{DiagnosisAdapters, DiagnosisEngine}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer, FeatureExtractor, MlRouter, MlTrainingLogger, RouterMode}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackMeta, BlockFeedbackRequest, BlockFeedbackResult, FeedbackDebug, PythonRuntimeOutcome}
+import it.evadid.workbook.model.feedback.{RouterMode}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer, FeatureExtractor, MlRouter, MlTrainingLogger}
+import it.evadid.workbook.model.feedback.{BlockFeedbackMeta, BlockFeedbackRequest, BlockFeedbackResult, FeedbackDebug, PythonRuntimeOutcome}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.{PythonStaticRules, VmStaticRules}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
+import it.evadid.workbook.model.feedback.runtime.PythonRunStatus
 import it.evadid.vm.code.abstractions.BeExpression
 
 import scala.concurrent.{ExecutionContext, Future}

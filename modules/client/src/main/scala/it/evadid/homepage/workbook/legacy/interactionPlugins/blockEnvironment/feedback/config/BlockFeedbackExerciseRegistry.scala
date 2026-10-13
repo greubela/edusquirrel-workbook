@@ -1,8 +1,10 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config
 
+import it.evadid.workbook.model.feedback.BlockFeedbackConfig
+
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.exercise.FeedbackExerciseDefinition
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.BlockFeedbackPythonTest
+import it.evadid.workbook.model.feedback.BlockFeedbackPythonTest
 /**
  * In-memory registry of feedback exercise definitions.
  *

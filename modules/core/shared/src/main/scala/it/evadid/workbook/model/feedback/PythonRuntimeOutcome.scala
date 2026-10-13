@@ -1,6 +1,6 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model
+package it.evadid.workbook.model.feedback
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
+import it.evadid.workbook.model.feedback.runtime.PythonRunStatus
 
 /**
  * Intermediate structure that groups the information returned from the Python runtime.

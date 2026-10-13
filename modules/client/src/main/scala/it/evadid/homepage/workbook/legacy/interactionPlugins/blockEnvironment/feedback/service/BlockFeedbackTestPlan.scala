@@ -1,7 +1,7 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service
 
 import it.evadid.core.datastructures.language.AppLanguage
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackPythonFixture, BlockFeedbackPythonTest, BlockFeedbackRequest}
+import it.evadid.workbook.model.feedback.{BlockFeedbackPythonFixture, BlockFeedbackPythonTest, BlockFeedbackRequest}
 /**
  * Encapsulates the collection of tests, fixtures, packages and hints that
  * should run for a specific submission.

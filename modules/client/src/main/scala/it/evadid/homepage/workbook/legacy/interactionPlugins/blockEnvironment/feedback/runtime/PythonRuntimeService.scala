@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime
 
+import it.evadid.workbook.model.feedback.runtime.*
+
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{
   PythonRunConfig,
   PythonRunReport,

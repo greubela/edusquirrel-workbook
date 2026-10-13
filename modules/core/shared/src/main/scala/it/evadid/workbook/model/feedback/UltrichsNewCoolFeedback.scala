@@ -1,14 +1,12 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model
+package it.evadid.workbook.model.feedback
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.BlockFeedbackTestResultFormatter
-import it.evadid.homepage.workbook.legacy.model.feedback.{FeedbackResult, FeedbackStatus}
 
 /** UI-friendly representation for test display. */
 final case class FeedbackTestDisplay(
   name: String,
   passed: Boolean,
   message: String,
-  expectedActual: Option[BlockFeedbackTestResultFormatter.ExpectedActual]
+  expectedActual: Option[ExpectedActual]
 ) derives upickle.default.ReadWriter
 
 /** Result of a single check/test. */

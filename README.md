@@ -157,6 +157,7 @@ LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js).
 - [Digital workbook migration](docs/digital-workbook-migration.md): analysis of linked PDF/ZIP exercises, missing editors and the Blockchain, image-recognition and Phishing adaptations.
 - [Interaction architecture](docs/workbook-interaction-architecture.md): module and editor boundaries, element types, grading/scaffolding, localization and dependency loading.
 - [State and serialization](docs/state-and-serialization.md): source-of-truth bindings, update importance, history and default uPickle codecs with examples.
+- [Shared feedback models](docs/shared-feedback-models.md): portable request, configuration and runtime/result contracts with legacy codec compatibility.
 - [Execution clients](docs/execution-clients.md): local, HTTP and implemented worker backends; typed command definitions and calls.
 - [Worker execution](docs/worker-execution-backend.md): supported jobs, transport/lifecycle and browser verification.
 - [Native compression workbook](docs/compression-workbook.md): complete seven-chapter native copy, saved interactions and the retained standalone version.

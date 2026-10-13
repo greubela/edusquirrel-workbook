@@ -2,9 +2,9 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.f
 
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackPythonFixture, BlockFeedbackPythonTest, BlockFeedbackRequest, PythonRuntimeOutcome, PythonTestResult}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.{PythonFeedbackRuntime, PythonFixture, PythonRunRequest, PythonRunResult, PythonRunStatus, PythonTestStatus, PythonUnitTest, PythonTestResult as RuntimeTestResult}
+import it.evadid.workbook.model.feedback.{BlockFeedbackPythonFixture, BlockFeedbackPythonTest, BlockFeedbackRequest, PythonRuntimeOutcome, PythonTestResult}
+import it.evadid.workbook.model.feedback.runtime.{PythonFixture, PythonRunRequest, PythonRunResult, PythonRunStatus, PythonTestStatus, PythonUnitTest, PythonTestResult as RuntimeTestResult}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.{PythonFeedbackRuntime}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -200,7 +200,7 @@ object BlockFeedbackTestRunner:
       test: BlockFeedbackPythonTest,
       humanLanguage: HumanLanguage
   ): PythonUnitTest =
-    runtime.PythonUnitTest(
+    PythonUnitTest(
       name = test.name,
       code = test.code,
       weight = test.weight,
@@ -246,7 +246,7 @@ object BlockFeedbackTestRunner:
   private def toRuntimeFixture(
       fixture: BlockFeedbackPythonFixture
   ): PythonFixture =
-    runtime.PythonFixture(
+    PythonFixture(
       path = fixture.path,
       content = fixture.content,
       isBinary = fixture.isBinary

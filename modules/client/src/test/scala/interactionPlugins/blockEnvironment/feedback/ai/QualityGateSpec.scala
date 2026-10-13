@@ -4,7 +4,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis.{Diagnosis, DiagnosisCategory, TaskProfile}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{PythonRuntimeOutcome, PythonTestResult}
+import it.evadid.workbook.model.feedback.{PythonRuntimeOutcome, PythonTestResult}
 import munit.FunSuite
 
 final class QualityGateSpec extends FunSuite {
