@@ -13,7 +13,7 @@ function response(command, value) {
   return JSON.stringify({
     timestamps: {timestampReceived:now, timestampStarted:now, timestampFinished:now},
     result: [1, {json:JSON.stringify(value), classSimpleName:'TestResponse'}],
-    receivedExecutionCommand:[command], additionalOutput:{loggerOut:'',loggerError:''}
+    receivedExecutionCommand:command, additionalOutput:{loggerOut:'',loggerError:''}
   });
 }
 
@@ -26,24 +26,28 @@ test('login preserves email, explains duplicate registration and observes failed
     let transportFailure = false;
     let validLogin = false;
     page.on('pageerror', error => errors.push(error.message));
+    page.on('console', msg => { if (process.env.LOGIN_TEST_DEBUG) console.error(msg.text()); });
     await page.route('**/*', async route => {
       const url = new URL(route.request().url());
       if (url.pathname === '/executeCommand') {
+        const headers = {'access-control-allow-origin':origin,'access-control-allow-credentials':'true',
+          'access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'Content-Type, Authorization'};
+        if (route.request().method() === 'OPTIONS') return route.fulfill({status:204,headers});
         const command = route.request().postDataJSON();
         requests.push(command);
-        if (transportFailure) return route.fulfill({status:503,body:'Unavailable'});
+        if (transportFailure) return route.fulfill({status:503,headers,body:'Unavailable'});
         let value;
-        if (command.name === 'create-account') value = {accountCreated:false,token:[]};
+        if (command.name === 'create-account') value = {accountCreated:false,token:null};
         else if (command.name === 'login-command') {
           const user = {name:'Different Name',id:'test-user',mail:'first.last@example.org'};
           const token = {info:{user,createdAt:'2026-10-13T01:40:00',expiresAt:'2099-01-01T00:00:00'},tokenStringWithSignature:'mock-token'};
-          value = {userKnown:true,tokenValid:validLogin,user:validLogin ? [user] : [],
-            signedToken:validLogin ? [token] : [],
-            userConfigJson:validLogin ? [JSON.stringify({syncDestinations:[],isOnlineAccount:true})] : []};
+          value = {userKnown:true,tokenValid:validLogin,user:validLogin ? user : null,
+            signedToken:validLogin ? token : null,
+            userConfigJson:validLogin ? JSON.stringify({syncDestinations:[],isOnlineAccount:true}) : null};
         }
-        else if (command.name === 'auth-mail-request') value = {user:[],sent:true};
+        else if (command.name === 'auth-mail-request') value = {user:null,sent:true};
         else throw new Error('Unexpected command ' + command.name);
-        return route.fulfill({contentType:'application/json',body:response(command,value)});
+        return route.fulfill({headers,contentType:'application/json',body:response(command,value)});
       }
       if (url.origin !== origin) return route.abort();
       const file = path.resolve(root, '.' + decodeURIComponent(url.pathname) + (url.pathname.endsWith('/') ? 'index.html' : ''));
