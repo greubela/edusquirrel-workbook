@@ -6,6 +6,7 @@ import it.evadid.core.datastructures.user.User.SingleAccessToken
 import it.evadid.core.datastructures.user.{AllUserInfo, User}
 import it.evadid.distribution.commandTypes.UserCommands
 import it.evadid.distribution.commandTypes.UserCommands.AuthMailRequest
+import it.evadid.homepage.control.change.AuthenticationFailure
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.util.logging.Logger
@@ -22,27 +23,13 @@ case class HtmlLoginElement() extends HtmlAppElement {
   private val loginSucceededPromise: Promise[AllUserInfo] = Promise()
 
   private val nameVar: Var[String] = {
-    val default = fullInfo.usageControl.tryParsingExistingUser().map(_.user.name).getOrElse("Unknown User")
+    val default = fullInfo.usageControl.tryParsingExistingUser().map(_.user.name).getOrElse("")
     Var[String](default)
   }
   private val emailVar: Var[String] = {
-    val default = fullInfo.usageControl.tryParsingExistingUser().map(_.user.mail).getOrElse("unknown.user@student.hu-berlin.de")
+    val default = fullInfo.usageControl.tryParsingExistingUser().map(_.user.mail).getOrElse("")
     Var[String](default)
   }
-
-  nameVar.signal.foreach(newValue => {
-    val derived = User.deriveHuMail(newValue)
-    if (derived.isDefined && emailVar.now() != derived.get) {
-      emailVar.set(derived.get)
-    }
-  })(using unsafeWindowOwner)
-
-  emailVar.signal.foreach(newValue => {
-    val derived = User.deriveNameFromMail(newValue)
-    if (derived.isDefined && nameVar.now() != derived.get) {
-      nameVar.set(derived.get)
-    }
-  })(using unsafeWindowOwner)
 
   def loginSucceededFuture: Future[AllUserInfo] = loginSucceededPromise.future
 
@@ -107,7 +94,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
 
 
   private val onlineStartBody: List[Element] = {
-
+    val action = new LoginActionState
     List[Element](
       ul(
         li(text <-- laminarHelper.plaintextStringSignal("login/onlineBenefit1")),
@@ -117,7 +104,11 @@ case class HtmlLoginElement() extends HtmlAppElement {
 
       createTextInput(nameVar, "login/insertNamePlaceholder"),
       createEmailInput(emailVar, "login/enterMail"),
-      HtmlButtonElement.withTextLabel("login/buttonRequestRegistration", _ => fullInfo.usageControl.tryOnlineRegistration(nameVar.now(), emailVar.now())).getDomElement()
+      actionButton("login/buttonRequestRegistration", action) {
+        action.run(fullInfo.usageControl.tryOnlineRegistration(nameVar.now(), emailVar.now()),
+          "login/statusRegistered", "login/errorRegistration")
+      },
+      actionStatus(action)
     )
   }
 
@@ -186,30 +177,54 @@ case class HtmlLoginElement() extends HtmlAppElement {
     val tokenVar = Var[String]("")
     val tokenInput = createTextInput(tokenVar, "login/insertTokenPlaceholder")
 
-    def onTokenRequested(): Unit = {
-      val email = emailVar.now()
-      UserCommands.authMailCommand.sendCommandTo(fullInfo.defaults.backendExecutor, AuthMailRequest(email), Some(logger))
-    }
+    val action = new LoginActionState
 
-    def onLoginRequested(): Unit = {
-      val email = emailVar.now()
-      val token = tokenVar.now()
-      val singleToken = SingleAccessToken(token)
-      fullInfo.usageControl.tryLoginWith(email, SingleAccessToken(token))
+    def validatedEmail: String = {
+      val email = emailVar.now().trim.toLowerCase
+      if (!User.isEmail(email)) throw AuthenticationFailure("login/errorEmail")
+      email
     }
 
     List(
       createEmailInput(emailVar, "login/enterMail"),
-      HtmlButtonElement.withTextLabel("login/buttonRequestToken", _ => onTokenRequested()).getDomElement(),
+      actionButton("login/buttonRequestToken", action) {
+        action.run(
+          UserCommands.authMailCommand.sendCommandTo(fullInfo.defaults.backendExecutor,
+            AuthMailRequest(validatedEmail), Some(logger)).flatMap { response =>
+            if (response.result.sent) Future.successful(())
+            else Future.failed(AuthenticationFailure("login/errorTokenRequest"))
+          }, "login/statusTokenSent", "login/errorTokenRequest")
+      },
       tokenInput,
-      HtmlButtonElement.withTextLabel("login/buttonRequestLogin", _ => onLoginRequested()).getDomElement()
+      actionButton("login/buttonRequestLogin", action) {
+        action.run({
+          val email = validatedEmail
+          val token = tokenVar.now().trim
+          if (token.isEmpty) Future.failed(AuthenticationFailure("login/errorTokenRequired"))
+          else fullInfo.usageControl.tryLoginWith(email, SingleAccessToken(token))
+        }, "login/statusLoggedIn", "login/errorLogin")
+      },
+      actionStatus(action)
     )
   }
 
+  private def actionButton(labelId: String, state: LoginActionState)(action: => Future[Unit]): Element =
+    button(
+      typ := "button",
+      text <-- laminarHelper.plaintextStringSignal(labelId),
+      disabled <-- state.pending.signal,
+      onClick --> { _ => action }
+    )
 
-  private val infoPanel: Element = {
-    div("Error go here!")
-  }
+  private def actionStatus(state: LoginActionState): Element =
+    div(
+      cls := "login-status",
+      cls("login-status-error") <-- state.failed.signal,
+      role := "status",
+      child.text <-- state.messageKey.signal.flatMapSwitch { key =>
+        if (key.isEmpty) Val("") else laminarHelper.plaintextStringSignal(key)
+      }
+    )
 
 
   override def getDomElement(): Element = domElement
