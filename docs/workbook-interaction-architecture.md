@@ -215,7 +215,8 @@ line-number gutter. The parser is unchanged.
 
 `CodeMirrorEditorLoading` coordinates one shared module load in Scala.js. It
 resolves the module beside `app-loader.js`, including deployments under a path
-prefix, and injects an asynchronous module script only when an editor mounts.
+prefix, and shares an asynchronous module load between background preheating
+and editor mounts. Workbook startup does not await that load.
 Entry pages do not eagerly import CodeMirror: CDN latency does not delay
 `DOMContentLoaded` or workbook startup. The textarea remains bound to the document
 while loading, and enhancement uses the latest text and diagnostics. Network
