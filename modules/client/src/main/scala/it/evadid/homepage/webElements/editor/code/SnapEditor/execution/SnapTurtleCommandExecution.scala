@@ -7,7 +7,9 @@ import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonHelpers
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
-import todomove.`export`.workers.*
+import it.evadid.distribution.clients.WebWorkerExecutionClient
+import it.evadid.distribution.commandTypes.WorkerCommands
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 
 import java.util.concurrent.{CancellationException, TimeoutException}
 import scala.concurrent.{Future, Promise}
@@ -32,7 +34,7 @@ final class SnapTurtleCommandExecution(runner: TurtleCommandRunner):
       ))
     else runner.execute(derived.python)
 
-/** Small seam around the existing Pyodide worker, allowing orchestration tests
+/** Small seam around command-based Python execution, allowing orchestration tests
   * to supply an already executed callback report.
   */
 trait PythonCallbackExecutor:
@@ -40,14 +42,23 @@ trait PythonCallbackExecutor:
   def run(code: String, config: PythonRunConfig): Future[PythonRunReport]
   def close(): Unit = ()
 
-private final class WorkerPythonCallbackExecutor(worker: PyodideWorkerClient) extends PythonCallbackExecutor:
+private final class CommandPythonCallbackExecutor(worker: WebWorkerExecutionClient) extends PythonCallbackExecutor:
+  private var callbacks = Map.empty[String, List[String]]
   override def addCallbacks(moduleName: String, methodNames: Seq[String]): Future[Unit] =
-    worker.addCallbacks(moduleName, methodNames)
+    callbacks += moduleName -> methodNames.toList
+    // Warm the interpreter during the runner's startup deadline, before its execution deadline.
+    WorkerCommands.runPython.sendCommandTo(worker, WorkerCommands.RunPythonRequest("", callbacks = callbacks)).map(_ => ())
 
   override def run(code: String, config: PythonRunConfig): Future[PythonRunReport] =
-    worker.run(code, config)
+    val context = ujson.read(js.JSON.stringify(config.context)).obj.toMap
+    WorkerCommands.runPython.sendCommandTo(worker, WorkerCommands.RunPythonRequest(code, context, callbacks,
+      resetGlobals = config.resetGlobals, captureStdout = config.captureStdout, captureStderr = config.captureStderr)).map { execution =>
+      val report = execution.result
+      PythonRunReport(report.callbackOps.map(op => CallbackOp(op.module, op.method,
+        op.args.map(arg => js.JSON.parse(ujson.write(arg))).toVector)).toVector, report.stdout, report.stderr)
+    }
 
-  override def close(): Unit = worker.terminate()
+  override def close(): Unit = worker.close()
 
 /** Executes derived Snap Python in the integrated Pyodide Web Worker. The
   * returned callbacks therefore describe runtime calls (including loop and
@@ -133,7 +144,7 @@ object PyodideTurtleCommandRunner:
   private[execution] val ModuleName = "turtle"
 
   private def workerExecutor(): PythonCallbackExecutor =
-    new WorkerPythonCallbackExecutor(PyodideWorkerClient.acquire())
+    new CommandPythonCallbackExecutor(it.evadid.homepage.control.startup.PythonCommandWorkerPreheat.acquire())
 
   private[execution] def commandsFrom(callbacks: Seq[CallbackOp]): List[TurtleCommand[Double]] =
     callbacks.iterator

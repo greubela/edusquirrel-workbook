@@ -22,6 +22,13 @@ test('built worker.js executes framework commands independently of the browser e
       const url = new URL(route.request().url());
       if (url.pathname === '/worker-test') return route.fulfill({contentType:'text/html',body:'<!doctype html><p id="status">Ready</p>'});
       if (url.pathname === '/artifacts/newest/worker.js') return route.fulfill({contentType:'text/javascript',body:await fs.readFile(path.join(root,'artifacts/newest/worker.js'))});
+      const pyodideRoot = 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/';
+      if (url.href.startsWith(pyodideRoot)) {
+        const name = url.pathname.split('/').at(-1);
+        return route.fulfill({body:await fs.readFile(path.join(root,'node_modules/pyodide',name)),
+          contentType:name.endsWith('.wasm')?'application/wasm':name.endsWith('.js')?'text/javascript':'application/octet-stream',
+          headers:{'access-control-allow-origin':'*'}});
+      }
       return route.abort();
     });
     const page = await context.newPage();
@@ -36,7 +43,7 @@ test('built worker.js executes framework commands independently of the browser e
     });
     const health = await page.evaluate(() => request('health','worker.health',{}));
     assert.equal(result(health).service,'edusquirrel-worker');
-    assert.deepEqual(new Set(result(health).commands),new Set(['worker.health','worker.parseSnapXml','worker.calculateQrCode']));
+    assert.deepEqual(new Set(result(health).commands),new Set(['worker.health','worker.parseSnapXml','worker.calculateQrCode','worker.runPython']));
     const replies = await page.evaluate(() => Promise.all([
       request('xml','worker.parseSnapXml',{xml:'<project><block s="Grüße"><block s="外"/></block></project>',tag:'block'}),
       request('qr','worker.calculateQrCode',{text:'Hello',version:2,mask:3})
@@ -57,6 +64,56 @@ test('built worker.js executes framework commands independently of the browser e
     });
     assert.equal(result(heavy.reply).modules.length,177);
     assert(heavy.ticks > 0,'the GUI event loop continues while the worker calculates all masks');
+    const python = result(await page.evaluate(() => request('python','worker.runPython',{
+      code:"print('Grüße')\nimport sys\nprint('warning',file=sys.stderr)\n{'sum':sum(numbers),'label':settings['label']}",
+      context:{numbers:[2,3],settings:{label:'学校'}}
+    })));
+    assert.deepEqual(python.value,{sum:5,label:'学校'});
+    assert.equal(python.stdout,'Grüße\n');
+    assert.equal(python.stderr,'warning\n');
+    const partial = result(await page.evaluate(() => request('partial','worker.runPython',{
+      code:"print('学校😀',end='')\nimport sys\nprint('warn',end='',file=sys.stderr)"
+    })));
+    assert.equal(partial.stdout,'学校😀');
+    assert.equal(partial.stderr,'warn');
+    const muted = result(await page.evaluate(() => request('muted','worker.runPython',{
+      code:"print('hidden')\nimport sys\nprint('hidden',file=sys.stderr)",captureStdout:false,captureStderr:false
+    })));
+    assert.equal(muted.stdout,'');
+    assert.equal(muted.stderr,'');
+    const callbacks = result(await page.evaluate(() => request('callbacks','worker.runPython',{
+      code:'from pen import forward\nfor i in range(3): forward(i)',callbacks:{pen:['forward']}
+    })));
+    assert.deepEqual(callbacks.callbackOps.map(op=>op.args),[[0],[1],[2]]);
+    const retainedCallback = result(await page.evaluate(() => request('retained-callback','worker.runPython',{
+      code:'forward(10)',callbacks:{pen:['forward']},resetGlobals:false
+    })));
+    assert.deepEqual(retainedCallback.callbackOps.map(op=>op.args),[[10]]);
+    await page.evaluate(() => request('state','worker.runPython',{code:'counter=40',resetGlobals:false}));
+    assert.equal(result(await page.evaluate(() => request('state2','worker.runPython',{code:'counter+2',resetGlobals:false}))).value,42);
+    assert.equal(result(await page.evaluate(() => request('reset','worker.runPython',{code:"'counter' in globals()"}))).value,false);
+    const concurrent = await page.evaluate(() => Promise.all([
+      request('first','worker.runPython',{code:"import asyncio\nprint('first')\nawait asyncio.sleep(0.05)\nprint('end')\n'one'"}),
+      request('second','worker.runPython',{code:"print('second')\n'other'"})
+    ]));
+    assert.equal(result(concurrent[0]).stdout,'first\nend\n');
+    assert.equal(result(concurrent[1]).stdout,'second\n');
+    const failed = await page.evaluate(() => request('python-error','worker.runPython',{code:"print('before error')\nraise ValueError('boom')"}));
+    assert.equal(result(failed),undefined);
+    assert(JSON.stringify(failed.response).includes('boom'));
+    assert(failed.response.additionalOutput.loggerOut.includes('before error'));
+    for (const code of ["float('nan')",'{1,2}', '10**30']) {
+      const invalid = await page.evaluate(code => request('invalid-result','worker.runPython',{code}),code);
+      assert.equal(result(invalid),undefined,'non-JSON results fail instead of silently losing data');
+    }
+    assert.equal(result(await page.evaluate(() => request('recover','worker.runPython',{code:'6*7'}))).value,42);
+    const pythonHeavy = await page.evaluate(async () => {
+      let ticks=0; const interval=setInterval(()=>ticks++,1);
+      const reply=await request('python-heavy','worker.runPython',{code:'sum(i % 97 for i in range(1500000))'});
+      clearInterval(interval); return {reply,ticks};
+    });
+    assert(result(pythonHeavy.reply));
+    assert(pythonHeavy.ticks>0,'the GUI stays responsive during real Pyodide execution');
     await page.evaluate(() => worker.terminate());
   } finally { await browser.close(); }
 });

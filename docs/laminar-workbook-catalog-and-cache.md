@@ -50,7 +50,7 @@ fail their futures. No schema migration is required by this cache path.
    before creating the application context and restoring translations.
 2. Once the translated app shell is mounted, another paint opportunity precedes
    idle tasks in `OptionalRuntimeStartup`. Scala.js coordinates CodeMirror,
-   ordered Snap scripts, JSXGraph, one reusable Python worker and the shared
+   ordered Snap scripts, JSXGraph, one reusable command-based Python worker and the shared
    backend execution client. No editor or Morphic world is created by warmup.
    Configuration and health checks are also background work. An early consumer
    shares the same readiness future or takes ownership of the warmed Python

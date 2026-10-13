@@ -25,7 +25,7 @@ object OptionalRuntimeStartup {
 
     if (allowsExternal("https://esm.sh")) background("CodeMirror") { CodeMirrorEditorLoading.preheat() }
     background("Snap") { SnapRuntimeLoading.ready().failed.foreach(err => logger.logExceptionWarn("Snap warmup failed", err)) }
-    if (allowsExternal("https://cdn.jsdelivr.net")) background("Pyodide") { PyodideWorkerClient.preheat() }
+    if (allowsExternal("https://cdn.jsdelivr.net")) background("Pyodide") { PythonCommandWorkerPreheat.preheat().failed.foreach(err => logger.logExceptionWarn("Python warmup failed", err)) }
     background("JSXGraph") {
       BrowserDependencyLoading.script(BrowserDependencyLoading.siteUrl("resources/programs/20261004JSXGraph/jsxgraphcore.js"))
         .failed.foreach(err => logger.logExceptionWarn("JSXGraph warmup failed", err))
