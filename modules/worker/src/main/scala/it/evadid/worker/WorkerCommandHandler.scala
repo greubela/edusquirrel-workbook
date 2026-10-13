@@ -15,6 +15,7 @@ object WorkerCommandHandler {
       require(request.tag.matches("[A-Za-z_][A-Za-z0-9_.:-]*"), "Invalid Snap XML tag")
       SnapXmlParser.elements(request.xml, request.tag)
     }),
+    runPython.toLocalExecutionClient((request, logger) => PyodideCommandRuntime.run(request, logger)),
     calculateQrCode.toLocalExecutionClient((request, _) => Future {
       val code = QrCode.fromText(request.text, request.errorCorrection, request.version, request.mask)
       CalculateQrCodeResult(code, code.modules)
