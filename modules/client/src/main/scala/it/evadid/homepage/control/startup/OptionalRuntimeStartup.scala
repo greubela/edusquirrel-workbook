@@ -4,7 +4,6 @@ import it.evadid.homepage.webElements.editor.code.CodeMirrorEditorLoading
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapRuntimeLoading
 import it.evadid.util.logging.Logger
 import org.scalajs.dom
-import todomove.`export`.workers.PyodideWorkerClient
 import scala.concurrent.{Future, ExecutionContext}
 import scala.scalajs.js
 
@@ -31,13 +30,13 @@ object OptionalRuntimeStartup {
         .failed.foreach(err => logger.logExceptionWarn("JSXGraph warmup failed", err))
     }
     background("Backend worker") {
-      ClientStartupConfig.load().foreach { config =>
+      ClientStartupConfig.load().map { config =>
         val window = dom.window.asInstanceOf[js.Dynamic]
         window.updateDynamic("EDUSQUIRREL_CLIENT_CONFIG")(config)
         if (ClientStartupConfig.workerCount(config) > 0)
           it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo.defaults.workerBackendExecutor
-
-      }
+        ()
+      }.failed.foreach(err => logger.logExceptionWarn("Backend worker warmup failed", err))
     }
   }
 }

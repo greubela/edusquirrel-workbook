@@ -80,6 +80,11 @@ speedup is claimed.
 
 ## Verification
 
+The startup browser tests hold the bundle and optional downloads, assert first
+paint independently, and serve the existing pinned Pyodide package locally to
+verify interpreter warmup before editor creation and subsequent command execution
+on that same worker. Unit tests cover ownership transfer to an editor session.
+
 The catalogue browser test holds remote refresh on an unresolved gate and asserts
 that cached UI becomes usable first. It checks one keyed read, no cursor scan/no
 rewrite, an unrelated large record, deterministic translation replacement,
@@ -88,7 +93,7 @@ covers corrupt cache and denied IndexedDB. External artwork is fulfilled locally
 so these tests do not verify availability of third-party sites.
 
 ```sh
-sbt 'client/testOnly *LanguageCacheStartupSpec *DigitalWorkbookCatalogSpec *WorkbookContentStorageSpec *StartupTasksSpec *BrowserDependencyLoadingSpec *ClientStartupConfigSpec *PyodideWorkerPreheatSpec'
+sbt 'client/testOnly *LanguageCacheStartupSpec *DigitalWorkbookCatalogSpec *WorkbookContentStorageSpec *StartupTasksSpec *BrowserDependencyLoadingSpec *ClientStartupConfigSpec *WarmWorkerSlotSpec'
 sbt 'coreJVM/testOnly *LanguageSerializationSpec *SyncDestinationRawSpec'
 sbt 'coreJS/testOnly *LanguageSerializationSpec *SyncDestinationRawSpec'
 sbt buildClientDev buildWorkerDev

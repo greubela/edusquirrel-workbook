@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import {chromium} from 'playwright';
+import {startWorkbookTestServer} from './workbook-test-server.mjs';
 
 const root=path.resolve(import.meta.dirname,'../..');
 const origin='http://localhost:9000';
@@ -50,4 +51,65 @@ test('the first shell paints before the bundle, translations, config and optiona
     optional.release();
     await page.waitForFunction(()=>!!window.TurtleStitchPoC?._impl);
   } finally {releases.forEach(release=>release());await browser.close();}
+});
+
+test('Python warms before an editor opens and executes commands without creating another worker',async()=>{
+  const server=await startWorkbookTestServer();
+  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true,
+    args:['--proxy-server=http://127.0.0.1:1','--proxy-bypass-list=127.0.0.1']});
+  try {
+    const context=await browser.newContext();
+    await context.addInitScript(()=>{
+      const NativeWorker=window.Worker;
+      window.startupWorkers=[];
+      window.startupWorkerHandles=[];
+      window.Worker=class extends NativeWorker {
+        constructor(url,options) {
+          super(url,options);
+          this.record={url:String(url),requests:[],responses:[],warmReady:false};
+          window.startupWorkers.push(this.record);
+          window.startupWorkerHandles.push(this);
+          this.addEventListener('message',event=>{
+            try {
+              const reply=JSON.parse(event.data);
+              this.record.responses.push(reply);
+              const request=this.record.requests.find(request=>request.requestId===reply.requestId);
+              if(request?.command?.name==='worker.runPython'&&request.command.json.code===''&&reply.response.result[0]===1) this.record.warmReady=true;
+            } catch {}
+          });
+        }
+        postMessage(message,...rest) {
+          try {this.record.requests.push(JSON.parse(message));} catch {}
+          return super.postMessage(message,...rest);
+        }
+      };
+    });
+    const page=await context.newPage();
+    const messages=[];
+    page.on('console',message=>messages.push(message.text()));
+    await page.goto(server.origin+'/homepage/workbookDesign/index.html',{waitUntil:'domcontentloaded'});
+    try {await page.waitForFunction(()=>window.startupWorkers.some(worker=>worker.warmReady),{},{timeout:90000});}
+    catch(error) {console.error(JSON.stringify(await page.evaluate(()=>window.startupWorkers)));console.error(messages.join('\n'));throw error;}
+    assert.equal(await page.locator('dialog[open]').count(),0,'warmup does not create an editor');
+    await page.waitForFunction(()=>window.startupWorkers.filter(worker=>worker.url.endsWith('/worker.js')).length===2);
+    const before=await page.evaluate(()=>window.startupWorkers.length);
+    await page.locator('.section-register .login-area').nth(1).locator('button').click();
+    await page.locator('.section-block').first().click();
+    await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
+    const dialog=page.locator('dialog[open]');
+    await dialog.getByRole('button',{name:'Python',exact:true}).click();
+    await dialog.locator('.cm-editor').waitFor();
+    await page.evaluate(()=>{
+      const index=window.startupWorkers.findIndex(worker=>worker.warmReady);
+      window.startupWorkerHandles[index].postMessage(JSON.stringify({requestId:'warmup-run',
+        command:{name:'worker.runPython',json:{code:'3 + 4'}}}));
+    });
+    await page.waitForFunction(()=>window.startupWorkers.some(worker=>worker.responses.some(reply=>reply.requestId==='warmup-run')));
+    const result=await page.evaluate(()=>{
+      const reply=window.startupWorkers.flatMap(worker=>worker.responses).find(reply=>reply.requestId==='warmup-run');
+      return JSON.parse(reply.response.result[1].json);
+    });
+    assert.equal(result.value,7);
+    assert.equal(await page.evaluate(()=>window.startupWorkers.length),before,'execution uses the warmed interpreter without starting another worker');
+  } finally {await browser.close();await server.close();}
 });
