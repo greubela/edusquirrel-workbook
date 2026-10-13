@@ -10,10 +10,10 @@
 
     <!-- Prism für Syntax Highlighting -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"/>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-arduino.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-arduino.min.js"></script>
 
     <!-- Styles (plantWorkshop.css imports the legacy workbook stylesheet) -->
     <link rel="stylesheet" href="../css/plantWorkshop.css">
@@ -24,10 +24,11 @@
     <link rel="stylesheet" href="../css/workbook/compression-editor.css">
 
     <script src="../js/app-module.js"></script>
-    <script src="../js/app-loader.js"></script>
+    <script defer src="../js/app-loader.js"></script>
 </head>
 <body>
-    <div id="plantWorkshopApp"></div>
+    <div id="plantWorkshopApp">
+            <div class="startup-shell" role="status">Loading workbook… / Arbeitsheft wird geladen…</div></div>
 
     <!-- CodeJar Editor - made available globally for the Scala.js bundle. -->
     <script type="module">

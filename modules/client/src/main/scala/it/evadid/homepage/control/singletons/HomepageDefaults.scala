@@ -73,14 +73,21 @@ case class HomepageDefaults(fullInfo: FullInfo) {
   private[control] lazy val defaultBackend: RemoteExecutionConfig = RemoteExecutionConfig("ypcgzj23.trafficplex.cloud", 443)
 
 
-  /** Reuse a worker preheated by app-loader.js; otherwise start the built worker bundle. */
+  /** A single lazy execution client, shared by background warmup and on-demand commands. */
   lazy val workerBackendExecutor: WebWorkerExecutionClient = {
     import scala.scalajs.js
     import org.scalajs.dom
     val preheated = js.Dynamic.global.window.selectDynamic("EDUSQUIRREL_BACKEND_WORKERS")
     if !js.isUndefined(preheated) && preheated != null && preheated.asInstanceOf[js.Array[dom.Worker]].nonEmpty then
       WebWorkerExecutionClient.fromWorker(preheated.asInstanceOf[js.Array[dom.Worker]].shift())
-    else WebWorkerExecutionClient(fullInfo.contentControl.fileFactory.relativeToArtifactsFolder("newest/worker.js").asUrlString)
+    else {
+      val config = js.Dynamic.global.window.selectDynamic("EDUSQUIRREL_CLIENT_CONFIG")
+      val path = if (js.isUndefined(config) || config == null) js.undefined
+        else config.selectDynamic("EDUSQUIRREL_BACKEND_MODULE_WORKER_SCRIPT")
+      val url = if (js.isUndefined(path) || path == null) fullInfo.contentControl.fileFactory.relativeToArtifactsFolder("newest/worker.js").asUrlString
+        else path.asInstanceOf[String]
+      WebWorkerExecutionClient(url)
+    }
   }
 
   def backendExecutorWithCredentials(signedToken: Option[SignedToken]): ExecutionClient = defaultBackend.executor(signedToken)

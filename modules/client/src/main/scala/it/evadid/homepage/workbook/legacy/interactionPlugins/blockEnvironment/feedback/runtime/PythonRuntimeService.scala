@@ -69,7 +69,7 @@ object PythonRuntimeService {
   private def getOrCreateWorker(): PyodideWorkerClient = workerOpt match {
     case Some(w) => w
     case None =>
-      val client = new PyodideWorkerClient()
+      val client = PyodideWorkerClient.acquire()
       workerOpt = Some(client)
       val readiness = readyPromise
       client.run("pass").foreach(_ => readiness.trySuccess(()))

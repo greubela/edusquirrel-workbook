@@ -59,7 +59,7 @@ test("old entry URLs redirect inside the project and preserve query and fragment
   }
 });
 
-test("the unchanged loader finds the client and worker in the Pages layout", async t => {
+test("bootstrap finds the client without starting workers in the Pages layout", async t => {
   const { root } = fixture(t);
   const out = assemblePages(root);
   for (const prefix of ["/", "/edusquirrel-workbook/"]) {
@@ -75,8 +75,8 @@ test("the unchanged loader finds the client and worker in the Pages layout", asy
     });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(scripts.length, 1);
-    assert.equal(workers.length, 1);
-    for (const value of [scripts[0].src, workers[0]]) {
+    assert.equal(workers.length, 0);
+    for (const value of [scripts[0].src, "../../artifacts/newest/worker.js"]) {
       const url = new URL(value, page);
       assert.ok(url.pathname.startsWith(prefix + "artifacts/newest/"));
       assert.ok(existsSync(join(out, url.pathname.slice(prefix.length))));

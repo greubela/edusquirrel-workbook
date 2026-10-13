@@ -39,25 +39,40 @@ object TurtleJsxGraphRenderer:
 
   def render(scene: Scene, title: String): Element = {
     var dispose: () => Unit = () => ()
+    var generation = 0
     div(
       cls := "turtle-gradig-panel",
       onMountCallback(event => {
         val container = event.thisNode.ref
         container.classList.remove("turtle-gradig-panel--unavailable")
-        try {
-          val library = jsxGraph()
-          val board = render(container, scene, title)
-          dispose = () => library.JSXGraph.freeBoard(board)
-        } catch {
-          case NonFatal(error) =>
-            container.classList.add("turtle-gradig-panel--unavailable")
-            container.textContent = error match {
-              case _: IllegalArgumentException => "This drawing is outside the supported display range."
-              case _ => "The drawing preview is unavailable. Try reloading the page."
-            }
+        generation += 1
+        val mount = generation
+        def showFailure(error: Throwable): Unit = if (generation == mount) {
+          container.classList.add("turtle-gradig-panel--unavailable")
+          container.textContent = error match {
+            case _: IllegalArgumentException => "This drawing is outside the supported display range."
+            case _ => "The drawing preview is unavailable. Try reloading the page."
+          }
+        }
+        def draw(): Unit = if (generation == mount) {
+          try {
+            val library = jsxGraph()
+            val board = render(container, scene, title)
+            dispose = () => library.JSXGraph.freeBoard(board)
+          } catch { case NonFatal(error) => showFailure(error) }
+        }
+        val available = js.Dynamic.global.globalThis.selectDynamic("JXG")
+        if (!js.isUndefined(available) && available != null) draw()
+        else {
+          import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+          val loader = it.evadid.homepage.control.startup.BrowserDependencyLoading
+          try loader.script(loader.siteUrl("resources/programs/20261004JSXGraph/jsxgraphcore.js"))
+            .map(_ => draw()).failed.foreach(showFailure)
+          catch { case NonFatal(error) => showFailure(error) }
         }
       }),
       onUnmountCallback(_ => {
+        generation += 1
         val release = dispose
         dispose = () => ()
         release()

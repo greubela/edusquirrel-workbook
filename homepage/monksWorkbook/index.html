@@ -30,11 +30,9 @@
     <link rel="stylesheet" href="../css/old/messenger.css">
 
     <!-- Turtle practice uses the same local editor and target preview as other workbooks. -->
-    <script src="../../resources/programs/20260212TurtleStitch/fullturtle.js"></script>
     <link rel="stylesheet" href="../../resources/programs/20261004JSXGraph/jsxgraph.css">
-    <script src="../../resources/programs/20261004JSXGraph/jsxgraphcore.js"></script>
     <!-- CodeMirror is loaded asynchronously by its Scala.js editor. -->
-    <script src="../js/app-loader.js"></script>
+    <script defer src="../js/app-loader.js"></script>
 
     <link rel="stylesheet" href="../css/workbook/email-simulator.css">
     <link rel="stylesheet" href="../css/workbook/digital-workbooks.css">
@@ -42,7 +40,8 @@
 <body class="monks-workbook">
 <div id="app">
     <div class="container">
-        <div id="workbookMonks"></div>
+        <div id="workbookMonks">
+            <div class="startup-shell" role="status">Loading workbook… / Arbeitsheft wird geladen…</div></div>
     </div>
 </div>
 </body>

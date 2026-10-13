@@ -21,12 +21,13 @@
     <link rel="stylesheet" href="../css/workbook/email-simulator.css">
     <link rel="stylesheet" href="../css/workbook/digital-workbooks.css">
     <!-- The simulator needs no CodeMirror, TurtleStitch, JSXGraph or CDN scripts. -->
-    <script src="../js/app-loader.js"></script>
+    <script defer src="../js/app-loader.js"></script>
 </head>
 <body>
 <div id="app">
     <div class="container">
-        <div id="workbookImageRecognition"></div>
+        <div id="workbookImageRecognition">
+            <div class="startup-shell" role="status">Loading workbook… / Arbeitsheft wird geladen…</div></div>
     </div>
 </div>
 </body>

@@ -133,7 +133,7 @@ object PyodideTurtleCommandRunner:
   private[execution] val ModuleName = "turtle"
 
   private def workerExecutor(): PythonCallbackExecutor =
-    new WorkerPythonCallbackExecutor(new PyodideWorkerClient())
+    new WorkerPythonCallbackExecutor(PyodideWorkerClient.acquire())
 
   private[execution] def commandsFrom(callbacks: Seq[CallbackOp]): List[TurtleCommand[Double]] =
     callbacks.iterator

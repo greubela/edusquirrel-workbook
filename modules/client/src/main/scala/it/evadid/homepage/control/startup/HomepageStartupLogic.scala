@@ -39,7 +39,9 @@ object HomepageStartupLogic {
     }
   }
 
-  def initHomepage(): Unit = {
+  def initHomepage(): Unit = StartupTasks.afterPaint { initAfterFirstPaint() }
+
+  private def initAfterFirstPaint(): Unit = {
     val fullInfo = HtmlFullWorkbookApp.fullInfo
     val logger = fullInfo.loggerSystemInfo.contentControlLogger
 
@@ -60,16 +62,15 @@ object HomepageStartupLogic {
           languages.headOption.foreach(fullInfo.usageControl.changeLanguage)
       }
 
-      val futureTestCalc = testCalculations().recover { err =>
-        logger.logExceptionWarn("testCalculations failed", err)
-      }
-
       val futureAutoLogin = fullInfo.usageControl.tryAutoLogin().recover { err =>
         logger.logWarn(s"auto login was not possible: ${err.getMessage}")
       }
 
       renderElementIntoApp(logger, HtmlFullWorkbookApp.getDomElement())
-      CodeMirrorEditorLoading.preheat()
+      StartupTasks.afterPaint {
+        OptionalRuntimeStartup.start(logger)
+        StartupTasks.idle { testCalculations().failed.foreach(err => logger.logExceptionWarn("health check failed", err)) }
+      }
     }
   }
 

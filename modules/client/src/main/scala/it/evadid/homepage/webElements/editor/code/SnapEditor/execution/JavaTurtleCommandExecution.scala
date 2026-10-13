@@ -131,7 +131,7 @@ final class JavaTurtleCommandRunner(
 
 object JavaTurtleCommandRunner {
   private def workerFactory(): JavaTurtlePythonWorker = new JavaTurtlePythonWorker {
-    private val client = new PyodideWorkerClient()
+    private val client = PyodideWorkerClient.acquire()
     override def ready(): Future[Unit] = client.run("pass", PythonRunConfig(resetGlobals = false)).map(_ => ())
     override def run(code: String, config: PythonRunConfig): Future[PythonRunReport] = client.run(code, config)
     override def terminate(): Unit = client.terminate()

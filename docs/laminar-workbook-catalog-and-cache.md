@@ -13,9 +13,9 @@ startup and the public list use the same registry. The native compression workbo
 and standalone lab are separate entries.
 
 The DOM is Laminar, with reactive German/English text from `workbookSelection`.
-CSS uses shared tokens and keeps the privacy footer in document flow. The catalogue
-loads no Turtle, JSXGraph or CodeMirror dependencies. Workbook editors request
-optional dependencies when needed; some direct pages retain bundled script tags.
+CSS uses shared tokens and keeps the privacy footer in document flow. The catalogue does not wait for editor dependencies. Optional runtimes are warmed
+after the overview has painted; consumers share those loads and wait locally if
+opened early.
 See [dependency-loading boundaries](workbook-interaction-architecture.md#dependencies-and-execution).
 
 Native entries currently set `inProgress` in the catalogue registry. That label
@@ -41,10 +41,42 @@ precomputed language tables. Storage encodes once per write. IndexedDB connectio
 close after transactions/version changes, and failed/aborted/blocked operations
 fail their futures. No schema migration is required by this cache path.
 
-The cache cannot remove bundle download/evaluation, deployment-env discovery or
-other resource initialization costs. Do not use an old local timing measurement
-as a performance guarantee. `app-loader.js` no longer waits for CodeMirror;
-`CodeMirrorEditorLoading` coordinates an editor-local asynchronous load in Scala.js.
+## Two startup phases
+
+1. Entry HTML contains a small, accessible loading shell styled by shared CSS.
+   The deferred `app-loader.js` requests the Scala.js bundle immediately; it does
+   not fetch deployment configuration or start workers on the normal path.
+   `HomepageStartupLogic` yields an animation frame and a following browser task
+   before creating the application context and restoring translations.
+2. Once the translated app shell is mounted, another paint opportunity precedes
+   idle tasks in `OptionalRuntimeStartup`. Scala.js coordinates CodeMirror,
+   ordered Snap scripts, JSXGraph, one reusable Python worker and the shared
+   backend execution client. No editor or Morphic world is created by warmup.
+   Configuration and health checks are also background work. An early consumer
+   shares the same readiness future or takes ownership of the warmed Python
+   worker; independent Python execution sessions retain isolated state.
+
+`BrowserDependencyLoading` shares script requests, uses low fetch priority,
+times out failed loads and permits retries. Snap script order now lives in
+`SnapRuntimeLoading`; `fullturtle.js` is an adapter for already loaded programs.
+JSXGraph previews await their dependency locally and discard callbacks after
+unmounting. The bootstrap remains JavaScript because it must locate Scala.js
+before that code can execute. Its legacy `.env` bundle-path discovery only runs
+if the default bundle is absent; use an explicit `EDUSQUIRREL_APP_PATHS` override
+when a custom bundle must take precedence over an existing default.
+
+Normal bundle URLs are stable to allow HTTP caching/revalidation. Deployments
+can set `EDUSQUIRREL_APP_VERSION` to a release identifier for an explicit cache
+key; this honors existing query parameters. Deployment cache headers still
+control freshness. The old `INIT_WORKBOOK_ONLY_AFTER_ALL_DEPENDENCIES_LOADED`
+setting no longer makes optional runtimes startup dependencies.
+
+Existing Content Security Policies are unchanged. External CodeMirror/Pyodide
+warmup is skipped where the policy does not already permit its CDN. Local Snap
+and JSXGraph assets can still warm there. Cold cache misses still wait for
+translations before the full overview, but not before the HTML loading shell.
+Bundle download/evaluation and CSS delivery remain costs; no fixed millisecond
+speedup is claimed.
 
 ## Verification
 
@@ -56,12 +88,12 @@ covers corrupt cache and denied IndexedDB. External artwork is fulfilled locally
 so these tests do not verify availability of third-party sites.
 
 ```sh
-sbt 'client/testOnly *LanguageCacheStartupSpec *DigitalWorkbookCatalogSpec *WorkbookContentStorageSpec'
+sbt 'client/testOnly *LanguageCacheStartupSpec *DigitalWorkbookCatalogSpec *WorkbookContentStorageSpec *StartupTasksSpec *BrowserDependencyLoadingSpec *ClientStartupConfigSpec *PyodideWorkerPreheatSpec'
 sbt 'coreJVM/testOnly *LanguageSerializationSpec *SyncDestinationRawSpec'
 sbt 'coreJS/testOnly *LanguageSerializationSpec *SyncDestinationRawSpec'
 sbt buildClientDev buildWorkerDev
 npm run test:static
-npm run test:workbooks -- workbook-catalog codemirror-loading
+npm run test:workbooks -- startup-loading workbook-catalog codemirror-loading snap-preview
 ```
 
 The browser runner uses Playwright Chromium unless `CHROMIUM_PATH` is set.

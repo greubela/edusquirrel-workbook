@@ -163,9 +163,11 @@ Snap and JSXGraph have bundled distributions.
 Put optional dependency readiness/loading coordination in Scala.js companions or
 services. Return futures, share loads, render an editor-local loading/fallback UI,
 and let only consumers await readiness. Do not hold workbook startup behind a
-chain of optional editor downloads. CodeMirror follows this pattern; Snap has
-readiness hooks but its entry-page bootstrap still loads bundled scripts.
-The target of only app/worker bundles in HTML is not yet universal.
+chain of optional editor downloads. CodeMirror, Snap and JSXGraph follow this pattern. Native workbook HTML loads
+only the small app bootstrap; Scala.js schedules optional runtime warmup after
+the overview paints. Runtime deployment settings and worker warming are also
+Scala.js responsibilities. Legacy standalone demo pages may retain their own
+script integrations.
 
 The generic execution backend is implemented. Choose local, HTTP/server or worker
 execution according to required resources; a main-thread `Future` alone does not

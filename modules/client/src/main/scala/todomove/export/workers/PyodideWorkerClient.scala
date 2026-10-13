@@ -129,6 +129,8 @@ final class PyodideWorkerClient(workerUrl: String = PyodideWorkerClient.configur
       }
     }
 
+  def ready: Future[Unit] = preheated
+
   def terminate(): Unit =
     worker.terminate()
 
@@ -179,6 +181,22 @@ final class PyodideWorkerClient(workerUrl: String = PyodideWorkerClient.configur
 }
 
 object PyodideWorkerClient {
+  private var spare: Option[PyodideWorkerClient] = None
+
+  /** Warm one isolated worker, then transfer ownership to the first execution session. */
+  def preheat(): Unit = if (spare.isEmpty) {
+    val client = new PyodideWorkerClient()
+    spare = Some(client)
+    client.ready.failed.foreach { _ =>
+      if (spare.contains(client)) { spare = None; client.terminate() }
+    }
+  }
+
+  def acquire(): PyodideWorkerClient = spare match {
+    case Some(client) => spare = None; client
+    case None => new PyodideWorkerClient()
+  }
+
 
   /**
    * Resolve the shared worker URL for every Pyodide client.

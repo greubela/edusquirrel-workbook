@@ -1,0 +1,7 @@
+.startup-shell {
+    margin: var(--space-lg);
+    padding: var(--space-lg);
+    color: var(--color-text-secondary);
+    background: var(--color-surface-base);
+    border-radius: var(--radius-md);
+}

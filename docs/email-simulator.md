@@ -35,7 +35,7 @@ Fullscreen labels initialize from the current language map and update with langu
 
 ## Verification
 
-No dependencies were added. The simulator page loads only the app bundle and shared workbook CSS, without CodeMirror, TurtleStitch, JSXGraph, CDN scripts or the missing legacy dropdown stylesheet. Unit tests use existing munit/upickle/Airstream infrastructure; browser verification uses the already installed Playwright development dependency and Chromium.
+No dependencies were added. The simulator page loads the app bootstrap and shared workbook CSS on its critical path, with no synchronous editor scripts. Shared Scala.js startup can warm local editor runtimes later; external warmup respects the existing page CSP. Unit tests use existing munit/upickle/Airstream infrastructure; browser verification uses the already installed Playwright development dependency and Chromium.
 
 - `InboxStateSpec` and `MailSimulatorSpec`: transitions between every pair of folders, membership/index consistency, idempotence, stable ordering, read state, invalid inputs, final-placement grading, composing, reply/forward, serialization and legacy defaults.
 - `MailEditorStateSpec` and renderer serialization suites: selected message/navigation, stale selection after synchronization, persistent state, compose gating, validation/cancellation/sending, original data, image paths and workbook serialization.

@@ -25,11 +25,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   override def whenReady(render: () => Unit, onError: Throwable => Unit): Unit =
     import scala.scalajs.js.Thenable.Implicits.*
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-    val ready = js.Dynamic.global.globalThis.selectDynamic("TurtleStitchPoCReady")
-    if !js.isUndefined(ready) && ready != null then
-      ready.asInstanceOf[js.Promise[Unit]].toFuture.map(_ => render()).failed.foreach(onError)
-    else
-      super.whenReady(render, onError)
+    it.evadid.homepage.webElements.editor.code.SnapEditor.SnapRuntimeLoading.ready()
+      .map(_ => render()).failed.foreach(onError)
 
   private var editorWorld: Option[WorldMorph] = None
   private var editor: Option[IDEMorph] = None
