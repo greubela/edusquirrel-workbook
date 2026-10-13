@@ -42,9 +42,11 @@ private[sql] case class GenericSqlFunctionality(
   }
 
   def parseDatabaseTimestamp(databaseTimestampString: String): LocalDateTime = {
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-    val localDateTime: LocalDateTime = LocalDateTime.parse(databaseTimestampString)
-    localDateTime
+    // JDBC timestamp strings use a space and may include fractional seconds.
+    // Keep accepting ISO strings for existing fixtures/imported data.
+    try Timestamp.valueOf(databaseTimestampString.trim).toLocalDateTime
+    catch case _: IllegalArgumentException =>
+      LocalDateTime.parse(databaseTimestampString.trim, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
   }
 
   def executeSyncQuere(preparedStatement: PreparedStatement, fieldsToRead: List[String], usageContext: UsageContext): List[RichDatabaseEntry] = {

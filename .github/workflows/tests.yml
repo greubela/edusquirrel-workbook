@@ -16,7 +16,8 @@ concurrency:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # A clean cross-platform Scala build plus serial browser checks can exceed 30 minutes.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

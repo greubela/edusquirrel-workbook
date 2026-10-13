@@ -84,7 +84,18 @@ test('all sections render, solutions match previews and answers persist after re
       assert.deepEqual(await previewIds(),idsBeforeOpen,'opening an editor preserves the workbook previews');
       await dialog.getByRole('button',{name:'Python',exact:true}).click();
       await dialog.locator('.cm-content').fill(code);
-      await page.waitForFunction(count => document.querySelectorAll('dialog[open] .turtle-line--correct:not(.turtle-line--jump)').length===count,count);
+      try {
+        await page.waitForFunction(count => document.querySelectorAll('dialog[open] .turtle-line--correct:not(.turtle-line--jump)').length===count,count);
+      } catch (cause) {
+        const details = await dialog.evaluate(editor => ({
+          correct: editor.querySelectorAll('.turtle-line--correct:not(.turtle-line--jump)').length,
+          missing: editor.querySelectorAll('.turtle-line--missing').length,
+          unexpected: editor.querySelectorAll('.turtle-line--unexpected').length,
+          preview: editor.querySelector('.turtle-live-preview')?.textContent,
+          draft: editor.querySelector('.cm-content')?.textContent
+        }));
+        throw new Error(`Section ${section}, exercise ${index}: expected ${count} correct lines; ${JSON.stringify(details)}`, {cause});
+      }
       assert.equal(await dialog.locator('.turtle-line--missing, .turtle-line--unexpected').count(),0);
       const idsBeforeClose = await previewIds();
       await page.locator('.fullscreen-close-button').click();

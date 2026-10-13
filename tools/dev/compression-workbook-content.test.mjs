@@ -55,6 +55,6 @@ test('materials, six illustrations and exact image data resolve without standalo
  assert.deepEqual(fs.readFileSync(path.join(root,'resources/workbookresources/compression/source-cat.jpg')),Buffer.from(embedded,'base64'));
  assert(read('homepage/compressionWorkbook/index.html').includes('../js/app-loader.js'));
  const catalog=new JSDOM(read('homepage/index.html')).window.document;
- assert(catalog.querySelector('a[href="./compressionWorkbook/"]'));
+ assert(catalog.querySelector('a[href="./workbooks/"]'), 'digital editions remain reachable through the shared catalogue');
  assert(catalog.querySelector('a[href="../resources/programs/20260907Datenkompression/"]'));
 });

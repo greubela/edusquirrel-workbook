@@ -18,8 +18,8 @@ SqlCommandExercise(
 All SQL editor and renderer classes are in
 `modules/client/src/main/scala/it/evadid/homepage/webElements/sqlEditor`.
 The interaction and wire types live in shared core; the JDBC handler lives in
-the server. Changes to existing classes only add registrations and SQL language
-support.
+the server. The editor depends on the supplied answer/configuration; its renderer
+handles workbook synchronization and fullscreen placement.
 
 ## Test/design workbook sample
 

@@ -2,7 +2,7 @@
 
 ## Aktueller Stand
 
-Die Workbook-Version ist unter [plantWorkshopWorkbook](../homepage/plantWorkshopWorkbook/index.html) erreichbar. [CreatePlantworkshopWorkbook.scala](../modules/client/src/main/scala/it/evadid/homepage/workbook/content/CreatePlantworkshopWorkbook.scala) erzeugt sieben Sektionen mit persistierbaren Interaktionen. Die separate Alt-Anwendung bleibt unter [plantWorkshop](../homepage/plantWorkshop/index.html) aktiv; ihr Einstieg ist [PlantWorkshopApp.scala](../modules/client/src/main/scala/it/evadid/homepage/workbook/legacy/plantworkshop/PlantWorkshopApp.scala).
+Die Workbook-Version ist unter [plantWorkshopWorkbook](../homepage/plantWorkshopWorkbook/index.html) erreichbar. [CreatePlantworkshopWorkbook.scala](../modules/client/src/main/scala/it/evadid/homepage/workbook/content/CreatePlantworkshopWorkbook.scala) erzeugt sieben Sektionen mit persistierbaren Interaktionen. Die alte HTML-Einstiegsseite [plantWorkshop](../homepage/plantWorkshop/index.html) ist noch vorhanden, aber `PlantWorkshopApp.scala` wurde entfernt. Die aktuelle Startup-Logik registriert für `plantWorkshopApp` keine eigene Workbook-Factory; die vorhandene Seite belegt daher keine weiterhin aktive Alt-Anwendung.
 
 | Sektion | Inhalte der Workbook-Version |
 | --- | --- |
@@ -30,7 +30,7 @@ Die Workbook-Version nutzt die gemeinsamen Workbook-Styles. [plantWorkshop.css](
 
 ## Verbleibende Migration
 
-Die frühere Liste fehlender Sensor-, Pumpen-, Gesamtsystem- und Download-Interaktionen ist überholt: diese Elemente sind eingebaut. Vor einer Entfernung der Alt-Anwendung bleiben ein fachlicher und visueller Paritätsvergleich, die Prüfung der realen Hardware-Anleitungen und die Umstellung bzw. Weiterleitung des alten Einstiegspunkts notwendig. Die beiden Seiten werden derzeit separat durch `MainApp`/`HomepageStartupLogic` gestartet.
+Die frühere Liste fehlender Sensor-, Pumpen-, Gesamtsystem- und Download-Interaktionen ist überholt: diese Elemente sind eingebaut. Für die Bereinigung des alten Einstiegspunkts bleiben ein fachlicher und visueller Paritätsvergleich, die Prüfung der realen Hardware-Anleitungen und die Umstellung bzw. Weiterleitung des alten Einstiegspunkts notwendig. Die alte HTML-Seite benötigt eine geprüfte Weiterleitung bzw. Bereinigung; die neue Workbook-Version nutzt `MainApp`/`HomepageStartupLogic`.
 
 ## Prüfung
 

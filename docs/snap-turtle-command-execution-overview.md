@@ -1,6 +1,6 @@
 # Snap turtle-command execution service
 
-[SnapTurtleCommandExecution.scala](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/execution/SnapTurtleCommandExecution.scala) provides asynchronous execution of a saved `ProgrammingStateSnapXml` snapshot. It is implemented and unit tested, but the current `SnapCodeEditor` does not call it or expose a command-extraction method. Editor consumers must flush the live IDE before taking a snapshot if they integrate this service.
+[SnapTurtleCommandExecution.scala](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/execution/SnapTurtleCommandExecution.scala) provides asynchronous execution of a saved `ProgrammingStateSnapXml` snapshot. `SnapCodeEditor.getCurrentTurtleCommands()` is implemented: it calls `captureCurrentProject()`, flushes pending live-IDE edits, and delegates the resulting snapshot to the service. Callers that already hold a saved snapshot can use `commandsFor` directly. The service returns a future; consumers should show their own running/error state and preserve the captured program while awaiting it.
 
 ## Derivation and execution
 
@@ -24,4 +24,4 @@ sbt 'coreJVM/testOnly *SnapTurtleCatalogSpec *SnapTurtlePythonBridgeSpec'
 sbt 'coreJS/testOnly *SnapTurtleCatalogSpec *SnapTurtlePythonBridgeSpec'
 ```
 
-The client suite injects a runner/callback executor to check Python forwarding, namespace reset, decoding, ordering and failure propagation. It runs under Node without downloading or starting browser Pyodide. A real worker integration needs browser verification when this service is wired into an editor flow.
+The client suite injects a runner/callback executor to check Python forwarding, namespace reset, decoding, ordering and failure propagation. It runs under Node without downloading or starting browser Pyodide. These injected tests do not prove a live Pyodide download/execution. Verify the actual editor Run/Stop/close path separately in a browser. The generic Scala.js worker backend is also implemented, but is a different transport/runtime; see [execution clients](execution-clients.md).

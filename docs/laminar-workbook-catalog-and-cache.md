@@ -1,97 +1,69 @@
-# Laminar workbook catalogue and language-cache startup
+# Workbook catalogue and language-cache startup
 
-`homepage/workbooks/index.html` mounts the existing `landingPage` container.
-`HtmlWorkbookDomElement` renders `HtmlSelectWorkbookElement` whenever no workbook
-is selected, including before login. Selecting a native card navigates to its
-existing entry page; that page loads its own editor dependencies and restores the
-user session. The user menu offers “All digital workbooks” to return to selection.
-A selected workbook still requires the existing login or local-session flow.
-The classic catalogue is retained and links to the digital catalogue.
+`homepage/workbooks/index.html` mounts the `landingPage` container.
+`HtmlWorkbookDomElement` renders `HtmlSelectWorkbookElement` when no workbook is
+selected, including before login. A native card navigates to its registered entry
+page; the selected workbook uses the existing login/local-session flow. The user
+menu offers “All digital workbooks” to return to the catalogue.
 
-`DigitalWorkbookCatalog` lists eight native workbooks and five standalone digital
-offerings from the old landing page. It excludes PDF/ZIP-only materials, developer
-demos, editor previews and proposed workbooks. Native entries provide both the
-public entry-page link and the factory used by `HomepageStartupLogic`, avoiding
-a separate public/factory list. The compression workbook and standalone lab are
-labelled separately. External links open a new tab; same-origin links preserve
-normal browser navigation. Partial digital editions remain marked in development.
+`DigitalWorkbookCatalog` currently has nine native editions and five standalone
+or external digital offerings. It excludes PDF/ZIP-only materials and developer
+demos. Native entries provide both the page/container and workbook factory, so
+startup and the public list use the same registry. The native compression workbook
+and standalone lab are separate entries.
 
-The catalogue's DOM is entirely Laminar, with reactive English/German labels from
-`workbookSelection`. Artwork and card structure follow the classic page. CSS is
-scoped to the catalogue and uses shared design tokens; the privacy footer remains
-in document flow so it cannot cover a card. The catalogue entry loads no Turtle,
-JSXGraph or CodeMirror assets. Direct workbook pages retain their dependencies.
+The DOM is Laminar, with reactive German/English text from `workbookSelection`.
+CSS uses shared tokens and keeps the privacy footer in document flow. The catalogue
+loads no Turtle, JSXGraph or CodeMirror dependencies. Workbook editors request
+optional dependencies when needed; some direct pages retain bundled script tags.
+See [dependency-loading boundaries](workbook-interaction-architecture.md#dependencies-and-execution).
 
-## Findings about ParsedTriples and IndexedDB
+Native entries currently set `inProgress` in the catalogue registry. That label
+tracks edition/content review, not whether its editor or execution backend works.
+See [migration scope](digital-workbook-migration.md) for actual remaining content.
 
-The original `CONTINUE_AFTER_LOCAL_CACHE_SUCCESS` path did read a real persistent
-`EvaDidCacheDb/cache/tripleCache` record and could render before remote refresh
-completed. A baseline browser run with language refresh delayed five seconds
-rendered the cached workbook login first. The flag was not simply ignored.
+## Current IndexedDB lifecycle
 
-However, restoring the cache called the method that immediately wrote the whole
-cache again. The generic typed storage adapter also serialized each write twice.
-Triple serialization searched the full content-ID list for each entry; decoding
-indexed lists and remapped language tables repeatedly. These synchronous costs
-occurred on the browser thread, even though the IndexedDB API itself is async.
-The IndexedDB implementation read one key by scanning every cache record and
-left database connections open. Immediate-start strategy never actually completed
-immediately, and background refresh failure could try to fail an already fulfilled
-startup promise. Fresh and cached values for the same translation key were united
-as separate entries, making the selected value dependent on set iteration.
+`HomepageStartupLogic.initHomepage()` uses `CONTINUE_AFTER_LOCAL_CACHE_SUCCESS`.
+`ParsedTriples` is cached as `EvaDidCacheDb/cache/tripleCache`:
 
-The revised path:
+1. Read the record with one IndexedDB `get` and decode its established wire format.
+2. Install cached translations without rewriting them, then complete cached-startup
+   readiness. Remote refresh runs in a later browser task.
+3. Merge fresh values by content identifier/language, replacing stale values while
+   preserving unrelated entries/languages. Persist the merged result once.
+4. On unavailable/corrupt cache, load from sources. A later refresh failure cannot
+   undo successful cached startup. Immediate and full-load strategies keep their
+   separate semantics.
 
-1. Read `tripleCache` with one IndexedDB `get` and decode its unchanged wire format.
-2. Install cached translations without rewriting them.
-3. Complete cached startup readiness and schedule remote refresh in a later browser
-   task. Immediate and full-load strategies retain their distinct semantics.
-4. Replace old values by identifier/language when fresh data arrives, preserving
-   unrelated entries and languages. Persist the merged translations once.
-5. Report cache read/write errors and fall back to source loading; a later refresh
-   failure cannot undo successful cached startup.
+Triple encoding builds lookup indices once; decoding uses indexed vectors and
+precomputed language tables. Storage encodes once per write. IndexedDB connections
+close after transactions/version changes, and failed/aborted/blocked operations
+fail their futures. No schema migration is required by this cache path.
 
-Triple serialization now builds lookup indices once, and decoding uses indexed
-vectors and precomputed language tables. Storage serializes once per write.
-IndexedDB connections close after each transaction and on version change; aborted
-transactions and blocked/unavailable opens fail their futures instead of hanging.
-No cache/schema migration is needed. Startup also no longer serializes every
-workbook into both full debug formats for console output.
+The cache cannot remove bundle download/evaluation, deployment-env discovery or
+other resource initialization costs. Do not use an old local timing measurement
+as a performance guarantee. `app-loader.js` no longer waits for CodeMirror;
+`CodeMirrorEditorLoading` coordinates an editor-local asynchronous load in Scala.js.
 
-Another delay occurred **before** `initHomepage`: `app-loader.js` waited up to
-8 seconds for CodeMirror, and a never-resolving readiness promise could stall it
-indefinitely. `CodeMirrorEditor` already supports an available facade or textarea
-fallback. The loader now starts the app without waiting for the optional editor.
-The development client bundle is about 23 MB and the loader still uses a timestamp
-query parameter; bundle download/parse and deployment-env discovery are separate
-startup costs that the translation cache cannot remove. Production optimization
-and asset-versioning changes are outside this change.
+## Verification
 
-## Validation
+The catalogue browser test holds remote refresh on an unresolved gate and asserts
+that cached UI becomes usable first. It checks one keyed read, no cursor scan/no
+rewrite, an unrelated large record, deterministic translation replacement,
+responsive layout, language switching, navigation and answer persistence. It also
+covers corrupt cache and denied IndexedDB. External artwork is fulfilled locally,
+so these tests do not verify availability of third-party sites.
 
-The browser fixture blocks refresh on an unresolved gate and verifies that the
-cached catalogue renders first. It records exactly one `get`, no cursor scan and
-no cache rewrite, with an unrelated 1 MB record also present. Releasing the gate
-replaces the cached title with fresh text. It also checks responsive layout,
-language switching, navigation/login/answer persistence, corrupt cache and denied
-IndexedDB. External artwork is fulfilled with local test images; this does not
-verify live availability of the external sites.
-
-One local fixture run observed cold/warm catalogue times of 2.29/1.67 seconds with
-a 479,160-character cache; concurrent compilation produced substantially slower
-times. These are diagnostics, not a stable performance benchmark. The reliable
-assertion is that remote refresh remains pending when the cached UI becomes usable.
-
-```
+```sh
 sbt 'client/testOnly *LanguageCacheStartupSpec *DigitalWorkbookCatalogSpec *WorkbookContentStorageSpec'
 sbt 'coreJVM/testOnly *LanguageSerializationSpec *SyncDestinationRawSpec'
 sbt 'coreJS/testOnly *LanguageSerializationSpec *SyncDestinationRawSpec'
-sbt buildClientDev
-node tools/dev/app-loader.test.mjs
-npm run test:workbooks
-node tools/dev/workbook-stylesheets.test.mjs
-node tools/dev/assemble-pages.test.mjs
+sbt buildClientDev buildWorkerDev
+npm run test:static
+npm run test:workbooks -- workbook-catalog codemirror-loading
 ```
 
-`CHROMIUM_PATH` defaults to `/usr/bin/chromium`.
-`CATALOG_SCREENSHOT` optionally saves a visual-review screenshot.
+The browser runner uses Playwright Chromium unless `CHROMIUM_PATH` is set.
+`CATALOG_SCREENSHOT` optionally saves a review capture. The reliable startup
+assertion is independence from pending refresh, not a fixed millisecond threshold.

@@ -20,7 +20,6 @@ import it.evadid.workbook.abstractions.{WorkbookInteractionElement, WorkbookInte
 
 import scala.concurrent.*
 import scala.scalajs.js
-import scala.util.{Failure, Success}
 
 
 case class HomepageUsageControl(fullInfo: FullInfo) {
@@ -89,30 +88,32 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken]): Future[?] = {
-    val loginReq = LoginRequest(userMail, token)
+    val loginReq = LoginRequest(userMail.trim.toLowerCase, token)
     val backend = token.match {
       case Left(sat) => fullInfo.defaults.backendExecutor
       case Right(sig) => fullInfo.defaults.backendExecutorWithCredentials(Some(sig))
     }
     val loginRes: Future[ExecutionSuccess[LoginResponse]] = UserCommands.loginCommand.sendCommandTo(backend, loginReq)
-    loginRes.map {
+    loginRes.flatMap {
       case (exInfo: ExecutionSuccess[LoginResponse]) =>
         val loginResponse = exInfo.result
         val userInfoOp = loginResponse.toInfo(HomepageDefaults.defaultSerializerUserConfig)
         if (!loginResponse.userKnown) {
           removeUserFromLocalStorage()
-          throw SerializedException(s"Local Login failed: user ${userMail} is not known on the server!")
+          throw AuthenticationFailure("login/errorUnknownUser")
         } else if (!loginResponse.tokenValid) {
-          UserCommands.authMailCommand.sendCommandTo(backend, AuthMailRequest(userMail))
-          throw SerializedException(s"Local Login failed: invalid token for user ${userMail}, requested SingleAccessToken!")
+          throw AuthenticationFailure("login/errorInvalidToken")
         } else if (userInfoOp.isEmpty) {
           removeUserFromLocalStorage()
-          throw SerializedException(s"Login failed for unknown reasons (loginResponse: ${loginResponse}!")
+          throw AuthenticationFailure("login/errorLogin")
         } else {
           logger.logInfo(s"Successfully logged in for ${userInfoOp.get.user}")
           changeUser(userInfoOp)
         }
-    }.recover { err => logger.logExceptionWarn("login attempt failed", err) }
+    }.recoverWith { case err =>
+      logger.logExceptionWarn("login attempt failed", err)
+      Future.failed(err)
+    }
   }
 
   def removeUserFromLocalStorage(): Unit = {
@@ -149,27 +150,30 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def tryOnlineRegistration(name: String, email: String): Future[Unit] = {
-    if (!User.isEmail(email)) Future.failed(SerializedException(s"Invalid mail format: ${email}")) else {
+    val normalizedEmail = email.trim.toLowerCase
+    if (!User.isEmail(normalizedEmail)) Future.failed(AuthenticationFailure("login/errorEmail"))
+    else if (name.trim.isEmpty) Future.failed(AuthenticationFailure("login/errorName"))
+    else {
       val userConfig = UserConfig(HomepageDefaults.useDefaultOnlineSyncLocations, true)
-      val user = AllUserInfo.createNewUser(name, email, userConfig)
+      val user = AllUserInfo.createNewUser(name.trim, normalizedEmail, userConfig)
       val configJson = HomepageDefaults.defaultSerializerUserConfig.serialize(user.config)
-      val createAccFuture: Future[ExecutionSuccess[UserCommands.CreateAccountResponse]] = UserCommands.createAccountCommand.sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user.user, configJson))
-      createAccFuture.transform {
-        case Success(exInfo) =>
+      UserCommands.createAccountCommand
+        .sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user.user, configJson))
+        .flatMap { exInfo =>
           val result = exInfo.result
-          if (!result.accountCreated || result.token.isEmpty) {
-            logger.logWarn(s"registration attempt ignored (account created: ${result.accountCreated} / token: ${result.token}")
-            Failure(SerializedException("could not create account, see logs!"))
-          }
-          else {
+          if (!result.accountCreated) {
+            logger.logWarn("registration refused: account already exists")
+            Future.failed(AuthenticationFailure("login/errorAccountExists"))
+          } else if (result.token.isEmpty) {
+            Future.failed(AuthenticationFailure("login/errorRegistration"))
+          } else {
             val aui = AllUserInfo(result.token.get.info.user, result.token, user.config)
-            changeUser(Some(aui))
-            Success(())
+            changeUser(Some(aui)).map(_ => ())
           }
-        case Failure(err) =>
-          logger.logExceptionWarn(s"registration attempt ignored", err)
-          Failure(err)
-      }
+        }.recoverWith { case err =>
+          logger.logExceptionWarn("registration attempt failed", err)
+          Future.failed(err)
+        }
     }
   }
 

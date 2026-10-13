@@ -17,6 +17,9 @@
     resolveReady = res;
     rejectReady = rej;
   });
+  // Background failures remain visible to consumers without an unhandled
+  // rejection when no preview/editor has subscribed yet.
+  window.TurtleStitchPoCReady.catch(() => {});
 
   // Stub API exposed immediately (never undefined)
   // Calls will wait for TurtleStitchPoCReady and then dispatch to real implementations.
@@ -82,25 +85,44 @@
     "turtlestitchsrc/embroider.js"
   ];
 
-  let scriptsLoaded = false;
+  let scriptsLoading;
   let serializerCompatibilityPatchApplied = false;
+
+  function idleTask(timeout = 2000, fallbackDelay = 250) {
+    return new Promise(resolve => {
+      if (typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(resolve, { timeout });
+      } else {
+        setTimeout(resolve, fallbackDelay);
+      }
+    });
+  }
 
   function injectScript(src) {
     return new Promise((resolve, reject) => {
       const s = document.createElement("script");
       s.src = BASE_PROG_DIR + src;
       s.async = false;
+      s.setAttribute("fetchpriority", "low");
       s.onload = () => resolve();
       s.onerror = () => reject(new Error("Failed to load " + src));
       document.head.appendChild(s);
     });
   }
 
-  async function ensureScriptsLoaded() {
-    if (scriptsLoaded) return;
-    for (const p of SNAP_SCRIPT_ORDER) await injectScript(p);
-    applySerializerCompatibilityPatch();
-    scriptsLoaded = true;
+  function ensureScriptsLoaded() {
+    if (!scriptsLoading) {
+      scriptsLoading = (async () => {
+        for (const p of SNAP_SCRIPT_ORDER) {
+          // Yield between dependencies as well as before booting. Preserve
+          // Snap's required execution order while letting the app stay responsive.
+          await idleTask(200, 0);
+          await injectScript(p);
+        }
+        applySerializerCompatibilityPatch();
+      })();
+    }
+    return scriptsLoading;
   }
 
   function applySerializerCompatibilityPatch() {
@@ -738,9 +760,11 @@
     destroyHiddenPreview
   };
 
-  // Boot and mark ready
-  (async () => {
+  // Warm the runtime at page startup, independently of editor creation.
+  // The API/readiness promise already exists while this low-priority work waits.
+  async function preheat() {
     try {
+      await idleTask();
       await ensureScriptsLoaded();
       api._impl = impl;
       resolveReady();
@@ -750,5 +774,10 @@
       rejectReady(e);
       err("[ERROR] API boot failed:", e);
     }
-  })();
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", preheat, { once: true });
+  } else {
+    preheat();
+  }
 })();
