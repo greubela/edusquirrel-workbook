@@ -31,16 +31,43 @@ WorkerCommands.parseSnapXml.sendCommandTo(
 )
 ```
 
-Initial commands are `worker.health`, `worker.parseSnapXml` and
-`worker.calculateQrCode`. XML parsing uses the existing dependency-free Snap
+Commands are `worker.health`, `worker.parseSnapXml`, `worker.calculateQrCode`
+and `worker.runPython`. XML parsing uses the existing dependency-free Snap
 parser and its documented Snap XML subset, not a general XML parser. QR execution
 returns resolved metadata and the full module matrix after mask selection.
-Existing Pyodide workers keep their separate initialization/protocol; this change
-does not move Python runtimes or DOM-dependent tasks into the generic backend.
+Python runs lazily load Pyodide 0.29.3 inside the worker. Requests use JSON values
+for context and return a JSON-compatible final expression, stdout, stderr and
+recorded callback operations. Callback modules declare method names, not live
+JavaScript functions. Explicit packages and packages discovered from imports are
+loaded before execution. Python jobs queue within each worker, so asynchronous
+runs cannot mix their globals, callbacks or captured output. Other command types
+can still execute while Python awaits loading or asynchronous operations.
+
+```scala
+WorkerCommands.runPython.sendCommandTo(
+  fullInfo.defaults.workerBackendExecutor,
+  WorkerCommands.RunPythonRequest("print('Hello')\n6 * 7")
+).map(_.result) // value = 42, stdout = "Hello\n"
+```
+
+`resetGlobals` defaults to true and creates a fresh execution namespace without
+reloading the interpreter. False retains variables between jobs in the same
+worker. Imported modules remain interpreter state; this is not a sandbox or a
+fresh Python process. Python errors use the command failure envelope, with
+captured output retained in its logging fields. A subsequent job can still run.
+Closing the client or its request timeout terminates the worker, including an
+infinite Python loop. Use separate clients/workers to run Python jobs in parallel.
+
+The editor's `PyodideTurtleCommandRunner` now uses this command protocol in a
+dedicated worker, warms the interpreter during its startup deadline, and replays
+the returned turtle callbacks. The legacy Pyodide worker APIs remain available
+for their existing callers. DOM-dependent tasks stay on the client.
 To add a job, declare its typed factory in `WorkerCommands`, register its handler
 in `WorkerCommandHandler`, and include its name in `supportedCommands`.
 
 Tests cover request correlation, failure cleanup, timeout behavior, unsupported
 commands, typed result decoding, worker dispatch, and actual browser workers.
 `tools/dev/worker-execution.browser.test.mjs` checks the built worker and verifies
-that the GUI event loop keeps running during a version-40 QR calculation.
+that the GUI event loop keeps running during a version-40 QR calculation and
+real Pyodide execution. The browser fixture serves the pinned Pyodide npm package
+locally, so these checks need no external CDN access.
