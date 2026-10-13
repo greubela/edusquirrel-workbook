@@ -22,26 +22,30 @@ case class CodeMirrorEditor(
 
   import CodeMirrorEditor.*
 
-  private var handle: Option[CodeMirrorHandle] = None
-  private var activeMount: Option[AnyRef] = None
+  private class EditorMount(val container: dom.Element) {
+    var handle: Option[CodeMirrorHandle] = None
+  }
+  private var mounts = List.empty[EditorMount]
   private var pendingDiagnostics = Option.empty[(String, Seq[Diagnostic])]
-  private var updatingFromEditor: Boolean = false
-  private val useTextareaFallback: Var[Boolean] = Var(true)
   private val flowchart = Option.when(editorConfig.showFlowchartGutter && language == Python)(CodeMirrorEditorFlowchart.chartForDoc)
 
-  def focus(): Unit = handle.foreach(_.focus())
+  private def liveHandles: List[CodeMirrorHandle] =
+    mounts.filter(_.container.isConnected).flatMap(_.handle)
 
-  def currentDoc: Option[String] = handle.map(_.getDoc())
+  def focus(): Unit = liveHandles.headOption.foreach(_.focus())
+
+  def currentDoc: Option[String] = liveHandles.headOption.map(_.getDoc())
 
   def setDiagnostics(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Unit =
     pendingDiagnostics = Some(content.now() -> diagnostics)
-    handle.foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs) *)))
+    liveHandles.foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs) *)))
 
   def clearDiagnostics(): Unit = setDiagnostics(Nil)
 
   override def getDomElement(): L.Element = {
-    var mountedToken: Option[AnyRef] = None
-    var mountedHandle: Option[CodeMirrorHandle] = None
+    var mounted = Option.empty[EditorMount]
+    var updatingFromEditor = false
+    val useTextareaFallback = Var(true)
     div(
       cls := ("code-editor code-mirror-editor" + (if (flowchart.nonEmpty) " code-mirror-editor-flowchart" else "")),
       styleAttr <-- editorFont.map(font =>
@@ -52,19 +56,18 @@ case class CodeMirrorEditor(
         hidden <-- useTextareaFallback.signal.map(show => !show),
         value <-- content.signal,
         onInput.mapToValue --> { value =>
-          if mountedToken.exists(activeMount.contains) then
+          if mounted.exists(_.container.isConnected) then
             content.writer.onNext(value)
             onUserInput(value)
         }
       ),
       onMountCallback { ctx =>
-        val token = new Object
-        mountedToken = Some(token)
-        activeMount = Some(token)
-        handle = None
+        val mount = new EditorMount(ctx.thisNode.ref)
+        mounted = Some(mount)
+        mounts = mount :: mounts
         useTextareaFallback.set(true)
         def isActive: Boolean =
-          mountedToken.contains(token) && activeMount.contains(token) && ctx.thisNode.ref.isConnected
+          mounted.contains(mount) && mount.container.isConnected
         waitForFacade {
           case Some(cmFacade) if isActive =>
             val container = ctx.thisNode.ref
@@ -92,8 +95,7 @@ case class CodeMirrorEditor(
 
             if !isActive then createdHandle.destroy()
             else {
-              mountedHandle = Some(createdHandle)
-              handle = Some(createdHandle)
+              mount.handle = Some(createdHandle)
               useTextareaFallback.set(false)
               pendingDiagnostics.filter(_._1 == initialValue).foreach { case (_, diagnostics) =>
                 createdHandle.setDiagnostics(js.Array(diagnostics.map(_.toJs) *))
@@ -115,14 +117,14 @@ case class CodeMirrorEditor(
         }
       },
       onUnmountCallback { _ =>
-        val wasActive = mountedToken.exists(activeMount.contains)
-        mountedToken = None
-        if wasActive then
-          activeMount = None
-          handle = None
-          pendingDiagnostics = None
-        mountedHandle.foreach(_.destroy())
-        mountedHandle = None
+        val previous = mounted
+        mounted = None
+        previous.foreach { mount =>
+          mounts = mounts.filterNot(_ == mount)
+          mount.handle.foreach(_.destroy())
+          mount.handle = None
+        }
+        if mounts.isEmpty then pendingDiagnostics = None
       }
     )
   }

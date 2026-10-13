@@ -8,7 +8,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 
-async function fixture(browser, fail = false, openEditor = true, forceTimer = false) {
+async function fixture(browser, fail = false, openEditor = true, forceTimer = false, prefix = '') {
   const page = await browser.newPage();
   if (forceTimer) await page.addInitScript(() => {
     Object.defineProperty(window, 'requestIdleCallback', {value:undefined, configurable:true});
@@ -20,10 +20,11 @@ async function fixture(browser, fail = false, openEditor = true, forceTimer = fa
   let requests = 0;
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
-    if (url.origin !== origin) return route.abort();
-    let file = path.resolve(root, '.' + decodeURIComponent(url.pathname) + (url.pathname.endsWith('/') ? 'index.html' : ''));
+    if (url.origin !== origin || !url.pathname.startsWith(prefix + '/')) return route.abort();
+    const pathname = url.pathname.slice(prefix.length);
+    let file = path.resolve(root, '.' + decodeURIComponent(pathname) + (pathname.endsWith('/') ? 'index.html' : ''));
     if (!file.startsWith(root + path.sep)) return route.abort();
-    if (url.pathname === '/homepage/js/CodeMirrorLoader.js') {
+    if (pathname === '/homepage/js/CodeMirrorLoader.js') {
       requests++;
       await gate;
       if (fail) return route.fulfill({status: 503, body: 'Unavailable'});
@@ -32,7 +33,7 @@ async function fixture(browser, fail = false, openEditor = true, forceTimer = fa
     }
     try {
       let body = await fs.readFile(file);
-      if (url.pathname === '/homepage/js/CodeMirrorLoader.js') body = Buffer.from(body.toString() + `
+      if (pathname === '/homepage/js/CodeMirrorLoader.js') body = Buffer.from(body.toString() + `
         window.editorCreations = 0;
         const create = window.EduSquirrelCodeMirror.createEditor;
         window.EduSquirrelCodeMirror.createEditor = config => {
@@ -42,7 +43,7 @@ async function fixture(browser, fail = false, openEditor = true, forceTimer = fa
       await route.fulfill({body, contentType: mime[path.extname(file)] || 'application/octet-stream'});
     } catch { await route.fulfill({status:404,body:'Not found'}); }
   });
-  await page.goto(origin + '/homepage/workbookDesign/index.html', {waitUntil:'domcontentloaded'});
+  await page.goto(origin + prefix + '/homepage/workbookDesign/index.html', {waitUntil:'domcontentloaded'});
   await page.locator('.section-register .login-area').nth(1).locator('button').click();
   await page.locator('.section-block').first().click();
   await page.waitForFunction(() => document.querySelector('script[src$="CodeMirrorLoader.js"]'));
@@ -111,6 +112,61 @@ test('startup warms CodeMirror without idle callbacks or editor creation, and th
     await page.locator('dialog[open] .cm-editor').waitFor();
     assert.equal(requests(), 1, 'opening the first text editor does not request another script');
     assert.equal(await page.evaluate(() => window.editorCreations), 1);
+    assert.deepEqual(errors, []);
+  } finally {await browser.close();}
+});
+
+test('returning to Java restores CodeMirror and preserves fallback edits under a deployment prefix', async () => {
+  const browser = await chromium.launch({executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(), chromiumSandbox: true});
+  try {
+    const {page, release, errors} = await fixture(browser, false, true, false, '/edusquirrel-workbook');
+    const dialog = page.locator('dialog[open]');
+    await dialog.getByRole('button', {name: 'Java', exact: true}).click();
+    const fullSource = dialog.getByRole('button', {name: 'Full source', exact: true});
+    if (await fullSource.getAttribute('aria-pressed') !== 'true') await fullSource.click();
+    const source = '// Grüße 🙂\npublic class Main {\n\tpublic static void main(String[] args) {\n\t\tTurtle.forward(25);\n\t}\n}\n\t ';
+    await dialog.locator('.code-mirror-editor__fallback').fill(source);
+    release();
+    await dialog.locator('.cm-content').waitFor();
+    await page.evaluate(() => {
+      const facade = EduSquirrelCodeMirror;
+      const create = facade.createEditor;
+      globalThis.remountEditors = [];
+      facade.createEditor = config => {
+        const handle = create(config);
+        const record = {parent: config.parent, handle, onDocChange: config.onDocChange, destroyed: 0};
+        remountEditors.push(record);
+        const destroy = handle.destroy;
+        handle.destroy = () => {record.destroyed++; destroy.call(handle);};
+        return handle;
+      };
+    });
+    for (let index = 0; index < 3; index++) {
+      await dialog.getByRole('button', {name: 'Python', exact: true}).click();
+      await dialog.locator('.cm-content').waitFor();
+      await dialog.getByRole('button', {name: 'Java', exact: true}).click();
+      await dialog.locator('.cm-content').waitFor();
+      assert.equal(await dialog.locator('.cm-editor').count(), 1);
+      await page.evaluate(() => {
+        for (const record of remountEditors.filter(record => record.destroyed > 0))
+          record.onDocChange('stale editor input');
+      });
+      assert.equal(await page.evaluate(() => remountEditors.findLast(record => record.parent.isConnected).handle.getDoc()), source);
+    }
+    await page.locator('.fullscreen-close-button').click();
+    await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).first().click();
+    await dialog.locator('.cm-content').waitFor();
+    assert.equal(await page.evaluate(() => remountEditors.findLast(record => record.parent.isConnected).handle.getDoc()), source);
+    await page.locator('.fullscreen-close-button').click();
+    await dialog.waitFor({state: 'hidden'});
+    assert.equal(await page.evaluate(() => remountEditors.filter(record => record.parent.isConnected && record.destroyed === 0).length), 1,
+      'closing retains the current editor');
+    await page.evaluate(() => {globalThis.retainedRemountEditors = [...remountEditors];});
+    await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
+    await dialog.locator('.cm-content').waitFor();
+    const lifetimes = await page.evaluate(() => retainedRemountEditors.map(record =>
+      ({destroyed: record.destroyed, connected: record.parent.isConnected})));
+    assert.deepEqual(lifetimes, lifetimes.map(() => ({destroyed: 1, connected: false})), 'each created handle is destroyed once');
     assert.deepEqual(errors, []);
   } finally {await browser.close();}
 });
