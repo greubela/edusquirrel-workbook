@@ -10,9 +10,11 @@ Snap edits publish project XML as `ProgrammingStateSnapXml`. Regenerated preview
 
 ## Runtime readiness and preview
 
-`fullturtle.js` loads Snap's scripts sequentially and exposes `TurtleStitchPoCReady`. `SnapPreviewEditor` and `SnapCodeEditor` await the implementation's `whenReady` hook before creating a world or rendering, so cached app startup need not assume `IDE_Morph` is already defined. Mount generations discard delayed callbacks after a state replacement, unmount or fullscreen close/reopen. A loading or rendering failure is shown as an accessible alert.
+`fullturtle.js` preheats Snap automatically at page startup, independently of editor creation, and exposes `TurtleStitchPoCReady` immediately. It starts during idle time after DOM readiness (with a two-second deadline, or a 250 ms timer fallback), then loads the 22 dependencies sequentially with low fetch priority and yields between them. The shared loading promise prevents duplicate dependency loads. Warmup loads code without creating a Morphic world or editor; failures are stored in `TurtleStitchPoCError` and reject readiness without an unhandled background rejection. `SnapPreviewEditor` and `SnapCodeEditor` await the implementation's `whenReady` hook before creating a world or rendering, so cached app startup need not assume `IDE_Morph` is already defined. Mount generations discard delayed callbacks after a state replacement, unmount or fullscreen close/reopen. A loading or rendering failure is shown as an accessible alert.
 
 The static preview exports `ScriptsMorph.scriptsPicture()` from a temporary IDE; the fullscreen editor retains its live IDE. Preview canvas bitmap dimensions come from the exported script image, and its presentation/aspect ratio comes from `homepage/css/editors.css`, without inline width/height styles. Preview rendering preserves the shared Morphic keyboard contents and selection. Empty-canvas diagnostics distinguish actual primitive/custom block instances from the empty `<blocks>` containers present in every project.
+
+CodeMirror's shared module loader is also warmed immediately after the app shell mounts. Startup schedules this once with `requestIdleCallback` (a two-second deadline), or a delayed timer where idle callbacks are unavailable. The warmup request carries a low fetch-priority hint and never creates an editor or delays startup. Editors reuse the pending/completed load; a failed warmup leaves the editable fallback available and permits a later retry.
 
 ## Live IDE synchronization
 

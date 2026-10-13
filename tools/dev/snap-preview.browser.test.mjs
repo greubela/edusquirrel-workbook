@@ -29,6 +29,9 @@ test('Snap previews and editor wait for the runtime and ignore closed mounts', a
       catch {await route.fulfill({status:404,body:'Not found'});}
     });
     await page.goto(origin + '/homepage/workbookDesign/index.html', {waitUntil:'domcontentloaded'});
+    await page.waitForFunction(() => document.querySelector('script[src$="adjusted/adjustedMorphic.js"]'));
+    assert.equal(await page.locator('dialog[open]').count(), 0, 'Snap loading starts before an editor opens');
+    assert.equal(await page.locator('script[src$="adjusted/adjustedMorphic.js"]').getAttribute('fetchpriority'), 'low');
     await page.locator('.section-register .login-area').nth(1).locator('button').click({timeout:60000});
     await page.locator('.section-block').first().click();
     const previews = page.locator('.be-program-snap-renderer__canvas:not(dialog *)');
@@ -60,6 +63,46 @@ test('Snap previews and editor wait for the runtime and ignore closed mounts', a
     await page.locator('.fullscreen-close-button').click();
     await open.click();
     await page.waitForFunction(hasBlocks, await editor.elementHandle());
+    const sources = await page.locator('script[src*="20260212TurtleStitch/"]').evaluateAll(scripts =>
+      scripts.filter(script => !script.src.endsWith('/fullturtle.js')).map(script => ({src:script.src,priority:script.getAttribute('fetchpriority')})));
+    assert.equal(sources.length, 22);
+    assert.equal(new Set(sources.map(script => script.src)).size, 22, 'editor reopening does not load the runtime again');
+    assert(sources.every(script => script.priority === 'low'));
+    assert.deepEqual(errors, []);
+  } finally {await browser.close();}
+});
+
+
+test('Snap finishes startup preheating without creating a Morphic world or opening an editor', async () => {
+  const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
+  try {
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.route('**/*', async route => {
+      const url = new URL(route.request().url());
+      if (url.origin !== origin) return route.abort();
+      let file = path.resolve(root, '.' + decodeURIComponent(url.pathname));
+      if (!file.startsWith(root + path.sep)) return route.abort();
+      if (url.pathname === '/homepage/js/CodeMirrorLoader.js') file = process.env.CODEMIRROR_TEST_BUNDLE;
+      try {
+        let body = await fs.readFile(file);
+        if (url.pathname.endsWith('/adjusted/adjustedMorphic.js')) body = Buffer.from(body.toString() + `
+          (() => {
+            window.snapWorldCreations = 0;
+            const init = WorldMorph.prototype.init;
+            WorldMorph.prototype.init = function(...args) {
+              window.snapWorldCreations++;
+              return init.apply(this,args);
+            };
+          })();`);
+        await route.fulfill({body,contentType:mime[path.extname(file)] || 'application/octet-stream'});
+      } catch {await route.fulfill({status:404,body:'Not found'});}
+    });
+    await page.goto(origin + '/homepage/workbookDesign/index.html', {waitUntil:'domcontentloaded'});
+    await page.waitForFunction(() => !!(window.TurtleStitchPoC?._impl));
+    assert.equal(await page.evaluate(() => window.snapWorldCreations), 0, 'warmup loads code without allocating GUI sessions');
+    assert.equal(await page.locator('dialog[open], .be-program-snap-renderer__canvas').count(), 0);
     assert.deepEqual(errors, []);
   } finally {await browser.close();}
 });

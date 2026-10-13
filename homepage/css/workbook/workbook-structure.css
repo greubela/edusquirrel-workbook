@@ -1230,3 +1230,16 @@ textarea.workbook-interaction {
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* Feedback from asynchronous account actions. */
+.login-status {
+    color: var(--color-text-secondary);
+}
+
+.login-status:empty {
+    display: none;
+}
+
+.login-status-error {
+    color: var(--color-accent-error);
+}

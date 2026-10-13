@@ -28,6 +28,8 @@ Keep temporary workbook extracts and development captures under `tmp/`, grouped 
 
 The [worker execution backend](docs/worker-execution-backend.md) documents background command execution, the shared transport protocol and the worker client in `HomepageDefaults`.
 
+The [authentication guide](docs/authentication.md) describes registration, email/token login, failure diagnosis and regression checks.
+
 ### Choosing a location for new content
 
 | Content | Location |

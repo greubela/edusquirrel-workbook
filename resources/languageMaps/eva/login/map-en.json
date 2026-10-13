@@ -20,6 +20,18 @@
   "localBenefit3": "✗Loose Progress not Downloaded",
   "privacyFooterNoLogin": "Privacy Information: You are currently not logged in. There is no information stored about you or your usage. This website does not use any trackers or third-party cookies. Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
   "privacyFooterLocalLogin": "Privacy Information: You are currently using a local account. All interactions are stored exclusively within your browser. This website does not use any trackers or third-party cookies. Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
-  "privacyFooterOnlineLogin": "Privacy Information: You are currently using an online account. Your interactions are stored in _ locations _. If you do not want this, use a local account instead. This website does not use any trackers or third-party cookies. Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)"
-
+  "privacyFooterOnlineLogin": "Privacy Information: You are currently using an online account. Your interactions are stored in _ locations _. If you do not want this, use a local account instead. This website does not use any trackers or third-party cookies. Contact: Chair Computer Science and Society, Humboldt-Universität zu Berlin (Unter den Linden 6, 10117 Berlin, Germany)",
+  "statusPending": "Please wait…",
+  "statusRegistered": "Registration completed.",
+  "statusLoggedIn": "Login completed.",
+  "statusTokenSent": "A login token has been sent. Check your inbox and spam folder.",
+  "errorEmail": "Please enter a valid email address.",
+  "errorName": "Please enter your name.",
+  "errorAccountExists": "This account already exists. Request a login token below to continue.",
+  "errorRegistration": "Registration failed. Please try again later.",
+  "errorUnknownUser": "No account was found for this email address. Please register first.",
+  "errorInvalidToken": "This token is invalid or expired. Request a new login token.",
+  "errorTokenRequired": "Please paste the token from your email.",
+  "errorTokenRequest": "The login token could not be sent. Check your email address and try again.",
+  "errorLogin": "Login failed. Please try again later."
 }
