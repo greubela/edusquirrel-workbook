@@ -22,14 +22,11 @@ case class HtmlLoginElement() extends HtmlAppElement {
 
   private val loginSucceededPromise: Promise[AllUserInfo] = Promise()
 
-  private val nameVar: Var[String] = {
-    val default = fullInfo.usageControl.tryParsingExistingUser().map(_.user.name).getOrElse("")
-    Var[String](default)
-  }
-  private val emailVar: Var[String] = {
-    val default = fullInfo.usageControl.tryParsingExistingUser().map(_.user.mail).getOrElse("")
-    Var[String](default)
-  }
+  private val savedUser = fullInfo.usageControl.tryParsingExistingUser().map(_.user)
+  private val identity = new LoginIdentityState(
+    savedUser.map(_.name).getOrElse(""), savedUser.map(_.mail).getOrElse(""))
+  private val nameVar = identity.name
+  private val emailVar = identity.email
 
   def loginSucceededFuture: Future[AllUserInfo] = loginSucceededPromise.future
 
@@ -102,7 +99,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
         li(text <-- laminarHelper.plaintextStringSignal("login/onlineBenefit3")),
       ),
 
-      createTextInput(nameVar, "login/insertNamePlaceholder"),
+      createTextInput(nameVar, "login/insertNamePlaceholder", identity.changeName),
       createEmailInput(emailVar, "login/enterMail"),
       actionButton("login/buttonRequestRegistration", action) {
         action.run(fullInfo.usageControl.tryOnlineRegistration(nameVar.now(), emailVar.now()),
@@ -143,7 +140,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
     )
   }
 
-  private def createTextInput(underlyingVar: Var[String], labelId: String): Element = {
+  private def createTextInput(underlyingVar: Var[String], labelId: String, updateValue: String => Unit): Element = {
     input(
       cls := "login-name-input",
       label(text <-- laminarHelper.plaintextStringSignal(labelId)),
@@ -151,7 +148,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
       typ := "text",
       controlled(
         value <-- underlyingVar.signal,
-        onInput.mapToValue --> underlyingVar.writer
+        onInput.mapToValue --> updateValue
       )
     )
   }
@@ -166,7 +163,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
       typ := "email",
       controlled(
         value <-- underlyingVar.signal,
-        onInput.mapToValue --> underlyingVar.writer
+        onInput.mapToValue --> identity.changeEmail
       )
     )
   }
@@ -175,7 +172,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
   private val onlineContinueBody: List[Element] = {
 
     val tokenVar = Var[String]("")
-    val tokenInput = createTextInput(tokenVar, "login/insertTokenPlaceholder")
+    val tokenInput = createTextInput(tokenVar, "login/insertTokenPlaceholder", tokenVar.set)
 
     val action = new LoginActionState
 

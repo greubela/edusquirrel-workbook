@@ -65,6 +65,9 @@ test('login preserves email, explains duplicate registration and observes failed
     await page.waitForFunction(() => document.querySelector('.section-register .login-status-error'));
     assert.equal(requests.length, 0, 'blank email is rejected before a backend request');
     await registration.locator('.login-name-input').fill('First Last');
+    assert.equal(await registration.locator('.login-email-input').inputValue(), 'first.last@student.hu-berlin.de');
+    await registration.locator('.login-name-input').fill('Second Name');
+    assert.equal(await registration.locator('.login-email-input').inputValue(), 'second.name@student.hu-berlin.de');
     await registration.locator('.login-email-input').fill('First.Last@example.org');
     assert.equal(await registration.locator('.login-email-input').inputValue(), 'First.Last@example.org');
     await registration.locator('.login-name-input').fill('Different Name');
