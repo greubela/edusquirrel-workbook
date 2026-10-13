@@ -2,7 +2,7 @@
 
 The login page uses `HomepageUsageControl` to submit `UserCommands` to the backend execution client. `SqlUserCommands` handles registration and login on the server. Registration creates a new account and returns a signed session token; an existing email address or user ID is deliberately rejected. Existing users should request a login token and use the email-and-token login form instead of registering again.
 
-Email and name fields are independent. New visitors start with empty fields, and saved account details are preserved. Requests trim and normalize email addresses; pasted login tokens are trimmed. Failed login attempts do not automatically send mail: only the explicit token-request button sends an authentication email.
+Name edits suggest a student email address until the user enters an address. Subsequent name edits update the suggestion but preserve manually entered or restored addresses. Clearing an entered address re-enables suggestions on the next name edit. Email edits never rewrite the name. New visitors start with empty fields, and saved account details are preserved. Requests trim and normalize email addresses; pasted login tokens are trimmed. Failed login attempts do not automatically send mail: only the explicit token-request button sends an authentication email.
 
 `LoginActionState` disables duplicate submissions while a request is pending and displays translated feedback for validation, duplicate accounts, invalid/expired tokens and backend failures. Registration and login futures wait for the account state transition and propagate failures to the form. Presentation belongs in `homepage/css/workbook/workbook-structure.css`; messages belong in both login language maps.
 
