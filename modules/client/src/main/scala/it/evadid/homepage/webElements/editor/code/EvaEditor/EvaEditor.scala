@@ -30,6 +30,21 @@ object EvaEditor {
     case _: ProgrammingStatePythonString => Tab.Python
     case _: ProgrammingStateJavaString => Tab.Java
     case _ => Tab.Snap
+
+  private[code] final class ConversionCache(convert: (ProgrammingState, Tab) => ProgrammingState) {
+    private var cached = Option.empty[(ProgrammingState, Map[Tab, Try[ProgrammingState]])]
+
+    def apply(source: ProgrammingState, tab: Tab): Try[ProgrammingState] = {
+      val results = cached.filter(_._1 == source).map(_._2).getOrElse(Map.empty)
+      results.get(tab) match {
+        case Some(result) => result
+        case None =>
+          val result = Try(convert(source, tab))
+          cached = Some(source -> (results + (tab -> result)))
+          result
+      }
+    }
+  }
 }
 
 abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
@@ -59,7 +74,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   )
   private lazy val snapState = Var[ProgrammingState](state.now() match
     case snap: ProgrammingStateSnapXml => snap
-    case snap: ProgrammingStateSnapScalaModel => snap.toSnapXml
+    case snap: ProgrammingStateSnapScalaModel => conversions(snap, Tab.Snap).get
     case _ => ProgrammingStateSnapXml.empty
   )
   private lazy val pythonState = Var[ProgrammingState](state.now() match
@@ -99,12 +114,14 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     case Tab.Python => state.toPython
     case Tab.Java => state.toJava
 
+  private lazy val conversions = new EvaEditor.ConversionCache(convert)
+
   private def show(next: ProgrammingState): Unit = next match
     case snap: ProgrammingStateSnapXml => snapState.set(snap)
-    case snap: ProgrammingStateSnapScalaModel => snapState.set(snap.toSnapXml)
+    case snap: ProgrammingStateSnapScalaModel => snapState.set(conversions(snap, Tab.Snap).get)
     case python: ProgrammingStatePythonString => pythonState.set(python)
     case java: ProgrammingStateJavaString => javaState.set(java)
-    case expression: ProgrammingStateBeExpression => snapState.set(expression.toSnapXml)
+    case expression: ProgrammingStateBeExpression => snapState.set(conversions(expression, Tab.Snap).get)
 
   private def receive(next: ProgrammingState): Unit = {
     if enabledTabs.isEmpty then {
@@ -114,7 +131,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     }
     val matchingTab = EvaEditor.tabFor(next)
     val nextTab = if enabledTabs.contains(matchingTab) then matchingTab else activeTab.now()
-    Try(show(if nextTab == matchingTab then next else convert(next, nextTab))) match
+    Try(show(if nextTab == matchingTab then next else conversions(next, nextTab).get)) match
       case Success(_) =>
         if activeTab.now() != nextTab then activeTab.set(nextTab)
         setViewAvailable(true)
@@ -192,7 +209,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     if !enabledTabs.contains(tab) || activeTab.now() == tab then return
     val closedSnap = mounted && activeTab.now() == Tab.Snap
     if closedSnap then closeActiveView()
-    Try(convert(state.now(), tab)) match
+    Try(state.now()).flatMap(source => conversions(source, tab)) match
       case Success(next) =>
         cancelExecution()
         if mounted && !closedSnap then closeActiveView()
@@ -219,7 +236,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
         svg.path(svg.d := "M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6"))
       else span(tab.label),
       onClick --> (_ => select(tab)),
-      disabled <-- state.signal.map(source => EvaEditor.tabFor(source) != tab && Try(convert(source, tab)).isFailure)
+      disabled <-- state.signal.map(source => EvaEditor.tabFor(source) != tab && conversions(source, tab).isFailure)
     )
 
   private lazy val domElement: Element =

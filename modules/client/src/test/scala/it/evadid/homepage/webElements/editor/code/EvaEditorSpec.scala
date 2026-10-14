@@ -6,6 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import com.raquo.airstream.state.Var
+import com.raquo.airstream.core.Observer
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import com.raquo.airstream.ownership.ManualOwner
@@ -36,6 +37,103 @@ import scala.scalajs.js
 
 class EvaEditorSpec extends FunSuite {
   private val testingConfig = EvaEditorConfig(snapConfig = SnapCodeEditorConfig.Testing)
+
+  private class ConversionProbe {
+    var calls = Vector.empty[(ProgrammingState, EvaEditor.Tab)]
+    val cache = new EvaEditor.ConversionCache((source, tab) => {
+      calls :+= source -> tab
+      tab match {
+        case EvaEditor.Tab.Snap => source.toSnapXml
+        case EvaEditor.Tab.Python => source.toPython
+        case EvaEditor.Tab.Java => source.toJava
+      }
+    })
+  }
+
+  test("tab guards and selections reuse one conversion per source and target") {
+    val probe = new ConversionProbe
+    val source = javaSource()
+    val python = probe.cache(source, EvaEditor.Tab.Python)
+    val snap = probe.cache(source, EvaEditor.Tab.Snap)
+    assert(python.isSuccess && snap.isSuccess)
+    for (_ <- 1 to 5) {
+      assert(probe.cache(source.copy(), EvaEditor.Tab.Python) eq python)
+      assert(probe.cache(source.copy(), EvaEditor.Tab.Snap) eq snap)
+    }
+    assertEquals(probe.calls, Vector(source -> EvaEditor.Tab.Python, source -> EvaEditor.Tab.Snap))
+  }
+
+  test("conversion results follow raw source changes and recover from cached failures") {
+    val probe = new ConversionProbe
+    val source = javaSource()
+    val invalid = ProgrammingStateJavaString("public class Drawing {\r\n\t ")
+    val sources = List(source, source.copy(code = source.code + "\r\n\t "), javaSource(13), invalid, source)
+    for (current <- sources; tab <- List(EvaEditor.Tab.Python, EvaEditor.Tab.Snap)) {
+      val result = probe.cache(current, tab)
+      assertEquals(result.isFailure, current == invalid)
+      assert(probe.cache(current.copy(), tab) eq result)
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(current)), current)
+    }
+    assertEquals(probe.calls, sources.flatMap(current =>
+      List(current -> EvaEditor.Tab.Python, current -> EvaEditor.Tab.Snap)).toVector)
+  }
+
+  test("conversion caches distinguish representations with identical fingerprints") {
+    val java = javaSource()
+    val xml = ProgrammingStatePythonString("forward(12)").toSnapXml
+    val pairs = List[(ProgrammingState, ProgrammingState)](
+      java -> java.toBeExpressionState, xml -> xml.toSnapScalaModel.toOption.get)
+    pairs.foreach { (first, second) =>
+      assertEquals(first.fingerprint(), second.fingerprint())
+      assertNotEquals(first, second)
+      val probe = new ConversionProbe
+      assert(probe.cache(first, EvaEditor.Tab.Python).isSuccess)
+      val converted = probe.cache(second, EvaEditor.Tab.Python)
+      assert(converted.isSuccess)
+      assert(probe.cache(second, EvaEditor.Tab.Python) eq converted)
+      assertEquals(probe.calls, Vector(first -> EvaEditor.Tab.Python, second -> EvaEditor.Tab.Python))
+    }
+  }
+
+  test("legacy Snap metadata invalidates successful text conversions without losing the project") {
+    val probe = new ConversionProbe
+    val source = ProgrammingStatePythonString("forward(12)").toSnapXml
+    val legacy = source.copy(legacyFloatingObjects = List(" watcher\r\n\t "))
+    for (current <- List(source, legacy, source)) {
+      val python = probe.cache(current, EvaEditor.Tab.Python)
+      val snap = probe.cache(current, EvaEditor.Tab.Snap)
+      assertEquals(python.isFailure, current.hasLegacyFloatingObjects)
+      assertEquals(snap.toOption, Some(current))
+      assert(probe.cache(current.copy(), EvaEditor.Tab.Python) eq python)
+      assert(probe.cache(current.copy(), EvaEditor.Tab.Snap) eq snap)
+    }
+    assertEquals(probe.calls.size, 6)
+    assertEquals(legacy.legacyFloatingObjects, List(" watcher\r\n\t "))
+  }
+
+  test("language switches retain their error guard when the supplied state cannot be read") {
+    val editor = editorFor(javaSource())
+    val owner = new ManualOwner
+    var errors = 0
+    editor.state.signal.addObserver(Observer.withRecover[ProgrammingState](_ => (), {
+      case _ => errors += 1
+    }))(using owner)
+    try {
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+      editor.state.setError(IllegalStateException("source unavailable"))
+      editor.select(EvaEditor.Tab.Python)
+      assertEquals(errors, 1)
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+      assert(editor.conversionError.now().nonEmpty)
+      val repaired = javaSource(13)
+      editor.state.set(repaired)
+      editor.select(EvaEditor.Tab.Python)
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
+      assertEquals(editor.conversionError.now(), None)
+      assertEquals(editor.currentState(), repaired)
+    } finally owner.killSubscriptions()
+  }
 
   test("ordinary turtle tasks retain live previews while typed Java views require a run") {
     val source = javaSource()
