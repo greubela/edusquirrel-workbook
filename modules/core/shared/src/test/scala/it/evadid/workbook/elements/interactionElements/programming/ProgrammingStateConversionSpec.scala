@@ -4,7 +4,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSource, JavaTurtleVmPrograms as P}
+import it.evadid.vm.parsing.java.turtle.{JavaTurtleInputLimits, JavaTurtleResolution as R, JavaTurtleSource, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
 import it.evadid.vm.simulation.java.JavaTurtleRuntime as T
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
@@ -433,6 +433,138 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(T.runVm(state.toJavaVmProgram.toOption.get).commands, squareCommands(25))
   }
 
+  test("equal Java source states and checked roots reuse compilation and editable views") {
+    ProgrammingState.JavaAnalysis.synchronized {
+      val state = ProgrammingStateJavaString(squareJava() + "// equal source reuse\n")
+      val program = state.toJavaVmProgram.fold(diagnostic => fail(diagnostic.message), identity)
+      val python = state.toPython
+      val snap = state.toSnapXml
+      val expression = ProgrammingState.ProgrammingStateBeExpression(program.root)
+      val separatelyCompiled = ProgrammingState.ProgrammingStateBeExpression(checked(state.code).root)
+
+      List(state, state.copy(), ProgrammingStateJavaString(state.code)).foreach { equivalent =>
+        assert(equivalent.isClassProgram)
+        assert(equivalent.toJavaVmProgram.toOption.get eq program)
+        assert(equivalent.toBeExpressionState.expression eq program.root)
+        assert(equivalent.toPython eq python)
+        assert(equivalent.toSnapXml eq snap)
+      }
+      List(expression, separatelyCompiled).foreach { root =>
+        assert(root.toPython eq python)
+        assert(root.toSnapXml eq snap)
+        assertEquals(root.toJava, state)
+      }
+      assertEquals(T.runVm(program).commands, squareCommands(25))
+    }
+  }
+
+  test("Java analysis invalidates on exact comments and CRLF source changes") {
+    ProgrammingState.JavaAnalysis.synchronized {
+      val original = squareJava() + "// exact source invalidation\n"
+      val sources = List(original, original.replace("\n", "\r\n"), original + "// another comment\n")
+      val programs = sources.map { source =>
+        val state = ProgrammingStateJavaString(source)
+        val program = state.toJavaVmProgram.fold(diagnostic => fail(diagnostic.message), identity)
+        assertEquals(program.bindings.source.source, source)
+        assertEquals(state.toJava.code, source)
+        assertEquals(T.runVm(program).commands, squareCommands(25))
+        assert(state.copy().toJavaVmProgram.toOption.get eq program)
+        program
+      }
+      assert(programs.distinct.size == sources.size)
+    }
+  }
+
+  test("latest Java analysis evicts the preceding source including retained state instances") {
+    ProgrammingState.JavaAnalysis.synchronized {
+      val first = ProgrammingStateJavaString(squareJava() + "// eviction first\n")
+      val second = ProgrammingStateJavaString(squareJava(side = 31) + "// eviction second\n")
+      val firstEntry = ProgrammingState.JavaAnalysis.forSource(first.code)
+      val original = first.toJavaVmProgram.toOption.get
+      val secondEntry = ProgrammingState.JavaAnalysis.forSource(second.code)
+      val intervening = second.toJavaVmProgram.toOption.get
+      firstEntry.python(firstEntry.program.get)
+      firstEntry.snap(firstEntry.program.get)
+      assert(ProgrammingState.JavaAnalysis.forSource(second.code) eq secondEntry)
+      assert(second.copy().toJavaVmProgram.toOption.get eq intervening)
+      val oversized = " " * (JavaTurtleInputLimits.MaxSourceCharacters + 1)
+      assert(!(ProgrammingState.JavaAnalysis.forSource(oversized) eq ProgrammingState.JavaAnalysis.forSource(oversized)))
+      assert(ProgrammingState.JavaAnalysis.forSource(second.code) eq secondEntry)
+      assert(second.toJavaVmProgram.toOption.get eq intervening)
+      val rebuilt = first.toJavaVmProgram.toOption.get
+      assert(!(rebuilt eq original))
+      assert(first.copy().toJavaVmProgram.toOption.get eq rebuilt)
+      assertEquals(T.runVm(rebuilt).commands, squareCommands(25))
+    }
+  }
+
+  test("unfinished Java analysis reuses its failure and recovers when corrected") {
+    ProgrammingState.JavaAnalysis.synchronized {
+      val source = "class CacheRecovery { public static void main(String[] args) {"
+      val invalid = ProgrammingStateJavaString(source)
+      val failure = intercept[IllegalArgumentException](invalid.isClassProgram)
+      assert(intercept[IllegalArgumentException](invalid.copy().isClassProgram) eq failure)
+      assert(intercept[IllegalArgumentException](ProgrammingStateJavaString(source).toPython) eq failure)
+      assert(intercept[IllegalArgumentException](invalid.toSnapXml) eq failure)
+
+      val corrected = invalid.copy(code = source + " Turtle.forward(12); } }")
+      assert(corrected.isClassProgram)
+      assertEquals(T.runVm(corrected.toJavaVmProgram.toOption.get).commands.map(_.value), Vector(12.0))
+      assert(corrected.toPython.code.contains("turtle.forward(12)"))
+      assert(JavaTurtleEditingBridge.hasSnapMetadata(corrected.toSnapXml.snapXml))
+      assertEquals(intercept[IllegalArgumentException](invalid.isClassProgram).getMessage, failure.getMessage)
+      assertEquals(invalid.code, source)
+    }
+  }
+
+  test("Java editable export slots cache failures independently from successful exports") {
+    val source = squareJava() + "// independent exports\n"
+    val program = checked(source)
+    val entry = new ProgrammingState.JavaAnalysis.Entry(source)
+    val diagnostic = JavaTurtleSource.Diagnostic(JavaTurtleSource.Problem.UnsupportedStructure, "Snap export unavailable", None)
+    var snapSuppliers = 0
+    var pythonSuppliers = 0
+    val failure = intercept[IllegalArgumentException](entry.snap { snapSuppliers += 1; Left(diagnostic) })
+    val python = entry.python { pythonSuppliers += 1; Right(program) }
+    assertEquals(failure.getMessage, diagnostic.message)
+    assert(python.code.contains("square(25)"), clue = python.code)
+    assert(intercept[IllegalArgumentException](entry.snap { snapSuppliers += 1; Right(program) }) eq failure)
+    assert(entry.python { pythonSuppliers += 1; Left(diagnostic) } eq python)
+    assertEquals(snapSuppliers, 1)
+    assertEquals(pythonSuppliers, 1)
+  }
+
+  test("legacy hinted Java classes retain Python fallback after Snap conversion fails") {
+    ProgrammingState.JavaAnalysis.synchronized {
+      val state = ProgrammingStateJavaString("class CacheLegacy { double distance = 12; } //EvaEntityName(legacy)\n")
+      val stored = ProgrammingExercise.StateSerializer.serialize(state)
+      assert(state.isClassProgram)
+      assert(state.toJavaVmProgram.isLeft)
+      val python = state.toPython
+      assert(python.code.contains("class cache_legacy:"), clue = python.code)
+      intercept[IllegalArgumentException](state.toSnapXml)
+      assertEquals(state.copy().toPython, python)
+      assertEquals(state.toPython, python)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+    }
+  }
+
+  test("a retained Java edit history does not retain obsolete compiled analyses") {
+    ProgrammingState.JavaAnalysis.synchronized {
+      val history = Vector.tabulate(128)(index => ProgrammingStateJavaString(
+        s"class CacheHistory { public static void main(String[] args) { Turtle.forward($index); } }"))
+      val oldest = history.head.toJavaVmProgram.toOption.get
+      history.tail.foreach(_.toJavaVmProgram.fold(diagnostic => fail(diagnostic.message), _ => ()))
+      val latest = history.last.toJavaVmProgram.toOption.get
+      assert(history.last.copy().toJavaVmProgram.toOption.get eq latest)
+      assertEquals(T.runVm(latest).commands.map(_.value), Vector(127.0))
+      val restored = history.head.toJavaVmProgram.toOption.get
+      assert(!(restored eq oldest))
+      assertEquals(T.runVm(restored).commands.map(_.value), Vector(0.0))
+      assertEquals(history.last.code, "class CacheHistory { public static void main(String[] args) { Turtle.forward(127); } }")
+    }
+  }
+
   test("unfinished and unsupported Java cannot become an empty legacy turtle program") {
     List(
       "public class Main {",
@@ -733,20 +865,32 @@ class ProgrammingStateConversionSpec extends FunSuite {
   }
 
   test("edited typed Snap and Python views reconstruct changed programs instead of replaying hidden Java") {
-    val program = checked("class Changed { public static void main(String[] args) { Turtle.forward(12); } }")
+    val state = ProgrammingStateJavaString("class Changed { public static void main(String[] args) { Turtle.forward(12); } }")
+    val program = checked(state.code)
+    val cachedPython = state.toPython
+    val cachedSnap = state.toSnapXml
     val python = bridgePython(program).code.replace("turtle.forward(12)", "turtle.forward(19)")
     val snap = bridgeSnap(program)
     val changedXml = snap.snapXml.replace("<l>12</l>", "<l>23</l>")
     assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromPython(python))).commands.map(_.value), Vector(19.0))
     assertEquals(T.runVm(bridgeJava(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = changedXml)))).commands.map(_.value), Vector(23.0))
+    assertEquals(T.runVm(ProgrammingStatePythonString(cachedPython.code.replace("turtle.forward(12)", "turtle.forward(19)"))
+      .toJava.toJavaVmProgram.toOption.get).commands.map(_.value), Vector(19.0))
+    assertEquals(T.runVm(cachedSnap.copy(snapXml = cachedSnap.snapXml.replace("<l>12</l>", "<l>23</l>"))
+      .toJava.toJavaVmProgram.toOption.get).commands.map(_.value), Vector(23.0))
     assert(!snap.snapXml.contains("Turtle.forward"))
     assertEquals(snap.snapXml, bridgeSnap(program).snapXml)
+    assertEquals(state.toJavaVmProgram.toOption.get.bindings.source.source, state.code)
+    assertEquals(T.runVm(state.toJavaVmProgram.toOption.get).commands.map(_.value), Vector(12.0))
   }
 
   test("typed bridge rejects lossy edits unknown blocks loose scripts and malformed metadata without mutation") {
     val program = checked(squareJava())
     val python = bridgePython(program)
     val snap = bridgeSnap(program)
+    val original = ProgrammingStateJavaString(program.bindings.source.source)
+    original.toPython
+    original.toSnapXml
     val badPython = List(
       python.code.replace("java_turtle.int_op(\"add\", i[0], 1)", "i[0] + 1"),
       python.code.replace("square(25)", "square(25, 1)"),
@@ -757,6 +901,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     badPython.foreach { code =>
       assert(code != python.code, clue = "The unsupported edit must change its source fixture.")
       assert(JavaTurtleEditingBridge.fromPython(code).isLeft, clue = code.take(200))
+      intercept[IllegalArgumentException](ProgrammingStatePythonString(code).toJava)
     }
     val badXml = List(
       snap.snapXml.replace("s=\"doJavaForward\"", "s=\"wait\""),
@@ -780,6 +925,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     badXml.foreach { xml =>
       assert(xml != snap.snapXml, clue = "The unsupported edit must change its XML fixture.")
       assert(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = xml)).isLeft, clue = xml.take(200))
+      intercept[IllegalArgumentException](snap.copy(snapXml = xml).toJava)
     }
     assert(JavaTurtleEditingBridge.fromSnap(snap.copy(legacyFloatingObjects = List("kept"))).isLeft)
     assertEquals(bridgePython(program), python)

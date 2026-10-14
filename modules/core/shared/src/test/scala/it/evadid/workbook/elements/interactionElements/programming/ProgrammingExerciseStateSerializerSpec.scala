@@ -393,4 +393,31 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     assertEquals(subtype.toJava, source)
     assertEquals(subtype.deriveTurtleCommands, expression.deriveTurtleCommands)
   }
+
+  test("populating Java analysis and editable views leaves all saved state encodings unchanged") {
+    import upickle.default.*
+    val state: ProgrammingState = ProgrammingStateJavaString("\r\n\tclass CacheWire {\r\n" +
+      " public static void main(String[] args) { Turtle.forward(12); }\r\n}\r\n// preserved comment\r\n\t ")
+    val tagged = ProgrammingExercise.StateSerializer.serialize(state)
+    val json = write[ProgrammingState](state)
+    val binary = writeBinary[ProgrammingState](state)
+    val fingerprint = state.fingerprint()
+    val java = state.toJava
+    assert(java.isClassProgram)
+    val expression = java.toBeExpressionState
+    java.toJavaVmProgram.toOption.get
+    java.toPython
+    java.toSnapXml
+    expression.toPython
+    expression.toSnapXml
+
+    List(state, java.copy(), expression, read[ProgrammingState](json), readBinary[ProgrammingState](binary),
+      ProgrammingExercise.StateSerializer.deserialize(tagged)).foreach { value =>
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(value), tagged)
+      assertEquals(write[ProgrammingState](value), json)
+      assertEquals(writeBinary[ProgrammingState](value).toSeq, binary.toSeq)
+      assertEquals(value.fingerprint(), fingerprint)
+      assertEquals(value.toJava, java)
+    }
+  }
 }
