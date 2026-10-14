@@ -139,8 +139,11 @@ object StateHelper {
   }
 
   def bindTogether[T](state: State[T], airstreamVar: Var[T]): Unit = {
-    state.observable.addObserver(nextValue => airstreamVar.set(nextValue))
-    airstreamVar.signal.distinct.foreach(state.set)(using unsafeWindowOwner)
+    val distinctTarget = airstreamVar.distinct
+    state.observable.addObserver(distinctTarget.set)
+    airstreamVar.signal.foreach { nextValue =>
+      if !state.observable.now().contains(nextValue) then state.set(nextValue)
+    }(using unsafeWindowOwner)
   }
 
 
