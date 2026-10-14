@@ -1009,6 +1009,23 @@ class EvaEditorSpec extends FunSuite {
     assertEquals(published, List(edited))
   }
 
+  test("typed Snap projects publish edits as typed state and retain legacy metadata") {
+    val source = ProgrammingStateSnapXml("<project name='original'/>", List("watcher"))
+      .toSnapScalaModel.toOption.get
+    var published = List.empty[ProgrammingState]
+    val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
+      next => published = published :+ next)
+    assertEquals(EvaEditor.tabFor(source), EvaEditor.Tab.Snap)
+    val editedXml = ProgrammingStateSnapXml("<project name='changed'/>")
+    editor.publish(EvaEditor.Tab.Snap, editedXml)
+    val retained = editor.currentState().asInstanceOf[ProgrammingStateSnapScalaModel]
+    assertEquals(retained.model.project.get.name, Some("changed"))
+    assertEquals(retained.legacyFloatingObjects, source.legacyFloatingObjects)
+    assertEquals(published, List(retained))
+    editor.publish(EvaEditor.Tab.Snap, editedXml)
+    assertEquals(published, List(retained))
+  }
+
   test("failed text conversions cannot replace Snap legacy metadata") {
     val source = ProgrammingStateSnapXml(ProgrammingStateSnapXml.mini.snapXml,
       List("\nwatcher\n", "comment\r\n\t "))

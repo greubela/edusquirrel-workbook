@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
@@ -29,13 +30,16 @@ case class SnapCodeEditor(
 
 
   private def publishProgramFromSnapXml(xml: String): Unit = {
-    val next = state.now() match {
+    val next: ProgrammingState = state.now() match {
       case snap: ProgrammingStateSnapXml => snap.withProjectXml(xml).removeBloatFromXml
+      case snap: ProgrammingStateSnapScalaModel =>
+        snap.toSnapXml.withProjectXml(xml).removeBloatFromXml.toSnapScalaModel.fold(
+          message => throw IllegalArgumentException(message), identity)
       case _ => ProgrammingStateSnapXml(xml).removeBloatFromXml
     }
     // Mark the retained project before publishing: the Var observers run as
     // part of this update and must not reload Snap's own serialized project.
-    impl.acknowledgeProgramFromEditor(next)
+    impl.acknowledgeProgramFromEditor(next.toSnapXml)
     if state.now() != next then
       state.set(next)
       onStateEdited(next)

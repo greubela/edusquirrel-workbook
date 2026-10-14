@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
@@ -65,6 +66,7 @@ object ProgrammingExercise {
       case snap: ProgrammingStateSnapXml if snap.hasLegacyFloatingObjects =>
         s"$StateHeader\nSNAP_XML_WITH_FLOATING\n${write(snap.legacyFloatingObjects)}\n${snap.snapXml}"
       case ProgrammingStateSnapXml(xml) => s"$StateHeader\nSNAP_XML\n$xml"
+      case snap: ProgrammingStateSnapScalaModel => s"$StateHeader\nSNAP_SCALA_MODEL\n${write(snap)}"
       case ProgrammingStatePythonString(code) => s"$StateHeader\nPYTHON\n$code"
       case ProgrammingStateJavaString(code) => s"$StateHeader\nJAVA\n$code"
       case ProgrammingStateBeExpression(expression) =>
@@ -94,6 +96,7 @@ object ProgrammingExercise {
       val (kind, payload) = if newline < 0 then (body, "") else (body.take(newline), body.drop(newline + 1))
       kind.stripSuffix("\r") match
         case "SNAP_XML" => Some(ProgrammingStateSnapXml(payload))
+        case "SNAP_SCALA_MODEL" => Some(read[ProgrammingStateSnapScalaModel](payload))
         case "PYTHON" => Some(ProgrammingStatePythonString(payload))
         case "JAVA" => Some(ProgrammingStateJavaString(payload))
         case "BE_EXPRESSION" =>
