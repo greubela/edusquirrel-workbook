@@ -33,6 +33,23 @@ object CodeMirrorEditorLoading {
 
   private[code] def inBackground[A](work: => A): Future[A] = idleTask(200, 0)(work)
 
+  private[code] def bootstrapUrl: String = {
+    val scripts = dom.document.querySelectorAll("script[src]")
+    (0 until scripts.length).iterator
+      .map(i => scripts(i).asInstanceOf[dom.html.Script].src)
+      .find(src => src.takeWhile(_ != '?').endsWith("/app-loader.js"))
+      .getOrElse(new dom.URL("../js/app-loader.js", dom.document.baseURI).href)
+  }
+
+  private[code] def workerUrl: String = {
+    val config = dom.window.asInstanceOf[js.Dynamic].selectDynamic("EDUSQUIRREL_CLIENT_CONFIG")
+    val custom = if js.isUndefined(config) || config == null then js.undefined
+      else config.selectDynamic("EDUSQUIRREL_BACKEND_MODULE_WORKER_SCRIPT")
+    if js.typeOf(custom) == "string" && custom.asInstanceOf[String].nonEmpty then
+      new dom.URL(custom.asInstanceOf[String], dom.document.baseURI).href
+    else new dom.URL("../../artifacts/newest/worker.js", bootstrapUrl).href
+  }
+
   /** Warm the shared module after the app shell mounts, without creating editors
     * or making startup wait for the CDN. An early editor reuses the same load.
     */
@@ -55,13 +72,7 @@ object CodeMirrorEditorLoading {
         script.`type` = "module"
         script.async = true
         if background then script.setAttribute("fetchpriority", "low")
-        // Resolve beside the app bootstrap, including deployments under a subpath.
-        val scripts = dom.document.querySelectorAll("script[src]")
-        val bootstrap = (0 until scripts.length).iterator
-          .map(i => scripts(i).asInstanceOf[dom.html.Script].src)
-          .find(src => src.takeWhile(_ != '?').endsWith("/app-loader.js"))
-        script.src = new dom.URL("CodeMirrorLoader.js",
-          bootstrap.getOrElse(new dom.URL("../js/app-loader.js", dom.document.baseURI).href)).href
+        script.src = new dom.URL("CodeMirrorLoader.js", bootstrapUrl).href
         val timeout = setTimeout(15000) {
           result.tryFailure(new RuntimeException("CodeMirror module load timed out"))
           script.remove()
