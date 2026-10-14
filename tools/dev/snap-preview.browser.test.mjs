@@ -106,3 +106,110 @@ test('Snap finishes startup preheating without creating a Morphic world or openi
     assert.deepEqual(errors, []);
   } finally {await browser.close();}
 });
+
+test('unchanged Java block previews retain their canvas and changed or unfinished drafts replace it', async () => {
+  const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
+  try {
+    const page = await browser.newPage();
+    page.setDefaultTimeout(60000);
+    const errors = [];
+    const prefix = '/edusquirrel-workbook/';
+    page.on('pageerror', error => errors.push(error.message));
+    await page.route('**/*', async route => {
+      const url = new URL(route.request().url());
+      if (url.origin !== origin || !url.pathname.startsWith(prefix)) return route.abort();
+      const relative = decodeURIComponent(url.pathname.slice(prefix.length));
+      if (relative.split('/').includes('..')) return route.abort();
+      let file = path.resolve(root, relative + (relative.endsWith('/') ? 'index.html' : ''));
+      if (relative === 'homepage/js/CodeMirrorLoader.js') file = process.env.CODEMIRROR_TEST_BUNDLE;
+      try {
+        let body = await fs.readFile(file);
+        const probe = relative.endsWith('/adjusted/adjustedMorphic.js') ? ['WorldMorph', 'init', 'snapPreviewWorlds'] :
+          relative.endsWith('/turtlestitchsrc/blocks.js') ? ['ScriptsMorph', 'scriptsPicture', 'snapPreviewPictures'] : null;
+        if (probe) {
+          const [type, method, counter] = probe;
+          body = Buffer.from(body.toString() + `
+            (() => {
+              window.${counter} = 0;
+              const original = ${type}.prototype.${method};
+              ${type}.prototype.${method} = function(...args) {
+                window.${counter}++;
+                return original.apply(this,args);
+              };
+            })();`);
+        }
+        if (relative.endsWith('/turtlestitchsrc/gui.js')) body = Buffer.from(body.toString() + `
+          (() => {
+            const open = IDE_Morph.prototype.rawOpenProjectString;
+            IDE_Morph.prototype.rawOpenProjectString = function(xml,...args) {
+              window.snapPreviewLoadedXml = xml;
+              return open.call(this,xml,...args);
+            };
+          })();`);
+        await route.fulfill({body,contentType:mime[path.extname(file)] || 'application/octet-stream'});
+      } catch {await route.fulfill({status:404,body:'Not found'});}
+    });
+    await page.goto(origin + prefix + 'homepage/workbookDesign/');
+    await page.locator('.section-register .login-area').nth(1).locator('button').click();
+    await page.locator('.section-block').first().click();
+    await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
+    const editor = page.locator('dialog[open] .eva-editor');
+    await editor.getByRole('button',{name:'Java',exact:true}).click();
+    await editor.getByRole('button',{name:'Full source',exact:true}).click();
+    await editor.locator('.cm-content').waitFor();
+    const preview = page.locator('.be-program-snap-renderer:not(dialog *)').first();
+    const source = 'public class Drawing {\n  public static void main(String[] args) {\n    Turtle.forward(20);\n  }\n}\n';
+    async function writeSource(code) {
+      await page.evaluate(code => {
+        const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(document.querySelector('dialog[open] .cm-editor'));
+        view.dispatch({changes:{from:0,to:view.state.doc.length,insert:code}});
+      }, code);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
+        .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), code);
+    }
+    async function rememberPreview() {
+      await page.waitForFunction(() => {
+        const canvas = document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)');
+        return canvas && canvas.width > 1 && canvas.height > 1;
+      });
+      await page.evaluate(() => {
+        globalThis.previewReuseProbe = {
+          canvas:document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)'),
+          worlds:snapPreviewWorlds,pictures:snapPreviewPictures
+        };
+        previewReuseProbe.xml = snapPreviewLoadedXml;
+      });
+    }
+    await writeSource(source);
+    await rememberPreview();
+    for (const suffix of [' ', '\n\t', '\n\n']) {
+      await writeSource(source + suffix);
+      assert.deepEqual(await page.evaluate(() => ({
+        retained:previewReuseProbe.canvas === document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)'),
+        worlds:snapPreviewWorlds - previewReuseProbe.worlds,pictures:snapPreviewPictures - previewReuseProbe.pictures
+      })), {retained:true,worlds:0,pictures:0});
+    }
+    const changed = source.replace('forward(20)', 'forward(30)');
+    await writeSource(changed);
+    assert(await page.evaluate(() => previewReuseProbe.canvas !== document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)') &&
+      snapPreviewWorlds > previewReuseProbe.worlds && snapPreviewPictures > previewReuseProbe.pictures));
+    assert(await page.evaluate(() => previewReuseProbe.xml !== snapPreviewLoadedXml &&
+      new DOMParser().parseFromString(snapPreviewLoadedXml,'application/xml')
+        .querySelector('block-definition[s="main"] block[s="doJavaForward"] > l')?.textContent === '30'),
+      'the regenerated preview loads the changed method body');
+    await rememberPreview();
+    await writeSource(changed.slice(0, changed.lastIndexOf('}')));
+    assert.equal(await preview.locator('canvas').count(), 0);
+    assert.match(await preview.textContent(), /Preview unavailable for this draft/);
+    await writeSource(changed);
+    assert(await page.evaluate(() => previewReuseProbe.canvas !== document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)') &&
+      snapPreviewWorlds > previewReuseProbe.worlds && snapPreviewPictures > previewReuseProbe.pictures));
+    assert(await page.evaluate(() => previewReuseProbe.xml === snapPreviewLoadedXml),
+      'restoring the same valid source reloads its complete block program');
+    await rememberPreview();
+    assert.equal(await preview.locator('[role=alert]').count(), 0);
+    await page.locator('.fullscreen-close-button').click();
+    assert.deepEqual(errors, []);
+  } finally {await browser.close();}
+});

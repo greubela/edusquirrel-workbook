@@ -54,8 +54,13 @@ case class SnapPreviewEditor(
     div(
       cls := "be-program-snap-renderer",
       child.maybe <-- renderingError.signal.map(_.map(message => p(role := "alert", message))),
-      child <-- stateSignal.map { state =>
-        Try(state.toSnapXml).map(createCanvas).getOrElse(div("Preview unavailable for this draft."))
+      child <-- stateSignal.map(state => Try(state.toSnapXml)).distinctByFn { (previous, next) =>
+        previous.isSuccess && previous == next && renderingError.now().isEmpty
+      }.map { preview =>
+        preview.map(createCanvas).getOrElse {
+          renderingError.set(None)
+          div("Preview unavailable for this draft.")
+        }
       },
     )
   }
