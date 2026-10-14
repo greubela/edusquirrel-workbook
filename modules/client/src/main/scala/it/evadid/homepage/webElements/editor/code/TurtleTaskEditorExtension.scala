@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorExtension
@@ -15,6 +16,7 @@ object TurtleTaskEditorExtension {
     case java: ProgrammingStateJavaString => Try(java.isClassProgram).getOrElse(true)
     case ProgrammingStatePythonString(code) => JavaTurtleEditingBridge.hasPythonMetadata(code)
     case snap: ProgrammingStateSnapXml => JavaTurtleEditingBridge.hasSnapMetadata(snap.snapXml)
+    case snap: ProgrammingStateSnapScalaModel => JavaTurtleEditingBridge.hasSnapMetadata(snap.toSnapXml.snapXml)
     case ProgrammingStateBeExpression(_: JavaTurtleVmPrograms.Root) => true
     case _ => false
   }

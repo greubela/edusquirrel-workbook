@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
@@ -58,6 +59,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   )
   private lazy val snapState = Var[ProgrammingState](state.now() match
     case snap: ProgrammingStateSnapXml => snap
+    case snap: ProgrammingStateSnapScalaModel => snap.toSnapXml
     case _ => ProgrammingStateSnapXml.empty
   )
   private lazy val pythonState = Var[ProgrammingState](state.now() match
@@ -81,6 +83,9 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     val retained = (state.now(), next) match
       case (previous: ProgrammingStateSnapXml, snap: ProgrammingStateSnapXml) =>
         previous.withProjectXml(snap.snapXml)
+      case (previous: ProgrammingStateSnapScalaModel, snap: ProgrammingStateSnapXml) =>
+        previous.toSnapXml.withProjectXml(snap.snapXml).toSnapScalaModel.fold(
+          message => throw IllegalArgumentException(message), identity)
       case _ => next
     conversionError.set(None)
     if state.now() != retained then {
@@ -96,6 +101,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
 
   private def show(next: ProgrammingState): Unit = next match
     case snap: ProgrammingStateSnapXml => snapState.set(snap)
+    case snap: ProgrammingStateSnapScalaModel => snapState.set(snap.toSnapXml)
     case python: ProgrammingStatePythonString => pythonState.set(python)
     case java: ProgrammingStateJavaString => javaState.set(java)
     case expression: ProgrammingStateBeExpression => snapState.set(expression.toSnapXml)

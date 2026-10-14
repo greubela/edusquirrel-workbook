@@ -15,6 +15,7 @@ import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import munit.FunSuite
 
 class ProgrammingExerciseStateSerializerSpec extends FunSuite {
@@ -249,9 +250,10 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
     }
   }
 
-  test("all four regular programming JSON states read historical and current type aliases") {
+  test("all regular programming JSON states read historical and current type aliases") {
     val states = List[(String, ProgrammingState)](
       "ProgrammingStateSnapXml" -> ProgrammingStateSnapXml(exactLegacyXml),
+      "ProgrammingStateSnapScalaModel" -> ProgrammingStateSnapXml("<project/>").toSnapScalaModel.toOption.get,
       "ProgrammingStatePythonString" -> ProgrammingStatePythonString("\tdef draw(\r\n\n "),
       "ProgrammingStateJavaString" -> ProgrammingStateJavaString("\nclass Drawing {\r\n\t "),
       "ProgrammingStateBeExpression" -> ProgrammingStateBeExpression(BeExpression.pass))
@@ -259,6 +261,9 @@ class ProgrammingExerciseStateSerializerSpec extends FunSuite {
       val json = upickle.default.writeJs[ProgrammingState](state)
       assertEquals(upickle.default.read[ProgrammingState](json), state)
       state match {
+        case value: ProgrammingStateSnapScalaModel =>
+          assertEquals(upickle.default.writeJs(value), json)
+          assertEquals(upickle.default.read[ProgrammingStateSnapScalaModel](json), value)
         case value: ProgrammingStateSnapXml =>
           assertEquals(upickle.default.writeJs(value), json)
           assertEquals(upickle.default.read[ProgrammingStateSnapXml](json), value)

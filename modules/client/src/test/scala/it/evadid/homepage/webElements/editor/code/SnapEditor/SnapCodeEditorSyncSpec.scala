@@ -7,7 +7,7 @@ import com.raquo.laminar.api.L.*
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{CanvasVisibility, SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml, ProgrammingStateSnapScalaModel}
 import munit.FunSuite
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
@@ -85,6 +85,31 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     override def fitEditorToContainer(): Unit = ()
     override def removeAllLibraries(includeDefaultLibraries: Boolean): Unit = { librariesCleared += 1 }
     override def destroy(): Unit = ()
+  }
+
+  test("native Snap edits retain typed state, legacy data and authored assets without an echo reload") {
+    val source = ProgrammingStateSnapXml("<project/>", List("watcher")).toSnapScalaModel.toOption.get
+    val state = Var[ProgrammingState](source)
+    val impl = new RecordingImpl
+    var edits = List.empty[ProgrammingState]
+    val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val owner = new ManualOwner
+    try {
+      editor.mountEditorInto(null, owner)
+      assertEquals(impl.current, Some(source.toSnapXml))
+      val live = "<project><thumbnail>generated</thumbnail><costumes><costume name='authored' image='asset'/></costumes></project>"
+      impl.listener(live)
+      val next = state.now().asInstanceOf[ProgrammingStateSnapScalaModel]
+      assertEquals(next.legacyFloatingObjects, source.legacyFloatingObjects)
+      assertEquals(next.model.project.get.costumes.head.image, Some("asset"))
+      assertEquals(next.model.project.get.thumbnail, None)
+      assertEquals(impl.reloads, 0)
+      assertEquals(edits, List(next))
+      impl.listener(live)
+      assertEquals(edits, List(next))
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+        ProgrammingExercise.StateSerializer.serialize(next)), next)
+    } finally owner.killSubscriptions()
   }
 
   test("mount once, publish Snap edits once, and reload only external changes") {
