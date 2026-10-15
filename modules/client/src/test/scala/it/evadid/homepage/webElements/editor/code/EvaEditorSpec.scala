@@ -1,7 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
-
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.datastructures.state.observable.ObservableValue
@@ -11,12 +10,13 @@ import com.raquo.laminar.api.L.{Element, render}
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import com.raquo.airstream.ownership.ManualOwner
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.JavaTurtleEditorExtension
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorExtension, EvaEditorPlain, EvaEditorTurtle, EvaProgrammingTab}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorExtension, EvaEditorTurtle, EvaProgrammingTab}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlProgrammingExerciseFullJavaRenderer
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
@@ -25,10 +25,10 @@ import it.evadid.workbook.interaction.variable.{InteractionVariable, Interaction
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorConfig, EvaProgrammingTab}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import munit.FunSuite
-import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorDiagnostics
+import it.evadid.homepage.webElements.editor.code.codemirror.{CodeMirrorDiagnostics, CodeMirrorEditor}
 
 import java.util.concurrent.CancellationException
 import java.time.LocalDateTime

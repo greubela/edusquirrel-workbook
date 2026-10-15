@@ -8,8 +8,8 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorPlain}
-import it.evadid.homepage.webElements.editor.code.JavaTurtleEditorExtension
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.JavaTurtleEditorExtension
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -18,10 +18,11 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, *}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateJavaString
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import todomove.datastructures.web.file.FullImage
 
@@ -41,8 +42,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
       case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
 
-    val editor = EvaEditorPlain(boundVar, EvaEditorConfig(snapConfig = editorConfig),
-      extensions = List(new JavaTurtleEditorExtension(boundVar)))
+    val editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(new JavaTurtleEditorExtension(boundVar)), EvaEditorConfig(snapConfig = editorConfig))
 
     def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)
 
@@ -86,10 +86,9 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       val requestedRun = runId
       stageImageVar.set(None)
       runError.set(None)
-      val running = Try(editor.getCurrentTurtleCommands()).fold(Future.failed, identity)
-      val source = ProgrammingState.fingerprint(editor.currentState())
-      running.onComplete {
-        case _ if requestedRun != runId || source != ProgrammingState.fingerprint(editor.currentState()) => ()
+      Future {
+        editor.state.now().toBeExpressionState.deriveTurtleCommands
+      }onComplete {
         case Success(commands) =>
           val path = TurtlePathBuilder[Double](Point(0, 0), commands, 90)
           stageImageVar.set(Some(FullImage(path.svgPathBuilder)))

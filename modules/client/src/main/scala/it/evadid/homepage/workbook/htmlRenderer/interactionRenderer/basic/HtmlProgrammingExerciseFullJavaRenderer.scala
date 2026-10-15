@@ -4,10 +4,11 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.webElements.editor.code.{JavaTurtleEditorExtension, TurtleTaskEditorExtension}
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorPlain, EvaEditorConfig}
-import it.evadid.homepage.webElements.{HtmlAppElement, FullscreenLifecycle}
+import it.evadid.homepage.webElements.editor.code.*
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig}
+import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.{JavaTurtleEditorExtension, TurtleTaskEditorExtension}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
@@ -20,10 +21,10 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
     element.interactionVariable.createBoundStateWithUpdateImportance(syncControl, UpdateImportance.MAJOR).toAirstreamVar
 
   private[homepage] def editorFor(workbookElement: ProgrammingExerciseFullJava,
-      boundVar: Var[ProgrammingState]): HtmlAppElement & FullscreenLifecycle = {
+      boundVar: Var[ProgrammingState]): HtmlAppElement  = {
     val execution = new JavaTurtleEditorExtension(boundVar)
-    EvaEditorPlain(boundVar, EvaEditorConfig(enabledLanguages = List(AppLanguage.Java)),
-      extensions = List(execution, new TurtleTaskEditorExtension(boundVar, None, TurtleDrawingPolicy.Coverage)))
+    val draw = new TurtleTaskEditorExtension(boundVar, None, TurtleDrawingPolicy.Coverage)
+    EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar,  List(execution, draw), EvaEditorConfig.Default)
   }
 
   override protected def createRendering(workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {

@@ -1,9 +1,10 @@
-package it.evadid.homepage.webElements.editor.code
+package it.evadid.homepage.webElements.editor.code.codemirror
 
 import org.scalajs.dom
+
 import scala.concurrent.{Future, Promise}
-import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js
 import scala.scalajs.js.timers.{clearTimeout, setTimeout}
 import scala.util.Try
 
@@ -31,7 +32,7 @@ object CodeMirrorEditorLoading {
     result.future
   }
 
-  private[code] def inBackground[A](work: => A): Future[A] = idleTask(200, 0)(work)
+  private[code] def inBackground[A](work: => A): Future[A] = idleTask(700, 0)(work)
 
   private[code] def bootstrapUrl: String = {
     val scripts = dom.document.querySelectorAll("script[src]")

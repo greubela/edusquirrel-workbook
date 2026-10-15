@@ -8,9 +8,11 @@ import it.evadid.distribution.formats.{ExecutionClientResponse, WorkerExecutionP
 import it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientResponseTimestamps
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorConfig
+import it.evadid.homepage.webElements.editor.code.codemirror.{CodeMirrorEditor, CodeMirrorEditorFlowchart}
 import munit.FunSuite
 import org.scalajs.dom
 import upickle.default.*
+
 import java.time.LocalDateTime
 import scala.collection.mutable.ListBuffer
 import scala.scalajs.js

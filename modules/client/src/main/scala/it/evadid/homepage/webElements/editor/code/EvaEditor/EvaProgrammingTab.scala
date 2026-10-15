@@ -1,13 +1,15 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor
-
+/*
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.Element
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
-import it.evadid.homepage.webElements.editor.code.{CodeMirrorEditor, EditorAppearance}
+import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStatePythonString}
 
 object EvaProgrammingTab {
@@ -19,18 +21,20 @@ object EvaProgrammingTab {
   }
 
   def tabFor(evaConfig: EvaEditorConfig, programmingLanguage: ProgrammingLanguage, centralState: Var[ProgrammingState],
-      handleOnStateChanged: ProgrammingState => Unit): EvaEditorProgrammingTab[? <: ProgrammingState] =
+             handleOnStateChanged: ProgrammingState => Unit): EvaEditorProgrammingTab[? <: ProgrammingState] =
     prepared(evaConfig, programmingLanguage, Var(convert(programmingLanguage, centralState.now())), handleOnStateChanged)
 
   private[code] def prepared(config: EvaEditorConfig, language: ProgrammingLanguage, localState: Var[ProgrammingState],
-      onStateChanged: ProgrammingState => Unit, appearance: Option[EditorAppearance] = None): EvaEditorProgrammingTab[ProgrammingState] = {
+                             onStateChanged: ProgrammingState => Unit, appearance: Option[EditorAppearance] = None): EvaEditorProgrammingTab[ProgrammingState] = {
     val create: Var[ProgrammingState] => HtmlAppElement = language match {
-      case Java => current => new JavaFunctionBasedEditor(current, onStateEdited = onStateChanged,
-        appearance = appearance, editorConfig = config.codeMirrorConfig)
-      case Python => current => CodeMirrorEditor(
-        current.bimap[String](_.toPython.code)(ProgrammingStatePythonString(_)),
-        code => onStateChanged(ProgrammingStatePythonString(code)), language = AppLanguage.Python,
-        editorConfig = config.codeMirrorConfig)
+      case Java => current =>
+        new JavaFunctionBasedEditor(current, onStateEdited = onStateChanged,
+          appearance = appearance, editorConfig = config.codeMirrorConfig)
+      case Python => current =>
+        CodeMirrorEditor(
+          current.bimap[String](_.toPython.code)(ProgrammingStatePythonString(_)),
+          code => onStateChanged(ProgrammingStatePythonString(code)), language = AppLanguage.Python,
+          editorConfig = config.codeMirrorConfig)
       case SnapLanguage => current => SnapCodeEditor(current, config.snapConfig, onStateChanged)
       case _ => throw UnsupportedOperationException(s"ProgrammingLanguage '$language' not supported yet in EvaEditor!")
     }
@@ -39,11 +43,11 @@ object EvaProgrammingTab {
 }
 
 case class EvaEditorProgrammingTab[T <: ProgrammingState](
-    associatedVar: Var[T],
-    associatedLanguage: ProgrammingLanguage,
-    createEditor: Var[T] => HtmlAppElement,
-    convertFrom: ProgrammingState => T
-) extends FullscreenLifecycle {
+                                                           associatedVar: Var[T],
+                                                           associatedLanguage: ProgrammingLanguage,
+                                                           createEditor: Var[T] => HtmlAppElement,
+                                                           convertFrom: ProgrammingState => T
+                                                         ) extends FullscreenLifecycle {
 
   val editorElement: HtmlAppElement = createEditor(associatedVar)
 
@@ -75,3 +79,4 @@ case class EvaEditorProgrammingTab[T <: ProgrammingState](
   }
 
 }
+*/

@@ -6,12 +6,12 @@ import it.evadid.homepage.webElements.editor.config.TextEditorConfig
 
 case class SimpleTextEditor(
                              underlyingVar: Var[String],
-                             config: Val[TextEditorConfig] = Val(TextEditorConfig.defaultConfig),
+                             config: Var[TextEditorConfig] = Var(TextEditorConfig.defaultConfig),
                            ) extends SimpleWebEditor[String, TextEditorConfig] {
 
   override def getDomElement(): Element = domElement
 
-  private val domElement: Element = createTextEditor(config)
+  private val domElement: Element = createTextEditor(config.signal)
 
   def createTextEditor(config: Signal[TextEditorConfig]): Element = textArea(
     rows <-- config.map(_.rowsCount),

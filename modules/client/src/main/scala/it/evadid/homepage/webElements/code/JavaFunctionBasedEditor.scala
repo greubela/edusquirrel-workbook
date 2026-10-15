@@ -2,24 +2,35 @@ package it.evadid.homepage.webElements.code
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.{label as labelTag, *}
+import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
-import it.evadid.homepage.webElements.editor.code.{CodeMirrorEditor, EditorAppearance}
+import it.evadid.homepage.webElements.editor.code.EditorAppearance
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorTab}
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
+import it.evadid.util.logging.Logger
 import it.evadid.vm.parsing.java.clean.JavaParser
 import org.scalajs.dom
+
 import scala.scalajs.js
 import scala.util.Try
 import java.util.UUID
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateJavaString
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.model.qr.QrErrorCorrection.L.*
+import org.scalajs.dom.SVGSVGElement
 
-final class JavaFunctionBasedEditor(
-    val state: Var[ProgrammingState],
-    onStateEdited: ProgrammingState => Unit = _ => (),
-    reference: Option[() => Element] = None,
-    appearance: Option[EditorAppearance] = None,
-    editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default
+
+final class JavaFunctionBasedEditor
+(
+  logger: Logger,
+  val state: Var[ProgrammingState],
+  onStateEdited: ProgrammingState => Unit = _ => (),
+  reference: Option[() => Element] = None,
+  appearance: Option[EditorAppearance] = None,
+  editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default
 ) extends HtmlAppElement with FullscreenLifecycle {
+
   import JavaFunctionBasedEditor.*
 
   private var displayedState = state.now()
@@ -48,20 +59,23 @@ final class JavaFunctionBasedEditor(
   private val presentation = appearance.getOrElse(new EditorAppearance)
 
   override def dismissOnOutsideClick: Boolean = false
+
   override def onFullscreenClose(): Unit = dialogMode.set(None)
 
   private val functionEditor = CodeMirrorEditor(
+    logger,
     functionDraft,
     handleFunctionInput,
     language = it.evadid.core.datastructures.language.AppLanguage.Java,
-    editorConfig = editorConfig
+    config = Var(editorConfig)
   )
 
   private val sourceEditor = CodeMirrorEditor(
+    logger,
     sourceDraft,
     handleSourceInput,
     language = it.evadid.core.datastructures.language.AppLanguage.Java,
-    editorConfig = editorConfig
+    config = Var(editorConfig)
   )
 
   private def currentSourceAvailable(): Boolean =
@@ -303,6 +317,7 @@ final class JavaFunctionBasedEditor(
             compactLayout = !query.matches
             if compactLayout then structureOpen.set(false)
           }
+
           val listener: js.Function1[dom.Event, Unit] = _ => adapt()
           adapt()
           query.addEventListener("change", listener)
@@ -497,13 +512,13 @@ object JavaFunctionBasedEditor {
   }
 
   private[code] final case class JavaFunction(
-      className: String,
-      name: String,
-      returnType: String,
-      parameters: String,
-      start: Int,
-      end: Int
-  ) derives upickle.default.ReadWriter
+                                               className: String,
+                                               name: String,
+                                               returnType: String,
+                                               parameters: String,
+                                               start: Int,
+                                               end: Int
+                                             ) derives upickle.default.ReadWriter
 
   private[code] final case class JavaClass(name: String, bodyStart: Int, bodyEnd: Int, functions: List[JavaFunction]) derives upickle.default.ReadWriter
 
@@ -532,8 +547,8 @@ object JavaFunctionBasedEditor {
       val currentClasses = discover(source)
       currentClasses.flatMap(_.functions).filter(_.name == "main") match
         case List(function) if function.returnType == "void" &&
-            function.parameters.matches("(?:java\\.lang\\.)?String\\s*\\[\\s*\\]\\s+[A-Za-z_$][\\w$]*") &&
-            findSelection(currentClasses, function).isDefined =>
+          function.parameters.matches("(?:java\\.lang\\.)?String\\s*\\[\\s*\\]\\s+[A-Za-z_$][\\w$]*") &&
+          findSelection(currentClasses, function).isDefined =>
           val modifiers = maskCommentsAndStrings(source.substring(function.start, function.end))
             .takeWhile(_ != '(').split("\\s+").toSet
           Option.when(modifiers.contains("public") && modifiers.contains("static"))(function)
@@ -548,8 +563,8 @@ object JavaFunctionBasedEditor {
       val stack = scala.collection.mutable.ArrayBuffer.empty[Char]
       var balanced = true
       masked.foreach {
-        case opening @ ('(' | '[' | '{') => stack += opening
-        case closing @ (')' | ']' | '}') =>
+        case opening@('(' | '[' | '{') => stack += opening
+        case closing@(')' | ']' | '}') =>
           val expectedOpening = closing match
             case ')' => '('
             case ']' => '['
@@ -578,12 +593,12 @@ object JavaFunctionBasedEditor {
   }
 
   private def discoverFunctions(
-      masked: String,
-      braceMatches: Array[Int],
-      className: String,
-      classOpening: Int,
-      classClosing: Int
-  ): List[JavaFunction] = {
+                                 masked: String,
+                                 braceMatches: Array[Int],
+                                 className: String,
+                                 classOpening: Int,
+                                 classClosing: Int
+                               ): List[JavaFunction] = {
     val functions = List.newBuilder[JavaFunction]
     var segmentStart = classOpening + 1
     var index = segmentStart
@@ -620,17 +635,17 @@ object JavaFunctionBasedEditor {
     source.substring(0, function.start) + draft + source.substring(function.end)
 
   private[code] def findEditedFunction(
-      source: String,
-      currentClasses: List[JavaClass],
-      previous: JavaFunction,
-      range: FunctionRange
-  ): Option[JavaFunction] = {
+                                        source: String,
+                                        currentClasses: List[JavaClass],
+                                        previous: JavaFunction,
+                                        range: FunctionRange
+                                      ): Option[JavaFunction] = {
     if !range.isWithin(source) then None
     else currentClasses.filter(_.name == previous.className) match
       case List(clazz) if range.start > clazz.bodyStart && range.end <= clazz.bodyEnd =>
         clazz.functions.filter(function => function.start >= range.start && function.end <= range.end) match
           case List(function) if onlyTrivia(source.substring(range.start, function.start)) &&
-              onlyTrivia(source.substring(function.end, range.end)) => Some(function)
+            onlyTrivia(source.substring(function.end, range.end)) => Some(function)
           case _ => None
       case _ => None
   }
@@ -732,5 +747,32 @@ object JavaFunctionBasedEditor {
         case _ => ()
     }
     matches
+  }
+
+
+  def forEvaTab(logger: Logger, config: CodeMirrorEditorConfig, initState: ProgrammingState, evaEditor: EvaEditor): EvaEditorTab[ProgrammingState] = {
+
+    val internal: Var[ProgrammingState] = Var[ProgrammingState](initState.toSnapXml)
+    val editor = new JavaFunctionBasedEditor(logger, internal, onStateEdited = _ => {}, None, editorConfig = config)
+
+    new EvaEditorTab[ProgrammingState]() {
+      override val underlyingVar: Var[ProgrammingState] = internal
+
+      override def convert(internal: ProgrammingState): ProgrammingState = internal
+
+      override def getDomElement(): Element = editor.getDomElement()
+
+      override def logger: Logger = logger
+
+      override def label: String = "Snap Editor"
+
+      override def icon: Option[ReactiveSvgElement[SVGSVGElement]] = Some(svg.svg(svg.cls := "eva-editor__language-icon", svg.viewBox := "0 0 24 24",
+        svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.6",
+        svg.strokeLineCap := "round", svg.strokeLineJoin := "round",
+        svg.path(svg.d := "M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6")))
+
+      override def additionalCssForEvaEditor: String = " eva-editor--java"
+    }
+
   }
 }

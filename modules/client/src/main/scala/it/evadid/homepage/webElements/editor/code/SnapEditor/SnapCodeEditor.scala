@@ -5,28 +5,34 @@ import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import com.raquo.laminar.nodes.ReactiveSvgElement
+import it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{JavaTurtleSnapPrimitives, PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal, SnapTurtleStagePanel}
+import it.evadid.util.logging.Logger
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import org.scalajs.dom
+import org.scalajs.dom.SVGSVGElement
 import org.scalajs.dom.html.Canvas
+
 import scala.concurrent.Future
 
 case class SnapCodeEditor(
+                           logger: Logger,
                            state: Var[ProgrammingState],
                            config: SnapCodeEditorConfig,
                            impl: SnapCodeEditorImpl,
                            onStateEdited: ProgrammingState => Unit = _ => ()
                          ) extends HtmlAppElement with FullscreenLifecycle {
-
 
 
   private def publishProgramFromSnapXml(xml: String): Unit = {
@@ -135,14 +141,37 @@ object SnapCodeEditor {
   private[code] def commandsFor(state: ProgrammingStateSnapXml): Future[List[TurtleCommand[Double]]] =
     commandExecution.commandsFor(state)
 
-  def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig, onStateEdited: ProgrammingState => Unit): SnapCodeEditor =
-    SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
+  def apply(logger: Logger, state: Var[ProgrammingState], config: SnapCodeEditorConfig, onStateEdited: ProgrammingState => Unit): SnapCodeEditor =
+    SnapCodeEditor(logger, state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
 
-  def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapCodeEditor =
-    SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal())
+  def apply(logger: Logger,state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapCodeEditor =
+    SnapCodeEditor(logger, state, config, SnapCodeEditorImplDelegateToOriginal())
 
-  def apply(state: Var[ProgrammingState]): SnapCodeEditor =
-    SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
+  def apply(logger: Logger,state: Var[ProgrammingState]): SnapCodeEditor =
+    SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
 
+
+  def forEvaTab(logger: Logger, config: SnapCodeEditorConfig, initState: ProgrammingState): EvaEditorTab[ProgrammingState] = {
+
+    val internal: Var[ProgrammingState] = Var[ProgrammingState](initState.toSnapXml)
+    val editor = SnapCodeEditor(logger, internal, config)
+
+    new EvaEditorTab[ProgrammingState]() {
+      override val underlyingVar: Var[ProgrammingState] = internal
+
+      override def convert(internal: ProgrammingState): ProgrammingState = internal
+
+      override def getDomElement(): L.Element = editor.getDomElement()
+
+      override def logger: Logger = logger
+
+      override def label: String = "Snap Editor"
+
+      override def icon: Option[ReactiveSvgElement[SVGSVGElement]] = None
+
+      override def additionalCssForEvaEditor: String = ""
+    }
+
+  }
 
 }

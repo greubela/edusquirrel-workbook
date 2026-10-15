@@ -1,14 +1,18 @@
-package it.evadid.homepage.webElements.editor.code
+package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import com.raquo.airstream.state.Var
+import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorExtension
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorExtension, EvaEditorModule}
+import it.evadid.homepage.webElements.editor.code.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.HtmlTurtleRecreateShapeRenderer
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.JavaTurtleEditingBridge
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateBeExpression
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.JavaTurtleEditingBridge
+
 import scala.util.Try
 
 object TurtleTaskEditorExtension {
@@ -26,7 +30,7 @@ final class TurtleTaskEditorExtension(
     state: Var[ProgrammingState],
     target: Option[TurtleGraphic],
     policy: TurtleDrawingPolicy
-) extends EvaEditorExtension {
+) extends EvaEditorExtension with EvaEditorModule{
   private var view = Option.empty[TurtleExecutionPanel]
 
   override def panel(context: EvaEditorExtension.Context): Option[Element] = {
@@ -46,4 +50,6 @@ final class TurtleTaskEditorExtension(
   }
 
   override def close(): Unit = view.foreach(_.reset())
+
+  override def getDomElement: L.Element = div()
 }

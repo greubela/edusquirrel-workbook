@@ -30,12 +30,11 @@ object AppLanguage {
   
   sealed trait HumanLanguage(val name: String, val nameAbbr: String) extends AppLanguage
 
-  sealed trait ProgrammingLanguage(val name: String, val fileEnding: String) extends AppLanguage
+  sealed trait ProgrammingLanguage(val name: String, val fileEnding: String, val asJsLanguage: Option[String]) extends AppLanguage
 
   sealed trait SpecialLanguage(val name: String) extends AppLanguage
 
   case object UniversalLanguage extends SpecialLanguage("Universal")
-  case object SnapLanguage extends ProgrammingLanguage("Snap", ".xml")
 
   def default(): HumanLanguage = English
 
@@ -43,6 +42,8 @@ object AppLanguage {
 
   val humanLanguages: Set[HumanLanguage] = Set(English, German, French, Ukrainian, Russian, Turkish, Danish, Spanish)
   val programmingLanguages: Set[ProgrammingLanguage] = Set(Python, Java, JavaScript, Rust, Lisp, Cpp, C, SQL, BlockDisplay)
+
+
 
   case object English extends HumanLanguage("English", "EN")
 
@@ -61,24 +62,25 @@ object AppLanguage {
   case object Spanish extends HumanLanguage("Spanish", "ES")
 
 
+  case object SnapLanguage extends ProgrammingLanguage("Snap", ".xml", None)
 
-  case object Python extends ProgrammingLanguage("Python", "py")
+  case object Python extends ProgrammingLanguage("Python", "py", Some("python"))
 
-  case object Java extends ProgrammingLanguage("Java", "java")
+  case object Java extends ProgrammingLanguage("Java", "java", Some("java"))
 
-  case object JavaScript extends ProgrammingLanguage("JavaScript", "js")
+  case object JavaScript extends ProgrammingLanguage("JavaScript", "js", None)
 
-  case object Rust extends ProgrammingLanguage("Rust", "rs")
+  case object Rust extends ProgrammingLanguage("Rust", "rs", None)
 
-  case object Lisp extends ProgrammingLanguage("LISP", "lisp")
+  case object Lisp extends ProgrammingLanguage("LISP", "lisp", None)
 
-  case object Cpp extends ProgrammingLanguage("C++", "cpp")
+  case object Cpp extends ProgrammingLanguage("C++", "cpp", Some("cpp"))
 
-  case object C extends ProgrammingLanguage("C", "c")
+  case object C extends ProgrammingLanguage("C", "c", Some("c"))
 
-  case object SQL extends ProgrammingLanguage("SQL", "sql")
+  case object SQL extends ProgrammingLanguage("SQL", "sql", Some("sql"))
 
-  case object BlockDisplay extends ProgrammingLanguage("Block Display", "bd")
+  case object BlockDisplay extends ProgrammingLanguage("Block Display", "bd", None)
 
   val turtleStitchLangMap: Map[HumanLanguage, String] = Map(
     English -> "en",

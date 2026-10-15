@@ -1,12 +1,16 @@
-package it.evadid.homepage.webElements.editor.code
+package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.airstream.state.Var
+import com.raquo.laminar.api.L
+import com.raquo.laminar.api.L.div
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorExtension
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorExtension, EvaEditorModule}
+import it.evadid.homepage.webElements.editor.code.JavaEditorSession
 import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution
 import it.evadid.vm.simulation.java.JavaTurtleRuntime
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateJavaString
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, *}
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.Future
@@ -16,7 +20,7 @@ import scala.util.{Success, Try}
 final class JavaTurtleEditorExtension(
     state: Var[ProgrammingState],
     runnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
-) extends EvaEditorExtension {
+) extends EvaEditorExtension with EvaEditorModule {
   private var session = Option.empty[JavaEditorSession]
   private class Attempt {
     val owner = new ManualOwner
@@ -90,4 +94,6 @@ final class JavaTurtleEditorExtension(
     pending.foreach(_.invalidate())
     discarded.foreach(_.release())
   }
+
+  override def getDomElement: L.Element = div()
 }

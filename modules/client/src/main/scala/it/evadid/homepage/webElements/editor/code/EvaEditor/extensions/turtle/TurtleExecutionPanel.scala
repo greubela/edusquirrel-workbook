@@ -1,13 +1,13 @@
-package it.evadid.homepage.webElements.editor.code
+package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{TurtleDrawingGrading, TurtleJsxGraphRenderer}
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{TurtleDrawingGrading, TurtleJsxGraphRenderer}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.Future

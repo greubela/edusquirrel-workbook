@@ -1,8 +1,9 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor
-
+/*
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.webElements.editor.code.TurtleTaskEditorExtension
+import it.evadid.homepage.webElements.editor.code.*
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 
@@ -22,3 +23,4 @@ case class EvaEditorTurtle(
 
 
 }
+*/

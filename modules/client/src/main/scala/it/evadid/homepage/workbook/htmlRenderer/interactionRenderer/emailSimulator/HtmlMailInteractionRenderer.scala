@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.webElements.editor.code.MailEditor.{MailEditor as Editor}
+import it.evadid.homepage.webElements.editor.MailEditor.MailEditor as Editor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.workbook.elements.interactionElements.emailSimulator.*
