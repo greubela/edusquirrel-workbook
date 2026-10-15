@@ -59,10 +59,14 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
       editorExtensions = List(new JavaTurtleEditorExtension(boundVar)), comparisonPolicy = workbookElement.comparisonPolicy)
 
     lazy val codePreview = SnapPreviewEditor(boundVar, snapEditorConfig).getDomElement()
-    val programPreview = boundVar.signal.map(hasProgram).distinct.map { hasProgram =>
-      if hasProgram then codePreview
-      else p(text <-- laminarHelper.plaintextStringSignal("basic/turtleNoProgramYet"))
-    }
+    val programPreview = fullInfo.signals.currentDisplayInfo
+      .map(_.fullscreenElement.exists(_ eq editor)).distinct.flatMapSwitch {
+        case true => Val(List.empty[Element])
+        case false => boundVar.signal.map(hasProgram).distinct.map { hasProgram =>
+          List[Element](if hasProgram then codePreview
+            else p(text <-- laminarHelper.plaintextStringSignal("basic/turtleNoProgramYet")))
+        }
+      }
     val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), programPreview)
 
     def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)

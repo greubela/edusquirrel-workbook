@@ -38,8 +38,14 @@ test('Snap previews and editor wait for the runtime and ignore closed mounts', a
     await previews.first().waitFor();
     assert.equal(await page.evaluate(() => typeof window.WorldMorph), 'undefined', 'runtime is deliberately incomplete');
     const open = page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first();
+    const ownPreview = page.locator('.interaction-element:not(dialog *)').first();
+    const otherPreview = page.locator('.interaction-element:not(dialog *)').nth(1);
     await open.click();
     await page.locator('dialog[open] .be-program-snap-renderer__canvas').waitFor();
+    assert.equal(await ownPreview.locator('.be-program-snap-renderer__canvas').count(), 0,
+      'opening a task unmounts its pending background preview');
+    assert.equal(await otherPreview.locator('.be-program-snap-renderer__canvas').count(), 1,
+      'another task keeps its pending preview mounted');
     await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, [], 'pending runtime must not throw from preview/editor mount');
     release();
@@ -107,7 +113,7 @@ test('Snap finishes startup preheating without creating a Morphic world or openi
   } finally {await browser.close();}
 });
 
-test('unchanged Java block previews retain their canvas and changed or unfinished drafts replace it', async () => {
+test('a task pauses only its own block preview and close restores the latest text or Snap edits', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
   try {
     const page = await browser.newPage();
@@ -140,10 +146,13 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
         }
         if (relative.endsWith('/turtlestitchsrc/gui.js')) body = Buffer.from(body.toString() + `
           (() => {
+            window.snapPreviewOpened = [];
             const open = IDE_Morph.prototype.rawOpenProjectString;
             IDE_Morph.prototype.rawOpenProjectString = function(xml,...args) {
               window.snapPreviewLoadedXml = xml;
-              return open.call(this,xml,...args);
+              const result = open.call(this,xml,...args);
+              snapPreviewOpened.push({ide:this,xml});
+              return result;
             };
           })();`);
         await route.fulfill({body,contentType:mime[path.extname(file)] || 'application/octet-stream'});
@@ -152,63 +161,119 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
-    await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
+    const tasks = page.locator('.interaction-element:not(dialog *)');
+    const own = tasks.nth(0);
+    const other = tasks.nth(1);
+    const regular = tasks.nth(2);
+    const open = page.getByRole('button',{name:/Editor.*öffnen|Open editor/i});
+    await page.waitForFunction(() => document.querySelectorAll('.be-program-snap-renderer__canvas:not(dialog *)').length === 3 &&
+      [...document.querySelectorAll('.be-program-snap-renderer__canvas:not(dialog *)')].every(canvas => canvas.width > 1));
+    await other.locator('.be-program-snap-renderer__canvas').evaluate(canvas => {globalThis.otherTaskCanvas = canvas;});
+    await open.first().click();
     const editor = page.locator('dialog[open] .eva-editor');
     await editor.getByRole('button',{name:'Java',exact:true}).click();
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
-    await editor.locator('.cm-content').waitFor();
-    const preview = page.locator('.be-program-snap-renderer:not(dialog *)').first();
+    const code = editor.locator('.cm-content');
+    await code.waitFor();
     const source = 'public class Drawing {\n  public static void main(String[] args) {\n    Turtle.forward(20);\n  }\n}\n';
     async function writeSource(code) {
-      await page.evaluate(code => {
-        const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(document.querySelector('dialog[open] .cm-editor'));
-        view.dispatch({changes:{from:0,to:view.state.doc.length,insert:code}});
-      }, code);
+      await editor.locator('.cm-content').fill(code);
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
         .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), code);
     }
-    async function rememberPreview() {
-      await page.waitForFunction(() => {
-        const canvas = document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)');
-        return canvas && canvas.width > 1 && canvas.height > 1;
-      });
+    async function rememberCounts() {
       await page.evaluate(() => {
-        globalThis.previewReuseProbe = {
-          canvas:document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)'),
-          worlds:snapPreviewWorlds,pictures:snapPreviewPictures
-        };
-        previewReuseProbe.xml = snapPreviewLoadedXml;
+        globalThis.previewPauseProbe = {worlds:snapPreviewWorlds,pictures:snapPreviewPictures};
       });
     }
-    await writeSource(source);
-    await rememberPreview();
-    for (const suffix of [' ', '\n\t', '\n\n']) {
-      await writeSource(source + suffix);
-      assert.deepEqual(await page.evaluate(() => ({
-        retained:previewReuseProbe.canvas === document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)'),
-        worlds:snapPreviewWorlds - previewReuseProbe.worlds,pictures:snapPreviewPictures - previewReuseProbe.pictures
-      })), {retained:true,worlds:0,pictures:0});
+    async function assertPaused() {
+      assert.equal(await own.locator('.be-program-snap-renderer__canvas').count(), 0);
+      assert(await other.locator('.be-program-snap-renderer__canvas').evaluate(canvas => canvas === otherTaskCanvas && canvas.isConnected),
+        'another task retains its mounted preview');
+      assert.deepEqual(await page.evaluate(() => ({worlds:snapPreviewWorlds - previewPauseProbe.worlds,
+        pictures:snapPreviewPictures - previewPauseProbe.pictures})), {worlds:0,pictures:0},
+      'typing in the fullscreen editor performs no background Morphic rendering');
     }
+    const waitForForward = value => page.waitForFunction(value =>
+      new DOMParser().parseFromString(snapPreviewLoadedXml,'application/xml')
+        .querySelector('block-definition[s="main"] block[s="doJavaForward"] > l')?.textContent === String(value), value);
+
+    await writeSource(source);
+    await rememberCounts();
+    await code.click();
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
+    await page.keyboard.type(' \t ');
+    await assertPaused();
     const changed = source.replace('forward(20)', 'forward(30)');
     await writeSource(changed);
-    assert(await page.evaluate(() => previewReuseProbe.canvas !== document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)') &&
-      snapPreviewWorlds > previewReuseProbe.worlds && snapPreviewPictures > previewReuseProbe.pictures));
-    assert(await page.evaluate(() => previewReuseProbe.xml !== snapPreviewLoadedXml &&
-      new DOMParser().parseFromString(snapPreviewLoadedXml,'application/xml')
-        .querySelector('block-definition[s="main"] block[s="doJavaForward"] > l')?.textContent === '30'),
-      'the regenerated preview loads the changed method body');
-    await rememberPreview();
-    await writeSource(changed.slice(0, changed.lastIndexOf('}')));
-    assert.equal(await preview.locator('canvas').count(), 0);
-    assert.match(await preview.textContent(), /Preview unavailable for this draft/);
+    await assertPaused();
+    const unfinished = changed.slice(0, changed.lastIndexOf('}'));
+    await writeSource(unfinished);
+    await assertPaused();
+    await page.locator('.fullscreen-close-button').click();
+    assert.equal(await own.locator('.be-program-snap-renderer__canvas').count(), 0);
+    assert.match(await own.locator('.be-program-snap-renderer').textContent(), /Preview unavailable for this draft/);
+    await open.first().click();
+    await code.waitFor();
+    assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
+      .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), unfinished);
     await writeSource(changed);
-    assert(await page.evaluate(() => previewReuseProbe.canvas !== document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)') &&
-      snapPreviewWorlds > previewReuseProbe.worlds && snapPreviewPictures > previewReuseProbe.pictures));
-    assert(await page.evaluate(() => previewReuseProbe.xml === snapPreviewLoadedXml),
-      'restoring the same valid source reloads its complete block program');
-    await rememberPreview();
-    assert.equal(await preview.locator('[role=alert]').count(), 0);
+    assert.equal(await own.locator('.be-program-snap-renderer__canvas').count(), 0);
+    await page.locator('.fullscreen-close-button').click();
+    await waitForForward(30);
+    await own.locator('.be-program-snap-renderer__canvas').waitFor();
+    await own.locator('.be-program-snap-renderer__canvas').evaluate(canvas => {globalThis.closedTaskCanvas = canvas;});
+
+    await open.nth(2).click();
+    assert.equal(await regular.locator('.be-program-snap-renderer__canvas').count(), 0,
+      'regular programming exercises also pause their own preview');
+    assert(await own.locator('.be-program-snap-renderer__canvas').evaluate(canvas => canvas === closedTaskCanvas && canvas.isConnected),
+      'opening a different editor leaves this unchanged block preview intact');
+    await page.locator('.fullscreen-close-button').click();
+    await regular.locator('.be-program-snap-renderer__canvas').waitFor();
+
+    await open.first().click();
+    await editor.getByRole('button',{name:'Snap!',exact:true}).click();
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector('dialog[open] .be-program-snap-renderer--editor canvas.be-program-snap-renderer__canvas');
+      return snapPreviewOpened.some(({ide}) => ide.world?.()?.worldCanvas === canvas && ide.stage?.globalBlocks.some(definition => definition.spec === 'main'));
+    });
+    const snapMetadata = await page.evaluate(() => {
+      const canvas = document.querySelector('dialog[open] .be-program-snap-renderer--editor canvas.be-program-snap-renderer__canvas');
+      const {ide} = snapPreviewOpened.findLast(({ide}) => ide.world?.()?.worldCanvas === canvas);
+      const metadata = [...new Set([...new DOMParser().parseFromString(ide.getProjectXML(),'application/xml')
+        .querySelectorAll('notes')].map(notes => notes.textContent.replace(/\r\n?/g,'\n')).filter(text => text.startsWith('EduSquirrel Java Turtle 1\n')))];
+      const main = ide.stage.globalBlocks.find(definition => definition.spec === 'main');
+      let forward;
+      main.body.expression.forAllChildren(block => {if (block.selector === 'doJavaForward') forward = block;});
+      if (!forward) throw new Error('The native Snap main block must contain the Java forward command.');
+      forward.inputs()[0].setContents('47');
+      document.querySelector('.fullscreen-close-button').click();
+      return metadata;
+    });
+    assert.equal(snapMetadata.length, 1, 'the native Snap project retains its Java Turtle metadata');
+    await waitForForward(47);
+    assert.deepEqual(await page.evaluate(() => [...new Set([...new DOMParser().parseFromString(snapPreviewLoadedXml,'application/xml')
+      .querySelectorAll('notes')].map(notes => notes.textContent.replace(/\r\n?/g,'\n')).filter(text => text.startsWith('EduSquirrel Java Turtle 1\n')))]), snapMetadata,
+    'close flushes the native Snap edit without losing its project metadata');
+    await own.locator('.be-program-snap-renderer__canvas').waitFor();
+    await open.first().click();
+    const reopenedSnap = await page.waitForFunction(() => {
+      const canvas = document.querySelector('dialog[open] .be-program-snap-renderer--editor canvas.be-program-snap-renderer__canvas');
+      const opened = snapPreviewOpened.findLast(({ide}) => ide.world?.()?.worldCanvas === canvas);
+      const main = opened?.ide.stage?.globalBlocks.find(definition => definition.spec === 'main');
+      if (!main) return null;
+      let forward;
+      main.body.expression.forAllChildren(block => {if (block.selector === 'doJavaForward') forward = block;});
+      const input = String(forward?.inputs()[0].contents().text);
+      if (input !== '47') return null;
+      const metadata = [...new Set([...new DOMParser().parseFromString(opened.ide.getProjectXML(),'application/xml')
+        .querySelectorAll('notes')].map(notes => notes.textContent.replace(/\r\n?/g,'\n')).filter(text => text.startsWith('EduSquirrel Java Turtle 1\n')))];
+      return {input,metadata};
+    });
+    assert.deepEqual(await reopenedSnap.jsonValue(), {input:'47',metadata:snapMetadata},
+    'the next native Snap editor reads the flushed input and unchanged metadata from the bound source');
     await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, []);
   } finally {await browser.close();}
