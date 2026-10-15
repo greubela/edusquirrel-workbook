@@ -81,6 +81,28 @@ class EvaEditorSpec extends FunSuite {
     panel.activate()
   }
 
+  test("idle drawing panel edits and resets do not republish its unchanged status") {
+    import TurtleExecutionPanel.Status
+    val fixture = new PanelFixture
+    val owner = new ManualOwner
+    var statuses = Vector.empty[Status]
+    fixture.panel.status.signal.changes.foreach(next => statuses :+= next)(using owner)
+    try {
+      val original = fixture.source.now()
+      fixture.source.set(ProgrammingStateJavaString("class Changed {}"))
+      fixture.source.set(original)
+      fixture.panel.reset()
+      fixture.panel.deactivate()
+      assertEquals(fixture.panel.status.now(), Status.Idle)
+      assertEquals(statuses, Vector.empty[Status])
+      assertEquals(fixture.stops, 0)
+      assertEquals(fixture.requests.size, 0)
+    } finally {
+      owner.killSubscriptions()
+      fixture.panel.deactivate()
+    }
+  }
+
   test("drawing runs follow the configured policy for Java, Python and Snap sources") {
     val sources: List[ProgrammingState] = List(ProgrammingStateJavaString("forward(5); forward(5);"),
       ProgrammingStatePythonString("forward(5)\nforward(5)"), ProgrammingStateSnapXml.empty)
@@ -188,6 +210,9 @@ class EvaEditorSpec extends FunSuite {
   test("Java execution panel publishes assessed drawing only after successful completion") {
     import TurtleExecutionPanel.Status
     val fixture = new PanelFixture
+    val owner = new ManualOwner
+    var statuses = Vector.empty[Status]
+    fixture.panel.status.signal.changes.foreach(next => statuses :+= next)(using owner)
     fixture.panel.run()
     fixture.panel.run()
     assertEquals(fixture.requests.size, 1)
@@ -198,11 +223,16 @@ class EvaEditorSpec extends FunSuite {
         assertEquals(fixture.panel.status.now(), Status.Ready(squareDrawing(), Some(true)))
         fixture.panel.deactivate()
         assertEquals(fixture.panel.status.now(), Status.Idle)
+        fixture.panel.reset()
+        assertEquals(statuses, Vector(Status.Running, Status.Ready(squareDrawing(), Some(true)), Status.Idle))
       }
+    }.andThen { case _ =>
+      owner.killSubscriptions()
+      fixture.panel.deactivate()
     }
   }
 
-  test("Java execution panel stop ignores old results and permits a new run") {
+  test("Java execution panel stop resets on an edit, ignores old results and permits a new run") {
     import TurtleExecutionPanel.Status
     val fixture = new PanelFixture
     fixture.panel.run()
@@ -210,6 +240,9 @@ class EvaEditorSpec extends FunSuite {
     fixture.panel.stop()
     assertEquals(fixture.stops, 1)
     assertEquals(fixture.panel.status.now(), Status.Stopped)
+    fixture.source.set(ProgrammingStateJavaString("class Changed {}"))
+    assertEquals(fixture.panel.status.now(), Status.Idle)
+    assertEquals(fixture.stops, 1)
     fixture.panel.run()
     val newest = fixture.requests.last
     fixture.requests.head.success(squareDrawing())
@@ -225,6 +258,9 @@ class EvaEditorSpec extends FunSuite {
   test("Java execution panel invalidates A-to-B-to-A restores but ignores identical echoes") {
     import TurtleExecutionPanel.Status
     val fixture = new PanelFixture
+    val owner = new ManualOwner
+    var statuses = Vector.empty[Status]
+    fixture.panel.status.signal.changes.foreach(next => statuses :+= next)(using owner)
     val original = fixture.source.now()
     fixture.panel.run()
     fixture.source.set(original)
@@ -234,11 +270,16 @@ class EvaEditorSpec extends FunSuite {
     fixture.source.set(original)
     assertEquals(fixture.panel.status.now(), Status.Idle)
     assertEquals(fixture.stops, 1)
+    assertEquals(statuses, Vector(Status.Running, Status.Idle))
     fixture.requests.head.success(squareDrawing())
     fixture.requests.head.future.flatMap(_ => Future.unit.map { _ =>
       assertEquals(fixture.panel.status.now(), Status.Idle)
+      assertEquals(statuses, Vector(Status.Running, Status.Idle))
       fixture.panel.deactivate()
-    })
+    }).andThen { case _ =>
+      owner.killSubscriptions()
+      fixture.panel.deactivate()
+    }
   }
 
   test("Snap metadata-only A-to-B-to-A restores reject stale drawing results") {
@@ -295,9 +336,19 @@ class EvaEditorSpec extends FunSuite {
     import TurtleExecutionPanel.Status
     val source = Var[ProgrammingState](ProgrammingStateJavaString("class Drawing {}"))
     val panel = new TurtleExecutionPanel(source, () => throw IllegalStateException("unavailable"), () => ())
+    val owner = new ManualOwner
+    var statuses = Vector.empty[Status]
+    panel.status.signal.changes.foreach(next => statuses :+= next)(using owner)
+    panel.activate()
     panel.run()
     Future.unit.map { _ =>
       assertEquals(panel.status.now(), Status.Failed("unavailable"))
+      source.set(ProgrammingStateJavaString("class Changed {}"))
+      assertEquals(panel.status.now(), Status.Idle)
+      panel.deactivate()
+      assertEquals(statuses, Vector(Status.Running, Status.Failed("unavailable"), Status.Idle))
+    }.andThen { case _ =>
+      owner.killSubscriptions()
       panel.deactivate()
     }
   }

@@ -61,7 +61,7 @@ final class TurtleExecutionPanel(
     revision += 1
     val running = status.now() == Status.Running
     scenes = Vector.empty
-    status.set(Status.Idle)
+    if status.now() != Status.Idle then status.set(Status.Idle)
     if running then cancel()
   }
 

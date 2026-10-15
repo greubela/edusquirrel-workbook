@@ -10,6 +10,133 @@ const prefix = '/edusquirrel-workbook/';
 const mime = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png'};
 
+test('idle Java typing retains the target board while running and ready edits redraw it', async () => {
+  const browser = await chromium.launch({chromiumSandbox: true,
+    executablePath: process.env.CHROMIUM_PATH || chromium.executablePath()});
+  let releaseWorker;
+  try {
+    const context = await browser.newContext({viewport: {width: 1440, height: 1000}});
+    const workerGate = new Promise(resolve => { releaseWorker = resolve; });
+    let workerLoads = 0;
+    await context.route('**/*', async route => {
+      const url = new URL(route.request().url());
+      if (url.href.startsWith('https://cdn.jsdelivr.net/pyodide/v0.29.3/full/')) {
+        const name = url.pathname.split('/').at(-1);
+        return route.fulfill({body: await readFile(path.join(root, 'node_modules/pyodide', name)),
+          contentType: name.endsWith('.wasm') ? 'application/wasm' : /\.m?js$/.test(name) ? 'text/javascript' : 'application/octet-stream',
+          headers: {'access-control-allow-origin': '*'}});
+      }
+      if (url.origin !== origin || !url.pathname.startsWith(prefix)) return route.abort();
+      const relative = decodeURIComponent(url.pathname.slice(prefix.length));
+      if (relative.split('/').includes('..')) return route.abort();
+      if (relative === 'homepage/js/pyodide-worker.js' && workerLoads++ === 0) await workerGate;
+      let file = path.resolve(root, relative + (relative.endsWith('/') ? 'index.html' : ''));
+      if (relative === 'homepage/js/CodeMirrorLoader.js') {
+        assert(process.env.CODEMIRROR_TEST_BUNDLE, 'run via npm run test:workbooks to use pinned offline modules');
+        file = process.env.CODEMIRROR_TEST_BUNDLE;
+      }
+      try {
+        let body = await readFile(file);
+        if (relative.endsWith('/jsxgraphcore.js')) body = Buffer.from(body.toString() + `
+          (() => {
+            globalThis.targetBoards = [];
+            const init = JXG.JSXGraph.initBoard, free = JXG.JSXGraph.freeBoard;
+            JXG.JSXGraph.initBoard = function(container, ...args) {
+              const board = init.call(this, container, ...args);
+              targetBoards.push({board, node: typeof container === 'string' ? document.getElementById(container) : container, freed: 0});
+              return board;
+            };
+            JXG.JSXGraph.freeBoard = function(board, ...args) {
+              const record = targetBoards.find(record => record.board === board);
+              if (record) record.freed++;
+              return free.call(this, board, ...args);
+            };
+          })();`);
+        await route.fulfill({body, contentType: mime[path.extname(file)] || 'application/octet-stream'});
+      } catch { await route.fulfill({status: 404, body: 'Not found'}); }
+    });
+    const page = await context.newPage();
+    page.setDefaultTimeout(60000);
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto(origin + prefix + 'homepage/workbookDesign/');
+    await page.locator('.section-register .login-area').nth(1).locator('button').click();
+    await page.locator('.section-block').first().click();
+    const open = page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).first();
+    await open.click();
+    const editor = page.locator('dialog[open] .eva-editor');
+    await editor.getByRole('button', {name: 'Java', exact: true}).click();
+    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    const code = editor.locator('.cm-content');
+    await code.waitFor();
+    await code.fill('public class Drawing {\n  public static void main(String[] args) { Turtle.forward(12); }\n}\n');
+    const status = editor.locator('.turtle-execution__status');
+    const target = editor.locator('.turtle-execution .turtle-gradig-panel');
+    await target.waitFor();
+    const remember = name => page.evaluate(name => {
+      const node = document.querySelector('dialog[open] .turtle-execution .turtle-gradig-panel');
+      const record = targetBoards.find(record => record.node === node);
+      if (!record) throw new Error('The displayed target must have a real JSXGraph board.');
+      globalThis[name] = record;
+    }, name);
+    const retained = name => page.evaluate(name => {
+      const record = globalThis[name];
+      return record.node === document.querySelector('dialog[open] .turtle-execution .turtle-gradig-panel') &&
+        record.node.isConnected && record.freed === 0;
+    }, name);
+    const assertIdle = async name => {
+      assert.match(await status.innerText(), /Run your program to see its drawing/);
+      assert.equal(await editor.locator('.turtle-execution__figure figcaption').innerText(), 'Target');
+      assert(await retained(name), 'idle edits retain the same target node and JSXGraph board');
+    };
+    await remember('idleTarget');
+    await code.click();
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
+    await page.keyboard.type('// idle');
+    await assertIdle('idleTarget');
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Home' : 'Control+Home');
+    await page.keyboard.type('@');
+    assert(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
+      .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString().startsWith('@')));
+    await assertIdle('idleTarget');
+    await page.keyboard.press('Backspace');
+    await assertIdle('idleTarget');
+
+    await editor.getByRole('button', {name: 'Run', exact: true}).click();
+    await page.waitForFunction(() => document.querySelector('dialog[open] .turtle-execution__status')?.textContent.includes('running'));
+    await remember('runningTarget');
+    await code.click();
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
+    await page.keyboard.type(' ');
+    assert.equal(await retained('runningTarget'), false, 'editing a running program replaces its target board');
+    assert.equal(await page.evaluate(() => runningTarget.freed), 1);
+    await remember('afterRunningTarget');
+    await assertIdle('afterRunningTarget');
+    releaseWorker();
+    await editor.getByRole('button', {name: 'Run', exact: true}).click();
+    await page.waitForFunction(() => document.querySelector('dialog[open] .turtle-execution__status')?.textContent.includes("doesn't match the target"));
+    assert.equal(await editor.locator('.turtle-execution__figure figcaption').innerText(), 'Target comparison');
+    await remember('readyTarget');
+    await code.click();
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
+    await page.keyboard.type(' ');
+    assert.equal(await retained('readyTarget'), false, 'editing a ready result restores a fresh target board');
+    assert.equal(await page.evaluate(() => readyTarget.freed), 1);
+    await remember('afterReadyTarget');
+    await page.keyboard.type('  ');
+    await assertIdle('afterReadyTarget');
+    const draft = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
+      .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
+    await page.locator('.fullscreen-close-button').click();
+    await open.click();
+    await code.waitFor();
+    assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
+      .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), draft);
+    await assertIdle('afterReadyTarget');
+    assert.deepEqual(errors, []);
+  } finally { releaseWorker?.(); await browser.close(); }
+});
+
 test('Java appearance changes preserve the live editor, undo history and drawing', async () => {
   const browser = await chromium.launch({chromiumSandbox: true,
     executablePath: process.env.CHROMIUM_PATH || chromium.executablePath()});
