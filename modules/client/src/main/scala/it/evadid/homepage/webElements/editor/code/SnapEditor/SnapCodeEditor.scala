@@ -5,28 +5,35 @@ import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import com.raquo.laminar.nodes.ReactiveSvgElement
+import it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{JavaTurtleSnapPrimitives, PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal, SnapTurtleStagePanel}
+import it.evadid.util.logging.Logger
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import org.scalajs.dom
+import com.raquo.airstream.ownership.Subscription
+import org.scalajs.dom.SVGSVGElement
 import org.scalajs.dom.html.Canvas
+
 import scala.concurrent.Future
 
 case class SnapCodeEditor(
+                           logger: Logger,
                            state: Var[ProgrammingState],
                            config: SnapCodeEditorConfig,
                            impl: SnapCodeEditorImpl,
                            onStateEdited: ProgrammingState => Unit = _ => ()
                          ) extends HtmlAppElement with FullscreenLifecycle {
-
 
 
   private def publishProgramFromSnapXml(xml: String): Unit = {
@@ -56,7 +63,6 @@ case class SnapCodeEditor(
   }
 
   lazy val editorCanvas: Element = {
-    var mountGeneration = 0
     canvasTag(
       cls := "be-program-snap-renderer__canvas",
       aria.label := "Block program editor",
@@ -66,18 +72,17 @@ case class SnapCodeEditor(
       // avoiding an ambiguous descendant query, this guarantees that Snap
       // installs its listeners only after this exact canvas is connected.
       onMountCallback { ctx =>
-        mountGeneration += 1
-        val generation = mountGeneration
+        val active = Var(true)
+        new Subscription(ctx.owner, () => active.set(false))
         val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
         impl.whenReady(() => {
-          if generation == mountGeneration then
+          if active.now() then
             renderingError.set(None)
             mountEditorInto(canvas, ctx.owner)
         }, error => {
-          if generation == mountGeneration then renderingError.set(Some(s"Block editor unavailable: ${error.getMessage}"))
+          if active.now() then renderingError.set(Some(s"Block editor unavailable: ${error.getMessage}"))
         })
-      },
-      onUnmountCallback(_ => mountGeneration += 1)
+      }
     )
   }
 
@@ -135,14 +140,37 @@ object SnapCodeEditor {
   private[code] def commandsFor(state: ProgrammingStateSnapXml): Future[List[TurtleCommand[Double]]] =
     commandExecution.commandsFor(state)
 
-  def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig, onStateEdited: ProgrammingState => Unit): SnapCodeEditor =
-    SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
+  def apply(logger: Logger, state: Var[ProgrammingState], config: SnapCodeEditorConfig, onStateEdited: ProgrammingState => Unit): SnapCodeEditor =
+    SnapCodeEditor(logger, state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
 
-  def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapCodeEditor =
-    SnapCodeEditor(state, config, SnapCodeEditorImplDelegateToOriginal())
+  def apply(logger: Logger,state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapCodeEditor =
+    SnapCodeEditor(logger, state, config, SnapCodeEditorImplDelegateToOriginal())
 
-  def apply(state: Var[ProgrammingState]): SnapCodeEditor =
-    SnapCodeEditor(state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
+  def apply(logger: Logger,state: Var[ProgrammingState]): SnapCodeEditor =
+    SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
 
 
+  def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig, initState: ProgrammingState): EvaEditorTab[ProgrammingState] = {
+    val initial = initState match {
+      case snap: ProgrammingStateSnapXml => snap
+      case snap: ProgrammingStateSnapScalaModel => snap
+      case _ => ProgrammingStateSnapXml.empty
+    }
+    val internal = Var[ProgrammingState](initial)
+    val editor = SnapCodeEditor(tabLogger, internal, config)
+    new EvaEditorTab[ProgrammingState] {
+      override val underlyingVar = internal
+      override val logger: Logger = tabLogger
+      override def toProgram(value: ProgrammingState): ProgrammingState = value
+      override def fromProgram(value: ProgrammingState): ProgrammingState = value match {
+        case snap: ProgrammingStateSnapScalaModel => snap
+        case _ => value.toSnapXml
+      }
+      override def captureSource(): ProgrammingState = { editor.captureCurrentProject(); internal.now() }
+      override def getDomElement(): L.Element = editor.getDomElement()
+      override def onFullscreenOpen(): Unit = editor.onFullscreenOpen()
+      override def onFullscreenClose(): Unit = editor.onFullscreenClose()
+      override val label = "Snap!"
+    }
+  }
 }

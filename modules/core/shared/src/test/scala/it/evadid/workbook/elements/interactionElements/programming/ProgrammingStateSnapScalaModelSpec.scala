@@ -58,8 +58,8 @@ two</options></input></inputs>
     assertEquals(readBinary[ProgrammingStateSnapScalaModel](writeBinary(typed)), typed)
     assertEquals(read[ProgrammingState](write[ProgrammingState](typed)), typed)
     assertEquals(readBinary[ProgrammingState](writeBinary[ProgrammingState](typed)), typed)
-    assertEquals(ProgrammingExercise.StateSerializer.deserialize(ProgrammingExercise.StateSerializer.serialize(typed)), typed)
-    assertEquals(ProgrammingExercise.StateSerializer.deserialize(ProgrammingExercise.StateSerializer.serialize(source)), source)
+    assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(typed)), typed)
+    assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(source)), source)
     assertEquals(read[ProgrammingStateSnapXml](write(source)), source)
     assertEquals(typed.fingerprint(), source.fingerprint())
   }
