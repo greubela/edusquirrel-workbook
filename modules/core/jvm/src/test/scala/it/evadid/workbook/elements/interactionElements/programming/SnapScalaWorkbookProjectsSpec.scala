@@ -54,7 +54,7 @@ class SnapScalaWorkbookProjectsSpec extends FunSuite {
   }
 
   test("concurrent readers share one Java analysis and keep execution state separate") {
-    val entry = ProgrammingState.JavaAnalysis.forSource(javaSource(17))
+    val entry = JavaAnalysis.forSource(javaSource(17))
     val results = concurrently(6) { _ =>
       assert(entry.classification.get._1)
       val checked = entry.program.get

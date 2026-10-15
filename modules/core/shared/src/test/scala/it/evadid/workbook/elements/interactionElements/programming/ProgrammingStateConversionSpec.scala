@@ -434,7 +434,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   }
 
   test("equal Java source states and checked roots reuse compilation and editable views") {
-    ProgrammingState.JavaAnalysis.synchronized {
+    JavaAnalysis.synchronized {
       val state = ProgrammingStateJavaString(squareJava() + "// equal source reuse\n")
       val program = state.toJavaVmProgram.fold(diagnostic => fail(diagnostic.message), identity)
       val python = state.toPython
@@ -459,7 +459,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   }
 
   test("Java analysis invalidates on exact comments and CRLF source changes") {
-    ProgrammingState.JavaAnalysis.synchronized {
+    JavaAnalysis.synchronized {
       val original = squareJava() + "// exact source invalidation\n"
       val sources = List(original, original.replace("\n", "\r\n"), original + "// another comment\n")
       val programs = sources.map { source =>
@@ -476,20 +476,20 @@ class ProgrammingStateConversionSpec extends FunSuite {
   }
 
   test("latest Java analysis evicts the preceding source including retained state instances") {
-    ProgrammingState.JavaAnalysis.synchronized {
+    JavaAnalysis.synchronized {
       val first = ProgrammingStateJavaString(squareJava() + "// eviction first\n")
       val second = ProgrammingStateJavaString(squareJava(side = 31) + "// eviction second\n")
-      val firstEntry = ProgrammingState.JavaAnalysis.forSource(first.code)
+      val firstEntry = JavaAnalysis.forSource(first.code)
       val original = first.toJavaVmProgram.toOption.get
-      val secondEntry = ProgrammingState.JavaAnalysis.forSource(second.code)
+      val secondEntry = JavaAnalysis.forSource(second.code)
       val intervening = second.toJavaVmProgram.toOption.get
       firstEntry.python(firstEntry.program.get)
       firstEntry.snap(firstEntry.program.get)
-      assert(ProgrammingState.JavaAnalysis.forSource(second.code) eq secondEntry)
+      assert(JavaAnalysis.forSource(second.code) eq secondEntry)
       assert(second.copy().toJavaVmProgram.toOption.get eq intervening)
       val oversized = " " * (JavaTurtleInputLimits.MaxSourceCharacters + 1)
-      assert(!(ProgrammingState.JavaAnalysis.forSource(oversized) eq ProgrammingState.JavaAnalysis.forSource(oversized)))
-      assert(ProgrammingState.JavaAnalysis.forSource(second.code) eq secondEntry)
+      assert(!(JavaAnalysis.forSource(oversized) eq JavaAnalysis.forSource(oversized)))
+      assert(JavaAnalysis.forSource(second.code) eq secondEntry)
       assert(second.toJavaVmProgram.toOption.get eq intervening)
       val rebuilt = first.toJavaVmProgram.toOption.get
       assert(!(rebuilt eq original))
@@ -499,7 +499,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   }
 
   test("unfinished Java analysis reuses its failure and recovers when corrected") {
-    ProgrammingState.JavaAnalysis.synchronized {
+    JavaAnalysis.synchronized {
       val source = "class CacheRecovery { public static void main(String[] args) {"
       val invalid = ProgrammingStateJavaString(source)
       val failure = intercept[IllegalArgumentException](invalid.isClassProgram)
@@ -520,7 +520,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("Java editable export slots cache failures independently from successful exports") {
     val source = squareJava() + "// independent exports\n"
     val program = checked(source)
-    val entry = new ProgrammingState.JavaAnalysis.Entry(source)
+    val entry = new JavaAnalysis.Entry(source)
     val diagnostic = JavaTurtleSource.Diagnostic(JavaTurtleSource.Problem.UnsupportedStructure, "Snap export unavailable", None)
     var snapSuppliers = 0
     var pythonSuppliers = 0
@@ -535,7 +535,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   }
 
   test("legacy hinted Java classes retain Python fallback after Snap conversion fails") {
-    ProgrammingState.JavaAnalysis.synchronized {
+    JavaAnalysis.synchronized {
       val state = ProgrammingStateJavaString("class CacheLegacy { double distance = 12; } //EvaEntityName(legacy)\n")
       val stored = ProgrammingExercise.StateSerializer.serialize(state)
       assert(state.isClassProgram)
@@ -550,7 +550,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   }
 
   test("a retained Java edit history does not retain obsolete compiled analyses") {
-    ProgrammingState.JavaAnalysis.synchronized {
+    JavaAnalysis.synchronized {
       val history = Vector.tabulate(128)(index => ProgrammingStateJavaString(
         s"class CacheHistory { public static void main(String[] args) { Turtle.forward($index); } }"))
       val oldest = history.head.toJavaVmProgram.toOption.get
