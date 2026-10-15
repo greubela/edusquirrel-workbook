@@ -8,6 +8,112 @@ const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 
+test('native Snap edits retain Java method categories and allow a safe return to Java', async () => {
+  const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
+  try {
+    const page = await browser.newPage({viewport:{width:1440,height:1000}});
+    page.setDefaultTimeout(60000);
+    const errors = [];
+    const prefix = '/edusquirrel-workbook/';
+    page.on('pageerror', error => errors.push(error.message));
+    await page.route('**/*', async route => {
+      const url = new URL(route.request().url());
+      if (url.origin !== origin || !url.pathname.startsWith(prefix)) return route.abort();
+      const relative = decodeURIComponent(url.pathname.slice(prefix.length));
+      let file = path.resolve(root, relative + (relative.endsWith('/') ? 'index.html' : ''));
+      if (!file.startsWith(root + path.sep)) return route.abort();
+      if (relative === 'homepage/js/CodeMirrorLoader.js') file = process.env.CODEMIRROR_TEST_BUNDLE;
+      try {
+        let body = await fs.readFile(file);
+        if (relative.endsWith('/turtlestitchsrc/gui.js')) body = Buffer.from(body.toString() + `
+          window.snapCategoryIdes = [];
+          (() => {
+            const open = IDE_Morph.prototype.rawOpenProjectString;
+            IDE_Morph.prototype.rawOpenProjectString = function(...args) {
+              const result = open.apply(this,args);
+              snapCategoryIdes.push(this);
+              return result;
+            };
+          })();`);
+        await route.fulfill({body,contentType:mime[path.extname(file)] || 'application/octet-stream'});
+      } catch {await route.fulfill({status:404,body:'Not found'});}
+    });
+    await page.goto(origin + prefix + 'homepage/workbookDesign/');
+    await page.locator('.section-register .login-area').nth(1).locator('button').click();
+    await page.locator('.section-block').first().click();
+    const open = page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first();
+    await open.click();
+    const editor = page.locator('dialog[open] .eva-editor');
+    const java = editor.getByRole('button',{name:'Java',exact:true});
+    await java.click();
+    await editor.getByRole('button',{name:'Full source',exact:true}).click();
+    for (const fixture of [
+      {source:'public class Drawing {\n public static void main(String[] args) { Turtle.forward(30); }\n}\n',method:'main',selector:'doJavaForward',before:30,after:47},
+      {source:'class Branching {\n static void draw(int depth, double length) {\n  if (depth <= 0) { Turtle.forward(length); return; }\n  draw(depth - 1, length / 2.0);\n  Turtle.turnRight(45);\n }\n public static void main(String[] args) { draw(3, 16.0); }\n}\n',method:'draw',selector:'doJavaTurnRight',before:45,after:55}
+    ]) {
+      await editor.locator('.cm-content').fill(fixture.source);
+      await editor.getByRole('button',{name:'Snap!',exact:true}).click();
+      await page.waitForFunction(() => {
+        const canvas = document.querySelector('dialog[open] .be-program-snap-renderer--editor canvas');
+        return window.snapCategoryIdes?.some(ide => ide.world()?.worldCanvas === canvas && ide.stage?.globalBlocks.some(block => block.spec === 'main'));
+      });
+      const edited = await page.evaluate(fixture => {
+        const canvas = document.querySelector('dialog[open] .be-program-snap-renderer--editor canvas');
+        const ide = snapCategoryIdes.findLast(ide => ide.world()?.worldCanvas === canvas);
+        const methods = ide.stage.globalBlocks;
+        const palette = ide.palette.contents.children;
+        const visible = methods.map(definition => ({spec:definition.spec,category:definition.category,
+          count:palette.filter(block => block.isCustomBlock && block.definition === definition).length}));
+        const template = palette.find(block => block.isCustomBlock && block.definition === methods[0]);
+        const count = () => ide.palette.contents.children.filter(block => block.isCustomBlock && block.definition === methods[0]).length;
+        ide.currentSprite.changeBlockVisibility(template,true);
+        const hiddenCount = count();
+        ide.currentSprite.changeBlockVisibility(template,false);
+        const restoredCount = count();
+        const metadata = xml => [...new DOMParser().parseFromString(xml,'application/xml').querySelectorAll('notes')]
+          .map(note => note.textContent.replace(/\r\n?/g,'\n')).filter(text => text.startsWith('EduSquirrel Java Turtle 1\n'));
+        const beforeNotes = metadata(ide.getProjectXML());
+        const method = methods.find(definition => definition.spec.split(' ')[0] === fixture.method);
+        let command;
+        method.body.expression.forAllChildren(block => {if (block.selector === fixture.selector) command = block;});
+        if (!command) throw Error('Missing native Turtle command');
+        const before = command.inputs()[0].contents().text;
+        command.inputs()[0].setContents(String(fixture.after));
+        const xml = ide.getProjectXML();
+        document.querySelector('.fullscreen-close-button').click();
+        return {visible,before,hiddenCount,restoredCount,metadataUnchanged:JSON.stringify(beforeNotes) === JSON.stringify(metadata(xml))};
+      }, fixture);
+      assert.equal(edited.before, String(fixture.before));
+      assert(edited.visible.length > 0);
+      assert(edited.visible.every(method => method.category === 'variables' && method.count === 1), JSON.stringify(edited.visible));
+      assert.equal(edited.hiddenCount, 0);
+      assert.equal(edited.restoredCount, 1);
+      assert.equal(edited.metadataUnchanged, true);
+      await open.click();
+      assert.equal(await java.isDisabled(), false, 'a native edit must not invalidate the Java bridge');
+      await java.click();
+      const code = await editor.locator('.cm-content').innerText();
+      assert.match(code, new RegExp(`Turtle\\.${fixture.selector === 'doJavaForward' ? 'forward' : 'turnRight'}\\(${fixture.after}\\)`));
+      if (fixture.method === 'draw') assert.match(code, /draw\(\(depth - 1\), \(length \/ 2\.0\)\)/);
+    }
+    await editor.getByRole('button',{name:'Snap!',exact:true}).click();
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector('dialog[open] .be-program-snap-renderer--editor canvas');
+      return snapCategoryIdes.some(ide => ide.world()?.worldCanvas === canvas);
+    });
+    await page.evaluate(() => {
+      const canvas = document.querySelector('dialog[open] .be-program-snap-renderer--editor canvas');
+      const ide = snapCategoryIdes.findLast(ide => ide.world()?.worldCanvas === canvas);
+      ide.stage.globalBlocks.find(block => block.spec === 'main').category = 'control';
+      document.querySelector('.fullscreen-close-button').click();
+    });
+    await open.click();
+    assert.equal(await java.isDisabled(), true, 'authored category changes still prevent a lossy Java conversion');
+    await page.locator('.fullscreen-close-button').click();
+    assert.deepEqual(errors, []);
+  } finally {await browser.close();}
+});
+
 // A fast cached client can start while Snap's sequential script loader is still fetching.
 // Exercise the actual Scala.js previews and retained fullscreen editor in that order.
 test('Snap previews and editor wait for the runtime and ignore closed mounts', async () => {

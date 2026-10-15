@@ -1,11 +1,56 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{LibraryBlock, SnapCategoryColor, SnapCodeEditorConfig}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{LibraryBlock, LibraryTab, SnapCategoryColor, SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapPaletteCatalog
 import munit.FunSuite
 
 class SnapCodeEditorConfigSpec extends FunSuite {
+
+  private val paletteTab = SnapCodeEditorImplDelegateToOriginal.customBlockPaletteTab
+
+  test("mixed palettes display custom blocks without changing their category") {
+    val tabs = SnapCodeEditorConfig.BeginnerTurtleCategories
+    List("variables", "control", "Author category", "Blocks").foreach { category =>
+      assertEquals(paletteTab(category, tabs), tabs.headOption)
+    }
+  }
+
+  test("filtered palettes retain named tabs and route other custom blocks to Make-a-Block") {
+    val tabs = SnapCodeEditorConfig.PythonCompatibleSnapCategories
+    tabs.foreach(tab => assertEquals(paletteTab(tab.name, tabs), Some(tab)))
+    val variables = tabs.find(_.includeMakeBlockButton)
+    List("variables", "control", "Author category").foreach { category =>
+      assertEquals(paletteTab(category, tabs), variables)
+    }
+  }
+
+  test("native palettes route built-in custom block categories to their own tab") {
+    val tabs = SnapCodeEditorConfig.StandardSnapCategories
+    tabs.foreach { tab =>
+      assertEquals(paletteTab(tab.name, tabs), Some(tab))
+      assertEquals(paletteTab(tab.color.snapKey, tabs), Some(tab))
+    }
+    val exact = LibraryTab("exact", "variables", Nil)
+    assertEquals(paletteTab("variables", tabs :+ exact), Some(exact))
+  }
+
+  test("custom block placement uses only the supplied palette and handles an empty palette") {
+    val blocks = LibraryTab("blocks", "Blocks", Nil)
+    val methods = LibraryTab("methods", "Methods", Nil, includeMakeBlockButton = true)
+    assertEquals(paletteTab("variables", List(blocks, methods)), Some(methods))
+    assertEquals(paletteTab("variables", List(blocks)), Some(blocks))
+    assertEquals(paletteTab("variables", Nil), None)
+    assertEquals(paletteTab("variables", List(methods, blocks)), Some(methods))
+  }
+
+  test("Snap's lowercase variables tab already includes lists and other custom blocks") {
+    val variables = LibraryTab("variables", "variables", Nil, SnapCategoryColor.Variables, useNativeCategory = true)
+    val methods = LibraryTab("methods", "Methods", Nil, includeMakeBlockButton = true)
+    List("lists", "other", "variables").foreach { category =>
+      assertEquals(paletteTab(category, List(methods, variables)), Some(variables))
+    }
+  }
 
   test("PythonCompatibleSnapCategories lists only Python-safe tabs in order") {
     val tabs = SnapCodeEditorConfig.PythonCompatibleSnapCategories

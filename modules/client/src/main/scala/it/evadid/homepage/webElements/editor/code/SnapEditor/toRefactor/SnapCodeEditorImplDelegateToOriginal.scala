@@ -106,7 +106,6 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     // still zero leaves both the palette and scripts pane with empty bounds.
     if config.libraryTabs.nonEmpty then
       installLibraries(config.libraryTabs, ide)
-      retagCustomBlockCategories(ide)
       layoutEditor(world, ide, canvas)
     initializeProjectChangeTracking(ide)
     // Align with Snap's normalized XML so external program restores do not
@@ -183,7 +182,6 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         repairCustomBlockParameterBindings(ide)
         ensureMissingGlobalVariables(ide, xml, refreshPalette = true)
         reinstallConfiguredLibraries(ide)
-        retagCustomBlockCategories(ide)
         (editorWorld, mountedCanvas) match
           case (Some(world), Some(canvas)) =>
             layoutEditor(world, ide, canvas)
@@ -238,30 +236,6 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     mountedConfig.filter(_.libraryTabs.nonEmpty).foreach { config =>
       registerCustomCategoryTabs(config.libraryTabs)
     }
-
-  /**
-   * A custom block only appears in the palette tab whose name equals its category, and
-   * Snap rewrites categories it does not know to `other` while loading. Neither is a
-   * tab this editor shows, so move those definitions onto the Make-a-Block tab instead
-   * of letting the block disappear.
-   */
-  private def retagCustomBlockCategories(ide: IDEMorph): Unit =
-    for
-      config <- mountedConfig if config.libraryTabs.nonEmpty
-      target <- config.libraryTabs.find(_.includeMakeBlockButton).orElse(config.libraryTabs.headOption)
-    do
-      val tabNames = config.libraryTabs.map(_.name).toSet
-      val retagged = customBlockDefinitions(ide).count { definition =>
-        val category = definition.selectDynamic("category")
-        val current = if js.isUndefined(category) || category == null then "" else category.toString
-        if tabNames.contains(current) then false
-        else
-          definition.updateDynamic("category")(target.name)
-          true
-      }
-      if retagged > 0 then
-        ide.flushPaletteCache()
-        ide.refreshPalette(true)
 
   /**
    * Snap's `evaluateCustomBlock` indexes `body.inputs` into `declarations`. After a
@@ -327,7 +301,6 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     ide.rawOpenProjectString(canonicalXml(state))
     repairCustomBlockParameterBindings(ide)
     ensureMissingGlobalVariables(ide, canonicalXml(state), refreshPalette = false)
-    retagCustomBlockCategories(ide)
     ide
 
   private def createPreviewEditor(world: WorldMorph, state: ProgrammingStateSnapXml): IDEMorph =
@@ -366,12 +339,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     val blockTemplates: js.Function2[String, js.UndefOr[Boolean], js.Array[js.Any]] =
       (category: String, forSearch: js.UndefOr[Boolean]) =>
         libraries.find(_.name == category).toList.flatMap { tab =>
-          if tab.useNativeCategory then
-            val native = nativeCategoryPaletteItems(ide, tab.color.snapKey, forSearch)
-            val extras =
-              if tab.name == tab.color.snapKey then Nil
-              else nativeCustomBlockPaletteItems(ide, tab.name)
-            native ++ extras
+          val nativeOrSelected = if tab.useNativeCategory then
+            nativeCategoryPaletteItems(ide, tab.color.snapKey, forSearch)
           else
             val controls =
               (if tab.includeVariableControls then nativeVariablePaletteItems(ide) else Nil) ++
@@ -383,7 +352,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
                   println(s"Snap library: skipping unknown block selector '${data.id}'")
                   Nil
             }
-            controls ++ blocks ++ nativeCustomBlockPaletteItems(ide, tab.name)
+            controls ++ blocks
+          nativeOrSelected ++ nativeCustomBlockPaletteItems(ide, tab, libraries)
         }.toJSArray
 
     sprite.asInstanceOf[js.Dynamic].updateDynamic("blockTemplates")(blockTemplates)
@@ -393,7 +363,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     if !js.isUndefined(stage) && stage != null then
       stage.updateDynamic("blockTemplates")(blockTemplates)
       stage.updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
-    wrapFlushBlocksCacheForVariableTabs(ide, libraries.filter(needsVariablePaletteFlush).map(_.name))
+    wrapFlushBlocksCacheForLibraryTabs(ide, libraries)
     wrapCustomBlockEditMenus()
     registerCustomCategoryTabs(libraries)
     ide.createCategories()
@@ -418,32 +388,17 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     else raw.asInstanceOf[js.Array[js.Any]].toList
   }
 
-  /**
-   * Snap's native palette appends `customBlockTemplatesForCategory(category)`.
-   * Our exercise `blockTemplates` override must do the same, otherwise Apply
-   * (which reinstalls libraries after `rawOpenProjectString`) hides every
-   * Make-a-Block definition from the tab it belongs to.
-   *
-   * Walk `globalBlocks` from the IDE we already hold instead of calling Snap's
-   * helper: that helper uses `parentThatIsA(IDE_Morph)`, which is empty while
-   * the sprite is being reparented during `rawOpen` + library reinstall.
-   */
-  private def nativeCustomBlockPaletteItems(ide: IDEMorph, category: String): List[js.Any] = {
-    def blocksOf(owner: js.Dynamic, field: String): List[js.Dynamic] =
-      if js.isUndefined(owner) || owner == null then Nil
-      else
-        val blocks = owner.selectDynamic(field)
-        if js.isUndefined(blocks) || blocks == null then Nil
-        else blocks.asInstanceOf[js.Array[js.Dynamic]].toList
-
-    val stage = ide.asInstanceOf[js.Dynamic].selectDynamic("stage")
-    val sprite = ide.currentSprite.asInstanceOf[js.Dynamic]
-    (blocksOf(stage, "globalBlocks") ++ blocksOf(sprite, "customBlocks")).flatMap { definition =>
+  /** Display off-tab custom blocks without changing their stored category. */
+  private def nativeCustomBlockPaletteItems(ide: IDEMorph, tab: LibraryTab, libraries: List[LibraryTab]): List[js.Any] = {
+    customBlockDefinitions(ide).flatMap { definition =>
       val current = definition.selectDynamic("category")
       val currentName = if js.isUndefined(current) || current == null then "" else current.toString
       val helper = definition.selectDynamic("isHelper")
       val isHelper = !js.isUndefined(helper) && helper != null && helper.asInstanceOf[Boolean]
-      if currentName != category || isHelper then Nil
+      val nativeAlreadyIncludes = currentName == tab.name ||
+        tab.name == "variables" && (currentName == "lists" || currentName == "other")
+      if isHelper || nativeAlreadyIncludes ||
+        !SnapCodeEditorImplDelegateToOriginal.customBlockPaletteTab(currentName, libraries).contains(tab) then Nil
       else
         try
           val template = definition.applyDynamic("templateInstance")()
@@ -561,9 +516,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     button
   }
 
-  /** Native create/delete flushes the built-in `variables` cache; also flush exercise tab names. */
-  private def wrapFlushBlocksCacheForVariableTabs(ide: IDEMorph, tabNames: List[String]): Unit =
-    if tabNames.isEmpty then return
+  /** Also invalidate the visible tabs when Snap flushes a stored category. */
+  private def wrapFlushBlocksCacheForLibraryTabs(ide: IDEMorph, libraries: List[LibraryTab]): Unit =
     val dyn = ide.asInstanceOf[js.Dynamic]
     val stored = dyn.selectDynamic("__eduOriginalFlushBlocksCache")
     val original =
@@ -572,12 +526,14 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         val orig = dyn.selectDynamic("flushBlocksCache")
         dyn.updateDynamic("__eduOriginalFlushBlocksCache")(orig)
         orig
-    val extra = tabNames.toJSArray
+    val variableTabs = libraries.filter(needsVariablePaletteFlush).map(_.name)
     val wrapped: js.Function1[js.UndefOr[String], Unit] = (category: js.UndefOr[String]) => {
       original.call(dyn, category)
-      val cat = category.toOption.filter(_.nonEmpty)
-      if cat.isEmpty || cat.contains("variables") || cat.contains("lists") then
-        extra.foreach { name => original.call(dyn, name) }
+      category.toOption.filter(cat => cat.nonEmpty && cat != "unified").foreach { cat =>
+        val customTab = SnapCodeEditorImplDelegateToOriginal.customBlockPaletteTab(cat, libraries).map(_.name).toList
+        val controls = if cat == "variables" || cat == "lists" then variableTabs else Nil
+        (customTab ++ controls).distinct.filterNot(_ == cat).foreach(name => original.call(dyn, name))
+      }
     }
     dyn.updateDynamic("flushBlocksCache")(wrapped)
 
@@ -1227,6 +1183,13 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   override def changeLanguage(humanLanguage: AppLanguage.HumanLanguage): Unit = ()
 
 object SnapCodeEditorImplDelegateToOriginal {
+  private[SnapEditor] def customBlockPaletteTab(category: String, libraries: List[LibraryTab]): Option[LibraryTab] =
+    libraries.find(_.name == category)
+      .orElse(libraries.find(tab => tab.useNativeCategory && tab.color.snapKey == category))
+      .orElse(libraries.find(tab => tab.name == "variables" && (category == "lists" || category == "other")))
+      .orElse(libraries.find(_.includeMakeBlockButton))
+      .orElse(libraries.headOption)
+
   @js.native
   private[SnapEditor] trait KeyboardInput extends dom.HTMLTextAreaElement {
     var selectionDirection: String = js.native
