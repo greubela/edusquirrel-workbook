@@ -1,33 +1,71 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
-import it.evadid.core.datastructures.storage.AsyncDataCache
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
-import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter.Chart
-import it.evadid.distribution.clients.{ExecutionClient, WebWorkerExecutionClient}
+import it.evadid.distribution.clients.WebWorkerExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands
-import it.evadid.util.logging.Logger
-
-import scala.concurrent.{ExecutionContext, Future}
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
-import upickle.default.*
-
-case class CodeMirrorFlowchartGutter(logger: Logger, worker: ExecutionClient) {
-
-  private val gutterCache : AsyncDataCache[String, Chart]= new AsyncDataCache[String, Chart](logger) {
-    override protected def executeLoading(source: String)(ec: ExecutionContext): Future[Chart] = {
-      WorkerCommands.pythonFlowchart.sendCommandTo(worker, WorkerCommands.PythonFlowchartRequest(source)).map(_.result)
-    }
-
-    override protected def formatInputForLogging(in: String): String = write(in)
-
-    override protected def formatOutputForLogging(out: Chart): String = out.toString
+object CodeMirrorFlowchartGutter {
+  private[code] final class Cache {
+    private var latest = Option.empty[(String, PythonFlowchartGutter.Chart)]
+    def get(source: String): Option[PythonFlowchartGutter.Chart] = latest.filter(_._1 == source).map(_._2)
+    def put(source: String, chart: PythonFlowchartGutter.Chart): Unit = latest = Some(source -> chart)
   }
 
-  def loadAsJsPromise(input: String): js.Promise[js.Object] = {
-    gutterCache.loadAsFuture(input).map(toJs).toJSPromise
+  private[code] final class Analysis(cache: Cache, createWorker: () => WebWorkerExecutionClient = () =>
+      WebWorkerExecutionClient(CodeMirrorEditorLoading.workerUrl, timeoutMilliseconds = 30000)) {
+    private var worker = Option.empty[WebWorkerExecutionClient]
+    private var pending = Option.empty[(String, Future[PythonFlowchartGutter.Chart])]
+    private var generation = 0
+    private var closed = false
+
+    private def discardWorker(): Unit = {
+      generation += 1
+      worker.foreach(_.close())
+      worker = None
+      pending = None
+    }
+
+    def close(): Unit = {
+      closed = true
+      discardWorker()
+    }
+
+    def chartForDoc(source: String): js.Promise[js.Object] = {
+      val result = if closed then Future.failed(IllegalStateException("Flowchart editor is closed"))
+      else cache.get(source) match {
+        case Some(chart) =>
+          if pending.nonEmpty then discardWorker()
+          Future.successful(chart)
+        case None => pending.filter(_._1 == source).map(_._2).getOrElse {
+          if pending.nonEmpty then discardWorker()
+          val current = generation
+          val requested = Try {
+            val executor = worker.getOrElse {
+              val created = createWorker()
+              worker = Some(created)
+              created
+            }
+            WorkerCommands.pythonFlowchart.sendCommandTo(executor, WorkerCommands.PythonFlowchartRequest(source)).map(_.result)
+          }.fold(Future.failed, identity)
+          pending = Some(source -> requested)
+          requested.onComplete { outcome =>
+            if !closed && current == generation then outcome match {
+              case Success(chart) =>
+                pending = None
+                cache.put(source, chart)
+              case Failure(_) => discardWorker()
+            }
+          }
+          requested
+        }
+      }
+      result.map(toJs).toJSPromise
+    }
   }
 
   private def toJs(chart: PythonFlowchartGutter.Chart): js.Object = {
@@ -41,6 +79,4 @@ case class CodeMirrorFlowchartGutter(logger: Logger, worker: ExecutionClient) {
       entries = js.Array(chart.entries *)
     )
   }
-
 }
-

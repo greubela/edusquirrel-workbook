@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.state
 
-import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.AppLanguage.{English, Java}
 import it.evadid.core.datastructures.vectorShapes.svg.BeExpressionToTurtleCommands
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.vm.BeProgram
@@ -9,37 +9,33 @@ import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.parsing.generic.abstractions.GenericAST
 import it.evadid.vm.parsing.java.clean.JavaParser
-import it.evadid.vm.parsing.java.clean.model.JavaAST.*
+import it.evadid.vm.parsing.java.clean.model.JavaAST.{JavaAttributeAccess, JavaCallExpression, JavaClassDef, JavaFunctionCall, JavaMethodDef, JavaTarget, JavaUnparsableStatement}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleInputLimits, JavaTurtleSource, JavaTurtleVmPrograms}
 import it.evadid.vm.simulation.java.JavaTurtleRuntime
 import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeScope}
+import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateBeExpression
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{JavaTurtleEditingBridge, ProgrammingStateSnapXmlHelper, SnapTurtlePythonBridge}
 import upickle.default.*
 
-import scala.reflect.ClassTag
-
 /** The source representation currently edited by a programming exercise. */
-sealed trait ProgrammingState derives ReadWriter {
-
-  lazy val associatedLanguage: ProgrammingLanguage = this match {
-    case s: ProgrammingStateSnapXml => SnapLanguage
-    case s: ProgrammingStateSnapScalaModel => SnapLanguage
-    case p: ProgrammingStatePythonString => Python
-    case j: ProgrammingStateJavaString => Java
-    case b: ProgrammingStateBeExpression => Python // Be Language (?)
+sealed trait ProgrammingState {
+  def associatedLanguage: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage = this match {
+    case _: ProgrammingStateSnapXml | _: ProgrammingStateSnapScalaModel => it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
+    case _: ProgrammingStateJavaString => Java
+    case _: ProgrammingStatePythonString => it.evadid.core.datastructures.language.AppLanguage.Python
+    case _ => it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
   }
 
-  def toLanguage(programmingLanguage: ProgrammingLanguage): ProgrammingState = programmingLanguage.match {
-    case snapLanguage => this.toSnapXml
-    case java => this.toJava
-    case python => this.toPython
-    case _: ProgrammingLanguage => this.toBeExpression
+  def toLanguage(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage): ProgrammingState = language match {
+    case it.evadid.core.datastructures.language.AppLanguage.SnapLanguage => toSnapXml
+    case Java => toJava
+    case it.evadid.core.datastructures.language.AppLanguage.Python => toPython
+    case _ => throw UnsupportedOperationException(s"Programming language '$language' cannot be converted.")
   }
 
   final def toBeExpression: ProgrammingStateBeExpression = toBeExpressionState
-
   def toBeExpressionState: ProgrammingStateBeExpression
 
   def toSnapXml: ProgrammingStateSnapXml
@@ -53,82 +49,58 @@ sealed trait ProgrammingState derives ReadWriter {
     case ProgrammingStateBeExpression(expression) => s"expression:${expression.toString}"
     case snap: ProgrammingStateSnapXml if snap.hasLegacyFloatingObjects =>
       s"snap-legacy:${write((snap.snapXml, snap.legacyFloatingObjects))}"
-    case ProgrammingStateSnapXml(xml, _) => s"snap:$xml"
+    case ProgrammingStateSnapXml(xml) => s"snap:$xml"
     case snap: ProgrammingStateSnapScalaModel => snap.toSnapXml.fingerprint()
     case ProgrammingStatePythonString(code) => s"python:$code"
     case ProgrammingStateJavaString(code) => s"java:$code"
 }
 
 object ProgrammingState {
+  export ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 
+  private def converted[A](result: Either[String, A]): A =
+    result.fold(message => throw IllegalArgumentException(message), identity)
 
-  /*private[programming] def readLegacyFloatingObjects(value: ujson.Value): List[String] =
-    value.arr.toList.map(_.str)
-
+  // One current wire schema, derived from typed payloads. No historical tags or migration paths.
+  private enum Payload derives ReadWriter {
+    case Xml(value: ProgrammingStateSnapXml)
+    case SnapModel(value: ProgrammingStateSnapScalaModel)
+    case PythonSource(value: ProgrammingStatePythonString)
+    case JavaSource(value: ProgrammingStateJavaString)
+    case Expression(value: ProgrammingStateBeExpression)
+  }
   given derived$ReadWriter: ReadWriter[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState] =
-    readwriter[ujson.Value].bimap(
-      {
-        case ProgrammingStateBeExpression(root: JavaTurtleVmPrograms.Root) =>
-          ujson.Obj("$type" -> "ProgrammingStateJavaString", "code" -> root.bindings.source.source)
-        case snap: ProgrammingStateSnapXml if snap.hasLegacyFloatingObjects =>
-          ujson.Obj("$type" -> legacySnapTag, "snapXml" -> snap.snapXml,
-            "additionalFloatingObjects" -> writeJs(snap.legacyFloatingObjects))
-        case snap: ProgrammingStateSnapXml =>
-          ujson.Obj("$type" -> "ProgrammingStateSnapXml", "snapXml" -> snap.snapXml)
-        case snap: ProgrammingStateSnapScalaModel =>
-          ujson.Obj("$type" -> "ProgrammingStateSnapScalaModel", "model" -> writeJs(snap.model),
-            "legacyFloatingObjects" -> writeJs(snap.legacyFloatingObjects))
-        case ProgrammingStatePythonString(code) =>
-          ujson.Obj("$type" -> "ProgrammingStatePythonString", "code" -> code)
-        case ProgrammingStateJavaString(code) =>
-          ujson.Obj("$type" -> "ProgrammingStateJavaString", "code" -> code)
-        case ProgrammingStateBeExpression(expression) =>
-          ujson.Obj("$type" -> "ProgrammingStateBeExpression", "expression" -> writeJs(expression))
-      },
-      value => {
-        val payload = ujson.Obj.from(value.obj)
-        payload.obj.get("$type").foreach { raw =>
-          val tag = raw.str
-          val name = tagPrefixes.iterator.filter(tag.startsWith).map(tag.stripPrefix).find(stateTags.contains)
-            .getOrElse(tag)
-          payload.obj("$type") = ujson.Str(name)
-        }
-        payload("$type").str match {
-          case `legacySnapTag` =>
-            ProgrammingStateSnapXml(payload("snapXml").str, readLegacyFloatingObjects(payload("additionalFloatingObjects")))
-          case "ProgrammingStateSnapXml" =>
-            ProgrammingStateSnapXml(payload("snapXml").str,
-              payload.obj.get("legacyFloatingObjects").map(readLegacyFloatingObjects).getOrElse(Nil))
-          case "ProgrammingStateSnapScalaModel" =>
-            ProgrammingStateSnapScalaModel(read[snap.SnapScalaModel.Document](payload("model")),
-              payload.obj.get("legacyFloatingObjects").map(readLegacyFloatingObjects).getOrElse(Nil))
-          case "ProgrammingStatePythonString" => ProgrammingStatePythonString(payload("code").str)
-          case "ProgrammingStateJavaString" => ProgrammingStateJavaString(payload("code").str)
-          case "ProgrammingStateBeExpression" => ProgrammingStateBeExpression(read[BeExpression](payload("expression")))
-          case other => throw IllegalArgumentException(s"Unknown programming state: $other")
-        }
-      }
-    )
+    readwriter[Payload].bimap({
+      case value: ProgrammingStateSnapXml => Payload.Xml(value)
+      case value: ProgrammingStateSnapScalaModel => Payload.SnapModel(value)
+      case value: ProgrammingStatePythonString => Payload.PythonSource(value)
+      case value: ProgrammingStateJavaString => Payload.JavaSource(value)
+      case value: ProgrammingStateBeExpression => Payload.Expression(value)
+    }, {
+      case Payload.Xml(value) => value
+      case Payload.SnapModel(value) => value
+      case Payload.PythonSource(value) => value
+      case Payload.JavaSource(value) => value
+      case Payload.Expression(value) => value
+    })
 
-  private def subtypeReadWriter[T <: it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState : ClassTag]: ReadWriter[T] =
-    derived$ReadWriter.bimap[T](identity, state => summon[ClassTag[T]].unapply(state)
-      .getOrElse(throw IllegalArgumentException("Unexpected programming state type.")))
+  lazy val serializer: it.evadid.core.util.io.Serializer[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState] =
+    it.evadid.core.util.io.Serializer.fromImplicitRW
 
   def fingerprint(state: it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState): String =
     state.fingerprint()
-*/
 
   final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState {
     override def toBeExpressionState: ProgrammingStateBeExpression = this
 
     override def toSnapXml: ProgrammingStateSnapXml = expression match {
-      case root: JavaTurtleVmPrograms.Root => JavaTurtleEditingBridge.toSnap(JavaTurtleVmPrograms.fromRoot(root)).toOption.get
-      case _ => SnapTurtlePythonBridge.validateSubset(expression).map(_ =>
-        ProgrammingStateSnapXmlHelper.fromProgram(BeProgram(expression))).toOption.get
+      case root: JavaTurtleVmPrograms.Root => converted(JavaTurtleEditingBridge.toSnap(JavaTurtleVmPrograms.fromRoot(root)))
+      case _ => converted(SnapTurtlePythonBridge.validateSubset(expression).map(_ =>
+        ProgrammingStateSnapXmlHelper.fromProgram(BeProgram(expression))))
     }
 
     override def toPython: ProgrammingStatePythonString = expression match {
-      case root: JavaTurtleVmPrograms.Root => JavaTurtleEditingBridge.toPython(JavaTurtleVmPrograms.fromRoot(root)).toOption.get
+      case root: JavaTurtleVmPrograms.Root => converted(JavaTurtleEditingBridge.toPython(JavaTurtleVmPrograms.fromRoot(root)))
       case _ => ProgrammingStatePythonString(SnapTurtlePythonBridge.printedPython(expression))
     }
 
@@ -160,16 +132,28 @@ object ProgrammingState {
   }
 
   object ProgrammingStateBeExpression {
-    given ReadWriter[ProgrammingStateBeExpression] = derived$ReadWriter.bimap[ProgrammingStateBeExpression](identity, {
-      case expression: ProgrammingStateBeExpression => expression
-      case java: ProgrammingStateJavaString if java.isClassProgram => java.toBeExpressionState
-      case _ => throw IllegalArgumentException("Unexpected programming state type.")
-    })
+    // Checked VM nodes contain runtime bindings rather than a persistent BeExpression tree.
+    // Store their source and recompile it on read; all other expressions use their tree codec.
+    private enum Content derives ReadWriter {
+      case Tree(expression: BeExpression)
+      case CheckedJava(source: String)
+    }
+    given ReadWriter[ProgrammingStateBeExpression] = readwriter[Content].bimap(
+      state => state.expression match {
+        case root: JavaTurtleVmPrograms.Root => Content.CheckedJava(root.bindings.source.source)
+        case expression => Content.Tree(expression)
+      }, {
+        case Content.Tree(expression) => ProgrammingStateBeExpression(expression)
+        case Content.CheckedJava(source) =>
+          val program = JavaTurtleVmPrograms.compile(source).fold(
+            diagnostic => throw IllegalArgumentException(diagnostic.message), identity)
+          ProgrammingStateBeExpression(program.root)
+      })
   }
 
   object ProgrammingState {
 
-    final case class ProgrammingStateSnapXml(snapXml: String, legacyFloatingObjects: List[String] = Nil) extends ProgrammingState {
+    final case class ProgrammingStateSnapXml(snapXml: String, legacyFloatingObjects: List[String] = Nil) extends ProgrammingState derives ReadWriter {
       require(legacyFloatingObjects != null && legacyFloatingObjects.forall(_ != null), "Invalid legacy Snap data.")
 
       def hasLegacyFloatingObjects: Boolean = legacyFloatingObjects.nonEmpty
@@ -196,14 +180,11 @@ object ProgrammingState {
         if hasLegacyFloatingObjects then
           throw IllegalArgumentException("This project contains legacy extra blocks. Keep editing it in Snap until they can be migrated.")
 
-      override def toPython: ProgrammingStatePythonString = {
-        requireTextConversion();
-        toBeExpressionState.toPython
-      }
+      override def toPython: ProgrammingStatePythonString = { requireTextConversion(); toBeExpressionState.toPython }
 
       override def toJava: ProgrammingStateJavaString = {
         requireTextConversion()
-        if JavaTurtleEditingBridge.hasSnapMetadata(snapXml) then JavaTurtleEditingBridge.fromSnap(this).toOption.get
+        if JavaTurtleEditingBridge.hasSnapMetadata(snapXml) then converted(JavaTurtleEditingBridge.fromSnap(this))
         else toBeExpressionState.toJava
       }
 
@@ -211,38 +192,36 @@ object ProgrammingState {
     }
 
     object ProgrammingStateSnapXml {
-
+      def unapply(state: ProgrammingStateSnapXml): Some[String] = Some(state.snapXml)
       def fromProgram(program: BeProgram, canvasLayout: snap.SnapCanvasLayout = snap.SnapCanvasLayout.empty,
-                      previousXml: String = ""): ProgrammingStateSnapXml =
+          previousXml: String = ""): ProgrammingStateSnapXml =
         ProgrammingStateSnapXmlHelper.fromProgram(program, canvasLayout, previousXml)
-
       def mini: ProgrammingStateSnapXml = ProgrammingStateSnapXmlHelper.mini
-
       def empty: ProgrammingStateSnapXml = ProgrammingStateSnapXmlHelper.empty
-
       def fingerprint(state: ProgrammingStateSnapXml): String =
         if state.hasLegacyFloatingObjects then state.fingerprint() else state.snapXml
     }
 
-    final case class ProgrammingStatePythonString(code: String) extends ProgrammingState {
+    final case class ProgrammingStatePythonString(code: String) extends ProgrammingState derives ReadWriter {
       override def toBeExpressionState: ProgrammingStateBeExpression =
         if JavaTurtleEditingBridge.hasPythonMetadata(code) then toJava.toBeExpressionState
         else ProgrammingStateBeExpression(BeProgram.fromPythonString(code).fullProgram)
 
       override def toSnapXml: ProgrammingStateSnapXml =
         if JavaTurtleEditingBridge.hasPythonMetadata(code) then toJava.toSnapXml
-        else SnapTurtlePythonBridge.applyPython(code).toOption.get
+        else converted(SnapTurtlePythonBridge.applyPython(code))
 
       override def toPython: ProgrammingStatePythonString = this
 
       override def toJava: ProgrammingStateJavaString =
-        if JavaTurtleEditingBridge.hasPythonMetadata(code) then JavaTurtleEditingBridge.fromPython(code).toOption.get
+        if JavaTurtleEditingBridge.hasPythonMetadata(code) then converted(JavaTurtleEditingBridge.fromPython(code))
         else toBeExpressionState.toJava
 
       override val toString: String = s"ProgrammingStatePythonString(${code.toString.take(300)})"
     }
 
-    final case class ProgrammingStateJavaString(code: String) extends ProgrammingState {
+
+    final case class ProgrammingStateJavaString(code: String) extends ProgrammingState derives ReadWriter {
       private lazy val classDetails: (Boolean, Boolean, Boolean) = {
         JavaTurtleInputLimits.checkParserInput(code).fold(
           diagnostic => throw IllegalArgumentException(diagnostic.message), identity)
@@ -305,7 +284,7 @@ object ProgrammingState {
         }
 
       override def toSnapXml: ProgrammingStateSnapXml =
-        if isClassProgram then toJavaVmProgram.left.map(_.message).flatMap(JavaTurtleEditingBridge.toSnap).toOption.get
+        if isClassProgram then converted(toJavaVmProgram.left.map(_.message).flatMap(JavaTurtleEditingBridge.toSnap))
         else toBeExpressionState.toSnapXml
 
       override def toPython: ProgrammingStatePythonString = toBeExpressionState.toPython
@@ -320,32 +299,30 @@ object ProgrammingState {
 
 }
 
+type ProgrammingStateBeExpression = ProgrammingState.ProgrammingStateBeExpression
+val ProgrammingStateBeExpression = ProgrammingState.ProgrammingStateBeExpression
+type ProgrammingStateJavaString = ProgrammingState.ProgrammingStateJavaString
+val ProgrammingStateJavaString = ProgrammingState.ProgrammingStateJavaString
+type ProgrammingStatePythonString = ProgrammingState.ProgrammingStatePythonString
+val ProgrammingStatePythonString = ProgrammingState.ProgrammingStatePythonString
+type ProgrammingStateSnapXml = ProgrammingState.ProgrammingStateSnapXml
+val ProgrammingStateSnapXml = ProgrammingState.ProgrammingStateSnapXml
 
 /** Full Snap project state. Converting representations preserves XML and opaque legacy data.
- * Executing or translating this state still uses the existing checked subset converters.
- */
+  * Executing or translating this state still uses the existing checked subset converters.
+  */
 final case class ProgrammingStateSnapScalaModel(
-                                                 model: snap.SnapScalaModel.Document,
-                                                 legacyFloatingObjects: List[String] = Nil
-                                               ) extends ProgrammingState {
+    model: snap.SnapScalaModel.Document,
+    legacyFloatingObjects: List[String] = Nil
+) extends ProgrammingState derives ReadWriter {
   require(legacyFloatingObjects != null && legacyFloatingObjects.forall(_ != null), "Invalid legacy Snap data.")
-
   override def toSnapXml: ProgrammingStateSnapXml = ProgrammingStateSnapXml(model.toXml, legacyFloatingObjects)
-
   override def toBeExpressionState: ProgrammingStateBeExpression = toSnapXml.toBeExpressionState
-
   override def toPython: ProgrammingStatePythonString = toSnapXml.toPython
-
   override def toJava: ProgrammingStateJavaString = toSnapXml.toJava
 }
 
 object ProgrammingStateSnapScalaModel {
-  given ReadWriter[ProgrammingStateSnapScalaModel] =
-    ProgrammingState.derived$ReadWriter.bimap[ProgrammingStateSnapScalaModel](identity, {
-      case state: ProgrammingStateSnapScalaModel => state
-      case _ => throw IllegalArgumentException("Unexpected programming state type.")
-    })
-
   def fromXml(state: ProgrammingStateSnapXml): Either[String, ProgrammingStateSnapScalaModel] =
     snap.SnapScalaModel.parse(state.snapXml).map(ProgrammingStateSnapScalaModel(_, state.legacyFloatingObjects))
 }

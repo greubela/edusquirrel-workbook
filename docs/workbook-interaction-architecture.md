@@ -202,13 +202,13 @@ The [test guide](core-package-unit-tests.md) and
 
 ### CodeMirror configuration and asynchronous loading
 
-`CodeMirrorEditor` accepts `editorConfig: CodeMirrorEditorConfig`. The default
-omits the control-flow gutter; `CodeMirrorEditorConfig(showFlowchartGutter = true)`
-enables it for Python programs accepted by the shared parser. The compatibility
-`CodeMirrorEditorFlowchart` wrapper defaults to enabling it and also accepts the
-configuration. `EvaEditorConfig.codeMirrorConfig` defaults to enabling the gutter
-for Python and can disable it for all of Eva's editors. Java keeps its regular
-line-number gutter. The parser is unchanged.
+`CodeMirrorEditor` accepts `config: Var[CodeMirrorEditorConfig]`. The regular
+configuration omits the control-flow gutter; `showFlowchartGutter = true` enables
+it for supported Python programs. `EvaEditorConfig.codeMirrorConfig` supplies the
+settings to the standalone tab adapters. Java keeps its regular line-number
+gutter. The former `CodeMirrorEditorFlowchart` wrapper is no longer needed.
+Eva's generic navigation and feature-module boundaries are described in
+[Eva editor architecture](eva-editor-programming-state.md).
 
 `CodeMirrorEditorLoading` coordinates one shared module load in Scala.js. It
 resolves the module beside `app-loader.js`, including deployments under a path

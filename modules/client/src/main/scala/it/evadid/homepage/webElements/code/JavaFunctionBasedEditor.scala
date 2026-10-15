@@ -750,29 +750,29 @@ object JavaFunctionBasedEditor {
   }
 
 
-  def forEvaTab(logger: Logger, config: CodeMirrorEditorConfig, initState: ProgrammingState, evaEditor: EvaEditor): EvaEditorTab[ProgrammingState] = {
-
-    val internal: Var[ProgrammingState] = Var[ProgrammingState](initState.toSnapXml)
-    val editor = new JavaFunctionBasedEditor(logger, internal, onStateEdited = _ => {}, None, editorConfig = config)
-
-    new EvaEditorTab[ProgrammingState]() {
-      override val underlyingVar: Var[ProgrammingState] = internal
-
-      override def convert(internal: ProgrammingState): ProgrammingState = internal
-
+  def forEvaTab(tabLogger: Logger, config: CodeMirrorEditorConfig, initState: ProgrammingState,
+      appearance: Option[EditorAppearance] = None): EvaEditorTab[ProgrammingState] = {
+    val initial = initState match {
+      case java: ProgrammingStateJavaString => java
+      case _ => ProgrammingStateJavaString("")
+    }
+    val internal = Var[ProgrammingState](initial)
+    val editor = new JavaFunctionBasedEditor(tabLogger, internal, appearance = appearance, editorConfig = config)
+    new EvaEditorTab[ProgrammingState] {
+      override val underlyingVar = internal
+      override val logger: Logger = tabLogger
+      override def toProgram(value: ProgrammingState): ProgrammingState = value
+      override def fromProgram(value: ProgrammingState): ProgrammingState = value.toJava
       override def getDomElement(): Element = editor.getDomElement()
-
-      override def logger: Logger = logger
-
-      override def label: String = "Snap Editor"
-
+      override def onFullscreenOpen(): Unit = editor.onFullscreenOpen()
+      override def onFullscreenClose(): Unit = editor.onFullscreenClose()
+      override val label = "Java"
+      override val showLabel = false
       override def icon: Option[ReactiveSvgElement[SVGSVGElement]] = Some(svg.svg(svg.cls := "eva-editor__language-icon", svg.viewBox := "0 0 24 24",
         svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.6",
         svg.strokeLineCap := "round", svg.strokeLineJoin := "round",
         svg.path(svg.d := "M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6")))
-
-      override def additionalCssForEvaEditor: String = " eva-editor--java"
+      override val additionalCssForEvaEditor = " eva-editor--java"
     }
-
   }
 }

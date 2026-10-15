@@ -42,7 +42,9 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
       case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
 
-    val editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(new JavaTurtleEditorExtension(boundVar)), EvaEditorConfig(snapConfig = editorConfig))
+    val javaExecution = new JavaTurtleEditorExtension(boundVar)
+    val execution = new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleProgramExecution(List(javaExecution))
+    val editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(execution), EvaEditorConfig(snapConfig = editorConfig))
 
     def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)
 
@@ -82,18 +84,18 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     var runId = 0
 
     def runProgram(): Unit = {
+      val source = Try(editor.captureSource())
       runId += 1
       val requestedRun = runId
       stageImageVar.set(None)
       runError.set(None)
-      Future {
-        editor.state.now().toBeExpressionState.deriveTurtleCommands
-      }onComplete {
-        case Success(commands) =>
+      source.fold(Future.failed, execution.commandsFor).onComplete {
+        case Success(commands) if requestedRun == runId =>
           val path = TurtlePathBuilder[Double](Point(0, 0), commands, 90)
           stageImageVar.set(Some(FullImage(path.svgPathBuilder)))
-        case Failure(error) =>
+        case Failure(error) if requestedRun == runId =>
           runError.set(Some(Option(error.getMessage).getOrElse("The program could not be run.")))
+        case _ => ()
       }
     }
 
@@ -102,6 +104,12 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val stageOutput: Element = div(
       cls := "prog-ex-stage-output",
+      boundVar.signal.changes --> { _ =>
+        runId += 1
+        execution.cancel()
+        stageImageVar.set(None)
+        runError.set(None)
+      },
       child.maybe <-- runError.signal.map(_.map(message => div(role := "alert", message))),
       child <-- stageImageVar.signal.map {
         case None =>

@@ -51,5 +51,15 @@ final class TurtleTaskEditorExtension(
 
   override def close(): Unit = view.foreach(_.reset())
 
-  override def getDomElement: L.Element = div()
+  private var context = Option.empty[EvaEditorModule.Context]
+  private var execution = Option.empty[TurtleProgramExecution]
+  override def bind(value: EvaEditorModule.Context): Unit = {
+    context = Some(value)
+    execution = Some(new TurtleProgramExecution(value.modules.collect { case extension: EvaEditorExtension => extension }.toList))
+  }
+  override lazy val getDomElement: Option[L.Element] = {
+    val bound = context.getOrElse(throw IllegalStateException("The turtle module must be bound before rendering."))
+    panel(EvaEditorExtension.Context(bound.captureSource, source => execution.get.commandsFor(source), () => execution.get.cancel()))
+  }
+  override def onFullscreenClose(): Unit = { close(); execution.foreach(_.close()) }
 }

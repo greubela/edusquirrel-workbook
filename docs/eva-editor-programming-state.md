@@ -1,40 +1,39 @@
-# Eva Editor: state-centred programming architecture
+# Eva Editor: tabs and feature modules
 
-`ProgrammingState` is the central access point for Eva Editor functionality. Consumers should ask
-the current state for another representation and then invoke behavior owned by that representation:
+`EvaEditor` composes tabs and optional feature modules around one supplied `Var[ProgrammingState]`. It owns navigation, conversion errors and generic lifecycle coordination. It contains no Snap, CodeMirror, Java-editor or turtle-runtime branches. Default editor construction lives in `EvaEditorConfig.defaultEditorFor`; a caller can supply a tab factory for another editor or for tests.
 
-```scala
-// editor is an EvaEditor instance
-editor.state.now().toBeExpressionState.deriveTurtleCommands
+## Editor adapters
+
+Each standalone editor supplies an `EvaEditorTab[T]` adapter beside its own implementation:
+
+- `CodeMirrorEditor.pythonEditorForEva` binds a raw Python string.
+- `SnapCodeEditor.forEvaTab` retains XML/typed Snap state and legacy floating data, and flushes the live IDE when capturing its source.
+- `JavaFunctionBasedEditor.forEvaTab` binds Java source, including unfinished classes, and owns Java-specific controls and presentation.
+
+An adapter implements `fromProgram`, `toProgram`, its DOM, label/icon presentation and fullscreen lifecycle. Conversion availability is checked asynchronously through the same adapter cache; unavailable target tabs are disabled. `prepare` converts asynchronously through an adapter-owned `AsyncDataCache` without replacing the visible draft. Eva installs only the latest still-valid result. Restores, intervening edits (including A→B→A), close and newer navigation requests invalidate earlier completions.
+
+`setWith` synchronizes an external value without emitting a learner edit. `edits` reports subsequent editor changes; identical echoes do not write again. Inactive tabs cannot publish. Conversion failures retain the raw answer and current view and expose an error. Matching unfinished source opens without converting through another language. Tabs appear in configured order; an empty language list displays an unavailable view safely.
+
+The selected view and saved representation are separate. Viewing a successful conversion does not normalize or persist the answer. An actual edit in that view becomes the new saved representation. `captureSource()` delegates to the active adapter so pending native edits can be flushed before navigation or a feature operation. Consumers should use the captured draft rather than reach into a concrete editor.
+
+## Optional feature modules
+
+`EvaEditorModule` receives a generic context with the bound state, a source-capture callback and the configured modules. Its optional panel and lifecycle cleanup belong to the module. Headless execution services return no DOM, so they do not create empty layout cells. The generic editor neither chooses a runtime nor derives turtle commands.
+
+The turtle feature owns `TurtleProgramExecution`, Python/Snap workers, `JavaTurtleEditorExtension`, and `TurtleTaskEditorExtension` with its drawing panel. The task module captures the active source before a run, dispatches execution to its feature services and closes owned work on close or successful tab changes. Java worker execution and drawing assessment are tested independently of Eva's navigation internals.
+
+`ProgrammingState` remains the shared conversion boundary. Its `associatedLanguage` identifies the source representation, and `toLanguage` dispatches to the requested supported language. Native Snap projects outside the checked subset remain editable even when a text conversion fails. Full Java classes use the existing checked bridge and runtime; unsupported/unfinished programs must retain their source.
+
+## Persistence and verification
+
+Concrete programming state records derive uPickle `ReadWriter`; the root codec uses a derived typed payload sum, including the expression adapter. Interactions use their standard implicit state serializer. JSON and MessagePack preserve the current representation and all source content. Checked Java VM expression states persist their source and recompile it on read because runtime bindings are not a persistent expression tree. This is a development schema: old headers, historical tags, aliases and migration readers are deliberately unsupported; reset development databases when the schema changes. See [state and serialization](state-and-serialization.md), [full Snap model](snap-scala-model.md) and [Snap lifecycle](snap-editor.md).
+
+CodeMirror keeps its own asynchronous loading, fallback textarea, document/diagnostics synchronization, optional Python gutter and handle/worker cleanup. Its settings are supplied through `EvaEditorConfig.codeMirrorConfig`; those details stay outside Eva.
+
+```sh
+sbt 'coreJVM/testOnly *ProgrammingState*Spec *ProgrammingStateSerializationSpec'
+sbt 'coreJS/testOnly *ProgrammingState*Spec *ProgrammingStateSerializationSpec'
+sbt 'client/testOnly *EvaEditorSpec *Turtle*Spec *ProgrammingEditorDiagnosticsSpec *CodeMirrorEditor*Spec *SnapCodeEditorSyncSpec'
 ```
 
-They should not reach into an editor implementation, invoke a parser, and pass the parser result to
-an unrelated service. Keeping conversion and derived behavior on the state makes the same operation
-available regardless of whether Snap, Python, or another editor tab is currently selected.
-
-The shared representations are defined in [ProgrammingState.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/ProgrammingState.scala). Conversion is limited to the supported programming subset and can fail for other language features. Snap, Python, and `BeExpression` can convert through
-the shared turtle-program subset, and `ProgrammingStateBeExpression` owns synchronous turtle-command
-derivation. Java-like source is lowered into the shared VM AST by `JavaToBeExpressionParser`, so Java
-states can use the same representation hops. Synchronous turtle-command derivation is distinct from the asynchronous [Pyodide execution service](snap-turtle-command-execution-overview.md). Browser lifecycle and worker operations remain in the client module.
-
-Full Java classes use `ProgrammingStateJavaString.toJavaVmProgram`, which checks their structure and Java semantics before execution. They are not converted into an editable Python/Snap view. The checked Python export is an execution backend, not a reverse-conversion format.
-
-`JavaTurtleEditorExtension` supplies Java execution; `TurtleTaskEditorExtension` supplies the drawing/task panel for every enabled language. Each Eva editor owns its Python/Snap worker. Stop, close and successful language switches cancel owned work. Snap edits are flushed before a run captures its source.
-
-`TurtleDrawingPolicy` belongs to the task definition. `Segments` compares individual movements including pen-up routes, `Strokes` compares individual drawn lines, and `Coverage` compares geometric coverage with the existing 0.25 tolerance. Missing fields retain `Strokes` for shape-recreation tasks and `Coverage` for Java pilots. Learner-state serialization is unchanged. Unsupported drawing commands are rejected, not silently ignored.
-
-## Binding and persistence
-
-Eva receives a bound `Var[ProgrammingState]`; each language tab creates a `bimap`
-view or guarded external-editor adapter of that same value. It does not own a
-second workbook answer store. Source is preserved in its active representation;
-unsupported/lossy conversions must not overwrite it. `state.fingerprint()` includes
-representation/source information and is not a semantic-equality shortcut.
-See [state bindings](state-and-serialization.md#two-way-views-and-external-editors)
-for the current Python view and Snap echo-suppression boundary.
-
-CodeMirror's optional flowchart gutter is controlled by
-`EvaEditorConfig.codeMirrorConfig`, and its loader is asynchronous and editor-local;
-see [CodeMirror configuration](workbook-interaction-architecture.md#codemirror-configuration-and-asynchronous-loading).
-The generic Scala.js [worker backend](worker-execution-backend.md) is implemented,
-while the owned Pyodide execution workers use a separate runtime/protocol.
+Tests target the generic tab/module contracts and the owning feature components. Tests of removed specialized Eva subclasses, hard-coded language enums, or a central execution/cache implementation are replaced by those contract tests.

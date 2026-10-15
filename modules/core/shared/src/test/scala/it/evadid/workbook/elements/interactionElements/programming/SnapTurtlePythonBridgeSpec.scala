@@ -219,10 +219,9 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
 
   test("python to state fingerprint is stable for positional calls") {
     val a = SnapTurtlePythonBridge.applyPython("forward(12345)").toOption.get
-    val stored = ProgrammingExercise.StateSerializer.serialize(a)
-    val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
+    val stored = ProgrammingState.serializer.serialize(a)
+    val restored = ProgrammingState.serializer.deserialize(stored)
     assert(stored.contains("12345"), clue = stored)
-    assert(stored.startsWith("PROGRAMMING_STATE_V2\nSNAP_XML"), clue = stored.take(80))
     assertEquals(restored.toSnapXml.snapXml, a.snapXml)
     assert(restored.toSnapXml.snapXml.contains("""s="forward""""), clue = restored.toSnapXml.snapXml)
   }

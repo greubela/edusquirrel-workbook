@@ -95,5 +95,5 @@ final class JavaTurtleEditorExtension(
     discarded.foreach(_.release())
   }
 
-  override def getDomElement: L.Element = div()
+  override def onFullscreenClose(): Unit = close()
 }

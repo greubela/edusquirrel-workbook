@@ -41,8 +41,8 @@ class CodeMirrorEditorMountSpec extends FunSuite {
     val mounts = List((Python, false), (Python, true), (Java, true)).map { (language, enabled) =>
       val host = dom.document.createElement("div")
       dom.document.body.appendChild(host)
-      render(host, CodeMirrorEditor(Var("print(1)"), language = language,
-        editorConfig = CodeMirrorEditorConfig(enabled)).getDomElement())
+      render(host, CodeMirrorEditor(it.evadid.util.logging.Logger.withNameAndPrefixes(Some("test"), it.evadid.util.logging.derived.PrintToStdLogger.printNothing), Var("print(1)"), language = language,
+        config = Var(CodeMirrorEditorConfig(enabled))).getDomElement())
     }
     assertEquals(received, Nil, "even a cached facade is not mounted synchronously")
     completed.future.map { _ =>

@@ -24,7 +24,7 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
       boundVar: Var[ProgrammingState]): HtmlAppElement  = {
     val execution = new JavaTurtleEditorExtension(boundVar)
     val draw = new TurtleTaskEditorExtension(boundVar, None, TurtleDrawingPolicy.Coverage)
-    EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar,  List(execution, draw), EvaEditorConfig.Default)
+    EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar,  List(execution, draw), EvaEditorConfig(enabledLanguages = List(AppLanguage.Java)))
   }
 
   override protected def createRendering(workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {

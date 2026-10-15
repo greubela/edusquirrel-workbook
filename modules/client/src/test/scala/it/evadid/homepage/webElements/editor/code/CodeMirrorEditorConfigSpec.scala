@@ -8,7 +8,7 @@ import it.evadid.distribution.formats.{ExecutionClientResponse, WorkerExecutionP
 import it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientResponseTimestamps
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorConfig
-import it.evadid.homepage.webElements.editor.code.codemirror.{CodeMirrorEditor, CodeMirrorEditorFlowchart}
+import it.evadid.homepage.webElements.editor.code.codemirror.{CodeMirrorEditor, CodeMirrorFlowchartGutter}
 import munit.FunSuite
 import org.scalajs.dom
 import upickle.default.*
@@ -20,6 +20,7 @@ import scala.scalajs.js.JSConverters.*
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class CodeMirrorEditorConfigSpec extends FunSuite {
+  private val logger = it.evadid.util.logging.Logger.withNameAndPrefixes(Some("test"), it.evadid.util.logging.derived.PrintToStdLogger.printNothing)
   private def chart(label: String) = PythonFlowchartGutter.Chart(
     List(PythonFlowchartGutter.Node(1, "process", 0, label)), Nil, List(1))
 
@@ -60,29 +61,26 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
   test("the regular editor accepts both gutter settings and exposes the passed configuration") {
     for (enabled <- List(false, true)) {
       val settings = CodeMirrorEditorConfig(showFlowchartGutter = enabled)
-      val editor = CodeMirrorEditor(Var("print(1)"), editorConfig = settings)
+      val editor = CodeMirrorEditor(logger, Var("print(1)"), language = it.evadid.core.datastructures.language.AppLanguage.Python, config = Var(settings))
       assertEquals(editor.config.now(), settings)
       assertEquals(read[CodeMirrorEditorConfig](write(settings)), settings)
       assertEquals(readBinary[CodeMirrorEditorConfig](writeBinary(settings)), settings)
     }
   }
 
-  test("default and compatibility editors permit disabling the gutter") {
-    assertEquals(CodeMirrorEditor(Var("")).config.now().showFlowchartGutter, false)
-    assertEquals(CodeMirrorEditorFlowchart(Var("")).config.now().showFlowchartGutter, true)
-    assertEquals(CodeMirrorEditorFlowchart(Var(""), editorConfig = CodeMirrorEditorConfig.Default)
-      .config.now().showFlowchartGutter, false)
+  test("default and explicitly configured editors retain their gutter setting") {
     assertEquals(read[CodeMirrorEditorConfig]("{}"), CodeMirrorEditorConfig.Default)
+    assertEquals(CodeMirrorEditorConfig.Flowchart.showFlowchartGutter, true)
   }
 
-  test("Eva propagates its editor settings and old serialized configurations retain defaults") {
+  test("Eva propagates its editor settings and omitted fields use current defaults") {
     val configured = EvaEditorConfig(codeMirrorConfig = CodeMirrorEditorConfig.Default)
     assertEquals(read[EvaEditorConfig](write(configured)), configured)
     assertEquals(read[EvaEditorConfig]("{}").codeMirrorConfig, CodeMirrorEditorConfig.Flowchart)
   }
 
   test("the flowchart cache retains only the latest exact source") {
-    val cache = new CodeMirrorEditorFlowchart.Cache
+    val cache = new CodeMirrorFlowchartGutter.Cache
     val first = "print(1)\r\n"
     cache.put(first, chart("first"))
     assertEquals(cache.get(first), Some(chart("first")))
@@ -94,10 +92,10 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
   }
 
   test("closed flowchart analysis rejects even a cached source") {
-    val cache = new CodeMirrorEditorFlowchart.Cache
+    val cache = new CodeMirrorFlowchartGutter.Cache
     val workers = new Workers
     cache.put("print(1)", chart("cached"))
-    val analysis = new CodeMirrorEditorFlowchart.Analysis(cache, workers.create)
+    val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
     analysis.close()
     analysis.chartForDoc("print(1)").toFuture.failed.map { error =>
       assert(error.getMessage.contains("closed"))
@@ -106,9 +104,9 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
   }
 
   test("concurrent analysis of the same source shares one worker request") {
-    val cache = new CodeMirrorEditorFlowchart.Cache
+    val cache = new CodeMirrorFlowchartGutter.Cache
     val workers = new Workers
-    val analysis = new CodeMirrorEditorFlowchart.Analysis(cache, workers.create)
+    val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
     val first = analysis.chartForDoc("print(1)").toFuture
     val second = analysis.chartForDoc("print(1)").toFuture
     assertEquals(workers.created.size, 1)
@@ -121,9 +119,9 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
   }
 
   test("a different source cancels its previous worker and ignores late replies") {
-    val cache = new CodeMirrorEditorFlowchart.Cache
+    val cache = new CodeMirrorFlowchartGutter.Cache
     val workers = new Workers
-    val analysis = new CodeMirrorEditorFlowchart.Analysis(cache, workers.create)
+    val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
     val cancelled = analysis.chartForDoc("print(1)").toFuture.failed
     val next = analysis.chartForDoc("print(2)").toFuture
     assert(workers.created.head.terminated)
@@ -138,9 +136,9 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
   }
 
   test("failed analysis retries with a new worker") {
-    val cache = new CodeMirrorEditorFlowchart.Cache
+    val cache = new CodeMirrorFlowchartGutter.Cache
     val workers = new Workers
-    val analysis = new CodeMirrorEditorFlowchart.Analysis(cache, workers.create)
+    val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
     val failed = analysis.chartForDoc("print(1)").toFuture.failed
     workers.created.head.fail()
     failed.flatMap { error =>
@@ -156,9 +154,9 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
   }
 
   test("a completed but superseded request cannot replace the latest cache") {
-    val cache = new CodeMirrorEditorFlowchart.Cache
+    val cache = new CodeMirrorFlowchartGutter.Cache
     val workers = new Workers
-    val analysis = new CodeMirrorEditorFlowchart.Analysis(cache, workers.create)
+    val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
     val first = analysis.chartForDoc("print(1)").toFuture
     workers.created.head.reply(chart("superseded"))
     val next = analysis.chartForDoc("print(2)").toFuture

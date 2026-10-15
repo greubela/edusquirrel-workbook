@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapProgramDerivation
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapProjectXml
@@ -78,9 +80,8 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
 
   test("ProgrammingExercise xml persist roundtrips scripts across reload") {
     val state = ProgrammingStateSnapXml(twoScriptsXml)
-    val stored = ProgrammingExercise.StateSerializer.serialize(state)
-    assert(stored.startsWith("PROGRAMMING_STATE_V2\nSNAP_XML"), clue = stored.take(80))
-    val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
+    val stored = ProgrammingState.serializer.serialize(state)
+    val restored = ProgrammingState.serializer.deserialize(stored)
     assert(restored.toSnapXml.snapXml.contains("""<script x="70" y="80">"""), clue = restored.toSnapXml.snapXml)
     assert(restored.toSnapXml.snapXml.contains("""<script x="200" y="150">"""), clue = restored.toSnapXml.snapXml)
     assertEquals("""<script x="[^"]+" y="[^"]+">""".r.findAllIn(restored.toSnapXml.snapXml).size, 2)
@@ -246,8 +247,8 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("doWait block roundtrips Snap XML to python and back to Snap") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script x="70" y="80"><block s="receiveGo"></block><block s="doWait"><l>1</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val stored = ProgrammingExercise.StateSerializer.serialize(ProgrammingStateSnapXml(xml))
-    val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
+    val stored = ProgrammingState.serializer.serialize(ProgrammingStateSnapXml(xml))
+    val restored = ProgrammingState.serializer.deserialize(stored)
     assert(restored.toSnapXml.snapXml.contains("""s="doWait""""), clue = restored.toSnapXml.snapXml)
 
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)

@@ -151,27 +151,27 @@ object SnapCodeEditor {
     SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
 
 
-  def forEvaTab(logger: Logger, config: SnapCodeEditorConfig, initState: ProgrammingState): EvaEditorTab[ProgrammingState] = {
-
-    val internal: Var[ProgrammingState] = Var[ProgrammingState](initState.toSnapXml)
-    val editor = SnapCodeEditor(logger, internal, config)
-
-    new EvaEditorTab[ProgrammingState]() {
-      override val underlyingVar: Var[ProgrammingState] = internal
-
-      override def convert(internal: ProgrammingState): ProgrammingState = internal
-
-      override def getDomElement(): L.Element = editor.getDomElement()
-
-      override def logger: Logger = logger
-
-      override def label: String = "Snap Editor"
-
-      override def icon: Option[ReactiveSvgElement[SVGSVGElement]] = None
-
-      override def additionalCssForEvaEditor: String = ""
+  def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig, initState: ProgrammingState): EvaEditorTab[ProgrammingState] = {
+    val initial = initState match {
+      case snap: ProgrammingStateSnapXml => snap
+      case snap: ProgrammingStateSnapScalaModel => snap
+      case _ => ProgrammingStateSnapXml.empty
     }
-
+    val internal = Var[ProgrammingState](initial)
+    val editor = SnapCodeEditor(tabLogger, internal, config)
+    new EvaEditorTab[ProgrammingState] {
+      override val underlyingVar = internal
+      override val logger: Logger = tabLogger
+      override def toProgram(value: ProgrammingState): ProgrammingState = value
+      override def fromProgram(value: ProgrammingState): ProgrammingState = value match {
+        case snap: ProgrammingStateSnapScalaModel => snap
+        case _ => value.toSnapXml
+      }
+      override def captureSource(): ProgrammingState = { editor.captureCurrentProject(); internal.now() }
+      override def getDomElement(): L.Element = editor.getDomElement()
+      override def onFullscreenOpen(): Unit = editor.onFullscreenOpen()
+      override def onFullscreenClose(): Unit = editor.onFullscreenClose()
+      override val label = "Snap!"
+    }
   }
-
 }
