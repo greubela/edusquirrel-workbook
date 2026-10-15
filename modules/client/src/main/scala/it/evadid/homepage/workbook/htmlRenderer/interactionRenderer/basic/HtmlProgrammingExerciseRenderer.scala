@@ -81,31 +81,31 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     // Run → TurtleStitchWorker.simulateGreenFlag → stage PNG
     val stageImageVar: Var[Option[FullImage]] = Var(None)
     val runError = Var(Option.empty[String])
-    var runId = 0
+    val runId = Var(0)
 
     def runProgram(): Unit = {
       val source = Try(editor.captureSource())
-      runId += 1
-      val requestedRun = runId
+      runId.update(_ + 1)
+      val requestedRun = runId.now()
       stageImageVar.set(None)
       runError.set(None)
       source.fold(Future.failed, execution.commandsFor).onComplete {
-        case Success(commands) if requestedRun == runId =>
+        case Success(commands) if requestedRun == runId.now() =>
           val path = TurtlePathBuilder[Double](Point(0, 0), commands, 90)
           stageImageVar.set(Some(FullImage(path.svgPathBuilder)))
-        case Failure(error) if requestedRun == runId =>
+        case Failure(error) if requestedRun == runId.now() =>
           runError.set(Some(Option(error.getMessage).getOrElse("The program could not be run.")))
         case _ => ()
       }
     }
 
     val runButton: HtmlButtonElement =
-      HtmlButtonElement.withTextLabel("basic/runProgram", _ => runProgram())
+      HtmlButtonElement.withTextLabel("basic/runProgram", _ => queue.execute(() => runProgram()))
 
     val stageOutput: Element = div(
       cls := "prog-ex-stage-output",
       boundVar.signal.changes --> { _ =>
-        runId += 1
+        runId.update(_ + 1)
         execution.cancel()
         stageImageVar.set(None)
         runError.set(None)

@@ -31,14 +31,14 @@ final class TurtleTaskEditorExtension(
     target: Option[TurtleGraphic],
     policy: TurtleDrawingPolicy
 ) extends EvaEditorExtension with EvaEditorModule{
-  private var view = Option.empty[TurtleExecutionPanel]
+  private val view = Var(Option.empty[TurtleExecutionPanel])
 
   override def panel(context: EvaEditorExtension.Context): Option[Element] = {
-    val current = view.getOrElse {
-      var captured = state.now()
-      val created = new TurtleExecutionPanel(state, () => context.execute(captured), context.cancel,
-        target, policy, () => { captured = context.captureSource() })
-      view = Some(created)
+    val current = view.now().getOrElse {
+      val captured = Var(state.now())
+      val created = new TurtleExecutionPanel(state, () => context.execute(captured.now()), context.cancel,
+        target, policy, () => { captured.set(context.captureSource()) })
+      view.set(Some(created))
       created
     }
     Some(div(cls := "eva-editor__sidebar turtle-sidebar",
@@ -49,17 +49,17 @@ final class TurtleTaskEditorExtension(
       }))
   }
 
-  override def close(): Unit = view.foreach(_.reset())
+  override def close(): Unit = view.now().foreach(_.reset())
 
-  private var context = Option.empty[EvaEditorModule.Context]
-  private var execution = Option.empty[TurtleProgramExecution]
+  private val context = Var(Option.empty[EvaEditorModule.Context])
+  private val execution = Var(Option.empty[TurtleProgramExecution])
   override def bind(value: EvaEditorModule.Context): Unit = {
-    context = Some(value)
-    execution = Some(new TurtleProgramExecution(value.modules.collect { case extension: EvaEditorExtension => extension }.toList))
+    context.set(Some(value))
+    execution.set(Some(new TurtleProgramExecution(value.modules.collect { case extension: EvaEditorExtension => extension }.toList)))
   }
   override lazy val getDomElement: Option[L.Element] = {
-    val bound = context.getOrElse(throw IllegalStateException("The turtle module must be bound before rendering."))
-    panel(EvaEditorExtension.Context(bound.captureSource, source => execution.get.commandsFor(source), () => execution.get.cancel()))
+    val bound = context.now().getOrElse(throw IllegalStateException("The turtle module must be bound before rendering."))
+    panel(EvaEditorExtension.Context(bound.captureSource, source => execution.now().get.commandsFor(source), () => execution.now().get.cancel()))
   }
-  override def onFullscreenClose(): Unit = { close(); execution.foreach(_.close()) }
+  override def onFullscreenClose(): Unit = { close(); execution.now().foreach(_.close()) }
 }

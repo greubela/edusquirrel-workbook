@@ -33,20 +33,20 @@ final class JavaFunctionBasedEditor
 
   import JavaFunctionBasedEditor.*
 
-  private var displayedState = state.now()
-  private val initialSource = Try(displayedState.toJava.code).toOption
-  private var sourceCode = initialSource.getOrElse("")
+  private val displayedState = Var(state.now())
+  private val initialSource = Try(displayedState.now().toJava.code).toOption
+  private val sourceCode = Var(initialSource.getOrElse(""))
   private val sourceAvailable = Var(initialSource.isDefined)
-  private val classes = Var(discover(sourceCode))
-  private val initialSelection = initialFunction(sourceCode)
+  private val classes = Var(discover(sourceCode.now()))
+  private val initialSelection = initialFunction(sourceCode.now())
   private val selectedFunction = Var(initialSelection)
-  private var editingRange = initialSelection.map(fn => FunctionRange(fn.start, fn.end))
-  private val functionDraft = Var(initialSelection.fold("")(fn => sourceCode.substring(fn.start, fn.end)))
-  private val sourceDraft = Var(sourceCode)
-  private val structureReady = Var(structurallyBalanced(sourceCode))
+  private val editingRange = Var(initialSelection.map(fn => FunctionRange(fn.start, fn.end)))
+  private val functionDraft = Var(initialSelection.fold("")(fn => sourceCode.now().substring(fn.start, fn.end)))
+  private val sourceDraft = Var(sourceCode.now())
+  private val structureReady = Var(structurallyBalanced(sourceCode.now()))
   private val sourceView = Var(initialSelection.isEmpty)
   private val structureOpen = Var(true)
-  private var compactLayout = false
+  private val compactLayout = Var(false)
   private val editorRevision = Var(0)
   private val dialogMode = Var(Option.empty[DialogMode])
   private val dialogClassName = Var(Option.empty[String])
@@ -79,13 +79,13 @@ final class JavaFunctionBasedEditor
   )
 
   private def currentSourceAvailable(): Boolean =
-    if state.now() != displayedState then
+    if state.now() != displayedState.now() then
       commitExternalState(state.now())
       false
     else sourceAvailable.now()
 
   private def refreshSource(code: String): List[JavaClass] = {
-    sourceCode = code
+    sourceCode.set(code)
     sourceDraft.set(code)
     val refreshedClasses = discover(code)
     classes.set(refreshedClasses)
@@ -93,66 +93,66 @@ final class JavaFunctionBasedEditor
     refreshedClasses
   }
 
-  private def showSource(): Unit = {
-    editingRange = None
-    sourceDraft.set(sourceCode)
+  private def showSource(code: String = sourceCode.now()): Unit = {
+    editingRange.set(None)
+    sourceDraft.set(code)
     sourceView.set(true)
   }
 
   private def handleFunctionInput(draft: String): Unit =
     if currentSourceAvailable() && !sourceView.now() then
-      (selectedFunction.now(), editingRange) match
+      (selectedFunction.now(), editingRange.now()) match
         case (Some(selected), Some(range)) =>
-          range.replace(sourceCode, draft) match
-            case Some((merged, nextRange)) if merged != sourceCode =>
-              editingRange = Some(nextRange)
+          range.replace(sourceCode.now(), draft) match
+            case Some((merged, nextRange)) if merged != sourceCode.now() =>
+              editingRange.set(Some(nextRange))
               val refreshedClasses = refreshSource(merged)
               if structurallyBalanced(merged) then
                 findEditedFunction(merged, refreshedClasses, selected, nextRange) match
                   case Some(refreshedSelection) => selectedFunction.set(Some(refreshedSelection))
                   case None =>
                     selectedFunction.set(None)
-                    showSource()
+                    showSource(merged)
               publish(ProgrammingStateJavaString(merged))
             case None => showSource()
             case _ => ()
         case _ => showSource()
 
   private def handleSourceInput(code: String): Unit =
-    if currentSourceAvailable() && sourceView.now() && code != sourceCode then
-      editingRange = None
+    if currentSourceAvailable() && sourceView.now() && code != sourceCode.now() then
+      editingRange.set(None)
       val previous = selectedFunction.now()
       val refreshedClasses = refreshSource(code)
       selectedFunction.set(previous.flatMap(findSelection(refreshedClasses, _)))
       publish(ProgrammingStateJavaString(code))
 
   private def selectFunction(function: JavaFunction): Unit =
-    if currentSourceAvailable() && structurallyBalanced(sourceCode) && discover(sourceCode).exists(_.functions.contains(function)) then
+    if currentSourceAvailable() && structurallyBalanced(sourceCode.now()) && discover(sourceCode.now()).exists(_.functions.contains(function)) then
       showFunction(function)
-      if compactLayout then structureOpen.set(false)
+      if compactLayout.now() then structureOpen.set(false)
 
-  private def showFunction(function: JavaFunction): Unit =
-    if FunctionRange(function.start, function.end).isWithin(sourceCode) then
+  private def showFunction(function: JavaFunction, code: String = sourceCode.now()): Unit =
+    if FunctionRange(function.start, function.end).isWithin(code) then
       selectedFunction.set(Some(function))
-      editingRange = Some(FunctionRange(function.start, function.end))
-      functionDraft.set(sourceCode.substring(function.start, function.end))
+      editingRange.set(Some(FunctionRange(function.start, function.end)))
+      functionDraft.set(code.substring(function.start, function.end))
       sourceView.set(false)
 
   private def showMethod(): Unit =
-    if currentSourceAvailable() && structurallyBalanced(sourceCode) then
-      selectedFunction.now().flatMap(findSelection(discover(sourceCode), _)) match
+    if currentSourceAvailable() && structurallyBalanced(sourceCode.now()) then
+      selectedFunction.now().flatMap(findSelection(discover(sourceCode.now()), _)) match
         case Some(function) => showFunction(function)
         case None =>
           selectedFunction.set(None)
-          editingRange = None
+          editingRange.set(None)
           sourceView.set(false)
 
   private def commitExternalState(next: ProgrammingState): Unit = {
-    if next != displayedState then
+    if next != displayedState.now() then
       val previousSelection = selectedFunction.now()
       val wasSourceView = sourceView.now()
-      displayedState = next
-      editingRange = None
+      displayedState.set(next)
+      editingRange.set(None)
       dialogMode.set(None)
       val converted = Try(next.toJava.code).toOption
       sourceAvailable.set(converted.isDefined)
@@ -160,8 +160,8 @@ final class JavaFunctionBasedEditor
       val refreshedClasses = refreshSource(code)
       val replacementSelection = previousSelection.flatMap(findSelection(refreshedClasses, _))
       selectedFunction.set(replacementSelection)
-      if converted.isEmpty || !structurallyBalanced(code) || wasSourceView || replacementSelection.isEmpty then showSource()
-      else replacementSelection.foreach(showFunction)
+      if converted.isEmpty || !structurallyBalanced(code) || wasSourceView || replacementSelection.isEmpty then showSource(code)
+      else replacementSelection.foreach(function => showFunction(function, code))
       editorRevision.update(_ + 1)
   }
 
@@ -187,9 +187,9 @@ final class JavaFunctionBasedEditor
     if !name.matches("[A-Za-z_$][A-Za-z0-9_$]*") then
       dialogError.set("Enter a valid Java class name.")
     else {
-      val newline = lineSeparator(sourceCode)
-      val separator = if sourceCode.isEmpty then "" else newline + newline
-      val candidate = sourceCode + separator + s"class $name {$newline}$newline"
+      val newline = lineSeparator(sourceCode.now())
+      val separator = if sourceCode.now().isEmpty then "" else newline + newline
+      val candidate = sourceCode.now() + separator + s"class $name {$newline}$newline"
       if parses(candidate) then {
         commit(candidate, None)
         dialogMode.set(None)
@@ -212,7 +212,7 @@ final class JavaFunctionBasedEditor
         .foreach { targetClass =>
           val declaration = functionDeclaration(returnType = returnType, name = name,
             parameters = parameters, isStatic = staticMethodDraft.now())
-          val candidate = insertFunction(sourceCode, targetClass, declaration)
+          val candidate = insertFunction(sourceCode.now(), targetClass, declaration)
           if parses(candidate) then {
             val refreshedClasses = discover(candidate)
             val addedFunction = refreshedClasses
@@ -229,13 +229,13 @@ final class JavaFunctionBasedEditor
     val refreshedSelection = selection.flatMap(findSelection(refreshedClasses, _))
     selectedFunction.set(refreshedSelection)
     refreshedSelection match
-      case Some(function) => showFunction(function)
-      case None => showSource()
+      case Some(function) => showFunction(function, code)
+      case None => showSource(code)
     publish(ProgrammingStateJavaString(code))
   }
 
   private def publish(next: ProgrammingState): Unit = {
-    displayedState = next
+    displayedState.set(next)
     state.set(next)
     onStateEdited(next)
   }
@@ -302,7 +302,7 @@ final class JavaFunctionBasedEditor
 
   override def getDomElement(): Element = {
     val navigationId = s"java-navigation-${UUID.randomUUID()}"
-    var releaseLayout: () => Unit = () => ()
+    val releaseLayout = Var[() => Unit](() => ())
     div(
       cls <-- structureOpen.signal.map { open =>
         "java-function-based-editor editor-appearance" +
@@ -314,17 +314,17 @@ final class JavaFunctionBasedEditor
         state.signal.foreach(commitExternalState)(using ctx.owner)
         Try(dom.window.matchMedia("(min-width: 761px) and (min-height: 601px)")).toOption.foreach { query =>
           def adapt(): Unit = {
-            compactLayout = !query.matches
-            if compactLayout then structureOpen.set(false)
+            compactLayout.set(!query.matches)
+            if compactLayout.now() then structureOpen.set(false)
           }
 
           val listener: js.Function1[dom.Event, Unit] = _ => adapt()
           adapt()
           query.addEventListener("change", listener)
-          releaseLayout = () => query.removeEventListener("change", listener)
+          releaseLayout.set(() => query.removeEventListener("change", listener))
         }
       },
-      onUnmountCallback(_ => releaseLayout()),
+      onUnmountCallback(_ => releaseLayout.now()()),
       div(
         cls := "java-function-editor__topbar",
         div(
@@ -560,20 +560,18 @@ object JavaFunctionBasedEditor {
     val (masked, closedLexemes) = maskAndCheckLexemes(source)
     if !closedLexemes then false
     else {
-      val stack = scala.collection.mutable.ArrayBuffer.empty[Char]
-      var balanced = true
-      masked.foreach {
-        case opening@('(' | '[' | '{') => stack += opening
-        case closing@(')' | ']' | '}') =>
+      masked.foldLeft(Option(List.empty[Char])) {
+        case (Some(stack), opening@('(' | '[' | '{')) => Some(opening :: stack)
+        case (Some(stack), closing@(')' | ']' | '}')) =>
           val expectedOpening = closing match
             case ')' => '('
             case ']' => '['
             case _ => '{'
-          if stack.lastOption.contains(expectedOpening) then stack.remove(stack.length - 1)
-          else balanced = false
-        case _ => ()
-      }
-      balanced && stack.isEmpty
+          stack match
+            case head :: tail if head == expectedOpening => Some(tail)
+            case _ => None
+        case (stack, _) => stack
+      }.contains(Nil)
     }
   }
 
@@ -594,41 +592,30 @@ object JavaFunctionBasedEditor {
 
   private def discoverFunctions(
                                  masked: String,
-                                 braceMatches: Array[Int],
+                                 braceMatches: Vector[Int],
                                  className: String,
                                  classOpening: Int,
                                  classClosing: Int
                                ): List[JavaFunction] = {
-    val functions = List.newBuilder[JavaFunction]
-    var segmentStart = classOpening + 1
-    var index = segmentStart
-    while index < classClosing do
-      masked.charAt(index) match
-        case ';' => segmentStart = index + 1
+    @scala.annotation.tailrec
+    def scan(index: Int, segmentStart: Int, functions: List[JavaFunction]): List[JavaFunction] =
+      if index >= classClosing then functions.reverse
+      else masked.charAt(index) match
+        case ';' => scan(index + 1, index + 1, functions)
         case '{' =>
           functionHeader.findFirstMatchIn(masked.substring(segmentStart, index).trim) match
             case Some(header) =>
               val signatureStart = segmentStart + masked.substring(segmentStart, index).indexWhere(!_.isWhitespace)
               val end = braceMatches(index) + 1
-              functions += JavaFunction(
-                className,
-                header.group(2),
-                header.group(1).trim,
-                header.group(3).trim,
-                signatureStart,
-                end
-              )
-              index = end - 1
-              segmentStart = end
+              val function = JavaFunction(className, header.group(2), header.group(1).trim,
+                header.group(3).trim, signatureStart, end)
+              scan(end, end, function :: functions)
             case None =>
               val end = braceMatches(index)
-              if end > index then {
-                index = end
-                segmentStart = end + 1
-              }
-        case _ => ()
-      index += 1
-    functions.result()
+              if end > index then scan(end + 1, end + 1, functions)
+              else scan(index + 1, segmentStart, functions)
+        case _ => scan(index + 1, segmentStart, functions)
+    scan(classOpening + 1, classOpening + 1, Nil)
   }
 
   private[code] def replaceFunction(source: String, function: JavaFunction, draft: String): String =
@@ -662,18 +649,18 @@ object JavaFunctionBasedEditor {
       case _ => None
 
   private def onlyTrivia(source: String): Boolean = {
-    var index = 0
-    while index < source.length do
-      if source.charAt(index).isWhitespace then index += 1
+    @scala.annotation.tailrec
+    def scan(index: Int): Boolean =
+      if index >= source.length then true
+      else if source.charAt(index).isWhitespace then scan(index + 1)
       else if source.startsWith("//", index) then
-        index += 2
-        while index < source.length && source.charAt(index) != '\r' && source.charAt(index) != '\n' do index += 1
+        val end = source.indexWhere(char => char == '\r' || char == '\n', index + 2)
+        scan(if end < 0 then source.length else end)
       else if source.startsWith("/*", index) then
         val end = source.indexOf("*/", index + 2)
-        if end < 0 then return false
-        index = end + 2
-      else return false
-    true
+        if end < 0 then false else scan(end + 2)
+      else false
+    scan(0)
   }
 
   private def lineSeparator(source: String): String =
@@ -697,57 +684,44 @@ object JavaFunctionBasedEditor {
   }
 
   private def maskAndCheckLexemes(source: String): (String, Boolean) = {
-    val masked = source.toCharArray
-    var index = 0
-    var state = 0
-    var escaped = false
-    while index < source.length do
-      val current = source.charAt(index)
-      val next = if index + 1 < source.length then source.charAt(index + 1) else 0.toChar
-      state match
-        case 0 if current == '/' && next == '/' =>
-          masked(index) = ' '
-          masked(index + 1) = ' '
-          index += 1
-          state = 1
-        case 0 if current == '/' && next == '*' =>
-          masked(index) = ' '
-          masked(index + 1) = ' '
-          index += 1
-          state = 2
-        case 0 if current == '"' || current == '\'' =>
-          masked(index) = ' '
-          state = if current == '"' then 3 else 4
-          escaped = false
-        case 1 if current == '\n' || current == '\r' => state = 0
-        case 1 | 2 | 3 | 4 =>
-          if current != '\n' && current != '\r' then masked(index) = ' '
-          if state == 2 && current == '*' && next == '/' then
-            masked(index + 1) = ' '
-            index += 1
-            state = 0
-          else if state == 3 || state == 4 then
-            if escaped then escaped = false
-            else if current == '\\' then escaped = true
-            else if (state == 3 && current == '"') || (state == 4 && current == '\'') then state = 0
-        case _ => ()
-      index += 1
-    (new String(masked), state == 0 || state == 1)
+    @scala.annotation.tailrec
+    def scan(index: Int, state: Int, escaped: Boolean, reversed: List[Char]): (String, Boolean) =
+      if index >= source.length then (reversed.reverse.mkString, state == 0 || state == 1)
+      else {
+        val current = source.charAt(index)
+        val next = if index + 1 < source.length then source.charAt(index + 1) else 0.toChar
+        state match
+          case 0 if current == '/' && (next == '/' || next == '*') =>
+            scan(index + 2, if next == '/' then 1 else 2, escaped, ' ' :: ' ' :: reversed)
+          case 0 if current == '"' || current == '\'' =>
+            scan(index + 1, if current == '"' then 3 else 4, false, ' ' :: reversed)
+          case 1 if current == '\n' || current == '\r' =>
+            scan(index + 1, 0, escaped, current :: reversed)
+          case 1 | 2 | 3 | 4 =>
+            val masked = if current == '\n' || current == '\r' then current else ' '
+            if state == 2 && current == '*' && next == '/' then
+              scan(index + 2, 0, escaped, ' ' :: ' ' :: reversed)
+            else if state == 3 || state == 4 then
+              if escaped then scan(index + 1, state, false, masked :: reversed)
+              else if current == '\\' then scan(index + 1, state, true, masked :: reversed)
+              else if (state == 3 && current == '"') || (state == 4 && current == '\'') then
+                scan(index + 1, 0, escaped, masked :: reversed)
+              else scan(index + 1, state, escaped, masked :: reversed)
+            else scan(index + 1, state, escaped, masked :: reversed)
+          case _ => scan(index + 1, state, escaped, current :: reversed)
+      }
+    scan(0, 0, false, Nil)
   }
 
-  private def braceMatches(source: String): Array[Int] = {
-    val matches = Array.fill(source.length)(-1)
-    val stack = scala.collection.mutable.ArrayBuffer.empty[Int]
-    source.indices.foreach { index =>
+  private def braceMatches(source: String): Vector[Int] =
+    source.indices.foldLeft((List.empty[Int], Vector.fill(source.length)(-1))) { case ((stack, matches), index) =>
       source.charAt(index) match
-        case '{' => stack += index
-        case '}' if stack.nonEmpty =>
-          val opening = stack.remove(stack.length - 1)
-          matches(opening) = index
-        case _ => ()
-    }
-    matches
-  }
+        case '{' => (index :: stack, matches)
+        case '}' => stack match
+          case opening :: rest => (rest, matches.updated(opening, index))
+          case Nil => (stack, matches)
+        case _ => (stack, matches)
+    }._2
 
 
   def forEvaTab(tabLogger: Logger, config: CodeMirrorEditorConfig, initState: ProgrammingState,

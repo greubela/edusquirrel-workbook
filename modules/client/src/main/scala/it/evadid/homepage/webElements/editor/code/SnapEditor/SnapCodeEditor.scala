@@ -21,6 +21,7 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import org.scalajs.dom
+import com.raquo.airstream.ownership.Subscription
 import org.scalajs.dom.SVGSVGElement
 import org.scalajs.dom.html.Canvas
 
@@ -62,7 +63,6 @@ case class SnapCodeEditor(
   }
 
   lazy val editorCanvas: Element = {
-    var mountGeneration = 0
     canvasTag(
       cls := "be-program-snap-renderer__canvas",
       aria.label := "Block program editor",
@@ -72,18 +72,17 @@ case class SnapCodeEditor(
       // avoiding an ambiguous descendant query, this guarantees that Snap
       // installs its listeners only after this exact canvas is connected.
       onMountCallback { ctx =>
-        mountGeneration += 1
-        val generation = mountGeneration
+        val active = Var(true)
+        new Subscription(ctx.owner, () => active.set(false))
         val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
         impl.whenReady(() => {
-          if generation == mountGeneration then
+          if active.now() then
             renderingError.set(None)
             mountEditorInto(canvas, ctx.owner)
         }, error => {
-          if generation == mountGeneration then renderingError.set(Some(s"Block editor unavailable: ${error.getMessage}"))
+          if active.now() then renderingError.set(Some(s"Block editor unavailable: ${error.getMessage}"))
         })
-      },
-      onUnmountCallback(_ => mountGeneration += 1)
+      }
     )
   }
 

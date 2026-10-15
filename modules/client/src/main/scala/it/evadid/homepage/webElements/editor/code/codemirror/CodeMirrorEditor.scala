@@ -33,20 +33,18 @@ case class CodeMirrorEditor(
 
   import CodeMirrorEditor.*
 
-  private var handle: Option[CodeMirrorHandle] = None
-  private var activeMount: Option[AnyRef] = None
-  private var pendingDiagnostics = Option.empty[(String, Seq[Diagnostic])]
-  private var updatingFromEditor: Boolean = false
+  private val handle = Var(Option.empty[CodeMirrorHandle])
+  private val pendingDiagnostics = Var(Option.empty[(String, Seq[Diagnostic])])
   private val useTextareaFallback: Var[Boolean] = Var(true)
   private val flowchartCache = new CodeMirrorFlowchartGutter.Cache
 
-  def focus(): Unit = handle.foreach(_.focus())
+  def focus(): Unit = handle.now().foreach(_.focus())
 
-  def currentDoc: Option[String] = handle.map(_.getDoc())
+  def currentDoc: Option[String] = handle.now().map(_.getDoc())
 
   def setDiagnostics(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Unit =
-    pendingDiagnostics = Some(underlyingVar.now() -> diagnostics)
-    handle.foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs) *)))
+    pendingDiagnostics.set(Some(underlyingVar.now() -> diagnostics))
+    handle.now().foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs) *)))
 
   def clearDiagnostics(): Unit = setDiagnostics(Nil)
 
@@ -56,9 +54,9 @@ case class CodeMirrorEditor(
   )
 
   private def renderEditor(showFlowchart: Boolean): L.Element = {
-    var mountedToken: Option[AnyRef] = None
-    var mountedHandle: Option[CodeMirrorHandle] = None
-    var mountedAnalysis: Option[CodeMirrorFlowchartGutter.Analysis] = None
+    val mountedToken = Var(Option.empty[AnyRef])
+    val mountedHandle = Var(Option.empty[CodeMirrorHandle])
+    val mountedAnalysis = Var(Option.empty[CodeMirrorFlowchartGutter.Analysis])
     div(
       cls := ("code-editor code-mirror-editor" + (if (showFlowchart && language == Python) " code-mirror-editor-flowchart" else "")),
       styleAttr <-- config.signal.map(_.editorFont).map(font =>
@@ -69,27 +67,24 @@ case class CodeMirrorEditor(
         hidden <-- useTextareaFallback.signal.map(show => !show),
         value <-- underlyingVar.signal,
         onInput.mapToValue --> { value =>
-          if mountedToken.exists(activeMount.contains) then
+          if mountedToken.now().nonEmpty then
             underlyingVar.writer.onNext(value)
             handleFunctionInput(value)
         }
       ),
       onMountCallback { ctx =>
         val token = new Object
-        mountedToken = Some(token)
-        activeMount = Some(token)
-        handle = None
+        mountedToken.set(Some(token))
         useTextareaFallback.set(true)
         def isActive: Boolean =
-          mountedToken.contains(token) && activeMount.contains(token) && ctx.thisNode.ref.isConnected
+          mountedToken.now().contains(token) && ctx.thisNode.ref.isConnected
         CodeMirrorEditorLoading.load().flatMap(facade => CodeMirrorEditorLoading.inBackground(Some(facade))).recover { case scala.util.control.NonFatal(_) => None }.foreach {
           case Some(cmFacade) if isActive =>
             val container = ctx.thisNode.ref
             val initialValue = underlyingVar.now()
 
-            var updatingFromVar = false
             val analysis = Option.when(showFlowchart && language == Python)(new CodeMirrorFlowchartGutter.Analysis(flowchartCache))
-            mountedAnalysis = analysis
+            mountedAnalysis.set(analysis)
 
             val createdHandle = cmFacade.createEditor(
               EditorConfig(
@@ -98,13 +93,10 @@ case class CodeMirrorEditor(
                 language = language.asJsLanguage.getOrElse("python"),
                 flowchart = analysis.map(_.chartForDoc),
                 onDocChange = value =>
-                  if (isActive && !updatingFromVar) {
-                    pendingDiagnostics = None
-                    updatingFromEditor = true
-                    try {
-                      underlyingVar.writer.onNext(value)
-                      handleFunctionInput(value)
-                    } finally updatingFromEditor = false
+                  if (isActive && underlyingVar.now() != value) {
+                    pendingDiagnostics.set(None)
+                    underlyingVar.writer.onNext(value)
+                    handleFunctionInput(value)
                   }
               )
             )
@@ -114,41 +106,38 @@ case class CodeMirrorEditor(
               analysis.foreach(_.close())
             }
             else {
-              mountedHandle = Some(createdHandle)
-              handle = Some(createdHandle)
+              mountedHandle.set(Some(createdHandle))
+              handle.set(Some(createdHandle))
               useTextareaFallback.set(false)
-              pendingDiagnostics.filter(_._1 == initialValue).foreach { case (_, diagnostics) =>
+              pendingDiagnostics.now().filter(_._1 == initialValue).foreach { case (_, diagnostics) =>
                 createdHandle.setDiagnostics(js.Array(diagnostics.map(_.toJs) *))
               }
 
               underlyingVar.signal.foreach { value =>
-                if (isActive && !updatingFromEditor && createdHandle.getDoc() != value) {
-                  pendingDiagnostics = None
-                  updatingFromVar = true
-                  try createdHandle.setDoc(value)
-                  finally updatingFromVar = false
+                if (isActive && createdHandle.getDoc() != value) {
+                  pendingDiagnostics.set(None)
+                  createdHandle.setDoc(value)
                 }
               }(using ctx.owner)
             }
 
           case None if isActive =>
-            mountedAnalysis.foreach(_.close())
-            mountedAnalysis = None
+            mountedAnalysis.now().foreach(_.close())
+            mountedAnalysis.set(None)
             useTextareaFallback.set(true)
           case _ => ()
         }
       },
       onUnmountCallback { _ =>
-        val wasActive = mountedToken.exists(activeMount.contains)
-        mountedToken = None
-        if wasActive then
-          activeMount = None
-          handle = None
-          pendingDiagnostics = None
-        mountedHandle.foreach(_.destroy())
-        mountedHandle = None
-        mountedAnalysis.foreach(_.close())
-        mountedAnalysis = None
+        val retiringHandle = mountedHandle.now()
+        mountedToken.set(None)
+        // A replacement can mount in the same transaction. Evaluate handle ownership
+        // when the queued update commits, so old cleanup cannot clear the replacement.
+        handle.update(_.filterNot(retiringHandle.contains))
+        retiringHandle.foreach(_.destroy())
+        mountedHandle.set(None)
+        mountedAnalysis.now().foreach(_.close())
+        mountedAnalysis.set(None)
       }
     )
   }
@@ -228,11 +217,11 @@ object CodeMirrorEditor {
   }
 
   trait EditorConfig extends js.Object {
-    var parent: dom.Element
-    var doc: js.UndefOr[String]
-    var language: js.UndefOr[String]
-    var onDocChange: js.Function1[String, Unit]
-    var flowchart: js.UndefOr[js.Function1[String, js.Promise[js.Object]]]
+    val parent: dom.Element
+    val doc: js.UndefOr[String]
+    val language: js.UndefOr[String]
+    val onDocChange: js.Function1[String, Unit]
+    val flowchart: js.UndefOr[js.Function1[String, js.Promise[js.Object]]]
   }
 
   object EditorConfig {

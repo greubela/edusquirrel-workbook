@@ -9,3 +9,25 @@ test('Eva navigation depends on tab and module contracts, without concrete edito
   assert.doesNotMatch(source, /SnapCodeEditor|CodeMirror|JavaFunctionBasedEditor|Pyodide|TurtleCommand|TurtleProgramExecution|toSnapXml|toPython|toJava|toBeExpression|ProgrammingState(?:Snap|Python|Java)/);
   assert.doesNotMatch(source, /case\s+(?:SnapLanguage|Python|Java)\s*=>/);
 });
+
+test('Eva adapters use direct conversion and editor composition keeps changing state in Vars', async () => {
+  const directory = 'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/';
+  const files = [
+    'EvaEditor/EvaEditor.scala', 'EvaEditor/EvaEditorTab.scala',
+    'EvaEditor/extensions/turtle/JavaTurtleEditorExtension.scala',
+    'EvaEditor/extensions/turtle/TurtleTaskEditorExtension.scala',
+    'EvaEditor/extensions/turtle/TurtleExecutionPanel.scala',
+    'EvaEditor/extensions/turtle/TurtleProgramExecution.scala',
+    'codemirror/CodeMirrorEditor.scala', 'codemirror/CodeMirrorFlowchartGutter.scala',
+    'codemirror/CodeMirrorEditorLoading.scala', '../../code/JavaFunctionBasedEditor.scala',
+    'SnapEditor/SnapCodeEditor.scala', 'SnapEditor/SnapPreviewEditor.scala',
+  ];
+  for (const file of files) {
+    const raw = await readFile(new URL(directory + file, root), 'utf8');
+    const source = raw.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
+    assert.doesNotMatch(source, /\bvar\b|scala\.collection\.mutable/, file);
+    if (file.endsWith('EvaEditorTab.scala')) {
+      assert.doesNotMatch(source, /AsyncDataCache|convertAsync|latestConversions|\bFuture\b/);
+    }
+  }
+});
