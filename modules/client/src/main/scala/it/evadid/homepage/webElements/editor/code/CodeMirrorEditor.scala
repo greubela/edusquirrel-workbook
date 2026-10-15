@@ -24,10 +24,11 @@ case class CodeMirrorEditor(
 
   private class EditorMount(val container: dom.Element) {
     var handle: Option[CodeMirrorHandle] = None
+    var analysis: Option[CodeMirrorEditorFlowchart.Analysis] = None
   }
   private var mounts = List.empty[EditorMount]
   private var pendingDiagnostics = Option.empty[(String, Seq[Diagnostic])]
-  private val flowchart = Option.when(editorConfig.showFlowchartGutter && language == Python)(CodeMirrorEditorFlowchart.chartForDoc)
+  private val flowchartCache = Option.when(editorConfig.showFlowchartGutter && language == Python)(new CodeMirrorEditorFlowchart.Cache)
 
   private def liveHandles: List[CodeMirrorHandle] =
     mounts.filter(_.container.isConnected).flatMap(_.handle)
@@ -47,7 +48,7 @@ case class CodeMirrorEditor(
     var updatingFromEditor = false
     val useTextareaFallback = Var(true)
     div(
-      cls := ("code-editor code-mirror-editor" + (if (flowchart.nonEmpty) " code-mirror-editor-flowchart" else "")),
+      cls := ("code-editor code-mirror-editor" + (if (flowchartCache.nonEmpty) " code-mirror-editor-flowchart" else "")),
       styleAttr <-- editorFont.map(font =>
         s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"
       ),
@@ -74,13 +75,15 @@ case class CodeMirrorEditor(
             val initialValue = content.now()
 
             var updatingFromVar = false
+            val analysis = flowchartCache.map(new CodeMirrorEditorFlowchart.Analysis(_))
+            mount.analysis = analysis
 
             val createdHandle = cmFacade.createEditor(
               EditorConfig(
                 parent = container,
                 doc = initialValue,
                 language = languageToJs(language),
-                flowchart = flowchart,
+                flowchart = analysis.map(_.chartForDoc),
                 onDocChange = value =>
                   if (isActive && !updatingFromVar) {
                     pendingDiagnostics = None
@@ -93,7 +96,10 @@ case class CodeMirrorEditor(
               )
             )
 
-            if !isActive then createdHandle.destroy()
+            if !isActive then {
+              createdHandle.destroy()
+              analysis.foreach(_.close())
+            }
             else {
               mount.handle = Some(createdHandle)
               useTextareaFallback.set(false)
@@ -112,6 +118,8 @@ case class CodeMirrorEditor(
             }
 
           case None if isActive =>
+            mount.analysis.foreach(_.close())
+            mount.analysis = None
             useTextareaFallback.set(true)
           case _ => ()
         }
@@ -123,6 +131,8 @@ case class CodeMirrorEditor(
           mounts = mounts.filterNot(_ == mount)
           mount.handle.foreach(_.destroy())
           mount.handle = None
+          mount.analysis.foreach(_.close())
+          mount.analysis = None
         }
         if mounts.isEmpty then pendingDiagnostics = None
       }
@@ -188,7 +198,7 @@ object CodeMirrorEditor {
     var doc: js.UndefOr[String]
     var language: js.UndefOr[String]
     var onDocChange: js.Function1[String, Unit]
-    var flowchart: js.UndefOr[js.Function1[String, js.Object]]
+    var flowchart: js.UndefOr[js.Function1[String, js.Promise[js.Object]]]
   }
 
   object EditorConfig {
@@ -197,15 +207,15 @@ object CodeMirrorEditor {
                doc: String,
                onDocChange: String => Unit,
                language: String = "python",
-               flowchart: Option[String => js.Object] = None
+               flowchart: Option[String => js.Promise[js.Object]] = None
              ): EditorConfig = {
       js.Dynamic.literal(
         parent = parent,
         doc = doc,
         language = language,
         onDocChange = (value: String) => onDocChange(value),
-        flowchart = flowchart.fold[js.UndefOr[js.Function1[String, js.Object]]](js.undefined)(
-          callback => ((value: String) => callback(value)): js.Function1[String, js.Object]
+        flowchart = flowchart.fold[js.UndefOr[js.Function1[String, js.Promise[js.Object]]]](js.undefined)(
+          callback => ((value: String) => callback(value)): js.Function1[String, js.Promise[js.Object]]
         )
       ).asInstanceOf[EditorConfig]
     }

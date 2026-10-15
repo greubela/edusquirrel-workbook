@@ -6,6 +6,8 @@ The embedded TurtleStitch/Snap editor shares a `Var[ProgrammingState]` with Eva'
 
 Snap edits publish project XML as `ProgrammingStateSnapXml`. Regenerated preview/pen images are removed by `removeBloatFromXml`; scripts and authored costumes are retained. Python, Java and VM expression states have their own representations. Conversion uses the shared supported programming subset, not every native Snap block.
 
+The shared [full Snap Scala model](snap-scala-model.md) provides `ProgrammingStateSnapScalaModel` for lossless project conversion, typed inspection and immutable edits, including native blocks outside the Turtle subset. Existing workbooks keep their XML representation; typed states are also supported by the editors and state serializers.
+
 `ProgrammingExercise` writes the tagged `PROGRAMMING_STATE_V2` format, preserving the active representation. It still reads legacy `SNAP_XML_V1`, raw project XML and Python payloads. [SnapTurtlePythonBridge.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapTurtlePythonBridge.scala) validates Python-to-Snap conversion; [SnapProgramDerivation.scala](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/toRefactor/SnapProgramDerivation.scala) supplies the legacy derivation/popup path. Unsupported blocks can stay in saved XML even when a conversion is unavailable. Do not replace a project with a lossy derived subset.
 
 ## Runtime readiness and preview

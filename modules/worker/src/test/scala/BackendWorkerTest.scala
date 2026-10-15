@@ -2,6 +2,7 @@ import it.evadid.worker.WebWorkerBackendServer
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.distribution.formats.WorkerExecutionProtocol.{Request, Response}
+import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import munit.FunSuite
 import upickle.default.*
 
@@ -29,6 +30,38 @@ class BackendWorkerTest extends FunSuite {
       assertEquals(result.code.text, "Grüße\nQR")
       assertEquals(result.code.config.version, 2)
       assertEquals(result.modules, result.code.modules)
+    }(using scala.concurrent.ExecutionContext.global)
+  }
+  test("Python flowchart requests and results preserve source and the shared chart") {
+    val source = "# Grüße 外\r\nx = 1\r\nif x > 0:\r\n\tprint(x)\r\nprint(2)\r\n"
+    val request = PythonFlowchartRequest(source)
+    assertEquals(read[PythonFlowchartRequest](write(request)), request)
+    assertEquals(readBinary[PythonFlowchartRequest](writeBinary(request)), request)
+    val expected = PythonFlowchartGutter.fromPython(source)
+    assertEquals(expected.nodes.map(_.line), List(2, 3, 4, 5))
+    send("flowchart", pythonFlowchart.name, writeJs(request)).map { reply =>
+      assertEquals(reply.requestId, "flowchart")
+      val result = reply.response.result.toOption.get.getAs[PythonFlowchartGutter.Chart]
+      assertEquals(result, expected)
+      assertEquals(read[PythonFlowchartGutter.Chart](write(result)), result)
+      assertEquals(readBinary[PythonFlowchartGutter.Chart](writeBinary(result)), result)
+    }(using scala.concurrent.ExecutionContext.global)
+  }
+  test("incomplete Python clears the chart and the next request can succeed") {
+    send("incomplete-flowchart", pythonFlowchart.name, writeJs(PythonFlowchartRequest("if True:"))).flatMap { reply =>
+      assertEquals(reply.response.result.toOption.get.getAs[PythonFlowchartGutter.Chart], PythonFlowchartGutter.empty)
+      send("valid-flowchart", pythonFlowchart.name, writeJs(PythonFlowchartRequest("print(1)")))
+    }(using scala.concurrent.ExecutionContext.global).map { reply =>
+      assertEquals(reply.response.result.toOption.get.getAs[PythonFlowchartGutter.Chart].nodes.map(_.line), List(1))
+    }(using scala.concurrent.ExecutionContext.global)
+  }
+  test("invalid flowchart requests return an error without preventing later requests") {
+    send("bad-flowchart", pythonFlowchart.name, ujson.Obj("source" -> ujson.Arr())).flatMap { reply =>
+      assertEquals(reply.requestId, "bad-flowchart")
+      assert(reply.response.result.isLeft)
+      send("recovered-flowchart", pythonFlowchart.name, writeJs(PythonFlowchartRequest("print(2)")))
+    }(using scala.concurrent.ExecutionContext.global).map { reply =>
+      assertEquals(reply.response.result.toOption.get.getAs[PythonFlowchartGutter.Chart].nodes.map(_.line), List(1))
     }(using scala.concurrent.ExecutionContext.global)
   }
   test("unsupported commands and invalid inputs produce serialized errors rather than hanging") {

@@ -2,31 +2,47 @@ package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
+import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
+import it.evadid.distribution.formats.{ExecutionClientResponse, WorkerExecutionProtocol}
+import it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientResponseTimestamps
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
 import munit.FunSuite
 import org.scalajs.dom
+import java.time.LocalDateTime
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters.*
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js.timers.setTimeout
 import scala.util.Try
+import upickle.default.{read, write}
 
 class CodeMirrorEditorMountSpec extends FunSuite {
   private final class ControlledMounts {
     private val globals = js.Dynamic.global.globalThis
     private val requireFn = js.Dynamic.global.selectDynamic("require")
     private val projectRoot = js.Dynamic.global.process.cwd().asInstanceOf[String]
-    private val window = js.Dynamic.newInstance(requireFn(projectRoot + "/node_modules/jsdom").JSDOM)("<html><body></body></html>").window
+    private val window = js.Dynamic.newInstance(requireFn(projectRoot + "/node_modules/jsdom").JSDOM)(
+      "<html><body></body></html>", js.Dynamic.literal(url = "https://example.test/homepage/workbookDesign/")).window
     private val names = List("window", "document", "Element", "Node", "Event", "HTMLElement",
-      "HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement")
+      "HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "Worker")
     private val previous = names.map(name => (name, globals.selectDynamic(name),
       js.Dynamic.global.Object.prototype.hasOwnProperty.call(globals, name).asInstanceOf[Boolean]))
     names.foreach(name => globals.updateDynamic(name)(if (name == "window") window else window.selectDynamic(name)))
     private var cleanup = List.empty[() => Unit]
     private var pending = Vector.empty[js.Function1[js.Any, Unit]]
     var created = Vector.empty[Created]
+    var workers = Vector.empty[FakeWorker]
+    var beforeCreate: CodeMirrorEditor.EditorConfig => Unit = _ => ()
+
+    private val createWorker: js.Function1[String, js.Object] = url => {
+      val worker = new FakeWorker(url)
+      workers :+= worker
+      worker.raw.asInstanceOf[js.Object]
+    }
+    globals.updateDynamic("Worker")(js.Dynamic.global.Function("create", "return function Worker(url) { return create(url); };")(createWorker))
 
     window.updateDynamic("requestIdleCallback")(((callback: js.Function1[js.Any, Unit], _: js.Any) => {
       pending :+= callback
@@ -34,11 +50,29 @@ class CodeMirrorEditorMountSpec extends FunSuite {
     }): js.Function2[js.Function1[js.Any, Unit], js.Any, Int])
     window.updateDynamic("EduSquirrelCodeMirror")(js.Dynamic.literal(
       createEditor = ((config: CodeMirrorEditor.EditorConfig) => {
+        beforeCreate(config)
         val current = new Created(config)
         created :+= current
         current.handle
       }): js.Function1[CodeMirrorEditor.EditorConfig, CodeMirrorEditor.CodeMirrorHandle]
     ))
+
+    final class FakeWorker(val url: String) {
+      var sent = Vector.empty[String]
+      var terminations = 0
+      val raw: js.Dynamic = js.Dynamic.literal(
+        postMessage = ((message: String) => { sent :+= message }): js.Function1[String, Unit],
+        terminate = (() => { terminations += 1 }): js.Function0[Unit])
+
+      def reply(label: String, index: Int = 0): Unit = {
+        val request = read[WorkerExecutionProtocol.Request](sent(index))
+        val chart = PythonFlowchartGutter.Chart(List(PythonFlowchartGutter.Node(1, "process", 0, label)), Nil, List(1))
+        val now = LocalDateTime.now()
+        val response = ExecutionClientResponse.forValue(ExecutionClientResponseTimestamps(now, now, now), chart, request.command)
+        raw.selectDynamic("onmessage").asInstanceOf[js.Function1[dom.MessageEvent, Unit]](
+          js.Dynamic.literal(data = write(WorkerExecutionProtocol.Response(request.requestId, response))).asInstanceOf[dom.MessageEvent])
+      }
+    }
 
     final class Created(val config: CodeMirrorEditor.EditorConfig) {
       var doc = config.doc.getOrElse("")
@@ -59,6 +93,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
         destroy = (() => { destroys += 1; node.remove() }): js.Function0[Unit]
       ).asInstanceOf[CodeMirrorEditor.CodeMirrorHandle]
       def input(value: String): Unit = { doc = value; node.textContent = value; config.onDocChange(value) }
+      def analyze(source: String): Future[js.Object] = config.flowchart.get.apply(source).toFuture
     }
 
     def mount(element: Element): () => Unit = {
@@ -268,6 +303,119 @@ class CodeMirrorEditorMountSpec extends FunSuite {
           stopFirst()
           assertEquals(fixture.created.head.destroys, 1)
         }
+      }
+    }
+  }
+
+  test("flowchart mounts own their workers and a remount rejects replies from closed views") {
+    withControlledMounts { fixture =>
+      val content = Var("print(1)")
+      val editor = CodeMirrorEditor(content, language = Python, editorConfig = CodeMirrorEditorConfig.Flowchart)
+      val first = editor.getDomElement()
+      val stopFirst = fixture.mount(first)
+      val stopSecond = fixture.mount(editor.getDomElement())
+      def label(chart: js.Object): String = chart.asInstanceOf[js.Dynamic].nodes
+        .asInstanceOf[js.Array[js.Dynamic]].head.label.asInstanceOf[String]
+
+      for {
+        _ <- fixture.nextTurn()
+        _ = fixture.takeIdle().foreach(fixture.fire)
+        _ <- fixture.nextTurn()
+        firstView = fixture.created.head
+        secondView = fixture.created.last
+        firstResult = firstView.analyze("print(1)")
+        removedResult = secondView.analyze("print(2)").failed
+        _ = assertEquals(fixture.workers.size, 2)
+        _ = assert(fixture.workers.forall(_.url == "https://example.test/artifacts/newest/worker.js"))
+        _ = stopSecond()
+        _ = assertEquals(fixture.workers.map(_.terminations), Vector(0, 1))
+        _ = fixture.workers(1).reply("removed sibling")
+        _ = fixture.workers.head.reply("survivor")
+        firstChart <- firstResult
+        removedError <- removedResult
+        _ = assertEquals(label(firstChart), "survivor")
+        _ = assert(removedError.getMessage.contains("closed"))
+        pendingResult = firstView.analyze("print(3)").failed
+        _ = assertEquals(fixture.workers.head.sent.size, 2)
+        _ = assertEquals(firstView.destroys, 0)
+        _ = stopFirst()
+        _ = assertEquals(fixture.workers.map(_.terminations), Vector(1, 1))
+        stopRemount = fixture.mount(first)
+        _ <- fixture.nextTurn()
+        _ = fixture.takeIdle().foreach(fixture.fire)
+        _ <- fixture.nextTurn()
+        remountedView = fixture.created.last
+        cachedChart <- remountedView.analyze("print(1)")
+        _ = assertEquals(label(cachedChart), "survivor")
+        _ = assertEquals(fixture.workers.size, 2)
+        currentResult = remountedView.analyze("print(4)")
+        _ = assertEquals(fixture.workers.size, 3)
+        _ = fixture.workers.last.reply("remounted")
+        currentChart <- currentResult
+        _ = fixture.workers.head.reply("late old mount", index = 1)
+        _ <- fixture.nextTurn()
+        repeatedChart <- remountedView.analyze("print(4)")
+        pendingError <- pendingResult
+        closedError <- firstView.analyze("print(4)").failed
+        _ = assertEquals(label(currentChart), "remounted")
+        _ = assertEquals(label(repeatedChart), "remounted")
+        _ = assert(pendingError.getMessage.contains("closed"))
+        _ = assert(closedError.getMessage.contains("closed"))
+        _ = assertEquals(fixture.workers.size, 3)
+        _ = assertEquals(fixture.workers.last.sent.size, 1)
+        _ = assertEquals(content.now(), "print(1)")
+        _ = assertEquals(editor.currentDoc, Some("print(1)"))
+        _ = stopRemount()
+      } yield {
+        assert(fixture.created.forall(_.destroys == 1))
+        assertEquals(fixture.workers.map(_.terminations), Vector(1, 1, 1))
+      }
+    }
+  }
+
+  test("a failed Python mount closes its worker and preserves the surviving view and fallback") {
+    withControlledMounts { fixture =>
+      val content = Var("print(1)")
+      var inputs = Vector.empty[String]
+      val editor = CodeMirrorEditor(content, value => inputs :+= value, language = Python,
+        editorConfig = CodeMirrorEditorConfig.Flowchart)
+      fixture.mount(editor.getDomElement())
+      for {
+        _ <- fixture.nextTurn()
+        _ = fixture.takeIdle().foreach(fixture.fire)
+        _ <- fixture.nextTurn()
+        firstView = fixture.created.head
+        firstResult = firstView.analyze("print(1)")
+        failedAnalysis = Promise[Throwable]()
+        _ = fixture.beforeCreate = config => {
+          failedAnalysis.completeWith(config.flowchart.get.apply("print(2)").toFuture.failed)
+          throw RuntimeException("Failed facade creation")
+        }
+        failedView = editor.getDomElement()
+        _ = fixture.mount(failedView)
+        _ <- fixture.nextTurn()
+        _ = fixture.takeIdle().foreach(fixture.fire)
+        failure <- failedAnalysis.future
+        _ = assert(failure.getMessage.contains("closed"))
+        _ = assertEquals(fixture.created.size, 1)
+        _ = assertEquals(fixture.workers.map(_.terminations), Vector(0, 1))
+        _ = assertEquals(firstView.destroys, 0)
+        _ = assert(!failedView.ref.querySelector("textarea").hasAttribute("hidden"))
+        _ = fixture.workers.head.reply("still active")
+        _ <- firstResult
+        _ = fixture.input(failedView, "print(3)")
+        _ = assertEquals(content.now(), "print(3)")
+        _ = assertEquals(inputs, Vector("print(3)"))
+        _ = assertEquals(firstView.doc, "print(3)")
+        survivingResult = firstView.analyze("print(3)")
+        _ = assertEquals(fixture.workers.size, 2)
+        _ = assertEquals(fixture.workers.head.sent.size, 2)
+        _ = fixture.workers.head.reply("surviving edit", index = 1)
+        _ <- survivingResult
+      } yield {
+        assertEquals(editor.currentDoc, Some("print(3)"))
+        assertEquals(fixture.workers.map(_.terminations), Vector(0, 1))
+        assertEquals(firstView.destroys, 0)
       }
     }
   }

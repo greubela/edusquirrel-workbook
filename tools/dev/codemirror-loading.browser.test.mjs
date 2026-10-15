@@ -128,6 +128,10 @@ test('returning to Java restores CodeMirror and preserves fallback edits under a
     await dialog.locator('.code-mirror-editor__fallback').fill(source);
     release();
     await dialog.locator('.cm-content').waitFor();
+    await dialog.locator('.cm-content').click();
+    await page.keyboard.press('Control+End');
+    await page.keyboard.type('// edited');
+    const edited = source + '// edited';
     await page.evaluate(() => {
       const facade = EduSquirrelCodeMirror;
       const create = facade.createEditor;
@@ -151,12 +155,12 @@ test('returning to Java restores CodeMirror and preserves fallback edits under a
         for (const record of remountEditors.filter(record => record.destroyed > 0))
           record.onDocChange('stale editor input');
       });
-      assert.equal(await page.evaluate(() => remountEditors.findLast(record => record.parent.isConnected).handle.getDoc()), source);
+      assert.equal(await page.evaluate(() => remountEditors.findLast(record => record.parent.isConnected).handle.getDoc()), edited);
     }
     await page.locator('.fullscreen-close-button').click();
     await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).first().click();
     await dialog.locator('.cm-content').waitFor();
-    assert.equal(await page.evaluate(() => remountEditors.findLast(record => record.parent.isConnected).handle.getDoc()), source);
+    assert.equal(await page.evaluate(() => remountEditors.findLast(record => record.parent.isConnected).handle.getDoc()), edited);
     await page.locator('.fullscreen-close-button').click();
     await dialog.waitFor({state: 'hidden'});
     assert.equal(await page.evaluate(() => remountEditors.filter(record => record.parent.isConnected && record.destroyed === 0).length), 1,

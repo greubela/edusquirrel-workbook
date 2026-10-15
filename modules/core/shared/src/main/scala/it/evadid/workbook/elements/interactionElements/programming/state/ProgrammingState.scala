@@ -37,6 +37,7 @@ sealed trait ProgrammingState {
     case snap: ProgrammingStateSnapXml if snap.hasLegacyFloatingObjects =>
       s"snap-legacy:${write((snap.snapXml, snap.legacyFloatingObjects))}"
     case ProgrammingStateSnapXml(xml) => s"snap:$xml"
+    case snap: ProgrammingStateSnapScalaModel => snap.toSnapXml.fingerprint()
     case ProgrammingStatePythonString(code) => s"python:$code"
     case ProgrammingStateJavaString(code) => s"java:$code"
 }
@@ -55,7 +56,7 @@ object ProgrammingState {
     "it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState."
   )
   private val stateTags = Set("ProgrammingStateBeExpression", "ProgrammingStateSnapXml",
-    "ProgrammingStatePythonString", "ProgrammingStateJavaString", legacySnapTag)
+    "ProgrammingStatePythonString", "ProgrammingStateJavaString", "ProgrammingStateSnapScalaModel", legacySnapTag)
 
   private[programming] def readLegacyFloatingObjects(value: ujson.Value): List[String] =
     value.arr.toList.map(_.str)
@@ -70,6 +71,9 @@ object ProgrammingState {
             "additionalFloatingObjects" -> writeJs(snap.legacyFloatingObjects))
         case snap: ProgrammingStateSnapXml =>
           ujson.Obj("$type" -> "ProgrammingStateSnapXml", "snapXml" -> snap.snapXml)
+        case snap: ProgrammingStateSnapScalaModel =>
+          ujson.Obj("$type" -> "ProgrammingStateSnapScalaModel", "model" -> writeJs(snap.model),
+            "legacyFloatingObjects" -> writeJs(snap.legacyFloatingObjects))
         case ProgrammingStatePythonString(code) =>
           ujson.Obj("$type" -> "ProgrammingStatePythonString", "code" -> code)
         case ProgrammingStateJavaString(code) =>
@@ -90,6 +94,9 @@ object ProgrammingState {
             ProgrammingStateSnapXml(payload("snapXml").str, readLegacyFloatingObjects(payload("additionalFloatingObjects")))
           case "ProgrammingStateSnapXml" =>
             ProgrammingStateSnapXml(payload("snapXml").str,
+              payload.obj.get("legacyFloatingObjects").map(readLegacyFloatingObjects).getOrElse(Nil))
+          case "ProgrammingStateSnapScalaModel" =>
+            ProgrammingStateSnapScalaModel(read[snap.SnapScalaModel.Document](payload("model")),
               payload.obj.get("legacyFloatingObjects").map(readLegacyFloatingObjects).getOrElse(Nil))
           case "ProgrammingStatePythonString" => ProgrammingStatePythonString(payload("code").str)
           case "ProgrammingStateJavaString" => ProgrammingStateJavaString(payload("code").str)
@@ -163,6 +170,10 @@ object ProgrammingState {
       def hasLegacyFloatingObjects: Boolean = legacyFloatingObjects.nonEmpty
 
       def withProjectXml(xml: String): ProgrammingStateSnapXml = copy(snapXml = xml)
+
+      /** Lossless full-project conversion, independent of the executable Turtle subset. */
+      def toSnapScalaModel: Either[String, ProgrammingStateSnapScalaModel] =
+        ProgrammingStateSnapScalaModel.fromXml(this)
 
       /** Drop regenerated preview/pen images without changing scripts or authored costumes. */
       def removeBloatFromXml: ProgrammingStateSnapXml = {
@@ -314,3 +325,27 @@ type ProgrammingStatePythonString = ProgrammingState.ProgrammingStatePythonStrin
 val ProgrammingStatePythonString = ProgrammingState.ProgrammingStatePythonString
 type ProgrammingStateSnapXml = ProgrammingState.ProgrammingStateSnapXml
 val ProgrammingStateSnapXml = ProgrammingState.ProgrammingStateSnapXml
+
+/** Full Snap project state. Converting representations preserves XML and opaque legacy data.
+  * Executing or translating this state still uses the existing checked subset converters.
+  */
+final case class ProgrammingStateSnapScalaModel(
+    model: snap.SnapScalaModel.Document,
+    legacyFloatingObjects: List[String] = Nil
+) extends ProgrammingState {
+  require(legacyFloatingObjects != null && legacyFloatingObjects.forall(_ != null), "Invalid legacy Snap data.")
+  override def toSnapXml: ProgrammingStateSnapXml = ProgrammingStateSnapXml(model.toXml, legacyFloatingObjects)
+  override def toBeExpressionState: ProgrammingStateBeExpression = toSnapXml.toBeExpressionState
+  override def toPython: ProgrammingStatePythonString = toSnapXml.toPython
+  override def toJava: ProgrammingStateJavaString = toSnapXml.toJava
+}
+
+object ProgrammingStateSnapScalaModel {
+  given ReadWriter[ProgrammingStateSnapScalaModel] =
+    ProgrammingState.derived$ReadWriter.bimap[ProgrammingStateSnapScalaModel](identity, {
+      case state: ProgrammingStateSnapScalaModel => state
+      case _ => throw IllegalArgumentException("Unexpected programming state type.")
+    })
+  def fromXml(state: ProgrammingStateSnapXml): Either[String, ProgrammingStateSnapScalaModel] =
+    snap.SnapScalaModel.parse(state.snapXml).map(ProgrammingStateSnapScalaModel(_, state.legacyFloatingObjects))
+}
