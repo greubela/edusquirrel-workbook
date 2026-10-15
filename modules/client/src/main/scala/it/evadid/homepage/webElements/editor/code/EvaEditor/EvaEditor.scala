@@ -5,6 +5,7 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.storage.AsyncDataCache
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
@@ -15,8 +16,10 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.util.logging.{Logger, LoggingLevel}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success, Try}
 
 object EvaEditor {
@@ -31,19 +34,33 @@ object EvaEditor {
     case _: ProgrammingStateJavaString => Tab.Java
     case _ => Tab.Snap
 
-  private[code] final class ConversionCache(convert: (ProgrammingState, Tab) => ProgrammingState) {
-    private var cached = Option.empty[(ProgrammingState, Map[Tab, Try[ProgrammingState]])]
+  private val conversionLogger = new Logger {
+    override def log(message: String, level: LoggingLevel): Unit = ()
+    override def getOut(): String = ""
+    override def getErr(): String = ""
+  }
 
-    def apply(source: ProgrammingState, tab: Tab): Try[ProgrammingState] = {
-      val results = cached.filter(_._1 == source).map(_._2).getOrElse(Map.empty)
-      results.get(tab) match {
-        case Some(result) => result
-        case None =>
-          val result = Try(convert(source, tab))
-          cached = Some(source -> (results + (tab -> result)))
-          result
+  private[code] final class ConversionCache(convert: (ProgrammingState, Tab) => Future[ProgrammingState]) {
+    private var latest = Option.empty[(ProgrammingState, AsyncDataCache[Tab, Try[ProgrammingState]])]
+
+    def apply(source: ProgrammingState, tab: Tab): Future[Try[ProgrammingState]] = {
+      val cache = latest.filter(_._1 == source).map(_._2).getOrElse {
+        val created = new AsyncDataCache[Tab, Try[ProgrammingState]](conversionLogger, retryFailedOnNextFetch = false) {
+          override protected def executeLoading(tab: Tab)(ec: ExecutionContext): Future[Try[ProgrammingState]] =
+            Try(convert(source, tab)).fold(Future.failed, identity)
+              .map(value => Success(value): Try[ProgrammingState])(using ec)
+              .recover { case error => Failure(error) }(using ec)
+          override protected def formatInputForLogging(tab: Tab): String = tab.label
+          override protected def formatOutputForLogging(result: Try[ProgrammingState]): String =
+            if result.isSuccess then "available" else "unavailable"
+        }
+        latest = Some(source -> created)
+        created
       }
+      cache.loadAsFuture(tab)
     }
+
+    def clear(): Unit = latest = None
   }
 }
 
@@ -74,7 +91,7 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   )
   private lazy val snapState = Var[ProgrammingState](state.now() match
     case snap: ProgrammingStateSnapXml => snap
-    case snap: ProgrammingStateSnapScalaModel => conversions(snap, Tab.Snap).get
+    case snap: ProgrammingStateSnapScalaModel => snap.toSnapXml
     case _ => ProgrammingStateSnapXml.empty
   )
   private lazy val pythonState = Var[ProgrammingState](state.now() match
@@ -88,6 +105,8 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
   private lazy val pythonRunner = new PyodideTurtleCommandRunner()
   private lazy val snapExecution = new SnapTurtleCommandExecution(pythonRunner)
   private var mounted = false
+  private var viewOpen = true
+  private var viewRequest = 0L
   private lazy val appearance = new EditorAppearance
 
   private def setViewAvailable(available: Boolean): Unit =
@@ -104,26 +123,30 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
       case _ => next
     conversionError.set(None)
     if state.now() != retained then {
+      viewRequest += 1
       state.set(retained)
       onStateEdited(retained)
     }
   }
 
-  private def convert(state: ProgrammingState, tab: Tab): ProgrammingState = tab match
+  protected def convert(state: ProgrammingState, tab: Tab): Future[ProgrammingState] = Future.fromTry(Try(tab match
     case Tab.Snap => state.toSnapXml
     case Tab.Python => state.toPython
     case Tab.Java => state.toJava
+  ))
 
   private lazy val conversions = new EvaEditor.ConversionCache(convert)
 
   private def show(next: ProgrammingState): Unit = next match
     case snap: ProgrammingStateSnapXml => snapState.set(snap)
-    case snap: ProgrammingStateSnapScalaModel => snapState.set(conversions(snap, Tab.Snap).get)
+    case snap: ProgrammingStateSnapScalaModel => snapState.set(snap.toSnapXml)
     case python: ProgrammingStatePythonString => pythonState.set(python)
     case java: ProgrammingStateJavaString => javaState.set(java)
-    case expression: ProgrammingStateBeExpression => snapState.set(conversions(expression, Tab.Snap).get)
+    case expression: ProgrammingStateBeExpression => snapState.set(expression.toSnapXml)
 
   private def receive(next: ProgrammingState): Unit = {
+    viewRequest += 1
+    val request = viewRequest
     if enabledTabs.isEmpty then {
       setViewAvailable(false)
       conversionError.set(Some("No programming languages are enabled. Your source is unchanged."))
@@ -131,15 +154,28 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     }
     val matchingTab = EvaEditor.tabFor(next)
     val nextTab = if enabledTabs.contains(matchingTab) then matchingTab else activeTab.now()
-    Try(show(if nextTab == matchingTab then next else conversions(next, nextTab).get)) match
-      case Success(_) =>
-        if activeTab.now() != nextTab then activeTab.set(nextTab)
-        setViewAvailable(true)
-        conversionError.set(None)
-      case Failure(_) =>
-        setViewAvailable(false)
-        if activeTab.now() != nextTab then activeTab.set(nextTab)
-        conversionError.set(Some(s"This program cannot be displayed as ${nextTab.label} yet. Your source is unchanged."))
+    def current: Boolean = request == viewRequest && Try(state.now()).toOption.contains(next)
+    def complete(result: Try[ProgrammingState]): Unit =
+      if current then
+        result.flatMap(value => Try(show(value))) match
+          case Success(_) =>
+            val reopen = !viewAvailable.now() || activeTab.now() != nextTab
+            if current && activeTab.now() != nextTab then activeTab.set(nextTab)
+            if current then setViewAvailable(true)
+            if current then conversionError.set(None)
+            if current && reopen && mounted && viewOpen then openActiveView()
+          case Failure(_) if current =>
+            setViewAvailable(false)
+            if current && activeTab.now() != nextTab then activeTab.set(nextTab)
+            if current then conversionError.set(Some(s"This program cannot be displayed as ${nextTab.label} yet. Your source is unchanged."))
+          case _ => ()
+
+    if nextTab == matchingTab && !next.isInstanceOf[ProgrammingStateBeExpression] then complete(Success(next))
+    else {
+      setViewAvailable(false)
+      if current then conversionError.set(None)
+      if current then conversions(next, nextTab).foreach(complete)
+    }
   }
 
   private lazy val snapEditor = Option.when(enabledTabs.contains(Tab.Snap))(
@@ -205,22 +241,50 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
     case Tab.Java => javaEditor.foreach(_.onFullscreenClose())
     case Tab.Python => ()
 
-  private[code] def select(tab: Tab): Unit = {
-    if !enabledTabs.contains(tab) || activeTab.now() == tab then return
-    val closedSnap = mounted && activeTab.now() == Tab.Snap
-    if closedSnap then closeActiveView()
-    Try(state.now()).flatMap(source => conversions(source, tab)) match
-      case Success(next) =>
-        cancelExecution()
-        if mounted && !closedSnap then closeActiveView()
-        show(next)
-        conversionError.set(None)
-        activeTab.set(tab)
-        setViewAvailable(true)
-        if mounted then onFullscreenOpen()
-      case Failure(_) =>
+  private[code] def select(tab: Tab): Future[Unit] = {
+    if !enabledTabs.contains(tab) then return Future.unit
+    val previousTab = activeTab.now()
+    if previousTab == tab then {
+      viewRequest += 1
+      if !viewAvailable.now() then Try(state.now()).foreach(receive)
+      return Future.unit
+    }
+    val source = Try {
+      if mounted && previousTab == Tab.Snap && viewAvailable.now() then snapEditor.foreach(_.captureSource())
+      state.now()
+    }
+    viewRequest += 1
+    val request = viewRequest
+    def failed(): Unit =
+      if request == viewRequest && activeTab.now() == previousTab &&
+          source.toOption.forall(original => Try(state.now()).toOption.contains(original)) then
         conversionError.set(Some(s"This draft cannot be converted to ${tab.label} yet. Your source is unchanged."))
-        if closedSnap && viewAvailable.now() then onFullscreenOpen()
+    source match {
+      case Failure(_) => failed(); Future.unit
+      case Success(original) => conversions(original, tab).map { result =>
+        if request == viewRequest && activeTab.now() == previousTab then {
+          val current = Try {
+            if mounted && previousTab == Tab.Snap && viewAvailable.now() then snapEditor.foreach(_.captureSource())
+            state.now()
+          }
+          if request == viewRequest && current.toOption.contains(original) then
+            result.flatMap(next => Try {
+              def ifCurrent(expectedTab: Tab)(work: => Unit): Unit =
+                if request == viewRequest && activeTab.now() == expectedTab && Try(state.now()).toOption.contains(original) then work
+              cancelExecution()
+              ifCurrent(previousTab) { if mounted then closeActiveView() }
+              ifCurrent(previousTab) { show(next) }
+              ifCurrent(previousTab) { conversionError.set(None) }
+              ifCurrent(previousTab) { activeTab.set(tab) }
+              ifCurrent(tab) { setViewAvailable(true) }
+              ifCurrent(tab) { if mounted && viewOpen then openActiveView() }
+            }) match {
+              case Failure(_) => failed()
+              case _ => ()
+            }
+        }
+      }
+    }
   }
 
   private def createTabButton(tab: Tab): Element =
@@ -236,7 +300,10 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
         svg.path(svg.d := "M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6"))
       else span(tab.label),
       onClick --> (_ => select(tab)),
-      disabled <-- state.signal.map(source => EvaEditor.tabFor(source) != tab && conversions(source, tab).isFailure)
+      disabled <-- state.signal.distinct.flatMapSwitch { source =>
+        if EvaEditor.tabFor(source) == tab then Val(false)
+        else Signal.fromFuture(conversions(source, tab)).map(_.forall(_.isFailure))
+      }
     )
 
   private lazy val domElement: Element =
@@ -246,9 +313,9 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
           (if error.nonEmpty then " eva-editor--error" else "")
       },
       dataAttr("editor-theme") <-- appearance.theme,
-      state.signal --> receive,
-      onMountCallback { _ => mounted = true },
-      onUnmountCallback { _ => mounted = false; cancelExecution() },
+      state.signal.distinct --> receive,
+      onMountCallback { _ => mounted = true; viewOpen = true },
+      onUnmountCallback { _ => mounted = false; viewOpen = false; viewRequest += 1; conversions.clear(); cancelExecution() },
       div(
         cls := "eva-editor__toolbar",
         div(cls := "eva-editor__tabs", aria.label := "Programming language", enabledTabs.map(createTabButton)),
@@ -273,13 +340,21 @@ abstract class EvaEditor() extends HtmlAppElement with FullscreenLifecycle {
 
   override def getDomElement(): Element = domElement
 
-  override def onFullscreenOpen(): Unit =
+  private def openActiveView(): Unit =
     if viewAvailable.now() then activeTab.now() match
       case Tab.Snap => snapEditor.foreach(_.onFullscreenOpen())
       case Tab.Java => javaEditor.foreach(_.onFullscreenOpen())
       case Tab.Python => ()
 
+  override def onFullscreenOpen(): Unit = {
+    viewOpen = true
+    if viewAvailable.now() then openActiveView() else Try(state.now()).foreach(receive)
+  }
+
   override def onFullscreenClose(): Unit = {
+    viewOpen = false
+    viewRequest += 1
+    conversions.clear()
     cancelExecution()
     closeActiveView()
   }

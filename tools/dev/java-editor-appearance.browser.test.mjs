@@ -215,6 +215,10 @@ test('language tabs follow the current Java draft and retain it across view swit
       assert.equal(await readSource(), code);
     }
     async function checkTabs(convertible) {
+      await page.waitForFunction(convertible => {
+        const tabs = [...document.querySelectorAll('dialog[open] .eva-editor__tabs button')];
+        return ['Python', 'Snap!'].every(label => tabs.find(tab => tab.getAttribute('aria-label') === label)?.disabled === !convertible);
+      }, convertible);
       assert.equal(await java.isDisabled(), false);
       assert.equal(await python.isDisabled(), !convertible);
       assert.equal(await snap.isDisabled(), !convertible);
@@ -240,9 +244,18 @@ test('language tabs follow the current Java draft and retain it across view swit
     await checkTabs(false);
     await writeSource(spaced);
     await checkTabs(true);
+    await page.evaluate(({valid, unfinished}) => {
+      const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(document.querySelector('dialog[open] .cm-editor'));
+      for (const source of [unfinished, valid, unfinished, valid])
+        view.dispatch({changes: {from: 0, to: view.state.doc.length, insert: source}});
+    }, {valid: spaced, unfinished});
+    await checkTabs(true);
+    assert.equal(await readSource(), spaced, 'rapid invalid and valid drafts retain the latest exact source');
     await python.click();
+    await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-label="Python"]')?.getAttribute('aria-selected') === 'true');
     assert.equal(await python.getAttribute('aria-selected'), 'true');
     await java.click();
+    await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-label="Java"]')?.getAttribute('aria-selected') === 'true');
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
     assert.equal(await readSource(), spaced, 'viewing Python does not replace the original Java source');
     await checkTabs(true);

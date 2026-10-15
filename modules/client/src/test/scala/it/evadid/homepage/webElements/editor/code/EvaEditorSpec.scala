@@ -7,6 +7,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCo
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.core.Observer
+import com.raquo.laminar.api.L.{Element, render}
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import com.raquo.airstream.ownership.ManualOwner
@@ -34,6 +35,8 @@ import java.time.LocalDateTime
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
+import scala.util.Try
+import org.scalajs.dom
 
 class EvaEditorSpec extends FunSuite {
   private val testingConfig = EvaEditorConfig(snapConfig = SnapCodeEditorConfig.Testing)
@@ -42,25 +45,57 @@ class EvaEditorSpec extends FunSuite {
     var calls = Vector.empty[(ProgrammingState, EvaEditor.Tab)]
     val cache = new EvaEditor.ConversionCache((source, tab) => {
       calls :+= source -> tab
-      tab match {
+      Future.fromTry(Try(tab match {
         case EvaEditor.Tab.Snap => source.toSnapXml
         case EvaEditor.Tab.Python => source.toPython
         case EvaEditor.Tab.Java => source.toJava
-      }
+      }))
     })
+  }
+
+  private def inOrder[A](values: Iterable[A])(check: A => Future[Unit]): Future[Unit] =
+    values.foldLeft(Future.unit)((previous, value) => previous.flatMap(_ => check(value)))
+
+  private class PendingConversions {
+    var requests = Vector.empty[(ProgrammingState, EvaEditor.Tab, Promise[ProgrammingState])]
+    def apply(source: ProgrammingState, tab: EvaEditor.Tab): Future[ProgrammingState] = {
+      val result = Promise[ProgrammingState]()
+      requests :+= ((source, tab, result))
+      result.future
+    }
+  }
+
+  private class ControlledConversionEditor(source: ProgrammingState, override val config: EvaEditorConfig = testingConfig) extends EvaEditor {
+    override val state = Var[ProgrammingState](source)
+    val conversions = new PendingConversions
+    var published = Vector.empty[ProgrammingState]
+    var closeAction: () => Unit = () => ()
+    override val extensions = List(new EvaEditorExtension {
+      override def close(): Unit = closeAction()
+    })
+    override def onStateEdited: ProgrammingState => Unit = next => published :+= next
+    override protected def convert(source: ProgrammingState, tab: EvaEditor.Tab): Future[ProgrammingState] =
+      conversions(source, tab)
+    override def furtherDomElements(): List[Element] = Nil
   }
 
   test("tab guards and selections reuse one conversion per source and target") {
     val probe = new ConversionProbe
     val source = javaSource()
-    val python = probe.cache(source, EvaEditor.Tab.Python)
-    val snap = probe.cache(source, EvaEditor.Tab.Snap)
-    assert(python.isSuccess && snap.isSuccess)
-    for (_ <- 1 to 5) {
-      assert(probe.cache(source.copy(), EvaEditor.Tab.Python) eq python)
-      assert(probe.cache(source.copy(), EvaEditor.Tab.Snap) eq snap)
-    }
-    assertEquals(probe.calls, Vector(source -> EvaEditor.Tab.Python, source -> EvaEditor.Tab.Snap))
+    for {
+      python <- probe.cache(source, EvaEditor.Tab.Python)
+      snap <- probe.cache(source, EvaEditor.Tab.Snap)
+      _ = assert(python.isSuccess && snap.isSuccess)
+      _ <- inOrder(1 to 5) { _ =>
+        for {
+          repeatedPython <- probe.cache(source.copy(), EvaEditor.Tab.Python)
+          repeatedSnap <- probe.cache(source.copy(), EvaEditor.Tab.Snap)
+        } yield {
+          assert(repeatedPython eq python)
+          assert(repeatedSnap eq snap)
+        }
+      }
+    } yield assertEquals(probe.calls, Vector(source -> EvaEditor.Tab.Python, source -> EvaEditor.Tab.Snap))
   }
 
   test("conversion results follow raw source changes and recover from cached failures") {
@@ -68,15 +103,18 @@ class EvaEditorSpec extends FunSuite {
     val source = javaSource()
     val invalid = ProgrammingStateJavaString("public class Drawing {\r\n\t ")
     val sources = List(source, source.copy(code = source.code + "\r\n\t "), javaSource(13), invalid, source)
-    for (current <- sources; tab <- List(EvaEditor.Tab.Python, EvaEditor.Tab.Snap)) {
-      val result = probe.cache(current, tab)
-      assertEquals(result.isFailure, current == invalid)
-      assert(probe.cache(current.copy(), tab) eq result)
-      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
-        ProgrammingExercise.StateSerializer.serialize(current)), current)
-    }
-    assertEquals(probe.calls, sources.flatMap(current =>
-      List(current -> EvaEditor.Tab.Python, current -> EvaEditor.Tab.Snap)).toVector)
+    val requests = sources.flatMap(current => List(current -> EvaEditor.Tab.Python, current -> EvaEditor.Tab.Snap))
+    inOrder(requests) { (current, tab) =>
+      for {
+        result <- probe.cache(current, tab)
+        repeated <- probe.cache(current.copy(), tab)
+      } yield {
+        assertEquals(result.isFailure, current == invalid)
+        assert(repeated eq result)
+        assertEquals(ProgrammingExercise.StateSerializer.deserialize(
+          ProgrammingExercise.StateSerializer.serialize(current)), current)
+      }
+    }.map(_ => assertEquals(probe.calls, requests.toVector))
   }
 
   test("conversion caches distinguish representations with identical fingerprints") {
@@ -84,15 +122,20 @@ class EvaEditorSpec extends FunSuite {
     val xml = ProgrammingStatePythonString("forward(12)").toSnapXml
     val pairs = List[(ProgrammingState, ProgrammingState)](
       java -> java.toBeExpressionState, xml -> xml.toSnapScalaModel.toOption.get)
-    pairs.foreach { (first, second) =>
+    inOrder(pairs) { (first, second) =>
       assertEquals(first.fingerprint(), second.fingerprint())
       assertNotEquals(first, second)
       val probe = new ConversionProbe
-      assert(probe.cache(first, EvaEditor.Tab.Python).isSuccess)
-      val converted = probe.cache(second, EvaEditor.Tab.Python)
-      assert(converted.isSuccess)
-      assert(probe.cache(second, EvaEditor.Tab.Python) eq converted)
-      assertEquals(probe.calls, Vector(first -> EvaEditor.Tab.Python, second -> EvaEditor.Tab.Python))
+      for {
+        firstResult <- probe.cache(first, EvaEditor.Tab.Python)
+        converted <- probe.cache(second, EvaEditor.Tab.Python)
+        repeated <- probe.cache(second, EvaEditor.Tab.Python)
+      } yield {
+        assert(firstResult.isSuccess)
+        assert(converted.isSuccess)
+        assert(repeated eq converted)
+        assertEquals(probe.calls, Vector(first -> EvaEditor.Tab.Python, second -> EvaEditor.Tab.Python))
+      }
     }
   }
 
@@ -100,16 +143,22 @@ class EvaEditorSpec extends FunSuite {
     val probe = new ConversionProbe
     val source = ProgrammingStatePythonString("forward(12)").toSnapXml
     val legacy = source.copy(legacyFloatingObjects = List(" watcher\r\n\t "))
-    for (current <- List(source, legacy, source)) {
-      val python = probe.cache(current, EvaEditor.Tab.Python)
-      val snap = probe.cache(current, EvaEditor.Tab.Snap)
-      assertEquals(python.isFailure, current.hasLegacyFloatingObjects)
-      assertEquals(snap.toOption, Some(current))
-      assert(probe.cache(current.copy(), EvaEditor.Tab.Python) eq python)
-      assert(probe.cache(current.copy(), EvaEditor.Tab.Snap) eq snap)
+    inOrder(List(source, legacy, source)) { current =>
+      for {
+        python <- probe.cache(current, EvaEditor.Tab.Python)
+        snap <- probe.cache(current, EvaEditor.Tab.Snap)
+        repeatedPython <- probe.cache(current.copy(), EvaEditor.Tab.Python)
+        repeatedSnap <- probe.cache(current.copy(), EvaEditor.Tab.Snap)
+      } yield {
+        assertEquals(python.isFailure, current.hasLegacyFloatingObjects)
+        assertEquals(snap.toOption, Some(current))
+        assert(repeatedPython eq python)
+        assert(repeatedSnap eq snap)
+      }
+    }.map { _ =>
+      assertEquals(probe.calls.size, 6)
+      assertEquals(legacy.legacyFloatingObjects, List(" watcher\r\n\t "))
     }
-    assertEquals(probe.calls.size, 6)
-    assertEquals(legacy.legacyFloatingObjects, List(" watcher\r\n\t "))
   }
 
   test("language switches retain their error guard when the supplied state cannot be read") {
@@ -119,20 +168,239 @@ class EvaEditorSpec extends FunSuite {
     editor.state.signal.addObserver(Observer.withRecover[ProgrammingState](_ => (), {
       case _ => errors += 1
     }))(using owner)
-    try {
-      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
-      editor.state.setError(IllegalStateException("source unavailable"))
-      editor.select(EvaEditor.Tab.Python)
+    assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+    editor.state.setError(IllegalStateException("source unavailable"))
+    editor.select(EvaEditor.Tab.Python).flatMap { _ =>
       assertEquals(errors, 1)
       assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
       assert(editor.conversionError.now().nonEmpty)
       val repaired = javaSource(13)
       editor.state.set(repaired)
-      editor.select(EvaEditor.Tab.Python)
-      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
+      editor.select(EvaEditor.Tab.Python).map { _ =>
+        assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
+        assertEquals(editor.conversionError.now(), None)
+        assertEquals(editor.currentState(), repaired)
+      }
+    }.andThen { case _ => owner.killSubscriptions() }
+  }
+
+  test("pending tab conversions share loads and cache target failures independently") {
+    val loader = new PendingConversions
+    val cache = new EvaEditor.ConversionCache(loader.apply)
+    val source = javaSource()
+    val python = ProgrammingStatePythonString("forward(12)")
+    val error = IllegalArgumentException("Snap unavailable")
+    val first = cache(source, EvaEditor.Tab.Python)
+    val duplicate = cache(source.copy(), EvaEditor.Tab.Python)
+    val failed = cache(source, EvaEditor.Tab.Snap)
+    assertEquals(loader.requests.size, 2)
+    assert(!first.isCompleted && !duplicate.isCompleted && !failed.isCompleted)
+    loader.requests(0)._3.success(python)
+    loader.requests(1)._3.failure(error)
+    for {
+      result <- first
+      repeated <- duplicate
+      unavailable <- failed
+      cachedSuccess <- cache(source.copy(), EvaEditor.Tab.Python)
+      cachedFailure <- cache(source.copy(), EvaEditor.Tab.Snap)
+    } yield {
+      assert(result.get eq python)
+      assert(repeated eq result)
+      assert(cachedSuccess eq result)
+      assert(unavailable.failed.get eq error)
+      assert(cachedFailure eq unavailable)
+      assertEquals(loader.requests.size, 2)
+    }
+  }
+
+  test("source eviction and clearing isolate late tab conversion completions") {
+    val loader = new PendingConversions
+    val cache = new EvaEditor.ConversionCache(loader.apply)
+    val source = javaSource()
+    val old = cache(source, EvaEditor.Tab.Python)
+    val other = cache(javaSource(13), EvaEditor.Tab.Python)
+    val restored = cache(source.copy(), EvaEditor.Tab.Python)
+    assertEquals(loader.requests.size, 3)
+    loader.requests(2)._3.success(ProgrammingStatePythonString("restored"))
+    for {
+      restoredResult <- restored
+      _ = cache.clear()
+      fresh = cache(source.copy(), EvaEditor.Tab.Python)
+      _ = assertEquals(loader.requests.size, 4)
+      _ = loader.requests(3)._3.success(ProgrammingStatePythonString("fresh"))
+      freshResult <- fresh
+      _ = loader.requests(0)._3.success(ProgrammingStatePythonString("obsolete"))
+      _ = loader.requests(1)._3.failure(IllegalArgumentException("obsolete failure"))
+      oldResult <- old
+      otherResult <- other
+      cached <- cache(source.copy(), EvaEditor.Tab.Python)
+    } yield {
+      assertEquals(restoredResult.get.toPython.code, "restored")
+      assertEquals(oldResult.get.toPython.code, "obsolete")
+      assert(otherResult.isFailure)
+      assertEquals(freshResult.get.toPython.code, "fresh")
+      assert(cached eq freshResult)
+      assertEquals(loader.requests.size, 4)
+    }
+  }
+
+  test("pending tab switches cannot replace edited or restored drafts even after an edit cycle") {
+    inOrder(List(false, true)) { editCycle =>
+      val source = javaSource()
+      val changed = javaSource(13)
+      val editor = new ControlledConversionEditor(source)
+      val stored = ProgrammingExercise.StateSerializer.serialize(source)
+      val selection = editor.select(EvaEditor.Tab.Python)
+      if editCycle then {
+        editor.publish(EvaEditor.Tab.Java, changed)
+        editor.publish(EvaEditor.Tab.Java, source)
+        editor.conversions.requests.head._3.success(ProgrammingStatePythonString("obsolete"))
+      } else {
+        editor.state.set(changed)
+        editor.conversions.requests.head._3.failure(IllegalArgumentException("obsolete failure"))
+      }
+      selection.map { _ =>
+        assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+        assertEquals(editor.conversionError.now(), None)
+        assertEquals(editor.currentState(), if editCycle then source else changed)
+        assertEquals(editor.published, if editCycle then Vector(changed, source) else Vector.empty)
+        assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()),
+          if editCycle then stored else ProgrammingExercise.StateSerializer.serialize(changed))
+      }
+    }
+  }
+
+  test("closing invalidates a pending switch and reopening requests a fresh conversion") {
+    val source = javaSource()
+    val editor = new ControlledConversionEditor(source)
+    val old = editor.select(EvaEditor.Tab.Python)
+    editor.onFullscreenClose()
+    editor.conversions.requests.head._3.success(ProgrammingStatePythonString("obsolete"))
+    old.flatMap { _ =>
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
       assertEquals(editor.conversionError.now(), None)
-      assertEquals(editor.currentState(), repaired)
-    } finally owner.killSubscriptions()
+      assertEquals(editor.currentState(), source)
+      assertEquals(editor.published, Vector.empty)
+      editor.onFullscreenOpen()
+      val fresh = editor.select(EvaEditor.Tab.Python)
+      assertEquals(editor.conversions.requests.size, 2)
+      editor.conversions.requests.last._3.success(ProgrammingStatePythonString("current"))
+      fresh.map { _ =>
+        assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
+        assertEquals(editor.conversionError.now(), None)
+        assertEquals(editor.currentState(), source)
+        assertEquals(editor.published, Vector.empty)
+      }
+    }
+  }
+
+  test("the latest tab request wins over an older conversion success or failure") {
+    inOrder(List(false, true)) { failOlder =>
+      val source = javaSource()
+      val editor = new ControlledConversionEditor(source)
+      val older = editor.select(EvaEditor.Tab.Python)
+      val latest = editor.select(EvaEditor.Tab.Snap)
+      assertEquals(editor.conversions.requests.size, 2)
+      editor.conversions.requests(1)._3.success(ProgrammingStateSnapXml.empty)
+      latest.flatMap { _ =>
+        assertEquals(editor.activeTab.now(), EvaEditor.Tab.Snap)
+        if failOlder then editor.conversions.requests(0)._3.failure(IllegalArgumentException("obsolete failure"))
+        else editor.conversions.requests(0)._3.success(ProgrammingStatePythonString("obsolete"))
+        older.map { _ =>
+          assertEquals(editor.activeTab.now(), EvaEditor.Tab.Snap)
+          assertEquals(editor.conversionError.now(), None)
+          assertEquals(editor.currentState(), source)
+          assertEquals(editor.published, Vector.empty)
+        }
+      }
+    }
+  }
+
+  test("tab commits stop when an extension closes the editor or restores another source") {
+    inOrder(List(false, true)) { closeEditor =>
+      val source = javaSource()
+      val changed = javaSource(13)
+      val editor = new ControlledConversionEditor(source)
+      editor.closeAction = () => {
+        editor.closeAction = () => ()
+        if closeEditor then editor.onFullscreenClose() else editor.state.set(changed)
+      }
+      val selection = editor.select(EvaEditor.Tab.Python)
+      editor.conversions.requests.head._3.success(ProgrammingStatePythonString("obsolete"))
+      selection.map { _ =>
+        assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+        assertEquals(editor.conversionError.now(), None)
+        assertEquals(editor.currentState(), if closeEditor then source else changed)
+        assertEquals(editor.published, Vector.empty)
+        assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()),
+          ProgrammingExercise.StateSerializer.serialize(if closeEditor then source else changed))
+      }
+    }
+  }
+
+  test("reselecting a pending Python-only view shares conversion and still enhances the editor") {
+    val globals = js.Dynamic.global.globalThis
+    val requireFn = js.Dynamic.global.selectDynamic("require")
+    val projectRoot = js.Dynamic.global.process.cwd().asInstanceOf[String]
+    val window = js.Dynamic.newInstance(requireFn(projectRoot + "/node_modules/jsdom").JSDOM)(
+      "<html><body></body></html>", js.Dynamic.literal(url = "https://example.test/homepage/workbookDesign/")).window
+    val names = List("window", "document", "Element", "Node", "Event", "HTMLElement",
+      "HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement")
+    val previous = names.map(name => (name, globals.selectDynamic(name),
+      js.Dynamic.global.Object.prototype.hasOwnProperty.call(globals, name).asInstanceOf[Boolean]))
+    names.foreach(name => globals.updateDynamic(name)(if name == "window" then window else window.selectDynamic(name)))
+    val enhanced = Promise[Unit]()
+    window.updateDynamic("requestIdleCallback")(((callback: js.Function1[js.Any, Unit], _: js.Any) => {
+      callback(js.undefined)
+      0
+    }): js.Function2[js.Function1[js.Any, Unit], js.Any, Int])
+    window.updateDynamic("EduSquirrelCodeMirror")(js.Dynamic.literal(
+      createEditor = ((config: CodeMirrorEditor.EditorConfig) => {
+        var doc = config.doc.getOrElse("")
+        enhanced.trySuccess(())
+        js.Dynamic.literal(
+          getDoc = (() => doc): js.Function0[String],
+          setDoc = ((value: String) => { doc = value }): js.Function1[String, Unit],
+          setDiagnostics = ((_: js.Array[js.Object]) => ()): js.Function1[js.Array[js.Object], Unit],
+          focus = (() => ()): js.Function0[Unit],
+          destroy = (() => ()): js.Function0[Unit]
+        ).asInstanceOf[CodeMirrorEditor.CodeMirrorHandle]
+      }): js.Function1[CodeMirrorEditor.EditorConfig, CodeMirrorEditor.CodeMirrorHandle]))
+    var cleanup: () => Unit = () => ()
+    Try {
+      val source = ProgrammingStatePythonString("forward(12)").toBeExpressionState
+      val editor = new ControlledConversionEditor(source, testingConfig.copy(enabledLanguages = List(AppLanguage.Python)))
+      val host = dom.document.createElement("div")
+      dom.document.body.appendChild(host)
+      val mounted = render(host, editor.getDomElement())
+      cleanup = () => { mounted.unmount(); host.remove() }
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
+      val first = editor.select(EvaEditor.Tab.Python)
+      val second = editor.select(EvaEditor.Tab.Python)
+      assertEquals(editor.conversions.requests.size, 1)
+      assert(!enhanced.isCompleted)
+      editor.conversions.requests.head._3.success(ProgrammingStatePythonString("forward(12)"))
+      first.zip(second).flatMap(_ => enhanced.future).map { _ =>
+        assertEquals(editor.conversions.requests.size, 1)
+        assertEquals(editor.currentState(), source)
+        assertEquals(editor.conversionError.now(), None)
+        assertEquals(editor.published, Vector.empty)
+        val edited = ProgrammingStatePythonString("forward(13)")
+        editor.publish(EvaEditor.Tab.Python, edited)
+        assertEquals(editor.currentState(), edited)
+        assertEquals(editor.published, Vector(edited))
+      }
+    }.fold(Future.failed, identity).transform { result =>
+      try cleanup()
+      finally {
+        previous.foreach { (name, value, existed) =>
+          if existed then globals.updateDynamic(name)(value)
+          else js.Dynamic.global.Reflect.deleteProperty(globals, name)
+        }
+        window.close()
+      }
+      result
+    }
   }
 
   test("ordinary turtle tasks retain live previews while typed Java views require a run") {
@@ -480,14 +748,15 @@ class EvaEditorSpec extends FunSuite {
     assertEquals(offered, Vector(source))
     assertEquals(executions, 1)
     result.success(mappedCommands())
-    pending.map { commands =>
+    pending.flatMap { commands =>
       assertEquals(commands, mappedCommands())
       assertEquals(editor.currentState(), source)
-      editor.select(EvaEditor.Tab.Python)
-      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
-      assertEquals(closes, Vector("unrelated", "execution"))
-      editor.onFullscreenClose()
-      assertEquals(closes, Vector("unrelated", "execution", "unrelated", "execution"))
+      editor.select(EvaEditor.Tab.Python).map { _ =>
+        assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
+        assertEquals(closes, Vector("unrelated", "execution"))
+        editor.onFullscreenClose()
+        assertEquals(closes, Vector("unrelated", "execution", "unrelated", "execution"))
+      }
     }
   }
 
@@ -940,10 +1209,11 @@ class EvaEditorSpec extends FunSuite {
   test("text navigation before mounting Snap does not require its browser runtime") {
     val source = ProgrammingStatePythonString("forward(12)").toSnapXml
     val editor = editorFor(source)
-    editor.select(EvaEditor.Tab.Python)
-    assertEquals(editor.currentState(), source)
-    assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
-    assertEquals(editor.conversionError.now(), None)
+    editor.select(EvaEditor.Tab.Python).map { _ =>
+      assertEquals(editor.currentState(), source)
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
+      assertEquals(editor.conversionError.now(), None)
+    }
   }
 
   test("disabled language selections and edits are ignored") {
@@ -956,23 +1226,24 @@ class EvaEditorSpec extends FunSuite {
       EvaEditor.Tab.Python -> ProgrammingStatePythonString("forward(99)"),
       EvaEditor.Tab.Snap -> ProgrammingStateSnapXml.empty
     )
-    disabledEdits.foreach { (tab, edited) =>
-      editor.select(tab)
-      editor.publish(tab, edited)
-      assertEquals(editor.currentState(), source)
-      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
-      assertEquals(editor.conversionError.now(), None)
-    }
-    assertEquals(published, Nil)
+    inOrder(disabledEdits) { (tab, edited) =>
+      editor.select(tab).map { _ =>
+        editor.publish(tab, edited)
+        assertEquals(editor.currentState(), source)
+        assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+        assertEquals(editor.conversionError.now(), None)
+      }
+    }.map(_ => assertEquals(published, Nil))
   }
 
   test("selecting the current tab preserves an unfinished source exactly") {
     val source = ProgrammingStateJavaString("\n public class Drawing {\r\n\t\n")
     val editor = editorFor(source)
-    editor.select(EvaEditor.Tab.Java)
-    assertEquals(editor.currentState(), source)
-    assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
-    assertEquals(editor.conversionError.now(), None)
+    editor.select(EvaEditor.Tab.Java).map { _ =>
+      assertEquals(editor.currentState(), source)
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+      assertEquals(editor.conversionError.now(), None)
+    }
   }
 
   test("failed switches retain raw unsupported Java classes and unfinished drafts") {
@@ -980,17 +1251,17 @@ class EvaEditorSpec extends FunSuite {
       ProgrammingStateJavaString("\npublic class Drawing {\r\n\tpublic static void main(String[] args) { double turtle = 25; }\r\n}\r\n\t "),
       ProgrammingStateJavaString("\npublic class Drawing {\r\n\t")
     )
-    sources.foreach { source =>
+    inOrder(sources) { source =>
       var published = List.empty[ProgrammingState]
       val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
         next => published = published :+ next)
-      List(EvaEditor.Tab.Python, EvaEditor.Tab.Snap).foreach { tab =>
-        editor.select(tab)
-        assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
-        assertEquals(editor.currentState(), source)
-        assert(editor.conversionError.now().nonEmpty)
-      }
-      assertEquals(published, Nil)
+      inOrder(List(EvaEditor.Tab.Python, EvaEditor.Tab.Snap)) { tab =>
+        editor.select(tab).map { _ =>
+          assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+          assertEquals(editor.currentState(), source)
+          assert(editor.conversionError.now().nonEmpty)
+        }
+      }.map(_ => assertEquals(published, Nil))
     }
   }
 
@@ -1010,29 +1281,30 @@ class EvaEditorSpec extends FunSuite {
     val stored = ProgrammingExercise.StateSerializer.serialize(source)
     assertEquals(sync.stores.size, 0)
 
-    editor.select(EvaEditor.Tab.Snap)
-    assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
-    assert(editor.conversionError.now().nonEmpty)
-    assertEquals(editor.currentState(), source)
-    assertEquals(bound.now(), source)
-    assertEquals(variable.currentValue, source)
-    assertEquals(variable.history, history)
-    assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), stored)
-    assertEquals(published, Nil)
-    assertEquals(sync.stores.size, 0)
+    editor.select(EvaEditor.Tab.Snap).map { _ =>
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+      assert(editor.conversionError.now().nonEmpty)
+      assertEquals(editor.currentState(), source)
+      assertEquals(bound.now(), source)
+      assertEquals(variable.currentValue, source)
+      assertEquals(variable.history, history)
+      assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), stored)
+      assertEquals(published, Nil)
+      assertEquals(sync.stores.size, 0)
 
-    editor.onFullscreenClose()
-    editor.onFullscreenOpen()
-    assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
-    assertEquals(editor.currentState(), source)
-    assert(editor.conversionError.now().nonEmpty)
-    assertEquals(variable.deserializeHistory(variable.serializeHistory(variable.history)).lastStateOption.map(_.value),
-      Some(source))
-    assertEquals(ProgrammingExercise.StateSerializer.deserialize(stored), source)
-    assertEquals(variable.history, history)
-    assertEquals(published, Nil)
-    assertEquals(sync.stores.size, 0)
-    editor.onFullscreenClose()
+      editor.onFullscreenClose()
+      editor.onFullscreenOpen()
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+      assertEquals(editor.currentState(), source)
+      assert(editor.conversionError.now().nonEmpty)
+      assertEquals(variable.deserializeHistory(variable.serializeHistory(variable.history)).lastStateOption.map(_.value),
+        Some(source))
+      assertEquals(ProgrammingExercise.StateSerializer.deserialize(stored), source)
+      assertEquals(variable.history, history)
+      assertEquals(published, Nil)
+      assertEquals(sync.stores.size, 0)
+      editor.onFullscreenClose()
+    }
   }
 
   test("full Java classes switch editable views without publishing a converted answer") {
@@ -1043,14 +1315,14 @@ class EvaEditorSpec extends FunSuite {
     val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
       next => published = published :+ next)
     val stored = ProgrammingExercise.StateSerializer.serialize(source)
-    List(EvaEditor.Tab.Python, EvaEditor.Tab.Snap, EvaEditor.Tab.Java).foreach { tab =>
-      editor.select(tab)
-      assertEquals(editor.activeTab.now(), tab)
-      assertEquals(editor.conversionError.now(), None)
-      assertEquals(editor.currentState(), source)
-      assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), stored)
-    }
-    assertEquals(published, Nil)
+    inOrder(List(EvaEditor.Tab.Python, EvaEditor.Tab.Snap, EvaEditor.Tab.Java)) { tab =>
+      editor.select(tab).map { _ =>
+        assertEquals(editor.activeTab.now(), tab)
+        assertEquals(editor.conversionError.now(), None)
+        assertEquals(editor.currentState(), source)
+        assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), stored)
+      }
+    }.map(_ => assertEquals(published, Nil))
   }
 
   test("viewing converted source does not publish or normalize the stored draft") {
@@ -1058,13 +1330,13 @@ class EvaEditorSpec extends FunSuite {
     var published = List.empty[ProgrammingState]
     val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
       next => published = published :+ next)
-    List(EvaEditor.Tab.Java, EvaEditor.Tab.Python).foreach { tab =>
-      editor.select(tab)
-      assertEquals(editor.activeTab.now(), tab)
-      assertEquals(editor.currentState(), source)
-      assertEquals(editor.conversionError.now(), None)
-    }
-    assertEquals(published, Nil)
+    inOrder(List(EvaEditor.Tab.Java, EvaEditor.Tab.Python)) { tab =>
+      editor.select(tab).map { _ =>
+        assertEquals(editor.activeTab.now(), tab)
+        assertEquals(editor.currentState(), source)
+        assertEquals(editor.conversionError.now(), None)
+      }
+    }.map(_ => assertEquals(published, Nil))
   }
 
   test("only an active editor edit updates the draft and publishes once") {
@@ -1131,15 +1403,15 @@ class EvaEditorSpec extends FunSuite {
     var published = List.empty[ProgrammingState]
     val editor = new EvaEditorPlain(Var[ProgrammingState](source), testingConfig,
       next => published = published :+ next)
-    List(EvaEditor.Tab.Python -> ProgrammingStatePythonString("forward(99)"),
-      EvaEditor.Tab.Java -> ProgrammingStateJavaString("forward(99);")).foreach { (tab, edited) =>
-      editor.select(tab)
-      editor.publish(tab, edited)
-      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Snap)
-      assert(editor.conversionError.now().nonEmpty)
-      assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), stored)
-    }
-    assertEquals(published, Nil)
+    inOrder(List(EvaEditor.Tab.Python -> ProgrammingStatePythonString("forward(99)"),
+      EvaEditor.Tab.Java -> ProgrammingStateJavaString("forward(99);"))) { (tab, edited) =>
+      editor.select(tab).map { _ =>
+        editor.publish(tab, edited)
+        assertEquals(editor.activeTab.now(), EvaEditor.Tab.Snap)
+        assert(editor.conversionError.now().nonEmpty)
+        assertEquals(ProgrammingExercise.StateSerializer.serialize(editor.currentState()), stored)
+      }
+    }.map(_ => assertEquals(published, Nil))
   }
 
   test("disabled Snap or text views cannot publish over legacy metadata") {
@@ -1523,12 +1795,13 @@ class EvaEditorSpec extends FunSuite {
     val result = editor.getCurrentTurtleCommands()
     val runner = factory.runners.head
     runner.complete()
-    result.map { _ =>
+    result.flatMap { _ =>
       editor.state.set(ProgrammingStateJavaString("forward(12);"))
-      editor.select(EvaEditor.Tab.Python)
-      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
-      assertEquals(editor.conversionError.now(), None)
-      assertEquals(runner.closeCalls, 1)
+      editor.select(EvaEditor.Tab.Python).map { _ =>
+        assertEquals(editor.activeTab.now(), EvaEditor.Tab.Python)
+        assertEquals(editor.conversionError.now(), None)
+        assertEquals(runner.closeCalls, 1)
+      }
     }
   }
 
@@ -1539,15 +1812,16 @@ class EvaEditorSpec extends FunSuite {
       runnerFactory = factory.create)
     val result = editor.getCurrentTurtleCommands()
     val runner = factory.runners.head
-    editor.select(EvaEditor.Tab.Python)
-    assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
-    assert(editor.conversionError.now().nonEmpty)
-    assertEquals(runner.cancelCalls, 0)
-    assertEquals(runner.closeCalls, 0)
-    runner.complete()
-    result.map { commands =>
-      assertEquals(commands, mappedCommands())
-      assertEquals(editor.currentState(), source)
+    editor.select(EvaEditor.Tab.Python).flatMap { _ =>
+      assertEquals(editor.activeTab.now(), EvaEditor.Tab.Java)
+      assert(editor.conversionError.now().nonEmpty)
+      assertEquals(runner.cancelCalls, 0)
+      assertEquals(runner.closeCalls, 0)
+      runner.complete()
+      result.map { commands =>
+        assertEquals(commands, mappedCommands())
+        assertEquals(editor.currentState(), source)
+      }
     }
   }
 
