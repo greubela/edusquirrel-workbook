@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
-import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor.{CodeMirrorHandle, EditorConfig}
+import CodeMirrorEditor.{CodeMirrorHandle, EditorConfig}
 import org.scalajs.dom
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel

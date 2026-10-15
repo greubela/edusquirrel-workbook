@@ -6,17 +6,19 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCo
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorConfig, EvaEditorTurtle}
-import it.evadid.homepage.webElements.editor.code.JavaTurtleEditorExtension
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.JavaTurtleEditorExtension
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, *}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, *}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString}
 import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import scala.util.Try
 
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
@@ -34,7 +36,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     )
 
   def createInteractivePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic,
-      policy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes): ElementCard = {
+                               policy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes): ElementCard = {
     ElementCard(
       LanguageMapContentId("basic/turtleGradingPanel"),
       div(child <-- boundVar.signal.map { state =>
@@ -55,8 +57,9 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
       case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
 
     val editorConfig = EvaEditorConfig(snapConfig = snapEditorConfig)
-    val editor = EvaEditorTurtle(boundVar, editorConfig, workbookElement.desiredResult,
-      editorExtensions = List(new JavaTurtleEditorExtension(boundVar)), comparisonPolicy = workbookElement.comparisonPolicy)
+    val editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(new JavaTurtleEditorExtension(boundVar),
+      new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension(
+        boundVar, Some(workbookElement.desiredResult), workbookElement.comparisonPolicy)), editorConfig)
 
     lazy val codePreview = SnapPreviewEditor(boundVar, snapEditorConfig).getDomElement()
     val programPreview = fullInfo.signals.currentDisplayInfo

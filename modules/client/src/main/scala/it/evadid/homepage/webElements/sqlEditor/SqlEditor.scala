@@ -5,13 +5,15 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.SqlEditorCommands
 import it.evadid.distribution.commandTypes.SqlEditorCommands.*
 import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
-import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
 import it.evadid.core.datastructures.language.AppLanguage.SQL
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.util.logging.Logger
 import it.evadid.workbook.elements.interactionElements.sql.SqlDatabaseConfig
+
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success}
 
-final case class SqlEditor(state: Var[String], databaseConfig: SqlDatabaseConfig, backend: ExecutionClient) extends HtmlAppElement with FullscreenLifecycle {
+final case class SqlEditor(logger: Logger,state: Var[String], databaseConfig: SqlDatabaseConfig, backend: ExecutionClient) extends HtmlAppElement with FullscreenLifecycle {
   private case class Block(id: Int, text: String) derives upickle.default.ReadWriter
   private val blockMode = Var(false)
   private var nextId = 0
@@ -29,7 +31,7 @@ final case class SqlEditor(state: Var[String], databaseConfig: SqlDatabaseConfig
   private var draggedBlock = Option.empty[Int]
   override def onFullscreenClose(): Unit = ()
   override def dismissOnOutsideClick: Boolean = false
-  private val textEditor = CodeMirrorEditor(state, language = SQL)
+  private val textEditor = CodeMirrorEditor(logger, state, SQL)
 
   private def publish(next: List[Block]): Unit = {
     blocks.set(next)

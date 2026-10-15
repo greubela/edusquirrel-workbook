@@ -18,8 +18,6 @@ case class ProgrammingExerciseFullJava(
 
   override val defaultValue: ProgrammingState = ProgrammingStateJavaString(startingProgram)
 
-  override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingExercise.StateSerializer
-
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 }
 

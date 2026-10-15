@@ -1,13 +1,13 @@
-package it.evadid.homepage.webElements.editor.code
+package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{TurtleDrawingGrading, TurtleJsxGraphRenderer}
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{TurtleDrawingGrading, TurtleJsxGraphRenderer}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.Future
@@ -37,40 +37,37 @@ final class TurtleExecutionPanel(
   import TurtleExecutionPanel.*
 
   private[code] val status = Var[Status](Status.Idle)
-  private var revision = 0L
-  private var owner = Option.empty[ManualOwner]
-  private var scenes = Vector.empty[TurtleJsxGraphRenderer.Scene]
+  private val revision = Var(0L)
+  private val owner = Var(Option.empty[ManualOwner])
+  private val scenes = Var(Vector.empty[TurtleJsxGraphRenderer.Scene])
 
-  private[code] def activate(): Unit = if owner.isEmpty then {
+  private[code] def activate(): Unit = if owner.now().isEmpty then {
     val mountedOwner = new ManualOwner
-    owner = Some(mountedOwner)
-    var previous = source.now()
-    source.signal.changes.foreach { next =>
-      if next != previous then { previous = next; reset() }
-    }(using mountedOwner)
+    owner.set(Some(mountedOwner))
+    source.signal.distinct.changes.foreach(_ => reset())(using mountedOwner)
   }
 
   private[code] def deactivate(): Unit = {
-    val previous = owner
-    owner = None
+    val previous = owner.now()
+    owner.set(None)
     previous.foreach(_.killSubscriptions())
     reset()
   }
 
   private[code] def reset(): Unit = {
-    revision += 1
+    revision.update(_ + 1)
     val running = status.now() == Status.Running
-    scenes = Vector.empty
+    scenes.set(Vector.empty)
     status.set(Status.Idle)
     if running then cancel()
   }
 
   private[code] def run(): Unit = start(execute) { commands =>
     val comparison = target.map(TurtleDrawingGrading.assess(commands, _, comparisonPolicy))
-    scenes = Vector((target, comparison) match {
+    scenes.set(Vector((target, comparison) match {
       case (Some(_), Some(result)) => result.scene
       case _ => TurtleDrawingGrading.drawingScene(commands)
-    })
+    }))
     Status.Ready(commands, comparison.map(_.matches))
   }
 
@@ -83,19 +80,19 @@ final class TurtleExecutionPanel(
         return
       case _ => ()
     }
-    revision += 1
-    val requested = revision
+    revision.update(_ + 1)
+    val requested = revision.now()
     val original = source.now()
-    scenes = Vector.empty
+    scenes.set(Vector.empty)
     status.set(Status.Running)
-    if requested != revision || status.now() != Status.Running then return
+    if requested != revision.now() || status.now() != Status.Running then return
     Try(execute()).fold(Future.failed, identity).onComplete {
-      case _ if requested != revision || original != source.now() => ()
+      case _ if requested != revision.now() || original != source.now() => ()
       case Success(result) =>
         Try(completed(result)) match {
           case Success(next) => status.set(next)
           case Failure(error) =>
-            scenes = Vector.empty
+            scenes.set(Vector.empty)
             status.set(Status.Failed(Option(error.getMessage).getOrElse("The drawing could not be compared.")))
         }
       case Failure(_: CancellationException) => status.set(Status.Stopped)
@@ -104,8 +101,8 @@ final class TurtleExecutionPanel(
   }
 
   private[code] def stop(): Unit = if status.now() == Status.Running then {
-    revision += 1
-    scenes = Vector.empty
+    revision.update(_ + 1)
+    scenes.set(Vector.empty)
     status.set(Status.Stopped)
     cancel()
   }
@@ -120,7 +117,7 @@ final class TurtleExecutionPanel(
     onUnmountCallback(_ => deactivate()),
     h3("Drawing"),
     div(cls := "turtle-execution__actions",
-      button(typ := "button", disabled <-- status.signal.map(_ == Status.Running), "Run", onClick --> (_ => run())),
+      button(typ := "button", disabled <-- status.signal.map(_ == Status.Running), "Run", onClick --> (_ => queue.execute(() => run()))),
       button(typ := "button", disabled <-- status.signal.map(_ != Status.Running), "Stop", onClick --> (_ => stop()))
     ),
     p(cls := "turtle-execution__status", role := "status", aria.live := "polite",
@@ -139,7 +136,7 @@ final class TurtleExecutionPanel(
     },
     child.maybe <-- status.signal.map {
       case Status.Ready(_, _) =>
-        Some(picture(scenes.head, if target.isDefined then "Target comparison" else "Your drawing"))
+        Some(picture(scenes.now().head, if target.isDefined then "Target comparison" else "Your drawing"))
       case _ => target.map { graphic =>
         Try(TurtleDrawingGrading.targetScene(graphic, comparisonPolicy)).fold(
           error => p(cls := "turtle-execution__error", role := "alert", error.getMessage),

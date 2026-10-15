@@ -22,8 +22,8 @@ class PythonTypeHintConversionSpec extends FunSuite {
     (1 to 3).foreach { _ =>
       current = current.toBeExpressionState.toPython
       assertEquals(current.code.trim, state.code.trim)
-      val restored = ProgrammingExercise.StateSerializer.deserialize(
-        ProgrammingExercise.StateSerializer.serialize(current.toBeExpressionState)
+      val restored = ProgrammingState.serializer.deserialize(
+        ProgrammingState.serializer.serialize(current.toBeExpressionState)
       )
       assertEquals(restored.toPython.code.trim, state.code.trim)
     }
@@ -123,14 +123,14 @@ class PythonTypeHintConversionSpec extends FunSuite {
       |}
       |""".stripMargin
     val java = ProgrammingStateJavaString(source)
-    val stored = ProgrammingExercise.StateSerializer.serialize(java)
+    val stored = ProgrammingState.serializer.serialize(java)
     assert(java.isClassProgram)
     assert(java.toJavaVmProgram.isLeft)
     intercept[IllegalArgumentException](java.toBeExpressionState)
     intercept[IllegalArgumentException](java.toPython)
     intercept[IllegalArgumentException](java.toSnapXml)
     assertEquals(java.code, source)
-    assertEquals(ProgrammingExercise.StateSerializer.serialize(java), stored)
+    assertEquals(ProgrammingState.serializer.serialize(java), stored)
   }
 
   test("printer hints do not enable unchecked Turtle-qualified calls") {

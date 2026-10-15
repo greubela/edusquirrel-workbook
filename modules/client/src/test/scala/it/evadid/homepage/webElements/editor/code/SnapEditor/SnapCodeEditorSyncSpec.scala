@@ -14,6 +14,7 @@ import org.scalajs.dom.html.Canvas
 import scala.scalajs.js
 
 class SnapCodeEditorSyncSpec extends FunSuite {
+  private val logger = it.evadid.util.logging.Logger.withNameAndPrefixes(Some("test"), it.evadid.util.logging.derived.PrintToStdLogger.printNothing)
   private val globals = js.Dynamic.global.globalThis
   private val requireFn = js.Dynamic.global.selectDynamic("require")
   private val root = js.Dynamic.global.process.cwd().asInstanceOf[String]
@@ -92,7 +93,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val state = Var[ProgrammingState](source)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
     val owner = new ManualOwner
     try {
       editor.mountEditorInto(null, owner)
@@ -107,8 +108,8 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(edits, List(next))
       impl.listener(live)
       assertEquals(edits, List(next))
-      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
-        ProgrammingExercise.StateSerializer.serialize(next)), next)
+      assertEquals(ProgrammingState.serializer.deserialize(
+        ProgrammingState.serializer.serialize(next)), next)
     } finally owner.killSubscriptions()
   }
 
@@ -116,7 +117,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
     val owner = new ManualOwner
     try {
       editor.mountEditorInto(null, owner)
@@ -145,7 +146,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   test("a fresh mount owner observes restores after closing and reopening") {
     val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
     val impl = new RecordingImpl
-    val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl)
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
     val first = new ManualOwner
     editor.mountEditorInto(null, first)
     first.killSubscriptions()
@@ -231,7 +232,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
     val owner = new ManualOwner
     try {
       editor.mountEditorInto(null, owner)
@@ -257,7 +258,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val state = Var[ProgrammingState](source)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
     val owner = new ManualOwner
     try {
       editor.mountEditorInto(null, owner)
@@ -272,8 +273,8 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(impl.current, Some(cleaned.toSnapXml))
       assertEquals(impl.reloads, 0)
       assertEquals(impl.librariesCleared, 0)
-      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
-        ProgrammingExercise.StateSerializer.serialize(state.now())), cleaned)
+      assertEquals(ProgrammingState.serializer.deserialize(
+        ProgrammingState.serializer.serialize(state.now())), cleaned)
     } finally owner.killSubscriptions()
   }
 
@@ -282,7 +283,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val state = Var[ProgrammingState](initial)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
     val owner = new ManualOwner
     try {
       editor.mountEditorInto(null, owner)
@@ -292,8 +293,8 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(captured, initial.withProjectXml(capturedXml))
       assertEquals(state.now(), initial)
       assertEquals(edits, Nil)
-      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
-        ProgrammingExercise.StateSerializer.serialize(captured)), captured)
+      assertEquals(ProgrammingState.serializer.deserialize(
+        ProgrammingState.serializer.serialize(captured)), captured)
 
       val closed = initial.withProjectXml("<project name=\"closed\"/>")
       impl.pendingXml = Some(closed.snapXml)
@@ -302,8 +303,8 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(edits, List(closed))
       val restored = ProgrammingStateSnapXml("<project name=\"restored\"/>",
         legacyFloatingObjects = List(" restored watcher\n", " restored comment\r\n"))
-      state.set(ProgrammingExercise.StateSerializer.deserialize(
-        ProgrammingExercise.StateSerializer.serialize(restored)))
+      state.set(ProgrammingState.serializer.deserialize(
+        ProgrammingState.serializer.serialize(restored)))
       editor.onFullscreenOpen()
       assertEquals(state.now(), restored)
       assertEquals(impl.current, Some(restored))
@@ -317,8 +318,8 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val reopened = restored.withProjectXml(reopenedXml)
       assertEquals(state.now(), reopened)
       assertEquals(edits, List(closed, reopened))
-      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
-        ProgrammingExercise.StateSerializer.serialize(state.now())), reopened)
+      assertEquals(ProgrammingState.serializer.deserialize(
+        ProgrammingState.serializer.serialize(state.now())), reopened)
     } finally owner.killSubscriptions()
   }
   test("closing an editor before the Snap runtime loads does not touch Process") {
@@ -374,8 +375,8 @@ class SnapCodeEditorSyncSpec extends FunSuite {
           state.set(draft)
           assert(container.querySelector("canvas") eq canvas)
           assertEquals(state.now(), draft)
-          assertEquals(ProgrammingExercise.StateSerializer.deserialize(
-            ProgrammingExercise.StateSerializer.serialize(state.now())), draft)
+          assertEquals(ProgrammingState.serializer.deserialize(
+            ProgrammingState.serializer.serialize(state.now())), draft)
         }
         assertEquals(impl.previewed, List(initial.toSnapXml))
         assertEquals(received, initial :: drafts)
@@ -486,7 +487,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     withRoot { container =>
       val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
       val impl = new DeferredImpl
-      val editor = SnapCodeEditor(state, SnapCodeEditorConfig.Testing, impl)
+      val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
       val first = render(container, editor.getDomElement())
       first.unmount()
       val second = render(container, editor.getDomElement())

@@ -6,7 +6,9 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
+import it.evadid.homepage.webElements.sqlEditor.HtmlSqlCommandExerciseRenderer.fullInfo
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.parsing.cpp.CppParser
@@ -92,9 +94,11 @@ case class HtmlBeProgramEditor(
 
   private val pythonEditor: HtmlAppElement =
     CodeMirrorEditor(
+      fullInfo.loggerSystemInfo.uiAndDomLogger,
       strVar,
-      onUserInput = _ => textDirtyVar.set(true),
-      language = Python
+      _ => textDirtyVar.set(true),
+      language = Python,
+      Var(CodeMirrorEditorConfig.Default)
     )
 
   private val pythonViewTab = HtmlTab(

@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.editor.code.MailEditor
+package it.evadid.homepage.webElements.editor.MailEditor
 
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom

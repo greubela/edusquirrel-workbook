@@ -1,6 +1,8 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditorLoading
 import munit.FunSuite
+
 import scala.scalajs.js
 
 class CodeMirrorEditorPreheatSpec extends FunSuite {
