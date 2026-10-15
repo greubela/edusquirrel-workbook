@@ -1,6 +1,7 @@
 package it.evadid.distribution.commandTypes
 
 import it.evadid.distribution.command.ExecutionCommandFactory
+import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapXmlParser
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
 import upickle.default.ReadWriter
@@ -10,6 +11,7 @@ object WorkerCommands {
   case class HealthRequest() derives ReadWriter
   case class HealthResult(service: String, commands: List[String]) derives ReadWriter
   case class ParseSnapXmlRequest(xml: String, tag: String) derives ReadWriter
+  case class PythonFlowchartRequest(source: String) derives ReadWriter
   case class CalculateQrCodeRequest(text: String, errorCorrection: QrErrorCorrection = QrErrorCorrection.M,
                                     version: Option[Int] = None, mask: Option[Int] = None) derives ReadWriter
   case class CalculateQrCodeResult(code: QrCode, modules: Vector[Vector[Boolean]]) derives ReadWriter
@@ -22,7 +24,8 @@ object WorkerCommands {
 
   lazy val health = ExecutionCommandFactory[HealthRequest, HealthResult]("worker.health")
   lazy val parseSnapXml = ExecutionCommandFactory[ParseSnapXmlRequest, List[SnapXmlParser.Element]]("worker.parseSnapXml")
+  lazy val pythonFlowchart = ExecutionCommandFactory[PythonFlowchartRequest, PythonFlowchartGutter.Chart]("worker.pythonFlowchart")
   lazy val calculateQrCode = ExecutionCommandFactory[CalculateQrCodeRequest, CalculateQrCodeResult]("worker.calculateQrCode")
   lazy val runPython = ExecutionCommandFactory[RunPythonRequest, RunPythonResult]("worker.runPython")
-  lazy val supportedCommands: Set[String] = Set(health.name, parseSnapXml.name, calculateQrCode.name, runPython.name)
+  lazy val supportedCommands: Set[String] = Set(health.name, parseSnapXml.name, pythonFlowchart.name, calculateQrCode.name, runPython.name)
 }

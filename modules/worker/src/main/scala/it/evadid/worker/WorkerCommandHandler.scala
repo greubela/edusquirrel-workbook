@@ -2,6 +2,7 @@ package it.evadid.worker
 
 import it.evadid.distribution.clients.{ExecutionClient, ExecutionClientPool}
 import it.evadid.distribution.commandTypes.WorkerCommands.*
+import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapXmlParser
 import it.evadid.workbook.model.qr.QrCode
 import scala.concurrent.{ExecutionContext, Future}
@@ -14,6 +15,9 @@ object WorkerCommandHandler {
     parseSnapXml.toLocalExecutionClient((request, _) => Future {
       require(request.tag.matches("[A-Za-z_][A-Za-z0-9_.:-]*"), "Invalid Snap XML tag")
       SnapXmlParser.elements(request.xml, request.tag)
+    }),
+    pythonFlowchart.toLocalExecutionClient((request, _) => Future {
+      PythonFlowchartGutter.fromPython(request.source)
     }),
     runPython.toLocalExecutionClient((request, logger) => PyodideCommandRuntime.run(request, logger)),
     calculateQrCode.toLocalExecutionClient((request, _) => Future {

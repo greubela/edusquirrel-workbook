@@ -1,5 +1,5 @@
-import {StateField} from "https://esm.sh/@codemirror/state@6.5.2";
-import {EditorView, GutterMarker, gutter} from "https://esm.sh/@codemirror/view@6.38.6?deps=@codemirror/state@6.5.2";
+import {StateEffect, StateField} from "https://esm.sh/@codemirror/state@6.5.2";
+import {EditorView, GutterMarker, ViewPlugin, gutter} from "https://esm.sh/@codemirror/view@6.38.6?deps=@codemirror/state@6.5.2";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const STEP = 18;
@@ -113,12 +113,36 @@ class FlowchartMarker extends GutterMarker {
 }
 
 export function flowchartExtension(chartForDoc) {
-  const build = state => layoutFlowchart(chartForDoc(state.doc.toString()));
+  const ready = StateEffect.define();
+  const empty = layoutFlowchart();
   const field = StateField.define({
-    create: build,
-    update: (layout, transaction) => transaction.docChanged ? build(transaction.state) : layout
+    create: () => empty,
+    update: (layout, transaction) => {
+      if (transaction.docChanged) return empty;
+      for (const effect of transaction.effects) if (effect.is(ready)) return effect.value;
+      return layout;
+    }
   });
-  return [field, gutter({
+  const analysis = ViewPlugin.define(view => {
+    let timer, generation = 0, destroyed = false;
+    const schedule = delay => {
+      clearTimeout(timer);
+      const current = ++generation;
+      timer = setTimeout(() => {
+        const source = view.state.doc.toString();
+        Promise.resolve().then(() => chartForDoc(source)).then(chart => {
+          if (!destroyed && current === generation && source === view.state.doc.toString())
+            view.dispatch({effects: ready.of(layoutFlowchart(chart))});
+        }).catch(() => {});
+      }, delay);
+    };
+    schedule(0);
+    return {
+      update: update => { if (update.docChanged) schedule(150); },
+      destroy: () => { destroyed = true; ++generation; clearTimeout(timer); }
+    };
+  });
+  return [field, analysis, gutter({
     class: "cm-flowchart-gutter",
     renderEmptyElements: true,
     lineMarker(view, line) {
@@ -128,7 +152,8 @@ export function flowchartExtension(chartForDoc) {
     },
     initialSpacer: view => new FlowchartMarker(view.state.field(field), 0),
     updateSpacer: (_spacer, update) => new FlowchartMarker(update.state.field(field), 0),
-    lineMarkerChange: update => update.docChanged
+    lineMarkerChange: update => update.docChanged || update.transactions.some(
+      transaction => transaction.effects.some(effect => effect.is(ready)))
   }), EditorView.baseTheme({
     ".cm-flowchart-gutter": {backgroundColor: "#ad7621", color: "#382b18"},
     ".cm-flowchart-gutter .cm-activeLineGutter": {backgroundColor: "rgba(255,255,255,0.10)"},
