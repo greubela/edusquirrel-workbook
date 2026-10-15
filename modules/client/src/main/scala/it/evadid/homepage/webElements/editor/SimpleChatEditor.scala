@@ -23,9 +23,7 @@ object SimpleChatEditor {
   val drawUsersRight: Message => Boolean = _.author.role == SenderRole.USER
 
   case class ChatEditorConfig(drawRight: Message => Boolean) extends WebEditorConfig {
-
     protected def additionalCssClasses: List[String] = List("chat-editor")
-
   }
 
   val defaultConfig: ChatEditorConfig = ChatEditorConfig(drawUsersRight)
@@ -47,7 +45,7 @@ case class SimpleChatEditor(interactionVar: State[MessengerModel], messageInputS
 
   private lazy val sendButton: HtmlAppElement = HtmlButtonElement.withTextLabel("basic/messengerEditorSendMessageButton", _ => sendCurrentMessage(), ButtonConfig(true, List("messenger-send-button")))
   private lazy val textEditorConfig: TextEditorConfig = TextEditorConfig(false, 2, 80, LanguageMapContentId("basic/messengereditorinputplaceholder"), List("messenger-input"))
-  private lazy val inputEditor: SimpleTextEditor = SimpleTextEditor(messageInput, Val(textEditorConfig))
+  private lazy val inputEditor: SimpleTextEditor = SimpleTextEditor(messageInput, Var(textEditorConfig))
 
   private lazy val inputArea: Element = {
     div(
@@ -96,7 +94,7 @@ onKeyDown.filter(ev => ev.key == "Enter" && !ev.shiftKey) --> { ev =>
 
   override def underlyingVar: Var[MessengerModel] = interactionVar.toAirstreamVar
 
-  override def config: Val[ChatEditorConfig] = Val(editorConfig)
+  override def config: Var[ChatEditorConfig] = Var(editorConfig)
 
   private def sendCurrentMessage(): Unit = {
     val trimmed = messageInput.now().trim

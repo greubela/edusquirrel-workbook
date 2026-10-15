@@ -52,9 +52,9 @@ class ProgrammingStateSnapXmlCleanupSpec extends FunSuite {
     val payload = "A" * (1024 * 1024)
     val clean = ProgrammingStateSnapXml(s"<project><thumbnail>$payload</thumbnail><stage><pentrails>$payload</pentrails><scripts/></stage></project>").removeBloatFromXml
     assertEquals(clean.snapXml, "<project><stage><scripts/></stage></project>")
-    val serialized = ProgrammingExercise.StateSerializer.serialize(clean)
+    val serialized = ProgrammingState.serializer.serialize(clean)
     assert(serialized.length < 200)
-    assertEquals(ProgrammingExercise.StateSerializer.deserialize(serialized), clean)
+    assertEquals(ProgrammingState.serializer.deserialize(serialized), clean)
   }
 
   test("canonical Snap projects retain custom definitions and canvas layout byte for byte") {
@@ -77,7 +77,7 @@ class ProgrammingStateSnapXmlCleanupSpec extends FunSuite {
     assertEquals(clean.removeBloatFromXml, clean)
     assert(clean.removeBloatFromXml eq clean)
     assertEquals(original.legacyFloatingObjects, objects)
-    assertEquals(ProgrammingExercise.StateSerializer.deserialize(
-      ProgrammingExercise.StateSerializer.serialize(clean)), clean)
+    assertEquals(ProgrammingState.serializer.deserialize(
+      ProgrammingState.serializer.serialize(clean)), clean)
   }
 }

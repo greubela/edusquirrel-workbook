@@ -288,3 +288,105 @@ test('Java appearance changes preserve the live editor, undo history and drawing
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
+
+test('language tabs follow the current Java draft and retain it across view switches', async () => {
+  const browser = await chromium.launch({chromiumSandbox: true,
+    executablePath: process.env.CHROMIUM_PATH || chromium.executablePath()});
+  try {
+    const page = await browser.newPage({viewport: {width: 1440, height: 1000}});
+    page.setDefaultTimeout(60000);
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    assert(process.env.CODEMIRROR_TEST_BUNDLE, 'run via npm run test:workbooks to use pinned offline modules');
+    await page.route('**/*', async route => {
+      const url = new URL(route.request().url());
+      if (url.origin !== origin || !url.pathname.startsWith(prefix)) return route.abort();
+      const relative = decodeURIComponent(url.pathname.slice(prefix.length));
+      if (relative.split('/').includes('..')) return route.abort();
+      const file = relative === 'homepage/js/CodeMirrorLoader.js' ? process.env.CODEMIRROR_TEST_BUNDLE :
+        path.resolve(root, relative + (relative.endsWith('/') ? 'index.html' : ''));
+      try { await route.fulfill({body: await readFile(file), contentType: mime[path.extname(file)] || 'application/octet-stream'}); }
+      catch { await route.fulfill({status: 404, body: 'Not found'}); }
+    });
+    await page.goto(origin + prefix + 'homepage/workbookDesign/');
+    await page.locator('.section-register .login-area').nth(1).locator('button').click();
+    await page.locator('.section-block').first().click();
+    const open = page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).first();
+    await open.click();
+    const editor = page.locator('dialog[open] .eva-editor');
+    const java = editor.getByRole('button', {name: 'Java', exact: true});
+    const python = editor.getByRole('button', {name: 'Python', exact: true});
+    const snap = editor.getByRole('button', {name: 'Snap!', exact: true});
+    await java.click();
+    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.locator('.cm-content').waitFor();
+    const readSource = () => page.evaluate(() => {
+      const current = document.querySelector('dialog[open] .cm-editor');
+      if (current) return EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(current).state.doc.toString();
+      const fallback = document.querySelector('dialog[open] .code-mirror-editor__fallback:not([hidden])');
+      return fallback?.value;
+    });
+    async function writeSource(code) {
+      await page.evaluate(code => {
+        const current = document.querySelector('dialog[open] .cm-editor');
+        if (current) {
+          const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(current);
+          view.dispatch({changes: {from: 0, to: view.state.doc.length, insert: code}});
+        } else {
+          const fallback = document.querySelector('dialog[open] .code-mirror-editor__fallback:not([hidden])');
+          if (!fallback) throw new Error('The current draft must remain editable.');
+          fallback.value = code;
+          fallback.dispatchEvent(new Event('input', {bubbles: true}));
+        }
+      }, code);
+      assert.equal(await readSource(), code);
+    }
+    async function checkTabs(convertible) {
+      await page.waitForFunction(convertible => {
+        const tabs = [...document.querySelectorAll('dialog[open] .eva-editor__tabs button')];
+        return ['Python', 'Snap!'].every(label => tabs.find(tab => tab.getAttribute('aria-label') === label)?.disabled === !convertible);
+      }, convertible);
+      assert.equal(await java.isDisabled(), false);
+      assert.equal(await python.isDisabled(), !convertible);
+      assert.equal(await snap.isDisabled(), !convertible);
+      assert.equal(await java.getAttribute('aria-selected'), 'true');
+    }
+    const valid = 'public class Drawing {\n  public static void main(String[] args) {\n    Turtle.forward(12);\n  }\n}\n';
+    await writeSource(valid);
+    await checkTabs(true);
+    const spaced = valid + '\n\t  ';
+    await writeSource(spaced);
+    await checkTabs(true);
+    const unfinished = spaced.slice(0, spaced.lastIndexOf('}')) + '\n\t  ';
+    await writeSource(unfinished);
+    await checkTabs(false);
+    await page.locator('.fullscreen-close-button').click();
+    await open.click();
+    assert.equal(await readSource(), unfinished, 'an unfinished class survives closing and reopening');
+    await checkTabs(false);
+    await writeSource(spaced);
+    await checkTabs(true);
+    const unsupported = spaced.replace('public static void main', 'public void main');
+    await writeSource(unsupported);
+    await checkTabs(false);
+    await writeSource(spaced);
+    await checkTabs(true);
+    await page.evaluate(({valid, unfinished}) => {
+      const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(document.querySelector('dialog[open] .cm-editor'));
+      for (const source of [unfinished, valid, unfinished, valid])
+        view.dispatch({changes: {from: 0, to: view.state.doc.length, insert: source}});
+    }, {valid: spaced, unfinished});
+    await checkTabs(true);
+    assert.equal(await readSource(), spaced, 'rapid invalid and valid drafts retain the latest exact source');
+    await python.click();
+    await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-label="Python"]')?.getAttribute('aria-selected') === 'true');
+    assert.equal(await python.getAttribute('aria-selected'), 'true');
+    await java.click();
+    await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-label="Java"]')?.getAttribute('aria-selected') === 'true');
+    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    assert.equal(await readSource(), spaced, 'viewing Python does not replace the original Java source');
+    await checkTabs(true);
+    await page.locator('.fullscreen-close-button').click();
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
+});

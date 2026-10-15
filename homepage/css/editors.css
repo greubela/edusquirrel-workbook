@@ -329,3 +329,19 @@
     color: var(--color-green-2) !important;
     font-weight: 700;
 }
+
+/* The configuration host must shrink with its editor rather than impose document height. */
+.code-mirror-editor-host {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.code-mirror-editor-host > .code-mirror-editor {
+    flex: 1;
+    min-height: 0;
+}

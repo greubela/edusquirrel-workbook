@@ -13,7 +13,7 @@ case object HtmlSqlCommandExerciseRenderer extends LineBasedRenderingFactory[Sql
       fullInfo.syncControl, UpdateImportance.MAJOR).toAirstreamVar
     AtomarLineRendering.basicLine(exercise, div(
       button(typ := "button", "Open SQL editor", onClick --> (_ =>
-        fullInfo.displayControl.setFullscreen(SqlEditor(state, exercise.databaseConfig, fullInfo.defaults.backendExecutor)))),
+        fullInfo.displayControl.setFullscreen(SqlEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, state, exercise.databaseConfig, fullInfo.defaults.backendExecutor)))),
       pre(child.text <-- state.signal)
     ))
   }

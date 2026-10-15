@@ -1,7 +1,5 @@
 package it.evadid.core.datastructures.state
 
-import com.raquo.airstream.core.Transaction
-import com.raquo.airstream.core.Transaction.onStart
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
@@ -139,9 +137,10 @@ object StateHelper {
   }
 
   def bindTogether[T](state: State[T], airstreamVar: Var[T]): Unit = {
-    state.observable.addObserver(nextValue => airstreamVar.set(nextValue))
-    airstreamVar.signal.distinct.foreach(state.set)(using unsafeWindowOwner)
+    state.observable.addObserver(nextValue => if (airstreamVar.now() != nextValue) airstreamVar.set(nextValue))
+    airstreamVar.signal.distinct.foreach(nextValue => if (state.now() != nextValue) state.set(nextValue))(using unsafeWindowOwner)
   }
+
 
 
 }

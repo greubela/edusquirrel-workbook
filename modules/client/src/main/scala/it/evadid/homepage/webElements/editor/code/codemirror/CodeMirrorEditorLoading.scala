@@ -1,9 +1,11 @@
-package it.evadid.homepage.webElements.editor.code
+package it.evadid.homepage.webElements.editor.code.codemirror
 
+import com.raquo.airstream.state.Var
 import org.scalajs.dom
+
 import scala.concurrent.{Future, Promise}
-import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js
 import scala.scalajs.js.timers.{clearTimeout, setTimeout}
 import scala.util.Try
 
@@ -12,8 +14,8 @@ import scala.util.Try
   * in an idle task rather than inside a Laminar mount or a Promise microtask.
   */
 object CodeMirrorEditorLoading {
-  private var pending: Option[Future[CodeMirrorEditor.CodeMirrorFacade]] = None
-  private var preheatScheduled = false
+  private val pending = Var(Option.empty[Future[CodeMirrorEditor.CodeMirrorFacade]])
+  private val preheatScheduled = Var(false)
 
   private def facade: Option[CodeMirrorEditor.CodeMirrorFacade] = {
     val value = dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirror")
@@ -31,7 +33,7 @@ object CodeMirrorEditorLoading {
     result.future
   }
 
-  private[code] def inBackground[A](work: => A): Future[A] = idleTask(200, 0)(work)
+  private[code] def inBackground[A](work: => A): Future[A] = idleTask(700, 0)(work)
 
   private[code] def bootstrapUrl: String = {
     val scripts = dom.document.querySelectorAll("script[src]")
@@ -54,19 +56,23 @@ object CodeMirrorEditorLoading {
     * or making startup wait for the CDN. An early editor reuses the same load.
     */
   def preheat(): Unit = {
-    if !preheatScheduled then {
-      preheatScheduled = true
+    if !preheatScheduled.now() then {
+      preheatScheduled.set(true)
       idleTask(2000, 250) {
         load(background = true).failed.foreach(_ => ()) // A later editor can retry a failed warmup.
       }.failed.foreach(_ => ())
     }
   }
 
-  private[code] def load(background: Boolean = false): Future[CodeMirrorEditor.CodeMirrorFacade] = facade match {
+  // Check the shared load after the calling reactive transaction has committed its Vars.
+  private[code] def load(background: Boolean = false): Future[CodeMirrorEditor.CodeMirrorFacade] =
+    Future.unit.flatMap(_ => loadOnce(background))
+
+  private def loadOnce(background: Boolean): Future[CodeMirrorEditor.CodeMirrorFacade] = facade match {
     case Some(value) => Future.successful(value)
-    case None => pending.getOrElse {
+    case None => pending.now().getOrElse {
       val result = Promise[CodeMirrorEditor.CodeMirrorFacade]()
-      pending = Some(result.future)
+      pending.set(Some(result.future))
       inBackground {
         val script = dom.document.createElement("script").asInstanceOf[dom.html.Script]
         script.`type` = "module"
@@ -92,7 +98,7 @@ object CodeMirrorEditorLoading {
         })
         dom.document.head.appendChild(script)
       }.failed.foreach(result.tryFailure)
-      result.future.failed.foreach { _ => if (pending.contains(result.future)) pending = None }
+      result.future.failed.foreach { _ => if (pending.now().contains(result.future)) pending.set(None) }
       result.future
     }
   }

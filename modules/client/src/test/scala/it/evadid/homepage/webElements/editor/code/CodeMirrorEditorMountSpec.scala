@@ -2,9 +2,11 @@ package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import munit.FunSuite
 import org.scalajs.dom
+
 import scala.concurrent.Promise
 import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -20,31 +22,41 @@ class CodeMirrorEditorMountSpec extends FunSuite {
       js.Dynamic.global.Object.prototype.hasOwnProperty.call(globals, name).asInstanceOf[Boolean]))
     names.foreach(name => globals.updateDynamic(name)(if (name == "window") window else window.selectDynamic(name)))
     val completed = Promise[Unit]()
-    var received = List.empty[Boolean]
-    var destroyed = 0
+    val remounted = Promise[Unit]()
+    val rebuild = Var(0)
+    val received = Var(List.empty[Boolean])
+    val destroyed = Var(0)
     window.updateDynamic("EduSquirrelCodeMirror")(js.Dynamic.literal(
       createEditor = ((config: CodeMirrorEditor.EditorConfig) => {
-        received = received :+ !js.isUndefined(config.flowchart)
-        if (received.size == 3) completed.success(())
-        var doc = config.doc.getOrElse("")
+        received.update(_ :+ !js.isUndefined(config.flowchart))
+        if (received.now().size == 3) completed.success(())
+        if (received.now().size == 4) remounted.success(())
+        val doc = Var(config.doc.getOrElse(""))
         js.Dynamic.literal(
-          getDoc = (() => doc): js.Function0[String],
-          setDoc = ((value: String) => { doc = value }): js.Function1[String, Unit],
+          getDoc = (() => doc.now()): js.Function0[String],
+          setDoc = ((value: String) => { doc.set(value) }): js.Function1[String, Unit],
           setDiagnostics = ((_: js.Array[js.Object]) => ()): js.Function1[js.Array[js.Object], Unit],
           focus = (() => ()): js.Function0[Unit],
-          destroy = (() => { destroyed += 1 }): js.Function0[Unit]
+          destroy = (() => { destroyed.update(_ + 1) }): js.Function0[Unit]
         ).asInstanceOf[CodeMirrorEditor.CodeMirrorHandle]
       }): js.Function1[CodeMirrorEditor.EditorConfig, CodeMirrorEditor.CodeMirrorHandle]
     ))
     val mounts = List((Python, false), (Python, true), (Java, true)).map { (language, enabled) =>
       val host = dom.document.createElement("div")
       dom.document.body.appendChild(host)
-      render(host, CodeMirrorEditor(Var("print(1)"), language = language,
-        editorConfig = CodeMirrorEditorConfig(enabled)).getDomElement())
+      val editor = CodeMirrorEditor(it.evadid.util.logging.Logger.withNameAndPrefixes(Some("test"), it.evadid.util.logging.derived.PrintToStdLogger.printNothing), Var("print(1)"), language = language,
+        config = Var(CodeMirrorEditorConfig(enabled)))
+      render(host, if language == Python && !enabled then div(child <-- rebuild.signal.map(_ => editor.getDomElement()))
+        else editor.getDomElement())
     }
-    assertEquals(received, Nil, "even a cached facade is not mounted synchronously")
-    completed.future.map { _ =>
-      assertEquals(received, List(false, true, false))
+    assertEquals(received.now(), Nil, "even a cached facade is not mounted synchronously")
+    completed.future.flatMap { _ =>
+      assertEquals(received.now(), List(false, true, false))
+      rebuild.update(_ + 1)
+      remounted.future.map { _ =>
+        assertEquals(received.now(), List(false, true, false, false))
+        assertEquals(destroyed.now(), 1)
+      }
     }.transform { result =>
       try mounts.foreach(_.unmount())
       finally {
@@ -54,7 +66,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
         }
         window.close()
       }
-      assertEquals(destroyed, 3)
+      assertEquals(destroyed.now(), 4)
       result
     }
   }
