@@ -6,6 +6,39 @@ can use the same contract. Client-only `Var`s are appropriate for focus, selecti
 invalid drafts and other transient UI state; they are not a second answer store.
 See [interaction architecture](workbook-interaction-architecture.md) for the layers.
 
+## Changing client state
+
+All changing client application, editor and lifecycle state must live in
+`val`-bound Airstream `Var[T]` values. Use `now()` to read a snapshot and
+`set`/`update` to change it. Do not use Scala `var` fields, captured mutable locals,
+or a `val` holding a mutable collection as an alternative. This includes counters,
+request identities, synchronization baselines, native handles and cleanup callbacks;
+it applies even when a value is not directly rendered. Keep values inside a `Var`
+immutable and derive other values through signals rather than duplicating state.
+
+```scala
+private val mounted = Var(false)
+private val requestGeneration = Var(0L)
+
+def invalidate(): Unit = requestGeneration.update(_ + 1)
+val canRun = mounted.signal.combineWith(answer.signal).map { (isMounted, value) =>
+  isMounted && value.nonEmpty
+}
+```
+
+A `Var` write made inside an Airstream observer is queued in a child transaction;
+an immediate `now()` read can still return the previous value. Prefer derived
+signals and pass immutable snapshots through a calculation. Editor commands that
+must flush a native draft and then read several updated Vars (tab navigation and
+Run) start through the Scala.js execution queue after the click transaction. This
+is event ordering, not background-thread execution.
+
+Keep temporary calculations immutable with maps, folds or tail recursion. Do not
+introduce Airstream into shared core to satisfy a browser state convention: shared
+models and their transitions remain immutable and platform independent. Native
+browser/editor APIs own their internal state; Scala keeps references to those
+handles in `Var`s and releases them through the owning lifecycle.
+
 ## Shared State and browser Var
 
 `State[T]` and `ObservableValue[T]` are shared abstractions. Airstream/Laminar
@@ -59,8 +92,9 @@ def pythonView(program: Var[ProgrammingState]): Var[String] =
   program.bimap(_.toPython.code)(ProgrammingStatePythonString(_))
 ```
 
-This is the Python tab pattern; conversion is limited to the supported program
-subset. Do not force it for a full Java class or unsupported Snap program. See
+This pattern is suitable only when conversion is valid for the entire bound
+value range; conversion is limited to the supported program subset. Eva tabs use
+explicit synchronization instead so unsupported drafts remain intact. Do not force it for a full Java class or unsupported Snap program. See
 [Eva programming state](eva-editor-programming-state.md).
 
 External editors can poll or regenerate metadata without changing the program.

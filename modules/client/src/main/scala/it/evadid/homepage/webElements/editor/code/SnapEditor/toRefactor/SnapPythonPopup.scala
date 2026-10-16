@@ -4,7 +4,9 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
-import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
+import it.evadid.util.logging.Logger
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.others.BeStartProgram
@@ -101,6 +103,7 @@ object SnapPythonPopup {
    * @param setExecutionStepMs apply Execute pause between blocks (ms, >= 0)
    */
   def chrome(
+            logger: Logger,
       state: Var[ProgrammingStateSnapXml],
       flushPending: () => Unit,
       onStateEdited: ProgrammingStateSnapXml => Unit,
@@ -159,9 +162,11 @@ object SnapPythonPopup {
 
     val pythonEditor: CodeMirrorEditor =
       CodeMirrorEditor(
+        logger,
         textVar,
-        onUserInput = _ => textDirty.set(true),
-        language = Python
+         _ => textDirty.set(true),
+         Python,
+        Var(CodeMirrorEditorConfig.Default)
       )
 
     div(

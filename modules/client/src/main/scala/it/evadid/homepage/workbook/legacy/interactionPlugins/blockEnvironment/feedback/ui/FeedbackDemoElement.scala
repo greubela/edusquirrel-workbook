@@ -4,7 +4,9 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.singletons.*
-import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
+import it.evadid.homepage.webElements.sqlEditor.HtmlSqlCommandExerciseRenderer.fullInfo
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.BlockFeedbackTestResultFormatter
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.CommandLlmClient
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackExerciseRegistry
@@ -41,13 +43,13 @@ object FeedbackDemoElement:
 
   private[feedback] def restoredDiagnostics(feedback: js.Dynamic): Seq[CodeMirrorEditor.Diagnostic] =
     if feedback == null || js.typeOf(feedback) != "object" ||
-        js.typeOf(feedback.rawPython) != "string" || js.typeOf(feedback.allTestsPassed) != "boolean" ||
-        feedback.allTestsPassed.asInstanceOf[Boolean] || !js.Array.isArray(feedback.editorDiagnostics) then Nil
+      js.typeOf(feedback.rawPython) != "string" || js.typeOf(feedback.allTestsPassed) != "boolean" ||
+      feedback.allTestsPassed.asInstanceOf[Boolean] || !js.Array.isArray(feedback.editorDiagnostics) then Nil
     else
       val lineCount = feedback.rawPython.asInstanceOf[String].count(_ == '\n') + 1
       feedback.editorDiagnostics.asInstanceOf[js.Array[js.Dynamic]].iterator.flatMap { value =>
         if value == null || js.typeOf(value) != "object" ||
-            js.typeOf(value.line) != "number" || js.typeOf(value.message) != "string" then None
+          js.typeOf(value.line) != "number" || js.typeOf(value.message) != "string" then None
         else
           val line = value.line.asInstanceOf[Double]
           val message = value.message.asInstanceOf[String]
@@ -60,7 +62,7 @@ object FeedbackDemoElement:
     if js.isUndefined(state) || state == null then return false
     val feedback = state.feedback
     if js.typeOf(state.feedbackVersion) != "number" || state.feedbackVersion.asInstanceOf[Int] != 2 ||
-        js.isUndefined(feedback) || feedback == null then false
+      js.isUndefined(feedback) || feedback == null then false
     else
       val fields = Seq(state.exerciseId, state.language, state.code,
         feedback.exerciseId, feedback.language, feedback.rawPython)
@@ -322,9 +324,11 @@ object FeedbackDemoElement:
     val showFeedbackVar = Var(true)
     val showEditorVar = Var(true)
     lazy val pythonEditor: CodeMirrorEditor = CodeMirrorEditor(
+      HtmlFullWorkbookApp.fullInfo.loggerSystemInfo.uiAndDomLogger,
       pythonCodeVar,
-      onUserInput = _ => pythonEditor.clearDiagnostics(),
-      language = Python
+      _ => {},
+      language = Python,
+      Var(CodeMirrorEditorConfig.Default)
     )
 
     def tx(lang: HumanLanguage, en: String, de: String): String =

@@ -7,7 +7,7 @@ import {chromium} from 'playwright';
 
 // Uses the production CDN modules by default. An optional bundle of the same
 // loader/modules lets restricted/offline environments run the browser check.
-test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', async () => {
+test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', async t => {
   const root = resolve(import.meta.dirname, '../..');
   const mime = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
     '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png'};
@@ -63,7 +63,7 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
     });
     assert.equal(await page.locator('#plain .cm-flowchart-gutter').count(), 0, 'regular editor stays unchanged');
     assert.equal(await page.evaluate(() => empty.getDoc()), '', 'omitted document and language retain their defaults');
-    await page.waitForTimeout(100);
+    await page.waitForFunction(() => document.querySelector('#flow .cm-flowchart-row[title]'));
     const initialCalls = await page.evaluate(() => window.graphCalls);
     const aligned = async () => {
       const result = await page.evaluate(() => {
@@ -96,20 +96,88 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
     await page.evaluate(() => editor.focus());
     await page.keyboard.press('Control+Home');
     await page.keyboard.type('# edited\n');
-    await page.waitForTimeout(100);
+    await page.waitForFunction(() => window.graphCalls > 1);
     assert(await page.evaluate(() => window.changes.length > 0 && window.graphCalls > 1), 'user edits refresh the graph and invoke the callback');
     const changeCount = await page.evaluate(() => window.changes.length);
     await page.evaluate(() => editor.setDoc('if True:\n    print(1)\nprint(2)'));
-    await page.waitForTimeout(100);
+    await page.waitForFunction(() => document.querySelector('#flow .cm-flowchart-row[title^="decision:"]'));
     assert.equal(await page.evaluate(() => window.changes.length), changeCount, 'external updates do not fire user input callbacks');
     assert.equal(await page.locator('#flow .cm-flowchart-row[title^="decision:"]').count(), 1);
     await page.evaluate(() => editor.setDiagnostics([{line: 2, message: 'test', severity: 'warning'}]));
     assert.equal(await page.locator('#flow .cm-edusquirrel-diagnostic').count(), 1, 'diagnostics still work');
+    const callsBeforeInvalid = await page.evaluate(() => window.graphCalls);
     await page.evaluate(() => editor.setDoc('INVALID'));
-    await page.waitForTimeout(100);
+    await page.waitForFunction(count => window.graphCalls > count, callsBeforeInvalid);
     assert.equal(await page.locator('#flow .cm-flowchart-row[title]').count(), 0, 'unsupported source clears stale nodes');
     await page.evaluate(() => { editor.destroy(); plain.destroy(); empty.destroy(); });
     assert.equal(await page.locator('.cm-editor').count(), 0, 'destroy removes the editors');
+    await t.test('async graphs ignore stale requests, debounce edits and survive failure or destroy', async () => {
+      const deferred = await page.evaluate(() => {
+        const host = document.body.appendChild(document.createElement('div'));
+        host.id = 'async-flow';
+        window.graphRequests = [];
+        window.asyncEditor = EduSquirrelCodeMirror.createEditor({parent: host, doc: 'A',
+          flowchart: source => new Promise((resolve, reject) => graphRequests.push({source, resolve, reject}))});
+        return graphRequests.length;
+      });
+      assert.equal(deferred, 0, 'initial analysis does not block editor construction');
+      const requested = count => page.waitForFunction(count => graphRequests.length === count, count);
+      const settle = (index, label, reject = false) => page.evaluate(async ({index, label, reject}) => {
+        if (reject) graphRequests[index].reject(new Error(label));
+        else graphRequests[index].resolve({nodes: [{line: 1, kind: 'process', depth: 0, label}], edges: [], entries: [1]});
+        await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)));
+      }, {index, label, reject});
+      const marker = label => page.waitForFunction(label =>
+        document.querySelector('#async-flow .cm-flowchart-row[title]')?.title === `process: ${label}`, label);
+      const markerCount = () => page.locator('#async-flow .cm-flowchart-row[title]').count();
+      await requested(1);
+      assert.equal(await markerCount(), 0, 'pending analysis has no fabricated graph');
+      await page.evaluate(() => asyncEditor.setDoc('B'));
+      await requested(2);
+      await page.evaluate(() => asyncEditor.setDoc('A'));
+      await requested(3);
+      await settle(2, 'current A');
+      await marker('current A');
+      await settle(1, 'stale B');
+      await settle(0, 'old A');
+      assert.equal(await page.locator('#async-flow .cm-flowchart-row[title]').getAttribute('title'), 'process: current A',
+        'generation checks reject older requests even when their source matches again');
+      await page.evaluate(() => asyncEditor.setDoc('FAILED'));
+      assert.equal(await markerCount(), 0, 'an edit clears the previous graph immediately');
+      await requested(4);
+      await settle(3, 'analysis failed', true);
+      assert.equal(await markerCount(), 0, 'failed analysis leaves an empty gutter');
+      assert.equal(await page.evaluate(() => asyncEditor.getDoc()), 'FAILED', 'failure preserves the document');
+      await page.evaluate(() => asyncEditor.setDoc('RECOVERED'));
+      await requested(5);
+      await settle(4, 'recovered');
+      await marker('recovered');
+      await page.evaluate(() => {
+        asyncEditor.setDoc('burst 1');
+        asyncEditor.setDoc('burst 2');
+        asyncEditor.setDoc('burst 3');
+      });
+      await requested(6);
+      assert.deepEqual(await page.evaluate(() => graphRequests.map(request => request.source)),
+        ['A', 'B', 'A', 'FAILED', 'RECOVERED', 'burst 3'], 'a burst sends only the latest document for analysis');
+      await settle(5, 'burst 3');
+      await marker('burst 3');
+      await page.evaluate(() => asyncEditor.setDoc('DESTROYED'));
+      await requested(7);
+      await page.evaluate(() => asyncEditor.destroy());
+      await settle(6, 'late result');
+      assert.equal(await page.locator('#async-flow .cm-editor').count(), 0, 'late results cannot recreate a destroyed editor');
+      const cancelled = await page.evaluate(async () => {
+        let calls = 0;
+        const host = document.body.appendChild(document.createElement('div'));
+        const editor = EduSquirrelCodeMirror.createEditor({parent: host, doc: 'cancelled',
+          flowchart: () => { calls++; return {nodes:[],edges:[],entries:[]}; }});
+        editor.destroy();
+        await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)));
+        return calls;
+      });
+      assert.equal(cancelled, 0, 'destroy cancels scheduled analysis before it starts');
+    });
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();

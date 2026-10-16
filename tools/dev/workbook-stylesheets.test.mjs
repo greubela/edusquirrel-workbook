@@ -70,7 +70,7 @@ test('workbook stylesheet links and their local imports all resolve to existing 
 
 test('mail and digital exercise components bind classes rather than inline Laminar styles', async () => {
   const directories=[
-    'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/MailEditor',
+    'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/MailEditor',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/emailSimulator',
     'modules/client/src/main/scala/it/evadid/homepage/webElements/editor/evacuation',
     'modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/evacuation',

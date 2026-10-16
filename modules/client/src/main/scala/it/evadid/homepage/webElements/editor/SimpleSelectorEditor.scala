@@ -55,7 +55,7 @@ case class SimpleSelectorEditor[T](
 
   override def underlyingVar: Var[T] = forVar
 
-  override def config: Val[SelectorEditorConfig] = Val(SelectorEditorConfig.defaultConfig)
+  override def config: Var[SelectorEditorConfig] = Var(SelectorEditorConfig.defaultConfig)
 }
 
 object SimpleSelectorEditor {

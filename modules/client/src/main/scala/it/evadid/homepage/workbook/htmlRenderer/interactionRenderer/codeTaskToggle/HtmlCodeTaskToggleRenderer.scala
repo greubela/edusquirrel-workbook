@@ -23,6 +23,7 @@ object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskTogg
         .elementsWithoutContainer
 
     val codeEditor = FillInCodeEditor(
+      fullInfo.loggerSystemInfo.uiAndDomLogger,
       codeState = advancedCodeVar,
       resetTemplate = interaction.advancedCodeTemplate,
       title = laminarHelper.plaintextStringSignal(interaction.codeEditorTitle),

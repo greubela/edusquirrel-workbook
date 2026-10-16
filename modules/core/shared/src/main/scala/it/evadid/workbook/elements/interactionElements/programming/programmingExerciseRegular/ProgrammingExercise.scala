@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
@@ -26,7 +27,6 @@ case class ProgrammingExercise(
 
   override val defaultValue: ProgrammingState = ProgrammingStateSnapXmlHelper.mini
 
-  override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingExercise.StateSerializer
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
@@ -54,66 +54,7 @@ object ProgrammingExercise {
 
     lazy override val writerJsonRegularRefBased: Writer[ProgrammingExercise] = macroRW
   }
-  val XmlHeader = "SNAP_XML_V1"
-  val StateHeader = "PROGRAMMING_STATE_V2"
 
-  /** Versioned tagged format. The previous Snap XML and Python formats remain readable. */
-  object StateSerializer extends Serializer[ProgrammingState] {
-    override def serialize(obj: ProgrammingState): String = obj match
-      case ProgrammingStateBeExpression(root: it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms.Root) =>
-        serialize(ProgrammingStateJavaString(root.bindings.source.source))
-      case snap: ProgrammingStateSnapXml if snap.hasLegacyFloatingObjects =>
-        s"$StateHeader\nSNAP_XML_WITH_FLOATING\n${write(snap.legacyFloatingObjects)}\n${snap.snapXml}"
-      case ProgrammingStateSnapXml(xml) => s"$StateHeader\nSNAP_XML\n$xml"
-      case ProgrammingStatePythonString(code) => s"$StateHeader\nPYTHON\n$code"
-      case ProgrammingStateJavaString(code) => s"$StateHeader\nJAVA\n$code"
-      case ProgrammingStateBeExpression(expression) =>
-        s"$StateHeader\nBE_EXPRESSION\n${SnapTurtlePythonBridge.printedPython(expression)}"
 
-    override def deserialize(str: String): ProgrammingState = {
-      if Option(str).forall(_.trim.isEmpty) then ProgrammingStateSnapXmlHelper.mini
-      else parseStored(str).getOrElse(ProgrammingStateSnapXmlHelper.mini)
-    }
 
-    private def parseStored(str: String): Option[ProgrammingState] = {
-      val trimmed = str.trim
-      if trimmed.startsWith(StateHeader) then parseVersion2(str.stripLeading)
-      else if trimmed.startsWith(XmlHeader) then
-        val xml = trimmed.drop(XmlHeader.length).stripLeading
-        if xml.isEmpty then Some(ProgrammingStateSnapXmlHelper.mini)
-        else Some(ProgrammingStateSnapXml(xml))
-      else if looksLikeProjectXml(trimmed) then
-        Some(ProgrammingStateSnapXml(trimmed))
-      else
-        Some(migratePython(trimmed))
-    }
-
-    private def parseVersion2(stored: String): Option[ProgrammingState] = {
-      val body = stored.drop(StateHeader.length).stripLeading
-      val newline = body.indexOf('\n')
-      val (kind, payload) = if newline < 0 then (body, "") else (body.take(newline), body.drop(newline + 1))
-      kind.stripSuffix("\r") match
-        case "SNAP_XML" => Some(ProgrammingStateSnapXml(payload))
-        case "PYTHON" => Some(ProgrammingStatePythonString(payload))
-        case "JAVA" => Some(ProgrammingStateJavaString(payload))
-        case "BE_EXPRESSION" =>
-          Try(BeProgram.fromPythonString(payload).fullProgram).toOption.map(ProgrammingStateBeExpression(_))
-        case "SNAP_XML_WITH_FLOATING" =>
-          val split = payload.indexOf('\n')
-          if split < 0 then throw IllegalArgumentException("The legacy Snap project is incomplete.")
-          else Some(Try(ProgrammingStateSnapXml(payload.drop(split + 1),
-            ProgrammingState.readLegacyFloatingObjects(ujson.read(payload.take(split)))))
-            .getOrElse(throw IllegalArgumentException("The legacy Snap project contains invalid extra data.")))
-        case _ => None
-    }
-
-    private def migratePython(python: String): ProgrammingState = {
-      val program = Try(BeProgram.fromPythonString(python)).getOrElse(BeProgram.miniProgram())
-      ProgrammingStateSnapXmlHelper.fromProgram(program)
-    }
-
-    private def looksLikeProjectXml(trimmed: String): Boolean =
-      trimmed.startsWith("<") &&
-        (trimmed.contains("<project") || trimmed.startsWith("<?xml"))
-  }
 }

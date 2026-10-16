@@ -4,7 +4,9 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.core.datastructures.canvas.WebCanvas
-import it.evadid.homepage.webElements.editor.code.CodeMirrorEditor
+import it.evadid.core.datastructures.language.AppLanguage.Python
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.homepage.webElements.sqlEditor.HtmlSqlCommandExerciseRenderer.fullInfo
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
 import todomove.`export`.workers.PyodideWorkerClient
 
@@ -35,7 +37,7 @@ case class TurtleExerciseDemo() extends HtmlAppElement {
 
   private val turtleBackend = PyodideWorkerClient()
 
-  private val inputEditorElement = CodeMirrorEditor(codeVar)
+  private val inputEditorElement = CodeMirrorEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, codeVar, Python)
 
   private val startButton: Element = button(
     "Run turtle",

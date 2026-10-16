@@ -9,3 +9,5 @@ Read the repository layout and content-placement guide in [README.md](README.md)
 - Keep application code and its tests in the corresponding `modules/` source tree, browser/asset checks in `tools/dev/`, maintained documentation in `docs/`, and presentation styles in dedicated `homepage/css/` files rather than in Laminar.
 
 Follow the workbook element/interaction → renderer → optional editor structure described in [docs/workbook-interaction-architecture.md](docs/workbook-interaction-architecture.md).
+
+Client state rule: keep changing application, editor and lifecycle state in `val`-bound Airstream `Var[T]` values. Do not introduce Scala `var` fields, captured mutable locals or mutable collection holders for this state. Derive values with signals and immutable transformations; keep temporary calculations immutable as well. This applies to tab adapters, optional modules and asynchronous request/lifecycle guards. Shared core remains independent of Laminar/Airstream; model its transitions as immutable values. See [state and serialization](docs/state-and-serialization.md).

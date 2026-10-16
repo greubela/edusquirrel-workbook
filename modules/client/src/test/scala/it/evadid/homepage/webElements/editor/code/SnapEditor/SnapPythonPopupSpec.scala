@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
 
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapPythonPopup
@@ -43,15 +45,15 @@ class SnapPythonPopupSpec extends FunSuite {
     assertEquals(next.legacyFloatingObjects, source.legacyFloatingObjects)
     assertEquals(next.toBeExpressionState.deriveTurtleCommands,
       List(TurtleCommand[Double]("forward", List(12.0))))
-    assertEquals(ProgrammingExercise.StateSerializer.deserialize(
-      ProgrammingExercise.StateSerializer.serialize(next)), next)
+    assertEquals(ProgrammingState.serializer.deserialize(
+      ProgrammingState.serializer.serialize(next)), next)
   }
 
   test("invalid Python apply leaves the stored Snap project and metadata intact") {
     val source = ProgrammingStateSnapXml(ProgrammingStateSnapXmlHelper.mini.snapXml,
       legacyFloatingObjects = List(" watcher ", "comment\nline two"))
-    val stored = ProgrammingExercise.StateSerializer.serialize(source)
+    val stored = ProgrammingState.serializer.serialize(source)
     assert(SnapPythonPopup.applyPython(source, "forward(").isLeft)
-    assertEquals(ProgrammingExercise.StateSerializer.serialize(source), stored)
+    assertEquals(ProgrammingState.serializer.serialize(source), stored)
   }
 }

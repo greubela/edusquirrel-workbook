@@ -150,7 +150,7 @@ private[code] object CodeMirrorApi {
     def cpp(): Extension = js.native
     def sql(config: js.Object): Extension = js.native
     def loadJavaModule(): js.Promise[JavaModule] = js.native
-    def flowchartExtension(chartForDoc: js.Function1[String, js.Object]): Extension = js.native
+    def flowchartExtension(chartForDoc: js.Function1[String, js.Promise[js.Object]]): Extension = js.native
   }
   @js.native trait StateFactory extends js.Object {
     def create(config: js.Object): State = js.native
