@@ -15,7 +15,7 @@ object HtmlSimpleTextInteractionRenderer extends LineBasedRenderingFactory[TextI
 
   override protected def createRendering(workbookElement: TextInteraction): AtomarLineRendering = {
     val varBoundToEditor: Var[String] = workbookElement.interactionVariable.createBoundStateWithUpdateLogic(fullInfo.syncControl,TextInteraction.decideTextareaUpdateImportance).toAirstreamVar
-    val curConfig: Val[TextEditorConfig] = Val(initConfig)
+    val curConfig: Var[TextEditorConfig] = Var(initConfig)
     val editor: SimpleTextEditor = SimpleTextEditor(varBoundToEditor, curConfig)
 
     AtomarLineRendering.basicLine(workbookElement, editor.getDomElement(), "simple-text-editor")

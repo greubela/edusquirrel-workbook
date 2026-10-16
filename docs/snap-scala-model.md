@@ -41,7 +41,7 @@ XML → typed model → XML preserves scripts and arguments, scene/sprite orderi
 
 Formatting identity is **not a required contract**. The current reader also retains source spelling and whitespace, but callers should depend on preservation of content and metadata. Whitespace inside text, literals and CSV can carry meaning and must remain intact.
 
-All model case classes and sealed node hierarchies derive uPickle `ReadWriter`. The programming-state codec uses an explicit stable tag for the new variant, matching the existing state codec convention. JSON, MessagePack and `ProgrammingExercise.StateSerializer` retain the typed representation; the workbook format uses `PROGRAMMING_STATE_V2` with `SNAP_SCALA_MODEL`. Older applications do not understand this new discriminator, so deploy readers before persisting the new representation for their users.
+The model case classes and sealed node hierarchies derive uPickle `ReadWriter`. The typed programming-state variant also derives its codec and uses the standard interaction serializer. JSON and MessagePack retain the typed representation. The development schema has no historical-format readers; reset development databases when it changes.
 
 The XML-only representation remains the default for existing workbooks. Eva and Snap editors can display typed states and retain their representation and opaque legacy floating data when publishing edits. Normal live-editor image cleanup still applies to native editing; **conversion itself never calls `removeBloatFromXml`**. Translation to Python/Java/`BeExpression` delegates to the existing checked subset converters and can fail for otherwise valid native Snap programs.
 

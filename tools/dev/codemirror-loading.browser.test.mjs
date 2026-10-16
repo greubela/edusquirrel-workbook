@@ -8,7 +8,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 
-async function fixture(browser, fail = false, openEditor = true, forceTimer = false, prefix = '') {
+async function fixture(browser, fail = false, openEditor = true, forceTimer = false, prefix = '', failCreation = false) {
   const page = await browser.newPage();
   if (forceTimer) await page.addInitScript(() => {
     Object.defineProperty(window, 'requestIdleCallback', {value:undefined, configurable:true});
@@ -38,6 +38,7 @@ async function fixture(browser, fail = false, openEditor = true, forceTimer = fa
         const create = window.EduSquirrelCodeMirror.createEditor;
         window.EduSquirrelCodeMirror.createEditor = config => {
           window.editorCreations++;
+          if (${failCreation} && window.editorCreations === 1) throw new Error('Editor creation failed');
           return create(config);
         };`);
       await route.fulfill({body, contentType: mime[path.extname(file)] || 'application/octet-stream'});
@@ -94,6 +95,27 @@ test('a failed CodeMirror request leaves the fallback editable and other tabs us
     await dialog.getByRole('button', {name:'Python',exact:true}).click();
     assert.match(await fallback.inputValue(), /forward\(88\)/);
     assert.equal(await dialog.locator('.cm-editor').count(), 0);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
+});
+
+test('a failed facade creation keeps edits and can enhance a new mount', async () => {
+  const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
+  try {
+    const {page, release, errors} = await fixture(browser, false, true, false, '/edusquirrel-workbook', true);
+    const dialog = page.locator('dialog[open]');
+    await dialog.getByRole('button', {name:'Python',exact:true}).click();
+    release();
+    await page.waitForFunction(() => window.editorCreations === 1);
+    const fallback = dialog.locator('.code-mirror-editor__fallback');
+    assert(await fallback.isVisible());
+    await fallback.fill('forward(88)\n');
+    await dialog.getByRole('button', {name:'Snap!',exact:true}).click();
+    await dialog.getByRole('button', {name:'Python',exact:true}).click();
+    await dialog.locator('.cm-content').waitFor();
+    assert.match(await dialog.locator('.cm-content').innerText(), /forward\(88\)/);
+    assert.equal(await dialog.locator('.cm-editor').count(), 1);
+    assert.equal(await fallback.isVisible(), false);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

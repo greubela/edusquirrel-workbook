@@ -7,7 +7,7 @@ trait SimpleWebEditor[T, C <: WebEditorConfig] extends HtmlAppElement {
 
   def underlyingVar: Var[T]
 
-  def config: Val[C]
+  def config: Var[C]
 
   def editorId: String = this.getClass.getSimpleName.toLowerCase
 

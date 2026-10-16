@@ -1,13 +1,17 @@
 package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
+import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python}
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.distribution.formats.{ExecutionClientResponse, WorkerExecutionProtocol}
 import it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientResponseTimestamps
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateJavaString
 import munit.FunSuite
 import org.scalajs.dom
 import java.time.LocalDateTime
@@ -20,6 +24,11 @@ import scala.util.Try
 import upickle.default.{read, write}
 
 class CodeMirrorEditorMountSpec extends FunSuite {
+  private val logger = Logger.withNameAndPrefixes(Some("test"), PrintToStdLogger.printNothing)
+  private def editorFor(content: Var[String], onUserInput: String => Unit = _ => (),
+      language: ProgrammingLanguage = Python, editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default): CodeMirrorEditor =
+    CodeMirrorEditor(logger, content, onUserInput, language, Var(editorConfig))
+
   private final class ControlledMounts {
     private val globals = js.Dynamic.global.globalThis
     private val requireFn = js.Dynamic.global.selectDynamic("require")
@@ -31,38 +40,42 @@ class CodeMirrorEditorMountSpec extends FunSuite {
     private val previous = names.map(name => (name, globals.selectDynamic(name),
       js.Dynamic.global.Object.prototype.hasOwnProperty.call(globals, name).asInstanceOf[Boolean]))
     names.foreach(name => globals.updateDynamic(name)(if (name == "window") window else window.selectDynamic(name)))
-    private var cleanup = List.empty[() => Unit]
-    private var pending = Vector.empty[js.Function1[js.Any, Unit]]
-    var created = Vector.empty[Created]
-    var workers = Vector.empty[FakeWorker]
-    var beforeCreate: CodeMirrorEditor.EditorConfig => Unit = _ => ()
+    private val cleanup = Var(List.empty[() => Unit])
+    private val pending = Var(Vector.empty[js.Function1[js.Any, Unit]])
+    private val createdState = Var(Vector.empty[Created])
+    def created: Vector[Created] = createdState.now()
+    private val workersState = Var(Vector.empty[FakeWorker])
+    def workers: Vector[FakeWorker] = workersState.now()
+    val beforeCreate = Var[CodeMirrorEditor.EditorConfig => Unit](_ => ())
 
     private val createWorker: js.Function1[String, js.Object] = url => {
       val worker = new FakeWorker(url)
-      workers :+= worker
+      workersState.update(_ :+ worker)
       worker.raw.asInstanceOf[js.Object]
     }
     globals.updateDynamic("Worker")(js.Dynamic.global.Function("create", "return function Worker(url) { return create(url); };")(createWorker))
 
     window.updateDynamic("requestIdleCallback")(((callback: js.Function1[js.Any, Unit], _: js.Any) => {
-      pending :+= callback
-      pending.size
+      pending.update(_ :+ callback)
+      pending.now().size
     }): js.Function2[js.Function1[js.Any, Unit], js.Any, Int])
     window.updateDynamic("EduSquirrelCodeMirror")(js.Dynamic.literal(
       createEditor = ((config: CodeMirrorEditor.EditorConfig) => {
-        beforeCreate(config)
+        beforeCreate.now()(config)
         val current = new Created(config)
-        created :+= current
+        createdState.update(_ :+ current)
         current.handle
       }): js.Function1[CodeMirrorEditor.EditorConfig, CodeMirrorEditor.CodeMirrorHandle]
     ))
 
     final class FakeWorker(val url: String) {
-      var sent = Vector.empty[String]
-      var terminations = 0
+      private val sentState = Var(Vector.empty[String])
+      def sent: Vector[String] = sentState.now()
+      private val terminationCount = Var(0)
+      def terminations: Int = terminationCount.now()
       val raw: js.Dynamic = js.Dynamic.literal(
-        postMessage = ((message: String) => { sent :+= message }): js.Function1[String, Unit],
-        terminate = (() => { terminations += 1 }): js.Function0[Unit])
+        postMessage = ((message: String) => { sentState.update(_ :+ message) }): js.Function1[String, Unit],
+        terminate = (() => { terminationCount.update(_ + 1) }): js.Function0[Unit])
 
       def reply(label: String, index: Int = 0): Unit = {
         val request = read[WorkerExecutionProtocol.Request](sent(index))
@@ -75,24 +88,28 @@ class CodeMirrorEditorMountSpec extends FunSuite {
     }
 
     final class Created(val config: CodeMirrorEditor.EditorConfig) {
-      var doc = config.doc.getOrElse("")
-      var destroys = 0
-      var focuses = 0
-      var diagnosticCalls = Vector.empty[Vector[String]]
+      private val document = Var(config.doc.getOrElse(""))
+      def doc: String = document.now()
+      private val destroyCount = Var(0)
+      def destroys: Int = destroyCount.now()
+      private val focusCount = Var(0)
+      def focuses: Int = focusCount.now()
+      private val diagnostics = Var(Vector.empty[Vector[String]])
+      def diagnosticCalls: Vector[Vector[String]] = diagnostics.now()
       private val node = dom.document.createElement("div")
       node.setAttribute("class", "cm-content")
       node.textContent = doc
       config.parent.appendChild(node)
       val handle = js.Dynamic.literal(
         getDoc = (() => doc): js.Function0[String],
-        setDoc = ((value: String) => { doc = value; node.textContent = value; config.onDocChange(value) }): js.Function1[String, Unit],
+        setDoc = ((value: String) => { document.set(value); node.textContent = value; config.onDocChange(value) }): js.Function1[String, Unit],
         setDiagnostics = ((values: js.Array[js.Object]) => {
-          diagnosticCalls :+= Vector.tabulate(values.length)(index => values(index).asInstanceOf[js.Dynamic].message.asInstanceOf[String])
+          diagnostics.update(_ :+ Vector.tabulate(values.length)(index => values(index).asInstanceOf[js.Dynamic].message.asInstanceOf[String]))
         }): js.Function1[js.Array[js.Object], Unit],
-        focus = (() => { focuses += 1 }): js.Function0[Unit],
-        destroy = (() => { destroys += 1; node.remove() }): js.Function0[Unit]
+        focus = (() => { focusCount.update(_ + 1) }): js.Function0[Unit],
+        destroy = (() => { destroyCount.update(_ + 1); node.remove() }): js.Function0[Unit]
       ).asInstanceOf[CodeMirrorEditor.CodeMirrorHandle]
-      def input(value: String): Unit = { doc = value; node.textContent = value; config.onDocChange(value) }
+      def input(value: String): Unit = { document.set(value); node.textContent = value; config.onDocChange(value) }
       def analyze(source: String): Future[js.Object] = config.flowchart.get.apply(source).toFuture
     }
 
@@ -100,19 +117,19 @@ class CodeMirrorEditorMountSpec extends FunSuite {
       val host = dom.document.createElement("div")
       dom.document.body.appendChild(host)
       val mounted = render(host, element)
-      var attached = true
-      val stop = () => if attached then {
-        attached = false
+      val attached = Var(true)
+      val stop = () => if attached.now() then {
+        attached.set(false)
         mounted.unmount()
         host.remove()
       }
-      cleanup ::= stop
+      cleanup.update(stop :: _)
       stop
     }
 
     def takeIdle(): Vector[js.Function1[js.Any, Unit]] = {
-      val callbacks = pending
-      pending = Vector.empty
+      val callbacks = pending.now()
+      pending.set(Vector.empty)
       callbacks
     }
     def fire(callback: js.Function1[js.Any, Unit]): Unit = callback(js.undefined)
@@ -126,7 +143,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
       setTimeout(0) { completed.success(()); () }
       completed.future
     }
-    def close(): Unit = try cleanup.foreach(_.apply()) finally {
+    def close(): Unit = try cleanup.now().foreach(_.apply()) finally {
       previous.foreach { (name, value, existed) =>
         if existed then globals.updateDynamic(name)(value)
         else js.Dynamic.global.Reflect.deleteProperty(globals, name)
@@ -147,8 +164,8 @@ class CodeMirrorEditorMountSpec extends FunSuite {
     withControlledMounts { fixture =>
       val original = "\r\nclass Drawing {\r\n\t"
       val content = Var(original)
-      var inputs = Vector.empty[String]
-      val editor = CodeMirrorEditor(content, value => inputs :+= value, language = Java)
+      val inputs = Var(Vector.empty[String])
+      val editor = editorFor(content, value => inputs.update(_ :+ value), language = Java)
       val first = editor.getDomElement()
       val transient = editor.getDomElement()
       val stopFirst = fixture.mount(first)
@@ -162,7 +179,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
         val draft = original.replace("\r\n", "\n") + "int value = ;\n"
         fixture.input(first, draft)
         assertEquals(content.now(), draft)
-        assertEquals(inputs, Vector(draft))
+        assertEquals(inputs.now(), Vector(draft))
         fixture.fire(callbacks(1))
         assertEquals(fixture.created.size, 0)
         fixture.input(transient, "stale fallback")
@@ -171,19 +188,19 @@ class CodeMirrorEditorMountSpec extends FunSuite {
         fixture.nextTurn().map { _ =>
           assertEquals(fixture.created.size, 1)
           val current = fixture.created.head
-          assert(current.config.parent eq first.ref)
+          assert(current.config.parent eq first.ref.querySelector(".code-mirror-editor"))
           assertEquals(current.doc, draft)
           assertEquals(editor.currentDoc, Some(draft))
           current.input(draft + " ")
-          assertEquals(inputs, Vector(draft, draft + " "))
+          assertEquals(inputs.now(), Vector(draft, draft + " "))
           content.set(original)
           assertEquals(current.doc, original)
-          assertEquals(inputs.size, 2)
+          assertEquals(inputs.now().size, 2)
           stopFirst()
           assertEquals(current.destroys, 1)
           current.input("stale editor")
           assertEquals(content.now(), original)
-          assertEquals(inputs.size, 2)
+          assertEquals(inputs.now().size, 2)
           assertEquals(editor.currentDoc, None)
         }
       }
@@ -194,8 +211,8 @@ class CodeMirrorEditorMountSpec extends FunSuite {
     withControlledMounts { fixture =>
       val original = "public class Drawing {\r\n\tpublic static void main(String[] args) {\r\n\t\tint n = 1;\r\n\t}\r\n}\r\n"
       val state = Var[ProgrammingState](ProgrammingStateJavaString(original))
-      var published = Vector.empty[ProgrammingState]
-      val editor = new JavaFunctionBasedEditor(state, onStateEdited = value => published :+= value)
+      val published = Var(Vector.empty[ProgrammingState])
+      val editor = new JavaFunctionBasedEditor(logger, state, onStateEdited = value => published.update(_ :+ value))
       val cached = editor.getDomElement()
       val active = Var[Option[Element]](Some(cached))
       val stop = fixture.mount(div(child.maybe <-- active.signal))
@@ -216,7 +233,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
         val draft = original.replace("\r\n", "\n") + "\t "
         fixture.input(cached, draft)
         assertEquals(state.now().toJava.code, draft)
-        assertEquals(published.size, 1)
+        assertEquals(published.now().size, 1)
         val fingerprint = state.now().fingerprint()
         fixture.takeIdle().foreach(fixture.fire)
         fixture.nextTurn().map { _ =>
@@ -235,8 +252,8 @@ class CodeMirrorEditorMountSpec extends FunSuite {
   test("a ready handle survives a pending sibling and enhanced siblings publish each input once") {
     withControlledMounts { fixture =>
       val content = Var("initial")
-      var inputs = Vector.empty[String]
-      val editor = CodeMirrorEditor(content, value => inputs :+= value)
+      val inputs = Var(Vector.empty[String])
+      val editor = editorFor(content, value => inputs.update(_ :+ value))
       val first = editor.getDomElement()
       val stopFirst = fixture.mount(first)
       fixture.nextTurn().flatMap { _ =>
@@ -247,6 +264,8 @@ class CodeMirrorEditorMountSpec extends FunSuite {
         val transient = editor.getDomElement()
         val stopTransient = fixture.mount(transient)
         fixture.nextTurn().map { _ =>
+          assert(first.ref.querySelector("textarea").hasAttribute("hidden"))
+          assert(!transient.ref.querySelector("textarea").hasAttribute("hidden"))
           stopTransient()
           fixture.takeIdle().foreach(fixture.fire)
           editor.focus()
@@ -267,18 +286,26 @@ class CodeMirrorEditorMountSpec extends FunSuite {
           assertEquals(fixture.created.size, 2)
           val firstHandle = fixture.created.head
           val secondHandle = fixture.created.last
+          editor.setDiagnostics(List(CodeMirrorEditor.Diagnostic(1, message = "both views")))
+          assertEquals(firstHandle.diagnosticCalls.last, Vector("both views"))
+          assertEquals(secondHandle.diagnosticCalls.last, Vector("both views"))
           firstHandle.input("from first")
           assertEquals(content.now(), "from first")
           assertEquals(secondHandle.doc, "from first")
-          assertEquals(inputs, Vector("from first"))
+          assertEquals(inputs.now(), Vector("from first"))
           secondHandle.input("from second")
           assertEquals(firstHandle.doc, "from second")
-          assertEquals(inputs, Vector("from first", "from second"))
+          assertEquals(inputs.now(), Vector("from first", "from second"))
           stopSecond()
           secondHandle.input("stale sibling")
           assertEquals(content.now(), "from second")
-          assertEquals(inputs.size, 2)
+          assertEquals(inputs.now().size, 2)
           assertEquals(editor.currentDoc, Some("from second"))
+          editor.focus()
+          editor.clearDiagnostics()
+          assertEquals(firstHandle.focuses, 2)
+          assertEquals(firstHandle.diagnosticCalls.last, Vector.empty[String])
+          assertEquals(secondHandle.diagnosticCalls.last, Vector("both views"))
           stopFirst()
           assert(fixture.created.forall(_.destroys == 1))
         }
@@ -288,7 +315,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
 
   test("pending diagnostics survive a transient sibling while the remaining mount is waiting") {
     withControlledMounts { fixture =>
-      val editor = CodeMirrorEditor(Var("unchanged"))
+      val editor = editorFor(Var("unchanged"))
       val stopFirst = fixture.mount(editor.getDomElement())
       val stopTransient = fixture.mount(editor.getDomElement())
       editor.setDiagnostics(List(CodeMirrorEditor.Diagnostic(1, message = "pending")))
@@ -310,7 +337,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
   test("flowchart mounts own their workers and a remount rejects replies from closed views") {
     withControlledMounts { fixture =>
       val content = Var("print(1)")
-      val editor = CodeMirrorEditor(content, language = Python, editorConfig = CodeMirrorEditorConfig.Flowchart)
+      val editor = editorFor(content, language = Python, editorConfig = CodeMirrorEditorConfig.Flowchart)
       val first = editor.getDomElement()
       val stopFirst = fixture.mount(first)
       val stopSecond = fixture.mount(editor.getDomElement())
@@ -376,8 +403,8 @@ class CodeMirrorEditorMountSpec extends FunSuite {
   test("a failed Python mount closes its worker and preserves the surviving view and fallback") {
     withControlledMounts { fixture =>
       val content = Var("print(1)")
-      var inputs = Vector.empty[String]
-      val editor = CodeMirrorEditor(content, value => inputs :+= value, language = Python,
+      val inputs = Var(Vector.empty[String])
+      val editor = editorFor(content, value => inputs.update(_ :+ value), language = Python,
         editorConfig = CodeMirrorEditorConfig.Flowchart)
       fixture.mount(editor.getDomElement())
       for {
@@ -387,10 +414,10 @@ class CodeMirrorEditorMountSpec extends FunSuite {
         firstView = fixture.created.head
         firstResult = firstView.analyze("print(1)")
         failedAnalysis = Promise[Throwable]()
-        _ = fixture.beforeCreate = config => {
+        _ = fixture.beforeCreate.set(config => {
           failedAnalysis.completeWith(config.flowchart.get.apply("print(2)").toFuture.failed)
           throw RuntimeException("Failed facade creation")
-        }
+        })
         failedView = editor.getDomElement()
         _ = fixture.mount(failedView)
         _ <- fixture.nextTurn()
@@ -405,7 +432,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
         _ <- firstResult
         _ = fixture.input(failedView, "print(3)")
         _ = assertEquals(content.now(), "print(3)")
-        _ = assertEquals(inputs, Vector("print(3)"))
+        _ = assertEquals(inputs.now(), Vector("print(3)"))
         _ = assertEquals(firstView.doc, "print(3)")
         survivingResult = firstView.analyze("print(3)")
         _ = assertEquals(fixture.workers.size, 2)
@@ -423,7 +450,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
   test("mount yields and sends the configured Python gutter to the facade, while unmount destroys handles") {
     withControlledMounts { fixture =>
       val stops = List((Python, false), (Python, true), (Java, true)).map { (language, enabled) =>
-        fixture.mount(CodeMirrorEditor(Var("print(1)"), language = language,
+        fixture.mount(editorFor(Var("print(1)"), language = language,
           editorConfig = CodeMirrorEditorConfig(enabled)).getDomElement())
       }
       assertEquals(fixture.created.size, 0, "even a cached facade is not mounted synchronously")
@@ -436,6 +463,36 @@ class CodeMirrorEditorMountSpec extends FunSuite {
           stops.foreach(_.apply())
           assert(fixture.created.forall(_.destroys == 1))
         }
+      }
+    }
+  }
+
+  test("changing the gutter replaces only its mount and keeps the replacement reachable") {
+    withControlledMounts { fixture =>
+      val config = Var(CodeMirrorEditorConfig.Default)
+      val editor = CodeMirrorEditor(logger, Var("print(1)"), language = Python, config = config)
+      val stop = fixture.mount(editor.getDomElement())
+      for {
+        _ <- fixture.nextTurn()
+        _ = fixture.takeIdle().foreach(fixture.fire)
+        _ <- fixture.nextTurn()
+        first = fixture.created.head
+        _ = config.set(CodeMirrorEditorConfig.Flowchart)
+        _ = assertEquals(first.destroys, 1)
+        _ <- fixture.nextTurn()
+        _ = fixture.takeIdle().foreach(fixture.fire)
+        _ <- fixture.nextTurn()
+        current = fixture.created.last
+        _ = editor.focus()
+        _ = editor.setDiagnostics(List(CodeMirrorEditor.Diagnostic(1, message = "replacement")))
+      } yield {
+        assertEquals(fixture.created.size, 2)
+        assert(!js.isUndefined(current.config.flowchart))
+        assertEquals(current.focuses, 1)
+        assertEquals(current.diagnosticCalls.last, Vector("replacement"))
+        assertEquals(editor.currentDoc, Some("print(1)"))
+        stop()
+        assert(fixture.created.forall(_.destroys == 1))
       }
     }
   }
