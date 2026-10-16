@@ -1,12 +1,16 @@
-package it.evadid.homepage.webElements.editor.code
+package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.airstream.state.Var
+import com.raquo.laminar.api.L
+import com.raquo.laminar.api.L.div
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorExtension
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorExtension, EvaEditorModule}
+import it.evadid.homepage.webElements.editor.code.JavaEditorSession
 import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution
 import it.evadid.vm.simulation.java.JavaTurtleRuntime
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateJavaString
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, *}
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.Future
@@ -16,14 +20,14 @@ import scala.util.{Success, Try}
 final class JavaTurtleEditorExtension(
     state: Var[ProgrammingState],
     runnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
-) extends EvaEditorExtension {
-  private var session = Option.empty[JavaEditorSession]
+) extends EvaEditorExtension with EvaEditorModule {
+  private val session = Var(Option.empty[JavaEditorSession])
   private class Attempt {
     val owner = new ManualOwner
-    var invalidated = false
-    def invalidate(): Unit = { invalidated = true; owner.killSubscriptions() }
+    val invalidated = Var(false)
+    def invalidate(): Unit = { invalidated.set(true); owner.killSubscriptions() }
   }
-  private var running = Option.empty[Attempt]
+  private val running = Var(Option.empty[Attempt])
 
   override def turtleCommands(source: ProgrammingState): Option[() => Future[List[TurtleCommand[Double]]]] = source match {
     case java: ProgrammingStateJavaString => Some(() => run(java))
@@ -31,7 +35,7 @@ final class JavaTurtleEditorExtension(
   }
 
   def run(source: ProgrammingStateJavaString): Future[List[TurtleCommand[Double]]] = {
-    if running.nonEmpty then return Future.failed(IllegalStateException("Java execution is already running."))
+    if running.now().nonEmpty then return Future.failed(IllegalStateException("Java execution is already running."))
     Try(source.isClassProgram) match {
       case Success(false) => return Try(source.toLegacyTurtleCommands).fold(Future.failed, Future.successful)
       case _ => ()
@@ -40,25 +44,25 @@ final class JavaTurtleEditorExtension(
   }
 
   private def execute[A](source: ProgrammingStateJavaString)(operation: JavaEditorSession => Future[A]): Future[A] = {
-    if running.nonEmpty then return Future.failed(IllegalStateException("Java execution is already running."))
-    val current = session.getOrElse {
+    if running.now().nonEmpty then return Future.failed(IllegalStateException("Java execution is already running."))
+    val current = session.now().getOrElse {
       val created = new JavaEditorSession(source, runnerFactory)
-      session = Some(created)
+      session.set(Some(created))
       created
     }
     current.updateSource(source)
     val attempt = new Attempt
-    running = Some(attempt)
+    running.set(Some(attempt))
     val original = state.now()
     state.signal.changes.foreach { next =>
       if next != original then close()
     }(using attempt.owner)
     Try(operation(current)).fold(Future.failed, identity).map { result =>
-      if attempt.invalidated then throw CancellationException("Java execution cancelled.")
+      if attempt.invalidated.now() then throw CancellationException("Java execution cancelled.")
       result
     }.andThen { case _ =>
       attempt.owner.killSubscriptions()
-      if running.exists(_ eq attempt) then running = None
+      if running.now().exists(_ eq attempt) then running.set(None)
     }
   }
 
@@ -74,20 +78,22 @@ final class JavaTurtleEditorExtension(
   }
 
   def stop(): Unit = {
-    val pending = running
-    running = None
+    val pending = running.now()
+    running.set(None)
     pending.foreach(_.invalidate())
-    session.foreach(_.stop())
+    session.now().foreach(_.stop())
   }
 
   override def cancel(): Unit = stop()
 
   override def close(): Unit = {
-    val pending = running
-    val discarded = session
-    running = None
-    session = None
+    val pending = running.now()
+    val discarded = session.now()
+    running.set(None)
+    session.set(None)
     pending.foreach(_.invalidate())
     discarded.foreach(_.release())
   }
+
+  override def onFullscreenClose(): Unit = close()
 }

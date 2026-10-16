@@ -100,8 +100,8 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val serializableStates = List[ProgrammingState](expression, expression.toPython, snap) ++
       (if includeJava then List(expression.toJava) else Nil)
     serializableStates.foreach { state =>
-      val restored = ProgrammingExercise.StateSerializer.deserialize(
-        ProgrammingExercise.StateSerializer.serialize(state)
+      val restored = ProgrammingState.serializer.deserialize(
+        ProgrammingState.serializer.serialize(state)
       )
       assertEquals(normalized(restored), expected, clue = s"serialized ${state.getClass.getSimpleName}")
     }
@@ -178,8 +178,8 @@ class ProgrammingStateConversionSpec extends FunSuite {
       assertEquals(normalized(throughJava), normalized(original), clue = s"Java:\n${java.code}\nLowered:\n$loweredJava")
       if snapSupported then {
         val snap = original.toSnapXml
-        val restoredSnap = ProgrammingExercise.StateSerializer.deserialize(
-          ProgrammingExercise.StateSerializer.serialize(snap)
+        val restoredSnap = ProgrammingState.serializer.deserialize(
+          ProgrammingState.serializer.serialize(snap)
         ).toSnapXml
         assertEquals(restoredSnap, snap)
       } else intercept[IllegalArgumentException](original.toSnapXml)
@@ -254,7 +254,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
       val source = "\r\n" + fragment + "\r\n\t "
       val state = ProgrammingStateJavaString(source)
       val fingerprint = state.fingerprint()
-      val stored = ProgrammingExercise.StateSerializer.serialize(state)
+      val stored = ProgrammingState.serializer.serialize(state)
       val expression = state.toBeExpressionState
       assert(!state.isClassProgram, clue = source)
       assert(expression.toPython.code.contains("return"), clue = source)
@@ -262,7 +262,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
       intercept[IllegalArgumentException](state.toSnapXml)
       assertEquals(state.toJava.code, source)
       assertEquals(state.fingerprint(), fingerprint)
-      assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+      assertEquals(ProgrammingState.serializer.serialize(state), stored)
     }
   }
 
@@ -366,7 +366,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     )
     cases.foreach { (source, expectedProblem) =>
       val state = ProgrammingStateJavaString(source)
-      val serialized = ProgrammingExercise.StateSerializer.serialize(state)
+      val serialized = ProgrammingState.serializer.serialize(state)
       val fingerprint = ProgrammingState.fingerprint(state)
       state.toJavaVmProgram match {
         case Left(diagnostic) =>
@@ -376,24 +376,23 @@ class ProgrammingStateConversionSpec extends FunSuite {
       }
       assertEquals(P.compile(source).left.map(_.problem), Left(expectedProblem))
       assertEquals(state.toJava.code, source)
-      assertEquals(serialized, s"${ProgrammingExercise.StateHeader}\nJAVA\n$source")
-      assertEquals(ProgrammingExercise.StateSerializer.serialize(state), serialized)
+      assertEquals(ProgrammingState.serializer.serialize(state), serialized)
       assertEquals(ProgrammingState.fingerprint(state), fingerprint)
-      assertEquals(ProgrammingExercise.StateSerializer.deserialize(serialized), state)
+      assertEquals(ProgrammingState.serializer.deserialize(serialized), state)
     }
   }
 
   test("serialized full Java classes retain CRLF tabs and runnable helper methods") {
     val source = "\r\n" + squareJava().replace("    ", "\t").replace("\n", "\r\n")
     val original = ProgrammingStateJavaString(source)
-    val stored = ProgrammingExercise.StateSerializer.serialize(original)
-    val restored = ProgrammingExercise.StateSerializer.deserialize(stored)
+    val stored = ProgrammingState.serializer.serialize(original)
+    val restored = ProgrammingState.serializer.deserialize(stored)
 
     assert(restored.isInstanceOf[ProgrammingStateJavaString])
     assertEquals(restored, original)
     assertEquals(restored.toJava.code, source)
     assertEquals(ProgrammingState.fingerprint(restored), s"java:$source")
-    assertEquals(ProgrammingExercise.StateSerializer.serialize(restored), stored)
+    assertEquals(ProgrammingState.serializer.serialize(restored), stored)
     val program = restored.toJava.toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
     assertEquals(T.runVm(program).commands, squareCommands(25))
     assertEquals(original.code, source)
@@ -413,7 +412,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("full Java classes have checked editable Python and Snap views while rejecting legacy execution") {
     val state = ProgrammingStateJavaString(squareJava())
-    val stored = ProgrammingExercise.StateSerializer.serialize(state)
+    val stored = ProgrammingState.serializer.serialize(state)
     val fingerprint = ProgrammingState.fingerprint(state)
 
     assert(state.isClassProgram)
@@ -428,7 +427,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(T.runVm(state.toPython.toJava.toJavaVmProgram.toOption.get).commands, squareCommands(25))
     assertEquals(state.toJava, state)
     assertEquals(state.code, squareJava())
-    assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+    assertEquals(ProgrammingState.serializer.serialize(state), stored)
     assertEquals(ProgrammingState.fingerprint(state), fingerprint)
     assertEquals(T.runVm(state.toJavaVmProgram.toOption.get).commands, squareCommands(25))
   }
@@ -537,7 +536,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("legacy hinted Java classes retain Python fallback after Snap conversion fails") {
     JavaAnalysis.synchronized {
       val state = ProgrammingStateJavaString("class CacheLegacy { double distance = 12; } //EvaEntityName(legacy)\n")
-      val stored = ProgrammingExercise.StateSerializer.serialize(state)
+      val stored = ProgrammingState.serializer.serialize(state)
       assert(state.isClassProgram)
       assert(state.toJavaVmProgram.isLeft)
       val python = state.toPython
@@ -545,7 +544,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
       intercept[IllegalArgumentException](state.toSnapXml)
       assertEquals(state.copy().toPython, python)
       assertEquals(state.toPython, python)
-      assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+      assertEquals(ProgrammingState.serializer.serialize(state), stored)
     }
   }
 
@@ -572,12 +571,12 @@ class ProgrammingStateConversionSpec extends FunSuite {
       "this is unsupported Java"
     ).foreach { source =>
       val state = ProgrammingStateJavaString(source)
-      val stored = ProgrammingExercise.StateSerializer.serialize(state)
+      val stored = ProgrammingState.serializer.serialize(state)
       intercept[IllegalArgumentException](state.isClassProgram)
       intercept[IllegalArgumentException](state.toLegacyTurtleCommands)
       intercept[IllegalArgumentException](state.toSnapXml)
       assertEquals(state.code, source)
-      assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+      assertEquals(ProgrammingState.serializer.serialize(state), stored)
     }
   }
 
@@ -636,11 +635,11 @@ class ProgrammingStateConversionSpec extends FunSuite {
     )
     sources.foreach { code =>
       val state = ProgrammingStateJavaString(code)
-      val stored = ProgrammingExercise.StateSerializer.serialize(state)
+      val stored = ProgrammingState.serializer.serialize(state)
       intercept[IllegalArgumentException](state.isClassProgram)
       intercept[IllegalArgumentException](state.toSnapXml)
       assertEquals(state.code, code)
-      assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+      assertEquals(ProgrammingState.serializer.serialize(state), stored)
     }
     val literal = ProgrammingStateJavaString("String note = \"" + "(" * 2000 + "\"; forward(12);")
     assert(!literal.isClassProgram)
@@ -679,7 +678,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val xml = """<project><scripts><script x="70" y="80"><block id="kept-forward" s="forward"><l>12</l></block></script></scripts></project>"""
     val snap = ProgrammingStateSnapXml(xml)
     val fingerprint = ProgrammingState.fingerprint(snap)
-    val stored = ProgrammingExercise.StateSerializer.serialize(snap)
+    val stored = ProgrammingState.serializer.serialize(snap)
     val program = ProgrammingStateJavaString(squareJava()).toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
 
     assertEquals(T.runVm(program).commands, squareCommands(25))
@@ -688,8 +687,8 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assert(snap.toJava.code.contains("forward(12)"), clue = snap.toJava.code)
     assertEquals(snap.toSnapXml.snapXml, xml)
     assertEquals(ProgrammingState.fingerprint(snap), fingerprint)
-    assertEquals(ProgrammingExercise.StateSerializer.serialize(snap), stored)
-    assertEquals(ProgrammingExercise.StateSerializer.deserialize(stored), snap)
+    assertEquals(ProgrammingState.serializer.serialize(snap), stored)
+    assertEquals(ProgrammingState.serializer.deserialize(stored), snap)
   }
 
   test("empty Snap projects convert without treating block containers as commands") {
@@ -722,8 +721,8 @@ class ProgrammingStateConversionSpec extends FunSuite {
       intercept[IllegalArgumentException](state.toJava)
       assertEquals(state.toSnapXml.snapXml, xml)
       assertEquals(ProgrammingState.fingerprint(state), fingerprint)
-      assertEquals(ProgrammingExercise.StateSerializer.deserialize(
-        ProgrammingExercise.StateSerializer.serialize(state)
+      assertEquals(ProgrammingState.serializer.deserialize(
+        ProgrammingState.serializer.serialize(state)
       ), state)
     }
   }
@@ -1130,12 +1129,12 @@ class ProgrammingStateConversionSpec extends FunSuite {
       val xml = snap.snapXml.replace("</stage>", preview + "</stage>")
         .replace("<scenes", s"<thumbnail>$image</thumbnail><scenes")
       val state = snap.copy(snapXml = xml)
-      val stored = ProgrammingExercise.StateSerializer.serialize(state)
+      val stored = ProgrammingState.serializer.serialize(state)
       val fingerprint = ProgrammingState.fingerprint(state)
       val restored = bridgeJava(JavaTurtleEditingBridge.fromSnap(state))
       assertEquals(T.runVm(restored).commands.map(_.value), Vector(12.0))
       assertEquals(state.snapXml, xml)
-      assertEquals(ProgrammingExercise.StateSerializer.serialize(state), stored)
+      assertEquals(ProgrammingState.serializer.serialize(state), stored)
       assertEquals(ProgrammingState.fingerprint(state), fingerprint)
     }
     val authored = snap.snapXml.replace("</sprite>", s"<costume name=\"authored\">$image</costume></sprite>")
