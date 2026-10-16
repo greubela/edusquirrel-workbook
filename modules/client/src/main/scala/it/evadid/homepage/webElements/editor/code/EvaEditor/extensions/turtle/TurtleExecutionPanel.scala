@@ -1,6 +1,5 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
-import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
@@ -31,28 +30,13 @@ final class TurtleExecutionPanel(
     execute: () => Future[List[TurtleCommand[Double]]],
     cancel: () => Unit,
     target: Option[TurtleGraphic] = None,
-    comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Coverage,
-    prepare: () => Unit = () => ()
+    comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Coverage
 ) extends HtmlAppElement {
   import TurtleExecutionPanel.*
 
   private[code] val status = Var[Status](Status.Idle)
   private val revision = Var(0L)
-  private val owner = Var(Option.empty[ManualOwner])
   private val scenes = Var(Vector.empty[TurtleJsxGraphRenderer.Scene])
-
-  private[code] def activate(): Unit = if owner.now().isEmpty then {
-    val mountedOwner = new ManualOwner
-    owner.set(Some(mountedOwner))
-    source.signal.distinct.changes.foreach(_ => reset())(using mountedOwner)
-  }
-
-  private[code] def deactivate(): Unit = {
-    val previous = owner.now()
-    owner.set(None)
-    previous.foreach(_.killSubscriptions())
-    reset()
-  }
 
   private[code] def reset(): Unit = {
     revision.update(_ + 1)
@@ -73,13 +57,6 @@ final class TurtleExecutionPanel(
 
   private def start[A](execute: () => Future[A])(completed: A => Status): Unit = {
     if status.now() == Status.Running then return
-    Try(prepare()) match {
-      case Failure(error) =>
-        reset()
-        status.set(Status.Failed(Option(error.getMessage).getOrElse("This draft cannot be run.")))
-        return
-      case _ => ()
-    }
     revision.update(_ + 1)
     val requested = revision.now()
     val original = source.now()
@@ -113,8 +90,8 @@ final class TurtleExecutionPanel(
 
   private lazy val domElement = div(
     cls := "turtle-execution",
-    onMountCallback(_ => activate()),
-    onUnmountCallback(_ => deactivate()),
+    onMountBind(_ => source.signal.distinct.changes --> (_ => reset())),
+    onUnmountCallback(_ => reset()),
     h3("Drawing"),
     div(cls := "turtle-execution__actions",
       button(typ := "button", disabled <-- status.signal.map(_ == Status.Running), "Run", onClick --> (_ => queue.execute(() => run()))),

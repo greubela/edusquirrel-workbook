@@ -1,183 +1,84 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
-import com.raquo.airstream.state.Var
+import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.{ProgrammingLanguage, Python}
-import it.evadid.distribution.clients.WebWorkerExecutionClient
-import it.evadid.evacuation.eva2.control.EvaControlModeWithSubmodes
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
-import it.evadid.homepage.webElements.editor.code.*
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorTab, *}
-import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor.{CodeMirrorHandle, Diagnostic, EditorConfig}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, *}
+import it.evadid.workbook.elements.interactionElements.programming.state.*
 import org.scalajs.dom
-import org.scalajs.dom.{HTMLDivElement, SVGSVGElement}
-import upickle.default.*
-
-import scala.concurrent.{ExecutionContext, Future}
+import org.scalajs.dom.SVGSVGElement
 import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import upickle.default.*
 
 case class CodeMirrorEditor(
-                             logger: Logger,
-                             underlyingVar: Var[String],
-                             handleFunctionInput: String => Unit = _ => {},
-                             language: ProgrammingLanguage,
-                             config: Var[CodeMirrorEditorConfig]
-                           ) extends SimpleWebEditor[String, CodeMirrorEditorConfig] {
-
+    logger: Logger,
+    underlyingVar: Var[String],
+    language: ProgrammingLanguage,
+    config: Var[CodeMirrorEditorConfig],
+    diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil)
+) extends SimpleWebEditor[String, CodeMirrorEditorConfig] {
   import CodeMirrorEditor.*
 
   private val handle = Var(Option.empty[CodeMirrorHandle])
-  private val pendingDiagnostics = Var(Option.empty[(String, Seq[Diagnostic])])
-  private val useTextareaFallback: Var[Boolean] = Var(true)
-  private val flowchartCache = new CodeMirrorFlowchartGutter.Cache
-
-  def focus(): Unit = handle.now().foreach(_.focus())
-
-  def currentDoc: Option[String] = handle.now().map(_.getDoc())
-
-  def setDiagnostics(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Unit =
-    pendingDiagnostics.set(Some(underlyingVar.now() -> diagnostics))
-    handle.now().foreach(_.setDiagnostics(js.Array(diagnostics.map(_.toJs) *)))
-
-  def clearDiagnostics(): Unit = setDiagnostics(Nil)
 
   override def getDomElement(): L.Element = div(
     cls := "code-mirror-editor-host",
-    child <-- config.signal.map(_.showFlowchartGutter).distinct.map(renderEditor)
+    child <-- config.signal.map(_.showFlowchartGutter).distinct.map { showFlowchart =>
+      div(
+        cls := ("code-editor code-mirror-editor" + (if showFlowchart && language == Python then " code-mirror-editor-flowchart" else "")),
+        styleAttr <-- config.signal.map(_.editorFont).map(font =>
+          s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"),
+        textArea(cls := "code-mirror-editor__fallback", hidden <-- handle.signal.map(_.nonEmpty),
+          value <-- underlyingVar.signal, onInput.mapToValue --> underlyingVar.writer),
+        onMountCallback { ctx =>
+          val lifetime = new Subscription(ctx.owner, () => ())
+          CodeMirrorEditorLoading.load().flatMap(facade => CodeMirrorEditorLoading.inBackground(facade)).foreach { facade =>
+            if !lifetime.isKilled && ctx.thisNode.ref.isConnected then {
+              val analysis = Option.when(showFlowchart && language == Python)(
+                new CodeMirrorFlowchartGutter.Analysis(new CodeMirrorFlowchartGutter.Cache))
+              // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
+              val native = facade.createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
+                value => if !lifetime.isKilled && underlyingVar.now() != value then underlyingVar.set(value),
+                languageToJs(language), analysis.map(_.chartForDoc)))
+              new Subscription(ctx.owner, () => {
+                native.destroy()
+                analysis.foreach(_.close())
+                handle.update(_.filterNot(_ == native))
+              })
+              handle.set(Some(native))
+              underlyingVar.signal.foreach(value => if native.getDoc() != value then native.setDoc(value))(using ctx.owner)
+              diagnostics.foreach(values => native.setDiagnostics(js.Array(values.map(_.toJs)*)))(using ctx.owner)
+            }
+          }
+        }
+      )
+    }
   )
-
-  private def renderEditor(showFlowchart: Boolean): L.Element = {
-    val mountedToken = Var(Option.empty[AnyRef])
-    val mountedHandle = Var(Option.empty[CodeMirrorHandle])
-    val mountedAnalysis = Var(Option.empty[CodeMirrorFlowchartGutter.Analysis])
-    div(
-      cls := ("code-editor code-mirror-editor" + (if (showFlowchart && language == Python) " code-mirror-editor-flowchart" else "")),
-      styleAttr <-- config.signal.map(_.editorFont).map(font =>
-        s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"
-      ),
-      textArea(
-        cls := "code-mirror-editor__fallback",
-        hidden <-- useTextareaFallback.signal.map(show => !show),
-        value <-- underlyingVar.signal,
-        onInput.mapToValue --> { value =>
-          if mountedToken.now().nonEmpty then
-            underlyingVar.writer.onNext(value)
-            handleFunctionInput(value)
-        }
-      ),
-      onMountCallback { ctx =>
-        val token = new Object
-        mountedToken.set(Some(token))
-        useTextareaFallback.set(true)
-        def isActive: Boolean =
-          mountedToken.now().contains(token) && ctx.thisNode.ref.isConnected
-        CodeMirrorEditorLoading.load().flatMap(facade => CodeMirrorEditorLoading.inBackground(Some(facade))).recover { case scala.util.control.NonFatal(_) => None }.foreach {
-          case Some(cmFacade) if isActive =>
-            val container = ctx.thisNode.ref
-            val initialValue = underlyingVar.now()
-
-            val analysis = Option.when(showFlowchart && language == Python)(new CodeMirrorFlowchartGutter.Analysis(flowchartCache))
-            mountedAnalysis.set(analysis)
-
-            val createdHandle = cmFacade.createEditor(
-              EditorConfig(
-                parent = container,
-                doc = initialValue,
-                language = language.asJsLanguage.getOrElse("python"),
-                flowchart = analysis.map(_.chartForDoc),
-                onDocChange = value =>
-                  if (isActive && underlyingVar.now() != value) {
-                    pendingDiagnostics.set(None)
-                    underlyingVar.writer.onNext(value)
-                    handleFunctionInput(value)
-                  }
-              )
-            )
-
-            if !isActive then {
-              createdHandle.destroy()
-              analysis.foreach(_.close())
-            }
-            else {
-              mountedHandle.set(Some(createdHandle))
-              handle.set(Some(createdHandle))
-              useTextareaFallback.set(false)
-              pendingDiagnostics.now().filter(_._1 == initialValue).foreach { case (_, diagnostics) =>
-                createdHandle.setDiagnostics(js.Array(diagnostics.map(_.toJs) *))
-              }
-
-              underlyingVar.signal.foreach { value =>
-                if (isActive && createdHandle.getDoc() != value) {
-                  pendingDiagnostics.set(None)
-                  createdHandle.setDoc(value)
-                }
-              }(using ctx.owner)
-            }
-
-          case None if isActive =>
-            mountedAnalysis.now().foreach(_.close())
-            mountedAnalysis.set(None)
-            useTextareaFallback.set(true)
-          case _ => ()
-        }
-      },
-      onUnmountCallback { _ =>
-        val retiringHandle = mountedHandle.now()
-        mountedToken.set(None)
-        // A replacement can mount in the same transaction. Evaluate handle ownership
-        // when the queued update commits, so old cleanup cannot clear the replacement.
-        handle.update(_.filterNot(retiringHandle.contains))
-        retiringHandle.foreach(_.destroy())
-        mountedHandle.set(None)
-        mountedAnalysis.now().foreach(_.close())
-        mountedAnalysis.set(None)
-      }
-    )
-  }
-
-
 }
 object CodeMirrorEditor {
   def languageToJs(language: ProgrammingLanguage): String = language.asJsLanguage.getOrElse("python")
 
 
-  def apply(logger: Logger, state: Var[String], langauge: ProgrammingLanguage): CodeMirrorEditor = {
-     CodeMirrorEditor(logger, state, _ => {}, langauge, Var(CodeMirrorEditorConfig.Default))
-  }
+  def apply(logger: Logger, state: Var[String], language: ProgrammingLanguage): CodeMirrorEditor =
+    CodeMirrorEditor(logger, state, language, Var(CodeMirrorEditorConfig.Default))
 
-  def pythonEditorForEva(tabLogger: Logger, editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
-      appearance: Option[it.evadid.homepage.webElements.editor.code.EditorAppearance] = None): EvaEditorTab[String] = {
-
-    val internal: Var[String] = Var[String]("")
-    val editor = CodeMirrorEditor(tabLogger, internal, language = Python, config = Var(editorConfig))
-
-    new EvaEditorTab[String]() {
-      override val underlyingVar: Var[String] = internal
-
-      override def toProgram(internal: String): ProgrammingState = ProgrammingStatePythonString(internal)
-
-      override def fromProgram(external: ProgrammingState): String = external.toPython.code
-
-      override def getDomElement(): L.Element = editor.getDomElement()
-
-      override val logger: Logger = tabLogger
-
-      override def label: String = "Python"
-
-      override def icon: Option[ReactiveSvgElement[SVGSVGElement]] = None
-
-      override def additionalCssForEvaEditor: String = ""
+  def pythonEditorForEva(logger: Logger, config: CodeMirrorEditorConfig): EvaEditorTab = new EvaEditorTab {
+    override val language = Python
+    override val label = "Python"
+    override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance): it.evadid.homepage.webElements.HtmlAppElement = {
+      val text = state.bimap {
+        case ProgrammingStatePythonString(code) => code
+        case _ => ""
+      }(ProgrammingStatePythonString(_))
+      CodeMirrorEditor(logger, text, Python, Var(config))
     }
-
   }
-
 
   @js.native
   private[code] trait CodeMirrorFacade extends js.Object {

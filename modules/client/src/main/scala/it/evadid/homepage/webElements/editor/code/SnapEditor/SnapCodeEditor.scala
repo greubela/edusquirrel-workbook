@@ -1,39 +1,24 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
-import com.raquo.airstream.ownership.Owner
-import com.raquo.airstream.state.Var
+import com.raquo.airstream.ownership.{Owner, Subscription}
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
-import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
-import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{JavaTurtleSnapPrimitives, PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal, SnapTurtleStagePanel}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import org.scalajs.dom
-import com.raquo.airstream.ownership.Subscription
-import org.scalajs.dom.SVGSVGElement
 import org.scalajs.dom.html.Canvas
-
-import scala.concurrent.Future
 
 case class SnapCodeEditor(
                            logger: Logger,
                            state: Var[ProgrammingState],
                            config: SnapCodeEditorConfig,
-                           impl: SnapCodeEditorImpl,
-                           onStateEdited: ProgrammingState => Unit = _ => ()
-                         ) extends HtmlAppElement with FullscreenLifecycle {
+                           impl: SnapCodeEditorImpl
+                         ) extends HtmlAppElement {
 
 
   private def publishProgramFromSnapXml(xml: String): Unit = {
@@ -47,9 +32,8 @@ case class SnapCodeEditor(
     // Mark the retained project before publishing: the Var observers run as
     // part of this update and must not reload Snap's own serialized project.
     impl.acknowledgeProgramFromEditor(next.toSnapXml)
-    if state.now() != next then
+    if state.now().associatedLanguage == SnapLanguage && state.now() != next then
       state.set(next)
-      onStateEdited(next)
   }
 
   private[SnapEditor] def mountEditorInto(canvas: Canvas, owner: Owner): Unit = {
@@ -59,7 +43,7 @@ case class SnapCodeEditor(
     impl.renderEditorInto(state.now().toSnapXml, canvas, config)
     // Mount once. Later updates only synchronize the retained project;
     // acknowledgeProgramFromEditor makes Snap-originated echoes no-ops.
-    state.signal.changes.map(_.toSnapXml).distinct.foreach(impl.loadProgramIfChanged)(using owner)
+    state.signal.changes.filter(_.associatedLanguage == SnapLanguage).map(_.toSnapXml).distinct.foreach(impl.loadProgramIfChanged)(using owner)
   }
 
   lazy val editorCanvas: Element = {
@@ -92,8 +76,9 @@ case class SnapCodeEditor(
       child.maybe <-- renderingError.signal.map(_.map(message => p(role := "alert", message))),
       editorCanvas,
       onUnmountCallback { _ =>
-        impl.flushPendingProjectChanges()
-        impl.pauseWorldCycles()
+        if state.now().associatedLanguage == SnapLanguage then impl.flushPendingProjectChanges()
+        impl.setOnProjectXmlChangedListener(_ => ())
+        impl.destroy()
       }
     )
   }
@@ -104,44 +89,15 @@ case class SnapCodeEditor(
     div(
       cls := "code-editor-container be-program-snap-fullscreen",
       editorDom
-      //SnapTurtleStagePanel.chrome(this, flushPending = () => impl.flushPendingProjectChanges(), runOnStage = canvas => impl.runGreenFlagOnStage(canvas), stopRun = () => impl.stopGreenFlagOnStage()      )
     )
 
   override def getDomElement(): L.Element = domElement
-
-  def captureCurrentProject(): ProgrammingStateSnapXml = {
-    impl.flushPendingProjectChanges()
-    val previous = state.now().toSnapXml
-    impl.currentProjectXml().map(previous.withProjectXml).getOrElse(previous)
-  }
-
-  def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] =
-    SnapCodeEditor.commandsFor(captureCurrentProject())
-
-  override def onFullscreenOpen(): Unit =
-    impl.loadProgramIfChanged(state.now().toSnapXml)
-    impl.fitEditorToContainer()
-    impl.startWorldCycles()
-
-  override def onFullscreenClose(): Unit =
-    // Poll is paused with the world; flush so the last edits reach the Var/sync.
-    impl.flushPendingProjectChanges()
-    impl.pauseWorldCycles()
-
 
   override def dismissOnOutsideClick: Boolean = false
 }
 
 
 object SnapCodeEditor {
-
-  private lazy val commandExecution = new SnapTurtleCommandExecution(new PyodideTurtleCommandRunner())
-
-  private[code] def commandsFor(state: ProgrammingStateSnapXml): Future[List[TurtleCommand[Double]]] =
-    commandExecution.commandsFor(state)
-
-  def apply(logger: Logger, state: Var[ProgrammingState], config: SnapCodeEditorConfig, onStateEdited: ProgrammingState => Unit): SnapCodeEditor =
-    SnapCodeEditor(logger, state, config, SnapCodeEditorImplDelegateToOriginal(), onStateEdited)
 
   def apply(logger: Logger,state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapCodeEditor =
     SnapCodeEditor(logger, state, config, SnapCodeEditorImplDelegateToOriginal())
@@ -150,27 +106,14 @@ object SnapCodeEditor {
     SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
 
 
-  def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig, initState: ProgrammingState): EvaEditorTab[ProgrammingState] = {
-    val initial = initState match {
-      case snap: ProgrammingStateSnapXml => snap
+  def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig): EvaEditorTab = new EvaEditorTab {
+    override val language = SnapLanguage
+    override val label = "Snap!"
+    override def convert(source: ProgrammingState): ProgrammingState = source match {
       case snap: ProgrammingStateSnapScalaModel => snap
-      case _ => ProgrammingStateSnapXml.empty
+      case _ => source.toSnapXml
     }
-    val internal = Var[ProgrammingState](initial)
-    val editor = SnapCodeEditor(tabLogger, internal, config)
-    new EvaEditorTab[ProgrammingState] {
-      override val underlyingVar = internal
-      override val logger: Logger = tabLogger
-      override def toProgram(value: ProgrammingState): ProgrammingState = value
-      override def fromProgram(value: ProgrammingState): ProgrammingState = value match {
-        case snap: ProgrammingStateSnapScalaModel => snap
-        case _ => value.toSnapXml
-      }
-      override def captureSource(): ProgrammingState = { editor.captureCurrentProject(); internal.now() }
-      override def getDomElement(): L.Element = editor.getDomElement()
-      override def onFullscreenOpen(): Unit = editor.onFullscreenOpen()
-      override def onFullscreenClose(): Unit = editor.onFullscreenClose()
-      override val label = "Snap!"
-    }
+    override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance): HtmlAppElement =
+      SnapCodeEditor(tabLogger, state, config)
   }
 }

@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.code.*
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig}
-import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.{JavaTurtleEditorExtension, TurtleTaskEditorExtension}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -22,9 +22,8 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
 
   private[homepage] def editorFor(workbookElement: ProgrammingExerciseFullJava,
       boundVar: Var[ProgrammingState]): HtmlAppElement  = {
-    val execution = new JavaTurtleEditorExtension(boundVar)
     val draw = new TurtleTaskEditorExtension(boundVar, None, TurtleDrawingPolicy.Coverage)
-    EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar,  List(execution, draw), EvaEditorConfig(enabledLanguages = List(AppLanguage.Java)))
+    EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar,  List(draw), EvaEditorConfig(enabledLanguages = List(AppLanguage.Java)))
   }
 
   override protected def createRendering(workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {

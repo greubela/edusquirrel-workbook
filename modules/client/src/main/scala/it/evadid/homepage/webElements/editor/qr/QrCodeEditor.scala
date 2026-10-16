@@ -1,12 +1,12 @@
 package it.evadid.homepage.webElements.editor.qr
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.interactionElements.qr.QrCodeRequirements
 import it.evadid.workbook.model.qr.{QrCode, QrCodeRegion, QrErrorCorrection}
 
 /** Text edits are live. Invalid drafts stay visible but never replace the last valid saved symbol. */
-case class QrCodeEditor(state: Var[QrCode], requirements: QrCodeRequirements) extends HtmlAppElement with FullscreenLifecycle {
+case class QrCodeEditor(state: Var[QrCode], requirements: QrCodeRequirements) extends HtmlAppElement {
   private val editorState = new QrCodeEditorState(state)
   import editorState.*
 
@@ -57,7 +57,6 @@ case class QrCodeEditor(state: Var[QrCode], requirements: QrCodeRequirements) ex
     )
   )
   override def dismissOnOutsideClick: Boolean = false
-  override def onFullscreenClose(): Unit = ()
 }
 
 /** SVG geometry stays in code; colors, size and crisp rendering live in CSS. */

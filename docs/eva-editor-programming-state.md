@@ -1,41 +1,74 @@
-# Eva Editor: tabs and feature modules
+# Eva: one editor and downstream panels
 
-`EvaEditor` composes tabs and optional feature modules around one supplied `Var[ProgrammingState]`. It owns navigation, conversion errors and generic lifecycle coordination. It contains no Snap, CodeMirror, Java-editor or turtle-runtime branches. Default editor construction lives in `EvaEditorConfig.defaultEditorFor`; a caller can supply a tab factory for another editor or for tests.
+`EvaEditor` displays one language editor bound to the supplied central
+`Var[ProgrammingState]`. `EvaEditorTab` describes a language choice: its label,
+conversion and editor factory. It contains no editor instance, private answer,
+synchronization baseline, or edit event channel. Eva constructs only the selected
+editor. Ordinary state updates reach that editor through its bound Var; they do
+not construct another editor. A language/task switch unmounts the old editor and
+mounts a fresh one. Returning to a language creates a fresh editor from the current
+answer, rather than resuming an inactive editor with a stale draft.
 
-## Editor adapters
+## State and conversion
 
-Each standalone editor supplies an `EvaEditorTab[T]` adapter beside its own implementation:
+The central Var is the answer. A change is a change, regardless of whether it
+comes from an editor, restoration, conversion or another component. Use signals
+to observe it. Do not add `onStateEdited`, input-listener constructor arguments,
+or separate stores such as `synchronizedValue` alongside a bound Var. Project
+views with `bimap` where appropriate; for example the Python editor binds the code
+field of the central Python state directly. Java's method fragment is a view of
+the current source, not a separately saved program.
 
-- `CodeMirrorEditor.pythonEditorForEva` binds a raw Python string.
-- `SnapCodeEditor.forEvaTab` retains XML/typed Snap state and legacy floating data, and flushes the live IDE when capturing its source.
-- `JavaFunctionBasedEditor.forEvaTab` binds Java source, including unfinished classes, and owns Java-specific controls and presentation.
+Conversions and their availability checks execute in `Future`s. A successful
+language switch writes the converted representation to the central Var and thus
+replaces the editor. A failed conversion leaves the current draft and editor in
+place. Newer requests, source changes and unmount invalidate pending conversions;
+late results cannot overwrite a newer answer. The generic Eva component contains
+no concrete language editor or runtime branches. Concrete factories live beside
+the standalone editors and are selected by `EvaEditorConfig`.
 
-An adapter implements `fromProgram`, `toProgram`, its DOM, label/icon presentation and fullscreen lifecycle. `prepare` directly evaluates the synchronous conversion as a `Try` and returns an install callback without replacing the visible draft. Unavailable target tabs are disabled. Navigation validates before closing the current view and installs only if lifecycle callbacks have not restored the source or closed Eva. There is no conversion cache or `Future` wrapper: scheduling synchronous Scala.js work in a `Future` would still run it on the browser thread. Native editor loading and feature execution retain their own asynchronous lifecycles.
+A Future on Scala.js schedules work on the browser thread; it does not provide a
+separate CPU thread. Use a WebWorker for expensive execution where available,
+including Pyodide and the checked Java runtime. Native libraries still need
+callbacks at their JavaScript boundary. Keep those callbacks inside the adapter;
+Scala consumers observe the bound Var or a supplied diagnostic signal.
 
-`setWith` synchronizes an external value without emitting a learner edit. A `Var[Option[T]]` holds the synchronization baseline so programmatic updates do not become learner edits. Subsequent user edits update the baseline, including an edit that returns to an earlier value. `edits` reports subsequent editor changes; identical echoes do not write again. Inactive tabs cannot publish. Conversion failures retain the raw answer and current view and expose an error. Matching unfinished source opens without converting through another language. Tabs appear in configured order; an empty language list displays an unavailable view safely.
+## Mounting and panels
 
-The selected view and saved representation are separate. Viewing a successful conversion does not normalize or persist the answer. An actual edit in that view becomes the new saved representation. `captureSource()` delegates to the active adapter so pending native edits can be flushed before navigation or a feature operation. Consumers should use the captured draft rather than reach into a concrete editor.
+Laminar owns lifetime. Closing the workbook dialog removes its child; it does not
+retain an invisible editor. There is no `FullscreenLifecycle`, open/close event
+interface, or editor/module activation protocol. Mount-owned subscriptions stop
+on unmount. Native CodeMirror handles, Snap worlds, workers, resize observers and
+other resources are released by the DOM that owns them. `dismissOnOutsideClick`
+is a dialog policy on `HtmlAppElement`, not a resource-lifecycle hook.
 
-All changing editor, adapter and module state—including lifecycle guards and native handle references—must be held in `val`-bound `Var[T]` values. Use immutable calculations and derived signals instead of Scala `var` or mutable collections. See [the client state rule](state-and-serialization.md#changing-client-state).
+Optional panels are ordinary `HtmlAppElement`s supplied to Eva. They receive the
+same central Var and their own necessary task configuration. They observe the
+answer downstream; Eva neither binds a context into them nor activates their
+execution services. The turtle panel owns its execution service, cancellation,
+drawing assessment and target. Its subscriptions and worker cleanup follow its
+mount. Panels never obtain state by reaching into an editor or calling
+`captureSource()`.
 
-## Optional feature modules
+CodeMirror keeps one optional native handle. The fallback textarea's visibility
+is derived from that handle. Diagnostics arrive as a signal; there is no pending
+diagnostic store or copied current-document state. The mount owns the optional
+flowchart analysis and releases it with the native handle. The library loader
+shares one asynchronous module request between startup warmup and editors;
+failure/timeout leaves the fallback usable and allows a later retry.
 
-`EvaEditorModule` receives a generic context with the bound state, a source-capture callback and the configured modules. Its optional panel and lifecycle cleanup belong to the module. Headless execution services return no DOM, so they do not create empty layout cells. The generic editor neither chooses a runtime nor derives turtle commands.
-
-The turtle feature owns `TurtleProgramExecution`, Python/Snap workers, `JavaTurtleEditorExtension`, and `TurtleTaskEditorExtension` with its drawing panel. The task module captures the active source before a run, dispatches execution to its feature services and closes owned work on close or successful tab changes. Java worker execution and drawing assessment are tested independently of Eva's navigation internals.
-
-`ProgrammingState` remains the shared conversion boundary. Its `associatedLanguage` identifies the source representation, and `toLanguage` dispatches to the requested supported language. Native Snap projects outside the checked subset remain editable even when a text conversion fails. Full Java classes use the existing checked bridge and runtime; unsupported/unfinished programs must retain their source.
+All changing client state must remain in `val`-bound `Var[T]` values. Prefer
+immutable calculations and derived signals to additional stores. See
+[state and serialization](state-and-serialization.md).
 
 ## Persistence and verification
 
-Concrete programming state records derive uPickle `ReadWriter`; the root codec uses a derived typed payload sum, including the expression adapter. Interactions use their standard implicit state serializer. JSON and MessagePack preserve the current representation and all source content. Checked Java VM expression states persist their source and recompile it on read because runtime bindings are not a persistent expression tree. This is a development schema: old headers, historical tags, aliases and migration readers are deliberately unsupported; reset development databases when the schema changes. See [state and serialization](state-and-serialization.md), [full Snap model](snap-scala-model.md) and [Snap lifecycle](snap-editor.md).
+Interactions use the current implicit `ProgrammingState` codec. JSON and
+MessagePack preserve source text and full Snap projects. Checked Java expression
+states save their source and recompile on read. This is a development schema;
+historical readers and migration aliases are deliberately unsupported.
 
-CodeMirror keeps its own asynchronous loading, fallback textarea, document/diagnostics synchronization, optional Python gutter and handle/worker cleanup. Its settings are supplied through `EvaEditorConfig.codeMirrorConfig`; those details stay outside Eva.
-
-```sh
-sbt 'coreJVM/testOnly *ProgrammingState*Spec *ProgrammingStateSerializationSpec'
-sbt 'coreJS/testOnly *ProgrammingState*Spec *ProgrammingStateSerializationSpec'
-sbt 'client/testOnly *EvaEditorSpec *Turtle*Spec *ProgrammingEditorDiagnosticsSpec *CodeMirrorEditor*Spec *SnapCodeEditorSyncSpec'
-```
-
-Tests target the generic tab/module contracts and the owning feature components. Tests of removed specialized Eva subclasses, hard-coded language enums, or a central execution/cache implementation are replaced by those contract tests.
+Tests cover single-editor construction and mounting, direct state observation,
+conversion failure/cancellation, unmount cleanup and the owning execution
+services. Browser checks cover real input, delayed library loading, native editor
+replacement, draft restoration and panel geometry.

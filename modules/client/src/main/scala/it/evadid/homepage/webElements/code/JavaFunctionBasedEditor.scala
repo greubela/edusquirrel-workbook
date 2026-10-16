@@ -1,9 +1,10 @@
 package it.evadid.homepage.webElements.code
 
 import com.raquo.airstream.state.Var
+import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L.{label as labelTag, *}
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorTab}
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
@@ -12,6 +13,8 @@ import it.evadid.util.logging.Logger
 import it.evadid.vm.parsing.java.clean.JavaParser
 import org.scalajs.dom
 
+import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.util.Try
 import java.util.UUID
@@ -25,29 +28,32 @@ final class JavaFunctionBasedEditor
 (
   logger: Logger,
   val state: Var[ProgrammingState],
-  onStateEdited: ProgrammingState => Unit = _ => (),
   reference: Option[() => Element] = None,
   appearance: Option[EditorAppearance] = None,
   editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default
-) extends HtmlAppElement with FullscreenLifecycle {
+) extends HtmlAppElement {
 
   import JavaFunctionBasedEditor.*
 
-  private val displayedState = Var(state.now())
-  private val initialSource = Try(displayedState.now().toJava.code).toOption
-  private val sourceCode = Var(initialSource.getOrElse(""))
+  private val initialSource = Try(state.now().toJava.code).toOption
+  private val sourceDraft = state.bimap {
+    case ProgrammingStateJavaString(code) => code
+    case _ => ""
+  }(ProgrammingStateJavaString(_)).distinct
+  private def sourceCode: String = state.now() match {
+    case ProgrammingStateJavaString(code) => code
+    case _ => ""
+  }
   private val sourceAvailable = Var(initialSource.isDefined)
-  private val classes = Var(discover(sourceCode.now()))
-  private val initialSelection = initialFunction(sourceCode.now())
+  private val classes = Var(discover(sourceCode))
+  private val initialSelection = initialFunction(sourceCode)
   private val selectedFunction = Var(initialSelection)
   private val editingRange = Var(initialSelection.map(fn => FunctionRange(fn.start, fn.end)))
-  private val functionDraft = Var(initialSelection.fold("")(fn => sourceCode.now().substring(fn.start, fn.end)))
-  private val sourceDraft = Var(sourceCode.now())
-  private val structureReady = Var(structurallyBalanced(sourceCode.now()))
+  private val functionDraft = Var(initialSelection.fold("")(fn => sourceCode.substring(fn.start, fn.end)))
+  private val structureReady = Var(structurallyBalanced(sourceCode))
   private val sourceView = Var(initialSelection.isEmpty)
   private val structureOpen = Var(true)
   private val compactLayout = Var(false)
-  private val editorRevision = Var(0)
   private val dialogMode = Var(Option.empty[DialogMode])
   private val dialogClassName = Var(Option.empty[String])
   private val classNameDraft = Var("")
@@ -60,32 +66,24 @@ final class JavaFunctionBasedEditor
 
   override def dismissOnOutsideClick: Boolean = false
 
-  override def onFullscreenClose(): Unit = dialogMode.set(None)
 
-  private val functionEditor = CodeMirrorEditor(
+  private lazy val functionEditor = CodeMirrorEditor(
     logger,
     functionDraft,
-    handleFunctionInput,
     language = it.evadid.core.datastructures.language.AppLanguage.Java,
     config = Var(editorConfig)
   )
 
-  private val sourceEditor = CodeMirrorEditor(
+  private lazy val sourceEditor = CodeMirrorEditor(
     logger,
     sourceDraft,
-    handleSourceInput,
     language = it.evadid.core.datastructures.language.AppLanguage.Java,
     config = Var(editorConfig)
   )
 
-  private def currentSourceAvailable(): Boolean =
-    if state.now() != displayedState.now() then
-      commitExternalState(state.now())
-      false
-    else sourceAvailable.now()
+  private def currentSourceAvailable(): Boolean = sourceAvailable.now()
 
   private def refreshSource(code: String): List[JavaClass] = {
-    sourceCode.set(code)
     sourceDraft.set(code)
     val refreshedClasses = discover(code)
     classes.set(refreshedClasses)
@@ -93,18 +91,17 @@ final class JavaFunctionBasedEditor
     refreshedClasses
   }
 
-  private def showSource(code: String = sourceCode.now()): Unit = {
+  private def showSource(): Unit = {
     editingRange.set(None)
-    sourceDraft.set(code)
     sourceView.set(true)
   }
 
   private def handleFunctionInput(draft: String): Unit =
-    if currentSourceAvailable() && !sourceView.now() then
+    if draft == functionDraft.now() && currentSourceAvailable() && !sourceView.now() then
       (selectedFunction.now(), editingRange.now()) match
         case (Some(selected), Some(range)) =>
-          range.replace(sourceCode.now(), draft) match
-            case Some((merged, nextRange)) if merged != sourceCode.now() =>
+          range.replace(sourceCode, draft) match
+            case Some((merged, nextRange)) if merged != sourceCode =>
               editingRange.set(Some(nextRange))
               val refreshedClasses = refreshSource(merged)
               if structurallyBalanced(merged) then
@@ -112,26 +109,17 @@ final class JavaFunctionBasedEditor
                   case Some(refreshedSelection) => selectedFunction.set(Some(refreshedSelection))
                   case None =>
                     selectedFunction.set(None)
-                    showSource(merged)
-              publish(ProgrammingStateJavaString(merged))
+                    showSource()
             case None => showSource()
             case _ => ()
         case _ => showSource()
 
-  private def handleSourceInput(code: String): Unit =
-    if currentSourceAvailable() && sourceView.now() && code != sourceCode.now() then
-      editingRange.set(None)
-      val previous = selectedFunction.now()
-      val refreshedClasses = refreshSource(code)
-      selectedFunction.set(previous.flatMap(findSelection(refreshedClasses, _)))
-      publish(ProgrammingStateJavaString(code))
-
   private def selectFunction(function: JavaFunction): Unit =
-    if currentSourceAvailable() && structurallyBalanced(sourceCode.now()) && discover(sourceCode.now()).exists(_.functions.contains(function)) then
+    if currentSourceAvailable() && structurallyBalanced(sourceCode) && discover(sourceCode).exists(_.functions.contains(function)) then
       showFunction(function)
       if compactLayout.now() then structureOpen.set(false)
 
-  private def showFunction(function: JavaFunction, code: String = sourceCode.now()): Unit =
+  private def showFunction(function: JavaFunction, code: String = sourceCode): Unit =
     if FunctionRange(function.start, function.end).isWithin(code) then
       selectedFunction.set(Some(function))
       editingRange.set(Some(FunctionRange(function.start, function.end)))
@@ -139,30 +127,33 @@ final class JavaFunctionBasedEditor
       sourceView.set(false)
 
   private def showMethod(): Unit =
-    if currentSourceAvailable() && structurallyBalanced(sourceCode.now()) then
-      selectedFunction.now().flatMap(findSelection(discover(sourceCode.now()), _)) match
+    if currentSourceAvailable() && structurallyBalanced(sourceCode) then
+      selectedFunction.now().flatMap(findSelection(discover(sourceCode), _)) match
         case Some(function) => showFunction(function)
         case None =>
           selectedFunction.set(None)
           editingRange.set(None)
           sourceView.set(false)
 
-  private def commitExternalState(next: ProgrammingState): Unit = {
-    if next != displayedState.now() then
-      val previousSelection = selectedFunction.now()
-      val wasSourceView = sourceView.now()
-      displayedState.set(next)
-      editingRange.set(None)
-      dialogMode.set(None)
-      val converted = Try(next.toJava.code).toOption
-      sourceAvailable.set(converted.isDefined)
-      val code = converted.getOrElse("")
-      val refreshedClasses = refreshSource(code)
-      val replacementSelection = previousSelection.flatMap(findSelection(refreshedClasses, _))
-      selectedFunction.set(replacementSelection)
-      if converted.isEmpty || !structurallyBalanced(code) || wasSourceView || replacementSelection.isEmpty then showSource(code)
-      else replacementSelection.foreach(function => showFunction(function, code))
-      editorRevision.update(_ + 1)
+  private def observeProgram(next: ProgrammingState): Unit = {
+    val code = next match {
+      case ProgrammingStateJavaString(value) => value
+      case _ => ""
+    }
+    val refreshedClasses = discover(code)
+    classes.set(refreshedClasses)
+    structureReady.set(structurallyBalanced(code))
+    sourceAvailable.set(next.isInstanceOf[ProgrammingStateJavaString])
+    if !sourceView.now() then {
+      val range = editingRange.now()
+      val fragmentMatches = range.exists(value => value.isWithin(code) && code.substring(value.start, value.end) == functionDraft.now())
+      if !fragmentMatches then {
+        selectedFunction.now().flatMap(findSelection(refreshedClasses, _)) match {
+          case Some(function) => showFunction(function, code)
+          case None => showSource()
+        }
+      }
+    }
   }
 
   private def openClassDialog(): Unit =
@@ -187,9 +178,9 @@ final class JavaFunctionBasedEditor
     if !name.matches("[A-Za-z_$][A-Za-z0-9_$]*") then
       dialogError.set("Enter a valid Java class name.")
     else {
-      val newline = lineSeparator(sourceCode.now())
-      val separator = if sourceCode.now().isEmpty then "" else newline + newline
-      val candidate = sourceCode.now() + separator + s"class $name {$newline}$newline"
+      val newline = lineSeparator(sourceCode)
+      val separator = if sourceCode.isEmpty then "" else newline + newline
+      val candidate = sourceCode + separator + s"class $name {$newline}$newline"
       if parses(candidate) then {
         commit(candidate, None)
         dialogMode.set(None)
@@ -212,7 +203,7 @@ final class JavaFunctionBasedEditor
         .foreach { targetClass =>
           val declaration = functionDeclaration(returnType = returnType, name = name,
             parameters = parameters, isStatic = staticMethodDraft.now())
-          val candidate = insertFunction(sourceCode.now(), targetClass, declaration)
+          val candidate = insertFunction(sourceCode, targetClass, declaration)
           if parses(candidate) then {
             val refreshedClasses = discover(candidate)
             val addedFunction = refreshedClasses
@@ -230,15 +221,9 @@ final class JavaFunctionBasedEditor
     selectedFunction.set(refreshedSelection)
     refreshedSelection match
       case Some(function) => showFunction(function, code)
-      case None => showSource(code)
-    publish(ProgrammingStateJavaString(code))
+      case None => showSource()
   }
 
-  private def publish(next: ProgrammingState): Unit = {
-    displayedState.set(next)
-    state.set(next)
-    onStateEdited(next)
-  }
 
   private def modalField(fieldLabel: String, fieldValue: Var[String]): Element =
     labelTag(
@@ -294,7 +279,7 @@ final class JavaFunctionBasedEditor
           typ := "button",
           cls := "java-function-editor__button java-function-editor__button--primary",
           if isClassDialog then "Add class" else "Add function",
-          onClick --> (_ => if isClassDialog then addClass() else addFunction())
+          onClick --> (_ => Future { if isClassDialog then addClass() else addFunction() })
         )
       )
     )
@@ -311,7 +296,12 @@ final class JavaFunctionBasedEditor
       },
       dataAttr("editor-theme") <-- presentation.theme,
       onMountCallback { ctx =>
-        state.signal.foreach(commitExternalState)(using ctx.owner)
+        state.signal.foreach(observeProgram)(using ctx.owner)
+        val lifetime = new Subscription(ctx.owner, () => ())
+        // Parse after the transaction settles, so selecting a method cannot write an old fragment into a new range.
+        functionDraft.signal.changes.distinct.foreach(draft => Future {
+          if !lifetime.isKilled then handleFunctionInput(draft)
+        })(using ctx.owner)
         Try(dom.window.matchMedia("(min-width: 761px) and (min-height: 601px)")).toOption.foreach { query =>
           def adapt(): Unit = {
             compactLayout.set(!query.matches)
@@ -479,7 +469,7 @@ final class JavaFunctionBasedEditor
             if fullSource || selection.isDefined then "java-function-editor__editor-panel"
             else "java-function-editor__editor-panel java-function-editor__editor-panel--hidden"
           },
-          child <-- Signal.combine(sourceView.signal, sourceAvailable.signal, editorRevision.signal).map { (fullSource, available, _) =>
+          child <-- sourceView.signal.combineWith(sourceAvailable.signal).distinct.map { (fullSource, available) =>
             if !available then div(role := "alert", "This state cannot be shown as Java. Your source is unchanged.")
             else if fullSource then div(cls := "java-function-editor__source", sourceEditor.getDomElement())
             else div(cls := "java-function-editor__method", functionEditor.getDomElement())
@@ -724,29 +714,16 @@ object JavaFunctionBasedEditor {
     }._2
 
 
-  def forEvaTab(tabLogger: Logger, config: CodeMirrorEditorConfig, initState: ProgrammingState,
-      appearance: Option[EditorAppearance] = None): EvaEditorTab[ProgrammingState] = {
-    val initial = initState match {
-      case java: ProgrammingStateJavaString => java
-      case _ => ProgrammingStateJavaString("")
-    }
-    val internal = Var[ProgrammingState](initial)
-    val editor = new JavaFunctionBasedEditor(tabLogger, internal, appearance = appearance, editorConfig = config)
-    new EvaEditorTab[ProgrammingState] {
-      override val underlyingVar = internal
-      override val logger: Logger = tabLogger
-      override def toProgram(value: ProgrammingState): ProgrammingState = value
-      override def fromProgram(value: ProgrammingState): ProgrammingState = value.toJava
-      override def getDomElement(): Element = editor.getDomElement()
-      override def onFullscreenOpen(): Unit = editor.onFullscreenOpen()
-      override def onFullscreenClose(): Unit = editor.onFullscreenClose()
-      override val label = "Java"
-      override val showLabel = false
-      override def icon: Option[ReactiveSvgElement[SVGSVGElement]] = Some(svg.svg(svg.cls := "eva-editor__language-icon", svg.viewBox := "0 0 24 24",
-        svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.6",
-        svg.strokeLineCap := "round", svg.strokeLineJoin := "round",
-        svg.path(svg.d := "M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6")))
-      override val additionalCssForEvaEditor = " eva-editor--java"
-    }
+  def forEvaTab(tabLogger: Logger, config: CodeMirrorEditorConfig): EvaEditorTab = new EvaEditorTab {
+    override val language = it.evadid.core.datastructures.language.AppLanguage.Java
+    override val label = "Java"
+    override val showLabel = false
+    override val css = " eva-editor--java"
+    override def icon: Option[ReactiveSvgElement[SVGSVGElement]] = Some(svg.svg(svg.cls := "eva-editor__language-icon", svg.viewBox := "0 0 24 24",
+      svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.6",
+      svg.strokeLineCap := "round", svg.strokeLineJoin := "round",
+      svg.path(svg.d := "M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6")))
+    override def create(state: Var[ProgrammingState], appearance: EditorAppearance): HtmlAppElement =
+      new JavaFunctionBasedEditor(tabLogger, state, appearance = Some(appearance), editorConfig = config)
   }
 }

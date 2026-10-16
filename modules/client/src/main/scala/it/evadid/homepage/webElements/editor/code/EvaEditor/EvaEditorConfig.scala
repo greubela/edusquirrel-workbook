@@ -19,11 +19,11 @@ case class EvaEditorConfig(
 
 object EvaEditorConfig {
   def Default: EvaEditorConfig = EvaEditorConfig()
-  def defaultEditorFor(logger: Logger, language: ProgrammingLanguage, config: EvaEditorConfig,
-      source: ProgrammingState, appearance: EditorAppearance): EvaEditorTab[?] = language match {
-    case Python => CodeMirrorEditor.pythonEditorForEva(logger, config.codeMirrorConfig, Some(appearance))
-    case SnapLanguage => SnapCodeEditor.forEvaTab(logger, config.snapConfig, source)
-    case Java => JavaFunctionBasedEditor.forEvaTab(logger, config.codeMirrorConfig, source, Some(appearance))
-    case _ => throw UnsupportedOperationException(s"No editor is available for '$language'.")
-  }
+  def tabs(logger: Logger, config: EvaEditorConfig): List[EvaEditorTab] =
+    config.enabledLanguages.distinct.map {
+      case Python => CodeMirrorEditor.pythonEditorForEva(logger, config.codeMirrorConfig)
+      case SnapLanguage => SnapCodeEditor.forEvaTab(logger, config.snapConfig)
+      case Java => JavaFunctionBasedEditor.forEvaTab(logger, config.codeMirrorConfig)
+      case language => throw UnsupportedOperationException(s"No editor is available for '$language'.")
+    }
 }

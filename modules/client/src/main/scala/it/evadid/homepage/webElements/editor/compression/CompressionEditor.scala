@@ -2,12 +2,11 @@ package it.evadid.homepage.webElements.editor.compression
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.FullscreenLifecycle
 import it.evadid.workbook.model.compression.*
 
 /** Edits the renderer's bound value; invalid numeric drafts never replace saved settings. */
 case class CompressionEditor(answer: Var[CompressionExperiment], initial: CompressionExperiment, locked: Signal[Boolean])
-    extends HtmlAppElement with FullscreenLifecycle {
+    extends HtmlAppElement {
   import CompressionExperimentView.{localized, summary, format}
   private lazy val activities = CompressionActivitiesEditor(answer, initial, locked)
   private val resetDrafts = new EventBus[Unit]
@@ -161,12 +160,12 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
         if elapsed >= speed.now() then { elapsed = 0; answer.update(a => { val v=a.asInstanceOf[DictionaryText]; val total=CompressionAlgorithms.wordCount(v.text); if v.step >= total then {playing.set(false); v} else v.copy(step=v.step+1) }) }
       }}(using ctx.owner)
     }))
-  override def getDomElement(): Element = div(cls := "compression-editor",
+  override def getDomElement(): Element = div(onUnmountCallback(_ => unmount()),cls := "compression-editor",
     controls,
     p(cls := "compression-summary", role := "status", aria.live := "polite", text <-- answer.signal.flatMapSwitch(summary)),
     button(typ := "button", disabled <-- locked, text <-- localized("resetExperiment"), onClick --> (_ => {
       playing.set(false); activities.stop(); answer.set(initial); resetDrafts.writer.onNext(())
     })))
-  override def onFullscreenClose(): Unit = { playing.set(false); activities.stop() }
+  private def unmount(): Unit = { playing.set(false); activities.stop() }
   override def dismissOnOutsideClick: Boolean = false
 }

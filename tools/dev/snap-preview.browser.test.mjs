@@ -16,6 +16,9 @@ test('Snap previews and editor wait for the runtime and ignore closed mounts', a
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    page.on('console', message => {
+      if (message.type() === 'error' && message.text().includes('ObserverError')) errors.push(message.text());
+    });
     let release;
     const gate = new Promise(resolve => {release = resolve;});
     await page.route('**/*', async route => {

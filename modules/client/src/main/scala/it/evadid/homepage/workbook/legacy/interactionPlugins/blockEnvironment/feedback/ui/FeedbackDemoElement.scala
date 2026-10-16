@@ -323,12 +323,12 @@ object FeedbackDemoElement:
     val showTestsVar = Var(true)
     val showFeedbackVar = Var(true)
     val showEditorVar = Var(true)
+    val editorDiagnostics = Var(Seq.empty[CodeMirrorEditor.Diagnostic])
     lazy val pythonEditor: CodeMirrorEditor = CodeMirrorEditor(
       HtmlFullWorkbookApp.fullInfo.loggerSystemInfo.uiAndDomLogger,
       pythonCodeVar,
-      _ => {},
       language = Python,
-      Var(CodeMirrorEditorConfig.Default)
+      Var(CodeMirrorEditorConfig.Default), diagnostics = editorDiagnostics.signal
     )
 
     def tx(lang: HumanLanguage, en: String, de: String): String =
@@ -350,11 +350,9 @@ object FeedbackDemoElement:
     val eventLogVar = Var(Vector.empty[String])
     val submissions = new FeedbackSubmissionTracker
     var feedbackContext = Option.empty[(String, String)]
-    var editorDiagnostics = Seq.empty[CodeMirrorEditor.Diagnostic]
 
     def setEditorDiagnostics(diagnostics: Seq[CodeMirrorEditor.Diagnostic]): Unit =
-      editorDiagnostics = diagnostics
-      pythonEditor.setDiagnostics(diagnostics)
+      editorDiagnostics.set(diagnostics)
 
     def currentContext: (String, String) =
       selectedExerciseIdVar.now() -> selectedLanguageVar.now().toString
@@ -433,7 +431,7 @@ object FeedbackDemoElement:
             rawPython = fb.rawPython,
             status = fb.status.toString,
             normalizedScore = fb.normalizedScore,
-            editorDiagnostics = js.Array(editorDiagnostics.map { diagnostic =>
+            editorDiagnostics = js.Array(editorDiagnostics.now().map { diagnostic =>
               js.Dynamic.literal(line = diagnostic.line, message = diagnostic.message)
             } *)
           )

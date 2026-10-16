@@ -1,38 +1,24 @@
 package it.evadid.homepage.webElements.editor.code
 
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditorLoading
-import munit.FunSuite
-
+import com.raquo.laminar.api.L.*
+import scala.concurrent.Promise
 import scala.scalajs.js
+import scala.scalajs.js.timers.setTimeout
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-class CodeMirrorEditorPreheatSpec extends FunSuite {
-  test("startup warmup is scheduled once at idle priority and never creates an editor") {
-    val globals = js.Dynamic.global.globalThis
-    val previous = js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "window")
-    var callbacks = List.empty[js.Function1[js.Any, Unit]]
-    var deadlines = List.empty[Int]
-    var creations = 0
-    val idle: js.Function2[js.Function1[js.Any, Unit], js.Dynamic, Int] = (callback, options) => {
-      callbacks = callbacks :+ callback
-      deadlines = deadlines :+ options.timeout.asInstanceOf[Int]
-      callbacks.size
-    }
-    val create: js.Function0[Unit] = () => { creations += 1 }
-    globals.updateDynamic("window")(js.Dynamic.literal(
-      requestIdleCallback = idle,
-      EduSquirrelCodeMirror = js.Dynamic.literal(createEditor = create)
-    ))
-    try {
-      CodeMirrorEditorLoading.preheat()
-      CodeMirrorEditorLoading.preheat()
-      assertEquals(callbacks.size, 1)
-      assertEquals(deadlines, List(2000))
-      assertEquals(creations, 0)
-      callbacks.head(js.undefined)
-      assertEquals(creations, 0)
-    } finally {
-      if js.isUndefined(previous) then js.special.delete(globals, "window")
-      else js.Dynamic.global.Object.defineProperty(globals, "window", previous)
+class CodeMirrorEditorPreheatSpec extends EditorDomSuite {
+  test("warmup does not create editors and an available library is reused") {
+    val creations = Var(0)
+    val create: js.Function0[Unit] = () => creations.update(_ + 1)
+    org.scalajs.dom.window.asInstanceOf[js.Dynamic].updateDynamic("EduSquirrelCodeMirror")(
+      js.Dynamic.literal(createEditor = create))
+    CodeMirrorEditorLoading.preheat()
+    CodeMirrorEditorLoading.preheat()
+    val ready = Promise[Unit]()
+    setTimeout(300) { ready.success(()) }
+    ready.future.flatMap(_ => CodeMirrorEditorLoading.load()).map { _ =>
+      assertEquals(creations.now(), 0)
     }
   }
 }

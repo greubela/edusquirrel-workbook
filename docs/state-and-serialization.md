@@ -12,18 +12,15 @@ All changing client application, editor and lifecycle state must live in
 `val`-bound Airstream `Var[T]` values. Use `now()` to read a snapshot and
 `set`/`update` to change it. Do not use Scala `var` fields, captured mutable locals,
 or a `val` holding a mutable collection as an alternative. This includes counters,
-request identities, synchronization baselines, native handles and cleanup callbacks;
+request identities and native handles;
 it applies even when a value is not directly rendered. Keep values inside a `Var`
 immutable and derive other values through signals rather than duplicating state.
 
 ```scala
-private val mounted = Var(false)
 private val requestGeneration = Var(0L)
 
 def invalidate(): Unit = requestGeneration.update(_ + 1)
-val canRun = mounted.signal.combineWith(answer.signal).map { (isMounted, value) =>
-  isMounted && value.nonEmpty
-}
+val canRun = answer.signal.map(_.nonEmpty)
 ```
 
 A `Var` write made inside an Airstream observer is queued in a child transaction;
@@ -92,20 +89,23 @@ def pythonView(program: Var[ProgrammingState]): Var[String] =
   program.bimap(_.toPython.code)(ProgrammingStatePythonString(_))
 ```
 
-This pattern is suitable only when conversion is valid for the entire bound
-value range; conversion is limited to the supported program subset. Eva tabs use
-explicit synchronization instead so unsupported drafts remain intact. Do not force it for a full Java class or unsupported Snap program. See
+This pattern is suitable when the selected editor is bound to its native
+representation. Eva converts the central answer before replacing its editor;
+there are no retained inactive editor drafts or separate edit events. See
 [Eva programming state](eva-editor-programming-state.md).
 
-External editors can poll or regenerate metadata without changing the program.
-Guard manual synchronization against echoes, compare before publishing, and
-acknowledge editor-originated updates before observing them again. Prefer semantic
-`BeExpression` comparison when conversion is supported, but preserve meaningful
-source/layout data and unsupported programs. `state.fingerprint()` identifies the
+Every change to a Var has the same meaning. Observe its signal instead of adding
+listener constructor arguments such as `onStateEdited` or `handleFunctionInput`.
+Do not store a second answer or synchronization baseline to classify a change as
+an edit or a restoration. Native library adapters can compare against their live
+document to avoid unnecessary redraws, but that comparison is not a second
+persistent state or an edit classification.
+
+`state.fingerprint()` identifies the
 stored representation; it is not a general semantic-equivalence test.
 [SnapProjectXmlSync](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/SnapProjectXmlSync.scala)
 currently compares cleaned XML and handles runtime-pose metadata. The adapter's
-subscriptions, polling and cleanup belong to its mount/fullscreen lifecycle.
+subscriptions, polling and cleanup belong to its Laminar mount lifecycle.
 
 ## History, importance and destinations
 

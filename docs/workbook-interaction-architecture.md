@@ -35,7 +35,8 @@ flowchart TD
 ```
 
 An editor should be usable outside a workbook: receive its `Var[T]`, domain
-requirements/configuration and required callbacks/services. It should not look up
+requirements/configuration and required services. Observe changes through its Var
+signal rather than adding editor-listener callbacks. It should not look up
 its interaction, own a second persistence store or call a workbook renderer.
 The renderer supplies those inputs and handles placement in the workbook.
 A small inline interaction need not introduce a separate editor or fullscreen.
@@ -87,9 +88,10 @@ Read the [complete renderer and imports](../modules/client/src/main/scala/it/eva
 `HtmlRenderFactory` dispatches the model to a `LineBasedRenderingFactory`, which
 produces an `AtomarLineRendering`. Fullscreen uses `displayControl.setFullscreen`
 with an `HtmlAppElement`; editors owning work implement the appropriate
-`FullscreenLifecycle` cleanup. A renderer may retain an editor or create one on
-open, but reopening must use current synchronized values and closing/unmounting
-must cancel owned polling, jobs and subscriptions.
+mount-owned cleanup. Closing removes and unmounts the dialog child. Reopening
+creates a new mounted editor from current state; there is no fullscreen lifecycle
+interface or retained hidden editor. Native resources and subscriptions belong to
+Laminar owners.
 
 Local incomplete numeric/text drafts may differ from the saved value while
 validation is pending. Decide explicitly whether drafts are persisted: QR keeps
@@ -185,7 +187,7 @@ implemented IndexedDB restoration and independent refresh.
 | [Embroidery](embroidery-preview-workbook.md) | `TurtleRecreateShapeInteraction` stores `ProgrammingState` and target/palette/policy; drawing comparison is not a complete generic grader |
 | Evacuation | Shared saved floor/experiment with a client adapter to the legacy EVA2 simulation |
 | [SQL](sql-editor.md) | Shared answer/configuration and typed server execution; JDBC is server-only |
-| [Eva](eva-editor-programming-state.md) | Representation-bound language tabs, supported conversions and owned execution lifecycle |
+| [Eva](eva-editor-programming-state.md) | One active editor, central Var, asynchronous conversions and downstream panels |
 
 For turtle recreation, the current base is `WorkbookInteractionElement[ProgrammingState]`.
 `limitTurtleCommandUsage` remains authored configuration, but the current renderer
@@ -207,19 +209,19 @@ configuration omits the control-flow gutter; `showFlowchartGutter = true` enable
 it for supported Python programs. `EvaEditorConfig.codeMirrorConfig` supplies the
 settings to the standalone tab adapters. Java keeps its regular line-number
 gutter. The former `CodeMirrorEditorFlowchart` wrapper is no longer needed.
-Eva's generic navigation and feature-module boundaries are described in
+Eva's generic navigation and downstream panel boundaries are described in
 [Eva editor architecture](eva-editor-programming-state.md).
 
 `CodeMirrorEditorLoading` coordinates one shared module load in Scala.js. It
 resolves the module beside `app-loader.js`, including deployments under a path
-prefix, and injects an asynchronous module script only when an editor mounts.
+prefix, and shares one asynchronous module script between startup warmup and mounted editors.
 Entry pages do not eagerly import CodeMirror: CDN latency does not delay
 `DOMContentLoaded` or workbook startup. The textarea remains bound to the document
 while loading, and enhancement uses the latest text and diagnostics. Network
-failure or a 15-second timeout retains the textarea. Mount generation checks
+failure or a 15-second timeout retains the textarea. Mount ownership checks
 prevent a late response from creating an editor in an obsolete language tab.
-Module loading and editor creation yield to an idle browser task (with a timer
-fallback); no other workbook action awaits them. DOM construction necessarily
+Module loading and editor creation yield through a browser timer; no other
+workbook action awaits them. DOM construction necessarily
 runs on the browser thread, rather than in a Web Worker.
 
 Run `npm run test:workbooks -- codemirror` for delayed/failed imports, stale mounts,

@@ -96,7 +96,6 @@ case class HtmlBeProgramEditor(
     CodeMirrorEditor(
       fullInfo.loggerSystemInfo.uiAndDomLogger,
       strVar,
-      _ => textDirtyVar.set(true),
       language = Python,
       Var(CodeMirrorEditorConfig.Default)
     )
@@ -105,6 +104,7 @@ case class HtmlBeProgramEditor(
     TextViewTabNr,
     div(
       cls := "be-program-editor__python-view",
+      strVar.signal.changes --> (_ => textDirtyVar.set(true)),
       child <-- parseWarningVar.signal.map {
         case Some(msg) if msg.nonEmpty =>
           div(cls := "be-program-editor__parse-warning", msg)

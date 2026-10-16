@@ -158,11 +158,28 @@ test('Java appearance changes preserve the live editor, undo history and drawing
     assert(withMethods.startsWith(original.slice(0, original.lastIndexOf('}'))), 'adding methods preserves the original class contents');
     assert.match(withMethods, /public static void drawLine\(int distance\)/);
     assert.match(withMethods, /public void instanceMethod\(\)/);
+    await editor.locator('.java-function-editor__function').filter({hasText: 'instanceMethod()'}).click();
+    await editor.locator('.cm-content').waitFor();
+    await page.evaluate(() => {
+      const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(document.querySelector('dialog[open] .cm-editor'));
+      view.dispatch({changes: {from: view.state.doc.toString().indexOf('{') + 1, insert: '\n    Turtle.forward(7);'}});
+    });
+    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await page.waitForFunction(() => {
+      const node = document.querySelector('dialog[open] .cm-editor');
+      return node && EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(node).state.doc.toString().includes('Turtle.forward(7);');
+    });
+    const edited = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
+      .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
+    assert.match(edited, /public static void drawLine\(int distance\)/);
+    assert.match(edited, /public static void staticAgain\(\)/);
+    assert.match(edited, /public void instanceMethod\(\)\s*\{\s*Turtle\.forward\(7\);/,
+      'method edits update the central full program and preserve other methods');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
 
-test('language tabs follow the current Java draft and retain it across view switches', async () => {
+test('language tabs follow the current draft and commit converted representations', async () => {
   const browser = await chromium.launch({chromiumSandbox: true,
     executablePath: process.env.CHROMIUM_PATH || chromium.executablePath()});
   try {
@@ -257,7 +274,8 @@ test('language tabs follow the current Java draft and retain it across view swit
     await java.click();
     await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-label="Java"]')?.getAttribute('aria-selected') === 'true');
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
-    assert.equal(await readSource(), spaced, 'viewing Python does not replace the original Java source');
+    assert.match(await readSource(), /Turtle\.forward\(12\);/, 'returning to Java uses the converted program in the central answer');
+    assert.match(await readSource(), /class Drawing/);
     await checkTabs(true);
     await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, []);

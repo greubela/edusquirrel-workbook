@@ -1,12 +1,12 @@
 package it.evadid.homepage.webElements.editor.blockchain
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.blockchain.*
 import org.scalajs.dom
 
 case class BlockchainEditor(state: Var[TeachingChain], initial: TeachingChain, zeros: Int, locked: Signal[Boolean])
-    extends HtmlAppElement with FullscreenLifecycle {
+    extends HtmlAppElement {
   private val invalidNonceDrafts = Var(Map.empty[Int, String])
   private val mining = new BlockchainMiningController(state, zeros, callback => {
     val timer = dom.window.setTimeout(() => callback(), 0)
@@ -61,6 +61,5 @@ case class BlockchainEditor(state: Var[TeachingChain], initial: TeachingChain, z
       text <-- mining.message.signal.flatMapSwitch(textFor).combineWith(mining.attempts.signal)
         .map((template, attempts) => template.replace("{attempts}", attempts.toString))),
     div(cls := "blockchain-blocks", initial.blocks.indices.toList.map(blockCard)))
-  override def onFullscreenClose(): Unit = mining.cancel()
   override def dismissOnOutsideClick: Boolean = false
 }

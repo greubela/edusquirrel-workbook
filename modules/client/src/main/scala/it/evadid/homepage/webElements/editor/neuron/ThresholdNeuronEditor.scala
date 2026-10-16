@@ -1,12 +1,12 @@
 package it.evadid.homepage.webElements.editor.neuron
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.interactionElements.neuron.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 
 case class ThresholdNeuronEditor(state: Var[NeuronParameters], labels: List[LanguageMapContentId], examples: List[NeuronExample], initial: NeuronParameters)
-    extends HtmlAppElement with FullscreenLifecycle {
+    extends HtmlAppElement {
   private val draft = new NeuronEditorState(state, examples)
   private def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")
   private def binary(value: Boolean): String = if value then "1" else "0"
@@ -39,6 +39,5 @@ case class ThresholdNeuronEditor(state: Var[NeuronParameters], labels: List[Lang
     p(role := "status", aria.live := "polite", text <-- state.signal.map(p => examples.count(e => p.activates(e.inputs) == e.expected))
       .combineWith(textFor("neuronProgress")).map((count, text) => text.replace("{count}", count.toString).replace("{total}", examples.size.toString)))
   )
-  override def onFullscreenClose(): Unit = ()
   override def dismissOnOutsideClick: Boolean = false
 }

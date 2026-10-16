@@ -21,12 +21,12 @@ class TurtleProgramExecutionSpec extends FunSuite {
     var executions = 0
     var stopped = Vector.empty[String]
     var closed = Vector.empty[String]
-    val first = new EvaEditorExtension {
+    val first = new TurtleExecutionProvider {
       override def turtleCommands(value: ProgrammingState) = { offered :+= "first"; None }
       override def cancel(): Unit = stopped :+= "first"
       override def close(): Unit = closed :+= "first"
     }
-    val chosen = new EvaEditorExtension {
+    val chosen = new TurtleExecutionProvider {
       override def turtleCommands(value: ProgrammingState) = {
         offered :+= "chosen"
         Some(() => { executions += 1; Future.successful(mappedCommands()) })
@@ -45,16 +45,33 @@ class TurtleProgramExecutionSpec extends FunSuite {
       assertEquals(closed, Vector("first", "chosen"))
     }
   }
+  test("closing before scheduled derivation prevents execution from starting") {
+    val called = Var(false)
+    val provider = new TurtleExecutionProvider {
+      override def turtleCommands(source: ProgrammingState) = {
+        called.set(true)
+        Some(() => Future.successful(mappedCommands()))
+      }
+    }
+    val execution = new TurtleProgramExecution(List(provider))
+    val result = execution.commandsFor(javaSource())
+    execution.close()
+    result.transform { completed =>
+      assert(completed.failed.get.isInstanceOf[CancellationException])
+      assertEquals(called.now(), false)
+      scala.util.Success(())
+    }
+  }
+
   private val testingConfig = EvaEditorConfig.Default
   private class ExecutionFixture(val state: Var[ProgrammingState], val extension: Option[JavaTurtleEditorExtension]) {
     private val execution = new TurtleProgramExecution(extension.toList)
     def getCurrentTurtleCommands(): Future[List[TurtleCommand[Double]]] = execution.commandsFor(state.now())
     def currentState(): ProgrammingState = state.now()
-    def onFullscreenClose(): Unit = execution.close()
+    def close(): Unit = execution.close()
   }
   private def editorFor(source: ProgrammingState): ExecutionFixture = new ExecutionFixture(Var(source), None)
   private def javaPlain(state: Var[ProgrammingState], config: EvaEditorConfig,
-      onStateEdited: ProgrammingState => Unit = _ => (),
       runnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner): ExecutionFixture =
     new ExecutionFixture(state, Some(new JavaTurtleEditorExtension(state, runnerFactory)))
   private def javaExtension(fixture: ExecutionFixture): JavaTurtleEditorExtension = fixture.extension.get
@@ -104,20 +121,28 @@ class TurtleProgramExecutionSpec extends FunSuite {
     }
   }
 
+  private def afterDispatch[A](ready: => Boolean)(check: => Future[A]): Future[A] = {
+    def waitForRequest(remaining: Int): Future[Unit] =
+      if ready then Future.unit
+      else if remaining == 0 then Future.failed(AssertionError("The fake runner did not receive its request."))
+      else Future.unit.flatMap(_ => waitForRequest(remaining - 1))
+    waitForRequest(100).flatMap(_ => check)
+  }
+
   private def rejectsPartialJavaExecution(status: T.Status): Future[Unit] = {
     val source = javaSource()
     val stored = ProgrammingState.serializer.serialize(source)
     val factory = new ControlledRunnerFactory
-    var published = List.empty[ProgrammingState]
     val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
-      next => published = published :+ next, factory.create)
+      runnerFactory = factory.create)
     val result = editor.getCurrentTurtleCommands()
-    assertEquals(factory.runners.size, 1)
-    factory.runners.head.complete(execution = completedJava().copy(status = status))
-    result.failed.map { _ =>
-      assertEquals(editor.currentState(), source)
-      assertEquals(ProgrammingState.serializer.serialize(editor.currentState()), stored)
-      assertEquals(published, Nil)
+    afterDispatch(factory.runners.nonEmpty && factory.runners.head.requests.nonEmpty) {
+      assertEquals(factory.runners.size, 1)
+      factory.runners.head.complete(execution = completedJava().copy(status = status))
+      result.failed.map { _ =>
+        assertEquals(editor.currentState(), source)
+        assertEquals(ProgrammingState.serializer.serialize(editor.currentState()), stored)
+      }
     }
   }
 
@@ -150,27 +175,27 @@ class TurtleProgramExecutionSpec extends FunSuite {
     val stored = ProgrammingState.serializer.serialize(source)
     val fingerprint = ProgrammingState.fingerprint(source)
     val factory = new ControlledRunnerFactory
-    var published = List.empty[ProgrammingState]
     val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
-      next => published = published :+ next, factory.create)
+      runnerFactory = factory.create)
     val result = editor.getCurrentTurtleCommands()
-    assertEquals(factory.runners.size, 1)
-    val runner = factory.runners.head
-    assertEquals(runner.requests.size, 1)
-    val request = runner.requests.head
-    assertEquals(request.program.root.entryPoint.binding.originalName, "main")
-    assertEquals(request.program.root.methods.map(_.binding.originalName), Vector("draw", "main"))
-    assertEquals(request.limits, T.Limits())
-    val execution = T.runVm(request.program, request.limits)
-    assertEquals(execution.status, T.Status.Completed)
-    assertEquals(execution.commands, completedJava(-12).commands)
-    runner.complete(execution = execution)
-    result.map { commands =>
-      assertEquals(commands, mappedCommands(-12.0))
-      assertEquals(editor.currentState(), source)
-      assertEquals(ProgrammingState.serializer.serialize(editor.currentState()), stored)
-      assertEquals(ProgrammingState.fingerprint(editor.currentState()), fingerprint)
-      assertEquals(published, Nil)
+    afterDispatch(factory.runners.nonEmpty && factory.runners.head.requests.nonEmpty) {
+      assertEquals(factory.runners.size, 1)
+      val runner = factory.runners.head
+      assertEquals(runner.requests.size, 1)
+      val request = runner.requests.head
+      assertEquals(request.program.root.entryPoint.binding.originalName, "main")
+      assertEquals(request.program.root.methods.map(_.binding.originalName), Vector("draw", "main"))
+      assertEquals(request.limits, T.Limits())
+      val execution = T.runVm(request.program, request.limits)
+      assertEquals(execution.status, T.Status.Completed)
+      assertEquals(execution.commands, completedJava(-12).commands)
+      runner.complete(execution = execution)
+      result.map { commands =>
+        assertEquals(commands, mappedCommands(-12.0))
+        assertEquals(editor.currentState(), source)
+        assertEquals(ProgrammingState.serializer.serialize(editor.currentState()), stored)
+        assertEquals(ProgrammingState.fingerprint(editor.currentState()), fingerprint)
+      }
     }
   }
 
@@ -214,11 +239,13 @@ class TurtleProgramExecutionSpec extends FunSuite {
       runnerFactory = factory.create)
     val error = new IllegalStateException("worker failed")
     val result = editor.getCurrentTurtleCommands()
-    factory.runners.head.requests.head.result.failure(error)
-    result.failed.map { actual =>
-      assert(actual eq error)
-      assertEquals(editor.currentState(), source)
-      assertEquals(ProgrammingState.serializer.serialize(editor.currentState()), stored)
+    afterDispatch(factory.runners.nonEmpty && factory.runners.head.requests.nonEmpty) {
+      factory.runners.head.requests.head.result.failure(error)
+      result.failed.map { actual =>
+        assert(actual eq error)
+        assertEquals(editor.currentState(), source)
+        assertEquals(ProgrammingState.serializer.serialize(editor.currentState()), stored)
+      }
     }
   }
 
@@ -227,17 +254,19 @@ class TurtleProgramExecutionSpec extends FunSuite {
     val editor = javaPlain(Var[ProgrammingState](javaSource()), testingConfig,
       runnerFactory = factory.create)
     val first = editor.getCurrentTurtleCommands()
-    val runner = factory.runners.head
-    val second = editor.getCurrentTurtleCommands()
-    second.failed.flatMap { error =>
-      assert(error.isInstanceOf[IllegalStateException])
-      assertEquals(factory.runners.size, 1)
-      assertEquals(runner.requests.size, 1)
-      assertEquals(runner.cancelCalls, 0)
-      assertEquals(runner.closeCalls, 0)
-      assert(!first.isCompleted)
-      runner.complete()
-      first.map(commands => assertEquals(commands, mappedCommands()))
+    afterDispatch(factory.runners.nonEmpty && factory.runners.head.requests.nonEmpty) {
+      val runner = factory.runners.head
+      val second = editor.getCurrentTurtleCommands()
+      second.failed.flatMap { error =>
+        assert(error.isInstanceOf[IllegalStateException])
+        assertEquals(factory.runners.size, 1)
+        assertEquals(runner.requests.size, 1)
+        assertEquals(runner.cancelCalls, 0)
+        assertEquals(runner.closeCalls, 0)
+        assert(!first.isCompleted)
+        runner.complete()
+        first.map(commands => assertEquals(commands, mappedCommands()))
+      }
     }
   }
 
@@ -248,14 +277,16 @@ class TurtleProgramExecutionSpec extends FunSuite {
     var reentrant = Option.empty[Future[List[TurtleCommand[Double]]]]
     runner.onRun = () => reentrant = Some(editor.getCurrentTurtleCommands())
     val first = editor.getCurrentTurtleCommands()
-    assertEquals(runner.requests.size, 1)
-    reentrant.get.failed.flatMap { error =>
-      assert(error.isInstanceOf[IllegalStateException])
-      assertEquals(runner.cancelCalls, 0)
-      assertEquals(runner.closeCalls, 0)
-      assert(!first.isCompleted)
-      runner.complete()
-      first.map(commands => assertEquals(commands, mappedCommands()))
+    afterDispatch(runner.requests.nonEmpty) {
+      assertEquals(runner.requests.size, 1)
+      reentrant.get.failed.flatMap { error =>
+        assert(error.isInstanceOf[IllegalStateException])
+        assertEquals(runner.cancelCalls, 0)
+        assertEquals(runner.closeCalls, 0)
+        assert(!first.isCompleted)
+        runner.complete()
+        first.map(commands => assertEquals(commands, mappedCommands()))
+      }
     }
   }
 
@@ -265,21 +296,25 @@ class TurtleProgramExecutionSpec extends FunSuite {
     val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
       runnerFactory = factory.create)
     val first = editor.getCurrentTurtleCommands()
-    val runner = factory.runners.head
-    javaExtension(editor).stop()
-    assertEquals(runner.cancelCalls, 1)
-    assert(!runner.requests.head.result.isCompleted)
-    first.failed.flatMap { error =>
-      assert(error.isInstanceOf[CancellationException])
-      assertEquals(editor.currentState(), source)
-      val restarted = editor.getCurrentTurtleCommands()
-      assertEquals(factory.runners.size, 1)
-      assertEquals(runner.requests.size, 2)
-      runner.complete(0, completedJava(999))
-      runner.requests.head.result.future.flatMap { _ =>
-        assert(!restarted.isCompleted)
-        runner.complete(1)
-        restarted.map(commands => assertEquals(commands, mappedCommands()))
+    afterDispatch(factory.runners.nonEmpty && factory.runners.head.requests.nonEmpty) {
+      val runner = factory.runners.head
+      javaExtension(editor).stop()
+      assertEquals(runner.cancelCalls, 1)
+      assert(!runner.requests.head.result.isCompleted)
+      first.failed.flatMap { error =>
+        assert(error.isInstanceOf[CancellationException])
+        assertEquals(editor.currentState(), source)
+        val restarted = editor.getCurrentTurtleCommands()
+        afterDispatch(runner.requests.size >= 2) {
+        assertEquals(factory.runners.size, 1)
+        assertEquals(runner.requests.size, 2)
+        runner.complete(0, completedJava(999))
+        runner.requests.head.result.future.flatMap { _ =>
+          assert(!restarted.isCompleted)
+          runner.complete(1)
+          restarted.map(commands => assertEquals(commands, mappedCommands()))
+        }
+        }
       }
     }
   }
@@ -290,24 +325,28 @@ class TurtleProgramExecutionSpec extends FunSuite {
     val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
       runnerFactory = factory.create)
     val first = editor.getCurrentTurtleCommands()
-    val previous = factory.runners.head
-    editor.onFullscreenClose()
-    assertEquals(previous.cancelCalls, 1)
-    assertEquals(previous.closeCalls, 1)
-    assert(!previous.requests.head.result.isCompleted)
-    first.failed.flatMap { error =>
-      assert(error.isInstanceOf[CancellationException])
-      val restarted = editor.getCurrentTurtleCommands()
-      assertEquals(factory.runners.size, 2)
-      val current = factory.runners.last
-      previous.complete(execution = completedJava(999))
-      previous.requests.head.result.future.flatMap { _ =>
-        assertEquals(current.cancelCalls, 0)
-        assert(!restarted.isCompleted)
-        current.complete()
-        restarted.map { commands =>
-          assertEquals(commands, mappedCommands())
-          assertEquals(editor.currentState(), source)
+    afterDispatch(factory.runners.nonEmpty && factory.runners.head.requests.nonEmpty) {
+      val previous = factory.runners.head
+      editor.close()
+      assertEquals(previous.cancelCalls, 1)
+      assertEquals(previous.closeCalls, 1)
+      assert(!previous.requests.head.result.isCompleted)
+      first.failed.flatMap { error =>
+        assert(error.isInstanceOf[CancellationException])
+        val restarted = editor.getCurrentTurtleCommands()
+        afterDispatch(factory.runners.size >= 2 && factory.runners.last.requests.nonEmpty) {
+        assertEquals(factory.runners.size, 2)
+        val current = factory.runners.last
+        previous.complete(execution = completedJava(999))
+        previous.requests.head.result.future.flatMap { _ =>
+          assertEquals(current.cancelCalls, 0)
+          assert(!restarted.isCompleted)
+          current.complete()
+          restarted.map { commands =>
+            assertEquals(commands, mappedCommands())
+            assertEquals(editor.currentState(), source)
+          }
+        }
         }
       }
     }
@@ -320,27 +359,31 @@ class TurtleProgramExecutionSpec extends FunSuite {
     val editor = javaPlain(Var[ProgrammingState](initial), testingConfig,
       runnerFactory = factory.create)
     val first = editor.getCurrentTurtleCommands()
-    val runner = factory.runners.head
-    editor.state.set(restored)
-    assertEquals(runner.cancelCalls, 1)
-    assertEquals(runner.closeCalls, 1)
-    assert(!runner.requests.head.result.isCompleted)
-    first.failed.flatMap { error =>
-      assert(error.isInstanceOf[CancellationException])
-      val restarted = editor.getCurrentTurtleCommands()
-      assertEquals(factory.runners.size, 2)
-      val current = factory.runners.last
-      assertEquals(current.requests.size, 1)
-      val execution = T.runVm(current.requests.head.program, current.requests.head.limits)
-      assertEquals(execution.commands, completedJava(42).commands)
-      runner.complete(0, completedJava(999))
-      runner.requests.head.result.future.flatMap { _ =>
-        assert(!restarted.isCompleted)
-        assertEquals(current.closeCalls, 0)
-        current.complete(execution = execution)
-        restarted.map { commands =>
-          assertEquals(commands, mappedCommands(42.0))
-          assertEquals(editor.currentState(), restored)
+    afterDispatch(factory.runners.nonEmpty && factory.runners.head.requests.nonEmpty) {
+      val runner = factory.runners.head
+      editor.state.set(restored)
+      assertEquals(runner.cancelCalls, 1)
+      assertEquals(runner.closeCalls, 1)
+      assert(!runner.requests.head.result.isCompleted)
+      first.failed.flatMap { error =>
+        assert(error.isInstanceOf[CancellationException])
+        val restarted = editor.getCurrentTurtleCommands()
+        afterDispatch(factory.runners.size >= 2 && factory.runners.last.requests.nonEmpty) {
+        assertEquals(factory.runners.size, 2)
+        val current = factory.runners.last
+        assertEquals(current.requests.size, 1)
+        val execution = T.runVm(current.requests.head.program, current.requests.head.limits)
+        assertEquals(execution.commands, completedJava(42).commands)
+        runner.complete(0, completedJava(999))
+        runner.requests.head.result.future.flatMap { _ =>
+          assert(!restarted.isCompleted)
+          assertEquals(current.closeCalls, 0)
+          current.complete(execution = execution)
+          restarted.map { commands =>
+            assertEquals(commands, mappedCommands(42.0))
+            assertEquals(editor.currentState(), restored)
+          }
+        }
         }
       }
     }
@@ -352,26 +395,30 @@ class TurtleProgramExecutionSpec extends FunSuite {
     val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
       runnerFactory = factory.create)
     val first = editor.getCurrentTurtleCommands()
-    val runner = factory.runners.head
-    editor.state.set(javaSource(42))
-    assertEquals(runner.cancelCalls, 1)
-    assertEquals(runner.closeCalls, 1)
-    editor.state.set(source)
-    first.failed.flatMap { error =>
-      assert(error.isInstanceOf[CancellationException])
-      assertEquals(editor.currentState(), source)
-      val restarted = editor.getCurrentTurtleCommands()
-      assertEquals(factory.runners.size, 2)
-      val current = factory.runners.last
-      assertEquals(current.requests.size, 1)
-      runner.complete(0, completedJava(999))
-      runner.requests.head.result.future.flatMap { _ =>
-        assert(!restarted.isCompleted)
-        assertEquals(runner.cancelCalls, 1)
-        assertEquals(current.cancelCalls, 0)
-        assertEquals(current.closeCalls, 0)
-        current.complete()
-        restarted.map(commands => assertEquals(commands, mappedCommands()))
+    afterDispatch(factory.runners.nonEmpty && factory.runners.head.requests.nonEmpty) {
+      val runner = factory.runners.head
+      editor.state.set(javaSource(42))
+      assertEquals(runner.cancelCalls, 1)
+      assertEquals(runner.closeCalls, 1)
+      editor.state.set(source)
+      first.failed.flatMap { error =>
+        assert(error.isInstanceOf[CancellationException])
+        assertEquals(editor.currentState(), source)
+        val restarted = editor.getCurrentTurtleCommands()
+        afterDispatch(factory.runners.size >= 2 && factory.runners.last.requests.nonEmpty) {
+        assertEquals(factory.runners.size, 2)
+        val current = factory.runners.last
+        assertEquals(current.requests.size, 1)
+        runner.complete(0, completedJava(999))
+        runner.requests.head.result.future.flatMap { _ =>
+          assert(!restarted.isCompleted)
+          assertEquals(runner.cancelCalls, 1)
+          assertEquals(current.cancelCalls, 0)
+          assertEquals(current.closeCalls, 0)
+          current.complete()
+          restarted.map(commands => assertEquals(commands, mappedCommands()))
+        }
+        }
       }
     }
   }
@@ -382,23 +429,27 @@ class TurtleProgramExecutionSpec extends FunSuite {
     val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
       runnerFactory = factory.create)
     val result = editor.getCurrentTurtleCommands()
-    val runner = factory.runners.head
-    val changed = runner.requests.head.result.future.map { _ =>
-      editor.state.set(javaSource(42))
-      editor.state.set(source)
-    }
-    runner.complete()
-    changed.flatMap { _ =>
-      result.failed.flatMap { error =>
-        assert(error.isInstanceOf[CancellationException])
-        assertEquals(editor.currentState(), source)
-        val restarted = editor.getCurrentTurtleCommands()
-        assertEquals(factory.runners.size, 2)
-        assertEquals(runner.closeCalls, 1)
-        val current = factory.runners.last
-        assertEquals(current.requests.size, 1)
-        current.complete()
-        restarted.map(commands => assertEquals(commands, mappedCommands()))
+    afterDispatch(factory.runners.nonEmpty && factory.runners.head.requests.nonEmpty) {
+      val runner = factory.runners.head
+      val changed = runner.requests.head.result.future.map { _ =>
+        editor.state.set(javaSource(42))
+        editor.state.set(source)
+      }
+      runner.complete()
+      changed.flatMap { _ =>
+        result.failed.flatMap { error =>
+          assert(error.isInstanceOf[CancellationException])
+          assertEquals(editor.currentState(), source)
+          val restarted = editor.getCurrentTurtleCommands()
+          afterDispatch(factory.runners.size >= 2 && factory.runners.last.requests.nonEmpty) {
+          assertEquals(factory.runners.size, 2)
+          assertEquals(runner.closeCalls, 1)
+          val current = factory.runners.last
+          assertEquals(current.requests.size, 1)
+          current.complete()
+          restarted.map(commands => assertEquals(commands, mappedCommands()))
+          }
+        }
       }
     }
   }
@@ -409,12 +460,14 @@ class TurtleProgramExecutionSpec extends FunSuite {
     val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
       runnerFactory = factory.create)
     val result = editor.getCurrentTurtleCommands()
-    val runner = factory.runners.head
-    editor.state.set(source.copy())
-    assertEquals(runner.cancelCalls, 0)
-    assertEquals(runner.closeCalls, 0)
-    runner.complete()
-    result.map(commands => assertEquals(commands, mappedCommands()))
+    afterDispatch(factory.runners.nonEmpty && factory.runners.head.requests.nonEmpty) {
+      val runner = factory.runners.head
+      editor.state.set(source.copy())
+      assertEquals(runner.cancelCalls, 0)
+      assertEquals(runner.closeCalls, 0)
+      runner.complete()
+      result.map(commands => assertEquals(commands, mappedCommands()))
+    }
   }
 
   test("Java session release rejects a reentrant run until its old runner is closed") {
@@ -453,10 +506,23 @@ class TurtleProgramExecutionSpec extends FunSuite {
     editor.getCurrentTurtleCommands().failed.flatMap { failure =>
       assert(failure eq error)
       val retry = editor.getCurrentTurtleCommands()
-      assertEquals(calls, 2)
-      assertEquals(runner.requests.size, 1)
-      runner.complete()
-      retry.map(commands => assertEquals(commands, mappedCommands()))
+      afterDispatch(calls >= 2 && runner.requests.nonEmpty) {
+        assertEquals(calls, 2)
+        assertEquals(runner.requests.size, 1)
+        runner.complete()
+        retry.map(commands => assertEquals(commands, mappedCommands()))
+      }
+    }
+  }
+
+  test("closing before asynchronous parsing finishes never starts a Java worker") {
+    val factory = new ControlledRunnerFactory
+    val editor = javaPlain(Var[ProgrammingState](javaSource()), testingConfig, runnerFactory = factory.create)
+    val pending = editor.getCurrentTurtleCommands()
+    editor.close()
+    pending.failed.map { error =>
+      assert(error.isInstanceOf[CancellationException])
+      assertEquals(factory.runners.size, 0)
     }
   }
 
