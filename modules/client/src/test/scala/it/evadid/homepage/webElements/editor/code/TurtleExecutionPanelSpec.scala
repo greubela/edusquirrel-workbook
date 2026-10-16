@@ -12,7 +12,16 @@ import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 
-class TurtleExecutionPanelSpec extends FunSuite {
+class TurtleExecutionPanelSpec extends EditorDomSuite {
+  private val mountedPanels = Var(Map.empty[TurtleExecutionPanel, () => Unit])
+  private def mountPanel(panel: TurtleExecutionPanel): Unit = {
+    val close = mount(panel.getDomElement())
+    mountedPanels.update(_ + (panel -> close))
+  }
+  private def unmountPanel(panel: TurtleExecutionPanel): Unit = {
+    mountedPanels.now().get(panel).foreach(_())
+    mountedPanels.update(_ - panel)
+  }
   private def squareDrawing(side: Double = 25, turn: Double = 90): List[TurtleCommand[Double]] =
     List.fill(4)(List(TurtleCommand[Double]("forward", List(side)), TurtleCommand[Double]("right", List(turn)))).flatten
 
@@ -23,7 +32,7 @@ class TurtleExecutionPanelSpec extends FunSuite {
     val panel = new TurtleExecutionPanel(source,
       () => { val result = Promise[List[TurtleCommand[Double]]](); requests :+= result; result.future },
       () => stops += 1, Some(TurtleGraphic.TurtleGraphicProgram(squareDrawing())))
-    panel.activate()
+    mountPanel(panel)
   }
 
   test("drawing runs follow the configured policy for Java, Python and Snap sources") {
@@ -38,48 +47,31 @@ class TurtleExecutionPanelSpec extends FunSuite {
       val state = Var[ProgrammingState](original)
       val stored = ProgrammingState.serializer.serialize(original)
       val panel = new TurtleExecutionPanel(state, () => Future.successful(commands), () => (), Some(target), policy)
-      panel.activate()
+      mountPanel(panel)
       panel.run()
       Future.unit.flatMap(_ => Future.unit.map { _ =>
         val matches = policy == TurtleDrawingPolicy.Coverage
         assertEquals(panel.status.now(), TurtleExecutionPanel.Status.Ready(commands, Some(matches)))
         assertEquals(ProgrammingState.serializer.serialize(state.now()), stored)
-        panel.deactivate()
+        unmountPanel(panel)
       })
     }).map(_ => ())
   }
 
-  test("pending editor changes are captured before a drawing run starts") {
+  test("drawing execution reads the current central answer without capturing an editor") {
     val state = Var[ProgrammingState](ProgrammingStatePythonString("forward(5)"))
-    var stops = 0
-    var captured = state.now()
     val commands = List(TurtleCommand[Double]("forward", List(10.0)))
     val panel = new TurtleExecutionPanel(state, () => {
-      assertEquals(captured, ProgrammingStatePythonString("forward(10)"))
+      assertEquals(state.now(), ProgrammingStatePythonString("forward(10)"))
       Future.successful(commands)
-    }, () => stops += 1, prepare = () => {
-      state.set(ProgrammingStatePythonString("forward(10)"))
-      captured = state.now()
-    })
-    panel.activate()
+    }, () => ())
+    mountPanel(panel)
+    state.set(ProgrammingStatePythonString("forward(10)"))
     panel.run()
     Future.unit.flatMap(_ => Future.unit.map { _ =>
       assertEquals(panel.status.now(), TurtleExecutionPanel.Status.Ready(commands, None))
-      assertEquals(stops, 0)
-      panel.deactivate()
+      unmountPanel(panel)
     })
-  }
-
-  test("a failed source capture prevents execution without losing the draft") {
-    val original = ProgrammingStateJavaString("class Drawing {")
-    val state = Var[ProgrammingState](original)
-    var runs = 0
-    val panel = new TurtleExecutionPanel(state, () => { runs += 1; Future.successful(Nil) }, () => (),
-      prepare = () => throw IllegalStateException("unavailable"))
-    panel.run()
-    assertEquals(panel.status.now(), TurtleExecutionPanel.Status.Failed("unavailable"))
-    assertEquals(runs, 0)
-    assertEquals(state.now(), original)
   }
 
   test("Java drawing comparison rejects wrong lengths, turns, empty drawings and extra strokes") {
@@ -141,7 +133,7 @@ class TurtleExecutionPanelSpec extends FunSuite {
     fixture.requests.head.future.map { _ => () }.flatMap { _ =>
       Future.unit.map { _ =>
         assertEquals(fixture.panel.status.now(), Status.Ready(squareDrawing(), Some(true)))
-        fixture.panel.deactivate()
+        unmountPanel(fixture.panel)
         assertEquals(fixture.panel.status.now(), Status.Idle)
       }
     }
@@ -163,7 +155,7 @@ class TurtleExecutionPanelSpec extends FunSuite {
       newest.success(squareDrawing(24))
     }}.flatMap(_ => newest.future).flatMap(_ => Future.unit.map { _ =>
       assertEquals(fixture.panel.status.now(), Status.Ready(squareDrawing(24), Some(false)))
-      fixture.panel.deactivate()
+      unmountPanel(fixture.panel)
     })
   }
 
@@ -182,7 +174,7 @@ class TurtleExecutionPanelSpec extends FunSuite {
     fixture.requests.head.success(squareDrawing())
     fixture.requests.head.future.flatMap(_ => Future.unit.map { _ =>
       assertEquals(fixture.panel.status.now(), Status.Idle)
-      fixture.panel.deactivate()
+      unmountPanel(fixture.panel)
     })
   }
 
@@ -197,7 +189,7 @@ class TurtleExecutionPanelSpec extends FunSuite {
     val panel = new TurtleExecutionPanel(source,
       () => { val result = Promise[List[TurtleCommand[Double]]](); requests :+= result; result.future },
       () => stops += 1)
-    panel.activate()
+    mountPanel(panel)
     panel.run()
     source.set(original.copy())
     assertEquals(panel.status.now(), Status.Running)
@@ -216,7 +208,7 @@ class TurtleExecutionPanelSpec extends FunSuite {
     }).flatMap(_ => newest.future).flatMap(_ => Future.unit.map { _ =>
       assertEquals(panel.status.now(), Status.Ready(squareDrawing(24), None))
       assertEquals(source.now(), original)
-      panel.deactivate()
+      unmountPanel(panel)
     })
   }
 
@@ -224,15 +216,15 @@ class TurtleExecutionPanelSpec extends FunSuite {
     import TurtleExecutionPanel.Status
     val fixture = new PanelFixture
     fixture.panel.run()
-    fixture.panel.deactivate()
+    unmountPanel(fixture.panel)
     assertEquals(fixture.stops, 1)
     fixture.requests.head.success(squareDrawing())
     fixture.requests.head.future.flatMap(_ => Future.unit.map { _ =>
       assertEquals(fixture.panel.status.now(), Status.Idle)
-      fixture.panel.activate()
+      mountPanel(fixture.panel)
       fixture.panel.run()
       assertEquals(fixture.requests.size, 2)
-      fixture.panel.deactivate()
+      unmountPanel(fixture.panel)
     })
   }
 
@@ -243,7 +235,7 @@ class TurtleExecutionPanelSpec extends FunSuite {
     panel.run()
     Future.unit.map { _ =>
       assertEquals(panel.status.now(), Status.Failed("unavailable"))
-      panel.deactivate()
+      unmountPanel(panel)
     }
   }
 
@@ -259,7 +251,7 @@ class TurtleExecutionPanelSpec extends FunSuite {
     assertEquals(fixture.requests.size, 0)
     assertEquals(fixture.panel.status.now(), Status.Stopped)
     owner.killSubscriptions()
-    fixture.panel.deactivate()
+    unmountPanel(fixture.panel)
   }
 
   test("shared drawing panel accepts a Python source without converting or publishing it") {
@@ -267,12 +259,12 @@ class TurtleExecutionPanelSpec extends FunSuite {
     val original = ProgrammingStatePythonString("forward(25)")
     val source = Var[ProgrammingState](original)
     val panel = new TurtleExecutionPanel(source, () => Future.successful(squareDrawing()), () => ())
-    panel.activate()
+    mountPanel(panel)
     panel.run()
     Future.unit.flatMap(_ => Future.unit.map { _ =>
       assertEquals(panel.status.now(), Status.Ready(squareDrawing(), None))
       assertEquals(source.now(), original)
-      panel.deactivate()
+      unmountPanel(panel)
     })
   }
 

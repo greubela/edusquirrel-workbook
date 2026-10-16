@@ -1,13 +1,13 @@
 package it.evadid.homepage.webElements.editor.evacuation
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.evacuation.*
 import org.scalajs.dom
 import scala.util.Try
 
 case class EvacuationSimulationEditor(answer: Var[EvacuationExperiment], initial: EvacuationExperiment, locked: Signal[Boolean])
-    extends HtmlAppElement with FullscreenLifecycle {
+    extends HtmlAppElement {
   private val editing = Var(true)
   private val plan = Var(answer.now().floor)
   private val speedDraft = Var(answer.now().settings.speedMetresPerSecond.toString)
@@ -85,6 +85,5 @@ case class EvacuationSimulationEditor(answer: Var[EvacuationExperiment], initial
         button(typ := "button", disabled <-- locked, text <-- textFor("evacuationRemoveRun"),
           onClick --> (_ => answer.update(e => e.copy(measurements = e.measurements.patch(index, Nil, 1)))))))))))),
     p(text <-- textFor("evacuationMeasurementsNote")))
-  override def onFullscreenClose(): Unit = playback.pause()
   override def dismissOnOutsideClick: Boolean = false
 }

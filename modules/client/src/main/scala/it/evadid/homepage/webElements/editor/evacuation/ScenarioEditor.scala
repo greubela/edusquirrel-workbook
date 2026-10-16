@@ -3,14 +3,14 @@ package it.evadid.homepage.webElements.editor.evacuation
 import com.raquo.laminar.api.L.*
 import it.evadid.evacuation.eva2.control.modes.ScenarioEditorMode
 import it.evadid.evacuation.eva2.model.EvaFloorMap
-import it.evadid.homepage.webElements.{FullscreenLifecycle, HtmlAppElement}
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.evacuation.*
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationFloorRequirements
 
 /** Local EVA2 state; no standalone ProgramState, resource downloads or simulation timers. */
 case class ScenarioEditor(answer: Var[EvacuationFloorPlan], initial: EvacuationFloorPlan, locked: Signal[Boolean],
     requirements: EvacuationFloorRequirements = EvacuationFloorRequirements())
-    extends HtmlAppElement with FullscreenLifecycle {
+    extends HtmlAppElement {
   val floorMap: Var[EvaFloorMap] = Var(EvacuationFloorAdapter.decode(answer.now()))
   private val selected = Var(0)
   private var isLocked = false
@@ -32,7 +32,7 @@ case class ScenarioEditor(answer: Var[EvacuationFloorPlan], initial: EvacuationF
     }), onClick --> (_ => if (add) mode.handleExtend(false, false, !horizontal, horizontal)
       else mode.handleShrink(false, false, !horizontal, horizontal)))
 
-  override def getDomElement(): Element = div(cls := "evacuation-editor",
+  override def getDomElement(): Element = div(onUnmountCallback(_ => unmount()),cls := "evacuation-editor",
     onMountCallback(ctx => {
       isLocked = locked.observe(using ctx.owner).now()
       locked.changes.foreach(value => isLocked = value)(using ctx.owner)
@@ -53,6 +53,6 @@ case class ScenarioEditor(answer: Var[EvacuationFloorPlan], initial: EvacuationF
         floorMap.set(EvacuationFloorAdapter.decode(initial)); answer.set(initial)
       }))),
     EvacuationFloorView(floorMap.signal, locked, pos => mode.mainAreaTileMapController.onMouseClickingOnTile(pos)).getDomElement())
-  override def onFullscreenClose(): Unit = mode.onLeavingMode()
+  private def unmount(): Unit = mode.onLeavingMode()
   override def dismissOnOutsideClick: Boolean = false
 }

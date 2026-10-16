@@ -44,7 +44,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val javaExecution = new JavaTurtleEditorExtension(boundVar)
     val execution = new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleProgramExecution(List(javaExecution))
-    val editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(execution), EvaEditorConfig(snapConfig = editorConfig))
+    val editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, Nil, EvaEditorConfig(snapConfig = editorConfig))
 
     def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)
 
@@ -84,7 +84,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     val runId = Var(0)
 
     def runProgram(): Unit = {
-      val source = Try(editor.captureSource())
+      val source = Try(boundVar.now())
       runId.update(_ + 1)
       val requestedRun = runId.now()
       stageImageVar.set(None)
@@ -104,6 +104,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val stageOutput: Element = div(
       cls := "prog-ex-stage-output",
+      onUnmountCallback(_ => execution.close()),
       boundVar.signal.changes --> { _ =>
         runId.update(_ + 1)
         execution.cancel()

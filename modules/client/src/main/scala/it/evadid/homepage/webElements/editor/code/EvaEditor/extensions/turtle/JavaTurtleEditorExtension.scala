@@ -5,7 +5,7 @@ import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.div
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorExtension, EvaEditorModule}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleExecutionProvider
 import it.evadid.homepage.webElements.editor.code.JavaEditorSession
 import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution
 import it.evadid.vm.simulation.java.JavaTurtleRuntime
@@ -20,7 +20,7 @@ import scala.util.{Success, Try}
 final class JavaTurtleEditorExtension(
     state: Var[ProgrammingState],
     runnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
-) extends EvaEditorExtension with EvaEditorModule {
+) extends TurtleExecutionProvider {
   private val session = Var(Option.empty[JavaEditorSession])
   private class Attempt {
     val owner = new ManualOwner
@@ -36,28 +36,25 @@ final class JavaTurtleEditorExtension(
 
   def run(source: ProgrammingStateJavaString): Future[List[TurtleCommand[Double]]] = {
     if running.now().nonEmpty then return Future.failed(IllegalStateException("Java execution is already running."))
-    Try(source.isClassProgram) match {
-      case Success(false) => return Try(source.toLegacyTurtleCommands).fold(Future.failed, Future.successful)
-      case _ => ()
-    }
-    execute(source)(_.run().map(commandsFrom))
-  }
-
-  private def execute[A](source: ProgrammingStateJavaString)(operation: JavaEditorSession => Future[A]): Future[A] = {
-    if running.now().nonEmpty then return Future.failed(IllegalStateException("Java execution is already running."))
-    val current = session.now().getOrElse {
-      val created = new JavaEditorSession(source, runnerFactory)
-      session.set(Some(created))
-      created
-    }
-    current.updateSource(source)
     val attempt = new Attempt
     running.set(Some(attempt))
     val original = state.now()
     state.signal.changes.foreach { next =>
       if next != original then close()
     }(using attempt.owner)
-    Try(operation(current)).fold(Future.failed, identity).map { result =>
+    Future(Try(source.isClassProgram).getOrElse(true)).flatMap { isClass =>
+      if attempt.invalidated.now() then Future.failed(CancellationException("Java execution cancelled."))
+      else if !isClass then Future(source.toLegacyTurtleCommands)
+      else {
+        val current = session.now().getOrElse {
+          val created = new JavaEditorSession(source, runnerFactory)
+          session.set(Some(created))
+          created
+        }
+        current.updateSource(source)
+        current.run().map(commandsFrom)
+      }
+    }.map { result =>
       if attempt.invalidated.now() then throw CancellationException("Java execution cancelled.")
       result
     }.andThen { case _ =>
@@ -95,5 +92,4 @@ final class JavaTurtleEditorExtension(
     discarded.foreach(_.release())
   }
 
-  override def onFullscreenClose(): Unit = close()
 }

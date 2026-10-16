@@ -9,6 +9,8 @@ trait HtmlAppElement {
 
   lazy val fullInfo: FullInfo = HtmlFullWorkbookApp.fullInfo
 
+  def dismissOnOutsideClick: Boolean = true
+
   def getDomElement(): Element
 
   protected val laminarHelper: LaminarRenderHelper = LaminarRenderHelper.singleton

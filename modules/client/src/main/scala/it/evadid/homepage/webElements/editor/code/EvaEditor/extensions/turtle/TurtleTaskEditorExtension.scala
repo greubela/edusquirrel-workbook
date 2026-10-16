@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorExtension, EvaEditorModule}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleExecutionProvider
 import it.evadid.homepage.webElements.editor.code.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.HtmlTurtleRecreateShapeRenderer
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
@@ -14,6 +14,8 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.JavaTurtleEditingBridge
 
 import scala.util.Try
+import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 object TurtleTaskEditorExtension {
   private[code] def requiresRun(source: ProgrammingState): Boolean = source match {
@@ -27,39 +29,17 @@ object TurtleTaskEditorExtension {
 }
 
 final class TurtleTaskEditorExtension(
-    state: Var[ProgrammingState],
-    target: Option[TurtleGraphic],
-    policy: TurtleDrawingPolicy
-) extends EvaEditorExtension with EvaEditorModule{
-  private val view = Var(Option.empty[TurtleExecutionPanel])
-
-  override def panel(context: EvaEditorExtension.Context): Option[Element] = {
-    val current = view.now().getOrElse {
-      val captured = Var(state.now())
-      val created = new TurtleExecutionPanel(state, () => context.execute(captured.now()), context.cancel,
-        target, policy, () => { captured.set(context.captureSource()) })
-      view.set(Some(created))
-      created
-    }
-    Some(div(cls := "eva-editor__sidebar turtle-sidebar",
-      child <-- state.signal.map(source => target.isEmpty || TurtleTaskEditorExtension.requiresRun(source)).distinct.map {
-        case true => current.getDomElement()
-        case false => div(cls := "turtle-live-preview",
-          HtmlTurtleRecreateShapeRenderer.createInteractivePreview(state, target.get, policy).getDomElement())
-      }))
+    state: Var[ProgrammingState], target: Option[TurtleGraphic], policy: TurtleDrawingPolicy
+) extends it.evadid.homepage.webElements.HtmlAppElement {
+  private val execution = new TurtleProgramExecution(List(new JavaTurtleEditorExtension(state)))
+  private val panel = new TurtleExecutionPanel(state, () => execution.commandsFor(state.now()), () => execution.cancel(), target, policy)
+  override def getDomElement(): Element = {
+    lazy val runPanel = panel.getDomElement()
+    lazy val live = HtmlTurtleRecreateShapeRenderer.createInteractivePreview(state, target.get, policy).getDomElement()
+    val needsRun = state.signal.flatMapSwitch(source =>
+      EventStream.fromFuture(Future(target.isEmpty || TurtleTaskEditorExtension.requiresRun(source)))).startWith(true)
+    div(cls := "eva-editor__sidebar turtle-sidebar",
+      child <-- needsRun.distinct.map(if _ then runPanel else div(cls := "turtle-live-preview", live)),
+      onUnmountCallback(_ => execution.close()))
   }
-
-  override def close(): Unit = view.now().foreach(_.reset())
-
-  private val context = Var(Option.empty[EvaEditorModule.Context])
-  private val execution = Var(Option.empty[TurtleProgramExecution])
-  override def bind(value: EvaEditorModule.Context): Unit = {
-    context.set(Some(value))
-    execution.set(Some(new TurtleProgramExecution(value.modules.collect { case extension: EvaEditorExtension => extension }.toList)))
-  }
-  override lazy val getDomElement: Option[L.Element] = {
-    val bound = context.now().getOrElse(throw IllegalStateException("The turtle module must be bound before rendering."))
-    panel(EvaEditorExtension.Context(bound.captureSource, source => execution.now().get.commandsFor(source), () => execution.now().get.cancel()))
-  }
-  override def onFullscreenClose(): Unit = { close(); execution.now().foreach(_.close()) }
 }

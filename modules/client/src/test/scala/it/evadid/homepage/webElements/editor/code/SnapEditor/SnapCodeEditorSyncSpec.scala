@@ -93,8 +93,9 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val state = Var[ProgrammingState](source)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
     val owner = new ManualOwner
+    state.signal.changes.distinct.foreach(next => edits = edits :+ next)(using owner)
     try {
       editor.mountEditorInto(null, owner)
       assertEquals(impl.current, Some(source.toSnapXml))
@@ -117,8 +118,9 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
     val owner = new ManualOwner
+    state.signal.changes.distinct.foreach(next => edits = edits :+ next)(using owner)
     try {
       editor.mountEditorInto(null, owner)
       assertEquals(impl.renders, 1)
@@ -136,7 +138,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       state.set(restored)
       assertEquals(impl.reloads, 1)
       assertEquals(impl.renders, 1)
-      editor.onFullscreenOpen()
       assertEquals(impl.forcedLoads, 0)
       assertEquals(impl.reloads, 1)
       assertEquals(impl.librariesCleared, 0)
@@ -232,8 +233,9 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
     val owner = new ManualOwner
+    state.signal.changes.distinct.foreach(next => edits = edits :+ next)(using owner)
     try {
       editor.mountEditorInto(null, owner)
       def liveXml(code: String, image: Int) = s"<project><thumbnail>image-$image</thumbnail><stage><pentrails>trails-$image</pentrails><scripts>$code</scripts></stage></project>"
@@ -243,7 +245,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(edits, List(cleaned))
       assertEquals(impl.reloads, 0)
       for (image <- 1 to 20) impl.listener(liveXml("edited", image))
-      editor.onFullscreenOpen()
       assertEquals(edits, List(cleaned))
       assertEquals(impl.reloads, 0)
       impl.listener(liveXml("changed again", 21))
@@ -258,8 +259,9 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val state = Var[ProgrammingState](source)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
     val owner = new ManualOwner
+    state.signal.changes.distinct.foreach(next => edits = edits :+ next)(using owner)
     try {
       editor.mountEditorInto(null, owner)
       def liveXml(image: Int) =
@@ -267,7 +269,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val cleaned = source.withProjectXml("<project><costumes><costume image=\"authored\"/></costumes><stage><scripts>edited</scripts></stage></project>")
       impl.listener(liveXml(0))
       impl.listener(liveXml(1))
-      editor.onFullscreenOpen()
       assertEquals(state.now(), cleaned)
       assertEquals(edits, List(cleaned))
       assertEquals(impl.current, Some(cleaned.toSnapXml))
@@ -278,50 +279,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     } finally owner.killSubscriptions()
   }
 
-  test("Snap capture and fullscreen close preserve restored legacy metadata") {
-    val initial = ProgrammingStateSnapXml("<project/>", legacyFloatingObjects = List(" watcher ", "comment\r\n\t "))
-    val state = Var[ProgrammingState](initial)
-    val impl = new RecordingImpl
-    var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, next => edits = edits :+ next)
-    val owner = new ManualOwner
-    try {
-      editor.mountEditorInto(null, owner)
-      val capturedXml = "<project name=\"captured\"/>"
-      impl.current = Some(ProgrammingStateSnapXml(capturedXml))
-      val captured = editor.captureCurrentProject()
-      assertEquals(captured, initial.withProjectXml(capturedXml))
-      assertEquals(state.now(), initial)
-      assertEquals(edits, Nil)
-      assertEquals(ProgrammingState.serializer.deserialize(
-        ProgrammingState.serializer.serialize(captured)), captured)
-
-      val closed = initial.withProjectXml("<project name=\"closed\"/>")
-      impl.pendingXml = Some(closed.snapXml)
-      editor.onFullscreenClose()
-      assertEquals(state.now(), closed)
-      assertEquals(edits, List(closed))
-      val restored = ProgrammingStateSnapXml("<project name=\"restored\"/>",
-        legacyFloatingObjects = List(" restored watcher\n", " restored comment\r\n"))
-      state.set(ProgrammingState.serializer.deserialize(
-        ProgrammingState.serializer.serialize(restored)))
-      editor.onFullscreenOpen()
-      assertEquals(state.now(), restored)
-      assertEquals(impl.current, Some(restored))
-      assertEquals(edits, List(closed))
-
-      val reopenedXml = "<project name=\"reopened edit\"/>"
-      impl.current = Some(ProgrammingStateSnapXml(reopenedXml))
-      assertEquals(editor.captureCurrentProject(), restored.withProjectXml(reopenedXml))
-      impl.pendingXml = Some(reopenedXml)
-      editor.onFullscreenClose()
-      val reopened = restored.withProjectXml(reopenedXml)
-      assertEquals(state.now(), reopened)
-      assertEquals(edits, List(closed, reopened))
-      assertEquals(ProgrammingState.serializer.deserialize(
-        ProgrammingState.serializer.serialize(state.now())), reopened)
-    } finally owner.killSubscriptions()
-  }
   test("closing an editor before the Snap runtime loads does not touch Process") {
     new SnapCodeEditorImplDelegateToOriginal().pauseWorldCycles()
   }
@@ -483,7 +440,15 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     }
   }
 
-  test("closing and reopening while Snap loads mounts the retained editor exactly once") {
+  test("destroying an uninitialized native editor does not access the unloaded Snap runtime") {
+    assert(js.isUndefined(globals.selectDynamic("SpriteMorph")))
+    val impl = new SnapCodeEditorImplDelegateToOriginal()
+    impl.destroy()
+    impl.destroy()
+    assertEquals(impl.currentProjectXml(), None)
+  }
+
+  test("closing and reopening while Snap loads mounts only the current canvas") {
     withRoot { container =>
       val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
       val impl = new DeferredImpl

@@ -1209,8 +1209,10 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     editor.foreach(checkWhetherProgramXmlChanged(_, allowDuringEdit = true))
     pauseWorldCycles()
     disconnectResizeObserver()
-    clearInstalledCustomCategories()
-    restoreCustomBlockEditMenus()
+    // An editor can unmount while the runtime is still loading; no native globals exist yet.
+    if editor.nonEmpty then
+      clearInstalledCustomCategories()
+      restoreCustomBlockEditMenus()
     editor.foreach(_.destroy())
     editorWorld.foreach(_.destroy())
     editor = None

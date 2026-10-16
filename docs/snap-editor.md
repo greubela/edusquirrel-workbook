@@ -12,15 +12,23 @@ The shared [full Snap Scala model](snap-scala-model.md) provides `ProgrammingSta
 
 ## Runtime readiness and preview
 
-`fullturtle.js` preheats Snap automatically at page startup, independently of editor creation, and exposes `TurtleStitchPoCReady` immediately. It starts during idle time after DOM readiness (with a two-second deadline, or a 250 ms timer fallback), then loads the 22 dependencies sequentially with low fetch priority and yields between them. The shared loading promise prevents duplicate dependency loads. Warmup loads code without creating a Morphic world or editor; failures are stored in `TurtleStitchPoCError` and reject readiness without an unhandled background rejection. `SnapPreviewEditor` and `SnapCodeEditor` await the implementation's `whenReady` hook before creating a world or rendering, so cached app startup need not assume `IDE_Morph` is already defined. Mount generations discard delayed callbacks after a state replacement, unmount or fullscreen close/reopen. A loading or rendering failure is shown as an accessible alert.
+`fullturtle.js` preheats Snap automatically at page startup, independently of editor creation, and exposes `TurtleStitchPoCReady` immediately. It starts during idle time after DOM readiness (with a two-second deadline, or a 250 ms timer fallback), then loads the 22 dependencies sequentially with low fetch priority and yields between them. The shared loading promise prevents duplicate dependency loads. Warmup loads code without creating a Morphic world or editor; failures are stored in `TurtleStitchPoCError` and reject readiness without an unhandled background rejection. `SnapPreviewEditor` and `SnapCodeEditor` await the implementation's `whenReady` hook before creating a world or rendering, so cached app startup need not assume `IDE_Morph` is already defined. Mount ownership discards delayed callbacks after a state replacement or unmount. A loading or rendering failure is shown as an accessible alert.
 
-The static preview exports `ScriptsMorph.scriptsPicture()` from a temporary IDE; the fullscreen editor retains its live IDE. Preview canvas bitmap dimensions come from the exported script image, and its presentation/aspect ratio comes from `homepage/css/editors.css`, without inline width/height styles. Preview rendering preserves the shared Morphic keyboard contents and selection. Empty-canvas diagnostics distinguish actual primitive/custom block instances from the empty `<blocks>` containers present in every project.
+The static preview exports `ScriptsMorph.scriptsPicture()` from a temporary IDE; the mounted editor owns its live IDE. Preview canvas bitmap dimensions come from the exported script image, and its presentation/aspect ratio comes from `homepage/css/editors.css`, without inline width/height styles. Preview rendering preserves the shared Morphic keyboard contents and selection. Empty-canvas diagnostics distinguish actual primitive/custom block instances from the empty `<blocks>` containers present in every project.
 
-CodeMirror's shared module loader is also warmed immediately after the app shell mounts. Startup schedules this once with `requestIdleCallback` (a two-second deadline), or a delayed timer where idle callbacks are unavailable. The warmup request carries a low fetch-priority hint and never creates an editor or delays startup. Editors reuse the pending/completed load; a failed warmup leaves the editable fallback available and permits a later retry.
+CodeMirror's shared module loader warms shortly after the app shell mounts. The
+warmup request has low fetch priority, creates no editor and never delays startup.
+Editors share the pending/completed request. Failure leaves the editable fallback
+available and permits a later retry.
 
 ## Live IDE synchronization
 
-The editor mounts into its own canvas and retains the IDE across fullscreen sessions. Snap-originated XML is acknowledged before publication so the state observer does not reload an edit back into the same IDE. Later state changes use `loadProgramIfChanged`; pending edits are flushed before unmounting and fullscreen close. Morphic cycles pause when closed and resume when opened. Fullscreen open loads changed state and fits the editor to its container.
+The editor mounts into its own canvas. The live IDE exists only for that mount;
+unmount flushes applicable pending Snap state and destroys the native world.
+Later changes to the central Var use `loadProgramIfChanged`. Native XML rendering
+metadata avoids unnecessary native redraws, but consumers observe the central
+Var; there is no special learner-edit callback. Closing the dialog unmounts its
+content, and reopening constructs an editor from the saved answer.
 
 `SnapCodeEditorImpl` also exposes `forceLoadProgram`, but the current fullscreen-open path uses `loadProgramIfChanged`. Configuration and implementation adapters remain in `SnapEditor/toRefactor/`.
 
@@ -30,7 +38,7 @@ The editor mounts into its own canvas and retains the IDE across fullscreen sess
 
 The bundled TurtleStitch `gui.js` has custom category/layout changes. Review those patches when updating the bundled distribution. Eva provides the active language tabs and turtle preview. The legacy Python popup and stage toolbar helpers still exist, but are not currently mounted by `SnapCodeEditor`; their presence does not imply visible controls in the active editor.
 
-The asynchronous Pyodide command extraction service is described in [Snap command execution](snap-turtle-command-execution-overview.md). `SnapCodeEditor.getCurrentTurtleCommands()` captures and flushes the live project before delegating to that service.
+The asynchronous Pyodide command extraction service is described in [Snap command execution](snap-turtle-command-execution-overview.md). The downstream turtle panel reads the central Var and delegates to that service; the editor does not own an execution service.
 
 ## Verification
 

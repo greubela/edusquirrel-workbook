@@ -1,11 +1,11 @@
 package it.evadid.homepage.webElements.editor.MailEditor
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.webElements.{HtmlAppElement, FullscreenLifecycle}
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.interactionElements.emailSimulator.*
 
 case class MailEditor(underlyingVar: Var[InboxStateScaffolding], account: String = "opa.jürgen@gmail.com",
-                      allowCompose: Boolean = true) extends HtmlAppElement with FullscreenLifecycle {
+                      allowCompose: Boolean = true) extends HtmlAppElement {
   private val controller = new MailEditorState(underlyingVar, allowCompose)
   import controller.*
   private def labelText(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"emailSimulator/$key")
@@ -35,7 +35,7 @@ case class MailEditor(underlyingVar: Var[InboxStateScaffolding], account: String
       m.attachment.map(a => button(typ := "button", cls := "mail-attachment", text <-- labelText("attachment"), " ", a,
         onClick --> (_ => notice.set("attachmentSimulated")))).toList)
   }
-  override def getDomElement(): Element = div(
+  override def getDomElement(): Element = div(onUnmountCallback(_ => unmount()),
     cls := "mail-simulator",
     headerTag(cls := "mail-toolbar",
       action("compose", Val(allowCompose))(beginDraft(MailDraft())),
@@ -82,5 +82,5 @@ case class MailEditor(underlyingVar: Var[InboxStateScaffolding], account: String
       })
   )
   override def dismissOnOutsideClick: Boolean = false
-  override def onFullscreenClose(): Unit = { hoverUrl.set(""); cancelDraft() }
+  private def unmount(): Unit = { hoverUrl.set(""); cancelDraft() }
 }

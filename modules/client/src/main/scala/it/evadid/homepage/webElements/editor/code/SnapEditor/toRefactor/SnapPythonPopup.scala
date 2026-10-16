@@ -99,14 +99,12 @@ object SnapPythonPopup {
    * Bottom-right toolbar + editable overlay chrome for `SnapCodeEditor.editorCanvas`.
    * @param state live exercise state (canonical Snap XML)
    * @param flushPending call before reading state so Snap XML edits are published
-   * @param onStateEdited persist / sync callback used for block edits and Python apply
    * @param setExecutionStepMs apply Execute pause between blocks (ms, >= 0)
    */
   def chrome(
             logger: Logger,
       state: Var[ProgrammingStateSnapXml],
       flushPending: () => Unit,
-      onStateEdited: ProgrammingStateSnapXml => Unit,
       setExecutionStepMs: Double => Unit = _ => ()
   ): L.Element = {
     val showPopup: Var[Boolean] = Var(false)
@@ -145,7 +143,7 @@ object SnapPythonPopup {
         case Right(next) =>
           textDirty.set(false)
           warningVar.set(None)
-          onStateEdited(next)
+          state.set(next)
           scriptHints.set(scriptsOf(next))
           val nextDerived = SnapProgramDerivation.fromState(next)
           textVar.set(nextDerived.python.trim)
@@ -164,12 +162,12 @@ object SnapPythonPopup {
       CodeMirrorEditor(
         logger,
         textVar,
-         _ => textDirty.set(true),
          Python,
         Var(CodeMirrorEditorConfig.Default)
       )
 
     div(
+      textVar.signal.changes --> (_ => textDirty.set(true)),
       div(
         cls := "snap-editor-toolbar",
         label(

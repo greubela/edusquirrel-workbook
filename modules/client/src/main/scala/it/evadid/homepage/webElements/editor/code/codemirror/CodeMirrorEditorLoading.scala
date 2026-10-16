@@ -11,11 +11,10 @@ import scala.util.Try
 
 /** One asynchronous module load shared by startup warmup and all editors; never a startup dependency.
   * CodeMirror itself requires the DOM, so mounting still runs on the browser thread,
-  * in an idle task rather than inside a Laminar mount or a Promise microtask.
+  * after yielding to the browser rather than inside a Laminar mount.
   */
 object CodeMirrorEditorLoading {
   private val pending = Var(Option.empty[Future[CodeMirrorEditor.CodeMirrorFacade]])
-  private val preheatScheduled = Var(false)
 
   private def facade: Option[CodeMirrorEditor.CodeMirrorFacade] = {
     val value = dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirror")
@@ -23,17 +22,11 @@ object CodeMirrorEditorLoading {
     else Some(value.asInstanceOf[CodeMirrorEditor.CodeMirrorFacade])
   }
 
-  private def idleTask[A](timeoutMs: Int, fallbackDelayMs: Int)(work: => A): Future[A] = {
+  private[code] def inBackground[A](work: => A): Future[A] = {
     val result = Promise[A]()
-    val run: js.Function1[js.Any, Unit] = _ => { result.complete(Try(work)); () }
-    val idle = dom.window.asInstanceOf[js.Dynamic].selectDynamic("requestIdleCallback")
-    if (js.typeOf(idle) == "function")
-      dom.window.asInstanceOf[js.Dynamic].requestIdleCallback(run, js.Dynamic.literal(timeout = timeoutMs))
-    else setTimeout(fallbackDelayMs) { run(js.undefined) }
+    setTimeout(0) { result.complete(Try(work)) }
     result.future
   }
-
-  private[code] def inBackground[A](work: => A): Future[A] = idleTask(700, 0)(work)
 
   private[code] def bootstrapUrl: String = {
     val scripts = dom.document.querySelectorAll("script[src]")
@@ -52,17 +45,7 @@ object CodeMirrorEditorLoading {
     else new dom.URL("../../artifacts/newest/worker.js", bootstrapUrl).href
   }
 
-  /** Warm the shared module after the app shell mounts, without creating editors
-    * or making startup wait for the CDN. An early editor reuses the same load.
-    */
-  def preheat(): Unit = {
-    if !preheatScheduled.now() then {
-      preheatScheduled.set(true)
-      idleTask(2000, 250) {
-        load(background = true).failed.foreach(_ => ()) // A later editor can retry a failed warmup.
-      }.failed.foreach(_ => ())
-    }
-  }
+  def preheat(): Unit = { setTimeout(250) { load(background = true).failed.foreach(_ => ()) }; () }
 
   // Check the shared load after the calling reactive transaction has committed its Vars.
   private[code] def load(background: Boolean = false): Future[CodeMirrorEditor.CodeMirrorFacade] =
