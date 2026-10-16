@@ -3,7 +3,7 @@ package it.evadid.workbook.abstractions.grading
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
-import it.evadid.workbook.abstractions.FeedbackEntity
+import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionBoundComponent}
 import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS
 import it.evadid.workbook.abstractions.grading.GradingStatus.{NotExecuted, TestError}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader
@@ -12,7 +12,7 @@ import upickle.default.*
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait WorkbookInteractionGrader[T, A] {
+trait WorkbookInteractionGrader[T, A] extends InteractionBoundComponent[T] {
   given ec: ExecutionContext = ExecutionContext.global
 
   def gradeStateSafe(state: T, forceGrading: Boolean): Future[GradingResult[T, A]] =
