@@ -1,14 +1,23 @@
 package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.airstream.state.Var
+import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.state.State
+import it.evadid.core.datastructures.state.StateHelper.*
+import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.homepage.webElements.editor.code.EvaEditor.*
 import it.evadid.util.logging.Logger
-import it.evadid.util.logging.derived.PrintToStdLogger
+import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
 import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
+import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableState, InteractionVariableUntyped}
 import munit.FunSuite
 import org.scalajs.dom
+import java.time.LocalDateTime
+import scala.concurrent.Future
 import scala.scalajs.js
 
 class EvaEditorSpec extends FunSuite {
@@ -59,6 +68,177 @@ class EvaEditorSpec extends FunSuite {
     dom.document.body.appendChild(host)
     private val root = render(host, editor.getDomElement())
     def close(): Unit = { root.unmount(); host.remove() }
+  }
+
+  private class RecordingSyncControl extends SyncControl {
+    val stores = Var(Vector.empty[List[InteractionVariableUntyped]])
+    override val syncLogger: SyncLogger = SyncLogger(logger)
+    override def controlLogger: Logger = logger
+    override def requestStore(from: List[InteractionVariableUntyped]): Future[?] = {
+      stores.update(_ :+ from)
+      Future.unit
+    }
+    override def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[?] =
+      throw IllegalStateException("Unexpected cache refresh.")
+    override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariableUntyped]): Future[?] =
+      throw IllegalStateException("Unexpected cache store check.")
+    override def createObservableReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): ObservableValue[SyncControl.InteractionVariableSyncReport[T, GA, SA]] =
+      throw IllegalStateException("Unexpected observable sync report.")
+    override def createCurrentReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): SyncControl.InteractionVariableSyncReport[T, GA, SA] =
+      throw IllegalStateException("Unexpected current sync report.")
+  }
+
+  test("bound raw drafts publish one signal, history event and store request per edit") {
+    val drafts: List[(ProgrammingState, ProgrammingState)] = List(
+      ProgrammingStateJavaString("\r\n\tclass Drawing {\r\n ") ->
+        ProgrammingStateJavaString("\r\n\tclass Drawing {\r\n  static void draw(\r\n\t "),
+      ProgrammingStatePythonString("\r\n# draft\r\n\tdef draw(\r\n ") ->
+        ProgrammingStatePythonString("\r\n# draft\r\n\tdef draw(side\r\n\t "),
+      ProgrammingStateSnapXml("\r\n<!-- draft -->\r\n<project><stage", List(" watcher A ")) ->
+        ProgrammingStateSnapXml("\r\n<!-- draft -->\r\n<project><stage ", List(" watcher B ")))
+    drafts.zipWithIndex.foreach { case ((initial, edited), index) =>
+      val variable = ProgrammingExerciseFullJava(s"raw-binding-$index").interactionVariable
+      val timestamp = LocalDateTime.now().minusSeconds(10)
+      val initialEvent = InteractionVariableState[ProgrammingState](initial, UpdateImportance.MAJOR, timestamp)
+      variable.updateHistory(_ => InteractionVariableHistory(Set(initialEvent), Map.empty, Map.empty))
+      val sync = new RecordingSyncControl
+      val bound = variable.createBoundStateWithUpdateImportance(sync, UpdateImportance.MAJOR).toAirstreamVar
+      val owner = new ManualOwner
+      val observed = Var(Vector.empty[ProgrammingState])
+      try {
+        bound.signal.foreach(next => observed.update(_ :+ next))(using owner)
+        assertEquals(observed.now(), Vector(initial))
+        assertEquals(variable.history.events, Set(initialEvent))
+        assertEquals(sync.stores.now().size, 0)
+        bound.set(edited)
+        assertEquals(observed.now(), Vector(initial, edited))
+        assertEquals(variable.currentValue, edited)
+        assertEquals(variable.history.events.size, 2)
+        assertEquals(variable.history.lastStateOption.map(_.updateImportance), Some(UpdateImportance.MAJOR))
+        assertEquals(sync.stores.now().size, 1)
+        assertEquals(sync.stores.now().head.size, 1)
+        assert(sync.stores.now().head.head eq variable)
+        assertEquals(ProgrammingState.serializer.serialize(bound.now()), ProgrammingState.serializer.serialize(edited))
+        assertEquals(bound.now().fingerprint(), edited.fingerprint())
+        val restoreA = InteractionVariableState[ProgrammingState](initial, UpdateImportance.MAJOR, timestamp.plusSeconds(20))
+        val restoreB = InteractionVariableState[ProgrammingState](edited, UpdateImportance.MAJOR, timestamp.plusSeconds(21))
+        variable.updateHistory(_.withAddedEvent(restoreA))
+        variable.updateHistory(_.withAddedEvent(restoreB))
+        variable.updateHistory(_.withAddedEvent(restoreB))
+        assertEquals(observed.now(), Vector(initial, edited, initial, edited))
+        assertEquals(bound.now(), edited)
+        assertEquals(variable.history.events.size, 4)
+        assertEquals(variable.history.lastStateOption, Some(restoreB))
+        assertEquals(sync.stores.now().size, 1)
+        assertEquals(variable.deserializeHistory(variable.serializeHistory(variable.history)).lastStateOption.map(_.value), Some(edited))
+      } finally owner.killSubscriptions()
+    }
+  }
+
+  test("State and Var bindings preserve both directions and coupled drafts without echoes") {
+    val initial = "\r\n\t# invalid draft\r\nclass Drawing {\r\n "
+    val edited = "\r\n\t# invalid draft\r\nclass Drawing {\r\n\t "
+    val restored = "\n<!-- restore -->\r\n<project><stage\t "
+    List(false, true).foreach { fromVar =>
+      val original = Var(initial)
+      val state = if fromVar then original.toState else State(initial)
+      val first = if fromVar then original else state.toAirstreamVar
+      val second = state.toAirstreamVar
+      val owner = new ManualOwner
+      val firstValues = Var(Vector.empty[String])
+      val secondValues = Var(Vector.empty[String])
+      val stateValues = Var(Vector.empty[String])
+      val subscription = state.observable.addObserver(next => stateValues.update(_ :+ next))
+      try {
+        first.signal.foreach(next => firstValues.update(_ :+ next))(using owner)
+        second.signal.foreach(next => secondValues.update(_ :+ next))(using owner)
+        first.set(edited)
+        state.set(initial)
+        second.set(restored)
+        state.set(initial)
+        state.set(initial)
+        val expected = Vector(initial, edited, initial, restored, initial)
+        assertEquals(firstValues.now(), expected)
+        assertEquals(secondValues.now(), expected)
+        assertEquals(stateValues.now(), expected)
+        assertEquals(state.now(), initial)
+        assertEquals(first.now(), initial)
+        assertEquals(second.now(), initial)
+      } finally { subscription.cancel(); owner.killSubscriptions() }
+    }
+  }
+
+  test("nested Var observers retain the final State value after an A-to-B-to-A update") {
+    val initial = ProgrammingStateJavaString("\r\n\tclass Drawing {\r\n ")
+    val trigger = ProgrammingStateJavaString("\r\n\tclass Trigger {\r\n ")
+    val intermediate = ProgrammingStateJavaString("\r\n\tclass Intermediate {\r\n ")
+    val state = State[ProgrammingState](initial)
+    val bound = state.toAirstreamVar
+    val mirror = state.toAirstreamVar
+    val owner = new ManualOwner
+    val entered = Var(false)
+    val observed = Var(Vector.empty[ProgrammingState])
+    try {
+      bound.signal.foreach { next =>
+        observed.update(_ :+ next)
+        if next == trigger && !entered.now() then {
+          entered.set(true)
+          state.set(intermediate)
+          state.set(initial)
+        }
+      }(using owner)
+      bound.set(trigger)
+      assert(entered.now())
+      assertEquals(state.now(), initial)
+      assertEquals(bound.now(), initial)
+      assertEquals(mirror.now(), initial)
+      assertEquals(observed.now().last, initial)
+      assertEquals(ProgrammingState.serializer.serialize(bound.now()), ProgrammingState.serializer.serialize(initial))
+      assertEquals(bound.now().fingerprint(), initial.fingerprint())
+    } finally owner.killSubscriptions()
+  }
+
+  test("derived bindings retain timestamp and metadata edits with unchanged draft text") {
+    case class Draft(text: String, timestamp: LocalDateTime, metadata: String)
+    val initial = Draft("\r\n\tdef draw(\r\n ", LocalDateTime.of(2026, 10, 13, 10, 0), "remote")
+    val updated = initial.copy(timestamp = initial.timestamp.plusSeconds(1), metadata = "local")
+    val state = State(initial)
+    val derived = state.biMap[Draft](draft => draft.copy(text = "view:" + draft.text),
+      draft => draft.copy(text = draft.text.stripPrefix("view:")))
+    val bound = derived.toAirstreamVar
+    val owner = new ManualOwner
+    val observed = Var(Vector.empty[Draft])
+    try {
+      bound.signal.foreach(next => observed.update(_ :+ next))(using owner)
+      bound.set(updated.copy(text = "view:" + updated.text))
+      assertEquals(state.now(), updated)
+      state.set(initial)
+      assertEquals(observed.now(), Vector(initial, updated, initial).map(draft => draft.copy(text = "view:" + draft.text)))
+      assertEquals(state.now(), initial)
+      assertEquals(bound.now(), derived.now())
+    } finally owner.killSubscriptions()
+  }
+
+  test("a bound draft repairs a failed derived getter even when its displayed value is unchanged") {
+    List(0, 1).foreach { repaired =>
+      val source = State("0")
+      val numeric = source.biMap[Int](_.toInt, _.toString)
+      val bound = numeric.toAirstreamVar
+      val owner = new ManualOwner
+      val observed = Var(Vector.empty[Int])
+      try {
+        bound.signal.foreach(next => observed.update(_ :+ next))(using owner)
+        source.set("unfinished")
+        assertEquals(numeric.observable.now(), None)
+        intercept[NumberFormatException](numeric.now())
+        assertEquals(bound.now(), 0)
+        bound.set(repaired)
+        assertEquals(source.now(), repaired.toString)
+        assertEquals(numeric.now(), repaired)
+        assertEquals(bound.now(), repaired)
+        assertEquals(observed.now(), Vector(0, repaired))
+      } finally owner.killSubscriptions()
+    }
   }
 
   test("the matching tab opens raw unfinished source and controls stay in configured order") {
