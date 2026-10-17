@@ -11,14 +11,95 @@ class SqlEditorExecutionSpec extends munit.FunSuite {
 }
 
 class SqlEditorResultSpec extends munit.FunSuite {
+  import it.evadid.core.datastructures.state.State
+  import it.evadid.distribution.command.ExecutionCommand
+  import it.evadid.distribution.commandTypes.LLMCommands
+  import it.evadid.util.logging.BasicLogger
   import java.lang.reflect.{InvocationHandler, Method, Proxy}
-  import java.sql.{ResultSet, ResultSetMetaData, Statement}
+  import java.net.InetAddress
+  import java.sql.{Connection, PreparedStatement, ResultSet, ResultSetMetaData, Statement}
+  import java.time.LocalDateTime
 
   private def fake[T](kind: Class[T])(handle: (String, Array[AnyRef]) => AnyRef): T =
     Proxy.newProxyInstance(kind.getClassLoader, Array(kind), new InvocationHandler {
       override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef =
         handle(method.getName, Option(args).getOrElse(Array.empty[AnyRef]))
     }).asInstanceOf[T]
+
+  private def logConnection(rows: Int): (Connection, State[Vector[Map[Int, String]]]) = {
+    val parameters = State(Map.empty[Int, String])
+    val writes = State(Vector.empty[Map[Int, String]])
+    val statement = fake(classOf[PreparedStatement]) { (method, args) => method match {
+      case "setString" => parameters.update(_ + (args(0).asInstanceOf[Integer].intValue -> args(1).asInstanceOf[String])); null
+      case "setTimestamp" => null
+      case "executeUpdate" => writes.update(_ :+ parameters.now()); Int.box(rows)
+      case "clearParameters" => parameters.set(Map.empty); null
+      case "toString" => "commandLog fixture: " + writes.now().lastOption
+      case other => throw new UnsupportedOperationException(other)
+    }}
+    val connection = fake(classOf[Connection]) { (method, _) => method match {
+      case "prepareStatement" => statement
+      case other => throw new UnsupportedOperationException(other)
+    }}
+    connection -> writes
+  }
+
+  test("feedback command logs store only allowlisted metadata without changing the request") {
+    val prompt = "private learner source Grüße\nreturn a + b;"
+    val system = "private feedback instructions"
+    val command = ExecutionCommand(LLMCommands.feedbackLlmCommandFactory.name,
+      ujson.Obj("prompt" -> prompt, "systemPrompt" -> system, "private-unknown-key" -> "private-extra-value"))
+    val original = ujson.write(command.json)
+    val expected = ujson.Obj("name" -> command.name, "redacted" -> true,
+      "promptLength" -> prompt.length, "systemPromptLength" -> system.length)
+    val (connection, writes) = logConnection(1)
+    val logger = BasicLogger()
+    SqlLogCommands.handleLog(LocalDateTime.of(2026, 10, 17, 10, 0), command, None,
+      InetAddress.getLoopbackAddress, logger, connection)
+    val stored = writes.now().head
+    assertEquals(ujson.read(stored(4)), expected)
+    assertEquals(stored(3), command.name)
+    assertEquals(stored(5), "")
+    assertEquals(ujson.write(command.json), original)
+    List(prompt, system, "private-unknown-key", "private-extra-value").foreach { secret =>
+      assert(!stored(4).contains(secret))
+      assert(!logger.getOut().contains(secret))
+      assert(!logger.getErr().contains(secret))
+    }
+  }
+
+  test("failed feedback logging also redacts malformed and unexpected request fields") {
+    val payloads = List(
+      ujson.Str("private raw request"), ujson.Arr("private array item"), ujson.Null,
+      ujson.Obj("prompt" -> ujson.Obj("private nested key" -> "private nested value"),
+        "systemPrompt" -> false, "private extra key" -> "private extra value"))
+    payloads.foreach { payload =>
+      val command = ExecutionCommand(LLMCommands.feedbackLlmCommandFactory.name, payload)
+      val original = ujson.write(payload)
+      val (connection, writes) = logConnection(0)
+      val logger = BasicLogger()
+      SqlLogCommands.handleLog(LocalDateTime.of(2026, 10, 17, 10, 0), command, None,
+        InetAddress.getLoopbackAddress, logger, connection)
+      val expected = ujson.Obj("name" -> command.name, "redacted" -> true,
+        "promptLength" -> ujson.Null, "systemPromptLength" -> ujson.Null)
+      assertEquals(ujson.read(writes.now().head(4)), expected)
+      assert(logger.getOut().contains("Failed db logging for command:"))
+      assert(!logger.getOut().contains("private"))
+      assert(!logger.getErr().contains("private"))
+      assertEquals(ujson.write(command.json), original)
+    }
+  }
+
+  test("logging retains the original payload and failure warning for other commands") {
+    val command = ExecutionCommand("another-command", ujson.Obj("prompt" -> "unchanged payload 学校"))
+    val (connection, writes) = logConnection(0)
+    val logger = BasicLogger()
+    SqlLogCommands.handleLog(LocalDateTime.of(2026, 10, 17, 10, 0), command, None,
+      InetAddress.getLoopbackAddress, logger, connection)
+    assertEquals(writes.now().head(4), command.toJson)
+    assertEquals(SqlLogCommands.payloadForLog(command), command.toJson)
+    assert(logger.getOut().contains("Failed db logging for command: " + command.name + " (" + command.toJson + ")"))
+  }
 
   test("results include duplicate labels, SQL NULL, update counts and closed result sets") {
     var row = -1
