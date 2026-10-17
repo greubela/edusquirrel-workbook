@@ -4,10 +4,29 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
-import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionUntyped, WorkbookStructureElement}
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElementFull, WorkbookInteractionUntyped, WorkbookStructureElement}
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.*
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.{InteractionInfoPanel, InteractionScaffoldingPanel}
 case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssStr: String) extends AtomarLineRendering {
+
+  private def scaffoldingPanel[T, GA, SA](interaction: WorkbookInteractionElementFull[T, GA, SA]): Option[Element] =
+    interaction.scaffoldingElement.map { scaffolder =>
+      val variable = interaction.interactionVariable
+      def label(key: String): Signal[String] = fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId(s"basic/$key"))
+      new InteractionScaffoldingPanel[T, SA](
+        () => variable.currentValue, variable.observableValue.toEventStream(), fullInfo.signals.currentLanguage,
+        EventStream.merge(fullInfo.signals.user.distinct.changes.map(_ => ()),
+          fullInfo.signals.workbook.map(_.map(_.loadedWorkbook)).distinct.changes.map(_ => ())),
+        scaffolder.generateFeedback,
+        result => {
+          variable.updateHistory(_.updateScaffoldings(_ + (result.forState -> result)))
+          fullInfo.syncControl.requestStore(variable)
+        },
+        InteractionScaffoldingPanel.Labels(label("scaffoldingRequest"), label("scaffoldingLoading"),
+          label("scaffoldingDismiss"), label("scaffoldingError"), label("scaffoldingTimeout"), label("scaffoldingNotice"))
+      ).getDomElement()
+    }
 
   protected val lineCssStr: String = getCssString(workbookElement)
 
@@ -32,7 +51,8 @@ case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, conten
         div(
           cls := interactionContentCssString +" " + additionalCssStr,
           children <-- content.allElementsSignal
-        )
+        ),
+        scaffoldingPanel(i)
       )
     case s: WorkbookStructureElement[?] =>
       div(
