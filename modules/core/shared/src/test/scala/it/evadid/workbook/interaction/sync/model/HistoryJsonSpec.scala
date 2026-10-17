@@ -56,4 +56,47 @@ class HistoryJsonSpec extends FunSuite {
     assertEquals(variable.deserializeHistory(ujson.write(old)).lastStateOption.map(_.value), Some("\"quoted\""))
   }
 
+  test("restoring structured keys retains typed hints through JSON and MessagePack") {
+    type History = InteractionVariableHistory[List[String], Int, List[Int]]
+    val local = history(List("local"), 2)
+    val remote = history(List("Grüße", "source"), 1)
+    List(read[History](write(remote)), readBinary[History](writeBinary(remote))).foreach { decoded =>
+      val restored = local.restoreFrom(List(decoded))
+      assertEquals(restored.events, local.events ++ remote.events)
+      assertEquals(restored.scaffoldings, local.scaffoldings ++ remote.scaffoldings)
+      assertEquals(restored.scaffoldings(List("Grüße", "source")).additionalInformation, Some(List(1, 2, 3)))
+      assertEquals(read[History](write(restored)), restored)
+      assertEquals(readBinary[History](writeBinary(restored)), restored)
+      assertEquals(ujson.read(write(restored)).obj.keySet.toSet, Set("events", "gradings", "scaffoldings"))
+    }
+  }
+
+  test("restoring a decoded mixed legacy envelope preserves sources and current hints") {
+    import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
+
+    val variable = new WorkbookInteractionElementFull[String, Int, Int] {
+      override val elementId = "answer"
+      override val defaultValue = ""
+      override lazy val childrenOfThisElement = List.empty[WorkbookElement]
+      override val associatedFactory = TextInteraction.factory
+    }.interactionVariable
+    val legacy = ujson.Obj("states" -> ujson.Arr(ujson.Obj("serializedValue" -> "legacy source",
+      "updateImportance" -> "MAJOR", "timestamp" -> time.toString)))
+    val oldEnvelope = ujson.write(ujson.Obj("keyForSerialisation" -> "answer_history", "fullHistory" -> ujson.write(legacy)))
+    val hint = ScaffoldingResult("current source", LanguageMap.universalMap[AppLanguage.HumanLanguage]("Check the condition."),
+      FeedbackEntity.TestEntity(), Some(7))
+    val current = InteractionVariableHistory[String, Int, Int](
+      Set(InteractionVariableState("current source", UpdateImportance.MAJOR, time.plusSeconds(1))),
+      Map.empty, Map("current source" -> hint))
+    val decoded = variable.deserializeHistory(HistoryJson.stored("answer_history", HistoryJson.merge(List(oldEnvelope, write(current)))))
+    val local = InteractionVariableHistory[String, Int, Int](
+      Set(InteractionVariableState("local source", UpdateImportance.MAJOR, time.plusSeconds(2))), Map.empty, Map.empty)
+    val restored = local.restoreFrom(List(decoded))
+    assertEquals(restored.events, local.events ++ decoded.events)
+    assertEquals(restored.events.map(_.value), Set("legacy source", "current source", "local source"))
+    assertEquals(restored.lastStateOption.map(_.value), Some("local source"))
+    assertEquals(restored.scaffoldings, Map("current source" -> hint))
+    assertEquals(ujson.read(write(restored)).obj.keySet.toSet, Set("events", "gradings", "scaffoldings"))
+  }
+
 }
