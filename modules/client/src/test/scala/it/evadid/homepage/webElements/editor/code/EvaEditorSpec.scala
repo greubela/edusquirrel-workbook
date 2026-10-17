@@ -1,17 +1,346 @@
 package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.laminar.api.L.*
+import com.raquo.airstream.ownership.ManualOwner
+import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.*
+import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementSingle
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.RenderingWorkbookElementLine
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionScaffoldingPanel
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
+import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, WorkbookInteractionScaffolder}
+import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import scala.concurrent.Future
+import org.scalajs.dom
+import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js.timers.setTimeout
+import scala.util.Try
+import upickle.default.*
 
 class EvaEditorSpec extends EditorDomSuite {
   private val logger = Logger.withNameAndPrefixes(Some("EvaEditorSpec"), PrintToStdLogger.printNothing)
+
+  private type HintResult = ScaffoldingResult[String, String]
+  private class ScaffoldingFixture(timeoutMillis: Int) {
+    val source = Var("original source\r\n\t ")
+    val language = Var[HumanLanguage](English)
+    val context = new EventBus[Unit]
+    val requests = Var(Vector.empty[(String, Promise[HintResult])])
+    val accepted = Var(Vector.empty[HintResult])
+    val synchronousFailure = Var(Option.empty[Throwable])
+    private val release = Var(Option.empty[() => Unit])
+    private def label(english: String, german: String): Signal[String] =
+      language.signal.map(current => if current == German then german else english)
+    val panel = new InteractionScaffoldingPanel[String, String](
+      () => source.now(), source.signal.changes, language.signal, context.events,
+      value => {
+        val pending = Promise[HintResult]()
+        requests.update(_ :+ (value -> pending))
+        synchronousFailure.now().foreach(error => throw error)
+        pending.future
+      }, result => accepted.update(_ :+ result),
+      InteractionScaffoldingPanel.Labels(label("Request", "Anfragen"), label("Loading", "Wird vorbereitet"),
+        label("Dismiss", "Ausblenden"), label("Unavailable", "Nicht verfügbar"),
+        label("Timed out", "Zeit überschritten"), label("Notice", "Hinweis")), timeoutMillis)
+    val element = panel.getDomElement()
+    def open(): Unit = {
+      assert(release.now().isEmpty)
+      release.set(Some(mount(element)))
+    }
+    def close(): Unit = {
+      release.now().foreach(_())
+      release.set(None)
+    }
+    def button: dom.html.Button = element.ref.querySelector(".interaction-scaffolding__request").asInstanceOf[dom.html.Button]
+    def dismiss: dom.html.Button = element.ref.querySelector(".interaction-scaffolding__dismiss").asInstanceOf[dom.html.Button]
+    def status: dom.Element = element.ref.querySelector("[role='status']")
+    def text: String = status.textContent
+    def answer(value: String = source.now(), text: String = "1. What changes here?", locale: HumanLanguage = language.now()): HintResult =
+      ScaffoldingResult(value, LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(locale -> text)),
+        FeedbackEntity.TestEntity(), None)
+    open()
+  }
+
+  private def later(milliseconds: Int = 0): Future[Unit] = {
+    val completed = Promise[Unit]()
+    setTimeout(milliseconds.toDouble) { completed.success(()); () }
+    completed.future
+  }
+
+  private def withScaffolding(timeoutMillis: Int = 60000)(body: ScaffoldingFixture => Future[Unit]): Future[Unit] = {
+    val fixture = new ScaffoldingFixture(timeoutMillis)
+    Try(body(fixture)).fold(Future.failed, identity).andThen { case _ => fixture.close() }
+  }
+
+  test("interaction rendering publishes a requested hint to its existing history without changing the answer") {
+    assertEquals(fullInfo.current.userInfo, None)
+    assertEquals(fullInfo.current.workbookInfo, None)
+    assertEquals(fullInfo.signals.currentSyncDestinations.now(), Nil)
+    val requested = Var(Vector.empty[String])
+    val pending = Promise[HintResult]()
+    val scaffolder = new WorkbookInteractionScaffolder[String, String] {
+      override def generateFeedback(state: String): Future[HintResult] = {
+        requested.update(_ :+ state)
+        pending.future
+      }
+    }
+    val interaction = new WorkbookInteractionElementFull[String, String, String] {
+      override val elementId = "renderer-hint-test"
+      override val defaultValue = "unfinished source\r\n\t "
+      override lazy val childrenOfThisElement = List.empty[WorkbookElement]
+      override val associatedFactory = TextInteraction.factory
+      override val scaffoldingElement = Some(scaffolder)
+    }
+    val variable = interaction.interactionVariable
+    val before = variable.history
+    assert(scaffolder.interactionVariable eq variable)
+    val element = RenderingWorkbookElementLine(interaction, new DomElementSingle(div("Answer")), "").render
+    val close = mount(element)
+    later().flatMap { _ =>
+      assertEquals(requested.now(), Vector.empty)
+      assertEquals(variable.history, before)
+      element.ref.querySelector(".interaction-scaffolding__request").asInstanceOf[dom.html.Button].click()
+      later()
+    }.flatMap { _ =>
+      assertEquals(requested.now(), Vector(variable.currentValue))
+      val feedback = ScaffoldingResult[String, String](variable.currentValue, LanguageMap.universalMap("1. What changes here?"),
+        FeedbackEntity.TestEntity(), None)
+      pending.success(feedback)
+      later().map { _ =>
+        assertEquals(variable.history.scaffoldings, Map(feedback.forState -> feedback))
+        assertEquals(variable.history.events, before.events)
+        assertEquals(variable.history.gradings, before.gradings)
+        assertEquals(variable.currentValue, interaction.defaultValue)
+        assertEquals(element.ref.querySelector("[role='status']").textContent, "1. What changes here?")
+      }
+    }.andThen { case _ => close() }
+  }
+
+  test("interaction rendering omits hint controls when no scaffolder is configured") {
+    val interaction = TextInteraction("renderer-without-hints")
+    val element = RenderingWorkbookElementLine(interaction, new DomElementSingle(div("Answer")), "").render
+    val close = mount(element)
+    try {
+      assertEquals(interaction.scaffoldingElement, None)
+      assertEquals(element.ref.querySelector(".interaction-scaffolding"), null)
+      assertEquals(element.ref.querySelector(".interaction-scaffolding__request"), null)
+    } finally close()
+  }
+
+  test("manual hints do not run on mount, edits or language and context changes") {
+    withScaffolding() { f =>
+      f.source.set("edited source")
+      f.language.set(German)
+      f.context.writer.onNext(())
+      later().map { _ =>
+        assertEquals(f.requests.now(), Vector.empty)
+        assertEquals(f.accepted.now(), Vector.empty)
+        assertEquals(f.button.textContent, "Anfragen")
+        assertEquals(f.element.ref.querySelector(".interaction-scaffolding__notice").textContent, "Hinweis")
+        assertEquals(f.text, "")
+        assert(!f.button.disabled)
+        assert(f.dismiss.hasAttribute("hidden"))
+      }
+    }
+  }
+
+  test("manual hints queue duplicate clicks once and render accepted numbered text without HTML") {
+    withScaffolding() { f =>
+      val original = f.source.now()
+      val trigger = new EventBus[Unit]
+      val owner = new ManualOwner
+      trigger.events.foreach { _ => f.button.click(); f.button.click() }(using owner)
+      trigger.writer.onNext(())
+      owner.killSubscriptions()
+      assertEquals(f.requests.now().size, 0)
+      later().flatMap { _ =>
+        assertEquals(f.requests.now().map(_._1), Vector(original))
+        assert(f.button.disabled)
+        assertEquals(f.status.getAttribute("aria-busy"), "true")
+        assertEquals(f.text, "Loading")
+        assert(!f.dismiss.hasAttribute("hidden"))
+        f.button.click()
+        val text = "1. What does <img src=x onerror=alert(1)> mean?\n2. Why is <script>alert(1)</script> here?"
+        val feedback = f.answer(text = text)
+        f.requests.now().head._2.success(feedback)
+        later().map { _ =>
+          assertEquals(f.requests.now().size, 1)
+          assertEquals(f.accepted.now(), Vector(feedback))
+          assertEquals(f.text, text)
+          assertEquals(f.element.ref.querySelector("img,script"), null)
+          assertEquals(f.source.now(), original)
+          assertEquals(f.status.getAttribute("aria-busy"), "false")
+          assert(!f.button.disabled)
+        }
+      }
+    }
+  }
+
+  List("state", "locale").foreach { mismatch =>
+    test(s"manual hints reject a response for another $mismatch without publishing it") {
+      withScaffolding() { f =>
+        f.button.click()
+        later().flatMap { _ =>
+          val feedback = if mismatch == "state" then f.answer(value = "another source") else f.answer(locale = German)
+          f.requests.now().head._2.success(feedback)
+          later().map { _ =>
+            assertEquals(f.text, "Unavailable")
+            assertEquals(f.accepted.now(), Vector.empty)
+            assert(!f.button.disabled)
+            assertEquals(f.source.now(), "original source\r\n\t ")
+          }
+        }
+      }
+    }
+  }
+
+  test("manual hints hide synchronous and asynchronous failure details and permit retry") {
+    withScaffolding() { f =>
+      val secret = "private source and credential"
+      f.synchronousFailure.set(Some(IllegalStateException(secret)))
+      f.button.click()
+      later().flatMap { _ =>
+        assertEquals(f.text, "Unavailable")
+        assert(!f.element.ref.textContent.contains(secret))
+        f.synchronousFailure.set(None)
+        f.button.click()
+        later()
+      }.flatMap { _ =>
+        assertEquals(f.requests.now().size, 2)
+        f.requests.now().last._2.failure(IllegalArgumentException(secret))
+        later()
+      }.flatMap { _ =>
+        assertEquals(f.text, "Unavailable")
+        assert(!f.element.ref.textContent.contains(secret))
+        assertEquals(f.accepted.now(), Vector.empty)
+        f.button.click()
+        later()
+      }.flatMap { _ =>
+        val feedback = f.answer()
+        f.requests.now().last._2.success(feedback)
+        later().map { _ =>
+          assertEquals(f.accepted.now(), Vector(feedback))
+          assertEquals(f.text, feedback.scaffoldingResult.getInLanguage(English))
+          assert(!f.element.ref.textContent.contains(secret))
+        }
+      }
+    }
+  }
+
+  List("source", "language", "context").foreach { changed =>
+    test(s"manual hints discard a late answer after $changed changes even when restored") {
+      withScaffolding() { f =>
+        val original = f.source.now()
+        f.button.click()
+        later().flatMap { _ =>
+          changed match {
+            case "source" => f.source.set("changed"); f.source.set(original)
+            case "language" => f.language.set(German); f.language.set(English)
+            case _ => f.context.writer.onNext(())
+          }
+          f.requests.now().head._2.success(f.answer())
+          later().map { _ =>
+            assertEquals(f.accepted.now(), Vector.empty)
+            assertEquals(f.text, "")
+            assertEquals(f.source.now(), original)
+            assert(!f.button.disabled)
+          }
+        }
+      }
+    }
+  }
+
+  List("source", "language", "context", "remount").foreach { changed =>
+    test(s"manual hints do not dispatch a queued request invalidated by $changed changes") {
+      withScaffolding() { f =>
+        f.button.click()
+        changed match {
+          case "source" => val original = f.source.now(); f.source.set("changed"); f.source.set(original)
+          case "language" => f.language.set(German); f.language.set(English)
+          case "context" => f.context.writer.onNext(())
+          case _ => f.close(); f.open()
+        }
+        later().map { _ =>
+          assertEquals(f.requests.now(), Vector.empty)
+          assertEquals(f.accepted.now(), Vector.empty)
+          assertEquals(f.text, "")
+        }
+      }
+    }
+  }
+
+  List("dismiss", "remount").foreach { action =>
+    test(s"manual hints ignore an old completion after $action while a new request is pending") {
+      withScaffolding() { f =>
+        f.button.click()
+        later().flatMap { _ =>
+          if action == "dismiss" then f.dismiss.click() else { f.close(); f.open() }
+          f.button.click()
+          later()
+        }.flatMap { _ =>
+          assertEquals(f.requests.now().size, 2)
+          f.requests.now().head._2.success(f.answer(text = "1. Old question?"))
+          later()
+        }.flatMap { _ =>
+          assertEquals(f.text, "Loading")
+          assertEquals(f.accepted.now(), Vector.empty)
+          val feedback = f.answer(text = "1. Current question?")
+          f.requests.now().last._2.success(feedback)
+          later().map { _ =>
+            assertEquals(f.accepted.now(), Vector(feedback))
+            assertEquals(f.text, "1. Current question?")
+          }
+        }
+      }
+    }
+  }
+
+  test("manual hints time out locally and a retry rejects the old completion") {
+    withScaffolding(10) { f =>
+      f.button.click()
+      later(30).flatMap { _ =>
+        assertEquals(f.requests.now().size, 1)
+        assertEquals(f.text, "Timed out")
+        assert(!f.button.disabled)
+        assertEquals(f.accepted.now(), Vector.empty)
+        f.button.click()
+        later()
+      }.flatMap { _ =>
+        assertEquals(f.requests.now().size, 2)
+        val feedback = f.answer(text = "1. New question?")
+        f.requests.now().head._2.success(f.answer(text = "1. Old question?"))
+        f.requests.now().last._2.success(feedback)
+        later().map { _ =>
+          assertEquals(f.accepted.now(), Vector(feedback))
+          assertEquals(f.text, "1. New question?")
+        }
+      }
+    }
+  }
+
+  test("manual hints retain a pending request across identical answer echoes") {
+    withScaffolding() { f =>
+      f.button.click()
+      later().flatMap { _ =>
+        f.source.set(f.source.now())
+        assert(f.button.disabled)
+        assertEquals(f.text, "Loading")
+        val feedback = f.answer()
+        f.requests.now().head._2.success(feedback)
+        later().map { _ =>
+          assertEquals(f.accepted.now(), Vector(feedback))
+          assertEquals(f.requests.now().size, 1)
+        }
+      }
+    }
+  }
+
   private class Fixture(source: ProgrammingState, languages: List[ProgrammingLanguage] = List(SnapLanguage, Python, Java)) {
     val state = Var(source)
     val created = Var(Vector.empty[ProgrammingLanguage])
