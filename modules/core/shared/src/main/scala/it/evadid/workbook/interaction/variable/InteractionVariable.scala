@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic.DeriveOnlyLastValues
 import it.evadid.core.datastructures.state.{ExecutionMethod, State}
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
+import it.evadid.workbook.abstractions.{InteractionBoundComponent, WorkbookInteractionElementFull}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult}
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
@@ -163,5 +163,6 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     }
   }
 
-
+  InteractionBoundComponent.bindAll(this,
+    underlyingInteraction.gradingElements ++ underlyingInteraction.scaffoldingElement.toList)
 }
