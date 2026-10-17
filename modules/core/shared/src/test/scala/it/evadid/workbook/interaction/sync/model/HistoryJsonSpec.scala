@@ -1,7 +1,7 @@
 package it.evadid.workbook.interaction.sync.model
 
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
-import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.interaction.sync.UpdateImportance
@@ -72,6 +72,8 @@ class HistoryJsonSpec extends FunSuite {
   }
 
   test("restoring a decoded mixed legacy envelope preserves sources and current hints") {
+    import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
+
     val variable = new WorkbookInteractionElementFull[String, Int, Int] {
       override val elementId = "answer"
       override val defaultValue = ""
