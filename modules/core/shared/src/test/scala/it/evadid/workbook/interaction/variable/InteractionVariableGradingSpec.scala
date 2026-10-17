@@ -187,6 +187,34 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
+  test("a hint selects its client before returning control and keeps that request's source and locale") {
+    val reply = Promise[String]()
+    val f = new HintFixture(response = _ => reply.future)
+    val first = f.scaffolder.generateFeedback(f.source)
+    assertEquals(f.lookups.now(), 1)
+    assertEquals(f.requests.now().size, 1)
+    assert(!first.isCompleted)
+    f.language.set(English)
+    f.executor.set(f.client(_ => Future.successful(hintReply("Which condition will you inspect first?"))))
+    val restored = ProgrammingStatePythonString("# Different answer\r\n\tdef draw(")
+    f.variable.updateHistory(_.withAddedEvent(InteractionVariableState[ProgrammingState](
+      restored, MAJOR, LocalDateTime.now().plusSeconds(1))))
+    val second = f.scaffolder.generateFeedback(restored)
+    assertEquals(f.lookups.now(), 2)
+    assertEquals(f.requests.now().map(request => ujson.read(request.prompt)("feedbackLanguage").str), Vector(German.name, English.name))
+    val beforeReply = f.variable.history
+    reply.success(hintReply())
+    first.zip(second).map { (original, current) =>
+      assertEquals(original.forState, f.source)
+      assertEquals(original.scaffoldingResult.availableLanguages, Set[HumanLanguage](German))
+      assertEquals(current.forState, restored)
+      assertEquals(current.scaffoldingResult.availableLanguages, Set[HumanLanguage](English))
+      assertEquals(current.scaffoldingResult.getInLanguage(English), "1. Which condition will you inspect first?")
+      assertEquals(f.context("source")("code").str, restored.code)
+      assertEquals(f.variable.history, beforeReply)
+    }
+  }
+
   test("programming hint context exposes only matching public deterministic check statuses") {
     val required = HintCheck("PRIVATE_REQUIRED_NAME", GradingImportance.REQUIRED_TEST)
     val optional = HintCheck("PRIVATE_OPTIONAL_NAME", GradingImportance.OPTIONAL_TEST)

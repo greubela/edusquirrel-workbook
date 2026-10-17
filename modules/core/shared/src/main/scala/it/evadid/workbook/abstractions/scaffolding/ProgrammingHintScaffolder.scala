@@ -23,7 +23,8 @@ final class ProgrammingHintScaffolder[A](publicTask: LanguageMap[HumanLanguage],
   private given ExecutionContext = ExecutionContext.global
 
   override def generateFeedback(currentState: ProgrammingState): Future[ScaffoldingResult[ProgrammingState, A]] =
-    Future.fromTry(Try(prepare(currentState))).flatMap { context =>
+    Try {
+      val context = prepare(currentState)
       LLMCommands.feedbackLlmCommandFactory
         .sendCommandTo(executionClient(), context.request, Some(BasicLogger()))
         .map { response =>
@@ -34,7 +35,7 @@ final class ProgrammingHintScaffolder[A](publicTask: LanguageMap[HumanLanguage],
           ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(context.language -> text)),
             FeedbackEntity.LlmEntity(conversation), None)
         }
-    }
+    }.fold(Future.failed, identity)
 
   private def prepare(state: ProgrammingState): Context = {
     val language = feedbackLanguage()
