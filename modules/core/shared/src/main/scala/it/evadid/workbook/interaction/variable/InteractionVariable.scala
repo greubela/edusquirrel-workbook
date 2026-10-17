@@ -116,8 +116,9 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
   }
 
   def executeLoad(syncControl: SyncControl): Unit = this.synchronized {
-    val toAdd: Set[InteractionVariableState[T]] = syncControl.createCurrentReport(this).allStatesEverywhere
-    innerState.update(_.withAddedEvents(toAdd))
+    val histories = syncControl.createCurrentReport(this).curRemoteHistory.values
+      .flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toVector
+    innerState.update(_.restoreFrom(histories))
   }
 
   def resetLocalHistory(): Unit = this.synchronized {
@@ -133,8 +134,15 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
   def startGrading(syncControl: SyncControl, forceGrading: Boolean = false): Unit = this.synchronized {
     val curState = innerState.now()
     val lastValue = curState.lastStateOption.map(_.value)
+    val covered = lastValue.exists { state =>
+      curState.gradings.get(state).exists { cached =>
+        cached.state == state && underlyingInteraction.gradingElements.forall { grader =>
+          cached.testsWithResults.exists(result => result.gradedState == state && result.grader == grader)
+        }
+      }
+    }
     if (underlyingInteraction.gradingElements.nonEmpty && lastValue.nonEmpty &&
-      (forceGrading || !curState.gradings.contains(lastValue.get))) {
+      (forceGrading || !covered)) {
       val futures: Future[List[GradingResult[T, GA]]] = Future.traverse(underlyingInteraction.gradingElements)(_.gradeStateSafe(lastValue.get, forceGrading))
       futures.map(resList => GradedState[T, GA](lastValue.get, resList.toSet)).onComplete {
         case Success(res) => this.synchronized {
