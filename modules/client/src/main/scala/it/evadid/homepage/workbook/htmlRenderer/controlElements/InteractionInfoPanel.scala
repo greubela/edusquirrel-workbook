@@ -2,33 +2,84 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L.{child, svg as svgtag, *}
 import com.raquo.laminar.nodes.{ReactiveHtmlElement, ReactiveSvgElement}
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
-import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
-import it.evadid.workbook.abstractions.grading.{GradingResult, WorkbookInteractionGrader}
+import it.evadid.workbook.abstractions.{WorkbookInteractionElementFull, WorkbookInteractionUntyped}
 import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
 import org.scalajs.dom.{HTMLDivElement, SVGPathElement, SVGSVGElement}
+import java.util.UUID
 
 case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionUntyped) extends HtmlAppElement {
+
+  private val expanded = Var(false)
+  private val hintId = s"interaction-hint-${UUID.randomUUID()}"
+  private def label(key: String): Signal[String] =
+    fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId(s"basic/$key"))
+  private lazy val hintAction = expanded.signal.flatMapSwitch(open => label(if open then "scaffoldingClose" else "scaffoldingOpen"))
+
+  private def closeHints(): Unit = {
+    expanded.set(false)
+    hintButton.ref.focus()
+  }
+
+  private lazy val hintButton = button(
+    typ := "button", cls := "interaction-info__hint-toggle",
+    aria.label <-- hintAction, title <-- hintAction,
+    aria.expanded <-- expanded.signal, aria.controls := hintId,
+    svgtag.svg(svgtag.cls := "interaction-info__hint-icon", svgtag.viewBox := "0 0 24 24",
+      svgtag.fill := "none", svgtag.stroke := "currentColor", svgtag.strokeWidth := "1.7",
+      svgtag.path(svgtag.d := "M9 18h6M10 21h4M8.5 14.5a6 6 0 1 1 7 0c-.9.7-1.5 1.3-1.5 3.5h-4c0-2.2-.6-2.8-1.5-3.5Z")),
+    span(child.text <-- label("scaffoldingLabel")),
+    onClick --> (_ => expanded.update(!_)))
+
+  private def scaffoldingPanel[T, GA, SA](interaction: WorkbookInteractionElementFull[T, GA, SA]): Option[Element] =
+    interaction.scaffoldingElement.map { scaffolder =>
+      val variable = interaction.interactionVariable
+      new InteractionScaffoldingPanel[T, SA](
+        () => variable.currentValue, variable.observableValue.toEventStream(), fullInfo.signals.currentLanguage,
+        EventStream.merge(fullInfo.signals.user.distinct.changes.map(_ => ()),
+          fullInfo.signals.workbook.map(_.map(_.loadedWorkbook)).distinct.changes.map(_ => ())),
+        scaffolder.generateFeedback,
+        result => {
+          variable.updateHistory(_.updateScaffoldings(_ + (result.forState -> result)))
+          fullInfo.syncControl.requestStore(variable)
+        },
+        InteractionScaffoldingPanel.Labels(label("scaffoldingRequest"), label("scaffoldingLoading"),
+          label("scaffoldingDismiss"), label("scaffoldingError"), label("scaffoldingTimeout"), label("scaffoldingNotice"))
+      ).getDomElement()
+    }
+
+  private def hintBody(): Element = sectionTag(
+    idAttr := hintId, cls := "interaction-info__hint-body", aria.label <-- label("scaffoldingTitle"),
+    onMountCallback(ctx => Option(ctx.thisNode.ref.querySelector(".interaction-scaffolding__request"))
+      .foreach(_.asInstanceOf[org.scalajs.dom.html.Element].focus())),
+    onKeyDown.filter(_.key == "Escape") --> { event =>
+      event.preventDefault()
+      event.stopPropagation()
+      closeHints()
+    },
+    div(cls := "interaction-info__hint-heading",
+      h3(child.text <-- label("scaffoldingTitle")),
+      button(typ := "button", cls := "interaction-info__hint-close",
+        aria.label <-- label("scaffoldingClose"), title <-- label("scaffoldingClose"),
+        "×", onClick --> (_ => closeHints()))),
+    scaffoldingPanel(workbookInteractionElement))
 
   lazy val syncReport = fullInfo.syncControl.createObservableReport(workbookInteractionElement.interactionVariable).toEventStream()
 
   lazy val domElement: Element = {
     div(
       cls := interactionInfoCssString,
-      div(
-        cls := "current-grading-icon",
-
-      ),
-      div(
-        cls := "sync-report-icon",
-        child  <-- syncReport.map(deriveSyncSymbol)
-      ),
-
+      div(cls := "interaction-info__icons",
+        div(cls := "current-grading-icon"),
+        div(cls := "sync-report-icon", child <-- syncReport.map(deriveSyncSymbol)),
+        Option.when(workbookInteractionElement.scaffoldingElement.nonEmpty)(hintButton)),
+      child.maybe <-- expanded.signal.map(open => Option.when(open)(hintBody()))
     )
   }
 
@@ -57,6 +108,15 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
 }
 
 object InteractionInfoPanel {
+
+  def withEditor(interaction: WorkbookInteractionUntyped, editor: HtmlAppElement): HtmlAppElement =
+    if interaction.scaffoldingElement.isEmpty then editor
+    else new HtmlAppElement {
+      override def dismissOnOutsideClick: Boolean = editor.dismissOnOutsideClick
+      override def getDomElement(): Element = div(cls := "interaction-editor",
+        InteractionInfoPanel(interaction).getDomElement(),
+        div(cls := "interaction-editor__content", editor.getDomElement()))
+    }
 
   /* CSS info */
 

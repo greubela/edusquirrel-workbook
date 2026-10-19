@@ -2,10 +2,8 @@ package it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
-import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionUntyped, WorkbookStructureElement}
-import it.evadid.core.datastructures.state.StateHelper.*
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionUntyped, WorkbookStructureElement}
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel
 case class RenderingWorkbookElementLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssStr: String) extends AtomarLineRendering {
 
