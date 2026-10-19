@@ -11,6 +11,7 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEdito
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
@@ -61,7 +62,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
       case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
 
     val editorConfig = EvaEditorConfig(snapConfig = snapEditorConfig)
-    val editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension(
+    def editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension(
         boundVar, Some(workbookElement.desiredResult), workbookElement.comparisonPolicy)), editorConfig)
 
     lazy val codePreview = SnapPreviewEditor(boundVar, snapEditorConfig).getDomElement()
@@ -71,7 +72,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     }
     val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), programPreview)
 
-    def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)
+    def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(InteractionInfoPanel.withEditor(workbookElement, editor))
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
