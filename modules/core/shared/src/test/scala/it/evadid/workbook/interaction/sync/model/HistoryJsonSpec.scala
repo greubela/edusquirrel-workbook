@@ -2,10 +2,13 @@ package it.evadid.workbook.interaction.sync.model
 
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.workbook.abstractions.FeedbackEntity
+import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.slideshow.{SlideshowGrader, SlideshowState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.jsonFactory.WorkbookElementReference
 import munit.FunSuite
 import upickle.default.*
 
@@ -13,6 +16,31 @@ import java.time.LocalDateTime
 
 class HistoryJsonSpec extends FunSuite {
   private val time = LocalDateTime.of(2026, 1, 1, 0, 0)
+
+  test("histories retain registered graders and scaffolding through JSON and MessagePack") {
+    given ReadWriter[Nothing] = readwriter[ujson.Value].bimap[Nothing](
+      (_: Nothing) => throw IllegalArgumentException("A grading payload cannot contain Nothing."),
+      (_: ujson.Value) => throw IllegalArgumentException("A grading payload cannot contain Nothing."))
+    type History = InteractionVariableHistory[SlideshowState, Nothing, String]
+    val state = SlideshowState(List(WorkbookElementReference("slide-Grüße", None)), Set.empty)
+    val grader: WorkbookInteractionGrader[SlideshowState, Nothing] = SlideshowGrader(true)
+    val grading = GradingResult[SlideshowState, Nothing](grader, state, GradingStatus.Correct(),
+      gradingTime = time)
+    val scaffolding = ScaffoldingResult(state, LanguageMap.universalMap[AppLanguage.HumanLanguage]("Try again"),
+      FeedbackEntity.TestEntity(), Some("public observation"))
+    val original = InteractionVariableHistory[SlideshowState, Nothing, String](
+      Set(InteractionVariableState(state, UpdateImportance.MAJOR, time)),
+      Map(state -> GradedState(state, Set(grading))), Map(state -> scaffolding))
+    val restored = List(read[History](write[History](original)),
+      readBinary[History](writeBinary[History](original)))
+    restored.foreach { history =>
+      assertEquals(history, original)
+      assertEquals(history.gradings(state).testsWithResults.head.grader, grader)
+      assertEquals(history.gradings(state).timestampLatestTest, time)
+      assertEquals(history.scaffoldings(state).forState, state)
+    }
+  }
+
   private def history[T](state: T, seconds: Int) = {
     val feedback = ScaffoldingResult(state, LanguageMap.universalMap[AppLanguage.HumanLanguage]("Try again"),
       FeedbackEntity.TestEntity(), Some(List(1, 2, 3)))
