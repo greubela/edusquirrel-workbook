@@ -163,6 +163,6 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     }
   }
 
-  InteractionBoundComponent.bindAll(this,
+  InteractionBoundComponent.bindAll(underlyingInteraction,
     underlyingInteraction.gradingElements ++ underlyingInteraction.scaffoldingElement.toList)
 }

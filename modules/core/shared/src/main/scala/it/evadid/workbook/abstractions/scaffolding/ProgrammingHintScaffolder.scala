@@ -54,7 +54,7 @@ final class ProgrammingHintScaffolder[A](publicTask: LanguageMap[HumanLanguage],
     val variable = interactionVariable
     val history = variable.history
     val results = history.gradings.get(state).filter(_.state == state).toList.flatMap(_.testsWithResults.toList)
-    val graders = variable.underlyingInteraction.gradingElements.filter { grader =>
+    val graders = interaction.gradingElements.filter { grader =>
       grader.importance != GradingImportance.HIDDEN_TEST && grader.gradingEntity == FeedbackEntity.TestEntity()
     }.distinct
     require(graders.size <= 32, "Too many public checks for a hint.")

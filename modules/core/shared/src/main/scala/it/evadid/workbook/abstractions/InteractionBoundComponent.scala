@@ -4,28 +4,28 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.workbook.interaction.variable.InteractionVariable
 
 trait InteractionBoundComponent[T] {
-  private val binding = State(Option.empty[InteractionVariable[T, ?, ?]])
+  private val binding = State(Option.empty[WorkbookInteractionElementFull[T, ?, ?]])
 
-  final def interactionVariable: InteractionVariable[T, ?, ?] =
-    binding.now().getOrElse(throw IllegalStateException("This component is not bound to an interaction variable."))
+  final def interaction: WorkbookInteractionElementFull[T, ?, ?] =
+    binding.now().getOrElse(throw IllegalStateException("This component is not bound to an interaction."))
 
-  final def interaction: WorkbookInteractionElementFull[T, ?, ?] = interactionVariable.underlyingInteraction
+  final def interactionVariable: InteractionVariable[T, ?, ?] = interaction.interactionVariable
 
-  private def validateBinding(variable: InteractionVariable[T, ?, ?]): Unit =
-    require(binding.now().forall(_ eq variable), "This component already belongs to another interaction variable.")
+  private def validateBinding(owner: WorkbookInteractionElementFull[T, ?, ?]): Unit =
+    require(binding.now().forall(_ eq owner), "This component already belongs to another interaction.")
 
-  private def bind(variable: InteractionVariable[T, ?, ?]): Unit =
+  private def bind(owner: WorkbookInteractionElementFull[T, ?, ?]): Unit =
     binding.update {
-      case None => Some(variable)
+      case None => Some(owner)
       case existing => existing
     }
 }
 
 object InteractionBoundComponent {
-  private[workbook] def bindAll[T](variable: InteractionVariable[T, ?, ?],
+  private[workbook] def bindAll[T](owner: WorkbookInteractionElementFull[T, ?, ?],
       components: List[InteractionBoundComponent[T]]): Unit =
     if components.nonEmpty then synchronized {
-      components.foreach(_.validateBinding(variable))
-      components.foreach(_.bind(variable))
+      components.foreach(_.validateBinding(owner))
+      components.foreach(_.bind(owner))
     }
 }
