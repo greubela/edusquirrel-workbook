@@ -50,8 +50,8 @@ class SqlEditorResultSpec extends munit.FunSuite {
     val command = ExecutionCommand(LLMCommands.feedbackLlmCommandFactory.name,
       ujson.Obj("prompt" -> prompt, "systemPrompt" -> system, "private-unknown-key" -> "private-extra-value"))
     val original = ujson.write(command.json)
-    val expected = ujson.Obj("name" -> command.name, "redacted" -> true,
-      "promptLength" -> prompt.length, "systemPromptLength" -> system.length)
+    val expected = ujson.Obj("name" -> command.name, "json" -> ujson.Obj("redacted" -> true,
+      "promptLength" -> prompt.length, "systemPromptLength" -> system.length))
     val (connection, writes) = logConnection(1)
     val logger = BasicLogger()
     SqlLogCommands.handleLog(LocalDateTime.of(2026, 10, 17, 10, 0), command, None,
@@ -80,8 +80,8 @@ class SqlEditorResultSpec extends munit.FunSuite {
       val logger = BasicLogger()
       SqlLogCommands.handleLog(LocalDateTime.of(2026, 10, 17, 10, 0), command, None,
         InetAddress.getLoopbackAddress, logger, connection)
-      val expected = ujson.Obj("name" -> command.name, "redacted" -> true,
-        "promptLength" -> ujson.Null, "systemPromptLength" -> ujson.Null)
+      val expected = ujson.Obj("name" -> command.name, "json" -> ujson.Obj("redacted" -> true,
+        "promptLength" -> ujson.Null, "systemPromptLength" -> ujson.Null))
       assertEquals(ujson.read(writes.now().head(4)), expected)
       assert(logger.getOut().contains("Failed db logging for command:"))
       assert(!logger.getOut().contains("private"))

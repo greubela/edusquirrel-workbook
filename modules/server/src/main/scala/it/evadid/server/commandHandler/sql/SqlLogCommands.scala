@@ -2,7 +2,6 @@ package it.evadid.server.commandHandler.sql
 
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.distribution.command.ExecutionCommand
-import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.SyncSuccess
@@ -14,14 +13,7 @@ import java.time.LocalDateTime
 object SqlLogCommands {
 
   private[server] def payloadForLog(command: ExecutionCommand): String =
-    if command.name != LLMCommands.feedbackLlmCommandFactory.name then command.toJson
-    else {
-      def length(field: String): ujson.Value = command.json.objOpt
-        .flatMap(_.get(field)).flatMap(_.strOpt)
-        .fold[ujson.Value](ujson.Null)(value => ujson.Num(value.length))
-      ujson.write(ujson.Obj("name" -> command.name, "redacted" -> true,
-        "promptLength" -> length("prompt"), "systemPromptLength" -> length("systemPrompt")))
-    }
+    command.stripPrivacySensitiveInformation().toJson
 
   def handleLog(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Unit = {
     val config = DatabaseConfig.readFromEnv()

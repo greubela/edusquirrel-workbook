@@ -24,7 +24,7 @@ trait LocalExecutionClient[I: ReadWriter, O: ReadWriter] extends ExecutionClient
     val input: I = try {
       read(executionCommand.json)
     } catch case (err: Throwable) => {
-      throw SerializedException(s"${this.getClass.getSimpleName} could not parse ${executionCommand.json} as input!")
+      throw SerializedException(s"${this.getClass.getSimpleName} could not parse ${executionCommand.stripPrivacySensitiveInformation().json} as input!")
     }
     rawExecution(logger, input).transform {
       case Success(res) => Try {

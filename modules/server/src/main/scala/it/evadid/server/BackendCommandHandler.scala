@@ -90,10 +90,11 @@ object BackendCommandHandler {
   ))
 
 
-  private[server] def logReceivedCommand(command: ExecutionCommand, logger: Logger): Unit =
-    if command.name == LLMCommands.feedbackLlmCommandFactory.name then
-      logger.logInfo(s"[server] Received command: ${SqlLogCommands.payloadForLog(command)}")
-    else logger.logInfo(s"[server] Received command: ${command.name} with params keys: ${command.json.obj.keys}")
+  private[server] def logReceivedCommand(command: ExecutionCommand, logger: Logger): Unit = {
+    val forLogging = command.stripPrivacySensitiveInformation()
+    if forLogging eq command then logger.logInfo(s"[server] Received command: ${command.name} with params keys: ${command.json.obj.keys}")
+    else logger.logInfo(s"[server] Received command: ${forLogging.toJson}")
+  }
 
   private[server] def validateFeedbackRequest(command: ExecutionCommand): Unit =
     if command.name == LLMCommands.feedbackLlmCommandFactory.name &&

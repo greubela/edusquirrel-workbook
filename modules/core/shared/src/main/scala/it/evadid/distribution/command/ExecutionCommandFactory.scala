@@ -17,12 +17,16 @@ object ExecutionCommandFactory {
 }
 
 case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
-                                                                  name: String
+                                                                  name: String,
+                                                                  private val privacyFilter: Option[ujson.Value => ujson.Value] = None
                                                                 ) {
 
   given ec: ExecutionContext = ExecutionContext.global
 
   private def toCommand(data: I): ExecutionCommand = ExecutionCommand(name, upickle.writeJs(data))
+
+  private[distribution] def stripPrivacySensitiveInformation(command: ExecutionCommand): ExecutionCommand =
+    privacyFilter.fold(command)(filter => command.copy(json = filter(command.json)))
 
   def toLocalExecutionClient(handler: (I, Logger) => Future[O], mayExecuteCommand: (I, Logger) => Boolean = (i, l) => true): ExecutionClient = new LocalExecutionClient[I, O] {
 
@@ -30,7 +34,7 @@ case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
 
     override def rawExecution(logger: Logger, input: I): Future[O] = {
       val mayExecute = mayExecuteCommand(input, logger)
-      if (!mayExecute) Future.failed(SerializedException(s"ExecutionCommandFactory(${name}) can or may not execute on input '${input}'!")) else {
+      if (!mayExecute) Future.failed(SerializedException(s"ExecutionCommandFactory(${name}) can or may not execute on input '${toCommand(input).stripPrivacySensitiveInformation().json}'!")) else {
         handler.apply(input, logger)
       }
     }
@@ -57,9 +61,9 @@ case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
     val command: ExecutionCommand = toCommand(data)
     val logger: Logger = loggerOp.getOrElse(createNewLogger(data, command))
 
-    val start: String = "Requested Execution of Command " + command.name + " by " + client.toString + " at " + useTimestamp + "!\n"
+    val start: String = "Requested Execution of Command " + command.name + " by " + client.getClass.getSimpleName + " at " + useTimestamp + "!\n"
     val mid: String = if (setTimestampRequested.nonEmpty) "    Waited for missing data until: " + timestampRequestedLocal + "\n" else ""
-    val end: String = "    Execute command with the following data: " + write(data)
+    val end: String = "    Execute command with the following data: " + write(command.stripPrivacySensitiveInformation().json)
 
     logger.logInfo(start + mid + end)
 
