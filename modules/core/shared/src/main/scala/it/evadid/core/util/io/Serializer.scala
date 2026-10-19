@@ -97,24 +97,16 @@ object Serializer {
 
   def universalTraitSerializer[T](knownSubtypeSerializer: Map[String, Serializer[T]]): Serializer[T] = new Serializer[T] {
 
-    private val knownSubtypeReadWriter: Map[String, ReadWriter[T]] = knownSubtypeSerializer.iterator.map((curKey, curVal) => curKey -> curVal.uPickleReadWrite).toMap
-
     private def serializerFor(obj: T): Serializer[T] = try {
       knownSubtypeSerializer(obj.getClass.getSimpleName)
     } catch case (err: Throwable) => {
       throw SerializedException(s"Cannot Serialize object of class ${obj.getClass.getSimpleName} because no serializer known for it (known serializer: ${knownSubtypeSerializer.keySet})!", err)
     }
 
-    private def readWriterFor(obj: T): ReadWriter[T] = try {
-      knownSubtypeReadWriter(obj.getClass.getSimpleName)
-    } catch case (err: Throwable) => {
-      throw SerializedException(s"Cannot Serialize object of class ${obj.getClass.getSimpleName} because no serializer known for it (known serializer: ${knownSubtypeSerializer.keySet})!", err)
-    }
-
     override def serialize(toWrite: T): String = {
-      val serializer = readWriterFor(toWrite)
+      val serializer = serializerFor(toWrite)
       try {
-        val json = writeJs(toWrite)(using serializer)
+        val json = ujson.read(serializer.serialize(toWrite))
         json.obj.update("serializedType", toWrite.getClass.getSimpleName)
         write(json)
       } catch case (err: Throwable) => {
