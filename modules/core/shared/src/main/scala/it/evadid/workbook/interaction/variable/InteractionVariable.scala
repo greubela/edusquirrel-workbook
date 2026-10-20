@@ -171,5 +171,4 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     }
   }
 
-
 }
