@@ -10,6 +10,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.{JavaTurtleEditorExtension, TurtleTaskEditorExtension}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
@@ -28,10 +29,9 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
 
   override protected def createRendering(workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {
     val boundVar = editorState(workbookElement, fullInfo.syncControl)
-    val editor = editorFor(workbookElement, boundVar)
     val openButton = HtmlButtonElement.withTextLabel(
       "basic/OpenEditor",
-      _ => fullInfo.displayControl.setFullscreen(editor)
+      _ => fullInfo.displayControl.setFullscreen(InteractionInfoPanel.withEditor(workbookElement, editorFor(workbookElement, boundVar)))
     )
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), openButton.getDomElement())
     val editorCard = ElementCard(

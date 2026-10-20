@@ -13,6 +13,7 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEdito
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
 import it.evadid.util.logging.Logger
@@ -44,9 +45,9 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val javaExecution = new JavaTurtleEditorExtension(boundVar)
     val execution = new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleProgramExecution(List(javaExecution))
-    val editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, Nil, EvaEditorConfig(snapConfig = editorConfig))
+    def editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, Nil, EvaEditorConfig(snapConfig = editorConfig))
 
-    def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(editor)
+    def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(InteractionInfoPanel.withEditor(workbookElement, editor))
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
@@ -62,7 +63,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     val staticRendering = ElementCard(
       LanguageMapContentId("basic/staticPreviewProgram"),
       Try {
-        val current = editor.state.now()
+        val current = boundVar.now()
         current match
           case java: ProgrammingStateJavaString if java.isClassProgram =>
             throw IllegalArgumentException("Full Java classes require the checked Java runner.")
