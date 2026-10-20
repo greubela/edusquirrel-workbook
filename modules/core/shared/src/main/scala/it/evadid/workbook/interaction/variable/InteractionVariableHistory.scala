@@ -49,6 +49,29 @@ case class InteractionVariableHistory[T, GA, SA]
     withAddedEvents(Set(event))
   }
 
+  def mergeWith(histories: Iterable[InteractionVariableHistory[T, GA, SA]]): InteractionVariableHistory[T, GA, SA] = {
+    val all = this +: histories.toVector
+    val restoredGradings = all.flatMap(_.gradings).groupMap(_._1)(_._2).flatMap { (state, snapshots) =>
+      val results = snapshots.filter(_.state == state).flatMap(_.testsWithResults).filter(_.gradedState == state)
+      Option.when(results.nonEmpty) {
+        val latest = results.groupBy(_.grader).values.flatMap { sameGrader =>
+          val time = sameGrader.map(_.gradingTime).max
+          sameGrader.filter(_.gradingTime == time)
+        }.toSet
+        state -> GradedState(state, latest)
+      }
+    }
+    val restoredHints = all.flatMap(_.scaffoldings).filter((state, hint) => hint.forState == state)
+      .groupMap(_._1)(_._2).flatMap { (state, candidates) =>
+        candidates.distinct match {
+          case Vector(single) => Some(state -> single)
+          case _ => None
+        }
+      }
+    copy(events = all.flatMap(_.events).toSet, gradings = restoredGradings,
+      scaffoldings = restoredHints ++ scaffoldings.filter((state, hint) => hint.forState == state)).cleanedHistory()
+  }
+
   override val toString: String = s"InteractionVariableHistory(${events.size} events, latest: ${InfoUtil.datetimeFormattedForLog(lastStateOption.map(_.timestamp))})"
 
 }
