@@ -1,11 +1,13 @@
 package it.evadid.homepage.workbook.content.test
 
 import it.evadid.core.datastructures.geometry.{Line, Point}
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.homepage.workbook.content.wip.PhishingMailboxData
-import it.evadid.workbook.abstractions.WorkbookElement
+import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement}
+import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, TaskLabel}
 import it.evadid.workbook.elements.interactionElements.emailSimulator.MailInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
@@ -59,6 +61,8 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         ),
         ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.BeginnerTurtle),
         ProgrammingExerciseFullJava("prog-full-java"),
+        DisplayLangMapContent("java-square-pilot-instructions", LanguageMapContentId("TestWorkbook/javaSquareInstructions"),
+          LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)),
         ProgrammingExerciseFullJava("java-square-pilot", startingProgram = """public class Drawing {
           |  static void square(int side) {
           |

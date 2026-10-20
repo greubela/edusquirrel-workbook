@@ -1,10 +1,14 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
+import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailFolder, MailInteraction}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
+import it.evadid.workbook.elements.structureElements.ExerciseContainer
 import munit.FunSuite
 
 class CreateTestWorkbookSpec extends FunSuite {
@@ -91,5 +95,23 @@ class CreateTestWorkbookSpec extends FunSuite {
     assertEquals(pilot.head.testSuite, None)
     assertEquals(exercises.find(_.elementId == "prog-full-java").get.startingProgram,
       ProgrammingExerciseFullJava.defaultStartingProgram)
+  }
+
+  test("square instructions immediately precede the pilot and survive workbook serialization") {
+    val workbook = CreateTestWorkbook(null).createWorkbook
+    val restored = List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)
+      .map(serializer => serializer.deserialize(serializer.serialize(workbook)))
+    (workbook :: restored).foreach { current =>
+      val container = current.allChildrenFullSubtree.collectFirst {
+        case group: ExerciseContainer if group.containerContent.exists(_.elementId == "java-square-pilot") => group
+      }.get
+      val pilotIndex = container.containerContent.indexWhere(_.elementId == "java-square-pilot")
+      assert(pilotIndex > 0)
+      assertEquals(container.containerContent(pilotIndex - 1), DisplayLangMapContent(
+        "java-square-pilot-instructions", LanguageMapContentId("TestWorkbook/javaSquareInstructions"),
+        LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)))
+      val ids = current.allChildrenFullSubtree.map(_.elementId)
+      assertEquals(ids.distinct.size, ids.size)
+    }
   }
 }

@@ -32,6 +32,11 @@ test('Java appearance changes preserve the live editor, undo history and drawing
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
+    for (const [flag, title] of [['german-red', 'Ein Quadrat in Java'], ['british-blue', 'A square in Java']]) {
+      await page.locator(`.select-language-line > div:has(.flag-fill-${flag})`).click();
+      await page.getByRole('heading', {name: title, exact: true}).waitFor();
+      assert((await page.locator('body').innerText()).includes('square(int side)'));
+    }
     const open = page.getByRole('button', {name: /Editor.*öffnen|Open editor/i});
     await open.last().click();
     const editor = page.locator('dialog[open] .eva-editor');
