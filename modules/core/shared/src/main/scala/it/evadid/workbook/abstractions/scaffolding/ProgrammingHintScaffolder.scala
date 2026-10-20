@@ -83,7 +83,9 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
 
 object ProgrammingHintScaffolder {
   private case class Context(sourceLanguage: String, source: String, sourceIds: Vector[String], checks: List[(String, Boolean, String)]) {
-    val evidenceIds: Set[String] = sourceIds.toSet ++ checks.map(_._1) + "task"
+    val evidenceIds: Set[String] = sourceIds.toSet ++ checks.collect {
+      case (id, _, status) if Set("correct", "partially-correct", "incorrect").contains(status) => id
+    } + "task"
 
     def request(language: HumanLanguage, task: String): LLMCommands.FeedbackLlmRequest = {
       val prompt = ujson.write(ujson.Obj(
@@ -109,6 +111,7 @@ object ProgrammingHintScaffolder {
       |Source IDs refer to one-based source lines; CRLF, CR and LF each separate lines.
       |Use only the supplied task, source and public check statuses. Do not invent observations or claim execution.
       |Unavailable, not-run and error statuses are not evidence of a learner mistake. Optional checks are not requirements.
+      |Only cite check IDs whose status is correct, partially-correct or incorrect.
       |Do not give an overall grade, claim correctness or mention internal checks, test names or tools.
       |Ask the learner to examine a specific part. When evidence is insufficient, ask rather than assert a bug.
       |Do not provide solutions, replacement code, answer values or step-by-step solution algorithms.

@@ -140,6 +140,57 @@ class InteractionVariableGradingSpec extends FunSuite {
     }).map(_ => ())
   }
 
+  test("complete, incorrect and unfinished Java drafts reach the hint request without conversion") {
+    val complete = """public class Drawing {
+      |  static void square(int side) {
+      |    for (int i = 0; i < 4; i++) {
+      |      Turtle.forward(side);
+      |      Turtle.turnRight(90);
+      |    }
+      |  }
+      |  public static void main(String[] args) { square(80); }
+      |}""".stripMargin
+    val cases = List(complete -> 9, complete.replace("i < 4", "i < 3") -> 9,
+      "public class Drawing {\n  static void square(int side) {\n    for (" -> 3)
+    Future.sequence(cases.map { (code, lineCount) =>
+      val source = ProgrammingStateJavaString(code)
+      val f = new HintFixture(source,
+        response = _ => Future.successful(hintReply(ids = List("source-3"))),
+        task = LanguageMap.universalMap("Zeichne ein Quadrat mit der Seitenlänge side."))
+      val before = f.variable.history
+      f.generateFeedback(source).map { result =>
+        assertEquals(f.context("source")("language").str, Java.name)
+        assertEquals(f.context("source")("code").str, code)
+        assertEquals(f.context("source")("lineIds").arr.toVector.map(_.str),
+          (1 to lineCount).map(index => s"source-$index").toVector)
+        assertEquals(f.context("checks").arr.toVector, Vector.empty)
+        assertEquals(result.forState, source)
+        assertEquals(f.requests.now().size, 1)
+        assertEquals(f.variable.history, before)
+      }
+    }).map(_ => ())
+  }
+
+  test("source evidence follows mixed line endings and excludes blank lines") {
+    val source = ProgrammingStateJavaString("class Drawing {\r\n  // Grüße 🐢\r\t \n\n  static void square(\r\n")
+    val valid = new HintFixture(source, response = _ => Future.successful(hintReply(ids = List("source-2", "source-5"))))
+    valid.generateFeedback(source).flatMap { result =>
+      assertEquals(valid.context("source")("code").str, source.code)
+      assertEquals(valid.context("source")("lineIds").arr.toVector.map(_.str),
+        Vector("source-1", "source-2", "source-5"))
+      assertEquals(result.forState, source)
+      Future.sequence(List("source-3", "source-4", "source-6").map { id =>
+        val f = new HintFixture(source, response = _ => Future.successful(hintReply(ids = List(id))))
+        val before = f.variable.history
+        f.generateFeedback(source).failed.map { error =>
+          assert(error.isInstanceOf[IllegalArgumentException])
+          assertEquals(f.requests.now().size, 1)
+          assertEquals(f.variable.history, before)
+        }
+      }).map(_ => ())
+    }
+  }
+
   test("programming hints retain checked Java source and number accepted questions in the requested language") {
     val source = ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { Turtle.forward(12); } }")
     val questions = Vector("Wo beginnt die Ausführung?", "Welche Strecke zeichnet dein Aufruf?")
@@ -388,6 +439,59 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
+  test("missing, unexecuted and failed checks are context but cannot be cited as evidence") {
+    val required = HintCheck("PRIVATE_REQUIRED", GradingImportance.REQUIRED_TEST)
+    val optional = HintCheck("PRIVATE_OPTIONAL", GradingImportance.OPTIONAL_TEST)
+    val statuses: List[(Option[GradingStatus], String)] = List(None -> "unavailable", Some(GradingStatus.NotExecuted()) -> "not-run",
+      Some(GradingStatus.TestError(SerializedException("PRIVATE_ERROR"))) -> "error")
+    Future.sequence(statuses.flatMap { (status, expected) =>
+      List("check-1", "check-2").map { id =>
+        val f = new HintFixture(checks = List(required, optional),
+          response = _ => Future.successful(hintReply(ids = List("task", id))))
+        status.foreach { value =>
+          val results = f.checks.map(check => GradingResult[ProgrammingState, String](check, f.source, value)).toSet
+          f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, results))))
+        }
+        val before = f.variable.history
+        f.generateFeedback(f.source).failed.map { error =>
+          assert(error.isInstanceOf[IllegalArgumentException])
+          assertEquals(f.context("checks").arr.toVector.map(value =>
+            (value("id").str, value("required").bool, value("status").str)),
+            Vector(("check-1", true, expected), ("check-2", false, expected)))
+          assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+          assertEquals(f.lookups.now(), 1)
+          assertEquals(f.requests.now().size, 1)
+          assertEquals(f.variable.history, before)
+        }
+      }
+    }).map { _ =>
+      assertEquals(required.runs.now(), 0)
+      assertEquals(optional.runs.now(), 0)
+    }
+  }
+
+  test("filtering unusable evidence preserves check IDs and rejects mixed valid and invalid citations") {
+    val first = HintCheck("missing", GradingImportance.REQUIRED_TEST)
+    val second = HintCheck("executed", GradingImportance.OPTIONAL_TEST)
+    val f = new HintFixture(checks = List(first, second),
+      response = _ => Future.successful(hintReply(ids = List("check-2"))))
+    val result = GradingResult[ProgrammingState, String](second, f.source, GradingStatus.Correct())
+    f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(result)))))
+    val before = f.variable.history
+    f.generateFeedback(f.source).flatMap { _ =>
+      assertEquals(f.context("checks").arr.toVector.map(check => check("id").str -> check("status").str),
+        Vector("check-1" -> "unavailable", "check-2" -> "correct"))
+      f.executor.set(f.client(_ => Future.successful(hintReply(ids = List("task", "check-1", "check-2")))))
+      f.generateFeedback(f.source).failed.map { error =>
+        assert(error.isInstanceOf[IllegalArgumentException])
+        assertEquals(f.requests.now().size, 2)
+        assertEquals(f.variable.history, before)
+        assertEquals(first.runs.now(), 0)
+        assertEquals(second.runs.now(), 0)
+      }
+    }
+  }
+
   test("unsupported or oversized hint inputs fail before checking an execution client") {
     val required = GradingImportance.REQUIRED_TEST
     val cases = List(new HintFixture(ProgrammingStateSnapXml.empty),
@@ -418,10 +522,15 @@ class InteractionVariableGradingSpec extends FunSuite {
     val ids = Vector("task", "source-1", "check-1")
     val raw = ujson.Obj("hints" -> ujson.Arr.from(questions.map(question =>
       ujson.Obj("question" -> question, "evidenceIds" -> ujson.Arr.from(ids))))).render()
-    val f = new HintFixture(checks = List(HintCheck("visible", GradingImportance.REQUIRED_TEST)),
-      response = _ => Future.successful(raw))
-    f.generateFeedback(f.source).map(result =>
-      assertEquals(result.scaffoldingResult.getInLanguage(German), questions.zipWithIndex.map((q, i) => s"${i + 1}. $q").mkString("\n")))
+    val statuses: List[GradingStatus] = List(GradingStatus.Correct(), GradingStatus.Incorrect(), GradingStatus.PartiallyCorrect())
+    Future.sequence(statuses.map { status =>
+      val f = new HintFixture(checks = List(HintCheck("visible", GradingImportance.REQUIRED_TEST)),
+        response = _ => Future.successful(raw))
+      val result = GradingResult[ProgrammingState, String](f.checks.head, f.source, status)
+      f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(result)))))
+      f.generateFeedback(f.source).map(result =>
+        assertEquals(result.scaffoldingResult.getInLanguage(German), questions.zipWithIndex.map((q, i) => s"${i + 1}. $q").mkString("\n")))
+    }).map(_ => ())
   }
 
   test("malformed structured hints are rejected once without changing the interaction history") {
