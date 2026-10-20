@@ -21,7 +21,7 @@ trait ExecutionClient {
   final def executeResponse(logger: Logger, command: ExecutionCommand): Future[ExecutionClientResponse] =
     handleCommandExecution(logger, command)
 
-  protected def defaultLogger: Logger = Logger.withNameAndPrefixes(Some(this.toString), PrintToStdLogger.printWarnAndError)
+  protected def defaultLogger: Logger = Logger.withNameAndPrefixes(Some(this.getClass.getSimpleName), PrintToStdLogger.printWarnAndError)
 
   def handleCommand[T: ReadWriter](logger: Logger, executionCommand: ExecutionCommand): Future[ExecutionInfo[T]] = {
     val timestampRequested: LocalDateTime = LocalDateTime.now()
@@ -30,7 +30,7 @@ trait ExecutionClient {
   }
 
   def handleCommand[T: ReadWriter](executionCommand: ExecutionCommand): Future[ExecutionInfo[T]] = {
-    println("[WARN] creating new logger for Execution of command: " + executionCommand.name + " with body: " + write(executionCommand.json))
+    println("[WARN] creating new logger for Execution of command: " + executionCommand.name + " with body: " + write(executionCommand.stripPrivacySensitiveInformation().json))
     handleCommand(defaultLogger, executionCommand)
   }
 

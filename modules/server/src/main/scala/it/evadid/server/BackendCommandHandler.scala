@@ -90,6 +90,18 @@ object BackendCommandHandler {
   ))
 
 
+  private[server] def logReceivedCommand(command: ExecutionCommand, logger: Logger): Unit = {
+    val forLogging = command.stripPrivacySensitiveInformation()
+    if forLogging eq command then logger.logInfo(s"[server] Received command: ${command.name} with params keys: ${command.json.obj.keys}")
+    else logger.logInfo(s"[server] Received command: ${forLogging.toJson}")
+  }
+
+  private[server] def validateFeedbackRequest(command: ExecutionCommand): Unit =
+    if command.name == LLMCommands.feedbackLlmCommandFactory.name &&
+      !command.json.objOpt.exists(fields => List("prompt", "systemPrompt")
+        .forall(field => fields.get(field).flatMap(_.strOpt).exists(_ != null))) then
+      throw IllegalArgumentException("Invalid feedback request.")
+
   def handleExecution(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Future[ExecutionClientResponse] = {
     if (executionCommand.name.trim.isEmpty) {
       val message = "ExecutionCommand.name must not be empty"
@@ -97,7 +109,8 @@ object BackendCommandHandler {
       throw new IllegalArgumentException(message)
     }
 
-    logger.logInfo(s"[server] Received command: ${executionCommand.name} with params keys: ${executionCommand.json.obj.keys}")
+    logReceivedCommand(executionCommand, logger)
+    validateFeedbackRequest(executionCommand)
     SqlLogCommands.handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger)
 
     if (verifiedToken.nonEmpty) {
