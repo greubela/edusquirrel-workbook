@@ -7,14 +7,13 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.commandTypes.LLMCommands
-import it.evadid.util.logging.BasicLogger
-import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionBoundComponent, WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.abstractions.grading.*
-import it.evadid.workbook.abstractions.scaffolding.{ProgrammingHintScaffolder, ScaffoldingResult, WorkbookInteractionScaffolder}
+import it.evadid.workbook.abstractions.scaffolding.{ProgrammingHintScaffolder, ScaffoldingResult}
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
-import it.evadid.workbook.elements.interactionElements.slideshow.{Slideshow, SlideshowGrader}
+import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 import munit.FunSuite
 import upickle.default.*
@@ -38,37 +37,14 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  private class RecordingScaffolder extends WorkbookInteractionScaffolder[String, String] {
-    private val recorded = State(List.empty[String])
-    def requests: List[String] = recorded.now()
-    override def generateFeedback(state: String): Future[ScaffoldingResult[String, String]] = {
-      recorded.update(_ :+ state)
-      Future.successful(ScaffoldingResult(state, LanguageMap.universalMap("Hint"), FeedbackEntity.TestEntity(), None))
-    }
-  }
-
-  private case class BoundDefinition(override val elementId: String, override val defaultValue: String)
-      extends WorkbookInteractionElementFull[String, String, String] derives ReadWriter {
-    override lazy val childrenOfThisElement = List.empty[WorkbookElement]
-    override val associatedFactory = TextInteraction.factory
-    override val gradingElements: List[RecordingGrader] = List(new RecordingGrader)
-    override val scaffoldingElement: Option[RecordingScaffolder] = Some(new RecordingScaffolder)
-  }
-
-  private def interaction(graders: List[WorkbookInteractionGrader[String, String]],
-      scaffolder: Option[WorkbookInteractionScaffolder[String, String]] = None,
-      initial: String = ""): WorkbookInteractionElementFull[String, String, String] =
+  private def variable(grader: RecordingGrader): InteractionVariable[String, String, String] =
     new WorkbookInteractionElementFull[String, String, String] {
       override val elementId = "grading-test"
-      override val defaultValue = initial
+      override val defaultValue = ""
       override lazy val childrenOfThisElement = List.empty[WorkbookElement]
       override val associatedFactory = TextInteraction.factory
-      override val gradingElements = graders
-      override val scaffoldingElement = scaffolder
-    }
-
-  private def variable(grader: RecordingGrader): InteractionVariable[String, String, String] =
-    interaction(List(grader)).interactionVariable
+      override val gradingElements = List(grader)
+    }.interactionVariable
 
   private def hintReply(question: String = "Welche Bedingung prüfst du zuerst?", ids: List[String] = List("task")): String =
     ujson.Obj("hints" -> ujson.Arr(ujson.Obj("question" -> question, "evidenceIds" -> ujson.Arr.from(ids)))).render()
@@ -99,19 +75,26 @@ class InteractionVariableGradingSpec extends FunSuite {
         answer(request)
       }
     val executor = State(client(response))
-    val scaffolder = new ProgrammingHintScaffolder[String](task, () => language.now(), () => {
-      lookups.update(_ + 1)
-      executor.now()
-    })
-    val element = new WorkbookInteractionElementFull[ProgrammingState, String, String] {
+    val variableInitializations = State(0)
+    class HintInteraction extends WorkbookInteractionElementFull[ProgrammingState, String, String] {
       override val elementId = "programming-hint-test"
-      override val defaultValue = source
       override lazy val childrenOfThisElement = List.empty[WorkbookElement]
       override val associatedFactory = TurtleRecreateShapeInteraction.factory
       override val gradingElements = checks
-      override val scaffoldingElement = Some(scaffolder)
+      override val scaffoldingElement: Option[ProgrammingHintScaffolder[String]] = Some(
+        new ProgrammingHintScaffolder[String](this, task, () => language.now(), () => {
+          lookups.update(_ + 1)
+          executor.now()
+        }))
+      override val defaultValue = source
+      override lazy val interactionVariable: InteractionVariable[ProgrammingState, String, String] = {
+        variableInitializations.update(_ + 1)
+        InteractionVariable[ProgrammingState, String, String](this)
+      }
     }
-    val variable = element.interactionVariable
+    val element = new HintInteraction
+    val scaffolder = element.scaffoldingElement.get
+    lazy val variable = element.interactionVariable
     def context: ujson.Value = ujson.read(requests.now().last.prompt)
   }
 
@@ -349,11 +332,10 @@ class InteractionVariableGradingSpec extends FunSuite {
     val f = new HintFixture
     val calls = State(0)
     val failure = IllegalStateException("client provider unavailable")
-    val scaffolder = new ProgrammingHintScaffolder[String](LanguageMap.universalMap("Public task"), () => German, () => {
+    val scaffolder = new ProgrammingHintScaffolder[String](f.element, LanguageMap.universalMap("Public task"), () => German, () => {
       calls.update(_ + 1)
       throw failure
     })
-    InteractionBoundComponent.bindAll(f.element, List(scaffolder))
     val before = f.variable.history
     scaffolder.generateFeedback(f.source).failed.map { error =>
       assert(error eq failure)
@@ -385,213 +367,67 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  test("lazy interaction creation binds its grader and scaffolder without executing them") {
-    val grader = new RecordingGrader
-    val scaffolder = new RecordingScaffolder
-    val element = interaction(List(grader), Some(scaffolder), "initialized default")
-    intercept[IllegalStateException](grader.interactionVariable)
-    intercept[IllegalStateException](scaffolder.interaction)
-    val value = element.interactionVariable
-    assert(grader.interactionVariable eq value)
-    assert(scaffolder.interactionVariable eq value)
-    assert(grader.interaction eq element)
-    assert(scaffolder.interaction eq element)
-    assert(element.interactionVariable eq value)
-    assertEquals(grader.interactionVariable.currentValue, "initialized default")
-    assertEquals(scaffolder.interactionVariable.history.lastStateOption.map(_.value), Some("initialized default"))
-    assertEquals(grader.requests, Nil)
-    assertEquals(scaffolder.requests, Nil)
-    assertEquals(value.history.gradings, Map.empty)
-    assertEquals(value.history.scaffoldings, Map.empty)
+  test("a scaffolder stores its owner without initializing the owner's answer during construction") {
+    val f = new HintFixture
+    assert(f.scaffolder.interaction eq f.element)
+    assertEquals(f.variableInitializations.now(), 0)
+    assertEquals(f.lookups.now(), 0)
+    assertEquals(f.requests.now(), Vector.empty)
+    val pending = f.scaffolder.generateFeedback(f.source)
+    assertEquals(f.variableInitializations.now(), 1)
+    pending.map { result =>
+      assertEquals(f.variable.currentValue, f.source)
+      assertEquals(result.forState, f.source)
+      assertEquals(f.variableInitializations.now(), 1)
+      assertEquals(f.variable.history.scaffoldings, Map.empty)
+    }
   }
 
-  test("an unbound grader still supports standalone execution") {
+  test("hint context keeps separate histories for matching interaction IDs and equal check definitions") {
+    val firstCheck = HintCheck("same check", GradingImportance.REQUIRED_TEST)
+    val secondCheck = firstCheck.copy()
+    val first = new HintFixture(checks = List(firstCheck))
+    val second = new HintFixture(checks = List(secondCheck))
+    assertEquals(first.element.elementId, second.element.elementId)
+    assertEquals(firstCheck, secondCheck)
+    assert(!(firstCheck eq secondCheck))
+    assert(first.scaffolder.interaction eq first.element)
+    assert(second.scaffolder.interaction eq second.element)
+    val correct = GradingResult[ProgrammingState, String](firstCheck, first.source, GradingStatus.Correct())
+    val incorrect = GradingResult[ProgrammingState, String](secondCheck, second.source, GradingStatus.Incorrect())
+    first.variable.updateHistory(_.copy(gradings = Map(first.source -> GradedState(first.source, Set(correct)))))
+    second.variable.updateHistory(_.copy(gradings = Map(second.source -> GradedState(second.source, Set(incorrect)))))
+    first.scaffolder.generateFeedback(first.source).zip(second.scaffolder.generateFeedback(second.source)).map { _ =>
+      assertEquals(first.context("checks")(0)("status").str, "correct")
+      assertEquals(second.context("checks")(0)("status").str, "incorrect")
+      assertEquals(firstCheck.runs.now(), 0)
+      assertEquals(secondCheck.runs.now(), 0)
+    }
+  }
+
+  test("a grader supports standalone execution without an interaction") {
     val grader = new RecordingGrader
-    intercept[IllegalStateException](grader.interactionVariable)
     grader.gradeStateSafe("standalone", true).map { result =>
       assert(result.grader eq grader)
       assertEquals(result.gradedState, "standalone")
       assertEquals(result.gradingStatus, GradingStatus.Correct())
       assertEquals(grader.requests, List("standalone" -> true))
-      intercept[IllegalStateException](grader.interaction)
     }(using ExecutionContext.global)
   }
 
-  test("binding is idempotent only for the exact interaction, not equal owners or matching ids") {
-    val first = TextInteraction("same-id")
-    val second = TextInteraction("same-id")
-    assertEquals(first, second)
-    assert(!(first eq second))
-    val grader = new RecordingGrader
-    val scaffolder = new RecordingScaffolder
-    InteractionBoundComponent.bindAll(first, List(grader, scaffolder))
-    InteractionBoundComponent.bindAll(first, List(grader, scaffolder, grader))
-    intercept[IllegalArgumentException](InteractionBoundComponent.bindAll(second, List(grader, scaffolder)))
-    assert(grader.interaction eq first)
-    assert(scaffolder.interaction eq first)
-    assert(grader.interactionVariable eq first.interactionVariable)
-    assert(scaffolder.interactionVariable eq first.interactionVariable)
-    assertEquals(grader.requests, Nil)
-    assertEquals(scaffolder.requests, Nil)
-  }
-
-  test("additional variables for one owner do not rebind its components") {
-    val grader = new RecordingGrader
-    val scaffolder = new RecordingScaffolder
-    val value = interaction(List(grader), Some(scaffolder)).interactionVariable
-    val duplicate = InteractionVariable(value.underlyingInteraction)
-    val copied = value.copy()
-    assert(!(duplicate eq value))
-    assert(!(copied eq value))
-    assert(grader.interaction eq value.underlyingInteraction)
-    assert(grader.interactionVariable eq value)
-    assert(scaffolder.interactionVariable eq value)
-    duplicate.updateHistory(_.withAddedEvent(InteractionVariableState("duplicate", MAJOR, LocalDateTime.now().plusSeconds(1))))
-    assertEquals(duplicate.currentValue, "duplicate")
-    assertEquals(value.currentValue, "")
-    val standaloneScaffolder = new RecordingScaffolder
-    val first = interaction(Nil, Some(standaloneScaffolder)).interactionVariable
-    intercept[IllegalArgumentException](interaction(Nil, Some(standaloneScaffolder)).interactionVariable)
-    assert(standaloneScaffolder.interactionVariable eq first)
-  }
-
-  test("an owner binding can initialize its lazy variable without recursive construction") {
-    val element = BoundDefinition("lazy-owner", "initialized default")
-    val grader = element.gradingElements.head
-    val scaffolder = element.scaffoldingElement.get
-    InteractionBoundComponent.bindAll(element, List(grader, scaffolder))
-    assert(grader.interaction eq element)
-    assert(scaffolder.interaction eq element)
-    val value = grader.interactionVariable
-    assert(value eq element.interactionVariable)
-    assert(value eq scaffolder.interactionVariable)
-    assertEquals(value.currentValue, "initialized default")
-    assertEquals(grader.requests, Nil)
-    assertEquals(scaffolder.requests, Nil)
-  }
-
-  test("a conflicting component leaves every new component unbound") {
-    val shared = new RecordingGrader
-    val original = variable(shared)
-    val fresh = new RecordingGrader
-    val scaffolder = new RecordingScaffolder
-    val conflicting = interaction(List(fresh, shared), Some(scaffolder))
-    intercept[IllegalArgumentException](conflicting.interactionVariable)
-    intercept[IllegalStateException](fresh.interactionVariable)
-    intercept[IllegalStateException](scaffolder.interactionVariable)
-    assert(shared.interactionVariable eq original)
-    val valid = interaction(List(fresh), Some(scaffolder)).interactionVariable
-    assert(fresh.interactionVariable eq valid)
-    assert(scaffolder.interactionVariable eq valid)
-    assert(shared.interactionVariable eq original)
-  }
-
-  test("components read current answers and historical grades from their exact variable") {
-    val grader = new RecordingGrader
-    val scaffolder = new RecordingScaffolder
-    val value = interaction(List(grader), Some(scaffolder)).interactionVariable
-    val time = LocalDateTime.of(2026, 10, 17, 10, 0)
-    val grade = GradingResult[String, String](grader, "older", GradingStatus.Incorrect())
-    val graded = GradedState("older", Set(grade))
-    value.updateHistory(_.copy(events = Set(InteractionVariableState("older", MAJOR, time)),
-      gradings = Map("older" -> graded)))
-    value.updateHistory(_.withAddedEvent(InteractionVariableState("current", MAJOR, time.plusSeconds(1))))
-    assertEquals(grader.interactionVariable.currentValue, "current")
-    assertEquals(scaffolder.interactionVariable.currentValue, "current")
-    assertEquals(grader.interactionVariable.history.gradings("older").state, "older")
-    assertEquals(scaffolder.interactionVariable.history.gradings("older").testsWithResults.head.gradedState, "older")
-    assertEquals(value.history.gradings, Map("older" -> graded))
-    assertEquals(grader.requests, Nil)
-    assertEquals(scaffolder.requests, Nil)
-  }
-
-  test("binding preserves concrete grader codecs and value identity without copying its owner") {
+  test("standalone graders retain JSON and MessagePack codecs") {
     val grader = SlideshowGrader(true)
     val json = write(grader)
     val binary = writeBinary(grader).toVector
     val hash = grader.hashCode()
-    val owner = Slideshow("codec", Nil)
-    InteractionBoundComponent.bindAll(owner, List(grader))
-    assertEquals(write(grader), json)
-    assertEquals(writeBinary(grader).toVector, binary)
-    assertEquals(grader.hashCode(), hash)
     List(grader.copy(), read[SlideshowGrader](json), readBinary[SlideshowGrader](binary.toArray))
-      .zipWithIndex.foreach { (restored, index) =>
+      .foreach { restored =>
         assertEquals(restored, grader)
         assertEquals(restored.hashCode(), hash)
         assert(!(restored eq grader))
-        intercept[IllegalStateException](restored.interactionVariable)
-        val second = Slideshow(s"codec-copy-$index", Nil)
-        InteractionBoundComponent.bindAll(second, List(restored))
-        assert(restored.interaction eq second)
-        assert(restored.interactionVariable eq second.interactionVariable)
-        assert(grader.interaction eq owner)
+        assertEquals(write(restored), json)
+        assertEquals(writeBinary(restored).toVector, binary)
       }
-  }
-
-  test("definition reconstruction gives equal interactions their own feedback components") {
-    val original = BoundDefinition("definition-owner", "answer")
-    val originalValue = original.interactionVariable
-    val json = write(original)
-    val binary = writeBinary(original)
-    List(read[BoundDefinition](json), readBinary[BoundDefinition](binary)).foreach { restored =>
-      assertEquals(restored, original)
-      assert(!(restored eq original))
-      val grader = restored.gradingElements.head
-      val scaffolder = restored.scaffoldingElement.get
-      assert(!(grader eq original.gradingElements.head))
-      assert(!(scaffolder eq original.scaffoldingElement.get))
-      intercept[IllegalStateException](grader.interaction)
-      val restoredValue = restored.interactionVariable
-      assert(grader.interaction eq restored)
-      assert(scaffolder.interaction eq restored)
-      assert(grader.interactionVariable eq restoredValue)
-      assert(!(restoredValue eq originalValue))
-      assertEquals(restoredValue.currentValue, "answer")
-      assertEquals(write(restored), json)
-      assertEquals(writeBinary(restored).toVector, binary.toVector)
-    }
-    assert(original.gradingElements.head.interaction eq original)
-  }
-
-  test("a concrete scaffolder resolves its current client at dispatch after asynchronous preparation") {
-    given ExecutionContext = ExecutionContext.global
-    val command = LLMCommands.feedbackLlmCommandFactory
-    def client(label: String): ExecutionClient = command.toLocalExecutionClient((request, _) =>
-      Future.successful(label + ":" + request.prompt))
-    val selected = State(client("first"))
-    val lookups = State(0)
-    val prepared = Promise[Unit]()
-    val scaffolder = new WorkbookInteractionScaffolder[String, String] {
-      private val executionClient: () => ExecutionClient = () => {
-        lookups.update(_ + 1)
-        selected.now()
-      }
-      override def generateFeedback(state: String): Future[ScaffoldingResult[String, String]] =
-        prepared.future.flatMap(_ => command.sendCommandTo(executionClient(),
-          LLMCommands.FeedbackLlmRequest(state, ""), Some(BasicLogger())))
-          .map(response => ScaffoldingResult(state, LanguageMap.universalMap(response.result),
-            FeedbackEntity.TestEntity(), Some(response.result)))
-    }
-    val value = interaction(Nil, Some(scaffolder)).interactionVariable
-    assert(scaffolder.interactionVariable eq value)
-    assertEquals(lookups.now(), 0)
-    val pending = scaffolder.generateFeedback("one")
-    assert(!pending.isCompleted)
-    assertEquals(lookups.now(), 0)
-    selected.set(client("second"))
-    prepared.success(())
-    pending.flatMap { first =>
-      assertEquals(first.forState, "one")
-      assertEquals(first.additionalInformation, Some("second:one"))
-      selected.set(client("third"))
-      scaffolder.generateFeedback("two").map { second =>
-        assertEquals(second.forState, "two")
-        assertEquals(second.additionalInformation, Some("third:two"))
-        assertEquals(lookups.now(), 2)
-        assertEquals(value.history.scaffoldings, Map.empty)
-      }
-    }
   }
 
   test("grading uses the newest timestamp when history iteration is out of order") {

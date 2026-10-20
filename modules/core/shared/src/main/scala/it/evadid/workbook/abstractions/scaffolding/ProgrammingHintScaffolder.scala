@@ -7,7 +7,7 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.util.logging.BasicLogger
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
-import it.evadid.workbook.abstractions.FeedbackEntity
+import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookInteractionElementFull}
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.{ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString}
@@ -15,7 +15,8 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-final class ProgrammingHintScaffolder[A](publicTask: LanguageMap[HumanLanguage],
+final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionElementFull[ProgrammingState, ?, A],
+    publicTask: LanguageMap[HumanLanguage],
     feedbackLanguage: () => HumanLanguage, executionClient: () => ExecutionClient)
     extends WorkbookInteractionScaffolder[ProgrammingState, A] {
   import ProgrammingHintScaffolder.*
@@ -52,7 +53,7 @@ final class ProgrammingHintScaffolder[A](publicTask: LanguageMap[HumanLanguage],
     val lines = source.split("\\r\\n|\\r|\\n", -1).toVector
     require(lines.size <= 400, "The source has too many lines for a hint.")
     val sourceIds = lines.zipWithIndex.collect { case (line, index) if line.trim.nonEmpty => s"source-${index + 1}" }
-    val variable = interactionVariable
+    val variable = interaction.interactionVariable
     val history = variable.history
     val results = history.gradings.get(state).filter(_.state == state).toList.flatMap(_.testsWithResults.toList)
     val graders = interaction.gradingElements.filter { grader =>
