@@ -158,11 +158,11 @@ class InteractionVariableGradingSpec extends FunSuite {
       history(Set(event("other", 2)), Map("current" -> GradedState("current", Set(remoteThird,
         grade(first, "current", 5, GradingStatus.PartiallyCorrect())))), Map("other" -> hint("other", "Other hint"))))
     sources.permutations.foreach { ordered =>
-      val restored = local.restoreFrom(ordered)
+      val restored = local.mergeWith(ordered)
       assertEquals(restored.events, local.events ++ sources.flatMap(_.events))
       assertEquals(restored.gradings("current").testsWithResults, Set(newFirst, localSecond, remoteThird))
       assertEquals(restored.scaffoldings, local.scaffoldings ++ sources.flatMap(_.scaffoldings))
-      assertEquals(restored.restoreFrom(ordered), restored)
+      assertEquals(restored.mergeWith(ordered), restored)
     }
     assertEquals(local.gradings("current").testsWithResults, Set(oldFirst, localSecond))
     assertEquals(sources.map(_.events), List(Set(event("older", 1)), Set(event("other", 2))))
@@ -176,7 +176,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val local = history(grades = Map("answer" -> GradedState("answer", Set(older))))
     val sources = List(correct, incorrect).map(result => history(grades = Map("answer" -> GradedState("answer", Set(result)))))
     sources.permutations.foreach(ordered =>
-      assertEquals(local.restoreFrom(ordered).gradings("answer").testsWithResults, Set(correct, incorrect)))
+      assertEquals(local.mergeWith(ordered).gradings("answer").testsWithResults, Set(correct, incorrect)))
   }
 
   test("history restore rejects feedback whose state does not match its map key") {
@@ -188,7 +188,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val remote = history(Set(event("answer", 1)), Map(
       "answer" -> GradedState("answer", Set(valid, wrong)), "wrong-key" -> GradedState("elsewhere", Set(wrong))),
       Map("answer" -> hint("answer", "Valid remote hint"), "wrong-key" -> hint("elsewhere", "Invalid remote hint")))
-    val restored = local.restoreFrom(List(remote))
+    val restored = local.mergeWith(List(remote))
     assertEquals(restored.gradings, Map("answer" -> GradedState("answer", Set(valid))))
     assertEquals(restored.scaffoldings, Map("answer" -> hint("answer", "Valid remote hint")))
   }
@@ -201,9 +201,9 @@ class InteractionVariableGradingSpec extends FunSuite {
         "conflict" -> hint("conflict", "First candidate"))),
       history(hints = Map("shared" -> shared, "conflict" -> hint("conflict", "Second candidate"))))
     sources.permutations.foreach { ordered =>
-      val restored = local.restoreFrom(ordered)
+      val restored = local.mergeWith(ordered)
       assertEquals(restored.scaffoldings, local.scaffoldings + ("shared" -> shared))
-      assertEquals(restored.restoreFrom(ordered), restored)
+      assertEquals(restored.mergeWith(ordered), restored)
     }
   }
 
@@ -211,12 +211,12 @@ class InteractionVariableGradingSpec extends FunSuite {
     val first = event("default", 0, UpdateImportance.DEFAULT)
     val last = event("default", 1, UpdateImportance.DEFAULT)
     val local = history(Set(first), hints = Map("default" -> hint("default", "Hint only")))
-    val defaults = local.restoreFrom(List(history(Set(last))))
+    val defaults = local.mergeWith(List(history(Set(last))))
     assertEquals(defaults.events, Set(last))
     assertEquals(defaults.scaffoldings, local.scaffoldings)
-    val edited = defaults.restoreFrom(List(history(Set(event("edited", 2)))))
+    val edited = defaults.mergeWith(List(history(Set(event("edited", 2)))))
     assertEquals(edited.events, Set(event("edited", 2)))
-    assertEquals(edited.restoreFrom(Nil), edited)
+    assertEquals(edited.mergeWith(Nil), edited)
     assertEquals(local.events, Set(first))
   }
 

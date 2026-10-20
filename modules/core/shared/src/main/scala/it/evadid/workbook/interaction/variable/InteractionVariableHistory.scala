@@ -49,7 +49,7 @@ case class InteractionVariableHistory[T, GA, SA]
     withAddedEvents(Set(event))
   }
 
-  def restoreFrom(histories: Iterable[InteractionVariableHistory[T, GA, SA]]): InteractionVariableHistory[T, GA, SA] = {
+  def mergeWith(histories: Iterable[InteractionVariableHistory[T, GA, SA]]): InteractionVariableHistory[T, GA, SA] = {
     val all = this +: histories.toVector
     val restoredGradings = all.flatMap(_.gradings).groupMap(_._1)(_._2).flatMap { (state, snapshots) =>
       val results = snapshots.filter(_.state == state).flatMap(_.testsWithResults).filter(_.gradedState == state)

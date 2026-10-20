@@ -61,7 +61,7 @@ class HistoryJsonSpec extends FunSuite {
     val local = history(List("local"), 2)
     val remote = history(List("Grüße", "source"), 1)
     List(read[History](write(remote)), readBinary[History](writeBinary(remote))).foreach { decoded =>
-      val restored = local.restoreFrom(List(decoded))
+      val restored = local.mergeWith(List(decoded))
       assertEquals(restored.events, local.events ++ remote.events)
       assertEquals(restored.scaffoldings, local.scaffoldings ++ remote.scaffoldings)
       assertEquals(restored.scaffoldings(List("Grüße", "source")).additionalInformation, Some(List(1, 2, 3)))
@@ -91,7 +91,7 @@ class HistoryJsonSpec extends FunSuite {
     val decoded = variable.deserializeHistory(HistoryJson.stored("answer_history", HistoryJson.merge(List(oldEnvelope, write(current)))))
     val local = InteractionVariableHistory[String, Int, Int](
       Set(InteractionVariableState("local source", UpdateImportance.MAJOR, time.plusSeconds(2))), Map.empty, Map.empty)
-    val restored = local.restoreFrom(List(decoded))
+    val restored = local.mergeWith(List(decoded))
     assertEquals(restored.events, local.events ++ decoded.events)
     assertEquals(restored.events.map(_.value), Set("legacy source", "current source", "local source"))
     assertEquals(restored.lastStateOption.map(_.value), Some("local source"))

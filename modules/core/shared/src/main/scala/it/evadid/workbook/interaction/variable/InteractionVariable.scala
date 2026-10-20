@@ -118,7 +118,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
   def executeLoad(syncControl: SyncControl): Unit = this.synchronized {
     val histories = syncControl.createCurrentReport(this).curRemoteHistory.values
       .flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toVector
-    innerState.update(_.restoreFrom(histories))
+    innerState.update(_.mergeWith(histories))
   }
 
   def resetLocalHistory(): Unit = this.synchronized {
