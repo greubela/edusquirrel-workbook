@@ -2,10 +2,12 @@ package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.ownership.ManualOwner
-import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.*
@@ -15,7 +17,7 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.{InteractionInfo
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElementFull}
-import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, WorkbookInteractionScaffolder}
+import it.evadid.workbook.abstractions.scaffolding.{ProgrammingHintScaffolder, ScaffoldingResult, WorkbookInteractionScaffolder}
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import org.scalajs.dom
@@ -87,11 +89,13 @@ class EvaEditorSpec extends EditorDomSuite {
     assertEquals(fullInfo.signals.currentSyncDestinations.now(), Nil)
     val requested = Var(Vector.empty[String])
     val clients = Var(Vector.empty[List[ExecutionClient]])
+    val resolvers = Var(Vector.empty[LanguageMapIdResolver])
     val pending = Promise[HintResult]()
     val scaffolder = new WorkbookInteractionScaffolder[String, String] {
-      override def generateFeedback(state: String, availableExecutionClients: List[ExecutionClient]): Future[HintResult] = {
+      override def generateFeedback(state: String, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[HintResult] = {
         requested.update(_ :+ state)
         clients.update(_ :+ availableExecutionClients)
+        resolvers.update(_ :+ resolver)
         pending.future
       }
     }
@@ -109,6 +113,7 @@ class EvaEditorSpec extends EditorDomSuite {
     later().flatMap { _ =>
       assertEquals(requested.now(), Vector.empty)
       assertEquals(clients.now(), Vector.empty)
+      assertEquals(resolvers.now(), Vector.empty)
       assertEquals(variable.history, before)
       assertEquals(element.ref.querySelector(".interaction-scaffolding"), null)
       element.ref.querySelector(".interaction-info__hint-toggle").asInstanceOf[dom.html.Button].click()
@@ -119,6 +124,7 @@ class EvaEditorSpec extends EditorDomSuite {
     }.flatMap { _ =>
       assertEquals(requested.now(), Vector(variable.currentValue))
       assertEquals(clients.now(), Vector(List(fullInfo.defaults.backendExecutor)))
+      assertEquals(resolvers.now(), Vector(fullInfo.signals.idResolver))
       val feedback = ScaffoldingResult[String, String](variable.currentValue, LanguageMap.universalMap("1. What changes here?"),
         FeedbackEntity.TestEntity(), None)
       pending.success(feedback)
@@ -153,13 +159,65 @@ class EvaEditorSpec extends EditorDomSuite {
     } finally close()
   }
 
+  test("language changes discard a hint still waiting for task resolution even after switching back") {
+    val taskId = LanguageMapContentId("test/pending-hint")
+    val task = Promise[LanguageMap[HumanLanguage]]()
+    val sent = Promise[Unit]()
+    val language = Var[HumanLanguage](German)
+    val resolutions = Var(Vector.empty[LanguageMapContentId])
+    val calls = Var(0)
+    val resolver = new LanguageMapIdResolver(language.signal.toObservableValue) {
+      override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] = {
+        resolutions.update(_ :+ id)
+        task.future
+      }
+    }
+    val interaction = new WorkbookInteractionElementFull[ProgrammingState, String, String] {
+      override val elementId = "pending-java-hint"
+      override val defaultValue: ProgrammingState = ProgrammingState.ProgrammingState.ProgrammingStateJavaString("class Drawing {")
+      override lazy val childrenOfThisElement = List.empty[WorkbookElement]
+      override val associatedFactory = TextInteraction.factory
+      override val scaffoldingElement = Some(new ProgrammingHintScaffolder[String](this, taskId))
+    }
+    val client = LLMCommands.feedbackLlmCommandFactory.toLocalExecutionClient { (_, _) =>
+      calls.update(_ + 1)
+      sent.trySuccess(())
+      Future.successful("""{"hints":[{"question":"Wo beginnt dein Programm?","evidenceIds":["source-1"]}]}""")
+    }
+    val variable = interaction.interactionVariable
+    val before = variable.history
+    val context = new EventBus[Unit]
+    val label = Signal.fromValue("Hint")
+    val panel = new InteractionScaffoldingPanel[ProgrammingState, String](
+      () => variable.currentValue, variable.observableValue.toEventStream(), language.signal, context.events,
+      state => interaction.scaffoldingElement.get.generateFeedback(state, List(client), resolver),
+      result => variable.updateHistory(_.updateScaffoldings(_ + (result.forState -> result))),
+      InteractionScaffoldingPanel.Labels(label, label, label, label, label, label))
+    val element = panel.getDomElement()
+    val release = mount(element)
+    element.ref.querySelector(".interaction-scaffolding__request").asInstanceOf[dom.html.Button].click()
+    later().flatMap { _ =>
+      assertEquals(resolutions.now(), Vector(taskId))
+      assertEquals(calls.now(), 0)
+      language.set(English)
+      language.set(German)
+      task.success(LanguageMap.universalMap("Draw a line."))
+      sent.future.flatMap(_ => later())
+    }.map { _ =>
+      assertEquals(calls.now(), 1)
+      assertEquals(variable.history, before)
+      assertEquals(element.ref.querySelector("[role='status']").textContent, "")
+      assert(!element.ref.querySelector(".interaction-scaffolding__request").asInstanceOf[dom.html.Button].disabled)
+    }.andThen { case _ => release() }
+  }
+
   test("fullscreen hints use the current Java answer and reject completions from a closed editor") {
     import ProgrammingState.ProgrammingState.ProgrammingStateJavaString
     import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
     type Result = ScaffoldingResult[ProgrammingState, String]
     val requests = Var(Vector.empty[(ProgrammingState, Promise[Result])])
     val scaffolder = new WorkbookInteractionScaffolder[ProgrammingState, String] {
-      override def generateFeedback(source: ProgrammingState, availableExecutionClients: List[ExecutionClient]): Future[Result] = {
+      override def generateFeedback(source: ProgrammingState, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[Result] = {
         val result = Promise[Result]()
         requests.update(_ :+ (source -> result))
         result.future
@@ -243,7 +301,7 @@ class EvaEditorSpec extends EditorDomSuite {
       override lazy val childrenOfThisElement = List.empty[WorkbookElement]
       override val associatedFactory = TextInteraction.factory
       override val scaffoldingElement = Some(new WorkbookInteractionScaffolder[String, String] {
-        override def generateFeedback(source: String, availableExecutionClients: List[ExecutionClient]): Future[HintResult] = {
+        override def generateFeedback(source: String, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[HintResult] = {
           requested.update(_ + 1)
           pending.future
         }

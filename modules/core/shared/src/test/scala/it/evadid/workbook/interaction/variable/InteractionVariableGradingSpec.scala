@@ -1,7 +1,8 @@
 package it.evadid.workbook.interaction.variable
 
-import it.evadid.core.datastructures.language.LanguageMap
-import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, Java, Python}
+import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
+import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
+import it.evadid.core.datastructures.language.AppLanguage.{English, French, German, HumanLanguage, Java, Python}
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.state.State
 import it.evadid.distribution.clients.{ExecutionClient, LocalExecutionClient}
@@ -71,6 +72,16 @@ class InteractionVariableGradingSpec extends FunSuite {
     val lookups = State(0)
     val started = Promise[Unit]()
     val language = State[HumanLanguage](German)
+    val taskId = LanguageMapContentId("test/programming-hint")
+    val resolutions = State(Vector.empty[LanguageMapContentId])
+    def resolverFor(resolve: LanguageMapContentId => Future[LanguageMap[HumanLanguage]]): LanguageMapIdResolver =
+      new LanguageMapIdResolver(language.observable) {
+        override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] = {
+          resolutions.update(_ :+ id)
+          resolve(id)
+        }
+      }
+    val resolver = resolverFor(_ => Future.successful(task))
     def client(answer: LLMCommands.FeedbackLlmRequest => Future[String]): ExecutionClient =
       new LocalExecutionClient[LLMCommands.FeedbackLlmRequest, String] {
         override def canExecuteCommand(command: ExecutionCommand): Boolean = {
@@ -91,7 +102,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       override val associatedFactory = TurtleRecreateShapeInteraction.factory
       override val gradingElements = checks
       override val scaffoldingElement: Option[ProgrammingHintScaffolder[String]] = Some(
-        new ProgrammingHintScaffolder[String](this, task, () => language.now()))
+        new ProgrammingHintScaffolder[String](this, taskId))
       override val defaultValue = source
       override lazy val interactionVariable: InteractionVariable[ProgrammingState, String, String] = {
         variableInitializations.update(_ + 1)
@@ -101,7 +112,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val element = new HintInteraction
     val scaffolder = element.scaffoldingElement.get
     def generateFeedback(state: ProgrammingState): Future[ScaffoldingResult[ProgrammingState, String]] =
-      scaffolder.generateFeedback(state, List(executor.now()))
+      scaffolder.generateFeedback(state, List(executor.now()), resolver)
     lazy val variable = element.interactionVariable
     def context: ujson.Value = ujson.read(requests.now().last.prompt)
   }
@@ -178,22 +189,28 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  test("a hint selects its client before returning control and keeps that request's source and locale") {
+  test("pending task resolution keeps the original source, checks, language and supplied client") {
     val reply = Promise[String]()
-    val f = new HintFixture(response = _ => reply.future)
-    val first = f.generateFeedback(f.source)
-    assertEquals(f.lookups.now(), 1)
-    assertEquals(f.requests.now().size, 1)
+    val task = Promise[LanguageMap[HumanLanguage]]()
+    val check = HintCheck("public check", GradingImportance.REQUIRED_TEST)
+    val f = new HintFixture(checks = List(check), response = _ => reply.future)
+    val correct = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Correct())
+    f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(correct)))))
+    val resolver = f.resolverFor(_ => task.future)
+    val first = f.scaffolder.generateFeedback(f.source, List(f.executor.now()), resolver)
+    assertEquals(f.resolutions.now(), Vector(f.taskId))
+    assertEquals(f.lookups.now(), 0)
+    assertEquals(f.requests.now().size, 0)
     assert(!first.isCompleted)
     f.language.set(English)
     f.executor.set(f.client(_ => Future.successful(hintReply("Which condition will you inspect first?"))))
     val restored = ProgrammingStatePythonString("# Different answer\r\n\tdef draw(")
     f.variable.updateHistory(_.withAddedEvent(InteractionVariableState[ProgrammingState](
-      restored, MAJOR, LocalDateTime.now().plusSeconds(1))))
+      restored, MAJOR, LocalDateTime.now().plusSeconds(1))).copy(gradings = Map(
+      f.source -> GradedState(f.source, Set(correct.copy(gradingStatus = GradingStatus.Incorrect()))))))
     val second = f.generateFeedback(restored)
-    assertEquals(f.lookups.now(), 2)
-    assertEquals(f.requests.now().map(request => ujson.read(request.prompt)("feedbackLanguage").str), Vector(German.name, English.name))
     val beforeReply = f.variable.history
+    task.success(LanguageMap.mapBasedLanguageMap(Map(German -> "Ursprüngliche Aufgabe.", English -> "Original task.")))
     reply.success(hintReply())
     first.zip(second).map { (original, current) =>
       assertEquals(original.forState, f.source)
@@ -201,9 +218,120 @@ class InteractionVariableGradingSpec extends FunSuite {
       assertEquals(current.forState, restored)
       assertEquals(current.scaffoldingResult.availableLanguages, Set[HumanLanguage](English))
       assertEquals(current.scaffoldingResult.getInLanguage(English), "1. Which condition will you inspect first?")
-      assertEquals(f.context("source")("code").str, restored.code)
+      val contexts = f.requests.now().map(request => ujson.read(request.prompt)).map(context =>
+        context("feedbackLanguage").str -> context).toMap
+      assertEquals(contexts.keySet, Set(German.name, English.name))
+      assertEquals(contexts(German.name)("source")("code").str, f.source.asInstanceOf[ProgrammingStateJavaString].code)
+      assertEquals(contexts(German.name)("task")("text").str, "Ursprüngliche Aufgabe.")
+      assertEquals(contexts(German.name)("checks")(0)("status").str, "correct")
+      assertEquals(contexts(English.name)("source")("code").str, restored.code)
+      assertEquals(f.lookups.now(), 2)
       assertEquals(f.variable.history, beforeReply)
     }
+  }
+
+  test("task resolution captures the language before invoking the map resolver") {
+    val f = new HintFixture
+    val reads = State(0)
+    val resolver = new LanguageMapIdResolver(f.language.observable) {
+      override def languageFuture(): Future[HumanLanguage] = {
+        reads.update(_ + 1)
+        super.languageFuture()
+      }
+      override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] = {
+        assertEquals(id, f.taskId)
+        f.language.set(English)
+        Future.successful(LanguageMap.mapBasedLanguageMap(Map(German -> "Deutsche Aufgabe.", English -> "English task.")))
+      }
+    }
+    f.scaffolder.generateFeedback(f.source, List(f.executor.now()), resolver).map { result =>
+      assertEquals(reads.now(), 1)
+      assertEquals(f.context("task")("text").str, "Deutsche Aufgabe.")
+      assertEquals(f.context("feedbackLanguage").str, German.name)
+      assertEquals(result.scaffoldingResult.availableLanguages, Set[HumanLanguage](German))
+    }
+  }
+
+  test("resolved task text follows the existing English and universal fallback rules") {
+    val text = "Draw a line."
+    val english = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> text))
+    val cases = List(english, LanguageMap.universalMap[HumanLanguage](text),
+      LanguageMap.empty[HumanLanguage].withFallback(english))
+    Future.sequence(cases.map { task =>
+      val f = new HintFixture(task = task)
+      f.generateFeedback(f.source).map { result =>
+        assertEquals(f.resolutions.now(), Vector(f.taskId))
+        assertEquals(f.context("task")("text").str, text)
+        assertEquals(f.context("feedbackLanguage").str, German.name)
+        assertEquals(result.scaffoldingResult.availableLanguages, Set[HumanLanguage](German))
+      }
+    }).map(_ => ())
+  }
+
+  test("resolved task text rejects missing, empty, null and oversized translations without sending") {
+    val cases = List(LanguageMap.empty[HumanLanguage], LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(French -> "Texte."))) ++
+      List(null, "", " \r\n\t ", "x" * 8001).map(text =>
+        LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> text, English -> "Do not conceal an invalid translation.")))
+    Future.sequence(cases.map { task =>
+      val f = new HintFixture(task = task)
+      val before = f.variable.history
+      f.generateFeedback(f.source).failed.map { error =>
+        assert(error.isInstanceOf[IllegalArgumentException])
+        assertEquals(f.lookups.now(), 0)
+        assertEquals(f.requests.now(), Vector.empty)
+        assertEquals(f.variable.history, before)
+      }
+    }).map(_ => ())
+  }
+
+  test("each explicit hint resolves current task content and accepts the exact text limit") {
+    val f = new HintFixture
+    val text = State(LanguageMap.universalMap[HumanLanguage]("x" * 8000))
+    val resolver = f.resolverFor(_ => Future.successful(text.now()))
+    f.scaffolder.generateFeedback(f.source, List(f.executor.now()), resolver).flatMap { _ =>
+      assertEquals(f.context("task")("text").str.length, 8000)
+      text.set(LanguageMap.universalMap[HumanLanguage]("Updated task."))
+      f.scaffolder.generateFeedback(f.source, List(f.executor.now()), resolver).map { _ =>
+        assertEquals(f.context("task")("text").str, "Updated task.")
+        assertEquals(f.resolutions.now(), Vector(f.taskId, f.taskId))
+        assertEquals(f.requests.now().size, 2)
+      }
+    }
+  }
+
+  test("synchronous and asynchronous resolver failures do not send hints or change history") {
+    Future.sequence(List(true, false).map { synchronous =>
+      val f = new HintFixture
+      val failure = IllegalStateException("Missing task map")
+      val resolver = f.resolverFor(_ => if synchronous then throw failure else Future.failed(failure))
+      val before = f.variable.history
+      f.scaffolder.generateFeedback(f.source, List(f.executor.now()), resolver).failed.map { error =>
+        assert(error eq failure)
+        assertEquals(f.resolutions.now(), Vector(f.taskId))
+        assertEquals(f.lookups.now(), 0)
+        assertEquals(f.requests.now(), Vector.empty)
+        assertEquals(f.variable.history, before)
+      }
+    }).map(_ => ())
+  }
+
+  test("synchronous and asynchronous language failures do not send hints") {
+    Future.sequence(List(true, false).map { synchronous =>
+      val f = new HintFixture
+      val failure = IllegalStateException("Language unavailable")
+      val resolver = new LanguageMapIdResolver(f.language.observable) {
+        override def languageFuture(): Future[HumanLanguage] = if synchronous then throw failure else Future.failed(failure)
+        override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] =
+          Future.successful(LanguageMap.universalMap("Public task."))
+      }
+      val before = f.variable.history
+      f.scaffolder.generateFeedback(f.source, List(f.executor.now()), resolver).failed.map { error =>
+        assert(error eq failure)
+        assertEquals(f.lookups.now(), 0)
+        assertEquals(f.requests.now(), Vector.empty)
+        assertEquals(f.variable.history, before)
+      }
+    }).map(_ => ())
   }
 
   test("programming hint context exposes only matching public deterministic check statuses") {
@@ -348,7 +476,7 @@ class InteractionVariableGradingSpec extends FunSuite {
         throw AssertionError("Unsupported client must not execute")
     }
     val unused = new HintFixture
-    f.scaffolder.generateFeedback(f.source, List(unsupported, f.executor.now(), unused.executor.now())).map { result =>
+    f.scaffolder.generateFeedback(f.source, List(unsupported, f.executor.now(), unused.executor.now()), f.resolver).map { result =>
       assertEquals(commands.now().map(_.name), Vector(LLMCommands.feedbackLlmCommandFactory.name))
       assertEquals(read[LLMCommands.FeedbackLlmRequest](commands.now().head.json), f.requests.now().head)
       assertEquals(result.forState, f.source)
@@ -364,7 +492,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       val f = new HintFixture(response = _ => if synchronous then throw failure else Future.failed(failure))
       val fallback = new HintFixture
       val before = f.variable.history
-      f.scaffolder.generateFeedback(f.source, List(f.executor.now(), fallback.executor.now())).failed.map { error =>
+      f.scaffolder.generateFeedback(f.source, List(f.executor.now(), fallback.executor.now()), f.resolver).failed.map { error =>
         assert(error.getMessage.contains(failure.getMessage))
         assertEquals(f.requests.now().size, 1)
         assertEquals(fallback.lookups.now(), 0)
@@ -380,7 +508,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       .toLocalExecutionClient((_, _) => throw AssertionError("Must not execute"))
     val before = f.variable.history
     Future.sequence(List(Nil, List(unsupported)).map { clients =>
-      f.scaffolder.generateFeedback(f.source, clients).failed.map { error =>
+      f.scaffolder.generateFeedback(f.source, clients, f.resolver).failed.map { error =>
         assert(error.isInstanceOf[IllegalStateException])
         assertEquals(f.requests.now(), Vector.empty)
         assertEquals(f.variable.history, before)
@@ -407,7 +535,7 @@ class InteractionVariableGradingSpec extends FunSuite {
         throw AssertionError("Must not send")
     }
     val before = f.variable.history
-    f.scaffolder.generateFeedback(f.source, List(client, f.executor.now())).failed.map { error =>
+    f.scaffolder.generateFeedback(f.source, List(client, f.executor.now()), f.resolver).failed.map { error =>
       assert(error eq failure)
       assertEquals(calls.now(), 1)
       assertEquals(f.requests.now(), Vector.empty)
@@ -443,6 +571,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     assertEquals(f.variableInitializations.now(), 0)
     assertEquals(f.lookups.now(), 0)
     assertEquals(f.requests.now(), Vector.empty)
+    assertEquals(f.resolutions.now(), Vector.empty)
     val pending = f.generateFeedback(f.source)
     assertEquals(f.variableInitializations.now(), 1)
     pending.map { result =>
