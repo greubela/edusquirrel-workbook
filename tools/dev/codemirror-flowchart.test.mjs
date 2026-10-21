@@ -1,3 +1,4 @@
+import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
@@ -14,10 +15,8 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
   const server = createServer(async (request, response) => {
     try {
       const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-      const name = pathname === '/homepage/js/loader.js' && process.env.CODEMIRROR_TEST_BUNDLE
-        ? resolve(process.env.CODEMIRROR_TEST_BUNDLE)
-        : resolve(root, '.' + pathname + (pathname.endsWith('/') ? 'index.html' : ''));
-      if (pathname !== '/homepage/js/loader.js' && !name.startsWith(root + sep)) throw new Error('Outside repository');
+      const name = resolve(root, '.' + pathname + (pathname.endsWith('/') ? 'index.html' : ''));
+      if (!name.startsWith(root + sep)) throw new Error('Outside repository');
       response.setHeader('Content-Type', mime[extname(name)] || 'application/octet-stream');
       response.end(await readFile(name));
     } catch { response.writeHead(404).end(); }
@@ -32,13 +31,13 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
     const page = await browser.newPage({viewport: {width: 900, height: 600}});
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    await installCodeMirrorModules(page);
     await page.goto(base + '/homepage/workbookDesign/');
-    await page.waitForFunction(() => typeof globalThis.EduSquirrelCodeMirrorScala?.createEditor === 'function');
+    await page.waitForFunction(() => typeof globalThis.EduSquirrelCodeMirror?.createEditor === 'function');
     await page.evaluate(() => {
       document.body.replaceChildren();
       document.body.insertAdjacentHTML('beforeend', '<style>#flow .cm-editor, #plain .cm-editor {height:260px} #flow .cm-scroller, #plain .cm-scroller {overflow:auto} #flow {--code-font-size:14px}</style><div id="flow"></div><div id="plain"></div>');
     });
-    await page.addScriptTag({type: 'module', url: `${base}/homepage/js/${process.env.CODEMIRROR_TEST_BUNDLE ? 'loader.js' : 'CodeMirrorLoader.js'}`});
     await page.waitForFunction(() => !!globalThis.EduSquirrelCodeMirror);
     await page.evaluate(() => {
       window.changes = [];

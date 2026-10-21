@@ -1,3 +1,4 @@
+import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -34,19 +35,18 @@ for(const prefix of ['/', '/edusquirrel-workbook/']) {
         if(relative.split('/').includes('..'))return route.abort();
         if(relative==='deployment/client/.env') {await config;return route.fulfill({status:404,body:'Not found'});}
         if(relative.startsWith('resources/languageMaps/') || relative.includes('/20260704Snap/locale/'))await languages;
-        if(relative.endsWith('/adjusted/adjustedMorphic.js') || relative.endsWith('/jsxgraphcore.js') || relative==='homepage/js/CodeMirrorLoader.js')await libraries;
+        if(relative.endsWith('/adjusted/adjustedMorphic.js') || relative.endsWith('/jsxgraphcore.js'))await libraries;
         let file=path.join(root,relative+(relative.endsWith('/')?'index.html':''));
-        if(relative==='homepage/js/CodeMirrorLoader.js')file=process.env.CODEMIRROR_TEST_BUNDLE;
         try {await route.fulfill({body:await fs.readFile(file),contentType:mime[path.extname(file)]||'application/octet-stream'});}
         catch {await route.fulfill({status:404,body:'Not found'});}
       });
       const workerRequest=page.waitForRequest(request=>
         request.url()===origin+prefix+'artifacts/newest/worker.js');
+      await installCodeMirrorModules(page, {gate:libraries});
       await page.goto(origin+prefix+'homepage/workbookDesign/',{waitUntil:'domcontentloaded'});
       await page.locator('.workbook-header').waitFor();
       await page.locator('.section-register').waitFor();
-      await page.waitForFunction(()=>document.querySelector('script[src$="CodeMirrorLoader.js"]') &&
-        document.querySelector('script[src$="adjusted/adjustedMorphic.js"]') && document.querySelector('script[src$="jsxgraphcore.js"]'));
+      await page.waitForFunction(()=>document.querySelector('script[src$="adjusted/adjustedMorphic.js"]') && document.querySelector('script[src$="jsxgraphcore.js"]'));
       assert(requests.some(url=>url.includes('/languageMaps/')),'language loading has started independently');
       await page.waitForFunction(()=>performance.getEntriesByType('resource').some(entry=>entry.name.endsWith('/turtlestitchsrc/embroider.js')));
       assert.equal(await page.evaluate(()=>typeof window.WorldMorph),'undefined','parallel prefetch must not execute later dependencies out of order');
@@ -90,10 +90,10 @@ test('a failed Snap dependency leaves the shell usable and a later editor open r
       if(unavailable && url.pathname.endsWith('/adjusted/adjustedMorphic.js'))return route.fulfill({status:503,body:'Unavailable'});
       let file=path.resolve(root,'.'+url.pathname+(url.pathname.endsWith('/')?'index.html':''));
       if(!file.startsWith(root+path.sep))return route.abort();
-      if(url.pathname==='/homepage/js/CodeMirrorLoader.js')file=process.env.CODEMIRROR_TEST_BUNDLE;
       try {await route.fulfill({body:await fs.readFile(file),contentType:mime[path.extname(file)]||'application/octet-stream'});}
       catch {await route.fulfill({status:404,body:'Not found'});}
     });
+    await installCodeMirrorModules(page);
     await page.goto(origin+'/homepage/workbookDesign/',{waitUntil:'domcontentloaded'});
     await page.getByRole('button',{name:'Start Using Locally',exact:true}).click();
     await page.locator('.section-block').first().click();

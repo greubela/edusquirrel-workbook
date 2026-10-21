@@ -19,10 +19,10 @@ test('editor composition keeps changing state in Vars and has no parallel edit c
     'EvaEditor/extensions/turtle/TurtleExecutionPanel.scala',
     'EvaEditor/extensions/turtle/TurtleProgramExecution.scala',
     'EvaEditor/extensions/turtle/TurtleExecutionProvider.scala',
-    'codemirror/CodeMirrorEditor.scala', 'codemirror/CodeMirrorFlowchartGutter.scala',
-    '../../facades/EvaExternalDependency.scala', '../../facades/CodeMirror.scala',
-    '../../facades/Snap.scala', '../../facades/Pyodide.scala',
-    '../../facades/JSXGraph.scala', '../../facades/Workers.scala', '../../code/JavaFunctionBasedEditor.scala',
+    'codemirror/CodeMirrorEditor.scala', 'codemirror/CodeMirrorFlowchartGutter.scala', 'codemirror/CodeMirrorFlowchartRendering.scala',
+    '../../../../facades/EvaExternalDependency.scala', '../../../../facades/CodeMirror.scala',
+    '../../../../facades/Snap.scala', '../../../../facades/Pyodide.scala',
+    '../../../../facades/JSXGraph.scala', '../../../../facades/Workers.scala', '../../code/JavaFunctionBasedEditor.scala',
     'SnapEditor/SnapCodeEditor.scala', 'SnapEditor/SnapPreviewEditor.scala',
   ];
   for (const file of files) {

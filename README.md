@@ -143,8 +143,8 @@ npm run test:workbooks
 ```
 
 The browser runner uses Playwright's installed Chromium, or `CHROMIUM_PATH` when set
-(for example `/usr/bin/chromium`). It bundles the production CodeMirror loader using
-the pinned local packages, so editor tests do not depend on a live CDN. Both runners
+(for example `/usr/bin/chromium`). It serves the native CodeMirror packages from pinned local npm dependencies, so
+editor tests do not depend on a live CDN. Both runners
 disable Node test-worker isolation for compatibility with restricted environments.
 The [test workflow](.github/workflows/tests.yml) runs these checks and every Scala
 module on pull requests and pushes to main. Individual test files can still be run

@@ -7,23 +7,17 @@ import it.evadid.facades.CodeMirror.{CodeMirrorHandle, EditorConfig}
 import org.scalajs.dom
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.JSExportTopLevel
 
-private[code] object CodeMirrorRuntime {
+private[evadid] object CodeMirrorRuntime {
   import CodeMirrorApi.*
   private val indent = "    "
   private lazy val diagnostics = new CodeMirrorDiagnostics
 
-  @JSExportTopLevel("EduSquirrelCodeMirrorScala")
-  val facade: js.Object = {
-    val value = js.Dynamic.literal(createEditor =
-      ((config: EditorConfig) => createEditor(config)): js.Function1[EditorConfig, CodeMirrorHandle])
-    js.Dynamic.global.globalThis.updateDynamic("EduSquirrelCodeMirrorScala")(value)
-    if CodeMirrorApi.available then {
-      js.Dynamic.global.globalThis.updateDynamic("EduSquirrelCodeMirror")(value)
-      js.Dynamic.global.globalThis.updateDynamic("EduSquirrelCodeMirrorReady")(js.Promise.resolve(value))
-    }
-    value
+  val facade: js.Object = js.Dynamic.literal(createEditor =
+    ((config: EditorConfig) => createEditor(config)): js.Function1[EditorConfig, CodeMirrorHandle])
+
+  private[evadid] def publish(): Unit = {
+    js.Dynamic.global.globalThis.updateDynamic("EduSquirrelCodeMirror")(facade)
   }
 
   private def indentWithSpaces(target: js.Object): Boolean = {
@@ -89,7 +83,7 @@ private[code] object CodeMirrorRuntime {
     private def text(source: String): js.Any = if isJava then CodeMirrorJavaLineEndings.text(source) else prepare(source)
     private val flowchart: Extension =
       if language == "python" && js.typeOf(config.flowchart) == "function" then
-        Libraries.flowchartExtension(config.flowchart.get)
+        CodeMirrorFlowchartRendering.extension(config.flowchart.get)
       else js.Array[Extension]()
 
     private val state = Libraries.EditorState.create(js.Dynamic.literal(

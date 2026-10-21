@@ -1,3 +1,4 @@
+import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -32,6 +33,7 @@ test('built worker.js executes framework commands independently of the browser e
       return route.abort();
     });
     const page = await context.newPage();
+    await installCodeMirrorModules(page);
     await page.goto('http://localhost:9000/worker-test');
     await page.evaluate(() => {
       const worker = new Worker('/artifacts/newest/worker.js');

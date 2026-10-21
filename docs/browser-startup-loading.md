@@ -40,8 +40,8 @@ creation and claims. Editors and execution clients own mounted
 resources, request protocols and cleanup; independent environments do not share
 interpreter instances.
 
-The small JavaScript bootstrap must run before Scala.js is available. Native ESM
-imports remain in `homepage/js/CodeMirrorLoader.js`, with coordination in Scala.js.
+The small JavaScript bootstrap must run before Scala.js is available. The CodeMirror facade imports native ESM packages directly from Scala.js;
+its gutter integration also runs in Scala.js.
 Workers load dependencies inside their own execution scope, and core's generic
 worker transport cannot depend on client startup. Bundled libraries and standalone
 teaching programs retain their own loaders.

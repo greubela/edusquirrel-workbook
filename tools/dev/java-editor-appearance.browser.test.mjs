@@ -1,3 +1,4 @@
+import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -24,11 +25,10 @@ test('Java appearance changes preserve the live editor, undo history and drawing
       const relative = decodeURIComponent(url.pathname.slice(prefix.length));
       if (relative.split('/').includes('..')) return route.abort();
       let file = path.resolve(root, relative + (relative.endsWith('/') ? 'index.html' : ''));
-      if (relative === 'homepage/js/CodeMirrorLoader.js' && process.env.CODEMIRROR_TEST_BUNDLE)
-        file = process.env.CODEMIRROR_TEST_BUNDLE;
       try { await route.fulfill({body: await readFile(file), contentType: mime[path.extname(file)] || 'application/octet-stream'}); }
       catch { await route.fulfill({status: 404, body: 'Not found'}); }
     });
+    await installCodeMirrorModules(page);
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
@@ -193,11 +193,11 @@ test('language tabs follow the current draft and commit converted representation
       if (url.origin !== origin || !url.pathname.startsWith(prefix)) return route.abort();
       const relative = decodeURIComponent(url.pathname.slice(prefix.length));
       if (relative.split('/').includes('..')) return route.abort();
-      const file = relative === 'homepage/js/CodeMirrorLoader.js' ? process.env.CODEMIRROR_TEST_BUNDLE :
-        path.resolve(root, relative + (relative.endsWith('/') ? 'index.html' : ''));
+      const file = path.resolve(root, relative + (relative.endsWith('/') ? 'index.html' : ''));
       try { await route.fulfill({body: await readFile(file), contentType: mime[path.extname(file)] || 'application/octet-stream'}); }
       catch { await route.fulfill({status: 404, body: 'Not found'}); }
     });
+    await installCodeMirrorModules(page);
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
