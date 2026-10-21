@@ -7,8 +7,6 @@ import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.distribution.clients.WebWorkerExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.facades.Workers
-import scala.scalajs.js
-import scala.scalajs.js.JSConverters.*
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -41,7 +39,7 @@ object CodeMirrorFlowchartGutter {
       discardWorker()
     }
 
-    def chartForDoc(source: String): js.Promise[js.Object] = {
+    def chartForDoc(source: String): Future[PythonFlowchartGutter.Chart] = {
       val result = if closed.now() then Future.failed(IllegalStateException("Flowchart editor is closed"))
       else cache.get(source) match {
         case Some(chart) =>
@@ -58,31 +56,21 @@ object CodeMirrorFlowchartGutter {
             }
             WorkerCommands.pythonFlowchart.sendCommandTo(executor, WorkerCommands.PythonFlowchartRequest(source)).map(_.result)
           }.fold(Future.failed, identity)
-          pending.set(Some(source -> requested))
-          requested.onComplete { outcome =>
+          val completed = requested.transform { outcome =>
             if !closed.now() && current == generation.now() then outcome match {
               case Success(chart) =>
                 pending.set(None)
                 cache.put(source, chart)
               case Failure(_) => discardWorker()
             }
+            outcome
           }
-          requested
+          pending.set(Some(source -> completed))
+          completed
         }
       }
-      result.map(toJs).toJSPromise
+      result
     }
   }
 
-  private def toJs(chart: PythonFlowchartGutter.Chart): js.Object = {
-    js.Dynamic.literal(
-      nodes = js.Array(chart.nodes.map(node => js.Dynamic.literal(
-        line = node.line, kind = node.kind, depth = node.depth, label = node.label
-      )) *),
-      edges = js.Array(chart.edges.map(edge => js.Dynamic.literal(
-        from = edge.from, to = edge.to, kind = edge.kind
-      )) *),
-      entries = js.Array(chart.entries *)
-    )
-  }
 }

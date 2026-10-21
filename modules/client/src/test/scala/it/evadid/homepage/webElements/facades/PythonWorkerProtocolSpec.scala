@@ -18,6 +18,7 @@ import upickle.default.*
 class PythonWorkerProtocolSpec extends EditorDomSuite {
   private val sent = Var(Option.empty[RunPythonRequest])
   private val failing = Var(false)
+  private val value = Var[ujson.Value](ujson.Null)
   private val terminated = Var(false)
 
   private class FakeWorker(url: String) extends js.Object {
@@ -36,7 +37,7 @@ class PythonWorkerProtocolSpec extends EditorDomSuite {
       val timestamps = ExecutionClientResponseTimestamps(now, now, now)
       val response = if failing.now() then ExecutionClientResponse.forError(timestamps, SerializedException("bad Python"),
         request.command, AdditionalLoggingOutput("before error", "traceback"))
-      else ExecutionClientResponse.forValue(timestamps, RunPythonResult(ujson.Null, "output", "",
+      else ExecutionClientResponse.forValue(timestamps, RunPythonResult(value.now(), "output", "",
         List(PythonCallback("turtle", "forward", List(ujson.Num(12), ujson.Str("label"))))), request.command)
       setTimeout(0) {
         message.now().get(js.Dynamic.literal(data = write(Response(request.requestId, response))).asInstanceOf[dom.MessageEvent])
@@ -83,4 +84,25 @@ class PythonWorkerProtocolSpec extends EditorDomSuite {
       assertEquals(failure.message, "bad Python")
     }}
   }
+  test("feedback decodes the typed result value independently of worker stdout") {
+    import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.*
+    workerTest(false) { _ =>
+      value.set(ujson.Obj("status" -> "success", "tests" -> ujson.Arr(ujson.Obj(
+        "name" -> "sum", "status" -> "passed", "hidden" -> false, "message" -> ujson.Null,
+        "durationMs" -> 1, "hint" -> ujson.Null)), "stdout" -> "student output",
+        "stderr" -> "", "error" -> ujson.Null, "score" -> 1))
+      PythonRuntimeService.run(PythonRunRequest("print(42)", Nil, Nil, Nil, Nil, 1000)).map { result =>
+        assertEquals(result.status, PythonRunStatus.Success)
+        assertEquals(result.stdout, "student output")
+        assertEquals(result.tests.map(_.status), Seq(PythonTestStatus.Passed))
+        assertEquals(result.score, 1.0)
+        assert(PythonRuntimeService.isReady)
+      }.andThen { case _ =>
+        PythonRuntimeService.terminateWorker()
+        assert(!PythonRuntimeService.isReady)
+        value.set(ujson.Null)
+      }
+    }
+  }
+
 }

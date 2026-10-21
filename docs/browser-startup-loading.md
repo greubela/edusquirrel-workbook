@@ -24,7 +24,9 @@ Page startup owns scheduling and configuration. Facades own imports, compatibili
 patches and native handle creation. Snap fetches dependencies in parallel and
 executes them in order; failed loads can retry. CodeMirror imports native ESM
 packages from Scala.js. Python initializes Pyodide inside the command worker.
-Mounted editors own cleanup and discard late completion after unmount.
+Mounted editors own cleanup and discard late completion after unmount. Scala editor
+settings and flowchart results stay typed; JavaScript conversion belongs only at
+the external browser API boundary.
 
 ## Configuration
 

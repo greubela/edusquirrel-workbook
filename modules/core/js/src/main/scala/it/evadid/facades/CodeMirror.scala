@@ -3,6 +3,7 @@ package it.evadid.facades
 import com.raquo.airstream.state.Var
 import it.evadid.facades.internal.CodeMirrorRuntime
 import org.scalajs.dom
+import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter.Chart
 
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -296,41 +297,21 @@ object CodeMirror {
     def destroy(): Unit = js.native
   }
 
-  trait EditorConfig extends js.Object {
+  final case class EditorConfig(
+    parent: dom.Element,
+    doc: String = "",
+    onDocChange: String => Unit = _ => (),
+    language: String = "python",
+    flowchart: Option[String => Future[Chart]] = None
+  )
+
+  /** Only the external browser API crosses this JavaScript boundary. */
+  private[facades] trait JavaScriptEditorConfig extends js.Object {
     val parent: dom.Element
     val doc: js.UndefOr[String]
     val language: js.UndefOr[String]
-    val onDocChange: js.Function1[String, Unit]
+    val onDocChange: js.UndefOr[js.Function1[String, Unit]]
     val flowchart: js.UndefOr[js.Function1[String, js.Promise[js.Object]]]
-  }
-
-  object EditorConfig {
-    def apply(
-               parent: dom.Element,
-               doc: String,
-               onDocChange: String => Unit,
-               language: String = "python",
-               flowchart: Option[String => js.Promise[js.Object]] = None
-             ): EditorConfig = {
-      js.Dynamic.literal(
-        parent = parent,
-        doc = doc,
-        language = language,
-        onDocChange = (value: String) => onDocChange(value),
-        flowchart = flowchart.fold[js.UndefOr[js.Function1[String, js.Promise[js.Object]]]](js.undefined)(
-          callback => ((value: String) => callback(value)): js.Function1[String, js.Promise[js.Object]]
-        )
-      ).asInstanceOf[EditorConfig]
-    }
-  }
-
-
-  @js.native private trait HandleFactory extends js.Object {
-    def createEditor(config: EditorConfig): CodeMirrorHandle = js.native
-  }
-  private def factory: Option[HandleFactory] = {
-    val value = dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirror")
-    if js.isUndefined(value) || value == null then None else Some(value.asInstanceOf[HandleFactory])
   }
 
   // Native module imports remain asynchronous and share the browser's ESM cache.
@@ -363,7 +344,7 @@ object CodeMirror {
   }
 
   private def loadModules(): Future[Unit] = Future.unit.flatMap { _ =>
-    if Api.available || factory.nonEmpty then Future.unit
+    if Api.available then Future.unit
     else pending.now().getOrElse {
       val result = Promise[Unit]()
       pending.set(Some(result.future))
@@ -392,7 +373,7 @@ object CodeMirror {
   }
 
   def editor(config: => EditorConfig): ExternalDependency[CodeMirrorHandle] =
-    new ExternalDependency(() => preload(), () => Api.available || factory.nonEmpty, () => factory.get.createEditor(config))
+    new ExternalDependency(() => preload(), () => Api.available, () => CodeMirrorRuntime.createEditor(config))
 
   private[evadid] def view(config: js.Object): ExternalDependency[Api.View] =
     new ExternalDependency(() => preload(), () => Api.available, () => new Api.EditorView(config))

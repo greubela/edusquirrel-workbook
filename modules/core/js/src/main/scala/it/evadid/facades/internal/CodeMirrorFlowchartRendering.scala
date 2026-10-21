@@ -8,13 +8,12 @@ import scala.concurrent.Future
 import scala.scalajs.js
 import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import upickle.default.*
 
 /** Native gutter integration; semantic graph calculation stays in the worker. */
 private[evadid] object CodeMirrorFlowchartRendering {
   private case class Route(edge: Edge, low: Int, high: Int, sourceX: Int, targetX: Int,
-                           terminal: Boolean, back: Boolean, lane: Option[Int]) derives ReadWriter
-  private case class Layout(nodes: Map[Int, Node], routes: List[Route], entries: Set[Int], width: Int) derives ReadWriter
+                           terminal: Boolean, back: Boolean, lane: Option[Int])
+  private case class Layout(nodes: Map[Int, Node], routes: List[Route], entries: Set[Int], width: Int)
   private def nodeX(node: Node): Int = 18 + node.depth * 18
   private def layout(chart: Chart): Layout = {
     val nodes = chart.nodes.map(n => n.line -> n).toMap
@@ -103,7 +102,7 @@ private[evadid] object CodeMirrorFlowchartRendering {
       container
     }
   }
-  def extension(chartForDoc: js.Function1[String, js.Promise[js.Object]]): Extension = {
+  def extension(chartForDoc: String => Future[Chart]): Extension = {
     val ready = Libraries.StateEffect.define[Layout]()
     val empty = layout(Chart(Nil, Nil, Nil))
     val field = Libraries.StateField.define[Layout](js.Dynamic.literal(
@@ -122,8 +121,7 @@ private[evadid] object CodeMirrorFlowchartRendering {
         timer.set(Some(setTimeout(delay) {
           val source = view.state.doc.toString()
           Future(chartForDoc(source))
-            .flatMap(result => js.Promise.resolve[js.Object](result.asInstanceOf[js.Object]).toFuture)
-            .map(chart => layout(read[Chart](js.JSON.stringify(chart))))
+            .flatten.map(layout)
             .recover { case _ => empty }
             .foreach { next =>
               if !destroyed.now() && generation.now() == current && view.state.doc.toString() == source &&
