@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
+import it.evadid.homepage.webElements.facades.ExternalDependencies.CodeMirror.{Api as CodeMirrorApi}
 import scala.scalajs.js
 import CodeMirrorApi.*
 

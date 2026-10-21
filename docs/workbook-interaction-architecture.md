@@ -158,8 +158,10 @@ CodeMirror currently uses pinned CDN modules with an offline test bundle, so
 vendoring all editor assets is an architectural target, not an accomplished fact.
 Snap and JSXGraph have bundled distributions.
 
-Put application-owned dependency readiness/loading coordination in the Scala.js
-`it.evadid.homepage.control.startup` package. Return futures, share loads, render an editor-local loading/fallback UI,
+Put native dependency readiness and typed handle creation in
+`webElements/facades/ExternalDependencies.scala`, using `EvaExternalDependency[T]`.
+The `control.startup` package schedules preloads and owns shared browser loading.
+Return futures, share loads, render an editor-local loading/fallback UI,
 and let only consumers await readiness. Do not hold workbook startup behind a
 chain of optional editor downloads. Scala.js startup preheats CodeMirror, Snap and
 JSXGraph independently of editor creation. Turtle entry pages no longer load

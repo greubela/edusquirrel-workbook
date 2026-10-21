@@ -12,11 +12,11 @@ awaited by `HomepageStartupLogic`, which mounts the shell before restoring cache
 translations or refreshing language sources. Text updates through existing signals.
 CodeMirror retains its editable textarea while its module is unavailable.
 
-`SnapRuntimeLoading` preloads the bundled dependencies in parallel, then executes
+The Snap facade preloads the bundled dependencies in parallel, then executes
 scripts in their dependency order. A failed script stops later execution; a later
 consumer can retry. Successful scripts are reused. Preheating creates no editor,
 Morphic world or retained hidden GUI. The Snap loader installs the
-serializer patch and native resource base path in Scala.js. `GraphRuntimeLoading` similarly
+serializer patch and native resource base path in Scala.js. The JSXGraph facade similarly
 shares JSXGraph's load, and graph renderers discard late completion after unmount.
 
 Dependency requests have bounded deadlines. Failures remain local to consumers
@@ -24,15 +24,19 @@ and never gate the shell.
 
 ## Ownership and location
 
-All application-owned browser loaders live in
-`modules/client/src/main/scala/it/evadid/homepage/control/startup/`
-(package `it.evadid.homepage.control.startup`). This package owns asset resolution,
-configuration discovery, shared dependency readiness, retry and worker preheating.
-Keep each runtime domain in one file, including its private compatibility and
-optional-module helpers.
-Editors and execution clients retain ownership of mounted resources, request
-protocols and interpreter instances; independent environments do not share an
-interpreter.
+External dependencies and typed handle factories live in
+`modules/client/src/main/scala/it/evadid/homepage/webElements/facades/ExternalDependencies.scala`.
+They implement `EvaExternalDependency[T]`: `preload()` shares code readiness
+without creating an editor; `createInstance()` waits for readiness and returns a
+fresh, consumer-owned handle. Synchronous renderers may use
+`createLoadedInstance()` after awaiting readiness. Compatibility patches and
+optional-module imports stay beside their dependency.
+
+The `control.startup` package owns page startup, configuration, shared asset/script
+loading and worker-pool scheduling. It starts facade preloads immediately without
+awaiting them on the render path. Editors and execution clients own mounted
+resources, request protocols and cleanup; independent environments do not share
+interpreter instances.
 
 The small JavaScript bootstrap must run before Scala.js is available. Native ESM
 imports remain in `homepage/js/CodeMirrorLoader.js`, with coordination in Scala.js.

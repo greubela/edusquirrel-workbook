@@ -1,6 +1,7 @@
-package it.evadid.homepage.control.startup
+package it.evadid.homepage.webElements.facades
 
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
+import it.evadid.homepage.webElements.facades.ExternalDependencies.CodeMirror
 import com.raquo.laminar.api.L.*
 import scala.concurrent.Promise
 import scala.scalajs.js
@@ -13,11 +14,11 @@ class CodeMirrorEditorPreheatSpec extends EditorDomSuite {
     val create: js.Function0[Unit] = () => creations.update(_ + 1)
     org.scalajs.dom.window.asInstanceOf[js.Dynamic].updateDynamic("EduSquirrelCodeMirror")(
       js.Dynamic.literal(createEditor = create))
-    CodeMirrorEditorLoading.preheat()
-    CodeMirrorEditorLoading.preheat()
+    CodeMirror.preload()
+    CodeMirror.preload()
     val ready = Promise[Unit]()
     setTimeout(300) { ready.success(()) }
-    ready.future.flatMap(_ => CodeMirrorEditorLoading.load()).map { _ =>
+    ready.future.flatMap(_ => CodeMirror.preload()).map { _ =>
       assertEquals(creations.now(), 0)
     }
   }

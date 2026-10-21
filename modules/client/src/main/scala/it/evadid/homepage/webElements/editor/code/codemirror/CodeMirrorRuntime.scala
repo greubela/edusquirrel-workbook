@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
-import CodeMirrorEditor.{CodeMirrorHandle, EditorConfig}
+import it.evadid.homepage.webElements.facades.ExternalDependencies.CodeMirror.{Api as CodeMirrorApi}
+import it.evadid.homepage.webElements.facades.ExternalDependencies.CodeMirror.{CodeMirrorHandle, EditorConfig}
 import org.scalajs.dom
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel
@@ -106,13 +107,14 @@ private[code] object CodeMirrorRuntime {
             if changed && js.typeOf(config.onDocChange) == "function" then config.onDocChange(value)
           }
         }))))
-    private val view = new EditorView(js.Dynamic.literal(state = state, parent = config.parent))
+    private val view = it.evadid.homepage.webElements.facades.ExternalDependencies.CodeMirror.view(
+      js.Dynamic.literal(state = state, parent = config.parent)).createLoadedInstance()
 
     if isJava then {
       import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-      it.evadid.homepage.control.startup.CodeMirrorEditorLoading.loadJava().map { module =>
+      it.evadid.homepage.webElements.facades.ExternalDependencies.CodeMirror.loadJava().map { module =>
         if !destroyed then view.dispatch(js.Dynamic.literal(
-          effects = editorLanguage.reconfigure(module.asInstanceOf[JavaModule].java())))
+          effects = editorLanguage.reconfigure(module.java())))
       }.recover { case error =>
         if !destroyed then dom.console.warn("Java syntax support is unavailable; text editing remains available.", error.getMessage)
       }

@@ -7,6 +7,7 @@ import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleGradingLogic}
 import TurtleGradingLogic.{GradingLine, TurtleGraphicComparison, TurtleLineStatus}
 import org.scalajs.dom
+import it.evadid.homepage.webElements.facades.ExternalDependencies.JSXGraph
 import upickle.default.*
 
 import scala.scalajs.js
@@ -58,16 +59,15 @@ object TurtleJsxGraphRenderer:
         }
         def draw(): Unit = {
           scala.util.Try {
-            val library = jsxGraph()
             val board = render(container, scene, title)
-            dispose.set(Some(() => library.JSXGraph.freeBoard(board)))
+            dispose.set(Some(() => JSXGraph.free(board)))
             container.classList.remove("turtle-gradig-panel--unavailable")
             container.setAttribute("aria-busy", "false")
           }.failed.foreach(showError)
         }
-        val loading = it.evadid.homepage.control.startup.GraphRuntimeLoading
+        val loading = it.evadid.homepage.webElements.facades.ExternalDependencies.JSXGraph
         if loading.available then draw()
-        else scala.util.Try(loading.load()).fold(
+        else scala.util.Try(loading.preload()).fold(
           showError,
           ready => {
             ready.map(_ => if mounted.now().contains(token) then draw())
@@ -178,20 +178,14 @@ object TurtleJsxGraphRenderer:
   }
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */
-  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): js.Dynamic =
+  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): JSXGraph.Board =
     render(container, buildScene(program, expected), "Turtle drawing")
 
   /** Creates the JSXGraph board using the expected graphic for both comparison and angle overlays. */
-  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: TurtleGraphic): js.Dynamic =
+  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: TurtleGraphic): JSXGraph.Board =
     render(container, buildScene(program, expected), "Turtle drawing")
 
-  private def jsxGraph(): js.Dynamic =
-    val library = js.Dynamic.global.globalThis.selectDynamic("JXG")
-    if js.isUndefined(library) || library == null then
-      throw new IllegalStateException("JSXGraph is not loaded; expected global JXG")
-    library
-
-  def render(container: dom.html.Div, scene: Scene, title: String): js.Dynamic =
+  def render(container: dom.html.Div, scene: Scene, title: String): JSXGraph.Board =
     container.classList.add("turtle-gradig-panel")
     val points = scene.lines.flatMap(line => List(line.start, line.end))
     if points.exists(point => !point.x.isFinite || !point.y.isFinite) then
@@ -200,19 +194,18 @@ object TurtleJsxGraphRenderer:
     if bounds.exists(!_.isFinite) || !((bounds(2) - bounds(0)).isFinite && (bounds(1) - bounds(3)).isFinite) ||
       bounds(2) <= bounds(0) || bounds(1) <= bounds(3) then
       throw IllegalArgumentException("The drawing exceeds the supported display range.")
-    val jxg = jsxGraph()
     // SVG tick labels avoid a forced HTML layout for each label on every board update.
     val axisOptions = js.Dynamic.literal(ticks = js.Dynamic.literal(label = js.Dynamic.literal(display = "internal")))
-    val board: js.Dynamic = jxg.JSXGraph.initBoard(container, js.Dynamic.literal(
+    val board = JSXGraph.board(container, js.Dynamic.literal(
       title = Option(title).map(_.trim).filter(_.nonEmpty).getOrElse("Turtle drawing"),
       renderer = "svg", boundingbox = js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), axis = true,
       defaultAxes = js.Dynamic.literal(x = axisOptions, y = axisOptions),
       keepaspectratio = true, showCopyright = false
-    ))
+    )).createLoadedInstance()
 
     // Dense embroidery targets otherwise redraw the entire board after each object.
-    val canBatch = js.typeOf(board.selectDynamic("suspendUpdate")) == "function" &&
-      js.typeOf(board.selectDynamic("unsuspendUpdate")) == "function"
+    val canBatch = js.typeOf(board.asInstanceOf[js.Dynamic].selectDynamic("suspendUpdate")) == "function" &&
+      js.typeOf(board.asInstanceOf[js.Dynamic].selectDynamic("unsuspendUpdate")) == "function"
 
     val pointObjects = scala.collection.mutable.Map.empty[Point[Double], js.Dynamic]
     val angleObjects = scala.collection.mutable.Map.empty[Int, js.Dynamic]
@@ -273,10 +266,10 @@ object TurtleJsxGraphRenderer:
       board
     catch
       case NonFatal(error) =>
-        jxg.JSXGraph.freeBoard(board)
+        JSXGraph.free(board)
         throw error
 
-  private def hoverRelated(scene: Scene, lineIndex: Int, points: collection.mutable.Map[Point[Double], js.Dynamic], angles: collection.mutable.Map[Int, js.Dynamic], board: js.Dynamic, active: Boolean): Unit =
+  private def hoverRelated(scene: Scene, lineIndex: Int, points: collection.mutable.Map[Point[Double], js.Dynamic], angles: collection.mutable.Map[Int, js.Dynamic], board: JSXGraph.Board, active: Boolean): Unit =
     val line = scene.lines(lineIndex)
     List(line.start, line.end).foreach { p =>
       points.get(p).foreach(_.setAttribute(js.Dynamic.literal(
@@ -287,7 +280,7 @@ object TurtleJsxGraphRenderer:
     scene.angles.zipWithIndex.filter { case (a, _) => a.lineBefore == lineIndex || a.lineAfter == lineIndex }.foreach { case (a, i) => angles.get(i).foreach(setAngleHover(_, angleSector(scene, a, 1.0).degrees, active, board)) }
     board.update()
 
-  private def setAngleHover(obj: js.Dynamic, degrees: Double, active: Boolean, board: js.Dynamic): Unit =
+  private def setAngleHover(obj: js.Dynamic, degrees: Double, active: Boolean, board: JSXGraph.Board): Unit =
     obj.setAttribute(js.Dynamic.literal(name = (if active then s"${format(degrees)}°" else ""),
       cssClass = (if active then "turtle-angle is-emphasized" else "turtle-angle")))
     board.update()

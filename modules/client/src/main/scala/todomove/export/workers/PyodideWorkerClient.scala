@@ -8,7 +8,7 @@ import it.evadid.homepage.util.web.{WorkerProtocolHelpers, WorkerRequestTracker}
 import it.evadid.util.JsHelpers.*
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 import it.evadid.util.JsHelpers
-import it.evadid.homepage.control.startup.PyodideLoading
+import it.evadid.homepage.webElements.facades.ExternalDependencies.Pyodide
 import org.scalajs.dom
 import todomove.`export`.modules.TurtleSingleton
 
@@ -17,9 +17,9 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
-final class PyodideWorkerClient(workerUrl: String = PyodideLoading.configuredWorkerUrl()) {
+final class PyodideWorkerClient(workerUrl: String = Pyodide.configuredWorkerUrl()) {
 
-  private val worker = PyodideLoading.createWorker(workerUrl)
+  private val worker = Pyodide.worker(workerUrl).createLoadedInstance()
 
   private val tracker = new WorkerRequestTracker
 

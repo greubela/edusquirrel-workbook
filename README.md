@@ -29,7 +29,7 @@ extracts, logs and captures in ignored `tmp/work/<subject>/`; use `integration/`
 for cross-workbook checks and `tooling/` for temporary dependencies. Published
 teaching assets remain in `resources/`. Site assembly excludes `tmp/`.
 
-The [browser startup loading guide](docs/browser-startup-loading.md) describes loading ownership in `it.evadid.homepage.control.startup` and documents nonblocking rendering, runtime preheating and client configuration.
+The [browser startup loading guide](docs/browser-startup-loading.md) describes the typed dependency facades, startup ownership, and nonblocking rendering, runtime preheating and client configuration.
 
 The [worker execution backend](docs/worker-execution-backend.md) documents background command execution, the shared transport protocol and the worker client in `HomepageDefaults`.
 
