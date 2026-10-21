@@ -18,17 +18,19 @@ import scala.util.Try
   def loadPackagesFromImports(code: String): js.Promise[js.Any] = js.native
 }
 
-/** Worker-local code readiness; interpreter ownership belongs to the execution service. */
+/** Code readiness in a browser or classic worker; consumers own their interpreters. */
 object Pyodide extends EvaExternalDependency[PyodideRuntime] {
   private val indexUrl = "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/"
   @js.native @JSGlobalScope private object Scope extends js.Object {
     def importScripts(url: String): Unit = js.native
     def loadPyodide(options: js.Object): js.Promise[PyodideRuntime] = js.native
   }
-  override def preload(): Future[Unit] = Future.fromTry(Try {
-    if js.typeOf(js.Dynamic.global.globalThis.selectDynamic("loadPyodide")) != "function" then
-      Scope.importScripts(indexUrl + "pyodide.js")
-  })
+  override def preload(): Future[Unit] = {
+    if js.typeOf(js.Dynamic.global.globalThis.selectDynamic("loadPyodide")) == "function" then Future.unit
+    else if js.typeOf(js.Dynamic.global.globalThis.selectDynamic("importScripts")) == "function" then
+      Future.fromTry(Try(Scope.importScripts(indexUrl + "pyodide.js")))
+    else BrowserLoading.load(indexUrl + "pyodide.js")
+  }
   override def createInstance(): Future[PyodideRuntime] =
     preload().flatMap(_ => Scope.loadPyodide(js.Dynamic.literal(indexURL = indexUrl)).toFuture)
 }

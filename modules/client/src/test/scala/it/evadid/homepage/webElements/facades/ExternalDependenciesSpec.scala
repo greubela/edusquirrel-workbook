@@ -78,4 +78,30 @@ class ExternalDependenciesSpec extends EditorDomSuite {
       }
     }.andThen { case _ => global.updateDynamic("loadPyodide")(previous) }
   }
+  test("Pyodide can load in a browser without importScripts or an HTML script tag") {
+    val global = js.Dynamic.global.globalThis
+    val previous = global.selectDynamic("loadPyodide")
+    val previousImport = global.selectDynamic("importScripts")
+    global.updateDynamic("loadPyodide")(js.undefined)
+    global.updateDynamic("importScripts")(js.undefined)
+    val loaded = Pyodide.preload()
+    assert(loaded eq Pyodide.preload())
+    val script = org.scalajs.dom.document.querySelector("script[src$='/pyodide.js']")
+    assert(script != null)
+    assert(!loaded.isCompleted)
+    val instance = Pyodide.createInstance()
+    global.updateDynamic("loadPyodide")(((_: js.Object) => js.Promise.resolve(js.Dynamic.literal(
+      runPythonAsync = ((code: String, _: js.Object) => js.Promise.resolve(code.length)): js.Function2[String, js.Object, js.Promise[Int]]
+    ))): js.Function1[js.Object, js.Promise[js.Dynamic]])
+    val event = js.Dynamic.newInstance(org.scalajs.dom.window.asInstanceOf[js.Dynamic].Event)("load")
+    script.dispatchEvent(event.asInstanceOf[org.scalajs.dom.Event])
+    instance.flatMap(_.runPythonAsync("abc", js.Dynamic.literal()).toFuture).map { result =>
+      assertEquals(result.asInstanceOf[Int], 3)
+    }.andThen { case _ =>
+      global.updateDynamic("loadPyodide")(previous)
+      global.updateDynamic("importScripts")(previousImport)
+      script.remove()
+    }
+  }
+
 }
