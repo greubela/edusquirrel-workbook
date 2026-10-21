@@ -108,12 +108,15 @@ private[code] object CodeMirrorRuntime {
         }))))
     private val view = new EditorView(js.Dynamic.literal(state = state, parent = config.parent))
 
-    if isJava then Libraries.loadJavaModule().`then`[Unit]((module: JavaModule) => {
-      if !destroyed then view.dispatch(js.Dynamic.literal(effects = editorLanguage.reconfigure(module.java())))
-    }).`catch`(((error: scala.Any) => {
-      if !destroyed then dom.console.warn("Java syntax support is unavailable; text editing remains available.", error.asInstanceOf[js.Any])
-      (): Unit
-    }): js.Function1[scala.Any, Unit | js.Thenable[Unit]])
+    if isJava then {
+      import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+      it.evadid.homepage.control.startup.CodeMirrorJavaLoading.load().map { module =>
+        if !destroyed then view.dispatch(js.Dynamic.literal(
+          effects = editorLanguage.reconfigure(module.asInstanceOf[JavaModule].java())))
+      }.recover { case error =>
+        if !destroyed then dom.console.warn("Java syntax support is unavailable; text editing remains available.", error.getMessage)
+      }
+    }
 
     private val themeObserver = if themeTarget.nonEmpty then Some(new dom.MutationObserver((_, _) =>
       if !destroyed then view.dispatch(js.Dynamic.literal(effects = theme.reconfigure(currentTheme()))))) else None

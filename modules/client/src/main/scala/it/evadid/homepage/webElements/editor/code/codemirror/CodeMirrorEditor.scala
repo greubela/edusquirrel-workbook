@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
+import it.evadid.homepage.control.startup.CodeMirrorEditorLoading
+
 import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -81,7 +83,7 @@ object CodeMirrorEditor {
   }
 
   @js.native
-  private[code] trait CodeMirrorFacade extends js.Object {
+  private[homepage] trait CodeMirrorFacade extends js.Object {
     def createEditor(config: EditorConfig): CodeMirrorHandle = js.native
   }
 

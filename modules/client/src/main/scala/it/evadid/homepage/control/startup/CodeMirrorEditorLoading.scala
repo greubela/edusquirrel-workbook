@@ -1,5 +1,6 @@
-package it.evadid.homepage.webElements.editor.code.codemirror
+package it.evadid.homepage.control.startup
 
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import com.raquo.airstream.state.Var
 import org.scalajs.dom
 
@@ -22,20 +23,20 @@ object CodeMirrorEditorLoading {
     else Some(value.asInstanceOf[CodeMirrorEditor.CodeMirrorFacade])
   }
 
-  private[code] def inBackground[A](work: => A): Future[A] = {
+  private[homepage] def inBackground[A](work: => A): Future[A] = {
     val result = Promise[A]()
     setTimeout(0) { result.complete(Try(work)) }
     result.future
   }
 
-  private[code] def bootstrapUrl: String = it.evadid.homepage.control.startup.BrowserAssets.bootstrapUrl
+  private[homepage] def bootstrapUrl: String = BrowserAssets.bootstrapUrl
 
-  private[code] def workerUrl: String = it.evadid.homepage.control.startup.ClientRuntimeConfig.workerUrl
+  private[homepage] def workerUrl: String = ClientRuntimeConfig.workerUrl
 
   def preheat(): Unit = { load(background = true).failed.foreach(_ => ()); () }
 
   // Check the shared load after the calling reactive transaction has committed its Vars.
-  private[code] def load(background: Boolean = false): Future[CodeMirrorEditor.CodeMirrorFacade] =
+  private[homepage] def load(background: Boolean = false): Future[CodeMirrorEditor.CodeMirrorFacade] =
     Future.unit.flatMap(_ => loadOnce(background))
 
   private def loadOnce(background: Boolean): Future[CodeMirrorEditor.CodeMirrorFacade] = facade match {

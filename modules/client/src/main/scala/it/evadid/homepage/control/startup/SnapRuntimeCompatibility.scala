@@ -1,10 +1,9 @@
-package it.evadid.homepage.webElements.editor.code.SnapEditor
+package it.evadid.homepage.control.startup
 
-import it.evadid.homepage.control.startup.BrowserAssets
 import scala.scalajs.js
 
 /** Compatibility at the native Snap boundary; editor ownership stays in SnapCodeEditor. */
-private[SnapEditor] object SnapRuntimeCompatibility {
+private[startup] object SnapRuntimeCompatibility {
   private val originalField = "eduSquirrelOriginalLoadProjectModel"
 
   def prepareResources(): Unit =
@@ -18,7 +17,7 @@ private[SnapEditor] object SnapRuntimeCompatibility {
     patchSerializer(serializer.selectDynamic("prototype"))
   }
 
-  private[SnapEditor] def patchSerializer(prototype: js.Dynamic): Unit = {
+  private[startup] def patchSerializer(prototype: js.Dynamic): Unit = {
     val existing = prototype.selectDynamic(originalField)
     if js.isUndefined(existing) then {
       val original = prototype.selectDynamic("loadProjectModel")

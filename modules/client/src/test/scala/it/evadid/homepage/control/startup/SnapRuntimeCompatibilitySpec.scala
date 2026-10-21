@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.editor.code.SnapEditor
+package it.evadid.homepage.control.startup
 
 import com.raquo.airstream.state.Var
 import munit.FunSuite

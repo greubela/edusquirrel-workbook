@@ -20,7 +20,7 @@ test('editor composition keeps changing state in Vars and has no parallel edit c
     'EvaEditor/extensions/turtle/TurtleProgramExecution.scala',
     'EvaEditor/extensions/turtle/TurtleExecutionProvider.scala',
     'codemirror/CodeMirrorEditor.scala', 'codemirror/CodeMirrorFlowchartGutter.scala',
-    'codemirror/CodeMirrorEditorLoading.scala', '../../code/JavaFunctionBasedEditor.scala',
+    '../../../control/startup/CodeMirrorEditorLoading.scala', '../../code/JavaFunctionBasedEditor.scala',
     'SnapEditor/SnapCodeEditor.scala', 'SnapEditor/SnapPreviewEditor.scala',
   ];
   for (const file of files) {

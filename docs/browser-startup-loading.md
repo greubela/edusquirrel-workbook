@@ -5,7 +5,8 @@ while HTML is still parsing, retains ordered bundle fallbacks, and leaves asset
 caching to HTTP headers. `MainApp` waits for DOM readiness before mounting.
 
 `StartupPreheating.start()` runs once at browser application startup, independently
-of EvaEditor. It starts CodeMirror loading and runtime configuration immediately.
+of EvaEditor. It starts CodeMirror loading and runtime configuration immediately;
+optional Java support preheats as soon as the base CodeMirror module is ready.
 Turtle workbook pages also start Snap and JSXGraph loading. These requests are not
 awaited by `HomepageStartupLogic`, which mounts the shell before restoring cached
 translations or refreshing language sources. Text updates through existing signals.
@@ -21,6 +22,42 @@ shares JSXGraph's load, and graph renderers discard late completion after unmoun
 
 Script loads have a 30-second deadline. CodeMirror keeps its existing 15-second
 module deadline. Failures remain local to consumers and never gate the shell.
+
+## Loading code inventory
+
+Application-owned browser loading lives in
+`modules/client/src/main/scala/it/evadid/homepage/control/startup/`
+(package `it.evadid.homepage.control.startup`):
+
+| Service | Responsibility |
+| --- | --- |
+| `BrowserAssets` | Bootstrap-relative resource paths |
+| `BrowserScriptLoading` | Shared script requests, parallel prefetch, ordered execution and timeouts |
+| `ClientRuntimeConfig` | Asynchronous client configuration discovery |
+| `StartupPreheating` | Starts independent warmup requests at app startup |
+| `WorkerPreloading` | Scala.js backend worker warmup and pool claims |
+| `CodeMirrorEditorLoading`, `CodeMirrorJavaLoading` | Shared module readiness, optional Java import, retry and deferred enhancement |
+| `SnapRuntimeLoading`, `SnapRuntimeCompatibility` | Snap dependencies, readiness, native compatibility and resource base |
+| `GraphRuntimeLoading` | JSXGraph readiness |
+| `PyodideWorkerLoading` | Python worker URL configuration and module-worker construction |
+| `PyodideRuntimeLoading` | Native runtime creation for legacy main-thread consumers |
+
+Editors and execution clients consume these services and retain ownership of their
+own mounted resources, request protocols and interpreter instances. In particular,
+Pyodide interpreter instances are not shared across independent environments.
+
+Some loading necessarily belongs to another execution boundary:
+
+- `homepage/js/app-loader.js` locates Scala.js before the startup package can run.
+- `CodeMirrorLoader.js` supplies native ESM import syntax; Scala.js owns its optional Java import sharing and retry.
+- `pyodide-worker.js` and `worker-bootstrap.js` load code inside their worker scopes.
+- `modules/worker/.../PyodideCommandRuntime.scala` initializes its worker-local interpreter.
+- Core's `WebWorkerExecutionClient` is a reusable transport factory; it does not
+  depend on the browser application's startup package.
+- Bundled libraries and standalone teaching programs retain their own loaders.
+
+Language maps, saved programs and image/scenario data are content, not executable
+script dependencies; their existing storage and content services stay in place.
 
 ## Client configuration
 

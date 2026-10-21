@@ -1,7 +1,6 @@
-package it.evadid.homepage.webElements.editor.code.SnapEditor
+package it.evadid.homepage.control.startup
 
 import com.raquo.airstream.state.Var
-import it.evadid.homepage.control.startup.{BrowserAssets, BrowserScriptLoading}
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 

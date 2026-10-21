@@ -25,7 +25,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   override def whenReady(render: () => Unit, onError: Throwable => Unit): Unit =
     import scala.scalajs.js.Thenable.Implicits.*
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-    it.evadid.homepage.webElements.editor.code.SnapEditor.SnapRuntimeLoading.load()
+    it.evadid.homepage.control.startup.SnapRuntimeLoading.load()
       .map(_ => render()).failed.foreach(onError)
 
   private var editorWorld: Option[WorldMorph] = None

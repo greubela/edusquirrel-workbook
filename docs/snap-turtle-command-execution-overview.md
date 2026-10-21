@@ -12,7 +12,7 @@ Callback decoding preserves order, ignores other modules, maps aliases to canoni
 
 ## Worker lifecycle
 
-The worker URL resolver honors `globalThis.PYODIDE_WORKER_URL` and otherwise uses `../js/pyodide-worker.js`. The workbook pages load [config.js](../homepage/js/config.js), which sets that override. The worker owns Pyodide loading; this path does not rely on a main-thread `loadPyodide` global. It uses the existing Python worker, not the separate Scala.js backend worker.
+`it.evadid.homepage.control.startup.PyodideWorkerLoading` constructs module workers and its URL resolver honors `globalThis.PYODIDE_WORKER_URL` and otherwise uses `../js/pyodide-worker.js`. The workbook pages load [config.js](../homepage/js/config.js), which sets that override. The worker owns Pyodide loading; this path does not rely on a main-thread `loadPyodide` global. It uses the existing Python worker, not the separate Scala.js backend worker.
 
 The service does not mount an IDE or change saved XML. Current synchronous derivation on `ProgrammingStateBeExpression` is a separate operation; see [Eva programming state](eva-editor-programming-state.md).
 

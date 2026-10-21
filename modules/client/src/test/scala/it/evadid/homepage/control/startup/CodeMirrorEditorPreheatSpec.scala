@@ -1,6 +1,6 @@
-package it.evadid.homepage.webElements.editor.code
+package it.evadid.homepage.control.startup
 
-import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditorLoading
+import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import com.raquo.laminar.api.L.*
 import scala.concurrent.Promise
 import scala.scalajs.js
