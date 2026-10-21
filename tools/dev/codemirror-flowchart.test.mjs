@@ -107,7 +107,8 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
     assert.equal(await page.locator('#flow .cm-edusquirrel-diagnostic').count(), 1, 'diagnostics still work');
     const callsBeforeInvalid = await page.evaluate(() => window.graphCalls);
     await page.evaluate(() => editor.setDoc('INVALID'));
-    await page.waitForFunction(count => window.graphCalls > count, callsBeforeInvalid);
+    await page.waitForFunction(count => window.graphCalls > count &&
+      document.querySelectorAll('#flow .cm-flowchart-row[title]').length === 0, callsBeforeInvalid);
     assert.equal(await page.locator('#flow .cm-flowchart-row[title]').count(), 0, 'unsupported source clears stale nodes');
     await page.evaluate(() => { editor.destroy(); plain.destroy(); empty.destroy(); });
     assert.equal(await page.locator('.cm-editor').count(), 0, 'destroy removes the editors');
@@ -143,7 +144,7 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
       assert.equal(await page.locator('#async-flow .cm-flowchart-row[title]').getAttribute('title'), 'process: current A',
         'generation checks reject older requests even when their source matches again');
       await page.evaluate(() => asyncEditor.setDoc('FAILED'));
-      assert.equal(await markerCount(), 0, 'an edit clears the previous graph immediately');
+      assert.equal(await markerCount(), 1, 'an edit keeps the previous graph until analysis finishes');
       await requested(4);
       await settle(3, 'analysis failed', true);
       assert.equal(await markerCount(), 0, 'failed analysis leaves an empty gutter');

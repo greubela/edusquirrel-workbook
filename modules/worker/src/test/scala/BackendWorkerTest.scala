@@ -47,8 +47,8 @@ class BackendWorkerTest extends FunSuite {
       assertEquals(readBinary[PythonFlowchartGutter.Chart](writeBinary(result)), result)
     }(using scala.concurrent.ExecutionContext.global)
   }
-  test("incomplete Python clears the chart and the next request can succeed") {
-    send("incomplete-flowchart", pythonFlowchart.name, writeJs(PythonFlowchartRequest("if True:"))).flatMap { reply =>
+  test("unsupported Python clears the chart and the next request can succeed") {
+    send("incomplete-flowchart", pythonFlowchart.name, writeJs(PythonFlowchartRequest("break"))).flatMap { reply =>
       assertEquals(reply.response.result.toOption.get.getAs[PythonFlowchartGutter.Chart], PythonFlowchartGutter.empty)
       send("valid-flowchart", pythonFlowchart.name, writeJs(PythonFlowchartRequest("print(1)")))
     }(using scala.concurrent.ExecutionContext.global).map { reply =>

@@ -24,14 +24,21 @@ object PythonFlowchartGutter {
                                 otherwise: List[Positioned] = Nil,
                                 kind: String = "process") derives upickle.default.ReadWriter
 
-  def fromPython(source: String): Chart = try {
+  def fromPython(source: String): Chart =
+    parseChart(source).getOrElse {
+      if (hasUnsupportedStatement(source)) empty
+      else recoverIncompleteTail(source).getOrElse(empty)
+    }
+
+  /** Parses exactly `source`. `None` means the program is incomplete or unsupported. */
+  private def parseChart(source: String): Option[Chart] = try {
     val expression = PythonParser.parsePython(source)
     val expressions = expression.recToTree(false, BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())).values
       .collect { case BeExpressionReference(_, value) => value }
     if (expressions.exists {
       case _: BeExpressionUnparsable | _: BeExpressionUnsupported => true
       case _ => false
-    }) empty
+    }) None
     else {
       val normalizer = PythonNormalizer.default
       // Use the normalizer's own tokenization, one physical line at a time.
@@ -74,13 +81,66 @@ object PythonFlowchartGutter {
       }
       val positioned = position(normalizer.runPipeline(source).statementTree.statements, 0)
       require(cursor == tokens.size, "Cannot align all source statements")
-      build(positioned)
+      // A header without a body is stored as a plain statement, not an unparsable node.
+      if (headerWithoutBody(positioned)) None else Some(build(positioned))
     }
   } catch {
-    // Incomplete/unsupported source is normal while typing. Keep editing usable
-    // and clear the graph instead of retaining misleading stale connections.
-    case NonFatal(_) => empty
+    case NonFatal(_) => None
   }
+
+  private val CompoundKeywords = Set("for", "while", "if", "elif", "else", "def", "class")
+  private val UnsupportedKeywords = Set("break", "continue", "try", "except", "finally")
+  private val MaxDroppedLines = 3
+
+  /** `break`, `continue` and `try`/`except` stay empty instead of hiding behind a prefix. */
+  private def hasUnsupportedStatement(source: String): Boolean =
+    PythonNormalizer.default.normalizeLineEndings(source).split("\n", -1).exists { line =>
+      UnsupportedKeywords.contains(keywordOf(line))
+    }
+
+  /**
+   * Keeps a finished prefix while the tail is still being typed.
+   * Tries the last few code lines from the end; a compound header gets `pass`.
+   * Line numbers of the kept source stay put because the edit is only at the tail.
+   */
+  private def recoverIncompleteTail(source: String): Option[Chart] = {
+    val lines = PythonNormalizer.default.normalizeLineEndings(source).split("\n", -1).toVector
+    val normalized = lines.mkString("\n")
+    val codeRows = lines.indices.filter(i => codeOf(lines(i)).nonEmpty).reverse.take(MaxDroppedLines)
+    codeRows.iterator.flatMap { last =>
+      val kept = lines.take(last + 1)
+      val candidate =
+        if (isCompoundHeader(kept(last))) withPass(kept, last)
+        else kept.mkString("\n")
+      // parseChart already rejected the original source; skip that candidate.
+      Option.when(candidate != normalized)(candidate).flatMap(parseChart)
+    }.nextOption()
+  }
+
+  private def withPass(lines: Vector[String], headerIndex: Int): String = {
+    val indent = lines(headerIndex).takeWhile(_ == ' ')
+    val passLine = indent + "    pass"
+    val (before, after) = lines.splitAt(headerIndex + 1)
+    (before :+ passLine :++ after).mkString("\n")
+  }
+
+  private def headerWithoutBody(items: List[Positioned]): Boolean = items.exists { item =>
+    (item.kind == "process" && isCompoundHeader(item.text) && item.body.isEmpty) ||
+      headerWithoutBody(item.body) || headerWithoutBody(item.otherwise)
+  }
+
+  private def isCompoundHeader(line: String): Boolean =
+    CompoundKeywords.contains(keywordOf(line)) && codeOf(line).endsWith(":")
+
+  private def keywordOf(line: String): String =
+    codeOf(line).takeWhile(ch => ch.isLetterOrDigit || ch == '_')
+
+  /** First non-comment token on the line; comments and strings come from extractRawLines. */
+  private def codeOf(line: String): String =
+    PythonNormalizer.default.extractRawLines(line)
+      .map(_.text)
+      .find(text => !text.startsWith("#"))
+      .getOrElse("")
 
   private def build(statements: List[Positioned]): Chart = {
     val nodes = mutable.ListBuffer.empty[Node]
