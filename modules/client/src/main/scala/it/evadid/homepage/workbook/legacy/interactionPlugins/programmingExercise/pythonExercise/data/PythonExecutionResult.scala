@@ -1,7 +1,6 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.data
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.data.*
-import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.*
 import PythonExecutionResult.*
 
 case class PythonExecutionResult(

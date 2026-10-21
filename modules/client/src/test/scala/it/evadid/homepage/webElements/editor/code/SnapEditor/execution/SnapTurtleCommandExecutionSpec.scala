@@ -3,14 +3,14 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.facades
-import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackOp, PythonRunConfig, PythonRunReport}
+import it.evadid.distribution.clients.PythonExecutionClient
+import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPythonRequest, RunPythonResult}
 import it.evadid.vm.BeProgram
 import it.evadid.vm.io.stringPrinter.python.{JavaTurtlePythonExport, JavaTurtlePythonHelpers}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
 import munit.FunSuite
-import todomove.`export`.workers.PyodideWorkerClient
 
 import java.util.concurrent.{CancellationException, TimeoutException}
 import scala.concurrent.{Future, Promise}
@@ -59,35 +59,35 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       problem: String = "null",
       commands: String = "[]",
       steps: String = "2"
-  ): PythonRunReport =
-    PythonRunReport(Vector.empty,
-      s"""{"status":"$status","problem":$problem,"commands":$commands,"steps":$steps}""", "")
+  ): RunPythonResult =
+    RunPythonResult(ujson.read(s"""{"status":"$status","problem":$problem,"commands":$commands,"steps":$steps}"""), "", "", Nil)
 
   private val completedJava = T.Execution(T.Status.Completed, Vector.empty, 2)
 
-  private def pythonReport(distance: Double = 10.0): PythonRunReport =
-    PythonRunReport(Vector(CallbackOp("turtle", "forward", Vector[js.Any](distance))), "", "")
+  private def pythonReport(distance: Double = 10.0): RunPythonResult =
+    RunPythonResult(ujson.Null, "", "", List(PythonCallback("turtle", "forward", List(ujson.Num(distance)))))
 
-  private class ControlledPythonExecutor(initiallyReady: Boolean = false) extends PythonCallbackExecutor:
+  private class ControlledPythonExecutor(initiallyReady: Boolean = false) extends PythonExecutionClient:
     val readiness = Promise[Unit]()
     if initiallyReady then readiness.success(())
-    var registrations = Vector.empty[(String, Seq[String])]
+    var readyCalls = 0
     var closes = 0
     var registrationFailure = Option.empty[Throwable]
     var runFailure = Option.empty[Throwable]
     var closeFailure = Option.empty[Throwable]
-    var requests = Vector.empty[(String, PythonRunConfig, Promise[PythonRunReport])]
+    var requests = Vector.empty[(String, RunPythonRequest, Promise[RunPythonResult])]
     private var signals = Map.empty[Int, Promise[Unit]]
 
-    def addCallbacks(moduleName: String, methodNames: Seq[String]): Future[Unit] =
-      registrations :+= ((moduleName, methodNames))
+    override def ready(): Future[Unit] =
+      readyCalls += 1
       registrationFailure.foreach(error => throw error)
       readiness.future
 
-    def run(code: String, config: PythonRunConfig): Future[PythonRunReport] =
+    def run(config: RunPythonRequest): Future[RunPythonResult] =
+      val code = config.code
       runFailure.foreach(error => throw error)
       val index = requests.size
-      val result = Promise[PythonRunReport]()
+      val result = Promise[RunPythonResult]()
       requests :+= ((code, config, result))
       signals.get(index).foreach(_.trySuccess(()))
       result.future
@@ -99,7 +99,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
         signals += index -> result
         result.future
 
-    def complete(index: Int = 0, report: PythonRunReport = pythonReport()): Unit =
+    def complete(index: Int = 0, report: RunPythonResult = pythonReport()): Unit =
       requests(index)._3.success(report)
 
     override def close(): Unit =
@@ -126,8 +126,8 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
     yield
       assertEquals(again, List(TurtleCommand[Double]("forward", List(20.0))))
       assertEquals(allocations, 1)
-      assertEquals(executor.registrations.size, 2)
-      assert(executor.registrations.forall((module, methods) => module == "turtle" && methods.contains("forward")))
+      assertEquals(executor.readyCalls, 2)
+      assert(executor.requests.forall(_._2.callbacks("turtle").contains("forward")))
       assertEquals(executor.requests.map(_._1), Vector("forward(10)", "forward(20)")
         .map(code => s"${JavaTurtlePythonHelpers.installationSource}from turtle import *\n$code"))
       assert(executor.requests.forall(_._2.resetGlobals))
@@ -313,9 +313,9 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
   test("Python malformed callbacks and oversized reports fail closed and discard the transport") {
     val invalid = List(
       pythonReport(Double.NaN), pythonReport(Double.PositiveInfinity), pythonReport(Double.NegativeInfinity),
-      pythonReport().copy(callbackOps = Vector(CallbackOp("turtle", "unsupported", Vector.empty))),
-      pythonReport().copy(callbackOps = Vector(CallbackOp("turtle", "forward", Vector[js.Any](js.Dynamic.literal(value = 1))))),
-      pythonReport().copy(callbackOps = Vector.fill(10001)(CallbackOp("turtle", "forward", Vector[js.Any](1)))))
+      pythonReport().copy(callbackOps = List(PythonCallback("turtle", "unsupported", Nil))),
+      pythonReport().copy(callbackOps = List(PythonCallback("turtle", "forward", List[ujson.Value](ujson.Obj("value" -> 1))))),
+      pythonReport().copy(callbackOps = List.fill(10001)(PythonCallback("turtle", "forward", List[ujson.Value](1)))))
     invalid.foldLeft(Future.successful(())) { (previous, report) =>
       previous.flatMap { _ =>
         val old = new ControlledPythonExecutor(initiallyReady = true)
@@ -339,7 +339,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
     }
   }
 
-  private class ControlledJavaWorker(initiallyReady: Boolean = false) extends JavaTurtlePythonWorker:
+  private class ControlledJavaWorker(initiallyReady: Boolean = false) extends PythonExecutionClient:
     val readiness = Promise[Unit]()
     if initiallyReady then readiness.success(())
     var readyCalls = 0
@@ -347,18 +347,19 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
     var readyFailure = Option.empty[Throwable]
     var runFailure = Option.empty[Throwable]
     var terminationFailure = Option.empty[Throwable]
-    var requests = Vector.empty[(String, PythonRunConfig, Promise[PythonRunReport])]
+    var requests = Vector.empty[(String, RunPythonRequest, Promise[RunPythonResult])]
     private var signals = Map.empty[Int, Promise[Unit]]
 
-    def ready(): Future[Unit] =
+    override def ready(): Future[Unit] =
       readyCalls += 1
       readyFailure.foreach(error => throw error)
       readiness.future
 
-    def run(code: String, config: PythonRunConfig): Future[PythonRunReport] =
+    def run(config: RunPythonRequest): Future[RunPythonResult] =
+      val code = config.code
       runFailure.foreach(error => throw error)
       val index = requests.size
-      val result = Promise[PythonRunReport]()
+      val result = Promise[RunPythonResult]()
       requests :+= ((code, config, result))
       signals.get(index).foreach(_.trySuccess(()))
       result.future
@@ -370,10 +371,10 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
         signals += index -> result
         result.future
 
-    def complete(index: Int = 0, report: PythonRunReport = javaReport()): Unit =
+    def complete(index: Int = 0, report: RunPythonResult = javaReport()): Unit =
       requests(index)._3.success(report)
 
-    def terminate(): Unit =
+    override def close(): Unit =
       terminations += 1
       terminationFailure.foreach(error => throw error)
 
@@ -381,18 +382,17 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       python: String,
       calls: List[(String, List[Double])]
   ): Future[List[TurtleCommand[Double]]] =
-    val executor = new PythonCallbackExecutor:
-      override def addCallbacks(moduleName: String, methodNames: Seq[String]): Future[Unit] =
-        assertEquals(moduleName, "turtle")
-        Future.successful(())
+    val executor = new PythonExecutionClient:
+      override def ready(): Future[Unit] = Future.unit
 
-      override def run(code: String, config: PythonRunConfig): Future[PythonRunReport] =
+      override def run(config: RunPythonRequest): Future[RunPythonResult] =
+        val code = config.code
         assertEquals(code, s"${JavaTurtlePythonHelpers.installationSource}from turtle import *\n$python")
         assert(config.resetGlobals)
-        Future.successful(PythonRunReport(
-          calls.map { case (name, args) =>
-            CallbackOp("turtle", name, args.map(_.asInstanceOf[js.Any]).toVector)
-          }.toVector,
+        Future.successful(RunPythonResult(
+          ujson.Null, callbackOps = calls.map { case (name, args) =>
+            PythonCallback("turtle", name, args.map(ujson.Num(_)))
+          },
           stdout = "",
           stderr = ""
         ))
@@ -419,10 +419,10 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
 
   test("decodes ordered Pyodide hooks with canonical names and typed arguments") {
     val callbacks = Vector(
-      CallbackOp("turtle", "fd", Vector[js.Any](12.5)),
-      CallbackOp("other", "forward", Vector[js.Any](99)),
-      CallbackOp("turtle", "pencolor", Vector[js.Any]("#12abef")),
-      CallbackOp("turtle", "jump_stitch", Vector[js.Any](true))
+      PythonCallback("turtle", "fd", List[ujson.Value](12.5)),
+      PythonCallback("other", "forward", List[ujson.Value](99)),
+      PythonCallback("turtle", "pencolor", List[ujson.Value]("#12abef")),
+      PythonCallback("turtle", "jump_stitch", List[ujson.Value](true))
     )
 
     assertEquals(
@@ -438,20 +438,19 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
   test("returns the worker's executed calls rather than commands present in Python text") {
     var installedMethods = Seq.empty[String]
     var executedCode = ""
-    val executor = new PythonCallbackExecutor:
-      override def addCallbacks(moduleName: String, methodNames: Seq[String]): Future[Unit] =
-        assertEquals(moduleName, "turtle")
-        installedMethods = methodNames
-        Future.successful(())
+    val executor = new PythonExecutionClient:
+      override def ready(): Future[Unit] = Future.unit
 
-      override def run(code: String, config: PythonRunConfig): Future[PythonRunReport] =
+      override def run(config: RunPythonRequest): Future[RunPythonResult] =
+        val code = config.code
+        installedMethods = config.callbacks("turtle")
         executedCode = code
         assert(config.resetGlobals)
-        Future.successful(PythonRunReport(
-          Vector(
-            CallbackOp("turtle", "forward", Vector[js.Any](10)),
-            CallbackOp("turtle", "forward", Vector[js.Any](20)),
-            CallbackOp("turtle", "forward", Vector[js.Any](30))
+        Future.successful(RunPythonResult(
+          ujson.Null, callbackOps = List(
+            PythonCallback("turtle", "forward", List[ujson.Value](10)),
+            PythonCallback("turtle", "forward", List[ujson.Value](20)),
+            PythonCallback("turtle", "forward", List[ujson.Value](30))
           ),
           stdout = "",
           stderr = ""
@@ -474,7 +473,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
   }
 
   test("does not turn non-finite numbers into valid command arguments") {
-    val callbacks = Vector(CallbackOp("turtle", "forward", Vector[js.Any](Double.NaN)))
+    val callbacks = Vector(PythonCallback("turtle", "forward", List[ujson.Value](Double.NaN)))
     intercept[IllegalArgumentException](PyodideTurtleCommandRunner.commandsFrom(callbacks))
   }
 
@@ -714,16 +713,14 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       T.Execution(T.Status.Failed(T.Failure.InvalidInvocation), Vector.empty, 0))
     assertEquals(JavaTurtleCommandRunner.decode(javaReport("Failed", "\"InvalidLimits\"", steps = "0"), T.Limits(maxSteps = 0)),
       T.Execution(T.Status.Failed(T.Failure.InvalidLimits), Vector.empty, 0))
-    assertEquals(JavaTurtleCommandRunner.decode(javaReport().copy(stdout = " \n" + javaReport().stdout + "\n "), T.Limits()),
+    assertEquals(JavaTurtleCommandRunner.decode(javaReport().copy(stdout = "student log\n"), T.Limits()),
       completedJava)
   }
 
   test("Java worker decoding rejects malformed envelopes and impossible execution results") {
     val valid = javaReport()
     val invalidEnvelopes = Vector(
-      "", "not json", "null", "[]", "42", "true",
-      valid.stdout + "\n" + valid.stdout,
-      "log output\n" + valid.stdout,
+      "null", "[]", "42", "true",
       """{"status":"Completed","commands":[],"steps":2}""",
       """{"status":"Completed","problem":null,"commands":[],"steps":2,"extra":0}""",
       """{"status":null,"problem":null,"commands":[],"steps":2}""",
@@ -748,13 +745,16 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       "[[\"forward\",1,2]]", "[[null,1]]", "[[1,1]]", "[[true,1]]",
       "[[\"unknown\",1]]", "[[\"turnRight\",1]]", "[[\"Forward\",1]]",
       "[[\"forward\",\"1\"]]", "[[\"forward\",true]]", "[[\"forward\",null]]",
-      "[[\"forward\",[]]]", "[[\"forward\",NaN]]", "[[\"forward\",Infinity]]",
-      "[[\"right\",-Infinity]]", "[[\"forward\",1e309]]"
+      "[[\"forward\",[]]]"
     )
-    val reports = invalidEnvelopes.map(stdout => valid.copy(stdout = stdout)) ++ invalidResults ++
+    val nonFiniteCommands = List(Double.NaN, Double.PositiveInfinity, Double.NegativeInfinity).map { number =>
+      valid.copy(value = ujson.Obj("status" -> "Completed", "problem" -> ujson.Null,
+        "commands" -> ujson.Arr(ujson.Arr("forward", ujson.Num(number))), "steps" -> 2))
+    }
+    val reports = nonFiniteCommands ++ invalidEnvelopes.map(value => valid.copy(value = ujson.read(value))) ++ invalidResults ++
       invalidCommands.map(commands => javaReport(commands = commands)) ++ Vector(
         valid.copy(stderr = "warning"), valid.copy(stderr = " "),
-        valid.copy(callbackOps = Vector(CallbackOp("other", "forward", Vector[js.Any](1)))),
+        valid.copy(callbackOps = List(PythonCallback("other", "forward", List[ujson.Value](1)))),
         javaReport(commands = """[["forward",1],["right",90],["forward",2]]""", steps = "2")
       )
     reports.foreach { report =>
@@ -763,7 +763,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
     intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(javaReport(steps = "11"), T.Limits(maxSteps = 10)))
     intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(
       javaReport(commands = """[["forward",1]]"""), T.Limits(maxCommands = 0)))
-    intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(valid.copy(stdout = " " * 1048577), T.Limits()))
+    intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(valid.copy(value = ujson.Str(" " * 1048577)), T.Limits()))
     intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(valid, T.Limits(maxSteps = 0)))
     val tooManyCommands = Vector.fill(T.Limits.MaxCommands + 1)("""["forward",1]""").mkString("[", ",", "]")
     intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(
@@ -872,7 +872,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       assertEquals(worker.readyCalls, 1)
       assertEquals(worker.requests(0)._1, worker.requests(1)._1)
       worker.requests.foreach { (code, config, _) =>
-        assert(code.startsWith("import json as _java_json\n_java_namespace = {}\nexec("), clue = code)
+        assert(code.startsWith("_java_namespace = {}\nexec("), clue = code)
         assert(code.contains(", _java_namespace, _java_namespace)"), clue = code)
         assert(code.contains("_java_namespace[\"java_turtle_run\"](method=None, arguments=[]"), clue = code)
         assert(!config.resetGlobals)
@@ -1086,11 +1086,11 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
   }
 
   test("Java worker execution and protocol failures discard contaminated workers") {
-    val failures = Vector[Either[Throwable, PythonRunReport]](
+    val failures = Vector[Either[Throwable, RunPythonResult]](
       Left(new IllegalStateException("execution failed")),
-      Right(javaReport().copy(stdout = "not json")),
+      Right(javaReport().copy(value = ujson.Str("not an execution result"))),
       Right(javaReport().copy(stderr = "unexpected output")),
-      Right(javaReport().copy(callbackOps = Vector(CallbackOp("turtle", "forward", Vector[js.Any](1)))))
+      Right(javaReport().copy(callbackOps = List(PythonCallback("turtle", "forward", List[ujson.Value](1)))))
     )
     failures.foldLeft(Future.successful(())) { (previous, failure) =>
       previous.flatMap { _ =>

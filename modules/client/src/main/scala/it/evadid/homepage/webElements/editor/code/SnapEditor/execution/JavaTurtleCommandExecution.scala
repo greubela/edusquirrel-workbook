@@ -1,10 +1,10 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{PythonRunConfig, PythonRunReport}
+import it.evadid.distribution.clients.PythonExecutionClient
+import it.evadid.distribution.commandTypes.WorkerCommands.{RunPythonRequest, RunPythonResult}
 import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
-import todomove.`export`.workers.PyodideWorkerClient
 
 import java.util.concurrent.{CancellationException, TimeoutException}
 import scala.concurrent.{Future, Promise}
@@ -13,20 +13,14 @@ import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
-trait JavaTurtlePythonWorker {
-  def ready(): Future[Unit]
-  def run(code: String, config: PythonRunConfig): Future[PythonRunReport]
-  def terminate(): Unit
-}
-
 final class JavaTurtleCommandRunner(
-    workerFactory: () => JavaTurtlePythonWorker = JavaTurtleCommandRunner.workerFactory,
+    workerFactory: () => PythonExecutionClient = JavaTurtleCommandRunner.workerFactory,
     startupTimeoutMs: Int = 120000,
     executionTimeoutMs: Int = 10000
 ) {
   require(startupTimeoutMs > 0 && executionTimeoutMs > 0, "Java worker timeouts must be positive.")
 
-  private case class WorkerSlot(worker: JavaTurtlePythonWorker, ready: Future[Unit])
+  private case class WorkerSlot(worker: PythonExecutionClient, ready: Future[Unit])
   private class Run(val slot: WorkerSlot) {
     val promise: Promise[T.Execution] = Promise()
     var timer: Option[SetTimeoutHandle] = None
@@ -62,7 +56,7 @@ final class JavaTurtleCommandRunner(
     worker = None
     discarded.foreach { slot =>
       // Cleanup must not leave the caller's promise pending if the transport is already broken.
-      try slot.worker.terminate()
+      try slot.worker.close()
       catch { case NonFatal(_) => () }
     }
   }
@@ -110,7 +104,7 @@ final class JavaTurtleCommandRunner(
           slot.ready.onComplete {
             case Success(_) if current(run) =>
               deadline(run, executionTimeoutMs, "execution")
-              val response = try slot.worker.run(code, PythonRunConfig(resetGlobals = false))
+              val response = try slot.worker.run(RunPythonRequest(code, resetGlobals = false))
                 catch { case NonFatal(error) => Future.failed(error) }
               response.onComplete {
                 case Success(report) =>
@@ -130,12 +124,8 @@ final class JavaTurtleCommandRunner(
 }
 
 object JavaTurtleCommandRunner {
-  private def workerFactory(): JavaTurtlePythonWorker = new JavaTurtlePythonWorker {
-    private val client = new PyodideWorkerClient()
-    override def ready(): Future[Unit] = client.run("pass", PythonRunConfig(resetGlobals = false)).map(_ => ())
-    override def run(code: String, config: PythonRunConfig): Future[PythonRunReport] = client.run(code, config)
-    override def terminate(): Unit = client.terminate()
-  }
+  private def workerFactory(): PythonExecutionClient =
+    PythonExecutionClient.worker(it.evadid.homepage.control.startup.ClientRuntimeConfig.workerUrl)
 
   private def valid(limits: T.Limits): Boolean =
     limits.maxSteps > 0 && limits.maxSteps <= T.Limits.MaxSteps &&
@@ -166,11 +156,10 @@ object JavaTurtleCommandRunner {
       case E.Value.DoubleValue(value) => JavaTurtlePythonExport.doubleLiteral(value)
       case E.Value.BooleanValue(value) => if value then "True" else "False"
     }.mkString("[", ", ", "]")
-    s"""import json as _java_json
-_java_namespace = {}
+    s"""_java_namespace = {}
 exec($source, _java_namespace, _java_namespace)
 _java_result = _java_namespace["${JavaTurtlePythonExport.EntryPoint}"](method=$target, arguments=$values, max_steps=${limits.maxSteps}, max_commands=${limits.maxCommands}, max_call_depth=${limits.maxCallDepth}, max_block_depth=${limits.maxBlockDepth})
-print(_java_json.dumps(_java_result, separators=(",", ":")))
+_java_result
 """
   }
 
@@ -188,12 +177,10 @@ print(_java_json.dumps(_java_result, separators=(",", ":")))
     case _ => invalid("expected a finite number")
   }
 
-  private[execution] def decode(report: PythonRunReport, limits: T.Limits): T.Execution = {
+  private[execution] def decode(report: RunPythonResult, limits: T.Limits): T.Execution = {
     if report.callbackOps.nonEmpty || report.stderr.nonEmpty then invalid("unexpected Python output")
-    if report.stdout.length > 1048576 then invalid("response is too large")
-    val parsed = try ujson.read(report.stdout) catch { case NonFatal(error) =>
-      throw new IllegalArgumentException("Invalid Java execution result: expected JSON", error)
-    }
+    if report.value.render().length > 1048576 then invalid("response is too large")
+    val parsed = report.value
     val required = Set("status", "problem", "commands", "steps")
     val fields = parsed match {
       case value: ujson.Obj if value.obj.keySet.toSet == required => value.obj

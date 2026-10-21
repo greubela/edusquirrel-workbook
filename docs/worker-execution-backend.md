@@ -29,7 +29,9 @@ Command factories live in `WorkerCommands`; registration belongs to
 `WorkerCommandHandler`. Jobs include health, Snap XML parsing, Python flowchart
 analysis, QR calculation and Python execution. DOM-dependent work stays on the client.
 
-Python lazily initializes Pyodide through the core JS facade. Requests supply JSON
+Snap, Java and feedback share core JS’s `PythonExecutionClient`, while owning
+separate interpreter lifetimes. Python lazily initializes Pyodide through its facade.
+Requests supply JSON
 context and callback method names; results contain a JSON-compatible value,
 stdout/stderr and recorded callback operations. Packages load before execution.
 Python jobs queue per worker so globals, callbacks and output cannot mix.

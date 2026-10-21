@@ -1,13 +1,11 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{
-  PythonRunConfig,
-  PythonRunReport,
-  PythonWorkerFailure
-}
-import todomove.`export`.workers.PyodideWorkerClient
+import it.evadid.distribution.clients.PythonExecutionClient
+import it.evadid.distribution.commandTypes.WorkerCommands.{RunPythonRequest, RunPythonResult}
+import it.evadid.homepage.control.startup.ClientRuntimeConfig
+import com.raquo.airstream.state.Var
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
@@ -15,26 +13,19 @@ import scala.scalajs.js.JSON
 
 object PythonRuntimeService {
 
-  private val ResultBegin = "__EDUSQ_RESULT_BEGIN__"
-  private val ResultEnd = "__EDUSQ_RESULT_END__"
-
   private given ExecutionContext = queue
 
-  private var workerOpt: Option[PyodideWorkerClient] = None
-  private var readyPromise: Promise[Unit] = Promise()
+  private case class Session(client: PythonExecutionClient, ready: Future[Unit])
+  private val session = Var(Option.empty[Session])
 
-  def isReady: Boolean =
-    readyPromise.isCompleted &&
-      readyPromise.future.value.exists(_.isSuccess)
+  def isReady: Boolean = session.now().exists(_.ready.value.exists(_.isSuccess))
 
-  def warmup(): Unit = {
-    val _ = getOrCreateWorker()
-  }
+  def warmup(): Unit = { getOrCreateWorker(); () }
 
   def terminateWorker(): Unit = {
-    workerOpt.foreach(_.terminate())
-    workerOpt = None
-    readyPromise = Promise()
+    val previous = session.now()
+    session.set(None)
+    previous.foreach(_.client.close())
   }
 
   def run(request: PythonRunRequest): Future[PythonRunResult] = {
@@ -42,10 +33,10 @@ object PythonRuntimeService {
     val script = buildExecutionScript(request)
 
     client
-      .run(script, PythonRunConfig(resetGlobals = true))
+      .run(RunPythonRequest(script))
       .map(report => parseReport(report))
       .recover {
-        case f: PythonWorkerFailure =>
+        case f: PythonExecutionClient.Failure =>
           PythonRunResult(
             status = PythonRunStatus.RuntimeError,
             tests = Seq.empty,
@@ -66,14 +57,10 @@ object PythonRuntimeService {
       }
   }
 
-  private def getOrCreateWorker(): PyodideWorkerClient = workerOpt match {
-    case Some(w) => w
-    case None =>
-      val client = new PyodideWorkerClient()
-      workerOpt = Some(client)
-      val readiness = readyPromise
-      client.run("pass").foreach(_ => readiness.trySuccess(()))
-      client
+  private def getOrCreateWorker(): PythonExecutionClient = session.now().map(_.client).getOrElse {
+    val client = PythonExecutionClient.worker(ClientRuntimeConfig.workerUrl)
+    session.set(Some(Session(client, client.ready())))
+    client
   }
 
   private def buildExecutionScript(request: PythonRunRequest): String = {
@@ -239,79 +226,46 @@ finally:
   sys.stdout = old_stdout
   sys.stderr = old_stderr
 
-print("$ResultBegin" + json.dumps(result) + "$ResultEnd")
+result
 """
   }
 
-  private def parseReport(report: PythonRunReport): PythonRunResult = {
-    val raw = report.stdout
-    val begin = raw.indexOf(ResultBegin)
-    val end = raw.indexOf(ResultEnd)
-    if (begin < 0 || end < 0 || end < begin) {
-      val errMsg =
-        if (report.stderr.trim.nonEmpty) report.stderr.trim
-        else "Python runtime returned no result payload"
-      PythonRunResult(
-        status = PythonRunStatus.RuntimeError,
-        tests = Seq.empty,
-        stdout = raw,
-        stderr = report.stderr,
-        error = Some(errMsg),
-        score = 0.0
-      )
-    } else {
-      val jsonString = raw.substring(begin + ResultBegin.length, end)
-      try decodeResult(JSON.parse(jsonString))
-      catch {
-        case ex: Throwable =>
-          PythonRunResult(
-            status = PythonRunStatus.RuntimeError,
-            tests = Seq.empty,
-            stdout = raw,
-            stderr = report.stderr,
-            error = Some(s"Failed to parse Python result: ${Option(ex.getMessage).getOrElse(ex.toString)}"),
-            score = 0.0
-          )
-      }
-    }
-  }
+  private def parseReport(report: RunPythonResult): PythonRunResult =
+    decodeResult(report.value)
 
-  private def decodeResult(dynamic: js.Dynamic): PythonRunResult = {
-    val status = dynamic.selectDynamic("status").asInstanceOf[String] match {
+  private def decodeResult(value: ujson.Value): PythonRunResult = {
+    val status = value("status").str match {
       case "success"       => PythonRunStatus.Success
       case "failed"        => PythonRunStatus.Failed
       case "runtime-error" => PythonRunStatus.RuntimeError
       case _               => PythonRunStatus.RuntimeError
     }
-    val tests = dynamic
-      .selectDynamic("tests")
-      .asInstanceOf[js.Array[js.Dynamic]]
+    val tests = value("tests").arr
       .map { entry =>
-        val st = entry.selectDynamic("status").asInstanceOf[String] match {
+        val st = entry("status").str match {
           case "passed"  => PythonTestStatus.Passed
           case "failed"  => PythonTestStatus.Failed
           case "errored" => PythonTestStatus.Errored
           case _         => PythonTestStatus.Errored
         }
         PythonTestResult(
-          name = entry.selectDynamic("name").asInstanceOf[String],
+          name = entry("name").str,
           status = st,
-          isHidden = entry.selectDynamic("hidden").asInstanceOf[Boolean],
-          message = toOptionString(entry.selectDynamic("message")),
-          durationMs = entry.selectDynamic("durationMs").asInstanceOf[Double],
-          hint = toOptionString(entry.selectDynamic("hint"))
+          isHidden = entry("hidden").bool,
+          message = toOptionString(entry("message")),
+          durationMs = entry("durationMs").num,
+          hint = toOptionString(entry("hint"))
         )
       }
       .toSeq
-    val stdout = dynamic.selectDynamic("stdout").asInstanceOf[String]
-    val stderr = dynamic.selectDynamic("stderr").asInstanceOf[String]
-    val error = toOptionString(dynamic.selectDynamic("error"))
-    val score = dynamic.selectDynamic("score").asInstanceOf[Double]
+    val stdout = value("stdout").str
+    val stderr = value("stderr").str
+    val error = toOptionString(value("error"))
+    val score = value("score").num
 
     PythonRunResult(status, tests, stdout, stderr, error, score)
   }
 
-  private def toOptionString(value: js.Any): Option[String] =
-    if (js.isUndefined(value) || value == null) None
-    else Option(value.asInstanceOf[String]).filter(_.nonEmpty)
+  private def toOptionString(value: ujson.Value): Option[String] =
+    value.strOpt.filter(_.nonEmpty)
 }
