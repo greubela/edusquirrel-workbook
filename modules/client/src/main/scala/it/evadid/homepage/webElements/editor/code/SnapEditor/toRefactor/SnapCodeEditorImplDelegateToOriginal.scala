@@ -1,9 +1,10 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
-import it.evadid.homepage.webElements.facades.Snap.*
+import it.evadid.facades.Snap.*
 import com.raquo.airstream.ownership.Owner
-import it.evadid.homepage.webElements.facades.Snap
 import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.facades
+import it.evadid.facades.Snap
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorImpl, SnapProjectXmlSync}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
@@ -27,7 +28,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   override def whenReady(render: () => Unit, onError: Throwable => Unit): Unit =
     import scala.scalajs.js.Thenable.Implicits.*
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-    it.evadid.homepage.webElements.facades.Snap.load()
+    facades.Snap.load()
       .map(_ => render()).failed.foreach(onError)
 
   private var editorWorld: Option[WorldMorph] = None

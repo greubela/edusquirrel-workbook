@@ -2,6 +2,7 @@ package it.evadid.homepage.control.startup
 
 import com.raquo.laminar.api.L.*
 import it.evadid.distribution.command.SerializedException
+import it.evadid.facades.{CodeMirror, JSXGraph, Snap, Workers}
 import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY.CONTINUE_IMMEDIATELY
 import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
@@ -9,7 +10,6 @@ import it.evadid.homepage.workbook.content.DigitalWorkbookCatalog
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
 import it.evadid.util.logging.Logger
 import org.scalajs.dom
-import it.evadid.homepage.webElements.facades.{CodeMirror, Snap, JSXGraph, Workers}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 

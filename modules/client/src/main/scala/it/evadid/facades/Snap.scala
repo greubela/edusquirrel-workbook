@@ -1,8 +1,9 @@
-package it.evadid.homepage.webElements.facades
+package it.evadid.facades
 
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.control.startup.BrowserLoading
 import org.scalajs.dom
+
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
@@ -10,8 +11,8 @@ import scala.scalajs.js.annotation.*
 
 object Snap {
   /** Strongly-typed Scala.js facades for the Snap! globals loaded from
-    * resources/programs/20260704Snap.
-    */
+   * resources/programs/20260704Snap.
+   */
   @js.native
   @JSGlobal("Color")
   class SnapColor(r0: Double = js.native, g0: Double = js.native, b0: Double = js.native, a0: Double = js.native) extends js.Object:
@@ -19,12 +20,19 @@ object Snap {
     var g: Double = js.native
     var b: Double = js.native
     var a: Double = js.native
+
     def copy(): SnapColor = js.native
+
     def eq(color: SnapColor): Boolean = js.native
+
     def lighter(percent: Double): SnapColor = js.native
+
     def darker(percent: Double): SnapColor = js.native
+
     def solid(): SnapColor = js.native
+
     def mixed(proportion: Double, color: SnapColor): SnapColor = js.native
+
     def toRGBstring(): String = js.native
 
   @js.native
@@ -32,11 +40,17 @@ object Snap {
   class SnapPoint(x0: Double = js.native, y0: Double = js.native) extends js.Object:
     var x: Double = js.native
     var y: Double = js.native
+
     def copy(): SnapPoint = js.native
+
     def eq(point: SnapPoint): Boolean = js.native
+
     def add(point: SnapPoint): SnapPoint = js.native
+
     def subtract(point: SnapPoint): SnapPoint = js.native
+
     def multiplyBy(point: SnapPoint): SnapPoint = js.native
+
     def divideBy(point: SnapPoint): SnapPoint = js.native
 
   @js.native
@@ -44,12 +58,19 @@ object Snap {
   class SnapRectangle(left: Double = js.native, top: Double = js.native, right: Double = js.native, bottom: Double = js.native) extends js.Object:
     var origin: SnapPoint = js.native
     var corner: SnapPoint = js.native
+
     def width(): Double = js.native
+
     def height(): Double = js.native
+
     def extent(): SnapPoint = js.native
+
     def center(): SnapPoint = js.native
+
     def merge(rectangle: SnapRectangle): SnapRectangle = js.native
+
     def setWidth(width: Double): Unit = js.native
+
     def setHeight(height: Double): Unit = js.native
 
   @js.native
@@ -61,22 +82,39 @@ object Snap {
     var color: SnapColor = js.native
     var isVisible: Boolean = js.native
     var isDraggable: Boolean = js.native
+
     def add(morph: Morph): Unit = js.native
+
     def addBack(morph: Morph): Unit = js.native
+
     def removeChild(morph: Morph): Unit = js.native
+
     def position(): SnapPoint = js.native
+
     def setPosition(point: SnapPoint): Unit = js.native
+
     def width(): Double = js.native
+
     def height(): Double = js.native
+
     def extent(): SnapPoint = js.native
+
     def setExtent(point: SnapPoint): Unit = js.native
+
     def fullBounds(): SnapRectangle = js.native
+
     def fullImage(): dom.HTMLCanvasElement = js.native
+
     def drawNew(): Unit = js.native
+
     def rerender(): Unit = js.native
+
     def fixLayout(): Unit = js.native
+
     def changed(): Unit = js.native
+
     def fullChanged(): Unit = js.native
+
     def destroy(): Unit = js.native
 
   @js.native
@@ -88,7 +126,9 @@ object Snap {
     var keyboardHandler: dom.HTMLTextAreaElement = js.native
     /** Active text cursor while editing an input slot; null when not typing. */
     var cursor: js.Any | Null = js.native
+
     def doOneCycle(): Unit = js.native
+
     /** Commit the active text cursor (writes textarea into the target morph). */
     def stopEditing(): Unit = js.native
 
@@ -102,7 +142,9 @@ object Snap {
   class StageMorph() extends Morph:
     var threads: ThreadManager = js.native
     var isFastTracked: Boolean = js.native
+
     def clearPenTrails(): Unit = js.native
+
     def penTrails(): dom.HTMLCanvasElement = js.native
 
   @js.native
@@ -111,14 +153,23 @@ object Snap {
     var currentSprite: SpriteMorph = js.native
     var stage: StageMorph = js.native
     var version: Double = js.native
+
     def openIn(world: WorldMorph): Unit = js.native
+
     def getProjectXML(): String = js.native
+
     def loadProjectXML(projectXML: String): Unit = js.native
+
     def rawOpenProjectString(projectXML: String): Unit = js.native
+
     def refreshPalette(shouldIgnorePosition: Boolean = js.native): Unit = js.native
+
     def flushPaletteCache(): Unit = js.native
+
     def createCategories(): Unit = js.native
+
     def runScripts(): Unit = js.native
+
     def stopAllScripts(): Unit = js.native
 
   @js.native
@@ -126,6 +177,7 @@ object Snap {
   class SpriteMorph() extends Morph:
     var scripts: ScriptsMorph = js.native
     var paletteCache: js.Dictionary[js.Any] = js.native
+
     def blockForSelector(selector: String, setDefaults: Boolean = js.native): BlockMorph | Null = js.native
 
   @js.native
@@ -136,6 +188,7 @@ object Snap {
   @JSGlobal("StringMorph")
   class StringMorph(text0: String = js.native) extends Morph:
     var text: String = js.native
+
     def setText(text: String): Unit = js.native
 
   @js.native
@@ -162,10 +215,15 @@ object Snap {
     var selector: String = js.native
     var isStatic: Boolean = js.native
     var isTemplate: Boolean = js.native
+
     def inputs(): js.Array[InputMorph] = js.native
+
     def allInputs(): js.Array[InputMorph] = js.native
+
     def topBlock(): BlockMorph | Null = js.native
+
     def evaluate(): SnapInputValue = js.native
+
     def mappedCode(definitions: SnapDefinitionMap = js.native): String = js.native
 
   @js.native
@@ -182,20 +240,30 @@ object Snap {
     var blockSpec: String = js.native
     var category: String = js.native
     var comment: CommentMorph | Null = js.native
+
     def setSpec(spec: String): Unit = js.native
+
     def fixBlockColor(nearestBlock: BlockMorph | Null = js.native, isForced: Boolean = js.native): Unit = js.native
+
     def abstractBlockSpec(): String = js.native
+
     def parts(): js.Array[Morph] = js.native
+
     def scriptTarget(noError: Boolean = js.native): js.Any = js.native
+
     def thumbnail(scale: Double = js.native, clipWidth: Double = js.native): dom.HTMLCanvasElement = js.native
+
     def addHighlight(oldHighlight: BlockHighlightMorph = js.native): BlockHighlightMorph = js.native
+
     def removeHighlight(): Unit = js.native
 
   @js.native
   @JSGlobal("CommandBlockMorph")
   class CommandBlockMorph() extends BlockMorph:
     def nextBlock(block: CommandBlockMorph = js.native): CommandBlockMorph | Null = js.native
+
     def blockSequence(forSyntax: Boolean = js.native): js.Array[BlockMorph] = js.native
+
     def attachTargets(): js.Array[SnapAttachTarget] = js.native
 
   @js.native
@@ -206,33 +274,41 @@ object Snap {
   @JSGlobal("ReporterBlockMorph")
   class ReporterBlockMorph(isPredicate0: Boolean = js.native) extends BlockMorph:
     var isPredicate: Boolean = js.native
+
     def blockSequence(): js.Array[ReporterBlockMorph] = js.native
 
   @js.native
   @JSGlobal("RingMorph")
   class RingMorph() extends ReporterBlockMorph:
     def contents(): BlockMorph | Null = js.native
+
     def setContents(block: BlockMorph | Null): Unit = js.native
+
     def embed(block: BlockMorph, inputNames: js.Array[String] = js.native, noVanish: Boolean = js.native): Unit = js.native
 
   @js.native
   @JSGlobal("ScriptsMorph")
   class ScriptsMorph() extends Morph:
     def scriptTarget(): js.Any = js.native
+
     def cleanUp(): Unit = js.native
+
     def scriptsPicture(): js.UndefOr[dom.HTMLCanvasElement] = js.native
 
   @js.native
   @JSGlobal("ArgMorph")
   class ArgMorph(`type`: String = js.native) extends SyntaxElementMorph:
     var canBeEmpty: Boolean = js.native
+
     def getSpec(): String = js.native
+
     def setContents(value: SnapInputValue): Unit = js.native
 
   @js.native
   @JSGlobal("CommandSlotMorph")
   class CommandSlotMorph() extends ArgMorph:
     def nestedBlock(block: CommandBlockMorph = js.native): CommandBlockMorph | Null = js.native
+
     def attachTargets(): js.Array[SnapAttachTarget] = js.native
 
   @js.native
@@ -248,9 +324,13 @@ object Snap {
   class InputSlotMorph(text0: String = js.native, isNumeric0: Boolean = js.native, choiceDict0: SnapChoiceDictionary = js.native, isReadOnly0: Boolean = js.native) extends ArgMorph:
     var isNumeric: Boolean = js.native
     var isReadOnly: Boolean = js.native
+
     def contents(): SnapInputValue = js.native
+
     override def setContents(value: SnapInputValue): Unit = js.native
+
     def setChoices(choices: SnapChoiceDictionary, readonly: Boolean = js.native): Unit = js.native
+
     def evaluateOption(): SnapInputValue = js.native
 
   @js.native
@@ -270,7 +350,9 @@ object Snap {
   @JSGlobal("BooleanSlotMorph")
   class BooleanSlotMorph(initialValue: Boolean = js.native) extends ArgMorph:
     def getValue(): Boolean = js.native
+
     def setValue(value: Boolean): Unit = js.native
+
     def toggleValue(): Unit = js.native
 
   @js.native
@@ -287,13 +369,16 @@ object Snap {
   @JSGlobal("ColorSlotMorph")
   class ColorSlotMorph(color: SnapColor = js.native) extends ArgMorph:
     def getValue(): SnapColor = js.native
+
     def setColor(color: SnapColor): Unit = js.native
+
     def setContents(color: SnapColor): Unit = js.native
 
   @js.native
   @JSGlobal("ADT_SlotMorph")
   class ADTSlotMorph(typeString: String = js.native) extends ArgMorph:
     def contents(): String = js.native
+
     def setContents(typeString: String): Unit = js.native
 
   @js.native
@@ -305,8 +390,11 @@ object Snap {
   class MultiArgMorph(spec: String = js.native, labelTxt: String = js.native, min: Double = js.native, max: Double = js.native) extends ArgMorph:
     var minInputs: Double = js.native
     var maxInputs: Double = js.native
+
     override def inputs(): js.Array[InputMorph] = js.native
+
     def setChoices(choices: SnapChoiceDictionary, readonly: Boolean = js.native): Unit = js.native
+
     def setContents(values: js.Array[SnapInputValue]): Unit = js.native
 
   @js.native
@@ -324,19 +412,23 @@ object Snap {
   @JSGlobal("ReporterSlotMorph")
   class ReporterSlotMorph(isPredicate: Boolean = js.native) extends FunctionSlotMorph:
     def contents(): ReporterBlockMorph | Null = js.native
+
     def nestedBlock(): ReporterBlockMorph | Null = js.native
 
   @js.native
   @JSGlobal("RingReporterSlotMorph")
   class RingReporterSlotMorph(isPredicate: Boolean = js.native) extends ReporterSlotMorph:
     def nestedBlock(block: ReporterBlockMorph = js.native): ReporterBlockMorph | Null = js.native
+
     def attachTargets(): js.Array[SnapAttachTarget] = js.native
 
   @js.native
   @JSGlobal("CommentMorph")
   class CommentMorph(contents: String = js.native) extends BoxMorph:
     var text: TextMorph = js.native
+
     def align(topBlock: BlockMorph, ignoreLayer: Boolean = js.native): Unit = js.native
+
     def startFollowing(topBlock: BlockMorph, world: WorldMorph): Unit = js.native
 
   @js.native
@@ -372,6 +464,7 @@ object Snap {
     }
     result
   }
+
   def preload(): Future[Unit] = load()
 
   private def available: Boolean = {
@@ -379,22 +472,31 @@ object Snap {
     js.typeOf(serializer) == "function" &&
       js.typeOf(serializer.selectDynamic("prototype").selectDynamic(originalField)) == "function"
   }
+
   def world(canvas: dom.HTMLCanvasElement): ExternalDependency[WorldMorph] =
     new ExternalDependency(() => preload(), () => available, () => new WorldMorph(canvas, false))
+
   def editor(config: js.Object): ExternalDependency[IDEMorph] =
     new ExternalDependency(() => preload(), () => available, () => new IDEMorph(config))
 
-  @js.native @JSGlobal("PushButtonMorph")
+  @js.native
+  @JSGlobal("PushButtonMorph")
   class Button(target: js.Any, action: js.Function0[Unit], label: String) extends Morph
-  @js.native @JSGlobal("DialogBoxMorph")
+
+  @js.native
+  @JSGlobal("DialogBoxMorph")
   class Dialog(target: js.Any, action: js.Any, owner: js.Any) extends Morph
-  @js.native @JSGlobal("MenuMorph")
+
+  @js.native
+  @JSGlobal("MenuMorph")
   class Menu(action: js.Any, environment: js.Any, owner: js.Any) extends Morph
 
   def button(action: js.Function0[Unit], label: String): ExternalDependency[Button] =
     new ExternalDependency(() => preload(), () => available, () => new Button(null, action, label))
+
   def dialog(action: js.Any, owner: js.Any = null): ExternalDependency[Dialog] =
     new ExternalDependency(() => preload(), () => available, () => new Dialog(null, action, owner))
+
   def menu(action: js.Any, owner: js.Any): ExternalDependency[Menu] =
     new ExternalDependency(() => preload(), () => available, () => new Menu(action, null, owner))
 
@@ -411,7 +513,7 @@ object Snap {
     patchSerializer(serializer.selectDynamic("prototype"))
   }
 
-  private[homepage] def patchSerializer(prototype: js.Dynamic): Unit = {
+  private[evadid] def patchSerializer(prototype: js.Dynamic): Unit = {
     val existing = prototype.selectDynamic(originalField)
     if js.isUndefined(existing) then {
       val original = prototype.selectDynamic("loadProjectModel")
@@ -419,9 +521,9 @@ object Snap {
       val patched: js.ThisFunction3[js.Dynamic, js.Dynamic, js.Any, js.Any, js.Any] =
         (serializer: js.Dynamic, xml: js.Dynamic, ide: js.Any, remixId: js.Any) => {
           val attributes: js.Dynamic = if xml == null || js.isUndefined(xml) then null
-            else xml.selectDynamic("attributes")
+          else xml.selectDynamic("attributes")
           val sourceApp = if attributes == null || js.isUndefined(attributes) then js.undefined
-            else attributes.selectDynamic("app")
+          else attributes.selectDynamic("app")
           val targetApp = serializer.selectDynamic("app")
           if js.typeOf(sourceApp) == "string" && js.typeOf(targetApp) == "string" then {
             val source = sourceApp.asInstanceOf[String]

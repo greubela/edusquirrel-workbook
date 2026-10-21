@@ -1,12 +1,12 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
 import it.evadid.homepage.control.startup.ClientRuntimeConfig
-import it.evadid.homepage.webElements.facades.Workers
 
 import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.distribution.clients.WebWorkerExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands
+import it.evadid.facades.Workers
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue

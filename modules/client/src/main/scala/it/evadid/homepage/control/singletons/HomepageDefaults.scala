@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.user.UserConfig
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.clients.{ExecutionClient, RemoteExecutionConfig, WebWorkerExecutionClient}
+import it.evadid.facades.Workers
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer, LocalIndexedDbStorageSync, LocalStorageSync}
 import it.evadid.workbook.interaction.sync.SyncStrategy.{SYNC_LAST, SYNC_LAST_AND_MAJOR, SYNC_MAJOR}
@@ -75,7 +76,7 @@ case class HomepageDefaults(fullInfo: FullInfo) {
 
   /** Claim the Scala.js startup pool rather than starting a second worker. */
   lazy val workerBackendExecutor: WebWorkerExecutionClient =
-    WebWorkerExecutionClient.fromWorker(it.evadid.homepage.webElements.facades.Workers.takeOrCreate())
+    WebWorkerExecutionClient.fromWorker(Workers.takeOrCreate())
 
   def backendExecutorWithCredentials(signedToken: Option[SignedToken]): ExecutionClient = defaultBackend.executor(signedToken)
 

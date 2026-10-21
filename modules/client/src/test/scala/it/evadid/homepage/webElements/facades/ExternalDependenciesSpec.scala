@@ -1,7 +1,9 @@
 package it.evadid.homepage.webElements.facades
 
 import com.raquo.airstream.state.Var
+import it.evadid.facades.{EvaExternalDependency, ExternalDependency, Pyodide}
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
+
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js

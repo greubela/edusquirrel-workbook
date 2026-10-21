@@ -1,8 +1,11 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
-import it.evadid.homepage.webElements.facades.CodeMirror.{Api as CodeMirrorApi}
-import it.evadid.homepage.webElements.facades.CodeMirror.{CodeMirrorHandle, EditorConfig}
+import it.evadid.facades
+import it.evadid.facades.CodeMirror
+import it.evadid.facades.CodeMirror.Api as CodeMirrorApi
+import it.evadid.facades.CodeMirror.{CodeMirrorHandle, EditorConfig}
 import org.scalajs.dom
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel
 
@@ -107,12 +110,12 @@ private[code] object CodeMirrorRuntime {
             if changed && js.typeOf(config.onDocChange) == "function" then config.onDocChange(value)
           }
         }))))
-    private val view = it.evadid.homepage.webElements.facades.CodeMirror.view(
+    private val view = CodeMirror.view(
       js.Dynamic.literal(state = state, parent = config.parent)).createLoadedInstance()
 
     if isJava then {
       import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-      it.evadid.homepage.webElements.facades.CodeMirror.loadJava().map { module =>
+      facades.CodeMirror.loadJava().map { module =>
         if !destroyed then view.dispatch(js.Dynamic.literal(
           effects = editorLanguage.reconfigure(module.java())))
       }.recover { case error =>

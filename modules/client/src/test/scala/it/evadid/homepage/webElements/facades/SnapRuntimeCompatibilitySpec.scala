@@ -1,8 +1,8 @@
 package it.evadid.homepage.webElements.facades
 
 import com.raquo.airstream.state.Var
+import it.evadid.facades.Snap
 import munit.FunSuite
-import it.evadid.homepage.webElements.facades.Snap
 import scala.scalajs.js
 
 class SnapRuntimeCompatibilitySpec extends FunSuite {

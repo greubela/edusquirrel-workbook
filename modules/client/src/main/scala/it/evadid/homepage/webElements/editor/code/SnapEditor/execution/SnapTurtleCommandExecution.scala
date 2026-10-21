@@ -9,6 +9,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import it.evadid.distribution.clients.WebWorkerExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands
+import it.evadid.facades.Workers
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 
 import java.util.concurrent.{CancellationException, TimeoutException}
@@ -145,7 +146,7 @@ object PyodideTurtleCommandRunner:
 
   private def workerExecutor(): PythonCallbackExecutor =
     new CommandPythonCallbackExecutor(WebWorkerExecutionClient.fromWorker(
-      it.evadid.homepage.webElements.facades.Workers.classic(
+      Workers.classic(
         HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.relativeToArtifactsFolder("newest/worker.js").asUrlString).createLoadedInstance()))
 
   private[execution] def commandsFrom(callbacks: Seq[CallbackOp]): List[TurtleCommand[Double]] =

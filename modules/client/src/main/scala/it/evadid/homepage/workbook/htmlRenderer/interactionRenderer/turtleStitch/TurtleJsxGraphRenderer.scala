@@ -4,10 +4,11 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleGradingLogic}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGradingLogic, TurtleGraphic}
 import TurtleGradingLogic.{GradingLine, TurtleGraphicComparison, TurtleLineStatus}
+import it.evadid.facades
+import it.evadid.facades.JSXGraph
 import org.scalajs.dom
-import it.evadid.homepage.webElements.facades.JSXGraph
 import upickle.default.*
 
 import scala.scalajs.js
@@ -65,7 +66,7 @@ object TurtleJsxGraphRenderer:
             container.setAttribute("aria-busy", "false")
           }.failed.foreach(showError)
         }
-        val loading = it.evadid.homepage.webElements.facades.JSXGraph
+        val loading = facades.JSXGraph
         if loading.available then draw()
         else scala.util.Try(loading.preload()).fold(
           showError,

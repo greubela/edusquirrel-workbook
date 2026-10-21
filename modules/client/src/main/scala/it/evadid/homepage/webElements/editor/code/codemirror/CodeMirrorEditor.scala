@@ -1,13 +1,13 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
-import it.evadid.homepage.webElements.facades.CodeMirror
-import it.evadid.homepage.webElements.facades.CodeMirror.{CodeMirrorHandle, EditorConfig}
+import it.evadid.facades.CodeMirror.{CodeMirrorHandle, EditorConfig}
 
 import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.{ProgrammingLanguage, Python}
+import it.evadid.facades.CodeMirror
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig

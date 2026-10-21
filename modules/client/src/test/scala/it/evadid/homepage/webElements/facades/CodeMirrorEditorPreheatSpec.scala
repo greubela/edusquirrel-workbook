@@ -1,8 +1,8 @@
 package it.evadid.homepage.webElements.facades
 
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.homepage.webElements.facades.CodeMirror
 import com.raquo.laminar.api.L.*
+import it.evadid.facades.CodeMirror
 import scala.concurrent.Promise
 import scala.scalajs.js
 import scala.scalajs.js.timers.setTimeout
