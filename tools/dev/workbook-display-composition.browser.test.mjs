@@ -1,3 +1,4 @@
+import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import test from 'node:test';
@@ -57,12 +58,12 @@ test('PlantWorkshop slides render grouped images and descriptions through the wo
       const relative = decodeURIComponent(url.pathname).slice(1);
       if (relative.split('/').includes('..')) return route.abort();
       try {
-        const file = relative === 'homepage/js/CodeMirrorLoader.js' && process.env.CODEMIRROR_TEST_BUNDLE
-          ? process.env.CODEMIRROR_TEST_BUNDLE : new URL('../../' + relative, import.meta.url);
+        const file = new URL('../../' + relative, import.meta.url);
         await route.fulfill({body: await readFile(file),
           contentType: mime[relative.split('.').at(-1)] || 'application/octet-stream'});
       } catch { await route.fulfill({status: 404, body: 'Not found'}); }
     });
+    await installCodeMirrorModules(page);
     await page.goto(origin + '/homepage/plantWorkshopWorkbook/index.html');
     await page.locator('.section-register .login-area').nth(1).locator('button').click({timeout: 60000});
     for (const [section, count, columnSlides] of [[1, 5, [3, 4]], [4, 6, [3]]]) {

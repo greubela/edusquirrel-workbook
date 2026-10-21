@@ -1,1 +1,0 @@
-window.EDUSQUIRREL_APP_AS_MODULE = true;

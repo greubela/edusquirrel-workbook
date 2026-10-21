@@ -1,7 +1,7 @@
 package it.evadid.facades
 
 import com.raquo.airstream.state.Var
-import it.evadid.homepage.control.startup.BrowserLoading
+import it.evadid.facades.internal.CodeMirrorRuntime
 import org.scalajs.dom
 
 import scala.concurrent.{Future, Promise}
@@ -20,6 +20,7 @@ object CodeMirror {
       val length: Int = js.native
 
       def line(number: Int): Line = js.native
+      def lineAt(position: Int): Line = js.native
 
       def sliceString(from: Int, to: Int): String = js.native
 
@@ -29,6 +30,13 @@ object CodeMirror {
     @js.native trait Line extends js.Object {
       val from: Int = js.native
       val to: Int = js.native
+      val number: Int = js.native
+    }
+
+    @js.native @JSGlobal("EduSquirrelCodeMirrorLibraries.GutterMarker")
+    class GutterMarker extends js.Object {
+      def eq(other: GutterMarker): Boolean = js.native
+      def toDOM(view: View): dom.Element = js.native
     }
 
     @js.native trait Changes extends js.Object {
@@ -216,9 +224,7 @@ object CodeMirror {
 
       def sql(config: js.Object): Extension = js.native
 
-      def loadJavaModule(): js.Promise[JavaModule] = js.native
-
-      def flowchartExtension(chartForDoc: js.Function1[String, js.Promise[js.Object]]): Extension = js.native
+      def gutter(config: js.Object): Extension = js.native
     }
 
     @js.native trait StateFactory extends js.Object {
@@ -278,11 +284,6 @@ object CodeMirror {
   }
 
   @js.native
-  trait CodeMirrorFacade extends js.Object {
-    def createEditor(config: EditorConfig): CodeMirrorHandle = js.native
-  }
-
-  @js.native
   trait CodeMirrorHandle extends js.Object {
     def setDoc(value: String): Unit = js.native
 
@@ -324,80 +325,81 @@ object CodeMirror {
   }
 
 
-  private val pending = Var(Option.empty[Future[CodeMirrorFacade]])
-
-  private def facade: Option[CodeMirrorFacade] = {
-    val value = dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirror")
-    if (js.isUndefined(value) || value == null || js.typeOf(value.selectDynamic("createEditor")) != "function") None
-    else Some(value.asInstanceOf[CodeMirrorFacade])
+  @js.native private trait HandleFactory extends js.Object {
+    def createEditor(config: EditorConfig): CodeMirrorHandle = js.native
   }
+  private def factory: Option[HandleFactory] = {
+    val value = dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirror")
+    if js.isUndefined(value) || value == null then None else Some(value.asInstanceOf[HandleFactory])
+  }
+
+  // Native module imports remain asynchronous and share the browser's ESM cache.
+  private val moduleUrls = List(
+    "https://esm.sh/@codemirror/state@6.5.2",
+    "https://esm.sh/@codemirror/view@6.38.6?deps=@codemirror/state@6.5.2",
+    "https://esm.sh/@codemirror/commands@6.8.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3",
+    "https://esm.sh/@codemirror/language@6.11.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6",
+    "https://esm.sh/@codemirror/search@6.5.11?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6",
+    "https://esm.sh/@codemirror/lang-python@6.2.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3,@codemirror/autocomplete@6.18.4",
+    "https://esm.sh/@codemirror/lang-sql@6.9.0?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3,@codemirror/autocomplete@6.18.4",
+    "https://esm.sh/@codemirror/lang-cpp@6.0.2?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3",
+    "https://esm.sh/@codemirror/theme-one-dark@6.1.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3",
+    "https://esm.sh/@replit/codemirror-indentation-markers@6.5.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3"
+  )
+  private val javaUrl = "https://esm.sh/@codemirror/lang-java@6.0.2?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3"
+  private val pending = Var(Option.empty[Future[Unit]])
+  private val pendingJava = Var(Option.empty[Future[Api.JavaModule]])
 
   private[evadid] def inBackground[A](work: => A): Future[A] = {
     val result = Promise[A]()
-    setTimeout(0) {
-      result.complete(Try(work))
-    }
+    setTimeout(0) { result.complete(Try(work)) }
     result.future
   }
 
   def preload(): Future[Unit] = {
-    val ready = load(background = true)
+    val ready = loadModules()
     loadJava().failed.foreach(_ => ())
-    ready.map(_ => ())
+    ready
   }
 
-  def editor(config: => EditorConfig): ExternalDependency[CodeMirrorHandle] =
-    new ExternalDependency(() => preload(), () => facade.nonEmpty, () => facade.get.createEditor(config))
-
-  private[evadid] def view(config: js.Object): ExternalDependency[Api.View] =
-    new ExternalDependency(() => preload(), () => Api.available, () => new Api.EditorView(config))
-
-  // Check the shared load after the calling reactive transaction has committed its Vars.
-  private def load(background: Boolean = false): Future[CodeMirrorFacade] =
-    Future.unit.flatMap(_ => loadOnce(background))
-
-  private def loadOnce(background: Boolean): Future[CodeMirrorFacade] = facade match {
-    case Some(value) => Future.successful(value)
-    case None => pending.now().getOrElse {
-      val result = Promise[CodeMirrorFacade]()
+  private def loadModules(): Future[Unit] = Future.unit.flatMap { _ =>
+    if Api.available || factory.nonEmpty then Future.unit
+    else pending.now().getOrElse {
+      val result = Promise[Unit]()
       pending.set(Some(result.future))
-      inBackground {
-        val script = dom.document.createElement("script").asInstanceOf[dom.html.Script]
-        script.`type` = "module"
-        script.async = true
-        if background then script.setAttribute("fetchpriority", "low")
-        script.src = new dom.URL("CodeMirrorLoader.js", BrowserLoading.bootstrapUrl).href
-        val timeout = setTimeout(15000) {
-          result.tryFailure(new RuntimeException("CodeMirror module load timed out"))
-          script.remove()
+      val timeout = setTimeout(15000) { result.tryFailure(RuntimeException("CodeMirror modules timed out")) }
+      val importing = Future.traverse(moduleUrls)(url => js.`import`[js.Object](url).toFuture)
+      importing.failed.foreach(result.tryFailure)
+      importing.foreach { modules =>
+        if !result.isCompleted then {
+          val libraries = js.Dynamic.literal()
+          modules.foreach(module => js.Object.keys(module).foreach(key =>
+            libraries.updateDynamic(key)(module.asInstanceOf[js.Dynamic].selectDynamic(key))))
+          js.Dynamic.global.globalThis.updateDynamic("EduSquirrelCodeMirrorLibraries")(libraries)
+          CodeMirrorRuntime.publish()
+          result.trySuccess(())
         }
-        script.onload = _ => {
-          clearTimeout(timeout)
-          facade match {
-            case Some(value) => result.trySuccess(value)
-            case None => result.tryFailure(new RuntimeException("CodeMirror module did not expose its facade"))
-          }
-          ()
-        }
-        script.addEventListener("error", (_: dom.Event) => {
-          clearTimeout(timeout)
-          result.tryFailure(new RuntimeException("CodeMirror module failed to load"))
-          script.remove()
-        })
-        dom.document.head.appendChild(script)
-      }.failed.foreach(result.tryFailure)
-      result.future.failed.foreach { _ => if (pending.now().contains(result.future)) pending.set(None) }
+      }
+      // Failures are local and a later consumer may retry.
+      // ESM itself reuses successfully imported modules.
+      // The source future must propagate import failures as well as timeouts.
+      result.future.onComplete { outcome =>
+        clearTimeout(timeout)
+        if outcome.isFailure && pending.now().contains(result.future) then pending.set(None)
+      }
       result.future
     }
   }
 
-  private val pendingJava = Var(Option.empty[Future[Api.JavaModule]])
+  def editor(config: => EditorConfig): ExternalDependency[CodeMirrorHandle] =
+    new ExternalDependency(() => preload(), () => Api.available || factory.nonEmpty, () => factory.get.createEditor(config))
+
+  private[evadid] def view(config: js.Object): ExternalDependency[Api.View] =
+    new ExternalDependency(() => preload(), () => Api.available, () => new Api.EditorView(config))
 
   def loadJava(): Future[Api.JavaModule] = Future.unit.flatMap { _ =>
     pendingJava.now().getOrElse {
-      val result = load().flatMap { _ =>
-        Api.Libraries.loadJavaModule().toFuture
-      }
+      val result = loadModules().flatMap(_ => js.`import`[Api.JavaModule](javaUrl).toFuture)
       pendingJava.set(Some(result))
       result.failed.foreach { _ => if pendingJava.now().contains(result) then pendingJava.set(None) }
       result

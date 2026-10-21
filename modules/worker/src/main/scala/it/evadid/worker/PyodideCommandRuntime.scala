@@ -2,6 +2,7 @@ package it.evadid.worker
 
 import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.util.logging.Logger
+import it.evadid.facades.{Pyodide, PyodideRuntime}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
@@ -10,19 +11,14 @@ import scala.util.Try
 /** One lazy interpreter per worker; only Python jobs are serialized, including initialization. */
 object PyodideCommandRuntime {
   private given ExecutionContext = ExecutionContext.global
-  private val indexUrl = "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/"
-  private var interpreter = Option.empty[Future[js.Dynamic]]
+  private var interpreter = Option.empty[Future[PyodideRuntime]]
   private var namespace = Option.empty[js.Dynamic]
   private var registeredModules = Set.empty[String]
   private var callbackOps = Vector.empty[PythonCallback]
   private var pending: Future[Unit] = Future.successful(())
 
-  private def load(): Future[js.Dynamic] = interpreter.getOrElse {
-    val created = Try {
-      val scope = js.Dynamic.global.globalThis
-      scope.importScripts(indexUrl + "pyodide.js")
-      scope.loadPyodide(js.Dynamic.literal(indexURL = indexUrl)).asInstanceOf[js.Promise[js.Dynamic]].toFuture
-    }.fold(Future.failed, identity)
+  private def load(): Future[PyodideRuntime] = interpreter.getOrElse {
+    val created = Pyodide.createInstance()
     interpreter = Some(created)
     created.failed.foreach(_ => interpreter = None)
     created

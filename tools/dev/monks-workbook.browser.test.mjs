@@ -1,3 +1,4 @@
+import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -19,10 +20,10 @@ test('monk stories and Koch practice render and can be navigated', async () => {
       if (url.origin !== origin) return route.abort();
       let file = path.resolve(root, '.' + decodeURIComponent(url.pathname));
       if (!file.startsWith(root + path.sep)) return route.abort();
-      if (url.pathname === '/homepage/js/CodeMirrorLoader.js' && process.env.CODEMIRROR_TEST_BUNDLE) file = process.env.CODEMIRROR_TEST_BUNDLE;
       try { await route.fulfill({body:await fs.readFile(file),contentType:mime[path.extname(file)] || 'application/octet-stream'}); }
       catch { await route.fulfill({status:404,body:'Not found'}); }
     });
+    await installCodeMirrorModules(page);
     await page.goto(origin + '/homepage/monksWorkbook/index.html');
     await page.locator('.section-register .login-area').nth(1).locator('button').click({timeout:60000});
     await page.locator('.select-language-line > div').first().click();

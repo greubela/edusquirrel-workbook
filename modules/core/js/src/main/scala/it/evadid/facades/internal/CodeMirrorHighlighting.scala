@@ -1,10 +1,10 @@
-package it.evadid.homepage.webElements.editor.code.codemirror
+package it.evadid.facades.internal
 
 import it.evadid.facades.CodeMirror.Api as CodeMirrorApi
 import scala.scalajs.js
 import CodeMirrorApi.*
 
-private[code] object CodeMirrorHighlighting {
+private[evadid] object CodeMirrorHighlighting {
   private val reservedIdentifiers = Set(
     "if", "else", "elif", "for", "while", "do", "switch", "case", "default", "break", "continue", "return",
     "int", "void", "char", "float", "double", "long", "short", "bool", "boolean", "byte", "word", "string",

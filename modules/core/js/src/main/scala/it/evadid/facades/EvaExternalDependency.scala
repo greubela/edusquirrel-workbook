@@ -4,7 +4,7 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.Try
 
-/** Loading shares code only; each creation returns a consumer-owned native handle. */
+/** Loading shares code readiness; resource handles remain consumer-owned. */
 trait EvaExternalDependency[T] {
   def preload(): Future[Unit]
 

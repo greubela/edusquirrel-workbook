@@ -3,7 +3,6 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.facades
-import it.evadid.facades.Pyodide
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackOp, PythonRunConfig, PythonRunReport}
 import it.evadid.vm.BeProgram
 import it.evadid.vm.io.stringPrinter.python.{JavaTurtlePythonExport, JavaTurtlePythonHelpers}
@@ -377,19 +376,6 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
     def terminate(): Unit =
       terminations += 1
       terminationFailure.foreach(error => throw error)
-
-  test("worker URL lookup safely handles an absent optional global configuration") {
-    assertEquals(
-      Pyodide.configuredWorkerUrl(js.Dynamic.literal()),
-      "../js/pyodide-worker.js"
-    )
-    assertEquals(
-      facades.Pyodide.configuredWorkerUrl(
-        js.Dynamic.literal(PYODIDE_WORKER_URL = "../configured/pyodide-worker.js")
-      ),
-      "../configured/pyodide-worker.js"
-    )
-  }
 
   private def executePythonWithRuntimeCalls(
       python: String,

@@ -1,6 +1,5 @@
 package it.evadid.facades
 
-import it.evadid.homepage.control.startup.BrowserLoading
 import org.scalajs.dom
 
 import scala.concurrent.Future

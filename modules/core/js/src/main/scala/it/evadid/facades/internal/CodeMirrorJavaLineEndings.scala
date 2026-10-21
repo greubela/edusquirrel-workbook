@@ -1,10 +1,10 @@
-package it.evadid.homepage.webElements.editor.code.codemirror
+package it.evadid.facades.internal
 
 import it.evadid.facades.CodeMirror.Api as CodeMirrorApi
 import scala.collection.mutable
 import scala.scalajs.js
 
-private[code] object CodeMirrorJavaLineEndings {
+private[evadid] object CodeMirrorJavaLineEndings {
   import CodeMirrorApi.*
 
   final case class Exception(pos: Int, separator: String)

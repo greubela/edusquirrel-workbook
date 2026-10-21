@@ -4,175 +4,55 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleC
 import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.{SvgPathBuilderCommand, TurtlePathBuilder}
-import it.evadid.homepage.util.web.{WorkerProtocolHelpers, WorkerRequestTracker}
 import it.evadid.util.JsHelpers.*
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
-import it.evadid.facades.Pyodide
 import it.evadid.util.JsHelpers
-import org.scalajs.dom
 import todomove.`export`.modules.TurtleSingleton
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
-final class PyodideWorkerClient(workerUrl: String = Pyodide.configuredWorkerUrl()) {
+/** Python jobs and callback replay over the shared Scala.js command worker. */
+final class PyodideWorkerClient {
+  private val worker = it.evadid.distribution.clients.WebWorkerExecutionClient.fromWorker(
+    it.evadid.facades.Workers.classic(it.evadid.facades.BrowserLoading.worker).createLoadedInstance())
+  private val callbacks = com.raquo.airstream.state.Var(Map.empty[String, List[String]])
 
-  private val worker = Pyodide.worker(workerUrl).createLoadedInstance()
-
-  private val tracker = new WorkerRequestTracker
-
-  private val preheated: Future[Unit] = requestUnit("init")
-
-  WorkerProtocolHelpers.wireMessages(worker, tracker)
-
-  worker.onerror = { (event: dom.ErrorEvent) =>
-    WorkerProtocolHelpers.failAllFromWorkerError(
-      tracker,
-      event,
-      "stdout" -> "",
-      "stderr" -> ""
-    )
+  def addCallbacks(moduleName: String, methodNames: Seq[String]): Future[Unit] = {
+    callbacks.update(_ + (moduleName -> methodNames.toList))
+    Future.unit
   }
 
-  def addCallbacks(moduleName: String, methodNames: Seq[String]): Future[Unit] =
-    afterPreheat {
-      requestUnit(
-        "addCallbacks",
-        obj(
-          "moduleName" -> moduleName,
-          "methodNames" -> methodNames.toJSArray
-        )
-      )
-    }
-
-  private def handleLibrary(callbacks: List[CallbackOp], library: CallbackLibrary): Unit = {
-    println("handleLibrary: " + callbacks.size + " callbacks, library '" + library.moduleName + "' (" + library.methodMap.size + " methods)")
-    callbacks.foreach(op => {
-      println("---- EXECUTE OP: " + op.module + "." + op.method + "(" + op.args.mkString(", ") + ")")
-      library.methodMap.get(op.method).foreach { method => method(op.args) }
-    })
-  }
-
-  def runWithCallbackLibrary(code: String, callbackLibrary: CallbackLibrary, config: PythonRunConfig = PythonRunConfig()): Future[PythonRunReport] = {
-    val res = Promise[PythonRunReport]()
-    addCallbacks(callbackLibrary.moduleName, callbackLibrary.methodMap.keys.toSeq)
-
-    val exRes = run(code, config)
-    exRes.onComplete {
-      case scala.util.Success(runReport: PythonRunReport) => {
-        println("run fully executed, incl. all commands ")
-        handleLibrary(runReport.callbackOps.toList, callbackLibrary)
-        res.success(runReport)
-      }
-      case scala.util.Failure(exception) => {
-        res.failure(exception)
+  def run(code: String, config: PythonRunConfig = PythonRunConfig()): Future[PythonRunReport] = {
+    import it.evadid.distribution.command.ExecutionCommand
+    import it.evadid.distribution.commandTypes.WorkerCommands
+    val context = config.context.toMap.view.mapValues(value => ujson.read(js.JSON.stringify(value))).toMap
+    val request = WorkerCommands.RunPythonRequest(code, context, callbacks.now(),
+      resetGlobals = config.resetGlobals, captureStdout = config.captureStdout, captureStderr = config.captureStderr)
+    val logger = it.evadid.util.logging.Logger.withNameAndPrefixes(Some("Python"),
+      it.evadid.util.logging.derived.PrintToStdLogger.printNothing)
+    worker.executeResponse(logger, ExecutionCommand(WorkerCommands.runPython.name, upickle.default.writeJs(request))).flatMap { reply =>
+      reply.result match {
+        case Left(error) => Future.failed(PythonWorkerFailure(error.getMessage,
+          reply.additionalOutput.loggerOut, reply.additionalOutput.loggerError))
+        case Right(encoded) =>
+          val result = encoded.getAs[WorkerCommands.RunPythonResult]
+          Future.successful(PythonRunReport(result.callbackOps.map(op => CallbackOp(op.module, op.method,
+            op.args.map(value => js.JSON.parse(ujson.write(value))).toVector)).toVector, result.stdout, result.stderr))
       }
     }
-
-    res.future
   }
 
-  def run(
-           code: String,
-           config: PythonRunConfig = PythonRunConfig()
-         ): Future[PythonRunReport] =
-    afterPreheat {
-      request("run",
-        obj(
-          "code" -> code,
-          "context" -> config.context,
-          "resetGlobals" -> config.resetGlobals,
-          "captureStdout" -> config.captureStdout,
-          "captureStderr" -> config.captureStderr
-        )
-      ).map(readRunReport)
+  def runWithCallbackLibrary(code: String, library: CallbackLibrary, config: PythonRunConfig = PythonRunConfig()): Future[PythonRunReport] = {
+    addCallbacks(library.moduleName, library.methodMap.keys.toSeq).flatMap(_ => run(code, config)).map { report =>
+      report.callbackOps.filter(_.module == library.moduleName).foreach(op => library.methodMap.get(op.method).foreach(_(op.args)))
+      report
     }
-
-  def snapshotGlobals(): Future[js.Dictionary[js.Any]] =
-    afterPreheat {
-      request("snapshotGlobals").map(asDict)
-    }
-
-  def reset(): Future[Unit] =
-    afterPreheat {
-      requestUnit("reset")
-    }
-
-  def runTurtle(
-                 code: String,
-                 turtleMethods: Seq[String],
-                 config: PythonRunConfig = PythonRunConfig()
-               ): Future[(PythonRunReport, js.Any)] =
-    afterPreheat {
-      request("runTurtle",
-        obj(
-          "code" -> code,
-          "context" -> config.context,
-          "resetGlobals" -> config.resetGlobals,
-          "captureStdout" -> config.captureStdout,
-          "captureStderr" -> config.captureStderr,
-          "turtleMethods" -> turtleMethods.toJSArray
-        )
-      ).map { value =>
-        val payload = asDynamic(value)
-        val runReport = PythonRunReport(
-          callbackOps = asArray(payload.callbackOps).iterator.map(readCallbackOp).toVector,
-          stdout = asString(payload.stdout),
-          stderr = asString(payload.stderr)
-        )
-        (runReport, payload.turtleResult.asInstanceOf[js.Any])
-      }
-    }
-
-  def terminate(): Unit =
-    worker.terminate()
-
-  private def afterPreheat[A](fa: => Future[A]): Future[A] =
-    preheated.flatMap(_ => fa)
-
-  private def requestUnit(kind: String, payload: js.Object = emptyObj): Future[Unit] =
-    request(kind, payload).map(_ => ())
-
-  private def request(kind: String, payload: js.Object = emptyObj): Future[js.Any] =
-    WorkerProtocolHelpers.request(
-      worker = worker,
-      tracker = tracker,
-      operation = kind,
-      payload = payload,
-      operationFieldName = "kind",
-      responsePayloadFieldName = "payload",
-      onError = readFailure
-    )
-
-  private def readRunReport(value: js.Any): PythonRunReport = {
-    val payload = asDynamic(value)
-    PythonRunReport(
-      callbackOps = asArray(payload.callbackOps).iterator.map(readCallbackOp).toVector,
-      stdout = asString(payload.stdout),
-      stderr = asString(payload.stderr)
-    )
   }
 
-  private def readCallbackOp(value: js.Any): CallbackOp = {
-    val op = asDynamic(value)
-    CallbackOp(
-      module = asString(op.module),
-      method = asString(op.method),
-      args = asArray(op.args).toVector
-    )
-  }
-
-  private def readFailure(value: js.Any): PythonWorkerFailure = {
-    val error = asDynamic(value)
-    PythonWorkerFailure(
-      message = asString(error.message),
-      stdout = asString(error.stdout),
-      stderr = asString(error.stderr)
-    )
-  }
-
+  def terminate(): Unit = worker.close()
 }
 
 object PyodideWorkerClient {
