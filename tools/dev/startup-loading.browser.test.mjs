@@ -40,6 +40,8 @@ for(const prefix of ['/', '/edusquirrel-workbook/']) {
         try {await route.fulfill({body:await fs.readFile(file),contentType:mime[path.extname(file)]||'application/octet-stream'});}
         catch {await route.fulfill({status:404,body:'Not found'});}
       });
+      const workerRequest=page.waitForRequest(request=>
+        request.url()===origin+prefix+'artifacts/newest/worker.js');
       await page.goto(origin+prefix+'homepage/workbookDesign/',{waitUntil:'domcontentloaded'});
       await page.locator('.workbook-header').waitFor();
       await page.locator('.section-register').waitFor();
@@ -50,7 +52,7 @@ for(const prefix of ['/', '/edusquirrel-workbook/']) {
       assert.equal(await page.evaluate(()=>typeof window.WorldMorph),'undefined','parallel prefetch must not execute later dependencies out of order');
       assert.equal(await page.locator('dialog[open]').count(),0,'preheating does not construct an editor');
       await page.waitForFunction(()=>window.startedWorkers.some(url=>url.endsWith('/artifacts/newest/worker.js')));
-      assert(requests.includes(prefix+'artifacts/newest/worker.js'),'configuration timeout cannot stall worker preheating');
+      assert.equal((await workerRequest).url(),origin+prefix+'artifacts/newest/worker.js','configuration timeout cannot stall worker preheating');
       assert(!requests.some(url=>url.includes('/homepage/deployment/')),'configuration uses one known location');
       releaseLanguages();
       await page.getByRole('button',{name:'Start Using Locally',exact:true}).click();

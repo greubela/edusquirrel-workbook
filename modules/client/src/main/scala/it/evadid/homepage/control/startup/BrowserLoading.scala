@@ -9,7 +9,7 @@ import scala.scalajs.js.timers.{clearTimeout, setTimeout}
 /** Fetch ahead in parallel, execute in dependency order, and share each script load.
   * Inserting only the next script also stops execution cleanly after a failed dependency.
   */
-object BrowserScriptLoading {
+object BrowserLoading {
   private val loads = Var(Map.empty[String, Future[Unit]])
   private val preloads = Var(Set.empty[String])
 
@@ -52,4 +52,13 @@ object BrowserScriptLoading {
     preload(urls)
     urls.foldLeft(Future.unit)((ready, url) => ready.flatMap(_ => load(url)))
   }
+
+  def bootstrapUrl: String = {
+    val scripts = dom.document.querySelectorAll("script[src]")
+    (0 until scripts.length).iterator.map(i => scripts(i).asInstanceOf[dom.html.Script].src)
+      .find(_.takeWhile(_ != '?').endsWith("/app-loader.js"))
+      .getOrElse(new dom.URL("../js/app-loader.js", dom.document.baseURI).href)
+  }
+  def resource(path: String): String = new dom.URL("../../resources/" + path, bootstrapUrl).href
+  def worker: String = new dom.URL("../../artifacts/newest/worker.js", bootstrapUrl).href
 }

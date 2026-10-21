@@ -12,8 +12,8 @@ import scala.scalajs.js.JSConverters.*
 
 
 final class PyodideMainThreadEnvironment {
-  import it.evadid.homepage.control.startup.PyodideRuntimeLoading
-  import PyodideRuntimeLoading.Pyodide
+  import it.evadid.homepage.control.startup.PyodideLoading
+  import PyodideLoading.Pyodide
 
   private var pyodidePromise: Option[Future[Pyodide]] = None
   private var pyodideInstance: Option[Pyodide] = None
@@ -83,7 +83,7 @@ final class PyodideMainThreadEnvironment {
       case Some(instance) => Future.successful(instance)
       case None =>
         pyodidePromise.getOrElse {
-          val created = PyodideRuntimeLoading.create().map { pyodide =>
+          val created = PyodideLoading.createRuntime().map { pyodide =>
             pyodideInstance = Some(pyodide)
             reinstallModules(pyodide)
             pyodide

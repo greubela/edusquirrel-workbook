@@ -9,7 +9,6 @@ object StartupPreheating {
     started.set(true)
     // Start requests immediately; never await them from the render path.
     CodeMirrorEditorLoading.preheat()
-    CodeMirrorJavaLoading.preheat()
     WorkerPreloading.preheat()
     val turtlePages = List("workbookTest", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookMonks")
     if turtlePages.exists(id => dom.document.getElementById(id) != null) then {

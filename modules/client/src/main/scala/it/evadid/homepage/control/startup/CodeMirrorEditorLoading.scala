@@ -7,6 +7,7 @@ import org.scalajs.dom
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
+import scala.scalajs.js.Thenable.Implicits.*
 import scala.scalajs.js.timers.{clearTimeout, setTimeout}
 import scala.util.Try
 
@@ -29,11 +30,14 @@ object CodeMirrorEditorLoading {
     result.future
   }
 
-  private[homepage] def bootstrapUrl: String = BrowserAssets.bootstrapUrl
+  private[homepage] def bootstrapUrl: String = BrowserLoading.bootstrapUrl
 
   private[homepage] def workerUrl: String = ClientRuntimeConfig.workerUrl
 
-  def preheat(): Unit = { load(background = true).failed.foreach(_ => ()); () }
+  def preheat(): Unit = {
+    load(background = true).failed.foreach(_ => ())
+    loadJava().failed.foreach(_ => ())
+  }
 
   // Check the shared load after the calling reactive transaction has committed its Vars.
   private[homepage] def load(background: Boolean = false): Future[CodeMirrorEditor.CodeMirrorFacade] =
@@ -71,6 +75,20 @@ object CodeMirrorEditorLoading {
       }.failed.foreach(result.tryFailure)
       result.future.failed.foreach { _ => if (pending.now().contains(result.future)) pending.set(None) }
       result.future
+    }
+  }
+
+  private val pendingJava = Var(Option.empty[Future[js.Dynamic]])
+
+  def loadJava(): Future[js.Dynamic] = Future.unit.flatMap { _ =>
+    pendingJava.now().getOrElse {
+      val result = load().flatMap { _ =>
+        val libraries = dom.window.asInstanceOf[js.Dynamic].selectDynamic("EduSquirrelCodeMirrorLibraries")
+        libraries.loadJavaModule().asInstanceOf[js.Promise[js.Dynamic]].toFuture
+      }
+      pendingJava.set(Some(result))
+      result.failed.foreach { _ => if pendingJava.now().contains(result) then pendingJava.set(None) }
+      result
     }
   }
 }

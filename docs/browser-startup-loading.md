@@ -15,7 +15,7 @@ CodeMirror retains its editable textarea while its module is unavailable.
 `SnapRuntimeLoading` preloads the bundled dependencies in parallel, then executes
 scripts in their dependency order. A failed script stops later execution; a later
 consumer can retry. Successful scripts are reused. Preheating creates no editor,
-Morphic world or retained hidden GUI. `SnapRuntimeCompatibility` installs the
+Morphic world or retained hidden GUI. The Snap loader installs the
 serializer patch and native resource base path in Scala.js. `GraphRuntimeLoading` similarly
 shares JSXGraph's load, and graph renderers discard late completion after unmount.
 
@@ -28,6 +28,8 @@ All application-owned browser loaders live in
 `modules/client/src/main/scala/it/evadid/homepage/control/startup/`
 (package `it.evadid.homepage.control.startup`). This package owns asset resolution,
 configuration discovery, shared dependency readiness, retry and worker preheating.
+Keep each runtime domain in one file, including its private compatibility and
+optional-module helpers.
 Editors and execution clients retain ownership of mounted resources, request
 protocols and interpreter instances; independent environments do not share an
 interpreter.

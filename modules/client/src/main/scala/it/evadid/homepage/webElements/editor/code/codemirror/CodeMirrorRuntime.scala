@@ -110,7 +110,7 @@ private[code] object CodeMirrorRuntime {
 
     if isJava then {
       import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-      it.evadid.homepage.control.startup.CodeMirrorJavaLoading.load().map { module =>
+      it.evadid.homepage.control.startup.CodeMirrorEditorLoading.loadJava().map { module =>
         if !destroyed then view.dispatch(js.Dynamic.literal(
           effects = editorLanguage.reconfigure(module.asInstanceOf[JavaModule].java())))
       }.recover { case error =>

@@ -10,6 +10,6 @@ object GraphRuntimeLoading {
     !js.isUndefined(library) && library != null
   }
   def load(): Future[Unit] = if available then Future.unit
-    else BrowserScriptLoading.load(BrowserAssets.resource("programs/20261004JSXGraph/jsxgraphcore.js"))
+    else BrowserLoading.load(BrowserLoading.resource("programs/20261004JSXGraph/jsxgraphcore.js"))
   def preheat(): Unit = { load().failed.foreach(_ => ()); () }
 }

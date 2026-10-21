@@ -27,7 +27,7 @@ class SnapRuntimeCompatibilitySpec extends FunSuite {
   test("foreign application headers use the active serializer while preserving receiver, arguments and result") {
     val fixture = new Fixture
     val xml = js.Dynamic.literal(attributes = js.Dynamic.literal(app = "Snap! 9.0", name = "my program"))
-    SnapRuntimeCompatibility.patchSerializer(fixture.prototype)
+    SnapRuntimeLoading.patchSerializer(fixture.prototype)
     assert(fixture.invoke(xml) == fixture.result)
     assertEquals(xml.attributes.app.asInstanceOf[String], "TurtleStitch 3.0")
     assertEquals(xml.attributes.name.asInstanceOf[String], "my program")
@@ -37,14 +37,14 @@ class SnapRuntimeCompatibilitySpec extends FunSuite {
   test("matching application names retain the source version") {
     val fixture = new Fixture
     val xml = js.Dynamic.literal(attributes = js.Dynamic.literal(app = "TurtleStitch 1.0"))
-    SnapRuntimeCompatibility.patchSerializer(fixture.prototype)
+    SnapRuntimeLoading.patchSerializer(fixture.prototype)
     fixture.invoke(xml)
     assertEquals(xml.attributes.app.asInstanceOf[String], "TurtleStitch 1.0")
   }
 
   test("missing headers and missing XML are delegated unchanged") {
     val fixture = new Fixture
-    SnapRuntimeCompatibility.patchSerializer(fixture.prototype)
+    SnapRuntimeLoading.patchSerializer(fixture.prototype)
     List(js.Dynamic.literal(), js.Dynamic.literal(attributes = js.Dynamic.literal()),
       null.asInstanceOf[js.Dynamic], js.undefined.asInstanceOf[js.Dynamic]).foreach { xml =>
       assert(fixture.invoke(xml) == fixture.result)
@@ -54,7 +54,7 @@ class SnapRuntimeCompatibilitySpec extends FunSuite {
 
   test("empty source application names are not rewritten") {
     val fixture = new Fixture
-    SnapRuntimeCompatibility.patchSerializer(fixture.prototype)
+    SnapRuntimeLoading.patchSerializer(fixture.prototype)
     List("", " 9.0").foreach { app =>
       val xml = js.Dynamic.literal(attributes = js.Dynamic.literal(app = app))
       fixture.invoke(xml)
@@ -65,21 +65,21 @@ class SnapRuntimeCompatibilitySpec extends FunSuite {
   test("an empty target application does not rewrite source metadata") {
     val fixture = new Fixture("")
     val xml = js.Dynamic.literal(attributes = js.Dynamic.literal(app = "Snap! 9.0"))
-    SnapRuntimeCompatibility.patchSerializer(fixture.prototype)
+    SnapRuntimeLoading.patchSerializer(fixture.prototype)
     fixture.invoke(xml)
     assertEquals(xml.attributes.app.asInstanceOf[String], "Snap! 9.0")
   }
 
   test("repeated installation reuses the same wrapper and a fresh prototype is independently patched") {
     val fixture = new Fixture
-    SnapRuntimeCompatibility.patchSerializer(fixture.prototype)
+    SnapRuntimeLoading.patchSerializer(fixture.prototype)
     val wrapped = fixture.prototype.loadProjectModel
-    SnapRuntimeCompatibility.patchSerializer(fixture.prototype)
+    SnapRuntimeLoading.patchSerializer(fixture.prototype)
     assert(wrapped == fixture.prototype.loadProjectModel)
     fixture.invoke(js.Dynamic.literal())
     assertEquals(fixture.calls.now(), 1)
     val fresh = new Fixture
-    SnapRuntimeCompatibility.patchSerializer(fresh.prototype)
+    SnapRuntimeLoading.patchSerializer(fresh.prototype)
     fresh.invoke(js.Dynamic.literal())
     assertEquals(fresh.calls.now(), 1)
   }
