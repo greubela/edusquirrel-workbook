@@ -16,10 +16,11 @@ object SnapRuntimeLoading {
     "turtlestitchsrc/sketch.js", "turtlestitchsrc/video.js", "turtlestitchsrc/maps.js",
     "turtlestitchsrc/extensions.js", "turtlestitchsrc/xml.js", "turtlestitchsrc/store.js",
     "turtlestitchsrc/locale.js", "turtlestitchsrc/cloud.js", "turtlestitchsrc/api.js",
-    "turtlestitchsrc/embroider.js", "fullturtle.js")
+    "turtlestitchsrc/embroider.js")
 
   def load(): Future[Unit] = pending.now().getOrElse {
-    val result = BrowserScriptLoading.ordered(scripts.map(path => BrowserAssets.resource("programs/20260212TurtleStitch/" + path)))
+    SnapRuntimeCompatibility.prepareResources()
+    val result = BrowserScriptLoading.ordered(scripts.map(path => BrowserAssets.resource("programs/20260212TurtleStitch/" + path))).map(_ => SnapRuntimeCompatibility.install())
     pending.set(Some(result))
     result.failed.foreach { _ =>
       if pending.now().contains(result) then pending.set(None)

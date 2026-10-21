@@ -59,7 +59,7 @@ for(const prefix of ['/', '/edusquirrel-workbook/']) {
       await page.locator('dialog[open] .be-program-snap-renderer__canvas').waitFor();
       await page.locator('.fullscreen-close-button').click();
       releaseLibraries();releaseConfig();
-      await page.waitForFunction(()=>!!window.TurtleStitchPoC?._impl && !!window.EduSquirrelCodeMirror && !!window.JXG);
+      await page.waitForFunction(()=>typeof window.SnapSerializer?.prototype.eduSquirrelOriginalLoadProjectModel === 'function' && !!window.EduSquirrelCodeMirror && !!window.JXG);
       assert.equal(await page.locator('dialog[open]').count(),0,'late readiness cannot resurrect an unmounted editor');
       await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
       await page.waitForFunction(()=>{
@@ -68,6 +68,8 @@ for(const prefix of ['/', '/edusquirrel-workbook/']) {
           .getImageData(0,0,canvas.width,canvas.height).data).size>8;
       });
       assert.equal(requests.filter(url=>url.endsWith('/adjusted/adjustedMorphic.js')).length,1,'preload is reused by the script and editor');
+      assert(!requests.some(url=>url.endsWith('/fullturtle.js')),'the compatibility code is part of the Scala.js bundle');
+      assert.equal(await page.evaluate(()=>window.base_prog_dir),origin+prefix+'resources/programs/20260212TurtleStitch/');
       assert.deepEqual(errors,[]);
     } finally {releaseLibraries();releaseLanguages();releaseConfig();await browser.close();}
   });
@@ -100,7 +102,7 @@ test('a failed Snap dependency leaves the shell usable and a later editor open r
     await page.locator('.fullscreen-close-button').click();
     unavailable=false;
     await open.click();
-    await page.waitForFunction(()=>!!window.TurtleStitchPoC?._impl);
+    await page.waitForFunction(()=>typeof window.SnapSerializer?.prototype.eduSquirrelOriginalLoadProjectModel === 'function');
     await page.waitForFunction(()=>{
       const canvas=document.querySelector('dialog[open] canvas[aria-label="Block program editor"]');
       return canvas && canvas.width>1 && canvas.height>1 && new Set(canvas.getContext('2d')

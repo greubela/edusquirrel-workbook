@@ -14,9 +14,10 @@ CodeMirror retains its editable textarea while its module is unavailable.
 `SnapRuntimeLoading` preloads the bundled dependencies in parallel, then executes
 scripts in their dependency order. A failed script stops later execution; a later
 consumer can retry. Successful scripts are reused. Preheating creates no editor,
-Morphic world or retained hidden GUI. The compatibility bridge `fullturtle.js`
-contains no download scheduler. `GraphRuntimeLoading` similarly shares JSXGraph's
-load, and graph renderers discard late completion after unmount.
+Morphic world or retained hidden GUI. `SnapRuntimeCompatibility` installs the
+serializer patch and native resource base path in Scala.js; `fullturtle.js` and its
+unused duplicate editor/API have been removed. `GraphRuntimeLoading` similarly
+shares JSXGraph's load, and graph renderers discard late completion after unmount.
 
 Script loads have a 30-second deadline. CodeMirror keeps its existing 15-second
 module deadline. Failures remain local to consumers and never gate the shell.
