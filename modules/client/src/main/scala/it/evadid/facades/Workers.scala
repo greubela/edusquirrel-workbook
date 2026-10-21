@@ -38,14 +38,10 @@ object Workers {
   }
 
   def takeOrCreate(): dom.Worker = {
-    // Consume workers supplied by an older embedding bootstrap at the JS boundary.
-    val legacy = dom.window.asInstanceOf[js.Dynamic].selectDynamic("EDUSQUIRREL_BACKEND_WORKERS")
-    val supplied = if !js.isUndefined(legacy) && legacy != null && legacy.asInstanceOf[js.Array[dom.Worker]].nonEmpty then
-      Some(legacy.asInstanceOf[js.Array[dom.Worker]].shift()) else None
     val current = pool.now()
-    val worker = supplied.orElse(current.available.headOption).getOrElse(classic(ClientRuntimeConfig.workerUrl).createLoadedInstance())
+    val worker = current.available.headOption.getOrElse(classic(ClientRuntimeConfig.workerUrl).createLoadedInstance())
     pool.update(state => state.copy(
-      available = if supplied.isDefined then state.available else state.available.drop(1), claimed = state.claimed + 1))
+      available = state.available.drop(1), claimed = state.claimed + 1))
     worker
   }
 }

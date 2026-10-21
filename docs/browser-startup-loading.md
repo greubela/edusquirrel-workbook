@@ -1,8 +1,9 @@
 # Browser startup and optional runtime loading
 
-`homepage/js/app-loader.js` only finds the Scala.js bundle. It starts the request
-while HTML is still parsing, retains ordered bundle fallbacks, and leaves asset
-caching to HTTP headers. `MainApp` waits for DOM readiness before mounting.
+Workbook HTML loads `artifacts/newest/client.js` directly with a native module
+script marked `data-eva-client`. Downloads start while HTML is parsing; `MainApp`
+waits for DOM readiness before mounting. Asset paths derive from this script URL,
+so repository prefixes and local preview use the same Scala.js path resolution.
 
 `HomepageStartupLogic.preheat()` runs once at browser application startup, independently
 of EvaEditor. It starts CodeMirror loading and runtime configuration immediately;
@@ -24,9 +25,10 @@ and never gate the shell.
 
 ## Ownership and location
 
-External dependencies and typed handle factories live in
-`modules/client/src/main/scala/it/evadid/homepage/webElements/facades/`, with one
-file per dependency and shared contracts/helpers in `EvaExternalDependency.scala`.
+Native bindings live in `it.evadid.facades`, with one file per dependency.
+Browser-specific bindings are under `modules/client/src/main/scala/it/evadid/facades/`;
+shared contracts and worker-usable Pyodide bindings are in core JS's matching
+package. Keep compatibility patches and imports with their dependency.
 They implement `EvaExternalDependency[T]`: `preload()` shares code readiness
 without creating an editor; `createInstance()` waits for readiness and returns a
 fresh, consumer-owned handle. Synchronous renderers may use
@@ -40,11 +42,10 @@ creation and claims. Editors and execution clients own mounted
 resources, request protocols and cleanup; independent environments do not share
 interpreter instances.
 
-The small JavaScript bootstrap must run before Scala.js is available. The CodeMirror facade imports native ESM packages directly from Scala.js;
-its gutter integration also runs in Scala.js.
-Workers load dependencies inside their own execution scope, and core's generic
-worker transport cannot depend on client startup. Bundled libraries and standalone
-teaching programs retain their own loaders.
+CodeMirror imports native ESM packages directly from Scala.js; its gutter
+integration also runs in Scala.js. Python consumers use the Scala.js command
+worker, which initializes Pyodide through the shared facade in its own scope.
+Bundled libraries and standalone teaching programs retain their native code.
 
 Language maps, saved programs and image/scenario data use the existing content
 services rather than executable dependency loaders.
@@ -52,7 +53,7 @@ services rather than executable dependency loaders.
 ## Client configuration
 
 `ClientRuntimeConfig` fetches one known public client configuration location:
-`deployment/client/.env` relative to the site root derived from `app-loader.js`.
+`deployment/client/.env` relative to the site root derived from the client script URL.
 Failure or a short deadline selects defaults;
 configuration discovery runs alongside rendering and optional editor loading.
 The worker pool is preheated when settings arrive (or the deadline expires),
@@ -64,11 +65,8 @@ Runtime worker settings are `EDUSQUIRREL_BACKEND_MODULE_WORKERS` (default 1; 0
 suppresses warmup) and `EDUSQUIRREL_BACKEND_MODULE_WORKER_SCRIPT` (resolved relative
 to the page). A shared Scala.js pool supplies `HomepageDefaults.workerBackendExecutor`.
 
-Bundle selection necessarily happens before Scala.js runs. Custom bundle paths
-must therefore be set before `app-loader.js` through `EDUSQUIRREL_APP_PATHS` or
-`EDUSQUIRREL_CLIENT_CONFIG.EDUSQUIRREL_APP_SCRIPT_PRIMARY`, `_SECONDARY` and `_TERTIARY`.
-Setting those bundle paths in `.env` no longer selects the bootstrap. Explicit
-bundle queries such as `client.js?build=<hash>` are preserved; no timestamp is added.
+Custom deployments select the application bundle in the HTML script's `src`.
+Runtime configuration does not select or redirect the application bundle.
 
 ## Verification
 

@@ -28,6 +28,17 @@ private def startBrowserApp(): Unit = {
 }
 
 def demoStartupLogic(): Unit = {
+  val root = dom.document.documentElement
+  scala.util.Try(dom.window.localStorage.getItem("fd-theme")).toOption
+    .filter(value => value == "light" || value == "dark")
+    .foreach(value => root.setAttribute("data-theme", value))
+  Option(dom.document.getElementById("fdThemeToggle")).foreach(_.addEventListener("click", (_: dom.Event) => {
+    val next = if root.getAttribute("data-theme") == "light" then "dark" else "light"
+    dom.document.body.classList.add("fd-theme-switching")
+    root.setAttribute("data-theme", next)
+    scala.util.Try(dom.window.localStorage.setItem("fd-theme", next))
+    scala.scalajs.js.timers.setTimeout(380) { dom.document.body.classList.remove("fd-theme-switching") }
+  }))
   val domElement = FeedbackDemoElement.element()
   val container = dom.document.getElementById("feedbackDemoRoot")
   if (dom.document.readyState == "loading") renderOnDomContentLoaded(container, domElement)

@@ -9,18 +9,6 @@ object PyodideBackends {
 
   case class CallbackLibrary(moduleName: String, methodMap: Map[String, Vector[js.Any] => Unit])
   
-  final case class JsDataVariable(
-      varName: String,
-      jsTypeOf: String,
-      stringRepresentation: String
-  ) derives upickle.default.ReadWriter
-
-  trait SyncModuleBackend {
-    def moduleName: String
-
-    def handleModuleCall(callbackName: String, args: Seq[JsDataVariable]): js.Any
-  }
-
   final case class CallbackOp(
                                module: String,
                                method: String,

@@ -36,8 +36,8 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     window.close()
   }
 
-  private def withKeyboard(test: SnapCodeEditorImplDelegateToOriginal.KeyboardInput => Unit): Unit = {
-    val keyboard = dom.document.createElement("textarea").asInstanceOf[SnapCodeEditorImplDelegateToOriginal.KeyboardInput]
+  private def withKeyboard(test: it.evadid.facades.Snap.KeyboardInput => Unit): Unit = {
+    val keyboard = dom.document.createElement("textarea").asInstanceOf[it.evadid.facades.Snap.KeyboardInput]
     keyboard.id = "morphic_keyboard"
     dom.document.body.appendChild(keyboard)
     try test(keyboard)

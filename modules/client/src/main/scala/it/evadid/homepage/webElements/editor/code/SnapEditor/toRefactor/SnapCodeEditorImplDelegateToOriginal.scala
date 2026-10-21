@@ -1222,15 +1222,9 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   override def changeLanguage(humanLanguage: AppLanguage.HumanLanguage): Unit = ()
 
 object SnapCodeEditorImplDelegateToOriginal {
-  @js.native
-  private[SnapEditor] trait KeyboardInput extends dom.HTMLTextAreaElement {
-    var selectionDirection: String = js.native
-    def setSelectionRange(start: Int, end: Int, direction: String): Unit = js.native
-  }
-
   private[SnapEditor] def preserveKeyboardState[A](render: => A): A = {
     val restore = Option(dom.document.getElementById("morphic_keyboard")).map { element =>
-      val keyboard = element.asInstanceOf[KeyboardInput]
+      val keyboard = element.asInstanceOf[Snap.KeyboardInput]
       val value = keyboard.value
       val start = keyboard.selectionStart
       val end = keyboard.selectionEnd

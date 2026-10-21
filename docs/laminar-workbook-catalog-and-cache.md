@@ -42,8 +42,7 @@ sources. Cache serialization stays in the content layer.
 
 The cache cannot remove bundle download/evaluation, deployment-env discovery or
 other resource initialization costs. Do not use an old local timing measurement
-as a performance guarantee. The minimal `app-loader.js` starts the app bundle
-immediately. Scala.js owns configuration discovery and optional runtime preheating;
+as a performance guarantee. The native HTML module script starts the app bundle download immediately. Scala.js owns configuration discovery and optional runtime preheating;
 see [browser startup loading](browser-startup-loading.md).
 
 ## Verification

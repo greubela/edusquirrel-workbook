@@ -14,8 +14,7 @@ function fixture(t) {
     writeFileSync(join(root, file), content);
   }
   put("homepage/index.html", '<head></head><a href="../resources/programs/20260907MathworldMain/dist/index.html">MathWorld</a>');
-  put("homepage/feedback-demo/index.html", '<head><script src="../js/app-loader.js"></script></head>');
-  put("homepage/js/app-loader.js", readFileSync(new URL("../../homepage/js/app-loader.js", import.meta.url)));
+  put("homepage/feedback-demo/index.html", '<head><script type="module" data-eva-client src="../../artifacts/newest/client.js"></script></head>');
   put("homepage/tools/nested/index.html", "nested page");
   put("homepage/css/main.css", '@font-face { src: url("../../resources/font.woff2"); }');
   put("resources/font.woff2", "font");
@@ -32,7 +31,7 @@ test("Pages keeps source files unchanged and publishes only current browser arti
   put("_site/obsolete.js", "old output");
   const out = assemblePages(root);
   for (const file of ["homepage/index.html", "homepage/feedback-demo/index.html", "homepage/css/main.css",
-    "homepage/js/app-loader.js", "resources/programs/20260907MathworldMain/dist/index.html",
+    "resources/programs/20260907MathworldMain/dist/index.html",
     "artifacts/newest/client.js", "artifacts/newest/worker.js"]) {
     assert.deepEqual(readFileSync(join(out, file)), readFileSync(join(root, file)), file);
   }
@@ -59,28 +58,16 @@ test("old entry URLs redirect inside the project and preserve query and fragment
   }
 });
 
-test("the minimal bootstrap finds the client in the Pages layout without starting workers", async t => {
+test("native module script resolves to the published client under both site prefixes", t => {
   const { root } = fixture(t);
   const out = assemblePages(root);
+  const html = readFileSync(join(out, 'homepage/feedback-demo/index.html'), 'utf8');
+  const source = html.match(/data-eva-client src="([^"]+)"/)[1];
   for (const prefix of ["/", "/edusquirrel-workbook/"]) {
     const page = new URL(`https://example.test${prefix}homepage/feedback-demo/`);
-    const scripts = [], workers = [];
-    runInNewContext(readFileSync(join(out, "homepage/js/app-loader.js"), "utf8"), {
-      URL, setTimeout, console,
-      window: { location: page },
-      document: { readyState: "complete", getElementsByTagName: () => [], createElement: () => ({}),
-        head: { appendChild: script => scripts.push(script) } },
-      Worker: function (url) { workers.push(url); },
-      fetch: async () => ({ ok: false, status: 404 })
-    });
-    await new Promise(resolve => setImmediate(resolve));
-    assert.equal(scripts.length, 1);
-    assert.equal(workers.length, 0);
-    for (const value of [scripts[0].src]) {
-      const url = new URL(value, page);
-      assert.ok(url.pathname.startsWith(prefix + "artifacts/newest/"));
-      assert.ok(existsSync(join(out, url.pathname.slice(prefix.length))));
-    }
+    const url = new URL(source, page);
+    assert.equal(url.pathname, prefix + 'artifacts/newest/client.js');
+    assert.ok(existsSync(join(out, url.pathname.slice(prefix.length))));
     const font = new URL("../../resources/font.woff2", `https://example.test${prefix}homepage/css/main.css`);
     assert.equal(font.pathname, prefix + "resources/font.woff2");
   }

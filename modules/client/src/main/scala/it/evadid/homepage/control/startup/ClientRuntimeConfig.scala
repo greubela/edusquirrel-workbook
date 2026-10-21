@@ -36,7 +36,7 @@ object ClientRuntimeConfig {
     val explicit = supplied
     if explicit.nonEmpty then result.success(defaults ++ explicit)
     else {
-      val url = new dom.URL("../../deployment/client/.env", BrowserLoading.bootstrapUrl).href
+      val url = new dom.URL("deployment/client/.env", BrowserLoading.siteRoot).href
       val timeout = setTimeout(1500) { result.trySuccess(defaults) }
       Try(dom.fetch(url).toFuture.flatMap(response =>
         if response.ok then response.text().toFuture.map(text => defaults ++ parseEnv(text))

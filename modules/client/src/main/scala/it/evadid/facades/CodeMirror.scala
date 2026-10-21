@@ -237,7 +237,6 @@ object CodeMirror {
       val decorations: DecorationsFacet = js.native
       val editorAttributes: Facet[js.Object] = js.native
       val updateListener: Facet[js.Function1[ViewUpdate, Unit]] = js.native
-      def baseTheme(config: js.Object): Extension = js.native
     }
 
     @js.native trait DecorationsFacet extends js.Object {

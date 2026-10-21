@@ -162,7 +162,7 @@ node tools/dev/assemble-pages.mjs
 
 Both assembly scripts replace `_site/`. Generated outputs should not be edited as source.
 
-LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js). The deployed configuration points to the existing PyTutorAI Cloudflare worker. For a separate deployment or local development, see the [Cloudflare proxy guide](tools/cloudflare-proxy/README.md) and [FastAPI proxy guide](tools/openai-proxy/README.md). Real email transport is not used by the mailbox simulator.
+The feedback demo configures the LLM proxy through its `eva-llm-proxy` HTML meta tag. The deployed configuration points to the existing PyTutorAI Cloudflare worker. For a separate deployment or local development, see the [Cloudflare proxy guide](tools/cloudflare-proxy/README.md) and [FastAPI proxy guide](tools/openai-proxy/README.md). Real email transport is not used by the mailbox simulator.
 
 ## Documentation
 

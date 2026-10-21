@@ -53,12 +53,12 @@ object BrowserLoading {
     urls.foldLeft(Future.unit)((ready, url) => ready.flatMap(_ => load(url)))
   }
 
-  def bootstrapUrl: String = {
-    val scripts = dom.document.querySelectorAll("script[src]")
-    (0 until scripts.length).iterator.map(i => scripts(i).asInstanceOf[dom.html.Script].src)
-      .find(_.takeWhile(_ != '?').endsWith("/app-loader.js"))
-      .getOrElse(new dom.URL("../js/app-loader.js", dom.document.baseURI).href)
+  def siteRoot: String = {
+    val script = Option(dom.document.querySelector("script[data-eva-client]"))
+      .map(_.asInstanceOf[dom.html.Script].src)
+      .getOrElse(new dom.URL("../../artifacts/newest/client.js", dom.document.baseURI).href)
+    new dom.URL("../../", script).href
   }
-  def resource(path: String): String = new dom.URL("../../resources/" + path, bootstrapUrl).href
-  def worker: String = new dom.URL("../../artifacts/newest/worker.js", bootstrapUrl).href
+  def resource(path: String): String = new dom.URL("resources/" + path, siteRoot).href
+  def worker: String = new dom.URL("artifacts/newest/worker.js", siteRoot).href
 }

@@ -81,11 +81,11 @@ Expected response:
 
 ### 7. Set the frontend URL
 
-Edit [`homepage/js/config.js`](../../homepage/js/config.js):
+Set the `eva-llm-proxy` meta tag in
+[`homepage/feedback-demo/index.html`](../../homepage/feedback-demo/index.html):
 
-```js
-window.LLM_PROXY_URL =
-  "https://edusquirrel-proxy.<your-subdomain>.workers.dev/api/llm/complete";
+```html
+<meta name="eva-llm-proxy" content="https://edusquirrel-proxy.<your-subdomain>.workers.dev/api/llm/complete">
 ```
 
 After commit and push, GitHub Pages picks up the new URL on the next deploy.

@@ -53,7 +53,7 @@ test('materials, six illustrations and exact image data resolve without standalo
  for(let i=0;i<6;i++)assert(fs.statSync(path.join(root,'resources',map['jpegImage'+i])).size>1000);
  const embedded=read(base+'img/katze-data.js').match(/base64,([^"']+)/)[1];
  assert.deepEqual(fs.readFileSync(path.join(root,'resources/workbookresources/compression/source-cat.jpg')),Buffer.from(embedded,'base64'));
- assert(read('homepage/compressionWorkbook/index.html').includes('../js/app-loader.js'));
+ assert(read('homepage/compressionWorkbook/index.html').includes('../../artifacts/newest/client.js'));
  const catalog=new JSDOM(read('homepage/index.html')).window.document;
  assert(catalog.querySelector('a[href="./workbooks/"]'), 'digital editions remain reachable through the shared catalogue');
  assert(catalog.querySelector('a[href="../resources/programs/20260907Datenkompression/"]'));

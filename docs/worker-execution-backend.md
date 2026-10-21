@@ -60,8 +60,7 @@ infinite Python loop. Use separate clients/workers to run Python jobs in paralle
 
 The editor's `PyodideTurtleCommandRunner` now uses this command protocol in a
 dedicated worker, warms the interpreter during its startup deadline, and replays
-the returned turtle callbacks. The legacy Pyodide worker APIs remain available
-for their existing callers. DOM-dependent tasks stay on the client.
+the returned turtle callbacks. Feedback and Java turtle consumers use the same command protocol. DOM-dependent tasks stay on the client.
 To add a job, declare its typed factory in `WorkerCommands`, register its handler
 in `WorkerCommandHandler`, and include its name in `supportedCommands`.
 
