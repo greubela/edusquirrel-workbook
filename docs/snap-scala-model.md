@@ -1,8 +1,12 @@
 # Full Snap project model in shared core
 
-`ProgrammingStateSnapScalaModel` represents the complete **saved Snap project**, independently of the smaller executable Turtle subset. It lives alongside `ProgrammingStateSnapXml` in [ProgrammingState.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/ProgrammingState.scala). Existing XML states and historical serialization tags remain readable.
+`ProgrammingStateSnapScalaModel` represents the complete **saved Snap project**, independently of the smaller executable Turtle subset. It lives alongside `ProgrammingStateSnapXml` in [ProgrammingState.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/ProgrammingState.scala). Existing workbooks can continue using the XML representation.
 
-[SnapScalaModel.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapScalaModel.scala) contains immutable, serializable classes for projects, scenes, stages, sprites, scripts, primitive/custom blocks and definitions, variables, literals, lists and references, contexts, costumes, sounds, watchers, inheritance, nesting, comments and the standard serializer containers. These classes model the bundled Snap and TurtleStitch `store.js` vocabulary. This is a persistence model; it does not instantiate Morphic objects, execute scripts or expand cyclic references.
+All project node types live in
+[SnapScalaModel.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapScalaModel.scala).
+They model the bundled Snap/TurtleStitch serializer vocabulary as immutable data.
+This is a persistence model: it does not create Morphic objects, execute scripts
+or expand cyclic references.
 
 Each Snap node has one authoritative `Element` containing ordered attributes and child nodes. Its typed accessors expose numbers, booleans, geometry, scripts and other domain values. Optional accessors distinguish absent values from explicit values; they do not invent defaults or overwrite unrecognized attribute values. `Extension` retains unknown/version-specific elements and dynamic code-mapping tags. New native Snap fields therefore survive before Scala-specific accessors are added.
 
@@ -37,7 +41,9 @@ val savedXml: ProgrammingStateSnapXml = changed.toSnapXml
 
 ## Round-trip contract
 
-XML → typed model → XML preserves scripts and arguments, scene/sprite ordering and selection, custom definition settings, watcher and canvas positions, variables and list structures, reference IDs, contexts, authored and generated images, sounds, metadata, comments, mixed text/CDATA, unknown tags/attributes and legacy floating data. Numeric and predefined XML entities expose decoded values without recursively decoding escaped text. Atomic-list CSV remains content rather than being interpreted or rewritten.
+XML → typed model → XML preserves project content, ordering, references, assets
+and unknown metadata. Numeric and predefined XML entities expose decoded values
+without recursively decoding escaped text. Opaque native data remains intact.
 
 Formatting identity is **not a required contract**. The current reader also retains source spelling and whitespace, but callers should depend on preservation of content and metadata. Whitespace inside text, literals and CSV can carry meaning and must remain intact.
 

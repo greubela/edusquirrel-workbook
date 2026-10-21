@@ -8,25 +8,18 @@ The Python front-end is split into two orchestrators:
 
 Both are configured through `PythonFrontendConfig`, which centralizes defaults such as indent width and known symbol structures.
 
-## Main Data Flow
+## Data flow and location
 
-1. `PythonParser.parsePythonWithDetails(source)` accepts raw source and invokes its injected normalizer.
-2. `PythonNormalizer.normalizePython(source)` uses `runPipeline(source)` and `PythonNormalizationPipelineRunner.run(source)`.
-3. Normalization stages:
-   - normalize line endings / detab
-   - extract raw lines
-   - build statement tree
-   - render normalized output
-4. The parser converts the normalized output into VM expressions and returns definitions/symbol information in `CodeParsingResult`. Callers do not need to normalize the source a second time.
+`PythonParser.parsePythonWithDetails(source)` normalizes raw source before
+building VM expressions and returning definitions/symbol information. Callers
+should not normalize it a second time. Normalization handles line endings and
+indentation, builds a statement tree, and renders canonical source.
 
-Source is under [it/evadid/vm/parsing/python](../modules/core/shared/src/main/scala/it/evadid/vm/parsing/python/); typed normalization stages live in its `normalization/` subdirectory. Tests run on both core JVM and Scala.js, including `PythonNormalizationStagesSpec` and `PythonParserSpec`.
-
-## Key Modules
-
-- `PythonFrontendConfig`: shared configuration defaults for parser + normalizer.
-- `PythonNormalizationPipeline`: typed stage interfaces and default runner implementation.
-- `PythonInlineCommentHelper`: shared inline-comment splitting logic.
-- `PythonBlockWalker`: shared indentation-aware walker utilities used by parser and normalizer tree-building.
+All front-end implementations live under
+[it/evadid/vm/parsing/python](../modules/core/shared/src/main/scala/it/evadid/vm/parsing/python/),
+with typed stages in `normalization/`. Parser and normalizer share configuration
+and lexical/tree utilities so their treatment of Python stays consistent. Tests
+run on both JVM and Scala.js.
 
 ## API Boundary Rules
 

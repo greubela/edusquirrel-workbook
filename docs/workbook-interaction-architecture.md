@@ -106,14 +106,10 @@ Shared core supplies generic grading/scaffolding contracts. An interaction has a
 new typed integrations; additional data belongs in `GA`/`SA`, not a subclass of
 `GradedState`.
 
-A grader's `gradeStateSafe(state, forceGrading)` returns
-`Future[GradingResult[T, GA]]`. Status is `Correct`, `PartiallyCorrect`, `Incorrect`,
-`TestError` or `NotExecuted`. Importance is `REQUIRED_TEST`, `OPTIONAL_TEST` or
-`HIDDEN_TEST`; `FeedbackEntity` identifies the producer. `RUN_ALWAYS` executes on
-a grading request; `RUN_ONLY_MANUALLY` returns `NotExecuted` unless forced.
-A result includes the exact graded value, optional localized feedback/additional
-data and its timestamp. One grader is one reported result; make independent tests
-separate graders if they require separate feedback.
+A grader returns an asynchronous result tied to the exact source value, with
+status, localized feedback and optional typed additional data. Manual-only graders
+run only when explicitly forced. Keep independent checks in separate graders
+when they need separate feedback.
 
 `InteractionVariable.startGrading(syncControl, forceGrading)` collects results into
 `GradedState[T, GA](state, testsWithResults)` and stores them by value in history.
@@ -203,27 +199,15 @@ client, and actual persistence/fullscreen/invalid-draft behavior in browser chec
 The [test guide](core-package-unit-tests.md) and
 [serialization inventory](testing-and-serialization-audit.md) provide current commands.
 
-### CodeMirror configuration and asynchronous loading
+### CodeMirror integration
 
-`CodeMirrorEditor` accepts `config: Var[CodeMirrorEditorConfig]`. The regular
-configuration omits the control-flow gutter; `showFlowchartGutter = true` enables
-it for supported Python programs. `EvaEditorConfig.codeMirrorConfig` supplies the
-settings to the standalone tab adapters. Java keeps its regular line-number
-gutter. The former `CodeMirrorEditorFlowchart` wrapper is no longer needed.
-Eva's generic navigation and downstream panel boundaries are described in
-[Eva editor architecture](eva-editor-programming-state.md).
-
-`startup.CodeMirrorEditorLoading` coordinates one shared module load in Scala.js. It
-resolves the module beside `app-loader.js`, including deployments under a path
-prefix, and shares one asynchronous module script between startup warmup and mounted editors.
-Entry pages do not eagerly import CodeMirror: CDN latency does not delay
-`DOMContentLoaded` or workbook startup. The textarea remains bound to the document
-while loading, and enhancement uses the latest text and diagnostics. Network
-failure or a 15-second timeout retains the textarea. Mount ownership checks
-prevent a late response from creating an editor in an obsolete language tab.
-Module loading and editor creation yield through a browser timer; no other
-workbook action awaits them. DOM construction necessarily
-runs on the browser thread, rather than in a Web Worker.
+`CodeMirrorEditor` receives reactive configuration; Eva supplies it through its
+editor factories. Optional flowchart analysis belongs to the mounted editor.
+The shared startup loader preheats the module independently of editor creation.
+While loading or after failure, the textarea stays bound to the current document.
+Mount ownership prevents late readiness from creating an obsolete editor.
+See [startup loading](browser-startup-loading.md) for dependency coordination and
+[Eva editor architecture](eva-editor-programming-state.md) for lifecycle rules.
 
 Run `npm run test:workbooks -- codemirror` for delayed/failed imports, stale mounts,
 shared loading, text preservation, and gutter alignment. The browser runner bundles
