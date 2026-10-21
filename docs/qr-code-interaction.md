@@ -29,24 +29,18 @@ Its requirement results are not automatically attached to `gradingElements`; see
 ## Shared model
 
 The model under `it.evadid.workbook.model.qr` implements ISO/IEC 18004 QR Model 2
-byte mode, versions 1–40 and correction levels L/M/Q/H, without a QR library at
-runtime. It builds byte segments, terminators and padding; Reed–Solomon parity
-in GF(256) with polynomial 0x11D; block interleaving; function patterns; BCH format
-and version information; zigzag placement; all eight masks and penalty selection.
-Ties choose the lowest mask number. Numeric/alphanumeric/Kanji compression,
-Micro QR and structured append are outside this initial byte-mode model.
+byte mode, versions 1–40 and correction levels L/M/Q/H, without a runtime QR
+library. Other compression modes, Micro QR and structured append are outside
+this model.
 
 `QrCode.content` returns a defensive copy of the payload bytes. Value equality
 and hashing include the bytes and resolved configuration. Persistence stores the
 payload and configuration, not redundant module matrices. Serialization rejects
 invalid configurations and oversized payloads.
 
-`QrCode.encode(bytes)` chooses the smallest fitting version and best mask.
-Optional version/mask arguments force those choices. `QrCode(bytes, config)`
-reconstructs an exact symbol; `withMask`, `maskPenalties`, `withBestMask` and
-`modules` support future explanatory exercises. Coordinates are `modules(y)(x)`.
-`QrCode.fromText` encodes UTF-8 and inserts ECI assignment 26. Byte requirements
-count the payload only, excluding ECI, headers, padding and correction bytes.
+Encoding can select version/mask automatically or preserve an explicit
+configuration. Text uses UTF-8 with an ECI marker; byte requirements count the
+payload, excluding encoding headers and correction data.
 
 The editor's version/mask selectors default to automatic selection. Feedback
 always shows the resolved version and mask. Oversized drafts show an error and
@@ -82,18 +76,8 @@ interleaving, including bytes shared by header and payload. Format information
 stores the selected mask and error-correction level; the mask is applied to all
 non-function modules rather than occupying a separate rectangular area.
 
-`colors.css` defines `--color-qr-finder`, `--color-qr-timing`,
-`--color-qr-alignment`, `--color-qr-format`, `--color-qr-version`,
-`--color-qr-fixed-dark`, `--color-qr-encoding`, `--color-qr-data`,
-`--color-qr-error-correction` and `--color-qr-remainder`. These reuse the existing
-palette and style both SVG paths and legend swatches. Light modules, separators
-and the four-module quiet zone retain `--color-qr-light`. Set all region colors
-to `var(--color-qr-dark)` for a monochrome display. Custom colors should retain
-high contrast with the light modules to preserve scanning.
-
-Color coverage is checked for every version 1–40: shared tests cover all correction
-levels and both header modes, and renderer tests ensure colored paths partition
-the dark modules exactly. The browser test decodes every version with the default
-palette (cycling all correction levels and masks), then verifies every region's
-CSS override and matching legend swatch, including alignment/version information
-when those regions exist.
+Region colors are CSS tokens in `homepage/css/generic/colors.css`, shared by
+SVG paths and legend swatches. Override them there; use the common dark token
+for a monochrome display. Keep high contrast against light modules and preserve
+the quiet zone so codes remain scannable. Tests verify that region styling covers
+the symbol and that the rendered result still decodes.

@@ -24,7 +24,10 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 | `_site/`, `dist/` | Generated site/export output; ignored by Git |
 | `tmp/` | Workbook migration references (`bitcoin/`, `evacuation/`, `image-recognition/`, `phishing/`) and ignored local scratch files (`work/`) |
 
-Keep temporary workbook extracts and development captures under `tmp/`, grouped by their actual subject. The reference copies are retained for migration work; duplicate extracts have been consolidated here. Image-recognition PDFs belong in `tmp/image-recognition/`; the evacuation handoff plan belongs in `tmp/evacuation/`. `tmp/work/` is ignored by Git: use subject subdirectories such as `tmp/work/evacuation/`, `tmp/work/image-recognition/` and `tmp/work/compression/` for scratch files, with `analysis/` for extracted research material. Cross-workbook checks belong in `tmp/work/integration/`, reusable interaction experiments in `tmp/work/shared-interactions/`, and temporary tool dependencies in `tmp/work/tooling/`. Published teaching materials and classic PDF/ZIP downloads remain under `resources/` and are independent of these reference copies. Neither site assembly includes `tmp/`.
+Keep migration references in subject directories under `tmp/`. Put disposable
+extracts, logs and captures in ignored `tmp/work/<subject>/`; use `integration/`
+for cross-workbook checks and `tooling/` for temporary dependencies. Published
+teaching assets remain in `resources/`. Site assembly excludes `tmp/`.
 
 The [browser startup loading guide](docs/browser-startup-loading.md) describes loading ownership in `it.evadid.homepage.control.startup` and documents nonblocking rendering, runtime preheating and client configuration.
 
@@ -58,7 +61,12 @@ The root sbt project aggregates client, server and worker. Client and worker dep
 
 Start with [MainApp.scala](modules/client/src/main/scala/MainApp.scala) and [HomepageStartupLogic.scala](modules/client/src/main/scala/it/evadid/homepage/control/startup/HomepageStartupLogic.scala) for page mounting.
 
-Shared workbook abstractions live in [WorkbookElement.scala](modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala): `WorkbookElement`, `WorkbookStructureElement[T]` and `WorkbookInteractionElementFull[T, GA, SA]`. The interaction owns typed history through `InteractionVariable[T, GA, SA]`, a default value, content codec and grading/scaffolding definitions. `WorkbookInteractionElement[T]` is the compatibility alias with `Any` additional payloads. The structure models are [Workbook](modules/core/shared/src/main/scala/it/evadid/workbook/elements/structureElements/Workbook.scala), [WorkbookSection](modules/core/shared/src/main/scala/it/evadid/workbook/elements/structureElements/WorkbookSection.scala) and [ExerciseContainer](modules/core/shared/src/main/scala/it/evadid/workbook/elements/structureElements/ExerciseContainer.scala).
+Shared workbook abstractions live in
+[WorkbookElement.scala](modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala).
+Their implementations are under `modules/core/shared/src/main/scala/it/evadid/workbook/elements/`.
+Interactions own typed saved state, codecs and grading/scaffolding definitions;
+structure elements compose them into workbooks. See the
+[interaction architecture](docs/workbook-interaction-architecture.md) for the contracts.
 
 [HtmlRenderFactory.scala](modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/HtmlRenderFactory.scala) maps shared elements to browser renderers. [CreateTestWorkbook.scala](modules/client/src/main/scala/it/evadid/homepage/workbook/content/test/CreateTestWorkbook.scala) provides small authoring examples, including QR and email interactions. Factories are organized under `content/`, `content/test/` and `content/wip/`; a package name alone does not establish which components are implemented. Runtime context and language/storage controls live under `modules/client/src/main/scala/it/evadid/homepage/control/`.
 
@@ -158,6 +166,10 @@ LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js).
 
 ## Documentation
 
+Keep guides focused on architectural decisions, ownership, package locations and
+important behavior. Include examples where they help authors use a contract;
+avoid exhaustive class/method lists and historical test-run logs.
+
 - [Digital workbook migration](docs/digital-workbook-migration.md): analysis of linked PDF/ZIP exercises, missing editors and the Blockchain, image-recognition and Phishing adaptations.
 - [Interaction architecture](docs/workbook-interaction-architecture.md): module and editor boundaries, element types, grading/scaffolding, localization and dependency loading.
 - [State and serialization](docs/state-and-serialization.md): source-of-truth bindings, update importance, history and default uPickle codecs with examples.
@@ -170,9 +182,9 @@ LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js).
 - [Eva programming state](docs/eva-editor-programming-state.md) and [Snap editor](docs/snap-editor.md): representations and editor lifecycle.
 - [Snap command execution service](docs/snap-turtle-command-execution-overview.md): implemented snapshot extraction, Pyodide boundary and editor integration.
 - [Python parsing](docs/python-parsing-architecture.md): normalization and parser responsibilities.
-- [Core test audit](docs/core-package-unit-tests.md): representative behavioral suites and current verification commands.
+- [Core test audit](docs/core-package-unit-tests.md): test locations, behavioral expectations and verification commands.
 - [Testing and serialization audit](docs/testing-and-serialization-audit.md): regression coverage, default codecs and decisions about previously skipped/manual tests.
-- [Workbook interaction roadmap](WORKBOOK_INTERACTIONS.md): teaching-resource inventory and proposed future exercises.
+- [Workbook interaction roadmap](WORKBOOK_INTERACTIONS.md): reusable capabilities and edition priorities.
 
 Markdown under bundled third-party libraries documents those distributions. Imported teaching projects retain their conceptual and historical documents; their upstream setup/team instructions do not describe the EduSquirrel repository workflow. MathWorld's README and deployment guide explain its integration here.
 

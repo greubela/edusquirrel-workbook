@@ -6,9 +6,8 @@ selected, including before login. A native card navigates to its registered entr
 page; the selected workbook uses the existing login/local-session flow. The user
 menu offers “All digital workbooks” to return to the catalogue.
 
-`DigitalWorkbookCatalog` currently has nine native editions and five standalone
-or external digital offerings. It excludes PDF/ZIP-only materials and developer
-demos. Native entries provide both the page/container and workbook factory, so
+`DigitalWorkbookCatalog` registers native and standalone/external digital
+editions. It excludes PDF/ZIP-only materials and developer demos. Native entries provide both the page/container and workbook factory, so
 startup and the public list use the same registry. The native compression workbook
 and standalone lab are separate entries.
 
@@ -37,10 +36,9 @@ restoration with `CONTINUE_IMMEDIATELY`. Labels update reactively as content arr
    undo successful cached startup. Immediate and full-load strategies keep their
    separate semantics.
 
-Triple encoding builds lookup indices once; decoding uses indexed vectors and
-precomputed language tables. Storage encodes once per write. IndexedDB connections
-close after transactions/version changes, and failed/aborted/blocked operations
-fail their futures. No schema migration is required by this cache path.
+IndexedDB connections are transaction-owned and close on completion or version
+changes. Storage failures propagate through futures so startup can fall back to
+sources. Cache serialization stays in the content layer.
 
 The cache cannot remove bundle download/evaluation, deployment-env discovery or
 other resource initialization costs. Do not use an old local timing measurement
@@ -50,12 +48,10 @@ see [browser startup loading](browser-startup-loading.md).
 
 ## Verification
 
-The catalogue browser test holds remote refresh on an unresolved gate and asserts
-that cached UI becomes usable first. It checks one keyed read, no cursor scan/no
-rewrite, an unrelated large record, deterministic translation replacement,
-responsive layout, language switching, navigation and answer persistence. It also
-covers corrupt cache and denied IndexedDB. External artwork is fulfilled locally,
-so these tests do not verify availability of third-party sites.
+Browser tests deliberately stall refresh to verify that cached UI becomes usable
+first. They also cover corrupt/unavailable IndexedDB, translation replacement,
+navigation and saved answers. Local artwork fixtures do not establish availability
+of external sites.
 
 ```sh
 sbt 'client/testOnly *LanguageCacheStartupSpec *DigitalWorkbookCatalogSpec *WorkbookContentStorageSpec'

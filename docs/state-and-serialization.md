@@ -115,12 +115,10 @@ scaffolding results keyed by answer. `currentValue` is derived from history;
 `defaultValue` initializes it. Update the bound state instead of writing directly
 to IndexedDB or the remote database.
 
-Use `createBoundStateWithUpdateLogic` when relevance depends on the edit. The text
-renderer delegates to `TextInteraction.decideTextareaUpdateImportance`: currently
-an unchanged value is `TEMPORARY`, newline/tab/sentence punctuation is `MAJOR`,
-spaces and other delimiters are `MINOR`, and an edit more than ten seconds after
-the previous event is `MAJOR`. This is not a one-second debounce or a rule that
-every space is a major event.
+Use `createBoundStateWithUpdateLogic` when relevance depends on the edit, such as
+a text renderer distinguishing intermediate typing from a completed sentence.
+Importance expresses history significance, not a debounce interval or a guarantee
+of immediate storage.
 
 | Importance | History role |
 | --- | --- |
