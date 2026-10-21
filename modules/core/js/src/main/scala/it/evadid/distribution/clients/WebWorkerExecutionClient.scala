@@ -2,6 +2,7 @@ package it.evadid.distribution.clients
 
 import it.evadid.distribution.command.{ExecutionCommand, SerializedException}
 import it.evadid.distribution.commandTypes.WorkerCommands
+import it.evadid.facades.Workers
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.distribution.formats.WorkerExecutionProtocol.{Request, Response}
 import it.evadid.util.logging.Logger
@@ -83,7 +84,7 @@ object WebWorkerExecutionClient {
   }
 
   def apply(scriptPath: String, timeoutMilliseconds: Double = 120000): WebWorkerExecutionClient =
-    fromWorker(new dom.Worker(scriptPath), timeoutMilliseconds)
+    fromWorker(Workers.classic(scriptPath).createLoadedInstance(), timeoutMilliseconds)
 
   def fromWorker(worker: dom.Worker, timeoutMilliseconds: Double = 120000): WebWorkerExecutionClient =
     new WebWorkerExecutionClient(new DomWorkerTransport(worker), WorkerCommands.supportedCommands, timeoutMilliseconds)

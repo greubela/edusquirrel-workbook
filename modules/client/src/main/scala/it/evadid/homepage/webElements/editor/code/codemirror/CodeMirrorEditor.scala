@@ -24,7 +24,8 @@ case class CodeMirrorEditor(
     underlyingVar: Var[String],
     language: ProgrammingLanguage,
     config: Var[CodeMirrorEditorConfig],
-    diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil)
+    diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil),
+    createEditor: EditorConfig => scala.concurrent.Future[CodeMirrorHandle] = settings => CodeMirror.editor(settings).createInstance()
 ) extends SimpleWebEditor[String, CodeMirrorEditorConfig] {
   import CodeMirrorEditor.*
 
@@ -41,14 +42,14 @@ case class CodeMirrorEditor(
           value <-- underlyingVar.signal, onInput.mapToValue --> underlyingVar.writer),
         onMountCallback { ctx =>
           val lifetime = new Subscription(ctx.owner, () => ())
-          CodeMirror.preload().flatMap(_ => CodeMirror.inBackground(())).foreach { _ =>
+          CodeMirror.inBackground(()).foreach { _ =>
             if !lifetime.isKilled && ctx.thisNode.ref.isConnected then {
               val analysis = Option.when(showFlowchart && language == Python)(
                 new CodeMirrorFlowchartGutter.Analysis(new CodeMirrorFlowchartGutter.Cache))
               // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
-              val created = CodeMirror.editor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
+              val created = createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
                 value => if !lifetime.isKilled && underlyingVar.now() != value then underlyingVar.set(value),
-                languageToJs(language), analysis.map(_.chartForDoc))).createInstance()
+                languageToJs(language), analysis.map(_.chartForDoc)))
               created.foreach { native =>
                 if lifetime.isKilled || !ctx.thisNode.ref.isConnected then {
                   native.destroy()

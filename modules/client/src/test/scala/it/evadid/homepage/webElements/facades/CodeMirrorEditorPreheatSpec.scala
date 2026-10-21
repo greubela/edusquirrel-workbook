@@ -10,16 +10,17 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class CodeMirrorEditorPreheatSpec extends EditorDomSuite {
   test("warmup does not create editors and an available library is reused") {
-    val creations = Var(0)
-    val create: js.Function0[Unit] = () => creations.update(_ + 1)
-    org.scalajs.dom.window.asInstanceOf[js.Dynamic].updateDynamic("EduSquirrelCodeMirror")(
-      js.Dynamic.literal(createEditor = create))
+    val global = js.Dynamic.global.globalThis
+    val previous = global.selectDynamic("EduSquirrelCodeMirrorLibraries")
+    global.updateDynamic("EduSquirrelCodeMirrorLibraries")(js.Dynamic.literal())
     CodeMirror.preload()
     CodeMirror.preload()
     val ready = Promise[Unit]()
     setTimeout(300) { ready.success(()) }
     ready.future.flatMap(_ => CodeMirror.preload()).map { _ =>
-      assertEquals(creations.now(), 0)
+      assertEquals(org.scalajs.dom.document.querySelectorAll(".cm-editor").length, 0)
+    }.andThen { case _ =>
+      global.updateDynamic("EduSquirrelCodeMirrorLibraries")(previous)
     }
   }
 }

@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.facades
 
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.*
+import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.distribution.formats.WorkerExecutionProtocol.{Request, Response}
 import it.evadid.distribution.formats.ExecutionClientResponse
@@ -14,11 +14,11 @@ import scala.scalajs.js.timers.setTimeout
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import java.time.LocalDateTime
 import upickle.default.*
-import todomove.`export`.workers.PyodideWorkerClient
 
 class PythonWorkerProtocolSpec extends EditorDomSuite {
   private val sent = Var(Option.empty[RunPythonRequest])
   private val failing = Var(false)
+  private val value = Var[ujson.Value](ujson.Null)
   private val terminated = Var(false)
 
   private class FakeWorker(url: String) extends js.Object {
@@ -37,7 +37,7 @@ class PythonWorkerProtocolSpec extends EditorDomSuite {
       val timestamps = ExecutionClientResponseTimestamps(now, now, now)
       val response = if failing.now() then ExecutionClientResponse.forError(timestamps, SerializedException("bad Python"),
         request.command, AdditionalLoggingOutput("before error", "traceback"))
-      else ExecutionClientResponse.forValue(timestamps, RunPythonResult(ujson.Null, "output", "",
+      else ExecutionClientResponse.forValue(timestamps, RunPythonResult(value.now(), "output", "",
         List(PythonCallback("turtle", "forward", List(ujson.Num(12), ujson.Str("label"))))), request.command)
       setTimeout(0) {
         message.now().get(js.Dynamic.literal(data = write(Response(request.requestId, response))).asInstanceOf[dom.MessageEvent])
@@ -45,7 +45,7 @@ class PythonWorkerProtocolSpec extends EditorDomSuite {
     }
   }
 
-  private def workerTest[A](failure: Boolean)(run: PyodideWorkerClient => scala.concurrent.Future[A]): scala.concurrent.Future[A] = {
+  private def workerTest[A](failure: Boolean)(run: PythonExecutionClient => scala.concurrent.Future[A]): scala.concurrent.Future[A] = {
     val global = js.Dynamic.global.globalThis
     val previous = global.selectDynamic("Worker")
     failing.set(failure); terminated.set(false); sent.set(None)
@@ -54,9 +54,9 @@ class PythonWorkerProtocolSpec extends EditorDomSuite {
     script.setAttribute("src", "https://example.test/artifacts/newest/client.js")
     dom.document.head.appendChild(script)
     global.updateDynamic("Worker")(js.constructorOf[FakeWorker])
-    val client = new PyodideWorkerClient()
+    val client = PythonExecutionClient.worker("https://example.test/worker.js")
     run(client).andThen { case _ =>
-      client.terminate()
+      client.close()
       assert(terminated.now())
       global.updateDynamic("Worker")(previous)
       script.remove()
@@ -65,23 +65,44 @@ class PythonWorkerProtocolSpec extends EditorDomSuite {
 
   test("Python consumers use typed worker commands and preserve flags, context and callback arguments") {
     workerTest(false) { client =>
-      client.addCallbacks("turtle", Seq("forward")).flatMap(_ => client.run("forward(12)",
-        PythonRunConfig(context = js.Dictionary("answer" -> 42), resetGlobals = false, captureStderr = false))).map { report =>
+      client.run(RunPythonRequest("forward(12)", callbacks = Map("turtle" -> List("forward")),
+        context = Map("answer" -> ujson.Num(42)), resetGlobals = false, captureStderr = false)).map { report =>
         assertEquals(sent.now().get.callbacks, Map("turtle" -> List("forward")))
         assertEquals(sent.now().get.context, Map("answer" -> ujson.Num(42)))
         assert(!sent.now().get.resetGlobals)
         assert(!sent.now().get.captureStderr)
         assertEquals(report.stdout, "output")
-        assertEquals(report.callbackOps.head.args.map(_.toString), Vector("12", "label"))
+        assertEquals(report.callbackOps.head.args, List(ujson.Num(12), ujson.Str("label")))
       }
     }
   }
   test("Python failures retain captured output from the worker envelope") {
-    workerTest(true) { client => client.run("raise Exception()").failed.map { error =>
-      val failure = error.asInstanceOf[PythonWorkerFailure]
+    workerTest(true) { client => client.run(RunPythonRequest("raise Exception()")).failed.map { error =>
+      val failure = error.asInstanceOf[PythonExecutionClient.Failure]
       assertEquals(failure.stdout, "before error")
       assertEquals(failure.stderr, "traceback")
       assertEquals(failure.message, "bad Python")
     }}
   }
+  test("feedback decodes the typed result value independently of worker stdout") {
+    import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.*
+    workerTest(false) { _ =>
+      value.set(ujson.Obj("status" -> "success", "tests" -> ujson.Arr(ujson.Obj(
+        "name" -> "sum", "status" -> "passed", "hidden" -> false, "message" -> ujson.Null,
+        "durationMs" -> 1, "hint" -> ujson.Null)), "stdout" -> "student output",
+        "stderr" -> "", "error" -> ujson.Null, "score" -> 1))
+      PythonRuntimeService.run(PythonRunRequest("print(42)", Nil, Nil, Nil, Nil, 1000)).map { result =>
+        assertEquals(result.status, PythonRunStatus.Success)
+        assertEquals(result.stdout, "student output")
+        assertEquals(result.tests.map(_.status), Seq(PythonTestStatus.Passed))
+        assertEquals(result.score, 1.0)
+        assert(PythonRuntimeService.isReady)
+      }.andThen { case _ =>
+        PythonRuntimeService.terminateWorker()
+        assert(!PythonRuntimeService.isReady)
+        value.set(ujson.Null)
+      }
+    }
+  }
+
 }

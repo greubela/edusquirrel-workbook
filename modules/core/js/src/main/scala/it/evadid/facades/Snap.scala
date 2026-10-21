@@ -169,11 +169,14 @@ object Snap {
       js.typeOf(serializer.selectDynamic("prototype").selectDynamic(originalField)) == "function"
   }
 
+  private def dependency[T](create: => T): ExternalDependency[T] =
+    new ExternalDependency(() => preload(), () => available, () => create)
+
   def world(canvas: dom.HTMLCanvasElement): ExternalDependency[WorldMorph] =
-    new ExternalDependency(() => preload(), () => available, () => new WorldMorph(canvas, false))
+    dependency(new WorldMorph(canvas, false))
 
   def editor(config: js.Object): ExternalDependency[IDEMorph] =
-    new ExternalDependency(() => preload(), () => available, () => new IDEMorph(config))
+    dependency(new IDEMorph(config))
 
   @js.native
   @JSGlobal("PushButtonMorph")
@@ -188,13 +191,13 @@ object Snap {
   class Menu(action: js.Any, environment: js.Any, owner: js.Any) extends Morph
 
   def button(action: js.Function0[Unit], label: String): ExternalDependency[Button] =
-    new ExternalDependency(() => preload(), () => available, () => new Button(null, action, label))
+    dependency(new Button(null, action, label))
 
   def dialog(action: js.Any, owner: js.Any = null): ExternalDependency[Dialog] =
-    new ExternalDependency(() => preload(), () => available, () => new Dialog(null, action, owner))
+    dependency(new Dialog(null, action, owner))
 
   def menu(action: js.Any, owner: js.Any): ExternalDependency[Menu] =
-    new ExternalDependency(() => preload(), () => available, () => new Menu(action, null, owner))
+    dependency(new Menu(action, null, owner))
 
   private val originalField = "eduSquirrelOriginalLoadProjectModel"
 

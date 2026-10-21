@@ -97,7 +97,7 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
     cache.put("print(1)", chart("cached"))
     val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
     analysis.close()
-    analysis.chartForDoc("print(1)").toFuture.failed.map { error =>
+    analysis.chartForDoc("print(1)").failed.map { error =>
       assert(error.getMessage.contains("closed"))
       assertEquals(workers.created.size, 0)
     }
@@ -107,13 +107,13 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
     val cache = new CodeMirrorFlowchartGutter.Cache
     val workers = new Workers
     val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
-    val first = analysis.chartForDoc("print(1)").toFuture
-    val second = analysis.chartForDoc("print(1)").toFuture
+    val first = analysis.chartForDoc("print(1)")
+    val second = analysis.chartForDoc("print(1)")
     assertEquals(workers.created.size, 1)
     assertEquals(workers.created.head.sent.size, 1)
     workers.created.head.reply(chart("shared"))
     first.zip(second).map { (a, b) =>
-      assertEquals(js.JSON.stringify(a), js.JSON.stringify(b))
+      assertEquals(a, b)
       assertEquals(cache.get("print(1)"), Some(chart("shared")))
     }.andThen { case _ => analysis.close() }
   }
@@ -122,8 +122,8 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
     val cache = new CodeMirrorFlowchartGutter.Cache
     val workers = new Workers
     val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
-    val cancelled = analysis.chartForDoc("print(1)").toFuture.failed
-    val next = analysis.chartForDoc("print(2)").toFuture
+    val cancelled = analysis.chartForDoc("print(1)").failed
+    val next = analysis.chartForDoc("print(2)")
     assert(workers.created.head.terminated)
     assertEquals(workers.created.size, 2)
     workers.created.head.reply(chart("old"))
@@ -139,13 +139,13 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
     val cache = new CodeMirrorFlowchartGutter.Cache
     val workers = new Workers
     val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
-    val failed = analysis.chartForDoc("print(1)").toFuture.failed
+    val failed = analysis.chartForDoc("print(1)").failed
     workers.created.head.fail()
     failed.flatMap { error =>
       assert(error.getMessage.contains("chart failed"))
       assert(workers.created.head.terminated)
       assertEquals(cache.get("print(1)"), None)
-      val retry = analysis.chartForDoc("print(1)").toFuture
+      val retry = analysis.chartForDoc("print(1)")
       assertEquals(workers.created.size, 2)
       workers.created.last.reply(chart("retried"))
       retry
@@ -157,9 +157,9 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
     val cache = new CodeMirrorFlowchartGutter.Cache
     val workers = new Workers
     val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
-    val first = analysis.chartForDoc("print(1)").toFuture
+    val first = analysis.chartForDoc("print(1)")
     workers.created.head.reply(chart("superseded"))
-    val next = analysis.chartForDoc("print(2)").toFuture
+    val next = analysis.chartForDoc("print(2)")
     assert(workers.created.head.terminated)
     workers.created.last.reply(chart("current"))
     first.zip(next).map { (_, _) =>

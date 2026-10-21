@@ -3,7 +3,10 @@ package it.evadid.facades.internal
 import it.evadid.facades
 import it.evadid.facades.CodeMirror
 import it.evadid.facades.CodeMirror.Api as CodeMirrorApi
-import it.evadid.facades.CodeMirror.{CodeMirrorHandle, EditorConfig}
+import it.evadid.facades.CodeMirror.{CodeMirrorHandle, EditorConfig, JavaScriptEditorConfig}
+import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter.Chart
+import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import org.scalajs.dom
 
 import scala.scalajs.js
@@ -14,7 +17,15 @@ private[evadid] object CodeMirrorRuntime {
   private lazy val diagnostics = new CodeMirrorDiagnostics
 
   val facade: js.Object = js.Dynamic.literal(createEditor =
-    ((config: EditorConfig) => createEditor(config)): js.Function1[EditorConfig, CodeMirrorHandle])
+    ((config: JavaScriptEditorConfig) => createEditor(EditorConfig(
+      parent = config.parent,
+      doc = config.doc.toOption.filter(_ != null).getOrElse(""),
+      language = config.language.toOption.filter(_ != null).getOrElse("python"),
+      onDocChange = value => config.onDocChange.toOption.filter(_ != null).foreach(_(value)),
+      flowchart = config.flowchart.toOption.filter(_ != null).map(callback => source =>
+        Future(callback(source)).flatMap(result => js.Promise.resolve[js.Object](result.asInstanceOf[js.Object]).toFuture)
+          .map(chart => upickle.default.read[Chart](js.JSON.stringify(chart))))
+    ))): js.Function1[JavaScriptEditorConfig, CodeMirrorHandle])
 
   private[evadid] def publish(): Unit = {
     js.Dynamic.global.globalThis.updateDynamic("EduSquirrelCodeMirror")(facade)
@@ -54,18 +65,15 @@ private[evadid] object CodeMirrorRuntime {
     case _ => Libraries.python()
   }
 
-  private def default(value: js.UndefOr[String], fallback: String): String =
-    value.toOption.filter(_ != null).getOrElse(fallback)
-
   def createEditor(config: EditorConfig): CodeMirrorHandle = {
     if !CodeMirrorApi.available then throw IllegalStateException("CodeMirror libraries are not loaded.")
     new Handle(config).asInstanceOf[CodeMirrorHandle]
   }
 
   private class Handle(config: EditorConfig) extends js.Object {
-    private val language = default(config.language, "python").toLowerCase
+    private val language = config.language.toLowerCase
     private val isJava = language == "java"
-    private val initial = default(config.doc, "")
+    private val initial = config.doc
     private var javaSource = initial
     private var programmatic = false
     private var destroyed = false
@@ -82,7 +90,7 @@ private[evadid] object CodeMirrorRuntime {
     private def prepare(source: String): String = if isJava then source else source.replace("\t", indent)
     private def text(source: String): js.Any = if isJava then CodeMirrorJavaLineEndings.text(source) else prepare(source)
     private val flowchart: Extension =
-      if language == "python" && js.typeOf(config.flowchart) == "function" then
+      if language == "python" && config.flowchart.nonEmpty then
         CodeMirrorFlowchartRendering.extension(config.flowchart.get)
       else js.Array[Extension]()
 
@@ -101,7 +109,7 @@ private[evadid] object CodeMirrorRuntime {
             val value = if isJava then CodeMirrorJavaLineEndings.source(update.state) else update.state.doc.toString()
             val changed = !isJava || value != javaSource
             if isJava then javaSource = value
-            if changed && js.typeOf(config.onDocChange) == "function" then config.onDocChange(value)
+            if changed then config.onDocChange(value)
           }
         }))))
     private val view = CodeMirror.view(
@@ -127,7 +135,7 @@ private[evadid] object CodeMirrorRuntime {
       new dom.MutationObserverInit { attributes = true; attributeFilter = js.Array("style", "class") })
 
     def setDoc(value: String): Unit = {
-      val next = prepare(default(value, ""))
+      val next = prepare(value.asInstanceOf[js.UndefOr[String]].toOption.filter(_ != null).getOrElse(""))
       if getDoc() == next then return
       programmatic = true
       try {

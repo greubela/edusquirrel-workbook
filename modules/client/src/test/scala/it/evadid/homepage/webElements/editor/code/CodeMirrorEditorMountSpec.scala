@@ -27,12 +27,12 @@ class CodeMirrorEditorMountSpec extends FunSuite {
     val rebuild = Var(0)
     val received = Var(List.empty[Boolean])
     val destroyed = Var(0)
-    window.updateDynamic("EduSquirrelCodeMirror")(js.Dynamic.literal(
-      createEditor = ((config: CodeMirror.EditorConfig) => {
-        received.update(_ :+ !js.isUndefined(config.flowchart))
+    val createEditor: CodeMirror.EditorConfig => scala.concurrent.Future[CodeMirror.CodeMirrorHandle] = config =>
+      scala.concurrent.Future.successful {
+        received.update(_ :+ config.flowchart.nonEmpty)
         if (received.now().size == 3) completed.success(())
         if (received.now().size == 4) remounted.success(())
-        val doc = Var(config.doc.getOrElse(""))
+        val doc = Var(config.doc)
         js.Dynamic.literal(
           getDoc = (() => doc.now()): js.Function0[String],
           setDoc = ((value: String) => { doc.set(value) }): js.Function1[String, Unit],
@@ -40,13 +40,12 @@ class CodeMirrorEditorMountSpec extends FunSuite {
           focus = (() => ()): js.Function0[Unit],
           destroy = (() => { destroyed.update(_ + 1) }): js.Function0[Unit]
         ).asInstanceOf[CodeMirror.CodeMirrorHandle]
-      }): js.Function1[CodeMirror.EditorConfig, CodeMirror.CodeMirrorHandle]
-    ))
+      }
     val mounts = List((Python, false), (Python, true), (Java, true)).map { (language, enabled) =>
       val host = dom.document.createElement("div")
       dom.document.body.appendChild(host)
       val editor = CodeMirrorEditor(it.evadid.util.logging.Logger.withNameAndPrefixes(Some("test"), it.evadid.util.logging.derived.PrintToStdLogger.printNothing), Var("print(1)"), language = language,
-        config = Var(CodeMirrorEditorConfig(enabled)))
+        config = Var(CodeMirrorEditorConfig(enabled)), createEditor = createEditor)
       render(host, if language == Python && !enabled then div(child <-- rebuild.signal.map(_ => editor.getDomElement()))
         else editor.getDomElement())
     }
