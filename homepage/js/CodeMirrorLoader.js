@@ -29,17 +29,8 @@ import {indentationMarkers} from "https://esm.sh/@replit/codemirror-indentation-
 
 import {flowchartExtension} from "./CodeMirrorFlowchartGutter.js";
 
-let javaModulePromise;
-const loadJavaModule = () => {
-  if (!javaModulePromise) {
-    javaModulePromise = import("https://esm.sh/@codemirror/lang-java@6.0.2?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3")
-      .catch(error => {
-        javaModulePromise = undefined;
-        throw error;
-      });
-  }
-  return javaModulePromise;
-};
+// ESM syntax stays at the native boundary; Scala.js startup owns sharing and retry.
+const loadJavaModule = () => import("https://esm.sh/@codemirror/lang-java@6.0.2?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3");
 
 globalThis.EduSquirrelCodeMirrorLibraries = Object.freeze({
   Compartment, EditorState, MapMode, StateEffect, StateField, Text, Transaction,

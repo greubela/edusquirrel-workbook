@@ -46,20 +46,15 @@ relationships in the diagram come from that database's JDBC metadata.
 
 The text tab reuses `CodeMirrorEditor`, with MySQL syntax support and its existing
 textarea fallback. The block tab is a SQL-specific, Snap-like palette and clause
-workspace: add, edit, drag, remove, and reorder clauses. Its blocks contain SQL,
-including generic `AVG(column_name)` and `COUNT(column_name)` templates.
-`SnapPaletteCatalog` supplies the existing comparison selector ordering; the SQL
-palette maps those selectors to SQL operators, including `<>` for inequality.
-SQL clauses have their own palette because turtle and VM control blocks do not
-represent SQL statements. Arbitrary SQL is retained
-as raw clause content. Comments, quoted strings, and nested queries are preserved;
+workspace. SQL clauses have their own palette because turtle and VM control
+blocks do not represent SQL statements. Arbitrary SQL is retained as raw clause
+content. Comments, quoted strings, and nested queries are preserved;
 switching tabs never converts SQL through Python or the programming VM.
 
 Run executes one JDBC SQL statement. Separate statements should be run separately;
 MySQL multi-query execution is disabled. Result tables show column labels and
-SQL NULL values, and updates show affected row counts. At most 500 rows are shown;
-truncation is reported. Queries have a ten-second timeout, connection attempts a
-five-second timeout, and socket reads a fifteen-second timeout.
+SQL NULL values, and updates show affected row counts. Results are bounded and
+truncation is reported. Execution and connections have deadlines.
 
 Connection status distinguishes unavailable database connections, missing server
 configuration, and unavailable backend access. SQL syntax errors retain the

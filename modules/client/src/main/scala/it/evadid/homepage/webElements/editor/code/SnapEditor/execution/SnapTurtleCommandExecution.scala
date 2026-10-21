@@ -144,8 +144,9 @@ object PyodideTurtleCommandRunner:
   private[execution] val ModuleName = "turtle"
 
   private def workerExecutor(): PythonCallbackExecutor =
-    new CommandPythonCallbackExecutor(WebWorkerExecutionClient(
-      HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.relativeToArtifactsFolder("newest/worker.js").asUrlString))
+    new CommandPythonCallbackExecutor(WebWorkerExecutionClient.fromWorker(
+      it.evadid.homepage.webElements.facades.Workers.classic(
+        HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.relativeToArtifactsFolder("newest/worker.js").asUrlString).createLoadedInstance()))
 
   private[execution] def commandsFrom(callbacks: Seq[CallbackOp]): List[TurtleCommand[Double]] =
     callbacks.iterator

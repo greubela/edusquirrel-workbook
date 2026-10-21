@@ -6,23 +6,14 @@ matching production package under `modules/core/shared/src/test/scala`; use
 for their adapters. Tests in a parent package can exercise subpackages, so absence
 of a same-package spec is not a coverage measurement.
 
-## Finding representative suites
+## Finding tests
 
-| Area | Suites and behavior |
-| --- | --- |
-| Storage/cache | `AsyncDataCacheSpec`, `RemoteStoragePackageSpec`, `RemoteCacheControllerSpec`: correlation, reuse, failures, retries and snapshots |
-| State/observation | `AsyncDataPackageSpec` and observable/state suites: initial values, failures, ordering, queued derivation and subscription cleanup |
-| Synchronization/history | `SyncPackageSpec`, `InteractionHistoryPackageSpec`: event selection, typed history, timestamps and merging |
-| VM/programming | `VmTypesPackageSpec`, `ControlStructuresPackageSpec`, `ProgrammingState*Spec`, parser suites: type/AST contracts, conversions and supported execution |
-| Collections/geometry | `MatrixPackageSpec`, `GraphPackageSpec`, collection and geometry suites: mutation, independent copies, boundaries and numeric contexts |
-| Language/file data | `LanguageSerializationSpec`, `FilePackageSpec`: multilingual resolution, codecs and load failures |
-| Evacuation | `EvaRoutingSpec`, `EvaCapacitySpec`, `EvacuationGraphicSpec`, `EvacuationFloorPlanSpec`, `EvacuationExperimentSpec`: routes, capacity, graphics and persisted experiments |
-| Workbook domain values | QR, mail, compression, pixel, table, plotting, blockchain and Unicode specs: transitions, validation and task-specific grading |
-| Serialization | `SystematicDerivedCodecSpec`, `DefaultValueCodecsSpec`, `AdditionalDefaultCodecsSpec`: JSON/binary round trips and restored behavior |
-| Generic execution | `ExecutionInfoIntegrationTest`, JS `WorkerExecutionTest`, worker `BackendWorkerTest`: transport correlation, typed results and failure cleanup |
+Behavioral suites live beside their production packages in each module's
+`src/test/scala/` tree. Shared tests cover domain transitions, validation,
+serialization and supported execution on both platforms; adapter tests cover
+platform-specific transport and lifecycle behavior.
 
-Use `rg --files modules | rg 'Spec.scala$'` to find the current inventory. These
-are representative names, not a frozen class count or a claim of complete coverage.
+Use `rg --files modules | rg '(Spec|Test)\.scala$'` for the current inventory.
 
 ## Run tests
 

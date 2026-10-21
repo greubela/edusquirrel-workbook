@@ -72,16 +72,9 @@ def workerHealth(fullInfo: FullInfo): Future[WorkerCommands.HealthResult] =
     .map(_.result)
 ```
 
-The built worker supports `worker.health`, `worker.parseSnapXml` and
-`worker.calculateQrCode`. Snap XML parsing supports the documented Snap subset;
-QR results include the final module matrix. See the
-[worker guide](worker-execution-backend.md) for lifetimes, termination and the
-browser test proving the GUI stays responsive during calculation.
-
-The Pyodide Python/Snap execution worker is a separate runtime and protocol; see
-[Snap execution](snap-turtle-command-execution-overview.md). A working generic
-backend does not mean every parser, editor or grader has already moved into it.
-DOM-dependent rendering stays in the client.
+See the [worker guide](worker-execution-backend.md) for supported jobs, Python
+runtime semantics and termination. DOM-dependent rendering stays in the client;
+choosing worker execution does not move an editor or grader there automatically.
 
 ## Build and verify
 
@@ -94,6 +87,6 @@ npm run test:workbooks -- worker-execution
 ```
 
 Serve both generated bundles through the repository's normal preview/deployment
-layout. The client reuses an app-loader-preheated worker or starts the generated
+layout. The client reuses a Scala.js-startup-preheated worker or starts the generated
 worker bundle on first use. No silent fallback to main-thread execution occurs
 when a generic worker crashes or times out.

@@ -12,14 +12,14 @@ The shared [full Snap Scala model](snap-scala-model.md) provides `ProgrammingSta
 
 ## Runtime readiness and preview
 
-`fullturtle.js` preheats Snap automatically at page startup, independently of editor creation, and exposes `TurtleStitchPoCReady` immediately. It starts during idle time after DOM readiness (with a two-second deadline, or a 250 ms timer fallback), then loads the 22 dependencies sequentially with low fetch priority and yields between them. The shared loading promise prevents duplicate dependency loads. Warmup loads code without creating a Morphic world or editor; failures are stored in `TurtleStitchPoCError` and reject readiness without an unhandled background rejection. `SnapPreviewEditor` and `SnapCodeEditor` await the implementation's `whenReady` hook before creating a world or rendering, so cached app startup need not assume `IDE_Morph` is already defined. Mount ownership discards delayed callbacks after a state replacement or unmount. A loading or rendering failure is shown as an accessible alert.
+Startup preheats bundled Snap dependencies before an editor opens. Consumers
+share readiness; warmup creates no editor or Morphic world. Mount ownership
+discards delayed work after replacement or unmount. See
+[browser startup loading](browser-startup-loading.md).
 
-The static preview exports `ScriptsMorph.scriptsPicture()` from a temporary IDE; the mounted editor owns its live IDE. Preview canvas bitmap dimensions come from the exported script image, and its presentation/aspect ratio comes from `homepage/css/editors.css`, without inline width/height styles. Preview rendering preserves the shared Morphic keyboard contents and selection. Empty-canvas diagnostics distinguish actual primitive/custom block instances from the empty `<blocks>` containers present in every project.
-
-CodeMirror's shared module loader warms shortly after the app shell mounts. The
-warmup request has low fetch priority, creates no editor and never delays startup.
-Editors share the pending/completed request. Failure leaves the editable fallback
-available and permits a later retry.
+Static previews use temporary native IDEs; the mounted editor owns its live IDE.
+Preview generation preserves the shared Morphic keyboard state, and presentation
+belongs in `homepage/css/editors.css`.
 
 ## Live IDE synchronization
 
@@ -30,7 +30,8 @@ metadata avoids unnecessary native redraws, but consumers observe the central
 Var; there is no special learner-edit callback. Closing the dialog unmounts its
 content, and reopening constructs an editor from the saved answer.
 
-`SnapCodeEditorImpl` also exposes `forceLoadProgram`, but the current fullscreen-open path uses `loadProgramIfChanged`. Configuration and implementation adapters remain in `SnapEditor/toRefactor/`.
+Editor implementations and native adapters are located in
+`modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/`.
 
 ## Palette, rendering and execution
 

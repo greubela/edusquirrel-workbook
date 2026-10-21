@@ -1,5 +1,8 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
+import it.evadid.homepage.webElements.facades.CodeMirror
+import it.evadid.homepage.webElements.facades.CodeMirror.{CodeMirrorHandle, EditorConfig}
+
 import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -38,22 +41,30 @@ case class CodeMirrorEditor(
           value <-- underlyingVar.signal, onInput.mapToValue --> underlyingVar.writer),
         onMountCallback { ctx =>
           val lifetime = new Subscription(ctx.owner, () => ())
-          CodeMirrorEditorLoading.load().flatMap(facade => CodeMirrorEditorLoading.inBackground(facade)).foreach { facade =>
+          CodeMirror.preload().flatMap(_ => CodeMirror.inBackground(())).foreach { _ =>
             if !lifetime.isKilled && ctx.thisNode.ref.isConnected then {
               val analysis = Option.when(showFlowchart && language == Python)(
                 new CodeMirrorFlowchartGutter.Analysis(new CodeMirrorFlowchartGutter.Cache))
               // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
-              val native = facade.createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
+              val created = CodeMirror.editor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
                 value => if !lifetime.isKilled && underlyingVar.now() != value then underlyingVar.set(value),
-                languageToJs(language), analysis.map(_.chartForDoc)))
-              new Subscription(ctx.owner, () => {
-                native.destroy()
-                analysis.foreach(_.close())
-                handle.update(_.filterNot(_ == native))
-              })
-              handle.set(Some(native))
-              underlyingVar.signal.foreach(value => if native.getDoc() != value then native.setDoc(value))(using ctx.owner)
-              diagnostics.foreach(values => native.setDiagnostics(js.Array(values.map(_.toJs)*)))(using ctx.owner)
+                languageToJs(language), analysis.map(_.chartForDoc))).createInstance()
+              created.foreach { native =>
+                if lifetime.isKilled || !ctx.thisNode.ref.isConnected then {
+                  native.destroy()
+                  analysis.foreach(_.close())
+                } else {
+                  new Subscription(ctx.owner, () => {
+                    native.destroy()
+                    analysis.foreach(_.close())
+                    handle.update(_.filterNot(_ == native))
+                  })
+                  handle.set(Some(native))
+                  underlyingVar.signal.foreach(value => if native.getDoc() != value then native.setDoc(value))(using ctx.owner)
+                  diagnostics.foreach(values => native.setDiagnostics(js.Array(values.map(_.toJs)*)))(using ctx.owner)
+                }
+              }
+              created.failed.foreach(_ => analysis.foreach(_.close()))
             }
           }
         }
@@ -80,24 +91,6 @@ object CodeMirrorEditor {
     }
   }
 
-  @js.native
-  private[code] trait CodeMirrorFacade extends js.Object {
-    def createEditor(config: EditorConfig): CodeMirrorHandle = js.native
-  }
-
-  @js.native
-  trait CodeMirrorHandle extends js.Object {
-    def setDoc(value: String): Unit = js.native
-
-    def getDoc(): String = js.native
-
-    def setDiagnostics(diagnostics: js.Array[js.Object]): Unit = js.native
-
-    def focus(): Unit = js.native
-
-    def destroy(): Unit = js.native
-  }
-
   final case class Diagnostic(
                                line: Int,
                                endLine: Option[Int] = None,
@@ -116,34 +109,5 @@ object CodeMirrorEditor {
         severity = severity
       ).asInstanceOf[js.Object]
   }
-
-  trait EditorConfig extends js.Object {
-    val parent: dom.Element
-    val doc: js.UndefOr[String]
-    val language: js.UndefOr[String]
-    val onDocChange: js.Function1[String, Unit]
-    val flowchart: js.UndefOr[js.Function1[String, js.Promise[js.Object]]]
-  }
-
-  object EditorConfig {
-    def apply(
-               parent: dom.Element,
-               doc: String,
-               onDocChange: String => Unit,
-               language: String = "python",
-               flowchart: Option[String => js.Promise[js.Object]] = None
-             ): EditorConfig = {
-      js.Dynamic.literal(
-        parent = parent,
-        doc = doc,
-        language = language,
-        onDocChange = (value: String) => onDocChange(value),
-        flowchart = flowchart.fold[js.UndefOr[js.Function1[String, js.Promise[js.Object]]]](js.undefined)(
-          callback => ((value: String) => callback(value)): js.Function1[String, js.Promise[js.Object]]
-        )
-      ).asInstanceOf[EditorConfig]
-    }
-  }
-
 
 }

@@ -106,14 +106,10 @@ Shared core supplies generic grading/scaffolding contracts. An interaction has a
 new typed integrations; additional data belongs in `GA`/`SA`, not a subclass of
 `GradedState`.
 
-A grader's `gradeStateSafe(state, forceGrading)` returns
-`Future[GradingResult[T, GA]]`. Status is `Correct`, `PartiallyCorrect`, `Incorrect`,
-`TestError` or `NotExecuted`. Importance is `REQUIRED_TEST`, `OPTIONAL_TEST` or
-`HIDDEN_TEST`; `FeedbackEntity` identifies the producer. `RUN_ALWAYS` executes on
-a grading request; `RUN_ONLY_MANUALLY` returns `NotExecuted` unless forced.
-A result includes the exact graded value, optional localized feedback/additional
-data and its timestamp. One grader is one reported result; make independent tests
-separate graders if they require separate feedback.
+A grader returns an asynchronous result tied to the exact source value, with
+status, localized feedback and optional typed additional data. Manual-only graders
+run only when explicitly forced. Keep independent checks in separate graders
+when they need separate feedback.
 
 `InteractionVariable.startGrading(syncControl, forceGrading)` collects results into
 `GradedState[T, GA](state, testsWithResults)` and stores them by value in history.
@@ -162,12 +158,15 @@ CodeMirror currently uses pinned CDN modules with an offline test bundle, so
 vendoring all editor assets is an architectural target, not an accomplished fact.
 Snap and JSXGraph have bundled distributions.
 
-Put optional dependency readiness/loading coordination in Scala.js companions or
-services. Return futures, share loads, render an editor-local loading/fallback UI,
+Put native dependency readiness and typed handle creation in
+`webElements/facades/`, with one file per dependency using `EvaExternalDependency[T]`.
+The `control.startup` package schedules preloads and owns shared browser loading.
+Return futures, share loads, render an editor-local loading/fallback UI,
 and let only consumers await readiness. Do not hold workbook startup behind a
-chain of optional editor downloads. CodeMirror follows this pattern; Snap has
-readiness hooks but its entry-page bootstrap still loads bundled scripts.
-The target of only app/worker bundles in HTML is not yet universal.
+chain of optional editor downloads. Scala.js startup preheats CodeMirror, Snap and
+JSXGraph independently of editor creation. Turtle entry pages no longer load
+runtime scripts in their HTML; renderer mount ownership guards late readiness.
+See [browser startup loading](browser-startup-loading.md).
 
 The generic execution backend is implemented. Choose local, HTTP/server or worker
 execution according to required resources; a main-thread `Future` alone does not
@@ -202,27 +201,15 @@ client, and actual persistence/fullscreen/invalid-draft behavior in browser chec
 The [test guide](core-package-unit-tests.md) and
 [serialization inventory](testing-and-serialization-audit.md) provide current commands.
 
-### CodeMirror configuration and asynchronous loading
+### CodeMirror integration
 
-`CodeMirrorEditor` accepts `config: Var[CodeMirrorEditorConfig]`. The regular
-configuration omits the control-flow gutter; `showFlowchartGutter = true` enables
-it for supported Python programs. `EvaEditorConfig.codeMirrorConfig` supplies the
-settings to the standalone tab adapters. Java keeps its regular line-number
-gutter. The former `CodeMirrorEditorFlowchart` wrapper is no longer needed.
-Eva's generic navigation and downstream panel boundaries are described in
-[Eva editor architecture](eva-editor-programming-state.md).
-
-`CodeMirrorEditorLoading` coordinates one shared module load in Scala.js. It
-resolves the module beside `app-loader.js`, including deployments under a path
-prefix, and shares one asynchronous module script between startup warmup and mounted editors.
-Entry pages do not eagerly import CodeMirror: CDN latency does not delay
-`DOMContentLoaded` or workbook startup. The textarea remains bound to the document
-while loading, and enhancement uses the latest text and diagnostics. Network
-failure or a 15-second timeout retains the textarea. Mount ownership checks
-prevent a late response from creating an editor in an obsolete language tab.
-Module loading and editor creation yield through a browser timer; no other
-workbook action awaits them. DOM construction necessarily
-runs on the browser thread, rather than in a Web Worker.
+`CodeMirrorEditor` receives reactive configuration; Eva supplies it through its
+editor factories. Optional flowchart analysis belongs to the mounted editor.
+The shared startup loader preheats the module independently of editor creation.
+While loading or after failure, the textarea stays bound to the current document.
+Mount ownership prevents late readiness from creating an obsolete editor.
+See [startup loading](browser-startup-loading.md) for dependency coordination and
+[Eva editor architecture](eva-editor-programming-state.md) for lifecycle rules.
 
 Run `npm run test:workbooks -- codemirror` for delayed/failed imports, stale mounts,
 shared loading, text preservation, and gutter alignment. The browser runner bundles

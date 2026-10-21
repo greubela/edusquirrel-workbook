@@ -2,27 +2,32 @@ package it.evadid.homepage.control.startup
 
 import com.raquo.laminar.api.L.*
 import it.evadid.distribution.command.SerializedException
-import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY.CONTINUE_AFTER_LOCAL_CACHE_SUCCESS
+import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY.CONTINUE_IMMEDIATELY
 import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
-import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditorLoading
 import it.evadid.homepage.workbook.content.DigitalWorkbookCatalog
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import org.scalajs.dom
-import upickle.default.*
+import it.evadid.homepage.webElements.facades.{CodeMirror, Snap, JSXGraph, Workers}
 
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
-import scala.scalajs.js
-import scala.util.{Failure, Success}
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 
 object HomepageStartupLogic {
+  private val preheatingStarted = Var(false)
+  def preheat(): Unit = if !preheatingStarted.now() then {
+    preheatingStarted.set(true)
+    // Start requests immediately; never await them from the render path.
+    CodeMirror.preload().failed.foreach(_ => ())
+    Workers.preheat()
+    val turtlePages = List("workbookTest", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookMonks")
+    if turtlePages.exists(id => dom.document.getElementById(id) != null) then {
+      Snap.preload().failed.foreach(_ => ())
+      JSXGraph.preload().failed.foreach(_ => ())
+    }
+  }
 
-  private given ExecutionContext = ExecutionContext.global
-
-  private given ExecutionContextExecutor = ExecutionContext.global
 
   private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing", "workbookImageRecognition", "workbookBlockchain", "workbookEvacuation")
   private val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
@@ -43,33 +48,22 @@ object HomepageStartupLogic {
     val fullInfo = HtmlFullWorkbookApp.fullInfo
     val logger = fullInfo.loggerSystemInfo.contentControlLogger
 
-    val futureLoadBasics = HtmlFullWorkbookApp.fullInfo.contentControl.languageStorage.ensureStartup(CONTINUE_AFTER_LOCAL_CACHE_SUCCESS).recover { err =>
-      logger.logExceptionWarn("ignoring basics which should have been loaded", err)
+    preheat()
+    val workbook: Option[AllWorkbookInfo] = canLoad.headOption.flatMap(loadWorkbookById)
+    fullInfo.usageControl.changeWorkbook(workbook)
+    workbook.foreach { info =>
+      val languages = info.loadedWorkbook.metadata.availableLanguages
+      if (!languages.contains(fullInfo.homepageInfoNow().currentLanguage))
+        languages.headOption.foreach(fullInfo.usageControl.changeLanguage)
     }
 
-    for {
-      basicsLoaded <- futureLoadBasics
-    } {
-
-      val workbook: Option[AllWorkbookInfo] = canLoad.headOption.flatMap(loadWorkbookById)
-      fullInfo.usageControl.changeWorkbook(workbook)
-      // A workbook with only German content must not open with missing English labels.
-      workbook.foreach { info =>
-        val languages = info.loadedWorkbook.metadata.availableLanguages
-        if (!languages.contains(fullInfo.homepageInfoNow().currentLanguage))
-          languages.headOption.foreach(fullInfo.usageControl.changeLanguage)
-      }
-
-      val futureTestCalc = testCalculations().recover { err =>
-        logger.logExceptionWarn("testCalculations failed", err)
-      }
-
-      val futureAutoLogin = fullInfo.usageControl.tryAutoLogin().recover { err =>
-        logger.logWarn(s"auto login was not possible: ${err.getMessage}")
-      }
-
-      renderElementIntoApp(logger, HtmlFullWorkbookApp.getDomElement())
-      CodeMirrorEditorLoading.preheat()
+    // Mount first. Cache restoration and remote language refresh update its signals later.
+    renderElementIntoApp(logger, HtmlFullWorkbookApp.getDomElement())
+    fullInfo.contentControl.languageStorage.ensureStartup(CONTINUE_IMMEDIATELY).failed.foreach { err =>
+      logger.logExceptionWarn("Language startup unavailable", err)
+    }
+    fullInfo.usageControl.tryAutoLogin().failed.foreach { err =>
+      logger.logWarn(s"auto login was not possible: ${err.getMessage}")
     }
   }
 
@@ -78,26 +72,4 @@ object HomepageStartupLogic {
     else DigitalWorkbookCatalog.nativeWorkbook(workbookId)
       .map(_.factory(HtmlFullWorkbookApp.fullInfo).createEverything)
 
-  private def initWorkbookOnlyAfterDependenciesLoaded: Boolean = {
-    val configValue = js.Dynamic.global.selectDynamic("EDUSQUIRREL_INIT_WORKBOOK_ONLY_AFTER_ALL_DEPENDENCIES_LOADED")
-    if (js.isUndefined(configValue)) true else configValue.asInstanceOf[Boolean]
-  }
-
-  private def testCalculations(): Future[?] = Future {
-    HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.onBackendServer("/health").loadData().onComplete {
-      case Success(res) => println("Backend Health check: " + new String(res.fileDataAsUtf8String))
-      case Failure(err) => println("Backend Health error: " + err.getMessage)
-    }(using ExecutionContext.global)
-
-    println("uuid: " + java.util.UUID.randomUUID())
-
-    /*
-    val testMail = SendMailRequest("andre.greubel@hu-berlin.de", "This is a test mail :)", "This is the mail body!")
-    val mailRes = MailCommands.sendMailCommand.sendCommandTo(fullInfo.defaults.defaultBackend.executor, testMail, Some(fullInfo.loggerSystemInfo.debugFuncLogger))
-    mailRes.onComplete(res => println("[UGLY PRINTLN HOMEPAGESTARTUPLOGIC] res of mail cmd: " + mailRes))
-  */
-
-  }
 }
-
-

@@ -20,12 +20,16 @@ test('editor composition keeps changing state in Vars and has no parallel edit c
     'EvaEditor/extensions/turtle/TurtleProgramExecution.scala',
     'EvaEditor/extensions/turtle/TurtleExecutionProvider.scala',
     'codemirror/CodeMirrorEditor.scala', 'codemirror/CodeMirrorFlowchartGutter.scala',
-    'codemirror/CodeMirrorEditorLoading.scala', '../../code/JavaFunctionBasedEditor.scala',
+    '../../facades/EvaExternalDependency.scala', '../../facades/CodeMirror.scala',
+    '../../facades/Snap.scala', '../../facades/Pyodide.scala',
+    '../../facades/JSXGraph.scala', '../../facades/Workers.scala', '../../code/JavaFunctionBasedEditor.scala',
     'SnapEditor/SnapCodeEditor.scala', 'SnapEditor/SnapPreviewEditor.scala',
   ];
   for (const file of files) {
     const raw = await readFile(new URL(directory + file, root), 'utf8');
-    const source = raw.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
+    // Native facade properties describe foreign state, not Scala application state.
+    const source = raw.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '')
+      .replace(/\bvar\s+\w+[^=\n]*=\s*js\.native/g, '');
     assert.doesNotMatch(source, /\bvar\b|scala\.collection\.mutable/, file);
     if (file.endsWith('EvaEditorTab.scala')) {
       assert.doesNotMatch(source, /AsyncDataCache|synchronizedValue|latestConversions|underlyingVar|setWith|\bedits\b/);

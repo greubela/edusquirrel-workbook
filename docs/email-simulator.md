@@ -1,46 +1,54 @@
 # Email simulator
 
-For the shared model/renderer/editor responsibilities and dependency direction, see [Interaction architecture](workbook-interaction-architecture.md).
+The mailbox is available at `homepage/phishingWorkbook/`. The test workbook at
+`homepage/workbookDesign/` showcases the same messages with composing enabled.
+It follows the shared [interaction architecture](workbook-interaction-architecture.md).
 
-The digital mailbox is available at `homepage/phishingWorkbook/index.html`. The Mail Simulator section of `homepage/workbookDesign/index.html` showcases the same messages with composing enabled.
+## Models and state
 
-## Interactions
+`MailInteraction` configures sorting practice; `MailEditor` configures local
+writing practice using the same fullscreen UI. Model implementations live under
+`modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/emailSimulator/`;
+renderers live under the client `workbook/htmlRenderer/interactionRenderer/emailSimulator/`
+package. Styles belong in `homepage/css/workbook/email-simulator.css`.
 
-- `MailInteraction` provides the original phishing sorting exercise. Its default configuration disables compose, reply and forward, matching the Python original; `allowCompose = true` enables local writing in the test showcase.
-- `MailEditor` uses the same fullscreen mailbox and enables local compose, reply and forward practice. Sending only appends a plain-text message to the local Sent folder; there is no mail transport.
-- Both interactions have workbook factories and HTML renderer registrations, a preview line, an Open Editor button and bound persistent state.
-- The fullscreen editor contains the toolbar, five folders, independently scrolling message list and message pane, and a link/status footer. Styles live in `homepage/css/workbook/email-simulator.css`, linked explicitly by every workbook entry page and using shared color and dimension tokens. Duplicate Scala CSS definitions and the unused generic editor config were removed.
-- `homepage/phishingWorkbook/index.html` and the landing page link expose the digital mailbox exercise and separate local writing practice. English/German labels and instructions are registered through the existing language-map loader. The original messages remain German teaching examples.
-- The test workbook also has a Mail Simulator section with the original 15 messages and composing enabled, showcasing sorting, reading, simulated links/attachments and local writing in one interaction.
+One bound inbox value owns message placement, ordering and read status. Folders
+are exclusive; Marked means a genuine message requiring action. Expected folders
+belong to the exercise definition. Grading evaluates final placements rather
+than counting movements, so repeated actions cannot inflate the result. Practice
+messages have no expected answer, and an empty practice mailbox does not pass a
+sorting exercise.
 
-## State and grading
+Saved messages survive close/reopen and reload. Selection and unsent compose
+drafts are transient; closing discards unsent work. Sending only adds a plain-text
+message to the local Sent folder. There is no mail transport.
 
-`Mail.realFolder` is the learner's current placement, while `expectedFolder` stores the original exercise answer. Marked is an exclusive folder for genuine messages requiring action, rather than an overlapping star label. Original messages start in Inbox; sent practice messages have no expected answer.
+## Teaching content boundary
 
-`InboxState` maintains stable message ordering and exclusive folder membership. Movement is idempotent; unknown IDs and folders do nothing. Read/unread, archive, mark, trash and restoration update the same bound state. The per-message placement is authoritative; normalization rebuilds stale indexes. Duplicate message IDs and invalid folders are rejected when constructing a normalized inbox.
+`tools/dev/import-phishing-mails.py` imports the original Python message records
+without executing the source module. Rerun it when intentionally updating the
+examples. Original messages and local images remain teaching assets in German;
+interface labels follow the selected workbook language.
 
-Grading counts final placements of messages with expected answers, so repeated movements cannot inflate the result. The exercise is complete when every original has left Inbox and passes when every original is in its expected folder. Messages can be restored and corrected. Empty/practice mailboxes do not pass the sorting exercise.
+Mail HTML is rebuilt from an allowlist. Active content and remote resources are
+excluded. Links expose their exact destination but only show simulation notices;
+attachments are inert labels and never download or execute. Local raster images
+must resolve within the validated teaching-asset directory. Restored messages go
+through the same rendering boundary.
 
-The editor controller has no DOM, fullscreen or synchronization dependency, so its selection, navigation, action gating and send/cancel behavior are unit tested under Node. Stored messages, folder placement and read status survive closing/reopening and browser reloads. Unsent drafts are discarded on closing the fullscreen editor.
-
-## Original assets and simulated content
-
-`tools/dev/import-phishing-mails.py` imports the 15 original `Email(...)` records from the tracked Python workbook using `ast.literal_eval`, without executing its module or requiring Python packages. It generates `PhishingMailboxData.scala`; rerun the script after intentionally changing the teaching examples. Local image assets are reused from the original resource directory without copying them.
-
-Mail HTML is parsed into an inert template and rebuilt from an allowlist. Supplied styles, event handlers and active content never enter the document. Links become buttons showing their exact destinations on hover/focus; clicking only displays a simulation notice. Only validated `pics/<filename>` raster image paths can load from the local workbook assets. Remote images, frames and executable content are excluded. Attachment names (including deceptive executable extensions) are displayed as simulated buttons; nothing downloads or executes. Original presentation hints are mapped to external CSS classes.
-
-Compose validates recipient addresses, subject and body. Reply/forward preserve context, prevent repeated prefixes, and produce plain-text local drafts; only forwarding retains a simulated attachment filename. Invalid drafts stay visible and never overwrite mailbox state.
-
-Fullscreen labels initialize from the current language map and update with language changes.
+Compose validation keeps invalid drafts out of saved state. Reply/forward retain
+context while producing plain-text local messages.
 
 ## Verification
 
-No dependencies were added. The simulator page loads only the app bundle and shared workbook CSS, without CodeMirror, TurtleStitch, JSXGraph, CDN scripts or the missing legacy dropdown stylesheet. Unit tests use existing munit/upickle/Airstream infrastructure; browser verification uses the already installed Playwright development dependency and Chromium.
+Shared JVM/JS tests cover inbox transitions, grading and serialization; client
+tests cover drafts, selection and action gating. Browser checks cover actual mail
+content, inert links/attachments, hostile restored HTML and persistence.
 
-- `InboxStateSpec` and `MailSimulatorSpec`: transitions between every pair of folders, membership/index consistency, idempotence, stable ordering, read state, invalid inputs, final-placement grading, composing, reply/forward, serialization and legacy defaults.
-- `MailEditorStateSpec` and renderer serialization suites: selected message/navigation, stale selection after synchronization, persistent state, compose gating, validation/cancellation/sending, original data, image paths and workbook serialization.
-- `tools/dev/mail-simulator.test.mjs`: actual fullscreen interaction, disabled original compose controls, all original message bodies, simulated link/attachment clicks, local compose/reply/forward, browser reload persistence, grading, desktop/mobile layout and hostile restored HTML. Run after `sbt buildJS` with `node --test tools/dev/mail-simulator.test.mjs`; requests are served locally or aborted, so no backend/account is required.
-- `tools/dev/workbook-stylesheets.test.mjs`: every workbook entry page links the dedicated simulator CSS exactly once, all local stylesheet links/imports resolve, authored CSS is reachable from a homepage entry page, and mail components contain no inline Laminar styling.
-- Full regression suites: `coreJVM/test`, `coreJS/test`, `client/test`, `server/test`, `worker/test`.
+```sh
+sbt buildClientDev buildWorkerDev
+npm run test:workbooks -- mail-simulator
+```
 
-The digital Phishing workbook also includes warning-sign, domain/Unicode, attachment-risk and checklist chapters using shared interactions. Mailbox and compose functionality are implemented; remaining source-content differences are listed in the [migration inventory](digital-workbook-migration.md#phishing-warning-signs-domains-and-attachments).
+For the wider Phishing edition and remaining source-content gaps, see the
+[migration inventory](digital-workbook-migration.md#phishing-warning-signs-domains-and-attachments).

@@ -1,6 +1,8 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
+import it.evadid.homepage.webElements.facades.Snap.*
 import com.raquo.airstream.ownership.Owner
+import it.evadid.homepage.webElements.facades.Snap
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapCodeEditorImpl, SnapProjectXmlSync}
@@ -25,11 +27,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   override def whenReady(render: () => Unit, onError: Throwable => Unit): Unit =
     import scala.scalajs.js.Thenable.Implicits.*
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-    val ready = js.Dynamic.global.globalThis.selectDynamic("TurtleStitchPoCReady")
-    if !js.isUndefined(ready) && ready != null then
-      ready.asInstanceOf[js.Promise[Unit]].toFuture.map(_ => render()).failed.foreach(onError)
-    else
-      super.whenReady(render, onError)
+    it.evadid.homepage.webElements.facades.Snap.load()
+      .map(_ => render()).failed.foreach(onError)
 
   private var editorWorld: Option[WorldMorph] = None
   private var editor: Option[IDEMorph] = None
@@ -93,7 +92,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     require(canvas.isConnected, "Snap's interactive canvas must be mounted before WorldMorph is created")
     sizeEditorCanvas(canvas, config)
 
-    val world = new WorldMorph(canvas, false)
+    val world = Snap.world(canvas).createLoadedInstance()
     require(
       world.worldCanvas eq canvas,
       "WorldMorph did not retain the mounted editor canvas used to register input listeners"
@@ -134,7 +133,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       sourceCanvas.width = config.visuals.CanvasWidth
       sourceCanvas.height = config.visuals.CanvasHeight
 
-      val world = new WorldMorph(sourceCanvas, false)
+      val world = Snap.world(sourceCanvas).createLoadedInstance()
       try {
         // A preview is an image of the scripts themselves, not another configured
         // IDE. Pane-hiding and palette settings can otherwise collapse the source
@@ -305,7 +304,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   private def createEditor(world: WorldMorph, state: ProgrammingStateSnapXml, config: SnapCodeEditorConfig): IDEMorph =
     val hasLibraryTabs = config.libraryTabs.nonEmpty
-    val ide = new IDEMorph(js.Dynamic.literal(
+    val ide = Snap.editor(js.Dynamic.literal(
       noAutoFill = true,
       noCloud = true,
       noExitWarning = true,
@@ -319,7 +318,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       // Hide built-in categories; exercise tabs via customCategories in installLibraries.
       noDefaultCat = hasLibraryTabs,
       eduLibraryTabs = config.libraryTabs.map(_.name).toJSArray
-    ))
+    )).createLoadedInstance()
     ide.openIn(world)
     if hasLibraryTabs then
       registerCustomCategoryTabs(config.libraryTabs)
@@ -331,12 +330,12 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     ide
 
   private def createPreviewEditor(world: WorldMorph, state: ProgrammingStateSnapXml): IDEMorph =
-    val ide = new IDEMorph(js.Dynamic.literal(
+    val ide = Snap.editor(js.Dynamic.literal(
       noAutoFill = true,
       noCloud = true,
       noExitWarning = true,
       preserveTitle = true
-    ))
+    )).createLoadedInstance()
     ide.openIn(world)
     restorePrimitiveBlockDictionary()
     ide.rawOpenProjectString(canonicalXml(state))
@@ -483,8 +482,6 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   /** "Make a variable" that always adds a global (no "for this sprite only" choice). */
   private def makeGlobalVariableButton(sprite: js.Dynamic): js.Any = {
-    val PushButtonMorph = js.Dynamic.global.PushButtonMorph
-    val DialogBoxMorph = js.Dynamic.global.DialogBoxMorph
     val BlockMorph = js.Dynamic.global.BlockMorph
     val IDE_Morph = js.Dynamic.global.IDE_Morph
 
@@ -501,15 +498,14 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       }
     }
 
-    val button = js.Dynamic.newInstance(PushButtonMorph)(
-      null,
+    val button = Snap.button(
       (() => {
-        val dialog = js.Dynamic.newInstance(DialogBoxMorph)(null, onConfirm, sprite)
+        val dialog = Snap.dialog(onConfirm, sprite).createLoadedInstance().asInstanceOf[js.Dynamic]
         dialog.applyDynamic("prompt")("Variable name", null, sprite.applyDynamic("world")())
         (): Unit
       }): js.Function0[Unit],
       "Make a variable"
-    )
+    ).createLoadedInstance().asInstanceOf[js.Dynamic]
     button.updateDynamic("userMenu")(sprite.selectDynamic("helpMenu"))
     button.updateDynamic("selector")("addVariable")
     button.updateDynamic("showHelp")(BlockMorph.selectDynamic("prototype").selectDynamic("showHelp"))
@@ -518,9 +514,6 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   /** "Delete a variable" with a Yes/No confirm after picking a name. */
   private def makeDeleteVariableButton(sprite: js.Dynamic): js.Any = {
-    val PushButtonMorph = js.Dynamic.global.PushButtonMorph
-    val MenuMorph = js.Dynamic.global.MenuMorph
-    val DialogBoxMorph = js.Dynamic.global.DialogBoxMorph
     val BlockMorph = js.Dynamic.global.BlockMorph
 
     def confirmAndDelete(varName: String): Unit = {
@@ -529,7 +522,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         sprite.applyDynamic("deleteVariable")(varName, true)
         (): Unit
       }
-      val dialog = js.Dynamic.newInstance(DialogBoxMorph)(null, onYes)
+      val dialog = Snap.dialog(onYes).createLoadedInstance().asInstanceOf[js.Dynamic]
       dialog.applyDynamic("askYesNo")(
         "Delete variable",
         s"""Delete variable "$varName"?""",
@@ -541,10 +534,9 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       rawName.toOption.map(_.trim).filter(_.nonEmpty).foreach(confirmAndDelete)
     }
 
-    val button = js.Dynamic.newInstance(PushButtonMorph)(
-      null,
+    val button = Snap.button(
       (() => {
-        val menu = js.Dynamic.newInstance(MenuMorph)(onPick, null, sprite)
+        val menu = Snap.menu(onPick, sprite).createLoadedInstance().asInstanceOf[js.Dynamic]
         val names = sprite.applyDynamic("deletableVariableNames")()
         if !js.isUndefined(names) && names != null then
           names.asInstanceOf[js.Array[String]].foreach { name =>
@@ -554,7 +546,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         (): Unit
       }): js.Function0[Unit],
       "Delete a variable"
-    )
+    ).createLoadedInstance().asInstanceOf[js.Dynamic]
     button.updateDynamic("userMenu")(sprite.selectDynamic("helpMenu"))
     button.updateDynamic("selector")("deleteVariable")
     button.updateDynamic("showHelp")(BlockMorph.selectDynamic("prototype").selectDynamic("showHelp"))

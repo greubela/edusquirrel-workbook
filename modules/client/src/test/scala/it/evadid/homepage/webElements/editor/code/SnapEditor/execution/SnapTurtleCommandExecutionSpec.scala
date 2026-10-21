@@ -379,11 +379,11 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
 
   test("worker URL lookup safely handles an absent optional global configuration") {
     assertEquals(
-      PyodideWorkerClient.configuredWorkerUrl(js.Dynamic.literal()),
+      it.evadid.homepage.webElements.facades.Pyodide.configuredWorkerUrl(js.Dynamic.literal()),
       "../js/pyodide-worker.js"
     )
     assertEquals(
-      PyodideWorkerClient.configuredWorkerUrl(
+      it.evadid.homepage.webElements.facades.Pyodide.configuredWorkerUrl(
         js.Dynamic.literal(PYODIDE_WORKER_URL = "../configured/pyodide-worker.js")
       ),
       "../configured/pyodide-worker.js"

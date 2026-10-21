@@ -1,23 +1,50 @@
 # Embroidery workbook with geometric previews
 
-The separate entry page `homepage/embroideryPreviewWorkbook/` loads `CreateEmbroideryPreviewWorkbook`, workbook ID `EmbroideryPreviewWorkbook`. The digital catalogue lists it alongside the original. The original factory, page, translations and stored answers are retained. The new edition has its own language namespace and supports German and English.
+`homepage/embroideryPreviewWorkbook/` is a separate edition with its own workbook
+ID, language namespace and saved answers. The original raster-based edition,
+translations and downloads remain available. Both support German and English.
 
-All thirteen original raster-based reproduction exercises are replaced by `TurtleRecreateShapeInteraction` with `ProgrammingEditorPalette.Embroidery`. `EmbroideryPreviewTargets` encodes the square, separated squares, triangles, pinwheel, rotated squares, polygonal figure eight, touching hexagons, growing houses and paired 36-gons as turtle commands. Positions, segment lengths and angles can be inspected in the geometric preview. Dashed travel in the source images represents pen-up movement, not embroidery. In particular, the apparent spokes in `repeat_large.png` are pen-up travel; the target consists of five hexagons. Separate instances of a repeated target save independent programs. Raster illustrations of custom-block construction and downloadable TurtleStitch exploration projects remain instructional material.
+## Content and ownership
 
-Chapter 5 now covers PDF task 4 (physical pages 18–20): saved modulo inputs for 1–7, prediction, executable alternating square/triangle and nested modulo-3 examples, explanation, and two house/triangle pattern exercises using modulo 2 and modulo 4. The example uses six shapes; the reproduction tasks use eleven starting points at x = 0, 80, …, 800. These dimensions are explicit in the instructions rather than inferred from a screenshot.
+The edition replaces raster recreation targets with inspectable turtle geometry,
+then adds modulo/conditional patterns, recursive Koch/snowflake/star exercises and
+an open-ended design task. Workbook construction and targets live under
+`modules/client/src/main/scala/it/evadid/homepage/workbook/content/`.
+Programs persist through the shared `ProgrammingState` model and use the regular
+Eva/Snap editors.
 
-Chapter 6 is enabled and covers all PDF task 5 activities (physical pages 21–22): a supplied recursive Koch function; four growing levels with a fixed 50-step base segment; three levels with constant width 270 and a length parameter; snowflakes at levels 0–3; and a six-spoke branching star. Prediction, scaling and termination explanations have saved response fields. The star returns with the pen up, avoiding doubled stitches. Exercises start unsolved except the three explicitly supplied examples. There are 30 geometric reproduction interactions in total.
+Supplied examples and learner exercises have distinct initial states. Repeated
+targets retain independent saved programs. Original custom-block illustrations
+and downloadable TurtleStitch projects remain teaching resources.
 
-The final section adapts PDF task 6 (physical page 23): an open-ended `ProgrammingExercise` without a target, a design reflection and a readiness checklist. Instructions retain the one-colour and 20 × 20 cm workshop constraints. The preview does not check physical stitch suitability or export machine files; production still uses TurtleStitch and supervisor review.
+## Drawing comparison and rendering
 
-The reproduction renderer compares `TurtleGraphic` strokes independently of pen-up routes. A jump cannot satisfy an expected stroke, and angle overlays refer only to strokes. Other renderer entry points retain travel comparison by default. JSXGraph updates are suspended while scene objects are added, then resumed once. Axis and point labels use SVG instead of HTML to avoid repeated forced page layouts, keeping dense targets responsive. Reproduction boards are freed when their section or program preview unmounts. Dense patterns with more than 128 corners show one representative overlay for each distinct turn, while retaining every line and coordinate. Identical command traces do not rebuild their boards. Workbook and section render signals ignore unchanged values, so opening or closing fullscreen editors preserves the existing workbook previews instead of recreating the entire body. Empty answers show a localized prompt instead of constructing a Snap thumbnail; block previews appear once a program exists. The turtle preview interpreter evaluates `%`, including Python’s signed remainder semantics. The block bridge also maps `%` to Snap’s native `reportModulus` reporter, preserves unary minus as a binary difference from zero, and converts conditional and loop blocks back into executable programs. The active representation is persisted through `ProgrammingState`; drawing comparison does not enforce all task requirements or populate the generic grader UI.
+Recreation compares drawn strokes independently of pen-up travel: moving without
+drawing cannot satisfy a target. Source-image travel marks must not become
+stitches. Other renderer consumers can choose to compare travel as well.
 
-Verification covers the client, shared JVM/JS and browser boundaries; use the current suites below instead of historical test totals. Chromium covers all target sections, five solved patterns, stable workbook previews through fullscreen changes, and persisted programs after reopen/reload.
+Previews reuse unchanged geometry, batch graph updates and release boards on
+unmount. Dense targets simplify angle annotations while retaining the drawing.
+Opening/closing fullscreen should preserve the workbook's existing previews;
+empty programs display a prompt instead of creating a native Snap thumbnail.
+See [startup loading](browser-startup-loading.md) for runtime readiness and
+[editor architecture](eva-editor-programming-state.md) for mount ownership.
 
-- `CreateEmbroideryPreviewWorkbookSpec`: separate identity, original preservation, section/exercise coverage, target segment counts and extents, no repeated star strokes, executable supplied examples, both workbook serialization formats.
-- `ProgrammingStateConversionSpec`: executable modulo/conditional loops and negative turns/return distances after Snap conversion.
-- `TurtleJsxGraphRendererSpec`: changed travel routes and pen-up/stroke distinction, plus existing rendering checks.
-- `tools/dev/embroidery-preview-workbook.test.mjs`: bilingual content/resources. `embroidery-preview-workbook.browser.test.mjs`: Chromium validation of all target sections, square/conditional/Koch/snowflake/star matches, independent open-ended design and saved restore after reopening/reloading.
-- Existing catalogue and workbook stylesheet checks cover the new entry page.
+Drawing comparison does not prove algorithm choice, command-limit compliance,
+physical stitch spacing or machine suitability. The final workshop design still
+requires TurtleStitch export and supervisor review; previews do not produce
+machine files.
 
-Run `npm ci`, `npx playwright install chromium`, and `npm run test:workbooks` after `buildClientDev`. The runner bundles the production CodeMirror loader with pinned local packages and runs the browser tests without skip flags.
+## Verification
+
+Shared-platform tests cover executable conversions, including modulo and
+recursion. Client tests cover target geometry, travel/stroke distinctions and
+separate workbook identity. Browser checks exercise solved patterns, stable
+previews and saved programs after reopen/reload.
+
+```sh
+sbt 'coreJVM/testOnly *ProgrammingStateConversionSpec' 'coreJS/testOnly *ProgrammingStateConversionSpec'
+sbt 'client/testOnly *CreateEmbroideryPreviewWorkbookSpec *TurtleJsxGraphRendererSpec'
+sbt buildClientDev buildWorkerDev
+npm run test:workbooks -- embroidery-preview-workbook
+```

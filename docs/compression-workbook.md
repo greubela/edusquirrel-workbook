@@ -4,47 +4,27 @@ The catalogue offers the native workbook at `homepage/compressionWorkbook/` and
 retains the standalone workbook at `resources/programs/20260907Datenkompression/`.
 The standalone files, scripts and materials are unchanged.
 
-The native version uses the same Scala.js/Laminar application, `WorkbookFactory`,
-section navigation, language maps, interaction synchronization and answer history
-as the embroidery workbooks. It reconstructs all seven original chapters in order,
-including the optional encryption chapter. It contains all 41 written questions,
-two pseudocode skeletons, the conditional introductory opinion and justification,
-seven final agree/disagree questions, nine hints, all 17 original widgets and both
-capacity calculators. The final comparison displays the saved introductory
-technical recommendation. Materials remain downloadable from the original paths.
+## Structure and state
 
-| Original activity | Native implementation |
-| --- | --- |
-| Video and photo capacity | `VideoBudget`, `PhotoBudget`; decimal MB calculator controls |
-| RLE examples, prose and three sticky challenges | `RunLengthText`; Unicode runs, restored text and explicit cost model |
-| Dictionary animation | `DictionaryText`; first occurrences literal, repeated words `Wn`, word steps, playback, speed and expandable dictionary |
-| Compression classifications and reasons | Existing `SortingReasonInteraction`, original four files/options in each activity |
-| Password and monochrome bit changes | `BitComparison`; original password, bit sequence and 128×128 ring image |
-| Six JPEG explanation slides | Existing `Slideshow` and `ImageSlide`; illustrations generated from original canvases |
-| Brightness/color and joint blocks | `ImageBlocks`; exact embedded 960×640 source image, independent Y/Cb/Cr means or RGB means |
-| Text versus screenshot | Original full-resolution screenshot, actual source file sizes, independent blocks and zoom |
-| Text versus DOCX inspector | Original letter, formatted version, expandable internal package descriptions |
-| Ten documents versus one archive | `TransferSimulation`; exact original texts, visible process steps, playback and explanatory FAQ |
-| Storage overview | `FileOverview`; exact original scenarios, metadata, logical grouped-file counts and area display |
-| Tutorial plus three independent simulators | `FileSimulation`; conversion, lossless/lossy operations, archive selection, metadata blocking, step counts, tutorial checklist and completion |
+The native edition reconstructs the seven source chapters using the shared
+workbook application, language maps and interaction history. It includes written
+questions, capacity calculators, text/image experiments and file simulations.
+Materials remain downloadable from the original paths.
 
-`CompressionExperimentInteraction` defines shared persisted values and their
-codecs. `CompressionExperimentRenderer` creates bound state through the existing
-synchronization control. `CompressionEditor` and `CompressionActivitiesEditor`
-provide native controls. Written answers and opinions render inline; experiments
-open in the regular fullscreen dialog. Settings, answers, challenges and simulator
-results survive reopening, chapter navigation and reload. Playback stops when the
-dialog closes. Invalid numeric drafts do not overwrite accepted values. Shared
-models and algorithms run on both JVM and JavaScript; browser image APIs remain in
-the client. Authored inspector text, formatted content, comparison sizes and archive
-files are passed through shared exercise configuration, rather than read from
-workbook content inside the editor. Existing slideshow navigation now derives its position from saved
-transition history, also restoring it across chapter changes and reload.
+Shared models and algorithms live under
+`modules/core/shared/src/main/scala/it/evadid/workbook/model/compression/`, with
+the interaction definition in the corresponding `elements/interactionElements/compression/`
+package.
+Browser controls live under
+`modules/client/src/main/scala/it/evadid/homepage/webElements/editor/compression/`.
+The workbook factory supplies authored text and scenario configuration; editors
+do not read workbook content directly. Browser image APIs stay in the client.
 
-Source element IDs identify questions and widgets; the workbook ID remains
-`CompressionWorkbook`. The new chapter IDs match the source chapter inventory.
-The prior incomplete native draft's auto-generated answer IDs are not a migration
-format for this complete reconstruction.
+Written answers render inline; experiments use the regular fullscreen dialog.
+Accepted values and results survive navigation/reload, invalid numeric drafts
+stay local, and playback stops on unmount. Slideshow position derives from saved
+history. The workbook ID remains `CompressionWorkbook`; earlier incomplete-draft
+auto-generated answer IDs are not a supported migration format.
 
 ## Accuracy notes
 
@@ -82,13 +62,10 @@ entries and the exact embedded photo. Reviewed technical annotations live in
 original canvas functions offline. Neither original widget scripts nor an iframe
 are loaded by the native client.
 
-`generate-compression-parity.mjs` executes the original storage operations offline
-and generates 420 input states with three expected operation results each. Shared
-JVM/JS tests compare all 1,260 outcomes, including sequential changes and repeated
-operations. Inventory tests compare chapters, answers, choices, hints, materials
-and lesson text with the retained original. Browser validation covers every chapter,
-all activity types, full-resolution canvases, tutorial completion, independent
-simulators, errors, persistence, slideshow navigation and mobile layout.
+`generate-compression-parity.mjs` creates reference fixtures from the original
+storage operations. Shared JVM/JS tests compare behavior against those fixtures;
+content checks compare the native chapters with retained sources. Browser checks
+cover native controls, persistence, playback cleanup and responsive layout.
 
 ```sh
 node tools/dev/sync-compression-source.mjs

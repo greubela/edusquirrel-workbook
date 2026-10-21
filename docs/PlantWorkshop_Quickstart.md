@@ -4,21 +4,15 @@
 
 Die Workbook-Version ist unter [plantWorkshopWorkbook](../homepage/plantWorkshopWorkbook/index.html) erreichbar. [CreatePlantworkshopWorkbook.scala](../modules/client/src/main/scala/it/evadid/homepage/workbook/content/CreatePlantworkshopWorkbook.scala) erzeugt sieben Sektionen mit persistierbaren Interaktionen. Die alte HTML-Einstiegsseite [plantWorkshop](../homepage/plantWorkshop/index.html) ist noch vorhanden, aber `PlantWorkshopApp.scala` wurde entfernt. Die aktuelle Startup-Logik registriert für `plantWorkshopApp` keine eigene Workbook-Factory; die vorhandene Seite belegt daher keine weiterhin aktive Alt-Anwendung.
 
-| Sektion | Inhalte der Workbook-Version |
-| --- | --- |
-| 0: Motivation | Einführung, Lernziele und Sicherheit |
-| 1: Bauteile und Aufbau | Bauteil-Checkliste und erste Verkabelungs-Slideshow |
-| 2: Sensor erkunden | Sensor auslesen, Code-Aufgabe, Arduino-Sketch-Download und Mess-Checkliste |
-| 3: Feuchtigkeit | Grenzwert/Fallunterscheidung, Code-Aufgabe und Sketch-Download |
-| 4: Pumpe | Zweite Verkabelungs-Slideshow, Code-Aufgabe, Sketch-Download und Checkliste |
-| 5: Gesamtsystem | Kombinierte Code-Aufgabe, Sketch-Download und Checkliste |
-| 6: Test und Bonus | Test-Checkliste, Fehlersuche, Bonus und Abschluss |
+Die sieben Sektionen führen von Motivation und Verkabelung über Sensor,
+Feuchtigkeit und Pumpe zum Gesamtsystem, Test und Bonus. Sie kombinieren
+Checklisten, Slideshows, Code-Aufgaben und Arduino-Downloads.
 
 Die Code-Aufgaben verwenden `CodeTaskToggle`: Reihenfolge-Aufgaben im Anfänger-Modus und Code-Vorlagen mit Anforderungen im Fortgeschrittenen-Modus. Downloads verwenden die vorhandenen Sketch-Download-Elemente. `TODO_*` in den Code-Vorlagen sind absichtliche Lücken für Lernende, keine fehlenden Implementierungen.
 
 ## Modelle, Texte und CSS
 
-Wiederverwendbare Modelle liegen unter `modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/`: `basic/LabeledCheckboxInteraction.scala`, `slideshow/`, `codeTaskToggle/` und `reorderExercise/`. Die Browser-Renderer liegen unter `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/`.
+Wiederverwendbare Modelle liegen unter `modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/`. Die Browser-Renderer liegen unter `modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/`.
 
 Sprachdateien:
 

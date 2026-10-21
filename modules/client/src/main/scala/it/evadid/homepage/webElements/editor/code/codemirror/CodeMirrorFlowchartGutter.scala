@@ -1,5 +1,8 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
+import it.evadid.homepage.control.startup.ClientRuntimeConfig
+import it.evadid.homepage.webElements.facades.Workers
+
 import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.distribution.clients.WebWorkerExecutionClient
@@ -18,7 +21,9 @@ object CodeMirrorFlowchartGutter {
   }
 
   private[code] final class Analysis(cache: Cache, createWorker: () => WebWorkerExecutionClient = () =>
-      WebWorkerExecutionClient(CodeMirrorEditorLoading.workerUrl, timeoutMilliseconds = 30000)) {
+      WebWorkerExecutionClient.fromWorker(
+        Workers.classic(ClientRuntimeConfig.workerUrl).createLoadedInstance(),
+        timeoutMilliseconds = 30000)) {
     private val worker = Var(Option.empty[WebWorkerExecutionClient])
     private val pending = Var(Option.empty[(String, Future[PythonFlowchartGutter.Chart])])
     private val generation = Var(0)

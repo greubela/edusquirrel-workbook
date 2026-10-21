@@ -46,11 +46,8 @@ type into the client module.
 | Evacuation graphs/simulations | Preserve graph weights and routing/event state; decoded simulations can continue without serializing a weight function |
 | Unicode evidence | Preserve UTF-16 code units, including deliberately malformed input; lossy UTF-8 replacement would discard evidence |
 
-Representative suites are `SystematicDerivedCodecSpec`, `DefaultValueCodecsSpec`,
-`AdditionalDefaultCodecsSpec`, `RenderingValueCodecSpec`, `PracticeValueCodecSpec`,
-`InteractionHistoryPackageSpec`, `CommandPayloadCodecsSpec`,
-`SystematicClientCodecSpec` and `ConfigurationCodecSpec`. Use
-[the shared-core test guide](core-package-unit-tests.md) to locate behavioral suites.
+See [the shared-core test guide](core-package-unit-tests.md) for test locations
+and commands.
 
 ## Maintaining tests
 

@@ -27,7 +27,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
     val received = Var(List.empty[Boolean])
     val destroyed = Var(0)
     window.updateDynamic("EduSquirrelCodeMirror")(js.Dynamic.literal(
-      createEditor = ((config: CodeMirrorEditor.EditorConfig) => {
+      createEditor = ((config: it.evadid.homepage.webElements.facades.CodeMirror.EditorConfig) => {
         received.update(_ :+ !js.isUndefined(config.flowchart))
         if (received.now().size == 3) completed.success(())
         if (received.now().size == 4) remounted.success(())
@@ -38,8 +38,8 @@ class CodeMirrorEditorMountSpec extends FunSuite {
           setDiagnostics = ((_: js.Array[js.Object]) => ()): js.Function1[js.Array[js.Object], Unit],
           focus = (() => ()): js.Function0[Unit],
           destroy = (() => { destroyed.update(_ + 1) }): js.Function0[Unit]
-        ).asInstanceOf[CodeMirrorEditor.CodeMirrorHandle]
-      }): js.Function1[CodeMirrorEditor.EditorConfig, CodeMirrorEditor.CodeMirrorHandle]
+        ).asInstanceOf[it.evadid.homepage.webElements.facades.CodeMirror.CodeMirrorHandle]
+      }): js.Function1[it.evadid.homepage.webElements.facades.CodeMirror.EditorConfig, it.evadid.homepage.webElements.facades.CodeMirror.CodeMirrorHandle]
     ))
     val mounts = List((Python, false), (Python, true), (Java, true)).map { (language, enabled) =>
       val host = dom.document.createElement("div")

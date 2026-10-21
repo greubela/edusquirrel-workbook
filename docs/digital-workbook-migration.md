@@ -23,193 +23,133 @@ Do not replace classic links when adding a digital page or promote a migration t
 | [Visual Novel PDF](../resources/workbookpdfs/20250330ArbeitsheftVisualNovel.pdf), 19 pages | Scratch movement/variables/lists and code predictions (pp. 3–9); scene spreadsheet/CSV import with positions (pp. 10–11); data-structure comparison (pp. 12–14); nested scene tables/lists (pp. 15–16) | Text, single/multiple choices, existing programming editors for their supported subset | Structured scene-table editor with validated CSV import/export and scene preview; local project/file submission; list/nested-data inspector. Existing Snap turtle conversion does not support every Scratch story block or scene asset. |
 | [Embroidery PDF](../resources/workbookpdfs/20250402StickmaschineArbeitsheft.pdf), 23 pages | Turtle primitives/coordinates (pp. 2–5), repetitions/pattern recreation (pp. 6–12), custom blocks/parameters (pp. 13–17), modulo table/conditions (pp. 18–20), recursion and creative design (pp. 21–23) | Existing turtle shape recreation, Eva/Snap editors, text/numeric inputs and answer tables | Further authored patterns and constraints; reliable execution/grading for recursion/custom blocks and design export. Existing visual previews do not imply complete automated pattern/command-limit grading. |
 
-## Online implementation delivered
+## Implementation structure
 
-[imageRecognitionWorkbook](../homepage/imageRecognitionWorkbook/index.html) is a **partial online adaptation** of the image-recognition material. It is linked alongside the original ZIP on the landing page. Both English and German labels are registered in `resources/languageMaps/eva/digitalWorkbooks/`.
+Native adaptations follow the [interaction architecture](workbook-interaction-architecture.md):
+shared saved values and exercise configuration, a registered client renderer, and
+an optional standalone editor. Inline questions reuse existing text, choice,
+table and plotting interactions. Open research and judgments remain ungraded;
+software tests do not establish pedagogical equivalence.
 
-- `ChoiceInteraction` stores `ChoiceAnswer` indices and supports single or multiple selections. Optional exact expected selections enable deterministic knowledge checks. With no expected answer it records an opinion without inventing a right/wrong grade. Controls render inline, so no fullscreen editor is needed.
-- `AnswerTableInteraction` defines labeled rectangular tables with fixed cells and editable text or constrained choices. `TableAnswer` stores editable values in row-major order. Optional expected alternatives give a checked-cell count; reflection cells are ungraded. The inline `AnswerTableRenderer` saves each change and uses scoped external CSS, so no fullscreen editor is needed. The pool activity now includes a worked Monday column and sixteen binary cells to complete from the week narrative.
-- `ThresholdNeuronInteraction` stores `NeuronParameters` (weights and threshold), input labels and binary `NeuronExample` rows. Shared core computes the weighted sum and activation (`sum >= threshold`), validates finite numbers/dimensions and checks all examples. It has no neural-network dependency.
-- `ThresholdNeuronRenderer` binds persistent learner state, shows a progress card and opens `ThresholdNeuronEditor`. The editor permits signed/decimal weights, compares every sample, resets to the exercise's initial configuration and keeps incomplete/invalid numeric drafts out of saved state.
+Workbook factories live under
+`modules/client/src/main/scala/it/evadid/homepage/workbook/content/`.
+Shared interaction implementations live under
+`modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/`;
+their browser renderers live under
+`modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/`.
+Appearance belongs in `homepage/css/workbook/digital-workbooks.css` and other
+dedicated component stylesheets.
 
-The pool examples encode the source week as Lina availability, at least one friend's availability, homework finished and sunny/warm weather. Initial unit weights produce the source sums **3, 1, 3, 2, 4**. Desired visits are Wednesday and Friday. One valid solution is weights **1, 1, 0, 2** with threshold **4**; grading accepts every parameter set that matches the examples, rather than requiring that particular solution.
+## Image recognition
 
-The introductory opinion, threshold-boundary check, multiple-choice weight question and free-text reflection are online. Pixel experiments, robustness/generalization and the school-chatbot advisory chapter from part 2 are also online; diagram annotations, real image datasets, the grid game and multilayer network design remain future work. Neither this adaptation nor five matching examples guarantees generalization to unseen situations.
+The partial native edition covers threshold-neuron experiments, binary-pixel
+features, robustness/generalization reflections and school-chatbot research.
+Neuron grading accepts any parameters matching the authored examples. These are
+inspectable fixed-rule experiments, not network training or complete digit
+recognition; matching the examples does not establish generalization.
 
-## Binary-pixel adaptation
-
-The next section adapts chapter 3, physical page 2 of `Workbook_Teil2.pdf`. Its ten 3×5 digit patterns were transcribed from the source figure. A reconstruction task presents a read-only digit-7 target and grades all fifteen pixels, including zeros. A second canvas loads every source digit and runs the two illustrated unit-weight threshold detectors: the top three pixels and the middle three pixels, each with threshold three. The two outputs reproduce the source's four groups (top, middle, both, neither); several digits share a group. A knowledge check and reflection address this loss of information.
-
-`BinaryPixelImage` is an immutable, validated, row-major shared-core model. `BinaryPixelInteraction` separates saved images from optional targets, detector definitions and presets. The inline `BinaryPixelRenderer` supports mouse/keyboard toggles, reset, fixed target display and saved restore; this small canvas needs no fullscreen editor. Colors and cell dimensions are tokens in `colors.css` and `dimensions.css`, consumed only by the dedicated digital workbook stylesheet. No dependencies were added.
-
-These are fixed feature detectors, not network training or complete digit recognition. The multiplayer guessing game, extra hidden layers and source-image activities still need implementation.
-
-## Image-recognition robustness and school advice
-
-The added fourth section adapts the reasoning activities from part 2 chapter 4 (physical pp. 6–8). The source's row-2/column-2 feature distinguishes digit 1 from the other nine templates. `BinaryPixelInteraction` now exposes that single-bit detector with the original digit, a removed-feature variant and an inverted-color variant. These explicitly identified digital counterfactuals do not reproduce every modified figure from the PDF. Learners can also create an unrelated image that activates the same detector. Observation tables and reflections are saved without grading human interpretations.
-
-The text distinguishes adversarial examples, distribution shifts and training overfitting: this fixed rule is not a trained network, so its failure alone does not establish overfitting. Misclassification is not automatically an LLM hallucination. MNIST, the panda/gibbon example and the sticker-covered stop sign are discussed with the original source figures remaining in the classic workbook; no model, dataset or external runtime is downloaded.
-
-The fifth section adapts chapter 5 (physical p. 9): five transformer research questions, sources/dates, proposed school uses, practical/social risks and a final conditional recommendation. The existing answer-table/text renderers suffice; no separate editor or external chatbot connection is necessary. Earlier interaction IDs and table shapes are unchanged.
+Robustness variants are explicitly identified digital counterfactuals, not exact
+reproductions of every source figure. The workbook distinguishes distribution
+shift, adversarial examples and overfitting. It downloads no model or dataset.
+Diagram annotation, original image activities, the grid game, multilayer network
+design and full source-figure review remain outstanding.
 
 ## Phishing warning signs, domains and attachments
 
-Four appended sections preserve the original mailbox/practice IDs while adding W1–W4 evidence questions, W4 hostname/registrable-domain examples, T2 Unicode exploration, V3 attachment/malware reasoning and the main workbook's five-measure final checklist. All English/German content is registered. Domain judgments and file-risk judgments require human reasoning rather than an automatic safe/unsafe verdict. The three factual domain examples have simple suffixes; this is not a public-suffix resolver. Source claims that a country suffix proves hosting location, that two labels always determine a registrable domain or that a familiar name establishes authenticity are explicitly qualified.
+The edition combines the [mail simulator](email-simulator.md) with warning-sign
+evidence, domain/Unicode analysis, attachment risks and the final checklist.
+Domain and file-risk judgments require human reasoning. The domain examples do
+not implement a public-suffix resolver or certify a URL as safe. Unicode analysis
+preserves the original code points, including malformed UTF-16, without
+normalizing away the evidence. Non-Latin characters are not inherently suspicious.
 
-`UnicodeText` handles raw UTF-16 text as code points, including supplementary emoji, combining marks, invisible controls and invalid unpaired surrogates. `UnicodeComparisonInteraction` persists two strings bounded to 256 UTF-16 units. Its inline renderer presents position, glyph, hexadecimal/decimal values and explicit validity; it performs no network request, URL navigation, normalization, Punycode decoding or trust classification. Non-Latin characters are not intrinsically suspicious. The original T2 mixed-script `payраI.com` example preserves Cyrillic р/а and Latin capital I.
+Main-workbook explanations, screenshots, attempt comparisons and further network,
+certificate, psychology, spearphishing and espionage modules still need adaptation.
+Keep the classic downloads available during that work.
 
-Attachment analysis preserves all six V3 filenames, including `Anmeldeformular.pdf.exe`. It distinguishes executable, archive and macro risks without claiming that ordinary PDF/image/docx suffixes guarantee safety. Simplified malware symptoms are graded as textbook categories, not real diagnoses. Further main-workbook material, screenshots, attempt comparisons and transmission/certificate, psychological, spearphishing and espionage modules remain outstanding. Keep both classic ZIPs and digital cards under the documented coexistence policy.
+## Blockchain
 
-Validation on 2026-10-09 passed 238 focused model/factory/authoring checks and all 2,045 Scala regression tests (core JVM 802, core JS 790, client 449, server 1, worker 3). The three Chromium scenarios passed: expanded image-recognition experiments/research, Phishing Unicode/domain/attachment/checklist persistence, and the original mailbox triage/local-compose/HTML-safety workflow. Navigation assertions wait for the selected chapter's content; reload checks wait for stored answers and explicitly select the mailbox chapter before reopening editors. All 13 stylesheet, classic/digital link and Pages assembly checks passed. `sbt buildJS` rebuilt the browser artifacts; latest fetched main `492fbcba` is included in the branch. No dependencies or classic workbook assets changed.
+The first native adaptation covers the learner activities through source page 29:
+trust and ledgers, pseudonyms, square-middle/SHA-256 experiments, linked blocks,
+mining/tampering, energy and final judgments. Initial claims and final assessments
+are saved separately. Supplementary hints and pedagogical changes still need
+content equivalence review.
 
-## Implementation boundaries
+The shared models use exact arithmetic and explicit teaching assumptions. Mining
+runs in bounded batches, yields to the UI and cancels on edits or close. The
+simulator demonstrates proof of work; it does not implement a wallet, Bitcoin
+header serialization, signature verification or network consensus. Research
+questions record sources/dates rather than hard-code changing network facts.
 
-Follow [interaction architecture](workbook-interaction-architecture.md): shared element/domain value → registered client renderer → optional editor. Shared definition factories and learner-value serializers are separate. Use existing `InteractionVariable` binding for save/restore and sync. Do not put Laminar or browser APIs into core, and keep appearance in dedicated CSS with shared tokens.
+Important source corrections are retained in the lesson:
 
-The new presentation lives in `homepage/css/workbook/digital-workbooks.css`, linked explicitly by every workbook entry page. No inline Laminar styles or new dependencies were added. Commentary/research questions retain human review; local simulator fixtures should not be presented as real financial, military, biometric or email systems.
+- The square-middle solution sheet's 35/45 collision is incorrect; 35 and 65
+  produce the same middle-digit hash under the stated rule.
+- SHA-256 preimages are computationally infeasible, not mathematically impossible.
+  Single-hash text experiments differ from Bitcoin block hashing.
+- Longest-chain reasoning assumes equal difficulty; Bitcoin compares cumulative
+  work. Addresses and signatures have different roles.
+- The source's energy period is inconsistent. Classroom estimates state their
+  assumptions, and allocated energy per transaction is not marginal energy cost.
 
-## Verification
+## Evacuation: reuse the existing simulator
 
-```sh
-sbt 'coreJVM/testOnly *ChoiceInteractionSpec *ThresholdNeuronSpec *AnswerTableInteractionSpec *BinaryPixelInteractionSpec *UnicodeComparisonSpec *WorkbookElementSerializableRoundTripSpec'
-sbt 'coreJS/testOnly *ChoiceInteractionSpec *ThresholdNeuronSpec *AnswerTableInteractionSpec *BinaryPixelInteractionSpec *UnicodeComparisonSpec *WorkbookElementSerializableRoundTripSpec'
-sbt 'client/testOnly *NeuronEditorStateSpec *CreateImageRecognitionWorkbookSpec *CreatePhishingWorkbookSpec'
-sbt buildJS
-node --test --test-concurrency=1 tools/dev/digital-workbook-interactions.test.mjs tools/dev/phishing-learning.test.mjs tools/dev/mail-simulator.test.mjs
-node tools/dev/workbook-stylesheets.test.mjs
-```
+The EVA2 engine already exists in
+`modules/client/src/main/scala/it/evadid/evacuation/eva2/` and at
+<https://evadid.it/eva2/>. Workbook editors reuse its construction and playback
+facilities with injected local state; they must not change the standalone
+application's global state. Shared saved floor/experiment values are independent
+of the client-only EVA2 model, connected through a client adapter.
 
-Tests also cover fixed/editable cell indexing, constrained choices and clearing, alternative answers, partial grading, ungraded completion, dimension validation, both definition formats and persisted browser table edits. Tests cover selection transitions/exact grading/opinion behavior, threshold boundaries, alternative solutions, numeric/dimension rejection, parameter and definition serialization, source-week sums, editor draft handling, real inline/fullscreen interaction and persisted reopening. Extend these with each new specialized model or editor, then broaden regression checks when shared registries change.
+The partial workbook includes construction, local playback, immutable saved run
+comparisons, locker/door experiments, coordinate graphs, budget proposals and
+model critique. Animation state is transient. Runs have finite budgets and retain
+explicit evacuated, blocked or step-limit outcomes. A blocked run must not be
+plotted as a successful evacuation. Later layout edits do not rewrite earlier
+measurements or predictions.
 
-The initial implementation passed all 1,854 Scala regression tests (core JVM 722, core JS 710, client 418, server 1, worker 3), the dedicated Chromium interaction test, and stylesheet/Pages assembly checks. These counts describe the 2026-10-09 validation run.
+Digital layouts are authored teaching examples, not exact reproductions of the
+source sports hall. The PDF's 1.2 m door cannot be represented exactly by 0.5 m
+cells. Time conversion follows the source cell-size/speed assumption, including
+its simplified treatment of diagonal movement; animation speed is independent.
+Construction criteria do not certify reachability or real-world safety. Original
+geometry, source diagrams/newspaper material and full equivalence remain to be
+reviewed. PDF page 15 repeats locker-gap instructions under a speed heading;
+that apparent source error is not duplicated as another activity.
 
-The answer-table extension passed all 1,877 Scala regression tests (core JVM 733, core JS 721, client 419, server 1, worker 3), the browser test including grading/mobile layout/reload persistence, five stylesheet checks and seven Pages assembly checks. The browser bundles were rebuilt with `sbt buildJS`. This subsequent validation was also run on 2026-10-09.
-
-The binary-pixel extension passed all 1,906 Scala regression tests (core JVM 747, core JS 735, client 420, server 1, worker 3). Browser coverage checks keyboard/mouse toggles, every source preset and detector group, reset, read-only targets, grading, reload persistence, mobile layout and preservation of pixel colors during hover/focus. Five stylesheet checks and seven Pages assembly checks passed; browser artifacts were rebuilt with `sbt buildJS`. This validation ran on 2026-10-09.
-
-## Blockchain migration started
-
-`homepage/blockchainWorkbook/index.html` now adapts learner activities through source p. 29: introductory claims, trust/payments, ledger balances/signatures, pseudonyms, Hashq/SHA-256, linked blocks/mining/tampering, energy/rewards and final judgments. Both English and German content are registered. Intermediate claim reassessments remain separate reflections; the final assessment is a separate table in the last chapter, preserving the existing initial research values and their serialization. This is a complete first adaptation of the learner activities, not verified content equivalence: supplementary hints and the explicit pedagogical changes still require review. Keep the digital card under “Digitale Workbooks (In Arbeit)” and the classic ZIP separately available.
-
-The ledger chapter preserves the six original transfers and initial issuance of 10 HP per person. `TeachingLedger` derives balances using exact integer arithmetic and rejects unknown accounts, nonpositive/self transfers and chronological overspending. Expected balances are calculated from the history, not independently hard-coded into the exercise. The source’s Anna/Tom calculation is extended to all four people so learners can check conservation of 40 HP. A choice question checks Anna’s proposed 4 HP payment; free reflections cover fraud, the exercise’s unforgeable-signature assumption, centralized versus distributed copies and real Bitcoin counterparts. This is bookkeeping, not a wallet or a cryptographic-signature implementation.
-
-Trust and privacy chapters reuse `AnswerTableInteraction` and text inputs. Ambiguous advantages/disadvantages, proposed exchanges and research answers are ungraded. The source payment flowchart becomes a saved sender → intermediaries → recipient sequence. The pseudonym table preserves the transaction amounts and order. The digital text explicitly distinguishes addresses from signatures, correcting the source’s conflation. No extra fullscreen editor is needed for these activities; styles remain in the shared dedicated CSS.
-
-The shared digital control CSS scopes table, neuron and hash inputs above the generic `:root input:hover/:focus` rules. This prevents padding changes during focus/blur: previously a table input could shrink on blur and move the following radio button between mouse-down and mouse-up. Browser coverage checks stable input dimensions and normal mouse selection, without forced clicks.
-
-`SquareMiddleHash` uses `BigInt` arithmetic and extracts exactly two decimal digits, biased left for odd square lengths. Leading-zero hashes are preserved. The interactive inputs are limited to 100 decimal digits; incomplete/invalid text is saved as a draft and gives no valid calculation. `SquareMiddleHashInteraction` separates exploration, collision and target-preimage tasks; grading accepts every valid solution and requires numerically different collision inputs. Its inline renderer needs no fullscreen editor. Presentation is in the already linked digital workbook CSS.
-
-The source solution sheet's collision example is erroneous: it prints `35² = 2025` and treats 35 and 45 as a collision. In fact `35² = 1225 → 22` and `45² = 2025 → 02`. The implementation follows the worksheet's mathematical rule; 35 and 65 are a valid collision with hash 22. Original downloads remain unchanged.
-
-The SHA-256 chapter now adapts source pp. 16–17: the original capitalization experiment, UTF-8 and hexadecimal reflections, the 256-bit output space and the manual one-zero challenge. An optional two-zero challenge extends the difficulty reflection, with an initially collapsed probability hint. Empty input is valid; text is not trimmed or Unicode-normalized. Source wording about impossible inversion is replaced with computational infeasibility, and Bitcoin block hashing is distinguished from these single-hash text experiments.
-
-`Sha256` implements FIPS 180-4 in shared core using byte arrays and 32-bit arithmetic, without a crypto dependency or platform API. `Sha256Interaction` stores raw strings and defines comparison versus prefix tasks. Inputs are bounded to 4096 UTF-16 code units for interactive use; the hash model itself accepts byte arrays. Prefix grading checks leading hexadecimal zeros and accepts every matching input. The inline `Sha256Renderer` uses shared hash-control styles, wraps the full digest on narrow screens and counts differing bits; no fullscreen editor or automatic mining loop is needed here.
-
-The proof-of-work chapter now adapts source pp. 18–24. It preserves the seven ledger records, grouped into four blocks (2/2/2/1), and includes conflicting-copy, block-capacity, genesis, nonce/hash-dependency, tampering, re-mining and majority-hashpower reflections. Initial block records retain the source’s German pseudonyms in either display language, preserving hashes and saved edits across language switches. The quick lab uses one leading hexadecimal zero; an optional four-zero lab retains the source difficulty. Arithmetic checks the exact 65,536 expected attempts and the four-person group’s 160,000 daily attempts; the source’s rounded 65,000 is identified as an approximation.
-
-`TeachingBlock` hashes an explicitly framed UTF-8 teaching payload containing its position, predecessor, nonce and data byte length. `TeachingChain` derives successor hashes and checks the contiguous mined prefix separately from individual proofs. It supports at most eight blocks and 4096 UTF-16 code units per block, nonces 0–2147483647, and bounded mining calls with overflow protection. `BlockchainInteraction` persists data/nonces, enforces the authored block count and configures difficulty. `BlockchainRenderer` supplies a preview and fullscreen `BlockchainEditor`. Client mining yields after batches of 50 candidates and stops after at most 5,000 trials per action; stop, edit, reset, locking and closing cancel pending work. Generation and snapshot guards prevent stale jobs from overwriting newer state. Invalid nonce drafts stay local and cannot replace the saved integer.
-
-The simulator illustrates proof of work, not Bitcoin header serialization, double hashing, signature verification, balance validation or network consensus. Status text accompanies CSS colors; a valid later proof does not bypass invalid predecessors. The longest-chain reflection explicitly assumes equal difficulty and distinguishes Bitcoin’s cumulative-work rule. Shared color/dimension tokens and all presentation remain in dedicated, already linked CSS.
-
-The energy/conclusion chapters adapt source pp. 25–29. Live block height, hash prefixes, rewards/fees and transactions are ungraded research with source and retrieval date; the subsidy is not hard-coded as a permanent 3.125 BTC fact. Historical quantities are converted exactly, and `MiningEnergyEstimate` calculates an explicitly assumed 365-day scenario with 4,000 transactions per 600-second block and 173 TWh/year. The source first reports 173 TWh for 2020–2021, then calls it annual; this inconsistency is disclosed rather than presented as a verified annual measurement. Under the classroom assumptions the answers are 52,560 blocks/year, 210,240,000 transactions/year, 6.67 transactions/second and 822.87 allocated kWh/transaction. The last quantity is an average allocation, not the marginal energy caused by one payment. Throughput, environmental comparisons and the final resource-cost judgment remain open reflections, with research boundaries and uncertainty explicitly requested.
-
-The final claim table adds ten new assessment/evidence cells without resizing the original twelve-cell research table. This preserves saved initial work and allows comparison of learners’ earlier and later views. Bitcoin’s numeric difficulty target, cumulative-work rule and distinctions from other consensus mechanisms are stated where the source simplifies them. No Bitcoin wallet, transaction service, cryptographic library or other new dependency was introduced.
-
-The Blockchain extension and merge with main passed all 1,935 Scala regression tests (core JVM 758, core JS 746, client 427, server 1, worker 3), including the Mons Komputarius workbook tests. The dedicated Blockchain browser check covers free research-table inputs, exact large-integer computation, invalid drafts, leading-zero hashes, distinct-input collisions, preimages, reset, mobile layout and reload persistence. Migration-link, stylesheet and Pages assembly checks also passed. Browser bundles were rebuilt with sbt buildJS on 2026-10-09.
-
-The subsequent trust/ledger/privacy extension passed 21 focused Scala tests (seven ledger tests on each of JVM and JavaScript, seven workbook authoring/serialization tests), both digital-workbook browser scenarios, and all 13 migration-link, stylesheet and Pages assembly checks. The Blockchain browser scenario additionally covers correct/incorrect balances, ordinary radio clicks after table edits, stable focused/hovered input geometry, mobile balance layout and persistence of trust/privacy research. Browser bundles were rebuilt with `sbt buildJS`; the branch contains main at `56488136`. This validation also ran on 2026-10-09.
-
-The SHA-256 extension passed 227 focused Scala checks: nine hash/interaction tests and 100 registered-element serialization checks on each of JVM and JavaScript, plus nine workbook authoring tests. Reference vectors cover empty/short/multi-block text, byte-padding boundaries, unsigned byte values, Unicode, exact whitespace and leading-zero digests. Both digital-workbook browser scenarios and all 13 static checks passed. The Blockchain scenario additionally checks both prefix challenges, 4096-character inputs, differing-bit counts, hash-space grading, reset, mobile digest wrapping and raw-text reload persistence. `sbt buildJS` rebuilt the browser artifacts; latest fetched main remained `56488136`. Validation ran on 2026-10-09.
-
-The mining/energy/conclusion extension passed all 2,018 Scala regression tests (core JVM 792, core JS 780, client 442, server 1, worker 3), plus all three Chromium scenarios and 13 static migration-link, stylesheet and Pages assembly checks. The mining scenario checks independent block-hash references, sequential proof repair, successor propagation, invalid nonce drafts, reset, mobile layout, reload persistence and cancellation on stop/fullscreen close. The workbook scenario also saves ungraded block research, grades conversions and rounded energy arithmetic, restores final assessments and verifies that initial claims remain intact. Reload assertions wait for IndexedDB to store the latest answer rather than assuming a rendered grade is already durable. Focused model/controller/factory checks also passed on their applicable platforms, and `sbt buildJS` rebuilt the browser artifacts. This validation ran on 2026-10-09 with main at `492fbcba` included in the branch.
-
-    sbt 'coreJVM/testOnly *SquareMiddleHashSpec *TeachingLedgerSpec *Sha256Spec *TeachingChainSpec *MiningEnergyEstimateSpec *WorkbookElementSerializableRoundTripSpec'
-    sbt 'coreJS/testOnly *SquareMiddleHashSpec *TeachingLedgerSpec *Sha256Spec *TeachingChainSpec *MiningEnergyEstimateSpec *WorkbookElementSerializableRoundTripSpec'
-    sbt 'client/testOnly *BlockchainMiningControllerSpec *CreateBlockchainWorkbookSpec *MonksWorkbookSpec'
-    sbt buildJS
-    node tools/dev/workbook-migration-links.test.mjs
-    node tools/dev/workbook-stylesheets.test.mjs
-    node tools/dev/assemble-pages.test.mjs
-    node --test --test-concurrency=1 tools/dev/blockchain-simulator.test.mjs tools/dev/blockchain-workbook.test.mjs tools/dev/digital-workbook-interactions.test.mjs
-
-## Evacuation: existing simulator and first integration
-
-The EVA2 simulator is already implemented in the client module and deployed independently at <https://evadid.it/eva2/>. Its floor model, editor mode, routing, conflict resolution and simulation player must be reused when adapting the evacuation workbook. The earlier inventory incorrectly described a simulator as missing.
-
-`EvacuationConstructFloorInteraction` is now demonstrated in the test workbook (`homepage/workbookDesign/`). Its renderer shows saved dimensions/person/exit counts and construction feedback, then opens `ScenarioEditor`. That editor owns a `Var[EvaFloorMap]` and injects it into the existing EVA2 `ScenarioEditorMode`; edits do not touch standalone `ProgramState`. The initial construction palette supports open floor, closed walls, exits and people, using existing EVA2 sprite properties. CSS supplies the simple grid presentation without external tile images. People toggle on repeat clicks and are removed when their cell is painted as a wall. Resizing crops occupants or updates their coordinates, and reset restores the exercise definition.
-
-The shared-core saved answer is `EvacuationFloorPlan`, a small validated rectangular layout. A client adapter converts it to/from `EvaFloorMap`; shared core does not depend on the browser-only model or simulator singleton. Minimum person/exit criteria describe construction, not reachability, evacuation time or real-world safety. The standalone `/eva2` no-argument mode keeps its existing global-state defaults.
-
-The construction component remains available in the test workbook. A partial [evacuationWorkbook](../homepage/evacuationWorkbook/index.html) now includes local simulation playback, saved step/time comparisons, the PDF time-conversion and speed-assumption activities, construction and model-limit reflections. The next-step migration plan, including source-layout verification, implementation sequence, acceptance checks and later work, lives in [tmp/evacuation/NEXT_MIGRATION_STEP.md](../tmp/evacuation/NEXT_MIGRATION_STEP.md). The classic PDF remains available unchanged.
-
-Validation: `coreJVM/test`, `coreJS/test`, `client/test`, `buildJS`, `node tools/dev/evacuation-editor.test.mjs`, and `node tools/dev/workbook-stylesheets.test.mjs`. Core tests cover layout/criteria/persistence; client tests cover adapters, isolated editor controls, locks, bounds and resize regressions; browser tests cover the preview/fullscreen flow, keyboard editing, reopening/reload, reset, CSS and mobile scrolling.
-
-### Local simulation and recorded comparisons
-
-`EvacuationSimulationInteraction` saves `EvacuationExperiment`: an editable floor, four/eight-neighbour settings, assumed walking speed and up to twelve named `EvacuationMeasurement` snapshots. Each snapshot contains its original layout/settings, movement-step count, remaining people and an explicit evacuated/blocked/step-limit outcome. Earlier runs are unaffected by edits and can be restored for another comparison. Transient animation position and timers are not persisted.
-
-The fullscreen `EvacuationSimulationEditor` reuses `ScenarioEditor` for construction and `EvacuationFloorView` for both editing and playback. `EvacuationPlayback` delegates navigation to the existing `ScenarioPlayerMode`, with local floor updates and injected configuration/redraw/failure callbacks. Calculation uses the existing `EvacuationStep` and `ClosestGoalStrategy`. Stable person IDs and route tie ordering make this workbook variant repeatable; standalone EVA2 retains its configurable strategies and ordering. The calculation now preserves initial states for blocked layouts, removes exit occupants within movement steps and has a bounded step budget. Success metadata checks remaining people rather than sequence length.
-
-Browser preparation is limited to 400 cells, 100 people and eight exits, with at most 250 movement steps. A limit result retains remaining people and is not reported as evacuation. Scheduled playback cancels on pause, floor/settings changes, edit locks, unmount and fullscreen close. The model-time conversion is `n * 0.5 / v` seconds, following the PDF's 50 cm cells. Eight-neighbour movement still uses that fixed step-length assumption; the workbook explicitly asks learners to question the simplification. Animation delay is independent of assumed walking speed. Speed drafts accept dot/comma decimals and invalid drafts are kept out of saved settings.
-
-The introductory corridor is a new teaching example, explicitly not the PDF sports hall. The classic evacuation PDF remains under **Analoge Workbooks (PDF /ZIP)**; this partial digital version is separately linked under **Digitale Workbooks (In Arbeit)**. Both links are intentional until content equivalence is verified.
-
-Additional verification: `EvacuationExperimentSpec` on core JVM/JS, `EvacuationPlaybackSpec` and `CreateEvacuationWorkbookSpec` in client, and `node tools/dev/evacuation-simulation.test.mjs`. The browser scenario covers individual steps, play/pause, assumed-speed comparisons, exit editing, immutable earlier measurements, scenario restoration, deletion, reload persistence and mobile layout.
-
-### Evacuation source activities (PDF pp. 10–20)
-
-The partial digital workbook now also includes school-improvement proposals (p. 10), prediction/testing of removing two lockers (p. 11) and closing locker gaps (p. 12), door-width predictions and measured comparisons (pp. 13–14), the €20,000 master plan with the eight original quotation items (p. 16), and simulation critique: orderly/chaotic behaviour, four/eight-neighbour movement, a third movement factor and stumbling/congestion waves (pp. 18–20). Predictions and observations have separate saved text answers. Budget checkboxes save a proposal; learners calculate and justify the total themselves. They do not modify a scenario or certify a safety benefit.
-
-The locker and door experiments reuse `EvacuationSimulationInteraction` → its renderer → `EvacuationSimulationEditor`. Each has an independent saved answer, including its own layout and measurement history. The 11 × 9 comparison room is authored for this digital version, **not** an exact reproduction of the source sports hall: four single-cell lockers, six people and a one/two-cell door. Instructions name cells using one-based row/column coordinates and ask learners to restore the baseline before testing gap closure. The diagonal audit uses a one-person room to isolate the neighbourhood change. Existing chapter and answer IDs remain unchanged.
-
-The PDF's door-width graph has a 1.2 m reference, which cannot be represented exactly with the source model's 0.5 m cells. The digital experiment compares 0.5, 1.0 and 1.5 m doors; named run records supply the measurements and a text table records the relationship. Prediction and observation coordinate graphs now retain the PDF axes (0–3 m and 0–30 s), with independent saved point sets and relationship classifications. Original sports-hall geometry, source diagrams/newspaper material and full content-equivalence review remain outstanding. PDF p. 15 has a speed heading but repeats the locker-gap instructions; this apparent source editing error is not duplicated as another activity. The separate “faster is always better?” question is retained in the master-plan task, with a request for evidence beyond the fixed-speed model.
-
-Validation adds preset geometry, deterministic evacuation and isolated four/eight-neighbour comparison tests, complete workbook serialization and activity/selection inventory checks. `node tools/dev/evacuation-source-activities.test.mjs` verifies separate experiment state and reload persistence of edited lockers, budget selections and written answers. `node tools/dev/evacuation-workbook-content.test.mjs` checks bilingual task coverage and the original quotation costs. All activities reuse existing components and dedicated CSS; no dependency or inline style is added.
-
-The evacuation entry is also registered in the shared `DigitalWorkbookCatalog`, with English/German card text and `inProgress = true`. Direct startup resolves its factory from the catalogue, and its HTML loads the dedicated catalogue stylesheet for the return-to-selection flow. The classic PDF card remains separate on the classic homepage. Catalogue validation includes `DigitalWorkbookCatalogSpec` and `npm run test:workbooks`; the latter checks the evacuation link/status as well as responsive layout, navigation and cached startup.
-
-### Saved coordinate graphs for the door-width experiment
-
-`CoordinatePlotInteraction` → `CoordinatePlotRenderer` → inline `CoordinatePlotEditor` supplies a reusable graph for numeric relationships. Shared-core `PlotAxis`, `PlotPoint` and `PlotAnswer` validate finite values, axis bounds, at most 50 tick intervals and at most 100 unique x coordinates. Adding a point with an existing x coordinate replaces its y coordinate; points are ordered by x and can be removed. Answer serialization validates the exercise's bounds on both read and write. No graph library or dependency is introduced.
-
-The evacuation door-width chapter now has separate prediction and observation graphs with the PDF's 0–3 m horizontal and 0–30 s vertical ranges. Keyboard-accessible coordinate fields accept decimal dots or commas; invalid drafts disable adding a point and never enter the saved answer. Learners can connect points, but these straight segments are a sketch, not a fitted curve. The two six-option relationship classifications reuse ungraded `ChoiceInteraction`; explanations stay in the existing text answers. Observations and edits to the simulation do not rewrite predictions. A blocked run has no finite evacuation time and is explained in text rather than plotted as successful evacuation. The source's unknown 1.2 m reference time is not fabricated.
-
-SVG data coordinates stay in code; colors, strokes, point sizes, typography and layout are CSS definitions. `digital-workbooks.css` is already linked by every workbook entry page, and the graph uses shared color/dimension tokens. Numeric values also appear in an accessible HTML table, so SVG is not the only representation.
-
-Validation: `CoordinatePlotSpec` on core JVM/JS, the exhaustive interaction serialization audit, the full evacuation-workbook round trip, the bilingual content/style checks and `node tools/dev/coordinate-plot.test.mjs`. The browser test covers decimal input, rejected bounds, replacement/deletion, connection choice, independent prediction/observation state, relationship choices, reload persistence, CSS point presentation and mobile bounds.
+The retained [migration plan](../tmp/evacuation/NEXT_MIGRATION_STEP.md) contains
+source-review references and acceptance criteria.
 
 ## Separate embroidery preview edition
 
-`homepage/embroideryPreviewWorkbook/` duplicates the original under a distinct workbook ID. All thirteen raster-based recreation interactions now use geometric turtle targets. Digital chapter 5 covers modulo and conditionals (PDF task 4), and chapter 6 covers Koch levels, constant-width curves, Koch snowflakes and a branching star (PDF task 5). The final open-ended design task covers PDF task 6. The new edition is available in German and English. Geometry grading does not verify the use of particular algorithms, command limits, physical stitch spacing or machine export. The original workbook and PDF remain available. See [the edition notes](embroidery-preview-workbook.md) for task mapping and validation.
+The geometric-preview edition has its own workbook identity and saved answers;
+the original raster edition and PDF remain available. It covers geometric
+recreation, modulo/conditionals, recursion and open design. Drawing comparison
+does not verify algorithm choice, command limits, physical stitch suitability or
+machine export. See [edition notes](embroidery-preview-workbook.md).
 
 ## German and English native editions
 
-Every native entry in `DigitalWorkbookCatalog` must advertise German and English
-in its workbook metadata and provide translated lesson and editor text. The
-language selector switches the same workbook and its bound answers; changing
-language does not create a separate exercise state.
+Each native catalogue entry advertises German and English and supplies lesson
+and editor translations. Language switches preserve the workbook and its saved
+answers. Keep placeholders and download URLs intact, and make encoded examples
+match the translated plaintext.
 
-The Monks edition includes English dialogue, recursion explanations, questions
-and Koch exercises. Compression includes English text for all seven migrated
-chapters, slideshow captions, sorting explanations, hints and native editor
-controls. Its English map covers native runtime references; the German map also
-retains unused entries imported from the older standalone interface. Those
-unused entries do not need translations until reused by a native component.
-Preserve placeholders and download URLs when translating. Encoded text examples
-must correspond to the translated plaintext, including the existing Base64
-technical correction.
+Original downloadable documents, figures and simulator sample data remain source
+materials in their original languages. Older standalone/external offerings have
+separate localization requirements. Unused imported language-map entries need
+translation when a native component begins using them.
 
-Original downloadable documents, illustrations, evidence files and simulator
-sample data remain source materials, including their original German text and
-filenames. The five older standalone catalogue offerings, including remotely
-hosted applications, have separate implementations and require their own
-localization/adaptation work. The native-language guarantee applies to the nine
-workbooks constructed by this repository's workbook factories and their shared
-components, plus the developer test workbook.
+## Verification
 
-`DigitalWorkbookCatalogSpec` verifies language metadata.
-`tools/dev/workbook-languages.test.mjs` checks native map coverage, dynamic
-Compression references, placeholders, links and encoded examples.
-`tools/dev/workbook-languages.browser.test.mjs` switches all nine entry pages
-between languages and checks English Compression controls and answer retention.
-Both test files are discovered by the existing static/browser test runners.
+Use the [test guide](core-package-unit-tests.md) for shared-platform, client and
+browser checks. Migration checks belong in `tools/dev/`: link tests protect
+classic/digital coexistence, content tests compare authored material, and browser
+checks cover editing, cancellation, language switching and saved restoration.
+These checks complement manual source and visual review.
+
+```sh
+npm run test:static
+sbt buildClientDev buildWorkerDev
+npm run test:workbooks
+```

@@ -67,7 +67,7 @@ test('Snap previews and editor wait for the runtime and ignore closed mounts', a
     await open.click();
     await page.waitForFunction(hasBlocks, await editor.elementHandle());
     const sources = await page.locator('script[src*="20260212TurtleStitch/"]').evaluateAll(scripts =>
-      scripts.filter(script => !script.src.endsWith('/fullturtle.js')).map(script => ({src:script.src,priority:script.getAttribute('fetchpriority')})));
+      scripts.map(script => ({src:script.src,priority:script.getAttribute('fetchpriority')})));
     assert.equal(sources.length, 22);
     assert.equal(new Set(sources.map(script => script.src)).size, 22, 'editor reopening does not load the runtime again');
     assert(sources.every(script => script.priority === 'low'));
@@ -103,7 +103,7 @@ test('Snap finishes startup preheating without creating a Morphic world or openi
       } catch {await route.fulfill({status:404,body:'Not found'});}
     });
     await page.goto(origin + '/homepage/workbookDesign/index.html', {waitUntil:'domcontentloaded'});
-    await page.waitForFunction(() => !!(window.TurtleStitchPoC?._impl));
+    await page.waitForFunction(() => typeof window.SnapSerializer?.prototype.eduSquirrelOriginalLoadProjectModel === 'function');
     assert.equal(await page.evaluate(() => window.snapWorldCreations), 0, 'warmup loads code without allocating GUI sessions');
     assert.equal(await page.locator('dialog[open], .be-program-snap-renderer__canvas').count(), 0);
     assert.deepEqual(errors, []);

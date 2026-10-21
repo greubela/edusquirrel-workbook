@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
+import it.evadid.homepage.webElements.facades.Snap.*
 import com.raquo.airstream.ownership.{Owner, Subscription}
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*

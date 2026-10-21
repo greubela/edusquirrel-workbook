@@ -9,29 +9,11 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
-import scala.scalajs.js.annotation.JSGlobal
 
-object PyodideMainThreadEnvironment {
-  @js.native
-  trait Pyodide extends js.Object {
-    val globals: js.Dynamic = js.native
-
-    def registerJsModule(name: String, module: js.Object): Unit = js.native
-
-    def setStdout(options: js.Object): Unit = js.native
-
-    def setStderr(options: js.Object): Unit = js.native
-
-    def runPythonAsync(code: String): js.Promise[js.Any] = js.native
-  }
-
-  @js.native
-  @JSGlobal("loadPyodide")
-  private def loadPyodide(): js.Promise[Pyodide] = js.native
-}
 
 final class PyodideMainThreadEnvironment {
-  import PyodideMainThreadEnvironment.*
+  import it.evadid.homepage.webElements.facades.{Pyodide as PyodideDependency}
+  import it.evadid.homepage.webElements.facades.{PyodideRuntime as Pyodide}
 
   private var pyodidePromise: Option[Future[Pyodide]] = None
   private var pyodideInstance: Option[Pyodide] = None
@@ -101,7 +83,7 @@ final class PyodideMainThreadEnvironment {
       case Some(instance) => Future.successful(instance)
       case None =>
         pyodidePromise.getOrElse {
-          val created = promiseToFuture(loadPyodide()).map { pyodide =>
+          val created = PyodideDependency.createInstance().map { pyodide =>
             pyodideInstance = Some(pyodide)
             reinstallModules(pyodide)
             pyodide
