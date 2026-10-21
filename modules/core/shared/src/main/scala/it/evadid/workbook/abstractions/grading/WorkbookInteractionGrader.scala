@@ -2,6 +2,7 @@ package it.evadid.workbook.abstractions.grading
 
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.util.io.Serializer
+import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS
@@ -11,20 +12,21 @@ import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
 import upickle.default.*
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 trait WorkbookInteractionGrader[T, A] {
   given ec: ExecutionContext = ExecutionContext.global
 
-  def gradeStateSafe(state: T, forceGrading: Boolean): Future[GradingResult[T, A]] =
+  def gradeStateSafe(state: T, forceGrading: Boolean, availableExecutionClients: List[ExecutionClient]): Future[GradingResult[T, A]] =
     if (forceGrading || runningBehavior == RUN_ALWAYS) {
-      gradeState(state).recover {
+      Try(gradeState(state, availableExecutionClients)).fold(Future.failed, identity).recover {
         case (err: Throwable) => GradingResult[T, A](this, state, TestError(SerializedException(err)))
       }
     } else {
       Future.successful(new GradingResult[T, A](this, state, NotExecuted()))
     }
 
-  def gradeState(state: T): Future[GradingResult[T, A]]
+  def gradeState(state: T, availableExecutionClients: List[ExecutionClient]): Future[GradingResult[T, A]]
 
   def importance: GradingImportance
 

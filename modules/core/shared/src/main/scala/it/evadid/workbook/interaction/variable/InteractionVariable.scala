@@ -5,9 +5,10 @@ import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, Asy
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic.DeriveOnlyLastValues
 import it.evadid.core.datastructures.state.{ExecutionMethod, State}
+import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
-import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult}
+import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus}
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
 import upickle.default.*
@@ -125,25 +126,29 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     innerState.set(defaultHistory)
   }
 
-  def updateStateFromUserInteraction(syncControl: SyncControl, updater: T => T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
+  def updateStateFromUserInteraction(syncControl: SyncControl, updater: T => T, updateSize: UpdateImportance, availableExecutionClients: List[ExecutionClient], timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {
     val nextState: T = updater(safeLastState.value)
     setStateFromUserInteraction(syncControl, nextState, updateSize, timestamp)
-    startGrading(syncControl, false)
+    startGrading(syncControl, availableExecutionClients)
   }
 
-  def startGrading(syncControl: SyncControl, forceGrading: Boolean = false): Unit = this.synchronized {
+  def startGrading(syncControl: SyncControl, availableExecutionClients: List[ExecutionClient], forceGrading: Boolean = false): Unit = this.synchronized {
     val curState = innerState.now()
     val lastValue = curState.lastStateOption.map(_.value)
     val covered = lastValue.exists { state =>
       curState.gradings.get(state).exists { cached =>
         cached.state == state && underlyingInteraction.gradingElements.forall { grader =>
-          cached.testsWithResults.exists(result => result.gradedState == state && result.grader == grader)
+          val results = cached.testsWithResults.filter(result => result.gradedState == state && result.grader == grader)
+          results.maxByOption(_.gradingTime).exists { latest =>
+            results.filter(_.gradingTime == latest.gradingTime)
+              .forall(result => !result.gradingStatus.isInstanceOf[GradingStatus.TestError])
+          }
         }
       }
     }
     if (underlyingInteraction.gradingElements.nonEmpty && lastValue.nonEmpty &&
       (forceGrading || !covered)) {
-      val futures: Future[List[GradingResult[T, GA]]] = Future.traverse(underlyingInteraction.gradingElements)(_.gradeStateSafe(lastValue.get, forceGrading))
+      val futures: Future[List[GradingResult[T, GA]]] = Future.traverse(underlyingInteraction.gradingElements)(_.gradeStateSafe(lastValue.get, forceGrading, availableExecutionClients))
       futures.map(resList => GradedState[T, GA](lastValue.get, resList.toSet)).onComplete {
         case Success(res) => this.synchronized {
           innerState.update(_.updateGradings(_ ++ Map(lastValue.get -> res)))

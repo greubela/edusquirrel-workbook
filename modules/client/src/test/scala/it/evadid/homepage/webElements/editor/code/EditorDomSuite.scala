@@ -12,7 +12,8 @@ trait EditorDomSuite extends FunSuite {
   private val previous = Var(List.empty[(String, js.Dynamic)])
   private lazy val window = {
     val req = js.Dynamic.global.selectDynamic("require")
-    js.Dynamic.newInstance(req(js.Dynamic.global.process.cwd().asInstanceOf[String] + "/node_modules/jsdom").JSDOM)("<html><body></body></html>").window
+    js.Dynamic.newInstance(req(js.Dynamic.global.process.cwd().asInstanceOf[String] + "/node_modules/jsdom").JSDOM)(
+      "<html><body></body></html>", js.Dynamic.literal(url = "http://localhost/")).window
   }
   override def beforeAll(): Unit = {
     previous.set(names.map(name => name -> js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, name)))

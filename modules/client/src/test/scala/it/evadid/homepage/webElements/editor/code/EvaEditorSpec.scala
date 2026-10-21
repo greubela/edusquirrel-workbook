@@ -5,6 +5,7 @@ import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.state.StateHelper.*
+import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.*
@@ -85,10 +86,12 @@ class EvaEditorSpec extends EditorDomSuite {
     assertEquals(fullInfo.current.workbookInfo, None)
     assertEquals(fullInfo.signals.currentSyncDestinations.now(), Nil)
     val requested = Var(Vector.empty[String])
+    val clients = Var(Vector.empty[List[ExecutionClient]])
     val pending = Promise[HintResult]()
     val scaffolder = new WorkbookInteractionScaffolder[String, String] {
-      override def generateFeedback(state: String): Future[HintResult] = {
+      override def generateFeedback(state: String, availableExecutionClients: List[ExecutionClient]): Future[HintResult] = {
         requested.update(_ :+ state)
+        clients.update(_ :+ availableExecutionClients)
         pending.future
       }
     }
@@ -105,6 +108,7 @@ class EvaEditorSpec extends EditorDomSuite {
     val close = mount(element)
     later().flatMap { _ =>
       assertEquals(requested.now(), Vector.empty)
+      assertEquals(clients.now(), Vector.empty)
       assertEquals(variable.history, before)
       assertEquals(element.ref.querySelector(".interaction-scaffolding"), null)
       element.ref.querySelector(".interaction-info__hint-toggle").asInstanceOf[dom.html.Button].click()
@@ -114,6 +118,7 @@ class EvaEditorSpec extends EditorDomSuite {
       later()
     }.flatMap { _ =>
       assertEquals(requested.now(), Vector(variable.currentValue))
+      assertEquals(clients.now(), Vector(List(fullInfo.defaults.backendExecutor)))
       val feedback = ScaffoldingResult[String, String](variable.currentValue, LanguageMap.universalMap("1. What changes here?"),
         FeedbackEntity.TestEntity(), None)
       pending.success(feedback)
@@ -154,7 +159,7 @@ class EvaEditorSpec extends EditorDomSuite {
     type Result = ScaffoldingResult[ProgrammingState, String]
     val requests = Var(Vector.empty[(ProgrammingState, Promise[Result])])
     val scaffolder = new WorkbookInteractionScaffolder[ProgrammingState, String] {
-      override def generateFeedback(source: ProgrammingState): Future[Result] = {
+      override def generateFeedback(source: ProgrammingState, availableExecutionClients: List[ExecutionClient]): Future[Result] = {
         val result = Promise[Result]()
         requests.update(_ :+ (source -> result))
         result.future
@@ -238,7 +243,7 @@ class EvaEditorSpec extends EditorDomSuite {
       override lazy val childrenOfThisElement = List.empty[WorkbookElement]
       override val associatedFactory = TextInteraction.factory
       override val scaffoldingElement = Some(new WorkbookInteractionScaffolder[String, String] {
-        override def generateFeedback(source: String): Future[HintResult] = {
+        override def generateFeedback(source: String, availableExecutionClients: List[ExecutionClient]): Future[HintResult] = {
           requested.update(_ + 1)
           pending.future
         }

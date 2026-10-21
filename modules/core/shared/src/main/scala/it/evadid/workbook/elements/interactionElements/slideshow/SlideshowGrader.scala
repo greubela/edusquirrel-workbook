@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.slideshow
 
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
 import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS
@@ -14,7 +15,7 @@ import scala.concurrent.Future
 
 case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrader[SlideshowState, Nothing] derives ReadWriter {
 
-  override def gradeState(state: SlideshowState): Future[GradingResult[SlideshowState, Nothing]] = Future {
+  override def gradeState(state: SlideshowState, availableExecutionClients: List[ExecutionClient]): Future[GradingResult[SlideshowState, Nothing]] = Future {
 
     val gradingStatus: GradingStatus = if (state.unseenPanels.isEmpty) GradingStatus.Correct() else GradingStatus.PartiallyCorrect()
     val feedbackInformation: LanguageMap[AppLanguage.HumanLanguage] = gradingStatus.match {

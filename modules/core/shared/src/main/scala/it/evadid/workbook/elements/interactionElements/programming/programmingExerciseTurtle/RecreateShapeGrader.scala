@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
 import it.evadid.workbook.abstractions.FeedbackEntity
+import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS
@@ -16,7 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 case class RecreateShapeGrader(desiredResult: TurtleGraphic, isRequired: Boolean) extends WorkbookInteractionGrader[ProgrammingState, Nothing] derives ReadWriter {
 
-  override def gradeState(state: ProgrammingState): Future[GradingResult[ProgrammingState, Nothing]] = Future {
+  override def gradeState(state: ProgrammingState, availableExecutionClients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, Nothing]] = Future {
 
     val comp = TurtleGraphicComparison(TurtleGraphic(state.toBeExpressionState.deriveTurtleCommands), desiredResult)
     val incorrect = comp.difference.filter(_.status != CORRECT)

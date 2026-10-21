@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Java, Python}
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.util.logging.BasicLogger
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
@@ -17,17 +18,21 @@ import scala.util.Try
 
 final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionElementFull[ProgrammingState, ?, A],
     publicTask: LanguageMap[HumanLanguage],
-    feedbackLanguage: () => HumanLanguage, executionClient: () => ExecutionClient)
+    feedbackLanguage: () => HumanLanguage)
     extends WorkbookInteractionScaffolder[ProgrammingState, A] {
   import ProgrammingHintScaffolder.*
 
   private given ExecutionContext = ExecutionContext.global
 
-  override def generateFeedback(currentState: ProgrammingState): Future[ScaffoldingResult[ProgrammingState, A]] =
+  override def generateFeedback(currentState: ProgrammingState, availableExecutionClients: List[ExecutionClient]): Future[ScaffoldingResult[ProgrammingState, A]] =
     Try {
       val context = prepare(currentState)
-      LLMCommands.feedbackLlmCommandFactory
-        .sendCommandTo(executionClient(), context.request, Some(BasicLogger()))
+      val factory = LLMCommands.feedbackLlmCommandFactory
+      val command = ExecutionCommand(factory.name, upickle.default.writeJs(context.request))
+      val client = availableExecutionClients.find(_.canExecuteCommand(command))
+        .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
+      factory
+        .sendCommandTo(client, context.request, Some(BasicLogger()))
         .map { response =>
           val hints = parse(response.result, context.evidenceIds)
           val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
