@@ -27,7 +27,21 @@ export function layoutFlowchart(chart = {}) {
       lanes[lane] = edge.high;
       return {...edge, sourceX, targetX, back, terminal, lane: maxX + 20 + lane * 10};
     });
-  return {nodes, routes, entries: new Set(chart.entries ?? []), width: maxX + 34 + lanes.length * 10};
+  return {
+    nodes, routes, entries: new Set(chart.entries ?? []), width: maxX + 34 + lanes.length * 10,
+    signature: chartSignature(chart)
+  };
+}
+
+// Identical charts keep the same gutter DOM. Width follows from nodes and edges.
+function chartSignature(chart = {}) {
+  const part = (items, fields) => (items ?? [])
+    .map(item => fields.map(field => item[field] ?? "").join("\u0000")).join("\u0001");
+  return [
+    part(chart.nodes, ["line", "kind", "depth", "label"]),
+    part(chart.edges, ["from", "to", "kind"]),
+    (chart.entries ?? []).join("\u0001")
+  ].join("\u0002");
 }
 
 const element = (tag, attributes = {}) => {
@@ -118,13 +132,17 @@ export function flowchartExtension(chartForDoc) {
   const field = StateField.define({
     create: () => empty,
     update: (layout, transaction) => {
-      if (transaction.docChanged) return empty;
       for (const effect of transaction.effects) if (effect.is(ready)) return effect.value;
       return layout;
     }
   });
   const analysis = ViewPlugin.define(view => {
     let timer, generation = 0, destroyed = false;
+    const publish = (current, layout) => {
+      if (destroyed || current !== generation) return;
+      if (layout.signature === view.state.field(field).signature) return;
+      view.dispatch({effects: ready.of(layout)});
+    };
     const schedule = delay => {
       clearTimeout(timer);
       const current = ++generation;
@@ -132,8 +150,8 @@ export function flowchartExtension(chartForDoc) {
         const source = view.state.doc.toString();
         Promise.resolve().then(() => chartForDoc(source)).then(chart => {
           if (!destroyed && current === generation && source === view.state.doc.toString())
-            view.dispatch({effects: ready.of(layoutFlowchart(chart))});
-        }).catch(() => {});
+            publish(current, layoutFlowchart(chart));
+        }).catch(() => publish(current, empty));
       }, delay);
     };
     schedule(0);
@@ -152,8 +170,8 @@ export function flowchartExtension(chartForDoc) {
     },
     initialSpacer: view => new FlowchartMarker(view.state.field(field), 0),
     updateSpacer: (_spacer, update) => new FlowchartMarker(update.state.field(field), 0),
-    lineMarkerChange: update => update.docChanged || update.transactions.some(
-      transaction => transaction.effects.some(effect => effect.is(ready)))
+    lineMarkerChange: update => update.transactions.some(transaction =>
+      transaction.effects.some(effect => effect.is(ready)))
   }), EditorView.baseTheme({
     ".cm-flowchart-gutter": {backgroundColor: "#ad7621", color: "#382b18"},
     ".cm-flowchart-gutter .cm-activeLineGutter": {backgroundColor: "rgba(255,255,255,0.10)"},
