@@ -38,29 +38,47 @@ object TurtleJsxGraphRenderer:
     render(buildScene(program, expected), "Turtle drawing")
 
   def render(scene: Scene, title: String): Element = {
-    var dispose: () => Unit = () => ()
+    val mounted = Var(Option.empty[AnyRef])
+    val dispose = Var(Option.empty[() => Unit])
     div(
       cls := "turtle-gradig-panel",
       onMountCallback(event => {
+        import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+        val token = new Object
+        mounted.set(Some(token))
         val container = event.thisNode.ref
-        container.classList.remove("turtle-gradig-panel--unavailable")
-        try {
-          val library = jsxGraph()
-          val board = render(container, scene, title)
-          dispose = () => library.JSXGraph.freeBoard(board)
-        } catch {
-          case NonFatal(error) =>
-            container.classList.add("turtle-gradig-panel--unavailable")
-            container.textContent = error match {
-              case _: IllegalArgumentException => "This drawing is outside the supported display range."
-              case _ => "The drawing preview is unavailable. Try reloading the page."
-            }
+        container.setAttribute("aria-busy", "true")
+        def showError(error: Throwable): Unit = {
+          container.setAttribute("aria-busy", "false")
+          container.classList.add("turtle-gradig-panel--unavailable")
+          container.textContent = error match {
+            case _: IllegalArgumentException => "This drawing is outside the supported display range."
+            case _ => "The drawing preview is unavailable. Try reloading the page."
+          }
         }
+        def draw(): Unit = {
+          scala.util.Try {
+            val library = jsxGraph()
+            val board = render(container, scene, title)
+            dispose.set(Some(() => library.JSXGraph.freeBoard(board)))
+            container.classList.remove("turtle-gradig-panel--unavailable")
+            container.setAttribute("aria-busy", "false")
+          }.failed.foreach(showError)
+        }
+        val loading = it.evadid.homepage.control.startup.GraphRuntimeLoading
+        if loading.available then draw()
+        else scala.util.Try(loading.load()).fold(
+          showError,
+          ready => {
+            ready.map(_ => if mounted.now().contains(token) then draw())
+              .failed.foreach(error => if mounted.now().contains(token) then showError(error))
+            ()
+          })
       }),
       onUnmountCallback(_ => {
-        val release = dispose
-        dispose = () => ()
-        release()
+        mounted.set(None)
+        dispose.now().foreach(_())
+        dispose.set(None)
       })
     )
   }

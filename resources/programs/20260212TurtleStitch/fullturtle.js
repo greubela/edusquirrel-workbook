@@ -57,73 +57,9 @@
   // keep for backward compatibility with scripts that read this global directly
   window.base_prog_dir = BASE_PROG_DIR;
 
-  // ---- Script loader ----
-  const SNAP_SCRIPT_ORDER = [
-    // adjustes
-    "adjusted/adjustedMorphic.js", // adjusted
-    "turtlestitchsrc/symbols.js",
-    "turtlestitchsrc/widgets.js",
-    "turtlestitchsrc/blocks.js",
-    "turtlestitchsrc/threads.js",
-    //"turtlestitchsrc/objects.js",
-    "adjusted/adjustedObjects.js", // adjusted
-    "turtlestitchsrc/scenes.js",
-    "turtlestitchsrc/gui.js",
-    "turtlestitchsrc/paint.js",
-    "turtlestitchsrc/lists.js",
-    "turtlestitchsrc/byob.js",
-    "turtlestitchsrc/tables.js",
-    "turtlestitchsrc/sketch.js",
-    "turtlestitchsrc/video.js",
-    "turtlestitchsrc/maps.js",
-    "turtlestitchsrc/extensions.js",
-    "turtlestitchsrc/xml.js",
-    "turtlestitchsrc/store.js",
-    "turtlestitchsrc/locale.js",
-    "turtlestitchsrc/cloud.js",
-    "turtlestitchsrc/api.js",
-    "turtlestitchsrc/embroider.js"
-  ];
-
-  let scriptsLoading;
+  // Dependency loading is owned by Scala.js SnapRuntimeLoading. This bridge
+  // is executed after the ordered Snap dependencies have completed.
   let serializerCompatibilityPatchApplied = false;
-
-  function idleTask(timeout = 2000, fallbackDelay = 250) {
-    return new Promise(resolve => {
-      if (typeof window.requestIdleCallback === "function") {
-        window.requestIdleCallback(resolve, { timeout });
-      } else {
-        setTimeout(resolve, fallbackDelay);
-      }
-    });
-  }
-
-  function injectScript(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = BASE_PROG_DIR + src;
-      s.async = false;
-      s.setAttribute("fetchpriority", "low");
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error("Failed to load " + src));
-      document.head.appendChild(s);
-    });
-  }
-
-  function ensureScriptsLoaded() {
-    if (!scriptsLoading) {
-      scriptsLoading = (async () => {
-        for (const p of SNAP_SCRIPT_ORDER) {
-          // Yield between dependencies as well as before booting. Preserve
-          // Snap's required execution order while letting the app stay responsive.
-          await idleTask(200, 0);
-          await injectScript(p);
-        }
-        applySerializerCompatibilityPatch();
-      })();
-    }
-    return scriptsLoading;
-  }
 
   function applySerializerCompatibilityPatch() {
     if (serializerCompatibilityPatchApplied) return;
@@ -176,8 +112,7 @@
 
     async boot() {
       if (this._destroyed) throw new Error("Editor was destroyed");
-      await ensureScriptsLoaded();
-      if (!window.WorldMorph || !window.IDE_Morph) throw new Error("WorldMorph/IDE_Morph missing after load.");
+        if (!window.WorldMorph || !window.IDE_Morph) throw new Error("WorldMorph/IDE_Morph missing after load.");
       if (this.world && this.ide) return;
 
       const hidden = this.options.hidden !== false;
@@ -722,7 +657,6 @@
   }
 
   async function createEditorInstance(options = {}) {
-    await ensureScriptsLoaded();
     const instance = new TurtleStitchEditorInstance(options);
     await instance.boot();
     return instance;
@@ -760,24 +694,7 @@
     destroyHiddenPreview
   };
 
-  // Warm the runtime at page startup, independently of editor creation.
-  // The API/readiness promise already exists while this low-priority work waits.
-  async function preheat() {
-    try {
-      await idleTask();
-      await ensureScriptsLoaded();
-      api._impl = impl;
-      resolveReady();
-      log("[INFO] API ready.");
-    } catch (e) {
-      window.TurtleStitchPoCError = e;
-      rejectReady(e);
-      err("[ERROR] API boot failed:", e);
-    }
-  }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", preheat, { once: true });
-  } else {
-    preheat();
-  }
+  applySerializerCompatibilityPatch();
+  api._impl = impl;
+  resolveReady();
 })();

@@ -12,11 +12,11 @@ The shared [full Snap Scala model](snap-scala-model.md) provides `ProgrammingSta
 
 ## Runtime readiness and preview
 
-`fullturtle.js` preheats Snap automatically at page startup, independently of editor creation, and exposes `TurtleStitchPoCReady` immediately. It starts during idle time after DOM readiness (with a two-second deadline, or a 250 ms timer fallback), then loads the 22 dependencies sequentially with low fetch priority and yields between them. The shared loading promise prevents duplicate dependency loads. Warmup loads code without creating a Morphic world or editor; failures are stored in `TurtleStitchPoCError` and reject readiness without an unhandled background rejection. `SnapPreviewEditor` and `SnapCodeEditor` await the implementation's `whenReady` hook before creating a world or rendering, so cached app startup need not assume `IDE_Morph` is already defined. Mount ownership discards delayed callbacks after a state replacement or unmount. A loading or rendering failure is shown as an accessible alert.
+Scala.js `StartupPreheating` starts `SnapRuntimeLoading` when a turtle workbook starts, before an editor is opened. `BrowserScriptLoading` preloads all 22 dependencies concurrently and executes them in their required order, stopping after a failed dependency. The final `fullturtle.js` compatibility bridge installs its API and serializer patch; it no longer schedules or downloads scripts. Consumers share one readiness future. Warmup creates no Morphic world or editor. `SnapPreviewEditor` and `SnapCodeEditor` await the implementation's `whenReady` hook, and mount ownership discards delayed callbacks after replacement or unmount. See [browser startup loading](browser-startup-loading.md).
 
 The static preview exports `ScriptsMorph.scriptsPicture()` from a temporary IDE; the mounted editor owns its live IDE. Preview canvas bitmap dimensions come from the exported script image, and its presentation/aspect ratio comes from `homepage/css/editors.css`, without inline width/height styles. Preview rendering preserves the shared Morphic keyboard contents and selection. Empty-canvas diagnostics distinguish actual primitive/custom block instances from the empty `<blocks>` containers present in every project.
 
-CodeMirror's shared module loader warms shortly after the app shell mounts. The
+CodeMirror's shared Scala.js module loader starts warming at application startup. The
 warmup request has low fetch priority, creates no editor and never delays startup.
 Editors share the pending/completed request. Failure leaves the editable fallback
 available and permits a later retry.

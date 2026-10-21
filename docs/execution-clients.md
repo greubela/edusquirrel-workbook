@@ -94,6 +94,6 @@ npm run test:workbooks -- worker-execution
 ```
 
 Serve both generated bundles through the repository's normal preview/deployment
-layout. The client reuses an app-loader-preheated worker or starts the generated
+layout. The client reuses a Scala.js-startup-preheated worker or starts the generated
 worker bundle on first use. No silent fallback to main-thread execution occurs
 when a generic worker crashes or times out.

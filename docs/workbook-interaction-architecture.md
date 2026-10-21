@@ -165,9 +165,10 @@ Snap and JSXGraph have bundled distributions.
 Put optional dependency readiness/loading coordination in Scala.js companions or
 services. Return futures, share loads, render an editor-local loading/fallback UI,
 and let only consumers await readiness. Do not hold workbook startup behind a
-chain of optional editor downloads. CodeMirror follows this pattern; Snap has
-readiness hooks but its entry-page bootstrap still loads bundled scripts.
-The target of only app/worker bundles in HTML is not yet universal.
+chain of optional editor downloads. Scala.js startup preheats CodeMirror, Snap and
+JSXGraph independently of editor creation. Turtle entry pages no longer load
+runtime scripts in their HTML; renderer mount ownership guards late readiness.
+See [browser startup loading](browser-startup-loading.md).
 
 The generic execution backend is implemented. Choose local, HTTP/server or worker
 execution according to required resources; a main-thread `Future` alone does not

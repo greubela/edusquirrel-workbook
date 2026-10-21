@@ -14,8 +14,8 @@ and standalone lab are separate entries.
 
 The DOM is Laminar, with reactive German/English text from `workbookSelection`.
 CSS uses shared tokens and keeps the privacy footer in document flow. The catalogue
-loads no Turtle, JSXGraph or CodeMirror dependencies. Workbook editors request
-optional dependencies when needed; some direct pages retain bundled script tags.
+preheats CodeMirror independently of editor creation, but does not load Turtle or
+JSXGraph. Turtle workbook startup preheats those runtimes through Scala.js.
 See [dependency-loading boundaries](workbook-interaction-architecture.md#dependencies-and-execution).
 
 Native entries currently set `inProgress` in the catalogue registry. That label
@@ -24,12 +24,13 @@ See [migration scope](digital-workbook-migration.md) for actual remaining conten
 
 ## Current IndexedDB lifecycle
 
-`HomepageStartupLogic.initHomepage()` uses `CONTINUE_AFTER_LOCAL_CACHE_SUCCESS`.
+`HomepageStartupLogic.initHomepage()` mounts the UI before starting language-cache
+restoration with `CONTINUE_IMMEDIATELY`. Labels update reactively as content arrives.
 `ParsedTriples` is cached as `EvaDidCacheDb/cache/tripleCache`:
 
 1. Read the record with one IndexedDB `get` and decode its established wire format.
-2. Install cached translations without rewriting them, then complete cached-startup
-   readiness. Remote refresh runs in a later browser task.
+2. Install cached translations without rewriting them. Remote refresh runs in a
+   later browser task; neither operation gates the initial mount.
 3. Merge fresh values by content identifier/language, replacing stale values while
    preserving unrelated entries/languages. Persist the merged result once.
 4. On unavailable/corrupt cache, load from sources. A later refresh failure cannot
@@ -43,8 +44,9 @@ fail their futures. No schema migration is required by this cache path.
 
 The cache cannot remove bundle download/evaluation, deployment-env discovery or
 other resource initialization costs. Do not use an old local timing measurement
-as a performance guarantee. `app-loader.js` no longer waits for CodeMirror;
-`CodeMirrorEditorLoading` coordinates an editor-local asynchronous load in Scala.js.
+as a performance guarantee. The minimal `app-loader.js` starts the app bundle
+immediately. Scala.js owns configuration discovery and optional runtime preheating;
+see [browser startup loading](browser-startup-loading.md).
 
 ## Verification
 

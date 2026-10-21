@@ -28,24 +28,11 @@ object CodeMirrorEditorLoading {
     result.future
   }
 
-  private[code] def bootstrapUrl: String = {
-    val scripts = dom.document.querySelectorAll("script[src]")
-    (0 until scripts.length).iterator
-      .map(i => scripts(i).asInstanceOf[dom.html.Script].src)
-      .find(src => src.takeWhile(_ != '?').endsWith("/app-loader.js"))
-      .getOrElse(new dom.URL("../js/app-loader.js", dom.document.baseURI).href)
-  }
+  private[code] def bootstrapUrl: String = it.evadid.homepage.control.startup.BrowserAssets.bootstrapUrl
 
-  private[code] def workerUrl: String = {
-    val config = dom.window.asInstanceOf[js.Dynamic].selectDynamic("EDUSQUIRREL_CLIENT_CONFIG")
-    val custom = if js.isUndefined(config) || config == null then js.undefined
-      else config.selectDynamic("EDUSQUIRREL_BACKEND_MODULE_WORKER_SCRIPT")
-    if js.typeOf(custom) == "string" && custom.asInstanceOf[String].nonEmpty then
-      new dom.URL(custom.asInstanceOf[String], dom.document.baseURI).href
-    else new dom.URL("../../artifacts/newest/worker.js", bootstrapUrl).href
-  }
+  private[code] def workerUrl: String = it.evadid.homepage.control.startup.ClientRuntimeConfig.workerUrl
 
-  def preheat(): Unit = { setTimeout(250) { load(background = true).failed.foreach(_ => ()) }; () }
+  def preheat(): Unit = { load(background = true).failed.foreach(_ => ()); () }
 
   // Check the shared load after the calling reactive transaction has committed its Vars.
   private[code] def load(background: Boolean = false): Future[CodeMirrorEditor.CodeMirrorFacade] =

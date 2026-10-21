@@ -13,7 +13,14 @@ import scala.scalajs.js
 def mainApp(): Unit = {
   if (js.typeOf(js.Dynamic.global.selectDynamic("document")) == "undefined") {
     println("MainApp skipped: no document (worker/module import context).")
-  } else if (dom.document.getElementById("feedbackDemoRoot") != null) {
+  } else if (dom.document.readyState == "loading") {
+    dom.document.addEventListener("DOMContentLoaded", (_: dom.Event) => startBrowserApp())
+  } else startBrowserApp()
+}
+
+private def startBrowserApp(): Unit = {
+  it.evadid.homepage.control.startup.StartupPreheating.start()
+  if (dom.document.getElementById("feedbackDemoRoot") != null) {
     demoStartupLogic()
   } else {
     HomepageStartupLogic.initHomepage()
