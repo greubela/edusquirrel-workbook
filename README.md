@@ -11,7 +11,7 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 | `modules/client/` | Browser startup, Laminar renderers, editors and authored workbooks |
 | `modules/worker/` | Scala.js browser worker and shared command execution |
 | `modules/server/` | JVM backend and command handlers |
-| `homepage/` | Entry pages, CSS and browser bootstrap scripts |
+| `homepage/` | Entry pages, CSS and catalogue presentation |
 | `resources/` | Language maps, teaching materials and bundled programs/libraries |
 | `tools/` | Site assembly, browser checks, fixture generators and optional LLM proxies |
 | `artifacts/` | Generated bundles and server assemblies |

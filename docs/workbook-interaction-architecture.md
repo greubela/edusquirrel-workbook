@@ -46,16 +46,11 @@ A small inline interaction need not introduce a separate editor or fullscreen.
 [WorkbookElement.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala)
 defines the common ID, children and definition factory:
 
-- `WorkbookDisplayElement` displays content, normally resolved by a language-map ID.
-- `WorkbookStructureElement[T]` groups elements; workbook, sections and exercise
-  containers are examples. `TwoColumnPanel` and `ExerciseGroup` also expose children
-  for normal rendering/serialization; their current base type is display.
-- `WorkbookInteractionElementFull[T, GA, SA]` owns the saved value, typed grading and
-  scaffolding payloads, `defaultValue`, `serializerInteractionContent`,
-  `gradingElements` and `scaffoldingElement`.
-- `WorkbookInteractionElement[T]` is the compatibility alias for
-  `WorkbookInteractionElementFull[T, Any, Any]`; `WorkbookInteractionUntyped` is the
-  existential type used when traversing mixed interactions.
+The hierarchy separates displayed content, structural containers and interactions
+with saved values and typed grading/scaffolding payloads. Implementations live
+under `modules/core/shared/src/main/scala/it/evadid/workbook/elements/`.
+Mixed traversals use the existential interaction type; new integrations should
+retain concrete payload types rather than widening them to `Any`.
 
 The shared `InteractionVariable[T, GA, SA]` owns history and current value through
 `State`. The renderer bridges a bound state to a browser `Var` with `StateHelper`.
@@ -158,15 +153,11 @@ CodeMirror currently uses pinned CDN modules with an offline test bundle, so
 vendoring all editor assets is an architectural target, not an accomplished fact.
 Snap and JSXGraph have bundled distributions.
 
-Put native dependency readiness and typed handle creation in
-`webElements/facades/`, with one file per dependency using `EvaExternalDependency[T]`.
-The `control.startup` package schedules preloads and owns shared browser loading.
-Return futures, share loads, render an editor-local loading/fallback UI,
-and let only consumers await readiness. Do not hold workbook startup behind a
-chain of optional editor downloads. Scala.js startup preheats CodeMirror, Snap and
-JSXGraph independently of editor creation. Turtle entry pages no longer load
-runtime scripts in their HTML; renderer mount ownership guards late readiness.
-See [browser startup loading](browser-startup-loading.md).
+Native readiness and typed handle creation belong to core JS's `it.evadid.facades`,
+with one file per dependency. Page startup schedules preloads without awaiting
+optional runtimes; renderers provide local fallbacks and own mounted resources.
+See [browser startup loading](browser-startup-loading.md) for the contract and
+[Eva editor architecture](eva-editor-programming-state.md) for lifecycle rules.
 
 The generic execution backend is implemented. Choose local, HTTP/server or worker
 execution according to required resources; a main-thread `Future` alone does not
@@ -200,17 +191,3 @@ Test shared behavior/round trips on both platforms, local draft/lifecycle logic 
 client, and actual persistence/fullscreen/invalid-draft behavior in browser checks.
 The [test guide](core-package-unit-tests.md) and
 [serialization inventory](testing-and-serialization-audit.md) provide current commands.
-
-### CodeMirror integration
-
-`CodeMirrorEditor` receives reactive configuration; Eva supplies it through its
-editor factories. Optional flowchart analysis belongs to the mounted editor.
-The shared startup loader preheats the module independently of editor creation.
-While loading or after failure, the textarea stays bound to the current document.
-Mount ownership prevents late readiness from creating an obsolete editor.
-See [startup loading](browser-startup-loading.md) for dependency coordination and
-[Eva editor architecture](eva-editor-programming-state.md) for lifecycle rules.
-
-Run `npm run test:workbooks -- codemirror` for delayed/failed imports, stale mounts,
-shared loading, text preservation, and gutter alignment. The browser runner bundles
-the production modules with their pinned package versions for offline tests.
