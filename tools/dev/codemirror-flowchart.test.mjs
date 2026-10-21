@@ -6,8 +6,7 @@ import {resolve, extname, sep} from 'node:path';
 import {test} from 'node:test';
 import {chromium} from 'playwright';
 
-// Uses the production CDN modules by default. An optional bundle of the same
-// loader/modules lets restricted/offline environments run the browser check.
+// Exercise Scala.js integration with pinned native modules served by the runner.
 test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', async t => {
   const root = resolve(import.meta.dirname, '../..');
   const mime = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -106,7 +105,8 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
     assert.equal(await page.locator('#flow .cm-edusquirrel-diagnostic').count(), 1, 'diagnostics still work');
     const callsBeforeInvalid = await page.evaluate(() => window.graphCalls);
     await page.evaluate(() => editor.setDoc('INVALID'));
-    await page.waitForFunction(count => window.graphCalls > count, callsBeforeInvalid);
+    await page.waitForFunction(count => window.graphCalls > count &&
+      document.querySelectorAll('#flow .cm-flowchart-row[title]').length === 0, callsBeforeInvalid);
     assert.equal(await page.locator('#flow .cm-flowchart-row[title]').count(), 0, 'unsupported source clears stale nodes');
     await page.evaluate(() => { editor.destroy(); plain.destroy(); empty.destroy(); });
     assert.equal(await page.locator('.cm-editor').count(), 0, 'destroy removes the editors');
@@ -142,7 +142,7 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
       assert.equal(await page.locator('#async-flow .cm-flowchart-row[title]').getAttribute('title'), 'process: current A',
         'generation checks reject older requests even when their source matches again');
       await page.evaluate(() => asyncEditor.setDoc('FAILED'));
-      assert.equal(await markerCount(), 0, 'an edit clears the previous graph immediately');
+      assert.equal(await markerCount(), 1, 'an edit keeps the previous graph until analysis finishes');
       await requested(4);
       await settle(3, 'analysis failed', true);
       assert.equal(await markerCount(), 0, 'failed analysis leaves an empty gutter');
@@ -161,10 +161,18 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
         ['A', 'B', 'A', 'FAILED', 'RECOVERED', 'burst 3'], 'a burst sends only the latest document for analysis');
       await settle(5, 'burst 3');
       await marker('burst 3');
-      await page.evaluate(() => asyncEditor.setDoc('DESTROYED'));
+      await page.evaluate(() => {
+        window.previousMarker = document.querySelector('#async-flow .cm-flowchart-row[title]');
+        asyncEditor.setDoc('same graph');
+      });
       await requested(7);
+      await settle(6, 'burst 3');
+      assert(await page.evaluate(() => previousMarker === document.querySelector('#async-flow .cm-flowchart-row[title]')),
+        'equivalent analysis retains the existing marker DOM');
+      await page.evaluate(() => asyncEditor.setDoc('DESTROYED'));
+      await requested(8);
       await page.evaluate(() => asyncEditor.destroy());
-      await settle(6, 'late result');
+      await settle(7, 'late result');
       assert.equal(await page.locator('#async-flow .cm-editor').count(), 0, 'late results cannot recreate a destroyed editor');
       const cancelled = await page.evaluate(async () => {
         let calls = 0;

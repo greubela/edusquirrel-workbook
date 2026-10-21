@@ -4,6 +4,7 @@ import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter.{Chart, Edge, Node}
 import it.evadid.facades.CodeMirror.Api.*
 import org.scalajs.dom
+import scala.concurrent.Future
 import scala.scalajs.js
 import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -108,8 +109,7 @@ private[evadid] object CodeMirrorFlowchartRendering {
     val field = Libraries.StateField.define[Layout](js.Dynamic.literal(
       create = (() => empty): js.Function0[Layout],
       update = ((current: Layout, transaction: Transaction) =>
-        if transaction.docChanged then empty
-        else transaction.effects.find(_.is(ready)).map(_.value.asInstanceOf[Layout]).getOrElse(current)
+        transaction.effects.find(_.is(ready)).map(_.value.asInstanceOf[Layout]).getOrElse(current)
       ): js.Function2[Layout, Transaction, Layout]))
     val analysis = Libraries.ViewPlugin.define((view: View) => {
       val timer = Var(Option.empty[SetTimeoutHandle])
@@ -121,10 +121,15 @@ private[evadid] object CodeMirrorFlowchartRendering {
         val current = generation.now()
         timer.set(Some(setTimeout(delay) {
           val source = view.state.doc.toString()
-          js.Promise.resolve[js.Object](chartForDoc(source).asInstanceOf[js.Object]).toFuture.foreach { chart =>
-            if !destroyed.now() && generation.now() == current && view.state.doc.toString() == source then
-              view.dispatch(js.Dynamic.literal(effects = ready.of(layout(read[Chart](js.JSON.stringify(chart))))))
-          }
+          Future(chartForDoc(source))
+            .flatMap(result => js.Promise.resolve[js.Object](result.asInstanceOf[js.Object]).toFuture)
+            .map(chart => layout(read[Chart](js.JSON.stringify(chart))))
+            .recover { case _ => empty }
+            .foreach { next =>
+              if !destroyed.now() && generation.now() == current && view.state.doc.toString() == source &&
+                next != view.state.field(field) then
+                view.dispatch(js.Dynamic.literal(effects = ready.of(next)))
+            }
         }))
       }
       schedule(0)
@@ -143,7 +148,7 @@ private[evadid] object CodeMirrorFlowchartRendering {
       }): js.Function2[View, js.Dynamic, GutterMarker],
       initialSpacer = ((view: View) => new Marker(view.state.field(field), 0)): js.Function1[View, GutterMarker],
       updateSpacer = ((_: GutterMarker, event: ViewUpdate) => new Marker(event.state.field(field), 0)): js.Function2[GutterMarker, ViewUpdate, GutterMarker],
-      lineMarkerChange = ((event: ViewUpdate) => event.docChanged || event.transactions.exists(_.effects.exists(_.is(ready)))): js.Function1[ViewUpdate, Boolean]
+      lineMarkerChange = ((event: ViewUpdate) => event.transactions.exists(_.effects.exists(_.is(ready)))): js.Function1[ViewUpdate, Boolean]
     )))
   }
 }

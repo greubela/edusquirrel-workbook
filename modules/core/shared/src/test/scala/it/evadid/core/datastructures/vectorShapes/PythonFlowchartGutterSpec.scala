@@ -66,9 +66,45 @@ class PythonFlowchartGutterSpec extends FunSuite {
     assertEquals(chart(""), PythonFlowchartGutter.empty)
   }
 
-  test("incomplete and unsupported programs clear the chart") {
-    assertEquals(chart("if True:"), PythonFlowchartGutter.empty)
+  test("an unfinished nested loop keeps the finished outer chart") {
+    val dropped = chart("x = 0\nfor i in range(3):\n    print(i)\n    for j in")
+    assertEquals(dropped.nodes.map(_.line), List(1, 2, 3))
+    assert(dropped.nodes.exists(node => node.line == 2 && node.kind == "loop"))
+    val header = chart("x = 0\nfor i in range(3):\n    print(i)\n    for j in range(2):")
+    assertEquals(header.nodes.filter(_.kind == "loop").map(_.line), List(2, 4))
+    assert(header.nodes.exists(_.line == 3))
+  }
+
+  test("a bare incomplete header draws its own node") {
+    val decision = chart("if True:")
+    assertEquals(decision.nodes.map(node => node.line -> node.kind), List(1 -> "decision"))
+    val loop = chart("for i in range(3):")
+    assertEquals(loop.nodes.map(node => node.line -> node.kind), List(1 -> "loop"))
+  }
+
+  test("an unfinished call keeps the finished outer chart") {
+    val result = chart("x = 0\nfor i in range(3):\n    print(i")
+    assertEquals(result.nodes.map(_.line), List(1, 2))
+    assert(result.nodes.exists(node => node.line == 2 && node.kind == "loop"))
+  }
+
+  test("dropping an unfinished body still closes the new loop header") {
+    val result = chart("x = 0\nfor i in range(3):\n    print(i)\n    for j in range(2):\n        print(j")
+    assertEquals(result.nodes.filter(_.kind == "loop").map(_.line), List(2, 4))
+    assert(result.nodes.exists(_.line == 3))
+  }
+
+  test("an error above the last few code lines clears the chart") {
+    assertEquals(
+      chart("???\nx = 1\ny = 2\nz = 3\nw = 4"),
+      PythonFlowchartGutter.empty
+    )
+  }
+
+  test("unsupported programs clear the chart") {
     assertEquals(chart("try:\n    print(1)\nexcept:\n    print(2)"), PythonFlowchartGutter.empty)
     assertEquals(chart("break"), PythonFlowchartGutter.empty)
+    assertEquals(chart("print(1)\nbreak"), PythonFlowchartGutter.empty)
+    assertEquals(chart("continue"), PythonFlowchartGutter.empty)
   }
 }
