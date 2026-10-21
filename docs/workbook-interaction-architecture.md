@@ -159,7 +159,7 @@ vendoring all editor assets is an architectural target, not an accomplished fact
 Snap and JSXGraph have bundled distributions.
 
 Put native dependency readiness and typed handle creation in
-`webElements/facades/ExternalDependencies.scala`, using `EvaExternalDependency[T]`.
+`webElements/facades/`, with one file per dependency using `EvaExternalDependency[T]`.
 The `control.startup` package schedules preloads and owns shared browser loading.
 Return futures, share loads, render an editor-local loading/fallback UI,
 and let only consumers await readiness. Do not hold workbook startup behind a

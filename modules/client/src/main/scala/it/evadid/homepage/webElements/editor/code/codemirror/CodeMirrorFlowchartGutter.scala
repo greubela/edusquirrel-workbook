@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
 import it.evadid.homepage.control.startup.ClientRuntimeConfig
-import it.evadid.homepage.webElements.facades.ExternalDependencies.Workers
+import it.evadid.homepage.webElements.facades.Workers
 
 import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter

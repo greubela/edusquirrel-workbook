@@ -7,7 +7,7 @@ import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleGradingLogic}
 import TurtleGradingLogic.{GradingLine, TurtleGraphicComparison, TurtleLineStatus}
 import org.scalajs.dom
-import it.evadid.homepage.webElements.facades.ExternalDependencies.JSXGraph
+import it.evadid.homepage.webElements.facades.JSXGraph
 import upickle.default.*
 
 import scala.scalajs.js
@@ -65,7 +65,7 @@ object TurtleJsxGraphRenderer:
             container.setAttribute("aria-busy", "false")
           }.failed.foreach(showError)
         }
-        val loading = it.evadid.homepage.webElements.facades.ExternalDependencies.JSXGraph
+        val loading = it.evadid.homepage.webElements.facades.JSXGraph
         if loading.available then draw()
         else scala.util.Try(loading.preload()).fold(
           showError,

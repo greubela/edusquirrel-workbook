@@ -19,7 +19,7 @@ def mainApp(): Unit = {
 }
 
 private def startBrowserApp(): Unit = {
-  it.evadid.homepage.control.startup.StartupPreheating.start()
+  HomepageStartupLogic.preheat()
   if (dom.document.getElementById("feedbackDemoRoot") != null) {
     demoStartupLogic()
   } else {

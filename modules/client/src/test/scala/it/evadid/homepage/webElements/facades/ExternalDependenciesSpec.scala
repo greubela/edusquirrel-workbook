@@ -65,11 +65,11 @@ class ExternalDependenciesSpec extends EditorDomSuite {
       creations.update(_ + 1)
       js.Promise.resolve(js.Dynamic.literal(globals = js.Dynamic.literal()))
     }): js.Function0[js.Promise[js.Dynamic]])
-    ExternalDependencies.Pyodide.preload().flatMap { _ =>
+    Pyodide.preload().flatMap { _ =>
       assertEquals(creations.now(), 0)
       for {
-        a <- ExternalDependencies.Pyodide.createInstance()
-        b <- ExternalDependencies.Pyodide.createInstance()
+        a <- Pyodide.createInstance()
+        b <- Pyodide.createInstance()
       } yield {
         assert(a ne b)
         assertEquals(creations.now(), 2)

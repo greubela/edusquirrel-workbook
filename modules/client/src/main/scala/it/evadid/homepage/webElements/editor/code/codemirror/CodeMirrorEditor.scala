@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
-import it.evadid.homepage.webElements.facades.ExternalDependencies.CodeMirror
-import it.evadid.homepage.webElements.facades.ExternalDependencies.CodeMirror.{CodeMirrorHandle, EditorConfig}
+import it.evadid.homepage.webElements.facades.CodeMirror
+import it.evadid.homepage.webElements.facades.CodeMirror.{CodeMirrorHandle, EditorConfig}
 
 import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L

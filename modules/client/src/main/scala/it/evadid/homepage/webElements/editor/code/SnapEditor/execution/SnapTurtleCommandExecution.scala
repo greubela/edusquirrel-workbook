@@ -145,7 +145,7 @@ object PyodideTurtleCommandRunner:
 
   private def workerExecutor(): PythonCallbackExecutor =
     new CommandPythonCallbackExecutor(WebWorkerExecutionClient.fromWorker(
-      it.evadid.homepage.webElements.facades.ExternalDependencies.Workers.classic(
+      it.evadid.homepage.webElements.facades.Workers.classic(
         HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.relativeToArtifactsFolder("newest/worker.js").asUrlString).createLoadedInstance()))
 
   private[execution] def commandsFrom(callbacks: Seq[CallbackOp]): List[TurtleCommand[Double]] =

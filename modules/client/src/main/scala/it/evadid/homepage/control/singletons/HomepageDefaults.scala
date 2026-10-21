@@ -75,7 +75,7 @@ case class HomepageDefaults(fullInfo: FullInfo) {
 
   /** Claim the Scala.js startup pool rather than starting a second worker. */
   lazy val workerBackendExecutor: WebWorkerExecutionClient =
-    WebWorkerExecutionClient.fromWorker(it.evadid.homepage.control.startup.WorkerPreloading.takeOrCreate())
+    WebWorkerExecutionClient.fromWorker(it.evadid.homepage.webElements.facades.Workers.takeOrCreate())
 
   def backendExecutorWithCredentials(signedToken: Option[SignedToken]): ExecutionClient = defaultBackend.executor(signedToken)
 

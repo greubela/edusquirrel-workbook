@@ -12,8 +12,8 @@ import scala.scalajs.js.JSConverters.*
 
 
 final class PyodideMainThreadEnvironment {
-  import it.evadid.homepage.webElements.facades.ExternalDependencies.{Pyodide as PyodideDependency}
-  import it.evadid.homepage.webElements.facades.ExternalDependencies.{PyodideRuntime as Pyodide}
+  import it.evadid.homepage.webElements.facades.{Pyodide as PyodideDependency}
+  import it.evadid.homepage.webElements.facades.{PyodideRuntime as Pyodide}
 
   private var pyodidePromise: Option[Future[Pyodide]] = None
   private var pyodideInstance: Option[Pyodide] = None

@@ -8,7 +8,7 @@ import it.evadid.homepage.util.web.{WorkerProtocolHelpers, WorkerRequestTracker}
 import it.evadid.util.JsHelpers.*
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 import it.evadid.util.JsHelpers
-import it.evadid.homepage.webElements.facades.ExternalDependencies.Pyodide
+import it.evadid.homepage.webElements.facades.Pyodide
 import org.scalajs.dom
 import todomove.`export`.modules.TurtleSingleton
 

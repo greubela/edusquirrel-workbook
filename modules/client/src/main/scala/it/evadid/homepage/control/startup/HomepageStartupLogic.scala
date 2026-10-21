@@ -9,11 +9,25 @@ import it.evadid.homepage.workbook.content.DigitalWorkbookCatalog
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
 import it.evadid.util.logging.Logger
 import org.scalajs.dom
+import it.evadid.homepage.webElements.facades.{CodeMirror, Snap, JSXGraph, Workers}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 
 object HomepageStartupLogic {
+  private val preheatingStarted = Var(false)
+  def preheat(): Unit = if !preheatingStarted.now() then {
+    preheatingStarted.set(true)
+    // Start requests immediately; never await them from the render path.
+    CodeMirror.preload().failed.foreach(_ => ())
+    Workers.preheat()
+    val turtlePages = List("workbookTest", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookMonks")
+    if turtlePages.exists(id => dom.document.getElementById(id) != null) then {
+      Snap.preload().failed.foreach(_ => ())
+      JSXGraph.preload().failed.foreach(_ => ())
+    }
+  }
+
 
   private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing", "workbookImageRecognition", "workbookBlockchain", "workbookEvacuation")
   private val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
@@ -34,7 +48,7 @@ object HomepageStartupLogic {
     val fullInfo = HtmlFullWorkbookApp.fullInfo
     val logger = fullInfo.loggerSystemInfo.contentControlLogger
 
-    StartupPreheating.start()
+    preheat()
     val workbook: Option[AllWorkbookInfo] = canLoad.headOption.flatMap(loadWorkbookById)
     fullInfo.usageControl.changeWorkbook(workbook)
     workbook.foreach { info =>
