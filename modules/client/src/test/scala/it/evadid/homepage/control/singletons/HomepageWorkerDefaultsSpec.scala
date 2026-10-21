@@ -26,7 +26,7 @@ class HomepageWorkerDefaultsSpec extends EditorDomSuite {
     window.updateDynamic("EDUSQUIRREL_CLIENT_CONFIG")(js.Dynamic.literal(
       EDUSQUIRREL_BACKEND_MODULE_WORKERS = "1", EDUSQUIRREL_BACKEND_MODULE_WORKER_SCRIPT = "https://example.test/worker.js"))
     root.updateDynamic("Worker")(js.constructorOf[FakeWorker])
-    Workers.preheat()
+    Workers.preheat(1, "https://example.test/worker.js")
     val ready = Promise[Unit]()
     setTimeout(0) { ready.success(()) }
     ready.future.map { _ =>

@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.startup
 
+import it.evadid.facades.BrowserLoading
 import com.raquo.airstream.state.Var
 import org.scalajs.dom
 import scala.concurrent.{Future, Promise}

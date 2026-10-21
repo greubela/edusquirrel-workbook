@@ -19,14 +19,15 @@ test('editor composition keeps changing state in Vars and has no parallel edit c
     'EvaEditor/extensions/turtle/TurtleExecutionPanel.scala',
     'EvaEditor/extensions/turtle/TurtleProgramExecution.scala',
     'EvaEditor/extensions/turtle/TurtleExecutionProvider.scala',
-    'codemirror/CodeMirrorEditor.scala', 'codemirror/CodeMirrorFlowchartGutter.scala', 'codemirror/CodeMirrorFlowchartRendering.scala',
-    '../../../../facades/CodeMirror.scala',
-    '../../../../facades/Snap.scala',
-    '../../../../facades/JSXGraph.scala', '../../../../facades/Workers.scala', '../../code/JavaFunctionBasedEditor.scala',
+    'codemirror/CodeMirrorEditor.scala', 'codemirror/CodeMirrorFlowchartGutter.scala',
+    '../../code/JavaFunctionBasedEditor.scala',
     'SnapEditor/SnapCodeEditor.scala', 'SnapEditor/SnapPreviewEditor.scala',
-  ];
+  ].map(file => directory + file).concat([
+    'CodeMirror.scala', 'Snap.scala', 'JSXGraph.scala', 'Workers.scala',
+    'internal/CodeMirrorFlowchartRendering.scala',
+  ].map(file => 'modules/core/js/src/main/scala/it/evadid/facades/' + file));
   for (const file of files) {
-    const raw = await readFile(new URL(directory + file, root), 'utf8');
+    const raw = await readFile(new URL(file, root), 'utf8');
     // Native facade properties describe foreign state, not Scala application state.
     const source = raw.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '')
       .replace(/\bvar\s+\w+[^=\n]*=\s*js\.native/g, '');

@@ -1,7 +1,6 @@
 package it.evadid.facades
 
 import com.raquo.airstream.state.Var
-import it.evadid.homepage.control.startup.{BrowserLoading, ClientRuntimeConfig}
 import org.scalajs.dom
 
 import scala.concurrent.Future
@@ -25,11 +24,10 @@ object Workers {
 
   private val pool = Var(Pool())
 
-  def preheat(): Unit = ClientRuntimeConfig.load().foreach { config =>
-    val count = config.get("EDUSQUIRREL_BACKEND_MODULE_WORKERS").flatMap(_.toIntOption).filter(_ >= 0).getOrElse(1)
+  def preheat(count: Int, url: String): Unit = {
     val current = pool.now()
     val created = List.fill(math.max(0, count - current.claimed - current.available.size)) {
-      Try(classic(ClientRuntimeConfig.workerUrl).createLoadedInstance()).fold(
+      Try(classic(url).createLoadedInstance()).fold(
         error => {
           dom.console.warn("Backend worker preheating failed", error.getMessage); None
         }, Some(_))
@@ -37,9 +35,9 @@ object Workers {
     pool.update(state => state.copy(available = state.available ++ created))
   }
 
-  def takeOrCreate(): dom.Worker = {
+  def takeOrCreate(url: String): dom.Worker = {
     val current = pool.now()
-    val worker = current.available.headOption.getOrElse(classic(ClientRuntimeConfig.workerUrl).createLoadedInstance())
+    val worker = current.available.headOption.getOrElse(classic(url).createLoadedInstance())
     pool.update(state => state.copy(
       available = state.available.drop(1), claimed = state.claimed + 1))
     worker

@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.editor.code.codemirror
+package it.evadid.facades.internal
 
 import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter.{Chart, Edge, Node}
@@ -10,7 +10,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import upickle.default.*
 
 /** Native gutter integration; semantic graph calculation stays in the worker. */
-private[code] object CodeMirrorFlowchartRendering {
+private[evadid] object CodeMirrorFlowchartRendering {
   private case class Route(edge: Edge, low: Int, high: Int, sourceX: Int, targetX: Int,
                            terminal: Boolean, back: Boolean, lane: Option[Int]) derives ReadWriter
   private case class Layout(nodes: Map[Int, Node], routes: List[Route], entries: Set[Int], width: Int) derives ReadWriter

@@ -1,4 +1,4 @@
-package it.evadid.homepage.control.startup
+package it.evadid.facades
 
 import com.raquo.airstream.state.Var
 import org.scalajs.dom

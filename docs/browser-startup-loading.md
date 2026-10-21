@@ -6,7 +6,7 @@ waits for DOM readiness before mounting. Asset paths derive from this script URL
 so repository prefixes and local preview use the same Scala.js path resolution.
 
 `HomepageStartupLogic.preheat()` runs once at browser application startup, independently
-of EvaEditor. It starts CodeMirror loading and runtime configuration immediately;
+of EvaEditor. It starts CodeMirror and Algebrite loading and runtime configuration immediately;
 optional Java support preheats as soon as the base CodeMirror module is ready.
 Turtle workbook pages also start Snap and JSXGraph loading. These requests are not
 awaited by `HomepageStartupLogic`, which mounts the shell before restoring cached
@@ -26,19 +26,21 @@ and never gate the shell.
 ## Ownership and location
 
 Native bindings live in `it.evadid.facades`, with one file per dependency.
-Browser-specific bindings are under `modules/client/src/main/scala/it/evadid/facades/`;
-shared contracts and worker-usable Pyodide bindings are in core JS's matching
-package. Keep compatibility patches and imports with their dependency.
+All bindings and their loading support are under
+`modules/core/js/src/main/scala/it/evadid/facades/`; native CodeMirror implementation
+helpers live in its `internal` package, independently of client UI code.
 They implement `EvaExternalDependency[T]`: `preload()` shares code readiness
 without creating an editor; `createInstance()` waits for readiness and returns a
-fresh, consumer-owned handle. Synchronous renderers may use
+typed handle. Editors and interpreters are created per consumer; library APIs such
+as Algebrite are shared. Synchronous renderers may use
 `createLoadedInstance()` after awaiting readiness. Compatibility patches and
 optional-module imports stay beside their dependency.
 
-The `control.startup` package owns page startup, configuration and shared
+The `control.startup` package owns page startup and configuration. Core JS owns shared
 asset/script loading. `HomepageStartupLogic` starts facade preloads immediately
 without awaiting them on the render path. The worker facade owns worker-pool
-creation and claims. Editors and execution clients own mounted
+creation and claims; page startup supplies its URL and configured pool size.
+Editors and execution clients own mounted
 resources, request protocols and cleanup; independent environments do not share
 interpreter instances.
 

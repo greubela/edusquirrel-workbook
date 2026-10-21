@@ -30,6 +30,10 @@ for(const prefix of ['/', '/edusquirrel-workbook/']) {
       await page.route('**/*',async route=>{
         const url=new URL(route.request().url());
         requests.push(url.pathname);
+        if(url.hostname==='unpkg.com' && url.pathname.includes('/algebrite@')) {
+          await libraries;
+          return route.fulfill({contentType:'text/javascript',body:'window.Algebrite = {run: expression => expression};'});
+        }
         if(url.origin!==origin || !url.pathname.startsWith(prefix))return route.abort();
         const relative=decodeURIComponent(url.pathname.slice(prefix.length));
         if(relative.split('/').includes('..'))return route.abort();
@@ -51,6 +55,8 @@ for(const prefix of ['/', '/edusquirrel-workbook/']) {
       await page.waitForFunction(()=>performance.getEntriesByType('resource').some(entry=>entry.name.endsWith('/turtlestitchsrc/embroider.js')));
       assert.equal(await page.evaluate(()=>typeof window.WorldMorph),'undefined','parallel prefetch must not execute later dependencies out of order');
       assert.equal(await page.locator('dialog[open]').count(),0,'preheating does not construct an editor');
+      assert.equal(requests.filter(url=>url.includes('/algebrite@')).length,1,'Algebrite preheats without opening an editor');
+      assert.equal(await page.evaluate(()=>typeof window.Algebrite),'undefined','Algebrite loading cannot block initial rendering');
       await page.waitForFunction(()=>window.startedWorkers.some(url=>url.endsWith('/artifacts/newest/worker.js')));
       assert.equal((await workerRequest).url(),origin+prefix+'artifacts/newest/worker.js','configuration timeout cannot stall worker preheating');
       assert(!requests.some(url=>url.includes('/homepage/deployment/')),'configuration uses one known location');
@@ -61,7 +67,7 @@ for(const prefix of ['/', '/edusquirrel-workbook/']) {
       await page.locator('dialog[open] .be-program-snap-renderer__canvas').waitFor();
       await page.locator('.fullscreen-close-button').click();
       releaseLibraries();releaseConfig();
-      await page.waitForFunction(()=>typeof window.SnapSerializer?.prototype.eduSquirrelOriginalLoadProjectModel === 'function' && !!window.EduSquirrelCodeMirror && !!window.JXG);
+      await page.waitForFunction(()=>typeof window.SnapSerializer?.prototype.eduSquirrelOriginalLoadProjectModel === 'function' && !!window.EduSquirrelCodeMirror && !!window.JXG && !!window.Algebrite);
       assert.equal(await page.locator('dialog[open]').count(),0,'late readiness cannot resurrect an unmounted editor');
       await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
       await page.waitForFunction(()=>{

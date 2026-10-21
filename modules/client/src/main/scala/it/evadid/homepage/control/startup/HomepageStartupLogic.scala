@@ -2,7 +2,7 @@ package it.evadid.homepage.control.startup
 
 import com.raquo.laminar.api.L.*
 import it.evadid.distribution.command.SerializedException
-import it.evadid.facades.{CodeMirror, JSXGraph, Snap, Workers}
+import it.evadid.facades.{Algebrite, CodeMirror, JSXGraph, Snap, Workers}
 import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY.CONTINUE_IMMEDIATELY
 import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
@@ -20,7 +20,11 @@ object HomepageStartupLogic {
     preheatingStarted.set(true)
     // Start requests immediately; never await them from the render path.
     CodeMirror.preload().failed.foreach(_ => ())
-    Workers.preheat()
+    Algebrite.preload().failed.foreach(_ => ())
+    ClientRuntimeConfig.load().foreach { config =>
+      val count = config.get("EDUSQUIRREL_BACKEND_MODULE_WORKERS").flatMap(_.toIntOption).filter(_ >= 0).getOrElse(1)
+      Workers.preheat(count, ClientRuntimeConfig.workerUrl)
+    }
     val turtlePages = List("workbookTest", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookMonks")
     if turtlePages.exists(id => dom.document.getElementById(id) != null) then {
       Snap.preload().failed.foreach(_ => ())

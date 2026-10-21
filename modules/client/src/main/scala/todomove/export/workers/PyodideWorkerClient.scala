@@ -17,7 +17,7 @@ import scala.scalajs.js.JSConverters.*
 /** Python jobs and callback replay over the shared Scala.js command worker. */
 final class PyodideWorkerClient {
   private val worker = it.evadid.distribution.clients.WebWorkerExecutionClient.fromWorker(
-    it.evadid.facades.Workers.classic(it.evadid.homepage.control.startup.BrowserLoading.worker).createLoadedInstance())
+    it.evadid.facades.Workers.classic(it.evadid.facades.BrowserLoading.worker).createLoadedInstance())
   private val callbacks = com.raquo.airstream.state.Var(Map.empty[String, List[String]])
 
   def addCallbacks(moduleName: String, methodNames: Seq[String]): Future[Unit] = {

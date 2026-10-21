@@ -42,7 +42,7 @@ The [authentication guide](docs/authentication.md) describes registration, email
 | Domain models, workbook elements/interactions, validation and serializers shared by JVM and JS | `modules/core/shared/src/main/scala/`; tests in its matching `src/test/scala/` package |
 | Browser interaction renderers, editors and workbook factories | `modules/client/src/main/scala/`; tests in its matching `src/test/scala/` package |
 | Platform-specific code, worker execution or backend behavior | The corresponding core JS/JVM, worker or server module |
-| Workbook entry pages and browser bootstrap scripts | `homepage/<workbook>/index.html` and `homepage/js/` |
+| Workbook entry pages and presentation | `homepage/<workbook>/index.html`, `homepage/css/` and catalogue presentation in `homepage/js/` |
 | Presentation styles and shared color/dimension tokens | Dedicated files in `homepage/css/`; static styles belong here rather than in Laminar |
 | Translated workbook text | `resources/languageMaps/eva/<workbook-group>/` |
 | Published classic PDF/ZIP editions | `resources/workbookpdfs/`; keep public catalogue links available during migration |

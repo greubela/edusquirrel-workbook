@@ -1,10 +1,10 @@
-package it.evadid.homepage.webElements.editor.code.codemirror
+package it.evadid.facades.internal
 
 import it.evadid.facades.CodeMirror.Api as CodeMirrorApi
 import scala.collection.mutable
 import scala.scalajs.js
 
-private[code] final class CodeMirrorDiagnostics {
+private[evadid] final class CodeMirrorDiagnostics {
   import CodeMirrorApi.*
   import CodeMirrorDiagnostics.*
 
@@ -51,7 +51,7 @@ private[code] final class CodeMirrorDiagnostics {
   }
 }
 
-private[code] object CodeMirrorDiagnostics {
+private[evadid] object CodeMirrorDiagnostics {
   final case class Normalized(
     line: Int,
     endLine: Int,

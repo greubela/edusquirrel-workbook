@@ -1,7 +1,7 @@
 package it.evadid.facades
 
 import com.raquo.airstream.state.Var
-import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorRuntime
+import it.evadid.facades.internal.CodeMirrorRuntime
 import org.scalajs.dom
 
 import scala.concurrent.{Future, Promise}
