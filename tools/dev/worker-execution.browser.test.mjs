@@ -59,6 +59,7 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     })));
     assert.deepEqual(chart.nodes.map(node => node.line),[2,3,4,5]);
     assert.deepEqual(chart.entries,[2]);
+    assert(chart.flow[0].some(row => row.line === 3 && row.kind === "if"), "worker sends the source-aligned nested flow plan");
     const flowchartHeavy = await page.evaluate(async () => {
       const source = 'import turtle\nimport java_turtle\n\n' + Array.from({length:8},(_,index) =>
         `def shape${index}(edges: int, size: float, zigzag: bool) -> None:\n` +

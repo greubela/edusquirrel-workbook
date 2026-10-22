@@ -3,8 +3,7 @@ package it.evadid.facades.internal
 import it.evadid.facades
 import it.evadid.facades.CodeMirror
 import it.evadid.facades.CodeMirror.Api as CodeMirrorApi
-import it.evadid.facades.CodeMirror.{CodeMirrorHandle, EditorConfig, JavaScriptEditorConfig}
-import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter.Chart
+import it.evadid.facades.CodeMirror.{CodeMirrorHandle, EditorConfig, JavaScriptEditorConfig, Flowchart}
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import org.scalajs.dom
@@ -24,7 +23,7 @@ private[evadid] object CodeMirrorRuntime {
       onDocChange = value => config.onDocChange.toOption.filter(_ != null).foreach(_(value)),
       flowchart = config.flowchart.toOption.filter(_ != null).map(callback => source =>
         Future(callback(source)).flatMap(result => js.Promise.resolve[js.Object](result.asInstanceOf[js.Object]).toFuture)
-          .map(chart => upickle.default.read[Chart](js.JSON.stringify(chart))))
+          .map(chart => upickle.default.read[Flowchart](js.JSON.stringify(chart))))
     ))): js.Function1[JavaScriptEditorConfig, CodeMirrorHandle])
 
   private[evadid] def publish(): Unit = {

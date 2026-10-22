@@ -3,7 +3,7 @@ package it.evadid.facades
 import com.raquo.airstream.state.Var
 import it.evadid.facades.internal.CodeMirrorRuntime
 import org.scalajs.dom
-import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter.Chart
+import upickle.default.ReadWriter
 
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -297,12 +297,18 @@ object CodeMirror {
     def destroy(): Unit = js.native
   }
 
+  final case class FlowchartSlice(image: String, width: Double, height: Double,
+                                  top: Double, span: Double, x: Double = 0) derives ReadWriter
+  final case class FlowchartRow(slices: List[FlowchartSlice], title: String = "") derives ReadWriter
+  final case class Flowchart(width: Double, rows: Map[Int, FlowchartRow]) derives ReadWriter
+  object Flowchart { val empty: Flowchart = Flowchart(1, Map.empty) }
+
   final case class EditorConfig(
     parent: dom.Element,
     doc: String = "",
     onDocChange: String => Unit = _ => (),
     language: String = "python",
-    flowchart: Option[String => Future[Chart]] = None
+    flowchart: Option[String => Future[Flowchart]] = None
   )
 
   /** Only the external browser API crosses this JavaScript boundary. */

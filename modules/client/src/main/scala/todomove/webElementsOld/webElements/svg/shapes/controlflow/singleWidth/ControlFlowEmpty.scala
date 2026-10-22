@@ -4,7 +4,6 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.svg
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 
@@ -12,7 +11,7 @@ case class ControlFlowEmpty() extends ControlFlowShapeSingleWidth derives upickl
 
   override def minHeightInSegments: Int = 1
 
-  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
+  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
     cf.changeFirstOpenPath(_.changeLastPathBuilder(_.moveToRel(Dimension(0, curLineHeight))))
   }
 

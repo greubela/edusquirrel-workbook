@@ -45,12 +45,13 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
       window.graphCalls = 0;
       const chart = doc => {
         window.graphCalls++;
-        if (doc.includes('INVALID')) return {nodes: [], edges: [], entries: []};
-        const nodes = doc.split('\n').flatMap((label, index) => label.trim() ? [{
-          line: index + 1, kind: label.startsWith('if ') ? 'decision' : 'process', depth: label.startsWith('    ') ? 1 : 0, label
-        }] : []);
-        const edges = nodes.slice(1).map((node, index) => ({from: nodes[index].line, to: node.line, kind: 'next'}));
-        return {nodes, edges, entries: nodes.length ? [nodes[0].line] : []};
+        if (doc.includes('INVALID')) return {width:1,rows:{}};
+        const image = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><path d="M20 0V20" stroke="black"/></svg>');
+        const rows = Object.fromEntries(doc.split('\n').flatMap((label,index) => label.trim() ? [[index+1, {
+          title: `${label.startsWith('if ') ? 'decision' : 'process'}: ${label}`,
+          slices: [{image,width:40,height:20,top:0,span:20,x:0}]
+        }]] : []));
+        return {width:40,rows};
       };
       window.editor = EduSquirrelCodeMirror.createEditor({parent: document.querySelector('#flow'),
         doc: Array.from({length: 100}, (_, index) => index === 2 ? '' : `print(${index})`).join('\n'),
@@ -123,7 +124,7 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
       const requested = count => page.waitForFunction(count => graphRequests.length === count, count);
       const settle = (index, label, reject = false) => page.evaluate(async ({index, label, reject}) => {
         if (reject) graphRequests[index].reject(new Error(label));
-        else graphRequests[index].resolve({nodes: [{line: 1, kind: 'process', depth: 0, label}], edges: [], entries: [1]});
+        else graphRequests[index].resolve({width:40,rows:{1:{title:`process: ${label}`,slices:[]}}});
         await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)));
       }, {index, label, reject});
       const marker = label => page.waitForFunction(label =>
@@ -178,7 +179,7 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
         let calls = 0;
         const host = document.body.appendChild(document.createElement('div'));
         const editor = EduSquirrelCodeMirror.createEditor({parent: host, doc: 'cancelled',
-          flowchart: () => { calls++; return {nodes:[],edges:[],entries:[]}; }});
+          flowchart: () => { calls++; return {width:1,rows:{}}; }});
         editor.destroy();
         await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)));
         return calls;

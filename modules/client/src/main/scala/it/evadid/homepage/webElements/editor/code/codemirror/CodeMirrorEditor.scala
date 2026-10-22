@@ -49,7 +49,7 @@ case class CodeMirrorEditor(
               // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
               val created = createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
                 value => if !lifetime.isKilled && underlyingVar.now() != value then underlyingVar.set(value),
-                languageToJs(language), analysis.map(_.chartForDoc)))
+                languageToJs(language), analysis.map(current => source => current.chartForDoc(source).map(CodeMirrorFlowchartGutter.render))))
               created.foreach { native =>
                 if lifetime.isKilled || !ctx.thisNode.ref.isConnected then {
                   native.destroy()

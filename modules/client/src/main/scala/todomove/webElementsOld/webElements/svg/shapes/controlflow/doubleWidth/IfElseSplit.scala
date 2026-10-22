@@ -9,7 +9,6 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.re
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import todomove.webElementsOld.webElements.svg.shapes.BeShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
@@ -51,20 +50,20 @@ case class IfElseSplit() extends ControlFlowShapeDoubleWidth derives upickle.def
     (res.copy(curStatus = PAUSED), res.lastSegment.curPath.current)
   }
 
-  private def startIfPath(startPos: Point[Double], curLineHeight: Double, renderingInfo: RenderingInformation): ControlFlowPath = {
-    val seg = renderingInfo.renderingConfig.controlSegmentSize
+  private def startIfPath(startPos: Point[Double], curLineHeight: Double, renderingInfo: BeRenderingConfig): ControlFlowPath = {
+    val seg = renderingInfo.controlSegmentSize
     val extraHeight = (curLineHeight - seg * minHeightInSegments).max(0)
 
     val curPath = SvgPathBuilder[Double](startPos)
       .lineToRel(Dimension[Double](3 * seg, 3 * seg))
       .lineToRel(Dimension[Double](0, seg))
       .verticalLineWithHeight(extraHeight / 2)
-    val segment = PathSegment(curPath, List(), false, renderingInfo.renderingConfig.amendFactory.activeTrueConditionControlFlowAmends)
+    val segment = PathSegment(curPath, List(), false, renderingInfo.amendFactory.activeTrueConditionControlFlowAmends)
     ControlFlowPath(OPEN, List(segment))
   }
 
-  private def startElsePath(startPos: Point[Double], curLineHeight: Double, renderingInfo: RenderingInformation): ControlFlowPath = {
-    val seg = renderingInfo.renderingConfig.controlSegmentSize
+  private def startElsePath(startPos: Point[Double], curLineHeight: Double, renderingInfo: BeRenderingConfig): ControlFlowPath = {
+    val seg = renderingInfo.controlSegmentSize
     val extraHeight = (curLineHeight - seg * minHeightInSegments).max(0)
 
     val curPathRed = SvgPathBuilder[Double](startPos)
@@ -74,15 +73,15 @@ case class IfElseSplit() extends ControlFlowShapeDoubleWidth derives upickle.def
 
     val curPathInactive = SvgPathBuilder[Double](curPathRed.current)
 
-    val segment1 = PathSegment(curPathRed, List(), false, renderingInfo.renderingConfig.amendFactory.activeFalseConditionControlFlowAmends)
-    val segment2 = PathSegment(curPathInactive, List(), false, renderingInfo.renderingConfig.amendFactory.inactiveFalseConditionControlFlowAmends)
+    val segment1 = PathSegment(curPathRed, List(), false, renderingInfo.amendFactory.activeFalseConditionControlFlowAmends)
+    val segment2 = PathSegment(curPathInactive, List(), false, renderingInfo.amendFactory.inactiveFalseConditionControlFlowAmends)
     ControlFlowPath(HANDLED, List(segment1, segment2))
   }
 
-  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
-    val seg = renderingInfo.renderingConfig.controlSegmentSize
+  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
+    val seg = renderingInfo.controlSegmentSize
 
-    val (changedFirst, parentEndPos): (ControlFlowPath, Point[Double]) = handleParentPath(cf.firstOpenPath, renderingInfo.renderingConfig, curLineHeight)
+    val (changedFirst, parentEndPos): (ControlFlowPath, Point[Double]) = handleParentPath(cf.firstOpenPath, renderingInfo, curLineHeight)
     cf
       .changeFirstOpenPath(_ => changedFirst)
       .startNewPath(startElsePath(parentEndPos, curLineHeight, renderingInfo))
