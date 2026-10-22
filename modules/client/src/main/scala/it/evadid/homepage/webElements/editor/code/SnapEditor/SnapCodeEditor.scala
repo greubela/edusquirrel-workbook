@@ -23,29 +23,34 @@ case class SnapCodeEditor(
                          ) extends HtmlAppElement {
 
 
+  // A typed view of the interaction Var: no second answer or synchronization store.
+  private[SnapEditor] val snapState: Var[ProgrammingStateSnapScalaModel] = state.bimap {
+    case model: ProgrammingStateSnapScalaModel => model.persistent
+    case xml: ProgrammingStateSnapXml => SnapCodeEditor.typed(xml)
+    case other if other.associatedLanguage == SnapLanguage => SnapCodeEditor.typed(other.toSnapXml)
+    case _ => SnapCodeEditor.empty // inactive while Eva switches to another language
+  }(identity)
+
   private def publishProgramFromSnapXml(xml: String): Unit = {
-    val next: ProgrammingState = state.now() match {
-      case snap: ProgrammingStateSnapXml => snap.withProjectXml(xml).removeBloatFromXml
-      case snap: ProgrammingStateSnapScalaModel =>
-        snap.toSnapXml.withProjectXml(xml).removeBloatFromXml.toSnapScalaModel.fold(
-          message => throw IllegalArgumentException(message), identity)
-      case _ => ProgrammingStateSnapXml(xml).removeBloatFromXml
+    if state.now().associatedLanguage == SnapLanguage then {
+      val current = snapState.now()
+      val next = SnapCodeEditor.typed(ProgrammingStateSnapXml(xml, current.legacyFloatingObjects))
+      impl.acknowledgeProgramFromEditor(next.toSnapXml)
+      if !current.meaningfullyEquals(next) then snapState.set(next)
     }
-    // Mark the retained project before publishing: the Var observers run as
-    // part of this update and must not reload Snap's own serialized project.
-    impl.acknowledgeProgramFromEditor(next.toSnapXml)
-    if state.now().associatedLanguage == SnapLanguage && state.now() != next then
-      state.set(next)
   }
 
   private[SnapEditor] def mountEditorInto(canvas: Canvas, owner: Owner): Unit = {
     JavaTurtleSnapPrimitives.install()
     impl.mount(owner)
     impl.setOnProjectXmlChangedListener(publishProgramFromSnapXml)
-    impl.renderEditorInto(state.now().toSnapXml, canvas, config)
+    impl.renderEditorInto(snapState.now().toSnapXml, canvas, config)
     // Mount once. Later updates only synchronize the retained project;
     // acknowledgeProgramFromEditor makes Snap-originated echoes no-ops.
-    state.signal.changes.filter(_.associatedLanguage == SnapLanguage).map(_.toSnapXml).distinct.foreach(impl.loadProgramIfChanged)(using owner)
+    state.signal.changes.filter(_.associatedLanguage == SnapLanguage).map {
+      case model: ProgrammingStateSnapScalaModel => model.persistent
+      case other => SnapCodeEditor.typed(other.toSnapXml)
+    }.distinctByFn((previous, next) => previous.meaningfullyEquals(next)).foreach(model => impl.loadProgramIfChanged(model.toSnapXml))(using owner)
   }
 
   lazy val editorCanvas: Element = {
@@ -111,6 +116,10 @@ case class SnapCodeEditor(
 
 
 object SnapCodeEditor {
+  private def typed(xml: ProgrammingStateSnapXml): ProgrammingStateSnapScalaModel =
+    xml.toSnapScalaModel.fold(message => throw IllegalArgumentException(message), _.persistent)
+  private lazy val empty = typed(it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper.empty)
+
 
   def apply(logger: Logger, state: Var[ProgrammingState], config: SnapCodeEditorConfig,
             humanLanguage: Signal[HumanLanguage]): SnapCodeEditor =
@@ -127,8 +136,8 @@ object SnapCodeEditor {
     override val language = SnapLanguage
     override val label = "Snap!"
     override def convert(source: ProgrammingState): ProgrammingState = source match {
-      case snap: ProgrammingStateSnapScalaModel => snap
-      case _ => source.toSnapXml
+      case snap: ProgrammingStateSnapScalaModel => snap.persistent
+      case _ => typed(source.toSnapXml)
     }
     override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance): HtmlAppElement =
       SnapCodeEditor(tabLogger, state, config, humanLanguage)

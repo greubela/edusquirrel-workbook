@@ -324,6 +324,34 @@ object SnapScalaModel {
       case _ => None
     }
     def toXml: String = nodes.map(_.toXml).mkString
+    /** Generated display media belongs to the native runtime, not answer history. */
+    def withoutGeneratedImages: Document = transform { node =>
+      classify(node.element.copy(children = node.element.children.filterNot {
+        case child: SnapElement => Set("thumbnail", "pentrails", "pentrail").contains(child.element.tag)
+        case _ => false
+      }))
+    }
+
+    /** Compare XML values, ignoring only lexical encoding and layout whitespace. */
+    def meaningfullyEquals(other: Document): Boolean = {
+      def normalized(node: Node): Node = node match {
+        case node: SnapElement =>
+          val element = node.element
+          val indentation = element.children.exists(_.isInstanceOf[SnapElement]) &&
+            element.children.collect { case t: Text => t.value }.forall(_.trim.isEmpty)
+          val children = element.children.filterNot {
+            case t: Text => indentation && t.value.trim.isEmpty
+            case _ => false
+          }.map(normalized)
+          classify(Element(element.tag,
+            element.attributes.sortBy(_.name).map(a => Attribute(a.name, escape(a.value))),
+            children, selfClosing = children.isEmpty))
+        case t: Text => Text(escape(t.value))
+        case c: CData => Text(escape(c.value))
+        case other => other
+      }
+      normalized(withoutGeneratedImages.root) == normalized(other.withoutGeneratedImages.root)
+    }
     /** Bottom-up immutable editing keeps unchanged lexical details and extension content. */
     def transform(f: SnapElement => SnapElement): Document = {
       def visit(node: Node): Node = node match {

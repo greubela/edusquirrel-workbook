@@ -127,13 +127,13 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       editor.mountEditorInto(null, owner)
       assertEquals(impl.renders, 1)
       assertEquals(impl.loadRequests, 0) // no initial signal echo
-      val next = ProgrammingStateSnapXml("<project>edited</project>")
-      impl.listener(next.snapXml)
+      val next = ProgrammingStateSnapXml("<project>edited</project>").toSnapScalaModel.toOption.get
+      impl.listener(next.toSnapXml.snapXml)
       assertEquals(state.now(), next)
       assertEquals(edits, List(next))
       assertEquals(impl.reloads, 0) // acknowledgement must precede the Var update
       assertEquals(impl.renders, 1)
-      impl.listener(next.snapXml)
+      impl.listener(next.toSnapXml.snapXml)
       assertEquals(edits, List(next))
       val restored = ProgrammingStateSnapXml("<project>restored</project>")
       state.set(restored)
@@ -241,7 +241,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     try {
       editor.mountEditorInto(null, owner)
       def liveXml(code: String, image: Int) = s"<project><thumbnail>image-$image</thumbnail><stage><pentrails>trails-$image</pentrails><scripts>$code</scripts></stage></project>"
-      val cleaned = ProgrammingStateSnapXml("<project><stage><scripts>edited</scripts></stage></project>")
+      val cleaned = ProgrammingStateSnapXml("<project><stage><scripts>edited</scripts></stage></project>").toSnapScalaModel.toOption.get
       impl.listener(liveXml("edited", 0))
       assertEquals(state.now(), cleaned)
       assertEquals(edits, List(cleaned))
@@ -251,7 +251,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(impl.reloads, 0)
       impl.listener(liveXml("changed again", 21))
       assertEquals(edits.size, 2)
-      assertEquals(state.now(), ProgrammingStateSnapXml("<project><stage><scripts>changed again</scripts></stage></project>"))
+      assertEquals(state.now(), ProgrammingStateSnapXml("<project><stage><scripts>changed again</scripts></stage></project>").toSnapScalaModel.toOption.get)
       assertEquals(impl.reloads, 0)
     } finally owner.killSubscriptions()
   }
@@ -268,7 +268,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       editor.mountEditorInto(null, owner)
       def liveXml(image: Int) =
         s"<project><thumbnail>image-$image</thumbnail><costumes><costume image=\"authored\"/></costumes><stage><pentrails>trails-$image</pentrails><scripts>edited</scripts></stage></project>"
-      val cleaned = source.withProjectXml("<project><costumes><costume image=\"authored\"/></costumes><stage><scripts>edited</scripts></stage></project>")
+      val cleaned = source.withProjectXml("<project><costumes><costume image=\"authored\"/></costumes><stage><scripts>edited</scripts></stage></project>").toSnapScalaModel.toOption.get
       impl.listener(liveXml(0))
       impl.listener(liveXml(1))
       assertEquals(state.now(), cleaned)
@@ -569,6 +569,51 @@ class SnapCodeEditorSyncSpec extends FunSuite {
         assertEquals(impl.previewed, List(initial))
       } finally mounted.unmount()
     }
+  }
+
+  test("the typed interaction view publishes only meaningful changes and excludes generated media") {
+    val xml = "<project><stage name='Turtle' tempo='60'><scripts><script><block s='forward'><l>10</l></block></script></scripts></stage></project>"
+    val source = ProgrammingStateSnapXml(xml, List("legacy"))
+    val state = Var[ProgrammingState](source)
+    val impl = new RecordingImpl
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
+    val changes = Var(List.empty[ProgrammingState])
+    val owner = new ManualOwner
+    state.signal.changes.foreach(value => changes.update(_ :+ value))(using owner)
+    try {
+      editor.mountEditorInto(null, owner)
+      val cosmetic = xml.replace("name='Turtle' tempo='60'", "tempo=\"60\" name=\"Turtle\"")
+        .replace("</project>", "<thumbnail>huge</thumbnail></project>")
+      impl.listener(cosmetic)
+      assertEquals(changes.now(), Nil)
+      assertEquals(state.now(), source)
+      val next = cosmetic.replace("<l>10</l>", "<l>20</l>")
+      impl.listener(next)
+      val typed = state.now().asInstanceOf[ProgrammingStateSnapScalaModel]
+      assertEquals(typed, editor.snapState.now())
+      assertEquals(typed.legacyFloatingObjects, List("legacy"))
+      assert(!typed.toSnapXml.snapXml.contains("huge"))
+      assertEquals(changes.now(), List(typed))
+      impl.listener(next.replace("huge", "another-preview"))
+      assertEquals(changes.now(), List(typed))
+      assertEquals(impl.reloads, 0)
+      state.set(ProgrammingStatePythonString("unfinished python"))
+      impl.listener(next.replace("20", "30"))
+      assertEquals(state.now(), ProgrammingStatePythonString("unfinished python"))
+    } finally owner.killSubscriptions()
+  }
+
+  test("legacy expression answers render through the typed Snap view without replacing their program") {
+    val original = ProgrammingStateSnapXmlHelper.mini.toBeExpressionState
+    val state = Var[ProgrammingState](original)
+    val impl = new RecordingImpl
+    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
+    val owner = new ManualOwner
+    try {
+      editor.mountEditorInto(null, owner)
+      assertEquals(impl.current, Some(original.toSnapXml.removeBloatFromXml))
+      assertEquals(state.now(), original)
+    } finally owner.killSubscriptions()
   }
 
 }

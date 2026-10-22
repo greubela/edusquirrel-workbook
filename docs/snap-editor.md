@@ -2,11 +2,11 @@
 
 ## State and conversion
 
-- Snap, Python and Java tabs share one `Var[ProgrammingState]`.
-- `ProgrammingStateSnapXml` retains project XML; `removeBloatFromXml` removes generated previews, preserving authored assets.
+- Snap uses a `Var[ProgrammingStateSnapScalaModel]` view of Eva's central answer Var; only meaningful model changes are published.
+- Model comparison ignores generated media and XML spelling; selectors, inputs, authored assets and script layout remain meaningful.
 - [ProgrammingStateSnapScalaModel](snap-scala-model.md) supports lossless typed editing, including native Snap blocks.
 - Python/Java conversion supports a subset of Snap. Preserve unsupported blocks in the saved project; never replace it with a lossy conversion.
-- Standard uPickle codecs retain the active representation. Development schema changes require resetting saved answers.
+- The typed-state codec excludes thumbnails and pen trails from history; authored costumes and opaque project data remain.
 
 ## Loading and ownership
 
@@ -19,7 +19,8 @@
 
 - Editors and previews receive `Signal[HumanLanguage]`, normally `fullInfo.signals.currentLanguage`. Constant signals work for standalone use; compatibility overloads default to English.
 - The facade loads and caches dictionaries before drawing. Explicit locale mapping supports all eight workbook languages, including `ua`, `dk` and `ru`; do not derive codes from `nameAbbr`.
-- Language changes redraw previews even when XML is unchanged. Live editors commit slot text and rebuild from complete project XML, preserving content and palette configuration.
+- Language changes redraw previews. Live editors use native `reflectLanguage` on the existing IDE/world; Snap reloads scenes, then exercise libraries are reapplied.
+- Serialization runs with an English translator and restores the display locale in `finally`, including native refresh exports. Language-only refreshes produce no answer update.
 - The workbook signal overrides Snap's saved language preference. Learner-authored names and text remain unchanged.
 
 ## Presentation and execution

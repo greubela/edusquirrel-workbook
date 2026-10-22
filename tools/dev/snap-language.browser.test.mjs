@@ -15,6 +15,14 @@ test('the workbook language translates native block previews and a mounted edito
     const page = await browser.newPage();
     page.setDefaultTimeout(60000);
     const errors = [];
+    await page.addInitScript(() => {
+      window.snapHistoryWrites = [];
+      const put = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function(value,...args) {
+        if (this.name === 'variableHistoryStore') snapHistoryWrites.push(value.value);
+        return put.call(this,value,...args);
+      };
+    });
     const localeRequests = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.route('**/*', async route => {
@@ -40,8 +48,20 @@ test('the workbook language translates native block previews and a mounted edito
             const open = IDE_Morph.prototype.openIn;
             IDE_Morph.prototype.openIn = function(world,...args) {
               const result = open.call(this,world,...args);
-              if (world.worldCanvas.closest('dialog')) window.snapLanguageEditor = this;
+              if (world.worldCanvas.closest('dialog')) { window.snapLanguageEditor = this; window.snapLanguageWorld = world; }
               return result;
+            };
+          })();`);
+        if (url.pathname.endsWith('/turtlestitchsrc/store.js')) body = Buffer.from(body.toString() + `
+          (() => {
+            window.snapExportLanguages = [];
+            const serialize = SnapSerializer.prototype.serialize;
+            SnapSerializer.prototype.serialize = function(object,...args) {
+              if (object instanceof Project) {
+                snapExportLanguages.push(SnapTranslator.language);
+                if (SnapTranslator.language !== 'en') throw new Error('Project export requires English');
+              }
+              return serialize.call(this,object,...args);
             };
           })();`);
         await route.fulfill({body,contentType:mime[path.extname(file)] || 'application/octet-stream'});
@@ -59,24 +79,43 @@ test('the workbook language translates native block previews and a mounted edito
     assert(await preview.evaluate(canvas => canvas !== englishPreview), 'language changes replace a static preview');
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
     await page.waitForFunction(() => window.snapLanguageEditor?.currentSprite?.scripts.allChildren()
-      .some(m => m.selector === 'forward' && m.blockSpec === 'gehe %n Schritte'));
+      .some(m => m.selector === 'forward' && m.blockSpec === 'gehe %n Schritte'), null, {timeout:60000}).catch(async error => {
+        console.error({errors, state:await page.evaluate(() => ({language:SnapTranslator.language,
+          alerts:[...document.querySelectorAll('[role=alert]')].map(e => e.textContent),
+          blocks:window.snapLanguageEditor?.currentSprite?.scripts.allChildren().filter(m => m.selector).map(m => [m.selector,m.blockSpec])}))});
+        throw error;
+      });
+    await page.waitForTimeout(750); // include the periodic native snapshot in the baseline
+    const historyBeforeLanguage = await page.evaluate(() => snapHistoryWrites.length);
     const source = await page.evaluate(() => {
       window.germanIde = snapLanguageEditor;
+      window.germanWorld = snapLanguageWorld;
       return [...new DOMParser().parseFromString(snapLanguageEditor.getProjectXML(),'application/xml').querySelectorAll('scripts')]
         .map(scripts => scripts.outerHTML);
     });
     // The modal makes header controls inert to pointer input. Dispatch the real
     // language control's click to exercise its signal while the editor stays open.
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
-    await page.waitForFunction(() => snapLanguageEditor !== germanIde && snapLanguageEditor.currentSprite.scripts.allChildren()
+    await page.waitForFunction(() => snapLanguageEditor === germanIde && snapLanguageEditor.currentSprite.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'move %n steps'));
     assert.deepEqual(await page.evaluate(() => [...new DOMParser().parseFromString(snapLanguageEditor.getProjectXML(),'application/xml')
       .querySelectorAll('scripts')].map(scripts => scripts.outerHTML)), source);
     assert.equal(await page.locator('dialog[open]').count(), 1);
+    assert(await page.evaluate(() => snapLanguageWorld === germanWorld), 'language changes retain the Morphic world');
     await page.locator('.select-language-line > div').nth(1).evaluate(flag => flag.click());
     await page.waitForFunction(() => snapLanguageEditor.currentSprite.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'gehe %n Schritte'));
     assert.equal(localeRequests.filter(url => url.endsWith('/lang-de.js')).length, 1, 'dictionary loads are shared across previews and reopenings');
+    assert(await page.evaluate(() => snapLanguageEditor === germanIde && snapLanguageWorld === germanWorld), 'both native handles survive switching back');
+    assert(await page.evaluate(() => snapExportLanguages.length > 0 && snapExportLanguages.every(language => language === 'en')), 'all project exports use English, including native language refresh');
+    assert.equal(await page.evaluate(() => SnapTranslator.language), 'de', 'exports restore the display language');
+    await page.waitForTimeout(750);
+    assert.equal(await page.evaluate(() => snapHistoryWrites.length), historyBeforeLanguage, 'language-only refresh creates no answer history');
+    await page.evaluate(() => snapLanguageEditor.currentSprite.scripts.allChildren().find(m => m.selector === 'forward').inputs()[0].setContents(42));
+    await page.waitForFunction(count => snapHistoryWrites.length > count, historyBeforeLanguage);
+    const persisted = await page.evaluate(() => snapHistoryWrites.at(-1));
+    assert(persisted.includes('SnapModel'), 'native edits persist a typed model');
+    assert(!persisted.includes('data:image/png;base64,'), 'generated previews are absent from database history');
     await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, []);
   } finally {await browser.close();}

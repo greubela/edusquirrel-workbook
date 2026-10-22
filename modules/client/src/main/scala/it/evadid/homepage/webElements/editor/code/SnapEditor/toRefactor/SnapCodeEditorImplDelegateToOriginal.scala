@@ -37,6 +37,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     Snap.preloadLanguage(language).map(_ => render()).failed.foreach(onError)
 
   private val humanLanguage = Var[AppLanguage.HumanLanguage](AppLanguage.English)
+  private val renderedLanguage = Var[AppLanguage.HumanLanguage](AppLanguage.English)
+  private val languageRefresh = Var(Option.empty[(AnyRef, AppLanguage.HumanLanguage)])
 
   private var editorWorld: Option[WorldMorph] = None
   private var editor: Option[IDEMorph] = None
@@ -125,6 +127,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
     editorWorld = Some(world)
     editor = Some(ide)
+    renderedLanguage.set(humanLanguage.now())
     installResizeObserver(canvas)
     startWorldCycles()
     // Dialog layout may settle one frame after mount; refit once parent has real size.
@@ -186,6 +189,13 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         if !force && projectXmlSync.isLoaded(xml) then
           return
         if !force && isTextEditing then return
+        // A restored answer supersedes Snap's queued project reload.
+        languageRefresh.now().foreach { (_, language) =>
+          ide.onNextStep = null
+          renderedLanguage.set(language)
+          languageRefresh.set(None)
+        }
+        Snap.useLanguage(renderedLanguage.now())
         restorePrimitiveBlockDictionary()
         ensureExerciseCategoriesBeforeLoad()
         ide.rawOpenProjectString(xml)
@@ -203,6 +213,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
             ide.fullChanged()
         projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
         lastProjectXmlCheckAt = dom.window.performance.now()
+        refreshLanguage()
       case None => ()
 
   override def acknowledgeProgramFromEditor(state: ProgrammingStateSnapXml): Unit =
@@ -213,7 +224,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     editor.foreach(checkWhetherProgramXmlChanged(_, allowDuringEdit = true))
 
   override def currentProjectXml(): Option[String] =
-    editor.map(_.getProjectXML())
+    editor.map(snapshotProjectXml)
 
   private def canonicalXml(state: ProgrammingStateSnapXml): String =
     state.removeBloatFromXml.snapXml
@@ -746,9 +757,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       ide.refreshPalette(true)
 
   private def snapshotProjectXml(ide: IDEMorph): String =
-    val xml = ide.getProjectXML()
-    restorePrimitiveBlockDictionary()
-    xml
+    try ide.getProjectXML()
+    finally restorePrimitiveBlockDictionary()
 
   /** If configured selectors are missing from the live primitives table (e.g. after
     * a scene replaced SpriteMorph.prototype.blocks), restore the full table.
@@ -1199,6 +1209,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
    * poll (or an explicit flush) publishes the committed value.
    */
   private def checkWhetherProgramXmlChanged(ide: IDEMorph, allowDuringEdit: Boolean = false): Unit =
+    if !allowDuringEdit && languageRefresh.now().nonEmpty then return
     if !allowDuringEdit && isTextEditing then return
     // Commit in-progress slot text before serializing (needed for flush-on-close).
     if allowDuringEdit && isTextEditing then
@@ -1213,6 +1224,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private def stopEditorSession(): Unit =
     editor.foreach(checkWhetherProgramXmlChanged(_, allowDuringEdit = true))
     pauseWorldCycles()
+    editor.foreach(_.onNextStep = null)
+    languageRefresh.set(None)
     disconnectResizeObserver()
     // An editor can unmount while the runtime is still loading; no native globals exist yet.
     if editor.nonEmpty then
@@ -1232,19 +1245,38 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     stopEditorSession()
 
   override def changeLanguage(language: AppLanguage.HumanLanguage): Unit =
-    if humanLanguage.now() != language then
-      // Commit slot text before replacing localized Morphic labels. Rebuild from
-      // the live XML so custom blocks, variables and the exercise palette survive.
-      flushPendingProjectChanges()
-      val live = for
-        canvas <- mountedCanvas
-        config <- mountedConfig
-        xml <- currentProjectXml()
-      yield (canvas, config, ProgrammingStateSnapXml(xml))
-      humanLanguage.set(language)
-      live.foreach { (canvas, config, state) =>
-        stopEditorSession()
-        renderEditorInto(state, canvas, config)
+    humanLanguage.set(language)
+    refreshLanguage()
+
+  private def refreshLanguage(): Unit =
+    if languageRefresh.now().isEmpty && renderedLanguage.now() != humanLanguage.now() then
+      editor.foreach { ide =>
+        flushPendingProjectChanges()
+        stopGreenFlagOnStage()
+        val xml = snapshotProjectXml(ide)
+        val language = humanLanguage.now()
+        val token = new Object
+        languageRefresh.set(Some(token -> language))
+        ensureExerciseCategoriesBeforeLoad()
+        try Snap.changeLanguage(ide, language, () => {
+          if editor.contains(ide) && languageRefresh.now().contains(token -> language) then
+            try
+              restorePrimitiveBlockDictionary()
+              repairCustomBlockParameterBindings(ide)
+              ensureMissingGlobalVariables(ide, xml, refreshPalette = true)
+              reinstallConfiguredLibraries(ide)
+              retagCustomBlockCategories(ide)
+              for world <- editorWorld; canvas <- mountedCanvas do layoutEditor(world, ide, canvas)
+              renderedLanguage.set(language)
+              projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
+              lastProjectXmlCheckAt = dom.window.performance.now()
+            finally languageRefresh.set(None)
+            refreshLanguage()
+        })
+        catch
+          case error: Throwable =>
+            languageRefresh.set(None)
+            throw error
       }
 
 object SnapCodeEditorImplDelegateToOriginal {
