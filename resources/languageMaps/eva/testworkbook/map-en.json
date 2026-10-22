@@ -8,6 +8,7 @@
   "goalTitle": "Learning goal",
   "instructionTitle": "Task",
   "hintTitle": "Hint",
+  "javaSquareInstructions": "### A square in Java\n\nComplete the method `square(int side)` so that the turtle draws a square with side length `side`. Use `Turtle.forward(...)` and `Turtle.turnRight(...)`. The method should also work for other positive side lengths, not just the call `square(25)` in `main`. Keep the method signature and `main` unchanged. Open the editor and run your draft.",
   "section2Title": "Draw a circle",
   "section2Subtitle1": "Drawing a circle",
   "section2Subtitle2": "Editor",

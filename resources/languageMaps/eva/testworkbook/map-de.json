@@ -10,6 +10,7 @@
   "goalTitle": "Lernziel",
   "instructionTitle": "Aufgabe",
   "hintTitle": "Hinweis",
+  "javaSquareInstructions": "### Ein Quadrat in Java\n\nErgänze die Methode `square(int side)` so, dass die Turtle ein Quadrat mit der Seitenlänge `side` zeichnet. Verwende `Turtle.forward(...)` und `Turtle.turnRight(...)`. Die Methode soll auch für andere positive Seitenlängen funktionieren, nicht nur für den Aufruf `square(25)` in `main`. Lass die Methodensignatur und `main` unverändert. Öffne den Editor und führe deinen Entwurf aus.",
   "section2Title": "Kreis zeichnen",
   "section2Subtitle1": "Einen Kreis zeichnen",
   "section2Subtitle2": "Editor",

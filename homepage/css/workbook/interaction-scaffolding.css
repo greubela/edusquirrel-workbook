@@ -207,6 +207,7 @@
     min-width: 0;
     min-height: 0;
     overflow: hidden;
+    border-radius: inherit;
 }
 .interaction-editor > .interaction-element-info > .interaction-info__hint-body {
     position: static;
@@ -230,4 +231,7 @@
         max-height: calc(100% - 44px - 3 * var(--space-md));
     }
     .interaction-editor { position: relative; }
+}
+@media (max-height: 500px) {
+    .interaction-editor { gap: var(--space-xs); padding: var(--space-xs); }
 }

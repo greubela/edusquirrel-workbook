@@ -1,9 +1,11 @@
 package it.evadid.workbook.abstractions.scaffolding
 
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
-import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Java, Python}
-import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, Java, Python}
+import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
+import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.util.logging.BasicLogger
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
@@ -16,33 +18,37 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionElementFull[ProgrammingState, ?, A],
-    publicTask: LanguageMap[HumanLanguage],
-    feedbackLanguage: () => HumanLanguage, executionClient: () => ExecutionClient)
+    publicTaskId: LanguageMapContentId)
     extends WorkbookInteractionScaffolder[ProgrammingState, A] {
   import ProgrammingHintScaffolder.*
 
   private given ExecutionContext = ExecutionContext.global
 
-  override def generateFeedback(currentState: ProgrammingState): Future[ScaffoldingResult[ProgrammingState, A]] =
+  override def generateFeedback(currentState: ProgrammingState, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[ScaffoldingResult[ProgrammingState, A]] =
     Try {
       val context = prepare(currentState)
-      LLMCommands.feedbackLlmCommandFactory
-        .sendCommandTo(executionClient(), context.request, Some(BasicLogger()))
-        .map { response =>
+      val language = resolver.languageFuture()
+      language.zip(resolver.resolveMap(publicTaskId)).flatMap { (locale, translations) =>
+        val task = translations.tryGetInLanguage(locale).orElse(translations.tryGetInLanguage(English))
+          .filter(text => text != null && text.trim.nonEmpty && text.length <= 8000)
+          .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
+        val request = context.request(locale, task)
+        val factory = LLMCommands.feedbackLlmCommandFactory
+        val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
+        val client = availableExecutionClients.find(_.canExecuteCommand(command))
+          .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
+        factory.sendCommandTo(client, request, Some(BasicLogger())).map { response =>
           val hints = parse(response.result, context.evidenceIds)
           val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
           val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
           val conversation = MessengerModel(List(Message(accepted, MessengerModel.pAgent)))
-          ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(context.language -> text)),
+          ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> text)),
             FeedbackEntity.LlmEntity(conversation), None)
         }
+      }
     }.fold(Future.failed, identity)
 
   private def prepare(state: ProgrammingState): Context = {
-    val language = feedbackLanguage()
-    val task = publicTask.tryGetInLanguage(language)
-      .filter(text => text.trim.nonEmpty && text.length <= 8000)
-      .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
     val (sourceLanguage, source) = state match {
       case ProgrammingStateJavaString(code) => Java.name -> code
       case ProgrammingStatePythonString(code) => Python.name -> code
@@ -69,22 +75,29 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
         case List(single) => single
         case _ => "unavailable"
       }
-      ujson.Obj("id" -> s"check-${index + 1}",
-        "required" -> (grader.importance == GradingImportance.REQUIRED_TEST), "status" -> status)
+      (s"check-${index + 1}", grader.importance == GradingImportance.REQUIRED_TEST, status)
     }
-    val evidenceIds = sourceIds.toSet ++ checks.map(_("id").str) + "task"
-    val prompt = ujson.write(ujson.Obj(
-      "feedbackLanguage" -> language.name,
-      "task" -> ujson.Obj("id" -> "task", "text" -> task),
-      "source" -> ujson.Obj("language" -> sourceLanguage, "code" -> source,
-        "lineIds" -> ujson.Arr.from(sourceIds)),
-      "checks" -> ujson.Arr.from(checks)))
-    Context(language, LLMCommands.FeedbackLlmRequest(prompt, systemPrompt), evidenceIds)
+    Context(sourceLanguage, source, sourceIds, checks)
   }
 }
 
 object ProgrammingHintScaffolder {
-  private case class Context(language: HumanLanguage, request: LLMCommands.FeedbackLlmRequest, evidenceIds: Set[String])
+  private case class Context(sourceLanguage: String, source: String, sourceIds: Vector[String], checks: List[(String, Boolean, String)]) {
+    val evidenceIds: Set[String] = sourceIds.toSet ++ checks.collect {
+      case (id, _, status) if Set("correct", "partially-correct", "incorrect").contains(status) => id
+    } + "task"
+
+    def request(language: HumanLanguage, task: String): LLMCommands.FeedbackLlmRequest = {
+      val prompt = ujson.write(ujson.Obj(
+        "feedbackLanguage" -> language.name,
+        "task" -> ujson.Obj("id" -> "task", "text" -> task),
+        "source" -> ujson.Obj("language" -> sourceLanguage, "code" -> source, "lineIds" -> ujson.Arr.from(sourceIds)),
+        "checks" -> ujson.Arr.from(checks.map { (id, required, status) =>
+          ujson.Obj("id" -> id, "required" -> required, "status" -> status)
+        })))
+      LLMCommands.FeedbackLlmRequest(prompt, systemPrompt)
+    }
+  }
   private case class Hint(question: String, evidenceIds: Vector[String]) {
     def toJson: ujson.Value = ujson.Obj("question" -> question, "evidenceIds" -> ujson.Arr.from(evidenceIds))
   }
@@ -98,6 +111,7 @@ object ProgrammingHintScaffolder {
       |Source IDs refer to one-based source lines; CRLF, CR and LF each separate lines.
       |Use only the supplied task, source and public check statuses. Do not invent observations or claim execution.
       |Unavailable, not-run and error statuses are not evidence of a learner mistake. Optional checks are not requirements.
+      |Only cite check IDs whose status is correct, partially-correct or incorrect.
       |Do not give an overall grade, claim correctness or mention internal checks, test names or tools.
       |Ask the learner to examine a specific part. When evidence is insufficient, ask rather than assert a bug.
       |Do not provide solutions, replacement code, answer values or step-by-step solution algorithms.

@@ -10,6 +10,10 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSe
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import munit.FunSuite
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.workbook.abstractions.scaffolding.ProgrammingHintScaffolder
+import it.evadid.distribution.command.SerializedException
+import upickle.default.*
 
 class ProgrammingExerciseFactorySpec extends FunSuite {
 
@@ -180,5 +184,55 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(restored, invalidDraft)
     assertEquals(ProgrammingState.fingerprint(restored), ProgrammingState.fingerprint(invalidDraft))
     assertEquals(exercise.defaultValue, ProgrammingStateJavaString(source))
+  }
+
+  test("full Java hint configuration roundtrips and constructs a scaffolder owned by the restored interaction") {
+    val source = " \r\npublic class Drawing {\r\n  static void square(int side) {\n  }\r\n}\t "
+    val task = Some(LanguageMapContentId("test/java-task"))
+    val suite: Option[BeTestSuite] = Some(SampleBeTest("assert True\n"))
+    val original = ProgrammingExerciseFullJava("java-hints", suite, source, task)
+    val encoded = write(original)
+    val definition = original.toSerialized
+    assertEquals(definition.allConstructorFields.keySet, Set("testSuite", "startingProgram", "hintTask"))
+    assertEquals(definition.getElementAs[Option[LanguageMapContentId]]("hintTask"), task)
+    assertEquals(read[ujson.Value](encoded).obj.keySet.toSet, Set("$type", "elementId", "testSuite", "startingProgram", "hintTask"))
+    val restored = List(read[ProgrammingExerciseFullJava](encoded), readBinary[ProgrammingExerciseFullJava](writeBinary(original))) ++
+      List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)
+        .map(serializer => serializer.deserialize(serializer.serialize(original)).asInstanceOf[ProgrammingExerciseFullJava])
+    (original :: restored).foreach { exercise =>
+      assertEquals(exercise.elementId, original.elementId)
+      assertEquals(exercise.testSuite, suite)
+      assertEquals(exercise.startingProgram, source)
+      assertEquals(exercise.hintTask, task)
+      val owner = exercise.scaffoldingElement.collect { case hint: ProgrammingHintScaffolder[?] => hint.interaction }
+      assert(owner.exists(_ eq exercise))
+      assertEquals(exercise.defaultValue, ProgrammingStateJavaString(source))
+      val draft = ProgrammingStateJavaString(" \r\nclass Drawing {\n  static void square(\t ")
+      assertEquals(exercise.serializerInteractionContent.deserialize(exercise.serializerInteractionContent.serialize(draft)), draft)
+    }
+    restored.foreach(exercise => assert(!(exercise.scaffoldingElement.get eq original.scaffoldingElement.get)))
+  }
+
+  test("legacy full Java definitions keep hints disabled without changing their serialized fields") {
+    val original = ProgrammingExerciseFullJava("java-without-hints")
+    assertEquals(original.scaffoldingElement, None)
+    assert(!original.toSerialized.allConstructorFields.contains("hintTask"))
+    val definitions = List(original.toSerialized, original.toSerialized.withMapAdded(Map("hintTask" -> ujson.Null)))
+    val exercises = definitions.map(ProgrammingExerciseFullJava.factory.fromSerializedElement(_, Map.empty)) ++
+      List(read[ProgrammingExerciseFullJava](write(original)), readBinary[ProgrammingExerciseFullJava](writeBinary(original)))
+    exercises.foreach { restored =>
+      assertEquals(restored, original)
+      assertEquals(restored.hintTask, None)
+      assertEquals(restored.scaffoldingElement, None)
+      assert(!restored.toSerialized.allConstructorFields.contains("hintTask"))
+    }
+  }
+
+  test("invalid Java hint configuration fails rather than silently disabling hints") {
+    val original = ProgrammingExerciseFullJava("java-invalid-hints").toSerialized
+    List(ujson.Num(5), ujson.Bool(false), ujson.Obj(), writeJs[Option[String]](Some("invalid"))).foreach { invalid =>
+        intercept[SerializedException](ProgrammingExerciseFullJava.factory.fromSerializedElement(
+          original.withMapAdded(Map("hintTask" -> invalid)), Map.empty))
+      }
   }
 }

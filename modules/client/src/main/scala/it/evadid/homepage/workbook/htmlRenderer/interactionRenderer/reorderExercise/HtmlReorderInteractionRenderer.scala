@@ -110,7 +110,8 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
           if (sanitized != state.currentOrder) state.copy(currentOrder = sanitized)
           else state
         },
-        UpdateImportance.MINOR
+        UpdateImportance.MINOR,
+        List(fullInfo.defaults.backendExecutor)
       )
     }
 
