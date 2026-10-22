@@ -3,6 +3,7 @@ package it.evadid.homepage.workbook.content
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
+import it.evadid.workbook.abstractions.scaffolding.ProgrammingHintScaffolder
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailFolder, MailInteraction}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
@@ -93,6 +94,10 @@ class CreateTestWorkbookSpec extends FunSuite {
     assertEquals(pilot.head.startingProgram, source)
     assertEquals(pilot.head.defaultValue.toJava.code, source)
     assertEquals(pilot.head.testSuite, None)
+    assertEquals(pilot.head.hintTask, Some(LanguageMapContentId("TestWorkbook/javaSquareInstructions")))
+    val owner = pilot.head.scaffoldingElement.collect { case hint: ProgrammingHintScaffolder[?] => hint.interaction }
+    assert(owner.exists(_ eq pilot.head))
+    assertEquals(exercises.filter(_.scaffoldingElement.nonEmpty).map(_.elementId), List("java-square-pilot"))
     assertEquals(exercises.find(_.elementId == "prog-full-java").get.startingProgram,
       ProgrammingExerciseFullJava.defaultStartingProgram)
   }

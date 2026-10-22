@@ -43,6 +43,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   ))
 
   lazy val section1: WorkbookSection = {
+    val javaSquareInstructions = LanguageMapContentId("TestWorkbook/javaSquareInstructions")
     section("sec1Id", "TestWorkbook/Sec1", List[WorkbookElement](
       container("TestWorkbook/Sec1Cont1", List(
         TurtleRecreateShapeInteraction(
@@ -61,7 +62,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         ),
         ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.BeginnerTurtle),
         ProgrammingExerciseFullJava("prog-full-java"),
-        DisplayLangMapContent("java-square-pilot-instructions", LanguageMapContentId("TestWorkbook/javaSquareInstructions"),
+        DisplayLangMapContent("java-square-pilot-instructions", javaSquareInstructions,
           LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)),
         ProgrammingExerciseFullJava("java-square-pilot", startingProgram = """public class Drawing {
           |  static void square(int side) {
@@ -72,7 +73,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
           |    square(25);
           |  }
           |}
-          |""".stripMargin)
+          |""".stripMargin, hintTask = Some(javaSquareInstructions))
       )
       )))
   }
