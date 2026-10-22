@@ -107,4 +107,18 @@ class PythonFlowchartGutterSpec extends FunSuite {
     assertEquals(chart("print(1)\nbreak"), PythonFlowchartGutter.empty)
     assertEquals(chart("continue"), PythonFlowchartGutter.empty)
   }
+  test("nested overlay rows retain else locations and close blocks on existing source lines") {
+    val result = chart("while True:\n    if True:\n        print(1)\n    else:\n        print(2)\nprint(3)")
+    assertEquals(result.flow.head.map(row => row.line -> row.kind), List(
+      1 -> "start", 1 -> "loop", 2 -> "if", 3 -> "process", 4 -> "else",
+      5 -> "process", 5 -> "endif", 5 -> "endloop", 6 -> "process", 6 -> "stop"
+    ))
+  }
+
+  test("overlay scopes separate declarations from bodies and omit unreachable statements") {
+    val result = chart("def answer():\n    return 42\n    print(0)\nprint(answer())")
+    assertEquals(result.flow.map(_.map(_.line).distinct), List(List(1, 4), List(2)))
+    assert(result.flow.forall(rows => rows.head.kind == "start" && rows.last.kind == "stop"))
+  }
+
 }

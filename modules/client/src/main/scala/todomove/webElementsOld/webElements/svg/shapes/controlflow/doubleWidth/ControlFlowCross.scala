@@ -7,7 +7,6 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.re
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 import todomove.webElementsOld.webElements.svg.compositeElements.AppDecoratedSvgElement
@@ -66,13 +65,13 @@ case class ControlFlowCross() extends ControlFlowShapeDoubleWidth derives upickl
     extendAndAppendParentPath(path, curLineHeight, renderingConfig.controlSegmentSize, false,  renderingConfig.amendFactory.inactiveTrueConditionControlFlowAmends)
   }
 
-  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
-    val seg = renderingInfo.renderingConfig.controlSegmentSize
+  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
+    val seg = renderingInfo.controlSegmentSize
 
     // change order of paths so children fetch the right parent path
 
-    val leftToRightPath = handleFirstParentPath(cf.firstOpenPath, renderingInfo.renderingConfig, curLineHeight)
-    val rightToLeftPath = handleSecondParentPath(cf.secondOpenPath, renderingInfo.renderingConfig, curLineHeight)
+    val leftToRightPath = handleFirstParentPath(cf.firstOpenPath, renderingInfo, curLineHeight)
+    val rightToLeftPath = handleSecondParentPath(cf.secondOpenPath, renderingInfo, curLineHeight)
 
     cf
       .changeFirstOpenPath(_ => rightToLeftPath)

@@ -59,6 +59,30 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     await dialog.locator('.cm-editor').waitFor();
     assert.match(await dialog.locator('.cm-content').innerText(), /forward\(77\)/, 'text entered while loading survives enhancement');
     assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 1, 'Eva enables the configured Python gutter');
+    await dialog.locator('.cm-flowchart-row image').first().waitFor();
+    const overlay = await dialog.locator('.cm-flowchart-row image').first().evaluate(image => {
+      const uri = image.getAttribute('href');
+      const svg = new DOMParser().parseFromString(decodeURIComponent(uri.slice(uri.indexOf(',') + 1)), 'image/svg+xml');
+      return {paths:svg.querySelectorAll('path').length, text:svg.querySelectorAll('text').length,
+        errors:svg.querySelectorAll('parsererror').length};
+    });
+    assert(overlay.paths > 0, 'the nested block renderer supplies real flow paths');
+    assert.equal(overlay.text, 0, 'only CodeMirror supplies source content');
+    assert.equal(overlay.errors, 0, 'the flow image is valid SVG');
+    assert.match(await dialog.locator('.cm-content').innerText(), /forward\(77\)/);
+    const source = 'while True:\n    if True:\n        print(1)\n    else:\n        print(2)\nprint(3)';
+    await dialog.locator('.cm-content').click();
+    await page.keyboard.press('Control+Home');
+    await page.keyboard.press('Control+a');
+    await page.keyboard.insertText(source);
+    await dialog.locator('.cm-flowchart-row[title^="decision:"]').waitFor();
+    assert.equal(await dialog.locator('.cm-line').count(), source.split('\n').length,
+      'synthetic branch and closing rows do not add content lines');
+    assert.equal(await dialog.locator('.cm-content').innerText(), source);
+    await dialog.getByRole('button', {name:'Use dark appearance'}).click();
+    await dialog.getByRole('button', {name:'Use light appearance'}).waitFor();
+    assert.notEqual(await dialog.locator('.cm-flowchart-row > svg').first().evaluate(svg => getComputedStyle(svg).filter),
+      'none', 'the nested renderer palette adapts to the dark editor');
     await dialog.getByRole('button', {name:'Java',exact:true}).click();
     await dialog.locator('.cm-editor').waitFor();
     assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 0, 'Python gutter does not appear for Java');

@@ -10,7 +10,6 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.re
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 import todomove.webElementsOld.webElements.svg.compositeElements.AppDecoratedSvgElement
@@ -39,9 +38,9 @@ case class ControlFlowProgramStopper() extends ControlFlowShapeSingleWidth deriv
     AppDecoratedSvgElement(bR, List(sR), List()).addMods(List(svg.cls := "ControlFlowProgramStarter"))
   }
 */
-  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
-    val seg = renderingInfo.renderingConfig.controlSegmentSize
-    val actualLineHeight = curLineHeight - renderingInfo.renderingConfig.controlSegmentSize / 2
+  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
+    val seg = renderingInfo.controlSegmentSize
+    val actualLineHeight = curLineHeight - renderingInfo.controlSegmentSize / 2
     cf
       .changeFirstOpenPath(_
         .changeLastPathBuilder(_

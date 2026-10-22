@@ -29,6 +29,7 @@ sealed trait AsyncDataState[F, S] derives ReadWriter {
 
 object AsyncDataState {
 
+  @upickle.implicits.serializeDefaults(true)
   case class AsyncDataLoading[F, S](startedAt: LocalDateTime = LocalDateTime.now()) extends AsyncDataState[F, S] derives ReadWriter {
     override val loadingSince: Option[LocalDateTime] = Some(startedAt)
     val isLoading: Boolean = true

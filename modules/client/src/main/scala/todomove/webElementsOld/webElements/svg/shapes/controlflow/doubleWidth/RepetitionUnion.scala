@@ -1,10 +1,10 @@
 package todomove.webElementsOld.webElements.svg.shapes.controlflow.doubleWidth
 
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.{ControlFlowPath, PathSegment}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder.PathStatus.*
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import todomove.webElementsOld.webElements.svg.shapes.BeShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.ControlFlowConnectorBackground
@@ -26,22 +26,22 @@ case class RepetitionUnion() extends ControlFlowShapeDoubleWidth derives upickle
     ).copy(curStatus = HANDLED)
   }
 
-  def finishRepetitionStopPath(path: ControlFlowPath, curLineHeight: Double, renderingInfo: RenderingInformation): (ControlFlowPath, Point[Double]) = {
-    val seg: Double = renderingInfo.renderingConfig.controlSegmentSize
+  def finishRepetitionStopPath(path: ControlFlowPath, curLineHeight: Double, renderingInfo: BeRenderingConfig): (ControlFlowPath, Point[Double]) = {
+    val seg: Double = renderingInfo.controlSegmentSize
     val res = path
       .appendNewSegmentWithLastSegmentPosition(oldPosition => {
         val newPath = SvgPathBuilder[Double](oldPosition)
           .verticalLineWithHeight(seg)
           .lineToRel(Dimension(seg / 2, seg / 2))
           .verticalLineWithHeight(seg * 1.5)
-        PathSegment(newPath, List(), false, renderingInfo.renderingConfig.amendFactory.activeFalseConditionControlFlowAmends)
+        PathSegment(newPath, List(), false, renderingInfo.amendFactory.activeFalseConditionControlFlowAmends)
       })
       .copy(curStatus = FINISHED)
     (res, res.lastSegment.curPath.current)
   }
 
-  def combinePaths(firstPath: ControlFlowPath, secondPath: ControlFlowPath, renderingInfo: RenderingInformation): ControlFlowPath = {
-    val seg = renderingInfo.renderingConfig.controlSegmentSize
+  def combinePaths(firstPath: ControlFlowPath, secondPath: ControlFlowPath, renderingInfo: BeRenderingConfig): ControlFlowPath = {
+    val seg = renderingInfo.controlSegmentSize
     val newSecond = secondPath.changeLastPathBuilder(builder => builder
       .lineToRel(Dimension(-seg, seg))
     )
@@ -50,14 +50,14 @@ case class RepetitionUnion() extends ControlFlowShapeDoubleWidth derives upickle
       .horizontalLineWithWidth(-1.5 * seg)
       .lineToRel(Dimension(-seg, -seg))
 
-    val combiningSegment = PathSegment(combiningPath, List(), false, renderingInfo.renderingConfig.amendFactory.inactiveControlFlowAmends.toList)
+    val combiningSegment = PathSegment(combiningPath, List(), false, renderingInfo.amendFactory.inactiveControlFlowAmends.toList)
 
     ControlFlowPath(FINISHED, newSecond.segments ++ List(combiningSegment) ++ firstPath.segments)
   }
 
 
-  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
-    val seg = renderingInfo.renderingConfig.controlSegmentSize
+  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
+    val seg = renderingInfo.controlSegmentSize
 
     val (finishedRepetitionStopPath, endPosition): (ControlFlowPath, Point[Double]) = finishRepetitionStopPath(cf.firstOpenPath, curLineHeight, renderingInfo)
     cf

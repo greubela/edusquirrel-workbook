@@ -8,7 +8,6 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.re
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 import todomove.webElementsOld.webElements.svg.compositeElements.AppDecoratedSvgElement
@@ -76,13 +75,13 @@ case class ControlFlowDirected(goesDown: Boolean, isActive: Boolean = false) ext
     (res, resArrowPositions.toList)
   }
 
-  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
+  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
     var pathRes: ControlFlowPath = cf.firstOpenPath
     if (cf.firstOpenPath.lastSegment.isActive != isActive) {
-      val amends = if (isActive) pathRes.firstSegment.pathAmends else renderingInfo.renderingConfig.amendFactory.inactiveControlFlowAmends
+      val amends = if (isActive) pathRes.firstSegment.pathAmends else renderingInfo.amendFactory.inactiveControlFlowAmends
      // pathRes = pathRes.continueWithNewSegment(isActive, amends)
     }
-    val (handledPath, arrowCenters) = handleParentPath(pathRes, renderingInfo.renderingConfig, centerPoint, curLineHeight)
+    val (handledPath, arrowCenters) = handleParentPath(pathRes, renderingInfo, centerPoint, curLineHeight)
     pathRes = handledPath
 
     var builderRes = cf.changeFirstOpenPath(_ => pathRes)
