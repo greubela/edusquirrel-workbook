@@ -491,6 +491,24 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     }
   }
 
+  test("leaving the native keyboard publishes pending edits before another control reads the answer") {
+    withRoot { container =>
+      val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
+      val impl = new RecordingImpl
+      val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
+      val mounted = render(container, editor.getDomElement())
+      try withKeyboard { keyboard =>
+        container.querySelector(".be-program-snap-renderer--editor").appendChild(keyboard)
+        val pending = ProgrammingStateSnapXml("<project><notes>pending edit</notes></project>")
+        impl.pendingXml = Some(pending.snapXml)
+        keyboard.dispatchEvent(js.Dynamic.newInstance(window.Event)("blur").asInstanceOf[dom.Event])
+        assertEquals(state.now(), pending.toSnapScalaModel.toOption.get)
+        assertEquals(impl.pendingXml, None)
+        assertEquals(impl.reloads, 0)
+      } finally mounted.unmount()
+    }
+  }
+
   test("the editor observes the language signal without remounting or changing the answer") {
     withRoot { container =>
       val initial = ProgrammingStateSnapXmlHelper.mini

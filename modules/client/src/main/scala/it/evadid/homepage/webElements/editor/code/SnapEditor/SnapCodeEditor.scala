@@ -93,6 +93,11 @@ case class SnapCodeEditor(
       cls := "code-editor be-program-snap-renderer be-program-snap-renderer--editor",
       child.maybe <-- renderingError.signal.map(_.map(message => p(role := "alert", message))),
       editorCanvas,
+      // Morphic's shared textarea lives inside this element. Commit before an
+      // outside control (especially a language tab) reads the central answer.
+      onBlur.useCapture.filter(_.target == dom.document.getElementById("morphic_keyboard")) --> { _ =>
+        if state.now().associatedLanguage == SnapLanguage then impl.flushPendingProjectChanges()
+      },
       onUnmountCallback { _ =>
         if state.now().associatedLanguage == SnapLanguage then impl.flushPendingProjectChanges()
         impl.setOnProjectXmlChangedListener(_ => ())
