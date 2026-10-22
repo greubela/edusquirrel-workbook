@@ -32,12 +32,14 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
         val task = translations.tryGetInLanguage(locale).orElse(translations.tryGetInLanguage(English))
           .filter(text => text != null && text.trim.nonEmpty && text.length <= 8000)
           .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
+        verifyChecks(currentState, context)
         val request = context.request(locale, task)
         val factory = LLMCommands.feedbackLlmCommandFactory
         val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
         val client = availableExecutionClients.find(_.canExecuteCommand(command))
           .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
         factory.sendCommandTo(client, request, Some(BasicLogger())).map { response =>
+          verifyChecks(currentState, context)
           val hints = parse(response.result, context.evidenceIds)
           val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
           val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
@@ -47,6 +49,10 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
         }
       }
     }.fold(Future.failed, identity)
+
+  private def verifyChecks(state: ProgrammingState, context: Context): Unit =
+    if interaction.interactionVariable.currentValue == state then
+      require(prepare(state).checks == context.checks, "Public check results changed while preparing this hint.")
 
   private def prepare(state: ProgrammingState): Context = {
     val (sourceLanguage, source) = state match {

@@ -445,6 +445,83 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
+  test("changed public grading prevents a hint request after delayed task resolution") {
+    val check = HintCheck("public check", GradingImportance.REQUIRED_TEST)
+    val f = new HintFixture(checks = List(check))
+    val task = Promise[LanguageMap[HumanLanguage]]()
+    val original = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Incorrect())
+    f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(original)))))
+    val pending = f.scaffolder.generateFeedback(f.source, List(f.executor.now()), f.resolverFor(_ => task.future))
+    val updated = original.copy(gradingStatus = GradingStatus.Correct(), gradingTime = original.gradingTime.plusSeconds(1))
+    f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(updated)))))
+    val before = f.variable.history
+    task.success(LanguageMap.universalMap("Draw a line."))
+    pending.failed.map { error =>
+      assert(error.isInstanceOf[IllegalArgumentException])
+      assertEquals(f.lookups.now(), 0)
+      assertEquals(f.requests.now().size, 0)
+      assertEquals(check.runs.now(), 0)
+      assertEquals(f.variable.history, before)
+    }
+  }
+
+  test("changed public grading rejects a pending hint without retrying") {
+    val statuses: List[Option[GradingStatus]] = List(None, Some(GradingStatus.Correct()),
+      Some(GradingStatus.PartiallyCorrect()), Some(GradingStatus.NotExecuted()),
+      Some(GradingStatus.TestError(SerializedException("PRIVATE_ERROR"))))
+    Future.traverse(statuses) { next =>
+      val check = HintCheck("public check", GradingImportance.REQUIRED_TEST)
+      val reply = Promise[String]()
+      val f = new HintFixture(checks = List(check), response = _ => reply.future)
+      val original = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Incorrect())
+      f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(original)))))
+      val pending = f.generateFeedback(f.source)
+      f.started.future.flatMap { _ =>
+        val results = next.map(status => original.copy(gradingStatus = status,
+          gradingTime = original.gradingTime.plusSeconds(1))).toSet
+        f.variable.updateHistory(_.copy(gradings = if results.isEmpty then Map.empty
+          else Map(f.source -> GradedState(f.source, results))))
+        val before = f.variable.history
+        reply.success(hintReply(ids = List("check-1")))
+        pending.failed.map { error =>
+          assert(error.isInstanceOf[IllegalArgumentException])
+          assertEquals(f.requests.now().size, 1)
+          assertEquals(check.runs.now(), 0)
+          assertEquals(f.variable.history, before)
+        }
+      }
+    }.map(_ => ())
+  }
+
+  test("pending hints tolerate newer identical public statuses and unrelated grading changes") {
+    val check = HintCheck("public check", GradingImportance.REQUIRED_TEST)
+    val hidden = HintCheck("PRIVATE_HIDDEN_CHECK", GradingImportance.HIDDEN_TEST)
+    val reply = Promise[String]()
+    val f = new HintFixture(checks = List(check, hidden), response = _ => reply.future)
+    val original = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Incorrect())
+    f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(original)))))
+    val pending = f.generateFeedback(f.source)
+    f.started.future.flatMap { _ =>
+      val newer = original.copy(gradingTime = original.gradingTime.plusSeconds(1),
+        feedbackInformation = Some(LanguageMap.universalMap("PRIVATE_FEEDBACK")), additionalData = Some("PRIVATE_DATA"))
+      val secret = original.copy(grader = hidden, gradingStatus = GradingStatus.Correct())
+      val other = ProgrammingStateJavaString("another answer")
+      f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(newer, secret)),
+        other -> GradedState(other, Set(original.copy(gradedState = other, gradingStatus = GradingStatus.Correct()))))))
+      val before = f.variable.history
+      reply.success(hintReply(ids = List("check-1")))
+      pending.map { result =>
+        assertEquals(result.forState, f.source)
+        assertEquals(f.context("checks")(0)("status").str, "incorrect")
+        assertEquals(f.requests.now().size, 1)
+        assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+        assertEquals(check.runs.now(), 0)
+        assertEquals(hidden.runs.now(), 0)
+        assertEquals(f.variable.history, before)
+      }
+    }
+  }
+
   test("wrong grading snapshots and conflicting latest results remain unavailable") {
     val check = HintCheck("public check", GradingImportance.REQUIRED_TEST)
     val f = new HintFixture(checks = List(check))
