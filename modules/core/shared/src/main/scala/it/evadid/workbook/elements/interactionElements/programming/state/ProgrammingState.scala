@@ -314,8 +314,11 @@ val ProgrammingStateSnapXml = ProgrammingState.ProgrammingStateSnapXml
 final case class ProgrammingStateSnapScalaModel(
     model: snap.SnapScalaModel.Document,
     legacyFloatingObjects: List[String] = Nil
-) extends ProgrammingState derives ReadWriter {
+) extends ProgrammingState {
   require(legacyFloatingObjects != null && legacyFloatingObjects.forall(_ != null), "Invalid legacy Snap data.")
+  def persistent: ProgrammingStateSnapScalaModel = copy(model = model.withoutGeneratedImages)
+  def meaningfullyEquals(other: ProgrammingStateSnapScalaModel): Boolean =
+    legacyFloatingObjects == other.legacyFloatingObjects && model.meaningfullyEquals(other.model)
   override def toSnapXml: ProgrammingStateSnapXml = ProgrammingStateSnapXml(model.toXml, legacyFloatingObjects)
   override def toBeExpressionState: ProgrammingStateBeExpression = toSnapXml.toBeExpressionState
   override def toPython: ProgrammingStatePythonString = toSnapXml.toPython
@@ -323,6 +326,10 @@ final case class ProgrammingStateSnapScalaModel(
 }
 
 object ProgrammingStateSnapScalaModel {
+  private case class Saved(model: snap.SnapScalaModel.Document, legacyFloatingObjects: List[String] = Nil) derives ReadWriter
+  given ReadWriter[ProgrammingStateSnapScalaModel] = upickle.default.readwriter[Saved].bimap(
+    state => Saved(state.model.withoutGeneratedImages, state.legacyFloatingObjects),
+    saved => ProgrammingStateSnapScalaModel(saved.model.withoutGeneratedImages, saved.legacyFloatingObjects))
   def fromXml(state: ProgrammingStateSnapXml): Either[String, ProgrammingStateSnapScalaModel] =
     snap.SnapScalaModel.parse(state.snapXml).map(ProgrammingStateSnapScalaModel(_, state.legacyFloatingObjects))
 }

@@ -1,53 +1,40 @@
-# Snap editor state and lifecycle
+# Snap editor design
 
-The embedded TurtleStitch/Snap editor shares a `Var[ProgrammingState]` with Eva's Python and Java tabs. Shared representations and conversions live in [ProgrammingState.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/ProgrammingState.scala); the browser boundary is [SnapCodeEditor.scala](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/SnapCodeEditor.scala).
+## State and conversion
 
-## Source state and conversion
+- Snap uses a `Var[ProgrammingStateSnapScalaModel]` view of Eva's central answer Var; only meaningful model changes are published.
+- Model comparison ignores generated media and XML spelling; selectors, inputs, authored assets and script layout remain meaningful.
+- [ProgrammingStateSnapScalaModel](snap-scala-model.md) supports lossless typed editing, including native Snap blocks.
+- Python/Java conversion supports a subset of Snap. Preserve unsupported blocks in the saved project; never replace it with a lossy conversion.
+- The typed-state codec excludes thumbnails and pen trails from history; authored costumes and opaque project data remain.
 
-Snap edits publish project XML as `ProgrammingStateSnapXml`. Regenerated preview/pen images are removed by `removeBloatFromXml`; scripts and authored costumes are retained. Python, Java and VM expression states have their own representations. Conversion uses the shared supported programming subset, not every native Snap block.
+## Loading and ownership
 
-The shared [full Snap Scala model](snap-scala-model.md) provides `ProgrammingStateSnapScalaModel` for lossless project conversion, typed inspection and immutable edits, including native blocks outside the Turtle subset. Existing workbooks keep their XML representation; typed states are also supported by the editors and state serializers.
+- The Snap facade shares runtime readiness; preloading creates no IDE or Morphic world. See [startup loading](browser-startup-loading.md).
+- Each mounted editor owns its canvas, IDE and world. Unmount flushes pending edits and destroys native handles; late callbacks are ignored.
+- External state changes use `loadProgramIfChanged`; consumers observe the central Var.
+- Static previews use temporary IDEs and preserve Morphic's shared keyboard state.
 
-`ProgrammingExercise` uses the standard implicit uPickle state serializer, preserving the active representation. Development schema changes require resetting stored answers; no historical formats or migration readers are maintained. [SnapTurtlePythonBridge.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapTurtlePythonBridge.scala) validates Python-to-Snap conversion; [SnapProgramDerivation.scala](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/toRefactor/SnapProgramDerivation.scala) supplies the legacy derivation/popup path. Unsupported blocks can stay in saved XML even when a conversion is unavailable. Do not replace a project with a lossy derived subset.
+## Human language
 
-## Runtime readiness and preview
+- Editors and previews receive `Signal[HumanLanguage]`, normally `fullInfo.signals.currentLanguage`. Constant signals work for standalone use; compatibility overloads default to English.
+- The facade loads and caches dictionaries before drawing. Explicit locale mapping supports all eight workbook languages, including `ua`, `dk` and `ru`; do not derive codes from `nameAbbr`.
+- Language changes redraw previews. Live editors use native `reflectLanguage` on the existing IDE/world; Snap reloads scenes, then exercise libraries are reapplied.
+- Serialization runs with an English translator and restores the display locale in `finally`, including native refresh exports. Language-only refreshes produce no answer update.
+- The workbook signal overrides Snap's saved language preference. Learner-authored names and text remain unchanged.
 
-Startup preheats bundled Snap dependencies before an editor opens. Consumers
-share readiness; warmup creates no editor or Morphic world. Mount ownership
-discards delayed work after replacement or unmount. See
-[browser startup loading](browser-startup-loading.md).
+## Presentation and execution
 
-Static previews use temporary native IDEs; the mounted editor owns its live IDE.
-Preview generation preserves the shared Morphic keyboard state, and presentation
-belongs in `homepage/css/editors.css`.
-
-## Live IDE synchronization
-
-The editor mounts into its own canvas. The live IDE exists only for that mount;
-unmount flushes applicable pending Snap state and destroys the native world.
-Later changes to the central Var use `loadProgramIfChanged`. Native XML rendering
-metadata avoids unnecessary native redraws, but consumers observe the central
-Var; there is no special learner-edit callback. Closing the dialog unmounts its
-content, and reopening constructs an editor from the saved answer.
-
-Editor implementations and native adapters are located in
-`modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/`.
-
-## Palette, rendering and execution
-
-`ProgrammingEditorPalette` chooses the default, Python-compatible or beginner turtle palette for an exercise. Library configuration controls native categories, explicit blocks and variable controls. Canvas category dimensions and colors come from CSS; the DOM layout lives in `homepage/css/editors.css` and shared component styles.
-
-The bundled TurtleStitch `gui.js` has custom category/layout changes. Review those patches when updating the bundled distribution. Eva provides the active language tabs and turtle preview. The legacy Python popup and stage toolbar helpers still exist, but are not currently mounted by `SnapCodeEditor`; their presence does not imply visible controls in the active editor.
-
-The asynchronous Pyodide command extraction service is described in [Snap command execution](snap-turtle-command-execution-overview.md). The downstream turtle panel reads the central Var and delegates to that service; the editor does not own an execution service.
+- `ProgrammingEditorPalette` selects exercise libraries and available blocks.
+- Presentation belongs in `homepage/css/editors.css` and shared CSS.
+- Review bundled `gui.js` category/layout patches when upgrading Snap.
+- [Execution panels](snap-turtle-command-execution-overview.md) observe the central Var and own execution services; the editor owns no execution service.
 
 ## Verification
 
 ```sh
 sbt 'coreJVM/testOnly *ProgrammingState*Spec *SnapTurtlePythonBridgeSpec *SnapTurtleCatalogSpec'
 sbt 'coreJS/testOnly *ProgrammingState*Spec *SnapTurtlePythonBridgeSpec *SnapTurtleCatalogSpec'
-sbt 'client/testOnly *SnapCodeEditor*Spec *SnapProjectXmlSyncSpec *SnapPythonPopupSpec *EvaEditorSpec'
-npm run test:workbooks -- snap-preview editor-layout
+sbt 'client/testOnly *SnapCodeEditor*Spec *SnapProjectXmlSyncSpec *SnapPythonPopupSpec *SnapLanguageSpec *EvaEditorSpec'
+npm run test:workbooks -- snap-preview snap-language editor-layout
 ```
-
-These checks cover conversion, XML cleanup, live synchronization and editor geometry. Supported-subset and runtime behavior should be checked separately when extending the palette.

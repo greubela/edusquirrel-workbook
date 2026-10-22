@@ -1,6 +1,7 @@
 package it.evadid.facades
 
 import com.raquo.airstream.state.Var
+import it.evadid.core.datastructures.language.AppLanguage.*
 import org.scalajs.dom
 
 import scala.concurrent.Future
@@ -85,6 +86,14 @@ object Snap {
 
     def getProjectXML(): String = js.native
 
+    val serializer: js.Dynamic = js.native
+    var loadNewProject: Boolean = js.native
+    var onNextStep: js.Function0[Unit] | Null = js.native
+
+    def setLanguage(language: String, callback: js.Function0[Unit], noSave: Boolean): Unit = js.native
+    def setTranslation(language: String, callback: js.Function0[Unit]): Unit = js.native
+    def reflectLanguage(language: String, callback: js.Function0[Unit], noSave: Boolean): Unit = js.native
+
     def rawOpenProjectString(projectXML: String): Unit = js.native
 
     def refreshPalette(shouldIgnorePosition: Boolean = js.native): Unit = js.native
@@ -163,6 +172,73 @@ object Snap {
 
   def preload(): Future[Unit] = load()
 
+  /** Locale names belong to the bundled Snap distribution, not ISO abbreviations. */
+  def languageCode(language: HumanLanguage): String = language match {
+    case English => "en"
+    case German => "de"
+    case French => "fr"
+    case Ukrainian => "ua"
+    case Russian => "ru"
+    case Turkish => "tr"
+    case Danish => "dk"
+    case Spanish => "es"
+  }
+
+  @js.native @JSGlobal("SnapTranslator")
+  private object Translator extends js.Object {
+    var language: String = js.native
+    val dict: js.Dictionary[js.Dictionary[js.Any]] = js.native
+  }
+
+  @js.native @JSGlobal("SpriteMorph.prototype")
+  private object SpritePrototype extends js.Object {
+    def initBlocks(): Unit = js.native
+  }
+
+  /** Keep dictionaries loaded: Snap's own setLanguage unloads other locales and
+    * asynchronously reopens projects, which races with independent previews.
+    */
+  def preloadLanguage(language: HumanLanguage): Future[Unit] = load().flatMap { _ =>
+    val code = languageCode(language)
+    if code == "en" then Future.unit
+    else BrowserLoading.load(BrowserLoading.resource(s"programs/20260212TurtleStitch/adjusted/lang-$code.js"))
+  }
+
+  /** Called synchronously at the drawing boundary after preloadLanguage. */
+  def useLanguage(language: HumanLanguage): Unit = {
+    val code = languageCode(language)
+    require(Translator.dict.contains(code), s"Snap language '$code' has not been loaded")
+    if Translator.language != code then {
+      Translator.language = code
+      SpritePrototype.initBlocks()
+    }
+  }
+
+  /** Refresh the existing IDE using a dictionary already loaded by the facade. */
+  def changeLanguage(ide: IDEMorph, language: HumanLanguage, completed: js.Function0[Unit]): Unit = {
+    ide.loadNewProject = false
+    ide.reflectLanguage(languageCode(language), completed, true)
+  }
+
+  /** Guard the serializer itself, including Snap's internal language-refresh export.
+    * Changing only the translator during this synchronous call avoids GUI rebuilds.
+    */
+  private[evadid] def protectSerialization(serializer: js.Dynamic): Unit = {
+    val marker = "eduSquirrelEnglishSerialize"
+    if js.isUndefined(serializer.selectDynamic(marker)) then {
+      val original = serializer.selectDynamic("serialize")
+      val guarded: js.ThisFunction2[js.Dynamic, js.Any, js.UndefOr[Boolean], String] =
+          (receiver: js.Dynamic, value: js.Any, forBlocksLibrary: js.UndefOr[Boolean]) => {
+        val language = Translator.language
+        Translator.language = "en"
+        try original.applyDynamic("call")(receiver, value, forBlocksLibrary).asInstanceOf[String]
+        finally Translator.language = language
+      }
+      serializer.updateDynamic(marker)(original)
+      serializer.updateDynamic("serialize")(guarded)
+    }
+  }
+
   private def available: Boolean = {
     val serializer = js.Dynamic.global.globalThis.selectDynamic("SnapSerializer")
     js.typeOf(serializer) == "function" &&
@@ -176,7 +252,11 @@ object Snap {
     dependency(new WorldMorph(canvas, false))
 
   def editor(config: js.Object): ExternalDependency[IDEMorph] =
-    dependency(new IDEMorph(config))
+    dependency {
+      val ide = new IDEMorph(config)
+      protectSerialization(ide.serializer)
+      ide
+    }
 
   @js.native
   @JSGlobal("PushButtonMorph")

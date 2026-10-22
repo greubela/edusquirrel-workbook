@@ -47,9 +47,11 @@ without recursively decoding escaped text. Opaque native data remains intact.
 
 Formatting identity is **not a required contract**. The current reader also retains source spelling and whitespace, but callers should depend on preservation of content and metadata. Whitespace inside text, literals and CSV can carry meaning and must remain intact.
 
-The model case classes and sealed node hierarchies derive uPickle `ReadWriter`. The typed programming-state variant also derives its codec and uses the standard interaction serializer. JSON and MessagePack retain the typed representation. The development schema has no historical-format readers; reset development databases when it changes.
-
-The XML-only representation remains the default for existing workbooks. Eva and Snap editors can display typed states and retain their representation and opaque legacy floating data when publishing edits. Normal live-editor image cleanup still applies to native editing; **conversion itself never calls `removeBloatFromXml`**. Translation to Python/Java/`BeExpression` delegates to the existing checked subset converters and can fail for otherwise valid native Snap programs.
+- Document/node codecs retain the complete XML tree.
+- The `ProgrammingStateSnapScalaModel` codec excludes generated thumbnails and pen trails from JSON/MessagePack history. Authored costumes, sounds and opaque data remain.
+- Snap edits publish typed models through a view of the central Var. Model comparison ignores generated media and XML spelling; selectors, inputs and script layout remain meaningful.
+- XML → model conversion remains lossless. Python/Java conversion uses the checked executable subset and may reject valid native Snap programs.
+- Opaque legacy floating data is retained. Development schema changes require resetting saved answers.
 
 ## Checks
 
