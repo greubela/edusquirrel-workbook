@@ -79,6 +79,10 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     assert.equal(await dialog.locator('.cm-line').count(), source.split('\n').length,
       'synthetic branch and closing rows do not add content lines');
     assert.equal(await dialog.locator('.cm-content').innerText(), source);
+    await dialog.getByRole('button', {name:'Use dark appearance'}).click();
+    await dialog.getByRole('button', {name:'Use light appearance'}).waitFor();
+    assert.notEqual(await dialog.locator('.cm-flowchart-row > svg').first().evaluate(svg => getComputedStyle(svg).filter),
+      'none', 'the nested renderer palette adapts to the dark editor');
     await dialog.getByRole('button', {name:'Java',exact:true}).click();
     await dialog.locator('.cm-editor').waitFor();
     assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 0, 'Python gutter does not appear for Java');
