@@ -1,6 +1,7 @@
 package it.evadid.facades
 
 import com.raquo.airstream.state.Var
+import it.evadid.core.datastructures.language.AppLanguage.*
 import org.scalajs.dom
 
 import scala.concurrent.Future
@@ -162,6 +163,48 @@ object Snap {
   }
 
   def preload(): Future[Unit] = load()
+
+  /** Locale names belong to the bundled Snap distribution, not ISO abbreviations. */
+  def languageCode(language: HumanLanguage): String = language match {
+    case English => "en"
+    case German => "de"
+    case French => "fr"
+    case Ukrainian => "ua"
+    case Russian => "ru"
+    case Turkish => "tr"
+    case Danish => "dk"
+    case Spanish => "es"
+  }
+
+  @js.native @JSGlobal("SnapTranslator")
+  private object Translator extends js.Object {
+    var language: String = js.native
+    val dict: js.Dictionary[js.Dictionary[js.Any]] = js.native
+  }
+
+  @js.native @JSGlobal("SpriteMorph.prototype")
+  private object SpritePrototype extends js.Object {
+    def initBlocks(): Unit = js.native
+  }
+
+  /** Keep dictionaries loaded: Snap's own setLanguage unloads other locales and
+    * asynchronously reopens projects, which races with independent previews.
+    */
+  def preloadLanguage(language: HumanLanguage): Future[Unit] = load().flatMap { _ =>
+    val code = languageCode(language)
+    if code == "en" then Future.unit
+    else BrowserLoading.load(BrowserLoading.resource(s"programs/20260212TurtleStitch/adjusted/lang-$code.js"))
+  }
+
+  /** Called synchronously at the drawing boundary after preloadLanguage. */
+  def useLanguage(language: HumanLanguage): Unit = {
+    val code = languageCode(language)
+    require(Translator.dict.contains(code), s"Snap language '$code' has not been loaded")
+    if Translator.language != code then {
+      Translator.language = code
+      SpritePrototype.initBlocks()
+    }
+  }
 
   private def available: Boolean = {
     val serializer = js.Dynamic.global.globalThis.selectDynamic("SnapSerializer")

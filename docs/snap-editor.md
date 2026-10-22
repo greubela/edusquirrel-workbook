@@ -21,6 +21,26 @@ Static previews use temporary native IDEs; the mounted editor owns its live IDE.
 Preview generation preserves the shared Morphic keyboard state, and presentation
 belongs in `homepage/css/editors.css`.
 
+## Human language
+
+`SnapCodeEditor` and `SnapPreviewEditor` accept a `Signal[HumanLanguage]`.
+Workbook renderers pass `fullInfo.signals.currentLanguage` through Eva's tab
+factory to the selected Snap editor and separately to its preview. Standalone
+callers may use a constant `Val(language)`; the compatibility overloads use English.
+
+The Snap facade loads the bundled dictionary before rendering. Locale mapping is
+explicit: Ukrainian uses `ua`, Danish uses `dk`, and Russian uses `ru` regardless
+of its shared abbreviation in `HumanLanguage`. All eight workbook languages are
+supported. Dictionaries are cached together rather than unloaded when switching.
+Closed mounts and superseded language requests discard late completions.
+
+Changing the language redraws a static preview even when its XML is unchanged.
+A live editor commits pending slot text and rebuilds localized Morphic controls
+from its complete live project XML, retaining custom blocks, variables, assets
+and the exercise palette. The workbook signal takes precedence over Snap's
+persistent standalone language preference. Native labels are translated; names
+and text authored inside the learner's project remain their own content.
+
 ## Live IDE synchronization
 
 The editor mounts into its own canvas. The live IDE exists only for that mount;
@@ -46,8 +66,8 @@ The asynchronous Pyodide command extraction service is described in [Snap comman
 ```sh
 sbt 'coreJVM/testOnly *ProgrammingState*Spec *SnapTurtlePythonBridgeSpec *SnapTurtleCatalogSpec'
 sbt 'coreJS/testOnly *ProgrammingState*Spec *SnapTurtlePythonBridgeSpec *SnapTurtleCatalogSpec'
-sbt 'client/testOnly *SnapCodeEditor*Spec *SnapProjectXmlSyncSpec *SnapPythonPopupSpec *EvaEditorSpec'
-npm run test:workbooks -- snap-preview editor-layout
+sbt 'client/testOnly *SnapCodeEditor*Spec *SnapProjectXmlSyncSpec *SnapPythonPopupSpec *SnapLanguageSpec *EvaEditorSpec'
+npm run test:workbooks -- snap-preview snap-language editor-layout
 ```
 
 These checks cover conversion, XML cleanup, live synchronization and editor geometry. Supported-subset and runtime behavior should be checked separately when extending the palette.

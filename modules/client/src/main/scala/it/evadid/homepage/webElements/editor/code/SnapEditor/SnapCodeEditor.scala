@@ -4,7 +4,7 @@ import it.evadid.facades.Snap.*
 import com.raquo.airstream.ownership.{Owner, Subscription}
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
+import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, SnapLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
@@ -18,7 +18,8 @@ case class SnapCodeEditor(
                            logger: Logger,
                            state: Var[ProgrammingState],
                            config: SnapCodeEditorConfig,
-                           impl: SnapCodeEditorImpl
+                           impl: SnapCodeEditorImpl,
+                           humanLanguage: Signal[HumanLanguage] = Val(English)
                          ) extends HtmlAppElement {
 
 
@@ -58,15 +59,26 @@ case class SnapCodeEditor(
       // installs its listeners only after this exact canvas is connected.
       onMountCallback { ctx =>
         val active = Var(true)
+        val mounted = Var(false)
+        val request = Var(Option.empty[(HumanLanguage, AnyRef)])
         new Subscription(ctx.owner, () => active.set(false))
         val canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
-        impl.whenReady(() => {
-          if active.now() then
-            renderingError.set(None)
-            mountEditorInto(canvas, ctx.owner)
-        }, error => {
-          if active.now() then renderingError.set(Some(s"Block editor unavailable: ${error.getMessage}"))
-        })
+        // Observe the committed request so immediately ready implementations
+        // see the same lifecycle guard as asynchronous dictionary loads.
+        request.signal.changes.collect { case Some(value) => value }.foreach { (language, token) =>
+          impl.whenReady(language, () => {
+            if active.now() && request.now().contains(language -> token) then
+              renderingError.set(None)
+              impl.changeLanguage(language)
+              if !mounted.now() then
+                mountEditorInto(canvas, ctx.owner)
+                mounted.set(true)
+          }, error => {
+            if active.now() && request.now().contains(language -> token) then
+              renderingError.set(Some(s"Block editor unavailable: ${error.getMessage}"))
+          })
+        }(using ctx.owner)
+        humanLanguage.distinct.foreach(language => request.set(Some(language -> new Object)))(using ctx.owner)
       }
     )
   }
@@ -100,14 +112,18 @@ case class SnapCodeEditor(
 
 object SnapCodeEditor {
 
+  def apply(logger: Logger, state: Var[ProgrammingState], config: SnapCodeEditorConfig,
+            humanLanguage: Signal[HumanLanguage]): SnapCodeEditor =
+    SnapCodeEditor(logger, state, config, SnapCodeEditorImplDelegateToOriginal(), humanLanguage)
+
   def apply(logger: Logger,state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapCodeEditor =
-    SnapCodeEditor(logger, state, config, SnapCodeEditorImplDelegateToOriginal())
+    apply(logger, state, config, Val(English))
 
   def apply(logger: Logger,state: Var[ProgrammingState]): SnapCodeEditor =
     SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
 
 
-  def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig): EvaEditorTab = new EvaEditorTab {
+  def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig, humanLanguage: Signal[HumanLanguage]): EvaEditorTab = new EvaEditorTab {
     override val language = SnapLanguage
     override val label = "Snap!"
     override def convert(source: ProgrammingState): ProgrammingState = source match {
@@ -115,6 +131,6 @@ object SnapCodeEditor {
       case _ => source.toSnapXml
     }
     override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance): HtmlAppElement =
-      SnapCodeEditor(tabLogger, state, config)
+      SnapCodeEditor(tabLogger, state, config, humanLanguage)
   }
 }

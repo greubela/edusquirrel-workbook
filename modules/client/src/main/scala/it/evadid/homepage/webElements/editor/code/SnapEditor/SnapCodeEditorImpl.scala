@@ -17,6 +17,10 @@ trait SnapCodeEditorImpl {
   def whenReady(render: () => Unit, onError: Throwable => Unit): Unit =
     scala.util.Try(render()).fold(onError, _ => ())
 
+  /** Await the requested dictionary as well as the native runtime. */
+  def whenReady(language: HumanLanguage, render: () => Unit, onError: Throwable => Unit): Unit =
+    whenReady(render, onError)
+
   def changeLanguage(humanLanguage: HumanLanguage): Unit
 
   /** Mount the complete interactive Snap editor and keep its Morphic world ticking. */

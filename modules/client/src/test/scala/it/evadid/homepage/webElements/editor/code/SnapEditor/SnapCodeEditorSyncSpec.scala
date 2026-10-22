@@ -8,6 +8,7 @@ import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{CanvasVisibility, SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml, ProgrammingStateSnapScalaModel}
+import it.evadid.core.datastructures.language.AppLanguage.*
 import munit.FunSuite
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
@@ -45,7 +46,8 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   private class RecordingImpl extends SnapCodeEditorImpl {
-    override def changeLanguage(language: it.evadid.core.datastructures.language.AppLanguage.HumanLanguage): Unit = ()
+    val languages = Var(List.empty[HumanLanguage])
+    override def changeLanguage(language: HumanLanguage): Unit = languages.update(_ :+ language)
     var listener: String => Unit = _ => ()
     var current: Option[ProgrammingStateSnapXml] = None
     var pendingXml: Option[String] = None
@@ -485,6 +487,86 @@ class SnapCodeEditorSyncSpec extends FunSuite {
         state.set(ProgrammingStateSnapXmlHelper.mini)
         impl.release()
         assertEquals(impl.previewed, List.fill(2)(ProgrammingStateSnapXmlHelper.mini))
+      } finally mounted.unmount()
+    }
+  }
+
+  test("the editor observes the language signal without remounting or changing the answer") {
+    withRoot { container =>
+      val initial = ProgrammingStateSnapXmlHelper.mini
+      val state = Var[ProgrammingState](initial)
+      val language = Var[HumanLanguage](German)
+      val impl = new RecordingImpl
+      val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, language.signal)
+      val mounted = render(container, editor.getDomElement())
+      try {
+        assertEquals(impl.languages.now(), List(German))
+        language.set(French)
+        language.set(French)
+        language.set(English)
+        assertEquals(impl.languages.now(), List(German, French, English))
+        assertEquals(impl.renders, 1)
+        assertEquals(impl.mounts, 1)
+        assertEquals(state.now(), initial)
+      } finally mounted.unmount()
+      language.set(Spanish)
+      assertEquals(impl.languages.now(), List(German, French, English))
+    }
+  }
+
+  test("an unchanged project gets a fresh preview when the language changes") {
+    withRoot { container =>
+      val initial = ProgrammingStateSnapXmlHelper.mini
+      val state = Var[ProgrammingState](initial)
+      val language = Var[HumanLanguage](German)
+      val impl = new RecordingImpl
+      val mounted = render(container, SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl, language.signal).getDomElement())
+      try {
+        val original = container.querySelector("canvas")
+        language.set(Russian)
+        assert(!(container.querySelector("canvas") eq original))
+        assertEquals(impl.languages.now(), List(German, Russian))
+        assertEquals(impl.previewed, List(initial, initial))
+        assertEquals(state.now(), initial)
+        val russian = container.querySelector("canvas")
+        language.set(Russian)
+        assert(container.querySelector("canvas") eq russian)
+      } finally mounted.unmount()
+      language.set(English)
+      assertEquals(impl.languages.now(), List(German, Russian))
+    }
+  }
+
+  test("late dictionaries cannot render an outdated editor language or update a closed mount") {
+    withRoot { container =>
+      val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
+      val language = Var[HumanLanguage](German)
+      val impl = new DeferredImpl
+      val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, language.signal)
+      val mounted = render(container, editor.getDomElement())
+      language.set(Spanish)
+      impl.release()
+      assertEquals(impl.languages.now(), List(Spanish))
+      assertEquals(impl.renders, 1)
+      language.set(French)
+      mounted.unmount()
+      impl.release()
+      assertEquals(impl.languages.now(), List(Spanish))
+    }
+  }
+
+  test("late dictionaries cannot repaint an outdated preview language") {
+    withRoot { container =>
+      val initial = ProgrammingStateSnapXmlHelper.mini
+      val state = Var[ProgrammingState](initial)
+      val language = Var[HumanLanguage](German)
+      val impl = new DeferredImpl
+      val mounted = render(container, SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl, language.signal).getDomElement())
+      try {
+        language.set(Ukrainian)
+        impl.release()
+        assertEquals(impl.languages.now(), List(Ukrainian))
+        assertEquals(impl.previewed, List(initial))
       } finally mounted.unmount()
     }
   }

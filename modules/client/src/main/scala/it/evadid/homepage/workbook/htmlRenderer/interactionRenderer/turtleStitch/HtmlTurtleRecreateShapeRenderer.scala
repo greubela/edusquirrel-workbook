@@ -63,9 +63,9 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
 
     val editorConfig = EvaEditorConfig(snapConfig = snapEditorConfig)
     def editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension(
-        boundVar, Some(workbookElement.desiredResult), workbookElement.comparisonPolicy)), editorConfig)
+        boundVar, Some(workbookElement.desiredResult), workbookElement.comparisonPolicy)), editorConfig, humanLanguage = fullInfo.signals.currentLanguage)
 
-    lazy val codePreview = SnapPreviewEditor(boundVar, snapEditorConfig).getDomElement()
+    lazy val codePreview = SnapPreviewEditor(boundVar, snapEditorConfig, fullInfo.signals.currentLanguage).getDomElement()
     val programPreview = boundVar.signal.map(hasProgram).distinct.map { hasProgram =>
       if hasProgram then codePreview
       else p(text <-- laminarHelper.plaintextStringSignal("basic/turtleNoProgramYet"))

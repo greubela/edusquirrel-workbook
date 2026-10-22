@@ -2,6 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
 import it.evadid.facades.Snap.*
 import com.raquo.airstream.ownership.Owner
+import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.facades
 import it.evadid.facades.Snap
@@ -30,6 +31,12 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
     facades.Snap.load()
       .map(_ => render()).failed.foreach(onError)
+
+  override def whenReady(language: AppLanguage.HumanLanguage, render: () => Unit, onError: Throwable => Unit): Unit =
+    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+    Snap.preloadLanguage(language).map(_ => render()).failed.foreach(onError)
+
+  private val humanLanguage = Var[AppLanguage.HumanLanguage](AppLanguage.English)
 
   private var editorWorld: Option[WorldMorph] = None
   private var editor: Option[IDEMorph] = None
@@ -66,6 +73,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     ()
 
   override def renderEditorInto(initState: ProgrammingStateSnapXml, canvas: Canvas, config: SnapCodeEditorConfig): Unit =
+    Snap.useLanguage(humanLanguage.now())
     // Laminar mounts the same lazy editor element again whenever the fullscreen
     // dialog is reopened. Keep the WorldMorph which already owns this canvas:
     // constructing another world would add a second set of DOM listeners and
@@ -128,6 +136,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     // #morphic_keyboard textarea. Skip while the live editor world is ticking
     // so mid-edit keystrokes are not wiped / overwritten.
     if cyclesRunning then return
+
+    Snap.useLanguage(humanLanguage.now())
 
     SnapCodeEditorImplDelegateToOriginal.preserveKeyboardState {
       val sourceCanvas = dom.document.createElement("canvas").asInstanceOf[Canvas]
@@ -306,6 +316,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private def createEditor(world: WorldMorph, state: ProgrammingStateSnapXml, config: SnapCodeEditorConfig): IDEMorph =
     val hasLibraryTabs = config.libraryTabs.nonEmpty
     val ide = Snap.editor(js.Dynamic.literal(
+      noUserSettings = true,
       noAutoFill = true,
       noCloud = true,
       noExitWarning = true,
@@ -332,6 +343,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
   private def createPreviewEditor(world: WorldMorph, state: ProgrammingStateSnapXml): IDEMorph =
     val ide = Snap.editor(js.Dynamic.literal(
+      noUserSettings = true,
       noAutoFill = true,
       noCloud = true,
       noExitWarning = true,
@@ -1219,7 +1231,21 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   override def destroy(): Unit =
     stopEditorSession()
 
-  override def changeLanguage(humanLanguage: AppLanguage.HumanLanguage): Unit = ()
+  override def changeLanguage(language: AppLanguage.HumanLanguage): Unit =
+    if humanLanguage.now() != language then
+      // Commit slot text before replacing localized Morphic labels. Rebuild from
+      // the live XML so custom blocks, variables and the exercise palette survive.
+      flushPendingProjectChanges()
+      val live = for
+        canvas <- mountedCanvas
+        config <- mountedConfig
+        xml <- currentProjectXml()
+      yield (canvas, config, ProgrammingStateSnapXml(xml))
+      humanLanguage.set(language)
+      live.foreach { (canvas, config, state) =>
+        stopEditorSession()
+        renderEditorInto(state, canvas, config)
+      }
 
 object SnapCodeEditorImplDelegateToOriginal {
   private[SnapEditor] def preserveKeyboardState[A](render: => A): A = {
