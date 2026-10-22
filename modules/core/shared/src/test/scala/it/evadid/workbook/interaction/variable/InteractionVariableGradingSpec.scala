@@ -559,6 +559,24 @@ class InteractionVariableGradingSpec extends FunSuite {
     }).map(_ => ())
   }
 
+  test("simple quoted identifiers are stored and displayed as plain text") {
+    val question = "Welche Rolle haben `side`, `$count` und `_step2`?"
+    val normalized = "Welche Rolle haben side, $count und _step2?"
+    val source = ProgrammingStateJavaString("class Drawing { static int side, $count, _step2; }")
+    val f = new HintFixture(source, response = _ => Future.successful(hintReply(question)))
+    val before = f.variable.history
+    f.generateFeedback(source).map { result =>
+      assertEquals(result.scaffoldingResult.getInLanguage(German), "1. " + normalized)
+      val conversation = result.scaffoldingEntity match {
+        case FeedbackEntity.LlmEntity(chat) => chat
+        case other => fail(s"Expected accepted hints, got $other")
+      }
+      assertEquals(ujson.read(conversation.messages.last.text)("hints")(0)("question").str, normalized)
+      assertEquals(f.requests.now().size, 1)
+      assertEquals(f.variable.history, before)
+    }
+  }
+
   test("malformed structured hints are rejected once without changing the interaction history") {
     def entry(question: ujson.Value = ujson.Str("Welche Bedingung prüfst du?"), ids: ujson.Value = ujson.Arr("task")) =
       ujson.Obj("question" -> question, "evidenceIds" -> ids)
@@ -566,7 +584,13 @@ class InteractionVariableGradingSpec extends FunSuite {
     val invalid = List("not JSON", "null", "[]", document(), document(ujson.Null),
       document((1 to 4).map(index => entry(ujson.Str(s"Frage $index?")))*), document(entry(), entry()),
       document(entry(ujson.Num(2))), document(entry(ujson.Str("A statement."))), document(entry(ujson.Str("x" * 320 + "?"))),
-      document(entry(ujson.Str("Wie prüfst du `x`?"))), document(entry(ujson.Str("Eine\nzweite Zeile?"))),
+      document(entry(ujson.Str("Wie prüfst du `x + 1`?"))), document(entry(ujson.Str("Wie prüfst du `x.y`?"))),
+      document(entry(ujson.Str("Wie prüfst du `draw()`?"))), document(entry(ujson.Str("Wie prüfst du `3`?"))),
+      document(entry(ujson.Str("Wie prüfst du ``x``?"))), document(entry(ujson.Str("Wie prüfst du ```x```?"))),
+      document(entry(ujson.Str("Wie prüfst du `x?"))),
+      document(entry(ujson.Str("x" * 317 + "`y`?"))),
+      document(entry(ujson.Str("Wie prüfst du x?")), entry(ujson.Str("Wie prüfst du `x`?"))),
+      document(entry(ujson.Str("Eine\nzweite Zeile?"))),
       document(entry(ujson.Str("Ein\tTab?"))), document(entry(ujson.Str("Eine\u2028weitere Zeile?"))).replace("\u2028", "\\u2028"),
       document(entry(ujson.Str("Eine\u2029weitere Zeile?"))).replace("\u2029", "\\u2029"), document(entry(ids = ujson.Arr())),
       document(entry(ids = ujson.Arr("task", "task"))), document(entry(ids = ujson.Arr("unknown"))),

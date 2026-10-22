@@ -145,6 +145,8 @@ object ProgrammingHintScaffolder {
     case _: GradingStatus.TestError => "error"
   }
 
+  private val quotedIdentifier = "`([A-Za-z_$][A-Za-z0-9_$]*)`".r
+
   private def parse(raw: String, allowedIds: Set[String]): Vector[Hint] = Try {
     require(raw != null && raw.length <= 4096)
     raw.foldLeft((0, false, false)) { case ((depth, quoted, escaped), char) =>
@@ -166,8 +168,9 @@ object ProgrammingHintScaffolder {
     require(values.nonEmpty && values.size <= 3)
     val hints = values.toVector.map { value =>
       require(value.objOpt.exists(_.keySet == Set("question", "evidenceIds")))
-      val question = value("question").str.trim
-      require(question.nonEmpty && question.length <= 320 && question.endsWith("?"))
+      val originalQuestion = value("question").str.trim
+      require(originalQuestion.nonEmpty && originalQuestion.length <= 320 && originalQuestion.endsWith("?"))
+      val question = quotedIdentifier.replaceAllIn(originalQuestion, "$1")
       require(!question.exists(char => Character.isISOControl(char) || char == '\u2028' || char == '\u2029' || char == '`'))
       val ids = value("evidenceIds").arr.toVector.map(_.str)
       require(ids.nonEmpty && ids.size <= 3 && ids.distinct == ids && ids.forall(allowedIds.contains))
