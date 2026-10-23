@@ -53,17 +53,17 @@ object JavaTurtleRuntime {
 
   def runVmTraced(program: P.Program, limits: Limits = Limits(),
       isCancelled: () => Boolean = () => false, budget: J.Budget = J.Budget()): J.RecordedExecution =
-    recorded(budget)(recorder => execute(program.resolvedMethods, program.root.entryPoint.binding.id,
+    recorded(program, budget)(recorder => execute(program.resolvedMethods, program.root.entryPoint.binding.id,
       program.root.entryPoint.binding.id, Vector.empty, true, limits, isCancelled, Some(recorder)))
 
   def invokeVmTraced(program: P.Program, method: R.MethodId, arguments: Vector[E.Value],
       limits: Limits = Limits(), isCancelled: () => Boolean = () => false,
       budget: J.Budget = J.Budget()): J.RecordedExecution =
-    recorded(budget)(recorder => execute(program.resolvedMethods, program.root.entryPoint.binding.id,
+    recorded(program, budget)(recorder => execute(program.resolvedMethods, program.root.entryPoint.binding.id,
       method, arguments, false, limits, isCancelled, Some(recorder)))
 
-  private def recorded(budget: J.Budget)(run: J.Recorder => Execution): J.RecordedExecution = {
-    val recorder = new J.Recorder(budget)
+  private def recorded(program: P.Program, budget: J.Budget)(run: J.Recorder => Execution): J.RecordedExecution = {
+    val recorder = new J.Recorder(budget, program.bindings.source)
     val execution = run(recorder)
     J.RecordedExecution(execution, recorder.capture)
   }
