@@ -86,6 +86,30 @@
     gap: var(--space-md);
 }
 .interaction-info__icons .current-grading-icon:empty { display: none; }
+.interaction-grading {
+    display: grid;
+    gap: var(--space-xs);
+    max-width: 12rem;
+    text-align: center;
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+}
+.interaction-grading__request {
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--space-xs);
+    border: 1px solid var(--color-button-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-button-background);
+    color: inherit;
+    font: inherit;
+    white-space: normal;
+}
+.interaction-grading__request:hover:not(:disabled) { background: var(--color-button-hover); }
+.interaction-grading__request:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.interaction-grading__request:disabled { cursor: default; opacity: 0.65; }
+.interaction-grading__status { margin: 0; }
+.interaction-editor .interaction-grading { display: flex; align-items: center; gap: var(--space-sm); }
 .interaction-element-info .interaction-info__hint-toggle {
     box-sizing: border-box;
     display: flex;
