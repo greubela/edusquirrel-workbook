@@ -779,6 +779,214 @@ class InteractionVariableGradingSpec extends FunSuite {
     assertEquals(grader.clients.now(), List(clients, Nil))
   }
 
+  test("grading completion follows publication for the captured answer without replacing a newer answer") {
+    val pending = Promise[GradingResult[String, String]]()
+    val grader = new RecordingGrader {
+      override def gradeState(state: String, clients: List[ExecutionClient]): Future[GradingResult[String, String]] = pending.future
+    }
+    val value = variable(grader)
+    val sync = new RestoreSync(value, Nil)
+    val completed = value.startGrading(sync, Nil, forceGrading = true)
+    assert(!completed.isCompleted)
+    value.setStateFromUserInteraction(sync, "newer answer", MAJOR,
+      value.history.lastStateOption.get.timestamp.plusSeconds(1))
+    val events = value.history.events
+    val result = GradingResult[String, String](grader, "", GradingStatus.Correct())
+    pending.success(result)
+    completed.map { _ =>
+      assertEquals(value.history.gradings, Map("" -> GradedState("", Set(result))))
+      assertEquals(value.history.events, events)
+      assertEquals(value.currentValue, "newer answer")
+      assertEquals(sync.stores.now(), 2)
+    }
+  }
+
+  test("identical central grading requests share one completion and errors remain retryable") {
+    val pending = State(Vector.empty[Promise[GradingResult[String, String]]])
+    val grader = new RecordingGrader {
+      override def gradeState(state: String, clients: List[ExecutionClient]): Future[GradingResult[String, String]] = {
+        val completion = Promise[GradingResult[String, String]]()
+        pending.update(_ :+ completion)
+        completion.future
+      }
+    }
+    val value = variable(grader)
+    val sync = new RestoreSync(value, Nil)
+    val events = value.history.events
+    val first = value.startGrading(sync, Nil)
+    val second = value.startGrading(sync, Nil)
+    assert(first eq second)
+    assertEquals(grader.requests.size, 1)
+    pending.now().head.failure(IllegalStateException("service unavailable"))
+    first.flatMap { _ =>
+      assert(value.history.gradings("").testsWithResults.head.gradingStatus.isInstanceOf[GradingStatus.TestError])
+      assertEquals(sync.stores.now(), 1)
+      assertEquals(value.history.events, events)
+      val retry = value.startGrading(sync, Nil)
+      assert(!(retry eq first))
+      assert(retry eq value.startGrading(sync, Nil))
+      assertEquals(grader.requests.size, 2)
+      pending.now().last.success(GradingResult[String, String](grader, "", GradingStatus.Correct()))
+      retry.map { _ =>
+        assertEquals(value.history.gradings("").testsWithResults.map(_.gradingStatus), Set[GradingStatus](GradingStatus.Correct()))
+        assertEquals(sync.stores.now(), 2)
+        assertEquals(value.history.events, events)
+        assertEquals(value.currentValue, "")
+      }
+    }
+  }
+
+  test("a failed central grading future releases its in-flight request for a new attempt") {
+    val pending = State(Vector.empty[Promise[GradingResult[String, String]]])
+    val grader = new RecordingGrader {
+      override def gradeStateSafe(state: String, forced: Boolean, clients: List[ExecutionClient]): Future[GradingResult[String, String]] = {
+        val completion = Promise[GradingResult[String, String]]()
+        pending.update(_ :+ completion)
+        completion.future
+      }
+    }
+    val value = variable(grader)
+    val sync = new RestoreSync(value, Nil)
+    val first = value.startGrading(sync, Nil, forceGrading = true)
+    assert(first eq value.startGrading(sync, Nil, forceGrading = true))
+    pending.now().head.failure(IllegalStateException("failed safe adapter"))
+    first.failed.flatMap { _ =>
+      assertEquals(value.history.gradings, Map.empty)
+      assertEquals(sync.stores.now(), 0)
+      val retry = value.startGrading(sync, Nil, forceGrading = true)
+      assert(!(retry eq first))
+      assertEquals(pending.now().size, 2)
+      pending.now().last.success(GradingResult[String, String](grader, "", GradingStatus.Correct()))
+      retry.map { _ => assertEquals(sync.stores.now(), 1) }
+    }
+  }
+
+  test("central grading keeps different answers and force modes in separate in-flight requests") {
+    val pending = State(Vector.empty[(String, Boolean, Promise[GradingResult[String, String]])])
+    val grader = new RecordingGrader {
+      override def gradeStateSafe(state: String, forced: Boolean, clients: List[ExecutionClient]): Future[GradingResult[String, String]] = {
+        val completion = Promise[GradingResult[String, String]]()
+        pending.update(_ :+ ((state, forced, completion)))
+        completion.future
+      }
+    }
+    val value = variable(grader)
+    val sync = new RestoreSync(value, Nil)
+    val automatic = value.startGrading(sync, Nil)
+    val forced = value.startGrading(sync, Nil, forceGrading = true)
+    value.setStateFromUserInteraction(sync, "another answer", MAJOR,
+      value.history.lastStateOption.get.timestamp.plusSeconds(1))
+    val changed = value.startGrading(sync, Nil)
+    assert(!(automatic eq forced))
+    assert(!(automatic eq changed))
+    assertEquals(pending.now().map { case (state, force, _) => state -> force },
+      Vector("" -> false, "" -> true, "another answer" -> false))
+    pending.now().reverse.foreach { case (state, _, completion) =>
+      completion.success(GradingResult[String, String](grader, state, GradingStatus.Correct()))
+    }
+    Future.sequence(List(automatic, forced, changed)).map { _ =>
+      assertEquals(value.history.gradings.keySet, Set("", "another answer"))
+      assert(value.history.gradings.forall((state, result) =>
+        result.state == state && result.testsWithResults.forall(_.gradedState == state)))
+      assertEquals(value.currentValue, "another answer")
+      assertEquals(sync.stores.now(), 4)
+    }
+  }
+
+  test("a late automatic batch cannot replace an executed manual grade with NotExecuted") {
+    val automatic = State(Vector.empty[Promise[GradingResult[String, String]]])
+    val always = new RecordingGrader {
+      override def gradeState(state: String, clients: List[ExecutionClient]): Future[GradingResult[String, String]] = {
+        val completion = Promise[GradingResult[String, String]]()
+        automatic.update(_ :+ completion)
+        completion.future
+      }
+    }
+    val manualResult = Promise[GradingResult[String, String]]()
+    val manual = new RecordingGrader {
+      override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
+      override def gradeState(state: String, clients: List[ExecutionClient]): Future[GradingResult[String, String]] = manualResult.future
+    }
+    val value = restoreVariable(List(always, manual))
+    val sync = new RestoreSync(value, Nil)
+    val background = value.startGrading(sync, Nil)
+    val forced = value.startGrading(sync, Nil, forceGrading = true)
+    assertEquals(manual.requests, List("" -> false, "" -> true))
+    val completedManual = GradingResult[String, String](manual, "", GradingStatus.Correct())
+    automatic.now()(1).success(GradingResult[String, String](always, "", GradingStatus.Correct()))
+    manualResult.success(completedManual)
+    forced.flatMap { _ =>
+      assert(value.history.gradings("").testsWithResults.contains(completedManual))
+      automatic.now().head.success(GradingResult[String, String](always, "", GradingStatus.Correct()))
+      background.map { _ =>
+        val results = value.history.gradings("").testsWithResults
+        assertEquals(results.filter(_.grader == manual), Set(completedManual))
+        assertEquals(results.map(_.grader), Set[WorkbookInteractionGrader[String, String]](always, manual))
+        assert(!results.exists(_.gradingStatus == GradingStatus.NotExecuted()))
+        assertEquals(value.currentValue, "")
+      }
+    }
+  }
+
+  test("automatic publication preserves only executed manual results for the exact configured state and grader") {
+    val always = new RecordingGrader
+    val manual = new RecordingGrader {
+      override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
+    }
+    val foreign = new RecordingGrader
+    val value = restoreVariable(List(always, manual))
+    val retained = GradingResult[String, String](manual, "", GradingStatus.Correct())
+    val wrongState = GradingResult[String, String](manual, "another answer", GradingStatus.Incorrect())
+    val wrongGrader = GradingResult[String, String](foreign, "", GradingStatus.Incorrect())
+    value.updateHistory(_.copy(gradings = Map("" -> GradedState("", Set(retained, wrongState, wrongGrader)))))
+    value.startGrading(null, Nil).map { _ =>
+      val results = value.history.gradings("").testsWithResults
+      assertEquals(results.filter(_.grader == manual), Set(retained))
+      assertEquals(results.map(_.grader), Set[WorkbookInteractionGrader[String, String]](always, manual))
+      assert(results.forall(_.gradedState == ""))
+      assertEquals(manual.requests, List("" -> false))
+    }
+  }
+
+  test("a grading publication observer can retry immediately without old cleanup removing the new request") {
+    val pending = State(Vector.empty[Promise[GradingResult[String, String]]])
+    val grader = new RecordingGrader {
+      override def gradeState(state: String, clients: List[ExecutionClient]): Future[GradingResult[String, String]] = {
+        val completion = Promise[GradingResult[String, String]]()
+        pending.update(_ :+ completion)
+        completion.future
+      }
+    }
+    val value = variable(grader)
+    val sync = new RestoreSync(value, Nil)
+    val retried = State(Option.empty[Future[Unit]])
+    val first = value.startGrading(sync, Nil)
+    value.observableState.addNextChangeObserver { _ => retried.set(Some(value.startGrading(sync, Nil))) }
+    pending.now().head.failure(IllegalStateException("retry immediately"))
+    first.flatMap { _ =>
+      assertEquals(pending.now().size, 2)
+      val retry = retried.now().get
+      assert(value.startGrading(sync, Nil) eq retry)
+      assertEquals(pending.now().size, 2)
+      pending.now().last.success(GradingResult[String, String](grader, "", GradingStatus.Correct()))
+      retry.map { _ =>
+        assertEquals(value.history.gradings("").testsWithResults.map(_.gradingStatus), Set[GradingStatus](GradingStatus.Correct()))
+        assertEquals(grader.requests.size, 2)
+      }
+    }
+  }
+
+  test("cached and empty grading requests complete without launching work") {
+    val grader = new RecordingGrader
+    val value = variable(grader)
+    val result = GradingResult[String, String](grader, "", GradingStatus.Correct())
+    value.updateHistory(_.copy(gradings = Map("" -> GradedState("", Set(result)))))
+    val cached = value.startGrading(null, Nil)
+    value.updateHistory(_.copy(events = Set.empty))
+    val empty = value.startGrading(null, Nil, forceGrading = true)
+    cached.zip(empty).map { _ => assertEquals(grader.requests, Nil) }
+  }
+
   test("a missing grading service can be retried for the same answer and success is then cached") {
     val factory = ExecutionCommandFactory[String, String]("grade-test-answer")
     val grader = new RecordingGrader {
