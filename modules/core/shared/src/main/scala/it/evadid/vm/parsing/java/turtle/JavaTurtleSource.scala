@@ -1,7 +1,6 @@
 package it.evadid.vm.parsing.java.turtle
 
-import fastparse.Parsed
-import it.evadid.vm.parsing.java.clean.JavaParser
+import it.evadid.vm.parsing.java.clean.{JavaParser, JavaSourceMap}
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 
 object JavaTurtleSource {
@@ -14,10 +13,13 @@ object JavaTurtleSource {
     case InputLimit
   }
 
-  case class SourceRange(start: Int, end: Int)
+  export JavaSourceMap.SourceRange
   case class Diagnostic(problem: Problem, message: String, range: Option[SourceRange])
 
-  final class ParsedSource private[JavaTurtleSource](val source: String, val program: JavaProgram)
+  final class ParsedSource private[JavaTurtleSource](val sourceMap: JavaSourceMap) {
+    def source: String = sourceMap.source
+    def program: JavaProgram = sourceMap.program
+  }
 
   private val parser = new JavaParser(retainParentheses = true)
 
@@ -30,10 +32,10 @@ object JavaTurtleSource {
     } yield parsed
 
   private def parseAst(source: String): Either[Diagnostic, ParsedSource] =
-    fastparse.parse(source, context => parser.javaProgram(using context)) match {
-      case Parsed.Success(program, _) =>
-        JavaTurtleInputLimits.checkAst(program).map(_ => new ParsedSource(source, program))
-      case failure: Parsed.Failure =>
+    parser.parseWithLocations(source) match {
+      case Right(sourceMap) =>
+        JavaTurtleInputLimits.checkAst(sourceMap.program).map(_ => new ParsedSource(sourceMap))
+      case Left(failure) =>
         Left(Diagnostic(
           Problem.ParseFailure,
           "This source could not be read as a supported Java program.",
