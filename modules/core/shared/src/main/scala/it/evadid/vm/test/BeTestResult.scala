@@ -1,7 +1,10 @@
 package it.evadid.vm.test
 
-sealed trait BeTestResult {
+import upickle.default.ReadWriter
 
-  def hasPassed: Boolean
+enum BeTestResult derives ReadWriter {
+  case Passed, Failed
+  case Error(message: String)
 
+  def hasPassed: Boolean = this == Passed
 }
