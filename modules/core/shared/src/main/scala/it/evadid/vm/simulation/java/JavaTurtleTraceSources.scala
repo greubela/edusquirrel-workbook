@@ -9,9 +9,10 @@ import it.evadid.vm.simulation.java.JavaTurtleTrace.SourceNode
 
 private[java] object JavaTurtleTraceSources {
   private type Syntax = Node[JavaAST]
-  private type Entries = Vector[(SourceNode, SourceRange)]
+  case class Entry(range: SourceRange, isReadExpression: Boolean = false)
+  private type Entries = Vector[(SourceNode, Entry)]
 
-  def build(source: R.ResolvedSource): Option[Map[SourceNode, SourceRange]] = {
+  def build(source: R.ResolvedSource): Option[Map[SourceNode, Entry]] = {
     val root = source.typedSource.structure.parsedSource.sourceMap.root
     for {
       wrapper <- only(root.children)
@@ -32,7 +33,7 @@ private[java] object JavaTurtleTraceSources {
   }
 
   private def collect[A](values: Vector[A])(visit: A => Option[Entries]): Option[Entries] =
-    values.foldLeft(Option(Vector.empty[(SourceNode, SourceRange)])) { (result, value) =>
+    values.foldLeft(Option(Vector.empty[(SourceNode, Entry)])) { (result, value) =>
       for { previous <- result; next <- visit(value) } yield previous ++ next
     }
 
@@ -48,9 +49,9 @@ private[java] object JavaTurtleTraceSources {
         definition.parameters.size == method.parameters.size && syntax.children.size == method.parameters.size + 1 =>
       val node = SourceNode(method.id, Vector.empty)
       block(method.body, syntax.children.last, node.child("body")).map { body =>
-        Vector(node.child("entry") -> syntax.range) ++
+        Vector(node.child("entry") -> Entry(syntax.range)) ++
           syntax.children.take(method.parameters.size).zipWithIndex.map { (parameter, index) =>
-            node.child("parameter").child(index.toString) -> parameter.range
+            node.child("parameter").child(index.toString) -> Entry(parameter.range)
           } ++ body
       }
     case _ => None
@@ -63,7 +64,7 @@ private[java] object JavaTurtleTraceSources {
     }
 
   private def block(value: R.Block, syntax: Syntax, node: SourceNode): Option[Entries] = syntax.value match {
-    case _: JavaExecutionBlock => statements(value.statements, syntax.children, node).map((node -> syntax.range) +: _)
+    case _: JavaExecutionBlock => statements(value.statements, syntax.children, node).map((node -> Entry(syntax.range)) +: _)
     case _ => None
   }
 
@@ -75,7 +76,7 @@ private[java] object JavaTurtleTraceSources {
       case (R.Assign(_, _, value), _: JavaAssignment | _: JavaAugAssignment | _: JavaAssignmentExpression) =>
         syntax.children match {
           case Vector(target, assigned) => expression(value, assigned, node.child("value")).map {
-            entries => (node.child("target") -> target.range) +: entries
+            entries => (node.child("target") -> Entry(target.range)) +: entries
           }
           case _ => None
         }
@@ -112,7 +113,7 @@ private[java] object JavaTurtleTraceSources {
         } yield initial ++ test ++ last ++ repeated
       case _ => None
     }
-    children.map((node -> syntax.range) +: _)
+    children.map((node -> Entry(syntax.range)) +: _)
   }
 
   private def expression(value: R.Expression, syntax: Syntax, node: SourceNode): Option[Entries] = {
@@ -132,7 +133,7 @@ private[java] object JavaTurtleTraceSources {
       case (R.ShortCircuit(_, left, right), _: JavaOperationBinary) => operands(left, right, syntax, node)
       case _ => None
     }
-    children.map((node -> syntax.range) +: _)
+    children.map((node -> Entry(syntax.range, value.isInstanceOf[R.Read])) +: _)
   }
 
   private def operands(left: R.Expression, right: R.Expression, syntax: Syntax, node: SourceNode): Option[Entries] =

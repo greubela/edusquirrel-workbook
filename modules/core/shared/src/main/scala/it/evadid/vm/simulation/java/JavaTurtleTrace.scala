@@ -42,9 +42,21 @@ object JavaTurtleTrace {
 
   case class LocatedSlice(events: Vector[LocatedEvent], recordingTruncated: Boolean)
 
+  case class ExpressionObservation(invocation: Int, node: SourceNode, value: E.Value)
+
   final class Capture private[java](val events: Vector[Event], val truncated: Boolean, origin: R.ResolvedSource) {
     private val sourceMap = origin.typedSource.structure.parsedSource.sourceMap
     private lazy val sourceLocations = JavaTurtleTraceSources.build(origin)
+
+    lazy val completedExpressions: Option[Vector[ExpressionObservation]] = sourceLocations.flatMap { locations =>
+      events.foldLeft(Option(Vector.empty[ExpressionObservation])) { (result, event) =>
+        for { previous <- result; entry <- locations.get(event.node) } yield event.kind match {
+          case Kind.Expression(value) => previous :+ ExpressionObservation(event.invocation, event.node, value)
+          case Kind.Read(_, value) if entry.isReadExpression => previous :+ ExpressionObservation(event.invocation, event.node, value)
+          case _ => previous
+        }
+      }
+    }
 
     def locate(eventId: Int, currentSource: String): Option[LocatedEvent] =
       if currentSource != sourceMap.source then None
@@ -53,7 +65,7 @@ object JavaTurtleTrace {
     private def locateEvent(event: Event): Option[LocatedEvent] =
       for {
         locations <- sourceLocations
-        range <- locations.get(event.node)
+        range <- locations.get(event.node).map(_.range)
         start <- sourceMap.position(range.start)
         end <- sourceMap.position(range.end)
       } yield new LocatedEvent(event, range, start, end, sourceMap)
