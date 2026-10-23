@@ -1,7 +1,7 @@
 package it.evadid.vm.parsing.java.clean
 
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
-import it.evadid.vm.parsing.java.clean.model.JavaType
+import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleInputLimits, JavaTurtleResolution, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
 import it.evadid.vm.simulation.java.JavaTurtleEvaluation as E
 import it.evadid.vm.simulation.java.JavaTurtleRuntime as T
@@ -9,6 +9,42 @@ import it.evadid.vm.parsing.java.turtle.{JavaTurtleVmExpressions as X, JavaTurtl
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {
+  private def located(source: String, retainParentheses: Boolean = false): JavaSourceMap =
+    new JavaParser(retainParentheses).parseWithLocations(source).fold(error => fail(error.toString), identity)
+
+  private def sourceNodes(map: JavaSourceMap): Vector[(Vector[Int], JavaSourceMap.Node[JavaAST])] = {
+    def visit(path: Vector[Int], node: JavaSourceMap.Node[JavaAST]): Vector[(Vector[Int], JavaSourceMap.Node[JavaAST])] =
+      (path -> node) +: node.children.zipWithIndex.flatMap { (child, index) => visit(path :+ index, child) }
+    visit(Vector.empty, map.root)
+  }
+
+  private def assertSourceTree(map: JavaSourceMap): Unit = {
+    assertEquals(map.root.range, JavaSourceMap.SourceRange(0, map.source.length))
+    assertEquals(map.program, map.root.value)
+    sourceNodes(map).foreach { (path, node) =>
+      assert(node.range.start >= 0 && node.range.end <= map.source.length, clue = path)
+      assert(node.range.start <= node.range.end, clue = path)
+      if path.nonEmpty then assert(node.range.start < node.range.end, clue = path)
+      assertEquals(node.children.map(_.value), node.value.getChildren().map(_.asInstanceOf[JavaAST]).toVector, clue = path)
+      assertEquals(map.at(path), Some(node), clue = path)
+      assertEquals(map.text(path), Some(map.source.substring(node.range.start, node.range.end)), clue = path)
+      assertEquals(map.at(path :+ node.children.size), None, clue = path)
+      node.children.foreach { child =>
+        assert(child.range.start >= node.range.start && child.range.end <= node.range.end, clue = path)
+      }
+      node.value match {
+        case _: StatementWithLineNumber => assertEquals(node.children.head.range, node.range, clue = path)
+        case _ => ()
+      }
+    }
+    assertEquals(map.at(Vector(-1)), None)
+    assertEquals(map.position(-1), None)
+    assertEquals(map.position(map.source.length + 1), None)
+  }
+
+  private def sourceTexts(map: JavaSourceMap)(accept: JavaAST => Boolean): Vector[String] =
+    sourceNodes(map).collect { case (path, node) if accept(node.value) => map.text(path).get }
+
   private def unsupportedStatements(program: JavaProgram): Set[String] =
     program.traversePreOrderWithListener {
       case statement: JavaUnparsableStatement => Some(statement.source)
@@ -1399,6 +1435,162 @@ class JavaParserTest extends FunSuite {
     assertEquals(current, E.Value.IntValue(5))
     assertEquals(E.evaluate(Update(n, UpdateOperator.Increment, prefix = true), _ => Right(current)), Left(E.Failure.TypeMismatch))
     assertEquals(current, E.Value.IntValue(5))
+  }
+
+  test("located parsing preserves ordinary ASTs through alternatives and unsupported fallbacks") {
+    val sources = Vector(
+      "", " \r\n// only a comment at EOF", "/* unfinished",
+      "package demo; import java.util.List; class C { int x = 1; void run(int n) { return; } }",
+      "int x = 0; x += 1; call(x); factory().create(1).items[0];",
+      "if (ready) {} else if (waiting) {} else {} for (;;) {}",
+      "try { risky(); } catch (Exception ex) { throw ex; } finally { cleanup(); }",
+      "a << b; after();", "int x <<= 1; x = 2;", "Turtle.forward(; after();",
+      "class C { void run() { unknown ???; int x = 1; } }", "\r\n}", "class C {")
+    for source <- sources; retain <- Vector(false, true) do {
+      val parser = new JavaParser(retain)
+      val ordinary = fastparse.parse(source, context => parser.javaProgram(using context))
+      val positioned = parser.parseWithLocations(source)
+      ordinary match {
+        case fastparse.Parsed.Success(program, _) =>
+          val map = positioned.fold(error => fail(s"$source: $error"), identity)
+          assertEquals(map.source, source)
+          assertEquals(upickle.default.write[JavaAST](map.program), upickle.default.write[JavaAST](program), clue = source)
+          assertSourceTree(map)
+        case failure: fastparse.Parsed.Failure =>
+          assertEquals(positioned.left.toOption.map(_.index), Some(failure.index), clue = source)
+      }
+    }
+    val source = "int x = 0; call(x);"
+    assertEquals(upickle.default.write[JavaAST](JavaParser.parseWithLocations(source).toOption.get.program),
+      upickle.default.write[JavaAST](completeProgram(source)))
+  }
+
+  test("equal statement values keep separate occurrence ranges and no failed-alternative children") {
+    val source = "int n = 1; /* int n = 1; */ int n = 1; int n <<= 2;"
+    val map = located(source)
+    assertSourceTree(map)
+    val declarations = sourceNodes(map).collect {
+      case (_, node) if node.value.isInstanceOf[JavaVariableDeclaration] => node
+    }
+    assertEquals(declarations.size, 2)
+    assertEquals(upickle.default.write[JavaAST](declarations.head.value), upickle.default.write[JavaAST](declarations.last.value))
+    val first = source.indexOf("int n = 1;")
+    val second = source.indexOf("int n = 1;", source.indexOf("*/") + 2)
+    assertEquals(declarations.map(_.range), Vector(first, second).map(start => JavaSourceMap.SourceRange(start, start + 10)))
+    assertEquals(sourceTexts(map)(_.isInstanceOf[JavaUnparsableStatement]), Vector("int n <<= 2;"))
+    assertEquals(sourceTexts(map) { case JavaLiteral("1", _) => true; case _ => false }, Vector("1", "1"))
+  }
+
+  test("source positions keep untrimmed whitespace comments line endings and EOF") {
+    val source = " \t/* 😀 */\r\nint x = 1;\rint y = 2;\n"
+    val map = located(source)
+    assertSourceTree(map)
+    assertEquals(map.source, source)
+    assertEquals(map.position(0), Some(JavaSourceMap.Position(1, 1)))
+    assertEquals(map.position(source.indexOf("int x")), Some(JavaSourceMap.Position(2, 1)))
+    assertEquals(map.position(source.indexOf("int y")), Some(JavaSourceMap.Position(3, 1)))
+    assertEquals(map.position(source.length), Some(JavaSourceMap.Position(4, 1)))
+    val emoji = source.indexOf("😀")
+    assertEquals(map.position(emoji), Some(JavaSourceMap.Position(1, emoji + 1)))
+    assertEquals(map.position(emoji + 1), Some(JavaSourceMap.Position(1, emoji + 2)))
+    assertEquals(map.position(emoji + 2), Some(JavaSourceMap.Position(1, emoji + 3)))
+    Vector("", "// comment at EOF", "/* comment */\r\n\t").foreach { text =>
+      val empty = located(text)
+      assertSourceTree(empty)
+      assertEquals(empty.program.statements.size, 0)
+      assertEquals(empty.text(Vector.empty), Some(text))
+      assert(empty.position(text.length).nonEmpty)
+    }
+    assertEquals(located("").position(0), Some(JavaSourceMap.Position(1, 1)))
+  }
+
+  test("binary intermediate ranges retain associativity precedence and repeated identifiers") {
+    val source = "int x = a - b - c; int y = a + b * c; boolean z = a < b && c != d;"
+    val map = located(source)
+    assertSourceTree(map)
+    assertEquals(sourceTexts(map) { case JavaOperationBinary(_, "-", _) => true; case _ => false },
+      Vector("a - b - c", "a - b"))
+    assertEquals(sourceTexts(map) { case JavaOperationBinary(_, "+" | "*", _) => true; case _ => false },
+      Vector("a + b * c", "b * c"))
+    assertEquals(sourceTexts(map) { case JavaOperationBinary(_, "&&" | "<" | "!=", _) => true; case _ => false },
+      Vector("a < b && c != d", "a < b", "c != d"))
+    val reads = sourceNodes(map).collect {
+      case (_, node) if node.value == JavaTarget("a") => node.range.start
+    }
+    assertEquals(reads, Vector(source.indexOf("a -"), source.indexOf("a +"), source.indexOf("a <")))
+  }
+
+  test("updates qualified calls subscripts and chained trailers retain their own spans") {
+    val source = "int value = ++i + i--; Object item = factory().create(1).items[0]; Turtle.forward(value); data[i++] += 2;"
+    val map = located(source)
+    assertSourceTree(map)
+    assertEquals(sourceTexts(map)(_.isInstanceOf[JavaUpdateExpression]), Vector("++i", "i--", "i++"))
+    assertEquals(sourceTexts(map)(_.isInstanceOf[JavaSubscript]), Vector("factory().create(1).items[0]"))
+    assertEquals(sourceTexts(map) { case JavaAttributeAccess(_, "items") => true; case _ => false },
+      Vector("factory().create(1).items"))
+    assertEquals(sourceTexts(map) { case JavaAttributeAccess(_, "create") => true; case _ => false },
+      Vector("factory().create"))
+    assertEquals(sourceTexts(map) { case JavaFunctionCall(JavaTarget("factory", _, _), _) => true; case _ => false },
+      Vector("factory()"))
+    assertEquals(sourceTexts(map) { case JavaAttributeAccess(_, "forward") => true; case _ => false }, Vector("Turtle.forward"))
+    assertEquals(sourceTexts(map) { case JavaTarget("data", _, _) => true; case _ => false }, Vector("data[i++]"))
+    assertEquals(map.text(Vector(2, 0)), Some("Turtle.forward(value);"))
+  }
+
+  test("parameters loop headers and synthetic else-if blocks follow AST child paths") {
+    val source = "class C { static void draw(int size, double scale) { for (int i = 0; i < size; i++, --size) { if (i > 0) {} else if (size > 0) { ; } } } }"
+    val map = located(source)
+    assertSourceTree(map)
+    assertEquals(sourceTexts(map) { case JavaVariableDeclaration("size", _, None, _) => true; case _ => false }, Vector("int size"))
+    assertEquals(sourceTexts(map) { case JavaVariableDeclaration("scale", _, None, _) => true; case _ => false }, Vector("double scale"))
+    assertEquals(sourceTexts(map) { case JavaVariableDeclaration("i", _, _, _) => true; case _ => false }, Vector("int i = 0"))
+    assertEquals(sourceTexts(map)(_.isInstanceOf[JavaUpdateExpression]), Vector("i++", "--size"))
+    val (outerPath, outer) = sourceNodes(map).find(_._2.value.isInstanceOf[JavaIfStatement]).get
+    val syntheticPath = outerPath :+ 2
+    val synthetic = map.at(syntheticPath).get
+    assert(synthetic.value.isInstanceOf[JavaExecutionBlock])
+    assertEquals(synthetic.range, synthetic.children.head.range)
+    assertEquals(map.text(syntheticPath), Some("if (size > 0) { ; }"))
+    sourceNodes(map).collect {
+      case (path, node) if node.value.isInstanceOf[JavaExecutionBlock] && path != syntheticPath => map.text(path).get
+    }.foreach { text => assert(text.startsWith("{") && text.endsWith("}"), clue = text) }
+    val emptyLoop = located("for (;;) {}")
+    assertSourceTree(emptyLoop)
+    assertEquals(sourceTexts(emptyLoop)(_.isInstanceOf[JavaExecutionBlock]), Vector("{}"))
+  }
+
+  test("parenthesis retention preserves located AST shape and the checked source map") {
+    val source = "int value = ((a + b)) * (c - d);"
+    val erased = located(source)
+    val retained = located(source, retainParentheses = true)
+    assertSourceTree(erased)
+    assertSourceTree(retained)
+    assertEquals(sourceTexts(erased)(_.isInstanceOf[JavaParenthesizedExpression]), Vector.empty[String])
+    assertEquals(sourceTexts(retained)(_.isInstanceOf[JavaParenthesizedExpression]),
+      Vector("((a + b))", "(a + b)", "(c - d)"))
+    assertEquals(sourceTexts(retained) { case JavaOperationBinary(_, "+", _) => true; case _ => false }, Vector("a + b"))
+    val checked = JavaTurtleSource.parse(turtleSource("Turtle.forward((sideLength + 1));"))
+      .fold(problem => fail(problem.message), identity)
+    assertSourceTree(checked.sourceMap)
+    assert(checked.program eq checked.sourceMap.program)
+    assertEquals(checked.sourceMap.source, checked.source)
+    assertEquals(sourceTexts(checked.sourceMap)(_.isInstanceOf[JavaParenthesizedExpression]), Vector("(sideLength + 1)"))
+  }
+
+  test("strings and comments cannot supply fake occurrence positions before Unicode source") {
+    val source = "/* forward(1); 😀 */ String text = \"forward(1); 😀\";\r\nforward(1);"
+    val map = located(source)
+    assertSourceTree(map)
+    val calls = sourceNodes(map).collect {
+      case (_, node) if node.value.isInstanceOf[JavaFunctionCall] => node
+    }
+    assertEquals(calls.size, 1)
+    val callStart = source.lastIndexOf("forward(1);")
+    assertEquals(calls.head.range, JavaSourceMap.SourceRange(callStart, source.length))
+    assertEquals(map.position(callStart), Some(JavaSourceMap.Position(2, 1)))
+    assertEquals(map.position(source.length), Some(JavaSourceMap.Position(2, 12)))
+    assertEquals(sourceTexts(map) { case JavaLiteral(_, _: JavaType.JAVA_STRING) => true; case _ => false },
+      Vector("\"forward(1); 😀\""))
   }
 
 }
