@@ -3,6 +3,7 @@ package it.evadid.workbook.vm.code
 import it.evadid.vm.code.defining.BeDefineFunction.functionInfo
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.datastructures.state.State
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
@@ -13,7 +14,7 @@ import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport as Y
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmBindings as V, JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
-import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
+import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleRuntime as T, JavaTurtleTrace as J}
 import it.evadid.vm.types.{BeChildRole, BeDataType, BeDataValueLiteral, BeScope, BeUseValueReference}
 import munit.FunSuite
 
@@ -37,6 +38,16 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   private def forward(value: Int): T.Command = T.Command(R.TurtleCommand.Forward, value)
   private def right(value: Int): T.Command = T.Command(R.TurtleCommand.TurnRight, value)
+
+  private def turtleEvents(trace: J.Capture): Vector[J.Event] = trace.events.filter(_.kind match {
+    case _: J.Kind.Turtle => true
+    case _ => false
+  })
+
+  private def traceWrites(trace: J.Capture, name: String): Vector[J.Event] = trace.events.filter(_.kind match {
+    case J.Kind.Write(variable, _) => variable.name == name
+    case _ => false
+  })
 
   private def restoredJavaExpression(expression: X.Expression): R.Expression = expression.node match {
     case X.Node.IntLiteral(value) => R.IntLiteral(value)
@@ -1700,6 +1711,230 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(failed, T.run(failedSource))
     assertEquals(failed.status, T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)))
     assertEquals(failed.commands, Vector(forward(1), forward(0)))
+  }
+
+  test("Java tracing leaves outcomes step budgets and cancellation polling unchanged") {
+    val programs = Vector(
+      javaProgram("Turtle.forward(1); Turtle.turnRight(90);"),
+      javaProgram("for (int i = 0; i < 3; i++) { Turtle.forward(i); }"),
+      javaProgram("while (true) { ; }"),
+      javaProgram("Turtle.forward(1); int bad = 1 / 0;")
+    ).map(source => P.adapt(source).toOption.get)
+    val limits = Vector(T.Limits(maxSteps = 20), T.Limits(maxCommands = 0), T.Limits(maxSteps = 0))
+    programs.foreach { program => limits.foreach { limit =>
+      Vector(1, 8, 100).foreach { cancelAt =>
+        val normalPolls = State(0)
+        val tracedPolls = State(0)
+        def poll(counter: State[Int]): Boolean = {
+          counter.update(_ + 1)
+          counter.now() >= cancelAt
+        }
+        val normal = T.runVm(program, limit, () => poll(normalPolls))
+        val traced = T.runVmTraced(program, limit, () => poll(tracedPolls))
+        assertEquals(traced.execution, normal)
+        assertEquals(tracedPolls.now(), normalPolls.now())
+        assert(traced.trace.events.forall(event => event.dependencies(true).forall(_ < event.id)))
+      }
+    } }
+  }
+
+  test("Java trace nodes distinguish repeated source expressions and repeated executions") {
+    val program = P.adapt(javaProgram("Turtle.forward(1); Turtle.forward(1);")).toOption.get
+    val recorded = T.runVmTraced(program)
+    val commands = turtleEvents(recorded.trace)
+    assertEquals(commands.map(_.node.path), Vector(Vector("body", "0"), Vector("body", "1")))
+    assertEquals(commands.map(_.node).distinct.size, 2)
+    assertEquals(recorded.trace.events.map(_.id), recorded.trace.events.indices.toVector)
+    assertEquals(T.runVmTraced(program), recorded)
+    assertEquals(T.runVm(program), recorded.execution)
+    assertEquals(recorded.trace.backwardSlice(-1), None)
+    assertEquals(recorded.trace.backwardSlice(recorded.trace.events.size), None)
+  }
+
+  test("Java postfix and prefix trace results use the correct variable version") {
+    Vector(false, true).foreach { prefix =>
+      val update = if prefix then "++x" else "x++"
+      val program = P.adapt(javaProgram(s"int x = 1; int y = $update; Turtle.forward(y); Turtle.forward(x);")).toOption.get
+      val recorded = T.runVmTraced(program)
+      assertEquals(recorded.execution.commands, Vector(forward(if prefix then 2 else 1), forward(2)))
+      val writes = traceWrites(recorded.trace, "x")
+      assertEquals(writes.size, 2)
+      val commands = turtleEvents(recorded.trace)
+      val first = recorded.trace.backwardSlice(commands.head.id).get.events.map(_.id).toSet
+      val second = recorded.trace.backwardSlice(commands(1).id).get.events.map(_.id).toSet
+      assertEquals(first(writes.last.id), prefix)
+      assert(first(writes.head.id))
+      assert(second(writes.last.id))
+    }
+  }
+
+  test("Java compound assignment captures its old value before RHS updates") {
+    val program = P.adapt(javaProgram("int x = 1; x += x++; Turtle.forward(x);")).toOption.get
+    val recorded = T.runVmTraced(program)
+    assertEquals(recorded.execution, T.runVm(program))
+    assertEquals(recorded.execution.commands, Vector(forward(2)))
+    val writes = traceWrites(recorded.trace, "x")
+    assertEquals(writes.size, 3)
+    val slice = recorded.trace.backwardSlice(turtleEvents(recorded.trace).head.id).get.events.map(_.id).toSet
+    assert(slice(writes.head.id))
+    assert(!slice(writes(1).id))
+    assert(slice(writes.last.id))
+    val orderedReads = recorded.trace.events.filter(_.kind match {
+      case J.Kind.Read(variable, _) => variable.name == "x"
+      case _ => false
+    })
+    assert(orderedReads.take(2).forall(_.dataDependencies == Vector(writes.head.id)))
+  }
+
+  test("Java expression traces retain left to right reads across multiple updates") {
+    val program = P.adapt(javaProgram("int x = 1; Turtle.forward(x++ + x++); Turtle.forward(x);")).toOption.get
+    val recorded = T.runVmTraced(program)
+    assertEquals(recorded.execution.commands, Vector(forward(3), forward(3)))
+    val writes = traceWrites(recorded.trace, "x")
+    val commands = turtleEvents(recorded.trace)
+    val first = recorded.trace.backwardSlice(commands.head.id).get.events.map(_.id).toSet
+    val second = recorded.trace.backwardSlice(commands.last.id).get.events.map(_.id).toSet
+    assert(first(writes(1).id))
+    assert(!first(writes.last.id))
+    assert(second(writes.last.id))
+  }
+
+  test("Java trace omits reads and updates in skipped boolean operands") {
+    val program = P.adapt(javaProgram("""
+      int x = 1;
+      boolean b = false && x++ > 0;
+      if (true || x++ > 0) { Turtle.forward(x); }
+    """)).toOption.get
+    val recorded = T.runVmTraced(program)
+    assertEquals(recorded.execution, T.runVm(program))
+    assertEquals(recorded.execution.commands, Vector(forward(1)))
+    assertEquals(traceWrites(recorded.trace, "x").size, 1)
+    assertEquals(recorded.trace.events.count(_.kind match {
+      case J.Kind.Read(variable, _) => variable.name == "x"
+      case _ => false
+    }), 1)
+  }
+
+  test("Java recursion traces isolate frames and record actual call return order") {
+    val program = P.adapt(javaProgram("draw(2);", """
+      static void draw(int n) {
+        if (n == 0) { return; }
+        Turtle.forward(n); draw(n - 1); Turtle.turnRight(n);
+      }
+    """)).toOption.get
+    val recorded = T.runVmTraced(program)
+    assertEquals(recorded.execution, T.runVm(program))
+    assertEquals(recorded.execution.commands, Vector(forward(2), forward(1), right(1), right(2)))
+    val calls = recorded.trace.events.filter(_.kind.isInstanceOf[J.Kind.Call])
+    val returns = recorded.trace.events.filter(_.kind.isInstanceOf[J.Kind.Return])
+    assertEquals(calls.map(_.invocation), Vector(0, 1, 2, 3))
+    assertEquals(returns.map(_.invocation), Vector(3, 2, 1, 0))
+    val indexed = recorded.trace.events.map(event => event.id -> event).toMap
+    recorded.trace.events.filter(_.kind.isInstanceOf[J.Kind.Read]).foreach { event =>
+      event.dataDependencies.foreach(id => assertEquals(indexed(id).invocation, event.invocation))
+    }
+    val method = program.root.methods.find(_.binding.originalName == "draw").get.binding.id
+    assertEquals(T.invokeVmTraced(program, method, Vector(E.Value.IntValue(2))).execution,
+      T.invokeVm(program, method, Vector(E.Value.IntValue(2))))
+  }
+
+  test("Java slices retain false early-return guards without unrelated overwritten writes") {
+    val program = P.adapt(javaProgram("draw(1);", """
+      static void draw(int n) {
+        int unused = 99; int x = 1; x = 2;
+        if (n == 0) { return; }
+        Turtle.forward(x);
+      }
+    """)).toOption.get
+    val recorded = T.runVmTraced(program)
+    val slice = recorded.trace.backwardSlice(turtleEvents(recorded.trace).head.id).get
+    assert(slice.events.exists(_.kind == J.Kind.Condition(false)))
+    assert(!slice.events.exists(_.kind match {
+      case J.Kind.Write(variable, _) => variable.name == "unused"
+      case _ => false
+    }))
+    val writes = traceWrites(recorded.trace, "x")
+    assert(!slice.events.exists(_.id == writes.head.id))
+    assert(slice.events.exists(_.id == writes.last.id))
+  }
+
+  test("Java trace reinitializes loop-local versions without changing the compiled source") {
+    val source = javaProgram("for (int i = 0; i < 2; i++) { int x = i; Turtle.forward(x); }")
+    val program = P.adapt(source).toOption.get
+    val recorded = T.runVmTraced(program)
+    val writes = traceWrites(recorded.trace, "x")
+    assertEquals(writes.size, 2)
+    assertEquals(writes.map(_.node).distinct.size, 1)
+    val commands = turtleEvents(recorded.trace)
+    val first = recorded.trace.backwardSlice(commands.head.id).get.events.map(_.id).toSet
+    val second = recorded.trace.backwardSlice(commands.last.id).get.events.map(_.id).toSet
+    assert(first(writes.head.id))
+    assert(!first(writes.last.id))
+    assert(!second(writes.head.id))
+    assert(second(writes.last.id))
+    assertEquals(program.bindings.source.source, source.source)
+    assertEquals(T.runVm(program), recorded.execution)
+  }
+
+  test("Java slices include command and return order only when requested") {
+    val program = P.adapt(javaProgram("draw(); Turtle.forward(2);", "static void draw() { Turtle.turnRight(90); }")).toOption.get
+    val recorded = T.runVmTraced(program)
+    val commands = turtleEvents(recorded.trace)
+    val valueSlice = recorded.trace.backwardSlice(commands.last.id).get.events
+    val orderedSlice = recorded.trace.backwardSlice(commands.last.id, includeOrder = true).get.events
+    assert(!valueSlice.exists(_.id == commands.head.id))
+    assert(!valueSlice.exists(_.kind.isInstanceOf[J.Kind.Return]))
+    assert(orderedSlice.exists(_.id == commands.head.id))
+    assert(orderedSlice.exists(_.kind.isInstanceOf[J.Kind.Return]))
+  }
+
+  test("Java trace saturation preserves execution and exposes only a bounded prefix") {
+    val program = P.adapt(javaProgram("for (int i = 0; i < 4; i++) { Turtle.forward(i); }")).toOption.get
+    val full = T.runVmTraced(program)
+    Vector(J.Budget(maxEvents = 0), J.Budget(maxEvents = 3), J.Budget(maxDependencies = 0)).foreach { budget =>
+      val recorded = T.runVmTraced(program, budget = budget)
+      assertEquals(recorded.execution, T.runVm(program))
+      assertEquals(recorded.trace.events, full.trace.events.take(recorded.trace.events.size))
+      assert(recorded.trace.truncated)
+      assert(recorded.trace.events.size <= budget.maxEvents)
+      assert(recorded.trace.events.map(event => event.dataDependencies.size + event.controlDependencies.size +
+        event.callDependencies.size + event.orderDependencies.size).sum <= budget.maxDependencies)
+      assertEquals(recorded.trace.backwardSlice(recorded.trace.events.size), None)
+      recorded.trace.events.lastOption.foreach(event =>
+        assert(recorded.trace.backwardSlice(event.id).get.recordingTruncated))
+    }
+  }
+
+  test("Java stopped traces do not invent returns or commands") {
+    val program = P.adapt(javaProgram("again();", "static void again() { Turtle.forward(1); again(); }")).toOption.get
+    val limited = T.runVmTraced(program, T.Limits(maxCallDepth = 2))
+    assertEquals(limited.execution, T.runVm(program, T.Limits(maxCallDepth = 2)))
+    assertEquals(limited.trace.events.count(_.kind.isInstanceOf[J.Kind.Call]), 2)
+    assert(!limited.trace.events.exists(_.kind.isInstanceOf[J.Kind.Return]))
+    assertEquals(turtleEvents(limited.trace).size, limited.execution.commands.size)
+    val cancelled = T.runVmTraced(program, isCancelled = () => true)
+    assertEquals(cancelled.execution.status, T.Status.Cancelled)
+    assertEquals(cancelled.execution.steps, 0)
+    assertEquals(cancelled.trace.events, Vector.empty)
+    assert(!cancelled.trace.truncated)
+  }
+
+  test("Java trace retains nonfinite intermediates and signed zero without emitting invalid motion") {
+    val program = P.adapt(javaProgram("double x = 0.0 / 0.0; Turtle.forward(1); Turtle.forward(x);")).toOption.get
+    val recorded = T.runVmTraced(program)
+    assertEquals(recorded.execution, T.runVm(program))
+    assertEquals(recorded.execution.commands, Vector(forward(1)))
+    assertEquals(turtleEvents(recorded.trace).size, 1)
+    assert(recorded.trace.events.exists(_.kind match {
+      case J.Kind.Expression(E.Value.DoubleValue(value)) => value.isNaN
+      case _ => false
+    }))
+    val zero = T.runVmTraced(P.adapt(javaProgram("double x = -0.0; Turtle.forward(x);")).toOption.get)
+    assertEquals(1.0 / zero.execution.commands.head.value, Double.NegativeInfinity)
+    assert(zero.trace.events.exists(_.kind match {
+      case J.Kind.Read(_, E.Value.DoubleValue(value)) => 1.0 / value == Double.NegativeInfinity
+      case _ => false
+    }))
   }
 
   test("Java Python export is deterministic and keeps execution behind one entry point") {
