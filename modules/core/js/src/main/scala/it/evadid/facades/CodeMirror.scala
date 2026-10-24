@@ -322,18 +322,18 @@ object CodeMirror {
 
   // Native module imports remain asynchronous and share the browser's ESM cache.
   private val moduleUrls = List(
-    "https://esm.sh/@codemirror/state@6.5.2",
-    "https://esm.sh/@codemirror/view@6.38.6?deps=@codemirror/state@6.5.2",
-    "https://esm.sh/@codemirror/commands@6.8.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3",
-    "https://esm.sh/@codemirror/language@6.11.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6",
-    "https://esm.sh/@codemirror/search@6.5.11?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6",
-    "https://esm.sh/@codemirror/lang-python@6.2.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3,@codemirror/autocomplete@6.18.4",
-    "https://esm.sh/@codemirror/lang-sql@6.9.0?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3,@codemirror/autocomplete@6.18.4",
-    "https://esm.sh/@codemirror/lang-cpp@6.0.2?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3",
-    "https://esm.sh/@codemirror/theme-one-dark@6.1.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3",
-    "https://esm.sh/@replit/codemirror-indentation-markers@6.5.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3"
+    "https://esm.sh/@codemirror/state@6.7.6",
+    "https://esm.sh/@codemirror/view@6.43.15?deps=@codemirror/state@6.7.6",
+    "https://esm.sh/@codemirror/commands@6.11.1?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1",
+    "https://esm.sh/@codemirror/language@6.13.1?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15",
+    "https://esm.sh/@codemirror/search@6.7.2?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15",
+    "https://esm.sh/@codemirror/lang-python@6.2.1?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1,@codemirror/autocomplete@6.20.4",
+    "https://esm.sh/@codemirror/lang-sql@6.10.0?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1,@codemirror/autocomplete@6.20.4",
+    "https://esm.sh/@codemirror/lang-cpp@6.0.3?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1",
+    "https://esm.sh/@codemirror/theme-one-dark@6.1.3?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1",
+    "https://esm.sh/@replit/codemirror-indentation-markers@6.5.3?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1"
   )
-  private val javaUrl = "https://esm.sh/@codemirror/lang-java@6.0.2?deps=@codemirror/state@6.5.2,@codemirror/view@6.38.6,@codemirror/language@6.11.3"
+  private val javaUrl = "https://esm.sh/@codemirror/lang-java@6.0.2?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1"
   private val pending = Var(Option.empty[Future[Unit]])
   private val pendingJava = Var(Option.empty[Future[Api.JavaModule]])
 

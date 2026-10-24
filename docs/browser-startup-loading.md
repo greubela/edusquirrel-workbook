@@ -24,6 +24,7 @@ Page startup owns scheduling and configuration. Facades own imports, compatibili
 patches and native handle creation. Snap fetches dependencies in parallel and
 executes them in order; failed loads can retry. CodeMirror imports native ESM
 packages from Scala.js. Python initializes Pyodide inside the command worker.
+Pyodide stays on the maintained 0.29 line because 314.x requires module workers.
 Mounted editors own cleanup and discard late completion after unmount. Scala editor
 settings and flowchart results stay typed; JavaScript conversion belongs only at
 the external browser API boundary.
@@ -42,6 +43,6 @@ belongs to the HTML script's `src`, independently of runtime configuration.
 ## Verification
 
 See the [test guide](core-package-unit-tests.md) for module checks and rebuilt
-browser artifacts. Run `npm run test:workbooks -- startup-loading snap-preview codemirror`
+browser artifacts. Run `npm run test:workbooks -- startup-loading snap-preview codemirror worker-execution`
 for stalled/failed loads, reuse, fallback editing and unmount cleanup. Startup
 fixtures cover both site-root and GitHub Pages repository paths.

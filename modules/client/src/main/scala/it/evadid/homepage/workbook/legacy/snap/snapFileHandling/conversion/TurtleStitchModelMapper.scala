@@ -1,15 +1,7 @@
 package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
 
-import doodle.image.syntax.image
-import it.evadid.homepage.webElements.editor.evacuation.EvacuationFloorAdapter.sprites
 import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.TurtleStitchProgramModel.{BlockInputDefinition, BlockLike, BoolLiteral, ColorLiteral, Comment, Costume, CustomBlockCall, CustomBlockDefinition, Dispatch, InputValue, ListLiteral, Literal, NestedBlock, NestedScript, PrimitiveBlock, Project, Rgba, Scene, Script, Sound, Sprite, Stage, Variable}
-import it.evadid.util.parsing.JsonGrammar.space
-import it.evadid.vm.code.defining.KnownBeDefineStructures.variables
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCustomBlockMerge.CustomBlockPlans.empty.categories
-import jdk.internal.org.jline.utils.InfoCmp.Capability.buttons
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle.{inheritance, notes}
 
-import scala.transient
 
 object TurtleStitchModelMapper {
 
