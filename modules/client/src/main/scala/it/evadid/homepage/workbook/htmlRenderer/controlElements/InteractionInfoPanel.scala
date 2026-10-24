@@ -171,7 +171,9 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
       else if (report.latestStateIsSyncedTo.size == report.allSyncLocations.size) laminarHelper.contentIdStringSignal("basic/syncInfoTooltipFull", PLAINTEXT_UNDERSCORE_REPLACABLE, List[String](report.allSyncLocations.size.toString))
       else laminarHelper.contentIdStringSignal("basic/syncInfoTooltipPartial", PLAINTEXT_UNDERSCORE_REPLACABLE, List[String](report.latestStateIsSyncedTo.size.toString, report.allSyncLocations.size.toString))
 
-    InteractionInfoPanel.infoPanelIcon("sync-info", svgSyncIcon, svgSyncTooltip)
+    InteractionInfoPanel.infoPanelIcon("sync-info", svgSyncIcon, svgSyncTooltip).amend(
+      role := "img", tabIndex := 0, aria.label <-- svgSyncTooltip,
+      span(aria.hidden := true, child.text <-- label("syncInfoLabel")))
 
 
   }
@@ -209,7 +211,8 @@ object InteractionInfoPanel {
   private def createCloudSyncSvg(additionalCssStr: String, paths: List[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
     svgtag.svg(
       svgtag.cls := s"info-svg sync-info-svg $additionalCssStr",
-      svgtag.viewBox := "0 0 15 12"
+      aria.hidden := true,
+      svgtag.viewBox := "-0.5 -0.25 16 13"
     ).amend(paths*)
   }
 
@@ -245,7 +248,11 @@ object InteractionInfoPanel {
     ))
   }
 
-  def pathCloudSmall: ReactiveSvgElement[SVGPathElement] = createSvgPath("path-cloud-small", "M 7.8410257,0.01089608 A 5.2633304,5.2909292 0 0 0 2.2833358,4.6140038 3.0076174,3.0233881 0 0 0 1.9976271,10.396234 0.75190436,0.75584704 0 1 0 2.4788602,8.98283 1.5038088,1.5116942 0 0 1 1.4863465,7.5467055 1.5038088,1.5116942 0 0 1 2.9901408,6.0350268 0.75190436,0.75584704 0 0 0 3.7420595,5.2791646 3.7595217,3.7792351 0 0 1 11.05806,4.0697947 a 0.75190436,0.75584704 0 0 0 0.586486,0.4988583 2.255713,2.267541 0 0 1 0.180456,4.414177 0.75775582,0.76172919 0 0 0 0.187991,1.511679 h 0.187992 A 3.7595217,3.7792351 0 0 0 12.328793,3.2232755 V 3.1779246 A 5.2633304,5.2909292 0 0 0 7.8410257,0.01089608 Z")
+  def pathCloudSmall: ReactiveSvgElement[SVGPathElement] = svgtag.path(
+    svgtag.cls := "svg-path path-cloud-small", svgtag.fill := "none",
+    svgtag.stroke := "currentColor", svgtag.strokeWidth := "1.05",
+    svgtag.strokeLineCap := "round", svgtag.strokeLineJoin := "round",
+    svgtag.d := "M3.6 9.8H2.8a2.3 2.3 0 0 1-.4-4.6A4.6 4.6 0 0 1 11.4 4a2.8 2.8 0 0 1 .8 5.5h-1.1")
 
   def pathDecoMissing: ReactiveSvgElement[SVGPathElement] = createSvgPath("path-deco-missing", "M 7.1249997,7.575 A 2.25,2.25 0 0 0 4.875,9.825 2.25,2.25 0 0 0 7.1249997,12.075 2.25,2.25 0 0 0 9.375,9.825 2.25,2.25 0 0 0 7.1249997,7.575 Z m 0.01692,1.1052627 a 1.1785715,1.1785715 0 0 1 0.287594,0.039471 L 6.0535736,10.090035 A 1.1785715,1.1785715 0 0 1 6.0141014,9.80808 1.1278196,1.1278196 0 0 1 7.1419213,8.6802597 Z M 8.2302663,9.526128 a 1.1785715,1.1785715 0 0 1 0.039471,0.287594 1.1278196,1.1278196 0 0 1 -0.3327065,0.789474 1.1278196,1.1278196 0 0 1 -1.077068,0.281955 z")
 

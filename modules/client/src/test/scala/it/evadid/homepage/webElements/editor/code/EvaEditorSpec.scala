@@ -493,6 +493,11 @@ class EvaEditorSpec extends EditorDomSuite {
     request.click()
     later().flatMap { _ =>
       assertEquals(requested.now(), 1)
+      val sync = element.ref.querySelector(".sync-info")
+      assertEquals(sync.getAttribute("role"), "img")
+      assertEquals(sync.getAttribute("tabindex"), "0")
+      assert(sync.getAttribute("aria-label").nonEmpty)
+      assertEquals(sync.querySelector("svg").getAttribute("aria-hidden"), "true")
       val escape = js.Dynamic.newInstance(dom.window.asInstanceOf[js.Dynamic].KeyboardEvent)("keydown",
         js.Dynamic.literal(key = "Escape", bubbles = true, cancelable = true)).asInstanceOf[dom.KeyboardEvent]
       request.dispatchEvent(escape)

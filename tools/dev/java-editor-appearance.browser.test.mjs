@@ -11,6 +11,26 @@ const prefix = '/edusquirrel-workbook/';
 const mime = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png'};
 
+async function checkInfoAlignment(container, horizontal = false) {
+  const layout = await container.evaluate(root => {
+    const rect = selector => {
+      const {x, y, width, height} = root.querySelector(selector).getBoundingClientRect();
+      return {x, y, width, height};
+    };
+    return {rail: rect('.interaction-info__icons'), sync: rect('.sync-info'),
+      hint: rect('.interaction-info__hint-toggle'), cloud: rect('.sync-info-svg'), bulb: rect('.interaction-info__hint-icon')};
+  });
+  assert.equal(layout.sync.height, layout.hint.height, 'sync and hint have matching heights');
+  for (const tile of [layout.sync, layout.hint]) {
+    assert(tile.width >= 44 && tile.height >= 44, 'status and hint have comfortable targets');
+    assert(tile.x >= layout.rail.x && tile.x + tile.width <= layout.rail.x + layout.rail.width, 'tiles fit the status rail');
+  }
+  assert.equal(layout.cloud.width, layout.bulb.width);
+  assert.equal(layout.cloud.height, layout.bulb.height);
+  if (horizontal) assert.equal(layout.sync.y, layout.hint.y);
+  else assert.equal(layout.sync.x, layout.hint.x);
+}
+
 test('Java pilot hints use the current answer and discard stale responses', async () => {
   const browser = await chromium.launch({chromiumSandbox: true,
     executablePath: process.env.CHROMIUM_PATH || chromium.executablePath()});
@@ -72,6 +92,14 @@ test('Java pilot hints use the current answer and discard stale responses', asyn
     const toggle = page.locator('.interaction-info__hint-toggle').first();
     await toggle.click();
     const inline = page.locator('.interaction-info__hint-body').first();
+    const info = page.locator('.interaction-element-info').filter({has: toggle});
+    await checkInfoAlignment(info);
+    await toggle.focus();
+    await page.keyboard.press('Shift+Tab');
+    assert(await info.locator('.sync-info').evaluate(element => element === document.activeElement));
+    assert.equal(await info.locator('.sync-info').evaluate(element => getComputedStyle(element, '::after').opacity), '1');
+    await page.keyboard.press('Tab');
+    assert(await toggle.evaluate(element => element.matches(':focus-visible')));
     assert.equal(requests.length, 0, 'opening hints does not send a request');
     await ask(inline);
     await inline.getByText('1. Wo beginnt dein Programm?', {exact: true}).waitFor();
@@ -96,6 +124,7 @@ test('Java pilot hints use the current answer and discard stale responses', asyn
     await edit(wrong);
     await dialog.locator('.interaction-info__hint-toggle').click();
     const hints = dialog.locator('.interaction-info__hint-body');
+    await checkInfoAlignment(dialog.locator('.interaction-element-info'), true);
     await ask(hints);
     await hints.getByText('1. Wo beginnt dein Programm?', {exact: true}).waitFor();
     assert.equal(requests.at(-1).source.code, wrong);
@@ -146,6 +175,7 @@ test('Java pilot hints use the current answer and discard stale responses', asyn
     await page.locator('dialog[open] .interaction-info__hint-toggle').click();
     for (const viewport of [{width: 390, height: 844}, {width: 844, height: 390}]) {
       await page.setViewportSize(viewport);
+      await checkInfoAlignment(page.locator('dialog[open] .interaction-element-info'), true);
       const bounds = await page.locator('dialog[open] .interaction-info__hint-body').boundingBox();
       assert(bounds && bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= viewport.width &&
         bounds.y + bounds.height <= viewport.height, `hint panel fits ${viewport.width}x${viewport.height}`);
