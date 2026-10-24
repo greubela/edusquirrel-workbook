@@ -20,6 +20,7 @@ case class ProgrammingExerciseFullJava(
   override val associatedFactory = ProgrammingExerciseFullJava.factory
 
   override val defaultValue: ProgrammingState = ProgrammingStateJavaString(startingProgram)
+  override val gradingElements = testSuite.toList.map(ProgrammingUnitTestGrader(_))
   override val scaffoldingElement = hintTask.map(task => new ProgrammingHintScaffolder[Any](this, task))
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()

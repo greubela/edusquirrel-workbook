@@ -62,6 +62,36 @@ class CommandPayloadCodecsSpec extends FunSuite {
     }
   }
 
+  test("Python command logs omit source, tests, context and callback data without changing requests") {
+    val factory = WorkerCommands.runPython
+    val request = WorkerCommands.RunPythonRequest("private source", Map("private tests" -> ujson.Str("private assertions")),
+      Map("private module" -> List("private callback")), List("private package"))
+    val logger = BasicLogger()
+    val response = WorkerCommands.RunPythonResult(ujson.Null, "", "", Nil)
+    val client = factory.toLocalExecutionClient((input, _) => {
+      assertEquals(input, request)
+      Future.successful(response)
+    })
+    val original = ExecutionCommand(factory.name, writeJs(request))
+    val safe = original.stripPrivacySensitiveInformation()
+    assertEquals(safe.json.obj.keySet, Set("redacted", "codeLength"))
+    assertEquals(safe.json("codeLength"), ujson.Num(request.code.length))
+    assertEquals(safe.stripPrivacySensitiveInformation(), safe)
+    assertEquals(original.json, writeJs(request))
+    List(ujson.Null, ujson.Str("private body"), ujson.Obj("redacted" -> true, "codeLength" -> -1)).foreach { value =>
+      val malformed = ExecutionCommand(factory.name, value).stripPrivacySensitiveInformation()
+      assertEquals(malformed.json("codeLength"), ujson.Null)
+      assert(!malformed.toJson.contains("private"))
+    }
+    factory.sendCommandTo(client, request, Some(logger)).map { reply =>
+      assertEquals(reply.result, response)
+      assertEquals(reply.command.json, writeJs(request))
+      assert(logger.getOut().contains("codeLength"))
+      assert(!logger.getOut().contains("private"))
+      assert(!logger.getErr().contains("private"))
+    }
+  }
+
   test("feedback parse and permission errors do not echo their input") {
     val factory = LLMCommands.feedbackLlmCommandFactory
     val client = factory.toLocalExecutionClient((_, _) => Future.successful("unused"))

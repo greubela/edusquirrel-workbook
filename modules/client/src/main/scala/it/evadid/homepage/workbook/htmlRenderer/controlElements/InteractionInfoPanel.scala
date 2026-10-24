@@ -10,9 +10,14 @@ import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
 import it.evadid.workbook.abstractions.{WorkbookInteractionElementFull, WorkbookInteractionUntyped}
+import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
 import org.scalajs.dom.{HTMLDivElement, SVGPathElement, SVGSVGElement}
 import java.util.UUID
+import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.util.Try
 
 case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionUntyped) extends HtmlAppElement {
 
@@ -54,6 +59,71 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
       ).getDomElement()
     }
 
+  private def gradingControls[T, GA, SA](interaction: WorkbookInteractionElementFull[T, GA, SA]): Option[Element] =
+    Option.when(interaction.gradingElements.nonEmpty) {
+      val variable = interaction.interactionVariable
+      val history = variable.observableState.toEventStream().toSignal(variable.history)
+      val view = Var(GradingView())
+      val visible = interaction.gradingElements.filter(_.importance != GradingImportance.HIDDEN_TEST).distinct
+      def invalidate(mount: Option[AnyRef]): Unit =
+        view.update(previous => GradingView(mount, previous.revision + 1))
+      def status(snapshot: InteractionVariableHistory[T, GA, SA]): String = {
+        val results = snapshot.lastStateOption.toList.flatMap { current =>
+          snapshot.gradings.get(current.value).filter(_.state == current.value).toList
+            .flatMap(_.testsWithResults).filter(_.gradedState == current.value)
+        }
+        val statuses = visible.map { grader =>
+          val matches = results.filter(_.grader == grader)
+          val latest = matches.maxByOption(_.gradingTime).toList.flatMap { last =>
+            matches.filter(_.gradingTime == last.gradingTime).map(_.gradingStatus)
+          }.distinct
+          latest
+        }
+        if visible.isEmpty then "gradingPrivate"
+        else if statuses.exists(value => value.size > 1 || value.exists(_.isInstanceOf[GradingStatus.TestError])) then "gradingError"
+        else if statuses.exists(value => value.isEmpty || value.contains(GradingStatus.NotExecuted())) then "gradingNotRun"
+        else if statuses.flatten.contains(GradingStatus.Incorrect()) then "gradingIncorrect"
+        else if statuses.flatten.contains(GradingStatus.PartiallyCorrect()) then "gradingPartial"
+        else "gradingCorrect"
+      }
+      def request(): Unit = {
+        val clicked = view.now()
+        val source = variable.currentValue
+        queue.execute { () =>
+          def unchanged: Boolean = clicked.mount.nonEmpty && view.now().mount == clicked.mount &&
+            view.now().revision == clicked.revision && variable.currentValue == source
+          if unchanged && view.now().pending.isEmpty then {
+            val id = new Object
+            view.set(clicked.copy(pending = Some(id)))
+            def pending: Boolean = unchanged && view.now().pending.contains(id)
+            if pending then Try(variable.startGrading(fullInfo.syncControl,
+              List(fullInfo.defaults.workerBackendExecutor, fullInfo.defaults.backendExecutor), forceGrading = true))
+              .fold(Future.failed, identity).onComplete { result =>
+                if pending then view.update(_.copy(pending = None, failed = result.isFailure))
+              }
+          }
+        }
+      }
+      val message = history.combineWith(view.signal).map { (snapshot, current) =>
+        if current.pending.nonEmpty then "gradingLoading"
+        else if current.failed then "gradingError"
+        else status(snapshot)
+      }.distinct
+      div(cls := "interaction-grading",
+        onMountCallback(_ => invalidate(Some(new Object))),
+        onUnmountCallback(_ => invalidate(None)),
+        onMountBind(_ => history.map(_.lastStateOption.map(_.value)).distinct.changes --> (_ => invalidate(view.now().mount))),
+        onMountBind(_ => EventStream.merge(fullInfo.signals.user.distinct.changes.map(_ => ()),
+          fullInfo.signals.workbook.map(_.map(_.loadedWorkbook)).distinct.changes.map(_ => ())) -->
+          (_ => invalidate(view.now().mount))),
+        button(typ := "button", cls := "interaction-grading__request",
+          disabled <-- view.signal.map(_.pending.nonEmpty), child.text <-- label("gradingRequest"),
+          onClick --> (_ => request())),
+        p(cls := "interaction-grading__status", role := "status", aria.live := "polite",
+          aria.busy <-- view.signal.map(_.pending.nonEmpty), dataAttr("status") <-- message,
+          child.text <-- message.flatMapSwitch(label)))
+    }
+
   private def hintBody(): Element = sectionTag(
     idAttr := hintId, cls := "interaction-info__hint-body", aria.label <-- label("scaffoldingTitle"),
     onMountCallback(ctx => Option(ctx.thisNode.ref.querySelector(".interaction-scaffolding__request"))
@@ -76,7 +146,7 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
     div(
       cls := interactionInfoCssString,
       div(cls := "interaction-info__icons",
-        div(cls := "current-grading-icon"),
+        div(cls := "current-grading-icon", gradingControls(workbookInteractionElement)),
         div(cls := "sync-report-icon", child <-- syncReport.map(deriveSyncSymbol)),
         Option.when(workbookInteractionElement.scaffoldingElement.nonEmpty)(hintButton)),
       child.maybe <-- expanded.signal.map(open => Option.when(open)(hintBody()))
@@ -109,8 +179,11 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
 
 object InteractionInfoPanel {
 
+  private case class GradingView(mount: Option[AnyRef] = None, revision: Long = 0,
+      pending: Option[AnyRef] = None, failed: Boolean = false)
+
   def withEditor(interaction: WorkbookInteractionUntyped, editor: HtmlAppElement): HtmlAppElement =
-    if interaction.scaffoldingElement.isEmpty then editor
+    if interaction.scaffoldingElement.isEmpty && interaction.gradingElements.isEmpty then editor
     else new HtmlAppElement {
       override def dismissOnOutsideClick: Boolean = editor.dismissOnOutsideClick
       override def getDomElement(): Element = div(cls := "interaction-editor",

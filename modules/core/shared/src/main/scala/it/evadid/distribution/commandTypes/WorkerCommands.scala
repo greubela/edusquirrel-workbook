@@ -26,6 +26,13 @@ object WorkerCommands {
   lazy val parseSnapXml = ExecutionCommandFactory[ParseSnapXmlRequest, List[SnapXmlParser.Element]]("worker.parseSnapXml")
   lazy val pythonFlowchart = ExecutionCommandFactory[PythonFlowchartRequest, PythonFlowchartGutter.Chart]("worker.pythonFlowchart")
   lazy val calculateQrCode = ExecutionCommandFactory[CalculateQrCodeRequest, CalculateQrCodeResult]("worker.calculateQrCode")
-  lazy val runPython = ExecutionCommandFactory[RunPythonRequest, RunPythonResult]("worker.runPython")
+  lazy val runPython = ExecutionCommandFactory[RunPythonRequest, RunPythonResult]("worker.runPython",
+    privacyFilter = Some { payload =>
+      val fields = payload.objOpt
+      val length = fields.flatMap(_.get("code")).flatMap(_.strOpt).filter(_ != null).map(_.length)
+        .orElse(fields.filter(_.get("redacted").contains(ujson.Bool(true)))
+          .flatMap(_.get("codeLength")).flatMap(_.numOpt).filter(n => n >= 0 && n <= Int.MaxValue && n % 1 == 0).map(_.toInt))
+      ujson.Obj("redacted" -> true, "codeLength" -> length.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
+    })
   lazy val supportedCommands: Set[String] = Set(health.name, parseSnapXml.name, pythonFlowchart.name, calculateQrCode.name, runPython.name)
 }
