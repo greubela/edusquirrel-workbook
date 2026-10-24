@@ -8,6 +8,13 @@ const root = path.resolve(import.meta.dirname, '../..');
 await access(path.join(root, 'artifacts/newest/client.js')).catch(() => {
   throw new Error('Build the current client first: sbt -batch buildClientDev');
 });
+// Catch runner sandbox restrictions before starting the long workbook suite.
+const probe = await chromium.launch({
+  executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(), chromiumSandbox: true
+});
+try { await probe.newPage(); }
+finally { await probe.close(); }
+console.log('Chromium sandbox startup verified.');
 const scratch = path.join(root, 'tmp/work/browser-tests');
 await mkdir(scratch, {recursive: true});
 const bundle = path.join(scratch, 'codemirror-native.mjs');

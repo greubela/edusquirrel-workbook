@@ -42,6 +42,9 @@ belongs to the HTML script's `src`, independently of runtime configuration.
 
 ## Verification
 
+CI permits Chromium's sandbox through an executable-scoped AppArmor profile on
+Ubuntu. The browser runner checks sandbox startup before running workbook tests.
+
 See the [test guide](core-package-unit-tests.md) for module checks and rebuilt
 browser artifacts. Run `npm run test:workbooks -- startup-loading snap-preview codemirror worker-execution`
 for stalled/failed loads, reuse, fallback editing and unmount cleanup. Startup
