@@ -37,5 +37,20 @@ jobs:
       - name: Verify standalone server assembly
         run: node tools/dev/check-server-assembly.mjs
       - run: npx playwright install --with-deps chromium
+      - name: Allow Chromium's sandbox on Ubuntu
+        shell: bash
+        run: |
+          chromium_path="$(node --input-type=module -e 'import {chromium} from "playwright"; process.stdout.write(chromium.executablePath())')"
+          if [[ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]]; then
+            # Permit user namespaces only for this browser; keep host restrictions enabled.
+            sudo tee /etc/apparmor.d/edusquirrel-playwright > /dev/null <<EOF
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile edusquirrel-playwright "$chromium_path" flags=(unconfined) {
+            userns,
+          }
+          EOF
+            sudo apparmor_parser -r /etc/apparmor.d/edusquirrel-playwright
+          fi
       - run: npm run test:static
       - run: npm run test:workbooks
