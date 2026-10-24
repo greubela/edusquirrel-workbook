@@ -21,7 +21,7 @@ object HistoryJson {
       case _ => Nil
     }
     val edits = List("events", "states").flatMap(value.obj.get).flatMap(_.arr).map(_("timestamp").str)
-    val grades = entries("gradings").flatMap(_("testsWithResults").arr).map(_("gradingTime").str)
+    val grades = entries("gradings").flatMap(_("testsWithResults").arr).flatMap(_.obj.get("gradingTime")).map(_.str)
     val hints = entries("scaffoldings").flatMap(_.obj.get("scaffoldingTime")).map(_.str)
     (edits ++ grades ++ hints).map(LocalDateTime.parse).maxOption
   }

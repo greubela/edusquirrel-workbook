@@ -105,6 +105,20 @@ class HistoryJsonSpec extends FunSuite {
     assertEquals(InteractionVariableHistory.empty[String, Int, Int].latestChangeTimestamp, None)
   }
 
+  test("legacy grades with an omitted default timestamp still load using the answer timestamp") {
+    val task = LanguageMapContentId("test/task")
+    val grader = TextInputLlmGrader(task, LanguageMapContentId("test/criterion"))
+    val result = GradingResult[String, MessengerModel](grader, "answer", GradingStatus.Correct(), gradingTime = time)
+    val history = InteractionVariableHistory[String, MessengerModel, MessengerModel](
+      Set(InteractionVariableState("answer", UpdateImportance.MAJOR, time)),
+      Map("answer" -> GradedState("answer", Set(result))), Map.empty)
+    val json = writeJs(history)
+    json("gradings")("answer")("testsWithResults").arr.foreach(_.obj.remove("gradingTime"))
+    assertEquals(HistoryJson.lastTimestamp(ujson.write(json)), Some(time))
+    assertEquals(FetchResponse.fromMap(time.plusSeconds(1), Map("answer" -> ujson.write(json)), HistoryJson.lastTimestamp)
+      .fetchedValues.size, 1)
+  }
+
   test("merging histories preserves feedback with string map keys and chooses the first duplicate") {
     val first = history("Grüße", 1)
     val second = history("second", 2)

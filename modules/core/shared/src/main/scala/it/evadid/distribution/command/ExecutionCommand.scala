@@ -1,7 +1,7 @@
 package it.evadid.distribution.command
 
 import it.evadid.core.util.io.serializer.DefaultSerializer
-import it.evadid.distribution.commandTypes.LLMCommands
+import it.evadid.distribution.commandTypes.{LLMCommands, WorkerCommands}
 
 import scala.util.Try
 import upickle.default.*
@@ -17,7 +17,7 @@ case class ExecutionCommand(name: String, json: ujson.Value) derives ReadWriter{
 object ExecutionCommand {
 
   private lazy val privacySensitiveFactories: List[ExecutionCommandFactory[?, ?]] =
-    List(LLMCommands.feedbackLlmCommandFactory)
+    List(LLMCommands.feedbackLlmCommandFactory, WorkerCommands.runPython)
 
   def fromJson(json: String): ExecutionCommand = read(json)
 

@@ -53,9 +53,12 @@ answer assessed, with localized feedback and optional typed additional data.
 Keep grading policy explicit: ordinary bound-value edits do not automatically
 run graders, and expensive LLM grading runs only on request.
 
-The standard interaction info panel provides manual hints and invalidates their
-display when the answer or language changes. Grading display is interaction-specific.
-Synchronization includes feedback updates even when the answer itself is unchanged.
+The standard interaction info panel provides shared grading controls and manual
+hints. Interactions can add detailed feedback views; hints are invalidated when
+the answer or language changes.
+Shared requests are scoped to the answer and feedback language; obsolete localized
+responses are discarded. Synchronization includes feedback updates even when the
+answer itself is unchanged.
 
 `TextInputWithScaffoldingAndGrading` owns its description, string answer, hint IDs
 and grading-criterion IDs. Each LLM grader evaluates one criterion in the selected

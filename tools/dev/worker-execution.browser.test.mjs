@@ -6,7 +6,7 @@ import test from 'node:test';
 import {chromium} from 'playwright';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const pyodideRoot = 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/';
+const pyodideRoot = 'https://cdn.jsdelivr.net/pyodide/v0.29.5/full/';
 function result(reply) {
   function find(value) {
     if (!value || typeof value !== 'object') return;
@@ -96,10 +96,12 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     });
     assert.equal(result(heavy.reply).modules.length,177);
     assert(heavy.ticks > 0,'the GUI event loop continues while the worker calculates all masks');
-    const python = result(await page.evaluate(() => request('python','worker.runPython',{
+    const pythonReply = await page.evaluate(() => request('python','worker.runPython',{
       code:"print('Grüße')\nimport sys\nprint('warning',file=sys.stderr)\n{'sum':sum(numbers),'label':settings['label']}",
       context:{numbers:[2,3],settings:{label:'学校'}}
-    })));
+    }));
+    const python = result(pythonReply);
+    assert(python, JSON.stringify(pythonReply));
     assert.deepEqual(python.value,{sum:5,label:'学校'});
     assert.equal(python.stdout,'Grüße\n');
     assert.equal(python.stderr,'warning\n');

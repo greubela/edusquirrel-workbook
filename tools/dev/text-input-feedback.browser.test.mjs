@@ -61,7 +61,7 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
     const exercise = page.locator('.interaction-element').filter({has:page.locator('.text-input-feedback')});
     const content = exercise.locator('.text-input-feedback');
     const input = content.locator('textarea');
-    const grade = content.locator('.text-input-feedback__grade');
+    const grade = exercise.locator('.interaction-grading__request');
     const results = content.locator('.text-input-feedback__result');
     await input.waitFor();
     await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
@@ -103,7 +103,7 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
     await page.waitForFunction(() => document.querySelectorAll('.text-input-feedback__result strong').length === 2 &&
       [...document.querySelectorAll('.text-input-feedback__result strong')].every(element => element.textContent === 'Correct'));
     assert(requests.slice(-2).every(request => request.feedbackLanguage === 'English' && request.answer === answer));
-    await page.waitForFunction(() => !document.querySelector('.text-input-feedback__grade')?.disabled);
+    await page.waitForFunction(() => !document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
     const persisted = await page.evaluate(() => new Promise(resolve => {
       const open = indexedDB.open('EvaDidInteractionDB');
       open.onerror = () => resolve(false);
@@ -128,20 +128,20 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
 
     policy.mode = 'hold';
     await grade.click();
-    await page.waitForFunction(() => document.querySelector('.text-input-feedback__grade')?.disabled);
+    await page.waitForFunction(() => document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
     for (let attempt = 0; attempt < 200 && held.length < 2; attempt++) await page.waitForTimeout(25);
     assert.equal(held.length,2,'both independent graders reach the backend');
     await input.fill('A newly edited answer.');
     await Promise.all(held.splice(0).map(pending => reply(pending,'Feedback for the old answer.\nCORRECT')));
     await grade.waitFor({state:'visible'});
-    await page.waitForFunction(() => !document.querySelector('.text-input-feedback__grade')?.disabled);
+    await page.waitForFunction(() => !document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
     assert.equal(await results.count(),0,'late grades remain associated with their original answer');
     assert.equal(await input.inputValue(),'A newly edited answer.');
     policy.mode = 'invalid';
     const beforeInvalid = requests.length;
     await grade.click();
-    await content.getByText('The answer could not be checked. Please try again.',{exact:true}).first().waitFor();
-    await page.waitForFunction(() => !document.querySelector('.text-input-feedback__grade')?.disabled);
+    await content.getByText('Check unavailable',{exact:true}).first().waitFor();
+    await page.waitForFunction(() => !document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
     assert.equal(requests.length - beforeInvalid,4,'two invalid criteria each get only one correction attempt');
     assert.equal(await input.inputValue(),'A newly edited answer.');
     assert.deepEqual(errors,[]);

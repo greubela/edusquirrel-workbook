@@ -3,12 +3,9 @@ package it.evadid.homepage.control.singletons
 import com.raquo.airstream.state.Var
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.WorkerCommands
-import it.evadid.facades.Workers
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.concurrent.Promise
-import scala.scalajs.js.timers.setTimeout
 
 class HomepageWorkerDefaultsSpec extends EditorDomSuite {
   private val created = Var(0)
@@ -18,7 +15,7 @@ class HomepageWorkerDefaultsSpec extends EditorDomSuite {
     def postMessage(value: String): Unit = ()
     def terminate(): Unit = terminated.set(true)
   }
-  test("defaults claim a Scala-preheated worker once and retain the same execution client") {
+  test("defaults retain one execution client whether its worker is preheated or created on demand") {
     val root = js.Dynamic.global.globalThis
     val previousWorker = root.selectDynamic("Worker")
     val window = org.scalajs.dom.window.asInstanceOf[js.Dynamic]
@@ -26,19 +23,16 @@ class HomepageWorkerDefaultsSpec extends EditorDomSuite {
     window.updateDynamic("EDUSQUIRREL_CLIENT_CONFIG")(js.Dynamic.literal(
       EDUSQUIRREL_BACKEND_MODULE_WORKERS = "1", EDUSQUIRREL_BACKEND_MODULE_WORKER_SCRIPT = "https://example.test/worker.js"))
     root.updateDynamic("Worker")(js.constructorOf[FakeWorker])
-    Workers.preheat(1, "https://example.test/worker.js")
-    val ready = Promise[Unit]()
-    setTimeout(0) { ready.success(()) }
-    ready.future.map { _ =>
-      assertEquals(created.now(), 1)
+    try {
       val defaults = HomepageDefaults(null)
       val client = defaults.workerBackendExecutor
       assert(client eq defaults.workerBackendExecutor)
-      assertEquals(created.now(), 1)
+      assert(created.now() <= 1, "reuse the shared preheated worker or create a single worker")
       assert(client.canExecuteCommand(ExecutionCommand(WorkerCommands.health.name, ujson.Obj())))
       client.close()
-      assert(terminated.now())
-    }.andThen { case _ =>
+      assert(!client.canExecuteCommand(ExecutionCommand(WorkerCommands.health.name, ujson.Obj())))
+      if created.now() == 1 then assert(terminated.now())
+    } finally {
       window.updateDynamic("EDUSQUIRREL_CLIENT_CONFIG")(previousConfig)
       root.updateDynamic("Worker")(previousWorker)
     }

@@ -17,7 +17,7 @@ case class GradingResult[T, A]
   gradingStatus: GradingStatus,
   feedbackInformation: Option[LanguageMap[HumanLanguage]] = None,
   additionalData: Option[A] = None,
-  gradingTime: LocalDateTime = LocalDateTime.now(),
+  @upickle.implicits.serializeDefaults(true) gradingTime: LocalDateTime = LocalDateTime.now(),
 ) derives ReadWriter
 
 object GradingResult {

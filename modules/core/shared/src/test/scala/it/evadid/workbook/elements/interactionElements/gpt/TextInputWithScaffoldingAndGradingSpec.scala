@@ -266,4 +266,45 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     TextInputLlmScaffolder(task, List(hint)).generateFeedback("", List(f.client), f.resolver)
       .failed.map(error => assertEquals(error.getMessage, "LLM returned an empty hint."))
   }
+
+  test("shared grading requests distinguish languages and discard obsolete localized results") {
+    val f = new Fixture
+    val element = TextInputWithScaffoldingAndGrading("shared-language", task, gradingCriteria = List(criterion), defaultValue = "answer")
+    val german = Promise[String]()
+    val english = Promise[String]()
+    val first = Promise[Unit]()
+    val both = Promise[Unit]()
+    val requests = State(Vector.empty[String])
+    val client = new LocalExecutionClient[LLMCommands.FeedbackLlmRequest, String] {
+      override def canExecuteCommand(command: ExecutionCommand) = command.name == LLMCommands.feedbackLlmCommandFactory.name
+      override def rawExecution(logger: Logger, request: LLMCommands.FeedbackLlmRequest): Future[String] = {
+        val locale = ujson.read(request.prompt)("feedbackLanguage").str
+        requests.update(_ :+ locale)
+        first.trySuccess(())
+        if requests.now().size == 2 then both.trySuccess(())
+        if locale == German.name then german.future else english.future
+      }
+    }
+    def grade() = element.interactionVariable.startGrading(null, List(client), forceGrading = true, resolver = Some(f.resolver))
+    val a = grade()
+    val b = grade()
+    first.future.flatMap { _ =>
+      f.language.set(English)
+      val c = grade()
+      both.future.flatMap { _ =>
+        assertEquals(requests.now().sorted, Vector(German.name, English.name).sorted)
+        english.success("Current English feedback.\nCORRECT")
+        c.flatMap { _ =>
+          german.success("Veraltetes deutsches Feedback.\nINCORRECT")
+          Future.sequence(List(a, b)).map { _ =>
+            val results = element.interactionVariable.history.gradings("answer").testsWithResults
+            assertEquals(results.size, 1)
+            assertEquals(results.head.gradingStatus, GradingStatus.Correct())
+            assertEquals(results.head.feedbackInformation.get.tryGetInLanguage(English), Some("Current English feedback."))
+            assertEquals(requests.now().size, 2, "same-language requests share one execution")
+          }
+        }
+      }
+    }
+  }
 }
