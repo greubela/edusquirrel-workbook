@@ -6,7 +6,7 @@ import test from 'node:test';
 import {chromium} from 'playwright';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const pyodideRoot = 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/';
+const pyodideRoot = 'https://cdn.jsdelivr.net/pyodide/v314.0.7/full/';
 function result(reply) {
   function find(value) {
     if (!value || typeof value !== 'object') return;

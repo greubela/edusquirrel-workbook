@@ -20,7 +20,7 @@ import scala.util.Try
 
 /** Code readiness in a browser or classic worker; consumers own their interpreters. */
 object Pyodide extends EvaExternalDependency[PyodideRuntime] {
-  private val indexUrl = "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/"
+  private val indexUrl = "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/"
   @js.native @JSGlobalScope private object Scope extends js.Object {
     def importScripts(url: String): Unit = js.native
     def loadPyodide(options: js.Object): js.Promise[PyodideRuntime] = js.native

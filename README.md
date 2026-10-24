@@ -10,6 +10,7 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 | `modules/core/js/`, `modules/core/jvm/` | Platform-specific core implementations |
 | `modules/client/` | Browser startup, Laminar renderers, editors and authored workbooks |
 | `modules/worker/` | Scala.js browser worker and shared command execution |
+| `modules/desktop/` | Optional JavaFX canvas adapters for desktop and evacuation use |
 | `modules/server/` | JVM backend and command handlers |
 | `homepage/` | Entry pages, CSS and catalogue presentation |
 | `resources/` | Language maps, teaching materials and bundled programs/libraries |
@@ -55,7 +56,7 @@ The [authentication guide](docs/authentication.md) describes registration, email
 
 Reuse these locations and existing subject/package directories. Do not create a new directory at the repository root unless no existing directory can serve the purpose and there is a strong architectural or tooling necessity. Explain that necessity and update this directory guide when such an exception is required. Agent instructions are in [AGENTS.md](AGENTS.md).
 
-The root sbt project aggregates client, server and worker. Client and worker depend on core JS; server depends on core JVM. Run the core test projects explicitly to verify both platforms.
+The root sbt project aggregates client, server, worker and the optional desktop adapters. Client and worker depend on core JS; server depends on core JVM. Run the core test projects explicitly to verify both platforms.
 
 ## Finding the code
 
@@ -99,7 +100,7 @@ Static presentation belongs in dedicated files under `homepage/css/`, using `gen
 
 ## Build and local preview
 
-Use Java, sbt and Node.js/npm. CI uses Java 17 and Node 22; the Scala suites have also run on Java 21. Install the locked Node development dependencies before running browser/DOM tests:
+Use Java, sbt and Node.js/npm. CI and the server use Java 21; browser tests use Node 24. Install the locked Node development dependencies before running browser/DOM tests:
 
 ```sh
 npm ci
@@ -108,7 +109,7 @@ npm run assemble
 npm run preview
 ```
 
-This builds `artifacts/newest/client.js` and `worker.js`, assembles a local `_site/`, and serves it at `http://localhost:4173`. The npm `assemble` script uses [assemble-site.mjs](tools/dev/assemble-site.mjs), whose local preview layout differs from the deployment layout described below. The existing npm `build` wrapper invokes `fastOptJS`; use `sbt buildJS` when you need current published client and worker artifacts.
+This builds `artifacts/newest/client.js` and `worker.js`, assembles a local `_site/`, and serves it at `http://localhost:4173`. The npm `assemble` script uses [assemble-site.mjs](tools/dev/assemble-site.mjs), whose local preview layout differs from the deployment layout described below. The npm `build` command runs `sbt buildJS`, updating both published browser artifacts.
 
 Useful artifact tasks:
 
@@ -121,7 +122,7 @@ Useful artifact tasks:
 | `sbt buildClientDeploy buildWorkerDeploy` | Optimized JS artifacts in newest/stable/history |
 | `sbt buildAllDeploy` | All deployment artifacts |
 
-Task definitions are in [BuildCommands.scala](project/BuildCommands.scala).
+Task definitions are in [BuildCommands.scala](project/BuildCommands.scala). JavaFX adapters live in `modules/desktop/` and compile with `sbt desktop/compile`; their packages are unchanged. The server depends on core JVM only, so its fat JAR excludes desktop adapters and JavaFX libraries. After `sbt buildServerDev`, run `node tools/dev/check-server-assembly.mjs` to verify standalone startup, health and logging.
 
 ## Tests
 
@@ -147,7 +148,7 @@ The browser runner uses Playwright's installed Chromium, or `CHROMIUM_PATH` when
 editor tests do not depend on a live CDN. Both runners
 disable Node test-worker isolation for compatibility with restricted environments.
 The [test workflow](.github/workflows/tests.yml) runs these checks and every Scala
-module on pull requests and pushes to main. Individual test files can still be run
+module on pull requests and, through the Pages workflow, before publication from main. Individual test files can still be run
 with `node --test`.
 
 ## Deployment

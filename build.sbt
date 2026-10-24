@@ -6,7 +6,7 @@ import BuildCommands.*
 
 lazy val root = (project in file("."))
   .settings(Settings.globalSettings)
-  .aggregate(server, client, worker)
+  .aggregate(server, client, worker, desktop)
   .settings(
     name := "edusquirrel-workbook",
     publish / skip := true
@@ -24,8 +24,15 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .jsSettings(
     libraryDependencies ++= jsDependencies.value
   )
-  .jvmSettings(
-    libraryDependencies ++= jvmDependencies.value
+
+// Desktop adapters depend on core, while the server depends only on core.
+lazy val desktop = (project in file("./modules/desktop"))
+  .settings(Settings.globalSettings)
+  .dependsOn(core.jvm)
+  .settings(
+    name := "desktop",
+    publish / skip := true,
+    libraryDependencies ++= desktopDependencies
   )
 
 lazy val server = (project in file("./modules/server"))
@@ -36,24 +43,22 @@ lazy val server = (project in file("./modules/server"))
     Compile / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / assemblyJarName := "server.jar",
+    assembly / packageOptions += Package.ManifestAttributes("Multi-Release" -> "true"),
     assembly / assemblyMergeStrategy := {
       case PathList("module-info.class") => MergeStrategy.discard
-        // JavaFX / Gluon native-image metadata; conflicts across javafx-* jars
-      case PathList("META-INF", "substrate", "config", _*) => MergeStrategy.discard
       case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
       case PathList("google", "protobuf", file) if file.endsWith(".proto") => MergeStrategy.first
 
-      case PathList("META-INF", "substrate", "config", _*) => MergeStrategy.first
-
-      case PathList("META-INF", "versions", _*) => MergeStrategy.discard
+      case PathList("META-INF", "versions", _, "module-info.class") => MergeStrategy.discard
       case x => (assembly / assemblyMergeStrategy).value(x)
 
     },
     // Dependencies exported by core.jvm are already on this project's classpath.
-    libraryDependencies ++= Seq(
-      "com.mysql" % "mysql-connector-j" % "9.7.0",
-      "org.eclipse.angus" % "jakarta.mail" % "2.0.3",
-      "org.scalameta" %% "munit" % "1.3.3" % Test
+    libraryDependencies ++= serverDependencies.value ++ Seq(
+      "com.mysql" % "mysql-connector-j" % "26.10.0",
+      "org.eclipse.angus" % "jakarta.mail" % "2.0.5",
+      "org.slf4j" % "slf4j-simple" % "2.0.20" % Runtime,
+      "org.scalameta" %% "munit" % "1.3.6" % Test
     )
   )
 
@@ -65,7 +70,7 @@ lazy val client = (project in file("./modules/client"))
     name := "client",
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("mainApp"),
-    libraryDependencies += "org.scalameta" %%% "munit" % "1.3.3" % Test,
+    libraryDependencies += "org.scalameta" %%% "munit" % "1.3.6" % Test,
     Test / jsEnv := new NodeJSEnv()
   )
 
@@ -77,6 +82,6 @@ lazy val worker = (project in file("./modules/worker"))
     name := "worker",
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("it.evadid.worker.WebWorkerBackendServer"),
-    libraryDependencies += "org.scalameta" %%% "munit" % "1.3.3" % Test,
+    libraryDependencies += "org.scalameta" %%% "munit" % "1.3.6" % Test,
     Test / jsEnv := new NodeJSEnv()
   )
