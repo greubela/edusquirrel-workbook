@@ -75,9 +75,9 @@ object SyncControl {
 
     lazy val latestSyncedAt: Map[SyncInformationWithContext, Boolean] =
       curRemoteHistory.map(tup => tup._1 -> {
-        if (curLocalHistory.lastStateOption.isEmpty) true
+        if (curLocalHistory.latestChangeTimestamp.isEmpty) true
         else if (tup._2.lastCacheRequest.isEmpty) false
-        else !curLocalHistory.lastStateOption.get.timestamp.isAfter(tup._2.lastCacheRequest.get)
+        else !curLocalHistory.latestChangeTimestamp.get.isAfter(tup._2.lastCacheRequest.get)
       }).toMap
 
 

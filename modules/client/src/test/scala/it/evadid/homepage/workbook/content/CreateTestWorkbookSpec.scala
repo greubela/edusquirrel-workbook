@@ -6,6 +6,7 @@ import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, Ty
 import it.evadid.workbook.abstractions.scaffolding.ProgrammingHintScaffolder
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailFolder, MailInteraction}
+import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
@@ -13,6 +14,19 @@ import it.evadid.workbook.elements.structureElements.ExerciseContainer
 import munit.FunSuite
 
 class CreateTestWorkbookSpec extends FunSuite {
+  test("test workbook showcases one text answer owning its description, hints and two independent LLM graders") {
+    val workbook = CreateTestWorkbook(null).createWorkbook
+    val examples = workbook.allChildrenFullSubtree.collect { case element: TextInputWithScaffoldingAndGrading => element }
+    assertEquals(examples.size, 1)
+    val example = examples.head
+    assertEquals(example.elementId, "text-feedback-demo-answer")
+    assertEquals(example.exerciseText, LanguageMapContentId("TestWorkbook/textFeedbackTask"))
+    assertEquals(example.gradingElements.size, 2)
+    assertEquals(example.scaffoldingElement.get.hints, List(LanguageMapContentId("TestWorkbook/textFeedbackHints")))
+    assertEquals(example.allInteractionsInThisInstance, List(example))
+    assertEquals(example.interactionVariable.currentValue, "")
+  }
+
   test("complete test workbook round-trips in JSON and constructor format") {
     val workbook = CreateTestWorkbook(null).createWorkbook
     for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)) {

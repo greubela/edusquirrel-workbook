@@ -92,5 +92,13 @@
   "qrRegionData": "Daten und Füllbytes",
   "qrRegionErrorCorrection": "Fehlerkorrektur",
   "qrRegionRemainder": "Restbits",
-  "turtleNoProgramYet": "Öffne den Editor, um dein Programm zu erstellen. Dein Blockprogramm erscheint dann hier."
+  "turtleNoProgramYet": "Öffne den Editor, um dein Programm zu erstellen. Dein Blockprogramm erscheint dann hier.",
+  "gradingRequest": "Feedback anfordern",
+  "gradingLoading": "Deine Antwort wird geprüft …",
+  "gradingCorrect": "Richtig",
+  "gradingIncorrect": "Falsch",
+  "gradingPartiallyCorrect": "Teilweise richtig",
+  "gradingError": "Die Antwort konnte nicht geprüft werden. Bitte versuche es erneut.",
+  "gradingNotExecuted": "Nicht geprüft",
+  "gradingNotice": "KI-Feedback kann Fehler enthalten. Prüfe die Begründung. Deine Antwort wird nur auf Anfrage zum Prüfen gesendet."
 }

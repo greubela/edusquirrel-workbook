@@ -93,5 +93,13 @@
   "qrRegionErrorCorrection": "Error correction",
   "qrRegionRemainder": "Remainder bits",
   "turtleNoProgramYet": "Open the editor to create your program. Your block program will appear here.",
-  "MessengerEditorInputPlaceholder": "Type a message…"
+  "MessengerEditorInputPlaceholder": "Type a message…",
+  "gradingRequest": "Ask for feedback",
+  "gradingLoading": "Checking your answer …",
+  "gradingCorrect": "Correct",
+  "gradingIncorrect": "Incorrect",
+  "gradingPartiallyCorrect": "Partially correct",
+  "gradingError": "The answer could not be checked. Please try again.",
+  "gradingNotExecuted": "Not checked",
+  "gradingNotice": "AI feedback may be mistaken. Review its reasoning. Your answer is sent for feedback only when you request it."
 }

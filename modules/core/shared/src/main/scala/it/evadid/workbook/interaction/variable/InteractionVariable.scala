@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, Asy
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic.DeriveOnlyLastValues
 import it.evadid.core.datastructures.state.{ExecutionMethod, State}
+import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
@@ -132,7 +133,8 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     startGrading(syncControl, availableExecutionClients)
   }
 
-  def startGrading(syncControl: SyncControl, availableExecutionClients: List[ExecutionClient], forceGrading: Boolean = false): Unit = this.synchronized {
+  def startGrading(syncControl: SyncControl, availableExecutionClients: List[ExecutionClient], forceGrading: Boolean = false,
+      resolver: Option[LanguageMapIdResolver] = None): Future[Unit] = this.synchronized {
     val curState = innerState.now()
     val lastValue = curState.lastStateOption.map(_.value)
     val covered = lastValue.exists { state =>
@@ -148,14 +150,18 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     }
     if (underlyingInteraction.gradingElements.nonEmpty && lastValue.nonEmpty &&
       (forceGrading || !covered)) {
-      val futures: Future[List[GradingResult[T, GA]]] = Future.traverse(underlyingInteraction.gradingElements)(_.gradeStateSafe(lastValue.get, forceGrading, availableExecutionClients))
-      futures.map(resList => GradedState[T, GA](lastValue.get, resList.toSet)).onComplete {
-        case Success(res) => this.synchronized {
+      val futures: Future[List[GradingResult[T, GA]]] = Future.traverse(underlyingInteraction.gradingElements) { grader =>
+        resolver match {
+          case Some(value) => grader.gradeStateSafe(lastValue.get, forceGrading, availableExecutionClients, value)
+          case None => grader.gradeStateSafe(lastValue.get, forceGrading, availableExecutionClients)
+        }
+      }
+      futures.map(resList => GradedState[T, GA](lastValue.get, resList.toSet)).map { res =>
+        this.synchronized {
           innerState.update(_.updateGradings(_ ++ Map(lastValue.get -> res)))
         }
-        case Failure(err) => syncControl.controlLogger.logExceptionWarn("Ignore Grading after error at Grading", err)
       }
-    }
+    } else Future.unit
   }
 
   def setStateFromUserInteraction(syncControl: SyncControl, newValue: T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {

@@ -15,8 +15,15 @@ object HistoryJson {
 
   def lastTimestamp(json: String): Option[LocalDateTime] = {
     val value = payload(json)
-    List("events", "states").flatMap(value.obj.get)
-      .flatMap(_.arr).map(event => LocalDateTime.parse(event("timestamp").str)).maxOption
+    def entries(field: String): List[ujson.Value] = value.obj.get(field).toList.flatMap {
+      case obj: ujson.Obj => obj.value.values.toList
+      case arr: ujson.Arr => arr.value.toList.map(_(1))
+      case _ => Nil
+    }
+    val edits = List("events", "states").flatMap(value.obj.get).flatMap(_.arr).map(_("timestamp").str)
+    val grades = entries("gradings").flatMap(_("testsWithResults").arr).map(_("gradingTime").str)
+    val hints = entries("scaffoldings").flatMap(_.obj.get("scaffoldingTime")).map(_.str)
+    (edits ++ grades ++ hints).map(LocalDateTime.parse).maxOption
   }
 
   def stored(key: String, history: String): String =

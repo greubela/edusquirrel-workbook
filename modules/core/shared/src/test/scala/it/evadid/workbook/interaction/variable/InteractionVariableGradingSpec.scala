@@ -894,7 +894,7 @@ class InteractionVariableGradingSpec extends FunSuite {
   private def event(value: String, seconds: Long, importance: UpdateImportance = MAJOR) =
     InteractionVariableState(value, importance, restoreTime.plusSeconds(seconds))
   private def hint(state: String, text: String) = ScaffoldingResult[String, String](state,
-    LanguageMap.universalMap(text), FeedbackEntity.TestEntity(), None)
+    LanguageMap.universalMap(text), FeedbackEntity.TestEntity(), None, scaffoldingTime = restoreTime)
   private def grade(grader: RecordingGrader, state: String, seconds: Long, status: GradingStatus) =
     GradingResult(grader, state, status, gradingTime = restoreTime.plusSeconds(seconds))
   private def history(events: Set[InteractionVariableState[String]] = Set.empty,

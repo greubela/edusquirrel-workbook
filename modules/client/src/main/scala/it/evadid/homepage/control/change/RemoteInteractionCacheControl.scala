@@ -69,7 +69,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
 
     def shouldSyncUntil(syncInfo: SyncInformationWithContext): LocalDateTime = variables.flatMap(curVar => {
       val history = curVar.history.filterWithStrategy(syncInfo.syncInformation.syncStrategy)
-      history.lastStateOption.map(_.timestamp)
+      history.latestChangeTimestamp
     }).maxOption.getOrElse(LocalDateTime.now())
 
     remoteCache.requestCacheDependentUpdate(shouldSyncUntil)

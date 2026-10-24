@@ -114,9 +114,25 @@ schedule grading or debounce expensive tests. `SlideshowGrader` is an implementa
 example; an interaction must actually attach a grader to `gradingElements` to run it.
 Register new grader codecs in `WorkbookInteractionGrader.universalSerializer`.
 
+`TextInputWithScaffoldingAndGrading` owns its description, saved string answer,
+hint IDs and criterion IDs. Each `TextInputLlmGrader` resolves exactly one criterion
+and the task using the request's selected language (English content fallback).
+Pass the resolver to `startGrading`; its returned Future completes after history
+is updated. LLM graders run manually. Responses end in `CORRECT`, `INCORRECT` or
+`PARTIALL_CORRECT`; that marker becomes the status and is removed from feedback.
+A missing marker allows one classification-only retry; another invalid response
+is a `TestError`. Graders use `FeedbackEntity.LlmEntity`; typed additional data
+stores the request/response transcript without changing grader identity.
+The inline renderer reuses `SimpleTextEditor` and the standard hint panel.
+History synchronization uses the latest answer, grading or scaffolding timestamp;
+feedback-only updates therefore persist without adding dummy answer edits.
+Legacy hints without a timestamp read with a stable minimum timestamp.
+
 The scaffolder contract is `generateFeedback(currentState):
 Future[ScaffoldingResult[T, SA]]`, with feedback tied to the source value.
-The generic automatic invocation/display pipeline is not currently wired.
+The standard interaction info panel offers manual scaffolding for attached
+scaffolders; it invalidates hints on answer/language changes. Scaffolding does not
+run automatically while typing.
 `InteractionInfoPanel` renders synchronization status but its generic grading icon
 is empty. Existing task-specific requirement feedback and the separate GPT/chat
 or feedback-demo elements do not imply a complete generic grading/scaffolding UI.
