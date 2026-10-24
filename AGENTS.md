@@ -8,7 +8,7 @@ Read the repository layout and content-placement guide in [README.md](README.md)
 - Retained workbook migration references belong in subject directories inside `tmp/`. Published materials, including classic PDF/ZIP downloads, belong in `resources/`; do not move public assets into `tmp/`.
 - Keep application code and its tests in the corresponding `modules/` source tree, browser/asset checks in `tools/dev/`, maintained documentation in `docs/`, and presentation styles in dedicated `homepage/css/` files rather than in Laminar.
 
-- Keep documentation concise: focus on important design decisions, contracts and verification commands; avoid extensive prose and repeated implementation details.
+- Keep documentation concise: focus on architectural decisions, contracts, key code locations and a few useful examples. Link to source or focused guides for implementation details; avoid method-by-method explanations, extensive prose and repetition.
 
 Follow the workbook element/interaction → renderer → optional editor structure described in [docs/workbook-interaction-architecture.md](docs/workbook-interaction-architecture.md).
 

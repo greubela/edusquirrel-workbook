@@ -5,6 +5,8 @@ import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, Asy
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic.DeriveOnlyLastValues
 import it.evadid.core.datastructures.state.{ExecutionMethod, State}
+import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
+import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
@@ -34,7 +36,8 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
   }
 
   private val innerState: State[InteractionVariableHistory[T, GA, SA]] = State(defaultHistory)
-  private case class GradingRequest(state: T, graders: List[WorkbookInteractionGrader[T, GA]], forced: Boolean)
+  private case class GradingRequest(state: T, graders: List[WorkbookInteractionGrader[T, GA]], forced: Boolean,
+      locale: Option[(LanguageMapIdResolver, HumanLanguage)])
   private val gradingRequests = State(Map.empty[GradingRequest, Future[Unit]])
 
   private def safeLastState: InteractionVariableState[T] = innerState.now().lastStateOption.getOrElse(InteractionVariableState[T](underlyingInteraction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now()))
@@ -134,11 +137,25 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     startGrading(syncControl, availableExecutionClients)
   }
 
-  def startGrading(syncControl: SyncControl, availableExecutionClients: List[ExecutionClient], forceGrading: Boolean = false): Future[Unit] = this.synchronized {
+  def startGrading(syncControl: SyncControl, availableExecutionClients: List[ExecutionClient], forceGrading: Boolean = false,
+      resolver: Option[LanguageMapIdResolver] = None): Future[Unit] = {
+    val source = this.synchronized { innerState.now().lastStateOption.map(_.value) }
+    resolver match {
+      case None => startGradingFor(syncControl, availableExecutionClients, forceGrading, source, None, None)
+      case Some(current) => current.languageFuture().flatMap { language =>
+        val captured = new LanguageMapIdResolver(State(language).observable) {
+          override def resolveMap(id: it.evadid.core.datastructures.language.LanguageMapContentId) = current.resolveMap(id)
+        }
+        startGradingFor(syncControl, availableExecutionClients, forceGrading, source, Some(captured), Some(current -> language))
+      }
+    }
+  }
+
+  private def startGradingFor(syncControl: SyncControl, availableExecutionClients: List[ExecutionClient], forceGrading: Boolean,
+      lastValue: Option[T], resolver: Option[LanguageMapIdResolver], locale: Option[(LanguageMapIdResolver, HumanLanguage)]): Future[Unit] = this.synchronized {
     val curState = innerState.now()
-    val lastValue = curState.lastStateOption.map(_.value)
     val graders = underlyingInteraction.gradingElements
-    val request = lastValue.map(state => GradingRequest(state, graders, forceGrading))
+    val request = lastValue.map(state => GradingRequest(state, graders, forceGrading, locale))
     val covered = lastValue.exists { state =>
       curState.gradings.get(state).exists { cached =>
         cached.state == state && graders.forall { grader =>
@@ -161,27 +178,39 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
             if pending.get(key).exists(_ eq completed.future) then pending - key else pending
           }
         }
-        val futures = scala.util.Try(Future.traverse(graders)(
-          _.gradeStateSafe(key.state, forceGrading, availableExecutionClients))).fold(Future.failed, identity)
-        val published = futures.map { resList =>
-          require(resList.forall(result => result.gradedState == key.state && key.graders.contains(result.grader)),
-            "Grading results must match the requested answer and configured graders.")
-          this.synchronized {
-            release()
-            innerState.update { history =>
-              val previous = history.gradings.get(key.state).filter(_.state == key.state).toList
-                .flatMap(_.testsWithResults).filter(_.gradedState == key.state)
-              val merged = key.graders.flatMap { grader =>
-                val incoming = resList.filter(_.grader == grader)
-                val executed = previous.filter(result => result.grader == grader && result.gradingStatus != GradingStatus.NotExecuted())
-                if !key.forced && incoming.forall(_.gradingStatus == GradingStatus.NotExecuted()) && executed.nonEmpty then executed
-                else incoming
-              }.toSet
-              history.updateGradings(_ + (key.state -> GradedState[T, GA](key.state, merged)))
-            }
+        val futures = scala.util.Try(Future.traverse(graders) { grader =>
+          resolver match {
+            case Some(value) => grader.gradeStateSafe(key.state, forceGrading, availableExecutionClients, value)
+            case None => grader.gradeStateSafe(key.state, forceGrading, availableExecutionClients)
           }
-          Option(syncControl).foreach(_.requestStore(this))
-          ()
+        }).fold(Future.failed, identity)
+        val published = futures.flatMap { results =>
+          val current = locale.fold(Future.successful(true)) { (source, language) =>
+            source.languageFuture().map(_ == language)
+          }
+          current.map(Option.when(_)(results))
+        }.map {
+          case None => () // The selected feedback language changed while the request was running.
+          case Some(resList) =>
+            require(resList.forall(result => result.gradedState == key.state && key.graders.contains(result.grader)),
+              "Grading results must match the requested answer and configured graders.")
+            this.synchronized {
+              release()
+              innerState.update { history =>
+                val previous = history.gradings.get(key.state).filter(_.state == key.state).toList
+                  .flatMap(_.testsWithResults).filter(_.gradedState == key.state)
+                val merged = key.graders.flatMap { grader =>
+                  val incoming = resList.filter(_.grader == grader)
+                  val executed = previous.filter(result => result.grader == grader && result.gradingStatus != GradingStatus.NotExecuted())
+                  if !key.forced && incoming.forall(_.gradingStatus == GradingStatus.NotExecuted()) && executed.nonEmpty then executed
+                  else incoming
+                }.toSet
+                history.updateGradings(_ + (key.state -> GradedState[T, GA](key.state, merged)))
+              }
+            }
+            ()
+        }.flatMap { _ =>
+          Option(syncControl).fold(Future.unit)(_.requestStore(this).map(_ => ()))
         }.recoverWith { case err =>
           Option(syncControl).foreach(_.controlLogger.logExceptionWarn("Ignore Grading after error at Grading", err))
           Future.failed(err)
@@ -194,6 +223,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
         completed.future
       case _ => Future.unit
     }
+
   }
 
   def setStateFromUserInteraction(syncControl: SyncControl, newValue: T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Unit = this.synchronized {

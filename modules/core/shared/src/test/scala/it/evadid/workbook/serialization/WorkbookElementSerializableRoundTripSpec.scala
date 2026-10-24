@@ -97,6 +97,8 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       MailInteraction("mail-interaction", inbox, special, allowCompose = false),
       CreateQrCodeInteraction("qr", QrCodeRequirements(minBytes = 2, maxBytes = Some(200), requiredMask = Some(3)), QrCode.fromText(special)),
       TextInteraction("text-1"),
+      it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading("text-feedback",
+        content("text/task"), List(content("text/hint")), List(content("text/criterion")), special),
       MessagingInteraction("messaging-1"),
       LabeledCheckboxInteraction("checkbox-1", content("label/checkbox")),
       LabeledNumberInteraction("number-1", content("label/number"), NumberType.FractionLike, "1.5", BigDecimal("0.125")),

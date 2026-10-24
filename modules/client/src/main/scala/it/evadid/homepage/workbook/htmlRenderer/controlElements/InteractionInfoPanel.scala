@@ -9,7 +9,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
-import it.evadid.workbook.abstractions.{WorkbookInteractionElementFull, WorkbookInteractionUntyped}
+import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookInteractionElementFull, WorkbookInteractionUntyped}
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
@@ -97,7 +97,8 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
             view.set(clicked.copy(pending = Some(id)))
             def pending: Boolean = unchanged && view.now().pending.contains(id)
             if pending then Try(variable.startGrading(fullInfo.syncControl,
-              List(fullInfo.defaults.workerBackendExecutor, fullInfo.defaults.backendExecutor), forceGrading = true))
+              List(fullInfo.defaults.workerBackendExecutor, fullInfo.defaults.backendExecutor), forceGrading = true,
+              resolver = Option.when(interaction.gradingElements.exists(_.gradingEntity.isInstanceOf[FeedbackEntity.LlmEntity]))(fullInfo.signals.idResolver)))
               .fold(Future.failed, identity).onComplete { result =>
                 if pending then view.update(_.copy(pending = None, failed = result.isFailure))
               }
@@ -113,6 +114,7 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
         onMountCallback(_ => invalidate(Some(new Object))),
         onUnmountCallback(_ => invalidate(None)),
         onMountBind(_ => history.map(_.lastStateOption.map(_.value)).distinct.changes --> (_ => invalidate(view.now().mount))),
+        onMountBind(_ => fullInfo.signals.currentLanguage.distinct.changes --> (_ => invalidate(view.now().mount))),
         onMountBind(_ => EventStream.merge(fullInfo.signals.user.distinct.changes.map(_ => ()),
           fullInfo.signals.workbook.map(_.map(_.loadedWorkbook)).distinct.changes.map(_ => ())) -->
           (_ => invalidate(view.now().mount))),

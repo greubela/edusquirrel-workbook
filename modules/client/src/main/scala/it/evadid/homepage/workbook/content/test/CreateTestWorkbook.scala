@@ -10,6 +10,7 @@ import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, Ty
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, TaskLabel}
 import it.evadid.workbook.elements.interactionElements.emailSimulator.MailInteraction
+import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
@@ -25,10 +26,20 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   override def createWorkbook: Workbook = {
     workbook(
       "TestWorkbook/WorkbookTitle",
-      List(section1, section2, section3, section4, section5, section6),
+      List(section1, section2, section3, section4, section5, section6, textFeedbackSection),
       User.AndreGreubel
     )
   }
+
+  lazy val textFeedbackSection: WorkbookSection = section("text-feedback-demo", "TestWorkbook/textFeedbackTitle", List(
+    container("TestWorkbook/textFeedbackTitle", List(
+      TextInputWithScaffoldingAndGrading("text-feedback-demo-answer",
+        LanguageMapContentId("TestWorkbook/textFeedbackTask"),
+        List(LanguageMapContentId("TestWorkbook/textFeedbackHints")),
+        List(LanguageMapContentId("TestWorkbook/textFeedbackCriterionReason"),
+          LanguageMapContentId("TestWorkbook/textFeedbackCriterionAction")))
+    ))
+  ))
 
   val exp1 = TurtleLineBasedProgram(List(
     Line[Double](Point(0, 0), Point(100, 0)),

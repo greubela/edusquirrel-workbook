@@ -8,6 +8,20 @@
     resize: none;
 }
 
+.text-input-feedback {
+    display: grid;
+    gap: var(--space-md);
+    min-width: 0;
+}
+.text-input-feedback__task { margin: 0; line-height: 1.5; }
+.text-input-feedback textarea {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    resize: vertical;
+}
+.text-input-feedback__result + .text-input-feedback__result { margin-block-start: var(--space-md); }
+
 /* TURTLE INTERACTIONS */
 
 .turtle-gradig-panel{

@@ -102,5 +102,11 @@
   "qrRegionErrorCorrection": "Error correction",
   "qrRegionRemainder": "Remainder bits",
   "turtleNoProgramYet": "Open the editor to create your program. Your block program will appear here.",
-  "MessengerEditorInputPlaceholder": "Type a message…"
+  "MessengerEditorInputPlaceholder": "Type a message…",
+  "gradingPartiallyCorrect": "Partially correct",
+  "gradingNotExecuted": "Not checked",
+  "gradingNotice": "AI feedback may be mistaken. Review its reasoning. Your answer is sent for feedback only when you request it.",
+  "textGradingCorrect": "Correct",
+  "textGradingIncorrect": "Incorrect",
+  "textGradingPartiallyCorrect": "Partially correct"
 }
