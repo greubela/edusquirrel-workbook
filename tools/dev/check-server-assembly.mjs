@@ -6,7 +6,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 
 // Verify the deployable artifact itself, including its runtime-only dependencies.
 const jar = resolve(process.argv[2] || 'artifacts/newest/server.jar');
-const listed = spawnSync('jar', ['tf', jar], {encoding: 'utf8', maxBuffer: 10 * 1024 * 1024});
+const listed = spawnSync('java', ['-m', 'jdk.jartool/sun.tools.jar.Main', '--list', '--file', jar], {encoding: 'utf8', maxBuffer: 10 * 1024 * 1024});
 assert.equal(listed.status, 0, listed.stderr || listed.error?.message);
 const entries = listed.stdout.split('\n');
 assert(entries.includes('it/evadid/server/BackendServer.class'), 'fat JAR contains the server');
