@@ -50,4 +50,10 @@ class ChatPackageSpec extends FunSuite {
     assertEquals(single.author.toBasic, author.toBasic)
     assertEquals(single.timestamp, time)
   }
+  test("fresh messages explicitly persist their timestamps") {
+    val message = Message("Fresh feedback", author)
+    val json = writeJs(message)
+    assertEquals(json("timestamp").str, message.timestamp.toString)
+    assertEquals(read[Message](json), message)
+  }
 }
