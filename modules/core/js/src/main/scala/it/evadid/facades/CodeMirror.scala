@@ -197,7 +197,7 @@ object CodeMirror {
 
       def indentMore(target: js.Object): Boolean = js.native
 
-      def lineNumbers(): Extension = js.native
+      def lineNumbers(config: js.Object = js.native): Extension = js.native
 
       def highlightActiveLineGutter(): Extension = js.native
 
@@ -292,6 +292,8 @@ object CodeMirror {
 
     def setDiagnostics(diagnostics: js.Array[js.Object]): Unit = js.native
 
+    def setFirstLineNumber(value: Int): Unit = js.native
+
     def focus(): Unit = js.native
 
     def destroy(): Unit = js.native
@@ -308,7 +310,8 @@ object CodeMirror {
     doc: String = "",
     onDocChange: String => Unit = _ => (),
     language: String = "python",
-    flowchart: Option[String => Future[Flowchart]] = None
+    flowchart: Option[String => Future[Flowchart]] = None,
+    firstLineNumber: Int = 1
   )
 
   /** Only the external browser API crosses this JavaScript boundary. */
@@ -318,6 +321,7 @@ object CodeMirror {
     val language: js.UndefOr[String]
     val onDocChange: js.UndefOr[js.Function1[String, Unit]]
     val flowchart: js.UndefOr[js.Function1[String, js.Promise[js.Object]]]
+    val firstLineNumber: js.UndefOr[Int]
   }
 
   // Native module imports remain asynchronous and share the browser's ESM cache.

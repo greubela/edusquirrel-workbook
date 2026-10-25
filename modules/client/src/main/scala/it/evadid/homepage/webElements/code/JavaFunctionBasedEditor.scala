@@ -75,7 +75,10 @@ final class JavaFunctionBasedEditor
     functionDraft,
     language = it.evadid.core.datastructures.language.AppLanguage.Java,
     config = Var(editorConfig),
-    loadingLabel = loadingLabel
+    loadingLabel = loadingLabel,
+    firstLineNumber = sourceDraft.signal.combineWith(editingRange.signal).map { (source, range) =>
+      firstLineNumber(source, range)
+    }.distinct
   )
 
   private lazy val sourceEditor = CodeMirrorEditor(
@@ -529,6 +532,14 @@ object JavaFunctionBasedEditor {
         (source.substring(0, start) + draft + source.substring(end), FunctionRange(start, start + draft.length))
       )
   }
+
+  private[code] def firstLineNumber(source: String, range: Option[FunctionRange]): Int =
+    range.filter(_.isWithin(source)).fold(1) { current =>
+      1 + (0 until current.start).count { index =>
+        source.charAt(index) == '\n' || source.charAt(index) == '\r' &&
+          (index + 1 == source.length || source.charAt(index + 1) != '\n')
+      }
+    }
 
   private val classDeclaration = """\bclass\s+([A-Za-z_$][A-Za-z0-9_$]*)""".r
   private val functionHeader =

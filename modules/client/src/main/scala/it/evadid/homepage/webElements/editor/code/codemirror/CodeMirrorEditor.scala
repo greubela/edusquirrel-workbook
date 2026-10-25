@@ -27,7 +27,8 @@ case class CodeMirrorEditor(
     config: Var[CodeMirrorEditorConfig],
     diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil),
     createEditor: EditorConfig => scala.concurrent.Future[CodeMirrorHandle] = settings => CodeMirror.editor(settings).createInstance(),
-    loadingLabel: Signal[String] = Val("Loading editor…")
+    loadingLabel: Signal[String] = Val("Loading editor…"),
+    firstLineNumber: Signal[Int] = Val(1)
 ) extends SimpleWebEditor[String, CodeMirrorEditorConfig] {
   import CodeMirrorEditor.*
 
@@ -49,6 +50,7 @@ case class CodeMirrorEditor(
         onMountCallback { ctx =>
           loadFailed.set(false)
           val lifetime = new Subscription(ctx.owner, () => ())
+          val lineNumbers = firstLineNumber.map(value => math.max(1, value)).distinct.observe(using ctx.owner)
           CodeMirror.inBackground(()).foreach { _ =>
             if !lifetime.isKilled && ctx.thisNode.ref.isConnected then {
               val analysis = Option.when(showFlowchart && language == Python)(
@@ -56,7 +58,8 @@ case class CodeMirrorEditor(
               // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
               val created = createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
                 value => if !lifetime.isKilled && underlyingVar.now() != value then underlyingVar.set(value),
-                languageToJs(language), analysis.map(current => source => current.chartForDoc(source).map(CodeMirrorFlowchartGutter.render))))
+                languageToJs(language), analysis.map(current => source => current.chartForDoc(source).map(CodeMirrorFlowchartGutter.render)),
+                firstLineNumber = lineNumbers.now()))
               created.foreach { native =>
                 if lifetime.isKilled || !ctx.thisNode.ref.isConnected then {
                   native.destroy()
@@ -70,6 +73,7 @@ case class CodeMirrorEditor(
                   handle.set(Some(native))
                   underlyingVar.signal.foreach(value => if native.getDoc() != value then native.setDoc(value))(using ctx.owner)
                   diagnostics.foreach(values => native.setDiagnostics(js.Array(values.map(_.toJs)*)))(using ctx.owner)
+                  lineNumbers.foreach(native.setFirstLineNumber)(using ctx.owner)
                 }
               }
               created.failed.foreach { _ =>
