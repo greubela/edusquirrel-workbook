@@ -223,8 +223,25 @@ test('Java appearance changes preserve the live editor, undo history and drawing
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
     await page.waitForFunction(() => !!globalThis.EduSquirrelCodeMirrorLibraries?.EditorView);
     await editor.locator('.cm-content').waitFor();
+    async function checkFirstLine(expected) {
+      await page.waitForFunction(expected => {
+        const gutter = document.querySelector('dialog[open] .cm-lineNumbers');
+        const first = gutter && [...gutter.children].find(node => getComputedStyle(node).visibility !== 'hidden');
+        return first?.textContent.trim() === String(expected);
+      }, expected);
+    }
     const original = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
+    await checkFirstLine(1);
+    await editor.getByRole('button', {name: 'Method', exact: true}).click();
+    await editor.locator('.cm-content').waitFor();
+    const main = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
+      .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
+    assert(original.includes(main), 'the method document remains an exact source fragment');
+    const mainFirstLine = original.slice(0, original.indexOf(main)).split(/\r\n|\r|\n/).length;
+    await checkFirstLine(mainFirstLine);
+    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await checkFirstLine(1);
     await page.evaluate(() => {
       const node = document.querySelector('dialog[open] .cm-editor');
       const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(node);
@@ -278,6 +295,18 @@ test('Java appearance changes preserve the live editor, undo history and drawing
     await editor.getByRole('combobox', {name: 'Java method', exact: true})
       .selectOption({label: 'Drawing.square(int side)'});
     assert.equal(await editor.locator('.java-function-editor__workspace-heading h3').innerText(), 'Drawing.square');
+    const square = await page.evaluate(() => {
+      globalThis.methodNumberingView = EduSquirrelCodeMirrorLibraries.EditorView
+        .findFromDOM(document.querySelector('dialog[open] .cm-editor'));
+      return methodNumberingView.state.doc.toString();
+    });
+    assert(original.includes(square));
+    await checkFirstLine(original.slice(0, original.indexOf(square)).split(/\r\n|\r|\n/).length);
+    await editor.getByRole('combobox', {name: 'Java method', exact: true})
+      .selectOption({label: 'Drawing.main(String[] args)'});
+    await checkFirstLine(mainFirstLine);
+    assert(await page.evaluate(() => methodNumberingView === EduSquirrelCodeMirrorLibraries.EditorView
+      .findFromDOM(document.querySelector('dialog[open] .cm-editor'))), 'method numbering reuses the mounted editor');
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
     await editor.locator('.cm-content').waitFor();
     assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
