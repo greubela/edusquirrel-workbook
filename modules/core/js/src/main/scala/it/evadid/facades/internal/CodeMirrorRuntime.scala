@@ -21,6 +21,7 @@ private[evadid] object CodeMirrorRuntime {
       doc = config.doc.toOption.filter(_ != null).getOrElse(""),
       language = config.language.toOption.filter(_ != null).getOrElse("python"),
       onDocChange = value => config.onDocChange.toOption.filter(_ != null).foreach(_(value)),
+      firstLineNumber = config.firstLineNumber.toOption.filter(_ > 0).getOrElse(1),
       flowchart = config.flowchart.toOption.filter(_ != null).map(callback => source =>
         Future(callback(source)).flatMap(result => js.Promise.resolve[js.Object](result.asInstanceOf[js.Object]).toFuture)
           .map(chart => upickle.default.read[Flowchart](js.JSON.stringify(chart))))
@@ -45,7 +46,7 @@ private[evadid] object CodeMirrorRuntime {
   private lazy val sharedExtensions: js.Array[Extension] = js.Array(
     Libraries.EditorView.editorAttributes.of(js.Dynamic.literal(`class` = "edusquirrel-code-mirror")),
     Libraries.EditorState.tabSize.of(4), Libraries.indentUnit.of(indent),
-    Libraries.lineNumbers(), Libraries.highlightActiveLineGutter(), Libraries.drawSelection(),
+    Libraries.highlightActiveLineGutter(), Libraries.drawSelection(),
     Libraries.foldGutter(), Libraries.indentOnInput(), Libraries.bracketMatching(),
     Libraries.highlightActiveLine(), Libraries.highlightSelectionMatches(),
     Libraries.indentationMarkers(js.Dynamic.literal(thickness = 1, highlightActiveBlock = true, hideFirstIndent = false)),
@@ -79,6 +80,12 @@ private[evadid] object CodeMirrorRuntime {
     private val javaHistory = new Compartment
     private val theme = new Compartment
     private val editorLanguage = new Compartment
+    private val lineNumbers = new Compartment
+    private def numberGutter(firstLine: Int): Extension = {
+      val start = math.max(1, firstLine)
+      Libraries.lineNumbers(js.Dynamic.literal(
+        formatNumber = ((number: Int) => (number.toLong + start - 1).toString): js.Function1[Int, String]))
+    }
     private val editorTheme = Option(config.parent.closest("[data-editor-theme]"))
     private val followsPageTheme = config.parent.closest(".fd-page") != null
     private val themeTarget = editorTheme.orElse(Option.when(followsPageTheme)(dom.document.documentElement))
@@ -101,6 +108,7 @@ private[evadid] object CodeMirrorRuntime {
           CodeMirrorJavaLineEndings.historyEffects, javaHistory.of(Libraries.history()))
         else Libraries.history(),
         theme.of(currentTheme()), editorLanguage.of(languageExtension(language)),
+        lineNumbers.of(numberGutter(config.firstLineNumber)),
         Libraries.EditorView.updateListener.of((update: ViewUpdate) => {
           val metadataChanged = isJava &&
             (update.startState.field(CodeMirrorJavaLineEndings.field) ne update.state.field(CodeMirrorJavaLineEndings.field))
@@ -157,6 +165,9 @@ private[evadid] object CodeMirrorRuntime {
     def setDiagnostics(value: js.Array[js.Object]): Unit =
       view.dispatch(js.Dynamic.literal(effects = diagnostics.effect.of(
         if value == null || js.isUndefined(value) then js.Array[js.Object]() else value)))
+    def setFirstLineNumber(value: Int): Unit = if !destroyed then
+      view.dispatch(js.Dynamic.literal(effects = lineNumbers.reconfigure(numberGutter(value)),
+        annotations = Libraries.Transaction.addToHistory.of(false)))
     def focus(): Unit = view.focus()
     def destroy(): Unit = if !destroyed then {
       destroyed = true
