@@ -22,6 +22,7 @@ import it.evadid.workbook.abstractions.scaffolding.ProgrammingHintScaffolder
 import it.evadid.distribution.command.SerializedException
 import upickle.default.*
 import it.evadid.core.datastructures.state.State
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands
@@ -48,6 +49,12 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     ProgrammingState.ProgrammingStateSnapXml(s"""<project name="native" version="2"><notes>Grüße 🐢</notes>
       |<stage name="Stage"><variables/><blocks/><scripts/><sprites><sprite name="Turtle">
       |<variables/><blocks/><scripts>$scripts</scripts></sprite></sprites></stage></project>""".stripMargin)
+
+  private def observationPayload(count: Int, commands: Seq[ujson.Value]): ujson.Value =
+    ujson.Obj("commandCount" -> count, "commands" -> ujson.Arr.from(commands))
+
+  private def observedReport(observation: ujson.Value, status: String = "passed", reason: String = ""): ujson.Value =
+    ujson.Obj("status" -> status, "reason" -> reason, "programObservation" -> observation)
 
   test("factory roundtrips editorPalette and referencePython") {
     val original = ProgrammingExercise(
@@ -300,6 +307,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       assertEquals(request.context("_eva_source"), ujson.Str(source.code))
       assertEquals(request.context("_eva_tests"), ujson.Str(suite.pythonTestCode))
       assertEquals(request.context("_eva_entry_point"), ujson.Null)
+      assertEquals(request.context("_eva_observe_program"), ujson.Bool(false))
       assert(!request.context.contains("_eva_is_java") && !request.context.contains("_eva_java_methods"))
       val primitives = request.context("_eva_turtle_primitives")
       assertEquals(primitives("forward"), ujson.Obj("command" -> "forward", "arity" -> 1, "inputs" -> ujson.Arr("Numeric")))
@@ -512,6 +520,216 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
         assert(graded.gradingStatus.isInstanceOf[GradingStatus.TestError])
         assert(!write(graded).contains("private"))
       }
+    }
+  }
+
+  test("only explicitly configured public graders request program observations") {
+    val source = ProgrammingStatePythonString("forward(2)\n")
+    val default = ProgrammingUnitTestGrader("default", "assert run_program()")
+    val enabled = default.copy(testId = "enabled", publishProgramObservation = true)
+    val hidden = enabled.copy(testId = "hidden", importance = GradingImportance.HIDDEN_TEST)
+    val oldReport = ujson.Obj("status" -> "passed", "reason" -> "")
+    Future.traverse(List(default -> false, enabled -> true, hidden -> false)) { (grader, expected) =>
+      val calls = State(0)
+      val client = pythonClient(oldReport, request => {
+        calls.update(_ + 1)
+        assertEquals(request.context("_eva_observe_program"), ujson.Bool(expected))
+      })
+      grader.gradeStateSafe(source, forceGrading = true, List(client)).map { result =>
+        assertEquals(result.gradingStatus, GradingStatus.Correct())
+        assertEquals(result.additionalData, None)
+        assertEquals(calls.now(), 1)
+      }
+    }.map(_ => ())
+  }
+
+  test("observation decoding preserves exact bounded prefixes for successful and failed assertions") {
+    val source = ProgrammingStatePythonString("forward(2)\n")
+    val grader = ProgrammingUnitTestGrader("observed", "assert run_program()", publishProgramObservation = true)
+    val rows = for {
+      count <- List(0, 1, 32, 33, 10000)
+      (status, reason, expectedStatus) <- List(("passed", "", GradingStatus.Correct()),
+        ("failed", "assertion", GradingStatus.Incorrect()))
+    } yield (count, status, reason, expectedStatus)
+    Future.traverse(rows) { (count, status, reason, expectedStatus) =>
+      val prefix = (1 to math.min(32, count)).map(value => ujson.Arr("forward", value))
+      val client = pythonClient(observedReport(observationPayload(count, prefix), status, reason))
+      grader.gradeStateSafe(source, forceGrading = true, List(client)).map { result =>
+        assertEquals(result.gradedState, source)
+        assertEquals(result.gradingStatus, expectedStatus)
+        val info = result.additionalData.get
+        val observation = info.programObservation.get
+        assertEquals(observation.commandCount, count)
+        assertEquals(observation.omittedCommands, count - math.min(32, count))
+        assertEquals(observation.commands, (1 to math.min(32, count))
+          .map(value => TurtleCommand[Double]("forward", List(value.toDouble))).toList)
+        assertEquals(info.humanReadableTestExecutionDescription.availableLanguages, Set.empty[HumanLanguage])
+      }
+    }.flatMap { _ =>
+      grader.gradeStateSafe(source, forceGrading = true, List(pythonClient(observedReport(ujson.Null)))).map { result =>
+        assertEquals(result.gradingStatus, GradingStatus.Correct())
+        assertEquals(result.additionalData, None)
+      }
+    }
+  }
+
+  test("unexpected or malformed observations fail safely instead of changing the learner grade") {
+    val source = ProgrammingStatePythonString("forward(2)\n")
+    val grader = ProgrammingUnitTestGrader("observed", "assert run_program()", publishProgramObservation = true)
+    val valid = observationPayload(1, List(ujson.Arr("forward", 2)))
+    val prefix32 = (1 to 32).map(value => ujson.Arr("forward", value))
+    val invalid = List(
+      observationPayload(-1, Nil), observationPayload(10001, prefix32),
+      observationPayload(0, List(ujson.Arr("forward", 2))), observationPayload(1, Nil),
+      observationPayload(1, List(ujson.Arr("forward", 2), ujson.Arr("forward", 3))),
+      observationPayload(33, prefix32.dropRight(1)), observationPayload(33, prefix32 :+ ujson.Arr("forward", 33)),
+      observationPayload(1, List(ujson.Arr("PRIVATE_UNKNOWN_COMMAND", 2))),
+      observationPayload(1, List(ujson.Arr("fd", 2))), observationPayload(1, List(ujson.Arr("receive_go"))),
+      observationPayload(1, List(ujson.Arr("forward"))), observationPayload(1, List(ujson.Arr("forward", 1, 2))),
+      observationPayload(1, List(ujson.Arr("goto", 1))), observationPayload(1, List(ujson.Arr("setColor", "PRIVATE_COLOR"))),
+      observationPayload(1, List(ujson.Arr("forward", "PRIVATE_ARGUMENT"))),
+      observationPayload(1, List(ujson.Arr("forward", true))), observationPayload(1, List(ujson.Arr("forward", ujson.Null))),
+      observationPayload(1, List(ujson.Arr("forward", Double.NaN))),
+      observationPayload(1, List(ujson.Arr("forward", Double.PositiveInfinity))),
+      observationPayload(1, List(ujson.Arr("forward", 9007199254740992d))),
+      ujson.Obj("commandCount" -> 0.5, "commands" -> ujson.Arr()),
+      ujson.Obj("commandCount" -> "PRIVATE_COUNT", "commands" -> ujson.Arr()),
+      ujson.Obj("commandCount" -> 0),
+      ujson.Obj("commandCount" -> 0, "commands" -> ujson.Obj()),
+      ujson.Obj("commandCount" -> 0, "commands" -> ujson.Arr(), "extra" -> "PRIVATE_EXTRA"),
+      ujson.Str("PRIVATE_OBSERVATION"))
+    val rows = invalid.map(observedReport(_)) ++ List(
+      observedReport(valid, "failed", "student-syntax"), observedReport(valid, "failed", "student-runtime"),
+      observedReport(valid, "error", "execution-limit"), observedReport(valid, "error", "test-runtime"))
+    Future.traverse(rows) { report =>
+      grader.gradeStateSafe(source, forceGrading = true, List(pythonClient(report))).map { result =>
+        assert(result.gradingStatus.isInstanceOf[GradingStatus.TestError])
+        assertEquals(result.additionalData, None)
+        assert(!write(result).contains("PRIVATE_"))
+      }
+    }.flatMap { _ =>
+      Future.sequence(List(grader.copy(publishProgramObservation = false),
+        grader.copy(importance = GradingImportance.HIDDEN_TEST)).flatMap { disabled =>
+        List(valid, ujson.Null).map { observation =>
+          disabled.gradeStateSafe(source, forceGrading = true, List(pythonClient(observedReport(observation)))).map { result =>
+            assert(result.gradingStatus.isInstanceOf[GradingStatus.TestError])
+            assertEquals(result.additionalData, None)
+          }
+        }
+      }).map(_ => ())
+    }
+  }
+
+  test("resolving descriptions preserves an existing observation when text is missing or fails") {
+    val source = ProgrammingStatePythonString("forward(2)\n")
+    val descriptionId = LanguageMapContentId("tests/observed-description")
+    val grader = ProgrammingUnitTestGrader("observed", "assert run_program()",
+      publicDescription = Some(descriptionId), publishProgramObservation = true)
+    val observation = observationPayload(1, List(ujson.Arr("forward", 2)))
+    val rows: List[(() => Future[LanguageMap[HumanLanguage]], Option[String])] = List(
+      (() => Future.successful(LanguageMap.universalMap(" Public description. ")), Some("Public description.")),
+      (() => Future.successful(LanguageMap.empty[HumanLanguage]), None),
+      (() => Future.failed(IllegalStateException("PRIVATE_ASYNC_RESOLVER")), None),
+      (() => throw IllegalStateException("PRIVATE_SYNC_RESOLVER"), None))
+    Future.traverse(rows) { (resolve, expectedDescription) =>
+      val calls = State(0)
+      val resolutions = State(0)
+      val resolver = new LanguageMapIdResolver(State[HumanLanguage](German).observable) {
+        override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] = {
+          assertEquals(id, descriptionId)
+          resolutions.update(_ + 1)
+          resolve()
+        }
+      }
+      val client = pythonClient(observedReport(observation, "failed", "assertion"), _ => calls.update(_ + 1))
+      grader.gradeStateSafe(source, forceGrading = true, List(client), resolver).map { result =>
+        assertEquals(result.gradingStatus, GradingStatus.Incorrect())
+        val info = result.additionalData.get
+        assertEquals(info.programObservation.get.commandCount, 1)
+        assertEquals(info.programObservation.get.commands, List(TurtleCommand[Double]("forward", List(2.0))))
+        assertEquals(info.humanReadableTestExecutionDescription.tryGetInLanguage(German), expectedDescription)
+        assertEquals(calls.now(), 1)
+        assertEquals(resolutions.now(), 1)
+        assert(!write(result).contains("PRIVATE_"))
+      }
+    }.map(_ => ())
+  }
+
+  test("observation values enforce their bounds when constructed or restored") {
+    val prefix = (1 to 32).map(value => TurtleCommand[Double]("forward", List(value.toDouble))).toList
+    val valid = ProgrammingTestProgramObservation(33, prefix)
+    assertEquals(read[ProgrammingTestProgramObservation](write(valid)), valid)
+    assertEquals(readBinary[ProgrammingTestProgramObservation](writeBinary(valid)), valid)
+    List(9007199254740991d, -9007199254740991d).foreach { value =>
+      val edge = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(value))))
+      assertEquals(read[ProgrammingTestProgramObservation](write(edge)), edge)
+      assertEquals(readBinary[ProgrammingTestProgramObservation](writeBinary(edge)), edge)
+    }
+    val invalid = List[() => ProgrammingTestProgramObservation](
+      () => ProgrammingTestProgramObservation(-1, Nil),
+      () => ProgrammingTestProgramObservation(10001, prefix),
+      () => ProgrammingTestProgramObservation(0, prefix.take(1)),
+      () => ProgrammingTestProgramObservation(33, prefix.dropRight(1)),
+      () => ProgrammingTestProgramObservation(33, prefix :+ prefix.head),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("fd", List(1.0)))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("receive_go"))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward"))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(Double.NaN)))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(Double.PositiveInfinity)))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(9007199254740992d)))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(1.0), List("private text")))))
+    invalid.foreach(make => intercept[IllegalArgumentException](make()))
+    val encoded = writeJs(valid).obj.toMap
+    val malformed = List(
+      ujson.Obj.from(encoded.updated("commandCount", ujson.Num(-1))),
+      ujson.Obj.from(encoded.updated("commands", ujson.Arr())),
+      ujson.Obj("commandCount" -> 1, "commands" -> ujson.Arr(ujson.Arr("forward", ujson.Arr(1), ujson.Arr("private text")))))
+    malformed.foreach { value =>
+      intercept[Exception](read[ProgrammingTestProgramObservation](value))
+      intercept[Exception](readBinary[ProgrammingTestProgramObservation](writeBinary(value)))
+    }
+  }
+
+  test("observation configuration and decoded reports survive the existing history codecs") {
+    val descriptionId = LanguageMapContentId("tests/observed-count")
+    val grader = ProgrammingUnitTestGrader("observed-count", "assert len(run_program()['commands']) == 34",
+      publicDescription = Some(descriptionId), publishProgramObservation = true)
+    assertEquals(writeJs(grader).obj("publishProgramObservation"), ujson.Bool(true))
+    assertEquals(read[ProgrammingUnitTestGrader](write(grader)), grader)
+    assertEquals(readBinary[ProgrammingUnitTestGrader](writeBinary(grader)), grader)
+    assertEquals(read[ProgrammingTestGrader](write[ProgrammingTestGrader](grader)), grader)
+    val exercise = ProgrammingExerciseFullJava("observed-history", Some(ProgrammingTestSuite(List(grader))),
+      startingProgram = "public class Main { public static void main(String[] args) { for (int i = 1; i <= 33; i++) { Turtle.forward(i); } } }")
+    val variable = exercise.interactionVariable
+    val state = variable.currentValue
+    val description = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
+      German -> "Prüft die Anzahl der Bewegungen.", English -> "Checks the movement count."))
+    val resolver = new LanguageMapIdResolver(State[HumanLanguage](German).observable) {
+      override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] = {
+        assertEquals(id, descriptionId)
+        Future.successful(description)
+      }
+    }
+    val prefix = (1 to 32).map(value => ujson.Arr("forward", value))
+    val client = pythonClient(observedReport(observationPayload(33, prefix), "failed", "assertion"))
+    grader.gradeStateSafe(state, forceGrading = true, List(client), resolver).map { result =>
+      assertEquals(result.gradingStatus, GradingStatus.Incorrect())
+      val info = result.additionalData.get
+      assertEquals(info.humanReadableTestExecutionDescription, description)
+      assertEquals(info.programObservation.get.commandCount, 33)
+      assertEquals(info.programObservation.get.commands.size, 32)
+      variable.updateHistory(history => history.copy(gradings = Map(state -> GradedState(state, Set(result)))))
+      val history = variable.history
+      List(variable.deserializeHistory(variable.serializeHistory(history)),
+        readBinary[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, Any]](writeBinary(history))).foreach { restored =>
+        assertEquals(restored, history)
+        assertEquals(restored.gradings(state).testsWithResults.head.additionalData, Some(info))
+      }
+      val oldInfo = AdditionalProgrammingTestInfo(description)
+      val oldFields = writeJs(oldInfo).obj.toMap - "programObservation"
+      assertEquals(read[AdditionalProgrammingTestInfo](ujson.Obj.from(oldFields)), oldInfo)
+      assertEquals(readBinary[AdditionalProgrammingTestInfo](writeBinary(ujson.Obj.from(oldFields))), oldInfo)
+      assertEquals(oldInfo.programObservation, None)
     }
   }
 
@@ -876,6 +1094,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     fixtures.foreach { (json, importance) =>
       val expected = assertionGrader(SampleBeTest("assert True\r\nassert False\n"), importance)
       assertEquals(expected.publicDescription, None)
+      assertEquals(expected.publishProgramObservation, false)
       val direct = ujson.Obj.from(ujson.read(json).obj.toMap - "serializedType")
       assertEquals(read[ProgrammingUnitTestGrader](direct), expected)
       assertEquals(readBinary[ProgrammingUnitTestGrader](writeBinary(direct)), expected)
@@ -911,12 +1130,16 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       ujson.Obj("testSuite" -> suite, "testId" -> "new"),
       ujson.Obj("testSuite" -> suite, "pythonTestCode" -> "assert False"),
       ujson.Obj("testSuite" -> suite, "publicDescription" -> writeJs(Some(LanguageMapContentId("tests/new-description")))),
+      ujson.Obj("testSuite" -> suite, "publishProgramObservation" -> true),
       ujson.Obj("testSuite" -> ujson.Obj("$type" -> "UnknownSuite", "pythonTestCode" -> "assert True")),
       ujson.Obj("testSuite" -> ujson.Obj("$type" -> "ProgrammingTestSuite", "graders" -> ujson.Arr())),
       ujson.Obj("testSuite" -> ujson.Obj("$type" -> "SampleBeTest", "pythonTestCode" -> "assert True", "extra" -> 1)),
       ujson.Obj("testSuite" -> ujson.Null),
       ujson.Obj("testId" -> "new", "pythonTestCode" -> "assert True", "unexpected" -> true),
       ujson.Obj("testId" -> "new", "pythonTestCode" -> "assert True", "publicDescription" -> true),
+      ujson.Obj("testId" -> "new", "pythonTestCode" -> "assert True", "publishProgramObservation" -> "true"),
+      ujson.Obj("testId" -> "new", "pythonTestCode" -> "assert True", "publishProgramObservation" -> 1),
+      ujson.Obj("testId" -> "new", "pythonTestCode" -> "assert True", "publishProgramObservation" -> ujson.Null),
       ujson.Obj("testId" -> "new", "pythonTestCode" -> "assert True", "serializedType" -> "SlideshowGrader"),
       ujson.Obj("pythonTestCode" -> "assert True"),
       ujson.Obj("testId" -> "new"))
