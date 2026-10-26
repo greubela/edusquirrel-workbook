@@ -14,7 +14,7 @@ import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffold
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingEditorPalette, SnapProjectXml}
 import it.evadid.workbook.elements.interactionElements.qr.{CreateQrCodeInteraction, QrCodeRequirements}
@@ -53,13 +53,21 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
     Line[Double](Point(100, 100), Point(100, 200)),
   ))
 
+  private val blankTurtleProgram = ProgrammingStateJavaString(
+    """public class Drawing {
+      |  public static void main(String[] args) {
+      |  }
+      |}
+      |""".stripMargin
+  ).toSnapXml
+
   lazy val section1: WorkbookSection = {
     val javaSquareInstructions = LanguageMapContentId("TestWorkbook/javaSquareInstructions")
     section("sec1Id", "TestWorkbook/Sec1", List[WorkbookElement](
       container("TestWorkbook/Sec1Cont1", List(
         TurtleRecreateShapeInteraction(
-          "Turtle-Recreate-1",
-          ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpressionState,
+          "turtle-recreate-1",
+          blankTurtleProgram,
           exp1,
           ProgrammingEditorPalette.BeginnerTurtle,
           Map("forward" -> 5)

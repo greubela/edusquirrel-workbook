@@ -9,7 +9,7 @@ import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.JavaTurtleEditorExtension
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -45,7 +45,8 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val javaExecution = new JavaTurtleEditorExtension(boundVar)
     val execution = new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleProgramExecution(List(javaExecution))
-    def editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, Nil, EvaEditorConfig(snapConfig = editorConfig), humanLanguage = fullInfo.signals.currentLanguage)
+    def editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, Nil, EvaEditorConfig(snapConfig = editorConfig), humanLanguage = fullInfo.signals.currentLanguage,
+      labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal(_)))
 
     def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(InteractionInfoPanel.withEditor(workbookElement, editor))
 

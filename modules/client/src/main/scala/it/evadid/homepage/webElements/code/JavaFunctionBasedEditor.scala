@@ -6,7 +6,8 @@ import com.raquo.laminar.api.L.{label as labelTag, *}
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorTab}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
+import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
@@ -30,7 +31,9 @@ final class JavaFunctionBasedEditor
   val state: Var[ProgrammingState],
   reference: Option[() => Element] = None,
   appearance: Option[EditorAppearance] = None,
-  editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default
+  editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
+  conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
+  loadingLabel: Signal[String] = Val("Loading editor…")
 ) extends HtmlAppElement {
 
   import JavaFunctionBasedEditor.*
@@ -71,14 +74,17 @@ final class JavaFunctionBasedEditor
     logger,
     functionDraft,
     language = it.evadid.core.datastructures.language.AppLanguage.Java,
-    config = Var(editorConfig)
+    config = Var(editorConfig),
+    loadingLabel = loadingLabel
   )
 
   private lazy val sourceEditor = CodeMirrorEditor(
     logger,
     sourceDraft,
     language = it.evadid.core.datastructures.language.AppLanguage.Java,
-    config = Var(editorConfig)
+    config = Var(editorConfig),
+    diagnostics = CodeMirrorEditor.marks(conversionMarker),
+    loadingLabel = loadingLabel
   )
 
   private def currentSourceAvailable(): Boolean = sourceAvailable.now()
@@ -296,6 +302,7 @@ final class JavaFunctionBasedEditor
       },
       dataAttr("editor-theme") <-- presentation.theme,
       onMountCallback { ctx =>
+        presentation.watch(ctx.owner)
         state.signal.foreach(observeProgram)(using ctx.owner)
         val lifetime = new Subscription(ctx.owner, () => ())
         // Parse after the transaction settles, so selecting a method cannot write an old fragment into a new range.
@@ -323,7 +330,6 @@ final class JavaFunctionBasedEditor
         ),
         div(
           cls := "java-function-editor__topbar-actions",
-          if appearance.isEmpty then presentation.toggleButton() else emptyNode,
           button(
             typ := "button",
             cls := "java-function-editor__button java-function-editor__button--secondary",
@@ -714,16 +720,18 @@ object JavaFunctionBasedEditor {
     }._2
 
 
-  def forEvaTab(tabLogger: Logger, config: CodeMirrorEditorConfig): EvaEditorTab = new EvaEditorTab {
+  def forEvaTab(tabLogger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Java"): EvaEditorTab = new EvaEditorTab {
     override val language = it.evadid.core.datastructures.language.AppLanguage.Java
-    override val label = "Java"
+    override val label = tabLabel
     override val showLabel = false
     override val css = " eva-editor--java"
     override def icon: Option[ReactiveSvgElement[SVGSVGElement]] = Some(svg.svg(svg.cls := "eva-editor__language-icon", svg.viewBox := "0 0 24 24",
       svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.6",
       svg.strokeLineCap := "round", svg.strokeLineJoin := "round",
       svg.path(svg.d := "M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6")))
-    override def create(state: Var[ProgrammingState], appearance: EditorAppearance): HtmlAppElement =
-      new JavaFunctionBasedEditor(tabLogger, state, appearance = Some(appearance), editorConfig = config)
+    override def create(state: Var[ProgrammingState], appearance: EditorAppearance,
+        marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement =
+      new JavaFunctionBasedEditor(tabLogger, state, appearance = Some(appearance), editorConfig = config,
+        conversionMarker = marker, loadingLabel = loading)
   }
 }

@@ -107,5 +107,9 @@
   "gradingNotice": "KI-Feedback kann Fehler enthalten. Prüfe die Begründung. Deine Antwort wird nur auf Anfrage zum Prüfen gesendet.",
   "textGradingCorrect": "Richtig",
   "textGradingIncorrect": "Falsch",
-  "textGradingPartiallyCorrect": "Teilweise richtig"
+  "textGradingPartiallyCorrect": "Teilweise richtig",
+  "editorUnavailable": "Dieser Entwurf ist in den eingestellten Sprachen nicht verfügbar.",
+  "editorLanguages": "Programmiersprachen",
+  "editorSwitchFailed": "Sprache konnte nicht gewechselt werden",
+  "editorLoading": "Editor wird geladen…"
 }

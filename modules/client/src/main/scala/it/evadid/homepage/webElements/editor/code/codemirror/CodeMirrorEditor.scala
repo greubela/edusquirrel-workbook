@@ -10,6 +10,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{ProgrammingLanguage, 
 import it.evadid.facades.CodeMirror
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
+import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -25,11 +26,13 @@ case class CodeMirrorEditor(
     language: ProgrammingLanguage,
     config: Var[CodeMirrorEditorConfig],
     diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil),
-    createEditor: EditorConfig => scala.concurrent.Future[CodeMirrorHandle] = settings => CodeMirror.editor(settings).createInstance()
+    createEditor: EditorConfig => scala.concurrent.Future[CodeMirrorHandle] = settings => CodeMirror.editor(settings).createInstance(),
+    loadingLabel: Signal[String] = Val("Loading editor…")
 ) extends SimpleWebEditor[String, CodeMirrorEditorConfig] {
   import CodeMirrorEditor.*
 
   private val handle = Var(Option.empty[CodeMirrorHandle])
+  private val loadFailed = Var(false)
 
   override def getDomElement(): L.Element = div(
     cls := "code-mirror-editor-host",
@@ -38,9 +41,13 @@ case class CodeMirrorEditor(
         cls := ("code-editor code-mirror-editor" + (if showFlowchart && language == Python then " code-mirror-editor-flowchart" else "")),
         styleAttr <-- config.signal.map(_.editorFont).map(font =>
           s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"),
+        p(cls := "code-mirror-editor__loading", role := "status",
+          hidden <-- handle.signal.combineWith(loadFailed.signal).map((ready, failed) => ready.nonEmpty || failed),
+          child.text <-- loadingLabel),
         textArea(cls := "code-mirror-editor__fallback", hidden <-- handle.signal.map(_.nonEmpty),
           value <-- underlyingVar.signal, onInput.mapToValue --> underlyingVar.writer),
         onMountCallback { ctx =>
+          loadFailed.set(false)
           val lifetime = new Subscription(ctx.owner, () => ())
           CodeMirror.inBackground(()).foreach { _ =>
             if !lifetime.isKilled && ctx.thisNode.ref.isConnected then {
@@ -65,7 +72,10 @@ case class CodeMirrorEditor(
                   diagnostics.foreach(values => native.setDiagnostics(js.Array(values.map(_.toJs)*)))(using ctx.owner)
                 }
               }
-              created.failed.foreach(_ => analysis.foreach(_.close()))
+              created.failed.foreach { _ =>
+                analysis.foreach(_.close())
+                if !lifetime.isKilled then loadFailed.set(true)
+              }
             }
           }
         }
@@ -80,16 +90,24 @@ object CodeMirrorEditor {
   def apply(logger: Logger, state: Var[String], language: ProgrammingLanguage): CodeMirrorEditor =
     CodeMirrorEditor(logger, state, language, Var(CodeMirrorEditorConfig.Default))
 
-  def pythonEditorForEva(logger: Logger, config: CodeMirrorEditorConfig): EvaEditorTab = new EvaEditorTab {
+  def pythonEditorForEva(logger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Python"): EvaEditorTab = new EvaEditorTab {
     override val language = Python
-    override val label = "Python"
-    override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance): it.evadid.homepage.webElements.HtmlAppElement = {
+    override val label = tabLabel
+    override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
+        marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): it.evadid.homepage.webElements.HtmlAppElement = {
       val text = state.bimap {
         case ProgrammingStatePythonString(code) => code
         case _ => ""
       }(ProgrammingStatePythonString(_))
-      CodeMirrorEditor(logger, text, Python, Var(config))
+      CodeMirrorEditor(logger, text, Python, Var(config), diagnostics = CodeMirrorEditor.marks(marker), loadingLabel = loading)
     }
+  }
+
+  def marks(marker: Signal[Option[ProgrammingConversionError]]): Signal[Seq[Diagnostic]] = marker.map {
+    case Some(error) =>
+      error.line.toSeq.map(line => Diagnostic(line, fromCh = error.column.map(_ - 1),
+        toCh = error.column, message = "", severity = "error"))
+    case None => Nil
   }
 
   final case class Diagnostic(

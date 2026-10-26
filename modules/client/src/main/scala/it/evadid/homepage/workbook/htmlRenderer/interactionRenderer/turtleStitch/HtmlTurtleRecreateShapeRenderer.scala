@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.JavaTurtleEditorExtension
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, *}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels, *}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -63,7 +63,8 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
 
     val editorConfig = EvaEditorConfig(snapConfig = snapEditorConfig)
     def editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension(
-        boundVar, Some(workbookElement.desiredResult), workbookElement.comparisonPolicy)), editorConfig, humanLanguage = fullInfo.signals.currentLanguage)
+        boundVar, Some(workbookElement.desiredResult), workbookElement.comparisonPolicy)), editorConfig, humanLanguage = fullInfo.signals.currentLanguage,
+        labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal(_)))
 
     lazy val codePreview = SnapPreviewEditor(boundVar, snapEditorConfig, fullInfo.signals.currentLanguage).getDomElement()
     val programPreview = boundVar.signal.map(hasProgram).distinct.map { hasProgram =>

@@ -50,7 +50,7 @@
 .editor-appearance .eva-editor__toolbar {
     display: flex;
     align-items: flex-start;
-    justify-content: space-between;
+    justify-content: flex-start;
     flex-wrap: wrap;
     gap: 10px 14px;
     min-width: 0;
@@ -81,8 +81,8 @@
     transition: background-color 120ms ease, border-color 120ms ease;
 }
 
-.eva-editor.editor-appearance .eva-editor__tabs > button:hover:not(:disabled) { background: var(--editor-hover); border-color: var(--editor-border-strong); }
-.eva-editor.editor-appearance .eva-editor__tabs > button[aria-pressed="true"] {
+.eva-editor.editor-appearance .eva-editor__tabs > button:hover:not([aria-disabled="true"]) { background: var(--editor-hover); border-color: var(--editor-border-strong); }
+.eva-editor.editor-appearance .eva-editor__tabs > button[aria-selected="true"] {
     background: var(--editor-code-surface);
     border-color: var(--editor-border);
     box-shadow: inset 0 1px var(--editor-glass-shine), 0 4px 14px -9px var(--editor-shadow);
@@ -90,7 +90,9 @@
     font-weight: 600;
 }
 .eva-editor.editor-appearance .eva-editor__tabs > button:focus-visible { outline: 2px solid var(--editor-focus); outline-offset: 2px; }
-.eva-editor.editor-appearance .eva-editor__tabs > button:disabled { color: var(--editor-muted); opacity: 0.55; }
+.eva-editor.editor-appearance .eva-editor__tabs > button[aria-disabled="true"] { color: var(--editor-muted); opacity: 0.55; }
+.editor-appearance .code-editor__conversion,
+.editor-appearance .java-function-editor__conversion { color: var(--editor-error); }
 .editor-appearance .eva-editor__error { color: var(--editor-error); }
 .editor-appearance .eva-editor__content {
     border-color: var(--editor-border);
