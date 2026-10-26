@@ -4,7 +4,8 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateBeExpression
@@ -22,7 +23,7 @@ case class ProgrammingExercise(
 
                                 /** Optional Python turtle program whose drawing is the target for geometric matching. */
                                 referencePython: Option[String] = None
-                              ) extends WorkbookInteractionElement[ProgrammingState] derives upickle.default.ReadWriter {
+                              ) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Any] derives upickle.default.ReadWriter {
   override val associatedFactory = ProgrammingExercise.factory
 
   override val defaultValue: ProgrammingState = ProgrammingStateSnapXmlHelper.mini

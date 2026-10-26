@@ -3,7 +3,8 @@ package it.evadid.workbook.elements.interactionElements.programming.programmingE
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.vm.test.BeTestSuite
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.abstractions.scaffolding.ProgrammingHintScaffolder
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateJavaString
@@ -16,7 +17,7 @@ case class ProgrammingExerciseFullJava(
     testSuite: Option[BeTestSuite] = None,
     startingProgram: String = ProgrammingExerciseFullJava.defaultStartingProgram,
     hintTask: Option[LanguageMapContentId] = None
-) extends WorkbookInteractionElement[ProgrammingState] derives upickle.default.ReadWriter {
+) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Any] derives upickle.default.ReadWriter {
   override val associatedFactory = ProgrammingExerciseFullJava.factory
 
   override val defaultValue: ProgrammingState = ProgrammingStateJavaString(startingProgram)

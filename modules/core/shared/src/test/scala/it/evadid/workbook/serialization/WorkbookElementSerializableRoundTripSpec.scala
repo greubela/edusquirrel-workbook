@@ -2,7 +2,7 @@ package it.evadid.workbook.serialization
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
@@ -135,12 +135,12 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     }
   }
 
-  private def assertStateRoundTrip[T](element: WorkbookInteractionElement[T]): Unit = {
+  private def assertStateRoundTrip[T, GA, SA](element: WorkbookInteractionElementFull[T, GA, SA]): Unit = {
     val serializer = element.serializerInteractionContent
     assertEquals(serializer.deserialize(serializer.serialize(element.defaultValue)), element.defaultValue)
   }
 
-  elements.collect { case element: WorkbookInteractionElement[?] => element }.foreach { element =>
+  elements.collect { case element: WorkbookInteractionElementFull[?, ?, ?] => element }.foreach { element =>
     test(s"${element.getClass.getSimpleName} interaction state round-trips") {
       assertStateRoundTrip(element)
     }
