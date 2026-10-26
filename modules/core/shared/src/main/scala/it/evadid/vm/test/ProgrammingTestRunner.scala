@@ -3,6 +3,8 @@ package it.evadid.vm.test
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.WorkerCommands
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestProgramObservation
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingTestProgram
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import upickle.default.*
@@ -12,24 +14,27 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 private[evadid] object ProgrammingTestRunner {
+  case class Result(result: BeTestResult, programObservation: Option[ProgrammingTestProgramObservation] = None)
+
   private given ExecutionContext = ExecutionContext.global
-  private val unavailable = BeTestResult.Error("Unit-test execution is unavailable.")
-  private val invalidResult = BeTestResult.Error("The unit-test service returned an invalid result.")
+  private val unavailable = Result(BeTestResult.Error("Unit-test execution is unavailable."))
+  private val invalidResult = Result(BeTestResult.Error("The unit-test service returned an invalid result."))
   private val turtlePrimitives = ujson.Obj.from(SnapTurtleCatalog.Primitives.flatMap { primitive =>
     primitive.allPythonNames.map(_ -> ujson.Obj("command" -> primitive.turtleCommand,
       "arity" -> primitive.arity, "inputs" -> writeJs(primitive.inputKinds.map(_.toString))))
   })
 
   def execute(program: ProgrammingTestProgram, tests: String,
-      clients: List[ExecutionClient]): Future[BeTestResult] = {
+      clients: List[ExecutionClient], observeProgram: Boolean = false): Future[Result] = {
     val source = program.source
     val sourceLimit = if program.commandEntryPoint.isDefined then 131072 else 32768
     if source == null || tests == null || source.length > sourceLimit || tests.trim.isEmpty || tests.length > 8192 then
-      Future.successful(BeTestResult.Error("The unit-test input is empty or exceeds its limits."))
+      Future.successful(Result(BeTestResult.Error("The unit-test input is empty or exceeds its limits.")))
     else {
       val request = WorkerCommands.RunPythonRequest(script, context = Map(
         "_eva_source" -> ujson.Str(source), "_eva_tests" -> ujson.Str(tests),
         "_eva_entry_point" -> program.commandEntryPoint.map(writeJs(_)).getOrElse(ujson.Null),
+        "_eva_observe_program" -> ujson.Bool(observeProgram),
         "_eva_turtle_primitives" -> turtlePrimitives),
         captureStdout = false, captureStderr = false)
       val factory = WorkerCommands.runPython
@@ -40,16 +45,20 @@ private[evadid] object ProgrammingTestRunner {
           _ => Future.successful(unavailable),
           _.map { reply =>
             val report = reply.result
-            if report.stdout == "" && report.stderr == "" && report.callbackOps == Nil then decode(report.value)
+            if report.stdout == "" && report.stderr == "" && report.callbackOps == Nil then decode(report.value, observeProgram)
             else invalidResult
           }.recover { case NonFatal(_) => unavailable })
       }
     }
   }
 
-  private def decode(value: ujson.Value): BeTestResult = Try {
-    require(value.obj.keySet == Set("status", "reason"))
-    (value("status").str, value("reason").str) match {
+  private def decode(value: ujson.Value, observeProgram: Boolean): Result = Try {
+    require(value != null)
+    val keys = value.obj.keySet.toSet
+    require(keys == Set("status", "reason") || observeProgram && keys == Set("status", "reason", "programObservation"))
+    val status = value("status").str
+    val reason = value("reason").str
+    val result = (status, reason) match {
       case ("passed", "") => BeTestResult.Passed
       case ("failed", "assertion" | "student-syntax" | "student-runtime") => BeTestResult.Failed
       case ("error", "invalid-tests") => BeTestResult.Error("The unit-test definition is invalid.")
@@ -58,20 +67,72 @@ private[evadid] object ProgrammingTestRunner {
       case ("error", "program-execution" | "java-execution") => BeTestResult.Error("The program invocation did not complete.")
       case _ => throw IllegalArgumentException("Invalid unit-test result.")
     }
+    val observation = value.obj.get("programObservation").filter(_ != ujson.Null).map { report =>
+      require(status == "passed" || status == "failed" && reason == "assertion")
+      require(report.obj.keySet.toSet == Set("commandCount", "commands"))
+      val count = report("commandCount").num
+      require(count.isValidInt)
+      val rows = report("commands").arr
+      require(rows.size <= ProgrammingTestProgramObservation.PrefixLength)
+      val commands = rows.toList.map { row =>
+        require(row.arr.nonEmpty)
+        val name = row.arr.head.str
+        require(ProgrammingTestProgramObservation.commandArity(name).contains(row.arr.size - 1))
+        TurtleCommand[Double](name, row.arr.tail.map(_.num).toList)
+      }
+      ProgrammingTestProgramObservation(count.toInt, commands)
+    }
+    Result(result, observation)
   }.getOrElse(invalidResult)
 
-  private val script = """def _eva_evaluate(source, tests, entry_point, turtle_primitives):
+  private val script = """def _eva_evaluate(source, tests, entry_point, turtle_primitives, observe_program):
     import ast
     import math
     import sys
 
     budget = [250000, 4096, 10000]
     compiled = isinstance(entry_point, dict)
+    observed = [None]
+    observation_allowed = [True]
 
     def result(status, reason=""):
         if any(remaining < 0 for remaining in budget):
-            return {"status": "error", "reason": "execution-limit"}
-        return {"status": status, "reason": reason}
+            status, reason = "error", "execution-limit"
+        report = {"status": status, "reason": reason}
+        if observe_program:
+            report["programObservation"] = None
+            if observation_allowed[0] and observed[0] is not None and (
+                    status == "passed" or status == "failed" and reason == "assertion"):
+                report["programObservation"] = {"commandCount": len(observed[0]),
+                    "commands": [[command[0], *[float(value) for value in command[1:]]]
+                        for command in observed[0][:32]]}
+        return report
+
+    def suppress_observation():
+        observation_allowed[0] = False
+        observed[0] = None
+
+    def observe(commands):
+        if not observe_program or not observation_allowed[0]:
+            return
+        if len(commands) > 10000:
+            suppress_observation()
+            return
+        by_command = {value["command"]: value for value in turtle_primitives.values()}
+        for command in commands:
+            specification = by_command.get(command[0])
+            if (specification is None or specification["command"] == "receive_go" or
+                    any(kind != "Numeric" for kind in specification["inputs"]) or
+                    len(command) != specification["arity"] + 1 or
+                    any(type(value) not in (int, float) or not math.isfinite(value) or
+                        abs(value) > 9007199254740991 for value in command[1:])):
+                suppress_observation()
+                return
+        frozen = tuple(tuple(command) for command in commands)
+        if observed[0] is not None and frozen != observed[0]:
+            suppress_observation()
+        else:
+            observed[0] = frozen
 
     try:
         tree = ast.parse(tests, filename="<workbook-tests>", mode="exec")
@@ -115,6 +176,9 @@ private[evadid] object ProgrammingTestRunner {
 
     def trace(frame, event, argument):
         if frame.f_code.co_filename in ("<student-source>", "<workbook-tests>"):
+            if (observe_program and event == "call" and frame.f_code.co_filename == "<student-source>" and
+                    frame.f_back is not None and frame.f_back.f_code.co_filename == "<workbook-tests>"):
+                suppress_observation()
             frame.f_trace_opcodes = True
             if event in ("line", "opcode"):
                 budget[0] -= 1
@@ -157,6 +221,8 @@ private[evadid] object ProgrammingTestRunner {
         invocations = [0]
 
         def invoke(methodName=None, arguments=()):
+            if observe_program and (methodName is not None or arguments):
+                suppress_observation()
             if not compiled or (methodName is not None and
                     (type(methodName) is not str or methodName not in entry_point["methods"])):
                 raise ProgramExecutionError()
@@ -166,10 +232,14 @@ private[evadid] object ProgrammingTestRunner {
             invocation = execute(method, arguments)
             if invocation.get("status") != "Completed":
                 raise ProgramExecutionError()
+            if methodName is None and not arguments:
+                observe(invocation["commands"])
             return invocation
 
         def run_program():
             recorded = invoke()["commands"] if compiled else snapshot
+            if not compiled:
+                observe(recorded)
             return {"status": "Completed", "commands": [list(command) for command in recorded]}
 
         namespace = {"run_java": invoke} if compiled else student
@@ -196,6 +266,6 @@ private[evadid] object ProgrammingTestRunner {
         sys.settrace(previous[0])
         sys.stdout, sys.stderr = previous[1], previous[2]
 
-_eva_evaluate(_eva_source, _eva_tests, _eva_entry_point, _eva_turtle_primitives)
+_eva_evaluate(_eva_source, _eva_tests, _eva_entry_point, _eva_turtle_primitives, _eva_observe_program)
 """
 }

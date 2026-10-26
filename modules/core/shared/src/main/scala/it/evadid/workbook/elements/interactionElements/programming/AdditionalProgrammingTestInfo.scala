@@ -7,7 +7,8 @@ import scala.util.Try
 import upickle.default.ReadWriter
 
 case class AdditionalProgrammingTestInfo(
-    humanReadableTestExecutionDescription: LanguageMap[HumanLanguage]
+    humanReadableTestExecutionDescription: LanguageMap[HumanLanguage],
+    programObservation: Option[ProgrammingTestProgramObservation] = None
 ) derives ReadWriter
 
 object AdditionalProgrammingTestInfo {
