@@ -156,13 +156,13 @@ private[evadid] object ProgrammingTestRunner {
         snapshot = tuple(tuple(command) for command in commands)
         invocations = [0]
 
-        def invoke(method_name=None, arguments=()):
-            if not compiled or (method_name is not None and
-                    (type(method_name) is not str or method_name not in entry_point["methods"])):
+        def invoke(methodName=None, arguments=()):
+            if not compiled or (methodName is not None and
+                    (type(methodName) is not str or methodName not in entry_point["methods"])):
                 raise ProgramExecutionError()
             invocations[0] += 1
             execute = student[entry_point["functionName"]]
-            method = None if method_name is None else entry_point["methods"][method_name]
+            method = None if methodName is None else entry_point["methods"][methodName]
             invocation = execute(method, arguments)
             if invocation.get("status") != "Completed":
                 raise ProgramExecutionError()
