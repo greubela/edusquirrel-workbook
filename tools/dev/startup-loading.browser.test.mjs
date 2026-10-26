@@ -1,3 +1,4 @@
+import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -29,28 +30,33 @@ for(const prefix of ['/', '/edusquirrel-workbook/']) {
       await page.route('**/*',async route=>{
         const url=new URL(route.request().url());
         requests.push(url.pathname);
+        if(url.hostname==='unpkg.com' && url.pathname.includes('/algebrite@')) {
+          await libraries;
+          return route.fulfill({contentType:'text/javascript',body:'window.Algebrite = {run: expression => expression};'});
+        }
         if(url.origin!==origin || !url.pathname.startsWith(prefix))return route.abort();
         const relative=decodeURIComponent(url.pathname.slice(prefix.length));
         if(relative.split('/').includes('..'))return route.abort();
         if(relative==='deployment/client/.env') {await config;return route.fulfill({status:404,body:'Not found'});}
         if(relative.startsWith('resources/languageMaps/') || relative.includes('/20260704Snap/locale/'))await languages;
-        if(relative.endsWith('/adjusted/adjustedMorphic.js') || relative.endsWith('/jsxgraphcore.js') || relative==='homepage/js/CodeMirrorLoader.js')await libraries;
+        if(relative.endsWith('/adjusted/adjustedMorphic.js') || relative.endsWith('/jsxgraphcore.js'))await libraries;
         let file=path.join(root,relative+(relative.endsWith('/')?'index.html':''));
-        if(relative==='homepage/js/CodeMirrorLoader.js')file=process.env.CODEMIRROR_TEST_BUNDLE;
         try {await route.fulfill({body:await fs.readFile(file),contentType:mime[path.extname(file)]||'application/octet-stream'});}
         catch {await route.fulfill({status:404,body:'Not found'});}
       });
       const workerRequest=page.waitForRequest(request=>
         request.url()===origin+prefix+'artifacts/newest/worker.js');
+      await installCodeMirrorModules(page, {gate:libraries});
       await page.goto(origin+prefix+'homepage/workbookDesign/',{waitUntil:'domcontentloaded'});
       await page.locator('.workbook-header').waitFor();
       await page.locator('.section-register').waitFor();
-      await page.waitForFunction(()=>document.querySelector('script[src$="CodeMirrorLoader.js"]') &&
-        document.querySelector('script[src$="adjusted/adjustedMorphic.js"]') && document.querySelector('script[src$="jsxgraphcore.js"]'));
+      await page.waitForFunction(()=>document.querySelector('script[src$="adjusted/adjustedMorphic.js"]') && document.querySelector('script[src$="jsxgraphcore.js"]'));
       assert(requests.some(url=>url.includes('/languageMaps/')),'language loading has started independently');
       await page.waitForFunction(()=>performance.getEntriesByType('resource').some(entry=>entry.name.endsWith('/turtlestitchsrc/embroider.js')));
       assert.equal(await page.evaluate(()=>typeof window.WorldMorph),'undefined','parallel prefetch must not execute later dependencies out of order');
       assert.equal(await page.locator('dialog[open]').count(),0,'preheating does not construct an editor');
+      assert.equal(requests.filter(url=>url.includes('/algebrite@')).length,1,'Algebrite preheats without opening an editor');
+      assert.equal(await page.evaluate(()=>typeof window.Algebrite),'undefined','Algebrite loading cannot block initial rendering');
       await page.waitForFunction(()=>window.startedWorkers.some(url=>url.endsWith('/artifacts/newest/worker.js')));
       assert.equal((await workerRequest).url(),origin+prefix+'artifacts/newest/worker.js','configuration timeout cannot stall worker preheating');
       assert(!requests.some(url=>url.includes('/homepage/deployment/')),'configuration uses one known location');
@@ -61,7 +67,7 @@ for(const prefix of ['/', '/edusquirrel-workbook/']) {
       await page.locator('dialog[open] .be-program-snap-renderer__canvas').waitFor();
       await page.locator('.fullscreen-close-button').click();
       releaseLibraries();releaseConfig();
-      await page.waitForFunction(()=>typeof window.SnapSerializer?.prototype.eduSquirrelOriginalLoadProjectModel === 'function' && !!window.EduSquirrelCodeMirror && !!window.JXG);
+      await page.waitForFunction(()=>typeof window.SnapSerializer?.prototype.eduSquirrelOriginalLoadProjectModel === 'function' && !!window.EduSquirrelCodeMirror && !!window.JXG && !!window.Algebrite);
       assert.equal(await page.locator('dialog[open]').count(),0,'late readiness cannot resurrect an unmounted editor');
       await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
       await page.waitForFunction(()=>{
@@ -90,10 +96,10 @@ test('a failed Snap dependency leaves the shell usable and a later editor open r
       if(unavailable && url.pathname.endsWith('/adjusted/adjustedMorphic.js'))return route.fulfill({status:503,body:'Unavailable'});
       let file=path.resolve(root,'.'+url.pathname+(url.pathname.endsWith('/')?'index.html':''));
       if(!file.startsWith(root+path.sep))return route.abort();
-      if(url.pathname==='/homepage/js/CodeMirrorLoader.js')file=process.env.CODEMIRROR_TEST_BUNDLE;
       try {await route.fulfill({body:await fs.readFile(file),contentType:mime[path.extname(file)]||'application/octet-stream'});}
       catch {await route.fulfill({status:404,body:'Not found'});}
     });
+    await installCodeMirrorModules(page);
     await page.goto(origin+'/homepage/workbookDesign/',{waitUntil:'domcontentloaded'});
     await page.getByRole('button',{name:'Start Using Locally',exact:true}).click();
     await page.locator('.section-block').first().click();

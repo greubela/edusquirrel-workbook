@@ -188,6 +188,8 @@ object FetchProxyLlmClient {
 
     val url =
       readGlobalLlmProxyUrl
+        .orElse(scala.util.Try(Option(org.scalajs.dom.document.querySelector("meta[name='eva-llm-proxy']"))
+          .map(_.getAttribute("content")).filter(_.nonEmpty)).toOption.flatten)
         .orElse(readEnv("LLM_PROXY_URL"))
         .getOrElse(DefaultUrl)
 

@@ -10,8 +10,9 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 | `modules/core/js/`, `modules/core/jvm/` | Platform-specific core implementations |
 | `modules/client/` | Browser startup, Laminar renderers, editors and authored workbooks |
 | `modules/worker/` | Scala.js browser worker and shared command execution |
+| `modules/desktop/` | Optional JavaFX canvas adapters for desktop and evacuation use |
 | `modules/server/` | JVM backend and command handlers |
-| `homepage/` | Entry pages, CSS and browser bootstrap scripts |
+| `homepage/` | Entry pages, CSS and catalogue presentation |
 | `resources/` | Language maps, teaching materials and bundled programs/libraries |
 | `tools/` | Site assembly, browser checks, fixture generators and optional LLM proxies |
 | `artifacts/` | Generated bundles and server assemblies |
@@ -42,7 +43,7 @@ The [authentication guide](docs/authentication.md) describes registration, email
 | Domain models, workbook elements/interactions, validation and serializers shared by JVM and JS | `modules/core/shared/src/main/scala/`; tests in its matching `src/test/scala/` package |
 | Browser interaction renderers, editors and workbook factories | `modules/client/src/main/scala/`; tests in its matching `src/test/scala/` package |
 | Platform-specific code, worker execution or backend behavior | The corresponding core JS/JVM, worker or server module |
-| Workbook entry pages and browser bootstrap scripts | `homepage/<workbook>/index.html` and `homepage/js/` |
+| Workbook entry pages and presentation | `homepage/<workbook>/index.html`, `homepage/css/` and catalogue presentation in `homepage/js/` |
 | Presentation styles and shared color/dimension tokens | Dedicated files in `homepage/css/`; static styles belong here rather than in Laminar |
 | Translated workbook text | `resources/languageMaps/eva/<workbook-group>/` |
 | Published classic PDF/ZIP editions | `resources/workbookpdfs/`; keep public catalogue links available during migration |
@@ -55,7 +56,7 @@ The [authentication guide](docs/authentication.md) describes registration, email
 
 Reuse these locations and existing subject/package directories. Do not create a new directory at the repository root unless no existing directory can serve the purpose and there is a strong architectural or tooling necessity. Explain that necessity and update this directory guide when such an exception is required. Agent instructions are in [AGENTS.md](AGENTS.md).
 
-The root sbt project aggregates client, server and worker. Client and worker depend on core JS; server depends on core JVM. Run the core test projects explicitly to verify both platforms.
+The root sbt project aggregates client, server, worker and the optional desktop adapters. Client and worker depend on core JS; server depends on core JVM. Run the core test projects explicitly to verify both platforms.
 
 ## Finding the code
 
@@ -99,7 +100,7 @@ Static presentation belongs in dedicated files under `homepage/css/`, using `gen
 
 ## Build and local preview
 
-Use Java, sbt and Node.js/npm. CI uses Java 17 and Node 22; the Scala suites have also run on Java 21. Install the locked Node development dependencies before running browser/DOM tests:
+Use Java, sbt and Node.js/npm. CI and the server use Java 21; browser tests use Node 24. Install the locked Node development dependencies before running browser/DOM tests:
 
 ```sh
 npm ci
@@ -108,7 +109,7 @@ npm run assemble
 npm run preview
 ```
 
-This builds `artifacts/newest/client.js` and `worker.js`, assembles a local `_site/`, and serves it at `http://localhost:4173`. The npm `assemble` script uses [assemble-site.mjs](tools/dev/assemble-site.mjs), whose local preview layout differs from the deployment layout described below. The existing npm `build` wrapper invokes `fastOptJS`; use `sbt buildJS` when you need current published client and worker artifacts.
+This builds `artifacts/newest/client.js` and `worker.js`, assembles a local `_site/`, and serves it at `http://localhost:4173`. The npm `assemble` script uses [assemble-site.mjs](tools/dev/assemble-site.mjs), whose local preview layout differs from the deployment layout described below. The npm `build` command runs `sbt buildJS`, updating both published browser artifacts.
 
 Useful artifact tasks:
 
@@ -121,7 +122,7 @@ Useful artifact tasks:
 | `sbt buildClientDeploy buildWorkerDeploy` | Optimized JS artifacts in newest/stable/history |
 | `sbt buildAllDeploy` | All deployment artifacts |
 
-Task definitions are in [BuildCommands.scala](project/BuildCommands.scala).
+Task definitions are in [BuildCommands.scala](project/BuildCommands.scala). JavaFX adapters live in `modules/desktop/` and compile with `sbt desktop/compile`; their packages are unchanged. The server depends on core JVM only, so its fat JAR excludes desktop adapters and JavaFX libraries. After `sbt buildServerDev`, run `node tools/dev/check-server-assembly.mjs` to verify standalone startup, health and logging.
 
 ## Tests
 
@@ -143,11 +144,11 @@ npm run test:workbooks
 ```
 
 The browser runner uses Playwright's installed Chromium, or `CHROMIUM_PATH` when set
-(for example `/usr/bin/chromium`). It bundles the production CodeMirror loader using
-the pinned local packages, so editor tests do not depend on a live CDN. Both runners
+(for example `/usr/bin/chromium`). It serves the native CodeMirror packages from pinned local npm dependencies, so
+editor tests do not depend on a live CDN. Both runners
 disable Node test-worker isolation for compatibility with restricted environments.
 The [test workflow](.github/workflows/tests.yml) runs these checks and every Scala
-module on pull requests and pushes to main. Individual test files can still be run
+module on pull requests and, through the Pages workflow, before publication from main. Individual test files can still be run
 with `node --test`.
 
 ## Deployment
@@ -162,7 +163,7 @@ node tools/dev/assemble-pages.mjs
 
 Both assembly scripts replace `_site/`. Generated outputs should not be edited as source.
 
-LLM feedback uses the endpoint configured in [config.js](homepage/js/config.js). The deployed configuration points to the existing PyTutorAI Cloudflare worker. For a separate deployment or local development, see the [Cloudflare proxy guide](tools/cloudflare-proxy/README.md) and [FastAPI proxy guide](tools/openai-proxy/README.md). Real email transport is not used by the mailbox simulator.
+The feedback demo configures the LLM proxy through its `eva-llm-proxy` HTML meta tag. The deployed configuration points to the existing PyTutorAI Cloudflare worker. For a separate deployment or local development, see the [Cloudflare proxy guide](tools/cloudflare-proxy/README.md) and [FastAPI proxy guide](tools/openai-proxy/README.md). Real email transport is not used by the mailbox simulator.
 
 ## Documentation
 

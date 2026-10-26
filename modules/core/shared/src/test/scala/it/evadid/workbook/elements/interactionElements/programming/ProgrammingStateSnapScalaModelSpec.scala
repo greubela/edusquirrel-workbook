@@ -54,11 +54,11 @@ two</options></input></inputs>
     val typed = source.toSnapScalaModel.toOption.get
     assertEquals(typed.toSnapXml, source)
     assertEquals(converted(typed.toSnapXml.snapXml, typed.legacyFloatingObjects), typed)
-    assertEquals(read[ProgrammingStateSnapScalaModel](write(typed)), typed)
-    assertEquals(readBinary[ProgrammingStateSnapScalaModel](writeBinary(typed)), typed)
-    assertEquals(read[ProgrammingState](write[ProgrammingState](typed)), typed)
-    assertEquals(readBinary[ProgrammingState](writeBinary[ProgrammingState](typed)), typed)
-    assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(typed)), typed)
+    assertEquals(read[ProgrammingStateSnapScalaModel](write(typed)), typed.persistent)
+    assertEquals(readBinary[ProgrammingStateSnapScalaModel](writeBinary(typed)), typed.persistent)
+    assertEquals(read[ProgrammingState](write[ProgrammingState](typed)), typed.persistent)
+    assertEquals(readBinary[ProgrammingState](writeBinary[ProgrammingState](typed)), typed.persistent)
+    assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(typed)), typed.persistent)
     assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(source)), source)
     assertEquals(read[ProgrammingStateSnapXml](write(source)), source)
     assertEquals(typed.fingerprint(), source.fingerprint())
@@ -159,4 +159,33 @@ two</options></input></inputs>
     assertEquals(state.toSnapXml.snapXml, "<project><notes>new story</notes></project>")
     assertRoundTrip(state.toSnapXml.snapXml)
   }
+  test("persisted models omit generated media while retaining authored assets and opaque data") {
+    val state = converted("<project><thumbnail>huge-preview</thumbnail><stage><pentrails>huge-trails</pentrails>" +
+      "<costumes><costume image='authored-image'/></costumes><extension>keep me</extension></stage></project>", List("opaque"))
+    val saved = read[ProgrammingStateSnapScalaModel](write(state))
+    assertEquals(saved, state.persistent)
+    assert(!write(state).contains("huge-preview"))
+    assert(!write(state).contains("huge-trails"))
+    assert(saved.toSnapXml.snapXml.contains("authored-image"))
+    assert(saved.toSnapXml.snapXml.contains("keep me"))
+    assertEquals(saved.legacyFloatingObjects, List("opaque"))
+    assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(state)), state.persistent)
+  }
+
+  test("meaningful comparison ignores previews and XML spelling but retains program, layout, text and asset edits") {
+    val first = converted("<project><thumbnail>first</thumbnail><stage name='a' tempo='60'><scripts><script x='1'><block s='forward'><l>10</l></block></script></scripts></stage></project>")
+    val same = converted("<project>\n <stage tempo=\"60\" name=\"a\">\n<scripts><script x=\"1\"><block s=\"forward\"><l><![CDATA[10]]></l></block></script></scripts>\n</stage><thumbnail>second</thumbnail></project>")
+    assert(first.meaningfullyEquals(same))
+    for ((before, after) <- List("10" -> "11", "forward" -> "turn", "x='1'" -> "x='2'", "name='a'" -> "name='b'"))
+      assert(!first.meaningfullyEquals(converted(first.toSnapXml.snapXml.replace(before, after))))
+    assert(!converted("<project><l> </l></project>").meaningfullyEquals(converted("<project><l></l></project>")))
+    assert(!first.meaningfullyEquals(first.copy(legacyFloatingObjects = List("new"))))
+  }
+
+  test("typed persistence keeps the default empty legacy payload optional") {
+    val state = converted("<project><thumbnail>generated</thumbnail></project>")
+    val json = ujson.Obj("model" -> writeJs(state.model))
+    assertEquals(read[ProgrammingStateSnapScalaModel](json), state.persistent)
+  }
+
 }

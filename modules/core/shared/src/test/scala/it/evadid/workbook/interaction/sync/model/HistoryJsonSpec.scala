@@ -1,10 +1,14 @@
 package it.evadid.workbook.interaction.sync.model
 
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
+import it.evadid.workbook.interaction.sync.{SyncInformation, SyncStrategy, UsageContext}
 import it.evadid.workbook.elements.interactionElements.slideshow.{SlideshowGrader, SlideshowState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
@@ -43,10 +47,76 @@ class HistoryJsonSpec extends FunSuite {
 
   private def history[T](state: T, seconds: Int) = {
     val feedback = ScaffoldingResult(state, LanguageMap.universalMap[AppLanguage.HumanLanguage]("Try again"),
-      FeedbackEntity.TestEntity(), Some(List(1, 2, 3)))
+      FeedbackEntity.TestEntity(), Some(List(1, 2, 3)), scaffoldingTime = time.plusSeconds(seconds))
     InteractionVariableHistory[T, Int, List[Int]](
       Set(InteractionVariableState(state, UpdateImportance.MAJOR, time.plusSeconds(seconds))),
       Map.empty, Map(state -> feedback))
+  }
+
+  test("grading and hint timestamps synchronize feedback without inventing answer edits") {
+    val task = LanguageMapContentId("test/task")
+    val criterion = LanguageMapContentId("test/criterion")
+    val element = TextInputWithScaffoldingAndGrading("answer", task, gradingCriteria = List(criterion))
+    val state = "unchanged answer"
+    val event = InteractionVariableState(state, UpdateImportance.MAJOR, time)
+    val grade = GradingResult[String, MessengerModel](element.gradingElements.head, state, GradingStatus.Correct(),
+      gradingTime = time.plusSeconds(10))
+    val graded = InteractionVariableHistory[String, MessengerModel, MessengerModel](Set(event),
+      Map(state -> GradedState(state, Set(grade))), Map.empty)
+    val location = SyncInformation(null, SyncStrategy.SYNC_LAST).forContext(UsageContext("p", "s", "u"))
+    val variable = element.interactionVariable
+    variable.updateHistory(_ => graded)
+    assertEquals(graded.latestChangeTimestamp, Some(grade.gradingTime))
+    assertEquals(HistoryJson.lastTimestamp(write(graded)), Some(grade.gradingTime))
+    assertEquals(location.dataToStore(variable).head.timestamp, grade.gradingTime)
+    val hint = ScaffoldingResult[String, MessengerModel](state, LanguageMap.universalMap[AppLanguage.HumanLanguage]("A hint"),
+      FeedbackEntity.LlmEntity(MessengerModel.empty), None, scaffoldingTime = time.plusSeconds(20))
+    val withHint = graded.copy(scaffoldings = Map(state -> hint))
+    variable.updateHistory(_ => withHint)
+    assertEquals(location.dataToStore(variable).head.timestamp, hint.scaffoldingTime)
+    assertEquals(HistoryJson.lastTimestamp(HistoryJson.stored("answer_history",write(withHint))), Some(hint.scaffoldingTime))
+    assertEquals(variable.history.events, Set(event), "feedback never creates a fake edit")
+    type History = InteractionVariableHistory[String, MessengerModel, MessengerModel]
+    val key = location.usageContext.toSyncContext(variable.keyForSerialization)
+    val stale = SyncStatus[it.evadid.workbook.interaction.sync.SyncContext, History](Some(grade.gradingTime), key, None)
+    val report = it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport(
+      withHint, Map(location -> stale), List(location))
+    assertEquals(report.latestSyncedAt(location), false)
+    assertEquals(report.copy(curRemoteHistory = Map(location -> stale.copy(lastCacheRequest = Some(hint.scaffoldingTime))))
+      .latestSyncedAt(location), true)
+    val fetched = FetchResponse.fromMap(time.plusMinutes(1), Map("answer" -> write(withHint)), HistoryJson.lastTimestamp)
+    assertEquals(fetched.fetchedValues.head.timestamp, hint.scaffoldingTime)
+    val structured = InteractionVariableHistory[List[String], Int, Int](Set(InteractionVariableState(List(state), UpdateImportance.MAJOR, time)),
+      Map.empty, Map(List(state) -> hint.copy(forState = List(state), additionalInformation = Some(1))))
+    assertEquals(HistoryJson.lastTimestamp(write(structured)), Some(hint.scaffoldingTime))
+  }
+
+  test("legacy scaffolding gets a stable timestamp and retains its original payload") {
+    val original = ScaffoldingResult("answer", LanguageMap.universalMap[AppLanguage.HumanLanguage]("Old hint"),
+      FeedbackEntity.TestEntity(), Some("evidence"), time.plusSeconds(1))
+    val json = writeJs(original)
+    json.obj.remove("scaffoldingTime")
+    val first = read[ScaffoldingResult[String, String]](json)
+    val second = read[ScaffoldingResult[String, String]](json)
+    assertEquals(first.scaffoldingTime, LocalDateTime.MIN)
+    assertEquals(first, second)
+    assertEquals(first.additionalInformation, original.additionalInformation)
+    assertEquals(read[ScaffoldingResult[String, String]](write(first)), first)
+    assertEquals(InteractionVariableHistory.empty[String, Int, Int].latestChangeTimestamp, None)
+  }
+
+  test("legacy grades with an omitted default timestamp still load using the answer timestamp") {
+    val task = LanguageMapContentId("test/task")
+    val grader = TextInputLlmGrader(task, LanguageMapContentId("test/criterion"))
+    val result = GradingResult[String, MessengerModel](grader, "answer", GradingStatus.Correct(), gradingTime = time)
+    val history = InteractionVariableHistory[String, MessengerModel, MessengerModel](
+      Set(InteractionVariableState("answer", UpdateImportance.MAJOR, time)),
+      Map("answer" -> GradedState("answer", Set(result))), Map.empty)
+    val json = writeJs(history)
+    json("gradings")("answer")("testsWithResults").arr.foreach(_.obj.remove("gradingTime"))
+    assertEquals(HistoryJson.lastTimestamp(ujson.write(json)), Some(time))
+    assertEquals(FetchResponse.fromMap(time.plusSeconds(1), Map("answer" -> ujson.write(json)), HistoryJson.lastTimestamp)
+      .fetchedValues.size, 1)
   }
 
   test("merging histories preserves feedback with string map keys and chooses the first duplicate") {

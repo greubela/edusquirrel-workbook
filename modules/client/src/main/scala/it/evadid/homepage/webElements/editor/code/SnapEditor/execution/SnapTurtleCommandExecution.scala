@@ -2,20 +2,16 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapProgramDerivation
-import it.evadid.homepage.workbook.legacy.interactionPlugins.programmingExercise.pythonExercise.pyodide.PyodideBackends.{CallbackOp, PythonRunConfig, PythonRunReport}
+import it.evadid.distribution.clients.PythonExecutionClient
+import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPythonRequest}
 import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonHelpers
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
-import it.evadid.distribution.clients.WebWorkerExecutionClient
-import it.evadid.distribution.commandTypes.WorkerCommands
-import it.evadid.facades.Workers
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 
 import java.util.concurrent.{CancellationException, TimeoutException}
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.scalajs.js
 import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 import scala.util.{Failure, Success, Try}
 
@@ -35,49 +31,23 @@ final class SnapTurtleCommandExecution(runner: TurtleCommandRunner):
       ))
     else runner.execute(derived.python)
 
-/** Small seam around command-based Python execution, allowing orchestration tests
-  * to supply an already executed callback report.
-  */
-trait PythonCallbackExecutor:
-  def addCallbacks(moduleName: String, methodNames: Seq[String]): Future[Unit]
-  def run(code: String, config: PythonRunConfig): Future[PythonRunReport]
-  def close(): Unit = ()
-
-private final class CommandPythonCallbackExecutor(worker: WebWorkerExecutionClient) extends PythonCallbackExecutor:
-  private var callbacks = Map.empty[String, List[String]]
-  override def addCallbacks(moduleName: String, methodNames: Seq[String]): Future[Unit] =
-    callbacks += moduleName -> methodNames.toList
-    // Warm the interpreter during the runner's startup deadline, before its execution deadline.
-    WorkerCommands.runPython.sendCommandTo(worker, WorkerCommands.RunPythonRequest("", callbacks = callbacks)).map(_ => ())
-
-  override def run(code: String, config: PythonRunConfig): Future[PythonRunReport] =
-    val context = ujson.read(js.JSON.stringify(config.context)).obj.toMap
-    WorkerCommands.runPython.sendCommandTo(worker, WorkerCommands.RunPythonRequest(code, context, callbacks,
-      resetGlobals = config.resetGlobals, captureStdout = config.captureStdout, captureStderr = config.captureStderr)).map { execution =>
-      val report = execution.result
-      PythonRunReport(report.callbackOps.map(op => CallbackOp(op.module, op.method,
-        op.args.map(arg => js.JSON.parse(ujson.write(arg))).toVector)).toVector, report.stdout, report.stderr)
-    }
-
-  override def close(): Unit = worker.close()
-
 /** Executes derived Snap Python in the integrated Pyodide Web Worker. The
   * returned callbacks therefore describe runtime calls (including loop and
   * function expansion), rather than statically present blocks.
   */
 final class PyodideTurtleCommandRunner(
-    executorFactory: () => PythonCallbackExecutor = () => PyodideTurtleCommandRunner.workerExecutor(),
+    executorFactory: () => PythonExecutionClient = () => PyodideTurtleCommandRunner.workerExecutor(),
     startupTimeoutMs: Int = 120000,
     executionTimeoutMs: Int = 10000
 ) extends TurtleCommandRunner:
-  def this(executor: PythonCallbackExecutor) = this(() => executor)
+  def this(executor: PythonExecutionClient) = this(() => executor)
 
   require(startupTimeoutMs > 0 && executionTimeoutMs > 0, "Worker timeouts must be positive.")
-  private class Run(val executor: PythonCallbackExecutor):
+  private class Run(val executor: PythonExecutionClient):
     val result = Promise[List[TurtleCommand[Double]]]()
     var timer = Option.empty[SetTimeoutHandle]
 
-  private var executor = Option.empty[PythonCallbackExecutor]
+  private var executor = Option.empty[PythonExecutionClient]
   private var active = Option.empty[Run]
 
   def close(): Unit = active match {
@@ -119,12 +89,12 @@ final class PyodideTurtleCommandRunner(
         val run = new Run(transport)
         active = Some(run)
         deadline(run, startupTimeoutMs, "startup")
-        Try(transport.addCallbacks(PyodideTurtleCommandRunner.ModuleName, SnapTurtleCatalog.AllowedPythonNames.toSeq.sorted))
+        Try(transport.ready())
           .fold(Future.failed, identity).onComplete {
             case Success(_) if current(run) =>
               deadline(run, executionTimeoutMs, "execution")
-              Try(transport.run(s"${JavaTurtlePythonHelpers.installationSource}from ${PyodideTurtleCommandRunner.ModuleName} import *\n$python",
-                PythonRunConfig(resetGlobals = true))).fold(Future.failed, identity).onComplete {
+              Try(transport.run(RunPythonRequest(s"${JavaTurtlePythonHelpers.installationSource}from ${PyodideTurtleCommandRunner.ModuleName} import *\n$python",
+                callbacks = Map(PyodideTurtleCommandRunner.ModuleName -> SnapTurtleCatalog.AllowedPythonNames.toList.sorted)))).fold(Future.failed, identity).onComplete {
                   case Success(report) if current(run) =>
                     val commands = Try {
                       if report.callbackOps.size > 10000 then throw IllegalArgumentException("Your drawing contains too many commands.")
@@ -144,35 +114,32 @@ final class PyodideTurtleCommandRunner(
 object PyodideTurtleCommandRunner:
   private[execution] val ModuleName = "turtle"
 
-  private def workerExecutor(): PythonCallbackExecutor =
-    new CommandPythonCallbackExecutor(WebWorkerExecutionClient.fromWorker(
-      Workers.classic(
-        HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.relativeToArtifactsFolder("newest/worker.js").asUrlString).createLoadedInstance()))
+  private def workerExecutor(): PythonExecutionClient =
+    PythonExecutionClient.worker(it.evadid.homepage.control.startup.ClientRuntimeConfig.workerUrl)
 
-  private[execution] def commandsFrom(callbacks: Seq[CallbackOp]): List[TurtleCommand[Double]] =
+  private[execution] def commandsFrom(callbacks: Seq[PythonCallback]): List[TurtleCommand[Double]] =
     callbacks.iterator
       .filter(_.module == ModuleName)
       .map(toCommand)
       .toList
 
-  private def toCommand(callback: CallbackOp): TurtleCommand[Double] =
+  private def toCommand(callback: PythonCallback): TurtleCommand[Double] =
     val canonicalName = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(
       callback.method,
       throw IllegalArgumentException(s"Unsupported turtle callback: ${callback.method}")
     )
     val (numeric, textual) = callback.args.foldLeft((List.empty[Double], List.empty[String])) {
-      case ((numbers, strings), value) if js.typeOf(value) == "number" =>
-        val number = value.asInstanceOf[Double]
+      case ((numbers, strings), ujson.Num(number)) =>
         if !number.isFinite then
           throw IllegalArgumentException(s"Non-finite argument for ${callback.method}: $number")
         (numbers :+ number, strings)
-      case ((numbers, strings), value) if js.typeOf(value) == "string" =>
-        (numbers, strings :+ value.asInstanceOf[String])
-      case ((numbers, strings), value) if js.typeOf(value) == "boolean" =>
-        (numbers, strings :+ value.asInstanceOf[Boolean].toString)
+      case ((numbers, strings), ujson.Str(value)) =>
+        (numbers, strings :+ value)
+      case ((numbers, strings), ujson.Bool(value)) =>
+        (numbers, strings :+ value.toString)
       case (_, value) =>
         throw IllegalArgumentException(
-          s"Unsupported argument for ${callback.method}: ${js.typeOf(value)}"
+          s"Unsupported argument for ${callback.method}: ${value.getClass.getSimpleName}"
         )
     }
     TurtleCommand(canonicalName, numeric, textual)

@@ -1,216 +1,99 @@
 # Interaction models, renderers and editors
 
-The saved interaction value is the source of truth. A shared interaction defines
-an exercise; a client renderer connects it to the workbook; an optional standalone
-editor changes the supplied value. This guide states the intended dependency
-boundaries and names current integration limits explicitly.
+An interaction defines an exercise and owns its saved answer. Its renderer binds
+that answer to workbook controls; an optional editor changes the supplied value.
+Keep the saved answer as the single source of truth.
 
-## Modules and responsibilities
+## Responsibilities and locations
 
 | Layer | Location | Responsibility |
 | --- | --- | --- |
-| Domain/interaction | `modules/core/shared` | Saved data, configuration, pure algorithms, validation, grading/scaffolding contracts and cross-platform codecs |
-| Platform bridges | `modules/core/js`, `modules/core/jvm` | Platform-specific adapters; the JS `StateHelper` bridge is not JVM code |
-| Renderer | `modules/client` | Reactive preview/labels, state binding and editor/fullscreen composition |
-| Editor | `modules/client` | Controls and transient drafts/selection; changes the supplied bound `Var` |
-| Worker/server | `modules/worker`, `modules/server` | Execute supported shared commands using dependencies available on that backend |
+| Model | `modules/core/shared/.../workbook/` | Exercise definitions, saved values, requirements, grading/scaffolding and codecs |
+| Renderer | `modules/client/.../homepage/workbook/htmlRenderer/` | Workbook placement, localization, previews and editor composition |
+| Editor | `modules/client/.../homepage/webElements/editor/` | Controls and transient drafts, bound to a supplied `Var[T]` |
+| Platform adapters | `modules/core/js/`, `modules/core/jvm/` | Browser/JVM integration kept outside shared models |
+| Execution | `modules/worker/`, `modules/server/` | Commands requiring background computation or server resources |
 
-Shared core must work on JVM and Scala.js. Do not import Laminar, browser JSON/XML
-APIs, DOM or a client renderer into it. Put reusable domain calculations there;
-keep only browser integration and presentation in client. This does not prohibit
-client-local UI state. Saved answer types must remain deserializable without the
-client. The legacy EVA2 client model is currently adapted to a shared persisted
-floor/experiment at that boundary; it is not the desired template for new domain
-models.
-
-```mermaid
-flowchart TD
-    F[Client HtmlRenderFactory] --> R[Client renderer]
-    R --> I[Shared interaction]
-    R --> E[Optional client editor]
-    I --> V[Shared value and requirements]
-    I --> H[Shared history and codecs]
-    E --> V
-    R --> S[Workbook sync and display controls]
-```
-
-An editor should be usable outside a workbook: receive its `Var[T]`, domain
-requirements/configuration and required services. Observe changes through its Var
-signal rather than adding editor-listener callbacks. It should not look up
-its interaction, own a second persistence store or call a workbook renderer.
-The renderer supplies those inputs and handles placement in the workbook.
-A small inline interaction need not introduce a separate editor or fullscreen.
-
-## Element types and state
+Shared models must run on JVM and Scala.js without DOM, Laminar or renderer
+dependencies. Editors should also work outside a workbook: accept the answer,
+configuration and services rather than looking up an interaction or owning a
+second persistence store. Small inline interactions need no separate editor.
 
 [WorkbookElement.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala)
-defines the common ID, children and definition factory:
+separates display elements, structural containers and interactions.
+`InteractionVariable[T, GA, SA]` owns the answer and its history; `GA` and `SA`
+are concrete serializable grading/scaffolding payloads. `defaultValue` initializes
+the answer; it is not another live state. See [state and serialization](state-and-serialization.md).
 
-- `WorkbookDisplayElement` displays content, normally resolved by a language-map ID.
-- `WorkbookStructureElement[T]` groups elements; workbook, sections and exercise
-  containers are examples. `TwoColumnPanel` and `ExerciseGroup` also expose children
-  for normal rendering/serialization; their current base type is display.
-- `WorkbookInteractionElementFull[T, GA, SA]` owns the saved value, typed grading and
-  scaffolding payloads, `defaultValue`, `serializerInteractionContent`,
-  `gradingElements` and `scaffoldingElement`.
-- `WorkbookInteractionElement[T]` is the compatibility alias for
-  `WorkbookInteractionElementFull[T, Any, Any]`; `WorkbookInteractionUntyped` is the
-  existential type used when traversing mixed interactions.
+## Renderer and editor boundary
 
-The shared `InteractionVariable[T, GA, SA]` owns history and current value through
-`State`. The renderer bridges a bound state to a browser `Var` with `StateHelper`.
-[State and serialization](state-and-serialization.md) provides complete binding,
-`bimap`, observer-lifetime, update-importance and codec examples. The interaction's
-`defaultValue` is an initializer, not another live answer. History synchronization
-is destination/strategy-dependent; it is not an unconditional database write for
-every keystroke.
-
-## Renderer → editor example
-
-This is the current QR pattern: one bound value is used by the preview and editor.
-The renderer owns the workbook controls, while `QrCodeEditor` accepts the value and
-requirements. Inside `CreateQrCodeInteractionRenderer.createRendering`:
+The renderer registers with `HtmlRenderFactory`, binds the interaction's saved
+state and supplies that binding to its controls, preview and optional editor.
+For example, the [QR renderer](../modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/qr/CreateQrCodeInteractionRenderer.scala)
+shares one value between preview and fullscreen editor:
 
 ```scala
 val state = element.interactionVariable
   .createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR)
   .toAirstreamVar
-val open = HtmlButtonElement.withTextLabel("basic/OpenEditor", _ =>
-  fullInfo.displayControl.setFullscreen(QrCodeEditor(state, element.requirements)))
-AtomarLineRendering.cardLine(element, List(
-  ElementCard(LanguageMapContentId("basic/openEditor"), open.getDomElement()),
-  ElementCard(LanguageMapContentId("basic/qrTitle"),
-    QrCodeView.preview(state.signal, element.requirements))
-))
+val editor = QrCodeEditor(state, element.requirements)
+val preview = QrCodeView.preview(state.signal, element.requirements)
 ```
 
-Read the [complete renderer and imports](../modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/qr/CreateQrCodeInteractionRenderer.scala).
-`HtmlRenderFactory` dispatches the model to a `LineBasedRenderingFactory`, which
-produces an `AtomarLineRendering`. Fullscreen uses `displayControl.setFullscreen`
-with an `HtmlAppElement`; editors owning work implement the appropriate
-mount-owned cleanup. Closing removes and unmounts the dialog child. Reopening
-creates a new mounted editor from current state; there is no fullscreen lifecycle
-interface or retained hidden editor. Native resources and subscriptions belong to
-Laminar owners.
-
-Local incomplete numeric/text drafts may differ from the saved value while
-validation is pending. Decide explicitly whether drafts are persisted: QR keeps
-invalid text local, whereas answer tables intentionally save entered strings.
-Document close/reset behavior for each editor.
+Create only the selected editor. Closing fullscreen unmounts it; native handles
+and subscriptions belong to that mount. Reopening starts from the saved answer.
+Decide explicitly which incomplete drafts are saved: QR keeps invalid text local,
+whereas answer tables save entered strings.
 
 ## Grading and scaffolding
 
-Shared core supplies generic grading/scaffolding contracts. An interaction has a list of
-`WorkbookInteractionGrader[T, GA]` and at most one
-`WorkbookInteractionScaffolder[T, SA]`. Use concrete serializable payload types for
-new typed integrations; additional data belongs in `GA`/`SA`, not a subclass of
-`GradedState`.
+An interaction attaches independent `WorkbookInteractionGrader[T, GA]` checks and
+at most one `WorkbookInteractionScaffolder[T, SA]`. Results belong to the exact
+answer assessed, with localized feedback and optional typed additional data.
+Keep grading policy explicit: ordinary bound-value edits do not automatically
+run graders, and expensive LLM grading runs only on request.
 
-A grader returns an asynchronous result tied to the exact source value, with
-status, localized feedback and optional typed additional data. Manual-only graders
-run only when explicitly forced. Keep independent checks in separate graders
-when they need separate feedback.
+The standard interaction info panel provides shared grading controls and manual
+hints. Interactions can add detailed feedback views; hints are invalidated when
+the answer or language changes.
+Shared requests are scoped to the answer and feedback language; obsolete localized
+responses are discarded. Synchronization includes feedback updates even when the
+answer itself is unchanged.
 
-`InteractionVariable.startGrading(syncControl, forceGrading)` collects results into
-`GradedState[T, GA](state, testsWithResults)` and stores them by value in history.
-`updateStateFromUserInteraction` requests grading; the simple bound-value setters
-currently store edits without calling `startGrading`. Importance alone does not
-schedule grading or debounce expensive tests. `SlideshowGrader` is an implementation
-example; an interaction must actually attach a grader to `gradingElements` to run it.
-Register new grader codecs in `WorkbookInteractionGrader.universalSerializer`.
+`TextInputWithScaffoldingAndGrading` owns its description, string answer, hint IDs
+and grading-criterion IDs. Each LLM grader evaluates one criterion in the selected
+language and identifies itself as `FeedbackEntity.LlmEntity`. The final marker
+(`CORRECT`, `INCORRECT`, `PARTIALL_CORRECT`) becomes the grade and is omitted from
+plaintext feedback. One classification-only retry is allowed for a missing marker;
+another invalid response is a grading error. Transcripts are typed additional data.
 
-The scaffolder contract is `generateFeedback(currentState):
-Future[ScaffoldingResult[T, SA]]`, with feedback tied to the source value.
-The generic automatic invocation/display pipeline is not currently wired.
-`InteractionInfoPanel` renders synchronization status but its generic grading icon
-is empty. Existing task-specific requirement feedback and the separate GPT/chat
-or feedback-demo elements do not imply a complete generic grading/scaffolding UI.
-These are specific integration limits, not evidence that the worker backend or
-shared grading/result models are unfinished.
+## Authoring examples
 
-## Localization and presentation
-
-Use `LanguageMapContentId` for authored instructions and renderer labels. Maps live
-in `resources/languageMaps/eva/<group>/map-<language>.json`, with universal content
-where appropriate. `LanguageMapStorageControl` registers sources;
-`laminarHelper.plaintextStringSignal(id)` follows the selected language and fallback.
-`contentIdStringSignal(id, PLAINTEXT_UNDERSCORE_REPLACABLE, replacements)` supplies
-underscore substitutions. Avoid taking a one-time language snapshot for controls
-that must update after a language switch.
-
-```scala
-val title = LanguageMapContentId("basic/openEditor")
-h3(text <-- laminarHelper.plaintextStringSignal(title))
-```
-
-Put static layout/color rules in dedicated `homepage/css` files, reusing
-`generic/colors.css` and `generic/dimensions.css` tokens. Laminar binds semantic
-classes and state. Canvas/SVG boundaries may need computed coordinates/style values;
-self-contained exports must retain their appearance outside the workbook. Those
-values do not justify arbitrary duplicated palettes or static inline layout rules.
-
-## Dependencies and execution
-
-Prefer a few reusable frameworks and cross-platform libraries. Browser programs
-should normally be versioned, complete distributions under `resources/programs`;
-resolve assets through `fullInfo.contentControl.fileFactory.relativeToTechnicalResources`.
-CodeMirror currently uses pinned CDN modules with an offline test bundle, so
-vendoring all editor assets is an architectural target, not an accomplished fact.
-Snap and JSXGraph have bundled distributions.
-
-Put native dependency readiness and typed handle creation in
-`webElements/facades/`, with one file per dependency using `EvaExternalDependency[T]`.
-The `control.startup` package schedules preloads and owns shared browser loading.
-Return futures, share loads, render an editor-local loading/fallback UI,
-and let only consumers await readiness. Do not hold workbook startup behind a
-chain of optional editor downloads. Scala.js startup preheats CodeMirror, Snap and
-JSXGraph independently of editor creation. Turtle entry pages no longer load
-runtime scripts in their HTML; renderer mount ownership guards late readiness.
-See [browser startup loading](browser-startup-loading.md).
-
-The generic execution backend is implemented. Choose local, HTTP/server or worker
-execution according to required resources; a main-thread `Future` alone does not
-make CPU work parallel. See [execution clients](execution-clients.md) for complete
-command definitions/calls and [worker execution](worker-execution-backend.md) for
-supported jobs. [Cache/startup](laminar-workbook-catalog-and-cache.md) documents
-implemented IndexedDB restoration and independent refresh.
-
-## Current examples and authoring checklist
-
-| Example | Reusable pattern / current boundary |
+| Example | Architectural pattern |
 | --- | --- |
-| [QR](qr-code-interaction.md) | Shared symbol/requirements, bound preview and standalone fullscreen editor |
-| [Mail](email-simulator.md) | Shared mailbox transitions, local compose drafts and supplied editor state |
-| [Compression](compression-workbook.md) | Shared saved experiment data with client controls/playback |
-| Choice, answer tables, pixels, Unicode | Inline controls need no separate fullscreen editor |
-| [Embroidery](embroidery-preview-workbook.md) | `TurtleRecreateShapeInteraction` stores `ProgrammingState` and target/palette/policy; drawing comparison is not a complete generic grader |
-| Evacuation | Shared saved floor/experiment with a client adapter to the legacy EVA2 simulation |
-| [SQL](sql-editor.md) | Shared answer/configuration and typed server execution; JDBC is server-only |
-| [Eva](eva-editor-programming-state.md) | One active editor, central Var, asynchronous conversions and downstream panels |
+| [QR](qr-code-interaction.md) | Shared requirements, bound preview and standalone fullscreen editor |
+| [Turtle recreation](embroidery-preview-workbook.md) | `TurtleRecreateShapeInteraction` owns a program and target drawing; the renderer composes the programming editor and comparison preview |
+| Text feedback | Inline text editor and standard hint controls; see [the model](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/gpt/TextInputWithScaffoldingAndGrading.scala) and [renderer](../modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/basic/TextInputWithScaffoldingAndGradingRenderer.scala) |
 
-For turtle recreation, the current base is `WorkbookInteractionElement[ProgrammingState]`.
-`limitTurtleCommandUsage` remains authored configuration, but the current renderer
-neither passes it to the editor nor enforces it. Do not describe visual comparison
-as complete task grading. For mail, the shared writing-practice model `MailEditor`
-and client UI `MailEditor` have different responsibilities despite sharing a name.
+Turtle drawing comparison is not a complete generic grader; command-usage limits
+remain an integration gap. The text-feedback example is in the test workbook's
+“Text answers with hints and AI feedback” section, in German and English.
 
-When adding an interaction, define shared data/requirements/codecs, register its
-factory and renderer, bind one saved state and introduce an editor only when useful.
-Test shared behavior/round trips on both platforms, local draft/lifecycle logic in
-client, and actual persistence/fullscreen/invalid-draft behavior in browser checks.
-The [test guide](core-package-unit-tests.md) and
-[serialization inventory](testing-and-serialization-audit.md) provide current commands.
+## Presentation, dependencies and registration
 
-### CodeMirror integration
+- Store authored text in `resources/languageMaps/eva/<group>/`; use language signals
+  for controls that must update when the selected language changes.
+- Put styles in dedicated `homepage/css/` files and reuse shared color/dimension
+  tokens. Laminar supplies semantic classes and changing state.
+- Keep native dependency readiness and typed handles in core JS's
+  `it.evadid.facades`. Optional preloading must not block the initial page render.
+- Register new interaction factories and renderers, plus grader codecs in
+  `WorkbookInteractionGrader.universalSerializer`.
+- Test shared behavior/codecs on JVM and Scala.js, and browser workflows involving
+  persistence, language changes and editor lifetimes.
 
-`CodeMirrorEditor` receives reactive configuration; Eva supplies it through its
-editor factories. Optional flowchart analysis belongs to the mounted editor.
-The shared startup loader preheats the module independently of editor creation.
-While loading or after failure, the textarea stays bound to the current document.
-Mount ownership prevents late readiness from creating an obsolete editor.
-See [startup loading](browser-startup-loading.md) for dependency coordination and
-[Eva editor architecture](eva-editor-programming-state.md) for lifecycle rules.
-
-Run `npm run test:workbooks -- codemirror` for delayed/failed imports, stale mounts,
-shared loading, text preservation, and gutter alignment. The browser runner bundles
-the production modules with their pinned package versions for offline tests.
+Related guides: [browser loading](browser-startup-loading.md),
+[Eva editor architecture](eva-editor-programming-state.md),
+[execution clients](execution-clients.md), [workers](worker-execution-backend.md),
+[cache/startup](laminar-workbook-catalog-and-cache.md) and
+[tests](core-package-unit-tests.md).

@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import it.evadid.core.datastructures.language.AppLanguage.*
+import com.raquo.laminar.api.L.{Signal, Val}
 import it.evadid.homepage.webElements.code.JavaFunctionBasedEditor
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
@@ -19,10 +20,10 @@ case class EvaEditorConfig(
 
 object EvaEditorConfig {
   def Default: EvaEditorConfig = EvaEditorConfig()
-  def tabs(logger: Logger, config: EvaEditorConfig): List[EvaEditorTab] =
+  def tabs(logger: Logger, config: EvaEditorConfig, humanLanguage: Signal[HumanLanguage] = Val(English)): List[EvaEditorTab] =
     config.enabledLanguages.distinct.map {
       case Python => CodeMirrorEditor.pythonEditorForEva(logger, config.codeMirrorConfig)
-      case SnapLanguage => SnapCodeEditor.forEvaTab(logger, config.snapConfig)
+      case SnapLanguage => SnapCodeEditor.forEvaTab(logger, config.snapConfig, humanLanguage)
       case Java => JavaFunctionBasedEditor.forEvaTab(logger, config.codeMirrorConfig)
       case language => throw UnsupportedOperationException(s"No editor is available for '$language'.")
     }

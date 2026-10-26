@@ -1,3 +1,4 @@
+import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -27,10 +28,10 @@ test('Snap previews and editor wait for the runtime and ignore closed mounts', a
       if (url.pathname.endsWith('/adjusted/adjustedMorphic.js')) await gate;
       let file = path.resolve(root, '.' + decodeURIComponent(url.pathname));
       if (!file.startsWith(root + path.sep)) return route.abort();
-      if (url.pathname === '/homepage/js/CodeMirrorLoader.js') file = process.env.CODEMIRROR_TEST_BUNDLE;
       try {await route.fulfill({body:await fs.readFile(file),contentType:mime[path.extname(file)] || 'application/octet-stream'});}
       catch {await route.fulfill({status:404,body:'Not found'});}
     });
+    await installCodeMirrorModules(page);
     await page.goto(origin + '/homepage/workbookDesign/index.html', {waitUntil:'domcontentloaded'});
     await page.waitForFunction(() => document.querySelector('script[src$="adjusted/adjustedMorphic.js"]'));
     assert.equal(await page.locator('dialog[open]').count(), 0, 'Snap loading starts before an editor opens');
@@ -87,7 +88,6 @@ test('Snap finishes startup preheating without creating a Morphic world or openi
       if (url.origin !== origin) return route.abort();
       let file = path.resolve(root, '.' + decodeURIComponent(url.pathname));
       if (!file.startsWith(root + path.sep)) return route.abort();
-      if (url.pathname === '/homepage/js/CodeMirrorLoader.js') file = process.env.CODEMIRROR_TEST_BUNDLE;
       try {
         let body = await fs.readFile(file);
         if (url.pathname.endsWith('/adjusted/adjustedMorphic.js')) body = Buffer.from(body.toString() + `
@@ -102,6 +102,7 @@ test('Snap finishes startup preheating without creating a Morphic world or openi
         await route.fulfill({body,contentType:mime[path.extname(file)] || 'application/octet-stream'});
       } catch {await route.fulfill({status:404,body:'Not found'});}
     });
+    await installCodeMirrorModules(page);
     await page.goto(origin + '/homepage/workbookDesign/index.html', {waitUntil:'domcontentloaded'});
     await page.waitForFunction(() => typeof window.SnapSerializer?.prototype.eduSquirrelOriginalLoadProjectModel === 'function');
     assert.equal(await page.evaluate(() => window.snapWorldCreations), 0, 'warmup loads code without allocating GUI sessions');
@@ -124,7 +125,6 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
       const relative = decodeURIComponent(url.pathname.slice(prefix.length));
       if (relative.split('/').includes('..')) return route.abort();
       let file = path.resolve(root, relative + (relative.endsWith('/') ? 'index.html' : ''));
-      if (relative === 'homepage/js/CodeMirrorLoader.js') file = process.env.CODEMIRROR_TEST_BUNDLE;
       try {
         let body = await fs.readFile(file);
         const probe = relative.endsWith('/adjusted/adjustedMorphic.js') ? ['WorldMorph', 'init', 'snapPreviewWorlds'] :
@@ -152,6 +152,7 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
         await route.fulfill({body,contentType:mime[path.extname(file)] || 'application/octet-stream'});
       } catch {await route.fulfill({status:404,body:'Not found'});}
     });
+    await installCodeMirrorModules(page);
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();

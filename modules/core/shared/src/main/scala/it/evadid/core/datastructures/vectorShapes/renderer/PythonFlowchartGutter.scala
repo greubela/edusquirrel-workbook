@@ -16,13 +16,15 @@ import scala.util.control.NonFatal
 object PythonFlowchartGutter {
   case class Node(line: Int, kind: String, depth: Int, label: String) derives upickle.default.ReadWriter
   case class Edge(from: Int, to: Int, kind: String = "next") derives upickle.default.ReadWriter
-  case class Chart(nodes: List[Node], edges: List[Edge], entries: List[Int]) derives upickle.default.ReadWriter
+  case class FlowLine(line: Int, kind: String) derives upickle.default.ReadWriter
+  case class Chart(nodes: List[Node], edges: List[Edge], entries: List[Int],
+                   flow: List[List[FlowLine]] = Nil) derives upickle.default.ReadWriter
   val empty: Chart = Chart(Nil, Nil, Nil)
 
   private case class Positioned(line: Int, text: String, depth: Int,
                                 body: List[Positioned] = Nil,
                                 otherwise: List[Positioned] = Nil,
-                                kind: String = "process") derives upickle.default.ReadWriter
+                                kind: String = "process", elseLine: Option[Int] = None) derives upickle.default.ReadWriter
 
   def fromPython(source: String): Chart =
     parseChart(source).getOrElse {
@@ -73,11 +75,9 @@ object PythonFlowchartGutter {
           val thenBody = position(yes, depth + 1)
           // Normalization lowers elif to else + if. Only a physical else
           // consumes a token; an elif is consumed by the nested decision.
-          val elseDepth = if (no.nonEmpty && cursor < tokens.size && tokens(cursor)._2 == "else:") {
-            consume()
-            depth + 1
-          } else depth
-          Positioned(line, condition, depth, thenBody, no.toList.flatMap(position(_, elseDepth)), "decision")
+          val elseLine = Option.when(no.nonEmpty && cursor < tokens.size && tokens(cursor)._2 == "else:")(consume())
+          val elseDepth = if elseLine.nonEmpty then depth + 1 else depth
+          Positioned(line, condition, depth, thenBody, no.toList.flatMap(position(_, elseDepth)), "decision", elseLine)
       }
       val positioned = position(normalizer.runPipeline(source).statementTree.statements, 0)
       require(cursor == tokens.size, "Cannot align all source statements")
@@ -186,7 +186,36 @@ object PythonFlowchartGutter {
       val line = pending.dequeue()
       if (reachable.add(line)) outgoing.getOrElse(line, Nil).foreach(edge => pending.enqueue(edge.to))
     }
-    Chart(nodes.filter(n => reachable(n.line)).sortBy(_.line).toList,
-      edges.filter(e => reachable(e.from)).toList, entries.toList)
+    val visible = nodes.filter(n => reachable(n.line)).sortBy(_.line).toList
+    Chart(visible, edges.filter(e => reachable(e.from)).toList, entries.toList,
+      flowPlan(statements, visible.map(_.line).toSet))
   }
+  /** Structural rows consumed by the existing nested-block flow renderer.
+    * Closing rows share a physical source line; they never insert editor lines.
+    */
+  private def flowPlan(statements: List[Positioned], visible: Set[Int]): List[List[FlowLine]] = {
+    def rows(items: List[Positioned]): List[FlowLine] = items.filter(item => visible(item.line)).flatMap { item =>
+      val body = rows(item.body)
+      val otherwise = rows(item.otherwise)
+      val end = (otherwise.lastOption orElse body.lastOption).map(_.line).getOrElse(item.line)
+      item.kind match {
+        case "decision" =>
+          FlowLine(item.line, "if") :: body ::: List(FlowLine(item.elseLine.getOrElse(
+            otherwise.headOption.orElse(body.lastOption).map(_.line).getOrElse(item.line)), "else")) :::
+            otherwise ::: List(FlowLine(end, "endif"))
+        case "loop" => FlowLine(item.line, "loop") :: body ::: List(FlowLine(end, "endloop"))
+        case _ => List(FlowLine(item.line, item.kind))
+      }
+    }
+    def group(items: List[Positioned]): List[FlowLine] = rows(items) match {
+      case Nil => Nil
+      case result => FlowLine(result.head.line, "start") :: result ::: List(FlowLine(result.last.line, "stop"))
+    }
+    def declarations(items: List[Positioned]): List[List[FlowLine]] = items.flatMap { item =>
+      val own = if Set("function", "class")(item.kind) then List(group(item.body)).filter(_.nonEmpty) else Nil
+      own ::: declarations(item.body) ::: declarations(item.otherwise)
+    }
+    List(group(statements)).filter(_.nonEmpty) ::: declarations(statements)
+  }
+
 }

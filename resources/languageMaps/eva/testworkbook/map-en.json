@@ -8,6 +8,7 @@
   "goalTitle": "Learning goal",
   "instructionTitle": "Task",
   "hintTitle": "Hint",
+  "javaSquareInstructions": "### A square in Java\n\nComplete the method `square(int side)` so that the turtle draws a square with side length `side`. Use `Turtle.forward(...)` and `Turtle.turnRight(...)`. The method should also work for other positive side lengths, not just the call `square(25)` in `main`. Keep the method signature and `main` unchanged. Open the editor and run your draft.",
   "section2Title": "Draw a circle",
   "section2Subtitle1": "Drawing a circle",
   "section2Subtitle2": "Editor",
@@ -18,5 +19,10 @@
   "sqlExerciseTitle": "Query a school database",
   "sqlInstructions": "Open the SQL editor and run the sample query to list students in grade 10 or above with their teachers. Switch between SQL text and clause blocks, change the grade filter, and run the query again. Inspect the results and the database diagram below the editor. This example uses the school_exercises teaching database, which must be configured by your server administrator. Sign in to run SQL. Connection indicators show when the database or SQL service is unavailable.",
   "canvas": "Canvas",
-  "openeditor": "Open editor"
+  "openeditor": "Open editor",
+  "textFeedbackTitle": "Text answers with hints and AI feedback",
+  "textFeedbackTask": "Explain why a familiar sender name does not prove that an email is genuine. Describe one safe way to verify a suspicious request. Write a few sentences, request a hint if needed, and then ask for feedback. The two criteria are checked independently.",
+  "textFeedbackHints": "Ask the learner to distinguish the displayed name from the actual sender and to consider an independent contact channel. Ask a short guiding question; do not supply a complete answer.",
+  "textFeedbackCriterionReason": "Check only whether the learner explains that a displayed sender name can be copied or forged and therefore does not establish authenticity. Give constructive feedback about this reasoning.",
+  "textFeedbackCriterionAction": "Check only whether the learner describes a safe independent verification step, such as contacting the supposed sender using a known contact method rather than a link or number in the suspicious email. Give constructive feedback about that step."
 }

@@ -171,48 +171,29 @@ case class NestedBlockRenderer(
     controlFlowOverlay
   }
 
-  private def getControlFlowBuilder(renderingInfo: RenderingInformation): ControlFlowOverlayBuilder = {
-    var res = ControlFlowOverlayBuilder(List(), List())
+  /** Flow-only layout uses the same paths and decorations as the block renderer.
+    * Callers supply row heights so expression geometry does not affect code lines.
+    */
+  def controlFlowOnly(config: BeRenderingConfig, heights: List[Double]): BeShape =
+    getControlFlowBuilder(config, heights).renderControlFlow()
 
-    val stackColumnWidths = getControlFlowStackColumnWidths(renderingInfo.renderingConfig)
-    val (stackColumnCenter, stackWidth): (List[Double], Double) = {
-      var offset: Double = 0
-      val res = mutable.ListBuffer[Double]()
-      for (curWidth <- stackColumnWidths) {
-        res.addOne(offset + curWidth / 2)
-        offset += curWidth
-      }
-      (res.toList, offset)
-    }
+  private def getControlFlowBuilder(renderingInfo: RenderingInformation): ControlFlowOverlayBuilder =
+    getControlFlowBuilder(renderingInfo.renderingConfig, linesToRender.map(_.lineHeight(renderingInfo.renderingConfig)))
 
-
-    def printStatus(startStr: String): Unit = {
-      println("    [INFO] NestedBlockRenderer::getControlFlowBuilder, " + startStr
-        + ", lists: open=" + res.paths.count(_.curStatus == PathStatus.OPEN)
-        + ", handled=" + res.paths.count(_.curStatus == PathStatus.HANDLED)
-        + ", paused=" + res.paths.count(_.curStatus == PathStatus.PAUSED)
-        + ", finished=" + res.paths.count(_.curStatus == PathStatus.FINISHED)
-      )
-    }
-
-    var curOffsetY: Double = renderingInfo.renderingConfig.controlSegmentSize
-    for (curLineToRender <- linesToRender) {
-      val curCenterY = curOffsetY + curLineToRender.lineHeight(renderingInfo.renderingConfig) / 2
-      curOffsetY += curLineToRender.lineHeight(renderingInfo.renderingConfig)
-      for ((curControlFlowShape, curCenterX) <- curLineToRender.controlFlowStack.reverse.zip(stackColumnCenter)) {
-        res = curControlFlowShape.renderControlFlow(res, renderingInfo, Point[Double](curCenterX, curCenterY), curLineToRender.lineHeight(renderingInfo.renderingConfig))
-        //printStatus("Handled Stack Shape: " + curControlFlowShape.getClass.getSimpleName)
-      }
-      for (curControlFlowShape <- Some(curLineToRender.line.controlFlowShape)) {
-        val curCenterX = curLineToRender.lastControlFlowShapeCenterX(renderingInfo.renderingConfig, stackColumnWidths)
-        res = curControlFlowShape.renderControlFlow(res, renderingInfo, Point[Double](curCenterX, curCenterY), curLineToRender.lineHeight(renderingInfo.renderingConfig))
-        //printStatus("Handled Flow Shape: " + curControlFlowShape.getClass.getSimpleName)
-      }
-
-      res = res.resetHandledToOpen()
-      //printStatus("+++ Handled Line: " + curLineToRender.lineNr)
-    }
-    res
+  private def getControlFlowBuilder(config: BeRenderingConfig, heights: List[Double]): ControlFlowOverlayBuilder = {
+    require(heights.size == linesToRender.size, "Every flow row needs a height")
+    val widths = getControlFlowStackColumnWidths(config)
+    val centers = widths.scanLeft(0.0)(_ + _).zip(widths).map((offset, width) => offset + width / 2)
+    linesToRender.zip(heights).foldLeft((ControlFlowOverlayBuilder(Nil, Nil), config.controlSegmentSize)) {
+      case ((builder, top), (line, height)) =>
+        val centerY = top + height / 2
+        val stacked = line.controlFlowStack.reverse.zip(centers).foldLeft(builder) {
+          case (current, (shape, centerX)) => shape.renderControlFlow(current, config, Point(centerX, centerY), height)
+        }
+        val current = line.line.controlFlowShape.renderControlFlow(stacked, config,
+          Point(line.lastControlFlowShapeCenterX(config, widths), centerY), height)
+        (current.resetHandledToOpen(), top + height)
+    }._1
   }
 
   def withAppendedRenderer(other: NestedBlockRenderer): NestedBlockRenderer = {

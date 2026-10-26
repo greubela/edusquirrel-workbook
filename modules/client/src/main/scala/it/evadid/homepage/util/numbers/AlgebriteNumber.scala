@@ -2,8 +2,7 @@ package it.evadid.homepage.util.numbers
 
 import it.evadid.core.util.io.Serializer
 
-import scala.scalajs.js
-import scala.scalajs.js.annotation.JSGlobal
+import it.evadid.facades.Algebrite
 import scala.util.control.NonFatal
 import upickle.default.{ReadWriter, macroRW}
 
@@ -117,11 +116,11 @@ object AlgebriteNumber:
   private def simplifyExpression(input: String): String =
     val trimmed = input.trim
     val expression = if trimmed.isEmpty then "0" else trimmed
-    val result = AlgebriteFacade.run(s"simplify(($expression))").trim
+    val result = Algebrite.loaded.run(s"simplify(($expression))").trim
     if result.isEmpty then "0" else result
 
   private def runFloat(expression: String): String =
-    AlgebriteFacade.run(s"float(($expression))").trim
+    Algebrite.loaded.run(s"float(($expression))").trim
 
   private def parseNumericLiteral(raw: String): Double = raw match
     case "Infinity" | "+Infinity" => Double.PositiveInfinity
@@ -129,7 +128,3 @@ object AlgebriteNumber:
     case FiniteNumberPattern() => raw.toDouble
     case _ => Double.NaN
 
-@js.native
-@JSGlobal("Algebrite")
-private object AlgebriteFacade extends js.Object:
-  def run(src: String): String = js.native

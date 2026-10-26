@@ -32,6 +32,8 @@ import it.evadid.workbook.elements.displayElements.*
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
+import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.TextInputWithScaffoldingAndGradingRenderer
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
 import it.evadid.workbook.elements.structureElements.{ExerciseContainer, ExerciseGroup, Workbook}
@@ -166,6 +168,7 @@ object HtmlRenderFactory {
       case t: TurtleStitchRecreateShapeInteractionLegacy => HtmlTurtleStitchRecreateShapeRendererLegacy.renderWorkbookElement(t)
       // plugins -- gpt
       case g: GptInteractionElement => HtmlGptTextfieldInteractionRenderer.renderWorkbookElement(g)
+      case t: TextInputWithScaffoldingAndGrading => TextInputWithScaffoldingAndGradingRenderer.renderWorkbookElement(t)
       // plugins -- slideshow & reorder
       case s: Slideshow => HtmlSlideshowEditor.renderWorkbookElement(s)
       /*case r: HtmlReorderInteraction[?] @unchecked => fromElement(r, r.getDomElement())*/

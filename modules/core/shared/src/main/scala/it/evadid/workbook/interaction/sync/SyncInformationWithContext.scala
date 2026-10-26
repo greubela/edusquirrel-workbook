@@ -28,7 +28,7 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
     val historyToStore = variable.history.filterWithStrategy(syncInformation.syncStrategy)
     val syncContext = usageContext.toSyncContext(variable.keyForSerialization)
     if (historyToStore.events.isEmpty) List()
-    else List(DataEntryToSync(syncContext, variable.serializeHistory(historyToStore), historyToStore.lastStateOption.get.timestamp, CLIENT_TO_SERVER))
+    else List(DataEntryToSync(syncContext, variable.serializeHistory(historyToStore), historyToStore.latestChangeTimestamp.get, CLIENT_TO_SERVER))
   }
 
   lazy val reader: RemoteDataReader[SyncContext, String] = new RemoteDataReader[SyncContext, String]() {

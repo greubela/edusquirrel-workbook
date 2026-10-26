@@ -64,7 +64,10 @@ trait ControlFlowShape extends BeShape {
 
   override def render(renderingConfig: BeRenderingConfig, bounds: Bounds[Double]): AppSvgElement = shapeRenderBackground(renderingConfig).render(renderingConfig, bounds)
 
-  def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder
+  final def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder =
+    renderControlFlow(cf, renderingInfo.renderingConfig, centerPoint, curLineHeight)
+
+  def renderControlFlow(cf: ControlFlowOverlayBuilder, config: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder
 }
 
 

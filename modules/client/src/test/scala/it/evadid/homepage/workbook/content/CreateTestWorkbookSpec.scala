@@ -1,13 +1,32 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
+import it.evadid.workbook.abstractions.scaffolding.ProgrammingHintScaffolder
+import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailFolder, MailInteraction}
+import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
+import it.evadid.workbook.elements.structureElements.ExerciseContainer
 import munit.FunSuite
 
 class CreateTestWorkbookSpec extends FunSuite {
+  test("test workbook showcases one text answer owning its description, hints and two independent LLM graders") {
+    val workbook = CreateTestWorkbook(null).createWorkbook
+    val examples = workbook.allChildrenFullSubtree.collect { case element: TextInputWithScaffoldingAndGrading => element }
+    assertEquals(examples.size, 1)
+    val example = examples.head
+    assertEquals(example.elementId, "text-feedback-demo-answer")
+    assertEquals(example.exerciseText, LanguageMapContentId("TestWorkbook/textFeedbackTask"))
+    assertEquals(example.gradingElements.size, 2)
+    assertEquals(example.scaffoldingElement.get.hints, List(LanguageMapContentId("TestWorkbook/textFeedbackHints")))
+    assertEquals(example.allInteractionsInThisInstance, List(example))
+    assertEquals(example.interactionVariable.currentValue, "")
+  }
+
   test("complete test workbook round-trips in JSON and constructor format") {
     val workbook = CreateTestWorkbook(null).createWorkbook
     for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)) {
@@ -89,7 +108,29 @@ class CreateTestWorkbookSpec extends FunSuite {
     assertEquals(pilot.head.startingProgram, source)
     assertEquals(pilot.head.defaultValue.toJava.code, source)
     assertEquals(pilot.head.testSuite, None)
+    assertEquals(pilot.head.hintTask, Some(LanguageMapContentId("TestWorkbook/javaSquareInstructions")))
+    val owner = pilot.head.scaffoldingElement.collect { case hint: ProgrammingHintScaffolder[?] => hint.interaction }
+    assert(owner.exists(_ eq pilot.head))
+    assertEquals(exercises.filter(_.scaffoldingElement.nonEmpty).map(_.elementId), List("java-square-pilot"))
     assertEquals(exercises.find(_.elementId == "prog-full-java").get.startingProgram,
       ProgrammingExerciseFullJava.defaultStartingProgram)
+  }
+
+  test("square instructions immediately precede the pilot and survive workbook serialization") {
+    val workbook = CreateTestWorkbook(null).createWorkbook
+    val restored = List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)
+      .map(serializer => serializer.deserialize(serializer.serialize(workbook)))
+    (workbook :: restored).foreach { current =>
+      val container = current.allChildrenFullSubtree.collectFirst {
+        case group: ExerciseContainer if group.containerContent.exists(_.elementId == "java-square-pilot") => group
+      }.get
+      val pilotIndex = container.containerContent.indexWhere(_.elementId == "java-square-pilot")
+      assert(pilotIndex > 0)
+      assertEquals(container.containerContent(pilotIndex - 1), DisplayLangMapContent(
+        "java-square-pilot-instructions", LanguageMapContentId("TestWorkbook/javaSquareInstructions"),
+        LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)))
+      val ids = current.allChildrenFullSubtree.map(_.elementId)
+      assertEquals(ids.distinct.size, ids.size)
+    }
   }
 }

@@ -44,7 +44,8 @@ object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskTogg
       interaction.interactionVariable.updateStateFromUserInteraction(
         fullInfo.syncControl,
         state => state.copy(isBeginnerMode = value),
-        UpdateImportance.MINOR
+        UpdateImportance.MINOR,
+        List(fullInfo.defaults.backendExecutor)
       )
     }
 
@@ -58,7 +59,8 @@ object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskTogg
               interaction.interactionVariable.updateStateFromUserInteraction(
                 fullInfo.syncControl,
                 state => state.copy(advancedCode = code),
-                UpdateImportance.MINOR
+                UpdateImportance.MINOR,
+                List(fullInfo.defaults.backendExecutor)
               )
             }
           }(using ctx.owner)

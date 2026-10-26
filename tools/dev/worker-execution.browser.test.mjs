@@ -1,3 +1,4 @@
+import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -5,6 +6,7 @@ import test from 'node:test';
 import {chromium} from 'playwright';
 
 const root = path.resolve(import.meta.dirname, '../..');
+const pyodideRoot = 'https://cdn.jsdelivr.net/pyodide/v0.29.5/full/';
 function result(reply) {
   function find(value) {
     if (!value || typeof value !== 'object') return;
@@ -14,7 +16,7 @@ function result(reply) {
   return find(reply.response.result);
 }
 
-test('built worker.js executes framework commands independently of the browser event loop', async () => {
+test('Pyodide runs on the main thread and in a worker, with independent interpreters and a responsive GUI', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium',args:['--no-sandbox']});
   try {
     const context = await browser.newContext();
@@ -22,7 +24,6 @@ test('built worker.js executes framework commands independently of the browser e
       const url = new URL(route.request().url());
       if (url.pathname === '/worker-test') return route.fulfill({contentType:'text/html',body:'<!doctype html><p id="status">Ready</p>'});
       if (url.pathname === '/artifacts/newest/worker.js') return route.fulfill({contentType:'text/javascript',body:await fs.readFile(path.join(root,'artifacts/newest/worker.js'))});
-      const pyodideRoot = 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/';
       if (url.href.startsWith(pyodideRoot)) {
         const name = url.pathname.split('/').at(-1);
         return route.fulfill({body:await fs.readFile(path.join(root,'node_modules/pyodide',name)),
@@ -32,6 +33,7 @@ test('built worker.js executes framework commands independently of the browser e
       return route.abort();
     });
     const page = await context.newPage();
+    await installCodeMirrorModules(page);
     await page.goto('http://localhost:9000/worker-test');
     await page.evaluate(() => {
       const worker = new Worker('/artifacts/newest/worker.js');
@@ -57,6 +59,7 @@ test('built worker.js executes framework commands independently of the browser e
     })));
     assert.deepEqual(chart.nodes.map(node => node.line),[2,3,4,5]);
     assert.deepEqual(chart.entries,[2]);
+    assert(chart.flow[0].some(row => row.line === 3 && row.kind === "if"), "worker sends the source-aligned nested flow plan");
     const flowchartHeavy = await page.evaluate(async () => {
       const source = 'import turtle\nimport java_turtle\n\n' + Array.from({length:8},(_,index) =>
         `def shape${index}(edges: int, size: float, zigzag: bool) -> None:\n` +
@@ -93,10 +96,12 @@ test('built worker.js executes framework commands independently of the browser e
     });
     assert.equal(result(heavy.reply).modules.length,177);
     assert(heavy.ticks > 0,'the GUI event loop continues while the worker calculates all masks');
-    const python = result(await page.evaluate(() => request('python','worker.runPython',{
+    const pythonReply = await page.evaluate(() => request('python','worker.runPython',{
       code:"print('Grüße')\nimport sys\nprint('warning',file=sys.stderr)\n{'sum':sum(numbers),'label':settings['label']}",
       context:{numbers:[2,3],settings:{label:'学校'}}
-    })));
+    }));
+    const python = result(pythonReply);
+    assert(python, JSON.stringify(pythonReply));
     assert.deepEqual(python.value,{sum:5,label:'学校'});
     assert.equal(python.stdout,'Grüße\n');
     assert.equal(python.stderr,'warning\n');
@@ -143,6 +148,17 @@ test('built worker.js executes framework commands independently of the browser e
     });
     assert(result(pythonHeavy.reply));
     assert(pythonHeavy.ticks>0,'the GUI stays responsive during real Pyodide execution');
+    // Scala DOM tests cover facade loading; verify the real pinned runtime in both contexts here.
+    await page.addScriptTag({url:pyodideRoot + 'pyodide.js'});
+    const localValue = await page.evaluate(async indexURL => {
+      const interpreter = await loadPyodide({indexURL});
+      return interpreter.runPythonAsync('main_thread_only = 21\nmain_thread_only * 2');
+    }, pyodideRoot);
+    assert.equal(localValue,42,'Python also executes directly on the browser main thread');
+    const isolated = result(await page.evaluate(() => request('isolated','worker.runPython',{
+      code: "'main_thread_only' in globals()"
+    })));
+    assert.equal(isolated.value,false,'main-thread globals do not leak into the worker interpreter');
     await page.evaluate(() => worker.terminate());
   } finally { await browser.close(); }
 });

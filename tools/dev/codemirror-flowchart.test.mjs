@@ -1,3 +1,4 @@
+import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
@@ -5,8 +6,7 @@ import {resolve, extname, sep} from 'node:path';
 import {test} from 'node:test';
 import {chromium} from 'playwright';
 
-// Uses the production CDN modules by default. An optional bundle of the same
-// loader/modules lets restricted/offline environments run the browser check.
+// Exercise Scala.js integration with pinned native modules served by the runner.
 test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', async t => {
   const root = resolve(import.meta.dirname, '../..');
   const mime = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -14,10 +14,8 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
   const server = createServer(async (request, response) => {
     try {
       const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-      const name = pathname === '/homepage/js/loader.js' && process.env.CODEMIRROR_TEST_BUNDLE
-        ? resolve(process.env.CODEMIRROR_TEST_BUNDLE)
-        : resolve(root, '.' + pathname + (pathname.endsWith('/') ? 'index.html' : ''));
-      if (pathname !== '/homepage/js/loader.js' && !name.startsWith(root + sep)) throw new Error('Outside repository');
+      const name = resolve(root, '.' + pathname + (pathname.endsWith('/') ? 'index.html' : ''));
+      if (!name.startsWith(root + sep)) throw new Error('Outside repository');
       response.setHeader('Content-Type', mime[extname(name)] || 'application/octet-stream');
       response.end(await readFile(name));
     } catch { response.writeHead(404).end(); }
@@ -32,13 +30,13 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
     const page = await browser.newPage({viewport: {width: 900, height: 600}});
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    await installCodeMirrorModules(page);
     await page.goto(base + '/homepage/workbookDesign/');
-    await page.waitForFunction(() => typeof globalThis.EduSquirrelCodeMirrorScala?.createEditor === 'function');
+    await page.waitForFunction(() => typeof globalThis.EduSquirrelCodeMirror?.createEditor === 'function');
     await page.evaluate(() => {
       document.body.replaceChildren();
       document.body.insertAdjacentHTML('beforeend', '<style>#flow .cm-editor, #plain .cm-editor {height:260px} #flow .cm-scroller, #plain .cm-scroller {overflow:auto} #flow {--code-font-size:14px}</style><div id="flow"></div><div id="plain"></div>');
     });
-    await page.addScriptTag({type: 'module', url: `${base}/homepage/js/${process.env.CODEMIRROR_TEST_BUNDLE ? 'loader.js' : 'CodeMirrorLoader.js'}`});
     await page.waitForFunction(() => !!globalThis.EduSquirrelCodeMirror);
     await page.evaluate(() => {
       window.changes = [];
@@ -47,12 +45,13 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
       window.graphCalls = 0;
       const chart = doc => {
         window.graphCalls++;
-        if (doc.includes('INVALID')) return {nodes: [], edges: [], entries: []};
-        const nodes = doc.split('\n').flatMap((label, index) => label.trim() ? [{
-          line: index + 1, kind: label.startsWith('if ') ? 'decision' : 'process', depth: label.startsWith('    ') ? 1 : 0, label
-        }] : []);
-        const edges = nodes.slice(1).map((node, index) => ({from: nodes[index].line, to: node.line, kind: 'next'}));
-        return {nodes, edges, entries: nodes.length ? [nodes[0].line] : []};
+        if (doc.includes('INVALID')) return {width:1,rows:{}};
+        const image = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><path d="M20 0V20" stroke="black"/></svg>');
+        const rows = Object.fromEntries(doc.split('\n').flatMap((label,index) => label.trim() ? [[index+1, {
+          title: `${label.startsWith('if ') ? 'decision' : 'process'}: ${label}`,
+          slices: [{image,width:40,height:20,top:0,span:20,x:0}]
+        }]] : []));
+        return {width:40,rows};
       };
       window.editor = EduSquirrelCodeMirror.createEditor({parent: document.querySelector('#flow'),
         doc: Array.from({length: 100}, (_, index) => index === 2 ? '' : `print(${index})`).join('\n'),
@@ -125,7 +124,7 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
       const requested = count => page.waitForFunction(count => graphRequests.length === count, count);
       const settle = (index, label, reject = false) => page.evaluate(async ({index, label, reject}) => {
         if (reject) graphRequests[index].reject(new Error(label));
-        else graphRequests[index].resolve({nodes: [{line: 1, kind: 'process', depth: 0, label}], edges: [], entries: [1]});
+        else graphRequests[index].resolve({width:40,rows:{1:{title:`process: ${label}`,slices:[]}}});
         await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)));
       }, {index, label, reject});
       const marker = label => page.waitForFunction(label =>
@@ -163,16 +162,24 @@ test('flowchart gutter tracks CodeMirror lines, fonts, edits and scrolling', asy
         ['A', 'B', 'A', 'FAILED', 'RECOVERED', 'burst 3'], 'a burst sends only the latest document for analysis');
       await settle(5, 'burst 3');
       await marker('burst 3');
-      await page.evaluate(() => asyncEditor.setDoc('DESTROYED'));
+      await page.evaluate(() => {
+        window.previousMarker = document.querySelector('#async-flow .cm-flowchart-row[title]');
+        asyncEditor.setDoc('same graph');
+      });
       await requested(7);
+      await settle(6, 'burst 3');
+      assert(await page.evaluate(() => previousMarker === document.querySelector('#async-flow .cm-flowchart-row[title]')),
+        'equivalent analysis retains the existing marker DOM');
+      await page.evaluate(() => asyncEditor.setDoc('DESTROYED'));
+      await requested(8);
       await page.evaluate(() => asyncEditor.destroy());
-      await settle(6, 'late result');
+      await settle(7, 'late result');
       assert.equal(await page.locator('#async-flow .cm-editor').count(), 0, 'late results cannot recreate a destroyed editor');
       const cancelled = await page.evaluate(async () => {
         let calls = 0;
         const host = document.body.appendChild(document.createElement('div'));
         const editor = EduSquirrelCodeMirror.createEditor({parent: host, doc: 'cancelled',
-          flowchart: () => { calls++; return {nodes:[],edges:[],entries:[]}; }});
+          flowchart: () => { calls++; return {width:1,rows:{}}; }});
         editor.destroy();
         await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)));
         return calls;

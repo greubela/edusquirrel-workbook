@@ -1,13 +1,13 @@
 package it.evadid.workbook.abstractions.scaffolding
 
-import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
+import it.evadid.distribution.clients.ExecutionClient
 
 import scala.concurrent.Future
 
 trait WorkbookInteractionScaffolder[T, A] {
 
-  def generateFeedback(currentState: T): Future[ScaffoldingResult[T, A]]
+  def generateFeedback(currentState: T, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[ScaffoldingResult[T, A]]
 
 
 }

@@ -2,8 +2,7 @@ name: Tests
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -19,24 +18,39 @@ jobs:
     # A clean cross-platform Scala build plus serial browser checks can exceed 30 minutes.
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
           cache: sbt
       - uses: sbt/setup-sbt@v1
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
       # Scala.js DOM suites require jsdom while constructing their fixtures.
       - name: Install Node test dependencies
         run: npm ci
       - name: Test every Scala module and build browser artifacts
-        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false coreJVM/test coreJS/test client/test server/test worker/test buildClientDev buildWorkerDev
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false coreJVM/test coreJS/test client/test server/test worker/test desktop/compile buildClientDev buildWorkerDev buildServerDev
+      - name: Verify standalone server assembly
+        run: node tools/dev/check-server-assembly.mjs
       - run: npx playwright install --with-deps chromium
+      - name: Allow Chromium's sandbox on Ubuntu
+        shell: bash
+        run: |
+          chromium_path="$(node --input-type=module -e 'import {chromium} from "playwright"; process.stdout.write(chromium.executablePath())')"
+          if [[ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]]; then
+            # Permit user namespaces only for this browser; keep host restrictions enabled.
+            sudo tee /etc/apparmor.d/edusquirrel-playwright > /dev/null <<EOF
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile edusquirrel-playwright "$chromium_path" flags=(unconfined) {
+            userns,
+          }
+          EOF
+            sudo apparmor_parser -r /etc/apparmor.d/edusquirrel-playwright
+          fi
       - run: npm run test:static
       - run: npm run test:workbooks
-        env:
-          CHROMIUM_PATH: /opt/google/chrome/chrome

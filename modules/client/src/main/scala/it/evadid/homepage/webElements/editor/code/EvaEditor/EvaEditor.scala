@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
+import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, ProgrammingLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.util.logging.Logger
@@ -12,9 +12,10 @@ import scala.util.{Failure, Success, Try}
 
 /** One editor bound to the answer; panels only observe that same answer. */
 case class EvaEditor(logger: Logger, state: Var[ProgrammingState], panels: Seq[HtmlAppElement], config: EvaEditorConfig,
-    choices: Option[Seq[EvaEditorTab]] = None) extends HtmlAppElement {
+    choices: Option[Seq[EvaEditorTab]] = None,
+    humanLanguage: Signal[HumanLanguage] = Val(English)) extends HtmlAppElement {
   val appearance = EditorAppearance()
-  private val tabs = choices.getOrElse(EvaEditorConfig.tabs(logger, config)).distinctBy(_.language)
+  private val tabs = choices.getOrElse(EvaEditorConfig.tabs(logger, config, humanLanguage)).distinctBy(_.language)
   private val selected = state.signal.map(source => tabs.find(_.language == source.associatedLanguage)).distinct
   private val lastError = Var(Option.empty[Throwable])
   private val request = Var(Option.empty[AnyRef])

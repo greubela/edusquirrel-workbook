@@ -7,6 +7,7 @@ import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.interaction.sync.SyncStrategy
 import it.evadid.workbook.interaction.sync.UpdateImportance.DEFAULT
 import upickle.default.*
+import java.time.LocalDateTime
 
 
 case class InteractionVariableHistory[T, GA, SA]
@@ -17,6 +18,10 @@ case class InteractionVariableHistory[T, GA, SA]
 ) {
 
   def lastStateOption: Option[InteractionVariableState[T]] = events.maxByOption(_.timestamp)
+
+  def latestChangeTimestamp: Option[LocalDateTime] =
+    (events.iterator.map(_.timestamp) ++ gradings.valuesIterator.flatMap(_.testsWithResults.iterator.map(_.gradingTime)) ++
+      scaffoldings.valuesIterator.map(_.scaffoldingTime)).maxOption
 
   def cleanedHistory(): InteractionVariableHistory[T, GA, SA] = {
     val nonDefault = events.filter(_.updateImportance != DEFAULT)

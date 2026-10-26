@@ -13,6 +13,8 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
@@ -85,18 +87,17 @@ object HtmlTurtleStitchRendererHelper {
 
   private def renderProjectCodePreviewWithAsyncXml(xmlAsync: AsyncData[Nothing, String]): Element = {
 
-    val xmlSignal: EventStream[String] = xmlAsync.observeLoadedValues.toEventStream()
-    val asyncLanguage: AsyncData[Nothing, HumanLanguage] = HtmlFullWorkbookApp.fullInfo.signals.currentLanguage.toAsync
-    val combined: AsyncData[Nothing, (String, HumanLanguage)] = xmlAsync.combineIgnoreErrorData(asyncLanguage)
+    val language = HtmlFullWorkbookApp.fullInfo.signals.currentLanguage
 
 
     div(
       cls := "preview-card",
       div(
         cls := "preview-content",
-        child <-- combined.observeLoadedValues.toEventStream().map((xml, lang) => {
-          val editor = SnapPreviewEditor(Var(ProgrammingStateSnapXml(xml)))
-          editor.impl.changeLanguage(lang)
+        child <-- xmlAsync.observeLoadedValues.toEventStream().map(xml => {
+          val editor = SnapPreviewEditor(Var[ProgrammingState](ProgrammingStateSnapXml(xml)),
+            SnapCodeEditorConfig.Testing,
+            language)
           editor.getDomElement()
         })
       )

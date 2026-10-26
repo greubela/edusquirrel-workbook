@@ -8,20 +8,29 @@ const root = path.resolve(import.meta.dirname, '../..');
 await access(path.join(root, 'artifacts/newest/client.js')).catch(() => {
   throw new Error('Build the current client first: sbt -batch buildClientDev');
 });
+// Catch runner sandbox restrictions before starting the long workbook suite.
+const probe = await chromium.launch({
+  executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(), chromiumSandbox: true
+});
+try { await probe.newPage(); }
+finally { await probe.close(); }
+console.log('Chromium sandbox startup verified.');
 const scratch = path.join(root, 'tmp/work/browser-tests');
 await mkdir(scratch, {recursive: true});
-const bundle = path.join(scratch, 'CodeMirrorLoader.bundle.js');
+const bundle = path.join(scratch, 'codemirror-native.mjs');
 const packages = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).devDependencies;
-// Resolve every CDN import (including the gutter module) to the same pinned local package.
-await build({entryPoints: [path.join(root, 'homepage/js/CodeMirrorLoader.js')],
-  outfile: bundle, bundle: true, format: 'esm', platform: 'browser',
-  plugins: [{name: 'offline-codemirror', setup(build) {
-    build.onResolve({filter: /^https:\/\/esm\.sh\//}, async args => {
-      const match = args.path.match(/^https:\/\/esm\.sh\/(@[^?]+)@([^?]+)(?:\?.*)?$/);
-      if (!match || packages[match[1]] !== match[2]) throw new Error('Unpinned CodeMirror module: ' + args.path);
-      return build.resolve(match[1], {resolveDir: root, kind: args.kind});
-    });
-  }}]});
+const exports = {
+  '@codemirror/state': 'Compartment EditorState MapMode StateEffect StateField Text Transaction',
+  '@codemirror/view': 'EditorView Decoration keymap drawSelection highlightActiveLine lineNumbers highlightActiveLineGutter ViewPlugin GutterMarker gutter',
+  '@codemirror/commands': 'defaultKeymap history historyKeymap indentLess indentMore invertedEffects',
+  '@codemirror/language': 'bracketMatching foldGutter foldKeymap indentUnit indentOnInput syntaxHighlighting defaultHighlightStyle syntaxTree',
+  '@codemirror/search': 'highlightSelectionMatches searchKeymap', '@codemirror/lang-python': 'python',
+  '@codemirror/lang-sql': 'sql MySQL', '@codemirror/lang-cpp': 'cpp', '@codemirror/lang-java': 'java',
+  '@codemirror/theme-one-dark': 'oneDark', '@replit/codemirror-indentation-markers': 'indentationMarkers'
+};
+await build({stdin: {contents: Object.entries(exports).map(([name, names]) =>
+  `export {${names.split(' ').join(',')}} from '${name}';`).join('\n'), resolveDir: root},
+  outfile: bundle, bundle: true, format: 'esm', platform: 'browser'});
 const files = [];
 const selected = process.argv.slice(2);
 for (const name of (await readdir(path.join(root, 'tools/dev'))).filter(name => name.endsWith('.test.mjs')).sort()) {

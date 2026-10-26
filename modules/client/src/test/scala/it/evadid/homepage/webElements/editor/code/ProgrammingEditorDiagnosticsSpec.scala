@@ -11,7 +11,8 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
-import it.evadid.homepage.webElements.editor.code.codemirror.{CodeMirrorEditor, CodeMirrorDiagnostics}
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.facades.internal.CodeMirrorDiagnostics
 
 class ProgrammingEditorDiagnosticsSpec extends FunSuite {
   test("ProgrammingState converts itself at the Snap editor boundary") {
@@ -29,7 +30,7 @@ class ProgrammingEditorDiagnosticsSpec extends FunSuite {
   }
 
   test("Java source metadata preserves mixed separators at UTF-16 positions") {
-    import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorJavaLineEndings as Endings
+    import it.evadid.facades.internal.CodeMirrorJavaLineEndings as Endings
     for (source, separator, exceptions) <- List(
       ("", "\n", Vector.empty[Endings.Exception]),
       ("\tclass Drawing {}", "\n", Vector.empty[Endings.Exception]),

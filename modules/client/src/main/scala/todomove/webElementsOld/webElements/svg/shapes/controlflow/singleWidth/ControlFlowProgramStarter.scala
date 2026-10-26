@@ -11,7 +11,6 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.re
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.RenderingInformation
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 import todomove.webElementsOld.webElements.svg.compositeElements.AppDecoratedSvgElement
@@ -26,15 +25,15 @@ case class ControlFlowProgramStarter() extends ControlFlowShapeSingleWidth deriv
 
   override def minHeightInSegments: Int = 3
 
-  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: RenderingInformation, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
-    val actualLineHeight = curLineHeight + renderingInfo.renderingConfig.controlSegmentSize
+  override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
+    val actualLineHeight = curLineHeight + renderingInfo.controlSegmentSize
     cf
-      .startNewPathAtOrigin(true, renderingInfo.renderingConfig.amendFactory.activeControlFlowAmends)
+      .startNewPathAtOrigin(true, renderingInfo.amendFactory.activeControlFlowAmends)
       .changeFirstOpenPath(_.changeLastPathBuilder(_
-        .moveToRel(Dimension(3 * renderingInfo.renderingConfig.controlSegmentSize, actualLineHeight / 2))
+        .moveToRel(Dimension(3 * renderingInfo.controlSegmentSize, actualLineHeight / 2))
         .lineToRel(Dimension(0, actualLineHeight / 2))
       ))
-      .addDecoration(TriangleOverlay(), Point(centerPoint.x, centerPoint.y - renderingInfo.renderingConfig.controlSegmentSize/2))
+      .addDecoration(TriangleOverlay(), Point(centerPoint.x, centerPoint.y - renderingInfo.controlSegmentSize/2))
   }
 
   /*

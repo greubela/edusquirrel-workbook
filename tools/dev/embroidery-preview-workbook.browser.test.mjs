@@ -1,3 +1,4 @@
+import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -52,7 +53,6 @@ test('all sections render, solutions match previews and answers persist after re
       if(url.origin!==origin) return route.abort();
       let file=path.resolve(root,'.'+decodeURIComponent(url.pathname)+(url.pathname.endsWith('/')?'index.html':''));
       if(!file.startsWith(root+path.sep)) return route.abort();
-      if(url.pathname==='/homepage/js/CodeMirrorLoader.js' && process.env.CODEMIRROR_TEST_BUNDLE) file=process.env.CODEMIRROR_TEST_BUNDLE;
       try {
         let body=await fs.readFile(file);
         if(process.env.EMBROIDERY_DEBUG && url.pathname.endsWith('/jsxgraphcore.js')) body=Buffer.from(body.toString()+`
@@ -65,6 +65,7 @@ test('all sections render, solutions match previews and answers persist after re
       }
       catch {await route.fulfill({status:404,body:'Not found'});}
     });
+    await installCodeMirrorModules(page);
     await page.goto(origin+'/homepage/embroideryPreviewWorkbook/index.html');
     await page.locator('.section-register .login-area').nth(1).locator('button').click({timeout:60000});
     assert.equal(await page.locator('.section-block').count(),8);

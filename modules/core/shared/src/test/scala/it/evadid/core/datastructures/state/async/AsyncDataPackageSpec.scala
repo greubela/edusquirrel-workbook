@@ -132,6 +132,7 @@ class AsyncDataPackageSpec extends FunSuite {
       AsyncDataFailed(new IllegalArgumentException("bad"), Some("details")))
     states.foreach { state =>
       val restored = read[AsyncDataState[String, Int]](write(state))
+      assertEquals(restored.loadingSince, state.loadingSince)
       assertEquals(restored.isLoading, state.isLoading)
       assertEquals(restored.value, state.value)
       assertEquals(restored.failure.map(_.data), state.failure.map(_.data))
@@ -140,6 +141,13 @@ class AsyncDataPackageSpec extends FunSuite {
     val value = AsyncValue[String, Int](AsyncDataSuccess(4))
     assertEquals(read[AsyncValue[String, Int]](write(value)).stateNow().value, Some(4))
   }
+  test("loading-state codecs always persist their creation time") {
+    val state = AsyncDataLoading[String, Int]()
+    val json = write[AsyncDataState[String, Int]](state)
+    assert(ujson.read(json).obj.contains("startedAt"))
+    assertEquals(read[AsyncDataState[String, Int]](json).loadingSince, state.loadingSince)
+  }
+
   test("ignore-error recovery converts throwing and failed callbacks into finished failures") {
     val value = AsyncValue[String, Int](AsyncDataFailed(new IllegalStateException("original")))
     val throwing = value.recoverOnErrorIgnoreError(_ => throw new IllegalStateException("synchronous recovery"))

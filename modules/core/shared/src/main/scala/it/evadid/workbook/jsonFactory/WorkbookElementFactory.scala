@@ -14,6 +14,7 @@ import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteractio
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
+import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.*
@@ -177,6 +178,7 @@ object WorkbookElementFactory {
     classOf[SortingInteraction].getSimpleName -> SortingInteraction.factory,
     classOf[SortingReasonInteraction].getSimpleName -> SortingReasonInteraction.factory,
     classOf[GptInteractionElement].getSimpleName -> GptInteractionElement.factory,
+    classOf[TextInputWithScaffoldingAndGrading].getSimpleName -> TextInputWithScaffoldingAndGrading.factory,
     classOf[WorkbookSection].getSimpleName -> WorkbookSection.factory,
     classOf[ExerciseContainer].getSimpleName -> ExerciseContainer.factory,
     classOf[Slideshow].getSimpleName -> Slideshow.factory,
