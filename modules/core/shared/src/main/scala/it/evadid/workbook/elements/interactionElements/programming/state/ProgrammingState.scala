@@ -44,6 +44,8 @@ sealed trait ProgrammingState {
 
   def toJava: ProgrammingStateJavaString
 
+  def testProgramProjection: Either[String, ProgrammingTestProgram]
+
   def fingerprint(): String = this match
     case ProgrammingStateBeExpression(root: JavaTurtleVmPrograms.Root) => s"java:${root.bindings.source.source}"
     case ProgrammingStateBeExpression(expression) => s"expression:${expression.toString}"
@@ -91,6 +93,9 @@ object ProgrammingState {
     state.fingerprint()
 
   final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState {
+    override def testProgramProjection: Either[String, ProgrammingTestProgram] =
+      ProgrammingTestProgram.converted(ProgrammingTestProgram.fromExpression(expression))
+
     override def toBeExpressionState: ProgrammingStateBeExpression = this
 
     override def toSnapXml: ProgrammingStateSnapXml = expression match {
@@ -158,6 +163,13 @@ object ProgrammingState {
 
       def hasLegacyFloatingObjects: Boolean = legacyFloatingObjects.nonEmpty
 
+      override def testProgramProjection: Either[String, ProgrammingTestProgram] = ProgrammingTestProgram.converted {
+        if hasLegacyFloatingObjects then Left("Legacy extra blocks cannot be included in unit-test execution.")
+        else if JavaTurtleEditingBridge.hasSnapMetadata(snapXml) then
+          JavaTurtleEditingBridge.fromSnap(this).flatMap(_.testProgramProjection)
+        else SnapStateConversion.expressionForExecution(snapXml).flatMap(ProgrammingTestProgram.fromExpression)
+      }
+
       def withProjectXml(xml: String): ProgrammingStateSnapXml = copy(snapXml = xml)
 
       /** Lossless full-project conversion, independent of the executable Turtle subset. */
@@ -203,6 +215,12 @@ object ProgrammingState {
     }
 
     final case class ProgrammingStatePythonString(code: String) extends ProgrammingState derives ReadWriter {
+      override def testProgramProjection: Either[String, ProgrammingTestProgram] = ProgrammingTestProgram.converted {
+        if JavaTurtleEditingBridge.hasPythonMetadata(code) then
+          JavaTurtleEditingBridge.fromPython(code).flatMap(_.testProgramProjection)
+        else Right(ProgrammingTestProgram(code))
+      }
+
       override def toBeExpressionState: ProgrammingStateBeExpression =
         if JavaTurtleEditingBridge.hasPythonMetadata(code) then toJava.toBeExpressionState
         else ProgrammingStateBeExpression(BeProgram.fromPythonString(code).fullProgram)
@@ -222,6 +240,10 @@ object ProgrammingState {
 
 
     final case class ProgrammingStateJavaString(code: String) extends ProgrammingState derives ReadWriter {
+      override def testProgramProjection: Either[String, ProgrammingTestProgram] = ProgrammingTestProgram.converted {
+        toJavaVmProgram.left.map(_.message).flatMap(program => ProgrammingTestProgram.fromExpression(program.root))
+      }
+
       private lazy val classDetails: (Boolean, Boolean, Boolean) = {
         JavaTurtleInputLimits.checkParserInput(code).fold(
           diagnostic => throw IllegalArgumentException(diagnostic.message), identity)
@@ -323,6 +345,7 @@ final case class ProgrammingStateSnapScalaModel(
   override def toBeExpressionState: ProgrammingStateBeExpression = toSnapXml.toBeExpressionState
   override def toPython: ProgrammingStatePythonString = toSnapXml.toPython
   override def toJava: ProgrammingStateJavaString = toSnapXml.toJava
+  override def testProgramProjection: Either[String, ProgrammingTestProgram] = toSnapXml.testProgramProjection
 }
 
 object ProgrammingStateSnapScalaModel {

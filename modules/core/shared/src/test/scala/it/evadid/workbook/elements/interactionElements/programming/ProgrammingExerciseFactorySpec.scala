@@ -43,6 +43,11 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       Future.successful(WorkerCommands.RunPythonResult(value, "", "", Nil))
     })
 
+  private def nativeSnap(scripts: String): ProgrammingState.ProgrammingStateSnapXml =
+    ProgrammingState.ProgrammingStateSnapXml(s"""<project name="native" version="2"><notes>Grüße 🐢</notes>
+      |<stage name="Stage"><variables/><blocks/><scripts/><sprites><sprite name="Turtle">
+      |<variables/><blocks/><scripts>$scripts</scripts></sprite></sprites></stage></project>""".stripMargin)
+
   test("factory roundtrips editorPalette and referencePython") {
     val original = ProgrammingExercise(
       "prog-ref",
@@ -293,8 +298,11 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       calls.update(_ + 1)
       assertEquals(request.context("_eva_source"), ujson.Str(source.code))
       assertEquals(request.context("_eva_tests"), ujson.Str(suite.pythonTestCode))
-      assertEquals(request.context("_eva_is_java"), ujson.Bool(false))
-      assertEquals(request.context("_eva_java_methods"), ujson.Obj())
+      assertEquals(request.context("_eva_entry_point"), ujson.Null)
+      assert(!request.context.contains("_eva_is_java") && !request.context.contains("_eva_java_methods"))
+      val primitives = request.context("_eva_turtle_primitives")
+      assertEquals(primitives("forward"), ujson.Obj("command" -> "forward", "arity" -> 1, "inputs" -> ujson.Arr("Numeric")))
+      assertEquals(primitives("turn_right"), ujson.Obj("command" -> "right", "arity" -> 1, "inputs" -> ujson.Arr("Numeric")))
       assert(request.code.contains("sys.settrace(trace)") && request.code.contains("finally:"))
       assert(request.code.contains("event in (\"line\", \"opcode\")"))
       assert(request.code.contains("compile(tree, \"<workbook-tests>\", \"exec\", optimize=0)"))
@@ -329,6 +337,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       (ujson.Obj("status" -> "error", "reason" -> "test-runtime"), true, false),
       (ujson.Obj("status" -> "error", "reason" -> "execution-limit"), true, false),
       (ujson.Obj("status" -> "error", "reason" -> "java-execution"), true, false),
+      (ujson.Obj("status" -> "error", "reason" -> "program-execution"), true, false),
       (ujson.Obj("status" -> "passed", "reason" -> "", "private" -> "payload"), true, false),
       (ujson.Obj("status" -> "passed", "reason" -> "private payload"), true, false),
       (ujson.Obj("status" -> "unknown", "reason" -> ""), true, false),
@@ -387,11 +396,11 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val suite = SampleBeTest("assert run_java('draw', (3,))['commands'] == [['forward', 3]]")
     val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), request => {
       assertEquals(request.context("_eva_tests"), ujson.Str(suite.pythonTestCode))
-      assertEquals(request.context("_eva_is_java"), ujson.Bool(true))
-      assertEquals(request.context("_eva_java_methods").obj.keySet, Set("draw"))
-      assert(request.context("_eva_source").str.startsWith("def java_turtle_run("))
-      assert(request.code.contains("invocation.get(\"status\") != \"Completed\""))
-      assert(request.code.contains("namespace = {\"run_java\": run_java}"))
+      val entryPoint = request.context("_eva_entry_point")
+      assertEquals(entryPoint("functionName"), ujson.Str("java_turtle_run"))
+      assertEquals(entryPoint("methods").obj.keySet, Set("draw"))
+      assert(request.context("_eva_source").str.nonEmpty)
+      assert(!request.context.contains("_eva_is_java") && !request.context.contains("_eva_java_methods"))
     })
     val states = List[ProgrammingState](source, source.toBeExpressionState, source.toPython, source.toSnapXml)
     Future.traverse(states) { state =>
@@ -404,18 +413,128 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     }
   }
 
-  test("invalid Java editing metadata and ordinary Snap projects do not run as student Python") {
+  test("invalid Java editing metadata is rejected before Python dispatch") {
     val calls = State(0)
     val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), _ => calls.update(_ + 1))
     val grader = assertionGrader(SampleBeTest("assert run_java()['status'] == 'Completed'"))
     val states = List[ProgrammingState](ProgrammingStatePythonString("import java_turtle\n"),
-      ProgrammingState.ProgrammingStateSnapXml("<project><notes>EduSquirrel Java Turtle 1\nnot json</notes></project>"),
-      ProgrammingStateSnapXmlHelper.mini)
+      ProgrammingState.ProgrammingStateSnapXml("<project><notes>EduSquirrel Java Turtle 1\nnot json</notes></project>"))
     Future.traverse(states) { state =>
       val saved = write[ProgrammingState](state)
       grader.gradeStateSafe(state, forceGrading = true, List(client)).map { graded =>
         assert(graded.gradingStatus.isInstanceOf[GradingStatus.TestError])
         assertEquals(graded.gradedState, state)
+        assertEquals(write[ProgrammingState](state), saved)
+      }
+    }.map(_ => assertEquals(calls.now(), 0))
+  }
+
+  test("full-program tests dispatch the shared report contract for independently authored languages") {
+    val python = ProgrammingStatePythonString("fd(12)\r\nright(90)\r\nforward(3)\r\n")
+    val java = ProgrammingStateJavaString(
+      "public class Main { public static void main(String[] args) { Turtle.forward(12); Turtle.turnRight(90); Turtle.forward(3); } }")
+    val snap = nativeSnap("""<script x="10" y="20"><block s="receiveGo"/>
+      |<block s="forward"><l>12</l></block><block s="turn"><l>90</l></block>
+      |<block s="forward"><l>3</l></block></script>""".stripMargin)
+    val model = snap.toSnapScalaModel.fold(message => fail(message), identity)
+    val states: List[(ProgrammingState, Boolean)] = List(python -> false, java -> true, snap -> false, model -> false)
+    val test = "assert run_program()['commands'] == [['forward', 12], ['right', 90], ['forward', 3]]"
+    val grader = ProgrammingUnitTestGrader("full-program", test)
+    Future.traverse(states) { (state, checked) =>
+      val saved = write[ProgrammingState](state)
+      val fingerprint = state.fingerprint()
+      val projection = state.testProgramProjection.fold(message => fail(message), identity)
+      assertEquals(projection.commandEntryPoint.isDefined, checked)
+      val calls = State(0)
+      val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), request => {
+        calls.update(_ + 1)
+        assertEquals(request.context("_eva_source"), ujson.Str(projection.source))
+        assertEquals(request.context("_eva_tests"), ujson.Str(test))
+        assertEquals(request.context("_eva_entry_point") != ujson.Null, checked)
+        assertEquals(request.context("_eva_turtle_primitives")("fd"),
+          ujson.Obj("command" -> "forward", "arity" -> 1, "inputs" -> ujson.Arr("Numeric")))
+        assertEquals(request.context("_eva_turtle_primitives")("right"),
+          ujson.Obj("command" -> "right", "arity" -> 1, "inputs" -> ujson.Arr("Numeric")))
+        assert(request.resetGlobals && !request.captureStdout && !request.captureStderr)
+        assertEquals(request.callbacks, Map.empty[String, List[String]])
+        assertEquals(request.packages, Nil)
+      })
+      for {
+        first <- grader.gradeStateSafe(state, forceGrading = true, List(client))
+        second <- grader.gradeStateSafe(state, forceGrading = true, List(client))
+      } yield {
+        List(first, second).foreach { result =>
+          assertEquals(result.gradedState, state)
+          assertEquals(result.gradingStatus, GradingStatus.Correct())
+          assertEquals(result.additionalData, None)
+        }
+        assertEquals(calls.now(), 2)
+        assertEquals(state.fingerprint(), fingerprint)
+        assertEquals(write[ProgrammingState](state), saved)
+      }
+    }.map(_ => ())
+  }
+
+  test("native Snap execution excludes loose blocks without changing the saved project") {
+    val snap = nativeSnap("""<script><block s="receiveGo"/><block s="forward"><l>12</l></block></script>
+      |<script x="300" y="200"><block s="forward"><l>999</l></block></script>""".stripMargin)
+    val states: List[ProgrammingState] = List(snap, snap.toSnapScalaModel.fold(message => fail(message), identity))
+    val grader = ProgrammingUnitTestGrader("started-script", "assert run_program()['commands'] == [['forward', 12]]")
+    Future.traverse(states) { state =>
+      val saved = write[ProgrammingState](state)
+      val projection = state.testProgramProjection.fold(message => fail(message), identity)
+      assertEquals(projection.commandEntryPoint, None)
+      assert(!projection.source.contains("999"))
+      val calls = State(0)
+      val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), request => {
+        calls.update(_ + 1)
+        assertEquals(request.context("_eva_entry_point"), ujson.Null)
+        assert(!request.context("_eva_source").str.contains("999"))
+      })
+      grader.gradeStateSafe(state, forceGrading = true, List(client)).map { result =>
+        assertEquals(result.gradedState, state)
+        assertEquals(result.gradingStatus, GradingStatus.Correct())
+        assertEquals(calls.now(), 1)
+        assertEquals(write[ProgrammingState](state), saved)
+        assert(state.toSnapXml.snapXml.contains("999"))
+      }
+    }.map(_ => ())
+  }
+
+  test("unsupported or ambiguous Snap execution cannot grade a partial program") {
+    val unknown = nativeSnap("""<script><block s="receiveGo"/><block s="forward"><l>12</l></block>
+      |<block s="unsupportedPrimitive"><l>1</l></block></script>""".stripMargin)
+    val concurrent = nativeSnap("""<script><block s="receiveGo"/><block s="forward"><l>12</l></block></script>
+      |<script><block s="receiveGo"/><block s="forward"><l>3</l></block></script>""".stripMargin)
+    val legacy = nativeSnap("<script><block s=\"receiveGo\"/></script>")
+      .copy(legacyFloatingObjects = List("opaque block data"))
+    val invalidScripts = List(
+      """<script><unknown/><block s="receiveGo"/><block s="forward"><l>12</l></block></script>""",
+      """<script><block s="receiveGo"><l>1</l></block></script>""",
+      """<script><block s="receiveGo"/><block s="forward"><l>12</l><l>99</l></block></script>""",
+      """<script><block s="receiveGo"/><block s="forward"><variables/><l>12</l></block></script>""",
+      """<script><block s="receiveGo"/><block s="forward" var="x"><l>12</l></block></script>""",
+      """<script><block s="receiveGo"/><block s="doFor"><l>i</l><l>3</l><l>1</l><script><block s="forward"><block var="i"/></block></script></block></script>""",
+      """<script><block s="receiveGo"/><block s="doRepeat"><l>3</l><script><block s="forward"><l>12</l></block></script></block></script>"""
+    ).map(nativeSnap)
+    val doubleStage = nativeSnap("<script><block s=\"receiveGo\"/></script>")
+      .copy(snapXml = nativeSnap("").snapXml.replace("</project>", "<stage/></project>"))
+    val mixedStage = nativeSnap("").copy(snapXml = nativeSnap("").snapXml.replace("</project>", "<scenes/></project>"))
+    val doubleScripts = nativeSnap("").copy(snapXml = nativeSnap("").snapXml.replace("<scripts></scripts>",
+      "<scripts/><scripts><script><block s=\"receiveGo\"/><block s=\"forward\"><l>12</l></block></script></scripts>"))
+    val states: List[ProgrammingState] = (List(unknown, concurrent, legacy, doubleStage, mixedStage, doubleScripts) ++ invalidScripts).flatMap { state =>
+      List[ProgrammingState](state, state.toSnapScalaModel.fold(message => fail(message), identity))
+    } :+ ProgrammingState.ProgrammingStateSnapXml("<project><stage>")
+    val grader = ProgrammingUnitTestGrader("complete-only", "assert run_program()['commands'] == [['forward', 12]]")
+    val calls = State(0)
+    val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), _ => calls.update(_ + 1))
+    Future.traverse(states) { state =>
+      val saved = write[ProgrammingState](state)
+      assert(state.testProgramProjection.isLeft)
+      grader.gradeStateSafe(state, forceGrading = true, List(client)).map { result =>
+        assert(result.gradingStatus.isInstanceOf[GradingStatus.TestError])
+        assertEquals(result.gradedState, state)
+        assertEquals(result.additionalData, None)
         assertEquals(write[ProgrammingState](state), saved)
       }
     }.map(_ => assertEquals(calls.now(), 0))

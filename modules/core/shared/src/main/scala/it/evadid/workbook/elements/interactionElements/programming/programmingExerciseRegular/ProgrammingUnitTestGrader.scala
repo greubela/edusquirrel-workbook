@@ -4,14 +4,10 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.SerializedException
 import it.evadid.vm.test.{BeTestResult, ProgrammingTestRunner}
-import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport
-import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.{ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.JavaTurtleEditingBridge
 import upickle.default.*
 
 import scala.concurrent.Future
@@ -23,32 +19,10 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
   override val gradingEntity = FeedbackEntity.TestEntity()
 
-  private def evaluateJava(source: => Either[String, ProgrammingStateJavaString], clients: List[ExecutionClient]): Future[BeTestResult] =
-    Future(source.flatMap(_.toJavaVmProgram.left.map(_.message))).flatMap {
-      case Right(program) => evaluateProgram(program, clients)
-      case Left(_) => Future.successful(BeTestResult.Error("This source is not supported by the checked Java Turtle runner."))
-    }
-
-  private def evaluateProgram(program: JavaTurtleVmPrograms.Program, clients: List[ExecutionClient]): Future[BeTestResult] = {
-    val exported = JavaTurtlePythonExport.render(program)
-    ProgrammingTestRunner.execute(exported.source, pythonTestCode,
-      Some(exported.methods.view.mapValues(_.index).toMap), clients)
-  }
-
   override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
-    val evaluation = state match {
-      case ProgrammingStatePythonString(source) => Future(JavaTurtleEditingBridge.hasPythonMetadata(source)).flatMap {
-        case true => evaluateJava(JavaTurtleEditingBridge.fromPython(source), clients)
-        case false => ProgrammingTestRunner.execute(source, pythonTestCode, None, clients)
-      }
-      case snap: ProgrammingStateSnapXml => Future(JavaTurtleEditingBridge.hasSnapMetadata(snap.snapXml)).flatMap {
-        case true => evaluateJava(JavaTurtleEditingBridge.fromSnap(snap), clients)
-        case false => Future.successful(BeTestResult.Error("Unit tests cannot infer a Java program from an untyped Snap project."))
-      }
-      case ProgrammingStateBeExpression(root: JavaTurtleVmPrograms.Root) =>
-        evaluateProgram(JavaTurtleVmPrograms.fromRoot(root), clients)
-      case java: ProgrammingStateJavaString => evaluateJava(Right(java), clients)
-      case _ => Future.successful(BeTestResult.Error("Unit tests require original Python source or a supported Java Turtle class."))
+    val evaluation = Future(state.testProgramProjection).flatMap {
+      case Right(program) => ProgrammingTestRunner.execute(program, pythonTestCode, clients)
+      case Left(message) => Future.successful(BeTestResult.Error(message))
     }
     evaluation.map { result =>
       val status = result match {
