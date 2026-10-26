@@ -7,6 +7,7 @@ import it.evadid.vm.test.{BeTestResult, BeTestSuite}
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
+import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.{ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.JavaTurtleEditingBridge
@@ -16,7 +17,7 @@ import scala.concurrent.Future
 
 case class ProgrammingUnitTestGrader(testSuite: BeTestSuite,
     importance: GradingImportance = GradingImportance.REQUIRED_TEST)
-    extends WorkbookInteractionGrader[ProgrammingState, Any] derives ReadWriter {
+    extends WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo] derives ReadWriter {
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
   override val gradingEntity = FeedbackEntity.TestEntity()
 
@@ -26,7 +27,7 @@ case class ProgrammingUnitTestGrader(testSuite: BeTestSuite,
       case Left(_) => Future.successful(BeTestResult.Error("This source is not supported by the checked Java Turtle runner."))
     }
 
-  override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, Any]] = {
+  override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
     val evaluation = state match {
       case ProgrammingStatePythonString(source) => Future(JavaTurtleEditingBridge.hasPythonMetadata(source)).flatMap {
         case true => evaluateJava(JavaTurtleEditingBridge.fromPython(source), clients)
@@ -47,7 +48,7 @@ case class ProgrammingUnitTestGrader(testSuite: BeTestSuite,
         case BeTestResult.Failed => GradingStatus.Incorrect()
         case BeTestResult.Error(message) => GradingStatus.TestError(SerializedException(message))
       }
-      GradingResult[ProgrammingState, Any](this, state, status)
+      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status)
     }
   }
 }
