@@ -7,12 +7,14 @@ import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.state.State
 import it.evadid.distribution.clients.{ExecutionClient, LocalExecutionClient}
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory, SerializedException}
-import it.evadid.distribution.commandTypes.LLMCommands
+import it.evadid.distribution.commandTypes.{LLMCommands, WorkerCommands}
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.scaffolding.{ProgrammingHintScaffolder, ScaffoldingResult}
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExerciseFullJava, ProgrammingUnitTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleGraphic, TurtleRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.slideshow.{SlideshowGrader, SlideshowState}
@@ -21,6 +23,7 @@ import munit.FunSuite
 import upickle.default.*
 
 import java.time.LocalDateTime
+import it.evadid.vm.test.ProgrammingTestSuite
 import scala.collection.immutable.ListSet
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
@@ -114,6 +117,61 @@ class InteractionVariableGradingSpec extends FunSuite {
     def generateFeedback(state: ProgrammingState): Future[ScaffoldingResult[ProgrammingState, String]] =
       scaffolder.generateFeedback(state, List(executor.now()), resolver)
     lazy val variable = element.interactionVariable
+    def context: ujson.Value = ujson.read(requests.now().last.prompt)
+  }
+
+  private type DescribedResult = GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]
+
+  private case class DescribedHintCheck(name: String, override val importance: GradingImportance,
+      override val gradingEntity: FeedbackEntity = FeedbackEntity.TestEntity())
+      extends WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo] {
+    val runs = State(0)
+    override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS
+    override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[DescribedResult] = {
+      runs.update(_ + 1)
+      Future.failed(IllegalStateException("Hints must not rerun described checks."))
+    }
+  }
+
+  private class DescribedHintFixture(val checks: List[DescribedHintCheck],
+      response: LLMCommands.FeedbackLlmRequest => Future[String] = _ => Future.successful(hintReply())) {
+    val source: ProgrammingState = ProgrammingStatePythonString("def draw():\n    pass\n")
+    val language = State[HumanLanguage](German)
+    val requests = State(Vector.empty[LLMCommands.FeedbackLlmRequest])
+    val workerCalls = State(0)
+    val started = Promise[Unit]()
+    val task = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Zeichne eine Linie.", English -> "Draw a line."))
+    def resolverFor(resolve: LanguageMapContentId => Future[LanguageMap[HumanLanguage]]): LanguageMapIdResolver =
+      new LanguageMapIdResolver(language.observable) {
+        override def resolveMap(id: LanguageMapContentId) = resolve(id)
+      }
+    val resolver = resolverFor(_ => Future.successful(task))
+    private val client = LLMCommands.feedbackLlmCommandFactory.toLocalExecutionClient((request, _) => {
+      requests.update(_ :+ request)
+      started.trySuccess(())
+      response(request)
+    })
+    private val worker = WorkerCommands.runPython.toLocalExecutionClient((_, _) => {
+      workerCalls.update(_ + 1)
+      Future.failed(IllegalStateException("Hints must not execute Python."))
+    })
+    val element = new WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, String] {
+      override val elementId = "described-hint-test"
+      override val defaultValue = source
+      override lazy val childrenOfThisElement = List.empty[WorkbookElement]
+      override val associatedFactory = TurtleRecreateShapeInteraction.factory
+      override val gradingElements = checks
+      override val scaffoldingElement = Some(new ProgrammingHintScaffolder[String](this, LanguageMapContentId("test/described-hint")))
+    }
+    val variable = element.interactionVariable
+    def grade(check: DescribedHintCheck, description: Option[LanguageMap[HumanLanguage]] = None,
+        status: GradingStatus = GradingStatus.Incorrect(), time: LocalDateTime = LocalDateTime.of(2026, 10, 26, 12, 0),
+        state: ProgrammingState = source): DescribedResult =
+      GradingResult(check, state, status, additionalData = description.map(AdditionalProgrammingTestInfo(_)), gradingTime = time)
+    def setResults(results: Set[DescribedResult]): Unit =
+      variable.updateHistory(_.copy(gradings = Map(source -> GradedState(source, results))))
+    def generate(currentResolver: LanguageMapIdResolver = resolver): Future[ScaffoldingResult[ProgrammingState, String]] =
+      element.scaffoldingElement.get.generateFeedback(source, List(worker, client), currentResolver)
     def context: ujson.Value = ujson.read(requests.now().last.prompt)
   }
 
@@ -442,6 +500,238 @@ class InteractionVariableGradingSpec extends FunSuite {
       assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
       assert(f.checks.forall(_.runs.now() == 0))
       assertEquals(f.variable.history, before)
+    }
+  }
+
+  test("cached public descriptions use the requested language or English without rerunning checks") {
+    val descriptions = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
+      German -> "  Prüft die Länge der Linie.  ", English -> "  Checks the line length.  "))
+    val statuses = List(GradingStatus.Correct(), GradingStatus.Incorrect(), GradingStatus.PartiallyCorrect())
+    Future.sequence(statuses.flatMap { status =>
+      List[HumanLanguage](German, English, French).map { language =>
+        val check = DescribedHintCheck("PRIVATE_TEST_DEFINITION", GradingImportance.REQUIRED_TEST)
+        val f = new DescribedHintFixture(List(check))
+        f.language.set(language)
+        f.setResults(Set(f.grade(check, Some(descriptions), status)))
+        val before = f.variable.history
+        f.generate().map { _ =>
+          assertEquals(f.context("feedbackLanguage").str, language.name)
+          assertEquals(f.context("checks")(0)("description").str,
+            if language == German then "Prüft die Länge der Linie." else "Checks the line length.")
+          assertEquals(f.requests.now().size, 1)
+          assertEquals(check.runs.now(), 0)
+          assertEquals(f.workerCalls.now(), 0)
+          assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+          assertEquals(f.variable.history, before)
+        }
+      }
+    }).map(_ => ())
+  }
+
+  test("described hints omit hidden foreign and unusable results and private feedback") {
+    val required = DescribedHintCheck("PRIVATE_REQUIRED", GradingImportance.REQUIRED_TEST)
+    val optional = DescribedHintCheck("PRIVATE_OPTIONAL", GradingImportance.OPTIONAL_TEST)
+    val hidden = DescribedHintCheck("PRIVATE_HIDDEN", GradingImportance.HIDDEN_TEST)
+    val foreign = DescribedHintCheck("PRIVATE_FOREIGN", GradingImportance.REQUIRED_TEST)
+    val notRun = DescribedHintCheck("PRIVATE_NOT_RUN", GradingImportance.REQUIRED_TEST)
+    val error = DescribedHintCheck("PRIVATE_ERROR", GradingImportance.REQUIRED_TEST)
+    val model = DescribedHintCheck("PRIVATE_MODEL", GradingImportance.REQUIRED_TEST, FeedbackEntity.LlmEntity(MessengerModel.empty))
+    val removed = DescribedHintCheck("PRIVATE_REMOVED", GradingImportance.REQUIRED_TEST)
+    val f = new DescribedHintFixture(List(required, optional, hidden, foreign, notRun, error, model))
+    val publicText = LanguageMap.universalMap[HumanLanguage]("Prüft die Linie.")
+    val privateText = LanguageMap.universalMap[HumanLanguage]("PRIVATE_DESCRIPTION_WITH_ANSWER")
+    f.setResults(Set(
+      f.grade(required, Some(publicText)).copy(feedbackInformation = Some(privateText)),
+      f.grade(optional, Some(publicText), GradingStatus.Correct()),
+      f.grade(hidden, Some(privateText)),
+      f.grade(foreign, Some(privateText), state = ProgrammingStatePythonString("other source")),
+      f.grade(notRun, Some(privateText), GradingStatus.NotExecuted()),
+      f.grade(error, Some(privateText), GradingStatus.TestError(SerializedException("PRIVATE_EXCEPTION"))),
+      f.grade(model, Some(privateText)), f.grade(removed, Some(privateText))))
+    val before = f.variable.history
+    f.generate().map { _ =>
+      val checks = f.context("checks").arr.toVector
+      assertEquals(checks.map(_("status").str), Vector("incorrect", "correct", "unavailable", "not-run", "error"))
+      assertEquals(checks.map(_.obj.get("description")), Vector(Some(ujson.Str("Prüft die Linie.")),
+        Some(ujson.Str("Prüft die Linie.")), None, None, None))
+      assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+      assert(!f.requests.now().last.systemPrompt.contains("PRIVATE_"))
+      assert(f.checks.forall(_.runs.now() == 0))
+      assertEquals(f.workerCalls.now(), 0)
+      assertEquals(f.variable.history, before)
+    }
+  }
+
+  test("hint descriptions are trimmed bounded and independently filtered before fallback") {
+    val rows: List[(Option[LanguageMap[HumanLanguage]], Option[String])] = List(
+      None -> None, Some(LanguageMap.empty[HumanLanguage]) -> None,
+      Some(null) -> None,
+      Some(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> " \t "))) -> None,
+      Some(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> ("x" * 1025)))) -> None,
+      Some(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> ("  " + "x" * 1024 + "  ")))) -> Some("x" * 1024),
+      Some(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> ("x" * 1025), English -> " English fallback "))) -> Some("English fallback"))
+    Future.traverse(rows) { (description, expected) =>
+      val check = DescribedHintCheck("bounded", GradingImportance.REQUIRED_TEST)
+      val f = new DescribedHintFixture(List(check))
+      f.setResults(Set(f.grade(check, description)))
+      f.generate().map { _ =>
+        assertEquals(f.context("checks")(0).obj.get("description").map(_.str), expected)
+        assertEquals(f.context("checks")(0)("status").str, "incorrect")
+        assertEquals(check.runs.now(), 0)
+        assertEquals(f.workerCalls.now(), 0)
+      }
+    }.map(_ => ())
+  }
+
+  test("latest public descriptions do not revive older data and conflicting descriptions are unavailable") {
+    val check = DescribedHintCheck("latest", GradingImportance.REQUIRED_TEST)
+    val f = new DescribedHintFixture(List(check))
+    val first = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Alt", English -> "Old"))
+    val second = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Neu", English -> "New"))
+    val old = f.grade(check, Some(first))
+    val latest = old.copy(gradingTime = old.gradingTime.plusSeconds(1))
+    val newData = latest.copy(additionalData = Some(AdditionalProgrammingTestInfo(second)))
+    val sameGerman = latest.copy(additionalData = Some(AdditionalProgrammingTestInfo(
+      LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> " Alt ", English -> "Different English text")))),
+      feedbackInformation = Some(LanguageMap.universalMap("PRIVATE_FEEDBACK")))
+    val rows = List(
+      (Set(old, newData), "incorrect", Some("Neu")),
+      (Set(old, latest.copy(additionalData = None)), "incorrect", None),
+      (Set(old, latest.copy(gradingStatus = GradingStatus.NotExecuted())), "not-run", None),
+      (Set(old, latest.copy(gradingStatus = GradingStatus.TestError(SerializedException("PRIVATE_ERROR")))), "error", None),
+      (Set(old, latest, newData), "unavailable", None),
+      (Set(old, latest, sameGerman), "incorrect", Some("Alt")))
+    rows.foldLeft(Future.unit) { case (previous, (results, status, description)) =>
+      previous.flatMap { _ =>
+        f.setResults(results)
+        f.generate().map { _ =>
+          assertEquals(f.context("checks")(0)("status").str, status)
+          assertEquals(f.context("checks")(0).obj.get("description").map(_.str), description)
+          assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+        }
+      }
+    }.map { _ =>
+      assertEquals(f.requests.now().size, rows.size)
+      assertEquals(check.runs.now(), 0)
+      assertEquals(f.workerCalls.now(), 0)
+    }
+  }
+
+  test("changed public descriptions reject delayed and pending hints even when the grade and timestamp match") {
+    Future.traverse(List(true, false)) { beforeDispatch =>
+      val check = DescribedHintCheck("changed description", GradingImportance.REQUIRED_TEST)
+      val reply = Promise[String]()
+      val task = Promise[LanguageMap[HumanLanguage]]()
+      val f = new DescribedHintFixture(List(check), _ => reply.future)
+      val original = f.grade(check, Some(LanguageMap.universalMap("Prüft die Länge.")))
+      f.setResults(Set(original))
+      val pending = if beforeDispatch then f.generate(f.resolverFor(_ => task.future)) else f.generate()
+      val ready = if beforeDispatch then Future.unit else f.started.future
+      ready.flatMap { _ =>
+        f.setResults(Set(original.copy(additionalData = Some(AdditionalProgrammingTestInfo(
+          LanguageMap.universalMap("Prüft die Anzahl."))))))
+        val before = f.variable.history
+        task.trySuccess(f.task)
+        reply.trySuccess(hintReply(ids = List("check-1")))
+        pending.failed.map { error =>
+          assert(error.isInstanceOf[IllegalArgumentException])
+          assertEquals(f.requests.now().size, if beforeDispatch then 0 else 1)
+          assertEquals(check.runs.now(), 0)
+          assertEquals(f.workerCalls.now(), 0)
+          assertEquals(f.variable.history, before)
+        }
+      }
+    }.map(_ => ())
+  }
+
+  test("pending hints tolerate changes outside the localized public description") {
+    val check = DescribedHintCheck("unchanged public text", GradingImportance.REQUIRED_TEST)
+    val hidden = DescribedHintCheck("PRIVATE_HIDDEN_CHECK", GradingImportance.HIDDEN_TEST)
+    val reply = Promise[String]()
+    val f = new DescribedHintFixture(List(check, hidden), _ => reply.future)
+    val original = f.grade(check, Some(LanguageMap.mapBasedLanguageMap[HumanLanguage](
+      Map(German -> "Prüft die Linie.", English -> "Old English text"))))
+    f.setResults(Set(original))
+    val pending = f.generate()
+    f.started.future.flatMap { _ =>
+      val updated = original.copy(gradingTime = original.gradingTime.plusSeconds(1),
+        feedbackInformation = Some(LanguageMap.universalMap("PRIVATE_FEEDBACK")),
+        additionalData = Some(AdditionalProgrammingTestInfo(LanguageMap.mapBasedLanguageMap[HumanLanguage](
+          Map(German -> " Prüft die Linie. ", English -> "PRIVATE_OTHER_LOCALE")))))
+      f.setResults(Set(updated, f.grade(hidden, Some(LanguageMap.universalMap("PRIVATE_HIDDEN_DESCRIPTION")))))
+      val before = f.variable.history
+      reply.success(hintReply(ids = List("check-1")))
+      pending.map { result =>
+        assertEquals(result.forState, f.source)
+        assertEquals(f.context("checks")(0)("description").str, "Prüft die Linie.")
+        assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+        assertEquals(check.runs.now(), 0)
+        assertEquals(hidden.runs.now(), 0)
+        assertEquals(f.workerCalls.now(), 0)
+        assertEquals(f.variable.history, before)
+      }
+    }
+  }
+
+  test("a resolved test description survives history restoration and supplies hints without another grade") {
+    val taskId = LanguageMapContentId("test/described-task")
+    val descriptionId = LanguageMapContentId("test/public-test-description")
+    val grader = ProgrammingUnitTestGrader("line-length",
+      "assert run_program()['commands'] == [['forward', 3]] # PRIVATE_ASSERTION_BODY",
+      publicDescription = Some(descriptionId))
+    val element = ProgrammingExerciseFullJava("cached-description", Some(ProgrammingTestSuite(List(grader))),
+      startingProgram = "public class Drawing { public static void main(String[] args) { Turtle.forward(2); } }",
+      hintTask = Some(taskId))
+    val variable = element.interactionVariable
+    val state = variable.currentValue
+    val language = State[HumanLanguage](German)
+    val resolutions = State(Vector.empty[LanguageMapContentId])
+    val workerCalls = State(0)
+    val requests = State(Vector.empty[LLMCommands.FeedbackLlmRequest])
+    val resolver = new LanguageMapIdResolver(language.observable) {
+      override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] = {
+        resolutions.update(_ :+ id)
+        if id == taskId then Future.successful(LanguageMap.mapBasedLanguageMap[HumanLanguage](
+          Map(German -> "Zeichne eine Linie.", English -> "Draw a line.")))
+        else if id == descriptionId then Future.successful(LanguageMap.mapBasedLanguageMap[HumanLanguage](
+          Map(German -> " Prüft die Länge. ", English -> " Checks the length. ")))
+        else Future.failed(IllegalArgumentException("Unexpected content ID."))
+      }
+    }
+    val worker = WorkerCommands.runPython.toLocalExecutionClient((_, _) => {
+      workerCalls.update(_ + 1)
+      Future.successful(WorkerCommands.RunPythonResult(ujson.Obj("status" -> "failed", "reason" -> "assertion"), "", "", Nil))
+    })
+    val llm = LLMCommands.feedbackLlmCommandFactory.toLocalExecutionClient((request, _) => {
+      requests.update(_ :+ request)
+      Future.successful(hintReply(ids = List("check-1")))
+    })
+    variable.startGrading(null, List(worker), forceGrading = true, resolver = Some(resolver)).flatMap { _ =>
+      val result = variable.history.gradings(state).testsWithResults.head
+      assertEquals(result.gradingStatus, GradingStatus.Incorrect())
+      assertEquals(result.additionalData.get.humanReadableTestExecutionDescription.getInLanguage(German), "Prüft die Länge.")
+      val restored = variable.deserializeHistory(variable.serializeHistory(variable.history))
+      assertEquals(restored, variable.history)
+      variable.updateHistory(_ => restored)
+      val before = variable.history
+      val scaffolder = element.scaffoldingElement.get
+      for {
+        german <- scaffolder.generateFeedback(state, List(worker, llm), resolver)
+        english <- {
+          language.set(English)
+          scaffolder.generateFeedback(state, List(worker, llm), resolver)
+        }
+      } yield {
+        assertEquals(german.scaffoldingResult.availableLanguages, Set[HumanLanguage](German))
+        assertEquals(english.scaffoldingResult.availableLanguages, Set[HumanLanguage](English))
+        assertEquals(requests.now().map(request => ujson.read(request.prompt)("checks")(0)("description").str),
+          Vector("Prüft die Länge.", "Checks the length."))
+        assert(requests.now().forall(request => !request.prompt.contains("PRIVATE_") && !request.systemPrompt.contains("PRIVATE_")))
+        assertEquals(workerCalls.now(), 1)
+        assertEquals(resolutions.now().count(_ == descriptionId), 1)
+        assertEquals(resolutions.now().count(_ == taskId), 2)
+        assertEquals(variable.history, before)
+      }
     }
   }
 

@@ -11,6 +11,7 @@ import it.evadid.util.logging.BasicLogger
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookInteractionElementFull}
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus}
+import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.{ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString}
 
@@ -32,15 +33,15 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
         val task = translations.tryGetInLanguage(locale).orElse(translations.tryGetInLanguage(English))
           .filter(text => text != null && text.trim.nonEmpty && text.length <= 8000)
           .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
-        verifyChecks(currentState, context)
+        verifyChecks(currentState, context, locale)
         val request = context.request(locale, task)
         val factory = LLMCommands.feedbackLlmCommandFactory
         val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
         val client = availableExecutionClients.find(_.canExecuteCommand(command))
           .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
         factory.sendCommandTo(client, request, Some(BasicLogger())).map { response =>
-          verifyChecks(currentState, context)
-          val hints = parse(response.result, context.evidenceIds)
+          verifyChecks(currentState, context, locale)
+          val hints = parse(response.result, context.evidenceIds(locale))
           val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
           val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
           val conversation = MessengerModel(List(Message(accepted, MessengerModel.pAgent)))
@@ -50,9 +51,10 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
       }
     }.fold(Future.failed, identity)
 
-  private def verifyChecks(state: ProgrammingState, context: Context): Unit =
+  private def verifyChecks(state: ProgrammingState, context: Context, locale: HumanLanguage): Unit =
     if interaction.interactionVariable.currentValue == state then
-      require(prepare(state).checks == context.checks, "Public check results changed while preparing this hint.")
+      require(prepare(state).localizedChecks(locale) == context.localizedChecks(locale),
+        "Public check results changed while preparing this hint.")
 
   private def prepare(state: ProgrammingState): Context = {
     val (sourceLanguage, source) = state match {
@@ -76,23 +78,46 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
     require(graders.size <= 32, "Too many public checks for a hint.")
     val checks = graders.zipWithIndex.map { (grader, index) =>
       val matches = results.filter(result => result.gradedState == state && result.grader == grader)
-      val statuses = matches.maxByOption(_.gradingTime).toList.flatMap { latest =>
-        matches.filter(_.gradingTime == latest.gradingTime).map(result => statusName(result.gradingStatus))
-      }.distinct
-      val status = statuses match {
-        case List(single) => single
-        case _ => "unavailable"
+      val latest = matches.maxByOption(_.gradingTime).toList.flatMap { latest =>
+        matches.filter(_.gradingTime == latest.gradingTime).map { result =>
+          val status = statusName(result.gradingStatus)
+          val descriptions = Option.when(evidenceStatuses.contains(status))(result.additionalData).flatten.collect {
+            case info: AdditionalProgrammingTestInfo => AdditionalProgrammingTestInfo.descriptions(info.humanReadableTestExecutionDescription)
+          }.getOrElse(Map.empty[HumanLanguage, String])
+          status -> descriptions
+        }
       }
-      (s"check-${index + 1}", grader.importance == GradingImportance.REQUIRED_TEST, status)
+      Check(s"check-${index + 1}", grader.importance == GradingImportance.REQUIRED_TEST, latest)
     }
     Context(sourceLanguage, source, sourceLines, checks)
   }
 }
 
 object ProgrammingHintScaffolder {
-  private case class Context(sourceLanguage: String, source: String, sourceLines: Vector[(String, String)], checks: List[(String, Boolean, String)]) {
-    val evidenceIds: Set[String] = sourceLines.map(_._1).toSet ++ checks.collect {
-      case (id, _, status) if Set("correct", "partially-correct", "incorrect").contains(status) => id
+  private val evidenceStatuses = Set("correct", "partially-correct", "incorrect")
+
+  private case class PublicCheck(id: String, required: Boolean, status: String, description: Option[String]) {
+    def toJson: ujson.Value = ujson.Obj.from(List("id" -> ujson.Str(id), "required" -> ujson.Bool(required),
+      "status" -> ujson.Str(status)) ++ description.map(text => "description" -> ujson.Str(text)))
+  }
+
+  private case class Check(id: String, required: Boolean, latest: List[(String, Map[HumanLanguage, String])]) {
+    def localized(language: HumanLanguage): PublicCheck = {
+      val values = latest.map { (status, descriptions) =>
+        status -> descriptions.get(language).orElse(descriptions.get(English))
+      }.distinct
+      values match {
+        case List((status, description)) => PublicCheck(id, required, status, description)
+        case _ => PublicCheck(id, required, "unavailable", None)
+      }
+    }
+  }
+
+  private case class Context(sourceLanguage: String, source: String, sourceLines: Vector[(String, String)], checks: List[Check]) {
+    def localizedChecks(language: HumanLanguage): List[PublicCheck] = checks.map(_.localized(language))
+
+    def evidenceIds(language: HumanLanguage): Set[String] = sourceLines.map(_._1).toSet ++ localizedChecks(language).collect {
+      case check if evidenceStatuses.contains(check.status) => check.id
     } + "task"
 
     def request(language: HumanLanguage, task: String): LLMCommands.FeedbackLlmRequest = {
@@ -101,9 +126,7 @@ object ProgrammingHintScaffolder {
         "task" -> ujson.Obj("id" -> "task", "text" -> task),
         "source" -> ujson.Obj("language" -> sourceLanguage, "code" -> source,
           "lines" -> ujson.Arr.from(sourceLines.map { (id, text) => ujson.Obj("id" -> id, "text" -> text) })),
-        "checks" -> ujson.Arr.from(checks.map { (id, required, status) =>
-          ujson.Obj("id" -> id, "required" -> required, "status" -> status)
-        })))
+        "checks" -> ujson.Arr.from(localizedChecks(language).map(_.toJson))))
       LLMCommands.FeedbackLlmRequest(prompt, systemPrompt)
     }
   }
@@ -132,6 +155,7 @@ object ProgrammingHintScaffolder {
       |Use one to three evidence IDs from the live task, source.lines.id or checks.id.
       |Each source.lines entry contains its exact line text. Cite the line you ask about, not merely the class or method header.
       |Check statuses correct, partially-correct and incorrect may be cited, but their IDs alone do not explain what was checked.
+      |A check description explains what it examines, not the cause of a failure. Do not invent inputs or execution details it does not provide.
       |Unavailable, not-run and error are not evidence of a learner error. Optional checks are not task requirements.
       |
       |These examples illustrate style and evidence use only. They are not evidence for the live task; do not copy their IDs.
