@@ -785,7 +785,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     Future.traverse(states) { (state, checked) =>
       val saved = write[ProgrammingState](state)
       val fingerprint = state.fingerprint()
-      val projection = state.testProgramProjection.fold(message => fail(message), identity)
+      val projection = state.prepareUnitTestProgram.fold(message => fail(message), identity)
       assertEquals(projection.commandEntryPoint.isDefined, checked)
       val calls = State(0)
       val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), request => {
@@ -824,7 +824,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val grader = ProgrammingUnitTestGrader("started-script", "assert run_program()['commands'] == [['forward', 12]]")
     Future.traverse(states) { state =>
       val saved = write[ProgrammingState](state)
-      val projection = state.testProgramProjection.fold(message => fail(message), identity)
+      val projection = state.prepareUnitTestProgram.fold(message => fail(message), identity)
       assertEquals(projection.commandEntryPoint, None)
       assert(!projection.source.contains("999"))
       val calls = State(0)
@@ -872,7 +872,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), _ => calls.update(_ + 1))
     Future.traverse(states) { state =>
       val saved = write[ProgrammingState](state)
-      assert(state.testProgramProjection.isLeft)
+      assert(state.prepareUnitTestProgram.isLeft)
       grader.gradeStateSafe(state, forceGrading = true, List(client)).map { result =>
         assert(result.gradingStatus.isInstanceOf[GradingStatus.TestError])
         assertEquals(result.gradedState, state)

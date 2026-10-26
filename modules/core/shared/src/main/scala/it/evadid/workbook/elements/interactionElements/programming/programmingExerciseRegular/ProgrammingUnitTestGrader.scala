@@ -28,7 +28,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
   override val gradingEntity = FeedbackEntity.TestEntity()
 
   override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
-    val evaluation = Future(state.testProgramProjection).flatMap {
+    val evaluation = Future(state.prepareUnitTestProgram).flatMap {
       case Right(program) => ProgrammingTestRunner.execute(program, pythonTestCode, clients,
         publishProgramObservation && importance != GradingImportance.HIDDEN_TEST)
       case Left(message) => Future.successful(ProgrammingTestRunner.Result(BeTestResult.Error(message)))
