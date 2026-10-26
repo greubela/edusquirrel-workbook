@@ -105,6 +105,11 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     assert.deepEqual(python.value,{sum:5,label:'学校'});
     assert.equal(python.stdout,'Grüße\n');
     assert.equal(python.stderr,'warning\n');
+    const pythonNone = result(await page.evaluate(() => request('python-none','worker.runPython',{
+      code:"{'status':'Completed','problem':None,'commands':[],'steps':2}"
+    })));
+    assert.deepEqual(pythonNone.value,{status:'Completed',problem:null,commands:[],steps:2});
+    assert.equal(Object.hasOwn(pythonNone.value,'problem'),true,'Python None remains a JSON null');
     const partial = result(await page.evaluate(() => request('partial','worker.runPython',{
       code:"print('学校😀',end='')\nimport sys\nprint('warn',end='',file=sys.stderr)"
     })));
