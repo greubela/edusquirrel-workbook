@@ -9,7 +9,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
-import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookInteractionElementFull, WorkbookInteractionUntyped}
+import it.evadid.workbook.abstractions.{WorkbookInteractionElementFull, WorkbookInteractionUntyped}
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
@@ -98,7 +98,7 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
             def pending: Boolean = unchanged && view.now().pending.contains(id)
             if pending then Try(variable.startGrading(fullInfo.syncControl,
               List(fullInfo.defaults.workerBackendExecutor, fullInfo.defaults.backendExecutor), forceGrading = true,
-              resolver = Option.when(interaction.gradingElements.exists(_.gradingEntity.isInstanceOf[FeedbackEntity.LlmEntity]))(fullInfo.signals.idResolver)))
+              resolver = Some(fullInfo.signals.idResolver)))
               .fold(Future.failed, identity).onComplete { result =>
                 if pending then view.update(_.copy(pending = None, failed = result.isFailure))
               }

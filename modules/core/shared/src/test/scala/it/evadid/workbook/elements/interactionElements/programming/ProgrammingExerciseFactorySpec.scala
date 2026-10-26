@@ -13,6 +13,7 @@ import munit.FunSuite
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
+import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
@@ -352,6 +353,129 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     }
   }
 
+  test("public test descriptions resolve once without rerunning a completed grade") {
+    val source = ProgrammingStatePythonString("def add(a, b): return a + b")
+    val descriptionId = LanguageMapContentId("tests/add-public-description")
+    val descriptions = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
+      German -> "Der Aufruf verwendet zwei positive Zahlen. Grüße 🐢",
+      English -> "The call uses two positive numbers."
+    ))
+    val cases = for {
+      importance <- List(GradingImportance.REQUIRED_TEST, GradingImportance.OPTIONAL_TEST)
+      passed <- List(true, false)
+    } yield (importance, passed)
+    Future.traverse(cases) { (importance, passed) =>
+      val calls = State(0)
+      val lookups = State(0)
+      val resolver = new LanguageMapIdResolver(State[HumanLanguage](German).observable) {
+        override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] = {
+          assertEquals(id, descriptionId)
+          lookups.update(_ + 1)
+          Future.successful(descriptions)
+        }
+        override def languageFuture(): Future[HumanLanguage] =
+          Future.failed(IllegalStateException("Descriptions must retain every available language."))
+      }
+      val report = if passed then ujson.Obj("status" -> "passed", "reason" -> "")
+        else ujson.Obj("status" -> "failed", "reason" -> "assertion")
+      val client = pythonClient(report, _ => calls.update(_ + 1))
+      val grader = ProgrammingUnitTestGrader("addition", "assert add(1, 2) == 3", importance, Some(descriptionId))
+      grader.gradeStateSafe(source, forceGrading = true, List(client), resolver).map { result =>
+        assertEquals(calls.now(), 1)
+        assertEquals(lookups.now(), 1)
+        assertEquals(result.gradedState, source)
+        assertEquals(result.grader, grader)
+        assertEquals(result.gradingStatus, if passed then GradingStatus.Correct() else GradingStatus.Incorrect())
+        assertEquals(result.feedbackInformation, None)
+        assertEquals(result.additionalData, Some(AdditionalProgrammingTestInfo(descriptions)))
+        assertEquals(read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](write(result)), result)
+        assertEquals(readBinary[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](writeBinary(result)), result)
+      }
+    }.map(_ => ())
+  }
+
+  test("hidden unexecuted and unavailable test descriptions are never resolved") {
+    val source = ProgrammingStatePythonString("pass")
+    val configured = ProgrammingUnitTestGrader("public", "assert True",
+      publicDescription = Some(LanguageMapContentId("tests/public-description")))
+    val cases = List(
+      (configured.copy(publicDescription = None), true, true, false),
+      (configured.copy(importance = GradingImportance.HIDDEN_TEST), true, true, false),
+      (configured, false, true, false),
+      (configured, true, false, false),
+      (configured, true, true, true)
+    )
+    Future.traverse(cases) { (grader, force, useResolver, error) =>
+      val calls = State(0)
+      val lookups = State(0)
+      val resolver = new LanguageMapIdResolver(State[HumanLanguage](English).observable) {
+        override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] = {
+          lookups.update(_ + 1)
+          Future.failed(IllegalStateException("This description must not be resolved."))
+        }
+      }
+      val report = if error then ujson.Obj("status" -> "error", "reason" -> "invalid-tests")
+        else ujson.Obj("status" -> "passed", "reason" -> "")
+      val client = pythonClient(report, _ => calls.update(_ + 1))
+      val evaluated = if useResolver then grader.gradeStateSafe(source, force, List(client), resolver)
+        else grader.gradeStateSafe(source, force, List(client))
+      evaluated.map { result =>
+        assertEquals(calls.now(), if force then 1 else 0)
+        assertEquals(lookups.now(), 0)
+        assertEquals(result.additionalData, None)
+        if error then assert(result.gradingStatus.isInstanceOf[GradingStatus.TestError])
+        else assertEquals(result.gradingStatus, if force then GradingStatus.Correct() else GradingStatus.NotExecuted())
+      }
+    }.map(_ => ())
+  }
+
+  test("description bounds and resolver failures cannot change a test outcome") {
+    val source = ProgrammingStatePythonString("pass")
+    val grader = ProgrammingUnitTestGrader("bounded", "assert False",
+      publicDescription = Some(LanguageMapContentId("tests/bounded-description")))
+    def translated(values: Map[HumanLanguage, String]): Future[LanguageMap[HumanLanguage]] =
+      Future.successful(LanguageMap.mapBasedLanguageMap(values))
+    val boundary = "ä" * 1024
+    val cases: List[(() => Future[LanguageMap[HumanLanguage]], Map[HumanLanguage, String])] = List(
+      (() => translated(Map.empty), Map.empty),
+      (() => translated(Map(German -> " \r\n", English -> ("x" * 1025))), Map.empty),
+      (() => translated(Map(German -> null, English -> "A public description.")), Map(English -> "A public description.")),
+      (() => translated(Map(German -> boundary, English -> ("x" * 1025))), Map(German -> boundary)),
+      (() => translated(Map(German -> ("x" * 1025), English -> "English remains available.")),
+        Map(English -> "English remains available.")),
+      (() => Future.failed(IllegalStateException("private resolver detail")), Map.empty),
+      (() => throw IllegalStateException("private synchronous resolver detail"), Map.empty),
+      (() => null, Map.empty),
+      (() => Future.successful(null), Map.empty)
+    )
+    Future.traverse(cases) { (resolve, expected) =>
+      val calls = State(0)
+      val lookups = State(0)
+      val resolver = new LanguageMapIdResolver(State[HumanLanguage](German).observable) {
+        override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] = {
+          lookups.update(_ + 1)
+          resolve()
+        }
+      }
+      val client = pythonClient(ujson.Obj("status" -> "failed", "reason" -> "assertion"), _ => calls.update(_ + 1))
+      grader.gradeStateSafe(source, forceGrading = true, List(client), resolver).map { result =>
+        assertEquals(result.gradingStatus, GradingStatus.Incorrect())
+        assertEquals(result.gradedState, source)
+        assertEquals(calls.now(), 1)
+        assertEquals(lookups.now(), 1)
+        assertEquals(result.additionalData.map(_.humanReadableTestExecutionDescription.availableLanguages),
+          Option.when(expected.nonEmpty)(expected.keySet))
+        result.additionalData.foreach { info =>
+          expected.foreach { (language, text) =>
+            assertEquals(info.humanReadableTestExecutionDescription.tryGetInLanguage(language), Some(text))
+          }
+        }
+        assert(!write(result).contains("private resolver detail"))
+        assert(!write(result).contains("private synchronous resolver detail"))
+      }
+    }.map(_ => ())
+  }
+
   test("missing clients, unsupported Java returns and oversized inputs cannot produce an incorrect grade") {
     val suite = SampleBeTest("assert True")
     val grader = assertionGrader(suite)
@@ -628,11 +752,14 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
   test("five explicit programming graders retain their identities in suites and workbook definitions") {
     val graders: List[ProgrammingTestGrader] = (1 to 5).map { index =>
       ProgrammingUnitTestGrader(s"check-$index", s"assert $index == $index\r\n",
-        if index == 5 then GradingImportance.HIDDEN_TEST else GradingImportance.REQUIRED_TEST)
+        if index == 5 then GradingImportance.HIDDEN_TEST else GradingImportance.REQUIRED_TEST,
+        if index == 2 then Some(LanguageMapContentId("tests/second-public-check")) else None)
     }.toList
     val suite: BeTestSuite = ProgrammingTestSuite(graders)
     assertEquals(read[BeTestSuite](write(suite)), suite)
     assertEquals(readBinary[BeTestSuite](writeBinary(suite)), suite)
+    val described = graders(1).asInstanceOf[ProgrammingUnitTestGrader]
+    assertEquals(read[Option[LanguageMapContentId]](writeJs(described).obj("publicDescription")), described.publicDescription)
     graders.foreach { grader =>
       assertEquals(read[ProgrammingTestGrader](write(grader)), grader)
       assertEquals(readBinary[ProgrammingTestGrader](writeBinary(grader)), grader)
@@ -645,6 +772,12 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     exercises.foreach { exercise =>
       assertEquals(exercise.gradingElements, graders)
       assertEquals(exercise.gradingElements.map(_.runningBehavior).toSet, Set(GraderRunningBehavior.RUN_ONLY_MANUALLY))
+      val binary: WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Any] = exercise match {
+        case value: ProgrammingExercise => readBinary[ProgrammingExercise](writeBinary(value))
+        case value: ProgrammingExerciseFullJava => readBinary[ProgrammingExerciseFullJava](writeBinary(value))
+        case _ => fail("Unexpected exercise type")
+      }
+      assertEquals(binary.gradingElements, graders)
       List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike).foreach { codec =>
         val restored = codec.deserialize(codec.serialize(exercise))
           .asInstanceOf[WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Any]]
@@ -742,6 +875,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val time = LocalDateTime.parse("2026-10-26T12:00")
     fixtures.foreach { (json, importance) =>
       val expected = assertionGrader(SampleBeTest("assert True\r\nassert False\n"), importance)
+      assertEquals(expected.publicDescription, None)
       val direct = ujson.Obj.from(ujson.read(json).obj.toMap - "serializedType")
       assertEquals(read[ProgrammingUnitTestGrader](direct), expected)
       assertEquals(readBinary[ProgrammingUnitTestGrader](writeBinary(direct)), expected)
@@ -776,11 +910,13 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val malformed = List(
       ujson.Obj("testSuite" -> suite, "testId" -> "new"),
       ujson.Obj("testSuite" -> suite, "pythonTestCode" -> "assert False"),
+      ujson.Obj("testSuite" -> suite, "publicDescription" -> writeJs(Some(LanguageMapContentId("tests/new-description")))),
       ujson.Obj("testSuite" -> ujson.Obj("$type" -> "UnknownSuite", "pythonTestCode" -> "assert True")),
       ujson.Obj("testSuite" -> ujson.Obj("$type" -> "ProgrammingTestSuite", "graders" -> ujson.Arr())),
       ujson.Obj("testSuite" -> ujson.Obj("$type" -> "SampleBeTest", "pythonTestCode" -> "assert True", "extra" -> 1)),
       ujson.Obj("testSuite" -> ujson.Null),
       ujson.Obj("testId" -> "new", "pythonTestCode" -> "assert True", "unexpected" -> true),
+      ujson.Obj("testId" -> "new", "pythonTestCode" -> "assert True", "publicDescription" -> true),
       ujson.Obj("testId" -> "new", "pythonTestCode" -> "assert True", "serializedType" -> "SlideshowGrader"),
       ujson.Obj("pythonTestCode" -> "assert True"),
       ujson.Obj("testId" -> "new"))

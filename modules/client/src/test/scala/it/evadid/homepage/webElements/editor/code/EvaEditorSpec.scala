@@ -94,13 +94,15 @@ class EvaEditorSpec extends EditorDomSuite {
     val requests = Var(Vector.empty[(String, Promise[Result])])
     val forced = Var(Vector.empty[Boolean])
     val clients = Var(Vector.empty[List[ExecutionClient]])
+    val resolvers = Var(Vector.empty[LanguageMapIdResolver])
     val grader = new WorkbookInteractionGrader[String, String] {
       override val importance = if hidden then GradingImportance.HIDDEN_TEST else GradingImportance.REQUIRED_TEST
       override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
       override val gradingEntity = FeedbackEntity.TestEntity()
-      override def gradeStateSafe(state: String, force: Boolean, available: List[ExecutionClient]): Future[Result] = {
+      override def gradeStateSafe(state: String, force: Boolean, available: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[Result] = {
         forced.update(_ :+ force)
-        super.gradeStateSafe(state, force, available)
+        resolvers.update(_ :+ resolver)
+        super.gradeStateSafe(state, force, available, resolver)
       }
       override def gradeState(state: String, available: List[ExecutionClient]): Future[Result] = {
         val pending = Promise[Result]()
@@ -153,6 +155,7 @@ class EvaEditorSpec extends EditorDomSuite {
       later().flatMap { _ =>
         assertEquals(f.requests.now().map(_._1), Vector("original answer"))
         assertEquals(f.forced.now(), Vector(true))
+        assertEquals(f.resolvers.now().size, 1)
         assertEquals(f.clients.now(), Vector(List(fullInfo.defaults.workerBackendExecutor, fullInfo.defaults.backendExecutor)))
         assert(f.button.disabled)
         assertEquals(f.status, "gradingLoading")
