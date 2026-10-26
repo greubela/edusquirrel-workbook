@@ -34,13 +34,17 @@ object PyodideCommandRuntime {
     if (value == null || js.isUndefined(value)) ujson.Null
     else {
       val encoded = js.JSON.stringify(value, ((_: String, item: js.Any) => {
-        if (js.typeOf(item) == "number")
-          require(item.asInstanceOf[Double].isFinite, "Python result contains a non-finite number")
-        if (item != null && js.typeOf(item) == "object") {
-          val tag = js.Dynamic.global.Object.prototype.selectDynamic("toString").call(item).asInstanceOf[String]
-          require(tag != "[object Set]" && tag != "[object Map]", "Python result must use JSON-compatible objects and lists")
+        // Pyodide turns Python None into undefined. Keep it as JSON null so object keys survive.
+        if (js.isUndefined(item)) null
+        else {
+          if (js.typeOf(item) == "number")
+            require(item.asInstanceOf[Double].isFinite, "Python result contains a non-finite number")
+          if (item != null && js.typeOf(item) == "object") {
+            val tag = js.Dynamic.global.Object.prototype.selectDynamic("toString").call(item).asInstanceOf[String]
+            require(tag != "[object Set]" && tag != "[object Map]", "Python result must use JSON-compatible objects and lists")
+          }
+          item
         }
-        item
       }): js.Function2[String, js.Any, js.Any])
       require(!js.isUndefined(encoded), "Python result is not JSON serializable")
       ujson.read(encoded)
