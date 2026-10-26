@@ -153,6 +153,42 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
     ).foreach(invalid => assertEquals(invalid.replace(source, "x"), None))
   }
 
+  test("method gutter lines use the original range across line endings and leading draft trivia") {
+    val original = "// Grüße 🙂\nclass Example {\n  public void helper() {}\n\n  public static void main(String[] args) {}\n}\n"
+    List("\n", "\r\n", "\r").foreach { separator =>
+      val source = original.replace("\n", separator)
+      val selected = initialFunction(source).get
+      val range = FunctionRange(selected.start, selected.end)
+      assertEquals(firstLineNumber(source, Some(range)), 5)
+      val draft = separator + "/* retained */" + separator + source.substring(range.start, range.end)
+      val (edited, nextRange) = range.replace(source, draft).get
+      assertEquals(firstLineNumber(edited, Some(nextRange)), 5)
+      assertEquals(edited.substring(nextRange.start, nextRange.end), draft)
+      val moved = "// inserted" + separator + source
+      val movedMain = initialFunction(moved).get
+      assertEquals(firstLineNumber(moved, Some(FunctionRange(movedMain.start, movedMain.end))), 6)
+      assertEquals(firstLineNumber(source, None), 1)
+      assertEquals(firstLineNumber(source, Some(FunctionRange(0, source.length + 1))), 1)
+    }
+    assertEquals(firstLineNumber("class Example { public void helper() {} }", Some(FunctionRange(16, 39))), 1)
+  }
+
+  test("gutter offsets handle mixed separators, UTF-16 positions and EOF") {
+    List(
+      "" -> Vector(1),
+      "x\nz" -> Vector(1, 1, 2, 2),
+      "x\r\nz" -> Vector(1, 1, 1, 2, 2),
+      "x\rz" -> Vector(1, 1, 2, 2),
+      "🐢\r\nx\rz\n" -> Vector(1, 1, 1, 1, 2, 2, 3, 3, 4)
+    ).foreach { (source, expectedLines) =>
+      assertEquals(expectedLines.length, source.length + 1)
+      expectedLines.zipWithIndex.foreach { (expectedLine, offset) =>
+        assertEquals(firstLineNumber(source, Some(FunctionRange(offset, source.length))), expectedLine,
+          clue = (source, offset))
+      }
+    }
+  }
+
   private val singleMethodSource = "class Example {\n  public void edit() {}\n  public void keep() {}\n}\n"
 
   private def candidateFor(draft: String): Option[JavaFunction] = {
