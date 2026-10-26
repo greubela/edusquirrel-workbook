@@ -14,6 +14,7 @@ import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.{ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString}
+import it.evadid.workbook.interaction.variable.InteractionVariableState
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
@@ -51,10 +52,11 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
       }
     }.fold(Future.failed, identity)
 
-  private def verifyChecks(state: ProgrammingState, context: Context, locale: HumanLanguage): Unit =
-    if interaction.interactionVariable.currentValue == state then
-      require(prepare(state).localizedChecks(locale) == context.localizedChecks(locale),
-        "Public check results changed while preparing this hint.")
+  private def verifyChecks(state: ProgrammingState, context: Context, locale: HumanLanguage): Unit = {
+    val current = prepare(state)
+    require(current.answer == context.answer && current.localizedChecks(locale) == context.localizedChecks(locale),
+      "The answer or public check results changed while preparing this hint.")
+  }
 
   private def prepare(state: ProgrammingState): Context = {
     val (sourceLanguage, source) = state match {
@@ -71,6 +73,8 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
     }
     val variable = interaction.interactionVariable
     val history = variable.history
+    require(history.lastStateOption.map(_.value).getOrElse(interaction.defaultValue) == state,
+      "The answer changed while preparing this hint.")
     val results = history.gradings.get(state).filter(_.state == state).toList.flatMap(_.testsWithResults.toList)
     val graders = interaction.gradingElements.filter { grader =>
       grader.importance != GradingImportance.HIDDEN_TEST && grader.gradingEntity == FeedbackEntity.TestEntity()
@@ -89,7 +93,7 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
       }
       Check(s"check-${index + 1}", grader.importance == GradingImportance.REQUIRED_TEST, latest)
     }
-    Context(sourceLanguage, source, sourceLines, checks)
+    Context(sourceLanguage, source, sourceLines, checks, history.lastStateOption)
   }
 }
 
@@ -113,7 +117,8 @@ object ProgrammingHintScaffolder {
     }
   }
 
-  private case class Context(sourceLanguage: String, source: String, sourceLines: Vector[(String, String)], checks: List[Check]) {
+  private case class Context(sourceLanguage: String, source: String, sourceLines: Vector[(String, String)],
+      checks: List[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
     def localizedChecks(language: HumanLanguage): List[PublicCheck] = checks.map(_.localized(language))
 
     def evidenceIds(language: HumanLanguage): Set[String] = sourceLines.map(_._1).toSet ++ localizedChecks(language).collect {

@@ -324,7 +324,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  test("pending task resolution keeps the original source, checks, language and supplied client") {
+  test("pending task resolution rejects a replaced answer while its new hint can succeed") {
     val reply = Promise[String]()
     val task = Promise[LanguageMap[HumanLanguage]]()
     val check = HintCheck("public check", GradingImportance.REQUIRED_TEST)
@@ -340,28 +340,99 @@ class InteractionVariableGradingSpec extends FunSuite {
     f.language.set(English)
     f.executor.set(f.client(_ => Future.successful(hintReply("Which condition will you inspect first?"))))
     val restored = ProgrammingStatePythonString("# Different answer\r\n\tdef draw(")
+    val originalTime = f.variable.history.lastStateOption.get.timestamp
     f.variable.updateHistory(_.withAddedEvent(InteractionVariableState[ProgrammingState](
-      restored, MAJOR, LocalDateTime.now().plusSeconds(1))).copy(gradings = Map(
+      restored, MAJOR, originalTime.plusSeconds(1))).copy(gradings = Map(
       f.source -> GradedState(f.source, Set(correct.copy(gradingStatus = GradingStatus.Incorrect()))))))
     val second = f.generateFeedback(restored)
+    val beforeReply = f.variable.history
+    task.success(LanguageMap.mapBasedLanguageMap(Map(German -> "Ursprüngliche Aufgabe.", English -> "Original task.")))
+    reply.success(hintReply())
+    first.failed.zip(second).map { (error, current) =>
+      assert(error.isInstanceOf[IllegalArgumentException])
+      assertEquals(current.forState, restored)
+      assertEquals(current.scaffoldingResult.availableLanguages, Set[HumanLanguage](English))
+      assertEquals(current.scaffoldingResult.getInLanguage(English), "1. Which condition will you inspect first?")
+      val contexts = f.requests.now().map(request => ujson.read(request.prompt)).map(context =>
+        context("feedbackLanguage").str -> context).toMap
+      assertEquals(contexts.keySet, Set(English.name))
+      assertEquals(contexts(English.name)("source")("code").str, restored.code)
+      assertEquals(f.lookups.now(), 1)
+      assertEquals(f.requests.now().size, 1)
+      assertEquals(check.runs.now(), 0)
+      assertEquals(f.variable.history, beforeReply)
+    }
+  }
+
+  test("unchanged answers retain the captured source locale and client despite unrelated hint history") {
+    val reply = Promise[String]()
+    val task = Promise[LanguageMap[HumanLanguage]]()
+    val check = HintCheck("public check", GradingImportance.REQUIRED_TEST)
+    val f = new HintFixture(checks = List(check), response = _ => reply.future)
+    val correct = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Correct())
+    f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(correct)))))
+    val answer = f.variable.history.lastStateOption
+    val first = f.scaffolder.generateFeedback(f.source, List(f.executor.now()), f.resolverFor(_ => task.future))
+    f.language.set(English)
+    f.executor.set(f.client(_ => Future.successful(hintReply("Which condition will you inspect first?"))))
+    val stored = ScaffoldingResult[ProgrammingState, String](f.source, LanguageMap.universalMap("An earlier hint."),
+      FeedbackEntity.TestEntity(), None, answer.get.timestamp.plusHours(1))
+    f.variable.updateHistory(_.updateScaffoldings(_ + (f.source -> stored)))
+    val second = f.generateFeedback(f.source)
     val beforeReply = f.variable.history
     task.success(LanguageMap.mapBasedLanguageMap(Map(German -> "Ursprüngliche Aufgabe.", English -> "Original task.")))
     reply.success(hintReply())
     first.zip(second).map { (original, current) =>
       assertEquals(original.forState, f.source)
       assertEquals(original.scaffoldingResult.availableLanguages, Set[HumanLanguage](German))
-      assertEquals(current.forState, restored)
+      assertEquals(current.forState, f.source)
       assertEquals(current.scaffoldingResult.availableLanguages, Set[HumanLanguage](English))
       assertEquals(current.scaffoldingResult.getInLanguage(English), "1. Which condition will you inspect first?")
       val contexts = f.requests.now().map(request => ujson.read(request.prompt)).map(context =>
         context("feedbackLanguage").str -> context).toMap
       assertEquals(contexts.keySet, Set(German.name, English.name))
-      assertEquals(contexts(German.name)("source")("code").str, f.source.asInstanceOf[ProgrammingStateJavaString].code)
       assertEquals(contexts(German.name)("task")("text").str, "Ursprüngliche Aufgabe.")
-      assertEquals(contexts(German.name)("checks")(0)("status").str, "correct")
-      assertEquals(contexts(English.name)("source")("code").str, restored.code)
+      contexts.values.foreach { context =>
+        assertEquals(context("source")("code").str, f.source.asInstanceOf[ProgrammingStateJavaString].code)
+        assertEquals(context("checks")(0)("status").str, "correct")
+      }
       assertEquals(f.lookups.now(), 2)
+      assertEquals(check.runs.now(), 0)
+      assertEquals(f.variable.history.lastStateOption, answer)
       assertEquals(f.variable.history, beforeReply)
+    }
+  }
+
+  test("a hint for a noncurrent answer is rejected before task or client lookup") {
+    val f = new HintFixture
+    val other = ProgrammingStatePythonString("def other():\n    pass\n")
+    val before = f.variable.history
+    f.generateFeedback(other).failed.flatMap { error =>
+      assert(error.isInstanceOf[IllegalArgumentException])
+      assertEquals(f.requests.now().size, 0)
+      assertEquals(f.lookups.now(), 0)
+      assertEquals(f.resolutions.now().size, 0)
+      assertEquals(f.variable.history, before)
+      f.generateFeedback(f.source).map { result =>
+        assertEquals(result.forState, f.source)
+        assertEquals(f.requests.now().size, 1)
+        assertEquals(f.variable.history, before)
+      }
+    }
+  }
+
+  test("an empty answer history uses the default without inventing an answer event") {
+    val f = new HintFixture
+    f.variable.updateHistory(_.copy(events = Set.empty))
+    val before = f.variable.history
+    f.generateFeedback(f.source).flatMap { first =>
+      assertEquals(first.forState, f.source)
+      f.generateFeedback(f.source).map { second =>
+        assertEquals(second.forState, f.source)
+        assertEquals(f.requests.now().size, 2)
+        assertEquals(f.variable.history.lastStateOption, None)
+        assertEquals(f.variable.history, before)
+      }
     }
   }
 
@@ -1070,25 +1141,58 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  test("late programming hints retain the original source and locale without overwriting a new answer") {
+  test("late programming hints reject a replaced answer without overwriting its replacement") {
     val response = Promise[String]()
     val f = new HintFixture(response = _ => response.future)
     val pending = f.generateFeedback(f.source)
     f.started.future.flatMap { _ =>
       val restored = ProgrammingStatePythonString("def different(\n\t")
-      val next = InteractionVariableState[ProgrammingState](restored, MAJOR, LocalDateTime.now().plusSeconds(1))
+      val next = InteractionVariableState[ProgrammingState](restored, MAJOR,
+        f.variable.history.lastStateOption.get.timestamp.plusSeconds(1))
       f.variable.updateHistory(_.withAddedEvent(next))
       f.language.set(English)
       val beforeReply = f.variable.history
       response.success(hintReply())
-      pending.map { result =>
-        assertEquals(result.forState, f.source)
-        assertEquals(result.scaffoldingResult.availableLanguages, Set[HumanLanguage](German))
+      pending.failed.map { error =>
+        assert(error.isInstanceOf[IllegalArgumentException])
+        assertEquals(f.context("source")("code").str, f.source.asInstanceOf[ProgrammingStateJavaString].code)
+        assertEquals(f.context("feedbackLanguage").str, German.name)
         assertEquals(f.variable.currentValue, restored)
         assertEquals(f.variable.history, beforeReply)
         assertEquals(f.requests.now().size, 1)
+        assertEquals(f.lookups.now(), 1)
       }
     }
+  }
+
+  test("restoring the original answer cannot revive a hint before or after model dispatch") {
+    Future.traverse(List(true, false)) { beforeDispatch =>
+      val reply = Promise[String]()
+      val task = Promise[LanguageMap[HumanLanguage]]()
+      val f = new HintFixture(response = _ => reply.future)
+      val initial = f.variable.history.lastStateOption.get
+      val pending = if beforeDispatch then
+        f.scaffolder.generateFeedback(f.source, List(f.executor.now()), f.resolverFor(_ => task.future))
+      else f.generateFeedback(f.source)
+      val ready = if beforeDispatch then Future.unit else f.started.future
+      ready.flatMap { _ =>
+        val other = ProgrammingStatePythonString("def other():\n    pass\n")
+        f.variable.updateHistory(_.withAddedEvents(Set(
+          InteractionVariableState[ProgrammingState](other, MAJOR, initial.timestamp.plusSeconds(1)),
+          InteractionVariableState[ProgrammingState](f.source, MAJOR, initial.timestamp.plusSeconds(2)))))
+        assertEquals(f.variable.currentValue, f.source)
+        assert(f.variable.history.lastStateOption != Some(initial))
+        val beforeReply = f.variable.history
+        task.trySuccess(LanguageMap.universalMap("Draw a line."))
+        reply.trySuccess(hintReply())
+        pending.failed.map { error =>
+          assert(error.isInstanceOf[IllegalArgumentException])
+          assertEquals(f.requests.now().size, if beforeDispatch then 0 else 1)
+          assertEquals(f.lookups.now(), if beforeDispatch then 0 else 1)
+          assertEquals(f.variable.history, beforeReply)
+        }
+      }
+    }.map(_ => ())
   }
 
   test("a scaffolder stores its owner without initializing the owner's answer during construction") {
