@@ -21,7 +21,7 @@ import scala.util.control.NonFatal
 case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
     importance: GradingImportance = GradingImportance.REQUIRED_TEST,
     publicDescription: Option[LanguageMapContentId] = None,
-    publishProgramObservation: Boolean = false)
+    override val publishProgramObservation: Boolean = false)
     extends ProgrammingTestGrader {
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY

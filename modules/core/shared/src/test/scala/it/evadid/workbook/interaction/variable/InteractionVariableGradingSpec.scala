@@ -13,7 +13,8 @@ import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, Workboo
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.scaffolding.{ProgrammingHintScaffolder, ScaffoldingResult}
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
+import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestProgramObservation}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExerciseFullJava, ProgrammingUnitTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleGraphic, TurtleRecreateShapeInteraction}
@@ -123,8 +124,9 @@ class InteractionVariableGradingSpec extends FunSuite {
   private type DescribedResult = GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]
 
   private case class DescribedHintCheck(name: String, override val importance: GradingImportance,
-      override val gradingEntity: FeedbackEntity = FeedbackEntity.TestEntity())
-      extends WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo] {
+      override val gradingEntity: FeedbackEntity = FeedbackEntity.TestEntity(),
+      override val publishProgramObservation: Boolean = false) extends ProgrammingTestGrader {
+    override def testId: String = name
     val runs = State(0)
     override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS
     override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[DescribedResult] = {
@@ -133,9 +135,9 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  private class DescribedHintFixture(val checks: List[DescribedHintCheck],
-      response: LLMCommands.FeedbackLlmRequest => Future[String] = _ => Future.successful(hintReply())) {
-    val source: ProgrammingState = ProgrammingStatePythonString("def draw():\n    pass\n")
+  private class DescribedHintFixture[G <: WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](
+      val checks: List[G], response: LLMCommands.FeedbackLlmRequest => Future[String] = _ => Future.successful(hintReply()),
+      val source: ProgrammingState = ProgrammingStatePythonString("def draw():\n    pass\n")) {
     val language = State[HumanLanguage](German)
     val requests = State(Vector.empty[LLMCommands.FeedbackLlmRequest])
     val workerCalls = State(0)
@@ -164,10 +166,13 @@ class InteractionVariableGradingSpec extends FunSuite {
       override val scaffoldingElement = Some(new ProgrammingHintScaffolder[String](this, LanguageMapContentId("test/described-hint")))
     }
     val variable = element.interactionVariable
-    def grade(check: DescribedHintCheck, description: Option[LanguageMap[HumanLanguage]] = None,
+    def grade(check: WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo], description: Option[LanguageMap[HumanLanguage]] = None,
         status: GradingStatus = GradingStatus.Incorrect(), time: LocalDateTime = LocalDateTime.of(2026, 10, 26, 12, 0),
-        state: ProgrammingState = source): DescribedResult =
-      GradingResult(check, state, status, additionalData = description.map(AdditionalProgrammingTestInfo(_)), gradingTime = time)
+        state: ProgrammingState = source, observation: Option[ProgrammingTestProgramObservation] = None): DescribedResult = {
+      val info = Option.when(description.nonEmpty || observation.nonEmpty)(AdditionalProgrammingTestInfo(
+        description.getOrElse(LanguageMap.empty[HumanLanguage]), observation))
+      GradingResult(check, state, status, additionalData = info, gradingTime = time)
+    }
     def setResults(results: Set[DescribedResult]): Unit =
       variable.updateHistory(_.copy(gradings = Map(source -> GradedState(source, results))))
     def generate(currentResolver: LanguageMapIdResolver = resolver): Future[ScaffoldingResult[ProgrammingState, String]] =
@@ -804,6 +809,178 @@ class InteractionVariableGradingSpec extends FunSuite {
         assertEquals(variable.history, before)
       }
     }
+  }
+
+  test("opted public observations add bounded whole-program outputs and citable IDs") {
+    Future.traverse(List(0, 33)) { count =>
+      val check = DescribedHintCheck("PRIVATE_TEST_ID", GradingImportance.REQUIRED_TEST, publishProgramObservation = true)
+      val source = ProgrammingStateJavaString(if count == 0 then
+        "public class Drawing { public static void main(String[] args) {} }"
+      else "public class Drawing { public static void main(String[] args) { for (int i = 1; i <= 33; i++) { Turtle.forward(i); } } }")
+      val f = new DescribedHintFixture(List(check),
+        _ => Future.successful(hintReply("Welche Bewegungen kannst du nachvollziehen?", List("check-1-program-output"))), source)
+      val commands = (1 to math.min(32, count)).map(value => TurtleCommand[Double]("forward", List(value.toDouble))).toList
+      f.setResults(Set(f.grade(check, status = GradingStatus.Correct(),
+        observation = Some(ProgrammingTestProgramObservation(count, commands)))))
+      val before = f.variable.history
+      f.generate().map { result =>
+        val output = f.context("checks")(0)("programOutput")
+        assertEquals(output, ujson.Obj("id" -> "check-1-program-output", "scope" -> "whole-program",
+          "commandCount" -> count, "omittedCommands" -> (count - commands.size),
+          "commands" -> ujson.Arr.from((1 to math.min(32, count)).map(value => ujson.Arr("forward", value)))))
+        assertEquals(f.context("source")("language").str, Java.name)
+        assertEquals(f.context("source")("code").str, source.code)
+        assert(!f.context.obj.contains("runtime"))
+        assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+        assertEquals(result.forState, source)
+        assertEquals(check.runs.now(), 0)
+        assertEquals(f.workerCalls.now(), 0)
+        assertEquals(f.variable.history, before)
+      }
+    }.map(_ => ())
+  }
+
+  test("unapproved hidden foreign and nonconclusive outputs cannot be cited") {
+    val observation = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(2.0))))
+    val modes = List("default", "hidden", "model", "foreign-grader", "removed", "wrong-state", "wrong-snapshot", "not-run", "error")
+    Future.traverse(modes) { mode =>
+      val check = DescribedHintCheck("PRIVATE_SAME_ID", GradingImportance.REQUIRED_TEST,
+        if mode == "model" then FeedbackEntity.LlmEntity(MessengerModel.empty) else FeedbackEntity.TestEntity(),
+        publishProgramObservation = mode != "default")
+      val configured = if mode == "hidden" then check.copy(importance = GradingImportance.HIDDEN_TEST) else check
+      val f = new DescribedHintFixture(if mode == "removed" then List.empty[DescribedHintCheck] else List(configured),
+        _ => Future.successful(hintReply(ids = List("check-1-program-output"))))
+      val cached = if mode == "foreign-grader" then configured.copy(importance = GradingImportance.OPTIONAL_TEST) else configured
+      val status = mode match {
+        case "not-run" => GradingStatus.NotExecuted()
+        case "error" => GradingStatus.TestError(SerializedException("PRIVATE_ERROR"))
+        case _ => GradingStatus.Incorrect()
+      }
+      val other = ProgrammingStatePythonString("def other():\n    pass\n")
+      val result = f.grade(cached, status = status, state = if mode == "wrong-state" then other else f.source,
+        observation = Some(observation))
+      if mode == "wrong-snapshot" then
+        f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(other, Set(result)))))
+      else f.setResults(Set(result))
+      val before = f.variable.history
+      f.generate().failed.map { error =>
+        assert(error.isInstanceOf[IllegalArgumentException])
+        assert(f.context("checks").arr.forall(value => !value.obj.contains("programOutput")))
+        assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+        assertEquals(f.requests.now().size, 1)
+        assertEquals(configured.runs.now(), 0)
+        assertEquals(cached.runs.now(), 0)
+        assertEquals(f.workerCalls.now(), 0)
+        assertEquals(f.variable.history, before)
+      }
+    }.flatMap { _ =>
+      val runs = State(0)
+      val generic = new WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo] {
+        override val importance = GradingImportance.REQUIRED_TEST
+        override val gradingEntity = FeedbackEntity.TestEntity()
+        override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS
+        override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[DescribedResult] = {
+          runs.update(_ + 1)
+          Future.failed(IllegalStateException("Hints must not run a generic grader."))
+        }
+      }
+      val f = new DescribedHintFixture(List(generic), _ => Future.successful(hintReply(ids = List("check-1-program-output"))))
+      f.setResults(Set(f.grade(generic, observation = Some(observation))))
+      f.generate().failed.map { error =>
+        assert(error.isInstanceOf[IllegalArgumentException])
+        assert(!f.context("checks")(0).obj.contains("programOutput"))
+        assertEquals(f.requests.now().size, 1)
+        assertEquals(runs.now(), 0)
+        assertEquals(f.workerCalls.now(), 0)
+      }
+    }
+  }
+
+  test("absent and null observation metadata omit the output and its evidence ID safely") {
+    val empty = LanguageMap.empty[HumanLanguage]
+    val data: List[Option[AdditionalProgrammingTestInfo]] = List(null, None, Some(null),
+      Some(AdditionalProgrammingTestInfo(empty, null)), Some(AdditionalProgrammingTestInfo(empty, Some(null))))
+    Future.traverse(data) { info =>
+      val check = DescribedHintCheck("missing output", GradingImportance.REQUIRED_TEST, publishProgramObservation = true)
+      val f = new DescribedHintFixture(List(check), _ => Future.successful(hintReply(ids = List("check-1-program-output"))))
+      f.setResults(Set(f.grade(check).copy(additionalData = info)))
+      f.generate().failed.map { error =>
+        assert(error.isInstanceOf[IllegalArgumentException])
+        assertEquals(f.context("checks")(0)("status").str, "incorrect")
+        assert(!f.context("checks")(0).obj.contains("programOutput"))
+        assertEquals(f.requests.now().size, 1)
+        assertEquals(check.runs.now(), 0)
+        assertEquals(f.workerCalls.now(), 0)
+      }
+    }.map(_ => ())
+  }
+
+  test("latest and conflicting observation tuples never fall back to an older output") {
+    val check = DescribedHintCheck("latest output", GradingImportance.REQUIRED_TEST, publishProgramObservation = true)
+    val f = new DescribedHintFixture(List(check))
+    val first = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(2.0))))
+    val second = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(3.0))))
+    val description = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Prüft die Linie.", English -> "Old text"))
+    val old = f.grade(check, Some(description), observation = Some(first))
+    val latest = old.copy(gradingTime = old.gradingTime.plusSeconds(1))
+    val newOutput = latest.copy(additionalData = Some(AdditionalProgrammingTestInfo(description, Some(second))))
+    val noOutput = latest.copy(additionalData = Some(AdditionalProgrammingTestInfo(description)))
+    val privateChanges = latest.copy(feedbackInformation = Some(LanguageMap.universalMap("PRIVATE_FEEDBACK")),
+      additionalData = Some(AdditionalProgrammingTestInfo(LanguageMap.mapBasedLanguageMap[HumanLanguage](
+        Map(German -> " Prüft die Linie. ", English -> "PRIVATE_OTHER_LOCALE")), Some(first))))
+    val rows = List(
+      (Set(old, newOutput), "incorrect", Some(3.0)),
+      (Set(old, noOutput), "incorrect", None),
+      (Set(old, latest.copy(gradingStatus = GradingStatus.NotExecuted())), "not-run", None),
+      (Set(old, latest.copy(gradingStatus = GradingStatus.TestError(SerializedException("PRIVATE_ERROR")))), "error", None),
+      (Set(old, latest, newOutput), "unavailable", None),
+      (Set(old, latest, noOutput), "unavailable", None),
+      (Set(old, latest, privateChanges), "incorrect", Some(2.0)))
+    rows.foldLeft(Future.unit) { case (previous, (results, status, distance)) =>
+      previous.flatMap { _ =>
+        f.setResults(results)
+        f.generate().map { _ =>
+          val current = f.context("checks")(0)
+          assertEquals(current("status").str, status)
+          assertEquals(current.obj.get("programOutput").map(_("commands")(0)(1).num), distance)
+          if status == "unavailable" then assert(!current.obj.contains("description"))
+          assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+        }
+      }
+    }.map { _ =>
+      assertEquals(f.requests.now().size, rows.size)
+      assertEquals(check.runs.now(), 0)
+      assertEquals(f.workerCalls.now(), 0)
+    }
+  }
+
+  test("a changed cached observation rejects a delayed or pending hint without another execution") {
+    Future.traverse(List(true, false)) { beforeDispatch =>
+      val check = DescribedHintCheck("changed output", GradingImportance.REQUIRED_TEST, publishProgramObservation = true)
+      val reply = Promise[String]()
+      val task = Promise[LanguageMap[HumanLanguage]]()
+      val f = new DescribedHintFixture(List(check), _ => reply.future)
+      val first = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(2.0))))
+      val second = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(3.0))))
+      val original = f.grade(check, observation = Some(first))
+      f.setResults(Set(original))
+      val pending = if beforeDispatch then f.generate(f.resolverFor(_ => task.future)) else f.generate()
+      val ready = if beforeDispatch then Future.unit else f.started.future
+      ready.flatMap { _ =>
+        f.setResults(Set(original.copy(additionalData = Some(AdditionalProgrammingTestInfo(
+          LanguageMap.empty[HumanLanguage], Some(second))))))
+        val before = f.variable.history
+        task.trySuccess(f.task)
+        reply.trySuccess(hintReply(ids = List("check-1-program-output")))
+        pending.failed.map { error =>
+          assert(error.isInstanceOf[IllegalArgumentException])
+          assertEquals(f.requests.now().size, if beforeDispatch then 0 else 1)
+          assertEquals(check.runs.now(), 0)
+          assertEquals(f.workerCalls.now(), 0)
+          assertEquals(f.variable.history, before)
+        }
+      }
+    }.map(_ => ())
   }
 
   test("changed public grading prevents a hint request after delayed task resolution") {

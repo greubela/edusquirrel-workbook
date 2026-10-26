@@ -10,8 +10,8 @@ import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.util.logging.BasicLogger
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookInteractionElementFull}
-import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus}
-import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
+import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus, WorkbookInteractionGrader}
+import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestProgramObservation}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.{ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString}
 import it.evadid.workbook.interaction.variable.InteractionVariableState
@@ -54,7 +54,8 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
 
   private def verifyChecks(state: ProgrammingState, context: Context, locale: HumanLanguage): Unit = {
     val current = prepare(state)
-    require(current.answer == context.answer && current.localizedChecks(locale) == context.localizedChecks(locale),
+    require(current.answer == context.answer && current.checks.map(_.grader) == context.checks.map(_.grader) &&
+      current.localizedChecks(locale) == context.localizedChecks(locale),
       "The answer or public check results changed while preparing this hint.")
   }
 
@@ -81,17 +82,25 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
     }.distinct
     require(graders.size <= 32, "Too many public checks for a hint.")
     val checks = graders.zipWithIndex.map { (grader, index) =>
+      val publishObservation = grader match {
+        case test: ProgrammingTestGrader => test.publishProgramObservation
+        case _ => false
+      }
       val matches = results.filter(result => result.gradedState == state && result.grader == grader)
       val latest = matches.maxByOption(_.gradingTime).toList.flatMap { latest =>
         matches.filter(_.gradingTime == latest.gradingTime).map { result =>
           val status = statusName(result.gradingStatus)
-          val descriptions = Option.when(evidenceStatuses.contains(status))(result.additionalData).flatten.collect {
-            case info: AdditionalProgrammingTestInfo => AdditionalProgrammingTestInfo.descriptions(info.humanReadableTestExecutionDescription)
-          }.getOrElse(Map.empty[HumanLanguage, String])
-          status -> descriptions
+          val info = Option(result.additionalData).flatten.collect {
+            case info: AdditionalProgrammingTestInfo if evidenceStatuses.contains(status) => info
+          }
+          val descriptions = info.map(value => AdditionalProgrammingTestInfo.descriptions(value.humanReadableTestExecutionDescription))
+            .getOrElse(Map.empty[HumanLanguage, String])
+          val observation = info.filter(_ => publishObservation)
+            .flatMap(value => Option(value.programObservation).flatten.flatMap(Option(_)))
+          (status, descriptions, observation)
         }
       }
-      Check(s"check-${index + 1}", grader.importance == GradingImportance.REQUIRED_TEST, latest)
+      Check(s"check-${index + 1}", grader, grader.importance == GradingImportance.REQUIRED_TEST, latest)
     }
     Context(sourceLanguage, source, sourceLines, checks, history.lastStateOption)
   }
@@ -100,18 +109,27 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
 object ProgrammingHintScaffolder {
   private val evidenceStatuses = Set("correct", "partially-correct", "incorrect")
 
-  private case class PublicCheck(id: String, required: Boolean, status: String, description: Option[String]) {
+  private case class PublicCheck(id: String, required: Boolean, status: String, description: Option[String],
+      programObservation: Option[ProgrammingTestProgramObservation] = None) {
+    def outputId: String = s"$id-program-output"
+
     def toJson: ujson.Value = ujson.Obj.from(List("id" -> ujson.Str(id), "required" -> ujson.Bool(required),
-      "status" -> ujson.Str(status)) ++ description.map(text => "description" -> ujson.Str(text)))
+      "status" -> ujson.Str(status)) ++ description.map(text => "description" -> ujson.Str(text)) ++
+      programObservation.map(observation => "programOutput" -> ujson.Obj(
+        "id" -> outputId, "scope" -> "whole-program", "commandCount" -> observation.commandCount,
+        "omittedCommands" -> observation.omittedCommands,
+        "commands" -> ujson.Arr.from(observation.commands.map(command =>
+          ujson.Arr.from(List(ujson.Str(command.name)) ++ command.args.map(ujson.Num(_))))))))
   }
 
-  private case class Check(id: String, required: Boolean, latest: List[(String, Map[HumanLanguage, String])]) {
+  private case class Check(id: String, grader: WorkbookInteractionGrader[ProgrammingState, ?], required: Boolean,
+      latest: List[(String, Map[HumanLanguage, String], Option[ProgrammingTestProgramObservation])]) {
     def localized(language: HumanLanguage): PublicCheck = {
-      val values = latest.map { (status, descriptions) =>
-        status -> descriptions.get(language).orElse(descriptions.get(English))
+      val values = latest.map { (status, descriptions, observation) =>
+        (status, descriptions.get(language).orElse(descriptions.get(English)), observation)
       }.distinct
       values match {
-        case List((status, description)) => PublicCheck(id, required, status, description)
+        case List((status, description, observation)) => PublicCheck(id, required, status, description, observation)
         case _ => PublicCheck(id, required, "unavailable", None)
       }
     }
@@ -121,8 +139,9 @@ object ProgrammingHintScaffolder {
       checks: List[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
     def localizedChecks(language: HumanLanguage): List[PublicCheck] = checks.map(_.localized(language))
 
-    def evidenceIds(language: HumanLanguage): Set[String] = sourceLines.map(_._1).toSet ++ localizedChecks(language).collect {
-      case check if evidenceStatuses.contains(check.status) => check.id
+    def evidenceIds(language: HumanLanguage): Set[String] = sourceLines.map(_._1).toSet ++ localizedChecks(language).flatMap {
+      case check if evidenceStatuses.contains(check.status) => List(check.id) ++ check.programObservation.map(_ => check.outputId)
+      case _ => Nil
     } + "task"
 
     def request(language: HumanLanguage, task: String): LLMCommands.FeedbackLlmRequest = {
@@ -157,10 +176,14 @@ object ProgrammingHintScaffolder {
       |If the source supports no defect, ask a neutral question about how it works. Do not imply that it needs fixing.
       |Do not claim execution, a grade or correctness. Do not mention internal tools or checks to the learner.
       |
-      |Use one to three evidence IDs from the live task, source.lines.id or checks.id.
+      |Use one to three evidence IDs from the live task, source.lines.id, checks.id or checks.programOutput.id.
       |Each source.lines entry contains its exact line text. Cite the line you ask about, not merely the class or method header.
       |Check statuses correct, partially-correct and incorrect may be cited, but their IDs alone do not explain what was checked.
       |A check description explains what it examines, not the cause of a failure. Do not invent inputs or execution details it does not provide.
+      |programOutput is a cached completed whole-program run of this exact source, not a new execution or a helper-method result.
+      |Its commands are an ordered prefix; omittedCommands counts the unseen tail. Do not invent that tail or the run's inputs.
+      |commandCount counts issued commands, including turns and pen controls, not drawn lines.
+      |This output alone does not identify a faulty source line, prove recursion or correctness for other inputs, or explain a failed check.
       |Unavailable, not-run and error are not evidence of a learner error. Optional checks are not task requirements.
       |
       |These examples illustrate style and evidence use only. They are not evidence for the live task; do not copy their IDs.
