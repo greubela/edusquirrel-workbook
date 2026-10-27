@@ -83,7 +83,7 @@ Use `bimap` when the two conversions express a valid view of the same value:
 
 ```scala
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
 
 def pythonView(program: Var[ProgrammingState]): Var[String] =
   program.bimap(_.toPython.code)(ProgrammingStatePythonString(_))

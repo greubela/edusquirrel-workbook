@@ -149,7 +149,7 @@ class TurtleProgramExecutionSpec extends FunSuite {
   test("legacy Java snippets remain convertible without running a full Java class") {
     val source = ProgrammingStateJavaString("forward(12);")
     val editor = editorFor(source)
-    assertEquals(source.toBeExpressionState.deriveTurtleCommands, List(TurtleCommand[Double]("forward", List(12.0))))
+    assertEquals(source.toBeExpression.deriveTurtleCommands, List(TurtleCommand[Double]("forward", List(12.0))))
     assertEquals(editor.currentState(), source)
   }
 
@@ -173,7 +173,7 @@ class TurtleProgramExecutionSpec extends FunSuite {
   test("runs a checked Java main and helper and maps signed turtle commands without changing the draft") {
     val source = javaSource(-12)
     val stored = ProgrammingState.serializer.serialize(source)
-    val fingerprint = ProgrammingState.fingerprint(source)
+    val fingerprint = source.fingerprint()
     val factory = new ControlledRunnerFactory
     val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
       runnerFactory = factory.create)
@@ -194,7 +194,7 @@ class TurtleProgramExecutionSpec extends FunSuite {
         assertEquals(commands, mappedCommands(-12.0))
         assertEquals(editor.currentState(), source)
         assertEquals(ProgrammingState.serializer.serialize(editor.currentState()), stored)
-        assertEquals(ProgrammingState.fingerprint(editor.currentState()), fingerprint)
+        assertEquals(editor.currentState().fingerprint(), fingerprint)
       }
     }
   }

@@ -1,11 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
-import it.evadid.vm.BeProgram
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 
-object ProgrammingStateSnapXmlHelper {
+object SnapGeneratedImages {
 
-  def removeGeneratedImages(xml: String): String = {
+  def remove(xml: String): String = {
     val removableTags = Set("pentrails", "pentrail", "thumbnail")
     val result = new StringBuilder
     var keptFrom = 0
@@ -35,20 +33,5 @@ object ProgrammingStateSnapXmlHelper {
       }
     result.append(xml.substring(keptFrom)).toString
   }
-
-  /** @param previousXml XML being replaced; custom block definitions are merged forward */
-  def fromProgram(
-                   program: BeProgram,
-                   canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
-                   previousXml: String = ""
-                 ): ProgrammingStateSnapXml =
-    ProgrammingStateSnapXml(SnapCustomBlockMerge.applyProgram(program, canvasLayout, previousXml))
-
-  def mini: ProgrammingStateSnapXml = ProgrammingStateSnapXml(SnapProjectXml.mini)
-
-  def empty: ProgrammingStateSnapXml = ProgrammingStateSnapXml(SnapProjectXml.empty)
-
-  def fingerprint(state: ProgrammingStateSnapXml): String =
-    if state.hasLegacyFloatingObjects then state.fingerprint() else state.snapXml
 
 }

@@ -3,7 +3,8 @@ package it.evadid.vm.parsing.java.turtle
 import it.evadid.vm.parsing.generic.abstractions.GenericAST
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
-import JavaTurtleSource.{Diagnostic, Problem, SourceRange}
+import JavaTurtleSource.{Diagnostic, Problem}
+import it.evadid.vm.parsing.java.clean.JavaSourceMap.SourceRange
 import scala.collection.mutable.ArrayBuffer
 
 object JavaTurtleInputLimits {

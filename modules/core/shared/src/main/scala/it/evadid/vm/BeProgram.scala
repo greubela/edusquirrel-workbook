@@ -4,9 +4,7 @@ import upickle.default.ReadWriter
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
-import it.evadid.vm.code.tree.BeExtensionPoint
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
-//import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeTreeDisplayConfig
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
@@ -15,126 +13,12 @@ import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.parsing.python.PythonParser
 
-/*
-type BeBlockTree = Tree[NodeBasedTreePosition, BeBlock]
-type BeExpressionTree = Tree[NodeBasedTreePosition, BeExpressionNode]
-
-type BeBlockContext = TreeStructureContext[NodeBasedTreePosition, BeBlock]
-type BeExpressionContext = TreeStructureContext[NodeBasedTreePosition, BeExpressionNode]
-
-*/
 case class BeProgram(fullProgram: BeExpression) derives ReadWriter {
-
-  /*
-  def expressionTree(displayConfig: BeTreeDisplayConfig): BeExpressionTree =
-    BeProgramViewHelpers.expressionTree(fullProgram, displayConfig)
-
-  def blockRenderingTree(displayConfig: BeTreeDisplayConfig): BeBlockRenderingTree =
-     BeProgramViewHelpers.blockRenderingTree(expressionTree(displayConfig))
-
-
-  def withInsertions(displayConfig: BeTreeDisplayConfig, additionMap: Map[BeExtensionPoint, BeExpression]): BeProgram =
-    BeProgramTreeMutationHelpers.withInsertions(this, displayConfig, additionMap)
-
-  def canInsertAtPosition(insertAtPosition: NodeBasedTreePosition, newProgram: BeProgram): Boolean =
-    BeProgramTreeMutationHelpers.canInsertAtPosition(this, insertAtPosition, newProgram)
-*/
-  override val toString: String = BeProgramViewHelpers.toDisplayString(fullProgram)
-
+  override val toString: String = s"BeProgram($fullProgram)"
 }
 
 object BeProgram {
-
   lazy val empty: BeProgram = BeProgram(BeStartProgram(BeExpression.pass))
-
-  def fromPythonString(pythonString: String): BeProgram =
-    BeProgramConstructionHelpers.fromPythonString(pythonString)
-
-  def createSimpleFunc(functionName: LanguageMap[HumanLanguage], parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram =
-    BeProgramConstructionHelpers.createSimpleFunc(functionName, parNames, parTypes, parValues, output)
-
-  def createSimpleFunc(functionName: String, parNames: List[String], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram =
-    BeProgramConstructionHelpers.createSimpleFunc(functionName, parNames, parTypes, parValues, output)
-
-  def createOneParFunc(functionName: String, parName: String, parType: BeDataType, valueString: String): BeProgram =
-    BeProgramConstructionHelpers.createOneParFunc(functionName, parName, parType, valueString)
-
-  def miniProgramExpression(): BeExpression =
-    BeProgramConstructionHelpers.miniProgramExpression()
-
-  def miniProgram(): BeProgram =
-    BeProgramConstructionHelpers.miniProgram()
-
-  def debugGraphicsProgram2(): BeProgram =
-    BeProgramConstructionHelpers.debugGraphicsProgram2()
-
-  def parseSimpleWhile(): BeProgram =
-    BeProgramConstructionHelpers.parseSimpleWhile()
-
-  def parseSimpleIf(): BeProgram =
-    BeProgramConstructionHelpers.parseSimpleIf()
-
-  def debugGraphicsProgram3(): BeProgram =
-    BeProgramConstructionHelpers.debugGraphicsProgram3()
-
-  def debugGraphicsProgram(): BeProgram =
-    BeProgramConstructionHelpers.debugGraphicsProgram()
-
-  def sampleParsedProgram(): BeProgram =
-    BeProgramConstructionHelpers.sampleParsedProgram()
-
-  def sampleParsedProgram2(): BeProgram =
-    BeProgramConstructionHelpers.sampleParsedProgram2()
-
-}
-
-private object BeProgramViewHelpers {
-
-  /*
-  def expressionTree(fullProgram: BeExpression, displayConfig: BeTreeDisplayConfig): BeExpressionTree =
-    fullProgram.recToTree(displayConfig.displayPlaceholders, BeChildPosition(NoRole, BeScope.GlobalScope()))
-
-  def blockRenderingTree(expressionTree: BeExpressionTree): BeBlockRenderingTree =
-    expressionTree.mapWithStructure(structure => {
-      structure.curValue match {
-        case extensionPoint: BeExtensionPoint =>
-          (structure.curValue, BeBlockPlaceholder(extensionPoint, structure.curPosition))
-        case BeExpressionReference(childPos, expression) =>
-          (structure.curValue, BeBlockRendererFactory.blockFor(expression))
-      }
-    })*/
-
-  def toDisplayString(fullProgram: BeExpression): String =
-    "BeProgram(" + fullProgram.toString + ")"
-
-}
-
-/*
-private object BeProgramTreeMutationHelpers {
-
-  def withInsertions(program: BeProgram, displayConfig: BeTreeDisplayConfig, additionMap: Map[BeExtensionPoint, BeExpression]): BeProgram = {
-    val exprTree = program.expressionTree(displayConfig)
-    val res: Map[NodeBasedTreePosition, Option[BeExpression]] = {
-      exprTree.applyWithChildResults[Option[BeExpression]]((structureContext, childrenResultMap) => {
-        structureContext.curValue match {
-          case name: BeExtensionPoint =>
-            additionMap.get(name)
-          case BeExpressionReference(childPos, expression) =>
-            val childrenResultList: List[(BeChildRole, BeExpression)] =
-              childrenResultMap.toList.filter(_._2.nonEmpty).map(tup => (tup._1.childPosition.roleInParent, tup._2.get))
-            Some(expression.withReplacedChildren(childrenResultList))
-        }
-      })
-    }
-    BeProgram(res(exprTree.rootPosition.forChild(0)).get)
-  }
-
-  def canInsertAtPosition(program: BeProgram, insertAtPosition: NodeBasedTreePosition, newProgram: BeProgram): Boolean =
-    false
-
-}
-*/
-private object BeProgramConstructionHelpers {
 
   def fromPythonString(pythonString: String): BeProgram =
     BeProgram(parsePythonExpression(pythonString))
@@ -157,7 +41,6 @@ private object BeProgramConstructionHelpers {
     val forwardName: BeEntityName = BeEntityName.fromMapInCodeNotation(Map(AppLanguage.German -> "vorwärts", AppLanguage.English -> "forward"))
 
     val distanceName: BeEntityName = BeEntityName.fromMapInCodeNotation(Map(AppLanguage.German -> "distanz", AppLanguage.English -> "distance"))
-
 
     val parameter: BeDefineVariable = BeDefineVariable(distanceName, BeDataType.Numeric)
 
@@ -271,7 +154,7 @@ private object BeProgramConstructionHelpers {
   )
 
   private def parsePythonExpression(pythonString: String): BeExpression = {
-    val parsingResult = PythonParser.parsePythonWithDetails(pythonString)
+    val parsingResult = PythonParser.default.parsePythonWithDetails(pythonString)
     BeStartProgram(parsingResult.codeExpression)
   }
 

@@ -14,7 +14,6 @@ import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffold
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingEditorPalette, SnapProjectXml}
 import it.evadid.workbook.elements.interactionElements.qr.{CreateQrCodeInteraction, QrCodeRequirements}
@@ -59,14 +58,14 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
       container("TestWorkbook/Sec1Cont1", List(
         TurtleRecreateShapeInteraction(
           "Turtle-Recreate-1",
-          ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpressionState,
+          ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
           exp1,
           ProgrammingEditorPalette.BeginnerTurtle,
           Map("forward" -> 5)
         ),
         TurtleRecreateShapeInteraction(
           "Turtle-Recreate-2",
-          ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpressionState,
+          ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
           exp2,
           ProgrammingEditorPalette.BeginnerTurtle,
           Map("forward" -> 2)

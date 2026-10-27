@@ -95,7 +95,7 @@ object Evacuation {
 
     var finished = false;
 
-    //  ProgramState.config.strategy.setValue("cgro") // STRATEGY! names: cgro taro30 taro50 mgro30
+    //  ProgramState.instance.config.strategy.setValue("cgro") // STRATEGY! names: cgro taro30 taro50 mgro30
 
     val (sid, spriteMapF, floorMapF) = ScenarioCache.localInstance.loadScenario(DefaultFloors.dfSportsHall40)
 
@@ -123,7 +123,7 @@ object Evacuation {
 
   def getEvacuation(spriteMap: EvaSpriteMap, floorMap: EvaFloorMap): Evacuation = {
     val timeStart: Long = System.nanoTime()
-    val eva = EvacuationStep.calculateEvacuation(floorMap, ProgramState.config.neighbourhood.getValue.value, ProgramState.config.strategy.getValue.value)
+    val eva = EvacuationStep.calculateEvacuation(floorMap, ProgramState.instance.config.neighbourhood.getValue.value, ProgramState.instance.config.strategy.getValue.value)
     val timeEnd: Long = System.nanoTime()
 
     //  println("diff: " + (timeEnd - timeStart) / 1000000 / 1000.0 + "s, using strategy: " + eva.strategyName)

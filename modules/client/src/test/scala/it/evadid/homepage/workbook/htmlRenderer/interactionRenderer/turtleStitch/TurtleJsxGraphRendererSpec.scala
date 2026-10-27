@@ -1,9 +1,9 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import munit.FunSuite
 
@@ -11,9 +11,9 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   test("preview conversion retains Java drafts it cannot display") {
     List("class Drawing {", "class Drawing { static void main(String[] args) {} }").foreach { code =>
       val state = ProgrammingStateJavaString(code)
-      val fingerprint = ProgrammingState.fingerprint(state)
+      val fingerprint = state.fingerprint()
       assert(HtmlTurtleRecreateShapeRenderer.commandsForPreview(state).isFailure)
-      assertEquals(ProgrammingState.fingerprint(state), fingerprint)
+      assertEquals(state.fingerprint(), fingerprint)
       assertEquals(state.code, code)
     }
   }
@@ -22,9 +22,9 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     val sources: List[ProgrammingState] = List(ProgrammingStateJavaString("class Drawing {}"),
       ProgrammingStateJavaString(" \r\nclass Drawing {\t "), ProgrammingStatePythonString("forward(\n\t "))
     sources.foreach { source =>
-      val fingerprint = ProgrammingState.fingerprint(source)
+      val fingerprint = source.fingerprint()
       assert(HtmlTurtleRecreateShapeRenderer.hasProgram(source))
-      assertEquals(ProgrammingState.fingerprint(source), fingerprint)
+      assertEquals(source.fingerprint(), fingerprint)
     }
     assert(!HtmlTurtleRecreateShapeRenderer.hasProgram(ProgrammingStateJavaString(" \r\n\t ")))
     assert(!HtmlTurtleRecreateShapeRenderer.hasProgram(ProgrammingStatePythonString(" \r\n\t ")))
@@ -372,7 +372,6 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
       alternative.filterNot(_.name == "penDown"), expected, 1e-7, gradeJumps = false)
     assertEquals(noStitch.lines.count(_.result == LineResult.Missing), 1)
   }
-
 
   test("renderer scene is a projection of shared core grading and geometry") {
     import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGradingLogic

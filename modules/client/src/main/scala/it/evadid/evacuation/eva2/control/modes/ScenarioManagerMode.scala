@@ -37,14 +37,14 @@ case class ScenarioManagerMode() extends Eva2ControlMode {
   }
 
   override def getOverlays(): List[(PositionInMatrix, OverlaySprite)] = {
-    if (managerModeTabPane.getCurrentTab == managerModeTabPane.tabInsert && insertControl.floorMapToInsert.isDefined && ProgramState.config.previewInsertion.getValue.value) {
+    if (managerModeTabPane.getCurrentTab == managerModeTabPane.tabInsert && insertControl.floorMapToInsert.isDefined && ProgramState.instance.config.previewInsertion.getValue.value) {
       println("show inserts overlay!")
       insertControl.getInsertOverlays
     } else if (managerModeTabPane.getCurrentTab == managerModeTabPane.tabInsert && insertControl.floorMapToInsert.isDefined) {
       System.out.println("highlight pos!")
-      List((insertControl.insertAtPosition.in(ProgramState.floorMatrix.dim), BasicOverlaySprite.yellowOverlay(225)))
+      List((insertControl.insertAtPosition.in(ProgramState.instance.floorMap.currentValue.floorMatrix.dim), BasicOverlaySprite.yellowOverlay(225)))
     } else {
-      println("show preview: " + ProgramState.config.previewInsertion.getValue.value + " current tab: " + managerModeTabPane.getCurrentTab + " defined?: " + insertControl.floorMapToInsert.isDefined)
+      println("show preview: " + ProgramState.instance.config.previewInsertion.getValue.value + " current tab: " + managerModeTabPane.getCurrentTab + " defined?: " + insertControl.floorMapToInsert.isDefined)
       List()
     }
   }
@@ -73,7 +73,7 @@ case class ScenarioManagerMode() extends Eva2ControlMode {
 
 
   private def storeScenario(): Unit = {
-    val encoded = FloorMapIO(ProgramState.spriteMap).encode(ProgramState.instance.floorMap.currentValue)
+    val encoded = FloorMapIO(ProgramState.instance.spriteMap.currentValue).encode(ProgramState.instance.floorMap.currentValue)
     println("Storing Scenario at " + new Date() + " (" + encoded.length + " chars): " + encoded)
     setInputBoxText(encoded)
   }
@@ -183,7 +183,7 @@ case class ScenarioManagerMode() extends Eva2ControlMode {
         val h = Integer.parseInt(heightField.value)
 
         if (w > 0 && h > 0) {
-          val matrix: Matrix[FloorSprite] = Matrix(w, h, pos => ProgramState.spriteMap.defaultEmpty)
+          val matrix: Matrix[FloorSprite] = Matrix(w, h, pos => ProgramState.instance.spriteMap.currentValue.defaultEmpty)
           ProgramState.instance.floorMap.setValue(EvaFloorMap(matrix, immutable.HashSet[Person]()))
         }
 
@@ -233,15 +233,15 @@ case class ScenarioManagerMode() extends Eva2ControlMode {
 
       pane.appendChild(createPositionRow())
 
-      pane.appendChild(EvaHtmlFactory.createPropertyTickBox(ProgramState.config.previewInsertion))
+      pane.appendChild(EvaHtmlFactory.createPropertyTickBox(ProgramState.instance.config.previewInsertion))
 
       pane
     }
 
     def createPositionRow(): Element = {
 
-      val curMaxX = ProgramState.floorMatrix.dim.cols
-      val curMaxY = ProgramState.floorMatrix.dim.rows
+      val curMaxX = ProgramState.instance.floorMap.currentValue.floorMatrix.dim.cols
+      val curMaxY = ProgramState.instance.floorMap.currentValue.floorMatrix.dim.rows
 
       val div = document.createElement("div")
       div.setAttribute("id", "position-pane")
@@ -270,7 +270,7 @@ case class ScenarioManagerMode() extends Eva2ControlMode {
         val x = Integer.parseInt(xField.value)
         val y = Integer.parseInt(yField.value)
 
-        val pim = MatrixPosition(x, y).in(ProgramState.floorMatrix.dim)
+        val pim = MatrixPosition(x, y).in(ProgramState.instance.floorMap.currentValue.floorMatrix.dim)
         if (pim.isInRange) {
           println("inserting at: " + pim)
           insertAtPosition(pim)

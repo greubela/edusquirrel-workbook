@@ -22,7 +22,6 @@ case class SnapCodeEditor(
                            humanLanguage: Signal[HumanLanguage] = Val(English)
                          ) extends HtmlAppElement {
 
-
   // A typed view of the interaction Var: no second answer or synchronization store.
   private[SnapEditor] val snapState: Var[ProgrammingStateSnapScalaModel] = state.bimap {
     case model: ProgrammingStateSnapScalaModel => model.persistent
@@ -119,12 +118,10 @@ case class SnapCodeEditor(
   override def dismissOnOutsideClick: Boolean = false
 }
 
-
 object SnapCodeEditor {
   private def typed(xml: ProgrammingStateSnapXml): ProgrammingStateSnapScalaModel =
     xml.toSnapScalaModel.fold(message => throw IllegalArgumentException(message), _.persistent)
-  private lazy val empty = typed(it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper.empty)
-
+  private lazy val empty = typed(ProgrammingStateSnapXml.empty)
 
   def apply(logger: Logger, state: Var[ProgrammingState], config: SnapCodeEditorConfig,
             humanLanguage: Signal[HumanLanguage]): SnapCodeEditor =
@@ -135,7 +132,6 @@ object SnapCodeEditor {
 
   def apply(logger: Logger,state: Var[ProgrammingState]): SnapCodeEditor =
     SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
-
 
   def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig, humanLanguage: Signal[HumanLanguage]): EvaEditorTab = new EvaEditorTab {
     override val language = SnapLanguage

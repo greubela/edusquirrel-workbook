@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file
 import it.evadid.core.datastructures.file.FileDescription
@@ -14,11 +15,9 @@ import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import todomove.datastructures.web.file.FullImage
 
 import scala.concurrent.ExecutionContext
@@ -88,7 +87,6 @@ object HtmlTurtleStitchRendererHelper {
   private def renderProjectCodePreviewWithAsyncXml(xmlAsync: AsyncData[Nothing, String]): Element = {
 
     val language = HtmlFullWorkbookApp.fullInfo.signals.currentLanguage
-
 
     div(
       cls := "preview-card",

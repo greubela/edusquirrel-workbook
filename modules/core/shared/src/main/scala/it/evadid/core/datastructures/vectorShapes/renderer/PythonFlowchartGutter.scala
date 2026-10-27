@@ -34,7 +34,7 @@ object PythonFlowchartGutter {
 
   /** Parses exactly `source`. `None` means the program is incomplete or unsupported. */
   private def parseChart(source: String): Option[Chart] = try {
-    val expression = PythonParser.parsePython(source)
+    val expression = PythonParser.default.parsePython(source)
     val expressions = expression.recToTree(false, BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())).values
       .collect { case BeExpressionReference(_, value) => value }
     if (expressions.exists {

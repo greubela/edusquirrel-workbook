@@ -10,7 +10,7 @@ import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
@@ -50,7 +50,6 @@ case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) exte
 
   private def createRecreateShapeInteraction(shape: String): WorkbookElement =
     recreate(nextId("embroidery-preview-" + shape), EmbroideryPreviewTargets.shape(shape))
-
 
   private lazy val firstSection: WorkbookSection = {
 
@@ -94,7 +93,6 @@ case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) exte
       )
     )
   }
-
 
   private lazy val secondSection: WorkbookSection = {
 
@@ -204,7 +202,6 @@ case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) exte
       ))
     ))
 
-
   private lazy val fourthSection: WorkbookSection =
     section(
       "Section4",
@@ -242,7 +239,6 @@ case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) exte
         ))
       )
     )
-
 
   private lazy val introSection: WorkbookSection =
     section(
@@ -316,6 +312,5 @@ case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) exte
             checklist("embroiderypreviewworkbook/S7Ready", "embroidery-preview-ready-to-stitch"),
           ))
       ))
-
 
 }

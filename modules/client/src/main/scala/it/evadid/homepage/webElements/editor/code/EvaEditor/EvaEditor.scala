@@ -1,11 +1,11 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, ProgrammingLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success, Try}
