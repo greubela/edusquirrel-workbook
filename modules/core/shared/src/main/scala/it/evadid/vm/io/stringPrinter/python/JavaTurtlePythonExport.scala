@@ -31,13 +31,12 @@ object JavaTurtlePythonExport {
   }
 
   def invocationSource(exported: Export, method: Option[R.MethodId], arguments: Vector[E.Value], limits: Limits): String =
-    invocationSource(exported.source, method, arguments, limits, "_java_result")
+    invocationSource(exported.source, method, arguments, limits)
 
   def invocationSource(exported: ObservedExport, method: Option[R.MethodId], arguments: Vector[E.Value], limits: Limits): String =
-    invocationSource(exported.source, method, arguments, limits, "__import__(\"json\").dumps(_java_result, allow_nan=False)")
+    invocationSource(exported.source, method, arguments, limits)
 
-  private def invocationSource(source: String, method: Option[R.MethodId], arguments: Vector[E.Value], limits: Limits,
-      result: String): String = {
+  private def invocationSource(source: String, method: Option[R.MethodId], arguments: Vector[E.Value], limits: Limits): String = {
     val encodedSource = ujson.Str(source).render()
     val target = method.fold("None")(_.index.toString)
     val values = arguments.map {
@@ -48,7 +47,7 @@ object JavaTurtlePythonExport {
     s"""_java_namespace = {}
 exec($encodedSource, _java_namespace, _java_namespace)
 _java_result = _java_namespace["$EntryPoint"](method=$target, arguments=$values, max_steps=${limits.maxSteps}, max_commands=${limits.maxCommands}, max_call_depth=${limits.maxCallDepth}, max_block_depth=${limits.maxBlockDepth})
-$result
+__import__("json").dumps(_java_result, allow_nan=False)
 """
   }
 
