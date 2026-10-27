@@ -12,6 +12,7 @@ import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport as Y
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
+import it.evadid.vm.parsing.java.clean.JavaSourceMap
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmBindings as V, JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
 import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleRuntime as T, JavaTurtleTrace as J}
@@ -48,6 +49,19 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     case J.Kind.Write(variable, _) => variable.name == name
     case _ => false
   })
+
+  private def locatedEvents(recorded: J.RecordedExecution, source: String): Vector[J.LocatedEvent] = {
+    val sourceMap = JavaTurtleSource.parse(source).fold(problem => fail(problem.message), _.sourceMap)
+    recorded.trace.events.map { event =>
+      val located = recorded.trace.locate(event.id, source).getOrElse(fail(s"Missing location: $event"))
+      assertEquals(located.event, event)
+      assert(located.range.start >= 0 && located.range.start < located.range.end && located.range.end <= source.length)
+      assertEquals(located.text, source.substring(located.range.start, located.range.end))
+      assertEquals(Some(located.start), sourceMap.position(located.range.start))
+      assertEquals(Some(located.end), sourceMap.position(located.range.end))
+      located
+    }
+  }
 
   private def restoredJavaExpression(expression: X.Expression): R.Expression = expression.node match {
     case X.Node.IntLiteral(value) => R.IntLiteral(value)
@@ -1745,7 +1759,10 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(commands.map(_.node.path), Vector(Vector("body", "0"), Vector("body", "1")))
     assertEquals(commands.map(_.node).distinct.size, 2)
     assertEquals(recorded.trace.events.map(_.id), recorded.trace.events.indices.toVector)
-    assertEquals(T.runVmTraced(program), recorded)
+    val repeated = T.runVmTraced(program)
+    assertEquals(repeated.execution, recorded.execution)
+    assertEquals(repeated.trace.events, recorded.trace.events)
+    assertEquals(repeated.trace.truncated, recorded.trace.truncated)
     assertEquals(T.runVm(program), recorded.execution)
     assertEquals(recorded.trace.backwardSlice(-1), None)
     assertEquals(recorded.trace.backwardSlice(recorded.trace.events.size), None)
@@ -1937,6 +1954,242 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     }))
   }
 
+  test("Java trace locations distinguish recursive callers parameters and real returns") {
+    val resolved = javaProgram("draw(2);", """static void draw(int depth) {
+      if (depth == 0) { return; }
+      Turtle.forward(depth); draw(depth - 1);
+    }""")
+    val program = P.adapt(resolved).toOption.get
+    val recorded = T.runVmTraced(program)
+    val located = locatedEvents(recorded, resolved.source)
+    assertEquals(recorded.execution, T.runVm(program))
+    val draw = program.root.methods.find(_.binding.originalName == "draw").get.binding.id
+    val calls = located.filter(_.event.kind match { case J.Kind.Call(`draw`, _) => true; case _ => false })
+    assertEquals(calls.map(_.text), Vector("draw(2);", "draw(depth - 1);", "draw(depth - 1);"))
+    assertEquals(calls.map(_.event.invocation).distinct.size, 3)
+    val parameters = located.filter(_.event.node.path.headOption.contains("parameter"))
+    assertEquals(parameters.map(_.text), Vector.fill(3)("int depth"))
+    assertEquals(parameters.map(_.range).distinct.size, 1)
+    assertEquals(located.filter(_.event.kind == J.Kind.Return(true)).map(_.text), Vector("return;"))
+    val implicitReturns = located.filter(_.event.kind == J.Kind.Return(false))
+    assertEquals(implicitReturns.size, 3)
+    assert(implicitReturns.forall(event => event.text.startsWith("{") && event.text.endsWith("}")))
+    val last = turtleEvents(recorded.trace).last
+    val slice = recorded.trace.locatedSlice(last.id, resolved.source, includeOrder = true).get
+    assertEquals(slice.events.map(_.event), recorded.trace.backwardSlice(last.id, includeOrder = true).get.events)
+    assertEquals(slice.recordingTruncated, recorded.trace.truncated)
+  }
+
+  test("Java implicit numeric widening maps both runtime levels to the actual source expression") {
+    val resolved = javaProgram("double n = 1; n = 2; draw(3); Turtle.forward(n + 4);",
+      "static void draw(double value) { Turtle.forward(value); }")
+    val recorded = T.runVmTraced(P.adapt(resolved).toOption.get)
+    val located = locatedEvents(recorded, resolved.source)
+    Vector(1, 2, 3, 4).foreach { number =>
+      val integer = located.filter(_.event.kind == J.Kind.Expression(E.Value.IntValue(number)))
+      val widened = located.filter(_.event.kind == J.Kind.Expression(E.Value.DoubleValue(number.toDouble)))
+      assertEquals(integer.size, 1, clue = number)
+      assertEquals(widened.size, 1, clue = number)
+      assertEquals(integer.head.text, number.toString)
+      assertEquals(widened.head.range, integer.head.range)
+      assertEquals(integer.head.event.node.path, widened.head.event.node.path :+ "0")
+    }
+  }
+
+  test("Java minimum integer grouping unary operators and parenthesized updates locate without invented nodes") {
+    val resolved = javaProgram("int x = -2147483648; Turtle.forward((x)++); Turtle.forward(++(x)); Turtle.forward(-(-1));")
+    val program = P.adapt(resolved).toOption.get
+    val recorded = T.runVmTraced(program)
+    val located = locatedEvents(recorded, resolved.source)
+    assertEquals(recorded.execution, T.runVm(program))
+    val minimum = located.find(event => event.event.node.path == Vector("body", "0", "initial")).get
+    assertEquals(minimum.text, "-2147483648")
+    assertEquals(minimum.event.kind, J.Kind.Expression(E.Value.IntValue(Int.MinValue)))
+    val expressions = located.collect { case event if event.event.kind.isInstanceOf[J.Kind.Expression] => event.text }
+    Vector("(x)++", "++(x)", "-(-1)", "(-1)", "-1", "1").foreach(text => assert(expressions.contains(text), clue = text))
+    val updates = located.filter(event => event.event.kind.isInstanceOf[J.Kind.Write] && event.event.node.path.contains("argument"))
+    assertEquals(updates.map(_.text), Vector("(x)++", "++(x)"))
+  }
+
+  test("Java trace locations keep all for-header occurrences and locate an omitted condition at its loop") {
+    val resolved = javaProgram("int n = 0; for (n = 0, n++; n < 2; n++, --n, n += 1) { Turtle.forward(n); }")
+    val program = P.adapt(resolved).toOption.get
+    val recorded = T.runVmTraced(program)
+    val located = locatedEvents(recorded, resolved.source)
+    assertEquals(recorded.execution, T.runVm(program))
+    val writes = located.filter(event => event.event.kind.isInstanceOf[J.Kind.Write] &&
+      (event.event.node.path.contains("init") || event.event.node.path.contains("update")))
+    assertEquals(writes.map(_.text), Vector("n = 0", "n++", "n++", "--n", "n += 1"))
+    val repeatedUpdates = writes.filter(_.text == "n++")
+    assertEquals(repeatedUpdates.map(_.range).distinct.size, 2)
+    val emptyCondition = javaProgram("for (;;) { return; }")
+    val emptyTrace = T.runVmTraced(P.adapt(emptyCondition).toOption.get)
+    val conditions = locatedEvents(emptyTrace, emptyCondition.source).filter(_.event.kind == J.Kind.Condition(true))
+    assertEquals(conditions.map(_.text), Vector("for (;;) { return; }"))
+  }
+
+  test("Java trace locations separate equal commands and exclude skipped short-circuit occurrences") {
+    val resolved = javaProgram("int x = 1; boolean a = false && x++ > 0; boolean b = true || ++x > 0; Turtle.forward(x); Turtle.forward(x);")
+    val recorded = T.runVmTraced(P.adapt(resolved).toOption.get)
+    val located = locatedEvents(recorded, resolved.source)
+    Vector(Vector("body", "1", "initial", "1"), Vector("body", "2", "initial", "1")).foreach { skipped =>
+      assert(!recorded.trace.events.exists(_.node.path.startsWith(skipped)), clue = skipped)
+    }
+    assertEquals(traceWrites(recorded.trace, "x").size, 1)
+    val commands = located.filter(_.event.kind.isInstanceOf[J.Kind.Turtle])
+    assertEquals(commands.map(_.text), Vector.fill(2)("Turtle.forward(x);"))
+    assertEquals(commands.map(_.range).distinct.size, 2)
+    assertEquals(commands.map(_.range.start), Vector(resolved.source.indexOf("Turtle.forward(x);"),
+      resolved.source.lastIndexOf("Turtle.forward(x);")))
+  }
+
+  test("Java terminating for conditions remain located after the last command") {
+    val resolved = javaProgram("for (int i = 0; i < 2; i++) { Turtle.forward(i); }")
+    val recorded = T.runVmTraced(P.adapt(resolved).toOption.get)
+    assertEquals(recorded.execution.commands, Vector(forward(0), forward(1)))
+    val conditions = locatedEvents(recorded, resolved.source).filter(_.event.kind.isInstanceOf[J.Kind.Condition])
+    assertEquals(conditions.map(_.event.kind), Vector(J.Kind.Condition(true), J.Kind.Condition(true), J.Kind.Condition(false)))
+    assertEquals(conditions.map(_.text), Vector.fill(3)("i < 2"))
+    val start = resolved.source.indexOf("i < 2")
+    assert(conditions.forall(_.range == JavaSourceMap.SourceRange(start, start + "i < 2".length)))
+    val stopped = conditions.last.event
+    val lastCommand = turtleEvents(recorded.trace).last
+    assert(stopped.id > lastCommand.id)
+    Vector(false, true).foreach { includeOrder =>
+      val slice = recorded.trace.locatedSlice(lastCommand.id, resolved.source, includeOrder).get
+      assert(!slice.events.exists(_.event.id == stopped.id))
+      assert(slice.events.forall(_.event.id <= lastCommand.id))
+    }
+  }
+
+  test("Java repeated expression positions count UTF16 columns with LF CRLF and bare CR") {
+    Vector("\n", "\r\n", "\r").foreach { newline =>
+      val source = Vector("/* 😀 */", "class Drawing {", "  public static void main(String[] args) {",
+        "    int x = 1;", "    /* 😀 */ Turtle.forward(x + 1); Turtle.forward(x + 1);", "  }", "}").mkString(newline)
+      val recorded = T.runVmTraced(P.compile(source).toOption.get)
+      assertEquals(recorded.execution.commands, Vector(forward(2), forward(2)))
+      val expressions = locatedEvents(recorded, source).filter(event =>
+        event.event.kind == J.Kind.Expression(E.Value.IntValue(2)) && event.text == "x + 1")
+      val offsets = Vector(source.indexOf("x + 1"), source.lastIndexOf("x + 1"))
+      assertEquals(expressions.map(_.range), offsets.map(start => JavaSourceMap.SourceRange(start, start + 5)))
+      assertEquals(expressions.map(_.start), Vector(JavaSourceMap.Position(5, 29), JavaSourceMap.Position(5, 52)))
+      assertEquals(expressions.map(_.end), Vector(JavaSourceMap.Position(5, 34), JavaSourceMap.Position(5, 57)))
+      assertEquals(expressions.map(_.event.node).distinct.size, 2)
+    }
+  }
+
+  test("Java located traces preserve original CRLF Unicode offsets and one-based UTF16 positions") {
+    val source = "/* 😀 Turtle.forward(9); */\r\nclass Drawing {\r\n  public static void main(String[] args) {\r\n    Turtle.forward(1);\r\n  }\r\n}\r\n"
+    val program = P.compile(source).toOption.get
+    val recorded = T.runVmTraced(program)
+    val located = locatedEvents(recorded, source)
+    val command = located.find(_.event.kind.isInstanceOf[J.Kind.Turtle]).get
+    val offset = source.indexOf("Turtle.forward(1);")
+    assertEquals(command.range, JavaSourceMap.SourceRange(offset, offset + "Turtle.forward(1);".length))
+    assertEquals(command.start, JavaSourceMap.Position(4, 5))
+    assertEquals(command.end, JavaSourceMap.Position(4, 23))
+    assertEquals(command.text, "Turtle.forward(1);")
+    assertEquals(recorded.execution, T.runVm(program))
+  }
+
+  test("Java prefix locations keep trace saturation failures and cancellation separate from lookup") {
+    val resolved = javaProgram("Turtle.forward(1); int bad = 1 / 0;")
+    val program = P.adapt(resolved).toOption.get
+    val ordinary = T.runVm(program)
+    val traces = Vector(T.runVmTraced(program), T.runVmTraced(program, budget = J.Budget(maxEvents = 0)),
+      T.runVmTraced(program, budget = J.Budget(maxEvents = 3)), T.runVmTraced(program, isCancelled = () => true))
+    traces.foreach { recorded =>
+      val before = recorded.trace.events
+      val locations = locatedEvents(recorded, resolved.source)
+      assertEquals(locations.map(_.event), before)
+      locations.lastOption.foreach { event =>
+        val slice = recorded.trace.locatedSlice(event.event.id, resolved.source).get
+        assertEquals(slice.recordingTruncated, recorded.trace.truncated)
+        assertEquals(slice.events.map(_.event), recorded.trace.backwardSlice(event.event.id).get.events)
+      }
+      assertEquals(recorded.trace.events, before)
+      if recorded.execution.status != T.Status.Cancelled then assertEquals(recorded.execution, ordinary)
+      else assertEquals(recorded.trace.locate(0, resolved.source), None)
+      if before.isEmpty then assertEquals(recorded.trace.locatedSlice(0, resolved.source), None)
+    }
+    val polls = State(0)
+    val counted = T.runVmTraced(program, isCancelled = () => { polls.update(_ + 1); false })
+    val beforePolls = polls.now()
+    locatedEvents(counted, resolved.source).foreach(event => counted.trace.locatedSlice(event.event.id, resolved.source))
+    assertEquals(polls.now(), beforePolls)
+    assertEquals(counted.execution, ordinary)
+  }
+
+  test("Java trace provenance rejects stale sources and unknown ids but survives checked recompilation") {
+    val resolved = javaProgram("int n = 1; Turtle.forward(n);")
+    val program = P.adapt(resolved).toOption.get
+    val recorded = T.runVmTraced(program)
+    val locations = locatedEvents(recorded, resolved.source)
+    val first = recorded.trace.events.head.id
+    val stale = Vector(" " + resolved.source, resolved.source + " // note", resolved.source.replace("Drawing", "Another"),
+      resolved.source.replace("int n = 1", "int n = 2"))
+    stale.foreach { source =>
+      assertEquals(recorded.trace.locate(first, source), None)
+      assertEquals(recorded.trace.locatedSlice(first, source), None)
+    }
+    Vector(Int.MinValue, -1, recorded.trace.events.size, Int.MaxValue).foreach { id =>
+      assertEquals(recorded.trace.locate(id, resolved.source), None)
+      assertEquals(recorded.trace.locatedSlice(id, resolved.source), None)
+    }
+    Vector(P.fromRoot(program.root), P.compile(resolved.source).toOption.get).foreach { compiled =>
+      val repeated = T.runVmTraced(compiled)
+      assertEquals(repeated.execution, recorded.execution)
+      assertEquals(locatedEvents(repeated, resolved.source).map(event => (event.range, event.text, event.start, event.end)),
+        locations.map(event => (event.range, event.text, event.start, event.end)))
+    }
+  }
+
+  test("Java trace source ranges transform exactly under Unicode prefixes and CRLF conversion") {
+    val source = """class Drawing {
+      |  static void helper(int depth, double length) {
+      |    ;
+      |    double step = 1;
+      |    if (depth == 0) { Turtle.forward((length + step)); return; }
+      |    Drawing.helper(depth - 1, (length / 2));
+      |    Turtle.turnRight(60);
+      |    Drawing.helper(depth - 1, (length / 2));
+      |  }
+      |  public static void main(String[] args) {
+      |    int turn = 0;
+      |    while (turn < 3) {
+      |      if (turn == 0) { Drawing.helper(1, (8)); }
+      |      else if (turn == 1) { Turtle.turnRight(45); }
+      |      else { Turtle.forward(2); }
+      |      turn++;
+      |    }
+      |    for (int i = 0; i < 2; i++) {
+      |      Drawing.helper(0, (3));
+      |    }
+      |    ;
+      |  }
+      |}
+      |""".stripMargin
+    val prefix = "/* 😀 */\r\n  "
+    val variant = prefix + source.replace("\n", "\r\n")
+    val original = T.runVmTraced(P.compile(source).toOption.get)
+    val transformed = T.runVmTraced(P.compile(variant).toOption.get)
+    assertEquals(original.execution.status, T.Status.Completed)
+    assertEquals(transformed.execution, original.execution)
+    assertEquals(transformed.trace.events, original.trace.events)
+    val originalLocations = locatedEvents(original, source)
+    val variantLocations = locatedEvents(transformed, variant)
+    def moved(offset: Int): Int = prefix.length + offset + source.take(offset).count(_ == '\n')
+    originalLocations.zip(variantLocations).foreach { (before, after) =>
+      assertEquals(after.event.id, before.event.id)
+      assertEquals(after.range, JavaSourceMap.SourceRange(moved(before.range.start), moved(before.range.end)))
+      assertEquals(after.text, before.text.replace("\n", "\r\n"))
+      assertEquals(original.trace.locate(before.event.id, variant), None)
+      assertEquals(transformed.trace.locate(after.event.id, source), None)
+    }
+    assert(originalLocations.nonEmpty)
+    assertEquals(variantLocations.size, originalLocations.size)
+  }
+
   test("Java Python export is deterministic and keeps execution behind one entry point") {
     val program = P.adapt(javaProgram("draw(5);", "static void draw(int size) { Turtle.forward(size); }")).toOption.get
     val exported = Y.render(program)
@@ -2061,5 +2314,69 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assert(source.contains("if len(_commands) >= max_commands:"))
     assert(source.contains("if _call_depth >= max_call_depth:"))
     assert(source.contains("if depth > max_block_depth:"))
+  }
+
+  test("Java expression observations distinguish real reads from update and assignment bookkeeping") {
+    val program = P.adapt(javaProgram("int x=1; x += x++; Turtle.forward(x);")).toOption.get
+    val recorded = T.runVmTraced(program)
+    val observations = recorded.trace.completedExpressions.get
+    assertEquals(observations.map(_.value), Vector(E.Value.IntValue(1), E.Value.IntValue(1), E.Value.IntValue(2)))
+    assertEquals(observations.map(_.node.path), Vector(
+      Vector("body", "0", "initial"), Vector("body", "1", "value"), Vector("body", "2", "argument", "0")))
+    assert(observations.forall(_.invocation == 0))
+
+    val updateRead = recorded.trace.events.find(event => event.node.path == Vector("body", "1", "value") &&
+      event.kind.isInstanceOf[J.Kind.Read]).get
+    val prefix = T.runVmTraced(program, budget = J.Budget(maxEvents = updateRead.id + 1))
+    assertEquals(prefix.trace.events.last, updateRead)
+    assert(prefix.trace.truncated)
+    assertEquals(prefix.trace.completedExpressions.get, observations.take(1))
+    assertEquals(T.runVmTraced(program, budget = J.Budget(maxEvents = 0)).trace.completedExpressions, Some(Vector.empty))
+  }
+
+  test("Java completed expression observations retain recursive invocation identity and source paths") {
+    val resolved = javaProgram("draw(2);", "static void draw(int n){if(n==0){return;} Turtle.forward(n);draw(n-1);}")
+    val recorded = T.runVmTraced(P.adapt(resolved).toOption.get)
+    val observations = recorded.trace.completedExpressions.get
+    assertEquals(observations.map(_.invocation).distinct, Vector(0, 1, 2, 3))
+    observations.foreach { observed =>
+      val event = recorded.trace.events.find(event => event.invocation == observed.invocation &&
+        event.node == observed.node && (event.kind match {
+          case J.Kind.Expression(value) => value == observed.value
+          case J.Kind.Read(_, value) => value == observed.value
+          case _ => false
+        })).get
+      assert(recorded.trace.locate(event.id, resolved.source).isDefined)
+    }
+    assertEquals(T.runVmTraced(P.adapt(javaProgram("")).toOption.get).trace.completedExpressions, Some(Vector.empty))
+  }
+
+  test("Java observed Python export is opt in and keeps the normal execution contract") {
+    val program = P.adapt(javaProgram("int x=1; for(int i=0;i<2;i++){draw(x++);}",
+      "static void draw(double length){Turtle.forward(length);}")).toOption.get
+    val normal = Y.render(program)
+    val observed = Y.renderObserved(program, 12)
+    assertEquals(observed.methods, normal.methods)
+    assert(!normal.source.contains("_observations"))
+    assert(!normal.source.contains("_invocation"))
+    assert(!normal.source.contains("import struct"))
+    assert(observed.source.contains("_observations = []"))
+    assert(observed.source.contains("_next_invocation = 0"))
+    assert(observed.source.contains("if len(_observations) >= 12:"))
+    assert(observed.source.contains("\"execution\": {\"status\": status"))
+    assert(observed.source.contains("\"truncated\": _observation_truncated"))
+    assert(observed.source.contains("_invocation = _enter()"))
+    assertEquals(normal.source.linesIterator.count(_.trim == "_gate()"),
+      observed.source.linesIterator.count(_.trim == "_gate()"))
+    val observations = T.runVmTraced(program).trace.completedExpressions.get
+    observations.foreach { observedValue =>
+      val path = observedValue.node.path.map(part => ujson.write(ujson.Str(part))).mkString("(", ", ", ",)")
+      val label = s"(${observedValue.node.method.index}, $path)"
+      assert(observed.source.contains(s"_value(_invocation, $label, lambda:"), clue = label)
+    }
+    assert(Y.renderObserved(program, 0).source.contains("if len(_observations) >= 0:"))
+    assert(Y.renderObserved(program, 10000).source.contains("if len(_observations) >= 10000:"))
+    Vector(Int.MinValue, -1, 10001, Int.MaxValue).foreach(limit =>
+      intercept[IllegalArgumentException](Y.renderObserved(program, limit)))
   }
 }
