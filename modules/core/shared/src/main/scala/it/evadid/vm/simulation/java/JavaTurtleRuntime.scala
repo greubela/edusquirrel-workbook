@@ -28,7 +28,7 @@ object JavaTurtleRuntime {
 
   case class Limits(maxSteps: Int = Limits.MaxSteps, maxCommands: Int = Limits.MaxCommands,
       maxCallDepth: Int = Limits.MaxCallDepth, maxBlockDepth: Int = Limits.MaxBlockDepth) {
-    private[JavaTurtleRuntime] def valid: Boolean =
+    def isValid: Boolean =
       maxSteps > 0 && maxSteps <= Limits.MaxSteps && maxCommands >= 0 && maxCommands <= Limits.MaxCommands &&
         maxCallDepth > 0 && maxCallDepth <= Limits.MaxCallDepth &&
         maxBlockDepth > 0 && maxBlockDepth <= Limits.MaxBlockDepth
@@ -70,7 +70,7 @@ object JavaTurtleRuntime {
 
   private def execute(methods: Vector[R.Method], entryPoint: R.MethodId, method: R.MethodId, arguments: Vector[E.Value],
       main: Boolean, limits: Limits, isCancelled: () => Boolean, recorder: Option[J.Recorder] = None): Execution =
-    if !limits.valid then Execution(Status.Failed(Failure.InvalidLimits), Vector.empty, 0)
+    if !limits.isValid then Execution(Status.Failed(Failure.InvalidLimits), Vector.empty, 0)
     else new Runner(methods, entryPoint, limits, isCancelled, recorder).execute(method, arguments, main)
 
   private type Result[A] = Either[Status, A]

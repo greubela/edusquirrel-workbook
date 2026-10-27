@@ -4,7 +4,7 @@ import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.{RunPythonRequest, RunPythonResult}
 import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
-import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
+import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleExecutionReport, JavaTurtleRuntime as T}
 
 import java.util.concurrent.{CancellationException, TimeoutException}
 import scala.concurrent.{Future, Promise}
@@ -89,7 +89,7 @@ final class JavaTurtleCommandRunner(
       limits: T.Limits): Future[T.Execution] = {
     if closed then Future.failed(new IllegalStateException("Java runner is closed."))
     else if active.nonEmpty then Future.failed(new IllegalStateException("Java execution is already running."))
-    else if !JavaTurtleCommandRunner.valid(limits) then
+    else if !limits.isValid then
       Future.successful(T.Execution(T.Status.Failed(T.Failure.InvalidLimits), Vector.empty, 0))
     else if !JavaTurtleCommandRunner.validInvocation(program, method, arguments) then
       Future.successful(T.Execution(T.Status.Failed(T.Failure.InvalidInvocation), Vector.empty, 0))
@@ -127,12 +127,6 @@ object JavaTurtleCommandRunner {
   private def workerFactory(): PythonExecutionClient =
     PythonExecutionClient.worker(it.evadid.homepage.control.startup.ClientRuntimeConfig.workerUrl)
 
-  private def valid(limits: T.Limits): Boolean =
-    limits.maxSteps > 0 && limits.maxSteps <= T.Limits.MaxSteps &&
-      limits.maxCommands >= 0 && limits.maxCommands <= T.Limits.MaxCommands &&
-      limits.maxCallDepth > 0 && limits.maxCallDepth <= T.Limits.MaxCallDepth &&
-      limits.maxBlockDepth > 0 && limits.maxBlockDepth <= T.Limits.MaxBlockDepth
-
   private def validInvocation(program: P.Program, method: Option[R.MethodId], arguments: Vector[E.Value]): Boolean =
     method.fold(arguments.isEmpty) { id =>
       program.root.methods.find(_.binding.id == id).exists { method =>
@@ -148,79 +142,12 @@ object JavaTurtleCommandRunner {
       }
     }
 
-  private def code(program: P.Program, method: Option[R.MethodId], arguments: Vector[E.Value], limits: T.Limits): String = {
-    val source = ujson.Str(JavaTurtlePythonExport.render(program).source).render()
-    val target = method.fold("None")(_.index.toString)
-    val values = arguments.map {
-      case E.Value.IntValue(value) => value.toString
-      case E.Value.DoubleValue(value) => JavaTurtlePythonExport.doubleLiteral(value)
-      case E.Value.BooleanValue(value) => if value then "True" else "False"
-    }.mkString("[", ", ", "]")
-    s"""_java_namespace = {}
-exec($source, _java_namespace, _java_namespace)
-_java_result = _java_namespace["${JavaTurtlePythonExport.EntryPoint}"](method=$target, arguments=$values, max_steps=${limits.maxSteps}, max_commands=${limits.maxCommands}, max_call_depth=${limits.maxCallDepth}, max_block_depth=${limits.maxBlockDepth})
-_java_result
-"""
-  }
-
-  private def invalid(detail: String): Nothing =
-    throw new IllegalArgumentException(s"Invalid Java execution result: $detail")
-
-  private def integer(value: ujson.Value, lower: Int, upper: Int): Int = value match {
-    case ujson.Num(number) if number.isFinite && number >= lower && number <= upper && number == math.floor(number) =>
-      number.toInt
-    case _ => invalid("expected a bounded integer")
-  }
-
-  private def finiteDouble(value: ujson.Value): Double = value match {
-    case ujson.Num(number) if number.isFinite => number
-    case _ => invalid("expected a finite number")
-  }
+  private def code(program: P.Program, method: Option[R.MethodId], arguments: Vector[E.Value], limits: T.Limits): String =
+    JavaTurtlePythonExport.invocationSource(JavaTurtlePythonExport.render(program), method, arguments, limits)
 
   private[execution] def decode(report: RunPythonResult, limits: T.Limits): T.Execution = {
-    if report.callbackOps.nonEmpty || report.stderr.nonEmpty then invalid("unexpected Python output")
-    if report.value.render().length > 1048576 then invalid("response is too large")
-    val parsed = report.value
-    val required = Set("status", "problem", "commands", "steps")
-    val fields = parsed match {
-      case value: ujson.Obj if value.obj.keySet.toSet == required => value.obj
-      case _ => invalid("expected status, problem, commands and steps")
-    }
-    val status = (fields("status"), fields("problem")) match {
-      case (ujson.Str("Completed"), ujson.Null) => T.Status.Completed
-      case (ujson.Str("LimitExceeded"), ujson.Null) => T.Status.LimitExceeded
-      case (ujson.Str("Cancelled"), ujson.Null) => T.Status.Cancelled
-      case (ujson.Str("Failed"), ujson.Str("InvalidLimits")) => T.Status.Failed(T.Failure.InvalidLimits)
-      case (ujson.Str("Failed"), ujson.Str("InvalidInvocation")) => T.Status.Failed(T.Failure.InvalidInvocation)
-      case (ujson.Str("Failed"), ujson.Str("DivisionByZero")) => T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero))
-      case (ujson.Str("Failed"), ujson.Str("NonFiniteCommand")) => T.Status.Failed(T.Failure.NonFiniteCommand)
-      case _ => invalid("unknown status or problem")
-    }
-    val steps = integer(fields("steps"), 0, T.Limits.MaxSteps)
-    val commands = fields("commands") match {
-      case values: ujson.Arr if values.value.size <= T.Limits.MaxCommands => values.value.toVector.map {
-        case pair: ujson.Arr if pair.value.size == 2 =>
-          val command = pair.value(0) match {
-            case ujson.Str("forward") => R.TurtleCommand.Forward
-            case ujson.Str("right") => R.TurtleCommand.TurnRight
-            case _ => invalid("unknown turtle command")
-          }
-          T.Command(command, finiteDouble(pair.value(1)))
-        case _ => invalid("expected a command and its numeric argument")
-      }
-      case _ => invalid("expected bounded turtle commands")
-    }
-    status match {
-      case T.Status.Failed(T.Failure.InvalidLimits | T.Failure.InvalidInvocation) =>
-        if steps != 0 || commands.nonEmpty then
-          invalid("invalid input must not execute")
-      case _ =>
-        if !valid(limits) || steps > limits.maxSteps || commands.size > limits.maxCommands || commands.size > steps then
-          invalid("execution exceeds its limits")
-        if steps == 0 && (status == T.Status.Completed || status == T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)) ||
-          status == T.Status.Failed(T.Failure.NonFiniteCommand)) then
-          invalid("execution did not start")
-    }
-    T.Execution(status, commands, steps)
+    if report.callbackOps.nonEmpty || report.stderr.nonEmpty then
+      throw new IllegalArgumentException("Invalid Java execution result: unexpected Python output")
+    JavaTurtleExecutionReport.decode(report.value, limits)
   }
 }

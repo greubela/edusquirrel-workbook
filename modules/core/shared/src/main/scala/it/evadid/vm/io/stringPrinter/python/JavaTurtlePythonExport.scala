@@ -1,6 +1,7 @@
 package it.evadid.vm.io.stringPrinter.python
 
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
+import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E}
 import it.evadid.vm.simulation.java.JavaTurtleRuntime.Limits
 import it.evadid.vm.simulation.java.JavaTurtleTrace.SourceNode
 
@@ -27,6 +28,27 @@ object JavaTurtlePythonExport {
     require(maxObservations >= 0 && maxObservations <= 10000, "Invalid observation budget.")
     val result = render(program, Some(maxObservations))
     ObservedExport(result.source, result.methods)
+  }
+
+  def invocationSource(exported: Export, method: Option[R.MethodId], arguments: Vector[E.Value], limits: Limits): String =
+    invocationSource(exported.source, method, arguments, limits)
+
+  def invocationSource(exported: ObservedExport, method: Option[R.MethodId], arguments: Vector[E.Value], limits: Limits): String =
+    invocationSource(exported.source, method, arguments, limits)
+
+  private def invocationSource(source: String, method: Option[R.MethodId], arguments: Vector[E.Value], limits: Limits): String = {
+    val encodedSource = ujson.Str(source).render()
+    val target = method.fold("None")(_.index.toString)
+    val values = arguments.map {
+      case E.Value.IntValue(value) => value.toString
+      case E.Value.DoubleValue(value) => doubleLiteral(value)
+      case E.Value.BooleanValue(value) => if value then "True" else "False"
+    }.mkString("[", ", ", "]")
+    s"""_java_namespace = {}
+exec($encodedSource, _java_namespace, _java_namespace)
+_java_result = _java_namespace["$EntryPoint"](method=$target, arguments=$values, max_steps=${limits.maxSteps}, max_commands=${limits.maxCommands}, max_call_depth=${limits.maxCallDepth}, max_block_depth=${limits.maxBlockDepth})
+__import__("json").dumps(_java_result, allow_nan=False)
+"""
   }
 
   private def render(program: P.Program, maxObservations: Option[Int]): Export = {

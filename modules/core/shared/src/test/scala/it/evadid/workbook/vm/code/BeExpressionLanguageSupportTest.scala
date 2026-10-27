@@ -15,7 +15,7 @@ import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.parsing.java.clean.JavaSourceMap
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmBindings as V, JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
-import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleRuntime as T, JavaTurtleTrace as J}
+import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleExecutionEvidence as Evidence, JavaTurtleExecutionReport as Report, JavaTurtleRuntime as T, JavaTurtleTrace as J}
 import it.evadid.vm.types.{BeChildRole, BeDataType, BeDataValueLiteral, BeScope, BeUseValueReference}
 import munit.FunSuite
 
@@ -2316,6 +2316,82 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assert(source.contains("if depth > max_block_depth:"))
   }
 
+  test("Java execution reports preserve object and text outcomes and exact double values") {
+    val commands = """[["forward",0.0],["forward",-0.0],["forward",5e-324],["forward",-5e-324],["right",1.7976931348623157e308],["right",-1.7976931348623157e308]]"""
+    val expected = Vector(0.0, -0.0, java.lang.Double.MIN_VALUE, -java.lang.Double.MIN_VALUE, Double.MaxValue, -Double.MaxValue)
+    val outcomes = Vector(("Completed", "null", T.Status.Completed), ("LimitExceeded", "null", T.Status.LimitExceeded),
+      ("Cancelled", "null", T.Status.Cancelled),
+      ("Failed", "\"DivisionByZero\"", T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero))),
+      ("Failed", "\"NonFiniteCommand\"", T.Status.Failed(T.Failure.NonFiniteCommand)))
+    outcomes.foreach { (status, problem, expectedStatus) =>
+      val raw = s"""{"status":"$status","problem":$problem,"commands":$commands,"steps":8}"""
+      Vector(ujson.read(raw), ujson.Str(raw)).foreach { value =>
+        val decoded = Report.decode(value, T.Limits())
+        assertEquals(decoded.status, expectedStatus)
+        assertEquals(decoded.steps, 8)
+        assertEquals(decoded.commands.map(_.command), Vector.fill(4)(R.TurtleCommand.Forward) ++ Vector.fill(2)(R.TurtleCommand.TurnRight))
+        assertEquals(decoded.commands.map(command => java.lang.Double.doubleToRawLongBits(command.value)),
+          expected.map(java.lang.Double.doubleToRawLongBits))
+      }
+    }
+    Vector("InvalidInvocation" -> T.Failure.InvalidInvocation, "InvalidLimits" -> T.Failure.InvalidLimits).foreach { (problem, failure) =>
+      val raw = s"""{"status":"Failed","problem":"$problem","commands":[],"steps":0}"""
+      Vector(ujson.read(raw), ujson.Str(raw)).foreach(value =>
+        assertEquals(Report.decode(value, T.Limits()), T.Execution(T.Status.Failed(failure), Vector.empty, 0)))
+    }
+  }
+
+  test("Java execution reports reject malformed fields values and inconsistent limits") {
+    val raw = """{"status":"Completed","problem":null,"commands":[["forward",1]],"steps":2}"""
+    val invalid = Vector("null", "[]", raw.dropRight(1), raw.replace("\"problem\":null,", ""),
+      raw.dropRight(1) + ",\"extra\":0}", raw.replace("Completed", "Unknown"), raw.replace("Completed", "Failed"),
+      raw.replace("null", "\"DivisionByZero\""), raw.replace("\"steps\":2", "\"steps\":0"),
+      raw.replace("\"steps\":2", "\"steps\":0.5"), raw.replace("\"steps\":2", "\"steps\":true"),
+      raw.replace("\"steps\":2", "\"steps\":100001"), raw.replace("\"steps\":2", "\"steps\":-1"),
+      raw.replace("forward", "turnRight"), raw.replace("[\"forward\",1]", "[\"forward\",1,2]"),
+      raw.replace("[\"forward\",1]", "[\"forward\",\"1\"]"), raw.replace("[\"forward\",1]", "[\"forward\",1e999]"))
+    invalid.foreach { text =>
+      val values = Vector[ujson.Value](ujson.Str(text)) ++ scala.util.Try(ujson.read(text)).toOption
+      values.foreach(value => intercept[IllegalArgumentException](Report.decode(value, T.Limits())))
+    }
+    Vector(Double.NaN, Double.PositiveInfinity, Double.NegativeInfinity).foreach { number =>
+      val value = ujson.Obj("status" -> "Completed", "problem" -> ujson.Null,
+        "commands" -> ujson.Arr(ujson.Arr("forward", ujson.Num(number))), "steps" -> 2)
+      intercept[IllegalArgumentException](Report.decode(value, T.Limits()))
+    }
+    Vector(ujson.read(raw), ujson.Str(raw)).foreach { value =>
+      Vector(T.Limits(maxSteps = 1), T.Limits(maxSteps = 0), T.Limits(maxCommands = 0),
+        T.Limits(maxCallDepth = 0), T.Limits(maxBlockDepth = 0)).foreach { limits =>
+        intercept[IllegalArgumentException](Report.decode(value, limits))
+      }
+    }
+  }
+
+  test("Java execution report text bounds ignore quoted delimiters and retain exact size boundaries") {
+    val raw = """{"status":"Completed","problem":null,"commands":[],"steps":2}"""
+    val padded = raw + " " * (1048576 - raw.length)
+    assertEquals(Report.decode(ujson.Str(padded), T.Limits()), T.Execution(T.Status.Completed, Vector.empty, 2))
+    Vector(padded + " ", "[" * 64 + "0" + "]" * 64, raw + "{}", "\"" + raw + "\"").foreach { text =>
+      intercept[IllegalArgumentException](Report.decode(ujson.Str(text), T.Limits()))
+    }
+    val quoted = """{"status":"Completed","problem":null,"commands":[["bad\\\"[[[[",1]],"steps":2}"""
+    val error = intercept[IllegalArgumentException](Report.decode(ujson.Str(quoted), T.Limits()))
+    assert(error.getMessage.contains("unknown turtle command"))
+  }
+
+  test("Java invocation builders serialize both export modes with typed arguments and limits") {
+    val program = P.adapt(javaProgram("", "static void draw(double size, boolean turn){if(turn){Turtle.forward(size);}}")).toOption.get
+    val method = program.root.methods.find(_.binding.originalName == "draw").get.binding.id
+    val arguments = Vector(E.Value.DoubleValue(-0.0), E.Value.BooleanValue(true))
+    val limits = T.Limits(maxSteps = 63, maxCommands = 3, maxCallDepth = 4, maxBlockDepth = 5)
+    Vector(Y.invocationSource(Y.render(program), Some(method), arguments, limits),
+      Y.invocationSource(Y.renderObserved(program), Some(method), arguments, limits)).foreach { code =>
+      assert(code.contains("method=" + method.index + ", arguments=[-0.0, True]"))
+      assert(code.contains("max_steps=63, max_commands=3, max_call_depth=4, max_block_depth=5"))
+      assert(code.trim.endsWith("__import__(\"json\").dumps(_java_result, allow_nan=False)"))
+    }
+  }
+
   test("Java expression observations distinguish real reads from update and assignment bookkeeping") {
     val program = P.adapt(javaProgram("int x=1; x += x++; Turtle.forward(x);")).toOption.get
     val recorded = T.runVmTraced(program)
@@ -2378,5 +2454,175 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assert(Y.renderObserved(program, 10000).source.contains("if len(_observations) >= 10000:"))
     Vector(Int.MinValue, -1, 10001, Int.MaxValue).foreach(limit =>
       intercept[IllegalArgumentException](Y.renderObserved(program, limit)))
+  }
+
+  private def evidenceReport(steps: Int = 5, commands: ujson.Value = ujson.Arr(ujson.Arr("forward", 1)),
+      observations: ujson.Value = ujson.Arr(ujson.Obj("invocation" -> 0, "method" -> 0,
+        "path" -> ujson.Arr("body", "0", "argument", "0"),
+        "value" -> ujson.Obj("kind" -> "int", "value" -> "1")))): ujson.Value =
+    ujson.Obj("execution" -> ujson.Obj("status" -> "Completed", "problem" -> ujson.Null,
+      "commands" -> commands, "steps" -> steps), "observations" -> observations, "truncated" -> false)
+
+  private def evidenceField(value: ujson.Value, field: String, replacement: ujson.Value): ujson.Value =
+    ujson.Obj.from(value.obj.iterator.map((key, old) => key -> (if key == field then replacement else old)))
+
+  test("Java execution evidence exposes source locations only for the exact invocation context") {
+    val program = P.adapt(javaProgram("Turtle.forward(1);")).toOption.get
+    val prepared = Evidence.prepare(program)
+    val report = evidenceReport()
+    val verified = prepared.verify(report.render(), prepared.context)
+    assertEquals(verified.execution, T.runVm(program))
+    assertEquals(verified.events, T.runVmTraced(program).trace.events)
+    verified.events.foreach { event =>
+      assert(verified.locate(event.id, prepared.context).isDefined)
+      assert(verified.locatedSlice(event.id, prepared.context).isDefined)
+    }
+    assertEquals(verified.locate(-1, prepared.context), None)
+    val changed = Vector(prepared.context.copy(source = prepared.context.source + " "),
+      prepared.context.copy(method = Some(R.MethodId(999))),
+      prepared.context.copy(arguments = Vector(E.Value.IntValue(1))),
+      prepared.context.copy(limits = T.Limits(maxSteps = 50)),
+      prepared.context.copy(budget = J.Budget(maxEvents = 50)),
+      prepared.context.copy(budget = prepared.context.budget.copy(maxDependencies = 50)))
+    changed.foreach { context =>
+      intercept[IllegalArgumentException](prepared.verify(report.render(), context))
+      assertEquals(verified.locate(0, context), None)
+      assertEquals(verified.locatedSlice(0, context), None)
+    }
+    assertEquals(prepared.code, Y.invocationSource(Y.renderObserved(program), None, Vector.empty, T.Limits()))
+    intercept[IllegalArgumentException](Evidence.prepare(program, arguments = Vector(E.Value.IntValue(1))))
+  }
+
+  test("Java execution evidence rejects malformed or altered observation transcripts") {
+    val prepared = Evidence.prepare(P.adapt(javaProgram("Turtle.forward(1);")).toOption.get)
+    val report = evidenceReport()
+    val observed = report("observations")(0)
+    val changedObservations = Vector(
+      evidenceField(observed, "invocation", ujson.Num(1)),
+      evidenceField(observed, "method", ujson.Num(1)),
+      evidenceField(observed, "path", ujson.Arr("body", "0", "argument", "1")),
+      evidenceField(observed, "value", ujson.Obj("kind" -> "int", "value" -> "2")),
+      evidenceField(observed, "value", ujson.Obj("kind" -> "int", "value" -> 1)),
+      evidenceField(observed, "value", ujson.Obj("kind" -> "double", "value" -> "3ff0000000000000")),
+      evidenceField(observed, "value", ujson.Obj("kind" -> "bool", "value" -> true)),
+      ujson.Obj.from(observed.obj.iterator.toVector :+ ("unexpected" -> ujson.Null)))
+    val malformed = Vector[ujson.Value](ujson.Null, ujson.Arr(),
+      ujson.Obj.from(report.obj.iterator.filterNot(_._1 == "truncated")),
+      ujson.Obj.from(report.obj.iterator.toVector :+ ("unexpected" -> ujson.Null)),
+      evidenceField(report, "truncated", ujson.Bool(true)),
+      evidenceField(report, "truncated", ujson.Str("false")),
+      evidenceField(report, "execution", ujson.Str(report("execution").render())),
+      evidenceField(report, "observations", ujson.Obj()),
+      evidenceField(report, "observations", ujson.Arr()),
+      evidenceField(report, "observations", ujson.Arr(observed, observed)),
+      evidenceReport(steps = 6), evidenceReport(commands = ujson.Arr(ujson.Arr("forward", 2)))) ++
+      changedObservations.map(observed => evidenceField(report, "observations", ujson.Arr(observed)))
+    malformed.foreach(value => intercept[IllegalArgumentException](prepared.verify(value.render(), prepared.context)))
+    val oversized = evidenceField(report, "observations", ujson.Arr("x" * 4194305))
+    intercept[IllegalArgumentException](prepared.verify(oversized.render(), prepared.context))
+    Vector(null, "[" * 10000 + "]" * 10000, "{", "\"\\", "{\"execution\":undefined}").foreach(raw =>
+      intercept[IllegalArgumentException](prepared.verify(raw, prepared.context)))
+    assertEquals(prepared.verify(report.render(), prepared.context).execution.status, T.Status.Completed)
+  }
+
+  test("Java evidence comparison preserves signed zero in commands and typed invocation arguments") {
+    val program = P.adapt(javaProgram("", "static void draw(double x){Turtle.forward(-0.0);}")).toOption.get
+    val method = Some(Y.render(program).methods("draw"))
+    val raw = """{"execution":{"status":"Completed","problem":null,"commands":[["forward",-0.0]],"steps":6},"observations":[{"invocation":0,"method":0,"path":["body","0","argument","0","0"],"value":{"kind":"double","value":"0000000000000000"}},{"invocation":0,"method":0,"path":["body","0","argument","0"],"value":{"kind":"double","value":"8000000000000000"}}],"truncated":false}"""
+    val report = ujson.read(raw)
+    val prepared = Evidence.prepare(program, method, Vector(E.Value.DoubleValue(-0.0)))
+    val verified = prepared.verify(raw, prepared.context)
+    assertEquals(1.0 / verified.execution.commands.head.value, Double.NegativeInfinity)
+    intercept[IllegalArgumentException](prepared.verify(
+      evidenceField(report, "execution", evidenceField(report("execution"), "commands", ujson.Arr(ujson.Arr("forward", 0.0)))).render(), prepared.context))
+    Vector(E.Value.DoubleValue(0.0), E.Value.IntValue(0), E.Value.BooleanValue(false)).foreach { argument =>
+      intercept[IllegalArgumentException](prepared.verify(raw, prepared.context.copy(arguments = Vector(argument))))
+    }
+    val nan = Evidence.prepare(program, method, Vector(E.Value.DoubleValue(Double.NaN)))
+    assertEquals(nan.verify(raw, nan.context.copy(arguments = Vector(E.Value.DoubleValue(Double.NaN)))).execution.status,
+      T.Status.Completed)
+    val anotherNaN = java.lang.Double.longBitsToDouble(0x7ff8000000000042L)
+    assertEquals(nan.verify(raw, nan.context.copy(arguments = Vector(E.Value.DoubleValue(anotherNaN)))).execution.status,
+      T.Status.Completed)
+    intercept[IllegalArgumentException](nan.verify(raw, nan.context.copy(arguments = Vector(E.Value.DoubleValue(0.0)))))
+  }
+
+  private def evidenceFrom(recorded: J.RecordedExecution): ujson.Value = {
+    assert(!recorded.trace.truncated)
+    val observations = recorded.trace.completedExpressions.get.map { observed =>
+      val value = observed.value match {
+        case E.Value.IntValue(number) => ujson.Obj("kind" -> "int", "value" -> number.toString)
+        case E.Value.BooleanValue(flag) => ujson.Obj("kind" -> "bool", "value" -> flag)
+        case E.Value.DoubleValue(number) => ujson.Obj("kind" -> "double", "value" ->
+          (if number.isNaN then "nan" else "%016x".format(java.lang.Double.doubleToRawLongBits(number))))
+      }
+      ujson.Obj("invocation" -> observed.invocation, "method" -> observed.node.method.index,
+        "path" -> ujson.Arr.from(observed.node.path), "value" -> value)
+    }
+    val (status, problem) = recorded.execution.status match {
+      case T.Status.Completed => ("Completed", ujson.Null)
+      case T.Status.LimitExceeded => ("LimitExceeded", ujson.Null)
+      case T.Status.Cancelled => ("Cancelled", ujson.Null)
+      case T.Status.Failed(T.Failure.Evaluation(reason)) => ("Failed", ujson.Str(reason.toString))
+      case T.Status.Failed(reason) => ("Failed", ujson.Str(reason.toString))
+    }
+    val commands = recorded.execution.commands.map(command => ujson.Arr(
+      if command.command == R.TurtleCommand.Forward then "forward" else "right", command.value))
+    ujson.Obj("execution" -> ujson.Obj("status" -> status, "problem" -> problem,
+      "commands" -> ujson.Arr.from(commands), "steps" -> recorded.execution.steps),
+      "observations" -> ujson.Arr.from(observations), "truncated" -> false)
+  }
+
+  test("Java evidence preserves ordered repeated observations rather than their set") {
+    val program = P.adapt(javaProgram("int n=0;while(n<2){Turtle.forward(1);n++;}")).toOption.get
+    val prepared = Evidence.prepare(program)
+    val report = evidenceFrom(T.runVmTraced(program))
+    val observations = report("observations").arr.toVector
+    assert(observations.distinct.size < observations.size)
+    assertEquals(prepared.verify(report.render(), prepared.context).execution, T.runVm(program))
+    val repeated = observations.indexWhere(value => observations.count(_ == value) > 1)
+    val alterations = Vector(observations.reverse, observations.patch(repeated, Nil, 1),
+      observations.patch(repeated, Vector(observations(repeated)), 0))
+    alterations.foreach(values => intercept[IllegalArgumentException](prepared.verify(
+      evidenceField(report, "observations", ujson.Arr.from(values)).render(), prepared.context)))
+    val reorderedFields = ujson.Obj.from(report.obj.toVector.reverse)
+    assertEquals(prepared.verify(reorderedFields.render(), prepared.context).execution, T.runVm(program))
+  }
+
+  test("Java evidence verifies failed and limited prefixes without accepting a cancelled transcript") {
+    val programs = Vector(
+      P.adapt(javaProgram("Turtle.forward(1);int bad=1+(4/0);")).toOption.get -> T.Limits(),
+      P.adapt(javaProgram("Turtle.forward(1);Turtle.forward(1.0/0.0);")).toOption.get -> T.Limits(),
+      P.adapt(javaProgram("while(true){Turtle.forward(1);}")).toOption.get -> T.Limits(maxSteps = 30))
+    programs.foreach { (program, limits) =>
+      val recorded = T.runVmTraced(program, limits)
+      assert(recorded.execution.status != T.Status.Completed)
+      val report = evidenceFrom(recorded)
+      val prepared = Evidence.prepare(program, limits = limits)
+      assertEquals(prepared.verify(report.render(), prepared.context).execution, recorded.execution)
+      val cancelled = evidenceField(report, "execution", evidenceField(
+        evidenceField(report("execution"), "status", ujson.Str("Cancelled")), "problem", ujson.Null))
+      intercept[IllegalArgumentException](prepared.verify(cancelled.render(), prepared.context))
+    }
+  }
+
+  test("Java execution evidence never accepts a truncated VM prefix as a full observation stream") {
+    val program = P.adapt(javaProgram("Turtle.forward(1);")).toOption.get
+    Vector(J.Budget(maxEvents = 2), J.Budget(maxDependencies = 0)).foreach { budget =>
+      val prepared = Evidence.prepare(program, budget = budget)
+      intercept[IllegalArgumentException](prepared.verify(evidenceReport().render(), prepared.context))
+    }
+    val empty = Evidence.prepare(P.adapt(javaProgram("")).toOption.get)
+    assertEquals(empty.verify(evidenceReport(steps = 2, commands = ujson.Arr(), observations = ujson.Arr()).render(),
+      empty.context).execution.status, T.Status.Completed)
+  }
+
+  test("Java execution reports reject malformed deep structures before serializing them") {
+    val nested = (1 to 10000).foldLeft[ujson.Value](ujson.Null)((previous, _) => ujson.Arr(previous))
+    val report = evidenceReport()("execution")
+    Vector("status", "problem", "commands", "steps").foreach { field =>
+      intercept[IllegalArgumentException](Report.decode(evidenceField(report, field, nested), T.Limits()))
+    }
+    assertEquals(Report.decode(report, T.Limits()), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
   }
 }
