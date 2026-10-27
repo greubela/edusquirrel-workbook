@@ -3,22 +3,36 @@ package it.evadid.workbook.elements.interactionElements.programming.state
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{JavaTurtleEditingBridge, SnapTurtlePythonBridge}
 import scala.util.control.NonFatal
 import upickle.default.ReadWriter
 
-final case class ProgrammingTestProgram(source: String,
+private[evadid] final case class ProgrammingTestProgram(source: String,
     commandEntryPoint: Option[ProgrammingTestProgram.CommandEntryPoint] = None)
 
-object ProgrammingTestProgram {
+private[evadid] object ProgrammingTestProgram {
   final case class CommandEntryPoint(functionName: String, methods: Map[String, Int]) derives ReadWriter
 
-  private[state] def converted(result: => Either[String, ProgrammingTestProgram]): Either[String, ProgrammingTestProgram] =
-    try result catch {
-      case NonFatal(_) => Left("This program cannot be prepared for unit-test execution.")
+  def fromState(state: ProgrammingState): Either[String, ProgrammingTestProgram] =
+    try state match {
+      case value: ProgrammingStateJavaString =>
+        value.toJavaVmProgram.left.map(_.message).flatMap(program => fromExpression(program.root))
+      case ProgrammingStatePythonString(code) =>
+        if JavaTurtleEditingBridge.hasPythonMetadata(code) then
+          JavaTurtleEditingBridge.fromPython(code).flatMap(fromState)
+        else Right(ProgrammingTestProgram(code))
+      case value: ProgrammingStateSnapXml =>
+        if value.hasLegacyFloatingObjects then Left("Legacy extra blocks cannot be included in unit-test execution.")
+        else if JavaTurtleEditingBridge.hasSnapMetadata(value.snapXml) then
+          JavaTurtleEditingBridge.fromSnap(value).flatMap(fromState)
+        else SnapStateConversion.expressionForExecution(value.snapXml).flatMap(fromExpression)
+      case value: ProgrammingStateSnapScalaModel => fromState(value.toSnapXml)
+      case ProgrammingStateBeExpression(expression) => fromExpression(expression)
+    } catch {
+      case NonFatal(_) => Left("This program cannot be converted for unit-test execution.")
     }
 
-  private[state] def fromExpression(expression: BeExpression): Either[String, ProgrammingTestProgram] = expression match {
+  private def fromExpression(expression: BeExpression): Either[String, ProgrammingTestProgram] = expression match {
     case root: JavaTurtleVmPrograms.Root =>
       val exported = JavaTurtlePythonExport.render(JavaTurtleVmPrograms.fromRoot(root))
       Right(ProgrammingTestProgram(exported.source, Some(CommandEntryPoint(JavaTurtlePythonExport.EntryPoint,

@@ -11,7 +11,7 @@ import it.evadid.vm.test.{BeTestResult, ProgrammingTestRunner}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingTestProgram}
 import upickle.default.*
 
 import scala.concurrent.Future
@@ -28,7 +28,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
   override val gradingEntity = FeedbackEntity.TestEntity()
 
   override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
-    val evaluation = Future(state.prepareUnitTestProgram).flatMap {
+    val evaluation = Future(ProgrammingTestProgram.fromState(state)).flatMap {
       case Right(program) => ProgrammingTestRunner.execute(program, pythonTestCode, clients,
         publishProgramObservation && importance != GradingImportance.HIDDEN_TEST)
       case Left(message) => Future.successful(ProgrammingTestRunner.Result(BeTestResult.Error(message)))

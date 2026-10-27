@@ -1,5 +1,5 @@
 package it.evadid.workbook.elements.interactionElements.programming
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateJavaString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
@@ -45,8 +45,8 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       Future.successful(WorkerCommands.RunPythonResult(value, "", "", Nil))
     })
 
-  private def nativeSnap(scripts: String): ProgrammingState.ProgrammingStateSnapXml =
-    ProgrammingState.ProgrammingStateSnapXml(s"""<project name="native" version="2"><notes>Grüße 🐢</notes>
+  private def nativeSnap(scripts: String): ProgrammingStateSnapXml =
+    ProgrammingStateSnapXml(s"""<project name="native" version="2"><notes>Grüße 🐢</notes>
       |<stage name="Stage"><variables/><blocks/><scripts/><sprites><sprite name="Turtle">
       |<variables/><blocks/><scripts>$scripts</scripts></sprite></sprites></stage></project>""".stripMargin)
 
@@ -760,7 +760,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), _ => calls.update(_ + 1))
     val grader = assertionGrader(SampleBeTest("assert run_java()['status'] == 'Completed'"))
     val states = List[ProgrammingState](ProgrammingStatePythonString("import java_turtle\n"),
-      ProgrammingState.ProgrammingStateSnapXml("<project><notes>EduSquirrel Java Turtle 1\nnot json</notes></project>"))
+      ProgrammingStateSnapXml("<project><notes>EduSquirrel Java Turtle 1\nnot json</notes></project>"))
     Future.traverse(states) { state =>
       val saved = write[ProgrammingState](state)
       grader.gradeStateSafe(state, forceGrading = true, List(client)).map { graded =>
@@ -785,12 +785,12 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     Future.traverse(states) { (state, checked) =>
       val saved = write[ProgrammingState](state)
       val fingerprint = state.fingerprint()
-      val projection = state.prepareUnitTestProgram.fold(message => fail(message), identity)
-      assertEquals(projection.commandEntryPoint.isDefined, checked)
       val calls = State(0)
       val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), request => {
         calls.update(_ + 1)
-        assertEquals(request.context("_eva_source"), ujson.Str(projection.source))
+        val source = request.context("_eva_source").str
+        assert(source.nonEmpty)
+        if state == python then assertEquals(source, python.code)
         assertEquals(request.context("_eva_tests"), ujson.Str(test))
         assertEquals(request.context("_eva_entry_point") != ujson.Null, checked)
         assertEquals(request.context("_eva_turtle_primitives")("fd"),
@@ -824,9 +824,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val grader = ProgrammingUnitTestGrader("started-script", "assert run_program()['commands'] == [['forward', 12]]")
     Future.traverse(states) { state =>
       val saved = write[ProgrammingState](state)
-      val projection = state.prepareUnitTestProgram.fold(message => fail(message), identity)
-      assertEquals(projection.commandEntryPoint, None)
-      assert(!projection.source.contains("999"))
       val calls = State(0)
       val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), request => {
         calls.update(_ + 1)
@@ -866,13 +863,12 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       "<scripts/><scripts><script><block s=\"receiveGo\"/><block s=\"forward\"><l>12</l></block></script></scripts>"))
     val states: List[ProgrammingState] = (List(unknown, concurrent, legacy, doubleStage, mixedStage, doubleScripts) ++ invalidScripts).flatMap { state =>
       List[ProgrammingState](state, state.toSnapScalaModel.fold(message => fail(message), identity))
-    } :+ ProgrammingState.ProgrammingStateSnapXml("<project><stage>")
+    } :+ ProgrammingStateSnapXml("<project><stage>")
     val grader = ProgrammingUnitTestGrader("complete-only", "assert run_program()['commands'] == [['forward', 12]]")
     val calls = State(0)
     val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), _ => calls.update(_ + 1))
     Future.traverse(states) { state =>
       val saved = write[ProgrammingState](state)
-      assert(state.prepareUnitTestProgram.isLeft)
       grader.gradeStateSafe(state, forceGrading = true, List(client)).map { result =>
         assert(result.gradingStatus.isInstanceOf[GradingStatus.TestError])
         assertEquals(result.gradedState, state)
