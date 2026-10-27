@@ -1,6 +1,8 @@
 package it.evadid.vm.simulation.java
 
 import it.evadid.core.datastructures.state.State
+import it.evadid.vm.parsing.java.clean.JavaSourceMap
+import it.evadid.vm.parsing.java.clean.JavaSourceMap.{Position, SourceRange}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import scala.annotation.tailrec
@@ -33,7 +35,49 @@ object JavaTurtleTrace {
     def sourceNodes: Vector[SourceNode] = events.map(_.node).distinct
   }
 
-  case class Capture(events: Vector[Event], truncated: Boolean) {
+  final class LocatedEvent private[java](val event: Event, val range: SourceRange,
+      val start: Position, val end: Position, sourceMap: JavaSourceMap) {
+    def text: String = sourceMap.source.substring(range.start, range.end)
+  }
+
+  case class LocatedSlice(events: Vector[LocatedEvent], recordingTruncated: Boolean)
+
+  case class ExpressionObservation(invocation: Int, node: SourceNode, value: E.Value)
+
+  final class Capture private[java](val events: Vector[Event], val truncated: Boolean, origin: R.ResolvedSource) {
+    private val sourceMap = origin.typedSource.structure.parsedSource.sourceMap
+    private lazy val sourceLocations = JavaTurtleTraceSources.build(origin)
+
+    lazy val completedExpressions: Option[Vector[ExpressionObservation]] = sourceLocations.flatMap { locations =>
+      events.foldLeft(Option(Vector.empty[ExpressionObservation])) { (result, event) =>
+        for { previous <- result; entry <- locations.get(event.node) } yield event.kind match {
+          case Kind.Expression(value) => previous :+ ExpressionObservation(event.invocation, event.node, value)
+          case Kind.Read(_, value) if entry.isReadExpression => previous :+ ExpressionObservation(event.invocation, event.node, value)
+          case _ => previous
+        }
+      }
+    }
+
+    def locate(eventId: Int, currentSource: String): Option[LocatedEvent] =
+      if currentSource != sourceMap.source then None
+      else events.lift(eventId).filter(_.id == eventId).flatMap(locateEvent)
+
+    private def locateEvent(event: Event): Option[LocatedEvent] =
+      for {
+        locations <- sourceLocations
+        range <- locations.get(event.node).map(_.range)
+        start <- sourceMap.position(range.start)
+        end <- sourceMap.position(range.end)
+      } yield new LocatedEvent(event, range, start, end, sourceMap)
+
+    def locatedSlice(target: Int, currentSource: String, includeOrder: Boolean = false): Option[LocatedSlice] =
+      if currentSource != sourceMap.source then None
+      else backwardSlice(target, includeOrder).flatMap { slice =>
+        slice.events.foldLeft(Option(Vector.empty[LocatedEvent])) { (result, event) =>
+          for { previous <- result; next <- locateEvent(event) } yield previous :+ next
+        }.map(LocatedSlice(_, slice.recordingTruncated))
+      }
+
     /** Observed data/call dependencies and conservative prior-condition dependencies, not a minimal slice. */
     def backwardSlice(target: Int, includeOrder: Boolean = false): Option[Slice] = {
       val indexed = events.map(event => event.id -> event).toMap
@@ -59,12 +103,12 @@ object JavaTurtleTrace {
   private case class Recording(events: Vector[Event] = Vector.empty, dependencies: Int = 0,
       truncated: Boolean = false, nextInvocation: Int = 0, lastTurtle: Option[Int] = None)
 
-  private[java] final class Recorder(budget: Budget) {
+  private[java] final class Recorder(budget: Budget, origin: R.ResolvedSource) {
     private val state = State(Recording())
 
     def isRecording: Boolean = !state.now().truncated
 
-    def capture: Capture = { val current = state.now(); Capture(current.events, current.truncated) }
+    def capture: Capture = { val current = state.now(); new Capture(current.events, current.truncated, origin) }
 
     def invocation(): Int = {
       val current = state.now()
