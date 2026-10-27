@@ -11,7 +11,6 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
@@ -21,13 +20,13 @@ class CreateEmbroideryPreviewWorkbookSpec extends FunSuite {
   private def drawn(target: TurtleGraphic) = TurtleJsxGraphRenderer.buildScene[Double](Nil, target, 1e-7, gradeJumps = false).lines.filterNot(_.jump)
   private def matches(code: String, target: TurtleGraphic): Unit = {
     val state = ProgrammingStatePythonString(code)
-    val actual = state.toBeExpressionState.deriveTurtleCommands
+    val actual = state.toBeExpression.deriveTurtleCommands
     assert(actual.nonEmpty, "Reference program must parse and execute")
     val scene = TurtleJsxGraphRenderer.buildScene(actual, target, 1e-7, gradeJumps = false)
     val strokes = scene.lines.filterNot(_.jump)
     assert(strokes.nonEmpty)
     assert(strokes.forall(_.result == LineResult.Correct), strokes.filter(_.result != LineResult.Correct).toString)
-    val snapCommands = state.toSnapXml.toBeExpressionState.deriveTurtleCommands
+    val snapCommands = state.toSnapXml.toBeExpression.deriveTurtleCommands
     val snapScene = TurtleJsxGraphRenderer.buildScene(snapCommands, target, 1e-7, gradeJumps = false)
     assert(snapScene.lines.filterNot(_.jump).forall(_.result == LineResult.Correct),
       "The same supplied program must also execute after conversion to Snap:\n" +

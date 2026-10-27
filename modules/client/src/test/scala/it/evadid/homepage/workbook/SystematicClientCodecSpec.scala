@@ -15,11 +15,11 @@ class SystematicClientCodecSpec extends FunSuite {
   }
 
   test("feedback retains its original timestamp rather than recreating it during decode") {
-    val value = UltrichsNewCoolFeedback.empty("print('学校')").copy(
+    val value = BlockFeedbackResult.empty("print('学校')").copy(
       tests = Seq(PythonTestResult("test", false, "1", "2", Some("mismatch"))),
       displayHints = Seq("hint"), status = FeedbackStatus.FINISHED, timestampEpochMillis = 123456789L)
     roundTrip(value)
-    assertEquals(read[UltrichsNewCoolFeedback](write(value)).timestampEpochMillis, 123456789L)
+    assertEquals(read[BlockFeedbackResult](write(value)).timestampEpochMillis, 123456789L)
   }
 
   test("Snap project models retain nested scenes and constructor defaults") {
@@ -31,8 +31,6 @@ class SystematicClientCodecSpec extends FunSuite {
   test("line geometry supplies its numeric context on decode") {
     roundTrip(LineToRender(Point(1.0, 2.0), Point(3.0, 4.0), jump = true))
   }
-
-
 
   test("session export records expose their default codec without eager initialization cycles") {
     import it.evadid.core.datastructures.user.*

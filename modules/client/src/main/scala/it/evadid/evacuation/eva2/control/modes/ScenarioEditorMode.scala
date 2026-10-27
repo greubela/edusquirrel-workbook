@@ -16,7 +16,7 @@ import org.scalajs.dom.{Element, document}
 case class ScenarioEditorMode(
     readFloor: () => EvaFloorMap = () => ProgramState.instance.floorMap.currentValue,
     writeFloor: EvaFloorMap => Unit = floor => ProgramState.instance.floorMap.setValue(floor),
-    readSprites: () => EvaSpriteMap = () => ProgramState.spriteMap,
+    readSprites: () => EvaSpriteMap = () => ProgramState.instance.spriteMap.currentValue,
     redraw: () => Unit = () => Eva2Control.requestRedrawTiles(),
     canEdit: () => Boolean = () => true,
     maxDimension: Option[Int] = None) extends Eva2ControlMode {

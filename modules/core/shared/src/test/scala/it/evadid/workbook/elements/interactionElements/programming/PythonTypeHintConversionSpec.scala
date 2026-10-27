@@ -10,20 +10,19 @@ import it.evadid.vm.parsing.python.PythonParser
 import it.evadid.vm.types.BeDataType
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString}
 import munit.FunSuite
 
 class PythonTypeHintConversionSpec extends FunSuite {
   private def converted(source: String): ProgrammingStatePythonString =
-    ProgrammingStatePythonString(source).toBeExpressionState.toPython
+    ProgrammingStatePythonString(source).toBeExpression.toPython
 
   private def assertStablePython(state: ProgrammingStatePythonString): Unit = {
     var current = state
     (1 to 3).foreach { _ =>
-      current = current.toBeExpressionState.toPython
+      current = current.toBeExpression.toPython
       assertEquals(current.code.trim, state.code.trim)
       val restored = ProgrammingState.serializer.deserialize(
-        ProgrammingState.serializer.serialize(current.toBeExpressionState)
+        ProgrammingState.serializer.serialize(current.toBeExpression)
       )
       assertEquals(restored.toPython.code.trim, state.code.trim)
     }
@@ -126,7 +125,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     val stored = ProgrammingState.serializer.serialize(java)
     assert(java.isClassProgram)
     assert(java.toJavaVmProgram.isLeft)
-    intercept[IllegalArgumentException](java.toBeExpressionState)
+    intercept[IllegalArgumentException](java.toBeExpression)
     intercept[IllegalArgumentException](java.toPython)
     intercept[IllegalArgumentException](java.toSnapXml)
     assertEquals(java.code, source)
@@ -142,7 +141,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     val java = ProgrammingStateJavaString(source)
     assert(java.isClassProgram)
     assert(java.toJavaVmProgram.isLeft)
-    intercept[IllegalArgumentException](java.toBeExpressionState)
+    intercept[IllegalArgumentException](java.toBeExpression)
     intercept[IllegalArgumentException](java.toPython)
     intercept[IllegalArgumentException](java.toSnapXml)
     assertEquals(java.code, source)
@@ -153,7 +152,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     val java = ProgrammingStateJavaString(source)
     assert(java.isClassProgram)
     assert(java.toJavaVmProgram.isLeft)
-    intercept[IllegalArgumentException](java.toBeExpressionState)
+    intercept[IllegalArgumentException](java.toBeExpression)
     intercept[IllegalArgumentException](java.toPython)
     intercept[IllegalArgumentException](java.toSnapXml)
     assertEquals(java.code, source)
@@ -168,14 +167,14 @@ class PythonTypeHintConversionSpec extends FunSuite {
     val java = ProgrammingStateJavaString(source)
     assert(java.isClassProgram)
     assert(java.toJavaVmProgram.isLeft)
-    intercept[IllegalArgumentException](java.toBeExpressionState)
+    intercept[IllegalArgumentException](java.toBeExpression)
     intercept[IllegalArgumentException](java.toPython)
     intercept[IllegalArgumentException](java.toSnapXml)
     assertEquals(java.code, source)
   }
 
   test("a printer-generated instance method named main remains convertible") {
-    val original = ProgrammingStatePythonString("class Calculator:\n    def main(self, value: float) -> float:\n        return value\n").toBeExpressionState
+    val original = ProgrammingStatePythonString("class Calculator:\n    def main(self, value: float) -> float:\n        return value\n").toBeExpression
     val java = original.toJava
     assert(java.code.contains("//EvaEntityName("), clue = java.code)
     assert(java.isClassProgram)
@@ -196,7 +195,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
         |    def label(self, text: str) -> str:
         |        return text
         |""".stripMargin
-    val original = ProgrammingStatePythonString(source).toBeExpressionState
+    val original = ProgrammingStatePythonString(source).toBeExpression
     val java = original.toJava
     val roundTripped = java.toPython
 
@@ -209,7 +208,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     intercept[IllegalArgumentException](java.toSnapXml)
     assertEquals(roundTripped.code.trim, original.toPython.code.trim, clue = java.code)
 
-    val parsed = PythonParser.parsePythonWithDetails(roundTripped.code)
+    val parsed = PythonParser.default.parsePythonWithDetails(roundTripped.code)
     assertEquals(parsed.definedClasses.size, 1, clue = roundTripped.code)
     val standaloneNames = parsed.definedFunctions
       .map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase)).toSet

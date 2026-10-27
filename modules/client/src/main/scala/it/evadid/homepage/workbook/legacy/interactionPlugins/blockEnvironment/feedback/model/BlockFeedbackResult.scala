@@ -20,16 +20,8 @@ final case class PythonTestResult(
   message: Option[String]
 ) derives upickle.default.ReadWriter
 
-/**
- * Aggregated feedback object for block-Python programs.
- * This type is the main return value towards the UI.
- *
- * Contract notes:
- * - `tests` / `generalHints` are legacy/raw fields kept for compatibility.
- * - `displayHints`, `displayTests`, `allTestsPassed` are backend-prepared UI fields
- *   and should be preferred by new UIs.
- */
-final case class UltrichsNewCoolFeedback(
+/** Aggregated analysis data and presentation-ready feedback for block-Python programs. */
+final case class BlockFeedbackResult(
   summary: String,
   tests: Seq[PythonTestResult],
   generalHints: Seq[String],
@@ -66,11 +58,11 @@ final case class FeedbackDebug(
   rawRuntimeError: Option[String] = None
 ) derives upickle.default.ReadWriter
 
-object UltrichsNewCoolFeedback {
+object BlockFeedbackResult {
 
   /** Helper constructor with sensible defaults. */
-  def empty(rawPython: String = ""): UltrichsNewCoolFeedback =
-    UltrichsNewCoolFeedback(
+  def empty(rawPython: String = ""): BlockFeedbackResult =
+    BlockFeedbackResult(
       summary = "Es liegen noch keine Analysen vor.",
       tests = Seq.empty,
       generalHints = Seq.empty,

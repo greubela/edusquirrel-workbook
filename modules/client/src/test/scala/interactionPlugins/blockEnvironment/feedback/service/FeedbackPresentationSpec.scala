@@ -28,7 +28,7 @@ final class FeedbackPresentationSpec extends FunSuite:
         AppLanguage.English -> "Return the maximum value in the list.",
         AppLanguage.German -> "Gib den größten Wert der Liste zurück."
       )),
-      studentCodePython = BeStartProgram(PythonParser.parsePython(maximumSource)),
+      studentCodePython = BeStartProgram(PythonParser.default.parsePython(maximumSource)),
       pythonSourceOverride = Some(maximumSource),
       submissionNr = 1,
       config = BlockFeedbackConfig(enableUnitTests = true),
@@ -62,7 +62,7 @@ final class FeedbackPresentationSpec extends FunSuite:
 
   test("native block programs keep their block-model warnings") {
     val nativeRequest = request().copy(
-      studentCodePython = BeStartProgram(PythonParser.parsePython("print(1)")),
+      studentCodePython = BeStartProgram(PythonParser.default.parsePython("print(1)")),
       pythonSourceOverride = None
     )
     val warning = vmWarnings.head

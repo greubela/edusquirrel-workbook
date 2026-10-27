@@ -69,14 +69,14 @@ case class ControllableCanvasFloorMap(spriteMap: SpriteMap, matrix: Matrix[Sprit
       canvas.drawImageWithAlpha(pos.cPos.x * spriteMap.spriteSize, pos.cPos.y * spriteMap.spriteSize, sprite.opacityUpTo255, EvaImage.fromPath(spriteMap.getFullSpritePath(sprite.frameData)))
     })
 
-    if (ProgramState.config.showAnimations.getValue.value) {
+    if (ProgramState.instance.config.showAnimations.getValue.value) {
       // println("[WARN] CCFP doesnot implement draw animated persons!")
       persons.foreach(person => {
         if (personInformation.contains(person.id)) {
           val info = personInformation(person.id)
 
           val op = if (info.doesMoveInCurrentStep) 255 else 100
-          val animCount = ProgramState.graphicConfig.animationCounter.getValue.value
+          val animCount = ProgramState.instance.graphicConfig.animationCounter.getValue.value
           val frameData = if (info.toMoveInStep) person.sprite.getFrame(animCount, info.directionToMove) else person.sprite.getFrame(0, info.directionToMove)
           val path = EvaImage.fromPath(spriteMap.getFullSpritePath(frameData))
 

@@ -2,7 +2,6 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.state.Var
 
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{JavaTurtleEditingBridge, SnapXmlParser}
 

@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.SerializedException
@@ -9,8 +10,6 @@ import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.{ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.JavaTurtleEditingBridge
 import upickle.default.*
 

@@ -5,7 +5,6 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtl
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleSource, JavaTurtleVmPrograms}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation, JavaTurtleRuntime}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateJavaString
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.{Future, Promise}

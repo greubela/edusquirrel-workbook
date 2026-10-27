@@ -69,16 +69,13 @@ object TurtleStitchToBeExpressionParser {
     withVars(interner) {
       val primary = parseProjectWithLayout(TurtleStitchXmlLoader.load(xml))
       val chosen =
-        if hasSupportedStatements(primary.expression) || !xml.contains("<block") then primary
+        if SnapTurtlePythonBridge.hasSupportedStatements(primary.expression) || !xml.contains("<block") then primary
         else
           val recovered = recoverStatementsFromXmlWithLayout(xml)
-          if hasSupportedStatements(recovered.expression) then recovered else primary
+          if SnapTurtlePythonBridge.hasSupportedStatements(recovered.expression) then recovered else primary
       attachXmlBlockDefinitions(xml, chosen)
     }
   }
-
-  def hasSupportedStatements(expression: BeExpression): Boolean =
-    SnapTurtlePythonBridge.hasSupportedStatements(expression)
 
   private def attachXmlBlockDefinitions(xml: String, parsed: ParseWithLayout): ParseWithLayout = {
     val defs = parseBlockDefinitionsFromXml(xml)

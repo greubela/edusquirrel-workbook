@@ -8,7 +8,6 @@ import it.evadid.evacuation.core.utility.BufferedExecution
 import it.evadid.evacuation.eva2.control.floorMaps.{ControllableCanvasFloorMap, FloorMap}
 import it.evadid.evacuation.eva2.control.traits.TileMapController
 import it.evadid.evacuation.eva2.model.ProgramState
-import it.evadid.evacuation.eva2.model.ProgramState._
 import it.evadid.evacuation.html.HtmlHelper
 import org.scalajs.dom.{Element, document, window}
 
@@ -20,12 +19,12 @@ object Eva2Control extends EvaControl[Eva2ControlMode] {
 
   def adjustSpriteSize(): Unit = {
 
-    val sameSpritemaps = SpriteMapResourceIdentifier.availableSpriteMaps.filter(id => id.layout == ProgramState.spriteMap.id.layout)
-    val dest: Option[SpriteMapResourceIdentifier] = sameSpritemaps.filter(_.size * floorMatrix.dim.cols < window.innerWidth * 0.7).filter(_.size * floorMatrix.dim.rows < window.innerHeight * 0.8).maxByOption(_.size)
+    val sameSpritemaps = SpriteMapResourceIdentifier.availableSpriteMaps.filter(id => id.layout == ProgramState.instance.spriteMap.currentValue.id.layout)
+    val dest: Option[SpriteMapResourceIdentifier] = sameSpritemaps.filter(_.size * ProgramState.instance.floorMap.currentValue.floorMatrix.dim.cols < window.innerWidth * 0.7).filter(_.size * ProgramState.instance.floorMap.currentValue.floorMatrix.dim.rows < window.innerHeight * 0.8).maxByOption(_.size)
 
-    if(dest.isDefined && dest.get != ProgramState.spriteMap.id){
+    if(dest.isDefined && dest.get != ProgramState.instance.spriteMap.currentValue.id){
       ProgramState.instance.cache.loadSpriteMap(dest.get)
-      /*val newSpriteOp = SpriteMapResourceLoader.loadWithSize(spriteMap, destSize.get)
+      /*val newSpriteOp = SpriteMapResourceLoader.loadWithSize(ProgramState.instance.spriteMap.currentValue, destSize.get)
       newSpriteOp.foreach(_.foreach(newSpriteMap => ProgramState.instance.spriteMap.setValue(newSpriteMap)))*/
     }
 
@@ -43,10 +42,10 @@ object Eva2Control extends EvaControl[Eva2ControlMode] {
       // assert(ctrlFloorMap != null, "Error: Called ctrlFloorMap before initialization!!")
       redrawMainArea()
     } else {
-      //  val overlaysPersons = ProgramState.persons.map(person => (person.pos, person.sprite)).toList
+      //  val overlaysPersons = ProgramState.instance.floorMap.currentValue.persons.map(person => (person.pos, person.sprite)).toList
       val overlaysControl = controlMode.getOverlays().filter(_._1.isInRange)
 
-      ctrlFloorMap.redraw(overlaysControl, ProgramState.persons, controlMode.getDrawingInformation())
+      ctrlFloorMap.redraw(overlaysControl, ProgramState.instance.floorMap.currentValue.persons, controlMode.getDrawingInformation())
 
     }
     val diff = (System.currentTimeMillis() - timeStart) / 1000.0
@@ -56,7 +55,7 @@ object Eva2Control extends EvaControl[Eva2ControlMode] {
 
   def redrawMainArea(): Unit = {
 
-    //ctrlFloorMap = new ControllableHtmlFloorMap(spriteMap, floorMatrix.mapTiles(_.asInstanceOf[Sprite]), controlMode.mainAreaTileMapController)
+    //ctrlFloorMap = new ControllableHtmlFloorMap(ProgramState.instance.spriteMap.currentValue, ProgramState.instance.floorMap.currentValue.floorMatrix.mapTiles(_.asInstanceOf[Sprite]), controlMode.mainAreaTileMapController)
 
     redrawTiles()
   }
@@ -76,7 +75,7 @@ object Eva2Control extends EvaControl[Eva2ControlMode] {
   override def reloadMainArea(): Unit = {
     HtmlHelper.clearChildrenFromId("eva-main")
 
-    ctrlFloorMap = new ControllableCanvasFloorMap(spriteMap, floorMatrix.mapTiles(_.asInstanceOf[Sprite]), controlMode.mainAreaTileMapController)
+    ctrlFloorMap = new ControllableCanvasFloorMap(ProgramState.instance.spriteMap.currentValue, ProgramState.instance.floorMap.currentValue.floorMatrix.mapTiles(_.asInstanceOf[Sprite]), controlMode.mainAreaTileMapController)
     val mainDiv: Element = document.getElementById("eva-main")
     mainDiv.appendChild(ctrlFloorMap.floorMapElement)
 

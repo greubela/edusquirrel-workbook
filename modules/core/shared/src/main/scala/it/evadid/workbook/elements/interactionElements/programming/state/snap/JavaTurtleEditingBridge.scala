@@ -5,7 +5,6 @@ import it.evadid.vm.parsing.python.clean.PythonAstParserSimple
 import it.evadid.vm.parsing.python.clean.model.PyAST.*
 import it.evadid.vm.parsing.python.clean.model.PythonType.*
 import it.evadid.vm.simulation.java.JavaTurtleEvaluation as E
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 
 import scala.collection.mutable
@@ -561,7 +560,7 @@ object JavaTurtleEditingBridge {
   def fromSnap(state: ProgrammingStateSnapXml): Either[String, ProgrammingStateJavaString] = attempt {
     ensure(!state.hasLegacyFloatingObjects, "Legacy floating blocks cannot be converted without losing data.")
     bounded(state.snapXml)
-    fromCleanSnap(state.withProjectXml(ProgrammingStateSnapXmlHelper.removeGeneratedImages(state.snapXml)))
+    fromCleanSnap(state.copy(snapXml = SnapGeneratedImages.remove(state.snapXml)))
   }
 
   private def fromCleanSnap(state: ProgrammingStateSnapXml): ProgrammingStateJavaString = {

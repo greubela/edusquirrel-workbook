@@ -26,14 +26,14 @@ case class ChangeConfigurationMode() extends Eva2ControlMode {
     val control = document.createElement("div")
     control.setAttribute("id", "configuration-control")
 
-    control.appendChild(EvaHtmlFactory.createRadioButtonForm(ProgramState.config.neighbourhood))
-    control.appendChild(EvaHtmlFactory.createRadioButtonForm(ProgramState.config.strategy))
+    control.appendChild(EvaHtmlFactory.createRadioButtonForm(ProgramState.instance.config.neighbourhood))
+    control.appendChild(EvaHtmlFactory.createRadioButtonForm(ProgramState.instance.config.strategy))
 
-    control.appendChild(EvaHtmlFactory.createPropertyTickBox(ProgramState.config.showAnimations))
+    control.appendChild(EvaHtmlFactory.createPropertyTickBox(ProgramState.instance.config.showAnimations))
 
-    val func: SpriteMapResourceIdentifier => Boolean = _.layout == ProgramState.graphicConfig.spriteMapProperty.getValue.value.layout
-    println("cur Val:" + ProgramState.graphicConfig.spriteMapProperty.getValue.value)
-    control.appendChild(EvaHtmlFactory.createRadioButtonForm(ProgramState.graphicConfig.spriteMapProperty, func))
+    val func: SpriteMapResourceIdentifier => Boolean = _.layout == ProgramState.instance.graphicConfig.spriteMapProperty.getValue.value.layout
+    println("cur Val:" + ProgramState.instance.graphicConfig.spriteMapProperty.getValue.value)
+    control.appendChild(EvaHtmlFactory.createRadioButtonForm(ProgramState.instance.graphicConfig.spriteMapProperty, func))
     control
 
   }
