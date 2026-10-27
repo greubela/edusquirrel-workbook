@@ -19,14 +19,14 @@ object JavaTurtleExecutionReport {
     case _ => invalid("expected a finite number")
   }
 
-  private def parse(text: String): ujson.Value = {
-    if text == null || text.length > 1048576 then invalid("response is too large")
+  private[java] def parse(text: String, maxLength: Int = 1048576, maxDepth: Int = 3): ujson.Value = {
+    if text == null || text.length > maxLength then invalid("response is too large")
     val (depth, quoted, escaped) = text.foldLeft((0, false, false)) { case ((depth, quoted, escaped), char) =>
       if quoted then (depth, escaped || char != '"', !escaped && char == '\\')
       else char match {
         case '"' => (depth, true, false)
         case '{' | '[' =>
-          if depth >= 3 then invalid("response is too deeply nested")
+          if depth >= maxDepth then invalid("response is too deeply nested")
           (depth + 1, false, false)
         case '}' | ']' =>
           if depth <= 0 then invalid("unbalanced JSON")
