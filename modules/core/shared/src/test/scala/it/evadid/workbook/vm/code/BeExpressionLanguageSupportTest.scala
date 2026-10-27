@@ -2315,4 +2315,68 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assert(source.contains("if _call_depth >= max_call_depth:"))
     assert(source.contains("if depth > max_block_depth:"))
   }
+
+  test("Java expression observations distinguish real reads from update and assignment bookkeeping") {
+    val program = P.adapt(javaProgram("int x=1; x += x++; Turtle.forward(x);")).toOption.get
+    val recorded = T.runVmTraced(program)
+    val observations = recorded.trace.completedExpressions.get
+    assertEquals(observations.map(_.value), Vector(E.Value.IntValue(1), E.Value.IntValue(1), E.Value.IntValue(2)))
+    assertEquals(observations.map(_.node.path), Vector(
+      Vector("body", "0", "initial"), Vector("body", "1", "value"), Vector("body", "2", "argument", "0")))
+    assert(observations.forall(_.invocation == 0))
+
+    val updateRead = recorded.trace.events.find(event => event.node.path == Vector("body", "1", "value") &&
+      event.kind.isInstanceOf[J.Kind.Read]).get
+    val prefix = T.runVmTraced(program, budget = J.Budget(maxEvents = updateRead.id + 1))
+    assertEquals(prefix.trace.events.last, updateRead)
+    assert(prefix.trace.truncated)
+    assertEquals(prefix.trace.completedExpressions.get, observations.take(1))
+    assertEquals(T.runVmTraced(program, budget = J.Budget(maxEvents = 0)).trace.completedExpressions, Some(Vector.empty))
+  }
+
+  test("Java completed expression observations retain recursive invocation identity and source paths") {
+    val resolved = javaProgram("draw(2);", "static void draw(int n){if(n==0){return;} Turtle.forward(n);draw(n-1);}")
+    val recorded = T.runVmTraced(P.adapt(resolved).toOption.get)
+    val observations = recorded.trace.completedExpressions.get
+    assertEquals(observations.map(_.invocation).distinct, Vector(0, 1, 2, 3))
+    observations.foreach { observed =>
+      val event = recorded.trace.events.find(event => event.invocation == observed.invocation &&
+        event.node == observed.node && (event.kind match {
+          case J.Kind.Expression(value) => value == observed.value
+          case J.Kind.Read(_, value) => value == observed.value
+          case _ => false
+        })).get
+      assert(recorded.trace.locate(event.id, resolved.source).isDefined)
+    }
+    assertEquals(T.runVmTraced(P.adapt(javaProgram("")).toOption.get).trace.completedExpressions, Some(Vector.empty))
+  }
+
+  test("Java observed Python export is opt in and keeps the normal execution contract") {
+    val program = P.adapt(javaProgram("int x=1; for(int i=0;i<2;i++){draw(x++);}",
+      "static void draw(double length){Turtle.forward(length);}")).toOption.get
+    val normal = Y.render(program)
+    val observed = Y.renderObserved(program, 12)
+    assertEquals(observed.methods, normal.methods)
+    assert(!normal.source.contains("_observations"))
+    assert(!normal.source.contains("_invocation"))
+    assert(!normal.source.contains("import struct"))
+    assert(observed.source.contains("_observations = []"))
+    assert(observed.source.contains("_next_invocation = 0"))
+    assert(observed.source.contains("if len(_observations) >= 12:"))
+    assert(observed.source.contains("\"execution\": {\"status\": status"))
+    assert(observed.source.contains("\"truncated\": _observation_truncated"))
+    assert(observed.source.contains("_invocation = _enter()"))
+    assertEquals(normal.source.linesIterator.count(_.trim == "_gate()"),
+      observed.source.linesIterator.count(_.trim == "_gate()"))
+    val observations = T.runVmTraced(program).trace.completedExpressions.get
+    observations.foreach { observedValue =>
+      val path = observedValue.node.path.map(part => ujson.write(ujson.Str(part))).mkString("(", ", ", ",)")
+      val label = s"(${observedValue.node.method.index}, $path)"
+      assert(observed.source.contains(s"_value(_invocation, $label, lambda:"), clue = label)
+    }
+    assert(Y.renderObserved(program, 0).source.contains("if len(_observations) >= 0:"))
+    assert(Y.renderObserved(program, 10000).source.contains("if len(_observations) >= 10000:"))
+    Vector(Int.MinValue, -1, 10001, Int.MaxValue).foreach(limit =>
+      intercept[IllegalArgumentException](Y.renderObserved(program, limit)))
+  }
 }
