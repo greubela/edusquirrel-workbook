@@ -15,7 +15,7 @@ import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.parsing.java.clean.JavaSourceMap
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleVmBindings as V, JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
-import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleRuntime as T, JavaTurtleTrace as J}
+import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleExecutionReport as Report, JavaTurtleRuntime as T, JavaTurtleTrace as J}
 import it.evadid.vm.types.{BeChildRole, BeDataType, BeDataValueLiteral, BeScope, BeUseValueReference}
 import munit.FunSuite
 
@@ -2314,6 +2314,82 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assert(source.contains("if len(_commands) >= max_commands:"))
     assert(source.contains("if _call_depth >= max_call_depth:"))
     assert(source.contains("if depth > max_block_depth:"))
+  }
+
+  test("Java execution reports preserve object and text outcomes and exact double values") {
+    val commands = """[["forward",0.0],["forward",-0.0],["forward",5e-324],["forward",-5e-324],["right",1.7976931348623157e308],["right",-1.7976931348623157e308]]"""
+    val expected = Vector(0.0, -0.0, java.lang.Double.MIN_VALUE, -java.lang.Double.MIN_VALUE, Double.MaxValue, -Double.MaxValue)
+    val outcomes = Vector(("Completed", "null", T.Status.Completed), ("LimitExceeded", "null", T.Status.LimitExceeded),
+      ("Cancelled", "null", T.Status.Cancelled),
+      ("Failed", "\"DivisionByZero\"", T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero))),
+      ("Failed", "\"NonFiniteCommand\"", T.Status.Failed(T.Failure.NonFiniteCommand)))
+    outcomes.foreach { (status, problem, expectedStatus) =>
+      val raw = s"""{"status":"$status","problem":$problem,"commands":$commands,"steps":8}"""
+      Vector(ujson.read(raw), ujson.Str(raw)).foreach { value =>
+        val decoded = Report.decode(value, T.Limits())
+        assertEquals(decoded.status, expectedStatus)
+        assertEquals(decoded.steps, 8)
+        assertEquals(decoded.commands.map(_.command), Vector.fill(4)(R.TurtleCommand.Forward) ++ Vector.fill(2)(R.TurtleCommand.TurnRight))
+        assertEquals(decoded.commands.map(command => java.lang.Double.doubleToRawLongBits(command.value)),
+          expected.map(java.lang.Double.doubleToRawLongBits))
+      }
+    }
+    Vector("InvalidInvocation" -> T.Failure.InvalidInvocation, "InvalidLimits" -> T.Failure.InvalidLimits).foreach { (problem, failure) =>
+      val raw = s"""{"status":"Failed","problem":"$problem","commands":[],"steps":0}"""
+      Vector(ujson.read(raw), ujson.Str(raw)).foreach(value =>
+        assertEquals(Report.decode(value, T.Limits()), T.Execution(T.Status.Failed(failure), Vector.empty, 0)))
+    }
+  }
+
+  test("Java execution reports reject malformed fields values and inconsistent limits") {
+    val raw = """{"status":"Completed","problem":null,"commands":[["forward",1]],"steps":2}"""
+    val invalid = Vector("null", "[]", raw.dropRight(1), raw.replace("\"problem\":null,", ""),
+      raw.dropRight(1) + ",\"extra\":0}", raw.replace("Completed", "Unknown"), raw.replace("Completed", "Failed"),
+      raw.replace("null", "\"DivisionByZero\""), raw.replace("\"steps\":2", "\"steps\":0"),
+      raw.replace("\"steps\":2", "\"steps\":0.5"), raw.replace("\"steps\":2", "\"steps\":true"),
+      raw.replace("\"steps\":2", "\"steps\":100001"), raw.replace("\"steps\":2", "\"steps\":-1"),
+      raw.replace("forward", "turnRight"), raw.replace("[\"forward\",1]", "[\"forward\",1,2]"),
+      raw.replace("[\"forward\",1]", "[\"forward\",\"1\"]"), raw.replace("[\"forward\",1]", "[\"forward\",1e999]"))
+    invalid.foreach { text =>
+      val values = Vector[ujson.Value](ujson.Str(text)) ++ scala.util.Try(ujson.read(text)).toOption
+      values.foreach(value => intercept[IllegalArgumentException](Report.decode(value, T.Limits())))
+    }
+    Vector(Double.NaN, Double.PositiveInfinity, Double.NegativeInfinity).foreach { number =>
+      val value = ujson.Obj("status" -> "Completed", "problem" -> ujson.Null,
+        "commands" -> ujson.Arr(ujson.Arr("forward", ujson.Num(number))), "steps" -> 2)
+      intercept[IllegalArgumentException](Report.decode(value, T.Limits()))
+    }
+    Vector(ujson.read(raw), ujson.Str(raw)).foreach { value =>
+      Vector(T.Limits(maxSteps = 1), T.Limits(maxSteps = 0), T.Limits(maxCommands = 0),
+        T.Limits(maxCallDepth = 0), T.Limits(maxBlockDepth = 0)).foreach { limits =>
+        intercept[IllegalArgumentException](Report.decode(value, limits))
+      }
+    }
+  }
+
+  test("Java execution report text bounds ignore quoted delimiters and retain exact size boundaries") {
+    val raw = """{"status":"Completed","problem":null,"commands":[],"steps":2}"""
+    val padded = raw + " " * (1048576 - raw.length)
+    assertEquals(Report.decode(ujson.Str(padded), T.Limits()), T.Execution(T.Status.Completed, Vector.empty, 2))
+    Vector(padded + " ", "[" * 64 + "0" + "]" * 64, raw + "{}", "\"" + raw + "\"").foreach { text =>
+      intercept[IllegalArgumentException](Report.decode(ujson.Str(text), T.Limits()))
+    }
+    val quoted = """{"status":"Completed","problem":null,"commands":[["bad\\\"[[[[",1]],"steps":2}"""
+    val error = intercept[IllegalArgumentException](Report.decode(ujson.Str(quoted), T.Limits()))
+    assert(error.getMessage.contains("unknown turtle command"))
+  }
+
+  test("Java invocation builders serialize both export modes with typed arguments and limits") {
+    val program = P.adapt(javaProgram("", "static void draw(double size, boolean turn){if(turn){Turtle.forward(size);}}")).toOption.get
+    val method = program.root.methods.find(_.binding.originalName == "draw").get.binding.id
+    val arguments = Vector(E.Value.DoubleValue(-0.0), E.Value.BooleanValue(true))
+    val limits = T.Limits(maxSteps = 63, maxCommands = 3, maxCallDepth = 4, maxBlockDepth = 5)
+    Vector(Y.invocationSource(Y.render(program), Some(method), arguments, limits),
+      Y.invocationSource(Y.renderObserved(program), Some(method), arguments, limits)).foreach { code =>
+      assert(code.contains("method=" + method.index + ", arguments=[-0.0, True]"))
+      assert(code.contains("max_steps=63, max_commands=3, max_call_depth=4, max_block_depth=5"))
+      assert(code.trim.endsWith("__import__(\"json\").dumps(_java_result, allow_nan=False)"))
+    }
   }
 
   test("Java expression observations distinguish real reads from update and assignment bookkeeping") {

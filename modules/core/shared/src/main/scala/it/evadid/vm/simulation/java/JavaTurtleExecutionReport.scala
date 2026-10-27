@@ -2,6 +2,7 @@ package it.evadid.vm.simulation.java
 
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
+import scala.util.Try
 
 object JavaTurtleExecutionReport {
   private def invalid(detail: String): Nothing =
@@ -18,9 +19,32 @@ object JavaTurtleExecutionReport {
     case _ => invalid("expected a finite number")
   }
 
+  private def parse(text: String): ujson.Value = {
+    if text == null || text.length > 1048576 then invalid("response is too large")
+    val (depth, quoted, escaped) = text.foldLeft((0, false, false)) { case ((depth, quoted, escaped), char) =>
+      if quoted then (depth, escaped || char != '"', !escaped && char == '\\')
+      else char match {
+        case '"' => (depth, true, false)
+        case '{' | '[' =>
+          if depth >= 3 then invalid("response is too deeply nested")
+          (depth + 1, false, false)
+        case '}' | ']' =>
+          if depth <= 0 then invalid("unbalanced JSON")
+          (depth - 1, false, false)
+        case _ => (depth, false, false)
+      }
+    }
+    if depth != 0 || quoted || escaped then invalid("incomplete JSON")
+    Try(ujson.read(text)).getOrElse(invalid("malformed JSON"))
+  }
+
   def decode(value: ujson.Value, limits: T.Limits): T.Execution = {
+    val report = value match {
+      case ujson.Str(text) => parse(text)
+      case other => other
+    }
     val required = Set("status", "problem", "commands", "steps")
-    val fields = value match {
+    val fields = report match {
       case value: ujson.Obj if value.obj.keySet.toSet == required => value.obj
       case _ => invalid("expected status, problem, commands and steps")
     }
@@ -59,7 +83,7 @@ object JavaTurtleExecutionReport {
           status == T.Status.Failed(T.Failure.NonFiniteCommand)) then
           invalid("execution did not start")
     }
-    if value.render().length > 1048576 then invalid("response is too large")
+    if report.render().length > 1048576 then invalid("response is too large")
     T.Execution(status, commands, steps)
   }
 }
