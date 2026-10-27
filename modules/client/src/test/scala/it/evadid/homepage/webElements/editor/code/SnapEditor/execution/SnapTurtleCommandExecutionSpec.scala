@@ -1,6 +1,5 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.facades
 import it.evadid.distribution.clients.PythonExecutionClient
@@ -407,7 +406,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
         executed = python
         Future.successful(expected)
 
-    val state = ProgrammingStateSnapXmlHelper.fromProgram(
+    val state = ProgrammingStateSnapXml.fromProgram(
       BeProgram.fromPythonString("for i in range(1, 4):\n    forward(i * 10)")
     )
     new SnapTurtleCommandExecution(runner).commandsFor(state).map { actual =>

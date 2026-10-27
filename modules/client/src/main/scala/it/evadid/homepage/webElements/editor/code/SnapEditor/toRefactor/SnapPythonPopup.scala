@@ -14,7 +14,6 @@ import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasScript, SnapTurtlePythonBridge}
 
@@ -39,7 +38,7 @@ object SnapPythonPopup {
   private[SnapEditor] def applyPython(current: ProgrammingStateSnapXml, python: String): Either[String, ProgrammingStateSnapXml] = {
     val derived = SnapProgramDerivation.fromState(current)
     SnapTurtlePythonBridge.applyPython(python, derived.canvasLayout, current.snapXml)
-      .map(next => current.withProjectXml(next.snapXml))
+      .map(next => current.copy(snapXml = next.snapXml))
   }
 
   /** One Snap top-level script rendered as Python (plus canvas position). */
@@ -47,7 +46,7 @@ object SnapPythonPopup {
 
   /** Example signatures for the turtle allow-list (Python snake_case). */
   val OverviewExamples: List[String] =
-    SnapTurtlePythonBridge.Primitives.map(_.example) ++
+    SnapTurtleCatalog.Primitives.map(_.example) ++
       SnapTurtlePythonBridge.ControlFlowExamples ++
       SnapTurtlePythonBridge.VariableExamples ++
       SnapTurtlePythonBridge.UserFunctionExamples

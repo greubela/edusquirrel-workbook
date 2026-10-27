@@ -5,7 +5,6 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapProg
 import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPythonRequest}
 import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonHelpers
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 

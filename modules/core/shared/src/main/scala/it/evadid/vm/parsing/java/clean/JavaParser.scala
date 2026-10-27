@@ -6,6 +6,7 @@ import it.evadid.vm.code.errors.{ProgrammingConversionException, ProgrammingConv
 import it.evadid.vm.parsing.generic.abstractions.pipeline.GenericAstScanner
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.JavaLexer.*
+import it.evadid.vm.parsing.generic.CodeLexer.{LPAR, RPAR, LSQB, RSQB, LBRACE, RBRACE, DOT, COMMA, SEMI, LESS, GREATER, ASSIGN}
 import it.evadid.vm.parsing.java.clean.model.JavaType.*
 import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
 import it.evadid.vm.parsing.java.clean.JavaSourceMap.{Node, SourceRange}

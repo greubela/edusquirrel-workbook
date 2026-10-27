@@ -21,13 +21,9 @@ sealed trait TurtleGraphic derives ReadWriter{
   lazy val renderLines: Seq[Line[Double]] = renderMovements.filterNot(_.jump).map(_.line)
   lazy val renderAngles: Seq[TurtleGraphic.Angle] = trace._2
 
-
 }
 
 object TurtleGraphic {
-
-  type Line[T] = it.evadid.core.datastructures.geometry.Line[T]
-  val Line: it.evadid.core.datastructures.geometry.Line.type = it.evadid.core.datastructures.geometry.Line
 
   def apply[T: Fractional](lines: Seq[TurtleCommand[T]]): TurtleGraphic = {
     val res : Seq[TurtleCommand[Double]] = lines.map(_.asDouble)
@@ -145,8 +141,6 @@ object TurtleGraphic {
     (movements.toList, angles.toList)
   }
 
-
-
   /** A turtle graphic represented directly by an SVG path D string.
    * The SVG path is converted to turtle commands when needed.
    */
@@ -256,8 +250,5 @@ object TurtleGraphic {
       result.toList
     }
   }
-
-
-
 
 }

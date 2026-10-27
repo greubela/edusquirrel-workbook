@@ -350,7 +350,7 @@ class EvaEditorSpec extends EditorDomSuite {
     }
     val interaction = new WorkbookInteractionElementFull[ProgrammingState, String, String] {
       override val elementId = "pending-java-hint"
-      override val defaultValue: ProgrammingState = ProgrammingState.ProgrammingState.ProgrammingStateJavaString("class Drawing {")
+      override val defaultValue: ProgrammingState = ProgrammingStateJavaString("class Drawing {")
       override lazy val childrenOfThisElement = List.empty[WorkbookElement]
       override val associatedFactory = TextInteraction.factory
       override val scaffoldingElement = Some(new ProgrammingHintScaffolder[String](this, taskId))
@@ -388,7 +388,7 @@ class EvaEditorSpec extends EditorDomSuite {
   }
 
   test("fullscreen hints use the current Java answer and reject completions from a closed editor") {
-    import ProgrammingState.ProgrammingState.ProgrammingStateJavaString
+
     import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
     type Result = ScaffoldingResult[ProgrammingState, String]
     val requests = Var(Vector.empty[(ProgrammingState, Promise[Result])])

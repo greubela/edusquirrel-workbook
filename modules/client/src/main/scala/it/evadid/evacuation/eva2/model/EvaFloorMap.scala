@@ -2,7 +2,6 @@ package it.evadid.evacuation.eva2.model
 
 import it.evadid.core.datastructures.matrix.*
 import it.evadid.evacuation.core.graphic.sprites.traits.{FloorSprite, PersonSprite}
-import it.evadid.evacuation.eva2.model.ProgramState.spriteMap
 
 import scala.collection.immutable.HashSet
 import scala.collection.mutable
@@ -55,7 +54,7 @@ case class EvaFloorMap(floorMatrix: Matrix[FloorSprite], persons: Set[Person]) d
     unblockedReachable
   }
 
-  def extendMatrix(top: Boolean, left: Boolean, bottom: Boolean, right: Boolean, empty: FloorSprite = spriteMap.defaultEmpty): EvaFloorMap = {
+  def extendMatrix(top: Boolean, left: Boolean, bottom: Boolean, right: Boolean, empty: FloorSprite = ProgramState.instance.spriteMap.currentValue.defaultEmpty): EvaFloorMap = {
     var updated = floorMatrix
     if (top) updated = updated.addRow(_ => empty, 0)
     if (left) updated = updated.addColumn(_ => empty, 0)
@@ -107,7 +106,7 @@ case class EvaFloorMap(floorMatrix: Matrix[FloorSprite], persons: Set[Person]) d
       val setToHeight = math.max(necessaryHeight, floorMatrix.dim.rows)
       val setToDim = MatrixDimension(setToWidth, setToHeight)
 
-      floorMatrix.setToDimension(setToDim, _ => ProgramState.spriteMap.defaultEmpty)
+      floorMatrix.setToDimension(setToDim, _ => ProgramState.instance.spriteMap.currentValue.defaultEmpty)
     }
 
     def replaceTilesIntoNewMatrix(initMatrix: Matrix[FloorSprite]): Matrix[FloorSprite] = {
@@ -119,7 +118,7 @@ case class EvaFloorMap(floorMatrix: Matrix[FloorSprite], persons: Set[Person]) d
       })
 
       def getElementAtPosition(pos: MatrixPosition): FloorSprite = {
-        map.getOrElse(pos, initMatrix.get(pos).getOrElse(ProgramState.spriteMap.defaultEmpty))
+        map.getOrElse(pos, initMatrix.get(pos).getOrElse(ProgramState.instance.spriteMap.currentValue.defaultEmpty))
       }
 
       Matrix[FloorSprite](initMatrix.dim, (pim: PositionInMatrix) => getElementAtPosition(pim.cPos))

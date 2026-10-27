@@ -10,7 +10,7 @@ Both are configured through `PythonFrontendConfig`, which centralizes defaults s
 
 ## Data flow and location
 
-`PythonParser.parsePythonWithDetails(source)` normalizes raw source before
+`PythonParser.default.parsePythonWithDetails(source)` normalizes raw source before
 building VM expressions and returning definitions/symbol information. Callers
 should not normalize it a second time. Normalization handles line endings and
 indentation, builds a statement tree, and renders canonical source.

@@ -29,12 +29,12 @@ object Eva2MainApp {
     document.addEventListener("DOMContentLoaded", { (e: dom.Event) =>
       setupEva()
       window.setInterval(() => {
-        ProgramState.graphicConfig.vwWidth.setValue(window.innerWidth.toInt)
-        ProgramState.graphicConfig.vwHeight.setValue(window.innerHeight.toInt)
-        ProgramState.graphicConfig.updateCSSVariables()
+        ProgramState.instance.graphicConfig.vwWidth.setValue(window.innerWidth.toInt)
+        ProgramState.instance.graphicConfig.vwHeight.setValue(window.innerHeight.toInt)
+        ProgramState.instance.graphicConfig.updateCSSVariables()
 
-        ProgramState.graphicConfig.animationCounter.setValue(ProgramState.graphicConfig.animationCounter.getValue.value + 1)
-        if (ProgramState.config.showAnimations.getValue.value) Eva2Control.requestRedrawTiles()
+        ProgramState.instance.graphicConfig.animationCounter.setValue(ProgramState.instance.graphicConfig.animationCounter.getValue.value + 1)
+        if (ProgramState.instance.config.showAnimations.getValue.value) Eva2Control.requestRedrawTiles()
 
       }, 250)
     })

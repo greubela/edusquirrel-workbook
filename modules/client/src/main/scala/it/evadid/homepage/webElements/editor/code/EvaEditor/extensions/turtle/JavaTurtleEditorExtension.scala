@@ -9,8 +9,7 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.Tu
 import it.evadid.homepage.webElements.editor.code.JavaEditorSession
 import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution
 import it.evadid.vm.simulation.java.JavaTurtleRuntime
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateJavaString
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, *}
+import it.evadid.workbook.elements.interactionElements.programming.state.*
 
 import java.util.concurrent.CancellationException
 import scala.concurrent.Future

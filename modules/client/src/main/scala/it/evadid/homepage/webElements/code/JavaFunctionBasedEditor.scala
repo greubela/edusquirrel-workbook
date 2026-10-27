@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.code
 
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L.{label as labelTag, *}
@@ -19,11 +20,8 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import scala.util.Try
 import java.util.UUID
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateJavaString
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.model.qr.QrErrorCorrection.L.*
 import org.scalajs.dom.SVGSVGElement
-
 
 final class JavaFunctionBasedEditor
 (
@@ -68,7 +66,6 @@ final class JavaFunctionBasedEditor
   private val presentation = appearance.getOrElse(new EditorAppearance)
 
   override def dismissOnOutsideClick: Boolean = false
-
 
   private lazy val functionEditor = CodeMirrorEditor(
     logger,
@@ -232,7 +229,6 @@ final class JavaFunctionBasedEditor
       case Some(function) => showFunction(function, code)
       case None => showSource()
   }
-
 
   private def modalField(fieldLabel: String, fieldValue: Var[String]): Element =
     labelTag(
@@ -729,7 +725,6 @@ object JavaFunctionBasedEditor {
           case Nil => (stack, matches)
         case _ => (stack, matches)
     }._2
-
 
   def forEvaTab(tabLogger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Java"): EvaEditorTab = new EvaEditorTab {
     override val language = it.evadid.core.datastructures.language.AppLanguage.Java

@@ -7,7 +7,7 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.naming.NamingStyle
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
 
 /**
  * Turtle-subset Python ↔ Snap XML bridge for dual-mode editing.
@@ -17,22 +17,6 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
  * supplies matching previous script partitions.
  */
 object SnapTurtlePythonBridge {
-
-  /** One allow-listed primitive with Python syntax and Snap block selector. */
-  final case class TurtlePrimitive(
-      pythonName: String,
-      snapSelector: String,
-      example: String
-  ) derives upickle.default.ReadWriter
-
-  /**
-   * Canonical turtle subset. `pythonName` matches BeProgram→Python (SnakeCase);
-   * `snapSelector` is the Snap `<block s="...">` id.
-   */
-  val Primitives: List[TurtlePrimitive] =
-    SnapTurtleCatalog.Primitives.map { primitive =>
-      TurtlePrimitive(primitive.pythonName, primitive.snapSelector, primitive.example)
-    }
 
   val ControlFlowExamples: List[String] = List(
     "if condition:\n    ...\nelse:\n    ...",
@@ -51,18 +35,12 @@ object SnapTurtlePythonBridge {
     "def square(n):\n    forward(n)"
   )
 
-  /** Python / SnakeCase names accepted for seamless block roundtrips, including aliases. */
-  val AllowedPythonNames: Set[String] = SnapTurtleCatalog.AllowedPythonNames
-
   val AllowedSnapSelectors: Set[String] =
     SnapTurtleCatalog.AllowedSnapSelectors ++
       SnapControlFlow.ControlSelectors ++
       SnapControlFlow.VariableSelectors ++
       SnapControlFlow.ConditionSelectors ++
       SnapControlFlow.ArithmeticSelectors
-
-  private val snapSelectorByPythonName: Map[String, String] =
-    SnapTurtleCatalog.snapSelectorByPythonName
 
   /** Require whitespace after `block` so `<block-definition>` is not treated as a selector. */
   private val BlockSelectorPattern = """<block\s[^>]*\bs="([^"]+)"""".r
@@ -86,10 +64,10 @@ object SnapTurtlePythonBridge {
         case Left(message) => Left(message)
         case Right(statements) =>
           if statements.isEmpty && collectUserFunctionArities(program.fullProgram).isEmpty then
-            Right(ProgrammingStateSnapXmlHelper.empty)
+            Right(ProgrammingStateSnapXml.empty)
           else
             val layout = reconcileLayout(previousLayout, scriptStatementCount(statements))
-            Right(ProgrammingStateSnapXmlHelper.fromProgram(program, layout, previousXml))
+            Right(ProgrammingStateSnapXml.fromProgram(program, layout, previousXml))
     catch
       case e: Throwable =>
         val detail = Option(e.getMessage).filter(_.nonEmpty).getOrElse(e.getClass.getSimpleName)
@@ -205,7 +183,7 @@ object SnapTurtlePythonBridge {
 
   /** Snap `<block s>` selector for this call (maps Python snake_case → Snap id). */
   def snapSelectorOf(call: BeFunctionCall): String =
-    snapSelectorByPythonName.getOrElse(pythonName(call), pythonName(call))
+    SnapTurtleCatalog.snapSelectorByPythonName.getOrElse(pythonName(call), pythonName(call))
 
   /** Definition spec for a block this module creates from a Python `def`. */
   def customBlockSemanticSpecOf(defn: BeDefineFunction): String =

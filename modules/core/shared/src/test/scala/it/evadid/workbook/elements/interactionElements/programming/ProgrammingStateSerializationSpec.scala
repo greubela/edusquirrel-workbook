@@ -32,12 +32,12 @@ class ProgrammingStateSerializationSpec extends FunSuite {
   }
   test("checked Java expression states serialize their source and recover executable semantics") {
     val java = ProgrammingStateJavaString("\r\nclass Drawing { public static void main(String[] args) { Turtle.forward(12); } }\t\n")
-    val expression = java.toBeExpressionState
+    val expression = java.toBeExpression
     val restored = read[ProgrammingState](write[ProgrammingState](expression))
     assert(restored.isInstanceOf[ProgrammingStateBeExpression])
     assertEquals(restored.toJava, java)
     assertEquals(restored.fingerprint(), expression.fingerprint())
-    assertEquals(restored.toBeExpressionState.deriveTurtleCommands, expression.deriveTurtleCommands)
+    assertEquals(restored.toBeExpression.deriveTurtleCommands, expression.deriveTurtleCommands)
     val binary = readBinary[ProgrammingState](writeBinary[ProgrammingState](expression))
     assertEquals(binary.toJava, java)
   }

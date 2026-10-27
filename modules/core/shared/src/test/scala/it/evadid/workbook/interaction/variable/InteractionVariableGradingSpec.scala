@@ -222,7 +222,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val questions = Vector("Wo beginnt die Ausführung?", "Welche Strecke zeichnet dein Aufruf?")
     val raw = ujson.Obj("hints" -> ujson.Arr.from(questions.map(question =>
       ujson.Obj("question" -> s"  $question  ", "evidenceIds" -> ujson.Arr("task", "source-1"))))).render()
-    val f = new HintFixture(source.toBeExpressionState, response = _ => Future.successful(" \n" + raw + "\n "))
+    val f = new HintFixture(source.toBeExpression, response = _ => Future.successful(" \n" + raw + "\n "))
     f.generateFeedback(f.source).map { result =>
       assertEquals(f.context("source")("language").str, Java.name)
       assertEquals(f.context("source")("code").str, source.code)

@@ -4,7 +4,7 @@ import ParsingUtils.keepExpression
 import PythonClassParser.{ClassParseResult, ClassParserApi}
 import PythonLexerLike.{ParsedLine, findBodyIndent, skipBlankLines, toParsedLines}
 import PythonStatementParser.{BlockParseResult, NodeWithNext, StatementApi}
-import PythonSymbolTable.{CurrentlyKnownStructures, ParseContext}
+import PythonSymbolTable.{CurrentlyKnownStructures, KnownStructure, ParseContext}
 import it.evadid.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.*
@@ -24,9 +24,6 @@ class PythonParser(
                     normalizer: PythonNormalizer = PythonNormalizer.default,
                     config: PythonFrontendConfig = PythonFrontendConfig.default
                   ) {
-
-  type KnownStructure = PythonSymbolTable.KnownStructure
-  val KnownStructure: PythonSymbolTable.KnownStructure.type = PythonSymbolTable.KnownStructure
 
   def parsePython(source: String): BeSequence = parsePythonWithDetails(source).codeExpression
 
@@ -413,19 +410,5 @@ object PythonParser {
                                       codeExpression: BeSequence
                                     ) derives upickle.default.ReadWriter
 
-  type KnownStructure = PythonSymbolTable.KnownStructure
-  val KnownStructure: PythonSymbolTable.KnownStructure.type = PythonSymbolTable.KnownStructure
-
-  private object PythonParserInstance extends PythonParser(PythonNormalizer.default, PythonFrontendConfig.default)
-
-  def default: PythonParser = new PythonParser(PythonNormalizer.default, PythonFrontendConfig.default)
-
-  def parsePython(source: String): BeSequence =
-    PythonParserInstance.parsePython(source)
-
-  def parsePythonWithDetails(
-                              source: String,
-                              initialKnownStructures: Seq[KnownStructure] = PythonFrontendConfig.default.defaultKnownStructures
-                            ): CodeParsingResult =
-    PythonParserInstance.parsePythonWithDetails(source, initialKnownStructures)
+  lazy val default: PythonParser = new PythonParser(PythonNormalizer.default, PythonFrontendConfig.default)
 }

@@ -32,7 +32,7 @@ final class PythonSourceFeedbackSpec extends FunSuite:
     test(s"text Python does not run VM checks on its partial import: $name") {
       val request = BlockFeedbackRequest(
         exerciseText = LanguageMap.universalMap("Return the requested value."),
-        studentCodePython = BeStartProgram(PythonParser.parsePython(source)),
+        studentCodePython = BeStartProgram(PythonParser.default.parsePython(source)),
         pythonSourceOverride = Some(source),
         submissionNr = 1,
         config = config

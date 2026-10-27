@@ -109,7 +109,7 @@ two</options></input></inputs>
     assert(converted("<snapdata><project/><media/></snapdata>").model.project.nonEmpty)
   }
   test("existing canonical projects convert without depending on the executable subset") {
-    List(ProgrammingStateSnapXmlHelper.empty, ProgrammingStateSnapXmlHelper.mini,
+    List(ProgrammingStateSnapXml.empty, ProgrammingStateSnapXml.mini,
       ProgrammingStatePythonString("forward(10)\nright(90)\n").toSnapXml).foreach(s => assertRoundTrip(s.snapXml))
     val unsupported = "<project><stage><scripts><script><block s='newUnknownPrimitive'><l>opaque</l></block></script></scripts></stage></project>"
     assertRoundTrip(unsupported)

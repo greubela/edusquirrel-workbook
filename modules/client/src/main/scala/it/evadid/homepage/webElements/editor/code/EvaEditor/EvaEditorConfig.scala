@@ -8,12 +8,11 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCode
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import upickle.default.ReadWriter
 
 case class EvaEditorConfig(
     enabledLanguages: List[ProgrammingLanguage] = List(SnapLanguage, Python, Java),
-    snapConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.EmbroideryTesting,
+    snapConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.PythonCompatibleTesting,
     codeMirrorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Flowchart
 ) derives ReadWriter
 

@@ -60,7 +60,7 @@ object SnapTurtleStagePanel {
       Line[Double](Point[Double](100, 0), Point[Double](100, 100))
     ))
     val renderingSignal: Signal[Element] = editor.state.signal.map(curState => {
-      Try(TurtleJsxGraphRenderer.render(curState.toBeExpressionState.deriveTurtleCommands, exp))
+      Try(TurtleJsxGraphRenderer.render(curState.toBeExpression.deriveTurtleCommands, exp))
         .getOrElse(div("Preview unavailable for this program."))
     })
 

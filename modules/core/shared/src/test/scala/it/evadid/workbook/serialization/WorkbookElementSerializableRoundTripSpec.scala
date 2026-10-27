@@ -20,8 +20,7 @@ import it.evadid.workbook.elements.interactionElements.pixel.*
 import it.evadid.workbook.model.pixel.*
 import it.evadid.workbook.elements.interactionElements.blockchain.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.text.*
@@ -36,7 +35,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
   import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
   import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
   import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
-  import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.*
+  import it.evadid.workbook.elements.interactionElements.programming.state.*
   import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
   import it.evadid.workbook.elements.interactionElements.emailSimulator.*
   import it.evadid.workbook.elements.interactionElements.qr.*
@@ -204,8 +203,8 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
         val saved = original.serializerInteractionContent.serialize(source)
         assertEquals(restored.serializerInteractionContent.serialize(source), saved)
         assertEquals(restored.serializerInteractionContent.deserialize(saved), source)
-        assertEquals(ProgrammingState.fingerprint(restored.serializerInteractionContent.deserialize(saved)),
-          ProgrammingState.fingerprint(source))
+        assertEquals(restored.serializerInteractionContent.deserialize(saved).fingerprint(),
+          source.fingerprint())
       }
     }
   }

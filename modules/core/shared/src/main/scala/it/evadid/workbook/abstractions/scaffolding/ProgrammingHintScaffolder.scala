@@ -1,5 +1,6 @@
 package it.evadid.workbook.abstractions.scaffolding
 
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString}
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, Java, Python}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
@@ -11,8 +12,6 @@ import it.evadid.util.logging.BasicLogger
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookInteractionElementFull}
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.{ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try

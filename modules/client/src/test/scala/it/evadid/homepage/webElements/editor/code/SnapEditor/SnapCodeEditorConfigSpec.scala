@@ -57,8 +57,8 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     assertEquals(config.parts, SnapCodeEditorConfig.Testing.parts)
   }
 
-  test("EmbroideryTesting uses the python-compatible palette including stitches") {
-    val config = SnapCodeEditorConfig.EmbroideryTesting
+  test("PythonCompatibleTesting uses the python-compatible palette including stitches") {
+    val config = SnapCodeEditorConfig.PythonCompatibleTesting
     assertEquals(config.libraryTabs, SnapCodeEditorConfig.PythonCompatibleSnapCategories)
     assert(SnapCodeEditorConfig.pythonCompatibleBlockSelectors.contains("runningStitch"))
   }

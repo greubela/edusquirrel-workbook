@@ -15,9 +15,8 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoP
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, *}
+import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.{ProgrammingStateJavaString, ProgrammingStatePythonString}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import scala.util.Try
@@ -35,7 +34,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
   private[turtleStitch] def commandsForPreview(state: ProgrammingState): Try[List[TurtleCommand[Double]]] =
     Try(state match
       case java: ProgrammingStateJavaString => java.toLegacyTurtleCommands
-      case _ => state.toBeExpressionState.deriveTurtleCommands
+      case _ => state.toBeExpression.deriveTurtleCommands
     )
 
   def createInteractivePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic,
@@ -59,7 +58,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
       case ProgrammingEditorPalette.Default => SnapCodeEditorConfig.Testing
       case ProgrammingEditorPalette.PythonCompatibleSnap => SnapCodeEditorConfig.PythonCompatibleTesting
       case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
-      case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.EmbroideryTesting
+      case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.PythonCompatibleTesting
 
     val editorConfig = EvaEditorConfig(snapConfig = snapEditorConfig)
     def editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension(

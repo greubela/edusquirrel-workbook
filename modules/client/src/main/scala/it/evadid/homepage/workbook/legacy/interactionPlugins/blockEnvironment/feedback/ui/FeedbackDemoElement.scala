@@ -12,7 +12,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackExerciseRegistry
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis.PythonCodeMirrorDiagnostics
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.MlRouter
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{FeedbackTestDisplay, UltrichsNewCoolFeedback}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{FeedbackTestDisplay, BlockFeedbackResult}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRuntimeService
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.BlockFeedbackService
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
@@ -31,7 +31,7 @@ object FeedbackDemoElement:
 
   private val defaultLanguage: HumanLanguage = AppLanguage.English
 
-  private[feedback] def diagnosticsFor(feedback: UltrichsNewCoolFeedback): Seq[CodeMirrorEditor.Diagnostic] =
+  private[feedback] def diagnosticsFor(feedback: BlockFeedbackResult): Seq[CodeMirrorEditor.Diagnostic] =
     if feedback.allTestsPassed then Nil
     else
       val messages = feedback.debug.flatMap(_.rawRuntimeError).iterator ++
@@ -346,7 +346,7 @@ object FeedbackDemoElement:
 
     val isRunningVar = Var(false)
     val errorVar = Var(Option.empty[String])
-    val feedbackVar = Var(Option.empty[UltrichsNewCoolFeedback])
+    val feedbackVar = Var(Option.empty[BlockFeedbackResult])
     val eventLogVar = Var(Vector.empty[String])
     val submissions = new FeedbackSubmissionTracker
     var feedbackContext = Option.empty[(String, String)]
@@ -501,7 +501,7 @@ object FeedbackDemoElement:
             val status = FeedbackStatus.values.find(_.toString == statusStr).getOrElse(FeedbackStatus.FINISHED)
             feedbackContext = Some(currentContext)
             setEditorDiagnostics(restoredDiagnostics(fbD))
-            feedbackVar.set(Some(UltrichsNewCoolFeedback(
+            feedbackVar.set(Some(BlockFeedbackResult(
               summary = fbD.summary.asInstanceOf[String],
               tests = Seq.empty,
               generalHints = Seq.empty,
@@ -539,7 +539,7 @@ object FeedbackDemoElement:
         else span(part)
       }
 
-    def feedbackGlowClass(feedback: Option[UltrichsNewCoolFeedback], error: Option[String]): String =
+    def feedbackGlowClass(feedback: Option[BlockFeedbackResult], error: Option[String]): String =
       val base = "fd-card fd-feedback-card"
       if error.exists(_.trim.nonEmpty) then s"$base fd-feedback-card--active fd-feedback-card--bad"
       else
@@ -604,7 +604,7 @@ object FeedbackDemoElement:
           }
         }
 
-    def feedbackMessage(feedback: UltrichsNewCoolFeedback): String =
+    def feedbackMessage(feedback: BlockFeedbackResult): String =
       val hint = feedback.displayHints.headOption.filter(_.trim.nonEmpty)
       val firstFail = feedback.displayTests.find(!_.passed)
       val msg = firstFail.map(_.message).filter(_.trim.nonEmpty)
@@ -614,7 +614,7 @@ object FeedbackDemoElement:
           .map(info => s"${info.expectedLabel}: ${info.expected}\n${info.actualLabel}: ${info.actual}")
       hint.orElse(msg).orElse(expectedActualDetails).getOrElse(feedback.summary)
 
-    def feedbackHints(feedback: UltrichsNewCoolFeedback): Seq[String] =
+    def feedbackHints(feedback: BlockFeedbackResult): Seq[String] =
       val hints = feedback.displayHints.map(_.trim).filter(_.nonEmpty)
       if hints.nonEmpty then hints else Seq(feedback.summary)
 
@@ -692,7 +692,7 @@ object FeedbackDemoElement:
           }
         )
 
-    def debugMessage(feedback: UltrichsNewCoolFeedback, exerciseId: String): String =
+    def debugMessage(feedback: BlockFeedbackResult, exerciseId: String): String =
       val visibleTestByName: Map[String, String] =
         BlockFeedbackExerciseRegistry
           .byExerciseId

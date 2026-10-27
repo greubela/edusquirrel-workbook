@@ -1,13 +1,12 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingStateSnapXmlHelper
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapScalaModel, ProgrammingStateSnapXml}
 
 import com.raquo.airstream.ownership.{ManualOwner, Owner}
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{CanvasVisibility, SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml, ProgrammingStateSnapScalaModel}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import munit.FunSuite
 import org.scalajs.dom
@@ -117,7 +116,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   test("mount once, publish Snap edits once, and reload only external changes") {
-    val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
+    val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
     val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
@@ -147,18 +146,18 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   test("a fresh mount owner observes restores after closing and reopening") {
-    val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
+    val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
     val impl = new RecordingImpl
     val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
     val first = new ManualOwner
     editor.mountEditorInto(null, first)
     first.killSubscriptions()
-    state.set(ProgrammingStateSnapXmlHelper.empty)
+    state.set(ProgrammingStateSnapXml.empty)
     assertEquals(impl.loadRequests, 0)
     val second = new ManualOwner
     try {
       editor.mountEditorInto(null, second)
-      state.set(ProgrammingStateSnapXmlHelper.mini)
+      state.set(ProgrammingStateSnapXml.mini)
       assertEquals(impl.mounts, 2)
       assertEquals(impl.loadRequests, 1)
       assertEquals(impl.reloads, 1)
@@ -232,7 +231,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   test("Snap image regeneration commits only cleaned code and never reloads its own edit") {
-    val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
+    val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
     val impl = new RecordingImpl
     var edits = List.empty[ProgrammingState]
     val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
@@ -268,7 +267,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       editor.mountEditorInto(null, owner)
       def liveXml(image: Int) =
         s"<project><thumbnail>image-$image</thumbnail><costumes><costume image=\"authored\"/></costumes><stage><pentrails>trails-$image</pentrails><scripts>edited</scripts></stage></project>"
-      val cleaned = source.withProjectXml("<project><costumes><costume image=\"authored\"/></costumes><stage><scripts>edited</scripts></stage></project>").toSnapScalaModel.toOption.get
+      val cleaned = source.copy(snapXml = "<project><costumes><costume image=\"authored\"/></costumes><stage><scripts>edited</scripts></stage></project>").toSnapScalaModel.toOption.get
       impl.listener(liveXml(0))
       impl.listener(liveXml(1))
       assertEquals(state.now(), cleaned)
@@ -286,8 +285,8 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   test("empty-canvas diagnostics distinguish real blocks from empty project containers") {
-    assert(!CanvasVisibility.looksLikeProgramWithBlocks(ProgrammingStateSnapXmlHelper.empty.snapXml))
-    assert(CanvasVisibility.looksLikeProgramWithBlocks(ProgrammingStateSnapXmlHelper.mini.snapXml))
+    assert(!CanvasVisibility.looksLikeProgramWithBlocks(ProgrammingStateSnapXml.empty.snapXml))
+    assert(CanvasVisibility.looksLikeProgramWithBlocks(ProgrammingStateSnapXml.mini.snapXml))
     assert(CanvasVisibility.looksLikeProgramWithBlocks("<scripts><custom-block s=\"example\"/></scripts>"))
     assert(!CanvasVisibility.looksLikeProgramWithBlocks("<blocks><block-definition s=\"example\"/></blocks>"))
   }
@@ -361,9 +360,9 @@ class SnapCodeEditorSyncSpec extends FunSuite {
         state.set(initial.copy())
         assert(container.querySelector("canvas") eq canvas)
         assertEquals(impl.previewed, List(initial))
-        val moved = initial.withProjectXml(initial.snapXml.replace("x=\"10\"", "x=\"80\""))
+        val moved = initial.copy(snapXml = initial.snapXml.replace("x=\"10\"", "x=\"80\""))
         val legacy = moved.copy(legacyFloatingObjects = List("watcher\r\n\t "))
-        val changed = legacy.withProjectXml(legacy.snapXml.replace("<l>30</l>", "<l>40</l>"))
+        val changed = legacy.copy(snapXml = legacy.snapXml.replace("<l>30</l>", "<l>40</l>"))
         List(moved, legacy, changed, initial).foreach { next =>
           val previousCanvas = container.querySelector("canvas")
           state.set(next)
@@ -378,7 +377,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
 
   test("invalid drafts remove the old preview and restoring its source renders it again") {
     withRoot { container =>
-      val initial = ProgrammingStateSnapXmlHelper.mini
+      val initial = ProgrammingStateSnapXml.mini
       val state = Var[ProgrammingState](initial)
       val impl = new RecordingImpl
       val mounted = render(container, SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl).getDomElement())
@@ -398,7 +397,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
 
   test("identical pending previews share readiness and ignore invalidated mounts") {
     withRoot { container =>
-      val initial = ProgrammingStateSnapXmlHelper.mini
+      val initial = ProgrammingStateSnapXml.mini
       val state = Var[ProgrammingState](initial)
       val impl = new DeferredImpl
       val preview = SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl)
@@ -414,31 +413,31 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       first.unmount()
       impl.release()
       assertEquals(impl.previewed, Nil)
-      state.set(ProgrammingStateSnapXmlHelper.empty)
+      state.set(ProgrammingStateSnapXml.empty)
       val second = render(container, preview.getDomElement())
       try {
         impl.release()
-        assertEquals(impl.previewed, List(ProgrammingStateSnapXmlHelper.empty))
+        assertEquals(impl.previewed, List(ProgrammingStateSnapXml.empty))
       } finally second.unmount()
     }
   }
 
   test("pending previews render only the latest mounted state after runtime readiness") {
     withRoot { container =>
-      val initial = ProgrammingStateSnapXmlHelper.mini
+      val initial = ProgrammingStateSnapXml.mini
       val state = Var[ProgrammingState](initial)
       val impl = new DeferredImpl
       val preview = SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl)
       val mounted = render(container, preview.getDomElement())
       try {
         assertEquals(impl.previewed, Nil)
-        state.set(ProgrammingStateSnapXmlHelper.empty)
+        state.set(ProgrammingStateSnapXml.empty)
         impl.release()
-        assertEquals(impl.previewed, List(ProgrammingStateSnapXmlHelper.empty))
+        assertEquals(impl.previewed, List(ProgrammingStateSnapXml.empty))
         state.set(initial)
       } finally mounted.unmount()
       impl.release()
-      assertEquals(impl.previewed, List(ProgrammingStateSnapXmlHelper.empty))
+      assertEquals(impl.previewed, List(ProgrammingStateSnapXml.empty))
     }
   }
 
@@ -452,48 +451,48 @@ class SnapCodeEditorSyncSpec extends FunSuite {
 
   test("closing and reopening while Snap loads mounts only the current canvas") {
     withRoot { container =>
-      val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
+      val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
       val impl = new DeferredImpl
       val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
       val first = render(container, editor.getDomElement())
       first.unmount()
       val second = render(container, editor.getDomElement())
       try {
-        state.set(ProgrammingStateSnapXmlHelper.empty)
+        state.set(ProgrammingStateSnapXml.empty)
         impl.release()
         assertEquals(impl.renders, 1)
-        assertEquals(impl.current, Some(ProgrammingStateSnapXmlHelper.empty))
+        assertEquals(impl.current, Some(ProgrammingStateSnapXml.empty))
       } finally second.unmount()
     }
   }
 
   test("runtime failures produce a visible preview error and allow a later state to recover") {
     withRoot { container =>
-      val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
+      val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
       val impl = new DeferredImpl
       val mounted = render(container, SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl).getDomElement())
       try {
         impl.pending.head._2(new IllegalStateException("runtime failed"))
         assert(container.querySelector("[role=alert]").textContent.contains("runtime failed"))
-        state.set(ProgrammingStateSnapXmlHelper.mini.copy())
+        state.set(ProgrammingStateSnapXml.mini.copy())
         impl.release()
         assertEquals(container.querySelector("[role=alert]"), null)
-        assertEquals(impl.previewed, List(ProgrammingStateSnapXmlHelper.mini))
-        state.set(ProgrammingStateSnapXmlHelper.empty)
+        assertEquals(impl.previewed, List(ProgrammingStateSnapXml.mini))
+        state.set(ProgrammingStateSnapXml.empty)
         impl.pending.head._2(new IllegalStateException("another failure"))
         state.set(ProgrammingStateJavaString("public class Drawing {"))
         assertEquals(container.querySelector("[role=alert]"), null)
         assert(container.textContent.contains("Preview unavailable for this draft."))
-        state.set(ProgrammingStateSnapXmlHelper.mini)
+        state.set(ProgrammingStateSnapXml.mini)
         impl.release()
-        assertEquals(impl.previewed, List.fill(2)(ProgrammingStateSnapXmlHelper.mini))
+        assertEquals(impl.previewed, List.fill(2)(ProgrammingStateSnapXml.mini))
       } finally mounted.unmount()
     }
   }
 
   test("leaving the native keyboard publishes pending edits before another control reads the answer") {
     withRoot { container =>
-      val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
+      val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
       val impl = new RecordingImpl
       val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
       val mounted = render(container, editor.getDomElement())
@@ -511,7 +510,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
 
   test("the editor observes the language signal without remounting or changing the answer") {
     withRoot { container =>
-      val initial = ProgrammingStateSnapXmlHelper.mini
+      val initial = ProgrammingStateSnapXml.mini
       val state = Var[ProgrammingState](initial)
       val language = Var[HumanLanguage](German)
       val impl = new RecordingImpl
@@ -534,7 +533,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
 
   test("an unchanged project gets a fresh preview when the language changes") {
     withRoot { container =>
-      val initial = ProgrammingStateSnapXmlHelper.mini
+      val initial = ProgrammingStateSnapXml.mini
       val state = Var[ProgrammingState](initial)
       val language = Var[HumanLanguage](German)
       val impl = new RecordingImpl
@@ -557,7 +556,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
 
   test("late dictionaries cannot render an outdated editor language or update a closed mount") {
     withRoot { container =>
-      val state = Var[ProgrammingState](ProgrammingStateSnapXmlHelper.mini)
+      val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
       val language = Var[HumanLanguage](German)
       val impl = new DeferredImpl
       val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, language.signal)
@@ -575,7 +574,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
 
   test("late dictionaries cannot repaint an outdated preview language") {
     withRoot { container =>
-      val initial = ProgrammingStateSnapXmlHelper.mini
+      val initial = ProgrammingStateSnapXml.mini
       val state = Var[ProgrammingState](initial)
       val language = Var[HumanLanguage](German)
       val impl = new DeferredImpl
@@ -622,7 +621,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   test("legacy expression answers render through the typed Snap view without replacing their program") {
-    val original = ProgrammingStateSnapXmlHelper.mini.toBeExpressionState
+    val original = ProgrammingStateSnapXml.mini.toBeExpression
     val state = Var[ProgrammingState](original)
     val impl = new RecordingImpl
     val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)

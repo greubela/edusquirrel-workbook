@@ -27,7 +27,7 @@ class ProgrammingLanguageConversionSpec extends FunSuite {
     assertEquals(snap.toLanguage(SnapLanguage), snap)
   }
   test("semantic expression tasks retain their native block view") {
-    val source = ProgrammingStatePythonString("forward(12)").toBeExpressionState
+    val source = ProgrammingStatePythonString("forward(12)").toBeExpression
     assertEquals(source.associatedLanguage, SnapLanguage)
     assert(source.toLanguage(SnapLanguage).isInstanceOf[ProgrammingStateSnapXml])
   }

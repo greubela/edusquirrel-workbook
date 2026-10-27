@@ -102,10 +102,10 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
   }
 
   test("Java drawing comparison uses pen-up moves for disconnected targets without drawing their gaps") {
-    import it.evadid.core.datastructures.geometry.Point
+    import it.evadid.core.datastructures.geometry.{Line, Point}
     val target = TurtleGraphic.TurtleLineBasedProgram(List(
-      TurtleGraphic.Line(Point(0.0, 0.0), Point(10.0, 0.0)),
-      TurtleGraphic.Line(Point(20.0, 0.0), Point(30.0, 0.0))))
+      Line(Point(0.0, 0.0), Point(10.0, 0.0)),
+      Line(Point(20.0, 0.0), Point(30.0, 0.0))))
     assert(TurtleExecutionPanel.compare(target.toTurtleProgram.toList, target))
     assert(!TurtleExecutionPanel.compare(List(TurtleCommand[Double]("forward", List(30.0))), target))
   }
@@ -182,7 +182,7 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
     import TurtleExecutionPanel.Status
     val original = ProgrammingStateSnapXml(ProgrammingStateSnapXml.mini.snapXml, List(" watcher A "))
     val changed = original.copy(legacyFloatingObjects = List(" watcher B "))
-    assertNotEquals(ProgrammingState.fingerprint(original), ProgrammingState.fingerprint(changed))
+    assertNotEquals(original.fingerprint(), changed.fingerprint())
     val source = Var[ProgrammingState](original)
     var requests = Vector.empty[Promise[List[TurtleCommand[Double]]]]
     var stops = 0
@@ -198,7 +198,7 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
     source.set(original)
     assertEquals(panel.status.now(), Status.Idle)
     assertEquals(stops, 1)
-    assertEquals(ProgrammingState.fingerprint(source.now()), ProgrammingState.fingerprint(original))
+    assertEquals(source.now().fingerprint(), original.fingerprint())
     panel.run()
     val newest = requests.last
     requests.head.success(squareDrawing())
