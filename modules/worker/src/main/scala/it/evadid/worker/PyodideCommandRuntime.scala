@@ -51,6 +51,21 @@ object PyodideCommandRuntime {
     }
   }
 
+  // Pyodide needs undefined for None and Map for arbitrary dictionary keys.
+  private def pythonContextValue(value: ujson.Value): js.Any = value match {
+    case ujson.Null => js.undefined
+    case ujson.Str(text) => text
+    case ujson.Num(number) =>
+      require(number.isFinite, "Python context contains a non-finite number")
+      number
+    case ujson.Bool(flag) => flag
+    case ujson.Arr(values) => values.map(pythonContextValue).toJSArray
+    case ujson.Obj(fields) =>
+      new js.Map[String, js.Any](fields.toList.map { (key, value) =>
+        js.Tuple2(key, pythonContextValue(value))
+      }.toJSArray)
+  }
+
   private def execute(request: RunPythonRequest, logger: Logger): Future[RunPythonResult] = {
     load().flatMap { pyodide =>
       var stdout = Vector.empty[String]
@@ -77,10 +92,9 @@ object PyodideCommandRuntime {
       }
       val globals = namespace.get
       request.context.foreach { (key, value) =>
-        // toPy converts nested JSON arrays and objects into Python lists/dictionaries.
-        val converted = pyodide.toPy(js.JSON.parse(ujson.write(value)))
-        globals.set(key, converted)
-        if (converted != null && !js.isUndefined(converted) && js.typeOf(converted.destroy) == "function") converted.destroy()
+        val converted = pyodide.toPy(pythonContextValue(value))
+        try globals.set(key, converted)
+        finally if (converted != null && !js.isUndefined(converted) && js.typeOf(converted.destroy) == "function") converted.destroy()
       }
       registeredModules.foreach { module =>
         pyodide.unregisterJsModule(module)

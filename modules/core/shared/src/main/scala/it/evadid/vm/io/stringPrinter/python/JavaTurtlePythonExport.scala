@@ -1,12 +1,15 @@
 package it.evadid.vm.io.stringPrinter.python
 
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
+import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E}
 import it.evadid.vm.simulation.java.JavaTurtleRuntime.Limits
+import it.evadid.vm.simulation.java.JavaTurtleTrace.SourceNode
 
 object JavaTurtlePythonExport {
   val EntryPoint = "java_turtle_run"
 
   final case class Export(source: String, methods: Map[String, R.MethodId])
+  final case class ObservedExport(source: String, methods: Map[String, R.MethodId])
 
   def doubleLiteral(value: Double): String =
     if value.isNaN then "float(\"nan\")"
@@ -19,8 +22,37 @@ object JavaTurtlePythonExport {
     }
 
   // Keep Java arithmetic and execution limits out of the existing Python/Snap printers.
-  def render(program: P.Program): Export = {
-    val writer = new Writer
+  def render(program: P.Program): Export = render(program, None)
+
+  def renderObserved(program: P.Program, maxObservations: Int = 4096): ObservedExport = {
+    require(maxObservations >= 0 && maxObservations <= 10000, "Invalid observation budget.")
+    val result = render(program, Some(maxObservations))
+    ObservedExport(result.source, result.methods)
+  }
+
+  def invocationSource(exported: Export, method: Option[R.MethodId], arguments: Vector[E.Value], limits: Limits): String =
+    invocationSource(exported.source, method, arguments, limits)
+
+  def invocationSource(exported: ObservedExport, method: Option[R.MethodId], arguments: Vector[E.Value], limits: Limits): String =
+    invocationSource(exported.source, method, arguments, limits)
+
+  private def invocationSource(source: String, method: Option[R.MethodId], arguments: Vector[E.Value], limits: Limits): String = {
+    val encodedSource = ujson.Str(source).render()
+    val target = method.fold("None")(_.index.toString)
+    val values = arguments.map {
+      case E.Value.IntValue(value) => value.toString
+      case E.Value.DoubleValue(value) => doubleLiteral(value)
+      case E.Value.BooleanValue(value) => if value then "True" else "False"
+    }.mkString("[", ", ", "]")
+    s"""_java_namespace = {}
+exec($encodedSource, _java_namespace, _java_namespace)
+_java_result = _java_namespace["$EntryPoint"](method=$target, arguments=$values, max_steps=${limits.maxSteps}, max_commands=${limits.maxCommands}, max_call_depth=${limits.maxCallDepth}, max_block_depth=${limits.maxBlockDepth})
+__import__("json").dumps(_java_result, allow_nan=False)
+"""
+  }
+
+  private def render(program: P.Program, maxObservations: Option[Int]): Export = {
+    val writer = new Writer(maxObservations)
     writer.runtime()
     program.root.methods.foreach(writer.method)
     writer.invocation(program.root)
@@ -45,7 +77,8 @@ object JavaTurtlePythonExport {
     case R.BinaryOperator.NotEqual => s"($left != $right)"
   }
 
-  private def expression(value: X.Expression): String = {
+  private def expression(value: X.Expression, node: Option[SourceNode]): String = {
+    def child(index: Int): Option[SourceNode] = node.map(_.child(index.toString))
     val body = value.node match {
       case X.Node.IntLiteral(number) => number.toString
       case X.Node.DoubleLiteral(number) => doubleLiteral(number)
@@ -56,22 +89,28 @@ object JavaTurtlePythonExport {
         val before = if prefix then "True" else "False"
         val floating = if bound.valueType == R.ValueType.DoubleValue then "True" else "False"
         s"_update(${variable(bound)}, $delta, $before, $floating)"
-      case X.Node.Group(inner) => expression(inner)
-      case X.Node.Widen(inner) => s"float(${expression(inner)})"
+      case X.Node.Group(inner) => expression(inner, child(0))
+      case X.Node.Widen(inner) => s"float(${expression(inner, child(0))})"
       case X.Node.Unary(operator, operand) =>
-        val inner = expression(operand)
+        val inner = expression(operand, child(0))
         operator match {
           case R.UnaryOperator.Plus => inner
           case R.UnaryOperator.Negate => if value.valueType == R.ValueType.DoubleValue then s"(-$inner)" else s"_int32(-$inner)"
           case R.UnaryOperator.Not => s"(not $inner)"
         }
       case X.Node.Binary(operator, left, right) =>
-        arithmetic(operator, expression(left), expression(right), left.valueType == R.ValueType.DoubleValue || right.valueType == R.ValueType.DoubleValue)
+        arithmetic(operator, expression(left, child(0)), expression(right, child(1)), left.valueType == R.ValueType.DoubleValue || right.valueType == R.ValueType.DoubleValue)
       case X.Node.ShortCircuit(operator, left, right) =>
         val token = if operator == R.ShortCircuitOperator.And then "and" else "or"
-        s"(${expression(left)} $token ${expression(right)})"
+        s"(${expression(left, child(0))} $token ${expression(right, child(1))})"
     }
-    s"_value(lambda: $body)"
+    node match {
+      case None => s"_value(lambda: $body)"
+      case Some(node) =>
+        val path = node.path.map(part => ujson.write(ujson.Str(part))).mkString("(", ", ", ",)")
+        val label = s"(${node.method.index}, $path)"
+        s"_value(_invocation, $label, lambda: $body)"
+    }
   }
 
   private def assignment(operator: R.AssignmentOperator, left: String, right: String, floating: Boolean): String = operator match {
@@ -83,7 +122,7 @@ object JavaTurtlePythonExport {
     case R.AssignmentOperator.Remainder => arithmetic(R.BinaryOperator.Remainder, left, right, floating)
   }
 
-  private class Writer {
+  private class Writer(maxObservations: Option[Int]) {
     private val output = new StringBuilder
     private var indent = 0
 
@@ -100,19 +139,51 @@ object JavaTurtlePythonExport {
     }
 
     def runtime(): Unit = {
+      val observationState = maxObservations.fold("")(_ => """    import struct as _struct
+    _observations = []
+    _observation_truncated = False
+    _next_invocation = 0
+""")
+      val report = "{\"status\": status, \"problem\": problem, \"commands\": _commands, \"steps\": _steps}"
+      val result = maxObservations.fold(report)(_ =>
+        s"{\"execution\": $report, \"observations\": _observations, \"truncated\": _observation_truncated}")
+      val evaluate = maxObservations.fold("""    def _value(evaluate):
+        _gate()
+        return evaluate()
+""") { limit => s"""    def _value(invocation, node, evaluate):
+        nonlocal _observation_truncated
+        _gate()
+        value = evaluate()
+        if len(_observations) >= $limit:
+            _observation_truncated = True
+        else:
+            if type(value) is bool:
+                encoded = {"kind": "bool", "value": value}
+            elif type(value) is int:
+                encoded = {"kind": "int", "value": str(value)}
+            else:
+                encoded = {"kind": "double", "value": "nan" if _math.isnan(value) else _struct.pack(">d", value).hex()}
+            _observations.append({"invocation": invocation, "method": node[0], "path": list(node[1]), "value": encoded})
+        return value
+""" }
+      val invocationCounter = maxObservations.fold("")(_ => ", _next_invocation")
+      val invocationResult = maxObservations.fold("")(_ => """        invocation = _next_invocation
+        _next_invocation += 1
+        return invocation
+""")
       output.append(s"""def $EntryPoint(method=None, arguments=(), *, max_steps=${Limits.MaxSteps}, max_commands=${Limits.MaxCommands}, max_call_depth=${Limits.MaxCallDepth}, max_block_depth=${Limits.MaxBlockDepth}, is_cancelled=lambda: False):
     import math as _math
     _commands = []
     _steps = 0
     _call_depth = 0
-
+${observationState}
     class _Stop(Exception):
         def __init__(self, status, problem=None):
             self.status = status
             self.problem = problem
 
     def _result(status, problem=None):
-        return {"status": status, "problem": problem, "commands": _commands, "steps": _steps}
+        return $result
 
     def _gate():
         nonlocal _steps
@@ -122,10 +193,7 @@ object JavaTurtlePythonExport {
             raise _Stop("LimitExceeded")
         _steps += 1
 
-    def _value(evaluate):
-        _gate()
-        return evaluate()
-
+${evaluate}
     def _int32(value):
         return (value + 2147483648) % 4294967296 - 2147483648
 
@@ -159,12 +227,12 @@ object JavaTurtlePythonExport {
         return _math.fmod(left, right)
 
     def _enter():
-        nonlocal _call_depth
+        nonlocal _call_depth$invocationCounter
         _gate()
         if _call_depth >= max_call_depth:
             raise _Stop("LimitExceeded")
         _call_depth += 1
-
+${invocationResult}
     def _leave():
         nonlocal _call_depth
         _call_depth -= 1
@@ -210,36 +278,39 @@ object JavaTurtlePythonExport {
       }
       line(s"def ${methodName(value.binding.id)}($parameters):")
       nested {
-        line("_enter()")
+        line(if maxObservations.isDefined then "_invocation = _enter()" else "_enter()")
         bindings.zip(initial).foreach { (parameter, converted) =>
           line(s"${variable(parameter.variable)} = [$converted]")
         }
         line("try:")
-        nested { block(value.body, 1) }
+        nested { block(value.body, 1, Option.when(maxObservations.isDefined)(SourceNode(value.binding.id, Vector("body")))) }
         line("finally:")
         nested { line("_leave()") }
       }
     }
 
-    private def block(value: P.Block, depth: Int): Unit = {
+    private def block(value: P.Block, depth: Int, node: Option[SourceNode]): Unit = {
       line(s"_block($depth)")
-      statements(value, depth)
+      statements(value, depth, node)
     }
 
-    private def statements(value: P.Block, depth: Int): Unit = value.statements.foreach { statement =>
+    private def statements(value: P.Block, depth: Int, parent: Option[SourceNode]): Unit = value.statements.zipWithIndex.foreach { (statement, index) =>
+      val node = parent.map(_.child(index.toString))
+      def child(role: String): Option[SourceNode] = node.map(_.child(role))
       line("_gate()")
       statement.node match {
         case P.Node.Empty => ()
         case P.Node.Return => line("return")
         case P.Node.Declare(bound, _, initial) =>
-          val value = initial.map(value => expression(value.expression)).getOrElse("None")
+          val value = initial.map(value => expression(value.expression, child("initial"))).getOrElse("None")
           line(s"${variable(bound)} = [$value]")
         case P.Node.Assign(bound, _, operator, value) =>
           val target = s"${variable(bound)}[0]"
-          line(s"$target = ${assignment(operator, target, expression(value.expression), bound.valueType == R.ValueType.DoubleValue)}")
-        case P.Node.Evaluate(value) => line(expression(value.expression))
+          line(s"$target = ${assignment(operator, target, expression(value.expression, child("value")), bound.valueType == R.ValueType.DoubleValue)}")
+        case P.Node.Evaluate(value) => line(expression(value.expression, child("expression")))
         case P.Node.Call(target, arguments) =>
-          val values = arguments.map(value => expression(value.expression)).mkString(", ")
+          val values = arguments.zipWithIndex.map((value, index) =>
+            expression(value.expression, child("argument").map(_.child(index.toString)))).mkString(", ")
           target match {
             case P.CallTarget.Helper(method) => line(s"${methodName(method.id)}($values)")
             case P.CallTarget.Turtle(command) =>
@@ -247,23 +318,23 @@ object JavaTurtlePythonExport {
               line(s"_command(\"$name\", $values)")
           }
         case P.Node.If(condition, positive, negative) =>
-          line(s"if ${expression(condition.expression)}:")
-          nested { block(positive, depth + 1) }
+          line(s"if ${expression(condition.expression, child("condition"))}:")
+          nested { block(positive, depth + 1, child("then")) }
           negative.foreach { body =>
             line("else:")
-            nested { block(body, depth + 1) }
+            nested { block(body, depth + 1, child("else")) }
           }
         case P.Node.While(condition, body) =>
-          line(s"while _loop() and ${expression(condition.expression)}:")
-          nested { block(body, depth + 1) }
+          line(s"while _loop() and ${expression(condition.expression, child("condition"))}:")
+          nested { block(body, depth + 1, child("body")) }
         case P.Node.For(init, condition, update, body) =>
           line(s"_block(${depth + 1})")
-          statements(init, depth + 1)
-          val test = condition.map(value => s" and ${expression(value.expression)}").getOrElse("")
+          statements(init, depth + 1, child("init"))
+          val test = condition.map(value => s" and ${expression(value.expression, child("condition"))}").getOrElse("")
           line(s"while _loop()$test:")
           nested {
-            block(body, depth + 2)
-            statements(update, depth + 1)
+            block(body, depth + 2, child("body"))
+            statements(update, depth + 1, child("update"))
           }
       }
     }
