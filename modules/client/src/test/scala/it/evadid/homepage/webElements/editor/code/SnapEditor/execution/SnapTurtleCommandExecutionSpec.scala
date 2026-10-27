@@ -717,6 +717,18 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       completedJava)
   }
 
+  test("Java worker serialized reports retain signed zero and the Python output policy") {
+    val raw = """{"status":"Completed","problem":null,"commands":[["forward",-0.0]],"steps":3}"""
+    val report = RunPythonResult(ujson.Str(raw), "student log\n", "", Nil)
+    val decoded = JavaTurtleCommandRunner.decode(report, T.Limits())
+    assertEquals(decoded.status, T.Status.Completed)
+    assertEquals(1.0 / decoded.commands.head.value, Double.NegativeInfinity)
+    Vector(report.copy(stderr = "warning"), report.copy(callbackOps =
+      List(PythonCallback("other", "forward", List[ujson.Value](1))))).foreach { invalid =>
+      intercept[IllegalArgumentException](JavaTurtleCommandRunner.decode(invalid, T.Limits()))
+    }
+  }
+
   test("Java worker decoding rejects malformed envelopes and impossible execution results") {
     val valid = javaReport()
     val invalidEnvelopes = Vector(
@@ -1089,6 +1101,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
     val failures = Vector[Either[Throwable, RunPythonResult]](
       Left(new IllegalStateException("execution failed")),
       Right(javaReport().copy(value = ujson.Str("not an execution result"))),
+      Right(javaReport().copy(value = ujson.Str("""{"status":"Completed","problem":null,"commands":[]}"""))),
       Right(javaReport().copy(stderr = "unexpected output")),
       Right(javaReport().copy(callbackOps = List(PythonCallback("turtle", "forward", List[ujson.Value](1)))))
     )
