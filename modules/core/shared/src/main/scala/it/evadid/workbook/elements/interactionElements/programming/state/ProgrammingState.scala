@@ -30,7 +30,7 @@ sealed trait ProgrammingState {
     case it.evadid.core.datastructures.language.AppLanguage.SnapLanguage => toSnapXml
     case Java => toJava
     case it.evadid.core.datastructures.language.AppLanguage.Python => toPython
-    case _ => throw ProgrammingConversionException.language(s"Programming language '$language' cannot be converted.")
+    case _ => throw new UnsupportedOperationException(s"Programming language '$language' cannot be converted.")
   }
 
   def toBeExpression: ProgrammingStateBeExpression
