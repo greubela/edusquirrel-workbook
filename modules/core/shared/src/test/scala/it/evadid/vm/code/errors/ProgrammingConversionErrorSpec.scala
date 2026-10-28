@@ -22,9 +22,9 @@ class ProgrammingConversionErrorSpec extends FunSuite {
     assert(diagnostic.error.line.exists(_ >= 3))
   }
 
-  test("an unsupported language is a conversion error") {
-    val failed = intercept[ProgrammingConversionException](ProgrammingStatePythonString("forward(1)").toLanguage(Cpp))
-    assertEquals(failed.error.kind, ProgrammingConversionKind.UnsupportedLanguage)
+  test("unknown toLanguage targets are not ProgrammingConversionException") {
+    // Routing for Snap / Python / Java only; see ProgrammingLanguageConversionSpec.
+    intercept[UnsupportedOperationException](ProgrammingStatePythonString("forward(1)").toLanguage(Cpp))
   }
 
   test("a python comment that cannot become blocks is reported as unsupported") {
