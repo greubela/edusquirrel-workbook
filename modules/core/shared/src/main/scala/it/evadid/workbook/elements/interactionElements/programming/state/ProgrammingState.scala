@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.BeExpressionToTurtleComman
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
+import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, ProgrammingConversionException, ProgrammingConversionLocation}
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.parsing.generic.abstractions.GenericAST
 import it.evadid.vm.parsing.java.clean.JavaParser
@@ -30,7 +30,7 @@ sealed trait ProgrammingState {
     case it.evadid.core.datastructures.language.AppLanguage.SnapLanguage => toSnapXml
     case Java => toJava
     case it.evadid.core.datastructures.language.AppLanguage.Python => toPython
-    case _ => throw UnsupportedOperationException(s"Programming language '$language' cannot be converted.")
+    case _ => throw ProgrammingConversionException.language(s"Programming language '$language' cannot be converted.")
   }
 
   def toBeExpression: ProgrammingStateBeExpression
@@ -83,7 +83,12 @@ object ProgrammingState {
 }
 
 private def converted[A](result: Either[String, A]): A =
-  result.fold(message => throw IllegalArgumentException(message), identity)
+  result.fold(message => throw ProgrammingConversionException.unsupported(message), identity)
+
+private def rejectAt(message: String, source: String, start: Option[Int]): Nothing = {
+  val position = start.map(ProgrammingConversionLocation.lineColumn(source, _))
+  throw ProgrammingConversionException.unparsable(message, position.map(_._1), position.map(_._2))
+}
 
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState {
   override def toBeExpression: ProgrammingStateBeExpression = this
@@ -139,7 +144,7 @@ object ProgrammingStateBeExpression {
       case Content.Tree(expression) => ProgrammingStateBeExpression(expression)
       case Content.CheckedJava(source) =>
         val program = JavaTurtleVmPrograms.compile(source).fold(
-          diagnostic => throw IllegalArgumentException(diagnostic.message), identity)
+          diagnostic => rejectAt(diagnostic.message, source, diagnostic.range.map(_.start)), identity)
         ProgrammingStateBeExpression(program.root)
     })
 }
@@ -196,7 +201,8 @@ final case class ProgrammingStatePythonString(code: String) extends ProgrammingS
 
   override def toSnapXml: ProgrammingStateSnapXml =
     if JavaTurtleEditingBridge.hasPythonMetadata(code) then toJava.toSnapXml
-    else converted(SnapTurtlePythonBridge.applyPython(code))
+    else SnapTurtlePythonBridge.applyPython(code).fold(
+      message => throw ProgrammingConversionException.unsupported(message), identity)
 
   override def toPython: ProgrammingStatePythonString = this
 
@@ -210,12 +216,19 @@ final case class ProgrammingStatePythonString(code: String) extends ProgrammingS
 final case class ProgrammingStateJavaString(code: String) extends ProgrammingState derives ReadWriter {
   private lazy val classDetails: (Boolean, Boolean, Boolean) = {
     JavaTurtleInputLimits.checkParserInput(code).fold(
-      diagnostic => throw IllegalArgumentException(diagnostic.message), identity)
+      diagnostic => rejectAt(diagnostic.message, code, diagnostic.range.map(_.start)), identity)
     val sourceForAst = JavaToBeExpressionParser.withoutEntityHints(code)
     JavaTurtleInputLimits.checkParserInput(sourceForAst).fold(
-      diagnostic => throw IllegalArgumentException(diagnostic.message), identity)
+      diagnostic => rejectAt(diagnostic.message, sourceForAst, diagnostic.range.map(_.start)), identity)
     val parsed = JavaParser.parse(sourceForAst).fold(
-      error => throw IllegalArgumentException("This Java source cannot be read as a complete program or fragment.", error),
+      {
+        case conversion: ProgrammingConversionException =>
+          throw ProgrammingConversionException.unparsable(
+            "This Java source cannot be read as a complete program or fragment.",
+            conversion.error.line, conversion.error.column)
+        case error =>
+          throw IllegalArgumentException("This Java source cannot be read as a complete program or fragment.", error)
+      },
       identity)
     var pending: List[GenericAST] = List(parsed)
     var hasClass = false
@@ -225,8 +238,13 @@ final case class ProgrammingStateJavaString(code: String) extends ProgrammingSta
       val node = pending.head
       pending = pending.tail
       node match {
-        case _: JavaUnparsableStatement =>
-          throw IllegalArgumentException("This Java source contains unsupported or unfinished syntax.")
+        case statement: JavaUnparsableStatement =>
+          val line = {
+            val index = code.indexOf(statement.source)
+            if index >= 0 then Some(ProgrammingConversionLocation.lineColumn(code, index)._1) else None
+          }
+          throw ProgrammingConversionException.unparsable(
+            "This Java source contains unsupported or unfinished syntax.", line)
         case _: JavaClassDef => hasClass = true
         case method: JavaMethodDef if method.name == "main" && method.modifiers.contains("static") => hasStaticMain = true
         case JavaFunctionCall(JavaTarget(_, Seq("Turtle"), _), _) => hasTurtleCalls = true
@@ -266,9 +284,11 @@ final case class ProgrammingStateJavaString(code: String) extends ProgrammingSta
       case Right(program) => ProgrammingStateBeExpression(program.root)
       case Left(_) if JavaToBeExpressionParser.withoutEntityHints(code) != code && !classDetails._2 && !classDetails._3 =>
         legacyPrinterExpression()
-      case Left(diagnostic) => throw IllegalArgumentException(diagnostic.message)
+      case Left(diagnostic) => rejectAt(diagnostic.message, code, diagnostic.range.map(_.start))
     }
 
+  /** Snap view for Eva tab switching: a Java class becomes method custom blocks (not normal turtle blocks).
+    * For an empty beginner Snap start, use `SnapProjectXml.mini` instead of calling this. */
   override def toSnapXml: ProgrammingStateSnapXml =
     if isClassProgram then converted(toJavaVmProgram.left.map(_.message).flatMap(JavaTurtleEditingBridge.toSnap))
     else toBeExpression.toSnapXml

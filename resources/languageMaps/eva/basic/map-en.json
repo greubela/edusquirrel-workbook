@@ -108,5 +108,9 @@
   "gradingNotice": "AI feedback may be mistaken. Review its reasoning. Your answer is sent for feedback only when you request it.",
   "textGradingCorrect": "Correct",
   "textGradingIncorrect": "Incorrect",
-  "textGradingPartiallyCorrect": "Partially correct"
+  "textGradingPartiallyCorrect": "Partially correct",
+  "editorUnavailable": "This draft is not available in the configured languages.",
+  "editorLanguages": "Programming languages",
+  "editorSwitchFailed": "Could not switch language",
+  "editorLoading": "Loading editor…"
 }

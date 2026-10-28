@@ -56,8 +56,10 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
     val javaSquareInstructions = LanguageMapContentId("TestWorkbook/javaSquareInstructions")
     section("sec1Id", "TestWorkbook/Sec1", List[WorkbookElement](
       container("TestWorkbook/Sec1Cont1", List(
+        // Beginner turtle: native Snap (e.g. SnapProjectXml.mini), not ProgrammingStateJavaString(...).toSnapXml —
+        // class Java becomes JavaTurtleEditingBridge XML (custom blocks + metadata), not normal Snap blocks.
         TurtleRecreateShapeInteraction(
-          "Turtle-Recreate-1",
+          "turtle-recreate-1",
           ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
           exp1,
           ProgrammingEditorPalette.BeginnerTurtle,
