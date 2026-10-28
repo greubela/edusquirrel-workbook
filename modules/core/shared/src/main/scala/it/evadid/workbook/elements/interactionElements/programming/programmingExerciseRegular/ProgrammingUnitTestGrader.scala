@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingTestProgram}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgramForUnitTestExecution}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.language.LanguageMap
@@ -28,10 +28,10 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
   override val gradingEntity = FeedbackEntity.TestEntity()
 
   override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
-    val evaluation = Future(ProgrammingTestProgram.fromState(state)).flatMap {
+    val evaluation = Future(ProgramForUnitTestExecution.fromState(state)).flatMap {
       case Right(program) => ProgrammingTestRunner.execute(program, pythonTestCode, clients,
         publishProgramObservation && importance != GradingImportance.HIDDEN_TEST)
-      case Left(message) => Future.successful(ProgrammingTestRunner.Result(BeTestResult.Error(message)))
+      case Left(error) => Future.successful(ProgrammingTestRunner.Result(BeTestResult.Error(error.message)))
     }
     evaluation.map { result =>
       val status = result.result match {

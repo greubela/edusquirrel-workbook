@@ -488,20 +488,25 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val calls = State(0)
     val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), _ => calls.update(_ + 1))
     val source = ProgrammingStatePythonString("pass")
+    val oversizedSource = ProgrammingStatePythonString(" " * 32769)
     val returningJava = ProgrammingStateJavaString("public class Main { static int answer() { return 3; } public static void main(String[] args) {} }")
+    val savedStates = List[ProgrammingState](source, returningJava, oversizedSource).map(state => state -> write(state))
     val failClient = WorkerCommands.runPython.toLocalExecutionClient((_, _) => Future.failed(IllegalStateException("private service data")))
     for {
       missing <- grader.gradeStateSafe(source, forceGrading = true, Nil)
       unsupported <- grader.gradeStateSafe(returningJava, forceGrading = true, List(client))
-      oversized <- grader.gradeStateSafe(ProgrammingStatePythonString(" " * 32769), forceGrading = true, List(client))
+      oversized <- grader.gradeStateSafe(oversizedSource, forceGrading = true, List(client))
       empty <- assertionGrader(SampleBeTest(" \n")).gradeStateSafe(source, forceGrading = true, List(client))
       service <- grader.gradeStateSafe(source, forceGrading = true, List(failClient))
     } yield {
-      List(missing, unsupported, oversized, empty, service).foreach { result =>
+      List(missing -> source, unsupported -> returningJava, oversized -> oversizedSource,
+        empty -> source, service -> source).foreach { (result, expectedState) =>
         assert(result.gradingStatus.isInstanceOf[GradingStatus.TestError])
+        assertEquals(result.gradedState, expectedState)
         assertEquals(result.additionalData, None)
         assert(!write(result).contains("private service data"))
       }
+      savedStates.foreach((state, saved) => assertEquals(write(state), saved))
       assertEquals(calls.now(), 0)
     }
   }
@@ -732,19 +737,28 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
   }
 
   test("Java assertions use original method names and an explicit completed Turtle report") {
-    val source = ProgrammingStateJavaString("public class Main { static void draw(int side) { Turtle.forward(side); } public static void main(String[] args) { draw(3); } }")
-    val suite = SampleBeTest("assert run_java('draw', (3,))['commands'] == [['forward', 3]]")
-    val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), request => {
-      assertEquals(request.context("_eva_tests"), ujson.Str(suite.pythonTestCode))
-      val entryPoint = request.context("_eva_entry_point")
-      assertEquals(entryPoint("functionName"), ujson.Str("java_turtle_run"))
-      assertEquals(entryPoint("methods").obj.keySet, Set("draw"))
-      assert(request.context("_eva_source").str.nonEmpty)
-      assert(!request.context.contains("_eva_is_java") && !request.context.contains("_eva_java_methods"))
-    })
+    val source = ProgrammingStateJavaString(
+      """public class Main {
+        |  static void drawSquare(int side) { Turtle.forward(side); }
+        |  public static void main(String[] args) { drawSquare(3); turnOnce(90); }
+        |  static void turnOnce(int angle) { Turtle.turnRight(angle); }
+        |}""".stripMargin)
+    val suite = SampleBeTest("assert run_java('drawSquare', (3,))['commands'] == [['forward', 3]]")
     val states = List[ProgrammingState](source, source.toBeExpression, source.toPython, source.toSnapXml)
     Future.traverse(states) { state =>
       val saved = write[ProgrammingState](state)
+      val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), request => {
+        assertEquals(request.context("_eva_tests"), ujson.Str(suite.pythonTestCode))
+        val entryPoint = request.context("_eva_entry_point")
+        assertEquals(entryPoint("functionName"), ujson.Str("java_turtle_run"))
+        val ids = entryPoint("methods").obj.toMap.view.mapValues(_.num).toMap
+        assertEquals(ids.keySet, Set("drawSquare", "turnOnce"))
+        assertEquals(ids.values.toSet.size, 2)
+        assert(ids.values.forall(id => id >= 0 && id <= Int.MaxValue && id == id.toInt.toDouble))
+        if state == source then assertEquals(ids, Map("drawSquare" -> 0.0, "turnOnce" -> 2.0))
+        assert(request.context("_eva_source").str.nonEmpty)
+        assert(!request.context.contains("_eva_is_java") && !request.context.contains("_eva_java_methods"))
+      })
       assertionGrader(suite).gradeStateSafe(state, forceGrading = true, List(client)).map { graded =>
         assertEquals(graded.gradedState, state)
         assertEquals(graded.gradingStatus, GradingStatus.Correct())
@@ -764,6 +778,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       grader.gradeStateSafe(state, forceGrading = true, List(client)).map { graded =>
         assert(graded.gradingStatus.isInstanceOf[GradingStatus.TestError])
         assertEquals(graded.gradedState, state)
+        assertEquals(graded.additionalData, None)
         assertEquals(write[ProgrammingState](state), saved)
       }
     }.map(_ => assertEquals(calls.now(), 0))
@@ -811,6 +826,29 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
         assertEquals(calls.now(), 2)
         assertEquals(state.fingerprint(), fingerprint)
         assertEquals(write[ProgrammingState](state), saved)
+      }
+    }.map(_ => ())
+  }
+
+  test("the built-in Snap mini project dispatches through the native full-program test path") {
+    val snap = ProgrammingStateSnapXml.mini
+    val states = List[ProgrammingState](snap, snap.toSnapScalaModel.fold(message => fail(message), identity))
+    val tests = "assert run_program()['commands'] == [['forward', 100], ['forward', 100]]"
+    val grader = ProgrammingUnitTestGrader("snap-mini", tests)
+    Future.traverse(states) { state =>
+      val saved = write(state)
+      val calls = State(0)
+      val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), request => {
+        calls.update(_ + 1)
+        assertEquals(request.context("_eva_tests"), ujson.Str(tests))
+        assertEquals(request.context("_eva_entry_point"), ujson.Null)
+        assert(request.context("_eva_source").str.contains("100"))
+      })
+      grader.gradeStateSafe(state, forceGrading = true, List(client)).map { result =>
+        assertEquals(calls.now(), 1)
+        assertEquals(result.gradingStatus, GradingStatus.Correct())
+        assertEquals(result.gradedState, state)
+        assertEquals(write(state), saved)
       }
     }.map(_ => ())
   }

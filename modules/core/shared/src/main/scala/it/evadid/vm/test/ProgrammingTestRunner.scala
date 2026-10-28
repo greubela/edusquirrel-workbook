@@ -5,7 +5,7 @@ import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestProgramObservation
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingTestProgram
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgramForUnitTestExecution
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import upickle.default.*
 
@@ -24,16 +24,17 @@ private[evadid] object ProgrammingTestRunner {
       "arity" -> primitive.arity, "inputs" -> writeJs(primitive.inputKinds.map(_.toString))))
   })
 
-  def execute(program: ProgrammingTestProgram, tests: String,
+  def execute(program: ProgramForUnitTestExecution, tests: String,
       clients: List[ExecutionClient], observeProgram: Boolean = false): Future[Result] = {
-    val source = program.source
+    val source = program.pythonSource
     val sourceLimit = if program.commandEntryPoint.isDefined then 131072 else 32768
     if source == null || tests == null || source.length > sourceLimit || tests.trim.isEmpty || tests.length > 8192 then
       Future.successful(Result(BeTestResult.Error("The unit-test input is empty or exceeds its limits.")))
     else {
       val request = WorkerCommands.RunPythonRequest(script, context = Map(
         "_eva_source" -> ujson.Str(source), "_eva_tests" -> ujson.Str(tests),
-        "_eva_entry_point" -> program.commandEntryPoint.map(writeJs(_)).getOrElse(ujson.Null),
+        "_eva_entry_point" -> program.commandEntryPoint.fold[ujson.Value](ujson.Null)(entryPoint =>
+          ujson.Obj("functionName" -> entryPoint.functionName, "methods" -> writeJs(entryPoint.methodIdsByName))),
         "_eva_observe_program" -> ujson.Bool(observeProgram),
         "_eva_turtle_primitives" -> turtlePrimitives),
         captureStdout = false, captureStderr = false)
