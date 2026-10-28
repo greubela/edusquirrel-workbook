@@ -21,7 +21,8 @@ import scala.util.control.NonFatal
 case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
     importance: GradingImportance = GradingImportance.REQUIRED_TEST,
     publicDescription: Option[LanguageMapContentId] = None,
-    override val publishProgramObservation: Boolean = false)
+    override val publishProgramObservation: Boolean = false,
+    publishInvocationArguments: Boolean = false)
     extends ProgrammingTestGrader {
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
@@ -30,7 +31,8 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
   override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
     val evaluation = Future(ProgramForUnitTestExecution.fromState(state)).flatMap {
       case Right(program) => ProgrammingTestRunner.execute(program, pythonTestCode, clients,
-        publishProgramObservation && importance != GradingImportance.HIDDEN_TEST)
+        observeProgram = publishProgramObservation && importance != GradingImportance.HIDDEN_TEST,
+        observeInvocation = publishInvocationArguments && importance != GradingImportance.HIDDEN_TEST)
       case Left(error) => Future.successful(ProgrammingTestRunner.Result(BeTestResult.Error(error.message)))
     }
     evaluation.map { result =>
@@ -39,8 +41,9 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
         case BeTestResult.Failed => GradingStatus.Incorrect()
         case BeTestResult.Error(message) => GradingStatus.TestError(SerializedException(message))
       }
-      val info = result.programObservation.map(observation =>
-        AdditionalProgrammingTestInfo(LanguageMap.empty[HumanLanguage], Some(observation)))
+      val invocation = result.testInvocation.filter(_ => publishInvocationArguments && importance != GradingImportance.HIDDEN_TEST)
+      val info = Option.when(result.programObservation.nonEmpty || invocation.nonEmpty)(
+        AdditionalProgrammingTestInfo(LanguageMap.empty[HumanLanguage], result.programObservation, invocation))
       GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, additionalData = info)
     }
   }
@@ -54,7 +57,8 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
         val resolution = Try(Option(resolver).flatMap(value => Option(value.resolveMap(id)))).toOption.flatten
         resolution.fold(Future.successful(result))(_.map { description =>
           val info = AdditionalProgrammingTestInfo.fromPublicDescription(description).map { described =>
-            described.copy(programObservation = result.additionalData.flatMap(_.programObservation))
+            described.copy(programObservation = result.additionalData.flatMap(_.programObservation),
+              testInvocation = result.additionalData.flatMap(_.testInvocation))
           }.orElse(result.additionalData)
           result.copy(additionalData = info)
         }.recover { case NonFatal(_) => result })
@@ -68,11 +72,12 @@ object ProgrammingUnitTestGrader {
   private case class Payload(testId: String, pythonTestCode: String,
       importance: GradingImportance = GradingImportance.REQUIRED_TEST,
       publicDescription: Option[LanguageMapContentId] = None,
-      publishProgramObservation: Boolean = false) derives ReadWriter
+      publishProgramObservation: Boolean = false,
+      publishInvocationArguments: Boolean = false) derives ReadWriter
 
   given ReadWriter[ProgrammingUnitTestGrader] = readwriter[ujson.Value].bimap(
     grader => writeJs(Payload(grader.testId, grader.pythonTestCode, grader.importance, grader.publicDescription,
-      grader.publishProgramObservation)),
+      grader.publishProgramObservation, grader.publishInvocationArguments)),
     value => {
       val fields = value.obj.toMap
       require(fields.get("serializedType").forall(_ == ujson.Str("ProgrammingUnitTestGrader")),
@@ -86,13 +91,16 @@ object ProgrammingUnitTestGrader {
         Payload(LegacyTestId, test("pythonTestCode").str,
           fields.get("importance").map(read[GradingImportance](_)).getOrElse(GradingImportance.REQUIRED_TEST))
       } else {
-        require(fields.keySet.subsetOf(Set("testId", "pythonTestCode", "importance", "publicDescription", "publishProgramObservation", "serializedType")),
+        require(fields.keySet.subsetOf(Set("testId", "pythonTestCode", "importance", "publicDescription",
+          "publishProgramObservation", "publishInvocationArguments", "serializedType")),
           "Unexpected programming test fields.")
         require(fields.get("publishProgramObservation").forall(_.boolOpt.isDefined),
           "Publishing a program observation requires a boolean setting.")
+        require(fields.get("publishInvocationArguments").forall(_.boolOpt.isDefined),
+          "Publishing invocation arguments requires a boolean setting.")
         read[Payload](ujson.Obj.from(fields - "serializedType"))
       }
       ProgrammingUnitTestGrader(payload.testId, payload.pythonTestCode, payload.importance, payload.publicDescription,
-        payload.publishProgramObservation)
+        payload.publishProgramObservation, payload.publishInvocationArguments)
     })
 }
