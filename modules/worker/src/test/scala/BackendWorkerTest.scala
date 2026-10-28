@@ -1,12 +1,28 @@
-import it.evadid.worker.WebWorkerBackendServer
+import it.evadid.worker.{JavaTurtleEvidenceJob, WebWorkerBackendServer}
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.distribution.formats.WorkerExecutionProtocol.{Request, Response}
+import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
+import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence as Evidence, JavaTurtleRuntime as T}
 import munit.FunSuite
 import upickle.default.*
+import scala.concurrent.{ExecutionContext, Future}
 
 class BackendWorkerTest extends FunSuite {
+  private given ExecutionContext = ExecutionContext.global
+
+  private val evidenceSource = "class Drawing { public static void main(String[] args) { Turtle.forward(1); } }"
+  private val evidenceReport = """{"execution":{"status":"Completed","problem":null,"commands":[["forward",1]],"steps":5},"observations":[{"invocation":0,"method":0,"path":["body","0","argument","0"],"value":{"kind":"int","value":"1"}}],"truncated":false}"""
+  private def pythonEvidence(raw: String = evidenceReport): RunPythonResult =
+    RunPythonResult(ujson.Str(raw), "", "", Nil)
+
+  private def assertEvidenceUnavailable(error: Throwable): Unit = {
+    assert(error.isInstanceOf[IllegalArgumentException])
+    assertEquals(error.getMessage, "Java execution observations are unavailable.")
+    assertEquals(error.getCause, null)
+  }
+
   private def send(id: String, name: String, data: ujson.Value) =
     WebWorkerBackendServer.handleMessage(write(Request(id, ExecutionCommand(name, data)))).map(read[Response](_))(using scala.concurrent.ExecutionContext.global)
 
@@ -76,5 +92,97 @@ class BackendWorkerTest extends FunSuite {
       assertEquals(reply.requestId, "broken")
       assert(reply.response.result.isLeft)
     }(using scala.concurrent.ExecutionContext.global)
+  }
+
+  test("Java evidence jobs verify Python observations before exposing source locations") {
+    val calls = State(0)
+    JavaTurtleEvidenceJob.run(JavaExecutionEvidenceRequest(evidenceSource), request => {
+      calls.update(_ + 1)
+      assert(request.code.contains("method=None, arguments=[]"))
+      Future.successful(pythonEvidence())
+    }).map { snapshot =>
+      assertEquals(calls.now(), 1)
+      assertEquals(snapshot.outcome, Evidence.Outcome.Completed)
+      assertEquals(snapshot.steps, 5)
+      assertEquals(snapshot.commandCount, 1)
+      assertEquals(snapshot.expressions.size, 1)
+      val expression = snapshot.expressions.head
+      assertEquals(expression.method, "main")
+      assertEquals(expression.invocation, 0)
+      assertEquals(expression.value, Evidence.Scalar.Int32(1))
+      assertEquals(evidenceSource.substring(expression.start, expression.end), "1")
+    }
+  }
+
+  test("Java evidence jobs bind named methods, signed arguments and execution limits") {
+    val source = "class Drawing { static void draw(double length) { Turtle.forward(length); } public static void main(String[] args) { Turtle.forward(99); } }"
+    val request = JavaExecutionEvidenceRequest(source, Some("draw"),
+      Vector(Evidence.Scalar.Float64("8000000000000000")),
+      T.Limits(maxSteps = 31, maxCommands = 2, maxCallDepth = 3, maxBlockDepth = 4))
+    val raw = evidenceReport.replace("[\"forward\",1]", "[\"forward\",-0.0]")
+      .replace("\"kind\":\"int\",\"value\":\"1\"", "\"kind\":\"double\",\"value\":\"8000000000000000\"")
+    JavaTurtleEvidenceJob.run(request, python => {
+      assert(python.code.contains("method=0, arguments=[-0.0]"))
+      assert(python.code.contains("max_steps=31, max_commands=2, max_call_depth=3, max_block_depth=4"))
+      Future.successful(pythonEvidence(raw))
+    }).map { snapshot =>
+      assertEquals(snapshot.outcome, Evidence.Outcome.Completed)
+      assertEquals(snapshot.commandCount, 1)
+      assertEquals(snapshot.expressions.map(_.method), Vector("draw"))
+      assertEquals(snapshot.expressions.map(_.value), Vector(Evidence.Scalar.Float64("8000000000000000")))
+      val expression = snapshot.expressions.head
+      assertEquals(source.substring(expression.start, expression.end), "length")
+    }
+  }
+
+  test("Java evidence jobs reject altered reports and unexpected Python output without leaking failures") {
+    val valid = pythonEvidence()
+    val invalid = Vector(
+      pythonEvidence(evidenceReport.replace(",\"truncated\":false", "")),
+      pythonEvidence(evidenceReport.replace("\"value\":\"1\"", "\"value\":\"2\"")),
+      valid.copy(value = ujson.read(evidenceReport)),
+      valid.copy(stdout = "private output"), valid.copy(stderr = "private warning"),
+      valid.copy(callbackOps = List(PythonCallback("private", "callback", List(ujson.Str("private value"))))))
+    val request = JavaExecutionEvidenceRequest(evidenceSource)
+    Future.traverse(invalid) { reply =>
+      JavaTurtleEvidenceJob.run(request, _ => Future.successful(reply)).failed.map(assertEvidenceUnavailable)
+    }.flatMap { _ =>
+      JavaTurtleEvidenceJob.run(request, _ => Future.failed(IllegalStateException("private runtime failure")))
+        .failed.map(assertEvidenceUnavailable)
+    }
+  }
+
+  test("invalid Java evidence requests fail before Python is called") {
+    val request = JavaExecutionEvidenceRequest(evidenceSource)
+    val helper = request.copy(source = "class Drawing { static void draw(double n) {} public static void main(String[] args) {} }",
+      method = Some("draw"))
+    val invalid = Vector(request.copy(source = null), request.copy(source = "class PrivateDraft {"),
+      request.copy(method = Some("missing")), request.copy(method = Some("main")),
+      request.copy(arguments = Vector(Evidence.Scalar.Int32(1))), request.copy(limits = T.Limits(maxSteps = 0)),
+      helper.copy(arguments = Vector(Evidence.Scalar.Float64("invalid"))),
+      helper.copy(arguments = Vector(Evidence.Scalar.Float64("7ff8000000000042"))))
+    val calls = State(0)
+    Future.traverse(invalid) { value =>
+      JavaTurtleEvidenceJob.run(value, _ => {
+        calls.update(_ + 1)
+        Future.successful(pythonEvidence())
+      }).failed.map(assertEvidenceUnavailable)
+    }.map(_ => assertEquals(calls.now(), 0))
+  }
+
+  test("Java evidence dispatch rejects unsupported source and remains available for later commands") {
+    send("bad-java", javaExecutionEvidence.name, writeJs(JavaExecutionEvidenceRequest("class PrivateDraft {")))
+      .flatMap { reply =>
+        assertEquals(reply.requestId, "bad-java")
+        assert(reply.response.result.isLeft)
+        val logs = reply.response.additionalOutput.loggerOut + reply.response.additionalOutput.loggerError
+        assert(logs.contains("Java execution observations are unavailable."))
+        assert(!logs.contains("PrivateDraft"))
+        assert(!write(reply.response.result.swap.toOption.get).contains("PrivateDraft"))
+        send("health-after-java", health.name, writeJs(HealthRequest()))
+      }.map { reply =>
+        assertEquals(reply.requestId, "health-after-java")
+        assert(reply.response.result.toOption.get.getAs[HealthResult].commands.contains(javaExecutionEvidence.name))
+      }
   }
 }

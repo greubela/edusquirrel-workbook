@@ -22,8 +22,8 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     const context = await browser.newContext();
     await context.route('**/*', async route => {
       const url = new URL(route.request().url());
-      if (url.pathname === '/worker-test') return route.fulfill({contentType:'text/html',body:'<!doctype html><p id="status">Ready</p>'});
-      if (url.pathname === '/artifacts/newest/worker.js') return route.fulfill({contentType:'text/javascript',body:await fs.readFile(path.join(root,'artifacts/newest/worker.js'))});
+      if (url.pathname === '/edusquirrel-workbook/worker-test') return route.fulfill({contentType:'text/html',body:'<!doctype html><p id="status">Ready</p>'});
+      if (url.pathname === '/edusquirrel-workbook/artifacts/newest/worker.js') return route.fulfill({contentType:'text/javascript',body:await fs.readFile(path.join(root,'artifacts/newest/worker.js'))});
       if (url.href.startsWith(pyodideRoot)) {
         const name = url.pathname.split('/').at(-1);
         return route.fulfill({body:await fs.readFile(path.join(root,'node_modules/pyodide',name)),
@@ -34,9 +34,9 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     });
     const page = await context.newPage();
     await installCodeMirrorModules(page);
-    await page.goto('http://localhost:9000/worker-test');
+    await page.goto('http://localhost:9000/edusquirrel-workbook/worker-test');
     await page.evaluate(() => {
-      const worker = new Worker('/artifacts/newest/worker.js');
+      const worker = new Worker('/edusquirrel-workbook/artifacts/newest/worker.js');
       const pending = new Map();
       worker.onmessage = event => { const reply = JSON.parse(event.data); const promise = pending.get(reply.requestId); if (promise) { pending.delete(reply.requestId); promise.resolve(reply); } };
       worker.onerror = event => { for (const promise of pending.values()) promise.reject(new Error(event.message)); pending.clear(); };
@@ -45,7 +45,7 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     });
     const health = await page.evaluate(() => request('health','worker.health',{}));
     assert.equal(result(health).service,'edusquirrel-worker');
-    assert.deepEqual(new Set(result(health).commands),new Set(['worker.health','worker.parseSnapXml','worker.pythonFlowchart','worker.calculateQrCode','worker.runPython']));
+    assert.deepEqual(new Set(result(health).commands),new Set(['worker.health','worker.parseSnapXml','worker.pythonFlowchart','worker.calculateQrCode','worker.runPython','worker.javaExecutionEvidence']));
     const replies = await page.evaluate(() => Promise.all([
       request('xml','worker.parseSnapXml',{xml:'<project><block s="Grüße"><block s="外"/></block></project>',tag:'block'}),
       request('qr','worker.calculateQrCode',{text:'Hello',version:2,mask:3})
@@ -137,6 +137,72 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     await page.evaluate(() => request('state','worker.runPython',{code:'counter=40',resetGlobals:false}));
     assert.equal(result(await page.evaluate(() => request('state2','worker.runPython',{code:'counter+2',resetGlobals:false}))).value,42);
     assert.equal(result(await page.evaluate(() => request('reset','worker.runPython',{code:"'counter' in globals()"}))).value,false);
+    const wrap = (main, helpers = '') => `class Drawing { ${helpers} public static void main(String[] args) { ${main} } }`;
+    const evidenceCases = [
+      {id:'empty',source:wrap(''),count:0},
+      {id:'four-sides',source:wrap('for(int i=0;i<4;i++){Turtle.forward(10);Turtle.turnRight(90);}'),count:8},
+      {id:'three-sides',source:wrap('for(int i=0;i<3;i++){Turtle.forward(10);Turtle.turnRight(90);}'),count:6},
+      {id:'named-helper',source:wrap('Turtle.forward(99);',
+        'static void draw(double length,int n){for(int i=0;i<n;i++){Turtle.forward(length);}}'),
+        method:'draw',arguments:[{$type:'Float64',bits:'3fc0000000000000'},{$type:'Int32',value:2}],count:2,onlyMethod:'draw'},
+      {id:'recursive-helper',source:wrap('draw(3);',
+        'static void draw(int n){if(n==0){Turtle.forward(1);return;}draw(n-1);Turtle.turnRight(60);draw(n-1);}'),count:15},
+      {id:'unicode-zero',source:'class Drawing {\r\n// Grüße 🐢\r\npublic static void main(String[] args){\r\n double z=-0.0;Turtle.forward(z);double n=0.0/0.0;if(n!=n){Turtle.turnRight(90);}\r\n}}',
+        count:2,bits:['8000000000000000','nan']},
+      {id:'boolean-argument',source:wrap('', 'static void draw(boolean enabled){if(enabled){Turtle.forward(4);}}'),
+        method:'draw',arguments:[{$type:'Bool',value:true}],count:1},
+      {id:'zero-argument',source:wrap('', 'static void draw(double length){Turtle.forward(length);}'),
+        method:'draw',arguments:[{$type:'Float64',bits:'8000000000000000'}],count:1,bits:['8000000000000000']},
+      ...['0000000000000001','7fefffffffffffff','nan'].map((bits,index) => ({id:'double-argument-' + index,
+        source:wrap('', 'static void draw(double length){Turtle.forward(length);}'),
+        method:'draw',arguments:[{$type:'Float64',bits}],count:bits === 'nan' ? 0 : 1,
+        outcome:bits === 'nan' ? 'NonFiniteCommand' : 'Completed',bits:[bits]})),
+      {id:'division-prefix',source:wrap('Turtle.forward(2);int n=1/0;Turtle.forward(n);'),count:1,outcome:'DivisionByZero'},
+      {id:'nonfinite-prefix',source:wrap('Turtle.forward(2);Turtle.forward(1.0/0.0);'),count:1,outcome:'NonFiniteCommand'},
+      {id:'all-expressions',source:wrap('for(int i=0;i<40;i++){Turtle.forward(i);}'),count:40,minExpressions:65},
+      {id:'limited-loop',source:wrap('while(true){}'),limits:{maxSteps:40},count:0,outcome:'LimitExceeded'},
+      {id:'incomplete',source:'class Drawing { public static void main(String[] args){',reject:true},
+      {id:'unknown-method',source:wrap(''),method:'missing',reject:true},
+      {id:'wrong-argument',source:wrap('', 'static void draw(int n){Turtle.forward(n);}'),
+        method:'draw',arguments:[{$type:'Bool',value:true}],reject:true},
+      {id:'fractional-argument',source:wrap('', 'static void draw(int n){Turtle.forward(n);}'),
+        method:'draw',arguments:[{$type:'Int32',value:1.9}],reject:true,decodeReject:true},
+      {id:'wrapped-argument',source:wrap('', 'static void draw(int n){Turtle.forward(n);}'),
+        method:'draw',arguments:[{$type:'Int32',value:2147483648}],reject:true,decodeReject:true},
+      {id:'fractional-limit',source:wrap(''),limits:{maxSteps:1.9},reject:true,decodeReject:true},
+      {id:'trace-overflow',source:wrap('for(int i=0;i<1000;i++){Turtle.forward(i);}'),reject:true}
+    ];
+    for (const fixture of evidenceCases) {
+      const {id,count,outcome,onlyMethod,bits,minExpressions,reject,decodeReject,...requestData} = fixture;
+      const reply = await page.evaluate(({id,requestData}) => request(id,'worker.javaExecutionEvidence',requestData),{id,requestData});
+      assert.equal(reply.requestId,id);
+      const snapshot = result(reply);
+      if (reject) {
+        assert.equal(snapshot,undefined,id);
+        const messages = JSON.stringify([reply.response.result,reply.response.additionalOutput]);
+        assert(messages.includes(decodeReject ? 'sourceLength' : 'Java execution observations are unavailable.'),id);
+        assert(!messages.includes('class Drawing') && !messages.includes('Turtle.forward'),id);
+        assert.equal(result(await page.evaluate(() => request('evidence-recovery','worker.runPython',{code:'6*7'}))).value,42);
+        continue;
+      }
+      assert(snapshot,JSON.stringify(reply));
+      assert.equal(snapshot.outcome,outcome || 'Completed',id);
+      assert.equal(snapshot.commandCount,count,id);
+      assert(snapshot.steps > 0 && snapshot.steps <= (requestData.limits?.maxSteps || 100000),id);
+      for (const expression of snapshot.expressions) {
+        assert(Number.isInteger(expression.invocation) && expression.invocation >= 0,id);
+        assert(expression.start >= 0 && expression.start < expression.end && expression.end <= requestData.source.length,id);
+        if (onlyMethod) assert.equal(expression.method,onlyMethod,id);
+      }
+      for (const value of bits || []) assert(snapshot.expressions.some(expression => expression.value.bits === value),id);
+      if (minExpressions) assert(snapshot.expressions.length >= minExpressions,id);
+      if (id === 'empty') assert.deepEqual(snapshot.expressions,[]);
+    }
+    const evidenceConcurrent = await page.evaluate(fixtures => Promise.all(fixtures.map(({id,source,method,arguments:args}) =>
+      request('parallel-' + id,'worker.javaExecutionEvidence',{source,method,arguments:args}))),
+      [evidenceCases[1],evidenceCases[3]]);
+    assert.deepEqual(evidenceConcurrent.map(reply => result(reply).commandCount),[8,2]);
+    assert(evidenceConcurrent[1] && result(evidenceConcurrent[1]).expressions.every(expression => expression.method === 'draw'));
     const concurrent = await page.evaluate(() => Promise.all([
       request('first','worker.runPython',{code:"import asyncio\nprint('first')\nawait asyncio.sleep(0.05)\nprint('end')\n'one'"}),
       request('second','worker.runPython',{code:"print('second')\n'other'"})
