@@ -1,8 +1,7 @@
 package it.evadid.vm.code.errors
 
-/** Why a programming draft cannot be shown in another language. */
+/** Why an attempted language conversion failed (parse or translate). Unknown `toLanguage` targets use [[UnsupportedOperationException]] instead. */
 enum ProgrammingConversionKind {
-  case UnsupportedLanguage
   case Unparsable
   case UnsupportedConstruct
 }
@@ -29,9 +28,6 @@ object ProgrammingConversionException {
 
   def unparsable(message: String, line: Option[Int] = None, column: Option[Int] = None): ProgrammingConversionException =
     new ProgrammingConversionException(message, ProgrammingConversionError(ProgrammingConversionKind.Unparsable, line, column))
-
-  def language(message: String): ProgrammingConversionException =
-    new ProgrammingConversionException(message, ProgrammingConversionError(ProgrammingConversionKind.UnsupportedLanguage))
 }
 
 object ProgrammingConversionLocation {
