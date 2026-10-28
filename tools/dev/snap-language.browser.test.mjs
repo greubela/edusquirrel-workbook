@@ -144,14 +144,14 @@ test('test workbook preserves edits across human languages, programming language
 
     const editor = page.locator('dialog[open] .eva-editor');
     await editForward(92, false);
-    await editor.getByRole('button',{name:'Python',exact:true}).click();
+    await editor.getByRole('tab',{name:'Python',exact:true}).click();
     const code = editor.locator('.cm-content');
     await code.waitFor();
     assert.match(await code.innerText(), /forward\(92\)/, 'tab conversion includes the pending Snap input');
     await code.fill('forward(123)\nforward(17)\n');
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
     assert.match(await code.innerText(), /forward\(123\)\s+forward\(17\)/);
-    await editor.getByRole('button',{name:'Snap!',exact:true}).click();
+    await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => {
       const blocks = snapLanguageEditor.currentSprite.scripts.allChildren().filter(m => m.selector === 'forward');
       return [123,17].every(value => blocks.some(m => m.blockSpec === 'move %n steps' && Number(m.inputs()[0].evaluate()) === value));
@@ -159,22 +159,22 @@ test('test workbook preserves edits across human languages, programming language
     await page.locator('.select-language-line > div').nth(1).evaluate(flag => flag.click());
     await page.waitForFunction(() => snapLanguageEditor.currentSprite.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'gehe %n Schritte' && Number(m.inputs()[0].evaluate()) === 123));
-    await editor.getByRole('button',{name:'Python',exact:true}).click();
+    await editor.getByRole('tab',{name:'Python',exact:true}).click();
     assert.match(await code.innerText(), /forward\(123\)\s+forward\(17\)/);
     await page.locator('.fullscreen-close-button').click();
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
     assert.match(await code.innerText(), /forward\(123\)\s+forward\(17\)/);
-    await editor.getByRole('button',{name:'Java',exact:true}).click();
+    await editor.getByRole('tab',{name:'Java',exact:true}).click();
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
     await code.fill('public class Drawing {\n  static void line(int size) { Turtle.forward(size); }\n  public static void main(String[] args) { line(64); }\n}\n');
-    await editor.getByRole('button',{name:'Snap!',exact:true}).click();
+    await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => {
       const xml = window.snapLanguageEditor?.getProjectXML();
       return xml?.includes('line') && xml.includes('64') && xml.includes('doJavaForward');
     });
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
     await page.waitForFunction(() => SnapTranslator.language === 'en');
-    await editor.getByRole('button',{name:'Java',exact:true}).click();
+    await editor.getByRole('tab',{name:'Java',exact:true}).click();
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
     assert.match(await code.innerText(), /void line\(int size\)/);
     assert.match(await code.innerText(), /line\(64\)/);
@@ -182,7 +182,7 @@ test('test workbook preserves edits across human languages, programming language
     await page.reload();
     await page.locator('.section-block').first().click();
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
-    await editor.getByRole('button',{name:'Java',exact:true}).click();
+    await editor.getByRole('tab',{name:'Java',exact:true}).click();
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
     assert.match(await code.innerText(), /void line\(int size\)/, 'saved methods survive a page reload');
     assert.match(await code.innerText(), /line\(64\)/);

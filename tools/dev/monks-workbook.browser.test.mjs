@@ -52,7 +52,7 @@ test('monk stories and Koch practice render and can be navigated', async () => {
       const dialog = page.locator('dialog[open]');
       await dialog.locator('.eva-editor').waitFor();
       await page.waitForFunction(count => document.querySelectorAll('dialog[open] .turtle-line--missing, dialog[open] .turtle-line--correct').length === count, 4**depth);
-      await dialog.getByRole('button', {name:'Python',exact:true}).click();
+      await dialog.getByRole('tab', {name:'Python',exact:true}).click();
       const code = dialog.locator('.cm-content');
       await code.waitFor();
       assert.equal((await code.innerText()).trim(), '', 'each exercise starts unsolved');
@@ -63,7 +63,7 @@ test('monk stories and Koch practice render and can be navigated', async () => {
       await openButtons.nth(depth).click();
       await dialog.locator('.eva-editor').waitFor();
       await page.waitForFunction(count => document.querySelectorAll('dialog[open] .turtle-line--missing, dialog[open] .turtle-line--correct').length === count, 4**depth);
-      await dialog.getByRole('button', {name:'Python',exact:true}).click();
+      await dialog.getByRole('tab', {name:'Python',exact:true}).click();
       assert.match(await dialog.locator('.cm-content').innerText(), new RegExp(`koch\\(270, ${depth}\\)`), 'answer survives reopening');
       await page.locator('.fullscreen-close-button').click();
     }

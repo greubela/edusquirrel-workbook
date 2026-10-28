@@ -83,7 +83,7 @@ test('all sections render, solutions match previews and answers persist after re
       await page.waitForFunction(count=>document.querySelectorAll('dialog[open] .turtle-line:not(.turtle-line--unexpected):not(.turtle-line--jump)').length===count,count);
       await dialog.locator('.eva-editor').waitFor();
       assert.deepEqual(await previewIds(),idsBeforeOpen,'opening an editor preserves the workbook previews');
-      await dialog.getByRole('button',{name:'Python',exact:true}).click();
+      await dialog.getByRole('tab',{name:'Python',exact:true}).click();
       await dialog.locator('.cm-content').fill(code);
       try {
         await page.waitForFunction(count => document.querySelectorAll('dialog[open] .turtle-line--correct:not(.turtle-line--jump)').length===count,count);
@@ -102,7 +102,7 @@ test('all sections render, solutions match previews and answers persist after re
       await page.locator('.fullscreen-close-button').click();
       assert.deepEqual(await previewIds(),idsBeforeClose,'closing an editor preserves the workbook previews');
       await openButtons.nth(index).click();
-      await dialog.getByRole('button',{name:'Python',exact:true}).click();
+      await dialog.getByRole('tab',{name:'Python',exact:true}).click();
       // The editor normalizes blank lines around function declarations on restore.
       const normalize = text => text.split('\n').filter(line=>line.trim()).join('\n').trim();
       assert.equal(normalize(await dialog.locator('.cm-content').innerText()),normalize(code));
@@ -133,7 +133,7 @@ test('all sections render, solutions match previews and answers persist after re
     await openButtons.nth(0).click();
     let dialog=page.locator('dialog[open]');
     await page.waitForFunction(()=>document.querySelectorAll('dialog[open] .turtle-line--correct:not(.turtle-line--jump)').length===21);
-    await dialog.getByRole('button',{name:'Python',exact:true}).click();
+    await dialog.getByRole('tab',{name:'Python',exact:true}).click();
     assert.match(await dialog.locator('.cm-content').innerText(),/if i % 2 == 0/);
     await page.waitForFunction(()=>document.querySelectorAll('dialog[open] .turtle-line--correct:not(.turtle-line--jump)').length===21);
     assert.equal(await dialog.locator('.turtle-line--missing, .turtle-line--unexpected').count(),0);
@@ -148,7 +148,7 @@ test('all sections render, solutions match previews and answers persist after re
     await openButtons.click();
     dialog=page.locator('dialog[open]');
     await page.waitForFunction(()=>document.querySelector('dialog[open] .eva-editor') && !document.querySelector('dialog[open] .turtle-gradig-panel'));
-    await dialog.getByRole('button',{name:'Python',exact:true}).click();
+    await dialog.getByRole('tab',{name:'Python',exact:true}).click();
     await dialog.locator('.cm-content').fill('forward(123)\n');
     await page.locator('.fullscreen-close-button').click();
     await page.reload();
@@ -158,7 +158,7 @@ test('all sections render, solutions match previews and answers persist after re
     await openButtons.first().waitFor();
     await openButtons.click();
     await page.waitForFunction(()=>document.querySelector('dialog[open] .eva-editor') && !document.querySelector('dialog[open] .turtle-gradig-panel'));
-    await page.locator('dialog[open]').getByRole('button',{name:'Python',exact:true}).click();
+    await page.locator('dialog[open]').getByRole('tab',{name:'Python',exact:true}).click();
     assert.match(await page.locator('dialog[open] .cm-content').innerText(),/forward\(123\)/);
     assert.deepEqual(errors,[]);
   } finally {await browser.close();}

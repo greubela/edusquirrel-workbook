@@ -46,16 +46,16 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     const {page, release, requests, errors} = await fixture(browser);
     assert.equal(requests(), 1, 'the pending background load is shared with editors');
     const dialog = page.locator('dialog[open]');
-    await dialog.getByRole('button', {name:'Python',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     const fallback = dialog.locator('.code-mirror-editor__fallback');
     await fallback.fill('forward(77)\n');
     await page.waitForFunction(() => performance.getEntriesByType('resource').some(entry => entry.name.includes('esm.sh/')));
-    await dialog.getByRole('button', {name:'Snap!',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
     release();
     await page.waitForFunction(() => !!window.EduSquirrelCodeMirror);
     await page.waitForTimeout(300);
     assert.equal(await page.locator('.cm-editor').count(), 0, 'resolved load cannot mount a stale Python tab');
-    await dialog.getByRole('button', {name:'Python',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     await dialog.locator('.cm-editor').waitFor();
     assert.match(await dialog.locator('.cm-content').innerText(), /forward\(77\)/, 'text entered while loading survives enhancement');
     assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 1, 'Eva enables the configured Python gutter');
@@ -83,7 +83,7 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     await dialog.getByRole('button', {name:'Use light appearance'}).waitFor();
     assert.notEqual(await dialog.locator('.cm-flowchart-row > svg').first().evaluate(svg => getComputedStyle(svg).filter),
       'none', 'the nested renderer palette adapts to the dark editor');
-    await dialog.getByRole('button', {name:'Java',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     await dialog.locator('.cm-editor').waitFor();
     assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 0, 'Python gutter does not appear for Java');
     assert.equal(requests(), 1, 'all tabs reuse the same module load');
@@ -96,12 +96,12 @@ test('a failed CodeMirror request leaves the fallback editable and other tabs us
   try {
     const {page, release, errors} = await fixture(browser, true);
     const dialog = page.locator('dialog[open]');
-    await dialog.getByRole('button', {name:'Python',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     release();
     const fallback = dialog.locator('.code-mirror-editor__fallback');
     await fallback.fill('forward(88)\n');
-    await dialog.getByRole('button', {name:'Snap!',exact:true}).click();
-    await dialog.getByRole('button', {name:'Python',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     assert.match(await fallback.inputValue(), /forward\(88\)/);
     assert.equal(await dialog.locator('.cm-editor').count(), 0);
     assert.deepEqual(errors, []);
@@ -117,7 +117,7 @@ test('startup warms CodeMirror without idle callbacks or editor creation, and th
     await page.waitForFunction(() => !!window.EduSquirrelCodeMirror);
     assert.equal(await page.locator('.cm-editor').count(), 0);
     await page.getByRole('button', {name:/Editor.*öffnen|Open editor/i}).first().click();
-    await page.locator('dialog[open]').getByRole('button', {name:'Python',exact:true}).click();
+    await page.locator('dialog[open]').getByRole('tab', {name:'Python',exact:true}).click();
     await page.locator('dialog[open] .cm-editor').waitFor();
     assert.equal(requests(), 1, 'opening the first text editor does not request another script');
     assert.equal(await page.locator('.cm-editor').count(), 1);
