@@ -35,10 +35,10 @@ object SimulationPlayerHtmlFactory {
     control.appendChild(currentStateInfo)
     control.appendChild(createStatusElement(ctrl, currentStateInfo))
 
-    //control.appendChild(EvaHtmlFactory.createRadioButtonForm(ProgramState.config.showMovementOption))
+    //control.appendChild(EvaHtmlFactory.createRadioButtonForm(ProgramState.instance.config.showMovementOption))
 
     if(ProgramState.instance.graphicConfig.spriteMapProperty.getValue.value.layout == "topdown"){
-      control.appendChild(EvaHtmlFactory.createPropertyTickBox(ProgramState.config.showAnimations))
+      control.appendChild(EvaHtmlFactory.createPropertyTickBox(ProgramState.instance.config.showAnimations))
     }
 
     ctrl.updateCurrentStateInfo()

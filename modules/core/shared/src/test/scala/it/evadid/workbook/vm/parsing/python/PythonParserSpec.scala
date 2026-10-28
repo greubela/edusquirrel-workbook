@@ -1,7 +1,7 @@
 package it.evadid.workbook.vm.parsing.python
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, JavaScript, Python}
-import it.evadid.vm.parsing.python.PythonParser.KnownStructure
+import it.evadid.vm.parsing.python.PythonSymbolTable.KnownStructure
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
@@ -51,7 +51,6 @@ class PythonParserSpec extends FunSuite {
       )
     )
   }
-
 
   private case class TypeHintKey(kind: String, identifier: String)
 
@@ -523,7 +522,6 @@ class PythonParserSpec extends FunSuite {
             .filter(_.trim.nonEmpty)
             .map(_.takeWhile(_ == ' '))
 
-
         assert(
           !normalizedRegenerated.linesIterator.exists(_.trim == "pass"),
           s"no additional pass statements expected, but got: $normalizedRegenerated"
@@ -589,7 +587,7 @@ class PythonParserSpec extends FunSuite {
   roundTripCases.foreach { testCase =>
     test(s"round trip - ${testCase.name}") {
       val normalizedInput = normalizer.normalizePython(testCase.python)
-      val parsingResult = PythonParser.parsePythonWithDetails(testCase.python)
+      val parsingResult = PythonParser.default.parsePythonWithDetails(testCase.python)
       val expression = parsingResult.codeExpression
       assert(
         !expression.isInstanceOf[BeExpressionUnparsable],
@@ -600,7 +598,7 @@ class PythonParserSpec extends FunSuite {
       assertPythonEquivalentAllowingAdditionalTypeHints(testCase.python, generated)
 
       val normalizedGenerated = normalizer.normalizePython(generated)
-      val reparsed = PythonParser.parsePythonWithDetails(normalizedGenerated)
+      val reparsed = PythonParser.default.parsePythonWithDetails(normalizedGenerated)
       val regenerated = reparsed.codeExpression.structureInfo.toStringInLanguage(Python, English)
       assertPythonEquivalentAllowingAdditionalTypeHints(normalizedGenerated, regenerated)
 
@@ -622,7 +620,7 @@ class PythonParserSpec extends FunSuite {
         |result = flag1 and not flag2 or flag3
         |""".stripMargin
 
-    val result = PythonParser.parsePythonWithDetails(python)
+    val result = PythonParser.default.parsePythonWithDetails(python)
     val sequence = result.codeExpression.asInstanceOf[BeSequence]
     val assignments = sequence.body.collect { case assign: BeAssignVariable => assign }
     assertEquals(assignments.length, 4)
@@ -645,7 +643,7 @@ class PythonParserSpec extends FunSuite {
         |flag = not False
         |""".stripMargin
 
-    val result = PythonParser.parsePythonWithDetails(python)
+    val result = PythonParser.default.parsePythonWithDetails(python)
     val sequence = result.codeExpression.asInstanceOf[BeSequence]
     val assignments = sequence.body.collect { case assign: BeAssignVariable => assign }
     assertEquals(assignments.length, 5)
@@ -669,7 +667,7 @@ class PythonParserSpec extends FunSuite {
         |result = circle_area(testWithNr)
         |""".stripMargin
 
-    val parsingResult = PythonParser.parsePythonWithDetails(python)
+    val parsingResult = PythonParser.default.parsePythonWithDetails(python)
     val regenerated = parsingResult.codeExpression.structureInfo.toStringInLanguage(Python, English)
     assertPythonEquivalentAllowingAdditionalTypeHints(python, regenerated)
 
@@ -718,7 +716,7 @@ class PythonParserSpec extends FunSuite {
     val sourceExpression = miniProgramExpression()
     val generated = sourceExpression.structureInfo.toStringInLanguage(Python, English)
 
-    val parsed = PythonParser.parsePythonWithDetails(generated)
+    val parsed = PythonParser.default.parsePythonWithDetails(generated)
     parsed.codeExpression match {
       case seq: BeSequence => assertEquals(seq.body.length, 2)
       case other => fail(s"Expected a sequence after parsing mini program, but received ${other.getClass.getSimpleName}")
@@ -730,7 +728,7 @@ class PythonParserSpec extends FunSuite {
 
   test("distinguish unsupported and unparsable inputs") {
     val unsupportedSource = "foo[0]"
-    val unsupportedResult = PythonParser.parsePythonWithDetails(unsupportedSource)
+    val unsupportedResult = PythonParser.default.parsePythonWithDetails(unsupportedSource)
     val unsupportedExpressions = unsupportedResult.codeExpression.asInstanceOf[BeSequence].body
     assert(unsupportedExpressions.exists(_.isInstanceOf[BeExpressionUnsupported]))
 
@@ -738,7 +736,7 @@ class PythonParserSpec extends FunSuite {
       """for i in range(3):
         |    pass
         |""".stripMargin
-    val namedForResult = PythonParser.parsePythonWithDetails(namedForSource)
+    val namedForResult = PythonParser.default.parsePythonWithDetails(namedForSource)
     val namedForExpressions = namedForResult.codeExpression.asInstanceOf[BeSequence].body
     assert(namedForExpressions.exists(_.isInstanceOf[it.evadid.vm.code.controlStructures.BeFor]))
 
@@ -746,7 +744,7 @@ class PythonParserSpec extends FunSuite {
       """if True:
         |    pass
         |""".stripMargin
-    val supportedIfResult = PythonParser.parsePythonWithDetails(supportedIfSource)
+    val supportedIfResult = PythonParser.default.parsePythonWithDetails(supportedIfSource)
     val supportedIfExpressions = supportedIfResult.codeExpression.asInstanceOf[BeSequence].body
     val parsedIf = supportedIfExpressions.collect { case branch: BeIfElse => branch }
     assertEquals(parsedIf.length, 1)
@@ -756,7 +754,7 @@ class PythonParserSpec extends FunSuite {
       """while True
         |    pass
         |""".stripMargin
-    val unparsableResult = PythonParser.parsePythonWithDetails(unparsableSource)
+    val unparsableResult = PythonParser.default.parsePythonWithDetails(unparsableSource)
     val unparsableExpressions = unparsableResult.codeExpression.asInstanceOf[BeSequence].body
     assert(unparsableExpressions.exists(_.isInstanceOf[BeExpressionUnparsable]))
   }
@@ -767,7 +765,7 @@ class PythonParserSpec extends FunSuite {
         |        remaining = remaining - 1
         |    return remaining
         |""".stripMargin
-    val parsingResult = PythonParser.parsePythonWithDetails(segment)
+    val parsingResult = PythonParser.default.parsePythonWithDetails(segment)
     val sequence = parsingResult.codeExpression.asInstanceOf[BeSequence]
     val body = sequence.body
     val whileExpressions = body.collect { case loop: BeWhile => loop }
@@ -795,7 +793,7 @@ class PythonParserSpec extends FunSuite {
         |        limit = limit - 1
         |    return total
         |""".stripMargin
-    val parsingResult = PythonParser.parsePythonWithDetails(pythonSource)
+    val parsingResult = PythonParser.default.parsePythonWithDetails(pythonSource)
     val maybeFunction = parsingResult.definedFunctions.find { function =>
       function.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "sum_until"
     }
@@ -825,7 +823,7 @@ class PythonParserSpec extends FunSuite {
         |    return inner()
         |""".stripMargin
 
-    val parsingResult = PythonParser.parsePythonWithDetails(pythonSource)
+    val parsingResult = PythonParser.default.parsePythonWithDetails(pythonSource)
     val outerFunction = parsingResult.definedFunctions.find { function =>
       function.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "outer"
     }.getOrElse(fail("expected to find outer function definition"))
@@ -858,7 +856,7 @@ class PythonParserSpec extends FunSuite {
         functionTypeInfo = BeDefineFunction.operatorInfo(">", 1)
       )
 
-    val parsingResult = PythonParser.parsePythonWithDetails(
+    val parsingResult = PythonParser.default.parsePythonWithDetails(
       """value = left > right""".stripMargin,
       initialKnownStructures = Seq(KnownStructure.Operator(">", greaterOperator))
     )
@@ -871,7 +869,7 @@ class PythonParserSpec extends FunSuite {
   }
 
   test("parser initializes with default builtin function definitions") {
-    val result = PythonParser.parsePythonWithDetails("")
+    val result = PythonParser.default.parsePythonWithDetails("")
     val maybeStr = result.currentlyKnownStructures.functions.get("str")
     val defaultStr = DefaultDefinitions.builtinFunctionsByName("str")
     assert(maybeStr.isDefined, "expected str builtin to be available")
@@ -883,7 +881,7 @@ class PythonParserSpec extends FunSuite {
       """first = 5 > 3
         |second = 10 > 2
         |""".stripMargin
-    val result = PythonParser.parsePythonWithDetails(source)
+    val result = PythonParser.default.parsePythonWithDetails(source)
     val defaultGreaterOverloads =
       DefaultDefinitions.operatorDefinitionsWithSymbols.collect {
         case (symbol, function) if symbol == ">" && function.inputs.length == 2 => function
@@ -906,7 +904,6 @@ class PythonParserSpec extends FunSuite {
     )
   }
 
-
   test("parse class with body attributes and constructor assignments") {
     val python =
       """class Player:
@@ -921,7 +918,7 @@ class PythonParserSpec extends FunSuite {
         |        return "Welcome " + self.name
         |""".stripMargin
 
-    val result = PythonParser.parsePythonWithDetails(python)
+    val result = PythonParser.default.parsePythonWithDetails(python)
     val maybeClass = result.definedClasses.collectFirst { case clazz if clazz.name.getNameIn(English, NamingStyle.SnakeCase).equalsIgnoreCase("player") => clazz }
     assert(maybeClass.nonEmpty, "expected Player class to be parsed")
     val clazz = maybeClass.get
@@ -957,7 +954,7 @@ class PythonParserSpec extends FunSuite {
         |        self.hidden = 10
         |""".stripMargin
 
-    val result = PythonParser.parsePythonWithDetails(python)
+    val result = PythonParser.default.parsePythonWithDetails(python)
     val clazz = result.definedClasses match {
       case List(single: BeDefineClass) => single
       case other => fail(s"expected a single class definition, found ${other.length}")

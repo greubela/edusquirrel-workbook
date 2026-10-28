@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingTestProgram}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.language.LanguageMap
@@ -11,7 +12,6 @@ import it.evadid.vm.test.{BeTestResult, ProgrammingTestRunner}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingTestProgram}
 import upickle.default.*
 
 import scala.concurrent.Future

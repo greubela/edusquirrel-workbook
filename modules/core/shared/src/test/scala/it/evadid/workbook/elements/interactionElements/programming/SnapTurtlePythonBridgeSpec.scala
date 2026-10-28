@@ -6,7 +6,6 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 
 import it.evadid.vm.BeProgram
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript, SnapControlFlow, SnapCustomBlockRules, SnapProjectXml, SnapTurtlePythonBridge}
 import munit.FunSuite
 
@@ -14,8 +13,8 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
 
   test("allowed python names include forward") {
     assert(
-      SnapTurtlePythonBridge.AllowedPythonNames.contains("forward"),
-      clue = SnapTurtlePythonBridge.AllowedPythonNames.toList.sorted.mkString(",")
+      SnapTurtleCatalog.AllowedPythonNames.contains("forward"),
+      clue = SnapTurtleCatalog.AllowedPythonNames.toList.sorted.mkString(",")
     )
     val program = BeProgram.fromPythonString("forward(10)")
     val statements = SnapTurtlePythonBridge.topLevelStatements(program.fullProgram)

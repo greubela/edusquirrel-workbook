@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.f
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.BlockFeedbackTestResultFormatter
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackRequest, FeedbackTestDisplay, PythonRuntimeOutcome, PythonTestResult, UltrichsNewCoolFeedback}
+import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackRequest, FeedbackTestDisplay, PythonRuntimeOutcome, PythonTestResult, BlockFeedbackResult}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.{RuleResult, RuleSeverity}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
@@ -282,7 +282,7 @@ object BlockFeedbackFeedbackBuilder:
     outcome: PythonRuntimeOutcome,
     pythonRules: Seq[RuleResult],
     vmRules: Seq[RuleResult]
-  ): UltrichsNewCoolFeedback =
+  ): BlockFeedbackResult =
     val rawPython = request.pythonSource
     val hints0 =
       collectGeneralHints(
@@ -368,7 +368,7 @@ object BlockFeedbackFeedbackBuilder:
       )
     }
 
-    UltrichsNewCoolFeedback(
+    BlockFeedbackResult(
       summary = summary,
       tests = outcome.tests,
       generalHints = hints,

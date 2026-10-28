@@ -4,7 +4,7 @@ import fastparse.*
 import fastparse.NoWhitespace.*
 
 object JavaLexer {
-  export it.evadid.vm.parsing.generic.CodeLexer.{
+  import it.evadid.vm.parsing.generic.CodeLexer.{
     LPAR, RPAR, LSQB, RSQB, LBRACE, RBRACE, DOT, COMMA, SEMI, LESS, GREATER, ASSIGN
   }
 

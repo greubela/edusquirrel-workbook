@@ -13,7 +13,7 @@ object JavaTurtleSource {
     case InputLimit
   }
 
-  export JavaSourceMap.SourceRange
+  import JavaSourceMap.SourceRange
   case class Diagnostic(problem: Problem, message: String, range: Option[SourceRange])
 
   final class ParsedSource private[JavaTurtleSource](val sourceMap: JavaSourceMap) {

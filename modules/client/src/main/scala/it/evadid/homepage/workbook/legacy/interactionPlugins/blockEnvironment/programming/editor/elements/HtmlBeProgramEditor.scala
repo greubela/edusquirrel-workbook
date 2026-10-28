@@ -24,7 +24,6 @@ case class HtmlBeProgramEditor(
   private val parseWarningVar: Var[Option[String]] = Var(None)
   private val textDirtyVar: Var[Boolean] = Var(false)
 
-
   private val BlockViewTabNr = 0
   private val TextViewTabNr = 1
 
@@ -36,7 +35,6 @@ case class HtmlBeProgramEditor(
   }(using new Owner() {})
   private var language: HumanLanguage = AppLanguage.English
 
-
   private def syncTextToBlocks(): Unit = {
     if (!textDirtyVar.now()) return
 
@@ -46,7 +44,7 @@ case class HtmlBeProgramEditor(
     try {
       textLanguage match {
         case Python =>
-          val parsedProgram = PythonParser.parsePython(raw)
+          val parsedProgram = PythonParser.default.parsePython(raw)
           editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
           textDirtyVar.set(false)
           parseWarningVar.set(None)
@@ -67,7 +65,7 @@ case class HtmlBeProgramEditor(
 
         // probably not optimal to parse python again here, but ok for now
         case _ =>
-          val parsedProgram = PythonParser.parsePython(raw)
+          val parsedProgram = PythonParser.default.parsePython(raw)
           if (trimmed.isEmpty || parsedProgram.body.nonEmpty) {
             editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
             textDirtyVar.set(false)

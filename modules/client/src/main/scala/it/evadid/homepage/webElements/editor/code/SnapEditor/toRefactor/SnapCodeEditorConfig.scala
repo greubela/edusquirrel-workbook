@@ -120,9 +120,6 @@ object SnapCodeEditorConfig:
     libraryTabs = PythonCompatibleSnapCategories
   )
 
-  /** Same Python-safe palette plus embroidery blocks (already included above). */
-  val EmbroideryTesting: SnapCodeEditorConfig = PythonCompatibleTesting
-
   /** One tab with blocks from any Snap categories (native block colors unchanged). */
   def mixedTab(
       id: String,

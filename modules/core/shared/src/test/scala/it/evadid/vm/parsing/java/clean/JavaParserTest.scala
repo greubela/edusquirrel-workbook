@@ -373,7 +373,7 @@ class JavaParserTest extends FunSuite {
     for source <- Seq("/*", turtleSource("Turtle.forward(40);") + "/* unfinished", turtleSource("/* unfinished")) do {
       val problem = sourceProblem(source)
       assertEquals(problem.problem, JavaTurtleSource.Problem.UnclosedComment)
-      assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(source.indexOf("/*"), source.length)))
+      assertEquals(problem.range, Some(JavaSourceMap.SourceRange(source.indexOf("/*"), source.length)))
     }
   }
 
@@ -387,7 +387,7 @@ class JavaParserTest extends FunSuite {
       val problem = sourceProblem(source)
       assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedType)
       val start = source.indexOf(s"$name value")
-      assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(start, start + name.length)))
+      assertEquals(problem.range, Some(JavaSourceMap.SourceRange(start, start + name.length)))
     }
   }
 
@@ -399,7 +399,7 @@ class JavaParserTest extends FunSuite {
       val problem = sourceProblem(source)
       assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedNumber, clue = number)
       val start = source.indexOf(s"($number)") + 1
-      assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(start, start + number.length)))
+      assertEquals(problem.range, Some(JavaSourceMap.SourceRange(start, start + number.length)))
     }
   }
 
@@ -416,7 +416,7 @@ class JavaParserTest extends FunSuite {
       val problem = sourceProblem(invalid)
       assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedNumber)
       val start = invalid.indexOf(number)
-      assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(start, start + number.length)))
+      assertEquals(problem.range, Some(JavaSourceMap.SourceRange(start, start + number.length)))
     }
     assert(JavaTurtleSource.parse(turtleSource("Turtle.forward(0." + "0" * 32 + ");")).isRight)
   }
@@ -452,7 +452,7 @@ class JavaParserTest extends FunSuite {
     val source = "\r\n\r\n}"
     val problem = sourceProblem(source)
     assertEquals(problem.problem, JavaTurtleSource.Problem.ParseFailure)
-    assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(4, 5)))
+    assertEquals(problem.range, Some(JavaSourceMap.SourceRange(4, 5)))
   }
 
   test("legacy Java parsing remains independent of the turtle source restrictions") {
@@ -467,7 +467,7 @@ class JavaParserTest extends FunSuite {
     assertEquals(JavaTurtleSource.parse(padded).toOption.get.source, padded)
     val problem = sourceProblem(padded + " ")
     assertEquals(problem.problem, JavaTurtleSource.Problem.InputLimit)
-    assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(padded.length, padded.length + 1)))
+    assertEquals(problem.range, Some(JavaSourceMap.SourceRange(padded.length, padded.length + 1)))
     assertEquals(sourceProblem("/*" + " " * JavaTurtleInputLimits.MaxSourceCharacters).problem,
       JavaTurtleSource.Problem.InputLimit)
   }
@@ -481,7 +481,7 @@ class JavaParserTest extends FunSuite {
       val problem = sourceProblem(source)
       val start = source.indexOf(token)
       assertEquals(problem.problem, JavaTurtleSource.Problem.InputLimit)
-      assertEquals(problem.range, Some(JavaTurtleSource.SourceRange(start, start + token.length)))
+      assertEquals(problem.range, Some(JavaSourceMap.SourceRange(start, start + token.length)))
     }
     assertEquals(semanticProblem(semanticSource("int value = " + "9" * length + ";")).problem,
       JavaTurtleSource.Problem.IntegerRange)

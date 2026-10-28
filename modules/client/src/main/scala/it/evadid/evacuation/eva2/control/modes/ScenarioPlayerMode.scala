@@ -18,8 +18,8 @@ import scala.concurrent.ExecutionContextExecutor
 
 case class ScenarioPlayerMode(enteringState: EvaFloorMap, evacuationSimulation: Evacuation, evacuationMetaData: EvacuationMetaData,
     writeFloor: EvaFloorMap => Unit = floor => ProgramState.instance.floorMap.setValue(floor),
-    showAnimations: () => Boolean = () => ProgramState.config.showAnimations.getValue.value,
-    movementOption: () => Int = () => ProgramState.config.showMovementOption.getValue.value,
+    showAnimations: () => Boolean = () => ProgramState.instance.config.showAnimations.getValue.value,
+    movementOption: () => Int = () => ProgramState.instance.config.showMovementOption.getValue.value,
     redraw: () => Unit = () => Eva2Control.requestRedrawTiles(),
     onFailure: () => Unit = () => Eva2Control.setNewControlMode(ScenarioEditorMode())) extends Eva2ControlMode {
 
@@ -133,7 +133,7 @@ case class ScenarioPlayerMode(enteringState: EvaFloorMap, evacuationSimulation: 
     movement.map(tup => {
       val person = tup._1
       val dir = tup._2
-      val dirSprite = ProgramState.spriteMap.directionSprite(dir)
+      val dirSprite = ProgramState.instance.spriteMap.currentValue.directionSprite(dir)
       if (dirSprite.isEmpty) {
         println("dirSprite empty for dir: " + dir)
       }

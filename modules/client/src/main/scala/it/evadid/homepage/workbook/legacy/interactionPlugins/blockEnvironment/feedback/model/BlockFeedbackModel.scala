@@ -29,16 +29,9 @@ final case class BlockFeedbackRequest(
     humanLanguage: HumanLanguage = AppLanguage.default()
 ) derives upickle.default.ReadWriter {
 
-    /** Preferred output language for human-readable texts. */
-    def preferredHumanLanguage: HumanLanguage =
-        humanLanguage
-
     /** Derives Python source from the VM expression tree. */
     def pythonSource: String =
         pythonSourceOverride
           .map(_.replace("\r\n", "\n"))
-                    .getOrElse(studentCodePython.structureInfo.toStringInLanguage(AppLanguage.Python, preferredHumanLanguage, true))
+                    .getOrElse(studentCodePython.structureInfo.toStringInLanguage(AppLanguage.Python, humanLanguage, true))
 }
-
-/** Alias: internally we use the same type as the UI direction. */
-type BlockFeedbackResult = UltrichsNewCoolFeedback

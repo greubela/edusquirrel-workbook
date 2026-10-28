@@ -1,8 +1,8 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
@@ -20,7 +20,7 @@ case class TurtleRecreateShapeInteraction
 ) extends WorkbookInteractionElement[ProgrammingState] derives ReadWriter {
 
   override val defaultValue: ProgrammingState = initProgram
-  override val serializerInteractionContent: Serializer[ProgrammingState] = Serializer.fromUpickleJson(ProgrammingState.derived$ReadWriter)
+  override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingState.serializer
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val associatedFactory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = TurtleRecreateShapeInteraction.factory
 }

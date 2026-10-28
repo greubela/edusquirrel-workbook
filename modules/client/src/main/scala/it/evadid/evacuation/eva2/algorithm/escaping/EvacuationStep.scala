@@ -26,12 +26,12 @@ object EvacuationStep {
     val initialState = ProgramState.instance.floorMap.currentValue
 
     val timeStart: Long = System.nanoTime()
-    val eva = calculateEvacuation(initialState, ProgramState.config.neighbourhood.getValue.value, ProgramState.config.strategy.getValue.value)
+    val eva = calculateEvacuation(initialState, ProgramState.instance.config.neighbourhood.getValue.value, ProgramState.instance.config.strategy.getValue.value)
     val timeEnd: Long = System.nanoTime()
 
     val diffInMs = (timeEnd - timeStart) / 1000000
 
-    val meta = EvacuationMetaData(eva, diffInMs, ProgramState.config.neighbourhood.getValue.toPrint, ProgramState.config.strategy.getValue.toPrint)
+    val meta = EvacuationMetaData(eva, diffInMs, ProgramState.instance.config.neighbourhood.getValue.toPrint, ProgramState.instance.config.strategy.getValue.toPrint)
     (eva, meta)
   }
 

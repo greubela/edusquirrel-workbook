@@ -1,10 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.programming
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStateJavaString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
 import it.evadid.vm.test.{BeTestResult, BeTestSuite, ProgrammingTestSuite, SampleBeTest}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
@@ -27,7 +26,6 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.workbook.abstractions.grading.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingStatePythonString
 
 import scala.concurrent.{ExecutionContext, Future}
 import java.time.LocalDateTime
@@ -193,8 +191,8 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val savedDraft = ProgrammingStateJavaString(" \r\npublic class Drawing {\n  static void square(\r\n\t ")
     val saved = restored.serializerInteractionContent.serialize(savedDraft)
     assertEquals(restored.serializerInteractionContent.deserialize(saved), savedDraft)
-    assertEquals(ProgrammingState.fingerprint(restored.serializerInteractionContent.deserialize(saved)),
-      ProgrammingState.fingerprint(savedDraft))
+    assertEquals(restored.serializerInteractionContent.deserialize(saved).fingerprint(),
+      savedDraft.fingerprint())
   }
 
   test("explicit full Java starting source takes precedence over a legacy task definition") {
@@ -221,7 +219,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val serialized = exercise.serializerInteractionContent.serialize(invalidDraft)
     val restored = exercise.serializerInteractionContent.deserialize(serialized)
     assertEquals(restored, invalidDraft)
-    assertEquals(ProgrammingState.fingerprint(restored), ProgrammingState.fingerprint(invalidDraft))
+    assertEquals(restored.fingerprint(), invalidDraft.fingerprint())
     assertEquals(exercise.defaultValue, ProgrammingStateJavaString(source))
   }
 
@@ -744,7 +742,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       assert(request.context("_eva_source").str.nonEmpty)
       assert(!request.context.contains("_eva_is_java") && !request.context.contains("_eva_java_methods"))
     })
-    val states = List[ProgrammingState](source, source.toBeExpressionState, source.toPython, source.toSnapXml)
+    val states = List[ProgrammingState](source, source.toBeExpression, source.toPython, source.toSnapXml)
     Future.traverse(states) { state =>
       val saved = write[ProgrammingState](state)
       assertionGrader(suite).gradeStateSafe(state, forceGrading = true, List(client)).map { graded =>
@@ -1084,7 +1082,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val fixtures = List(
       ("""{"testSuite":{"$type":"SampleBeTest","pythonTestCode":"assert True\r\nassert False\n"},"serializedType":"ProgrammingUnitTestGrader"}""", GradingImportance.REQUIRED_TEST),
       ("""{"testSuite":{"$type":"SampleBeTest","pythonTestCode":"assert True\r\nassert False\n"},"importance":"HIDDEN_TEST","serializedType":"ProgrammingUnitTestGrader"}""", GradingImportance.HIDDEN_TEST))
-    val stateJson = ujson.read("""{"$type":"PythonSource","value":{"$type":"ProgrammingState.ProgrammingState.ProgrammingStatePythonString","code":"pass\r\n"}}""")
+    val stateJson = ujson.read("""{"$type":"PythonSource","value":{"$type":"ProgrammingStatePythonString","code":"pass\r\n"}}""")
     val state: ProgrammingState = ProgrammingStatePythonString("pass\r\n")
     val time = LocalDateTime.parse("2026-10-26T12:00")
     fixtures.foreach { (json, importance) =>

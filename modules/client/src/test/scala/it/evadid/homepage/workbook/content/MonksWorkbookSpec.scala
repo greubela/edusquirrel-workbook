@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.language.AppLanguage.{German, English}
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState.ProgrammingState.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
@@ -99,7 +99,7 @@ class MonksWorkbookSpec extends FunSuite {
       }
       assertEquals(exercise.availablePalette,
         ProgrammingEditorPalette.PythonCompatibleSnap)
-      assert(exercise.initProgram.toBeExpressionState.deriveTurtleCommands.isEmpty)
+      assert(exercise.initProgram.toBeExpression.deriveTurtleCommands.isEmpty)
     }
     val peak = CreateMonksWorkbook.kochTarget(1).lines(1).end
     assertEqualsDouble(peak.x, 135.0, 1e-8)
@@ -121,7 +121,7 @@ class MonksWorkbookSpec extends FunSuite {
       |""".stripMargin
     for (depth <- 0 to 2) {
       val commands = ProgrammingStatePythonString(
-        function + s"koch(270, $depth)\n").toBeExpressionState.deriveTurtleCommands
+        function + s"koch(270, $depth)\n").toBeExpression.deriveTurtleCommands
       val expected = CreateMonksWorkbook.kochTarget(depth).lines.map(line =>
         it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineToRender(line.start, line.end))
       val result = it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.buildScene(commands, expected)

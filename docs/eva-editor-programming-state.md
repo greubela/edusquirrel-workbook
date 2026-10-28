@@ -63,6 +63,10 @@ All changing client state must remain in `val`-bound `Var[T]` values. Prefer
 immutable calculations and derived signals to additional stores. See
 [state and serialization](state-and-serialization.md).
 
+`ProgrammingState` and its concrete representations live directly in the `programming.state`
+package. Use `toBeExpression`, `toJava`, `toPython`, `toSnapXml` and instance `fingerprint()`;
+there are no nested type aliases or alternate conversion names.
+
 ## Persistence and verification
 
 Interactions use the current implicit `ProgrammingState` codec. JSON and
