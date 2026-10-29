@@ -4,7 +4,8 @@ import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapXmlParser
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
-import upickle.default.ReadWriter
+import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence, JavaTurtleRuntime, JavaTurtleTrace}
+import upickle.default.*
 
 /** DOM-independent jobs supported by the workbook worker. */
 object WorkerCommands {
@@ -21,6 +22,38 @@ object WorkerCommands {
   case class PythonCallback(module: String, method: String, args: List[ujson.Value]) derives ReadWriter
   case class RunPythonResult(value: ujson.Value, stdout: String, stderr: String,
       callbackOps: List[PythonCallback]) derives ReadWriter
+  case class JavaExecutionEvidenceRequest(source: String, method: Option[String] = None,
+      arguments: Vector[JavaTurtleExecutionEvidence.Scalar] = Vector.empty,
+      limits: JavaTurtleRuntime.Limits = JavaTurtleRuntime.Limits(),
+      budget: JavaTurtleTrace.Budget = JavaTurtleTrace.Budget())
+
+  object JavaExecutionEvidenceRequest {
+    private val derived: ReadWriter[JavaExecutionEvidenceRequest] = macroRW
+
+    private def integer(value: ujson.Value): Unit =
+      require(value.numOpt.exists(_.isValidInt), "Expected an int32 value.")
+
+    given ReadWriter[JavaExecutionEvidenceRequest] = readwriter[ujson.Value].bimap(
+      request => writeJs(request)(using derived),
+      json => {
+        val fields = json.obj
+        List("limits" -> List("maxSteps", "maxCommands", "maxCallDepth", "maxBlockDepth"),
+          "budget" -> List("maxEvents", "maxDependencies")).foreach { (field, integers) =>
+          fields.get(field).foreach { value =>
+            integers.foreach(name => value.obj.get(name).foreach(integer))
+          }
+        }
+        fields.get("arguments").foreach(_.arr.foreach { argument =>
+          argument("$type").str match {
+            case "Int32" => integer(argument("value"))
+            case "Bool" => require(argument("value").boolOpt.isDefined, "Expected a boolean value.")
+            case "Float64" => require(argument("bits").strOpt.isDefined, "Expected double bits.")
+            case _ => throw IllegalArgumentException("Invalid invocation argument type.")
+          }
+        })
+        read[JavaExecutionEvidenceRequest](json)(using derived)
+      })
+  }
 
   lazy val health = ExecutionCommandFactory[HealthRequest, HealthResult]("worker.health")
   lazy val parseSnapXml = ExecutionCommandFactory[ParseSnapXmlRequest, List[SnapXmlParser.Element]]("worker.parseSnapXml")
@@ -34,5 +67,14 @@ object WorkerCommands {
           .flatMap(_.get("codeLength")).flatMap(_.numOpt).filter(n => n >= 0 && n <= Int.MaxValue && n % 1 == 0).map(_.toInt))
       ujson.Obj("redacted" -> true, "codeLength" -> length.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
     })
-  lazy val supportedCommands: Set[String] = Set(health.name, parseSnapXml.name, pythonFlowchart.name, calculateQrCode.name, runPython.name)
+  lazy val javaExecutionEvidence = ExecutionCommandFactory[JavaExecutionEvidenceRequest, JavaTurtleExecutionEvidence.Snapshot](
+    "worker.javaExecutionEvidence", privacyFilter = Some { payload =>
+      val fields = payload.objOpt
+      val length = fields.flatMap(_.get("source")).flatMap(_.strOpt).filter(_ != null).map(_.length)
+        .orElse(fields.filter(_.get("redacted").contains(ujson.Bool(true)))
+          .flatMap(_.get("sourceLength")).flatMap(_.numOpt).filter(n => n >= 0 && n <= Int.MaxValue && n % 1 == 0).map(_.toInt))
+      ujson.Obj("redacted" -> true, "sourceLength" -> length.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
+    })
+  lazy val supportedCommands: Set[String] = Set(health.name, parseSnapXml.name, pythonFlowchart.name,
+    calculateQrCode.name, runPython.name, javaExecutionEvidence.name)
 }

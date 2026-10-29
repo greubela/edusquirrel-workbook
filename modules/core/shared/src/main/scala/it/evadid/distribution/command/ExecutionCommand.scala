@@ -17,7 +17,7 @@ case class ExecutionCommand(name: String, json: ujson.Value) derives ReadWriter{
 object ExecutionCommand {
 
   private lazy val privacySensitiveFactories: List[ExecutionCommandFactory[?, ?]] =
-    List(LLMCommands.feedbackLlmCommandFactory, WorkerCommands.runPython)
+    List(LLMCommands.feedbackLlmCommandFactory, WorkerCommands.runPython, WorkerCommands.javaExecutionEvidence)
 
   def fromJson(json: String): ExecutionCommand = read(json)
 

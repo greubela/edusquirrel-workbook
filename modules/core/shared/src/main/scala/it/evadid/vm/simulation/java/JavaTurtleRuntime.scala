@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleTrace as J}
 import scala.collection.mutable
+import upickle.default.ReadWriter
 
 object JavaTurtleRuntime {
   enum Failure {
@@ -27,7 +28,7 @@ object JavaTurtleRuntime {
   }
 
   case class Limits(maxSteps: Int = Limits.MaxSteps, maxCommands: Int = Limits.MaxCommands,
-      maxCallDepth: Int = Limits.MaxCallDepth, maxBlockDepth: Int = Limits.MaxBlockDepth) {
+      maxCallDepth: Int = Limits.MaxCallDepth, maxBlockDepth: Int = Limits.MaxBlockDepth) derives ReadWriter {
     def isValid: Boolean =
       maxSteps > 0 && maxSteps <= Limits.MaxSteps && maxCommands >= 0 && maxCommands <= Limits.MaxCommands &&
         maxCallDepth > 0 && maxCallDepth <= Limits.MaxCallDepth &&

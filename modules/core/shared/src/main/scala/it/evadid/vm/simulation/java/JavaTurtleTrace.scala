@@ -6,6 +6,7 @@ import it.evadid.vm.parsing.java.clean.JavaSourceMap.{Position, SourceRange}
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import scala.annotation.tailrec
+import upickle.default.ReadWriter
 
 object JavaTurtleTrace {
   // Structural paths belong to one compiled source; they are not source positions.
@@ -48,15 +49,28 @@ object JavaTurtleTrace {
     private val sourceMap = origin.typedSource.structure.parsedSource.sourceMap
     private lazy val sourceLocations = JavaTurtleTraceSources.build(origin)
 
-    lazy val completedExpressions: Option[Vector[ExpressionObservation]] = sourceLocations.flatMap { locations =>
-      events.foldLeft(Option(Vector.empty[ExpressionObservation])) { (result, event) =>
+    private lazy val completedExpressionEvents: Option[Vector[(Event, E.Value)]] = sourceLocations.flatMap { locations =>
+      events.foldLeft(Option(Vector.empty[(Event, E.Value)])) { (result, event) =>
         for { previous <- result; entry <- locations.get(event.node) } yield event.kind match {
-          case Kind.Expression(value) => previous :+ ExpressionObservation(event.invocation, event.node, value)
-          case Kind.Read(_, value) if entry.isReadExpression => previous :+ ExpressionObservation(event.invocation, event.node, value)
+          case Kind.Expression(value) => previous :+ (event -> value)
+          case Kind.Read(_, value) if entry.isReadExpression => previous :+ (event -> value)
           case _ => previous
         }
       }
     }
+
+    lazy val completedExpressions: Option[Vector[ExpressionObservation]] = completedExpressionEvents.map(_.map {
+      (event, value) => ExpressionObservation(event.invocation, event.node, value)
+    })
+
+    private[java] def methodName(id: R.MethodId): Option[String] = origin.methods.find(_.id == id).map(_.name)
+
+    private[java] def locatedCompletedExpressions(currentSource: String): Option[Vector[(LocatedEvent, E.Value)]] =
+      if currentSource != sourceMap.source then None
+      else completedExpressionEvents.flatMap(_.foldLeft(Option(Vector.empty[(LocatedEvent, E.Value)])) {
+        case (result, (event, value)) =>
+          for { previous <- result; located <- locateEvent(event) } yield previous :+ (located -> value)
+      })
 
     def locate(eventId: Int, currentSource: String): Option[LocatedEvent] =
       if currentSource != sourceMap.source then None
@@ -95,7 +109,7 @@ object JavaTurtleTrace {
 
   case class RecordedExecution(execution: T.Execution, trace: Capture)
 
-  case class Budget(maxEvents: Int = 4096, maxDependencies: Int = 32768) {
+  case class Budget(maxEvents: Int = 4096, maxDependencies: Int = 32768) derives ReadWriter {
     require(maxEvents >= 0 && maxEvents <= 10000, "Invalid trace event budget.")
     require(maxDependencies >= 0 && maxDependencies <= 100000, "Invalid trace dependency budget.")
   }
