@@ -6,6 +6,7 @@ import upickle.default.{ReadWriter, readwriter}
 
 trait ProgrammingTestGrader extends WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo] {
   def testId: String
+  def publishProgramObservation: Boolean = false
 }
 
 object ProgrammingTestGrader {

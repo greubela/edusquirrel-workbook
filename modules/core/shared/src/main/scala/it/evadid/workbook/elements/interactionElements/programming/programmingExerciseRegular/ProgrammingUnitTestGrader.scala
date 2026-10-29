@@ -1,73 +1,78 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgramForUnitTestExecution}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
+import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.SerializedException
 import it.evadid.vm.test.{BeTestResult, ProgrammingTestRunner}
-import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport
-import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.JavaTurtleEditingBridge
 import upickle.default.*
 
 import scala.concurrent.Future
+import scala.util.Try
+import scala.util.control.NonFatal
 
 case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
-    importance: GradingImportance = GradingImportance.REQUIRED_TEST)
+    importance: GradingImportance = GradingImportance.REQUIRED_TEST,
+    publicDescription: Option[LanguageMapContentId] = None,
+    override val publishProgramObservation: Boolean = false)
     extends ProgrammingTestGrader {
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
   override val gradingEntity = FeedbackEntity.TestEntity()
 
-  private def evaluateJava(source: => Either[String, ProgrammingStateJavaString], clients: List[ExecutionClient]): Future[BeTestResult] =
-    Future(source.flatMap(_.toJavaVmProgram.left.map(_.message))).flatMap {
-      case Right(program) => evaluateProgram(program, clients)
-      case Left(_) => Future.successful(BeTestResult.Error("This source is not supported by the checked Java Turtle runner."))
-    }
-
-  private def evaluateProgram(program: JavaTurtleVmPrograms.Program, clients: List[ExecutionClient]): Future[BeTestResult] = {
-    val exported = JavaTurtlePythonExport.render(program)
-    ProgrammingTestRunner.execute(exported.source, pythonTestCode,
-      Some(exported.methods.view.mapValues(_.index).toMap), clients)
-  }
-
   override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
-    val evaluation = state match {
-      case ProgrammingStatePythonString(source) => Future(JavaTurtleEditingBridge.hasPythonMetadata(source)).flatMap {
-        case true => evaluateJava(JavaTurtleEditingBridge.fromPython(source), clients)
-        case false => ProgrammingTestRunner.execute(source, pythonTestCode, None, clients)
-      }
-      case snap: ProgrammingStateSnapXml => Future(JavaTurtleEditingBridge.hasSnapMetadata(snap.snapXml)).flatMap {
-        case true => evaluateJava(JavaTurtleEditingBridge.fromSnap(snap), clients)
-        case false => Future.successful(BeTestResult.Error("Unit tests cannot infer a Java program from an untyped Snap project."))
-      }
-      case ProgrammingStateBeExpression(root: JavaTurtleVmPrograms.Root) =>
-        evaluateProgram(JavaTurtleVmPrograms.fromRoot(root), clients)
-      case java: ProgrammingStateJavaString => evaluateJava(Right(java), clients)
-      case _ => Future.successful(BeTestResult.Error("Unit tests require original Python source or a supported Java Turtle class."))
+    val evaluation = Future(ProgramForUnitTestExecution.fromState(state)).flatMap {
+      case Right(program) => ProgrammingTestRunner.execute(program, pythonTestCode, clients,
+        publishProgramObservation && importance != GradingImportance.HIDDEN_TEST)
+      case Left(error) => Future.successful(ProgrammingTestRunner.Result(BeTestResult.Error(error.message)))
     }
     evaluation.map { result =>
-      val status = result match {
+      val status = result.result match {
         case BeTestResult.Passed => GradingStatus.Correct()
         case BeTestResult.Failed => GradingStatus.Incorrect()
         case BeTestResult.Error(message) => GradingStatus.TestError(SerializedException(message))
       }
-      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status)
+      val info = result.programObservation.map(observation =>
+        AdditionalProgrammingTestInfo(LanguageMap.empty[HumanLanguage], Some(observation)))
+      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, additionalData = info)
     }
   }
+
+  override def gradeState(state: ProgrammingState, clients: List[ExecutionClient], resolver: LanguageMapIdResolver):
+      Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] =
+    gradeState(state, clients).flatMap { result =>
+      val described = publicDescription.filter(_ => importance != GradingImportance.HIDDEN_TEST &&
+        Set[GradingStatus](GradingStatus.Correct(), GradingStatus.Incorrect(), GradingStatus.PartiallyCorrect()).contains(result.gradingStatus))
+      described.fold(Future.successful(result)) { id =>
+        val resolution = Try(Option(resolver).flatMap(value => Option(value.resolveMap(id)))).toOption.flatten
+        resolution.fold(Future.successful(result))(_.map { description =>
+          val info = AdditionalProgrammingTestInfo.fromPublicDescription(description).map { described =>
+            described.copy(programObservation = result.additionalData.flatMap(_.programObservation))
+          }.orElse(result.additionalData)
+          result.copy(additionalData = info)
+        }.recover { case NonFatal(_) => result })
+      }
+    }
 }
 
 object ProgrammingUnitTestGrader {
   private[evadid] val LegacyTestId = "legacy-python-assertions"
 
   private case class Payload(testId: String, pythonTestCode: String,
-      importance: GradingImportance = GradingImportance.REQUIRED_TEST) derives ReadWriter
+      importance: GradingImportance = GradingImportance.REQUIRED_TEST,
+      publicDescription: Option[LanguageMapContentId] = None,
+      publishProgramObservation: Boolean = false) derives ReadWriter
 
   given ReadWriter[ProgrammingUnitTestGrader] = readwriter[ujson.Value].bimap(
-    grader => writeJs(Payload(grader.testId, grader.pythonTestCode, grader.importance)),
+    grader => writeJs(Payload(grader.testId, grader.pythonTestCode, grader.importance, grader.publicDescription,
+      grader.publishProgramObservation)),
     value => {
       val fields = value.obj.toMap
       require(fields.get("serializedType").forall(_ == ujson.Str("ProgrammingUnitTestGrader")),
@@ -81,10 +86,13 @@ object ProgrammingUnitTestGrader {
         Payload(LegacyTestId, test("pythonTestCode").str,
           fields.get("importance").map(read[GradingImportance](_)).getOrElse(GradingImportance.REQUIRED_TEST))
       } else {
-        require(fields.keySet.subsetOf(Set("testId", "pythonTestCode", "importance", "serializedType")),
+        require(fields.keySet.subsetOf(Set("testId", "pythonTestCode", "importance", "publicDescription", "publishProgramObservation", "serializedType")),
           "Unexpected programming test fields.")
+        require(fields.get("publishProgramObservation").forall(_.boolOpt.isDefined),
+          "Publishing a program observation requires a boolean setting.")
         read[Payload](ujson.Obj.from(fields - "serializedType"))
       }
-      ProgrammingUnitTestGrader(payload.testId, payload.pythonTestCode, payload.importance)
+      ProgrammingUnitTestGrader(payload.testId, payload.pythonTestCode, payload.importance, payload.publicDescription,
+        payload.publishProgramObservation)
     })
 }
