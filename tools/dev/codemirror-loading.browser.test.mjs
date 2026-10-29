@@ -10,7 +10,7 @@ const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 
 async function fixture(browser, fail = false, openEditor = true, forceTimer = false) {
-  const page = await browser.newPage();
+  const page = await browser.newPage({colorScheme: 'light'});
   if (forceTimer) await page.addInitScript(() => {
     Object.defineProperty(window, 'requestIdleCallback', {value:undefined, configurable:true});
   });
@@ -46,16 +46,16 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     const {page, release, requests, errors} = await fixture(browser);
     assert.equal(requests(), 1, 'the pending background load is shared with editors');
     const dialog = page.locator('dialog[open]');
-    await dialog.getByRole('button', {name:'Python',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     const fallback = dialog.locator('.code-mirror-editor__fallback');
     await fallback.fill('forward(77)\n');
     await page.waitForFunction(() => performance.getEntriesByType('resource').some(entry => entry.name.includes('esm.sh/')));
-    await dialog.getByRole('button', {name:'Snap!',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
     release();
     await page.waitForFunction(() => !!window.EduSquirrelCodeMirror);
     await page.waitForTimeout(300);
     assert.equal(await page.locator('.cm-editor').count(), 0, 'resolved load cannot mount a stale Python tab');
-    await dialog.getByRole('button', {name:'Python',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     await dialog.locator('.cm-editor').waitFor();
     assert.match(await dialog.locator('.cm-content').innerText(), /forward\(77\)/, 'text entered while loading survives enhancement');
     assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 1, 'Eva enables the configured Python gutter');
@@ -79,11 +79,27 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     assert.equal(await dialog.locator('.cm-line').count(), source.split('\n').length,
       'synthetic branch and closing rows do not add content lines');
     assert.equal(await dialog.locator('.cm-content').innerText(), source);
-    await dialog.getByRole('button', {name:'Use dark appearance'}).click();
-    await dialog.getByRole('button', {name:'Use light appearance'}).waitFor();
-    assert.notEqual(await dialog.locator('.cm-flowchart-row > svg').first().evaluate(svg => getComputedStyle(svg).filter),
-      'none', 'the nested renderer palette adapts to the dark editor');
-    await dialog.getByRole('button', {name:'Java',exact:true}).click();
+    await page.evaluate(() => {
+      const node = document.querySelector('dialog[open] .cm-editor');
+      window.loadingAppearanceProbe = {node, view: EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(node)};
+    });
+    for (const theme of ['dark', 'light']) {
+      await page.evaluate(theme => document.documentElement.setAttribute('data-theme', theme), theme);
+      await page.waitForFunction(theme => {
+        const editor = document.querySelector('dialog[open] .eva-editor');
+        const svg = editor?.querySelector('.cm-flowchart-row > svg');
+        return editor?.getAttribute('data-editor-theme') === theme && svg &&
+          (getComputedStyle(svg).filter !== 'none') === (theme === 'dark') &&
+          loadingAppearanceProbe.view.state.facet(EduSquirrelCodeMirrorLibraries.EditorView.darkTheme) === (theme === 'dark');
+      }, theme);
+      assert(await page.evaluate(() => {
+        const node = document.querySelector('dialog[open] .cm-editor');
+        return node === loadingAppearanceProbe.node &&
+          EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(node) === loadingAppearanceProbe.view;
+      }), 'page theme changes preserve the live editor');
+      assert.equal(await dialog.locator('.cm-content').innerText(), source, 'appearance preserves the edited source');
+    }
+    await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     await dialog.locator('.cm-editor').waitFor();
     assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 0, 'Python gutter does not appear for Java');
     assert.equal(requests(), 1, 'all tabs reuse the same module load');
@@ -96,12 +112,12 @@ test('a failed CodeMirror request leaves the fallback editable and other tabs us
   try {
     const {page, release, errors} = await fixture(browser, true);
     const dialog = page.locator('dialog[open]');
-    await dialog.getByRole('button', {name:'Python',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     release();
     const fallback = dialog.locator('.code-mirror-editor__fallback');
     await fallback.fill('forward(88)\n');
-    await dialog.getByRole('button', {name:'Snap!',exact:true}).click();
-    await dialog.getByRole('button', {name:'Python',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
+    await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     assert.match(await fallback.inputValue(), /forward\(88\)/);
     assert.equal(await dialog.locator('.cm-editor').count(), 0);
     assert.deepEqual(errors, []);
@@ -117,7 +133,7 @@ test('startup warms CodeMirror without idle callbacks or editor creation, and th
     await page.waitForFunction(() => !!window.EduSquirrelCodeMirror);
     assert.equal(await page.locator('.cm-editor').count(), 0);
     await page.getByRole('button', {name:/Editor.*öffnen|Open editor/i}).first().click();
-    await page.locator('dialog[open]').getByRole('button', {name:'Python',exact:true}).click();
+    await page.locator('dialog[open]').getByRole('tab', {name:'Python',exact:true}).click();
     await page.locator('dialog[open] .cm-editor').waitFor();
     assert.equal(requests(), 1, 'opening the first text editor does not request another script');
     assert.equal(await page.locator('.cm-editor').count(), 1);

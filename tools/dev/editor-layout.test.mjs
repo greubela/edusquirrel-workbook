@@ -15,7 +15,6 @@ if (!executablePath) {
 const viewports = [{width: 1440, height: 900}, {width: 1440, height: 480}, {width: 760, height: 900},
   {width: 390, height: 844}, {width: 320, height: 740}, {width: 844, height: 390}];
 const compactJavaNavigation = viewport => viewport.width <= 760 || viewport.height <= 600;
-const themeToggle = '<button type="button" class="editor-appearance__toggle" aria-label="Editor appearance">Light</button>';
 const javaIcon = '<svg class="eva-editor__language-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6"/></svg>';
 const board = '<div class="turtle-gradig-panel"><svg viewBox="0 0 200 200"><path class="turtle-line turtle-line--correct" d="M20 180H180V20" fill="none" stroke="currentColor"/></svg></div>';
 const drawingPanel = `<div class="turtle-execution"><h3>Drawing</h3><div class="turtle-execution__actions"><button type="button">Run</button><button type="button" disabled>Stop</button></div><p class="turtle-execution__status" role="status">Run your program to see its drawing.</p><figure class="turtle-execution__figure"><figcaption>Target</figcaption><div class="turtle-execution__canvas">${board}</div></figure></div>`;
@@ -32,7 +31,7 @@ const codeEditor = language => `<div class="code-editor code-mirror-editor">${la
 const javaEditor = ({theme, standalone, fullSource, collapsed}) => `
   <div class="java-function-based-editor editor-appearance${standalone ? ' java-function-based-editor--with-reference' : ''}${collapsed ? ' java-function-based-editor--structure-collapsed' : ''}" data-editor-theme="${theme}">
     <div class="java-function-editor__topbar"><div><h2 class="java-function-editor__title">Java editor</h2><p class="java-function-editor__subtitle">Explore classes and edit one method at a time.</p></div>
-      <div class="java-function-editor__topbar-actions"><button class="java-function-editor__button java-function-editor__button--secondary" aria-controls="java-navigation" aria-expanded="${!collapsed}">${collapsed ? 'Show' : 'Hide'} classes</button>${standalone ? themeToggle : ''}<span class="java-function-editor__sync" role="status">${fullSource ? 'Full source' : 'Method view'}</span></div>
+      <div class="java-function-editor__topbar-actions"><button class="java-function-editor__button java-function-editor__button--secondary" aria-controls="java-navigation" aria-expanded="${!collapsed}">${collapsed ? 'Show' : 'Hide'} classes</button><span class="java-function-editor__sync" role="status">${fullSource ? 'Full source' : 'Method view'}</span></div>
     </div>
     <nav class="java-function-editor__diagram-section" id="java-navigation" aria-label="Java classes and methods">
       <div class="java-function-editor__section-heading"><div><h3 class="java-function-editor__section-title">Classes</h3><p class="java-function-editor__section-hint">Select a method to open it in the editor.</p></div><button class="java-function-editor__button java-function-editor__button--primary">Add class</button></div>
@@ -58,8 +57,8 @@ const fixture = (language, preview = true, standalone = false, theme = 'dark', f
   return `<!doctype html><html><head>${codeMirrorLayout}<link rel="stylesheet" href="/css/custom-elements.css"><link rel="stylesheet" href="/css/workbook/workbook-structure.css"><link rel="stylesheet" href="/css/workbook/workbook-header.css"><link rel="stylesheet" href="/css/workbook/workbook-interactions.css"><link rel="stylesheet" href="/css/JavaFunctionEditor.css"></head><body>
     <dialog class="fullscreen-overlay-dialog"><div class="fullscreen-content-container">${standalone ? editor : `
       <div class="eva-editor editor-appearance${language === 'Java' ? ' eva-editor--java' : ''}" data-editor-theme="${theme}"><div class="eva-editor__toolbar"><div class="eva-editor__tabs">
-        ${['Snap', 'Python', 'Java'].map(tab => `<button type="button" aria-label="${tab}" title="${tab}" aria-pressed="${tab === (language === 'Fallback' ? 'Python' : language)}" aria-selected="${tab === (language === 'Fallback' ? 'Python' : language)}">${tab === 'Java' ? javaIcon : `<span>${tab}</span>`}</button>`).join('')}
-      </div>${themeToggle}</div><div class="eva-editor__content">${editor}</div>${preview ? `<div class="turtle-sidebar">${language === 'Java' ? drawingPanel : `<div class="turtle-live-preview"><div class="element-card"><h3 class="element-card-label">Preview (Turtle)</h3><div class="element-card-content"><div>${board}</div></div></div></div>`}</div>` : ''}</div>`}
+        ${['Snap', 'Python', 'Java'].map(tab => `<button type="button" role="tab" aria-label="${tab}" title="${tab}" aria-selected="${tab === (language === 'Fallback' ? 'Python' : language)}">${tab === 'Java' ? javaIcon : `<span>${tab}</span>`}</button>`).join('')}
+      </div></div><div class="eva-editor__content">${editor}</div>${preview ? `<div class="turtle-sidebar">${language === 'Java' ? drawingPanel : `<div class="turtle-live-preview"><div class="element-card"><h3 class="element-card-label">Preview (Turtle)</h3><div class="element-card-content"><div>${board}</div></div></div></div>`}</div>` : ''}</div>`}
     </div><button class="fullscreen-close-button" aria-label="Exit full screen">×</button></dialog>
     <script>document.querySelector('.fullscreen-overlay-dialog').showModal()</script></body></html>`;
 };
@@ -197,7 +196,7 @@ test('editor tabs stay compact and panels fit on desktop, mobile and short scree
             await assertHorizontalFit(page);
             await assertEditorFrame(page);
             await assertPaneBounds(page, viewport);
-            const javaTab = page.locator('.eva-editor__tabs').getByRole('button', {name: 'Java', exact: true});
+            const javaTab = page.locator('.eva-editor__tabs').getByRole('tab', {name: 'Java', exact: true});
             assert.equal(await javaTab.innerText(), '', 'Java is displayed as an icon with an accessible label');
             assert.equal(await javaTab.locator('.eva-editor__language-icon').count(), 1);
             for (const panel of [geometry.content, geometry.sidebar, geometry.editor].filter(Boolean)) {
@@ -221,7 +220,7 @@ test('editor tabs stay compact and panels fit on desktop, mobile and short scree
             }
             if (process.env.EDITOR_SCREENSHOT && viewport.width === 1440 && language === 'Python' && preview) await page.screenshot({path: process.env.EDITOR_SCREENSHOT});
             await assertFocus(page.locator('.eva-editor__tabs > button').first());
-            await assertFocus(page.locator('.editor-appearance__toggle'));
+            await assertFocus(page.locator('.eva-editor__tabs > button[aria-selected="true"]'));
             if (viewport.width <= 760) await assertTouchTargets(page);
           }
         }
@@ -253,7 +252,7 @@ test('Java method, full-source and dialog chrome fit Eva and standalone editors'
             await assertPaneBounds(page, viewport);
             assert.equal(await page.locator('.java-function-editor__diagram-section').isVisible(), !collapsed, 'initial mobile and short-screen navigation is collapsed; an open desktop list remains visible');
             assert.equal(await page.locator('.java-function-editor__compact-navigation').isVisible(), collapsed, 'compact method selection follows the initial viewport state and explicit collapse');
-            assert.equal(await page.locator('.editor-appearance__toggle').count(), 1, 'embedded Java shares the Eva appearance toggle');
+            assert.equal(await page.locator('.editor-appearance__toggle').count(), 0, 'the editor follows the page theme and has no private toggle');
             assert(await page.locator('.cm-editor').isVisible(), 'method and full-source editing panes remain visible');
             await assertFocus(page.locator('.java-function-editor__view-toggle button').first());
             if (viewport.width <= 760) await assertTouchTargets(page);
@@ -396,7 +395,7 @@ test('editor appearance preserves code contrast, focus, reduced motion and drawi
         });
         assert(contrast.every(item => item.themedSurface), `${language} ${theme}: code uses its scoped surface token`);
         assert(contrast.every(item => item.ratio >= 4.5), `${language} ${theme}: code text contrast ${JSON.stringify(contrast)}`);
-        await assertFocus(page.locator('.editor-appearance__toggle'));
+        await assertFocus(page.locator('.eva-editor__tabs > button, .java-function-editor__view-toggle button').first());
         const motion = await page.locator('.editor-appearance, .editor-appearance button').evaluateAll(elements => elements.map(element => {
           const style = getComputedStyle(element);
           return [style.transitionDuration, style.animationDuration].flatMap(value => value.split(',').map(parseFloat));

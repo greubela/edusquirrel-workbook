@@ -1,7 +1,8 @@
 package it.evadid.homepage.webElements.editor.code
 
 import munit.FunSuite
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorConfig
+import com.raquo.laminar.api.L.Val
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorConfig, EvaEditorLabels}
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -9,7 +10,8 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 
 class EvaEditorTabSpec extends FunSuite {
   private val logger = Logger.withNameAndPrefixes(Some("tab-test"), PrintToStdLogger.printNothing)
-  private val tabs = EvaEditorConfig.tabs(logger, EvaEditorConfig.Default)
+  private val tabLabels = EvaEditorLabels(Val("_"), Val("_"), Val("_"), Val("_"))
+  private val tabs = EvaEditorConfig.tabs(logger, EvaEditorConfig.Default, tabLabels)
   test("language choices convert raw matching drafts without parsing them") {
     val java = ProgrammingStateJavaString("class Unfinished {")
     val python = ProgrammingStatePythonString("def unfinished(")

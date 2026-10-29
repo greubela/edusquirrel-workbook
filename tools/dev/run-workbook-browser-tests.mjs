@@ -39,7 +39,9 @@ for (const name of (await readdir(path.join(root, 'tools/dev'))).filter(name => 
       (selected.length === 0 || selected.some(pattern => name.includes(pattern)))) files.push(`tools/dev/${name}`);
 }
 if (files.length === 0) throw new Error('No browser tests matched the selection');
+const failures = [];
 for (const file of files) {
+  console.log(`\n[workbook] ${file}`);
   // Separate processes keep fixtures isolated and report failures immediately; run every selected file.
   // The experimental spelling works on both CI's Node 22 and local Node 24.
   const result = spawnSync(process.execPath, ['--test', '--experimental-test-isolation=none', file], {
@@ -48,5 +50,14 @@ for (const file of files) {
       CHROMIUM_PATH: process.env.CHROMIUM_PATH || chromium.executablePath()}
   });
   if (result.error) console.error(result.error);
-  if (result.status !== 0) process.exitCode = 1;
+  if (result.error || result.status !== 0) {
+    const reason = result.error?.code || result.signal || `exit ${result.status}`;
+    failures.push(`${file} (${reason})`);
+  }
+}
+if (failures.length) {
+  console.error(`\nWorkbook browser checks failed (${failures.length}/${files.length} files):\n${failures.join('\n')}`);
+  process.exitCode = 1;
+} else {
+  console.log(`\nWorkbook browser checks passed (${files.length} file${files.length === 1 ? '' : 's'}).`);
 }

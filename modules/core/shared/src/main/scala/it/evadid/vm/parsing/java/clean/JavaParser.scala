@@ -2,6 +2,7 @@ package it.evadid.vm.parsing.java.clean
 
 import fastparse.*
 import fastparse.NoWhitespace.*
+import it.evadid.vm.code.errors.{ProgrammingConversionException, ProgrammingConversionLocation}
 import it.evadid.vm.parsing.generic.abstractions.pipeline.GenericAstScanner
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.JavaLexer.*
@@ -18,11 +19,16 @@ class JavaParser(private val retainParentheses: Boolean) extends GenericAstScann
 
   override def parseASTFromProgramString(programString: String): Either[Throwable, JavaAST] = parse(programString)
 
-  def parse(javaCode: String): Either[Throwable, JavaProgram] =
-    fastparse.parse(javaCode.trim, c => javaProgram(using c)) match {
+  def parse(javaCode: String): Either[Throwable, JavaProgram] = {
+    val trimmed = javaCode.trim
+    fastparse.parse(trimmed, c => javaProgram(using c)) match {
       case Parsed.Success(program, _) => Right(program)
-      case f: Parsed.Failure => Left(Exception(s"Java Parsing Error: ${f.trace().longAggregateMsg}"))
+      case f: Parsed.Failure =>
+        val (line, column) = ProgrammingConversionLocation.inTrimmed(javaCode, trimmed, f.index)
+        Left(ProgrammingConversionException.unparsable(
+          s"Java Parsing Error: ${f.trace().longAggregateMsg}", Some(line), Some(column)))
     }
+  }
 
   def parseWithLocations(source: String): Either[Parsed.Failure, JavaSourceMap] =
     fastparse.parse(source, c => locatedGrammar.javaProgram(using c)) match {
