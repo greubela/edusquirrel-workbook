@@ -8,7 +8,8 @@ import upickle.default.ReadWriter
 
 case class AdditionalProgrammingTestInfo(
     humanReadableTestExecutionDescription: LanguageMap[HumanLanguage],
-    programObservation: Option[ProgrammingTestProgramObservation] = None
+    programObservation: Option[ProgrammingTestProgramObservation] = None,
+    testInvocation: Option[ProgrammingTestInvocation] = None
 ) derives ReadWriter
 
 object AdditionalProgrammingTestInfo {

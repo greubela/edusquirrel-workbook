@@ -4,7 +4,7 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestProgramObservation
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingTestInvocation, ProgrammingTestProgramObservation}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgramForUnitTestExecution
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import upickle.default.*
@@ -14,7 +14,8 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 private[evadid] object ProgrammingTestRunner {
-  case class Result(result: BeTestResult, programObservation: Option[ProgrammingTestProgramObservation] = None)
+  case class Result(result: BeTestResult, programObservation: Option[ProgrammingTestProgramObservation] = None,
+      testInvocation: Option[ProgrammingTestInvocation] = None)
 
   private given ExecutionContext = ExecutionContext.global
   private val unavailable = Result(BeTestResult.Error("Unit-test execution is unavailable."))
@@ -25,7 +26,7 @@ private[evadid] object ProgrammingTestRunner {
   })
 
   def execute(program: ProgramForUnitTestExecution, tests: String,
-      clients: List[ExecutionClient], observeProgram: Boolean = false): Future[Result] = {
+      clients: List[ExecutionClient], observeProgram: Boolean = false, observeInvocation: Boolean = false): Future[Result] = {
     val source = program.pythonSource
     val sourceLimit = if program.commandEntryPoint.isDefined then 131072 else 32768
     if source == null || tests == null || source.length > sourceLimit || tests.trim.isEmpty || tests.length > 8192 then
@@ -36,6 +37,7 @@ private[evadid] object ProgrammingTestRunner {
         "_eva_entry_point" -> program.commandEntryPoint.fold[ujson.Value](ujson.Null)(entryPoint =>
           ujson.Obj("functionName" -> entryPoint.functionName, "methods" -> writeJs(entryPoint.methodIdsByName))),
         "_eva_observe_program" -> ujson.Bool(observeProgram),
+        "_eva_publish_invocation" -> ujson.Bool(observeInvocation),
         "_eva_turtle_primitives" -> turtlePrimitives),
         captureStdout = false, captureStderr = false)
       val factory = WorkerCommands.runPython
@@ -46,16 +48,18 @@ private[evadid] object ProgrammingTestRunner {
           _ => Future.successful(unavailable),
           _.map { reply =>
             val report = reply.result
-            if report.stdout == "" && report.stderr == "" && report.callbackOps == Nil then decode(report.value, observeProgram)
+            if report.stdout == "" && report.stderr == "" && report.callbackOps == Nil then
+              decode(report.value, observeProgram, observeInvocation, program)
             else invalidResult
           }.recover { case NonFatal(_) => unavailable })
       }
     }
   }
 
-  private def decode(value: ujson.Value, observeProgram: Boolean): Result = Try {
+  private def decode(value: ujson.Value, observeProgram: Boolean, observeInvocation: Boolean,
+      program: ProgramForUnitTestExecution): Result = Try {
     require(value != null)
-    val keys = value.obj.keySet.toSet
+    val keys = value.obj.keySet.toSet - "testInvocation"
     require(keys == Set("status", "reason") || observeProgram && keys == Set("status", "reason", "programObservation"))
     val status = value("status").str
     val reason = value("reason").str
@@ -83,10 +87,15 @@ private[evadid] object ProgrammingTestRunner {
       }
       ProgrammingTestProgramObservation(count.toInt, commands)
     }
-    Result(result, observation)
+    val invocation = Option.when(observeInvocation && status == "failed" && reason == "assertion") {
+      value.obj.get("testInvocation").flatMap(ProgrammingTestInvocation.fromReport).filter { invocation =>
+        invocation.target.forall(name => program.commandEntryPoint.exists(_.methodIdsByName.contains(name)))
+      }
+    }.flatten
+    Result(result, observation, invocation)
   }.getOrElse(invalidResult)
 
-  private val script = """def _eva_evaluate(source, tests, entry_point, turtle_primitives, observe_program):
+  private val script = """def _eva_evaluate(source, tests, entry_point, turtle_primitives, observe_program, publish_invocation=False):
     import ast
     import math
     import sys
@@ -95,6 +104,112 @@ private[evadid] object ProgrammingTestRunner {
     compiled = isinstance(entry_point, dict)
     observed = [None]
     observation_allowed = [True]
+
+    invocation_capture = {"bad": False, "count": 0, "record": None, "expected": None}
+    invocation_result = [None]
+    invocation_getframe = sys._getframe if publish_invocation is True else None
+    invocation_type, invocation_len, invocation_arguments = type, len, (list, tuple)
+
+    def invocation_literal(node):
+        if isinstance(node, ast.Constant):
+            return type(node.value) in (type(None), bool, int, float, str)
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+            return isinstance(node.operand, ast.Constant) and type(node.operand.value) in (int, float)
+        if isinstance(node, (ast.List, ast.Tuple)):
+            return all(invocation_literal(item) for item in node.elts)
+        if isinstance(node, ast.Dict):
+            return all(key is not None and invocation_literal(key) and invocation_literal(value)
+                       for key, value in zip(node.keys, node.values))
+        return False
+
+    def invocation_call(node):
+        while isinstance(node, ast.Subscript) and invocation_literal(node.slice):
+            node = node.value
+        return node if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) else None
+
+    def invocation_candidate():
+        try:
+            if len(tree.body) != 1 or not isinstance(tree.body[0], ast.Assert) or tree.body[0].msg is not None:
+                return
+            compare = tree.body[0].test
+            if not isinstance(compare, ast.Compare) or len(compare.ops) != 1:
+                return
+            nodes = list(ast.walk(compare))
+            forbidden = (ast.Lambda, ast.GeneratorExp, ast.ListComp, ast.SetComp, ast.DictComp,
+                         ast.NamedExpr, ast.Await, ast.Yield, ast.YieldFrom, ast.Starred)
+            if any(isinstance(node, forbidden) for node in nodes):
+                return
+            calls = [node for node in nodes if isinstance(node, ast.Call)]
+            if len(calls) != 1 or any(keyword.arg is None for keyword in calls[0].keywords):
+                return
+            call = invocation_call(compare.left) if invocation_literal(compare.comparators[0]) else None
+            if call is None and invocation_literal(compare.left):
+                call = invocation_call(compare.comparators[0])
+            if call is not calls[0]:
+                return
+            return call.func.id
+        except Exception:
+            invocation_capture["bad"] = True
+
+    def invocation_arm(namespace, name):
+        function = namespace.get(name)
+        if function is run_program or compiled and function is invoke:
+            invocation_capture["expected"] = function.__code__
+
+    def invocation_scalar(value):
+        if type(value) is bool:
+            return {"kind": "bool", "value": value}
+        if type(value) is int and value.bit_length() <= 256:
+            return {"kind": "int", "value": str(value)}
+        if type(value) is float and math.isfinite(value):
+            text = value.hex()
+            negative = text.startswith("-")
+            mantissa, exponent = text.lstrip("-")[2:].split("p")
+            whole, fraction = mantissa.split(".")
+            significand = int(whole + fraction.ljust(13, "0"), 16)
+            bits = significand if whole == "0" else ((int(exponent) + 1023) << 52) | (significand & ((1 << 52) - 1))
+            return {"kind": "double", "value": format(bits | (int(negative) << 63), "016x")}
+        raise ValueError("Unsupported invocation scalar")
+
+    def invocation_begin(target, arguments):
+        try:
+            if invocation_capture["bad"] or invocation_capture["expected"] is None:
+                return None
+            frame = invocation_getframe(1)
+            if frame.f_back is None or frame.f_back.f_code is not test_code:
+                return None
+            invocation_capture["count"] += 1
+            if frame.f_code is not invocation_capture["expected"] or invocation_capture["count"] != 1:
+                raise ValueError("Ambiguous test invocation")
+            if (target is not None and (invocation_type(target) is not str or invocation_len(target) > 256) or
+                    invocation_type(arguments) not in invocation_arguments or invocation_len(arguments) > 8):
+                raise ValueError("Unsupported invocation")
+            packet = {"target": target, "arguments": [invocation_scalar(value) for value in arguments]}
+            invocation_capture["record"] = {"packet": packet, "complete": False}
+            return invocation_capture["record"]
+        except Exception:
+            invocation_capture["bad"] = True
+            return None
+
+    def invocation_complete(record):
+        try:
+            if record is not None:
+                record["complete"] = True
+        except Exception:
+            invocation_capture["bad"] = True
+
+    def invocation_failed(error):
+        try:
+            record = invocation_capture["record"]
+            if invocation_capture["bad"] or invocation_capture["count"] != 1 or record is None or not record["complete"]:
+                return
+            cursor = error.__traceback__
+            while cursor is not None and cursor.tb_next is not None:
+                cursor = cursor.tb_next
+            if cursor is not None and cursor.tb_frame.f_code is test_code:
+                invocation_result[0] = record["packet"]
+        except Exception:
+            invocation_result[0] = None
 
     def result(status, reason=""):
         if any(remaining < 0 for remaining in budget):
@@ -107,6 +222,9 @@ private[evadid] object ProgrammingTestRunner {
                 report["programObservation"] = {"commandCount": len(observed[0]),
                     "commands": [[command[0], *[float(value) for value in command[1:]]]
                         for command in observed[0][:32]]}
+        if publish_invocation is True:
+            report["testInvocation"] = invocation_result[0] if (
+                status == "failed" and reason == "assertion") else None
         return report
 
     def suppress_observation():
@@ -142,6 +260,7 @@ private[evadid] object ProgrammingTestRunner {
         test_code = compile(tree, "<workbook-tests>", "exec", optimize=0)
     except BaseException:
         return result("error", "invalid-tests")
+    invocation_name = invocation_candidate() if publish_invocation is True else None
     try:
         student_code = compile(source, "<student-source>", "exec", optimize=0)
     except SyntaxError:
@@ -222,6 +341,7 @@ private[evadid] object ProgrammingTestRunner {
         invocations = [0]
 
         def invoke(methodName=None, arguments=()):
+            captured_call = invocation_begin(methodName, arguments) if publish_invocation is True else None
             if observe_program and (methodName is not None or arguments):
                 suppress_observation()
             if not compiled or (methodName is not None and
@@ -235,23 +355,32 @@ private[evadid] object ProgrammingTestRunner {
                 raise ProgramExecutionError()
             if methodName is None and not arguments:
                 observe(invocation["commands"])
+            if publish_invocation is True:
+                invocation_complete(captured_call)
             return invocation
 
         def run_program():
+            captured_call = invocation_begin(None, ()) if publish_invocation is True else None
             recorded = invoke()["commands"] if compiled else snapshot
             if not compiled:
                 observe(recorded)
+            if publish_invocation is True:
+                invocation_complete(captured_call)
             return {"status": "Completed", "commands": [list(command) for command in recorded]}
 
         namespace = {"run_java": invoke} if compiled else student
         namespace["run_program"] = run_program
+        if publish_invocation is True:
+            invocation_arm(namespace, invocation_name)
         try:
             exec(test_code, namespace, namespace)
         except (BudgetExceeded, MemoryError, RecursionError):
             return result("error", "execution-limit")
         except ProgramExecutionError:
             return result("error", "program-execution")
-        except AssertionError:
+        except AssertionError as error:
+            if publish_invocation is True:
+                invocation_failed(error)
             return result("failed", "assertion")
         except BaseException as error:
             cursor = error.__traceback__
@@ -267,6 +396,6 @@ private[evadid] object ProgrammingTestRunner {
         sys.settrace(previous[0])
         sys.stdout, sys.stderr = previous[1], previous[2]
 
-_eva_evaluate(_eva_source, _eva_tests, _eva_entry_point, _eva_turtle_primitives, _eva_observe_program)
+_eva_evaluate(_eva_source, _eva_tests, _eva_entry_point, _eva_turtle_primitives, _eva_observe_program, globals().get("_eva_publish_invocation", False))
 """
 }

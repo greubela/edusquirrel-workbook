@@ -236,6 +236,52 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
       code: "'main_thread_only' in globals()"
     })));
     assert.equal(isolated.value,false,'main-thread globals do not leak into the worker interpreter');
+    const runnerSource = await fs.readFile(path.join(root,'modules/core/shared/src/main/scala/it/evadid/vm/test/ProgrammingTestRunner.scala'),'utf8');
+    const runner = runnerSource.match(/private val script = """([\s\S]*?\n)"""/)[1];
+    const compiled = {source:'def dispatch(method, arguments):\n    return {"status":"Completed","commands":[["forward",float(arguments[0])]]}\n',
+      entry:{functionName:'dispatch',methods:{draw:0}}};
+    const invocationCases = [
+      {source:'forward(1)',tests:"assert run_program()['commands'] == []",grade:'failed',invocation:{target:null,arguments:[]}},
+      {...compiled,tests:"assert run_java('draw', [3])['commands'] == []",grade:'failed',
+        invocation:{target:'draw',arguments:[{kind:'int',value:'3'}]}},
+      {...compiled,tests:"assert run_java('draw', [-0.0])['commands'] == []",grade:'failed',
+        invocation:{target:'draw',arguments:[{kind:'double',value:'8000000000000000'}]}},
+      {source:'forward(1)',tests:"assert run_program()['commands'] == [], 'private message'",grade:'failed',invocation:null},
+      {source:'forward(1)',tests:"assert run_program() == run_program() == {}",grade:'failed',invocation:null},
+      {source:'def f(): return 1',tests:'assert f() == 1',grade:'passed',invocation:null},
+      {source:'import ast\ntouched=False\ndef poisoned_walk(node):\n    global touched\n    touched=True\n    return ()\nast.walk=poisoned_walk\ndef f(): return touched',
+        tests:'assert f() == False',grade:'passed',invocation:null,isolate:true},
+      {source:"import sys\ndef poisoned_frame(depth):\n    raise KeyboardInterrupt('private')\nsys._getframe=poisoned_frame\nforward(1)",
+        tests:"assert run_program()['commands'] == [['forward',1]]",grade:'passed',invocation:null,isolate:true}
+    ];
+    for (const [index,fixture] of invocationCases.entries()) {
+      const reports = [];
+      for (const enabled of [false,true]) {
+        const payload = {code:runner,captureStdout:false,captureStderr:false,context:{
+          _eva_source:fixture.source,_eva_tests:fixture.tests,_eva_entry_point:fixture.entry || null,
+          _eva_observe_program:false,_eva_publish_invocation:enabled,
+          _eva_turtle_primitives:{forward:{command:'forward',arity:1,inputs:['Numeric']}}}};
+        const reply = fixture.isolate ? await page.evaluate(async payload => {
+          const fresh = new Worker(new URL('artifacts/newest/worker.js',location.href));
+          try {
+            return await new Promise((resolve,reject) => {
+              const timer = setTimeout(() => reject(new Error('Invocation worker timed out')),25000);
+              fresh.onmessage = event => {clearTimeout(timer);resolve(JSON.parse(event.data));};
+              fresh.onerror = event => {clearTimeout(timer);reject(new Error(event.message));};
+              fresh.postMessage(JSON.stringify({requestId:'invocation',command:{name:'worker.runPython',json:payload}}));
+            });
+          } finally {fresh.terminate();}
+        },payload) : await page.evaluate(({id,payload}) => request(id,'worker.runPython',payload),{id:'invocation-' + index + '-' + enabled,payload});
+        const report = result(reply);
+        assert(report,JSON.stringify(reply));
+        assert.equal(report.stdout,''); assert.equal(report.stderr,''); assert.deepEqual(report.callbackOps,[]);
+        reports.push(report.value);
+      }
+      assert.deepEqual(reports[0],{status:fixture.grade,reason:fixture.grade === 'failed' ? 'assertion' : ''});
+      const {testInvocation,...grade} = reports[1];
+      assert.deepEqual(grade,reports[0]);
+      assert.deepEqual(testInvocation,fixture.invocation);
+    }
     await page.evaluate(() => worker.terminate());
   } finally { await browser.close(); }
 });
