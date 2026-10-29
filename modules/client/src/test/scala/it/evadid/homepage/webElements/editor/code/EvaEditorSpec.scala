@@ -6,7 +6,8 @@ import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.core.datastructures.state.StateHelper.*
-import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.clients.{ExecutionClient, RoutedExecutionClient}
+import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -303,12 +304,17 @@ class EvaEditorSpec extends EditorDomSuite {
       assertEquals(element.ref.querySelector(".interaction-scaffolding"), null)
       element.ref.querySelector(".interaction-info__hint-toggle").asInstanceOf[dom.html.Button].click()
       assertEquals(requested.now(), Vector.empty)
+      assertEquals(clients.now(), Vector.empty)
       assert(element.ref.querySelector(".interaction-element-info").contains(element.ref.querySelector(".interaction-scaffolding")))
       element.ref.querySelector(".interaction-scaffolding__request").asInstanceOf[dom.html.Button].click()
       later()
     }.flatMap { _ =>
       assertEquals(requested.now(), Vector(variable.currentValue))
-      assertEquals(clients.now(), Vector(List(fullInfo.defaults.backendExecutor)))
+      val available = clients.now().head
+      assertEquals(clients.now().size, 1)
+      assertEquals(available.size, 1)
+      assert(available.head.isInstanceOf[RoutedExecutionClient])
+      assert(available.head.canExecuteCommand(ExecutionCommand(LLMCommands.feedbackLlmCommandFactory.name, ujson.Obj())))
       assertEquals(resolvers.now(), Vector(fullInfo.signals.idResolver))
       val feedback = ScaffoldingResult[String, String](variable.currentValue, LanguageMap.universalMap("1. What changes here?"),
         FeedbackEntity.TestEntity(), None)
