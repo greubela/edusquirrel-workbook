@@ -7,6 +7,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, SnapLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
+import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
 import it.evadid.util.logging.Logger
@@ -19,7 +20,9 @@ case class SnapCodeEditor(
                            state: Var[ProgrammingState],
                            config: SnapCodeEditorConfig,
                            impl: SnapCodeEditorImpl,
-                           humanLanguage: Signal[HumanLanguage] = Val(English)
+                           humanLanguage: Signal[HumanLanguage] = Val(English),
+                           conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
+                           loadingLabel: Signal[String] = Val("Loading editor…")
                          ) extends HtmlAppElement {
 
   // A typed view of the interaction Var: no second answer or synchronization store.
@@ -77,6 +80,7 @@ case class SnapCodeEditor(
               if !mounted.now() then
                 mountEditorInto(canvas, ctx.owner)
                 mounted.set(true)
+                editorReady.set(true)
           }, error => {
             if active.now() && request.now().contains(language -> token) then
               renderingError.set(Some(s"Block editor unavailable: ${error.getMessage}"))
@@ -89,8 +93,13 @@ case class SnapCodeEditor(
 
   lazy val editorDom: L.Element = {
     div(
-      cls := "code-editor be-program-snap-renderer be-program-snap-renderer--editor",
+      cls <-- conversionMarker.map(mark =>
+        "code-editor be-program-snap-renderer be-program-snap-renderer--editor" +
+          (if mark.isDefined then " is-conversion-marked" else "")),
       child.maybe <-- renderingError.signal.map(_.map(message => p(role := "alert", message))),
+      child <-- editorReady.signal.combineWith(renderingError.signal, loadingLabel).map { (ready, error, label) =>
+        if !ready && error.isEmpty then p(cls := "code-editor__loading", role := "status", label) else emptyNode
+      },
       editorCanvas,
       // Morphic's shared textarea lives inside this element. Commit before an
       // outside control (especially a language tab) reads the central answer.
@@ -106,6 +115,7 @@ case class SnapCodeEditor(
   }
 
   private val renderingError = Var(Option.empty[String])
+  private val editorReady = Var(false)
 
   lazy val domElement: L.Element =
     div(
@@ -133,14 +143,16 @@ object SnapCodeEditor {
   def apply(logger: Logger,state: Var[ProgrammingState]): SnapCodeEditor =
     SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
 
-  def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig, humanLanguage: Signal[HumanLanguage]): EvaEditorTab = new EvaEditorTab {
+  def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig, humanLanguage: Signal[HumanLanguage],
+      tabLabel: String = "Snap!"): EvaEditorTab = new EvaEditorTab {
     override val language = SnapLanguage
-    override val label = "Snap!"
+    override val label = tabLabel
     override def convert(source: ProgrammingState): ProgrammingState = source match {
       case snap: ProgrammingStateSnapScalaModel => snap.persistent
       case _ => typed(source.toSnapXml)
     }
-    override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance): HtmlAppElement =
-      SnapCodeEditor(tabLogger, state, config, humanLanguage)
+    override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
+        marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement =
+      SnapCodeEditor(tabLogger, state, config, SnapCodeEditorImplDelegateToOriginal(), humanLanguage, marker, loading)
   }
 }

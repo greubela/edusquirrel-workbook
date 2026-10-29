@@ -19,5 +19,9 @@
   "turtleBringTargetFront": "Blå forrest",
   "turtleBringResultFront": "Rød forrest",
   "turtleTargetMark": "Blå: mål",
-  "turtleResultMark": "Rød: dit resultat"
+  "turtleResultMark": "Rød: dit resultat",
+  "editorUnavailable": "Dette udkast findes ikke på de valgte sprog.",
+  "editorLanguages": "Programmeringssprog",
+  "editorSwitchFailed": "Sproget kunne ikke skiftes",
+  "editorLoading": "Indlæser editor…"
 }

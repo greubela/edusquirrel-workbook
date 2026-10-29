@@ -67,6 +67,12 @@ immutable calculations and derived signals to additional stores. See
 package. Use `toBeExpression`, `toJava`, `toPython`, `toSnapXml` and instance `fingerprint()`;
 there are no nested type aliases or alternate conversion names.
 
+For workbook initial programs: beginner turtle / native Snap tasks should start from
+`ProgrammingStateSnapXml` (for example `SnapProjectXml.mini`), not from
+`ProgrammingStateJavaString(...).toSnapXml`. The latter is correct for Eva language
+switching on full Java classes, but it produces Java editing-bridge Snap (custom blocks
+and project notes), not a normal Snap turtle project.
+
 ## Persistence and verification
 
 Interactions use the current implicit `ProgrammingState` codec. JSON and

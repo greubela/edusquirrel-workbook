@@ -2,6 +2,7 @@ package it.evadid.vm.parsing.python.clean
 
 import fastparse.*
 import fastparse.NoWhitespace.*
+import it.evadid.vm.code.errors.{ProgrammingConversionException, ProgrammingConversionLocation}
 import it.evadid.vm.parsing.generic.CodeLexer.*
 import it.evadid.vm.parsing.generic.abstractions.pipeline.GenericAstScanner
 import it.evadid.vm.parsing.python.clean.model.PyAST.*
@@ -31,9 +32,13 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   override def parseASTFromProgramString(programString: String): Either[Throwable, PyAST] = parse(programString)
 
   def parse(pythonCode: String): Either[Throwable, PyProgram] = {
-    fastparse.parse(pythonCode.trim + "\n", c => py_program(using c)) match {
+    val trimmed = pythonCode.trim
+    fastparse.parse(trimmed + "\n", c => py_program(using c)) match {
       case Parsed.Success(astModule, _) => Right(astModule)
-      case f: Parsed.Failure => Left(Exception(s"Python Parsing Error: ${f.trace().longAggregateMsg}"))
+      case f: Parsed.Failure =>
+        val (line, column) = ProgrammingConversionLocation.inTrimmed(pythonCode, trimmed, f.index)
+        Left(ProgrammingConversionException.unparsable(
+          s"Python Parsing Error: ${f.trace().longAggregateMsg}", Some(line), Some(column)))
     }
   }
 

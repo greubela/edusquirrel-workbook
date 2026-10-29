@@ -18,5 +18,9 @@
   "turtleBringTargetFront": "Maviyi öne al",
   "turtleBringResultFront": "Kırmızıyı öne al",
   "turtleTargetMark": "Mavi: hedef",
-  "turtleResultMark": "Kırmızı: senin sonucun"
+  "turtleResultMark": "Kırmızı: senin sonucun",
+  "editorUnavailable": "Bu taslak ayarlanan dillerde kullanılamıyor.",
+  "editorLanguages": "Programlama dilleri",
+  "editorSwitchFailed": "Dil değiştirilemedi",
+  "editorLoading": "Düzenleyici yükleniyor…"
 }

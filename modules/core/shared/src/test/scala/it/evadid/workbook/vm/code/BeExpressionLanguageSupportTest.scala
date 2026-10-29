@@ -2625,4 +2625,110 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     }
     assertEquals(Report.decode(report, T.Limits()), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
   }
+
+  test("Java evidence snapshots retain exact source ranges and typed expression values") {
+    val source = "class Drawing {\r\n// Maße 🐢\r\npublic static void main(String[] args) {\r\n" +
+      "int x=2; double ratio=1.5; boolean ok=true; if(ok){Turtle.forward(x);}\r\n} }"
+    val program = P.compile(source).fold(error => fail(error.message), identity)
+    val recorded = T.runVmTraced(program)
+    val prepared = Evidence.prepare(program)
+    val snapshot = prepared.verify(evidenceFrom(recorded).render(), prepared.context).snapshot
+    val starts = Vector(source.indexOf("2"), source.indexOf("1.5"), source.indexOf("true"),
+      source.indexOf("if(ok)") + 3, source.indexOf("forward(x)") + "forward(".length)
+    val texts = Vector("2", "1.5", "true", "ok", "x")
+    val values = Vector(Evidence.Scalar.Int32(2), Evidence.Scalar.Float64("3ff8000000000000"),
+      Evidence.Scalar.Bool(true), Evidence.Scalar.Bool(true), Evidence.Scalar.Int32(2))
+    val expected = starts.indices.map(index => Evidence.LocatedExpression(0, "main", starts(index),
+      starts(index) + texts(index).length, values(index))).toVector
+    assertEquals(snapshot.outcome, Evidence.Outcome.Completed)
+    assertEquals(snapshot.steps, recorded.execution.steps)
+    assertEquals(snapshot.commandCount, 1)
+    assertEquals(snapshot.expressions, expected)
+    assertEquals(snapshot.expressions.map(value => source.substring(value.start, value.end)), texts)
+    assertEquals(upickle.default.read[Evidence.Snapshot](upickle.default.write(snapshot)), snapshot)
+    assertEquals(upickle.default.readBinary[Evidence.Snapshot](upickle.default.writeBinary(snapshot)), snapshot)
+  }
+
+  test("Java named invocation snapshots omit update bookkeeping and retain ordinary reads") {
+    val program = P.adapt(javaProgram("Turtle.forward(99);",
+      "static void draw(int x){x += x++; Turtle.forward(x);}")).toOption.get
+    val method = Y.render(program).methods("draw")
+    val arguments = Vector(E.Value.IntValue(1))
+    val recorded = T.invokeVmTraced(program, method, arguments)
+    val prepared = Evidence.prepare(program, Some(method), arguments)
+    val snapshot = prepared.verify(evidenceFrom(recorded).render(), prepared.context).snapshot
+    assertEquals(snapshot.outcome, Evidence.Outcome.Completed)
+    assertEquals(snapshot.commandCount, 1)
+    assertEquals(recorded.execution.commands, Vector(forward(2)))
+    assertEquals(snapshot.expressions.map(_.method), Vector("draw", "draw"))
+    assertEquals(snapshot.expressions.map(_.invocation), Vector(0, 0))
+    assertEquals(snapshot.expressions.map(value => prepared.context.source.substring(value.start, value.end)),
+      Vector("x++", "x"))
+    assertEquals(snapshot.expressions.map(_.value), Vector(Evidence.Scalar.Int32(1), Evidence.Scalar.Int32(2)))
+    assertEquals(snapshot.expressions.size, recorded.trace.completedExpressions.get.size)
+  }
+
+  test("Java snapshots keep complete expression sequences and distinguish execution outcomes") {
+    val repeated = P.adapt(javaProgram("int n=0;while(n<40){Turtle.forward(n);n++;}")).toOption.get
+    val recorded = T.runVmTraced(repeated)
+    val prepared = Evidence.prepare(repeated)
+    val snapshot = prepared.verify(evidenceFrom(recorded).render(), prepared.context).snapshot
+    assert(snapshot.expressions.size > 64)
+    assertEquals(snapshot.expressions.size, recorded.trace.completedExpressions.get.size)
+    assertEquals(snapshot.commandCount, 40)
+    assert(snapshot.expressions.distinct.size < snapshot.expressions.size)
+    val cases = Vector(
+      ("", T.Limits(), Evidence.Outcome.Completed),
+      ("Turtle.forward(1);int bad=4/0;", T.Limits(), Evidence.Outcome.DivisionByZero),
+      ("Turtle.forward(1);Turtle.forward(1.0/0.0);", T.Limits(), Evidence.Outcome.NonFiniteCommand),
+      ("while(true){Turtle.forward(1);}", T.Limits(maxSteps = 30), Evidence.Outcome.LimitExceeded))
+    cases.foreach { (body, limits, outcome) =>
+      val program = P.adapt(javaProgram(body)).toOption.get
+      val recorded = T.runVmTraced(program, limits)
+      val prepared = Evidence.prepare(program, limits = limits)
+      val snapshot = prepared.verify(evidenceFrom(recorded).render(), prepared.context).snapshot
+      assertEquals(snapshot.outcome, outcome)
+      assertEquals(snapshot.steps, recorded.execution.steps)
+      assertEquals(snapshot.commandCount, recorded.execution.commands.size)
+      assertEquals(snapshot.expressions.size, recorded.trace.completedExpressions.get.size)
+      if body.isEmpty then assertEquals(snapshot.expressions, Vector.empty)
+    }
+    val program = P.adapt(javaProgram("Turtle.forward(1);")).toOption.get
+    val invalidLimits = T.Limits(maxSteps = 0)
+    val invalid = Evidence.prepare(program, limits = invalidLimits)
+    val invalidReport = evidenceFrom(T.runVmTraced(program, invalidLimits)).render()
+    intercept[IllegalArgumentException](invalid.verify(invalidReport, invalid.context).snapshot)
+    val missingMethod = R.MethodId(999)
+    val missing = Evidence.prepare(program, Some(missingMethod))
+    val missingReport = evidenceFrom(T.invokeVmTraced(program, missingMethod, Vector.empty)).render()
+    intercept[IllegalArgumentException](missing.verify(missingReport, missing.context).snapshot)
+  }
+
+  test("Java evidence scalar codecs retain canonical numeric bits and reject malformed doubles") {
+    val doubles = Vector(0.0, -0.0, java.lang.Double.longBitsToDouble(1L),
+      java.lang.Double.longBitsToDouble(0x8000000000000001L), Double.MaxValue, -Double.MaxValue,
+      Double.PositiveInfinity, Double.NegativeInfinity, Double.NaN,
+      java.lang.Double.longBitsToDouble(0x7ff8000000000042L))
+    val values = Vector[E.Value](E.Value.IntValue(Int.MinValue), E.Value.IntValue(Int.MaxValue),
+      E.Value.BooleanValue(false), E.Value.BooleanValue(true)) ++ doubles.map(E.Value.DoubleValue(_))
+    values.foreach { value =>
+      val scalar = Evidence.Scalar.fromValue(value)
+      val restored = Vector(scalar, upickle.default.read[Evidence.Scalar](upickle.default.write(scalar)),
+        upickle.default.readBinary[Evidence.Scalar](upickle.default.writeBinary(scalar)))
+      restored.foreach { encoded =>
+        assertEquals(encoded, scalar)
+        (value, encoded.toValue) match {
+          case (E.Value.DoubleValue(expected), E.Value.DoubleValue(actual)) =>
+            if expected.isNaN then assert(actual.isNaN)
+            else assertEquals(java.lang.Double.doubleToRawLongBits(actual), java.lang.Double.doubleToRawLongBits(expected))
+          case (expected, actual) => assertEquals(actual, expected)
+        }
+      }
+    }
+    assertEquals(Evidence.Scalar.fromValue(E.Value.DoubleValue(Double.NaN)), Evidence.Scalar.Float64("nan"))
+    Vector(null, "", "0", "3ff000000000000", "3ff00000000000000", "3FF0000000000000",
+      "NaN", "nan ", "7ff0000000000001", "fff8000000000000", "0x3ff0000000000000", "gggggggggggggggg").foreach { bits =>
+      intercept[IllegalArgumentException](Evidence.Scalar.Float64(bits).toValue)
+    }
+  }
 }

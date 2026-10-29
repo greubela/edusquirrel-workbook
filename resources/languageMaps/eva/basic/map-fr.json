@@ -18,5 +18,9 @@
   "turtleBringTargetFront": "Bleu devant",
   "turtleBringResultFront": "Rouge devant",
   "turtleTargetMark": "Bleu : cible",
-  "turtleResultMark": "Rouge : ton résultat"
+  "turtleResultMark": "Rouge : ton résultat",
+  "editorUnavailable": "Ce brouillon n'est pas disponible dans les langues configurées.",
+  "editorLanguages": "Langages de programmation",
+  "editorSwitchFailed": "Impossible de changer de langage",
+  "editorLoading": "Chargement de l'éditeur…"
 }

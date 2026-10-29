@@ -18,5 +18,9 @@
   "turtleBringTargetFront": "Azul delante",
   "turtleBringResultFront": "Rojo delante",
   "turtleTargetMark": "Azul: objetivo",
-  "turtleResultMark": "Rojo: tu resultado"
+  "turtleResultMark": "Rojo: tu resultado",
+  "editorUnavailable": "Este borrador no está disponible en los lenguajes configurados.",
+  "editorLanguages": "Lenguajes de programación",
+  "editorSwitchFailed": "No se pudo cambiar de lenguaje",
+  "editorLoading": "Cargando el editor…"
 }

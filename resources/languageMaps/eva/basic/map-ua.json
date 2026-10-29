@@ -18,5 +18,9 @@
   "turtleBringTargetFront": "Синій наперед",
   "turtleBringResultFront": "Червоний наперед",
   "turtleTargetMark": "Синій: ціль",
-  "turtleResultMark": "Червоний: твій результат"
+  "turtleResultMark": "Червоний: твій результат",
+  "editorUnavailable": "Цей чернетку не можна відкрити вибраними мовами.",
+  "editorLanguages": "Мови програмування",
+  "editorSwitchFailed": "Не вдалося змінити мову",
+  "editorLoading": "Редактор завантажується…"
 }

@@ -3,6 +3,7 @@ package it.evadid.distribution.commandTypes
 import it.evadid.distribution.clients.LocalExecutionClient
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory, SerializedException}
 import it.evadid.util.logging.{BasicLogger, Logger}
+import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence as Evidence}
 import munit.FunSuite
 import upickle.default.*
 
@@ -89,6 +90,73 @@ class CommandPayloadCodecsSpec extends FunSuite {
       assert(logger.getOut().contains("codeLength"))
       assert(!logger.getOut().contains("private"))
       assert(!logger.getErr().contains("private"))
+    }
+  }
+
+  test("Java evidence logging copies omit source method arguments and unknown fields") {
+    val factory = WorkerCommands.javaExecutionEvidence
+    val valid = ujson.Obj("source" -> "private source\r\n学校", "method" -> "privateMethod",
+      "arguments" -> ujson.Arr("private arguments"), "private unknown key" -> ujson.Obj("nested" -> "private extra"))
+    val malformed = List(ujson.Null, ujson.Str("private body"), ujson.Arr("private array"),
+      ujson.Obj("source" -> ujson.Obj("private nested" -> true), "method" -> "privateMethod"),
+      ujson.Obj("redacted" -> true, "sourceLength" -> -1, "private key" -> "private value"),
+      ujson.Obj("redacted" -> true, "sourceLength" -> "private count"),
+      ujson.Obj("redacted" -> true, "sourceLength" -> 0.5),
+      ujson.Obj("redacted" -> true, "sourceLength" -> 2147483648.0))
+    (valid :: malformed).foreach { payload =>
+      val command = ExecutionCommand(factory.name, payload)
+      val before = write(command)
+      val safe = command.stripPrivacySensitiveInformation()
+      assertEquals(safe.name, factory.name)
+      assertEquals(safe.json.obj.keySet.toSet, Set("redacted", "sourceLength"))
+      assertEquals(safe.json("redacted"), ujson.Bool(true))
+      assert(!safe.toJson.contains("private"))
+      assert(!(safe.json eq command.json))
+      assertEquals(safe.stripPrivacySensitiveInformation(), safe)
+      assertEquals(write(command), before)
+      assertEquals(command.json, payload)
+      assertEquals(safe.json("sourceLength"), if payload eq valid then ujson.Num(valid("source").str.length) else ujson.Null)
+    }
+    val metadata = ExecutionCommand(factory.name, ujson.Obj("redacted" -> true, "sourceLength" -> 17, "private" -> "value"))
+    assertEquals(metadata.stripPrivacySensitiveInformation().json, ujson.Obj("redacted" -> true, "sourceLength" -> 17))
+  }
+
+  test("Java evidence factory logs retain only metadata while execution receives the original invocation") {
+    val factory = WorkerCommands.javaExecutionEvidence
+    val request = WorkerCommands.JavaExecutionEvidenceRequest("private source\r\n学校", Some("privateMethod"),
+      Vector(Evidence.Scalar.Int32(87654321), Evidence.Scalar.Float64("8000000000000000")))
+    val response = Evidence.Snapshot(Evidence.Outcome.Completed, 2, 0, Vector.empty)
+    val logger = BasicLogger()
+    val client = factory.toLocalExecutionClient((input, _) => {
+      assertEquals(input, request)
+      Future.successful(response)
+    })
+    factory.sendCommandTo(client, request, Some(logger)).map { reply =>
+      assertEquals(reply.result, response)
+      assertEquals(reply.command.json, writeJs(request))
+      assert(logger.getOut().contains("sourceLength"))
+      List(logger.getOut(), logger.getErr()).foreach { text =>
+        assert(!text.contains("private") && !text.contains("87654321") && !text.contains("8000000000000000"))
+      }
+    }
+  }
+
+  test("Java evidence parse errors cannot echo malformed invocation fields") {
+    val factory = WorkerCommands.javaExecutionEvidence
+    val logger = BasicLogger()
+    val client = factory.toLocalExecutionClient((_, _) => Future.successful(
+      Evidence.Snapshot(Evidence.Outcome.Completed, 2, 0, Vector.empty)))
+    val malformed = ExecutionCommand(factory.name, ujson.Obj("source" -> "private source",
+      "method" -> "privateMethod", "arguments" -> "private arguments"))
+    val before = write(malformed)
+    Future.unit.flatMap(_ => client.executeResponse(logger, malformed)).failed.map {
+      case error: SerializedException =>
+        assert(error.msg.contains("sourceLength"))
+        assert(!error.toJson.contains("private"))
+        assertEquals(error.cause, None)
+        assertEquals(write(malformed), before)
+        assert(!logger.getOut().contains("private") && !logger.getErr().contains("private"))
+      case other => fail("Unexpected parse failure: " + other.getClass.getName)
     }
   }
 

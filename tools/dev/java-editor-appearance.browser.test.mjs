@@ -215,9 +215,9 @@ test('Java appearance changes preserve the live editor, undo history and drawing
     await open.last().click();
     const editor = page.locator('dialog[open] .eva-editor');
     await editor.locator('.cm-content').waitFor();
-    assert.equal(await editor.locator('.editor-appearance__toggle').count(), 1);
+    assert.equal(await editor.locator('.editor-appearance__toggle').count(), 0, 'page theme replaces the editor toggle');
     assert.equal(await editor.locator('.eva-editor__tabs > button').count(), 1, 'configured language list stays Java-only');
-    const javaTab = editor.getByRole('button', {name: 'Java', exact: true});
+    const javaTab = editor.getByRole('tab', {name: 'Java', exact: true});
     assert.equal(await javaTab.locator('.eva-editor__language-icon').count(), 1);
     assert.equal((await javaTab.textContent()).trim(), '', 'Java uses its icon rather than visible tab text');
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
@@ -267,7 +267,7 @@ test('Java appearance changes preserve the live editor, undo history and drawing
     })));
     const before = await drawings();
     for (const theme of ['dark', 'light', 'dark', 'light']) {
-      await editor.locator('.editor-appearance__toggle').click();
+      await page.evaluate(theme => document.documentElement.setAttribute('data-theme', theme), theme);
       await page.waitForFunction(theme => document.querySelector('dialog[open] .eva-editor')?.getAttribute('data-editor-theme') === theme, theme);
       await page.waitForFunction(theme => {
         const {view} = appearanceProbe;
@@ -343,7 +343,7 @@ test('Java appearance changes preserve the live editor, undo history and drawing
         `no outer scrolling at ${width}x${viewport.height}: ${JSON.stringify(owner)}`);
       assert(geometry.codeHeight >= (viewport.height >= 700 ? 80 : 40),
         `code remains usable at ${width}x${viewport.height}: ${JSON.stringify(geometry)}`);
-      await editor.locator('.editor-appearance__toggle').click();
+      await page.evaluate(theme => document.documentElement.setAttribute('data-theme', theme), width > 800 ? 'dark' : 'light');
     }
     await page.setViewportSize({width: 1440, height: 1000});
     await page.locator('.fullscreen-close-button').click();
@@ -424,9 +424,9 @@ test('language tabs follow the current draft and commit converted representation
     const open = page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).first();
     await open.click();
     const editor = page.locator('dialog[open] .eva-editor');
-    const java = editor.getByRole('button', {name: 'Java', exact: true});
-    const python = editor.getByRole('button', {name: 'Python', exact: true});
-    const snap = editor.getByRole('button', {name: 'Snap!', exact: true});
+    const java = editor.getByRole('tab', {name: 'Java', exact: true});
+    const python = editor.getByRole('tab', {name: 'Python', exact: true});
+    const snap = editor.getByRole('tab', {name: 'Snap!', exact: true});
     await java.click();
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
     await editor.locator('.cm-content').waitFor();
@@ -452,9 +452,14 @@ test('language tabs follow the current draft and commit converted representation
       assert.equal(await readSource(), code);
     }
     async function checkTabs(convertible) {
+      await python.focus();
+      await snap.focus();
       await page.waitForFunction(convertible => {
         const tabs = [...document.querySelectorAll('dialog[open] .eva-editor__tabs button')];
-        return ['Python', 'Snap!'].every(label => tabs.find(tab => tab.getAttribute('aria-label') === label)?.disabled === !convertible);
+        return ['Python', 'Snap!'].every(label => {
+          const tab = tabs.find(tab => tab.getAttribute('aria-label') === label);
+          return tab?.getAttribute('aria-disabled') === String(!convertible);
+        });
       }, convertible);
       assert.equal(await java.isDisabled(), false);
       assert.equal(await python.isDisabled(), !convertible);
@@ -488,8 +493,15 @@ test('language tabs follow the current draft and commit converted representation
     }, {valid: spaced, unfinished});
     await checkTabs(true);
     assert.equal(await readSource(), spaced, 'rapid invalid and valid drafts retain the latest exact source');
+    await java.focus();
+    await page.keyboard.press('ArrowLeft');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Python');
+    assert.equal(await java.getAttribute('aria-selected'), 'true');
     await python.click();
-    await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-label="Python"]')?.getAttribute('aria-selected') === 'true');
+    await page.waitForFunction(() => document.querySelector('dialog[open] [role="tab"][aria-label="Python"]')?.getAttribute('aria-selected') === 'true');
+    assert.equal(await python.getAttribute('role'), 'tab');
+    assert.equal(await python.getAttribute('aria-pressed'), null);
+    assert.equal(await editor.locator('.eva-editor__tabs').getAttribute('role'), 'tablist');
     assert.equal(await python.getAttribute('aria-selected'), 'true');
     await java.click();
     await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-label="Java"]')?.getAttribute('aria-selected') === 'true');

@@ -3,8 +3,43 @@ package it.evadid.vm.simulation.java
 import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport as Y
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T, JavaTurtleTrace as J}
+import upickle.default.ReadWriter
 
 object JavaTurtleExecutionEvidence {
+  enum Scalar derives ReadWriter {
+    case Int32(value: Int)
+    case Float64(bits: String)
+    case Bool(value: Boolean)
+
+    def toValue: E.Value = this match {
+      case Int32(value) => E.Value.IntValue(value)
+      case Bool(value) => E.Value.BooleanValue(value)
+      case Float64("nan") => E.Value.DoubleValue(Double.NaN)
+      case Float64(bits) =>
+        require(bits != null && bits.matches("[0-9a-f]{16}"), "Invalid double bits.")
+        val value = java.lang.Double.longBitsToDouble(java.lang.Long.parseUnsignedLong(bits, 16))
+        require(!value.isNaN, "Use the canonical NaN value.")
+        E.Value.DoubleValue(value)
+    }
+  }
+
+  object Scalar {
+    def fromValue(value: E.Value): Scalar = value match {
+      case E.Value.IntValue(value) => Scalar.Int32(value)
+      case E.Value.DoubleValue(value) => Scalar.Float64(doubleBits(value))
+      case E.Value.BooleanValue(value) => Scalar.Bool(value)
+    }
+  }
+
+  enum Outcome derives ReadWriter {
+    case Completed, LimitExceeded, DivisionByZero, NonFiniteCommand
+  }
+
+  case class LocatedExpression(invocation: Int, method: String, start: Int, end: Int,
+      value: Scalar) derives ReadWriter
+  case class Snapshot(outcome: Outcome, steps: Int, commandCount: Int,
+      expressions: Vector[LocatedExpression]) derives ReadWriter
+
   case class Context(source: String, method: Option[R.MethodId] = None,
       arguments: Vector[E.Value] = Vector.empty, limits: T.Limits = T.Limits(), budget: J.Budget = J.Budget())
 
@@ -17,6 +52,23 @@ object JavaTurtleExecutionEvidence {
 
     def locatedSlice(target: Int, current: Context, includeOrder: Boolean = false): Option[J.LocatedSlice] =
       Option.when(sameContext(context, current))(()).flatMap(_ => trace.locatedSlice(target, current.source, includeOrder))
+
+    def snapshot: Snapshot = {
+      val outcome = execution.status match {
+        case T.Status.Completed => Outcome.Completed
+        case T.Status.LimitExceeded => Outcome.LimitExceeded
+        case T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)) => Outcome.DivisionByZero
+        case T.Status.Failed(T.Failure.NonFiniteCommand) => Outcome.NonFiniteCommand
+        case _ => throw IllegalArgumentException("The execution has no usable observations.")
+      }
+      val expressions = trace.locatedCompletedExpressions(context.source).getOrElse(
+        throw IllegalArgumentException("The expressions cannot be mapped to Java source.")).map { (located, value) =>
+        val method = trace.methodName(located.event.node.method).getOrElse(
+          throw IllegalArgumentException("The expression has no method."))
+        LocatedExpression(located.event.invocation, method, located.range.start, located.range.end, Scalar.fromValue(value))
+      }
+      Snapshot(outcome, execution.steps, execution.commands.size, expressions)
+    }
   }
 
   final class Prepared private[JavaTurtleExecutionEvidence](program: P.Program, val context: Context) {

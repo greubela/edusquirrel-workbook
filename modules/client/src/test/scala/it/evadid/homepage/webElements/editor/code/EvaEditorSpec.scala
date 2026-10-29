@@ -30,6 +30,12 @@ import scala.util.Try
 import upickle.default.*
 
 class EvaEditorSpec extends EditorDomSuite {
+  private val specLabels = EvaEditorLabels(
+    unavailable = Val("_"),
+    languages = Val("_"),
+    switchFailed = Val("_"),
+    loading = Val("_")
+  )
   private val logger = Logger.withNameAndPrefixes(Some("EvaEditorSpec"), PrintToStdLogger.printNothing)
 
   private type HintResult = ScaffoldingResult[String, String]
@@ -733,7 +739,8 @@ class EvaEditorSpec extends EditorDomSuite {
     val choices = languages.distinct.map { lang => new EvaEditorTab {
       override val language = lang
       override val label = lang.toString
-      override def create(bound: Var[ProgrammingState], appearance: EditorAppearance): HtmlAppElement = {
+      override def create(bound: Var[ProgrammingState], appearance: EditorAppearance,
+          marker: Signal[Option[it.evadid.vm.code.errors.ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement = {
         assert(bound eq state)
         created.update(_ :+ lang)
         HtmlAppElement(div(
@@ -743,7 +750,7 @@ class EvaEditorSpec extends EditorDomSuite {
         ))
       }
     }}
-    val editor = EvaEditor(logger, state, Nil, EvaEditorConfig(enabledLanguages = languages), Some(choices))
+    val editor = EvaEditor(logger, state, Nil, EvaEditorConfig(enabledLanguages = languages), Some(choices), labels = specLabels)
     val close = mount(editor.getDomElement())
   }
 
@@ -829,5 +836,75 @@ class EvaEditorSpec extends EditorDomSuite {
   test("empty configurations do not create any editor") {
     val f = new Fixture(ProgrammingStatePythonString("unfinished("), Nil)
     try assertEquals(f.created.now(), Vector.empty) finally f.close()
+  }
+
+  private def tabsInDom: Seq[dom.Element] = {
+    val nodes = dom.document.querySelectorAll(".eva-editor__tabs button")
+    (0 until nodes.length).map(index => nodes.item(index).asInstanceOf[dom.Element])
+  }
+
+  private def tab(label: String): dom.Element =
+    tabsInDom.find(_.getAttribute("aria-label") == label).getOrElse(throw new AssertionError(s"Missing tab $label"))
+
+  private def click(element: dom.Element): Unit = element.asInstanceOf[js.Dynamic].click()
+
+  test("a blocked tab names the conversion failure and stays on the draft") {
+    val source = ProgrammingStateJavaString("class Unfinished {")
+    val f = new Fixture(source)
+    tabsInDom.filterNot(_.getAttribute("aria-selected") == "true").foreach(
+      _.asInstanceOf[dom.html.Element].focus())
+    later(50).flatMap { _ =>
+      val blocked = tabsInDom.filter { button =>
+        button.getAttribute("aria-disabled") == "true" && button.getAttribute("title") != button.getAttribute("aria-label")
+      }
+      assert(blocked.nonEmpty)
+      assert(blocked.forall(_.getAttribute("aria-pressed") == null))
+      click(blocked.head)
+      later(50)
+    }.map { _ =>
+      assertEquals(f.state.now(), source)
+      assert(f.editor.error.nonEmpty)
+      assert(dom.document.querySelector(".eva-editor__error") != null)
+    }.andThen { case _ => f.close() }
+  }
+
+  test("arrow keys move focus between tabs without switching the draft") {
+    val source = ProgrammingStatePythonString("forward(1)")
+    val f = new Fixture(source)
+    try {
+      val current = tab("Python")
+      assertEquals(current.getAttribute("role"), "tab")
+      assertEquals(current.getAttribute("aria-selected"), "true")
+      assertEquals(dom.document.querySelector(".eva-editor__tabs").getAttribute("role"), "tablist")
+      current.asInstanceOf[js.Dynamic].focus()
+      val event = js.Dynamic.newInstance(dom.window.asInstanceOf[js.Dynamic].KeyboardEvent)(
+        "keydown", js.Dynamic.literal(key = "ArrowRight", bubbles = true))
+      current.asInstanceOf[js.Dynamic].dispatchEvent(event)
+      assertEquals(dom.document.activeElement.asInstanceOf[dom.Element].getAttribute("aria-label"), "Java")
+      assertEquals(f.state.now(), source)
+      assertEquals(tab("Python").getAttribute("aria-selected"), "true")
+    } finally f.close()
+  }
+
+  private def laterOnPage(milliseconds: Int): Future[Unit] = {
+    val completed = Promise[Unit]()
+    dom.window.asInstanceOf[js.Dynamic].setTimeout(() => completed.success(()), milliseconds)
+    completed.future
+  }
+
+  test("the editor theme follows data-theme on the page") {
+    dom.document.documentElement.setAttribute("data-theme", "light")
+    val f = new Fixture(ProgrammingStatePythonString("forward(1)"))
+    laterOnPage(50).map { _ =>
+      assertEquals(dom.document.querySelector(".eva-editor").getAttribute("data-editor-theme"), "light")
+      assert(dom.document.querySelector(".editor-appearance__toggle") == null)
+      dom.document.documentElement.setAttribute("data-theme", "dark")
+      laterOnPage(50)
+    }.flatten.map { _ =>
+      assertEquals(dom.document.querySelector(".eva-editor").getAttribute("data-editor-theme"), "dark")
+    }.andThen { case _ =>
+      dom.document.documentElement.removeAttribute("data-theme")
+      f.close()
+    }
   }
 }
