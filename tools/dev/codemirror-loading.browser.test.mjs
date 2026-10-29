@@ -10,7 +10,7 @@ const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 
 async function fixture(browser, fail = false, openEditor = true, forceTimer = false) {
-  const page = await browser.newPage();
+  const page = await browser.newPage({colorScheme: 'light'});
   if (forceTimer) await page.addInitScript(() => {
     Object.defineProperty(window, 'requestIdleCallback', {value:undefined, configurable:true});
   });
@@ -79,10 +79,26 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     assert.equal(await dialog.locator('.cm-line').count(), source.split('\n').length,
       'synthetic branch and closing rows do not add content lines');
     assert.equal(await dialog.locator('.cm-content').innerText(), source);
-    await dialog.getByRole('button', {name:'Use dark appearance'}).click();
-    await dialog.getByRole('button', {name:'Use light appearance'}).waitFor();
-    assert.notEqual(await dialog.locator('.cm-flowchart-row > svg').first().evaluate(svg => getComputedStyle(svg).filter),
-      'none', 'the nested renderer palette adapts to the dark editor');
+    await page.evaluate(() => {
+      const node = document.querySelector('dialog[open] .cm-editor');
+      window.loadingAppearanceProbe = {node, view: EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(node)};
+    });
+    for (const theme of ['dark', 'light']) {
+      await page.evaluate(theme => document.documentElement.setAttribute('data-theme', theme), theme);
+      await page.waitForFunction(theme => {
+        const editor = document.querySelector('dialog[open] .eva-editor');
+        const svg = editor?.querySelector('.cm-flowchart-row > svg');
+        return editor?.getAttribute('data-editor-theme') === theme && svg &&
+          (getComputedStyle(svg).filter !== 'none') === (theme === 'dark') &&
+          loadingAppearanceProbe.view.state.facet(EduSquirrelCodeMirrorLibraries.EditorView.darkTheme) === (theme === 'dark');
+      }, theme);
+      assert(await page.evaluate(() => {
+        const node = document.querySelector('dialog[open] .cm-editor');
+        return node === loadingAppearanceProbe.node &&
+          EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(node) === loadingAppearanceProbe.view;
+      }), 'page theme changes preserve the live editor');
+      assert.equal(await dialog.locator('.cm-content').innerText(), source, 'appearance preserves the edited source');
+    }
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     await dialog.locator('.cm-editor').waitFor();
     assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 0, 'Python gutter does not appear for Java');
