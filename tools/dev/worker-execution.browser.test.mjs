@@ -147,6 +147,8 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
         method:'draw',arguments:[{$type:'Float64',bits:'3fc0000000000000'},{$type:'Int32',value:2}],count:2,onlyMethod:'draw'},
       {id:'recursive-helper',source:wrap('draw(3);',
         'static void draw(int n){if(n==0){Turtle.forward(1);return;}draw(n-1);Turtle.turnRight(60);draw(n-1);}'),count:15},
+      {id:'focused-recursion',source:wrap('draw(3);',
+        'static void draw(int n){if(n>1){draw(n-1);}int half=n/2;Turtle.forward(half);}'),commandIndex:0,count:3},
       {id:'unicode-zero',source:'class Drawing {\r\n// Grüße 🐢\r\npublic static void main(String[] args){\r\n double z=-0.0;Turtle.forward(z);double n=0.0/0.0;if(n!=n){Turtle.turnRight(90);}\r\n}}',
         count:2,bits:['8000000000000000','nan']},
       {id:'boolean-argument',source:wrap('', 'static void draw(boolean enabled){if(enabled){Turtle.forward(4);}}'),
@@ -170,6 +172,8 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
       {id:'wrapped-argument',source:wrap('', 'static void draw(int n){Turtle.forward(n);}'),
         method:'draw',arguments:[{$type:'Int32',value:2147483648}],reject:true,decodeReject:true},
       {id:'fractional-limit',source:wrap(''),limits:{maxSteps:1.9},reject:true,decodeReject:true},
+      {id:'fractional-focus',source:wrap(''),commandIndex:0.5,reject:true,decodeReject:true},
+      {id:'negative-focus',source:wrap(''),commandIndex:-1,reject:true},
       {id:'trace-overflow',source:wrap('for(int i=0;i<1000;i++){Turtle.forward(i);}'),reject:true}
     ];
     for (const fixture of evidenceCases) {
@@ -197,6 +201,13 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
       for (const value of bits || []) assert(snapshot.expressions.some(expression => expression.value.bits === value),id);
       if (minExpressions) assert(snapshot.expressions.length >= minExpressions,id);
       if (id === 'empty') assert.deepEqual(snapshot.expressions,[]);
+      if (id === 'focused-recursion') {
+        assert.equal(snapshot.focus.index,0);
+        assert.equal(snapshot.focus.command,'forward');
+        assert.deepEqual(snapshot.focus.facts.map(f => requestData.source.slice(f.expression.start,f.expression.end)),['n/2']);
+        assert.deepEqual(snapshot.focus.facts[0].arguments,[{$type:'Int32',value:1}]);
+        assert.deepEqual(snapshot.focus.facts[0].expression.value,{$type:'Int32',value:0});
+      }
     }
     const evidenceConcurrent = await page.evaluate(fixtures => Promise.all(fixtures.map(({id,source,method,arguments:args}) =>
       request('parallel-' + id,'worker.javaExecutionEvidence',{source,method,arguments:args}))),

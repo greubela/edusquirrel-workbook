@@ -36,10 +36,18 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
           .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
         verifyChecks(currentState, context, locale)
         context.comparedInvocation(locale) match {
-          case Some(invocation) => ProgrammingComparisonHint.render(invocation, locale, resolver).map { text =>
+          case Some(invocation) => ProgrammingComparisonHint.render(invocation, locale, resolver).flatMap { text =>
             verifyChecks(currentState, context, locale)
-            ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> s"1. $text")),
-              FeedbackEntity.TestEntity(), None)
+            val enrichment = if context.sourceLanguage == Java.name then
+              ProgrammingExecutionHint.enrich(context.source, invocation, task, text, locale, resolver, availableExecutionClients,
+                () => verifyChecks(currentState, context, locale))
+            else Future.successful(None)
+            enrichment.map { detail =>
+              verifyChecks(currentState, context, locale)
+              val message = s"1. $text" + detail.fold("")(observation => s"\n2. ${observation.text}")
+              val entity = detail.fold[FeedbackEntity](FeedbackEntity.TestEntity())(_.entity)
+              ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> message)), entity, None)
+            }
           }
           case None =>
             val request = context.request(locale, task)
@@ -188,12 +196,16 @@ object ProgrammingHintScaffolder {
         "source" -> ujson.Obj("language" -> sourceLanguage, "code" -> source,
           "lines" -> ujson.Arr.from(sourceLines.map { (id, text) => ujson.Obj("id" -> id, "text" -> text) })),
         "checks" -> ujson.Arr.from(localizedChecks(language).map(_.toJson))))
-      LLMCommands.FeedbackLlmRequest(prompt, systemPrompt)
+      val instructions = if sourceLanguage == Java.name then s"$systemPrompt\n$javaEnvironment" else systemPrompt
+      LLMCommands.FeedbackLlmRequest(prompt, instructions)
     }
   }
   private case class Hint(question: String, evidenceIds: Vector[String]) {
     def toJson: ujson.Value = ujson.Obj("question" -> question, "evidenceIds" -> ujson.Arr.from(evidenceIds))
   }
+
+  private val javaEnvironment =
+    "This Java execution environment provides Turtle.forward(number) and Turtle.turnRight(number) as built-in static calls with numeric arguments. They need no import, object construction or initialization."
 
   private val systemPrompt =
     """You are a programming tutor helping a learner take their own next step.

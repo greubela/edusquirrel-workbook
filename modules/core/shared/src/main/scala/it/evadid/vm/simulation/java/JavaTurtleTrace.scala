@@ -49,6 +49,12 @@ object JavaTurtleTrace {
     private val sourceMap = origin.typedSource.structure.parsedSource.sourceMap
     private lazy val sourceLocations = JavaTurtleTraceSources.build(origin)
 
+    private[java] def isCalculation(node: SourceNode): Boolean =
+      sourceLocations.flatMap(_.get(node)).exists(_.isCalculation)
+
+    private[java] def isBranchCondition(node: SourceNode): Boolean =
+      sourceLocations.flatMap(_.get(node)).exists(_.isBranchCondition)
+
     private lazy val completedExpressionEvents: Option[Vector[(Event, E.Value)]] = sourceLocations.flatMap { locations =>
       events.foldLeft(Option(Vector.empty[(Event, E.Value)])) { (result, event) =>
         for { previous <- result; entry <- locations.get(event.node) } yield event.kind match {

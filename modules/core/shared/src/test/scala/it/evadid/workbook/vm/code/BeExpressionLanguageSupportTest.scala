@@ -2589,6 +2589,57 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(prepared.verify(reorderedFields.render(), prepared.context).execution, T.runVm(program))
   }
 
+  test("command focus keeps recursive calls separate and excludes unrelated calculations") {
+    val source = "class Drawing { static void draw(int n) { int decoy=77; if(n>1){draw(n-1);} " +
+      "int half=n/2; Turtle.forward(half); } public static void main(String[] args) {draw(3);} }"
+    val program = P.compile(source).toOption.get
+    val prepared = Evidence.prepare(program)
+    val verified = prepared.verify(evidenceFrom(T.runVmTraced(program)).render(), prepared.context)
+    val first = verified.snapshotForCommand(0).focus.get
+    val last = verified.snapshotForCommand(2).focus.get
+    assertEquals(first.command, "forward")
+    assertEquals(first.value, Evidence.Scalar.Float64("0000000000000000"))
+    val firstHalf = first.facts.filter(f => source.substring(f.expression.start, f.expression.end) == "n/2")
+    assertEquals(firstHalf.map(_.arguments), Vector(Vector(Evidence.Scalar.Int32(1))))
+    assertEquals(firstHalf.map(_.expression.value), Vector(Evidence.Scalar.Int32(0)))
+    assertEquals(last.facts.filter(f => source.substring(f.expression.start, f.expression.end) == "n/2")
+      .map(_.arguments), Vector(Vector(Evidence.Scalar.Int32(3))))
+    assert(first.facts.forall(f => source.substring(f.expression.start, f.expression.end) != "77"))
+    assertEquals(verified.snapshot.focus, None)
+    assertEquals(verified.snapshotForCommand(3).focus, None)
+    intercept[IllegalArgumentException](verified.snapshotForCommand(-1))
+    assertEquals(upickle.default.read[Evidence.Snapshot](upickle.default.write(verified.snapshotForCommand(0))),
+      verified.snapshotForCommand(0))
+  }
+
+  test("command focus does not describe failed prefixes as a completed invocation") {
+    val program = P.adapt(javaProgram("Turtle.forward(1);int bad=4/0;")).toOption.get
+    val prepared = Evidence.prepare(program)
+    val verified = prepared.verify(evidenceFrom(T.runVmTraced(program)).render(), prepared.context)
+    assertEquals(verified.snapshotForCommand(0).focus, None)
+    val old = upickle.default.writeJs(verified.snapshot)
+    old.obj.remove("focus")
+    assertEquals(upickle.default.read[Evidence.Snapshot](old).focus, None)
+  }
+
+  test("command focus prefers actual calculations over earlier conditions and caller frames") {
+    def facts(body: String): Vector[String] = {
+      val source = "class Drawing { static void draw(int n) { " + body +
+        " } public static void main(String[] args) {draw(3);} }"
+      val program = P.compile(source).toOption.get
+      val prepared = Evidence.prepare(program)
+      val verified = prepared.verify(evidenceFrom(T.runVmTraced(program)).render(), prepared.context)
+      verified.snapshotForCommand(0).focus.get.facts.map(f => source.substring(f.expression.start, f.expression.end))
+    }
+    assertEquals(facts("if(n>0){} int length=n/2; Turtle.forward(length);"), Vector("n/2"))
+    assertEquals(facts("if(n>1){draw(n-1);} int length=n/2; Turtle.forward(length);"), Vector("n/2"))
+    assert(facts("int span=n; if(span<5){span=5;} Turtle.forward(n);").forall(text => text != "span<5"))
+    assertEquals(facts("int length=10; if(n>=3){length=20;} Turtle.forward(length);"), Vector("n>=3"))
+    assertEquals(facts("if(n<3){Turtle.forward(10);}else{Turtle.forward(20);}"), Vector("n<3"))
+    assert(facts("for(int i=0;i<3;i++){Turtle.turnRight(60);}").forall(text => text != "i<3"))
+    assert(facts("int length=n; length++; Turtle.forward(length);").contains("length"))
+  }
+
   test("Java evidence verifies failed and limited prefixes without accepting a cancelled transcript") {
     val programs = Vector(
       P.adapt(javaProgram("Turtle.forward(1);int bad=1+(4/0);")).toOption.get -> T.Limits(),

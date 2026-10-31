@@ -121,5 +121,6 @@
   "editorUnavailable": "This draft is not available in the configured languages.",
   "editorLanguages": "Programming languages",
   "editorSwitchFailed": "Could not switch language",
-  "editorLoading": "Loading editor…"
+  "editorLoading": "Loading editor…",
+  "programmingHintExpressionValue": "In _, _ on line _ had the value _. Follow how this value is used in the drawing."
 }

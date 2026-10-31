@@ -11,6 +11,7 @@ object JavaTurtleEvidenceJob {
       runPython: RunPythonRequest => Future[RunPythonResult])(using ExecutionContext): Future[JavaTurtleExecutionEvidence.Snapshot] =
     Future {
       require(request.source != null && request.limits.isValid, "Invalid execution input.")
+      require(request.commandIndex.forall(index => index >= 0 && index < request.limits.maxCommands), "Invalid command index.")
       require(request.arguments.size <= JavaTurtleInputLimits.MaxParameters, "Too many invocation arguments.")
       val program = JavaTurtleVmPrograms.compile(request.source).fold(
         _ => throw IllegalArgumentException("Unsupported Java source."), identity)
@@ -23,7 +24,8 @@ object JavaTurtleEvidenceJob {
       runPython(RunPythonRequest(prepared.code)).map { result =>
         require(result.stdout.isEmpty && result.stderr.isEmpty && result.callbackOps.isEmpty,
           "Unexpected Python output.")
-        prepared.verify(result.value.str, prepared.context).snapshot
+        val verified = prepared.verify(result.value.str, prepared.context)
+        request.commandIndex.fold(verified.snapshot)(verified.snapshotForCommand)
       }
     }.recoverWith { case NonFatal(_) =>
       Future.failed(IllegalArgumentException("Java execution observations are unavailable."))

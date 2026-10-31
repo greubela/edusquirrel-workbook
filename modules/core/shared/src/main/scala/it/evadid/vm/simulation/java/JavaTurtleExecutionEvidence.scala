@@ -4,6 +4,7 @@ import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport as Y
 import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T, JavaTurtleTrace as J}
 import upickle.default.ReadWriter
+import scala.annotation.tailrec
 
 object JavaTurtleExecutionEvidence {
   enum Scalar derives ReadWriter {
@@ -37,8 +38,11 @@ object JavaTurtleExecutionEvidence {
 
   case class LocatedExpression(invocation: Int, method: String, start: Int, end: Int,
       value: Scalar) derives ReadWriter
+  case class ExpressionFact(expression: LocatedExpression, arguments: Vector[Scalar]) derives ReadWriter
+  case class CommandFocus(index: Int, command: String, value: Scalar,
+      facts: Vector[ExpressionFact]) derives ReadWriter
   case class Snapshot(outcome: Outcome, steps: Int, commandCount: Int,
-      expressions: Vector[LocatedExpression]) derives ReadWriter
+      expressions: Vector[LocatedExpression], focus: Option[CommandFocus] = None) derives ReadWriter
 
   case class Context(source: String, method: Option[R.MethodId] = None,
       arguments: Vector[E.Value] = Vector.empty, limits: T.Limits = T.Limits(), budget: J.Budget = J.Budget())
@@ -68,6 +72,57 @@ object JavaTurtleExecutionEvidence {
         LocatedExpression(located.event.invocation, method, located.range.start, located.range.end, Scalar.fromValue(value))
       }
       Snapshot(outcome, execution.steps, execution.commands.size, expressions)
+    }
+
+    def snapshotForCommand(index: Int): Snapshot = {
+      require(index >= 0 && index < context.limits.maxCommands, "Invalid command index.")
+      val result = snapshot
+      val focus = Option.when(execution.status == T.Status.Completed)(()).flatMap { _ =>
+        events.find(_.kind match {
+          case J.Kind.Turtle(found, _) => found == index
+          case _ => false
+        }).flatMap { target =>
+          trace.locatedSlice(target.id, context.source).filterNot(_.recordingTruncated).map { slice =>
+            val values = trace.locatedCompletedExpressions(context.source).getOrElse(Vector.empty)
+              .map { (located, value) => located.event.id -> value }.toMap
+            val calls = events.collect { case event @ J.Event(_, _, _, J.Kind.Call(_, arguments), _, _, _, _) =>
+              event.invocation -> arguments.map(Scalar.fromValue)
+            }.toMap
+            @tailrec def dataAncestors(pending: List[Int], selected: Set[Int]): Set[Int] = pending match {
+              case Nil => selected
+              case id :: rest if selected(id) => dataAncestors(rest, selected)
+              case id :: rest => dataAncestors(events(id).dataDependencies.toList ::: rest, selected + id)
+            }
+            val dataIds = dataAncestors(List(target.id), Set.empty)
+            val local = slice.events.filter(_.event.invocation == target.invocation)
+            val calculations = local.filter(located => dataIds(located.event.id) &&
+              values.contains(located.event.id) && trace.isCalculation(located.event.node))
+            val writes = local.filter(located => dataIds(located.event.id) && located.event.kind.isInstanceOf[J.Kind.Write])
+            val parameterOnly = writes.nonEmpty && writes.forall(_.event.node.path.headOption.contains("parameter"))
+            val guards = (writes.flatMap(_.event.controlDependencies) ++ target.controlDependencies).toSet
+            val guardExpressions = local.iterator.filter(located => guards(located.event.id) &&
+              located.event.kind.isInstanceOf[J.Kind.Condition]).flatMap(_.event.dataDependencies).toSet
+            val branchConditions = if parameterOnly then Vector.empty else local.filter { located =>
+              guardExpressions(located.event.id) && trace.isBranchCondition(located.event.node)
+            }
+            val selected = if calculations.nonEmpty then calculations
+              else if branchConditions.nonEmpty then branchConditions
+              else local.filter(located => dataIds(located.event.id) && located.event.kind.isInstanceOf[J.Kind.Read])
+            val facts = selected.flatMap { located =>
+              for {
+                value <- values.get(located.event.id)
+                method <- trace.methodName(located.event.node.method)
+                arguments <- calls.get(located.event.invocation)
+              } yield ExpressionFact(LocatedExpression(located.event.invocation, method,
+                located.range.start, located.range.end, Scalar.fromValue(value)), arguments)
+            }.distinct.takeRight(12)
+            val command = execution.commands(index)
+            CommandFocus(index, if command.command == R.TurtleCommand.Forward then "forward" else "right",
+              Scalar.fromValue(E.Value.DoubleValue(command.value)), facts)
+          }
+        }
+      }
+      result.copy(focus = focus)
     }
   }
 
