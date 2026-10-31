@@ -36,10 +36,18 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
           .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
         verifyChecks(currentState, context, locale)
         context.comparedInvocation(locale) match {
-          case Some(invocation) => ProgrammingComparisonHint.render(invocation, locale, resolver).map { text =>
+          case Some(invocation) => ProgrammingComparisonHint.render(invocation, locale, resolver).flatMap { text =>
             verifyChecks(currentState, context, locale)
-            ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> s"1. $text")),
-              FeedbackEntity.TestEntity(), None)
+            val enrichment = if context.sourceLanguage == Java.name then
+              ProgrammingExecutionHint.enrich(context.source, invocation, task, text, locale, resolver, availableExecutionClients,
+                () => verifyChecks(currentState, context, locale))
+            else Future.successful(None)
+            enrichment.map { detail =>
+              verifyChecks(currentState, context, locale)
+              val message = s"1. $text" + detail.fold("")(observation => s"\n2. ${observation.text}")
+              val entity = detail.fold[FeedbackEntity](FeedbackEntity.TestEntity())(_.entity)
+              ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> message)), entity, None)
+            }
           }
           case None =>
             val request = context.request(locale, task)

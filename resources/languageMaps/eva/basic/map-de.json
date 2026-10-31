@@ -120,5 +120,6 @@
   "editorUnavailable": "Dieser Entwurf ist in den eingestellten Sprachen nicht verfügbar.",
   "editorLanguages": "Programmiersprachen",
   "editorSwitchFailed": "Sprache konnte nicht gewechselt werden",
-  "editorLoading": "Editor wird geladen…"
+  "editorLoading": "Editor wird geladen…",
+  "programmingHintExpressionValue": "Im Aufruf _ hatte _ in Zeile _ den Wert _. Verfolge, wie dieser Wert beim Zeichnen verwendet wird."
 }
