@@ -25,7 +25,7 @@ object WorkerCommands {
   case class JavaExecutionEvidenceRequest(source: String, method: Option[String] = None,
       arguments: Vector[JavaTurtleExecutionEvidence.Scalar] = Vector.empty,
       limits: JavaTurtleRuntime.Limits = JavaTurtleRuntime.Limits(),
-      budget: JavaTurtleTrace.Budget = JavaTurtleTrace.Budget())
+      budget: JavaTurtleTrace.Budget = JavaTurtleTrace.Budget(), commandIndex: Option[Int] = None)
 
   object JavaExecutionEvidenceRequest {
     private val derived: ReadWriter[JavaExecutionEvidenceRequest] = macroRW
@@ -37,6 +37,7 @@ object WorkerCommands {
       request => writeJs(request)(using derived),
       json => {
         val fields = json.obj
+        fields.get("commandIndex").filter(_ != ujson.Null).foreach(integer)
         List("limits" -> List("maxSteps", "maxCommands", "maxCallDepth", "maxBlockDepth"),
           "budget" -> List("maxEvents", "maxDependencies")).foreach { (field, integers) =>
           fields.get(field).foreach { value =>

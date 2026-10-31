@@ -30,7 +30,7 @@ class WorkerPythonCommandsSpec extends FunSuite {
       Evidence.Scalar.Float64("7fefffffffffffff"), Evidence.Scalar.Float64("7ff0000000000000"),
       Evidence.Scalar.Float64("fff0000000000000"), Evidence.Scalar.Float64("nan"))
     val request = JavaExecutionEvidenceRequest("/* 😀 Grüße */\r\nclass Drawing {}\r", Some("drawShape"), values,
-      T.Limits(maxSteps = 77, maxCommands = 4, maxCallDepth = 3, maxBlockDepth = 5), J.Budget(97, 211))
+      T.Limits(maxSteps = 77, maxCommands = 4, maxCallDepth = 3, maxBlockDepth = 5), J.Budget(97, 211), Some(2))
     assertEquals(writeJs(request).apply("method"), ujson.Str("drawShape"))
     List(read[JavaExecutionEvidenceRequest](write(request)),
       readBinary[JavaExecutionEvidenceRequest](writeBinary(request))).foreach { restored =>
@@ -79,6 +79,7 @@ class WorkerPythonCommandsSpec extends FunSuite {
     val integerFields = Vector("limits" -> List("maxSteps", "maxCommands", "maxCallDepth", "maxBlockDepth"),
       "budget" -> List("maxEvents", "maxDependencies"))
     invalidIntegers.foreach { value =>
+      if value != ujson.Null then reject(ujson.Obj("source" -> "class Drawing {}", "commandIndex" -> value))
       reject(ujson.Obj("source" -> "class Drawing {}", "method" -> "draw",
         "arguments" -> ujson.Arr(ujson.Obj("$type" -> "Int32", "value" -> value))))
       integerFields.foreach { (group, fields) =>

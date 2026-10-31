@@ -135,6 +135,16 @@ class BackendWorkerTest extends FunSuite {
     }
   }
 
+  test("Java evidence jobs return command focus only when requested") {
+    JavaTurtleEvidenceJob.run(JavaExecutionEvidenceRequest(evidenceSource, commandIndex = Some(0)),
+      _ => Future.successful(pythonEvidence())).map { snapshot =>
+      assertEquals(snapshot.focus.get.index, 0)
+      assertEquals(snapshot.focus.get.command, "forward")
+      assertEquals(snapshot.focus.get.facts, Vector.empty)
+      assertEquals(snapshot.expressions.head.value, Evidence.Scalar.Int32(1))
+    }
+  }
+
   test("Java evidence jobs reject altered reports and unexpected Python output without leaking failures") {
     val valid = pythonEvidence()
     val invalid = Vector(
@@ -159,6 +169,7 @@ class BackendWorkerTest extends FunSuite {
     val invalid = Vector(request.copy(source = null), request.copy(source = "class PrivateDraft {"),
       request.copy(method = Some("missing")), request.copy(method = Some("main")),
       request.copy(arguments = Vector(Evidence.Scalar.Int32(1))), request.copy(limits = T.Limits(maxSteps = 0)),
+      request.copy(commandIndex = Some(-1)), request.copy(commandIndex = Some(10000)),
       helper.copy(arguments = Vector(Evidence.Scalar.Float64("invalid"))),
       helper.copy(arguments = Vector(Evidence.Scalar.Float64("7ff8000000000042"))))
     val calls = State(0)

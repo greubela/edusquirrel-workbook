@@ -9,7 +9,8 @@ import it.evadid.vm.simulation.java.JavaTurtleTrace.SourceNode
 
 private[java] object JavaTurtleTraceSources {
   private type Syntax = Node[JavaAST]
-  case class Entry(range: SourceRange, isReadExpression: Boolean = false)
+  case class Entry(range: SourceRange, isReadExpression: Boolean = false,
+      isCalculation: Boolean = false, isBranchCondition: Boolean = false)
   private type Entries = Vector[(SourceNode, Entry)]
 
   def build(source: R.ResolvedSource): Option[Map[SourceNode, Entry]] = {
@@ -88,7 +89,9 @@ private[java] object JavaTurtleTraceSources {
         }
       case (R.If(condition, yes, no), _: JavaIfStatement) if syntax.children.size == 2 + no.size =>
         for {
-          test <- expression(condition, syntax.children(0), node.child("condition"))
+          test <- expression(condition, syntax.children(0), node.child("condition")).map(_.map { (at, entry) =>
+            at -> entry.copy(isBranchCondition = at == node.child("condition"))
+          })
           positive <- block(yes, syntax.children(1), node.child("then"))
           negative <- optional(no, syntax.children.lift(2))((value, syntax) => block(value, syntax, node.child("else")))
         } yield test ++ positive ++ negative
@@ -133,7 +136,11 @@ private[java] object JavaTurtleTraceSources {
       case (R.ShortCircuit(_, left, right), _: JavaOperationBinary) => operands(left, right, syntax, node)
       case _ => None
     }
-    children.map((node -> Entry(syntax.range, value.isInstanceOf[R.Read])) +: _)
+    val calculation = value match {
+      case _: R.Unary | _: R.Binary | _: R.ShortCircuit | _: R.Update => true
+      case _ => false
+    }
+    children.map((node -> Entry(syntax.range, value.isInstanceOf[R.Read], calculation)) +: _)
   }
 
   private def operands(left: R.Expression, right: R.Expression, syntax: Syntax, node: SourceNode): Option[Entries] =
