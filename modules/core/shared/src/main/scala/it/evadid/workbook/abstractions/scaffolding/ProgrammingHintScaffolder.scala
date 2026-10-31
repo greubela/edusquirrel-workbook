@@ -35,7 +35,16 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
           .filter(text => text != null && text.trim.nonEmpty && text.length <= 8000)
           .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
         verifyChecks(currentState, context, locale)
-        context.comparedInvocation(locale) match {
+        if context.publicChecksAllCorrect(locale) then
+          resolver.resolveMap(LanguageMapContentId("basic", "programmingHintNoChange")).map { messages =>
+            val text = messages.tryGetInLanguage(locale).orElse(messages.tryGetInLanguage(English))
+              .filter(value => value != null && value.trim.nonEmpty && value.length <= 512)
+              .getOrElse(throw IllegalArgumentException("A programming hint translation is missing."))
+            verifyChecks(currentState, context, locale)
+            ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> text)),
+              FeedbackEntity.TestEntity(), None)
+          }
+        else context.comparedInvocation(locale) match {
           case Some(invocation) => ProgrammingComparisonHint.render(invocation, locale, resolver).flatMap { text =>
             verifyChecks(currentState, context, locale)
             val enrichment = if context.sourceLanguage == Java.name then
@@ -178,6 +187,11 @@ object ProgrammingHintScaffolder {
   private case class Context(sourceLanguage: String, source: String, sourceLines: Vector[(String, String)],
       checks: List[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
     def localizedChecks(language: HumanLanguage): List[PublicCheck] = checks.map(_.localized(language))
+
+    def publicChecksAllCorrect(language: HumanLanguage): Boolean = {
+      val required = localizedChecks(language).filter(_.required)
+      required.nonEmpty && required.forall(_.status == "correct")
+    }
 
     def comparedInvocation(language: HumanLanguage): Option[ProgrammingTestInvocation] =
       localizedChecks(language).iterator.filter(check => check.required && check.status == "incorrect")

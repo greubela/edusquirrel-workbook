@@ -57,6 +57,10 @@ class InteractionVariableGradingSpec extends FunSuite {
   private def hintReply(question: String = "Welche Bedingung prüfst du zuerst?", ids: List[String] = List("task")): String =
     ujson.Obj("hints" -> ujson.Arr(ujson.Obj("question" -> question, "evidenceIds" -> ujson.Arr.from(ids)))).render()
 
+  private val noChangeId = LanguageMapContentId("basic", "programmingHintNoChange")
+  private val noChange = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(
+    German -> "Kein konkreter Verbesserungshinweis.", English -> "No specific change to suggest."))
+
   private case class HintCheck(name: String, override val importance: GradingImportance,
       override val gradingEntity: FeedbackEntity = FeedbackEntity.TestEntity())
       extends WorkbookInteractionGrader[ProgrammingState, String] {
@@ -85,7 +89,7 @@ class InteractionVariableGradingSpec extends FunSuite {
           resolve(id)
         }
       }
-    val resolver = resolverFor(_ => Future.successful(task))
+    val resolver = resolverFor(id => Future.successful(if id == noChangeId then noChange else task))
     def client(answer: LLMCommands.FeedbackLlmRequest => Future[String]): ExecutionClient =
       new LocalExecutionClient[LLMCommands.FeedbackLlmRequest, String] {
         override def canExecuteCommand(command: ExecutionCommand): Boolean = {
@@ -147,7 +151,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       new LanguageMapIdResolver(language.observable) {
         override def resolveMap(id: LanguageMapContentId) = resolve(id)
       }
-    val resolver = resolverFor(_ => Future.successful(task))
+    val resolver = resolverFor(id => Future.successful(if id == noChangeId then noChange else task))
     private val client = LLMCommands.feedbackLlmCommandFactory.toLocalExecutionClient((request, _) => {
       requests.update(_ :+ request)
       started.trySuccess(())
@@ -182,6 +186,130 @@ class InteractionVariableGradingSpec extends FunSuite {
   }
 
   private given ExecutionContext = ExecutionContext.global
+
+  test("passing public required checks return a localized hint without executing anything") {
+    val sources = List(ProgrammingStateJavaString("class Drawing {"), ProgrammingStatePythonString("def draw():\n    pass"))
+    Future.traverse(for source <- sources; language <- List(German, English, French) yield source -> language) { (source, language) =>
+      val required = HintCheck("required", GradingImportance.REQUIRED_TEST)
+      val other = HintCheck("other", GradingImportance.REQUIRED_TEST)
+      val optional = HintCheck("optional", GradingImportance.OPTIONAL_TEST)
+      val hidden = HintCheck("hidden", GradingImportance.HIDDEN_TEST)
+      val model = HintCheck("model", GradingImportance.REQUIRED_TEST, FeedbackEntity.LlmEntity(MessengerModel.empty))
+      val f = new HintFixture(source, List(required, other, optional, hidden, model))
+      f.language.set(language)
+      val results = Set(required, other, optional, hidden, model).map { check =>
+        GradingResult[ProgrammingState, String](check, source,
+          if check == required || check == other then GradingStatus.Correct() else GradingStatus.Incorrect())
+      }
+      f.variable.updateHistory(_.copy(gradings = Map(source -> GradedState(source, results))))
+      val before = f.variable.history
+      f.scaffolder.generateFeedback(source, Nil, f.resolver).map { result =>
+        assertEquals(result.scaffoldingResult.getInLanguage(language), noChange.getInLanguage(if language == German then German else English))
+        assertEquals(result.scaffoldingEntity, FeedbackEntity.TestEntity())
+        assertEquals(f.requests.now().size, 0)
+        assertEquals(f.lookups.now(), 0)
+        assertEquals(f.checks.map(_.runs.now()), List.fill(5)(0))
+        assertEquals(f.variable.history, before)
+        assertEquals(read[ScaffoldingResult[ProgrammingState, String]](write(result)), result)
+      }
+    }.map(_ => ())
+  }
+
+  test("one passing check does not hide missing unfinished or unsuccessful required results") {
+    val statuses = List(None, Some(GradingStatus.NotExecuted()), Some(GradingStatus.PartiallyCorrect()),
+      Some(GradingStatus.Incorrect()), Some(GradingStatus.TestError(SerializedException("private error"))))
+    Future.traverse(statuses) { status =>
+      val pass = HintCheck("passing", GradingImportance.REQUIRED_TEST)
+      val other = HintCheck("other", GradingImportance.REQUIRED_TEST)
+      val f = new HintFixture(checks = List(pass, other))
+      val results = Set(GradingResult[ProgrammingState, String](pass, f.source, GradingStatus.Correct())) ++
+        status.map(GradingResult[ProgrammingState, String](other, f.source, _))
+      f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, results))))
+      f.generateFeedback(f.source).map { result =>
+        assertEquals(f.requests.now().size, 1)
+        assert(result.scaffoldingEntity.isInstanceOf[FeedbackEntity.LlmEntity])
+      }
+    }.map(_ => ())
+  }
+
+  test("optional hidden and model grades alone cannot suppress a programming hint") {
+    Future.traverse(List(GradingImportance.OPTIONAL_TEST, GradingImportance.HIDDEN_TEST, GradingImportance.REQUIRED_TEST)) { importance =>
+      val check = HintCheck("not-public-required", importance,
+        if importance == GradingImportance.REQUIRED_TEST then FeedbackEntity.LlmEntity(MessengerModel.empty) else FeedbackEntity.TestEntity())
+      val f = new HintFixture(checks = List(check))
+      val grade = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Correct())
+      f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(grade)))))
+      f.generateFeedback(f.source).map(_ => assertEquals(f.requests.now().size, 1))
+    }.map(_ => ())
+  }
+
+  test("a pending no-change hint rejects replaced answers and changed public grades") {
+    Future.traverse(List(false, true)) { changeAnswer =>
+      val check = HintCheck("required", GradingImportance.REQUIRED_TEST)
+      val f = new HintFixture(checks = List(check))
+      val grade = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Correct())
+      f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(grade)))))
+      val started = Promise[Unit]()
+      val release = Promise[LanguageMap[HumanLanguage]]()
+      val resolver = f.resolverFor { id =>
+        if id == noChangeId then { started.trySuccess(()); release.future }
+        else f.resolver.resolveMap(id)
+      }
+      val pending = f.scaffolder.generateFeedback(f.source, Nil, resolver)
+      started.future.flatMap { _ =>
+        if changeAnswer then f.variable.updateHistory(_.withAddedEvent(InteractionVariableState[ProgrammingState](
+          ProgrammingStatePythonString("pass"), MAJOR, LocalDateTime.now())))
+        else f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source,
+          Set(grade.copy(gradingStatus = GradingStatus.Incorrect(), gradingTime = grade.gradingTime.plusSeconds(1)))))))
+        val before = f.variable.history
+        release.success(noChange)
+        pending.failed.map { error =>
+          assert(error.isInstanceOf[IllegalArgumentException])
+          assertEquals(f.requests.now().size, 0)
+          assertEquals(f.variable.history, before)
+        }
+      }
+    }.map(_ => ())
+  }
+
+  test("no-change hints use the latest unambiguous results") {
+    val cases = List(
+      (GradingStatus.Correct(), GradingStatus.Incorrect(), false, true),
+      (GradingStatus.Incorrect(), GradingStatus.Correct(), false, false),
+      (GradingStatus.Correct(), GradingStatus.Incorrect(), true, true))
+    Future.traverse(cases) { (older, newer, sameTime, needsModel) =>
+      val check = HintCheck("required", GradingImportance.REQUIRED_TEST)
+      val f = new HintFixture(checks = List(check))
+      val time = LocalDateTime.of(2026, 10, 31, 12, 0)
+      val first = GradingResult[ProgrammingState, String](check, f.source, older, gradingTime = time)
+      val second = first.copy(gradingStatus = newer, gradingTime = if sameTime then time else time.plusSeconds(1))
+      f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(first, second)))))
+      f.generateFeedback(f.source).map { result =>
+        assertEquals(f.requests.now().size, if needsModel then 1 else 0)
+        if !needsModel then assertEquals(result.scaffoldingResult.getInLanguage(German), noChange.getInLanguage(German))
+      }
+    }.map(_ => ())
+  }
+
+  test("unusable no-change translations fail without requesting an AI replacement") {
+    val translations = List(Future.successful(LanguageMap.empty[HumanLanguage]),
+      Future.successful(LanguageMap.universalMap[HumanLanguage](" ")),
+      Future.successful(LanguageMap.universalMap[HumanLanguage]("x" * 513)),
+      Future.failed[LanguageMap[HumanLanguage]](IllegalStateException("Translation unavailable")))
+    Future.traverse(translations) { translated =>
+      val check = HintCheck("required", GradingImportance.REQUIRED_TEST)
+      val f = new HintFixture(checks = List(check))
+      val grade = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Correct())
+      f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(grade)))))
+      val before = f.variable.history
+      val resolver = f.resolverFor(id => if id == noChangeId then translated else f.resolver.resolveMap(id))
+      f.scaffolder.generateFeedback(f.source, Nil, resolver).failed.map { _ =>
+        assertEquals(f.requests.now().size, 0)
+        assertEquals(f.lookups.now(), 0)
+        assertEquals(f.variable.history, before)
+      }
+    }.map(_ => ())
+  }
 
   private val comparisonTranslations = Map(
     "programminghintcall" -> ("Aufruf _", "Call _"),
@@ -359,8 +487,8 @@ class InteractionVariableGradingSpec extends FunSuite {
       })
       f.generate(extraClients = List(worker)).map { _ =>
         assertEquals(calls.now(), 0)
-        assertEquals(f.requests.now().size, 1)
-        assert(!f.requests.now().head.systemPrompt.contains("observationId"))
+        assertEquals(f.requests.now().size, if status == GradingStatus.Correct() then 0 else 1)
+        assert(f.requests.now().forall(request => !request.systemPrompt.contains("observationId")))
       }
     }.map(_ => ())
   }
@@ -419,10 +547,10 @@ class InteractionVariableGradingSpec extends FunSuite {
       val f = new DescribedHintFixture(List(grader))
       f.setResults(Set(f.grade(grader, status = status, invocation = Some(comparedCall(90210)))))
       f.generate().map { result =>
-        assertEquals(f.requests.now().size, 1)
-        assert(!f.requests.now().head.prompt.contains("90210"))
+        assertEquals(f.requests.now().size, if status == GradingStatus.Correct() then 0 else 1)
+        assert(f.requests.now().forall(request => !request.prompt.contains("90210")))
         assert(!result.scaffoldingResult.getInLanguage(German).contains("90210"))
-        assert(result.scaffoldingEntity.isInstanceOf[FeedbackEntity.LlmEntity])
+        assertEquals(result.scaffoldingEntity.isInstanceOf[FeedbackEntity.LlmEntity], status != GradingStatus.Correct())
       }
     }.map(_ => ())
   }
@@ -705,8 +833,8 @@ class InteractionVariableGradingSpec extends FunSuite {
     val task = Promise[LanguageMap[HumanLanguage]]()
     val check = HintCheck("public check", GradingImportance.REQUIRED_TEST)
     val f = new HintFixture(checks = List(check), response = _ => reply.future)
-    val correct = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Correct())
-    f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(correct)))))
+    val partial = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.PartiallyCorrect())
+    f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(partial)))))
     val answer = f.variable.history.lastStateOption
     val first = f.scaffolder.generateFeedback(f.source, List(f.executor.now()), f.resolverFor(_ => task.future))
     f.language.set(English)
@@ -730,7 +858,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       assertEquals(contexts(German.name)("task")("text").str, "Ursprüngliche Aufgabe.")
       contexts.values.foreach { context =>
         assertEquals(context("source")("code").str, f.source.asInstanceOf[ProgrammingStateJavaString].code)
-        assertEquals(context("checks")(0)("status").str, "correct")
+        assertEquals(context("checks")(0)("status").str, "partially-correct")
       }
       assertEquals(f.lookups.now(), 2)
       assertEquals(check.runs.now(), 0)
@@ -921,14 +1049,18 @@ class InteractionVariableGradingSpec extends FunSuite {
         f.language.set(language)
         f.setResults(Set(f.grade(check, Some(descriptions), status)))
         val before = f.variable.history
-        f.generate().map { _ =>
-          assertEquals(f.context("feedbackLanguage").str, language.name)
-          assertEquals(f.context("checks")(0)("description").str,
-            if language == German then "Prüft die Länge der Linie." else "Checks the line length.")
-          assertEquals(f.requests.now().size, 1)
+        f.generate().map { result =>
+          if status == GradingStatus.Correct() then
+            assertEquals(result.scaffoldingResult.getInLanguage(language), noChange.getInLanguage(if language == German then German else English))
+          else {
+            assertEquals(f.context("feedbackLanguage").str, language.name)
+            assertEquals(f.context("checks")(0)("description").str,
+              if language == German then "Prüft die Länge der Linie." else "Checks the line length.")
+          }
+          assertEquals(f.requests.now().size, if status == GradingStatus.Correct() then 0 else 1)
           assertEquals(check.runs.now(), 0)
           assertEquals(f.workerCalls.now(), 0)
-          assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+          assert(f.requests.now().forall(request => !request.prompt.contains("PRIVATE_")))
           assertEquals(f.variable.history, before)
         }
       }
@@ -1239,7 +1371,12 @@ class InteractionVariableGradingSpec extends FunSuite {
       else if mode == "wrong-snapshot" then f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(other, Set(result)))))
       else f.setResults(Set(result))
       val before = f.variable.history
-      f.generate().failed.map { error =>
+      if mode == "correct" then f.generate().map { result =>
+        assertEquals(f.requests.now().size, 0)
+        assertEquals(result.scaffoldingResult.getInLanguage(German), noChange.getInLanguage(German))
+        assertEquals(f.variable.history, before)
+      }
+      else f.generate().failed.map { error =>
         assert(error.isInstanceOf[IllegalArgumentException])
         assert(f.context("checks").arr.forall(value => !value.obj.contains("testInvocation")))
         assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
@@ -1337,10 +1474,11 @@ class InteractionVariableGradingSpec extends FunSuite {
   test("opted public observations add bounded whole-program outputs and citable IDs") {
     Future.traverse(List(0, 33)) { count =>
       val check = DescribedHintCheck("PRIVATE_TEST_ID", GradingImportance.REQUIRED_TEST, publishProgramObservation = true)
+      val pending = DescribedHintCheck("pending", GradingImportance.REQUIRED_TEST)
       val source = ProgrammingStateJavaString(if count == 0 then
         "public class Drawing { public static void main(String[] args) {} }"
       else "public class Drawing { public static void main(String[] args) { for (int i = 1; i <= 33; i++) { Turtle.forward(i); } } }")
-      val f = new DescribedHintFixture(List(check),
+      val f = new DescribedHintFixture(List(check, pending),
         _ => Future.successful(hintReply("Welche Bewegungen kannst du nachvollziehen?", List("check-1-program-output"))), source)
       val commands = (1 to math.min(32, count)).map(value => TurtleCommand[Double]("forward", List(value.toDouble))).toList
       f.setResults(Set(f.grade(check, status = GradingStatus.Correct(),
@@ -1693,7 +1831,9 @@ class InteractionVariableGradingSpec extends FunSuite {
       val result = GradingResult[ProgrammingState, String](f.checks.head, f.source, status)
       f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(f.source, Set(result)))))
       f.generateFeedback(f.source).map(result =>
-        assertEquals(result.scaffoldingResult.getInLanguage(German), questions.zipWithIndex.map((q, i) => s"${i + 1}. $q").mkString("\n")))
+        assertEquals(result.scaffoldingResult.getInLanguage(German),
+          if status == GradingStatus.Correct() then noChange.getInLanguage(German)
+          else questions.zipWithIndex.map((q, i) => s"${i + 1}. $q").mkString("\n")))
     }).map(_ => ())
   }
 
@@ -1926,8 +2066,9 @@ class InteractionVariableGradingSpec extends FunSuite {
     val incorrect = GradingResult[ProgrammingState, String](secondCheck, second.source, GradingStatus.Incorrect())
     first.variable.updateHistory(_.copy(gradings = Map(first.source -> GradedState(first.source, Set(correct)))))
     second.variable.updateHistory(_.copy(gradings = Map(second.source -> GradedState(second.source, Set(incorrect)))))
-    first.generateFeedback(first.source).zip(second.generateFeedback(second.source)).map { _ =>
-      assertEquals(first.context("checks")(0)("status").str, "correct")
+    first.generateFeedback(first.source).zip(second.generateFeedback(second.source)).map { (passed, _) =>
+      assertEquals(passed.scaffoldingResult.getInLanguage(German), noChange.getInLanguage(German))
+      assertEquals(first.requests.now().size, 0)
       assertEquals(second.context("checks")(0)("status").str, "incorrect")
       assertEquals(firstCheck.runs.now(), 0)
       assertEquals(secondCheck.runs.now(), 0)
