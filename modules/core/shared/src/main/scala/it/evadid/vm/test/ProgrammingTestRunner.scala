@@ -26,7 +26,8 @@ private[evadid] object ProgrammingTestRunner {
   })
 
   def execute(program: ProgramForUnitTestExecution, tests: String,
-      clients: List[ExecutionClient], observeProgram: Boolean = false, observeInvocation: Boolean = false): Future[Result] = {
+      clients: List[ExecutionClient], observeProgram: Boolean = false, observeInvocation: Boolean = false,
+      observeComparison: Boolean = false): Future[Result] = {
     val source = program.pythonSource
     val sourceLimit = if program.commandEntryPoint.isDefined then 131072 else 32768
     if source == null || tests == null || source.length > sourceLimit || tests.trim.isEmpty || tests.length > 8192 then
@@ -38,6 +39,7 @@ private[evadid] object ProgrammingTestRunner {
           ujson.Obj("functionName" -> entryPoint.functionName, "methods" -> writeJs(entryPoint.methodIdsByName))),
         "_eva_observe_program" -> ujson.Bool(observeProgram),
         "_eva_publish_invocation" -> ujson.Bool(observeInvocation),
+        "_eva_publish_command_comparison" -> ujson.Bool(observeComparison && observeInvocation),
         "_eva_turtle_primitives" -> turtlePrimitives),
         captureStdout = false, captureStderr = false)
       val factory = WorkerCommands.runPython
@@ -49,14 +51,14 @@ private[evadid] object ProgrammingTestRunner {
           _.map { reply =>
             val report = reply.result
             if report.stdout == "" && report.stderr == "" && report.callbackOps == Nil then
-              decode(report.value, observeProgram, observeInvocation, program)
+              decode(report.value, observeProgram, observeInvocation, observeComparison, program)
             else invalidResult
           }.recover { case NonFatal(_) => unavailable })
       }
     }
   }
 
-  private def decode(value: ujson.Value, observeProgram: Boolean, observeInvocation: Boolean,
+  private def decode(value: ujson.Value, observeProgram: Boolean, observeInvocation: Boolean, observeComparison: Boolean,
       program: ProgramForUnitTestExecution): Result = Try {
     require(value != null)
     val keys = value.obj.keySet.toSet - "testInvocation"
@@ -88,14 +90,14 @@ private[evadid] object ProgrammingTestRunner {
       ProgrammingTestProgramObservation(count.toInt, commands)
     }
     val invocation = Option.when(observeInvocation && status == "failed" && reason == "assertion") {
-      value.obj.get("testInvocation").flatMap(ProgrammingTestInvocation.fromReport).filter { invocation =>
+      value.obj.get("testInvocation").flatMap(ProgrammingTestInvocation.fromReport(_, observeComparison)).filter { invocation =>
         invocation.target.forall(name => program.commandEntryPoint.exists(_.methodIdsByName.contains(name)))
       }
     }.flatten
     Result(result, observation, invocation)
   }.getOrElse(invalidResult)
 
-  private val script = """def _eva_evaluate(source, tests, entry_point, turtle_primitives, observe_program, publish_invocation=False):
+  private val script = """def _eva_evaluate(source, tests, entry_point, turtle_primitives, observe_program, publish_invocation=False, publish_comparison=False):
     import ast
     import math
     import sys
@@ -105,7 +107,7 @@ private[evadid] object ProgrammingTestRunner {
     observed = [None]
     observation_allowed = [True]
 
-    invocation_capture = {"bad": False, "count": 0, "record": None, "expected": None}
+    invocation_capture = {"bad": False, "count": 0, "record": None, "expected": None, "expected_commands": None}
     invocation_result = [None]
     invocation_getframe = sys._getframe if publish_invocation is True else None
     invocation_type, invocation_len, invocation_arguments = type, len, (list, tuple)
@@ -147,6 +149,13 @@ private[evadid] object ProgrammingTestRunner {
                 call = invocation_call(compare.comparators[0])
             if call is not calls[0]:
                 return
+            if publish_comparison is True and isinstance(compare.ops[0], ast.Eq):
+                selected, literal = (compare.left, compare.comparators[0]) if invocation_call(compare.left) is call else (compare.comparators[0], compare.left)
+                if (isinstance(selected, ast.Subscript) and selected.value is call and
+                        isinstance(selected.slice, ast.Constant) and selected.slice.value == "commands"):
+                    expected = ast.literal_eval(literal)
+                    if type(expected) is list and all(type(command) is list for command in expected):
+                        invocation_capture["expected_commands"] = command_snapshot(expected, 128)
             return call.func.id
         except Exception:
             invocation_capture["bad"] = True
@@ -191,12 +200,21 @@ private[evadid] object ProgrammingTestRunner {
             invocation_capture["bad"] = True
             return None
 
-    def invocation_complete(record):
+    def invocation_complete(record, commands):
         try:
             if record is not None:
                 record["complete"] = True
+                expected = invocation_capture["expected_commands"]
+                if expected is not None:
+                    actual = command_snapshot(commands, 128)
+                    if actual is not None and actual != expected:
+                        index = next((i for i, pair in enumerate(zip(actual, expected)) if pair[0] != pair[1]), min(len(actual), len(expected)))
+                        record["packet"]["commandComparison"] = {"actualCount": len(actual), "expectedCount": len(expected),
+                            "commandIndex": index, "actual": list(actual[index]) if index < len(actual) else None,
+                            "expected": list(expected[index]) if index < len(expected) else None}
         except Exception:
-            invocation_capture["bad"] = True
+            if record is not None:
+                record["packet"].pop("commandComparison", None)
 
     def invocation_failed(error):
         try:
@@ -231,23 +249,29 @@ private[evadid] object ProgrammingTestRunner {
         observation_allowed[0] = False
         observed[0] = None
 
-    def observe(commands):
-        if not observe_program or not observation_allowed[0]:
-            return
-        if len(commands) > 10000:
-            suppress_observation()
-            return
+    def command_snapshot(commands, limit):
+        if invocation_type(commands) not in invocation_arguments or invocation_len(commands) > limit:
+            return None
         by_command = {value["command"]: value for value in turtle_primitives.values()}
         for command in commands:
+            if invocation_type(command) not in invocation_arguments or not command or invocation_type(command[0]) is not str:
+                return None
             specification = by_command.get(command[0])
             if (specification is None or specification["command"] == "receive_go" or
                     any(kind != "Numeric" for kind in specification["inputs"]) or
                     len(command) != specification["arity"] + 1 or
                     any(type(value) not in (int, float) or not math.isfinite(value) or
                         abs(value) > 9007199254740991 for value in command[1:])):
-                suppress_observation()
-                return
-        frozen = tuple(tuple(command) for command in commands)
+                return None
+        return tuple(tuple(command) for command in commands)
+
+    def observe(commands):
+        if not observe_program or not observation_allowed[0]:
+            return
+        frozen = command_snapshot(commands, 10000)
+        if frozen is None:
+            suppress_observation()
+            return
         if observed[0] is not None and frozen != observed[0]:
             suppress_observation()
         else:
@@ -356,7 +380,7 @@ private[evadid] object ProgrammingTestRunner {
             if methodName is None and not arguments:
                 observe(invocation["commands"])
             if publish_invocation is True:
-                invocation_complete(captured_call)
+                invocation_complete(captured_call, invocation["commands"])
             return invocation
 
         def run_program():
@@ -365,7 +389,7 @@ private[evadid] object ProgrammingTestRunner {
             if not compiled:
                 observe(recorded)
             if publish_invocation is True:
-                invocation_complete(captured_call)
+                invocation_complete(captured_call, recorded)
             return {"status": "Completed", "commands": [list(command) for command in recorded]}
 
         namespace = {"run_java": invoke} if compiled else student
@@ -396,6 +420,6 @@ private[evadid] object ProgrammingTestRunner {
         sys.settrace(previous[0])
         sys.stdout, sys.stderr = previous[1], previous[2]
 
-_eva_evaluate(_eva_source, _eva_tests, _eva_entry_point, _eva_turtle_primitives, _eva_observe_program, globals().get("_eva_publish_invocation", False))
+_eva_evaluate(_eva_source, _eva_tests, _eva_entry_point, _eva_turtle_primitives, _eva_observe_program, globals().get("_eva_publish_invocation", False), globals().get("_eva_publish_command_comparison", False))
 """
 }

@@ -13,7 +13,7 @@ import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, Workboo
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.scaffolding.{ProgrammingHintScaffolder, ScaffoldingResult}
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestProgramObservation}
+import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestCommandComparison, ProgrammingTestGrader, ProgrammingTestInvocation, ProgrammingTestProgramObservation}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExerciseFullJava, ProgrammingUnitTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -168,9 +168,10 @@ class InteractionVariableGradingSpec extends FunSuite {
     val variable = element.interactionVariable
     def grade(check: WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo], description: Option[LanguageMap[HumanLanguage]] = None,
         status: GradingStatus = GradingStatus.Incorrect(), time: LocalDateTime = LocalDateTime.of(2026, 10, 26, 12, 0),
-        state: ProgrammingState = source, observation: Option[ProgrammingTestProgramObservation] = None): DescribedResult = {
-      val info = Option.when(description.nonEmpty || observation.nonEmpty)(AdditionalProgrammingTestInfo(
-        description.getOrElse(LanguageMap.empty[HumanLanguage]), observation))
+        state: ProgrammingState = source, observation: Option[ProgrammingTestProgramObservation] = None,
+        invocation: Option[ProgrammingTestInvocation] = None): DescribedResult = {
+      val info = Option.when(description.nonEmpty || observation.nonEmpty || invocation.nonEmpty)(AdditionalProgrammingTestInfo(
+        description.getOrElse(LanguageMap.empty[HumanLanguage]), observation, invocation))
       GradingResult(check, state, status, additionalData = info, gradingTime = time)
     }
     def setResults(results: Set[DescribedResult]): Unit =
@@ -181,6 +182,156 @@ class InteractionVariableGradingSpec extends FunSuite {
   }
 
   private given ExecutionContext = ExecutionContext.global
+
+  private val comparisonTranslations = Map(
+    "programminghintcall" -> ("Aufruf _", "Call _"),
+    "programminghintprogram" -> ("Programm", "Program"),
+    "programminghintcommanddifference" -> ("_ | Befehl _: _; erwartet _.", "_ | Command _: _; expected _."),
+    "programminghintcommandcount" -> ("_: _; erwartet _.", "_: _; expected _."),
+    "programminghintonecommand" -> ("einen Befehl", "one command"),
+    "programminghintcommands" -> ("_ Befehle", "_ commands"),
+    "programminghintforward" -> ("vorwärts _", "forward _"),
+    "programminghintright" -> ("rechts _", "right _"),
+    "programminghintleft" -> ("links _", "left _"))
+
+  private def comparisonTranslation(id: LanguageMapContentId): LanguageMap[HumanLanguage] = {
+    val (de, en) = comparisonTranslations(id.entryKey)
+    LanguageMap.mapBasedLanguageMap(Map(German -> de, English -> en))
+  }
+
+  private def comparedCall(expected: Double = 10): ProgrammingTestInvocation =
+    ProgrammingTestInvocation(Some("draw_one"), Vector(ProgrammingTestInvocation.Scalar.Integer("5")),
+      Some(ProgrammingTestCommandComparison(1, 1, 0, Some(TurtleCommand[Double]("forward", List(8))),
+        Some(TurtleCommand[Double]("forward", List(expected))))))
+
+  private val comparisonGrader = ProgrammingUnitTestGrader("comparison-hint", "assert False",
+    publishInvocationArguments = true, publishCommandComparison = true)
+
+  test("public comparison hints use cached results in the requested language without a worker or LLM") {
+    val sources = List(ProgrammingStateJavaString("public class Drawing { public static void main(String[] args) {} }"),
+      ProgrammingStatePythonString("forward(8)"))
+    Future.traverse(for source <- sources; language <- List(German, English, French) yield (source, language)) { (source, language) =>
+      val f = new DescribedHintFixture(List(comparisonGrader), source = source)
+      f.language.set(language)
+      val call = if source.isInstanceOf[ProgrammingStatePythonString] then comparedCall().copy(target = None, arguments = Vector.empty)
+        else comparedCall()
+      f.setResults(Set(f.grade(comparisonGrader, invocation = Some(call))))
+      val before = f.variable.history
+      val resolver = f.resolverFor(id => Future.successful(if id.languageMapId == "basic" then comparisonTranslation(id) else f.task))
+      f.generate(resolver).map { result =>
+        val text = result.scaffoldingResult.getInLanguage(language)
+        assert(text.startsWith("1. ") && !text.endsWith("?"))
+        assert(text.contains(if language == German then "vorwärts 8; erwartet vorwärts 10" else "forward 8; expected forward 10"))
+        assert(text.contains(if call.target.nonEmpty then "draw_one(5)" else if language == German then "Programm" else "Program"))
+        assertEquals(result.scaffoldingEntity, FeedbackEntity.TestEntity())
+        assertEquals(f.requests.now().size, 0)
+        assertEquals(f.workerCalls.now(), 0)
+        assertEquals(f.variable.history, before)
+        assertEquals(read[ScaffoldingResult[ProgrammingState, String]](write(result)), result)
+      }
+    }.map(_ => ())
+  }
+
+  test("comparison hints distinguish command positions counts and zero without inventing line numbers") {
+    val move = TurtleCommand[Double]("forward", List(8))
+    val turn = TurtleCommand[Double]("right", List(90))
+    val cases = List(
+      ProgrammingTestCommandComparison(3, 3, 2, Some(turn), Some(move)) -> "Befehl 3: rechts 90; erwartet vorwärts 8",
+      ProgrammingTestCommandComparison(0, 1, 0, None, Some(move)) -> "0 Befehle; erwartet einen Befehl",
+      ProgrammingTestCommandComparison(1, 0, 0, Some(move), None) -> "einen Befehl; erwartet 0 Befehle",
+      ProgrammingTestCommandComparison(1, 1, 0, Some(TurtleCommand[Double]("goto", List(-0.0, 2.5))),
+        Some(TurtleCommand[Double]("goto", List(3, 4)))) -> "goto(-0.0, 2.5); erwartet goto(3, 4)")
+    Future.traverse(cases) { (comparison, expected) =>
+      val f = new DescribedHintFixture(List(comparisonGrader))
+      f.setResults(Set(f.grade(comparisonGrader, invocation = Some(comparedCall().copy(commandComparison = Some(comparison))))))
+      f.generate(f.resolverFor(id => Future.successful(if id.languageMapId == "basic" then comparisonTranslation(id) else f.task))).map { result =>
+        assert(result.scaffoldingResult.getInLanguage(German).contains(expected))
+        assertEquals(f.requests.now().size, 0)
+      }
+    }.map(_ => ())
+  }
+
+  test("hidden optional disabled and nonfailing comparisons never reach a hint or its LLM context") {
+    val cases = List(comparisonGrader.copy(importance = GradingImportance.HIDDEN_TEST) -> GradingStatus.Incorrect(),
+      comparisonGrader.copy(importance = GradingImportance.OPTIONAL_TEST) -> GradingStatus.Incorrect(),
+      comparisonGrader.copy(publishCommandComparison = false) -> GradingStatus.Incorrect()) ++
+      List(GradingStatus.Correct(), GradingStatus.PartiallyCorrect(), GradingStatus.NotExecuted(),
+        GradingStatus.TestError(SerializedException("private"))).map(comparisonGrader -> _)
+    Future.traverse(cases) { (grader, status) =>
+      val f = new DescribedHintFixture(List(grader))
+      f.setResults(Set(f.grade(grader, status = status, invocation = Some(comparedCall(90210)))))
+      f.generate().map { result =>
+        assertEquals(f.requests.now().size, 1)
+        assert(!f.requests.now().head.prompt.contains("90210"))
+        assert(!result.scaffoldingResult.getInLanguage(German).contains("90210"))
+        assert(result.scaffoldingEntity.isInstanceOf[FeedbackEntity.LlmEntity])
+      }
+    }.map(_ => ())
+  }
+
+  test("conflicting latest comparisons do not reuse an older public result") {
+    val f = new DescribedHintFixture(List(comparisonGrader))
+    val first = f.grade(comparisonGrader, invocation = Some(comparedCall()))
+    val next = f.grade(comparisonGrader, time = first.gradingTime.plusSeconds(1), invocation = Some(comparedCall(90210)))
+    f.setResults(Set(first, next, next.copy(additionalData = first.additionalData)))
+    f.generate().map { _ =>
+      assertEquals(f.context("checks")(0)("status").str, "unavailable")
+      assert(!f.requests.now().head.prompt.contains("90210"))
+      assertEquals(f.requests.now().size, 1)
+    }
+  }
+
+  test("changed comparison or answer rejects a pending direct hint without an LLM fallback") {
+    Future.traverse(List(false, true)) { changeAnswer =>
+      val f = new DescribedHintFixture(List(comparisonGrader))
+      f.setResults(Set(f.grade(comparisonGrader, invocation = Some(comparedCall()))))
+      val started = Promise[Unit]()
+      val release = Promise[Unit]()
+      val resolver = f.resolverFor { id =>
+        if id.languageMapId != "basic" then Future.successful(f.task)
+        else { started.trySuccess(()); release.future.map(_ => comparisonTranslation(id)) }
+      }
+      val pending = f.generate(resolver)
+      started.future.flatMap { _ =>
+        if changeAnswer then f.variable.updateHistory(history => history.copy(events = Set(
+          InteractionVariableState[ProgrammingState](ProgrammingStatePythonString("forward(10)"), MAJOR, LocalDateTime.now().plusSeconds(1)))))
+        else f.setResults(Set(f.grade(comparisonGrader, invocation = Some(comparedCall(90210)))))
+        release.success(())
+        pending.failed.map(error => assert(error.isInstanceOf[IllegalArgumentException]))
+      }.map { _ => assertEquals(f.requests.now().size, 0); assertEquals(f.workerCalls.now(), 0) }
+    }.map(_ => ())
+  }
+
+  test("missing comparison translations fail without exposing a raw template or requesting a model") {
+    val f = new DescribedHintFixture(List(comparisonGrader))
+    f.setResults(Set(f.grade(comparisonGrader, invocation = Some(comparedCall()))))
+    val resolver = f.resolverFor(id => Future.successful(if id.languageMapId == "basic" then LanguageMap.empty[HumanLanguage] else f.task))
+    f.generate(resolver).failed.map { error =>
+      assert(error.isInstanceOf[IllegalArgumentException])
+      assertEquals(f.requests.now().size, 0)
+    }
+  }
+
+  test("comparison hints preserve typed arguments and reject broken translation placeholders") {
+    val f = new DescribedHintFixture(List(comparisonGrader))
+    val call = comparedCall().copy(arguments = Vector(ProgrammingTestInvocation.Scalar.Bool(true),
+      ProgrammingTestInvocation.Scalar.Float64("3ff0000000000000"), ProgrammingTestInvocation.Scalar.Float64("8000000000000000"),
+      ProgrammingTestInvocation.Scalar.Float64("0000000000000000"), ProgrammingTestInvocation.Scalar.Float64("3fc0000000000000")))
+    f.setResults(Set(f.grade(comparisonGrader, invocation = Some(call))))
+    val resolver = f.resolverFor(id => Future.successful(if id.languageMapId == "basic" then comparisonTranslation(id) else f.task))
+    f.generate(resolver).flatMap { result =>
+      assertEquals(result.scaffoldingResult.getInLanguage(German),
+        "1. Aufruf draw_one(true, 1.0, -0.0, 0.0, 0.125) | Befehl 1: vorwärts 8; erwartet vorwärts 10.")
+      val broken = f.resolverFor(id => Future.successful {
+        if id.entryKey == "programminghintcommanddifference" then LanguageMap.universalMap("Missing placeholders")
+        else if id.languageMapId == "basic" then comparisonTranslation(id) else f.task
+      })
+      f.generate(broken).failed.map { error =>
+        assert(error.isInstanceOf[IllegalArgumentException])
+        assertEquals(f.requests.now().size, 0)
+      }
+    }
+  }
 
   test("programming hints are manual and preserve unfinished Java and Python source exactly") {
     val java = ProgrammingStateJavaString("\r\n// Grüße 🐢\r\npublic class Drawing {\t")
@@ -807,6 +958,198 @@ class InteractionVariableGradingSpec extends FunSuite {
         assertEquals(resolutions.now().count(_ == descriptionId), 1)
         assertEquals(resolutions.now().count(_ == taskId), 2)
         assertEquals(variable.history, before)
+      }
+    }
+  }
+
+  private def observedCall(target: Option[String] = Some("draw"), size: String = "3"): ProgrammingTestInvocation =
+    ProgrammingTestInvocation(target, if target.isEmpty then Vector.empty else Vector(
+      ProgrammingTestInvocation.Scalar.Integer(size), ProgrammingTestInvocation.Scalar.Bool(true),
+      ProgrammingTestInvocation.Scalar.Float64("8000000000000000")))
+
+  test("completed unit-test calls reach hints through the interaction grading cache") {
+    val source = ProgrammingStateJavaString("class Drawing { static void draw(int n) { Turtle.forward(n); } public static void main(String[] args) {} }")
+    val check = ProgrammingUnitTestGrader("PRIVATE_ID", "assert run_java('draw', [3])['commands'] == []",
+      publishInvocationArguments = true)
+    val f = new DescribedHintFixture(List(check),
+      _ => Future.successful(hintReply(ids = List("check-1-invocation"))), source)
+    val runs = State(0)
+    val worker = WorkerCommands.runPython.toLocalExecutionClient { (request, _) =>
+      runs.update(_ + 1)
+      assertEquals(request.context("_eva_publish_invocation"), ujson.Bool(true))
+      Future.successful(WorkerCommands.RunPythonResult(ujson.Obj("status" -> "failed", "reason" -> "assertion",
+        "testInvocation" -> ujson.Obj("target" -> "draw", "arguments" -> ujson.Arr(
+          ujson.Obj("kind" -> "int", "value" -> "3")))), "", "", Nil))
+    }
+    f.variable.startGrading(null, List(worker), forceGrading = true).flatMap { _ =>
+      val cached = f.variable.history
+      assertEquals(cached.gradings(source).testsWithResults.head.gradingStatus, GradingStatus.Incorrect())
+      f.generate().map { result =>
+        assertEquals(f.context("checks")(0)("testInvocation")("target"), ujson.Str("draw"))
+        assertEquals(f.context("checks")(0)("testInvocation")("arguments")(0)("value"), ujson.Str("3"))
+        assertEquals(result.forState, source)
+        assertEquals(runs.now(), 1)
+        assertEquals(f.workerCalls.now(), 0)
+        assertEquals(f.requests.now().size, 1)
+        assertEquals(f.variable.history, cached)
+        assert(!f.requests.now().last.prompt.contains("PRIVATE_ID"))
+        assert(!f.requests.now().last.prompt.contains(check.pythonTestCode))
+      }
+    }
+  }
+
+  test("opted incorrect unit-test calls provide citable original arguments independently of program output") {
+    Future.traverse(List(Some("draw"), None)) { target =>
+      val check = ProgrammingUnitTestGrader("PRIVATE_TEST_ID", "PRIVATE_ASSERTION", publishInvocationArguments = true)
+      val source = ProgrammingStateJavaString("class Drawing { static void draw(int size, boolean enabled, double x) {} public static void main(String[] args) {} }")
+      val f = new DescribedHintFixture(List(check),
+        _ => Future.successful(hintReply(ids = List("check-1-invocation"))), source)
+      f.setResults(Set(f.grade(check, invocation = Some(observedCall(target)))))
+      val before = f.variable.history
+      f.generate().map { result =>
+        assertEquals(f.context("checks")(0)("testInvocation"), ujson.Obj("id" -> "check-1-invocation",
+          "scope" -> "observed-test-call", "target" -> target.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+          "arguments" -> (if target.isEmpty then ujson.Arr() else ujson.Arr(
+            ujson.Obj("kind" -> "int", "value" -> "3"), ujson.Obj("kind" -> "bool", "value" -> true),
+            ujson.Obj("kind" -> "double", "value" -> "-0.0")))))
+        assert(!f.context("checks")(0).obj.contains("programOutput"))
+        assertEquals(f.context("source")("code").str, source.code)
+        assert(!f.requests.now().last.prompt.contains("8000000000000000"))
+        assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+        assertEquals(result.forState, source)
+        assertEquals(f.requests.now().size, 1)
+        assertEquals(f.workerCalls.now(), 0)
+        assertEquals(f.variable.history, before)
+      }
+    }.map(_ => ())
+  }
+
+  test("unapproved foreign nonincorrect and malformed cached calls omit their evidence IDs") {
+    val modes = List("disabled", "hidden", "generic", "model", "foreign", "removed", "wrong-state", "wrong-map",
+      "wrong-snapshot", "not-run", "error", "correct", "partial", "absent", "null-info", "null-option", "null-value")
+    Future.traverse(modes) { mode =>
+      val enabled = ProgrammingUnitTestGrader("PRIVATE_TEST", "PRIVATE_ASSERTION", publishInvocationArguments = true)
+      val configured: ProgrammingTestGrader = mode match {
+        case "disabled" => enabled.copy(publishInvocationArguments = false)
+        case "hidden" => enabled.copy(importance = GradingImportance.HIDDEN_TEST)
+        case "generic" | "model" => DescribedHintCheck("PRIVATE_GENERIC", GradingImportance.REQUIRED_TEST,
+          if mode == "model" then FeedbackEntity.LlmEntity(MessengerModel.empty) else FeedbackEntity.TestEntity())
+        case _ => enabled
+      }
+      val f = new DescribedHintFixture(if mode == "removed" then List.empty[ProgrammingTestGrader] else List(configured),
+        _ => Future.successful(hintReply(ids = List("check-1-invocation"))))
+      val cached = if mode == "foreign" then enabled.copy(pythonTestCode = "PRIVATE_OTHER_ASSERTION") else configured
+      val other = ProgrammingStatePythonString("pass")
+      val status = mode match {
+        case "not-run" => GradingStatus.NotExecuted()
+        case "error" => GradingStatus.TestError(SerializedException("PRIVATE_ERROR"))
+        case "correct" => GradingStatus.Correct()
+        case "partial" => GradingStatus.PartiallyCorrect()
+        case _ => GradingStatus.Incorrect()
+      }
+      val original = f.grade(cached, status = status, state = if mode == "wrong-state" then other else f.source,
+        invocation = if mode == "absent" then None else Some(observedCall()))
+      val result = mode match {
+        case "null-info" => original.copy(additionalData = Some(null))
+        case "null-option" => original.copy(additionalData = Some(AdditionalProgrammingTestInfo(LanguageMap.empty[HumanLanguage], testInvocation = null)))
+        case "null-value" => original.copy(additionalData = Some(AdditionalProgrammingTestInfo(LanguageMap.empty[HumanLanguage], testInvocation = Some(null))))
+        case _ => original
+      }
+      if mode == "wrong-map" then f.variable.updateHistory(_.copy(gradings = Map(other -> GradedState(other, Set(result)))))
+      else if mode == "wrong-snapshot" then f.variable.updateHistory(_.copy(gradings = Map(f.source -> GradedState(other, Set(result)))))
+      else f.setResults(Set(result))
+      val before = f.variable.history
+      f.generate().failed.map { error =>
+        assert(error.isInstanceOf[IllegalArgumentException])
+        assert(f.context("checks").arr.forall(value => !value.obj.contains("testInvocation")))
+        assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
+        assertEquals(f.requests.now().size, 1)
+        assertEquals(f.workerCalls.now(), 0)
+        configured match { case check: DescribedHintCheck => assertEquals(check.runs.now(), 0); case _ => () }
+        assertEquals(f.variable.history, before)
+      }
+    }.map(_ => ())
+  }
+
+  test("latest and conflicting public calls never recover an older invocation") {
+    val check = ProgrammingUnitTestGrader("cached-call", "assert False", publishInvocationArguments = true)
+    val f = new DescribedHintFixture(List(check))
+    val old = f.grade(check, invocation = Some(observedCall()))
+    val latest = old.copy(gradingTime = old.gradingTime.plusSeconds(1))
+    val changed = f.grade(check, time = latest.gradingTime, invocation = Some(observedCall(size = "4")))
+    val absent = f.grade(check, time = latest.gradingTime)
+    val rows = List((Set(old, changed), "incorrect", Some("4")), (Set(old, absent), "incorrect", None),
+      (Set(old, latest.copy(gradingStatus = GradingStatus.NotExecuted())), "not-run", None),
+      (Set(old, latest.copy(gradingStatus = GradingStatus.TestError(SerializedException("PRIVATE_ERROR")))), "error", None),
+      (Set(old, latest, changed), "unavailable", None), (Set(old, latest, absent), "unavailable", None))
+    rows.foldLeft(Future.unit) { case (previous, (results, status, size)) =>
+      previous.flatMap { _ =>
+        f.setResults(results)
+        f.generate().map { _ =>
+          val current = f.context("checks")(0)
+          assertEquals(current("status").str, status)
+          assertEquals(current.obj.get("testInvocation").map(_("arguments")(0)("value").str), size)
+        }
+      }
+    }.map { _ => assertEquals(f.workerCalls.now(), 0); assertEquals(f.requests.now().size, rows.size) }
+  }
+
+  test("changed invocations and replaced answers reject delayed or pending hints without another execution") {
+    val modes = List("target", "arguments", "absent", "revoked-result", "missing-result", "answer", "answer-aba")
+    Future.traverse(for beforeDispatch <- List(true, false); mode <- modes yield (beforeDispatch, mode)) { (beforeDispatch, mode) =>
+      val check = ProgrammingUnitTestGrader("pending-call", "assert False", publishInvocationArguments = true)
+      val reply = Promise[String]()
+      val task = Promise[LanguageMap[HumanLanguage]]()
+      val f = new DescribedHintFixture(List(check), _ => reply.future)
+      val original = f.grade(check, invocation = Some(observedCall()))
+      f.setResults(Set(original))
+      val pending = if beforeDispatch then f.generate(f.resolverFor(_ => task.future)) else f.generate()
+      (if beforeDispatch then Future.unit else f.started.future).flatMap { _ =>
+        mode match {
+          case "target" => f.setResults(Set(f.grade(check, invocation = Some(observedCall(Some("other"))))))
+          case "arguments" => f.setResults(Set(f.grade(check, invocation = Some(observedCall(size = "4")))))
+          case "absent" => f.setResults(Set(f.grade(check)))
+          case "revoked-result" => f.setResults(Set(f.grade(check.copy(publishInvocationArguments = false), invocation = Some(observedCall()))))
+          case "missing-result" => f.variable.updateHistory(_.copy(gradings = Map.empty))
+          case _ =>
+            val time = f.variable.history.lastStateOption.get.timestamp
+            val changed = f.variable.history.withAddedEvent(InteractionVariableState[ProgrammingState](
+              ProgrammingStatePythonString("def other():\n    pass\n"), MAJOR, time.plusSeconds(1)))
+            f.variable.updateHistory(_ => if mode == "answer-aba" then changed.withAddedEvent(
+              InteractionVariableState[ProgrammingState](f.source, MAJOR, time.plusSeconds(2))) else changed)
+        }
+        val before = f.variable.history
+        task.trySuccess(f.task)
+        reply.trySuccess(hintReply(ids = List("check-1-invocation")))
+        pending.failed.map { error =>
+          assert(error.isInstanceOf[IllegalArgumentException])
+          assertEquals(f.requests.now().size, if beforeDispatch then 0 else 1)
+          assertEquals(f.workerCalls.now(), 0)
+          assertEquals(f.variable.history, before)
+        }
+      }
+    }.map(_ => ())
+  }
+
+  test("pending invocation hints tolerate equivalent results and irrelevant translations") {
+    val check = ProgrammingUnitTestGrader("equivalent-call", "assert False", publishInvocationArguments = true)
+    val reply = Promise[String]()
+    val f = new DescribedHintFixture(List(check), _ => reply.future)
+    val description = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Prüft den Aufruf.", English -> "Old wording"))
+    val original = f.grade(check, Some(description), invocation = Some(observedCall()))
+    f.setResults(Set(original))
+    val pending = f.generate()
+    f.started.future.flatMap { _ =>
+      val changed = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> " Prüft den Aufruf. ", English -> "PRIVATE_OTHER_LOCALE"))
+      f.setResults(Set(original, f.grade(check, Some(changed), time = original.gradingTime.plusSeconds(1),
+        invocation = Some(observedCall())).copy(feedbackInformation = Some(LanguageMap.universalMap("PRIVATE_FEEDBACK")))))
+      val before = f.variable.history
+      reply.success(hintReply(ids = List("check-1-invocation")))
+      pending.map { result =>
+        assertEquals(result.forState, f.source)
+        assertEquals(f.requests.now().size, 1)
+        assertEquals(f.workerCalls.now(), 0)
+        assertEquals(f.variable.history, before)
       }
     }
   }

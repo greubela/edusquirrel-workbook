@@ -282,6 +282,41 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
       assert.deepEqual(grade,reports[0]);
       assert.deepEqual(testInvocation,fixture.invocation);
     }
+    const comparisonCases = [
+      {source:'forward(8)',tests:"assert run_program()['commands'] == [['forward',10]]",actual:['forward',8],expected:['forward',10],counts:[1,1],index:0},
+      {source:'forward(8)',tests:"assert [['forward',10]] == run_program()['commands']",actual:['forward',8],expected:['forward',10],counts:[1,1],index:0},
+      {source:'pass',tests:"assert run_program()['commands'] == [['forward',8]]",actual:null,expected:['forward',8],counts:[0,1],index:0},
+      {source:'forward(8)',tests:"assert run_program()['commands'] == []",actual:['forward',8],expected:null,counts:[1,0],index:0},
+      {...compiled,tests:"assert run_java('draw', [8])['commands'] == [['forward',10]]",actual:['forward',8],expected:['forward',10],counts:[1,1],index:0},
+      {source:'forward(8)',tests:"assert run_program()['commands'] == [['forward',8]]",passed:true},
+      {source:'forward(8)',tests:"assert run_program()['commands'] == [['forward',True]]"},
+      {source:'forward(8)',tests:"assert run_program()['commands'] == [['forward',1e309]]"},
+      {source:'forward(8)',tests:"assert run_program()['commands'] != [['forward',8]]"},
+      {source:'forward(8)',tests:"assert run_program()['commands'] == [], 'private'"},
+      {source:'forward(8)',tests:"assert run_program()['commands'] + run_program()['commands'] == []"},
+      {source:'forward(8)',tests:"assert run_program()['commands'] == [['forward',2+8]]"},
+      {source:'forward(8)',tests:"assert run_program()['commands'] == " + JSON.stringify(Array.from({length:129},()=>['forward',1]))}
+    ];
+    for (const [index,fixture] of comparisonCases.entries()) {
+      const reports=[];
+      for (const enabled of [false,true]) {
+        const payload={code:runner,captureStdout:false,captureStderr:false,context:{
+          _eva_source:fixture.source,_eva_tests:fixture.tests,_eva_entry_point:fixture.entry || null,
+          _eva_observe_program:true,_eva_publish_invocation:true,_eva_publish_command_comparison:enabled,
+          _eva_turtle_primitives:{forward:{command:'forward',arity:1,inputs:['Numeric']}}}};
+        const reply=await page.evaluate(({id,payload})=>request(id,'worker.runPython',payload),{id:'comparison-'+index+'-'+enabled,payload});
+        const report=result(reply);assert(report,JSON.stringify(reply));
+        assert.equal(report.stdout,'');assert.equal(report.stderr,'');assert.deepEqual(report.callbackOps,[]);
+        reports.push(report.value);
+      }
+      const comparison=reports[1].testInvocation?.commandComparison;
+      const expected=fixture.counts?{actualCount:fixture.counts[0],expectedCount:fixture.counts[1],commandIndex:fixture.index,
+        actual:fixture.actual,expected:fixture.expected}:undefined;
+      assert.deepEqual(comparison,expected,fixture.tests);
+      if(reports[1].testInvocation)delete reports[1].testInvocation.commandComparison;
+      assert.deepEqual(reports[1],reports[0],'comparison capture does not change grading or existing observations');
+      assert.equal(reports[0].status,fixture.passed?'passed':'failed');
+    }
     await page.evaluate(() => worker.terminate());
   } finally { await browser.close(); }
 });

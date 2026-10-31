@@ -3,11 +3,13 @@ package it.evadid.workbook.elements.interactionElements.programming
 import scala.util.Try
 import upickle.default.{ReadWriter, readwriter}
 
-case class ProgrammingTestInvocation(target: Option[String], arguments: Vector[ProgrammingTestInvocation.Scalar]) derives ReadWriter {
+case class ProgrammingTestInvocation(target: Option[String], arguments: Vector[ProgrammingTestInvocation.Scalar],
+    commandComparison: Option[ProgrammingTestCommandComparison] = None) derives ReadWriter {
   require(target != null && target.forall(ProgrammingTestInvocation.validTarget), "Invalid invocation target.")
   require(arguments != null && arguments.size <= 8 && arguments.forall(ProgrammingTestInvocation.validScalar),
     "Invalid invocation arguments.")
   require(target.nonEmpty || arguments.isEmpty, "A whole-program invocation has no arguments.")
+  require(commandComparison != null && commandComparison.forall(_ != null), "Invalid command comparison.")
 }
 
 object ProgrammingTestInvocation {
@@ -53,9 +55,12 @@ object ProgrammingTestInvocation {
     valid <- Option.when(validScalar(parsed))(parsed)
   } yield valid
 
-  private[evadid] def fromReport(value: ujson.Value): Option[ProgrammingTestInvocation] = Try {
+  private[evadid] def fromReport(value: ujson.Value): Option[ProgrammingTestInvocation] = fromReport(value, false)
+
+  private[evadid] def fromReport(value: ujson.Value, includeCommandComparison: Boolean): Option[ProgrammingTestInvocation] = Try {
     for {
-      fields <- Option(value).flatMap(_.objOpt).filter(fields => fields != null && fields.keySet.toSet == Set("target", "arguments"))
+      fields <- Option(value).flatMap(_.objOpt).filter(fields => fields != null &&
+        fields.keySet.toSet - "commandComparison" == Set("target", "arguments"))
       target <- fields("target") match {
         case ujson.Null => Some(None)
         case ujson.Str(name) if validTarget(name) => Some(Some(name))
@@ -65,7 +70,9 @@ object ProgrammingTestInvocation {
       arguments <- values.foldLeft(Option(Vector.empty[Scalar])) { (previous, value) =>
         for { accumulated <- previous; next <- scalar(value) } yield accumulated :+ next
       }
-      invocation <- Try(ProgrammingTestInvocation(target, arguments)).toOption
+      comparison = Option.when(includeCommandComparison)(fields.get("commandComparison")
+        .flatMap(ProgrammingTestCommandComparison.fromReport)).flatten
+      invocation <- Try(ProgrammingTestInvocation(target, arguments, comparison)).toOption
       bounded <- Option.when(value.render().length <= 4096)(invocation)
     } yield bounded
   }.toOption.flatten

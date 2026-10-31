@@ -12,7 +12,8 @@ import it.evadid.util.logging.BasicLogger
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookInteractionElementFull}
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus, WorkbookInteractionGrader}
-import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestProgramObservation}
+import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestInvocation, ProgrammingTestProgramObservation}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
 import it.evadid.workbook.interaction.variable.InteractionVariableState
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -34,19 +35,27 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
           .filter(text => text != null && text.trim.nonEmpty && text.length <= 8000)
           .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
         verifyChecks(currentState, context, locale)
-        val request = context.request(locale, task)
-        val factory = LLMCommands.feedbackLlmCommandFactory
-        val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
-        val client = availableExecutionClients.find(_.canExecuteCommand(command))
-          .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
-        factory.sendCommandTo(client, request, Some(BasicLogger())).map { response =>
-          verifyChecks(currentState, context, locale)
-          val hints = parse(response.result, context.evidenceIds(locale))
-          val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
-          val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
-          val conversation = MessengerModel(List(Message(accepted, MessengerModel.pAgent)))
-          ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> text)),
-            FeedbackEntity.LlmEntity(conversation), None)
+        context.comparedInvocation(locale) match {
+          case Some(invocation) => ProgrammingComparisonHint.render(invocation, locale, resolver).map { text =>
+            verifyChecks(currentState, context, locale)
+            ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> s"1. $text")),
+              FeedbackEntity.TestEntity(), None)
+          }
+          case None =>
+            val request = context.request(locale, task)
+            val factory = LLMCommands.feedbackLlmCommandFactory
+            val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
+            val client = availableExecutionClients.find(_.canExecuteCommand(command))
+              .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
+            factory.sendCommandTo(client, request, Some(BasicLogger())).map { response =>
+              verifyChecks(currentState, context, locale)
+              val hints = parse(response.result, context.evidenceIds(locale))
+              val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
+              val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
+              val conversation = MessengerModel(List(Message(accepted, MessengerModel.pAgent)))
+              ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> text)),
+                FeedbackEntity.LlmEntity(conversation), None)
+            }
         }
       }
     }.fold(Future.failed, identity)
@@ -85,6 +94,14 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
         case test: ProgrammingTestGrader => test.publishProgramObservation
         case _ => false
       }
+      val publishInvocation = grader match {
+        case test: ProgrammingUnitTestGrader => test.publishInvocationArguments
+        case _ => false
+      }
+      val publishComparison = grader match {
+        case test: ProgrammingUnitTestGrader => test.publishCommandComparison && test.importance == GradingImportance.REQUIRED_TEST
+        case _ => false
+      }
       val matches = results.filter(result => result.gradedState == state && result.grader == grader)
       val latest = matches.maxByOption(_.gradingTime).toList.flatMap { latest =>
         matches.filter(_.gradingTime == latest.gradingTime).map { result =>
@@ -96,7 +113,11 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
             .getOrElse(Map.empty[HumanLanguage, String])
           val observation = info.filter(_ => publishObservation)
             .flatMap(value => Option(value.programObservation).flatten.flatMap(Option(_)))
-          (status, descriptions, observation)
+          val invocation = info.filter(_ => publishInvocation && status == "incorrect")
+            .flatMap(value => Option(value.testInvocation).flatten.flatMap(Option(_)))
+            .flatMap(value => Try(upickle.default.writeJs(value)).toOption.flatMap(ProgrammingTestInvocation.fromReport)
+              .map(valid => valid.copy(commandComparison = Option.when(publishComparison)(value.commandComparison).flatten)))
+          (status, descriptions, observation, invocation)
         }
       }
       Check(s"check-${index + 1}", grader, grader.importance == GradingImportance.REQUIRED_TEST, latest)
@@ -109,8 +130,10 @@ object ProgrammingHintScaffolder {
   private val evidenceStatuses = Set("correct", "partially-correct", "incorrect")
 
   private case class PublicCheck(id: String, required: Boolean, status: String, description: Option[String],
-      programObservation: Option[ProgrammingTestProgramObservation] = None) {
+      programObservation: Option[ProgrammingTestProgramObservation] = None,
+      testInvocation: Option[ProgrammingTestInvocation] = None) {
     def outputId: String = s"$id-program-output"
+    def invocationId: String = s"$id-invocation"
 
     def toJson: ujson.Value = ujson.Obj.from(List("id" -> ujson.Str(id), "required" -> ujson.Bool(required),
       "status" -> ujson.Str(status)) ++ description.map(text => "description" -> ujson.Str(text)) ++
@@ -118,17 +141,27 @@ object ProgrammingHintScaffolder {
         "id" -> outputId, "scope" -> "whole-program", "commandCount" -> observation.commandCount,
         "omittedCommands" -> observation.omittedCommands,
         "commands" -> ujson.Arr.from(observation.commands.map(command =>
-          ujson.Arr.from(List(ujson.Str(command.name)) ++ command.args.map(ujson.Num(_))))))))
+          ujson.Arr.from(List(ujson.Str(command.name)) ++ command.args.map(ujson.Num(_))))))) ++
+      testInvocation.map(invocation => "testInvocation" -> ujson.Obj(
+        "id" -> invocationId, "scope" -> "observed-test-call",
+        "target" -> invocation.target.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+        "arguments" -> ujson.Arr.from(invocation.arguments.map {
+          case ProgrammingTestInvocation.Scalar.Bool(value) => ujson.Obj("kind" -> "bool", "value" -> value)
+          case ProgrammingTestInvocation.Scalar.Integer(value) => ujson.Obj("kind" -> "int", "value" -> value)
+          case ProgrammingTestInvocation.Scalar.Float64(bits) => ujson.Obj("kind" -> "double", "value" ->
+            (if bits == "8000000000000000" then "-0.0"
+             else java.lang.Double.toString(java.lang.Double.longBitsToDouble(java.lang.Long.parseUnsignedLong(bits, 16)))))
+        }))))
   }
 
   private case class Check(id: String, grader: WorkbookInteractionGrader[ProgrammingState, ?], required: Boolean,
-      latest: List[(String, Map[HumanLanguage, String], Option[ProgrammingTestProgramObservation])]) {
+      latest: List[(String, Map[HumanLanguage, String], Option[ProgrammingTestProgramObservation], Option[ProgrammingTestInvocation])]) {
     def localized(language: HumanLanguage): PublicCheck = {
-      val values = latest.map { (status, descriptions, observation) =>
-        (status, descriptions.get(language).orElse(descriptions.get(English)), observation)
+      val values = latest.map { (status, descriptions, observation, invocation) =>
+        (status, descriptions.get(language).orElse(descriptions.get(English)), observation, invocation)
       }.distinct
       values match {
-        case List((status, description, observation)) => PublicCheck(id, required, status, description, observation)
+        case List((status, description, observation, invocation)) => PublicCheck(id, required, status, description, observation, invocation)
         case _ => PublicCheck(id, required, "unavailable", None)
       }
     }
@@ -138,8 +171,13 @@ object ProgrammingHintScaffolder {
       checks: List[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
     def localizedChecks(language: HumanLanguage): List[PublicCheck] = checks.map(_.localized(language))
 
+    def comparedInvocation(language: HumanLanguage): Option[ProgrammingTestInvocation] =
+      localizedChecks(language).iterator.filter(check => check.required && check.status == "incorrect")
+        .flatMap(_.testInvocation).find(_.commandComparison.nonEmpty)
+
     def evidenceIds(language: HumanLanguage): Set[String] = sourceLines.map(_._1).toSet ++ localizedChecks(language).flatMap {
-      case check if evidenceStatuses.contains(check.status) => List(check.id) ++ check.programObservation.map(_ => check.outputId)
+      case check if evidenceStatuses.contains(check.status) => List(check.id) ++
+        check.programObservation.map(_ => check.outputId) ++ check.testInvocation.map(_ => check.invocationId)
       case _ => Nil
     } + "task"
 
@@ -175,7 +213,7 @@ object ProgrammingHintScaffolder {
       |If the source supports no defect, ask a neutral question about how it works. Do not imply that it needs fixing.
       |Do not claim execution, a grade or correctness. Do not mention internal tools or checks to the learner.
       |
-      |Use one to three evidence IDs from the live task, source.lines.id, checks.id or checks.programOutput.id.
+      |Use one to three evidence IDs from the live task, source.lines.id, checks.id, checks.programOutput.id or checks.testInvocation.id.
       |Each source.lines entry contains its exact line text. Cite the line you ask about, not merely the class or method header.
       |Check statuses correct, partially-correct and incorrect may be cited, but their IDs alone do not explain what was checked.
       |A check description explains what it examines, not the cause of a failure. Do not invent inputs or execution details it does not provide.
@@ -183,6 +221,11 @@ object ProgrammingHintScaffolder {
       |Its commands are an ordered prefix; omittedCommands counts the unseen tail. Do not invent that tail or the run's inputs.
       |commandCount counts issued commands, including turns and pen controls, not drawn lines.
       |This output alone does not identify a faulty source line, prove recursion or correctness for other inputs, or explain a failed check.
+      |testInvocation records one completed call observed within a failed assertion, using the arguments shown in their original order.
+      |A null target means the whole program; otherwise target is the method name. Argument kinds distinguish integers, doubles and booleans.
+      |Integer and double values are decimal text; preserve their types and the sign of zero. These are inputs, not expected or returned values.
+      |An observed call does not prove which expression caused the failed assertion or that another run will behave identically.
+      |Do not combine it with programOutput as though both described the same execution, or invent missing invocation data.
       |Unavailable, not-run and error are not evidence of a learner error. Optional checks are not task requirements.
       |
       |These examples illustrate style and evidence use only. They are not evidence for the live task; do not copy their IDs.

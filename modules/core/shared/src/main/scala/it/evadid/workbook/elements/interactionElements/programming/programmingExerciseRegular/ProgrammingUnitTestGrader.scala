@@ -22,9 +22,11 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
     importance: GradingImportance = GradingImportance.REQUIRED_TEST,
     publicDescription: Option[LanguageMapContentId] = None,
     override val publishProgramObservation: Boolean = false,
-    publishInvocationArguments: Boolean = false)
+    publishInvocationArguments: Boolean = false,
+    publishCommandComparison: Boolean = false)
     extends ProgrammingTestGrader {
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
+  require(!publishCommandComparison || publishInvocationArguments, "A public command comparison requires its invocation arguments.")
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
   override val gradingEntity = FeedbackEntity.TestEntity()
 
@@ -32,7 +34,8 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
     val evaluation = Future(ProgramForUnitTestExecution.fromState(state)).flatMap {
       case Right(program) => ProgrammingTestRunner.execute(program, pythonTestCode, clients,
         observeProgram = publishProgramObservation && importance != GradingImportance.HIDDEN_TEST,
-        observeInvocation = publishInvocationArguments && importance != GradingImportance.HIDDEN_TEST)
+        observeInvocation = publishInvocationArguments && importance != GradingImportance.HIDDEN_TEST,
+        observeComparison = publishCommandComparison && importance != GradingImportance.HIDDEN_TEST)
       case Left(error) => Future.successful(ProgrammingTestRunner.Result(BeTestResult.Error(error.message)))
     }
     evaluation.map { result =>
@@ -73,11 +76,12 @@ object ProgrammingUnitTestGrader {
       importance: GradingImportance = GradingImportance.REQUIRED_TEST,
       publicDescription: Option[LanguageMapContentId] = None,
       publishProgramObservation: Boolean = false,
-      publishInvocationArguments: Boolean = false) derives ReadWriter
+      publishInvocationArguments: Boolean = false,
+      publishCommandComparison: Boolean = false) derives ReadWriter
 
   given ReadWriter[ProgrammingUnitTestGrader] = readwriter[ujson.Value].bimap(
     grader => writeJs(Payload(grader.testId, grader.pythonTestCode, grader.importance, grader.publicDescription,
-      grader.publishProgramObservation, grader.publishInvocationArguments)),
+      grader.publishProgramObservation, grader.publishInvocationArguments, grader.publishCommandComparison)),
     value => {
       val fields = value.obj.toMap
       require(fields.get("serializedType").forall(_ == ujson.Str("ProgrammingUnitTestGrader")),
@@ -92,15 +96,17 @@ object ProgrammingUnitTestGrader {
           fields.get("importance").map(read[GradingImportance](_)).getOrElse(GradingImportance.REQUIRED_TEST))
       } else {
         require(fields.keySet.subsetOf(Set("testId", "pythonTestCode", "importance", "publicDescription",
-          "publishProgramObservation", "publishInvocationArguments", "serializedType")),
+          "publishProgramObservation", "publishInvocationArguments", "publishCommandComparison", "serializedType")),
           "Unexpected programming test fields.")
         require(fields.get("publishProgramObservation").forall(_.boolOpt.isDefined),
           "Publishing a program observation requires a boolean setting.")
         require(fields.get("publishInvocationArguments").forall(_.boolOpt.isDefined),
           "Publishing invocation arguments requires a boolean setting.")
+        require(fields.get("publishCommandComparison").forall(_.boolOpt.isDefined),
+          "Publishing command comparisons requires a boolean setting.")
         read[Payload](ujson.Obj.from(fields - "serializedType"))
       }
       ProgrammingUnitTestGrader(payload.testId, payload.pythonTestCode, payload.importance, payload.publicDescription,
-        payload.publishProgramObservation, payload.publishInvocationArguments)
+        payload.publishProgramObservation, payload.publishInvocationArguments, payload.publishCommandComparison)
     })
 }
