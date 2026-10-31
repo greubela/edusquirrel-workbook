@@ -150,12 +150,16 @@ object ProgrammingHintScaffolder {
         "source" -> ujson.Obj("language" -> sourceLanguage, "code" -> source,
           "lines" -> ujson.Arr.from(sourceLines.map { (id, text) => ujson.Obj("id" -> id, "text" -> text) })),
         "checks" -> ujson.Arr.from(localizedChecks(language).map(_.toJson))))
-      LLMCommands.FeedbackLlmRequest(prompt, systemPrompt)
+      val instructions = if sourceLanguage == Java.name then s"$systemPrompt\n$javaEnvironment" else systemPrompt
+      LLMCommands.FeedbackLlmRequest(prompt, instructions)
     }
   }
   private case class Hint(question: String, evidenceIds: Vector[String]) {
     def toJson: ujson.Value = ujson.Obj("question" -> question, "evidenceIds" -> ujson.Arr.from(evidenceIds))
   }
+
+  private val javaEnvironment =
+    "This Java execution environment provides Turtle.forward(number) and Turtle.turnRight(number) as built-in static calls with numeric arguments. They need no import, object construction or initialization."
 
   private val systemPrompt =
     """You are a programming tutor helping a learner take their own next step.
