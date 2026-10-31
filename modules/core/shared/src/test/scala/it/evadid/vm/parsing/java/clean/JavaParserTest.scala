@@ -186,6 +186,34 @@ class JavaParserTest extends FunSuite {
     assertEquals(declarations.map(_.javaType.typenameInCode), Seq("List<String>", "int[]"))
     assert(declarations.head.javaType.isInstanceOf[JavaType[?]], "expected List type to be a JavaType")
   }
+
+  test("type delimiters separate declaration names without whitespace") {
+    for (compact, spaced) <- Seq(
+      "int[]values;" -> "int[] values;",
+      "List<String>names;" -> "List<String> names;",
+      "List<List<String>>names;" -> "List<List<String>> names;",
+      "void draw(double[][]values) {}" -> "void draw(double[][] values) {}",
+      "void draw(List<String>names) {}" -> "void draw(List<String> names) {}",
+      "public static void main(String[]args) {}" -> "public static void main(String[] args) {}"
+    ) do {
+      assertEquals(upickle.default.writeJs[JavaAST](completeProgram(compact)),
+        upickle.default.writeJs[JavaAST](completeProgram(spaced)), clue = compact)
+      assertSourceTree(located(compact))
+    }
+    for separator <- Seq("", " ", "\t", "\r\n", "/* names */") do {
+      val source = turtleClass(s"public static void main(String[]${separator}args) { Turtle.forward(2); }")
+      assert(P.compile(source).isRight, clue = source)
+    }
+  }
+
+  test("adjacent identifiers are not split into a type and a declaration name") {
+    for source <- Seq("intvalue;", "doublelength;", "booleanflag;", "void draw(intvalue) {}") do
+      JavaParser.parse(source).toOption.foreach { program =>
+        assert(!sourceNodes(located(source)).exists { (_, node) =>
+          node.value.isInstanceOf[JavaVariableDeclaration]
+        }, clue = program)
+      }
+  }
   test("parses for, while, try/catch/finally, and assignments") {
     val source =
       """

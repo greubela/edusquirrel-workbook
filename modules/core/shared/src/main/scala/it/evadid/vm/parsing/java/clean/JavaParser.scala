@@ -173,12 +173,12 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
     captured(P(variableDeclarationNoSemi ~ ws ~ SEMI)).map { (range, value) => withRange(value, range) }
 
   def variableDeclarationNoSemi[$: P]: P[Node[JavaVariableDeclaration]] =
-    captured(P(modifiers ~ javaType ~ ws1 ~ NAME ~ (ws ~ ASSIGN ~ ws ~ expression).?)).map {
+    captured(P(modifiers ~ javaType ~ ws ~ NAME ~ (ws ~ ASSIGN ~ ws ~ expression).?)).map {
       case (range, (mods, typ, name, value)) => node(JavaVariableDeclaration(name, typ, value.map(_.value), mods), range, value.toSeq)
     }
 
   def parameter[$: P]: P[Node[JavaVariableDeclaration]] =
-    captured(P(modifiers ~ javaType ~ ws1 ~ NAME)).map {
+    captured(P(modifiers ~ javaType ~ ws ~ NAME)).map {
       case (range, (mods, typ, name)) => node(JavaVariableDeclaration(name, typ, None, mods), range)
     }
 
