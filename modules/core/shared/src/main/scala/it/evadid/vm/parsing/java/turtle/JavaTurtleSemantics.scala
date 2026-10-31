@@ -234,8 +234,9 @@ object JavaTurtleSemantics {
           .map(number => plain(Kind.DoubleValue, Some(Constant.Decimal(number)), env))
       case JavaLiteral(raw, _: JAVA_BOOL) => Right(flag(raw == "true", env))
       case _: JavaLiteral[?] => Left(problem(Problem.UnsupportedType, "Use int, double or boolean values."))
-      case _: JavaFunctionCall | _: JavaCallExpression =>
-        Left(problem(Problem.TypeMismatch, "A void method call does not produce a value."))
+      case call @ (_: JavaFunctionCall | _: JavaCallExpression) =>
+        checkCall(call, env).flatMap(_ =>
+          Left(problem(Problem.TypeMismatch, "A void method call does not produce a value.")))
       case JavaOperationUnary("-", JavaLiteral("2147483648", _: JAVA_INTEGER)) =>
         Right(plain(Kind.IntValue, Some(Constant.Number(Int.MinValue)), env))
       case JavaOperationUnary(operator, operand) =>
