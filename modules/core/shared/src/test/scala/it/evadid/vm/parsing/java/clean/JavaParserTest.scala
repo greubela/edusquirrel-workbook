@@ -1029,6 +1029,22 @@ class JavaParserTest extends FunSuite {
     assertEquals(semanticProblem(semanticSource("missing(distance);")).problem, JavaTurtleSource.Problem.UnknownMethod)
   }
 
+  test("turtle value calls report method errors before a missing return value") {
+    import JavaTurtleSource.Problem
+    for (expression, expected) <- Seq(
+      "Math.sqrt(distance)" -> Problem.UnsupportedSyntax,
+      "Math.abs(-distance)" -> Problem.UnsupportedSyntax,
+      "missing(distance)" -> Problem.UnknownMethod,
+      "run(distance)" -> Problem.ArgumentMismatch,
+      "Turtle.forward(true)" -> Problem.ArgumentMismatch,
+      "Turtle.forward(missing)" -> Problem.UnknownVariable,
+      "Turtle.forward(distance)" -> Problem.TypeMismatch,
+      "run(distance, flag)" -> Problem.TypeMismatch,
+      "Drawing.run(distance, flag)" -> Problem.TypeMismatch
+    ) do
+      assertEquals(semanticProblem(semanticSource(s"double value = $expression;")).problem, expected, clue = expression)
+  }
+
   test("turtle semantics resolves static receiver shadowing at the point of use") {
     checkedSource(semanticSource("Turtle.forward(distance); int Turtle = 1; int Drawing = 2;"))
     for body <- Seq("int Turtle = 1; Turtle.forward(distance);", "int Drawing = 1; Drawing.run(distance, flag);") do
