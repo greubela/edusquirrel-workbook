@@ -35,19 +35,27 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
           .filter(text => text != null && text.trim.nonEmpty && text.length <= 8000)
           .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
         verifyChecks(currentState, context, locale)
-        val request = context.request(locale, task)
-        val factory = LLMCommands.feedbackLlmCommandFactory
-        val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
-        val client = availableExecutionClients.find(_.canExecuteCommand(command))
-          .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
-        factory.sendCommandTo(client, request, Some(BasicLogger())).map { response =>
-          verifyChecks(currentState, context, locale)
-          val hints = parse(response.result, context.evidenceIds(locale))
-          val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
-          val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
-          val conversation = MessengerModel(List(Message(accepted, MessengerModel.pAgent)))
-          ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> text)),
-            FeedbackEntity.LlmEntity(conversation), None)
+        context.comparedInvocation(locale) match {
+          case Some(invocation) => ProgrammingComparisonHint.render(invocation, locale, resolver).map { text =>
+            verifyChecks(currentState, context, locale)
+            ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> s"1. $text")),
+              FeedbackEntity.TestEntity(), None)
+          }
+          case None =>
+            val request = context.request(locale, task)
+            val factory = LLMCommands.feedbackLlmCommandFactory
+            val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
+            val client = availableExecutionClients.find(_.canExecuteCommand(command))
+              .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
+            factory.sendCommandTo(client, request, Some(BasicLogger())).map { response =>
+              verifyChecks(currentState, context, locale)
+              val hints = parse(response.result, context.evidenceIds(locale))
+              val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
+              val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
+              val conversation = MessengerModel(List(Message(accepted, MessengerModel.pAgent)))
+              ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> text)),
+                FeedbackEntity.LlmEntity(conversation), None)
+            }
         }
       }
     }.fold(Future.failed, identity)
@@ -90,6 +98,10 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
         case test: ProgrammingUnitTestGrader => test.publishInvocationArguments
         case _ => false
       }
+      val publishComparison = grader match {
+        case test: ProgrammingUnitTestGrader => test.publishCommandComparison && test.importance == GradingImportance.REQUIRED_TEST
+        case _ => false
+      }
       val matches = results.filter(result => result.gradedState == state && result.grader == grader)
       val latest = matches.maxByOption(_.gradingTime).toList.flatMap { latest =>
         matches.filter(_.gradingTime == latest.gradingTime).map { result =>
@@ -103,7 +115,8 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
             .flatMap(value => Option(value.programObservation).flatten.flatMap(Option(_)))
           val invocation = info.filter(_ => publishInvocation && status == "incorrect")
             .flatMap(value => Option(value.testInvocation).flatten.flatMap(Option(_)))
-            .flatMap(value => Try(upickle.default.writeJs(value)).toOption.flatMap(ProgrammingTestInvocation.fromReport))
+            .flatMap(value => Try(upickle.default.writeJs(value)).toOption.flatMap(ProgrammingTestInvocation.fromReport)
+              .map(valid => valid.copy(commandComparison = Option.when(publishComparison)(value.commandComparison).flatten)))
           (status, descriptions, observation, invocation)
         }
       }
@@ -157,6 +170,10 @@ object ProgrammingHintScaffolder {
   private case class Context(sourceLanguage: String, source: String, sourceLines: Vector[(String, String)],
       checks: List[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
     def localizedChecks(language: HumanLanguage): List[PublicCheck] = checks.map(_.localized(language))
+
+    def comparedInvocation(language: HumanLanguage): Option[ProgrammingTestInvocation] =
+      localizedChecks(language).iterator.filter(check => check.required && check.status == "incorrect")
+        .flatMap(_.testInvocation).find(_.commandComparison.nonEmpty)
 
     def evidenceIds(language: HumanLanguage): Set[String] = sourceLines.map(_._1).toSet ++ localizedChecks(language).flatMap {
       case check if evidenceStatuses.contains(check.status) => List(check.id) ++
