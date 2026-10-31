@@ -1516,7 +1516,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java VM endless loops cancellation and repeated execution use fresh state") {
-    for body <- Seq("while (true) {}", "for (;;) {}", "for (;;) { ; }") do {
+    for body <- Seq("while (true) {}", "for (;;) {}", "for (;;) { ; }", "while (true);", "for (;;);") do {
       val source = javaProgram(body)
       val program = P.adapt(source).toOption.get
       assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
@@ -1640,6 +1640,33 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(forward(4), forward(5), forward(12), right(10),
       forward(6), forward(7), forward(12), right(0), forward(99)))
+  }
+
+  test("single statement bodies preserve execution traces and Python export") {
+    val cases = Vector(
+      ("draw(0); draw(7);", "static void draw(int n) { if (n <= 0) return; Turtle.forward(n); }",
+        "static void draw(int n) { if (n <= 0) { return; } Turtle.forward(n); }", Vector(7)),
+      ("draw(3); Turtle.forward(9);", "static void draw(int n) { if (n == 0) return; draw(n - 1); Turtle.forward(n); }",
+        "static void draw(int n) { if (n == 0) { return; } draw(n - 1); Turtle.forward(n); }", Vector(1, 2, 3, 9)),
+      ("draw(); Turtle.forward(7);", "static void draw() { for (int i = 0; i < 3; Turtle.forward(99)) return; }",
+        "static void draw() { for (int i = 0; i < 3; Turtle.forward(99)) { return; } }", Vector(7))
+    )
+    cases.foreach { (main, single, braced, expected) =>
+      val source = javaProgram(main, single)
+      val actual = P.adapt(source).toOption.get
+      val explicit = P.adapt(javaProgram(main, braced)).toOption.get
+      val recorded = T.runVmTraced(actual)
+      val reference = T.runVmTraced(explicit)
+      assertEquals(recorded.execution.status, T.Status.Completed)
+      assertEquals(recorded.execution.commands, expected.map(forward))
+      assertEquals(recorded.execution, reference.execution)
+      assertEquals(recorded.trace.events, reference.trace.events)
+      val returns = locatedEvents(recorded, source.typedSource.structure.parsedSource.source)
+        .filter(_.event.kind == J.Kind.Return(true))
+      assert(returns.nonEmpty)
+      assert(returns.forall(_.text == "return;"))
+      assertEquals(Y.renderObserved(actual).source, Y.renderObserved(explicit).source)
+    }
   }
 
   test("Java returns unwind only the current recursive frame and its pending loops") {
