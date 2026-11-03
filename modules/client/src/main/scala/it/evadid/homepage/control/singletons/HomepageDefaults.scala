@@ -4,7 +4,8 @@ import it.evadid.core.datastructures.language.AppLanguage.{English, German, Huma
 import it.evadid.core.datastructures.user.UserConfig
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.util.io.Serializer
-import it.evadid.distribution.clients.{ExecutionClient, RemoteExecutionConfig, WebWorkerExecutionClient}
+import it.evadid.distribution.clients.{ExecutionClient, RemoteExecutionConfig, RoutedExecutionClient, WebWorkerExecutionClient}
+import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.homepage.control.startup.ClientRuntimeConfig
 import it.evadid.facades.Workers
 import it.evadid.homepage.control.model.FullInfo
@@ -78,6 +79,9 @@ case class HomepageDefaults(fullInfo: FullInfo) {
   /** Claim the Scala.js startup pool rather than starting a second worker. */
   lazy val workerBackendExecutor: WebWorkerExecutionClient =
     WebWorkerExecutionClient.fromWorker(Workers.takeOrCreate(ClientRuntimeConfig.workerUrl))
+
+  def scaffoldingExecutor: ExecutionClient = RoutedExecutionClient(command =>
+    if WorkerCommands.supportedCommands.contains(command.name) then workerBackendExecutor else backendExecutor)
 
   def backendExecutorWithCredentials(signedToken: Option[SignedToken]): ExecutionClient = defaultBackend.executor(signedToken)
 

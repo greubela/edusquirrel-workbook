@@ -49,7 +49,7 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
         () => variable.currentValue, variable.observableValue.toEventStream(), fullInfo.signals.currentLanguage,
         EventStream.merge(fullInfo.signals.user.distinct.changes.map(_ => ()),
           fullInfo.signals.workbook.map(_.map(_.loadedWorkbook)).distinct.changes.map(_ => ())),
-        state => scaffolder.generateFeedback(state, List(fullInfo.defaults.backendExecutor), fullInfo.signals.idResolver),
+        state => scaffolder.generateFeedback(state, List(fullInfo.defaults.scaffoldingExecutor), fullInfo.signals.idResolver),
         result => {
           variable.updateHistory(_.updateScaffoldings(_ + (result.forState -> result)))
           fullInfo.syncControl.requestStore(variable)
