@@ -654,6 +654,27 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(methods.toList, List("draw", "main"))
   }
 
+  test("single statement bodies retain control flow through Python and Snap") {
+    val cases = Vector(
+      ("static void draw(int n) { if (n == 0) return; draw(n - 1); Turtle.forward(n); }", "draw(3);", Vector(1.0, 2.0, 3.0)),
+      ("static void draw() { for (int i = 0; i < 3; Turtle.forward(99)) return; }", "draw(); Turtle.forward(7);", Vector(7.0)),
+      ("static void draw(int n) { while (n > 0) if (n == 1) return; else n--; Turtle.forward(9); }",
+        "draw(2); Turtle.forward(7);", Vector(7.0))
+    )
+    cases.foreach { (helper, main, expected) =>
+      val program = checked(s"class Drawing { $helper public static void main(String[] args) { $main } }")
+      val python = bridgePython(program)
+      val snap = bridgeSnap(program)
+      val restored = Vector(program, bridgeJava(JavaTurtleEditingBridge.fromPython(python.code)),
+        bridgeJava(JavaTurtleEditingBridge.fromSnap(snap)))
+      restored.foreach { value =>
+        val execution = T.runVm(value)
+        assertEquals(execution.status, T.Status.Completed)
+        assertEquals(execution.commands.map(_.value), expected)
+      }
+    }
+  }
+
   test("typed editing bridge preserves arithmetic scopes mutable parameters and for updates") {
     val source = """class Arithmetic {
       |  static void draw(int count, double length, boolean enabled) {

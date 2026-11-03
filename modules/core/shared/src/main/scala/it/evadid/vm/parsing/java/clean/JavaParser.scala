@@ -41,6 +41,7 @@ class JavaParser(private val retainParentheses: Boolean) extends GenericAstScann
 
 private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
   private val emptyRange = SourceRange(0, 0)
+  private val maxBodyDepth = 32
 
   private def captured[A, $: P](rule: => P[A]): P[(SourceRange, A)] =
     if trackLocations then P(Index ~ rule ~ Index).map { (start, value, end) => (SourceRange(start, end), value) }
@@ -69,7 +70,7 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
   // 2. PROGRAM
   // ==========================================
 
-  def javaProgram[$: P]: P[Node[JavaProgram]] = captured(P(ws ~ statement.rep ~ ws ~ End)).map { (range, statements) =>
+  def javaProgram[$: P]: P[Node[JavaProgram]] = captured(P(ws ~ statement(0).rep ~ ws ~ End)).map { (range, statements) =>
     val wrapped = statements.zipWithIndex.map { (statement, index) =>
       node(StatementWithLineNumber(statement.value, index), statement.range, Seq(statement))
     }
@@ -80,9 +81,11 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
   // 3. SEQUENCES OF STATEMENTS OR EXPRESSIONS
   // ==========================================
 
-  def block[$: P]: P[Node[JavaExecutionBlock]] = captured(P(LBRACE ~ ws ~ statement.rep ~ ws ~ RBRACE)).map {
-    (range, statements) => node(JavaExecutionBlock(statements.map(_.value)), range, statements)
-  }
+  def block[$: P](depth: Int): P[Node[JavaExecutionBlock]] =
+    if depth >= maxBodyDepth then P(Fail)
+    else captured(P(LBRACE ~ ws ~ statement(depth).rep ~ ws ~ RBRACE)).map {
+      (range, statements) => node(JavaExecutionBlock(statements.map(_.value)), range, statements)
+    }
 
   def arguments[$: P]: P[Seq[Node[JavaExpression]]] = P(expression.rep(sep = ws ~ COMMA ~ ws))
 
@@ -92,14 +95,21 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
   // 4. STATEMENTS TYPES
   // ==========================================
 
-  def statement[$: P]: P[Node[JavaStatement]] = P(ws ~ (compoundStatement | simpleStatement | unparsable) ~ ws)
+  def statement[$: P](depth: Int): P[Node[JavaStatement]] = P(ws ~ (compoundStatement(depth) | simpleStatement | unparsable) ~ ws)
 
   def simpleStatement[$: P]: P[Node[JavaStatement]] = P(
     packageStatement | importStatement | returnStatement | throwStatement | breakStatement | continueStatement |
       variableDeclaration | assignment | expressionStatement | emptyStatement
   )
 
-  def compoundStatement[$: P]: P[Node[JavaStatement]] = P(classDef | methodDef | ifStatement | whileStatement | forStatement | tryStatement)
+  def compoundStatement[$: P](depth: Int): P[Node[JavaStatement]] =
+    P(classDef(depth) | methodDef(depth) | ifStatement(depth) | whileStatement(depth) | forStatement(depth) | tryStatement(depth))
+
+  private def statementBody[$: P](depth: Int): P[Node[JavaExecutionBlock]] =
+    if depth >= maxBodyDepth then P(Fail)
+    else P(block(depth) | P(ifStatement(depth) | whileStatement(depth) | forStatement(depth) | tryStatement(depth) |
+      returnStatement | throwStatement | breakStatement | continueStatement | assignment | expressionStatement | emptyStatement)
+      .map(statement => node(JavaExecutionBlock(Seq(statement.value)), statement.range, Seq(statement))))
 
   def emptyStatement[$: P]: P[Node[JavaStatement]] = leaf(P(SEMI).map(_ => JavaEmptyStatement))
 
@@ -135,33 +145,33 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
 
   def continueStatement[$: P]: P[Node[JavaStatement]] = leaf(P(keyword("continue") ~ ws ~ SEMI).map(_ => JavaContinueStatement))
 
-  def ifStatement[$: P]: P[Node[JavaIfStatement]] =
-    captured(P(keyword("if") ~ ws ~ LPAR ~ ws ~ expression ~ ws ~ RPAR ~ ws ~ block ~ (ws ~ keyword("else") ~ ws ~ (block | ifStatement.map(stmt => node(JavaExecutionBlock(Seq(stmt.value)), stmt.range, Seq(stmt))))).?)).map {
+  def ifStatement[$: P](depth: Int): P[Node[JavaIfStatement]] =
+    captured(P(keyword("if") ~ ws ~ LPAR ~ ws ~ expression ~ ws ~ RPAR ~ ws ~ statementBody(depth + 1) ~ (ws ~ keyword("else") ~ ws ~ statementBody(depth + 1)).?)).map {
       case (range, (cond, thenBlock, elseBlock)) =>
         node(JavaIfStatement(cond.value, thenBlock.value, elseBlock.map(_.value)), range, Seq(cond, thenBlock) ++ elseBlock)
     }
 
-  def whileStatement[$: P]: P[Node[JavaWhileStatement]] =
-    captured(P(keyword("while") ~ ws ~ LPAR ~ ws ~ expression ~ ws ~ RPAR ~ ws ~ block)).map {
+  def whileStatement[$: P](depth: Int): P[Node[JavaWhileStatement]] =
+    captured(P(keyword("while") ~ ws ~ LPAR ~ ws ~ expression ~ ws ~ RPAR ~ ws ~ statementBody(depth + 1))).map {
       case (range, (cond, body)) => node(JavaWhileStatement(cond.value, body.value), range, Seq(cond, body))
     }
 
-  def forStatement[$: P]: P[Node[JavaForStatement]] =
-    captured(P(keyword("for") ~ ws ~ LPAR ~ ws ~ forInit.? ~ ws ~ SEMI ~ ws ~ expression.? ~ ws ~ SEMI ~ ws ~ expression.rep(sep = ws ~ COMMA ~ ws) ~ ws ~ RPAR ~ ws ~ block)).map {
+  def forStatement[$: P](depth: Int): P[Node[JavaForStatement]] =
+    captured(P(keyword("for") ~ ws ~ LPAR ~ ws ~ forInit.? ~ ws ~ SEMI ~ ws ~ expression.? ~ ws ~ SEMI ~ ws ~ expression.rep(sep = ws ~ COMMA ~ ws) ~ ws ~ RPAR ~ ws ~ statementBody(depth + 1))).map {
       case (range, (init, cond, update, body)) =>
         val initial = init.getOrElse(Seq.empty)
         node(JavaForStatement(initial.map(_.value), cond.map(_.value), update.map(_.value), body.value),
           range, initial ++ cond ++ update ++ Seq(body))
     }
 
-  def tryStatement[$: P]: P[Node[JavaTryStatement]] =
-    captured(P(keyword("try") ~ ws ~ block ~ catchClause.rep ~ (ws ~ keyword("finally") ~ ws ~ block).?)).map {
+  def tryStatement[$: P](depth: Int): P[Node[JavaTryStatement]] =
+    captured(P(keyword("try") ~ ws ~ block(depth + 1) ~ catchClause(depth + 1).rep ~ (ws ~ keyword("finally") ~ ws ~ block(depth + 1)).?)).map {
       case (range, (body, catches, last)) =>
         node(JavaTryStatement(body.value, catches.map(_.value), last.map(_.value)), range, Seq(body) ++ catches ++ last)
     }
 
-  def catchClause[$: P]: P[Node[JavaCatchClause]] =
-    P(ws ~ captured(P(keyword("catch") ~ ws ~ LPAR ~ ws ~ parameter ~ ws ~ RPAR ~ ws ~ block))).map {
+  def catchClause[$: P](depth: Int): P[Node[JavaCatchClause]] =
+    P(ws ~ captured(P(keyword("catch") ~ ws ~ LPAR ~ ws ~ parameter ~ ws ~ RPAR ~ ws ~ block(depth)))).map {
       case (range, (parameter, body)) => node(JavaCatchClause(parameter.value, body.value), range, Seq(parameter, body))
     }
 
@@ -193,15 +203,15 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
 
   // Definitions
 
-  def methodDef[$: P]: P[Node[JavaMethodDef]] =
-    captured(P(modifiers ~ javaType.? ~ ws ~ NAME ~ ws ~ LPAR ~ ws ~ parameters.? ~ ws ~ RPAR ~ ws ~ block)).map {
+  def methodDef[$: P](depth: Int): P[Node[JavaMethodDef]] =
+    captured(P(modifiers ~ javaType.? ~ ws ~ NAME ~ ws ~ LPAR ~ ws ~ parameters.? ~ ws ~ RPAR ~ ws ~ block(depth + 1))).map {
       case (range, (mods, returnType, name, params, body)) =>
         val parameters = params.getOrElse(Seq.empty)
         node(JavaMethodDef(name, mods, returnType, parameters.map(_.value), body.value), range, parameters :+ body)
     }
 
-  def classDef[$: P]: P[Node[JavaClassDef]] =
-    captured(P(modifiers ~ keyword("class") ~ ws1 ~ NAME ~ (ws1 ~ keyword("extends") ~ ws1 ~ javaType).? ~ (ws1 ~ keyword("implements") ~ ws1 ~ javaType.rep(1, sep = ws ~ COMMA ~ ws)).? ~ ws ~ block)).map {
+  def classDef[$: P](depth: Int): P[Node[JavaClassDef]] =
+    captured(P(modifiers ~ keyword("class") ~ ws1 ~ NAME ~ (ws1 ~ keyword("extends") ~ ws1 ~ javaType).? ~ (ws1 ~ keyword("implements") ~ ws1 ~ javaType.rep(1, sep = ws ~ COMMA ~ ws)).? ~ ws ~ block(depth + 1))).map {
       case (range, (mods, name, ext, impl, body)) =>
         node(JavaClassDef(name, mods, ext, impl.getOrElse(Seq.empty), body.value), range, Seq(body))
     }

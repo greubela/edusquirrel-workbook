@@ -1537,6 +1537,71 @@ class JavaParserTest extends FunSuite {
     assertEquals(map.text(Vector(2, 0)), Some("Turtle.forward(value);"))
   }
 
+  test("single statement bodies produce the same AST as explicit blocks") {
+    val pairs = Vector(
+      "if (ready) return; else move();" -> "if (ready) { return; } else { move(); }",
+      "if (a) if (b) move(1); else move(2);" -> "if (a) { if (b) { move(1); } else { move(2); } }",
+      "if (a) { if (b) move(1); } else move(2);" -> "if (a) { if (b) { move(1); } } else { move(2); }",
+      "if (a) while (ready) if (b) move(1); else move(2); else move(3);" ->
+        "if (a) { while (ready) { if (b) { move(1); } else { move(2); } } } else { move(3); }",
+      "while (n > 0) n--;" -> "while (n > 0) { n--; }",
+      "for (int i = 0; i < 3; i++) move(i);" -> "for (int i = 0; i < 3; i++) { move(i); }",
+      "if (ready); else move();" -> "if (ready) {;} else { move(); }",
+      "for (;;);" -> "for (;;) {;}"
+    )
+    pairs.foreach { (single, braced) =>
+      assertEquals(upickle.default.writeJs[JavaAST](statement(single)),
+        upickle.default.writeJs[JavaAST](statement(braced)), clue = single)
+      assertSourceTree(located(single))
+    }
+  }
+
+  test("single statement bodies exclude declarations and malformed else clauses") {
+    for body <- Vector("if (true) int x = 1;", "if (true) class Local {}", "if (true) void local() {}",
+      "while (true) int x = 1;", "for (;;) int x = 1;", "if (true) return; else int x = 1;",
+      "if (true) return; else else return;", "if (true) else return;", "else return;") do
+      assert(JavaTurtleSource.parse(turtleSource(body)).isLeft, clue = body)
+    for body <- Vector("if (true) return 3;", "if (true) missing();", "int x; if (true) Turtle.forward(x);") do
+      assert(P.compile(turtleSource(body)).isLeft, clue = body)
+  }
+
+  test("single return bodies retain their source range across comments and CRLF") {
+    val source = "// 😀 return;\r\nclass C { void draw() { if (ready) /* return; */\r\n return; } }"
+    val map = located(source)
+    assertSourceTree(map)
+    assertEquals(sourceTexts(map)(_.isInstanceOf[JavaReturnStatement]), Vector("return;"))
+    assertEquals(sourceTexts(map) {
+      case JavaExecutionBlock(Seq(_: JavaReturnStatement)) => true
+      case _ => false
+    }, Vector("return;"))
+    val returned = sourceNodes(map).find(_._2.value.isInstanceOf[JavaReturnStatement]).get._2
+    assertEquals(map.position(returned.range.start), Some(JavaSourceMap.Position(3, 2)))
+  }
+
+  test("body depth cannot restart at braces definitions or try blocks") {
+    val wrappers = Vector(
+      12 -> ((body: String) => ("for (;;) " * 24) + "{ " + body + " }"),
+      4 -> ((body: String) => ("for (;;) " * 20) + "{ class Local { static void nested() { " + body + " } } }"),
+      4 -> ((body: String) => ("for (;;) " * 20) + "try { " + body + " } finally {}"),
+      4 -> ((body: String) => ("for (;;) " * 20) + "try {} catch (Exception problem) { " + body + " }"),
+      4 -> ((body: String) => ("for (;;) " * 20) + "try {} finally { " + body + " }")
+    )
+    wrappers.foreach { (count, wrap) =>
+      val source = turtleClass("public static void main(String[] args) { " +
+        (1 to count).foldLeft("return;")((body, _) => wrap(body)) + " }")
+      assert(JavaTurtleInputLimits.checkParserInput(source).isRight)
+      assert(JavaTurtleSource.parse(source).isLeft)
+    }
+    assert(JavaTurtleSource.parse(turtleSource("for (;;) " * 512 + "return;")).isLeft)
+  }
+
+  test("body depth allows ordinary braced nesting and sequential loops") {
+    val braced = (1 to 14).foldLeft("return;")((body, _) => "for (;;) { " + body + " }")
+    val bodies = Vector(braced, "for (;;) " * 8 + "return;",
+      "for (int i = 0; i < 1; i++) Turtle.forward(i); " * 40)
+    bodies.foreach(body => assert(P.compile(turtleSource(body)).isRight, clue = body))
+  }
+
   test("parameters loop headers and synthetic else-if blocks follow AST child paths") {
     val source = "class C { static void draw(int size, double scale) { for (int i = 0; i < size; i++, --size) { if (i > 0) {} else if (size > 0) { ; } } } }"
     val map = located(source)
