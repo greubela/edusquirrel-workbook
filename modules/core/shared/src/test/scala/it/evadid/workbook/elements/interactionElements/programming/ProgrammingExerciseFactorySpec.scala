@@ -526,6 +526,240 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     }
   }
 
+  private def invocationPacket(target: ujson.Value = ujson.Null, arguments: Seq[ujson.Value] = Nil): ujson.Value =
+    ujson.Obj("target" -> target, "arguments" -> ujson.Arr.from(arguments))
+
+  private def invocationReport(packet: ujson.Value, status: String = "failed", reason: String = "assertion"): ujson.Value =
+    ujson.Obj("status" -> status, "reason" -> reason, "testInvocation" -> packet)
+
+  test("invocation arguments require explicit public consent independently of descriptions and program output") {
+    val source = ProgrammingStatePythonString("pass")
+    val default = ProgrammingUnitTestGrader("invocation", "assert run_program()['commands'] == []")
+    val enabled = default.copy(publishInvocationArguments = true)
+    val rows = List(default -> false, enabled -> true,
+      enabled.copy(importance = GradingImportance.OPTIONAL_TEST) -> true,
+      enabled.copy(importance = GradingImportance.HIDDEN_TEST) -> false,
+      default.copy(publicDescription = Some(LanguageMapContentId("tests/public-only"))) -> false,
+      default.copy(publishProgramObservation = true) -> false)
+    Future.traverse(rows) { (grader, publish) =>
+      val calls = State(0)
+      val packet = if publish then invocationPacket() else ujson.Str("PRIVATE_DISABLED_METADATA")
+      val client = pythonClient(invocationReport(packet), request => {
+        calls.update(_ + 1)
+        assertEquals(request.context("_eva_publish_invocation"), ujson.Bool(publish))
+      })
+      grader.gradeStateSafe(source, forceGrading = true, List(client)).map { result =>
+        assertEquals(result.gradingStatus, GradingStatus.Incorrect())
+        assertEquals(result.additionalData.flatMap(_.testInvocation),
+          Option.when(publish)(ProgrammingTestInvocation(None, Vector.empty)))
+        assertEquals(calls.now(), 1)
+        assert(!write(result).contains("PRIVATE_"))
+      }
+    }.flatMap { _ =>
+      val calls = State(0)
+      enabled.gradeStateSafe(source, forceGrading = false,
+        List(pythonClient(invocationReport(invocationPacket()), _ => calls.update(_ + 1)))).map { result =>
+        assertEquals(result.gradingStatus, GradingStatus.NotExecuted())
+        assertEquals(result.additionalData, None)
+        assertEquals(calls.now(), 0)
+      }
+    }
+  }
+
+  test("invocation decoding preserves original targets scalar types and signed zero with one dispatch") {
+    import ProgrammingTestInvocation.Scalar
+    val source = ProgrammingStateJavaString(
+      """public class Main {
+        |  static void draw(boolean a, boolean b, int c, int d, double e, double f, double g, double h) {}
+        |  public static void main(String[] args) {}
+        |}""".stripMargin)
+    val values = Vector(Scalar.Bool(false), Scalar.Bool(true), Scalar.Integer("-2147483648"), Scalar.Integer("2147483647"),
+      Scalar.Float64("0000000000000000"), Scalar.Float64("8000000000000000"),
+      Scalar.Float64("0000000000000001"), Scalar.Float64("7fefffffffffffff"))
+    val arguments = List(ujson.Obj("kind" -> "bool", "value" -> false), ujson.Obj("kind" -> "bool", "value" -> true)) ++
+      List("-2147483648", "2147483647").map(value => ujson.Obj("kind" -> "int", "value" -> value)) ++
+      List("0000000000000000", "8000000000000000", "0000000000000001", "7fefffffffffffff")
+        .map(value => ujson.Obj("kind" -> "double", "value" -> value))
+    val expected = ProgrammingTestInvocation(Some("draw"), values)
+    val calls = State(0)
+    val saved = write[ProgrammingState](source)
+    val grader = ProgrammingUnitTestGrader("typed-invocation",
+      "assert run_java('draw', (False, True, -2147483648, 2147483647, 0.0, -0.0, 5e-324, 1.7976931348623157e308))['commands'] == [['forward', 1]]",
+      publishInvocationArguments = true)
+    val client = pythonClient(invocationReport(invocationPacket(ujson.Str("draw"), arguments)), _ => calls.update(_ + 1))
+    grader.gradeStateSafe(source, forceGrading = true, List(client)).map { result =>
+      assertEquals(result.gradingStatus, GradingStatus.Incorrect())
+      assertEquals(result.additionalData.flatMap(_.testInvocation), Some(expected))
+      assertEquals(result.gradedState, source)
+      assertEquals(write[ProgrammingState](source), saved)
+      assertEquals(calls.now(), 1)
+      assertEquals(read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](write(result)), result)
+      assertEquals(readBinary[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](writeBinary(result)), result)
+    }
+  }
+
+  test("unusable invocation metadata is omitted without changing a completed test outcome") {
+    val source = ProgrammingStateJavaString(
+      "public class Main { static void draw(int n) {} public static void main(String[] args) {} }")
+    val grader = ProgrammingUnitTestGrader("bounded-invocation", "assert run_program()['commands'] == []",
+      publishInvocationArguments = true)
+    def argument(kind: String, value: ujson.Value): ujson.Value =
+      invocationPacket(ujson.Str("draw"), List(ujson.Obj("kind" -> kind, "value" -> value)))
+    val malformed = List(ujson.Null, ujson.Str("PRIVATE_INVOCATION"), ujson.Obj("target" -> "draw"),
+      invocationPacket(ujson.Str("missing")),
+      invocationPacket(ujson.Bool(true)), invocationPacket(ujson.Str("x" * 257)),
+      invocationPacket(ujson.Null, List(ujson.Obj("kind" -> "int", "value" -> "1"))),
+      invocationPacket(ujson.Str("draw"), List.fill(9)(ujson.Obj("kind" -> "int", "value" -> "1"))),
+      ujson.Obj("target" -> "draw", "arguments" -> ujson.Arr(), "keywordArguments" -> ujson.Obj()),
+      argument("int", ujson.Num(1)), argument("int", ujson.Str("01")), argument("int", ujson.Str("-0")),
+      argument("int", ujson.Str((BigInt(1) << 256).toString)), argument("bool", ujson.Num(1)),
+      argument("double", ujson.Str("nan")), argument("double", ujson.Str("7ff0000000000000")),
+      argument("double", ujson.Str("PRIVATE_BITS")), argument("str", ujson.Str("PRIVATE_ARGUMENT")))
+    val statuses = List(("passed", ""), ("failed", "assertion"), ("failed", "student-runtime"), ("error", "execution-limit"))
+    val cases = (for packet <- malformed; (status, reason) <- statuses yield (packet, status, reason)) ++
+      statuses.filterNot(_ == ("failed", "assertion")).map { (status, reason) => (invocationPacket(), status, reason) }
+    Future.traverse(cases) { (packet, status, reason) =>
+      grader.gradeStateSafe(source, forceGrading = true, List(pythonClient(invocationReport(packet, status, reason)))).map { result =>
+        if status == "error" then assert(result.gradingStatus.isInstanceOf[GradingStatus.TestError])
+        else assertEquals(result.gradingStatus, if status == "passed" then GradingStatus.Correct() else GradingStatus.Incorrect())
+        assertEquals(result.additionalData, None)
+        assert(!write(result).contains("PRIVATE_"))
+      }
+    }.flatMap { _ =>
+      val unexpected = ujson.Obj("status" -> "passed", "reason" -> "", "testInvocation" -> ujson.Null, "unknown" -> "PRIVATE_EXTRA")
+      grader.gradeStateSafe(source, forceGrading = true, List(pythonClient(unexpected))).map { result =>
+        assert(result.gradingStatus.isInstanceOf[GradingStatus.TestError])
+        assertEquals(result.additionalData, None)
+      }
+    }
+  }
+
+  test("resolving descriptions preserves both independent program and invocation metadata") {
+    val source = ProgrammingStatePythonString("forward(2)")
+    val grader = ProgrammingUnitTestGrader("both-metadata", "assert run_program()['commands'] == []",
+      publicDescription = Some(LanguageMapContentId("tests/both-metadata")),
+      publishProgramObservation = true, publishInvocationArguments = true)
+    val report = ujson.Obj.from(observedReport(observationPayload(1, List(ujson.Arr("forward", 2))), "failed", "assertion").obj.toVector :+
+      ("testInvocation" -> invocationPacket()))
+    Future.traverse(List(0, 1, 2)) { mode =>
+      val calls = State(0)
+      val lookups = State(0)
+      val resolver = new LanguageMapIdResolver(State[HumanLanguage](English).observable) {
+        override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] = {
+          lookups.update(_ + 1)
+          if mode == 0 then Future.successful(LanguageMap.universalMap("Public description."))
+          else if mode == 1 then Future.successful(LanguageMap.empty[HumanLanguage])
+          else Future.failed(IllegalStateException("PRIVATE_RESOLUTION"))
+        }
+      }
+      grader.gradeStateSafe(source, forceGrading = true,
+        List(pythonClient(report, _ => calls.update(_ + 1))), resolver).map { result =>
+        assertEquals(result.gradingStatus, GradingStatus.Incorrect())
+        val info = result.additionalData.get
+        assertEquals(info.testInvocation, Some(ProgrammingTestInvocation(None, Vector.empty)))
+        assertEquals(info.programObservation.map(_.commandCount), Some(1))
+        assertEquals(info.humanReadableTestExecutionDescription.tryGetInLanguage(English),
+          Option.when(mode == 0)("Public description."))
+        assertEquals(calls.now(), 1)
+        assertEquals(lookups.now(), 1)
+        assert(!write(result).contains("PRIVATE_"))
+      }
+    }.map(_ => ())
+  }
+
+  test("invocation publication and bounded scalar metadata retain defaults through existing codecs") {
+    import ProgrammingTestInvocation.Scalar
+    val grader = ProgrammingUnitTestGrader("invocation-codec", "assert False", publishInvocationArguments = true)
+    assertEquals(read[ProgrammingUnitTestGrader](write(grader)), grader)
+    assertEquals(readBinary[ProgrammingUnitTestGrader](writeBinary(grader)), grader)
+    val old = ujson.Obj.from(writeJs(grader).obj.toMap - "publishInvocationArguments")
+    assert(!read[ProgrammingUnitTestGrader](old).publishInvocationArguments)
+    assert(!readBinary[ProgrammingUnitTestGrader](writeBinary(old)).publishInvocationArguments)
+    List(ujson.Num(1), ujson.Str("true"), ujson.Null).foreach { value =>
+      val malformed = ujson.Obj.from(writeJs(grader).obj.toMap.updated("publishInvocationArguments", value))
+      intercept[Exception](read[ProgrammingUnitTestGrader](malformed))
+      intercept[Exception](readBinary[ProgrammingUnitTestGrader](writeBinary(malformed)))
+    }
+    val invocation = ProgrammingTestInvocation(Some("draw"), Vector(
+      Scalar.Integer((BigInt(1) << 255).toString), Scalar.Float64("8000000000000000"), Scalar.Bool(false)))
+    val info = AdditionalProgrammingTestInfo(LanguageMap.empty[HumanLanguage], testInvocation = Some(invocation))
+    assertEquals(read[AdditionalProgrammingTestInfo](write(info)), info)
+    assertEquals(readBinary[AdditionalProgrammingTestInfo](writeBinary(info)), info)
+    val oldInfo = ujson.Obj.from(writeJs(info.copy(testInvocation = None)).obj.toMap - "testInvocation")
+    assertEquals(read[AdditionalProgrammingTestInfo](oldInfo).testInvocation, None)
+    assertEquals(readBinary[AdditionalProgrammingTestInfo](writeBinary(oldInfo)).testInvocation, None)
+  }
+
+  test("command comparisons require separate consent and remain attached to their public invocation") {
+    val source = ProgrammingStatePythonString("forward(8)")
+    val configured = ProgrammingUnitTestGrader("comparison", "assert run_program()['commands'] == [['forward', 10]]",
+      publishInvocationArguments = true, publishCommandComparison = true)
+    val comparison = ujson.Obj("actualCount" -> 1, "expectedCount" -> 1, "commandIndex" -> 0,
+      "actual" -> ujson.Arr("forward", 8), "expected" -> ujson.Arr("forward", 10))
+    val packet = ujson.Obj.from(invocationPacket().obj.toMap + ("commandComparison" -> comparison))
+    val variants = List(configured -> true, configured.copy(publishCommandComparison = false) -> false,
+      configured.copy(importance = GradingImportance.HIDDEN_TEST) -> false)
+    Future.traverse(variants) { (grader, publish) =>
+      val calls = State(0)
+      val client = pythonClient(invocationReport(packet), request => {
+        calls.update(_ + 1)
+        assertEquals(request.context("_eva_publish_command_comparison"), ujson.Bool(publish))
+      })
+      grader.gradeStateSafe(source, forceGrading = true, List(client)).map { result =>
+        assertEquals(result.gradingStatus, GradingStatus.Incorrect())
+        val actual = result.additionalData.flatMap(_.testInvocation).flatMap(_.commandComparison)
+        assertEquals(actual, Option.when(publish)(ProgrammingTestCommandComparison(1, 1, 0,
+          Some(TurtleCommand[Double]("forward", List(8))), Some(TurtleCommand[Double]("forward", List(10))))))
+        assertEquals(calls.now(), 1)
+        assertEquals(read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](write(result)), result)
+        assertEquals(readBinary[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](writeBinary(result)), result)
+      }
+    }.map(_ => ())
+  }
+
+  test("malformed comparisons do not discard the invocation or change its grade") {
+    val grader = ProgrammingUnitTestGrader("comparison", "assert False", publishInvocationArguments = true, publishCommandComparison = true)
+    val valid = ujson.Obj("actualCount" -> 1, "expectedCount" -> 1, "commandIndex" -> 0,
+      "actual" -> ujson.Arr("forward", 8), "expected" -> ujson.Arr("forward", 10))
+    val malformed = List(ujson.Null, ujson.Str("PRIVATE_COMPARISON"), ujson.Obj()) ++ List(
+      "actualCount" -> ujson.Num(-1), "expectedCount" -> ujson.Num(129), "commandIndex" -> ujson.Num(0.5),
+      "commandIndex" -> ujson.Num(1), "actual" -> ujson.Null, "expected" -> ujson.Arr("forward", 8),
+      "actual" -> ujson.Arr("unknown", 8), "actual" -> ujson.Arr("forward", true),
+      "actual" -> ujson.Arr("forward", 1e30), "actual" -> ujson.Arr("forward", 8, 9),
+      "private" -> ujson.Str("PRIVATE_EXTRA")).map((key, value) => ujson.Obj.from(valid.obj.toMap.updated(key, value)))
+    Future.traverse(malformed) { comparison =>
+      val packet = ujson.Obj.from(invocationPacket().obj.toMap + ("commandComparison" -> comparison))
+      grader.gradeStateSafe(ProgrammingStatePythonString("pass"), forceGrading = true,
+        List(pythonClient(invocationReport(packet)))).map { result =>
+        assertEquals(result.gradingStatus, GradingStatus.Incorrect())
+        assertEquals(result.additionalData.flatMap(_.testInvocation), Some(ProgrammingTestInvocation(None, Vector.empty)))
+        assert(!write(result).contains("PRIVATE_"))
+      }
+    }.map(_ => ())
+  }
+
+  test("comparison codecs preserve missing and extra commands and default old definitions to private") {
+    val forward = TurtleCommand[Double]("forward", List(8))
+    List(ProgrammingTestCommandComparison(0, 1, 0, None, Some(forward)),
+      ProgrammingTestCommandComparison(1, 0, 0, Some(forward), None)).foreach { comparison =>
+      val invocation = ProgrammingTestInvocation(None, Vector.empty, Some(comparison))
+      assertEquals(read[ProgrammingTestInvocation](write(invocation)), invocation)
+      assertEquals(readBinary[ProgrammingTestInvocation](writeBinary(invocation)), invocation)
+    }
+    intercept[IllegalArgumentException](ProgrammingTestCommandComparison(0, 2, 1, None, Some(forward)))
+    intercept[IllegalArgumentException](ProgrammingUnitTestGrader("invalid", "assert False", publishCommandComparison = true))
+    val grader = ProgrammingUnitTestGrader("public-comparison", "assert False", publishInvocationArguments = true, publishCommandComparison = true)
+    assertEquals(read[ProgrammingUnitTestGrader](write(grader)), grader)
+    assertEquals(readBinary[ProgrammingUnitTestGrader](writeBinary(grader)), grader)
+    val old = ujson.Obj.from(writeJs(grader).obj.toMap - "publishCommandComparison")
+    assert(!read[ProgrammingUnitTestGrader](old).publishCommandComparison)
+    List(ujson.Null, ujson.Str("true"), ujson.Num(1)).foreach { value =>
+      intercept[Exception](read[ProgrammingUnitTestGrader](ujson.Obj.from(writeJs(grader).obj.toMap.updated("publishCommandComparison", value))))
+    }
+    val oldInvocation = ujson.Obj.from(writeJs(ProgrammingTestInvocation(None, Vector.empty)).obj.toMap - "commandComparison")
+    assertEquals(read[ProgrammingTestInvocation](oldInvocation).commandComparison, None)
+  }
+
   test("only explicitly configured public graders request program observations") {
     val source = ProgrammingStatePythonString("forward(2)\n")
     val default = ProgrammingUnitTestGrader("default", "assert run_program()")
