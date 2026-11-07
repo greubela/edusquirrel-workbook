@@ -81,7 +81,13 @@ test('Java pilot hints use the current answer and discard stale responses', asyn
     async function ask(panel) {
       const received = new Promise(resolve => arrivals.push(resolve));
       await panel.locator('.interaction-scaffolding__request').click();
-      return received;
+      let deadline;
+      const missingRequest = new Error(`Expected hint request ${requests.length + 1}; this answer may already have cached feedback.`);
+      try {
+        return await Promise.race([received, new Promise((_, reject) => {
+          deadline = setTimeout(() => reject(missingRequest), 30000);
+        })]);
+      } finally { clearTimeout(deadline); }
     }
     async function release(pending, question) {
       const completed = page.waitForResponse(response => response.request() === pending.route.request());
@@ -129,7 +135,11 @@ test('Java pilot hints use the current answer and discard stale responses', asyn
     await hints.getByText('1. Wo beginnt dein Programm?', {exact: true}).waitFor();
     assert.equal(requests.at(-1).source.code, wrong);
     assert.equal(requests.length, 2, 'editing and opening the editor do not send requests');
+    await hints.locator('.interaction-scaffolding__request').click();
+    await hints.getByText('1. Wo beginnt dein Programm?', {exact: true}).waitFor();
+    assert.equal(requests.length, 2, 'the shared control reuses completed hints for the same answer and language');
     policy.hold = true;
+    await edit('class Drawing {\n  static void square(int side) {\n    for (');
     const pendingEdit = await ask(hints);
     const unfinished = 'class Drawing {\n  static void square(';
     await edit(unfinished);
@@ -137,25 +147,40 @@ test('Java pilot hints use the current answer and discard stale responses', asyn
     assert.equal(await hints.locator('[role="status"]').innerText(), '');
     const pendingClose = await ask(hints);
     await page.locator('.fullscreen-close-button').click();
-    await release(pendingClose, 'Noch ein veralteter Hinweis?');
+    await release(pendingClose, 'Ein gespeicherter Hinweis?');
     await toggle.click();
     assert.equal(await inline.locator('[role="status"]').innerText(), '');
-    const pendingLanguage = await ask(inline);
+    await inline.locator('.interaction-scaffolding__request').click();
+    await inline.getByText('1. Ein gespeicherter Hinweis?', {exact: true}).waitFor();
+    assert.equal(requests.length, 4, 'closing the editor clears its display while completed feedback stays cached');
     await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
-    await release(pendingLanguage, 'Ein Hinweis in der alten Sprache?');
+    const pendingLanguage = await ask(inline);
+    await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
+    await release(pendingLanguage, 'A hint from an obsolete language request?');
     assert.equal(await inline.locator('[role="status"]').innerText(), '');
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
     const current = await ask(inline);
     assert.equal(requests.at(-1).feedbackLanguage, 'English');
     assert(requests.at(-1).task.text.includes('Complete the method'));
     assert.equal(requests.at(-1).source.code, unfinished);
     await release(current, 'Which part of your method is still missing?');
     await inline.getByText('1. Which part of your method is still missing?', {exact: true}).waitFor();
+    await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
+    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    const finalDraft = 'class Drawing {\n  static void square(int side';
+    await edit(finalDraft);
+    await page.locator('.fullscreen-close-button').click();
+    if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
     const invalid = await ask(inline);
     await answer(invalid, 'An unsupported claim?', ['check-1']);
     await inline.locator('.interaction-scaffolding__message--error').waitFor();
-    assert.equal(requests.length, 7, 'invalid feedback does not trigger an automatic retry');
-    assert.equal(await page.locator('.java-full-editor-preview pre').last().textContent(), unfinished);
-    const stored = await page.waitForFunction(() => new Promise((resolve, reject) => {
+    assert.equal(requests.length, 7, 'an invalid hint does not retry automatically');
+    const retry = await ask(inline);
+    await release(retry, 'Where does the method signature end?');
+    await inline.getByText('1. Where does the method signature end?', {exact: true}).waitFor();
+    assert.equal(requests.length, 8, 'a failed cached hint can be requested again');
+    assert.equal(await page.locator('.java-full-editor-preview pre').last().textContent(), finalDraft);
+    await page.waitForFunction(() => new Promise((resolve, reject) => {
       const open = indexedDB.open('EvaDidInteractionDB');
       open.onerror = () => reject(open.error);
       open.onsuccess = () => {
@@ -166,11 +191,10 @@ test('Java pilot hints use the current answer and discard stale responses', asyn
         rows.onerror = () => reject(rows.error);
         rows.onsuccess = () => {
           const history = rows.result.find(row => row.id.includes('java-square-pilot_history'))?.value;
-          resolve(history?.includes('Which part of your method is still missing?') ? history : false);
+          resolve(history?.includes('Where does the method signature end?') || false);
         };
       };
     }));
-    assert(!String(await stored.jsonValue()).includes('veralteter Hinweis'), 'stale hints are not persisted');
     await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
     await page.locator('dialog[open] .interaction-info__hint-toggle').click();
     for (const viewport of [{width: 390, height: 844}, {width: 844, height: 390}]) {
@@ -180,7 +204,7 @@ test('Java pilot hints use the current answer and discard stale responses', asyn
       assert(bounds && bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= viewport.width &&
         bounds.y + bounds.height <= viewport.height, `hint panel fits ${viewport.width}x${viewport.height}`);
     }
-    assert.equal(requests.length, 7, 'reopening and resizing do not request feedback');
+    assert.equal(requests.length, 8, 'reopening and resizing do not request feedback');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

@@ -41,11 +41,10 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
         const pending = {route,command};
         if (policy.mode === 'hold') {held.push(pending);return;}
         if (policy.mode === 'invalid') return reply(pending,'A response without a valid marker.');
-        if (prompt.originalRequest) return reply(pending,'CORRECT');
-        if (prompt.hints) return reply(pending,'Welche unabhängige Kontaktmöglichkeit kennst du?');
+        if (prompt.originalRequest) return reply(pending,'PARTIALL_CORRECT');
+        if (prompt.hints) return reply(pending,'Wann werden keine Karten mehr weitergegeben?');
         if (prompt.feedbackLanguage === 'English') return reply(pending,'Clear reasoning.\nCORRECT');
-        if (prompt.criterion.includes('Echtheit')) return reply(pending,'Deine Begründung passt.');
-        return reply(pending,'Prüfe den Kontaktweg.\nPARTIALL_CORRECT');
+        return reply(pending,'Deine Begründung passt.');
       }
       if (url.origin !== origin || !url.pathname.startsWith(prefix)) return route.abort();
       const relative = decodeURIComponent(url.pathname.slice(prefix.length));
@@ -65,25 +64,23 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
     const results = content.locator('.text-input-feedback__result');
     await input.waitFor();
     await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
-    await content.getByText(/Erkläre, warum ein vertrauter Absendername/).waitFor();
-    const answer = 'Ein Name kann gefälscht sein. Ich überprüfe die Anfrage über einen bekannten Kontaktweg.';
+    await content.getByText(/Beschreibe, was die Abbruchbedingung/).waitFor();
+    const answer = 'Die Rekursion endet, wenn das Tablett leer ist.';
     await input.fill(answer);
     assert.equal(requests.length,0,'typing and changing language never automatically send the answer');
     await exercise.locator('.interaction-info__hint-toggle').click();
     const hints = exercise.locator('.interaction-info__hint-body');
     await hints.locator('.interaction-scaffolding__request').click();
-    await hints.getByText('Welche unabhängige Kontaktmöglichkeit kennst du?',{exact:true}).waitFor();
+    await hints.getByText('Wann werden keine Karten mehr weitergegeben?',{exact:true}).waitFor();
     assert.equal(requests[0].answer,answer);
     assert(requests[0].hints.length === 1 && !requests[0].criterion,'hint requests do not include grading criteria');
     await hints.locator('.interaction-info__hint-close').click();
     await grade.click();
     await content.getByText('Deine Begründung passt.',{exact:true}).waitFor();
-    await content.getByText('Prüfe den Kontaktweg.',{exact:true}).waitFor();
-    assert.equal(await results.count(),2);
-    await results.getByText('Richtig',{exact:true}).waitFor();
+    assert.equal(await results.count(),1);
     await results.getByText('Teilweise richtig',{exact:true}).waitFor();
     assert(!await content.innerText().then(text => /CORRECT|INCORRECT|PARTIALL_CORRECT/.test(text)),'protocol markers are not rendered');
-    assert.equal(requests.length,4,'one hint, two criterion requests and one format correction');
+    assert.equal(requests.length,3,'one hint, one criterion request and one format correction');
     assert.equal(await input.inputValue(),answer);
     assert(!await content.evaluate(element => element.querySelector('[style]')),'rendering uses dedicated CSS');
     if (process.env.WORKBOOK_SCREENSHOT) await content.screenshot({path:process.env.WORKBOOK_SCREENSHOT});
@@ -96,13 +93,13 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
     await page.setViewportSize({width:1440,height:1000});
     await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
     assert.equal(await input.inputValue(),answer);
-    assert.equal(requests.length,4);
+    assert.equal(requests.length,3);
     assert.equal(await results.count(),0,'feedback from another language is not shown as current-language feedback');
     await grade.click();
     await content.getByText('Clear reasoning.',{exact:true}).first().waitFor();
-    await page.waitForFunction(() => document.querySelectorAll('.text-input-feedback__result strong').length === 2 &&
+    await page.waitForFunction(() => document.querySelectorAll('.text-input-feedback__result strong').length === 1 &&
       [...document.querySelectorAll('.text-input-feedback__result strong')].every(element => element.textContent === 'Correct'));
-    assert(requests.slice(-2).every(request => request.feedbackLanguage === 'English' && request.answer === answer));
+    assert(requests.slice(-1).every(request => request.feedbackLanguage === 'English' && request.answer === answer));
     await page.waitForFunction(() => !document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
     const persisted = await page.evaluate(() => new Promise(resolve => {
       const open = indexedDB.open('EvaDidInteractionDB');
@@ -113,7 +110,7 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
         const rows = transaction.objectStore('variableHistoryStore').getAll();
         transaction.oncomplete = () => db.close();
         rows.onerror = () => resolve(false);
-        rows.onsuccess = () => resolve(rows.result.some(row => row.id.includes('text-feedback-demo-answer_history') &&
+        rows.onsuccess = () => resolve(rows.result.some(row => row.id.includes('demo-feedback-1_history') &&
           row.value.includes('Clear reasoning.')));
       };
     }));
@@ -123,14 +120,15 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
     await input.waitFor();
     assert.equal(await input.inputValue(),answer,'the same interaction restores the saved answer');
     await content.getByText('Clear reasoning.',{exact:true}).first().waitFor();
-    assert.equal(await results.count(),2,'the same history restores the saved grades');
-    assert.equal(requests.length,6,'reloading never calls the LLM');
+    assert.equal(await results.count(),1,'the same history restores the saved grades');
+    assert.equal(requests.length,4,'reloading never calls the LLM');
 
     policy.mode = 'hold';
+    await input.fill('A draft about sorted cards.');
     await grade.click();
     await page.waitForFunction(() => document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
-    for (let attempt = 0; attempt < 200 && held.length < 2; attempt++) await page.waitForTimeout(25);
-    assert.equal(held.length,2,'both independent graders reach the backend');
+    for (let attempt = 0; attempt < 200 && held.length < 1; attempt++) await page.waitForTimeout(25);
+    assert.equal(held.length,1,'the configured grader reaches the backend for the edited answer');
     await input.fill('A newly edited answer.');
     await Promise.all(held.splice(0).map(pending => reply(pending,'Feedback for the old answer.\nCORRECT')));
     await grade.waitFor({state:'visible'});
@@ -142,8 +140,16 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
     await grade.click();
     await content.getByText('Check unavailable',{exact:true}).first().waitFor();
     await page.waitForFunction(() => !document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
-    assert.equal(requests.length - beforeInvalid,4,'two invalid criteria each get only one correction attempt');
+    assert.equal(requests.length - beforeInvalid,2,'an invalid criterion gets only one correction attempt');
     assert.equal(await input.inputValue(),'A newly edited answer.');
+    policy.mode = 'normal';
+    await grade.click();
+    await content.getByText('Clear reasoning.',{exact:true}).waitFor();
+    await page.waitForFunction(() => !document.querySelector('.interaction-grading__request')?.disabled);
+    assert.equal(requests.length - beforeInvalid,3,'a cached execution error can be retried for the same answer');
+    await grade.click();
+    await page.waitForFunction(() => !document.querySelector('.interaction-grading__request')?.disabled);
+    assert.equal(requests.length - beforeInvalid,3,'completed grading is reused');
     assert.deepEqual(errors,[]);
   } finally {await browser.close();}
 });
