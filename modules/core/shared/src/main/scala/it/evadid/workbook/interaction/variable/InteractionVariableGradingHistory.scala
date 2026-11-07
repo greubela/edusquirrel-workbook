@@ -12,7 +12,11 @@ case class InteractionVariableGradingHistory[T, GA]
   lazy val gradingsFinished: Set[GradedState[T, GA]] = gradingsMap.values.toSet
 
   private[interaction] def merge(other: InteractionVariableGradingHistory[T, GA]): InteractionVariableGradingHistory[T, GA] = {
-    val mergedMaps = MapUtils.mergeMaps[T, GradedState[T, GA]](gradingsMap, other.gradingsMap, (k, v1, v2) => v1.merge(v2))
+    def valid(history: Map[T, GradedState[T, GA]]) = history.collect {
+      case (state, group) if group.state == state => state -> group.copy(
+        graderResultMap = group.graderResultMap.filter((grader, result) => result.grader == grader && result.gradedState == state))
+    }
+    val mergedMaps = MapUtils.mergeMaps[T, GradedState[T, GA]](valid(gradingsMap), valid(other.gradingsMap), (k, v1, v2) => v1.merge(v2))
     InteractionVariableGradingHistory[T, GA](mergedMaps)
   }
 
@@ -24,25 +28,14 @@ object InteractionVariableGradingHistory {
 
   given [T: ReadWriter, GA: ReadWriter]: ReadWriter[InteractionVariableGradingHistory[T, GA]] = macroRW
 
-  def apply[T, GA](gradingsFinished: Set[GradedState[T, GA]]): InteractionVariableGradingHistory[T, GA] = {
-    val resMap = gradingsFinished.map(curGrad => curGrad.state -> curGrad).toMap
-    InteractionVariableGradingHistory(resMap)
+  def apply[T, GA](gradingsFinished: Set[GradedState[T, GA]]): InteractionVariableGradingHistory[T, GA] =
+    new InteractionVariableGradingHistory(gradingsFinished.groupBy(_.state).view.mapValues(_.reduce(_.merge(_))).toMap)
+
+  def fromResults[T, GA](results: Iterable[GradingResult[T, GA]]): InteractionVariableGradingHistory[T, GA] = {
+    val grouped = results.groupBy(_.gradedState).map { (state, grades) =>
+      val byGrader = grades.groupBy(_.grader).view.mapValues(_.reduce(_.merge(_))).toMap
+      state -> GradedState(state, byGrader)
+    }
+    new InteractionVariableGradingHistory(grouped)
   }
-
-  def forGratedState[T, GA](gradedState: Set[GradedState[T, GA]]): InteractionVariableGradingHistory[T, GA] = {
-    InteractionVariableGradingHistory(gradedState.map(cur => cur.state -> cur).toMap)
-  }
-
-  def forSingleGradings[T, GA](singleGradings: Set[GradingResult[T, GA]]): InteractionVariableGradingHistory[T, GA] = {
-    val map: Map[T, GradedState[T, GA]] = singleGradings.map(curGrading => {
-      curGrading.gradedState -> curGrading
-    }).groupBy(_._1).map((curState, gradingList) => {
-      val graderMap: Map[WorkbookInteractionGrader[T, GA], GradingResult[T, GA]] = gradingList.map(gradingResult => gradingResult._2.grader -> gradingResult._2).toMap
-      curState -> GradedState(curState, graderMap)
-    }).toMap
-    InteractionVariableGradingHistory(map)
-
-  }
-
-
 }

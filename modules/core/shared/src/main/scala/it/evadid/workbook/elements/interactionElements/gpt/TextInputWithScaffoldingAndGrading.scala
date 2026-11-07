@@ -29,7 +29,7 @@ case class TextInputWithScaffoldingAndGrading(
 
 object TextInputWithScaffoldingAndGrading {
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[TextInputWithScaffoldingAndGrading] {
-    override protected val constructorFieldOrder = List("elementId", "exerciseText", "scaffoldingHints", "gradingCriteria", "defaultValue")
+    override protected val constructorFieldOrder = List("elementId", "instructionText", "sampleSolution", "contentScaffolding", "contentGrading")
 
     override def finishSerialization(base: WorkbookElementSerializable, element: TextInputWithScaffoldingAndGrading): WorkbookElementSerializable =
       base.withElementAddedAs("instructionText", element.instructionText)

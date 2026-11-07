@@ -1,11 +1,11 @@
 package it.evadid.workbook.interaction.sync
 
-import it.evadid.core.util.io.serializer.DefaultSerializer
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import upickle.default.*
 
 import java.time.LocalDateTime
 
-case class SyncCache(createdAt: LocalDateTime, createdForContext: UsageContext, contextMaps: Map[SyncContext, String]) {
+case class SyncCache(createdAt: LocalDateTime, createdForContext: UsageContext, contextMaps: Map[SyncContext, String]) derives ReadWriter {
 
   /*
     def typedHistory[T](key: String, serializer: Serializer[T]): SyncFetchedHistory[T] = {

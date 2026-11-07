@@ -12,7 +12,6 @@ import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import it.evadid.workbook.meta.ExecutionContextInformation.default.syncControl
-import jdk.jpackage.internal.Arguments.CLIOptions.context
 import upickle.default.*
 
 import java.time.LocalDateTime

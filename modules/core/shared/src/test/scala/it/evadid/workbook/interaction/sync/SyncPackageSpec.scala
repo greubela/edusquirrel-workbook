@@ -1,5 +1,9 @@
 package it.evadid.workbook.interaction.sync
 
+import it.evadid.workbook.support.TestExecutionContext
+import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.interaction.variable.{InteractionVariableStateHistory, InteractionVariableGradingHistory, InteractionVariableScaffoldingHistory}
+
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
 import it.evadid.workbook.interaction.sync.model.*
 import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
@@ -7,7 +11,7 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
+import it.evadid.workbook.meta.InteractionVariableSyncReport
 import it.evadid.workbook.interaction.sync.destination.{SyncDestination, SyncDestinationHistory}
 import it.evadid.workbook.interaction.variable.*
 import munit.FunSuite
@@ -36,8 +40,8 @@ class SyncPackageSpec extends FunSuite {
   private val minor = event("minor", UpdateImportance.MINOR, 2)
   private val temporary = event("temporary", UpdateImportance.TEMPORARY, 3)
   private val default = event("default", UpdateImportance.DEFAULT, 4)
-  private val history = InteractionVariableHistory[String, Any, Any](Set(major, minor, temporary, default), Map.empty, Map.empty)
-  private val serialized = write(InteractionVariableHistory[String, Any, Any](Set(major, minor, temporary), Map.empty, Map.empty))
+  private val history = InteractionVariableHistory[String, Any, Any](InteractionVariableStateHistory[String](Set(major, minor, temporary, default)), new InteractionVariableGradingHistory[String, Any](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[String, Any](scaffoldingMap = Map.empty))
+  private val serialized = write(InteractionVariableHistory[String, Any, Any](InteractionVariableStateHistory[String](Set(major, minor, temporary)), new InteractionVariableGradingHistory[String, Any](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[String, Any](scaffoldingMap = Map.empty)))
 
   private class Destination extends SyncDestinationHistory {
     var fetched: Future[FetchResponse[SyncContext, String]] =
@@ -93,18 +97,18 @@ class SyncPackageSpec extends FunSuite {
 
   test("every SyncStrategy selects the specified relevance and never mistakes a default for the latest update") {
     val expected = List(
-      SyncStrategy.SYNC_EVERYTHING -> history.events,
+      SyncStrategy.SYNC_EVERYTHING -> history.historyStates.events,
       SyncStrategy.SYNC_MAJOR -> Set(major),
       SyncStrategy.SYNC_MINOR -> Set(major, minor),
       SyncStrategy.SYNC_LAST -> Set(temporary),
       SyncStrategy.SYNC_LAST_AND_MAJOR -> Set(major, temporary))
     expected.foreach((strategy, events) => {
-      assertEquals(history.filterWithStrategy(strategy).events, events)
+      assertEquals(history.filterWithStrategy(strategy).historyStates.events, events)
       assertEquals(strategy.selectEventsToSync(Set.empty[InteractionVariableState[String]]), Set.empty[InteractionVariableState[String]])
     })
-    val defaults = InteractionVariableHistory[String, Any, Any](Set(default), Map.empty, Map.empty)
-    assertEquals(SyncStrategy.SYNC_LAST.selectEventsToSync(defaults.events), Set.empty[InteractionVariableState[String]])
-    assertEquals(SyncStrategy.SYNC_LAST_AND_MAJOR.selectEventsToSync(defaults.events), Set.empty[InteractionVariableState[String]])
+    val defaults = InteractionVariableHistory[String, Any, Any](InteractionVariableStateHistory[String](Set(default)), new InteractionVariableGradingHistory[String, Any](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[String, Any](scaffoldingMap = Map.empty))
+    assertEquals(SyncStrategy.SYNC_LAST.selectEventsToSync(defaults.historyStates.events), Set.empty[InteractionVariableState[String]])
+    assertEquals(SyncStrategy.SYNC_LAST_AND_MAJOR.selectEventsToSync(defaults.historyStates.events), Set.empty[InteractionVariableState[String]])
     assertEquals(SyncStrategy.SYNC_MAJOR.toString, "SYNC_ONLY(MAJOR)")
   }
 
@@ -183,13 +187,13 @@ class SyncPackageSpec extends FunSuite {
 
   test("SyncInformationWithContext serializes selected variable events and skips an empty selection") {
     val variable = InteractionVariable(TextInteraction("answer"))
-    variable.updateHistory(_ => history)
+    variable.updateHistory(_ => history, ExecutionContextInformation.default)
     val bound = location(strategy = SyncStrategy.SYNC_MAJOR)
     val entries = bound.dataToStore(variable)
     assertEquals(entries.size, 1)
     assertEquals(entries.head.dataKey, context)
     assertEquals(entries.head.timestamp, major.timestamp)
-    assertEquals(variable.deserializeHistory(entries.head.dataValue).events, Set(major))
+    assertEquals(variable.serializerHistory.deserialize(entries.head.dataValue).historyStates.events, Set(major))
     variable.resetLocalHistory()
     assertEquals(bound.dataToStore(variable), Nil)
     bound.informAboutContextSwitch().map(result => assertEquals(result.elementsRemoved, 0))
@@ -199,8 +203,8 @@ class SyncPackageSpec extends FunSuite {
     val synced = location()
     val stale = location()
     val missing = location()
-    val local = InteractionVariableHistory[String, Any, Any](Set(temporary), Map.empty, Map.empty)
-    val remote = InteractionVariableHistory[String, Any, Any](Set(major, minor), Map.empty, Map.empty)
+    val local = InteractionVariableHistory[String, Any, Any](InteractionVariableStateHistory[String](Set(temporary)), new InteractionVariableGradingHistory[String, Any](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[String, Any](scaffoldingMap = Map.empty))
+    val remote = InteractionVariableHistory[String, Any, Any](InteractionVariableStateHistory[String](Set(major, minor)), new InteractionVariableGradingHistory[String, Any](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[String, Any](scaffoldingMap = Map.empty))
     val statuses = Map(
       synced -> SyncStatus(Some(temporary.timestamp), context, Some(DataEntryReadFromServer(context, remote, time))),
       stale -> SyncStatus(Some(temporary.timestamp.minusNanos(1)), context, Some(DataEntryReadFromServer(context, remote, time))),
@@ -211,8 +215,8 @@ class SyncPackageSpec extends FunSuite {
     assertEquals(report.lastRemoteStates.get(missing), None)
     assertEquals(report.latestStateIsSyncedTo, Set(synced))
     assertEquals(report.latestStateIsNotSyncedTo, Set(stale, missing))
-    assertEquals(report.allRemoteStates, Set(major, minor))
-    assertEquals(report.allStatesEverywhere, Set(major, minor, temporary))
+    assertEquals(report.curRemoteHistory.values.flatMap(_.lastKnownRemoteValue).flatMap(_.dataValue.historyStates.events).toSet, Set(major, minor))
+    assertEquals(report.allInformationEverywhere.historyStates.events, Set(major, minor, temporary))
     val emptyLocal = report.copy(curLocalHistory = InteractionVariableHistory.empty[String, Any, Any])
     assertEquals(emptyLocal.latestStateIsSyncedTo, Set(synced, stale, missing))
   }
@@ -220,7 +224,7 @@ class SyncPackageSpec extends FunSuite {
   test("SyncCache retains JSON for the owner to decode and isolates context keys") {
     val cache = SyncCache(time, usage, Map(context -> serialized))
     val variable = TextInteraction("answer").interactionVariable
-    assertEquals(variable.deserializeHistory(cache.contextMaps(context)).events, Set(major, minor, temporary))
+    assertEquals(variable.serializerHistory.deserialize(cache.contextMaps(context)).historyStates.events, Set(major, minor, temporary))
     assertEquals(cache.contextMaps.get(context.copy(userId = "other")), None)
     assertEquals(read[SyncCache](write(cache)), cache)
   }

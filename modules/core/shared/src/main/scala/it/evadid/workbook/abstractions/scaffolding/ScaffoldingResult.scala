@@ -15,7 +15,7 @@ case class ScaffoldingResult[T, A](
                                     scaffoldingStatus: ScaffoldingStatus,
                                     scaffoldingEntity: FeedbackEntity,
                                     additionalInformation: Option[A],
-                                    scaffoldingTime: LocalDateTime
+                                    scaffoldingTime: LocalDateTime = LocalDateTime.MIN
                                   ) derives ReadWriter
 
 

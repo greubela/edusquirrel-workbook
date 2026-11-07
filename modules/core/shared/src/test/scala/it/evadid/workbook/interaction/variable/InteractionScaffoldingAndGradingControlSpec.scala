@@ -94,6 +94,24 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     }
   }
 
+  test("a successful retry replaces an error even when both attempts have the same clock timestamp") {
+    val time = java.time.LocalDateTime.of(2026, 11, 7, 0, 0)
+    val grader = new CountingGrader() {
+      override protected def handleGrading(state: String, context: it.evadid.workbook.meta.ExecutionContextInformation): Future[GradingResult[String, String]] = {
+        calls.update(_ + 1)
+        val status = if calls.now() == 1 then
+          GradingStatus.TestError(it.evadid.distribution.command.SerializedException("outage")) else GradingStatus.Correct()
+        Future.successful(GradingResult(this, state, status, gradingTime = time))
+      }
+    }
+    val value = variable(List(grader))
+    value.control.getOrCalculateGrading(context).flatMap(_ => value.control.getOrCalculateGrading(context)).map { result =>
+      assertEquals(result.graderResultMap(grader).gradingStatus, GradingStatus.Correct())
+      assertEquals(value.currentHistory.historyGrading.gradingsMap("answer"), result)
+      assertEquals(grader.calls.now(), 2)
+    }
+  }
+
   test("an interaction with no graders has an empty completed result") {
     variable(Nil).control.getOrCalculateGrading(context).map(result => assertEquals(result.testsWithResults, Set.empty))
   }

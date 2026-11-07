@@ -38,7 +38,7 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
   def getOrCalculateGrading(contextInformation: ExecutionContextInformation, forceGrading: Boolean, forState: T): Future[GradedState[T, GA]] = interactionVariable.synchronized {
     val key = GradingRequest(forState, contextInformation.getCurrentLanguage, forceGrading)
     gradingRequests.now().getOrElse(key, {
-      val saved = interactionVariable.currentHistory.historyGrading.gradingsMap.getOrElse(forState, GradedState[T, GA](forState))
+      val saved = interactionVariable.currentHistory.historyGrading.gradingsMap.get(forState).filter(_.state == forState).getOrElse(GradedState[T, GA](forState))
       val graders = interactionVariable.underlyingInteraction.gradingElements.distinct
       val reusable = saved.graderResultMap.filter { (grader, result) =>
         graders.contains(grader) && result.gradedState == forState && grader.canReuseResult(result, contextInformation)
@@ -54,7 +54,10 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
             outcome match {
               case Success(result) =>
                 val combined = GradedState(forState, reusable ++ result.graderResultMap)
-                Try(interactionVariable.updateHistory(_.addGrading(combined), contextInformation)) match {
+                Try {
+                  if contextInformation.getCurrentLanguage == key.language then
+                    interactionVariable.updateHistory(_.addGrading(combined), contextInformation)
+                } match {
                   case Success(_) => completed.trySuccess(combined)
                   case Failure(error) => completed.tryFailure(error)
                 }

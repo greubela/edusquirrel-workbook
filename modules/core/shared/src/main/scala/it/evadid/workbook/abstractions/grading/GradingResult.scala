@@ -14,9 +14,9 @@ case class GradingResult[T, A]
   grader: WorkbookInteractionGrader[T, A],
   gradedState: T,
   gradingStatus: GradingStatus,
-  feedbackInformation: Option[LanguageMap[HumanLanguage]] ,
-  additionalData: Option[A] ,
-  gradingTime: LocalDateTime,
+  feedbackInformation: Option[LanguageMap[HumanLanguage]] = None,
+  additionalData: Option[A] = None,
+  @upickle.implicits.serializeDefaults(true) gradingTime: LocalDateTime = LocalDateTime.now(),
 ) derives ReadWriter {
 
 
@@ -24,9 +24,10 @@ case class GradingResult[T, A]
   def merge(other: GradingResult[T, A]): GradingResult[T, A] = {
     require(grader == other.grader && gradedState == other.gradedState, "Only results for the same grader and state can be merged.")
     val preferred =
-      if gradingStatus.isErrorOrUnfinished != other.gradingStatus.isErrorOrUnfinished then
-        if gradingStatus.isErrorOrUnfinished then other else this
+      if (gradingStatus == NotRequested() || gradingStatus == NotFinished()) && !other.gradingStatus.isErrorOrUnfinished then other
+      else if (other.gradingStatus == NotRequested() || other.gradingStatus == NotFinished()) && !gradingStatus.isErrorOrUnfinished then this
       else if other.gradingTime.isAfter(gradingTime) then other
+      else if gradingTime == other.gradingTime && GradingResult.statusPriority(other.gradingStatus) > GradingResult.statusPriority(gradingStatus) then other
       else this
     val remaining = if preferred eq this then other else this
     val feedback = (remaining.feedbackInformation, preferred.feedbackInformation) match {
@@ -43,16 +44,15 @@ object GradingResult {
 
   type GradingResultUntyped = GradingResult[?, ?]
 
+  private def statusPriority(status: GradingStatus): Int = status match {
+    case TestError(_) => 1
+    case Incorrect() => 4
+    case PartiallyCorrect() => 3
+    case Correct() => 2
+    case NotFinished() => 0
+    case NotRequested() => -1
+  }
 
 
-  def apply[T, A](
-                    grader: WorkbookInteractionGrader[T, A],
-                    gradedState: T,
-                    gradingStatus: GradingStatus,
-                    feedbackInformation: Option[LanguageMap[HumanLanguage]] = None,
-                    additionalData: Option[A] = None,
-                  ): GradingResult[T, A] = GradingResult(grader, gradedState, gradingStatus, feedbackInformation, additionalData, LocalDateTime.now())
 
 }
-
-

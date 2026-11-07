@@ -17,12 +17,11 @@ import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestProgramObservation}
 import it.evadid.workbook.interaction.variable.InteractionVariableState
 import it.evadid.workbook.meta.ExecutionContextInformation
-import it.evadid.workbook.meta.ExecutionContextInformation.default.availableExecutionClients
 
 import scala.concurrent.Future
 import scala.util.Try
 
-final class ProgrammingHintScaffolder(val interaction: ProgrammingExerciseFullJava,
+final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElementFull[ProgrammingState, ?, ?],
                                       publicTaskId: LanguageMapContentId)
   extends WorkbookInteractionScaffolder[ProgrammingState, AdditionalInfoLlmScaffolding] {
 
@@ -45,7 +44,7 @@ final class ProgrammingHintScaffolder(val interaction: ProgrammingExerciseFullJa
           val request = context.request(locale, task)
           val factory = LLMCommands.feedbackLlmCommandFactory
           val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
-          val client = availableExecutionClients.find(_.canExecuteCommand(command))
+          val client = contextInformation.availableExecutionClients.find(_.canExecuteCommand(command))
             .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
           factory.sendCommandTo(client, request, Some(BasicLogger())).map { response =>
             verifyChecks(currentState, context, locale)
@@ -87,8 +86,8 @@ final class ProgrammingHintScaffolder(val interaction: ProgrammingExerciseFullJa
     val history = variable.currentHistory
     require(history.historyStates.lastStateOption.map(_.value).getOrElse(interaction.defaultValue) == state,
       "The answer changed while preparing this hint.")
-    val results: Option[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] =
-      interaction.interactionVariable.control.getCurrentStateOfGrading().flatMap(_.graderResultMap.values.headOption) // ???
+    val results: List[GradingResult[ProgrammingState, ?]] =
+      history.historyGrading.gradingsMap.get(state).filter(_.state == state).toList.flatMap(_.graderResultMap.values)
     val graders = interaction.gradingElements.filter { grader =>
       grader.importance != GradingImportance.HIDDEN_TEST && grader.gradingEntity == FeedbackEntity.TestEntity()
     }.distinct
@@ -208,7 +207,13 @@ object ProgrammingHintScaffolder {
       |Now respond only to the live JSON context. Return one question about the current source, with plain-text identifiers and no correction supplied.
       |""".stripMargin
 
-  private def statusName(status: GradingStatus): String = status.toString
+  private def statusName(status: GradingStatus): String = status match {
+    case GradingStatus.Correct() => "correct"
+    case GradingStatus.Incorrect() => "incorrect"
+    case GradingStatus.PartiallyCorrect() => "partially-correct"
+    case GradingStatus.TestError(_) => "error"
+    case _ => "not-run"
+  }
 
   private val quotedIdentifier = "`([A-Za-z_$][A-Za-z0-9_$]*)`".r
 

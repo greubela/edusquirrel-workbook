@@ -48,7 +48,7 @@
   "sec7ex1scaff1resp1": "Correct, it has something to do with the cards. The question is what exactly. Remember that the stopping condition determines whether recursion continues building up (simplifying the problem) or starts unwinding (combining the solution).",
   "sec7ex1grade1Instr": "The answer must identify the correct moment: the tray is empty / no more cards are passed on.",
   "sec7ex1grade1stud1": "The stopping condition is reached when the cards have been sorted and the algorithm terminates.",
-  "sec7ex1grade1resp1": "INCORRECT\\n\\nThe stopping condition ends the recursive build-up, not the whole algorithm. It therefore cannot first be reached when the algorithm terminates.",
+  "sec7ex1grade1resp1": "The stopping condition ends the recursive build-up, not the whole algorithm. It therefore cannot first be reached when the algorithm terminates.\nINCORRECT",
   "sec7ex1grade1stud2": "The stopping condition is satisfied when the cards are being inserted again.",
-  "sec7ex1grade1resp2": "PARTIALLY CORRECT\\n\\nThe stopping condition is indeed satisfied at that point. But what exactly is the stopping condition, and when does it change from unsatisfied to satisfied?"
+  "sec7ex1grade1resp2": "The stopping condition is indeed satisfied at that point. But what exactly is the stopping condition, and when does it change from unsatisfied to satisfied?\nPARTIALL_CORRECT"
 }

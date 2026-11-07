@@ -11,7 +11,14 @@ case class InteractionVariableScaffoldingHistory[T, SA]
   lazy val scaffoldingsFinished: Set[ScaffoldingResult[T, SA]] = scaffoldingMap.values.toSet
 
   private[interaction] def merge(other: InteractionVariableScaffoldingHistory[T, SA]): InteractionVariableScaffoldingHistory[T, SA] = {
-    this
+    val merged = other.scaffoldingMap.foldLeft(scaffoldingMap) { case (current, (state, incoming)) =>
+      if incoming.forState != state then current
+      else current.get(state) match {
+        case Some(saved) if saved.forState == state && !incoming.scaffoldingTime.isAfter(saved.scaffoldingTime) => current
+        case _ => current.updated(state, incoming)
+      }
+    }
+    new InteractionVariableScaffoldingHistory(merged)
   }
 
   private[interaction] def get(state: T): Option[ScaffoldingResult[T, SA]] = scaffoldingsFinished.find(_.forState == state)

@@ -8,7 +8,6 @@ import it.evadid.workbook.interaction.sync.UpdateImportance.TEMPORARY
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.meta.ExecutionContextInformation
-import jdk.jpackage.internal.Arguments.CLIOptions.context
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success

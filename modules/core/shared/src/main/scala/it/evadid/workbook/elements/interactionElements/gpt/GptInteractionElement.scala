@@ -14,7 +14,6 @@ import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import it.evadid.workbook.meta.ExecutionContextInformation.default.syncControl
-import jdk.jpackage.internal.Arguments.CLIOptions.context
 
 import java.time.LocalDateTime
 import scala.concurrent.*
