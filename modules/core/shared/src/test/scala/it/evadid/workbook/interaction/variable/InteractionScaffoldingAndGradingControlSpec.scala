@@ -115,6 +115,25 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     }
   }
 
+  test("a changed grade does not retain feedback or payload from a superseded assessment") {
+    val grader = new CountingGrader()
+    val time = java.time.LocalDateTime.of(2026, 11, 7, 0, 0)
+    val previous = GradingResult[String, String](grader, "answer", GradingStatus.PartiallyCorrect(),
+      Some(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Teilweise richtig"))), Some("old evidence"), time)
+    val current = previous.copy(gradingStatus = GradingStatus.Correct(),
+      feedbackInformation = Some(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "Correct"))),
+      additionalData = None, gradingTime = time.plusSeconds(1))
+    List(previous.merge(current), current.merge(previous)).foreach { saved =>
+      assertEquals(saved, current)
+      assertEquals(saved.feedbackInformation.flatMap(_.tryGetInLanguage(German)), None)
+    }
+    val sameGrade = previous.copy(gradingStatus = GradingStatus.Correct())
+    val combined = sameGrade.merge(current)
+    assertEquals(combined.feedbackInformation.flatMap(_.tryGetInLanguage(German)), Some("Teilweise richtig"))
+    assertEquals(combined.feedbackInformation.flatMap(_.tryGetInLanguage(English)), Some("Correct"))
+    assertEquals(combined.additionalData, None)
+  }
+
   test("batch history insertion selects the newest result of each grader regardless of input order") {
     val first = new CountingGrader()
     val second = new CountingGrader()

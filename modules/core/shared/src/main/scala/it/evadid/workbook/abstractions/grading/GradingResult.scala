@@ -30,11 +30,12 @@ case class GradingResult[T, A]
       else if gradingTime == other.gradingTime && GradingResult.statusPriority(other.gradingStatus) > GradingResult.statusPriority(gradingStatus) then other
       else this
     val remaining = if preferred eq this then other else this
-    val feedback = (remaining.feedbackInformation, preferred.feedbackInformation) match {
+    val feedback = if gradingStatus != other.gradingStatus then preferred.feedbackInformation
+    else (remaining.feedbackInformation, preferred.feedbackInformation) match {
       case (Some(previous), Some(current)) => Some(LanguageMap.merge(previous, current))
       case _ => preferred.feedbackInformation.orElse(remaining.feedbackInformation)
     }
-    preferred.copy(feedbackInformation = feedback, additionalData = preferred.additionalData.orElse(remaining.additionalData))
+    preferred.copy(feedbackInformation = feedback)
   }
 
 
