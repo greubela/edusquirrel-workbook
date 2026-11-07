@@ -5,6 +5,8 @@ import upickle.default.*
 
 sealed trait GradingStatus derives ReadWriter {
 
+  val isErrorOrUnfinished: Boolean = false
+
 }
 
 object GradingStatus {
@@ -15,7 +17,17 @@ object GradingStatus {
 
   case class Incorrect() extends GradingStatus derives upickle.default.ReadWriter
 
-  case class TestError(err: SerializedException) extends GradingStatus derives upickle.default.ReadWriter
+  case class TestError(err: SerializedException) extends GradingStatus derives upickle.default.ReadWriter {
+    override val isErrorOrUnfinished: Boolean = true
+  }
 
-  case class NotExecuted() extends GradingStatus derives upickle.default.ReadWriter
+  case class NotFinished() extends GradingStatus derives upickle.default.ReadWriter {
+    override val isErrorOrUnfinished: Boolean = true
+  }
+
+  case class NotRequested() extends GradingStatus {
+    override val isErrorOrUnfinished: Boolean = true
+  }
+
+
 }

@@ -15,7 +15,7 @@ object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownlo
         workbookInfo.loadedWorkbook.allContainedInteractionsById.get(download.unlockWhenReorderCorrect) match {
           case Some(reorder: ReorderInteraction[?]) =>
             reorder.interactionVariable
-              .createInteractionSignal(fullInfo.syncControl)
+              .createInteractionSignal(fullInfo.executionContextInformation)
               .map(state => ReorderCorrectness.isOrderCorrect(reorder, state))
           case _ =>
             Val(false)

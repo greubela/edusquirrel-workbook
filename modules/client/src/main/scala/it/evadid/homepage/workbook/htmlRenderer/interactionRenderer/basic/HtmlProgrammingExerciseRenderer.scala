@@ -13,8 +13,8 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEdito
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
@@ -33,7 +33,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
   override protected def createRendering(workbookElement: ProgrammingExercise): AtomarLineRendering = {
 
-    val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR).toAirstreamVar
+    val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation).toAirstreamVar
 
     val editorConfig: SnapCodeEditorConfig = workbookElement.editorPalette match
       case ProgrammingEditorPalette.Default => SnapCodeEditorConfig.Testing

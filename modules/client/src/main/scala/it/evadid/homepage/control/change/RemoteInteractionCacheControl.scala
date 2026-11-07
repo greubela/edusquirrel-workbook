@@ -4,15 +4,13 @@ import it.evadid.core.datastructures.state.StateHelper.RichSignal
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.storage.RemoteCacheController
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.vm.code.defining.KnownBeDefineStructures.variables
-import it.evadid.workbook.interaction.sync.SyncControl.InteractionVariableSyncReport
 import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.{SyncContext, SyncControl, SyncInformation, UsageContext}
+import it.evadid.workbook.interaction.sync.SyncControl.*
+import it.evadid.workbook.interaction.sync.model.SyncStatus
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableUntyped}
+import it.evadid.workbook.meta.InteractionVariableSyncReport
 
-import java.time
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -32,12 +30,15 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     }
 
   private def decodeStatuses[T, GA, SA](variable: InteractionVariable[T, GA, SA],
-      statuses: Map[SyncInformationWithContext, it.evadid.workbook.interaction.sync.model.SyncStatus[SyncContext, String]]) = {
+                                        statuses: Map[SyncInformationWithContext, SyncStatus[SyncContext, String]]) = {
     import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, SyncStatus}
     statuses.map { (location, status) =>
       val decoded = status.lastKnownRemoteValue.flatMap { entry =>
-        scala.util.Try(variable.deserializeHistory(entry.dataValue)).fold(
-          error => { controlLogger.logExceptionWarn("Ignoring invalid history for " + entry.dataKey, error); None },
+        scala.util.Try(variable.serializerHistory.deserialize(entry.dataValue)).fold(
+          error => {
+            controlLogger.logExceptionWarn("Ignoring invalid history for " + entry.dataKey, error);
+            None
+          },
           history => Some(DataEntryToSync(entry.dataKey, history, entry.timestamp, entry.direction)))
       }
       location -> SyncStatus(status.lastCacheRequest, status.associatedKey, decoded)
@@ -51,7 +52,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
   override def createCurrentReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): InteractionVariableSyncReport[T, GA, SA] = remoteCache.syncLock.synchronized {
     val syncContext = fullInfo.current.currentHomepageContext.toSyncContext(forVariable.keyForSerialization)
     val res = remoteCache.currentReport(syncContext)
-    InteractionVariableSyncReport(forVariable.history, decodeStatuses(forVariable, res.cacheStatus), res.allAvailableCacheKeys)
+    InteractionVariableSyncReport(forVariable.currentHistory, decodeStatuses(forVariable, res.cacheStatus), res.allAvailableCacheKeys)
   }
 
   override def createObservableReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): ObservableValue[InteractionVariableSyncReport[T, GA, SA]] = remoteCache.syncLock.synchronized {
@@ -65,11 +66,11 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     })
   }
 
-  override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariableUntyped]): Future[?]  = remoteCache.syncLock.synchronized {
+  override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariableUntyped]): Future[?] = remoteCache.syncLock.synchronized {
 
     def shouldSyncUntil(syncInfo: SyncInformationWithContext): LocalDateTime = variables.flatMap(curVar => {
-      val history = curVar.history.filterWithStrategy(syncInfo.syncInformation.syncStrategy)
-      history.latestChangeTimestamp
+      val history = curVar.currentHistory.filterWithStrategy(syncInfo.syncInformation.syncStrategy)
+      history.timestampLastChanged
     }).maxOption.getOrElse(LocalDateTime.now())
 
     remoteCache.requestCacheDependentUpdate(shouldSyncUntil)

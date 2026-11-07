@@ -12,7 +12,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object ThresholdNeuronRenderer extends LineBasedRenderingFactory[ThresholdNeuronInteraction] {
   override protected def createRendering(e: ThresholdNeuronInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation).toAirstreamVar
     val open = HtmlButtonElement.withTextLabel("basic/OpenEditor", _ =>
       fullInfo.displayControl.setFullscreen(ThresholdNeuronEditor(state, e.inputLabels, e.examples, e.initial)))
     val summary = p(cls := "neuron-preview", role := "status", text <-- state.signal.map(p => e.matches(p).count(identity))

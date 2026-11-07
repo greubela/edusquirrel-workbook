@@ -10,10 +10,12 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExerc
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.CodeTaskToggleInteraction
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
+import java.time.LocalDateTime
+
 object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskToggleInteraction] {
 
   override protected def createRendering(interaction: CodeTaskToggleInteraction): AtomarLineRendering = {
-    val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MINOR)
+    val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MINOR, fullInfo.executionContextInformation)
     val advancedCodeVar: Var[String] = Var(stateVar.now().advancedCode)
 
     val reorderDom =
@@ -42,10 +44,10 @@ object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskTogg
 
     def setBeginnerMode(value: Boolean): Unit = {
       interaction.interactionVariable.updateStateFromUserInteraction(
-        fullInfo.syncControl,
         state => state.copy(isBeginnerMode = value),
         UpdateImportance.MINOR,
-        List(fullInfo.defaults.backendExecutor)
+        LocalDateTime.now(),
+        fullInfo.executionContextInformation
       )
     }
 
@@ -57,10 +59,10 @@ object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskTogg
           val _ = advancedCodeVar.signal.foreach { code =>
             if (code != stateVar.now().advancedCode) {
               interaction.interactionVariable.updateStateFromUserInteraction(
-                fullInfo.syncControl,
                 state => state.copy(advancedCode = code),
                 UpdateImportance.MINOR,
-                List(fullInfo.defaults.backendExecutor)
+                LocalDateTime.now(),
+                fullInfo.executionContextInformation
               )
             }
           }(using ctx.owner)

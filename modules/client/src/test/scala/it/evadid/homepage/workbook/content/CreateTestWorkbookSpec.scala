@@ -3,11 +3,10 @@ package it.evadid.homepage.workbook.content
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
-import it.evadid.workbook.abstractions.scaffolding.ProgrammingHintScaffolder
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailFolder, MailInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExerciseFullJava, ProgrammingHintScaffolder}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
 import it.evadid.workbook.elements.structureElements.ExerciseContainer

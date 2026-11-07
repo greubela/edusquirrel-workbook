@@ -11,6 +11,7 @@ import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, TaskLabel}
 import it.evadid.workbook.elements.interactionElements.emailSimulator.MailInteraction
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
@@ -25,20 +26,40 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   override def createWorkbook: Workbook = {
     workbook(
       "TestWorkbook/WorkbookTitle",
-      List(section1, section2, section3, section4, section5, section6, textFeedbackSection),
+      List(section1, section2, section3, section4, section5, section6, section7),
       User.AndreGreubel
     )
   }
 
-  lazy val textFeedbackSection: WorkbookSection = section("text-feedback-demo", "TestWorkbook/textFeedbackTitle", List(
-    container("TestWorkbook/textFeedbackTitle", List(
-      TextInputWithScaffoldingAndGrading("text-feedback-demo-answer",
-        LanguageMapContentId("TestWorkbook/textFeedbackTask"),
-        List(LanguageMapContentId("TestWorkbook/textFeedbackHints")),
-        List(LanguageMapContentId("TestWorkbook/textFeedbackCriterionReason"),
-          LanguageMapContentId("TestWorkbook/textFeedbackCriterionAction")))
-    ))
-  ))
+  lazy val section7: WorkbookSection = {
+
+    val instr = LanguageMapContentId("TestWorkbook/sec7ex1Instr")
+    val solut = LanguageMapContentId("TestWorkbook/sec7ex1Solution")
+    val scaff = LanguageMapContentId("TestWorkbook/sec7ex1scaff1instr")
+    val grade = LanguageMapContentId("TestWorkbook/sec7ex1grade1Instr")
+
+    val scaffData = ContentForLlmInteraction(
+      scaff, Map(
+        LanguageMapContentId("TestWorkbook/sec7ex1scaff1stud1") -> LanguageMapContentId("TestWorkbook/sec7ex1scaff1resp1")
+      ))
+    val gradeData1 = ContentForLlmInteraction(
+      grade, Map(
+        LanguageMapContentId("TestWorkbook/sec7ex1grade1stud1") -> LanguageMapContentId("TestWorkbook/sec7ex1grade1resp1"),
+        LanguageMapContentId("TestWorkbook/sec7ex1grade1stud2") -> LanguageMapContentId("TestWorkbook/sec7ex1grade1resp2")
+      )
+    )
+
+    section("text-feedback-demo", "TestWorkbook/sec7", List(
+      container("TestWorkbook/sec7cont", List(
+        TextInputWithScaffoldingAndGrading(
+          "demo-feedback-1",
+          instr,
+          Some(solut),
+          Some(scaffData),
+          List(gradeData1)
+        ))
+      )))
+  }
 
   val exp1 = TurtleLineBasedProgram(List(
     Line[Double](Point(0, 0), Point(100, 0)),
@@ -53,70 +74,80 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   ))
 
   lazy val section1: WorkbookSection = {
+
+    val startingProgramJava: String =
+      """public class Drawing {
+        |  static void square(int side) {
+        |
+        |  }
+        |
+        |  public static void main(String[] args) {
+        |    square(25);
+        |  }
+        |}
+        |""".stripMargin
+
     val javaSquareInstructions = LanguageMapContentId("TestWorkbook/javaSquareInstructions")
-    section("sec1Id", "TestWorkbook/Sec1", List[WorkbookElement](
-      container("TestWorkbook/Sec1Cont1", List(
-        // Beginner turtle: native Snap (e.g. SnapProjectXml.mini), not ProgrammingStateJavaString(...).toSnapXml —
-        // class Java becomes JavaTurtleEditingBridge XML (custom blocks + metadata), not normal Snap blocks.
-        TurtleRecreateShapeInteraction(
-          "turtle-recreate-1",
-          ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
-          exp1,
-          ProgrammingEditorPalette.BeginnerTurtle,
-          Map("forward" -> 5)
-        ),
-        TurtleRecreateShapeInteraction(
-          "Turtle-Recreate-2",
-          ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
-          exp2,
-          ProgrammingEditorPalette.BeginnerTurtle,
-          Map("forward" -> 2)
-        ),
-        ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.BeginnerTurtle),
-        ProgrammingExerciseFullJava("prog-full-java"),
-        DisplayLangMapContent("java-square-pilot-instructions", javaSquareInstructions,
-          LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)),
-        ProgrammingExerciseFullJava("java-square-pilot", startingProgram = """public class Drawing {
-          |  static void square(int side) {
-          |
-          |  }
-          |
-          |  public static void main(String[] args) {
-          |    square(25);
-          |  }
-          |}
-          |""".stripMargin, hintTask = Some(javaSquareInstructions))
+
+    val cont1 = container("TestWorkbook/Sec1Cont1", List(
+      // 1
+      DisplayLangMapContent("instr-test-01",
+        LanguageMapContentId("TestWorkbook/Sec1Instr1"),
+        LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)),
+      TurtleRecreateShapeInteraction(
+        "turtle-recreate-1",
+        ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
+        exp1,
+        ProgrammingEditorPalette.BeginnerTurtle,
+        Map("forward" -> 5)
+      ),
+      // 2
+      DisplayLangMapContent("instr-test-02",
+        LanguageMapContentId("TestWorkbook/Sec1Instr2"),
+        LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)),
+      TurtleRecreateShapeInteraction(
+        "Turtle-Recreate-2",
+        ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
+        exp2,
+        ProgrammingEditorPalette.BeginnerTurtle,
+        Map("forward" -> 2)
       )
-      )))
+    ))
+    val cont2 = container("TestWorkbook/Sec1Cont1", List(
+      // 3
+      DisplayLangMapContent("instr-test-03",
+        LanguageMapContentId("TestWorkbook/Sec1Instr3"),
+        LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)),
+      ProgrammingExercise("prog-1", editorPalette = ProgrammingEditorPalette.BeginnerTurtle),
+
+      // 4
+      DisplayLangMapContent("instr-test-04",
+        LanguageMapContentId("TestWorkbook/Sec1Instr4"),
+        LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)),
+
+      DisplayLangMapContent("java-square-pilot-instructions", javaSquareInstructions,
+        LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)),
+      ProgrammingExerciseFullJava("java-square-pilot", startingProgram =
+        startingProgramJava, hintTask = Some(javaSquareInstructions))
+    ))
+
+    section("sec1Id", "TestWorkbook/Sec1", List[WorkbookElement](
+      cont1, cont2
+    ))
+
   }
 
   lazy val section2: WorkbookSection = {
     section(
       "sec2Id",
-      "TestWorkbook/section2Title",
+      "TestWorkbook/sec2",
       List(
         container(
-          "TestWorkbook/section2Subtitle1",
+          "TestWorkbook/sec2cont1",
           List(
-            instructionLabeledPair("TestWorkbook/goalTitle", "TestWorkbook/section2GoalText", GoalLabel),
-            instructionLabeledPair("TestWorkbook/instructionTitle", "TestWorkbook/section2InstructionText", TaskLabel),
-            instructionLabeledPair("TestWorkbook/hintTitle", "TestWorkbook/section2HintText", HintLabel)
-          )
-        ),
-        container(
-          "TestWorkbook/section2Subtitle2",
-          List(
-            ProgrammingExercise(
-              "prog-circle",
-              editorPalette = ProgrammingEditorPalette.BeginnerTurtle,
-              // Beginner palette has turn (right), not turnLeft: approximate a circle clockwise.
-              referencePython = Some(
-                """for i in range(36):
-                  |    forward(10)
-                  |    turn(10)
-                  |""".stripMargin
-              )
-            )
+            instructionLabeledPair("TestWorkbook/sec2cont1goalTitle", "TestWorkbook/sec2cont1goalText", GoalLabel),
+            instructionLabeledPair("TestWorkbook/sec2cont1instTitle", "TestWorkbook/sec2cont1instText", TaskLabel),
+            instructionLabeledPair("TestWorkbook/sec2cont1hintTitle", "TestWorkbook/sec2cont1hintText", HintLabel)
           )
         )
       )
@@ -144,16 +175,18 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
       SqlCommandExercise(
         elementId = "sql-students-demo",
         databaseConfig = SqlDatabaseConfig("school_exercises"),
-        initialSql = """SELECT students.name, students.grade, teachers.name AS teacher
-          |FROM students
-          |JOIN teachers ON students.teacher_id = teachers.id
-          |WHERE students.grade >= 10
-          |ORDER BY students.name;""".stripMargin
+        initialSql =
+          """SELECT students.name, students.grade, teachers.name AS teacher
+            |FROM students
+            |JOIN teachers ON students.teacher_id = teachers.id
+            |WHERE students.grade >= 10
+            |ORDER BY students.name;""".stripMargin
       )
     ))
   ))
 
   override def workbookId: String = "workbookTest"
+
   lazy val section5: WorkbookSection = section("evacuation-construction", "digitalWorkbooks/evacuationTitle", List(
     container("digitalWorkbooks/evacuationTitle", List(
       instructionPlaintext("digitalWorkbooks/evacuationExampleTask"),

@@ -1,55 +1,67 @@
-package it.evadid.workbook.abstractions.scaffolding
+package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateBeExpression, ProgrammingStateJavaString, ProgrammingStatePythonString}
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, Java, Python}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
-import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
-import it.evadid.distribution.clients.ExecutionClient
-import it.evadid.distribution.command.ExecutionCommand
+import it.evadid.distribution.command.{ExecutionCommand, SerializedException}
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.util.logging.BasicLogger
 import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
+import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
+import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingResult, GradingStatus, WorkbookInteractionGrader}
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.*
+import it.evadid.workbook.abstractions.scaffolding.{AdditionalInfoLlmScaffolding, ScaffoldingResult, ScaffoldingStatus, WorkbookInteractionScaffolder}
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookInteractionElementFull}
-import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus, WorkbookInteractionGrader}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingHintScaffolder.*
+import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestProgramObservation}
 import it.evadid.workbook.interaction.variable.InteractionVariableState
+import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.meta.ExecutionContextInformation.default.availableExecutionClients
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.util.Try
 
-final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionElementFull[ProgrammingState, ?, A],
-    publicTaskId: LanguageMapContentId)
-    extends WorkbookInteractionScaffolder[ProgrammingState, A] {
-  import ProgrammingHintScaffolder.*
+final class ProgrammingHintScaffolder(val interaction: ProgrammingExerciseFullJava,
+                                      publicTaskId: LanguageMapContentId)
+  extends WorkbookInteractionScaffolder[ProgrammingState, AdditionalInfoLlmScaffolding] {
 
-  private given ExecutionContext = ExecutionContext.global
 
-  override def generateFeedback(currentState: ProgrammingState, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[ScaffoldingResult[ProgrammingState, A]] =
-    Try {
-      val context = prepare(currentState)
-      val language = resolver.languageFuture()
-      language.zip(resolver.resolveMap(publicTaskId)).flatMap { (locale, translations) =>
-        val task = translations.tryGetInLanguage(locale).orElse(translations.tryGetInLanguage(English))
-          .filter(text => text != null && text.trim.nonEmpty && text.length <= 8000)
-          .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
-        verifyChecks(currentState, context, locale)
-        val request = context.request(locale, task)
-        val factory = LLMCommands.feedbackLlmCommandFactory
-        val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
-        val client = availableExecutionClients.find(_.canExecuteCommand(command))
-          .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
-        factory.sendCommandTo(client, request, Some(BasicLogger())).map { response =>
+  override def scaffoldingEntity: FeedbackEntity = LlmEntity()
+
+  override def handleFeedbackGeneration(currentState: ProgrammingState, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding]] = {
+    if (contextInformation.languageMapIdResolver.isEmpty) {
+      Future.failed(SerializedException("Llm Scaffolding needs a LanguageMapIdResolver!"))
+    } else {
+      Try {
+        val resolver = contextInformation.languageMapIdResolver.get
+        val context = prepare(currentState)
+        val language = resolver.languageFuture()
+        language.zip(resolver.resolveMap(publicTaskId)).flatMap { (locale, translations) =>
+          val task = translations.tryGetInLanguage(locale).orElse(translations.tryGetInLanguage(English))
+            .filter(text => text != null && text.trim.nonEmpty && text.length <= 8000)
+            .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
           verifyChecks(currentState, context, locale)
-          val hints = parse(response.result, context.evidenceIds(locale))
-          val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
-          val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
-          val conversation = MessengerModel(List(Message(accepted, MessengerModel.pAgent)))
-          ScaffoldingResult[ProgrammingState, A](currentState, LanguageMap.mapBasedLanguageMap(Map(locale -> text)),
-            FeedbackEntity.LlmEntity(conversation), None)
-        }
-      }
-    }.fold(Future.failed, identity)
+          val request = context.request(locale, task)
+          val factory = LLMCommands.feedbackLlmCommandFactory
+          val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
+          val client = availableExecutionClients.find(_.canExecuteCommand(command))
+            .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
+          factory.sendCommandTo(client, request, Some(BasicLogger())).map { response =>
+            verifyChecks(currentState, context, locale)
+            val hints = parse(response.result, context.evidenceIds(locale))
+            val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
+            val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
+            val conversation = MessengerModel(List(Message(accepted, MessengerModel.pAgent)))
+            val addInfo = Some(AdditionalInfoLlmScaffolding(conversation))
+            ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding](currentState, ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap(Map(locale -> text))),
+              FeedbackEntity.LlmEntity(), addInfo)
+          }(using contextInformation.futureExecutionContext)
+        }(using contextInformation.futureExecutionContext)
+
+      }.fold(Future.failed, identity)
+    }
+  }
 
   private def verifyChecks(state: ProgrammingState, context: Context, locale: HumanLanguage): Unit = {
     val current = prepare(state)
@@ -72,10 +84,11 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
       case (line, index) if line.trim.nonEmpty => s"source-${index + 1}" -> line
     }
     val variable = interaction.interactionVariable
-    val history = variable.history
-    require(history.lastStateOption.map(_.value).getOrElse(interaction.defaultValue) == state,
+    val history = variable.currentHistory
+    require(history.historyStates.lastStateOption.map(_.value).getOrElse(interaction.defaultValue) == state,
       "The answer changed while preparing this hint.")
-    val results = history.gradings.get(state).filter(_.state == state).toList.flatMap(_.testsWithResults.toList)
+    val results: Option[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] =
+      interaction.interactionVariable.control.getCurrentStateOfGrading().flatMap(_.graderResultMap.values.headOption) // ???
     val graders = interaction.gradingElements.filter { grader =>
       grader.importance != GradingImportance.HIDDEN_TEST && grader.gradingEntity == FeedbackEntity.TestEntity()
     }.distinct
@@ -101,7 +114,7 @@ final class ProgrammingHintScaffolder[A](val interaction: WorkbookInteractionEle
       }
       Check(s"check-${index + 1}", grader, grader.importance == GradingImportance.REQUIRED_TEST, latest)
     }
-    Context(sourceLanguage, source, sourceLines, checks, history.lastStateOption)
+    Context(sourceLanguage, source, sourceLines, checks, history.historyStates.lastStateOption)
   }
 }
 
@@ -109,7 +122,7 @@ object ProgrammingHintScaffolder {
   private val evidenceStatuses = Set("correct", "partially-correct", "incorrect")
 
   private case class PublicCheck(id: String, required: Boolean, status: String, description: Option[String],
-      programObservation: Option[ProgrammingTestProgramObservation] = None) {
+                                 programObservation: Option[ProgrammingTestProgramObservation] = None) {
     def outputId: String = s"$id-program-output"
 
     def toJson: ujson.Value = ujson.Obj.from(List("id" -> ujson.Str(id), "required" -> ujson.Bool(required),
@@ -122,7 +135,7 @@ object ProgrammingHintScaffolder {
   }
 
   private case class Check(id: String, grader: WorkbookInteractionGrader[ProgrammingState, ?], required: Boolean,
-      latest: List[(String, Map[HumanLanguage, String], Option[ProgrammingTestProgramObservation])]) {
+                           latest: List[(String, Map[HumanLanguage, String], Option[ProgrammingTestProgramObservation])]) {
     def localized(language: HumanLanguage): PublicCheck = {
       val values = latest.map { (status, descriptions, observation) =>
         (status, descriptions.get(language).orElse(descriptions.get(English)), observation)
@@ -135,7 +148,7 @@ object ProgrammingHintScaffolder {
   }
 
   private case class Context(sourceLanguage: String, source: String, sourceLines: Vector[(String, String)],
-      checks: List[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
+                             checks: List[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
     def localizedChecks(language: HumanLanguage): List[PublicCheck] = checks.map(_.localized(language))
 
     def evidenceIds(language: HumanLanguage): Set[String] = sourceLines.map(_._1).toSet ++ localizedChecks(language).flatMap {
@@ -153,6 +166,7 @@ object ProgrammingHintScaffolder {
       LLMCommands.FeedbackLlmRequest(prompt, systemPrompt)
     }
   }
+
   private case class Hint(question: String, evidenceIds: Vector[String]) {
     def toJson: ujson.Value = ujson.Obj("question" -> question, "evidenceIds" -> ujson.Arr.from(evidenceIds))
   }
@@ -194,13 +208,7 @@ object ProgrammingHintScaffolder {
       |Now respond only to the live JSON context. Return one question about the current source, with plain-text identifiers and no correction supplied.
       |""".stripMargin
 
-  private def statusName(status: GradingStatus): String = status match {
-    case GradingStatus.Correct() => "correct"
-    case GradingStatus.PartiallyCorrect() => "partially-correct"
-    case GradingStatus.Incorrect() => "incorrect"
-    case GradingStatus.NotExecuted() => "not-run"
-    case _: GradingStatus.TestError => "error"
-  }
+  private def statusName(status: GradingStatus): String = status.toString
 
   private val quotedIdentifier = "`([A-Za-z_$][A-Za-z0-9_$]*)`".r
 
@@ -236,4 +244,6 @@ object ProgrammingHintScaffolder {
     require(hints.map(_.question).distinct.size == hints.size)
     hints
   }.getOrElse(throw IllegalArgumentException("The hint response does not match the expected format."))
+
+
 }

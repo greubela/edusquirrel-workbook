@@ -14,22 +14,16 @@ import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffold
 object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFactory[TextInputWithScaffoldingAndGrading] {
   override protected def createRendering(element: TextInputWithScaffoldingAndGrading): AtomarLineRendering = {
     val variable = element.interactionVariable
-    val answer = variable.createBoundStateWithUpdateLogic(fullInfo.syncControl, TextInteraction.decideTextareaUpdateImportance).toAirstreamVar
+    val answer = variable.createBoundStateWithUpdateLogic( TextInteraction.decideTextareaUpdateImportance, fullInfo.executionContextInformation).toAirstreamVar
     def label(key: String) = laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
     val feedback: Signal[List[Element]] = {
-      val history = variable.observableState.toEventStream().toSignal(variable.history)
+      val history = variable.observableState.toEventStream().toSignal(variable.currentHistory)
       history.combineWith(answer.signal, fullInfo.signals.currentLanguage).map { (saved, source, language) =>
         element.gradingElements.flatMap { grader =>
-          saved.gradings.get(source).toList.flatMap(_.testsWithResults).filter(_.grader == grader)
+          saved.historyGrading.gradingsMap.get(source).flatMap(_.graderResultMap.values.headOption)
             .maxByOption(_.gradingTime).toList.filter(result => result.feedbackInformation.isEmpty ||
               result.feedbackInformation.flatMap(_.tryGetInLanguage(language)).nonEmpty).map { result =>
-              val key = result.gradingStatus match {
-                case GradingStatus.Correct() => "textGradingCorrect"
-                case GradingStatus.PartiallyCorrect() => "textGradingPartiallyCorrect"
-                case GradingStatus.Incorrect() => "textGradingIncorrect"
-                case _: GradingStatus.TestError => "gradingError"
-                case GradingStatus.NotExecuted() => "gradingNotExecuted"
-              }
+              val key = result.gradingStatus.toString
               div(cls := "text-input-feedback__result",
                 strong(child.text <-- label(key)),
                 result.feedbackInformation.flatMap(_.tryGetInLanguage(language)).map(text =>
@@ -40,8 +34,8 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
     }
     val content = div(
       cls := "text-input-feedback",
-      p(cls := "text-input-feedback__task", child.text <-- laminarHelper.plaintextStringSignal(element.exerciseText)),
-      SimpleTextEditor(answer).getDomElement().amend(aria.label <-- laminarHelper.plaintextStringSignal(element.exerciseText)),
+      p(cls := "text-input-feedback__task", child.text <-- laminarHelper.plaintextStringSignal(element.instructionText)),
+      SimpleTextEditor(answer).getDomElement().amend(aria.label <-- laminarHelper.plaintextStringSignal(element.instructionText)),
       Option.when(element.gradingElements.nonEmpty)(
         div(cls := "interaction-scaffolding",
           p(cls := "interaction-scaffolding__notice", child.text <-- label("gradingNotice")),

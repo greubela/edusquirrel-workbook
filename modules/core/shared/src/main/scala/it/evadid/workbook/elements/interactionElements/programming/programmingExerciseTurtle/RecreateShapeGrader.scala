@@ -1,8 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS
@@ -10,18 +9,21 @@ import it.evadid.workbook.abstractions.grading.GradingImportance.{OPTIONAL_TEST,
 import it.evadid.workbook.abstractions.grading.GradingStatus.{Correct, Incorrect, PartiallyCorrect}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGradingLogic.TurtleGraphicComparison
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGradingLogic.TurtleLineStatus.CORRECT
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
+import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
-import java.time.LocalDateTime
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 case class RecreateShapeGrader(desiredResult: TurtleGraphic, isRequired: Boolean, testId: String = "shape")
-    extends ProgrammingTestGrader derives ReadWriter {
+  extends ProgrammingTestGrader derives ReadWriter {
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
 
-  override def gradeState(state: ProgrammingState, availableExecutionClients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
-
+  override protected def handleGrading(
+                                        state: ProgrammingState,
+                                        contextInformation: ExecutionContextInformation
+                                      ): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
     val comp = TurtleGraphicComparison(TurtleGraphic(state.toBeExpression.deriveTurtleCommands), desiredResult)
     val incorrect = comp.difference.filter(_.status != CORRECT)
     val correct = comp.difference.filter(_.status == CORRECT)
@@ -30,13 +32,14 @@ case class RecreateShapeGrader(desiredResult: TurtleGraphic, isRequired: Boolean
       else if (correct.nonEmpty) PartiallyCorrect()
       else Incorrect()
     }
-    GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this,  state, grade)
+    GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, grade)
+  }(using contextInformation.futureExecutionContext)
 
-  }(using ExecutionContext.global)
 
   override def importance: GradingImportance = if (isRequired) REQUIRED_TEST else OPTIONAL_TEST
 
   override def runningBehavior: GraderRunningBehavior = RUN_ALWAYS
 
   override def gradingEntity: FeedbackEntity = TestEntity()
+
 }

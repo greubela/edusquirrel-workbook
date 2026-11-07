@@ -3,9 +3,12 @@ package it.evadid.core.datastructures.storage
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState}
-import AsyncDataCache.*
+import it.evadid.core.datastructures.storage.AsyncDataCache.*
+import it.evadid.core.datastructures.storage.AsyncDataCache.*
+import it.evadid.core.datastructures.storage.CacheElementStatus.*
 import it.evadid.distribution.command.SerializedException
 import it.evadid.util.logging.Logger
+import upickle.default.*
 
 import java.time.LocalDateTime
 import scala.collection.mutable
@@ -33,6 +36,12 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
     State(AsyncDataLoading[Nothing, O]())
   }
 
+  def getCurrentElementStatus(input: I, loadIfNotPresent: Boolean = false): CacheElementStatus = {
+    if (cachedRequests.contains(input)) {
+      cachedRequests(input).associatedStatus
+    } else UNKNOWN()
+  }
+
   def getSyncIfInCache(input: I, loadIfNotPresent: Boolean = true): Option[O] = syncLock.synchronized {
     val res: Option[O] = cachedRequests.get(input).match {
       case Some(finished: SucceededRequest[I, O]) => Some(finished.output)
@@ -43,6 +52,25 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
     }
     if (res.isEmpty && loadIfNotPresent) ensureCache(input)
     res
+  }
+
+  def informAboutExistingFuture(input: I, outFuture: Future[O], replaceIfExist: Boolean = false): Unit = syncLock.synchronized {
+    cacheLogger.logInfo("informed about existence of future for " + formatInputForLogging(input))
+
+    def startRequest(asyncState: State[AsyncDataState[Nothing, O]]): Unit = {
+      cacheLogger.logInfo("future is registered to deliver result (input: " + formatInputForLogging(input) + ")")
+      afterRequestStarted(input, asyncState, outFuture)
+    }
+
+    getCurrentElementStatus(input).match {
+      case UNKNOWN() => startRequest(emptyAsyncState)
+
+      case PRESENT() => if (replaceIfExist) startRequest(cachedRequests(input).getVariable)
+      case STARTED() => if (replaceIfExist) startRequest(cachedRequests(input).getVariable)
+
+      case FAILED(err) => startRequest(cachedRequests(input).getVariable)
+      case DELETED() => startRequest(cachedRequests(input).getVariable)
+    }
   }
 
   private def ensureCache(input: I, forceReloading: CachedRequest[I, O] => Boolean = _ => false): CachedRequest[I, O] = syncLock.synchronized {
@@ -64,17 +92,21 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
     }
   }
 
-  private def startExecution(input: I, outputVar: State[AsyncDataState[Nothing, O]]): StartedRequest[I, O] = syncLock.synchronized {
+  private def startExecution(input: I, outputVar: State[AsyncDataState[Nothing, O]]): CachedRequest[I, O] = syncLock.synchronized {
     cacheLogger.logInfo("requested execution for " + formatInputForLogging(input))
     execution_requested = execution_requested + 1
-    val fetchedRequest = StartedRequest(this, input, outputVar)
-    cachedRequests.put(input, fetchedRequest)
-    executeLoading(input)(ExecutionContext.Implicits.global).onComplete {
-      case Success(outputData) => fetchedRequest.succeeded(outputData)
-      case Failure(error) => fetchedRequest.failed(input, error)
-    }(using ExecutionContext.Implicits.global)
+    val outFuture = executeLoading(input)(ExecutionContext.global)
+    afterRequestStarted(input, outputVar, outFuture)
+  }
 
-    fetchedRequest
+  private def afterRequestStarted(input: I, outputVar: State[AsyncDataState[Nothing, O]], outFuture: Future[O]): CachedRequest[I, O] = {
+    val startedRequest = StartedRequest(this, input, outputVar)
+    cachedRequests.put(input, startedRequest)
+    outFuture.onComplete {
+      case Success(outputData) => startedRequest.succeeded(outputData)
+      case Failure(error) => startedRequest.failed(input, error)
+    }(using ExecutionContext.Implicits.global)
+    startedRequest
   }
 
   // public api
@@ -186,6 +218,8 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
 
 object AsyncDataCache {
 
+
+
   private[storage] trait CachedRequest[I, O] {
 
     val associatedStore: AsyncDataCache[I, O]
@@ -197,6 +231,8 @@ object AsyncDataCache {
     def getVariable: State[AsyncDataState[Nothing, O]]
 
     def requestCompletedAt: Option[LocalDateTime] = None
+
+    def associatedStatus: CacheElementStatus
 
   }
 
@@ -210,6 +246,7 @@ object AsyncDataCache {
 
     override def requestCompletedAt: Option[LocalDateTime] = Some(timestamp)
 
+    override def associatedStatus: CacheElementStatus = PRESENT()
   }
 
   private[storage] case class FailedRequest[I, O](associatedStore: AsyncDataCache[I, O], input: I, outputVar: State[AsyncDataState[Nothing, O]], cause: Throwable, timestamp: LocalDateTime = LocalDateTime.now()) extends CachedRequest[I, O] {
@@ -225,6 +262,7 @@ object AsyncDataCache {
 
     override def requestCompletedAt: Option[LocalDateTime] = Some(timestamp)
 
+    override def associatedStatus: CacheElementStatus = FAILED(SerializedException(cause))
   }
 
   private[storage] case class DeletedRequest[I, O](associatedStore: AsyncDataCache[I, O], input: I, outputVar: State[AsyncDataState[Nothing, O]]) extends CachedRequest[I, O] {
@@ -235,6 +273,7 @@ object AsyncDataCache {
 
     def getVariable: State[AsyncDataState[Nothing, O]] = associatedStore.startExecution(input, outputVar).getVariable
 
+    override def associatedStatus: CacheElementStatus = DELETED()
   }
 
   private[storage] case class StartedRequest[I, O](associatedStore: AsyncDataCache[I, O], input: I, outputVar: State[AsyncDataState[Nothing, O]]) extends CachedRequest[I, O] {
@@ -267,6 +306,8 @@ object AsyncDataCache {
       outputVar.set(AsyncDataFailed(SerializedException(cause), None))
       waitingPromise.foreach(promise => promise.failure(cause))
     }
+
+    override def associatedStatus: CacheElementStatus = STARTED()
   }
 
 

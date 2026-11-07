@@ -1,10 +1,20 @@
 package it.evadid.homepage.control.model
 
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.language.AppLanguage.English
+import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, LanguageMapContentId}
+import it.evadid.core.datastructures.state.StateHelper.RichSignal
+import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.info.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.workbook.interaction.sync.SyncControl
+import it.evadid.workbook.meta.ExecutionContextInformation
+
+import scala.concurrent.{ExecutionContext, Future}
+
 
 case class FullInfo(
                      // val defaults: HomepageDefaults,
@@ -14,10 +24,27 @@ case class FullInfo(
 
   val defaults: HomepageDefaults = HomepageDefaults(this)
 
+  lazy val executionContextInformation: ExecutionContextInformation = new ExecutionContextInformation() {
+    private val currentLanguageObservable = signals.currentLanguage.toObservableValue
+
+    override def availableExecutionClients: List[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutor)
+
+    override def getCurrentLanguage: AppLanguage.HumanLanguage = currentLanguageObservable.now().getOrElse(English)
+
+    override def languageMapIdResolver: Option[LanguageMapIdResolver] = Some(new LanguageMapIdResolver(currentLanguageObservable) {
+      override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = Future {
+        fullInfo.homepageInfoState.now().languageMapStore.languageMaps(id)
+      }(using ExecutionContext.global)
+    })
+
+    override def futureExecutionContext: ExecutionContext = ExecutionContext.global
+
+    override def syncControl: Option[SyncControl] = Some(fullInfo.syncControl)
+  }
+
+
   private[control] val homepageInfoState: Var[HomepageInfo] = Var(defaultInfo)
 
-  
-  
   def homepageInfoNow(): HomepageInfo = homepageInfoState.now()
 
   /* INFO */

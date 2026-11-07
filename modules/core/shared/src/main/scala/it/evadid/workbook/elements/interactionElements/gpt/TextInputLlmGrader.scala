@@ -1,22 +1,34 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
-import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
+import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.LLMCommands.FeedbackLlmRequest
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
+import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
 import scala.concurrent.Future
 
-case class TextInputLlmGrader(exerciseText: LanguageMapContentId, criterion: LanguageMapContentId)
-    extends WorkbookInteractionGrader[String, MessengerModel] derives ReadWriter {
-  override val importance = GradingImportance.REQUIRED_TEST
-  override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
-  override val gradingEntity: FeedbackEntity = FeedbackEntity.LlmEntity(MessengerModel.empty)
+case class TextInputLlmGrader(
+                               exerciseText: LanguageMapContentId,
+                               solution: Option[LanguageMapContentId],
+                               gradeData: ContentForLlmInteraction)
+  extends WorkbookInteractionGrader[String, MessengerModel] derives ReadWriter {
 
+  override val importance: GradingImportance = GradingImportance.REQUIRED_TEST
+  override val runningBehavior: GraderRunningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
+  override val gradingEntity: FeedbackEntity = FeedbackEntity.LlmEntity()
+
+  override protected def handleGrading(state: String, contextInformation: ExecutionContextInformation): Future[GradingResult[String, MessengerModel]] = {
+    ???
+  }
+
+
+  /*
   override def gradeState(state: String, clients: List[ExecutionClient]): Future[GradingResult[String, MessengerModel]] =
     Future.failed(IllegalArgumentException("LLM grading requires a language map resolver."))
 
@@ -32,9 +44,11 @@ case class TextInputLlmGrader(exerciseText: LanguageMapContentId, criterion: Lan
       TextInputLlmSupport.send(request, clients).flatMap { response =>
         val conversation = MessengerModel(List(Message(system, MessengerModel.pWorkbook),
           Message(prompt, MessengerModel.pFallbackStudent), Message(Option(response).getOrElse(""), MessengerModel.pAgent)))
+
         def result(status: GradingStatus, feedback: String, transcript: MessengerModel): GradingResult[String, MessengerModel] =
           GradingResult(this, state, status,
             Option.when(feedback.nonEmpty)(LanguageMap.mapBasedLanguageMap(Map(language -> feedback))), Some(transcript))
+
         TextInputLlmGrader.parse(response) match {
           case Some((feedback, status)) => Future.successful(result(status, feedback, conversation))
           case None =>
@@ -52,6 +66,10 @@ case class TextInputLlmGrader(exerciseText: LanguageMapContentId, criterion: Lan
         }
       }
     }
+
+   */
+
+
 }
 
 object TextInputLlmGrader {
@@ -61,8 +79,11 @@ object TextInputLlmGrader {
     case "PARTIALL_CORRECT" => Some(GradingStatus.PartiallyCorrect())
     case _ => None
   }
+
   private[gpt] def parse(response: String): Option[(String, GradingStatus)] = Option(response).map(_.trim).flatMap { text =>
     val boundary = text.lastIndexWhere(_.isWhitespace)
     status(text.substring(boundary + 1)).map(text.substring(0, boundary + 1).trim -> _)
   }
+
+
 }

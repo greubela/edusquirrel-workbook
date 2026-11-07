@@ -7,11 +7,11 @@ import it.evadid.homepage.webElements.editor.blockchain.BlockchainEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
+import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 
 case object BlockchainRenderer extends LineBasedRenderingFactory[BlockchainInteraction] {
   override protected def createRendering(e: BlockchainInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl,
-      it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.executionContextInformation).toAirstreamVar
     val open = HtmlButtonElement.withTextLabel("basic/OpenEditor", _ =>
       fullInfo.displayControl.setFullscreen(BlockchainEditor(state, e.initial, e.difficultyZeros, e.isDisabledState.toAirstreamVar.signal)))
     val summary = p(cls := "blockchain-preview", role := "status",

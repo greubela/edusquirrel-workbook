@@ -13,7 +13,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 case object BinaryPixelRenderer extends LineBasedRenderingFactory[BinaryPixelInteraction] {
   private val headerScope = new HtmlAttr[String]("scope", StringAsIsCodec)
   override protected def createRendering(e: BinaryPixelInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation).toAirstreamVar
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
     def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")
     def grid(image: Signal[BinaryPixelImage], editable: Boolean): Element = div(cls := "pixel-grid-scroll", table(

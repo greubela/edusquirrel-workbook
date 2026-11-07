@@ -86,7 +86,6 @@ object WorkbookStructureElement {
 }
 
 trait WorkbookInteractionElementFull[T: ReadWriter, GA: ReadWriter, SA: ReadWriter] extends WorkbookElement {
-
   override lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] =
     List(this) ++ childrenOfThisElement.flatMap(_.allInteractionsInThisInstance)
   lazy val isDisabledState: State[Boolean] = State(false)
@@ -94,10 +93,10 @@ trait WorkbookInteractionElementFull[T: ReadWriter, GA: ReadWriter, SA: ReadWrit
   lazy val interactionVariable: InteractionVariable[T, GA, SA] = InteractionVariable[T, GA, SA](this)
 
   val defaultValue: T
-  val serializerInteractionContent: Serializer[T] = Serializer.fromImplicitRW
 
   val gradingElements: List[WorkbookInteractionGrader[T, GA]] = List()
   val scaffoldingElement: Option[WorkbookInteractionScaffolder[T, SA]] = None
+  val serializerInteractionContent: Serializer[T] = Serializer.fromImplicitRW
 }
 
 type WorkbookInteractionElement[T] = WorkbookInteractionElementFull[T, Any, Any]

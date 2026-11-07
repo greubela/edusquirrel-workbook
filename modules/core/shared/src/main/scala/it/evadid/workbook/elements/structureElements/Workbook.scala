@@ -1,18 +1,22 @@
 package it.evadid.workbook.elements.structureElements
 
+import cats.data
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
+import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookStructuringType.WORKBOOK
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement, WorkbookInteractionUntyped, WorkbookStructureElement, WorkbookStructuringType}
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionUntyped, WorkbookStructureElement, WorkbookStructuringType}
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
+import it.evadid.workbook.interaction.sync.SyncContext
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import it.evadid.workbook.meta.ExecutionContextInformation
 import ujson.Value
 import upickle.default
 import upickle.default.*
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
+
 case class Workbook(
                      elementId: String,
                      metadata: WorkbookMetadata,
@@ -30,6 +34,16 @@ case class Workbook(
 
   override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = Workbook.factory
 
+
+  def loadDataNoUserCheck(logger: Logger, data: Map[SyncContext, String], executionContextInformation: ExecutionContextInformation): Unit = {
+    allInteractionsInThisInstance.foreach(curInteraction => {
+      data.keys.foreach(curSyncContext => {
+        if (curInteraction.interactionVariable.keyForSerialization == curSyncContext.keyForSerialisation) {
+          curInteraction.interactionVariable.addSerializedHistory(logger, data(curSyncContext), executionContextInformation)
+        }
+      })
+    })
+  }
 }
 
 

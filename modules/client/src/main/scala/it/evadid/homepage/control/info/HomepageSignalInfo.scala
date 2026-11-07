@@ -18,13 +18,6 @@ import scala.concurrent.*
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 
 
-  lazy val idResolver: LanguageMapIdResolver = new LanguageMapIdResolver(currentLanguage.toObservableValue) {
-    override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = Future {
-      fullInfo.homepageInfoState.now().languageMapStore.languageMaps(id)
-    }(using ExecutionContext.global)
-  }
-
-
   private lazy val baseSignal: StrictSignal[HomepageInfo] = {
     fullInfo.homepageInfoState.signal
   }

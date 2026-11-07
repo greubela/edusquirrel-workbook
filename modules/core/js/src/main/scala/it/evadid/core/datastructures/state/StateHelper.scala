@@ -7,6 +7,8 @@ import it.evadid.core.datastructures.state.observable.{ObservableValue, Observab
 import it.evadid.workbook.interaction.sync.UpdateImportance.TEMPORARY
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.interaction.variable.InteractionVariable
+import it.evadid.workbook.meta.ExecutionContextInformation
+import jdk.jpackage.internal.Arguments.CLIOptions.context
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
@@ -109,17 +111,18 @@ object StateHelper {
 
   implicit class InteractionVariableOnJS[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA]) {
 
-    def createBoundVarWithUpdateImportance(syncControl: SyncControl, updateImportance: UpdateImportance): Var[T] = {
-      val state = interactionVariable.createBoundStateWithUpdateImportance(syncControl, updateImportance)
+    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[T] = {
+
+      val state = interactionVariable.createBoundStateWithUpdateImportance(updateImportance, context)
       fromStateToAirstreamVar(state)
     }
 
-    def createInteractionSignal(syncControl: SyncControl): StrictSignal[T] = {
+    def createInteractionSignal(context: ExecutionContextInformation): StrictSignal[T] = {
       // val res = Var[T](interactionVariable.currentValue)
       //interactionVariable.observableValue.addObserver(newValue => res.set(newValue))
       //res.signal
 
-      createBoundVarWithUpdateImportance(syncControl, TEMPORARY).signal
+      createBoundVarWithUpdateImportance( TEMPORARY, context).signal
     }
 
   }
@@ -140,7 +143,6 @@ object StateHelper {
     state.observable.addObserver(nextValue => if (airstreamVar.now() != nextValue) airstreamVar.set(nextValue))
     airstreamVar.signal.distinct.foreach(nextValue => if (state.now() != nextValue) state.set(nextValue))(using unsafeWindowOwner)
   }
-
 
 
 }

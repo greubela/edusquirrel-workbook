@@ -14,13 +14,14 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.*
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementSingle
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.RenderingWorkbookElementLine
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.{InteractionInfoPanel, InteractionScaffoldingPanel}
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.{InteractionInfoPanel, InteractionScaffoldingPanel}
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.abstractions.grading.*
-import it.evadid.workbook.abstractions.scaffolding.{ProgrammingHintScaffolder, ScaffoldingResult, WorkbookInteractionScaffolder}
+import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, WorkbookInteractionScaffolder}
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingHintScaffolder
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import org.scalajs.dom
 import scala.concurrent.{Future, Promise}
@@ -133,7 +134,7 @@ class EvaEditorSpec extends EditorDomSuite {
     def button: dom.html.Button = element.ref.querySelector(".interaction-grading__request").asInstanceOf[dom.html.Button]
     def status: String = element.ref.querySelector(".interaction-grading__status").getAttribute("data-status")
     def change(answer: String): Unit = variable.setStateFromUserInteraction(fullInfo.syncControl, answer,
-      it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, variable.history.lastStateOption.get.timestamp.plusSeconds(1))
+      it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, variable.currentHistory.lastStateOption.get.timestamp.plusSeconds(1))
     def answer(index: Int, status: GradingStatus): Unit = {
       val (source, pending) = requests.now()(index)
       pending.success(GradingResult(grader, source, status,
@@ -144,7 +145,7 @@ class EvaEditorSpec extends EditorDomSuite {
     val global = js.Dynamic.global.globalThis
     val previous = global.selectDynamic("Worker")
     global.updateDynamic("Worker")(js.constructorOf[GradingWorker])
-    try fullInfo.defaults.workerBackendExecutor
+    try fullInfo.defaults.workerExecuter
     finally global.updateDynamic("Worker")(previous)
     val fixture = new GradingFixture(hidden)
     fixture.open()
@@ -153,7 +154,7 @@ class EvaEditorSpec extends EditorDomSuite {
 
   test("manual grading uses the generic info controls once per click batch and publishes only safe status") {
     withGrading() { f =>
-      val events = f.variable.history.events
+      val events = f.variable.currentHistory.events
       val terminations = gradingWorkerTerminations.now()
       assertEquals(f.requests.now(), Vector.empty)
       assertEquals(f.status, "gradingNotRun")
@@ -163,7 +164,7 @@ class EvaEditorSpec extends EditorDomSuite {
         assertEquals(f.requests.now().map(_._1), Vector("original answer"))
         assertEquals(f.forced.now(), Vector(true))
         assertEquals(f.resolvers.now().size, 1)
-        assertEquals(f.clients.now(), Vector(List(fullInfo.defaults.workerBackendExecutor, fullInfo.defaults.backendExecutor)))
+        assertEquals(f.clients.now(), Vector(List(fullInfo.defaults.workerExecuter, fullInfo.defaults.backendExecutor)))
         assert(f.button.disabled)
         assertEquals(f.status, "gradingLoading")
         f.answer(0, GradingStatus.Correct())
@@ -173,8 +174,8 @@ class EvaEditorSpec extends EditorDomSuite {
         assertEquals(f.status, "gradingCorrect")
         assert(!f.element.ref.textContent.contains("private"))
         assertEquals(f.variable.currentValue, "original answer")
-        assertEquals(f.variable.history.events, events)
-        assert(f.variable.history.gradings.contains("original answer"))
+        assertEquals(f.variable.currentHistory.events, events)
+        assert(f.variable.currentHistory.gradings.contains("original answer"))
         f.close()
         assertEquals(gradingWorkerTerminations.now(), terminations)
         val editor = new HtmlAppElement { override def getDomElement(): Element = div("Editor") }
@@ -278,7 +279,7 @@ class EvaEditorSpec extends EditorDomSuite {
     val resolvers = Var(Vector.empty[LanguageMapIdResolver])
     val pending = Promise[HintResult]()
     val scaffolder = new WorkbookInteractionScaffolder[String, String] {
-      override def generateFeedback(state: String, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[HintResult] = {
+      override def handleFeedbackGeneration(state: String, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[HintResult] = {
         requested.update(_ :+ state)
         clients.update(_ :+ availableExecutionClients)
         resolvers.update(_ :+ resolver)
@@ -293,14 +294,14 @@ class EvaEditorSpec extends EditorDomSuite {
       override val scaffoldingElement = Some(scaffolder)
     }
     val variable = interaction.interactionVariable
-    val before = variable.history
+    val before = variable.currentHistory
     val element = RenderingWorkbookElementLine(interaction, new DomElementSingle(div("Answer")), "").render
     val close = mount(element)
     later().flatMap { _ =>
       assertEquals(requested.now(), Vector.empty)
       assertEquals(clients.now(), Vector.empty)
       assertEquals(resolvers.now(), Vector.empty)
-      assertEquals(variable.history, before)
+      assertEquals(variable.currentHistory, before)
       assertEquals(element.ref.querySelector(".interaction-scaffolding"), null)
       element.ref.querySelector(".interaction-info__hint-toggle").asInstanceOf[dom.html.Button].click()
       assertEquals(requested.now(), Vector.empty)
@@ -320,9 +321,9 @@ class EvaEditorSpec extends EditorDomSuite {
         FeedbackEntity.TestEntity(), None)
       pending.success(feedback)
       later().map { _ =>
-        assertEquals(variable.history.scaffoldings, Map(feedback.forState -> feedback))
-        assertEquals(variable.history.events, before.events)
-        assertEquals(variable.history.gradings, before.gradings)
+        assertEquals(variable.currentHistory.scaffoldings, Map(feedback.forState -> feedback))
+        assertEquals(variable.currentHistory.events, before.events)
+        assertEquals(variable.currentHistory.gradings, before.gradings)
         assertEquals(variable.currentValue, interaction.defaultValue)
         assertEquals(element.ref.querySelector("[role='status']").textContent, "1. What changes here?")
         assertEquals(element.ref.querySelector(".status-correct"), null)
@@ -376,12 +377,12 @@ class EvaEditorSpec extends EditorDomSuite {
       Future.successful("""{"hints":[{"question":"Wo beginnt dein Programm?","evidenceIds":["source-1"]}]}""")
     }
     val variable = interaction.interactionVariable
-    val before = variable.history
+    val before = variable.currentHistory
     val context = new EventBus[Unit]
     val label = Signal.fromValue("Hint")
     val panel = new InteractionScaffoldingPanel[ProgrammingState, String](
       () => variable.currentValue, variable.observableValue.toEventStream(), language.signal, context.events,
-      state => interaction.scaffoldingElement.get.generateFeedback(state, List(client), resolver),
+      state => interaction.scaffoldingElement.get.handleFeedbackGeneration(state, List(client), resolver),
       result => variable.updateHistory(_.updateScaffoldings(_ + (result.forState -> result))),
       InteractionScaffoldingPanel.Labels(label, label, label, label, label, label))
     val element = panel.getDomElement()
@@ -396,7 +397,7 @@ class EvaEditorSpec extends EditorDomSuite {
       sent.future.flatMap(_ => later())
     }.map { _ =>
       assertEquals(calls.now(), 1)
-      assertEquals(variable.history, before)
+      assertEquals(variable.currentHistory, before)
       assertEquals(element.ref.querySelector("[role='status']").textContent, "")
       assert(!element.ref.querySelector(".interaction-scaffolding__request").asInstanceOf[dom.html.Button].disabled)
     }.andThen { case _ => release() }
@@ -408,7 +409,7 @@ class EvaEditorSpec extends EditorDomSuite {
     type Result = ScaffoldingResult[ProgrammingState, String]
     val requests = Var(Vector.empty[(ProgrammingState, Promise[Result])])
     val scaffolder = new WorkbookInteractionScaffolder[ProgrammingState, String] {
-      override def generateFeedback(source: ProgrammingState, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[Result] = {
+      override def handleFeedbackGeneration(source: ProgrammingState, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[Result] = {
         val result = Promise[Result]()
         requests.update(_ :+ (source -> result))
         result.future
@@ -459,7 +460,7 @@ class EvaEditorSpec extends EditorDomSuite {
         LanguageMap.universalMap("Old hint"), FeedbackEntity.TestEntity(), None))
       later()
     }.flatMap { _ =>
-      assertEquals(variable.history.scaffoldings, Map.empty)
+      assertEquals(variable.currentHistory.scaffoldings, Map.empty)
       val current: ProgrammingState = ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { Turtle.forward(30); } }")
       answer.set(current)
       val second = open()
@@ -468,15 +469,15 @@ class EvaEditorSpec extends EditorDomSuite {
       request(second)
       later().flatMap { _ =>
         assertEquals(requests.now().map(_._1), Vector(interaction.defaultValue, current))
-        val events = variable.history.events
+        val events = variable.currentHistory.events
         val feedback = ScaffoldingResult[ProgrammingState, String](current,
           LanguageMap.universalMap("Check the distance."), FeedbackEntity.TestEntity(), None)
         requests.now().last._2.success(feedback)
         later().map { _ =>
-          assertEquals(variable.history.scaffoldings, Map(current -> feedback))
-          assertEquals(variable.history.events, events)
+          assertEquals(variable.currentHistory.scaffoldings, Map(current -> feedback))
+          assertEquals(variable.currentHistory.events, events)
           assertEquals(variable.currentValue, current)
-          assertEquals(variable.history.gradings, Map.empty)
+          assertEquals(variable.currentHistory.gradings, Map.empty)
           assert(second.ref.querySelector(".interaction-element-info").contains(second.ref.querySelector(".interaction-scaffolding")))
         }
       }
@@ -492,7 +493,7 @@ class EvaEditorSpec extends EditorDomSuite {
       override lazy val childrenOfThisElement = List.empty[WorkbookElement]
       override val associatedFactory = TextInteraction.factory
       override val scaffoldingElement = Some(new WorkbookInteractionScaffolder[String, String] {
-        override def generateFeedback(source: String, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[HintResult] = {
+        override def handleFeedbackGeneration(source: String, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[HintResult] = {
           requested.update(_ + 1)
           pending.future
         }
@@ -522,7 +523,7 @@ class EvaEditorSpec extends EditorDomSuite {
       assertEquals(dom.document.activeElement, toggle)
       pending.success(ScaffoldingResult("answer", LanguageMap.universalMap("Old hint"), FeedbackEntity.TestEntity(), None))
       later().map { _ =>
-        assertEquals(interaction.interactionVariable.history.scaffoldings, Map.empty)
+        assertEquals(interaction.interactionVariable.currentHistory.scaffoldings, Map.empty)
         assertEquals(interaction.interactionVariable.currentValue, "answer")
       }
     }.andThen { case _ => release() }

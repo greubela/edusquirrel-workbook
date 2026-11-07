@@ -75,7 +75,7 @@ class HistoryJsonSpec extends FunSuite {
     variable.updateHistory(_ => withHint)
     assertEquals(location.dataToStore(variable).head.timestamp, hint.scaffoldingTime)
     assertEquals(HistoryJson.lastTimestamp(HistoryJson.stored("answer_history",write(withHint))), Some(hint.scaffoldingTime))
-    assertEquals(variable.history.events, Set(event), "feedback never creates a fake edit")
+    assertEquals(variable.currentHistory.events, Set(event), "feedback never creates a fake edit")
     type History = InteractionVariableHistory[String, MessengerModel, MessengerModel]
     val key = location.usageContext.toSyncContext(variable.keyForSerialization)
     val stale = SyncStatus[it.evadid.workbook.interaction.sync.SyncContext, History](Some(grade.gradingTime), key, None)

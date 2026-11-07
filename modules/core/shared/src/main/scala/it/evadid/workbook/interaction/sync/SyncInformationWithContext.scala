@@ -9,6 +9,7 @@ import it.evadid.workbook.interaction.variable.{InteractionVariable, Interaction
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
+import upickle.default.*
 
 case class SyncInformationWithContext(syncInformation: SyncInformation, usageContext: UsageContext) extends CacheKey[SyncContext, String] {
 
@@ -25,10 +26,12 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
   }
 
   def dataToStore[T, GA, SA](variable: InteractionVariable[T, GA, SA]): List[DataEntryToSync[SyncContext, String]] = {
-    val historyToStore = variable.history.filterWithStrategy(syncInformation.syncStrategy)
-    val syncContext = usageContext.toSyncContext(variable.keyForSerialization)
-    if (historyToStore.events.isEmpty) List()
-    else List(DataEntryToSync(syncContext, variable.serializeHistory(historyToStore), historyToStore.latestChangeTimestamp.get, CLIENT_TO_SERVER))
+    val historyToStore: InteractionVariableHistory[T, GA, SA] = variable.currentHistory.filterWithStrategy(syncInformation.syncStrategy)
+    val rw: ReadWriter[InteractionVariableHistory[T, GA, SA]] = ???
+    val syncContext: SyncContext = usageContext.toSyncContext(variable.keyForSerialization)
+
+    if (historyToStore.size == 0) List()
+    else List(DataEntryToSync(syncContext, write(historyToStore)(using rw), historyToStore.timestampLastChanged.get, CLIENT_TO_SERVER))
   }
 
   lazy val reader: RemoteDataReader[SyncContext, String] = new RemoteDataReader[SyncContext, String]() {

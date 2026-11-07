@@ -10,6 +10,7 @@ import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRende
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
 import it.evadid.workbook.elements.interactionElements.slideshow.*
 import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 
 /**
  * Renders core slideshow interactions using the legacy slide-deck HTML structure and styles.
@@ -22,7 +23,7 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
    * When navigation succeeds, the method updates the bound interaction state through the model-level transition recorder instead of constructing event data directly.
    */
   override protected def createRendering(workbookElement: Slideshow): AtomarLineRendering = {
-    val stateVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR).toAirstreamVar
+    val stateVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.executionContextInformation).toAirstreamVar
     val totalSlides = workbookElement.panelSize
 
     def safeIndex(state: SlideshowState): Int = {

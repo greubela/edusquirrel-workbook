@@ -17,7 +17,6 @@ import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
-import it.evadid.workbook.abstractions.scaffolding.ProgrammingHintScaffolder
 import it.evadid.distribution.command.SerializedException
 import upickle.default.*
 import it.evadid.core.datastructures.state.State
@@ -956,7 +955,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       assertEquals(info.programObservation.get.commandCount, 33)
       assertEquals(info.programObservation.get.commands.size, 32)
       variable.updateHistory(history => history.copy(gradings = Map(state -> GradedState(state, Set(result)))))
-      val history = variable.history
+      val history = variable.currentHistory
       List(variable.deserializeHistory(variable.serializeHistory(history)),
         readBinary[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, Any]](writeBinary(history))).foreach { restored =>
         assertEquals(restored, history)
@@ -1178,7 +1177,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       val state = variable.currentValue
       val result = GradingResult(exercise.gradingElements.head, state, GradingStatus.Correct(), additionalData = Some(info))
       variable.updateHistory(history => history.copy(gradings = Map(state -> GradedState(state, Set(result)))))
-      val original = variable.history
+      val original = variable.currentHistory
       val restored = List(variable.deserializeHistory(variable.serializeHistory(original)),
         readBinary[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, Any]](writeBinary(original)))
       restored.foreach { history =>
@@ -1209,7 +1208,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       assertEquals(restored, result)
     }
     variable.updateHistory(history => history.copy(gradings = Map(state -> GradedState(state, Set(result)))))
-    val original = variable.history
+    val original = variable.currentHistory
     assertEquals(variable.deserializeHistory(variable.serializeHistory(original)), original)
     assertEquals(readBinary[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, Any]](
       writeBinary(original)), original)
@@ -1296,7 +1295,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     variable.updateHistory(_.copy(events = Set(InteractionVariableState(state, UpdateImportance.MAJOR, LocalDateTime.now()))))
     variable.startGrading(null, List(client), forceGrading = true).map { _ =>
       assertEquals(calls.now(), graders.map(_.testId -> 1).toMap)
-      val results = variable.history.gradings(state).testsWithResults
+      val results = variable.currentHistory.gradings(state).testsWithResults
       assertEquals(results.size, 5)
       assert(results.forall(_.gradedState == state))
       val statuses = results.map(result => result.grader.asInstanceOf[ProgrammingTestGrader].testId -> result.gradingStatus).toMap
@@ -1305,7 +1304,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       assertEquals(statuses("failed"), GradingStatus.Incorrect())
       assert(statuses("invalid").isInstanceOf[GradingStatus.TestError])
       assert(statuses("unavailable").isInstanceOf[GradingStatus.TestError])
-      assert(!write(variable.history).contains("private transport detail"))
+      assert(!write(variable.currentHistory).contains("private transport detail"))
     }
   }
 
@@ -1322,7 +1321,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](second, state, GradingStatus.Correct(), gradingTime = time))
     assertEquals(results.size, 2)
     variable.updateHistory(history => history.copy(gradings = Map(state -> GradedState(state, results))))
-    val history = variable.history
+    val history = variable.currentHistory
     List(variable.deserializeHistory(variable.serializeHistory(history)),
       readBinary[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, Any]](writeBinary(history))).foreach { restored =>
       assertEquals(restored, history)

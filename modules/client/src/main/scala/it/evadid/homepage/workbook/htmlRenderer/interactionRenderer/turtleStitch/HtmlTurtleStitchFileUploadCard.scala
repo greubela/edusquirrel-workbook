@@ -13,6 +13,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
 
+import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
@@ -35,7 +36,7 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteract
   private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
     println("file read successfully, content has " + bytes.length + " bytes!")
     TurtleStitchProjectState.parseFromBytes(bytes).match {
-      case Success(newState) => workbookInteraction.interactionVariable.setStateFromUserInteraction(fullInfo.syncControl, newState, UpdateImportance.MAJOR)
+      case Success(newState) => workbookInteraction.interactionVariable.setStateFromUserInteraction(newState, UpdateImportance.MAJOR, LocalDateTime.now(), fullInfo.executionContextInformation)
       case Failure(err) => println("HtmlTurtleStitchFileUploadCardRenderer::onFileReadSuccessfully error: " + err.getMessage)
     }
   }

@@ -9,7 +9,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object ChoiceInteractionRenderer extends LineBasedRenderingFactory[ChoiceInteraction] {
   override protected def createRendering(e: ChoiceInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation).toAirstreamVar
     val controls = fieldSet(cls := "choice-interaction",
       legend(text <-- laminarHelper.plaintextStringSignal(e.prompt)),
       e.options.zipWithIndex.map { (optionId, i) => label(

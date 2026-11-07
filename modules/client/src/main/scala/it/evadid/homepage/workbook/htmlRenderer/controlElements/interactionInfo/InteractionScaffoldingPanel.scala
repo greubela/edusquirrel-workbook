@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.htmlRenderer.controlElements
+package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
@@ -6,11 +6,10 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 
 import scala.concurrent.Future
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
-import scala.util.{Failure, Success, Try}
+import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout}
 
 object InteractionScaffoldingPanel {
+
   case class Labels(request: Signal[String], loading: Signal[String], dismiss: Signal[String],
                     error: Signal[String], timeout: Signal[String], notice: Signal[String])
 
@@ -19,20 +18,22 @@ object InteractionScaffoldingPanel {
     case Pending(id: AnyRef)
     case Ready(text: String)
   }
+
   private case class View(mount: Option[AnyRef] = None, revision: Long = 0, phase: Phase = Phase.Idle,
                           timer: Option[SetTimeoutHandle] = None)
 }
 
 final class InteractionScaffoldingPanel[T, A](
-    currentState: () => T,
-    stateChanges: EventStream[T],
-    language: StrictSignal[HumanLanguage],
-    contextChanges: EventStream[Unit],
-    generateFeedback: T => Future[ScaffoldingResult[T, A]],
-    accept: ScaffoldingResult[T, A] => Unit,
-    labels: InteractionScaffoldingPanel.Labels,
-    timeoutMillis: Int = 60000
-) extends HtmlAppElement {
+                                               currentState: () => T,
+                                               stateChanges: EventStream[T],
+                                               language: StrictSignal[HumanLanguage],
+                                               contextChanges: EventStream[Unit],
+                                               generateFeedback: T => Future[ScaffoldingResult[T, A]],
+                                               accept: ScaffoldingResult[T, A] => Unit,
+                                               labels: InteractionScaffoldingPanel.Labels,
+                                               timeoutMillis: Int = 60000
+                                             ) extends HtmlAppElement {
+
   import InteractionScaffoldingPanel.*
 
   require(timeoutMillis > 0)
@@ -44,45 +45,8 @@ final class InteractionScaffoldingPanel[T, A](
   }
 
   private def request(): Unit = {
-    val clicked = view.now()
     val source = currentState()
-    val locale = language.now()
-    queue.execute { () =>
-      def unchanged: Boolean = view.now().mount == clicked.mount && clicked.mount.nonEmpty &&
-        view.now().revision == clicked.revision && currentState() == source && language.now() == locale
-
-      if unchanged && !view.now().phase.isInstanceOf[Phase.Pending] then {
-        val id = new Object
-        def pending: Boolean = unchanged && view.now().phase == Phase.Pending(id)
-        view.set(clicked.copy(phase = Phase.Pending(id), timer = None))
-        if pending then {
-          val timer = setTimeout(timeoutMillis.toDouble) {
-            if pending then view.update(_.copy(phase = Phase.TimedOut, timer = None))
-          }
-          if pending then {
-            view.update(_.copy(timer = Some(timer)))
-            if pending then Try(generateFeedback(source)).fold(Future.failed, identity).onComplete { result =>
-              if pending then {
-                clearTimeout(timer)
-                val accepted = result.flatMap { feedback => Try {
-                  require(feedback.forState == source)
-                  val text = feedback.scaffoldingResult.tryGetInLanguage(locale)
-                    .filter(value => value != null && value.trim.nonEmpty && value.length <= 4096)
-                    .getOrElse(throw IllegalArgumentException("Missing feedback text."))
-                  accept(feedback)
-                  text
-                }}
-                if pending then view.update(_.copy(timer = None, phase = accepted match {
-                  case Success(text) => Phase.Ready(text)
-                  case Failure(_) => Phase.Failed
-                }))
-              }
-            }
-            else clearTimeout(timer)
-          } else clearTimeout(timer)
-        }
-      }
-    }
+    generateFeedback(source)
   }
 
   private lazy val domElement = div(

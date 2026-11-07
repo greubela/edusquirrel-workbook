@@ -25,8 +25,8 @@ class HomepageWorkerDefaultsSpec extends EditorDomSuite {
     root.updateDynamic("Worker")(js.constructorOf[FakeWorker])
     try {
       val defaults = HomepageDefaults(null)
-      val client = defaults.workerBackendExecutor
-      assert(client eq defaults.workerBackendExecutor)
+      val client = defaults.workerExecuter
+      assert(client eq defaults.workerExecuter)
       assert(created.now() <= 1, "reuse the shared preheated worker or create a single worker")
       assert(client.canExecuteCommand(ExecutionCommand(WorkerCommands.health.name, ujson.Obj())))
       client.close()

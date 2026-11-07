@@ -2,6 +2,7 @@ package it.evadid.homepage.webElements.editor.compression
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.model.compression.*
 import org.scalajs.dom
 
@@ -139,7 +140,7 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
       fullInfo.current.allAvailableInteractions.collectFirst { case e: it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction if e.elementId == v.referenceId => e } match {
         case Some(e) =>
           import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
-          val state=e.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl,it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR).toAirstreamVar
+          val state=e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.executionContextInformation).toAirstreamVar
           blockQuote(text <-- state.signal.flatMapSwitch(a => { val text=a.asInstanceOf[WrittenAnswer].text; if text.isEmpty then localized("comparisonEmpty") else Val(text) }))
         case None => p(text <-- localized("comparisonEmpty"))
       }

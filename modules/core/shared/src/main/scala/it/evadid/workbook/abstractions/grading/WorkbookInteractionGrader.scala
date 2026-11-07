@@ -1,45 +1,41 @@
 package it.evadid.workbook.abstractions.grading
 
-import it.evadid.core.datastructures.geometry.Point
+import cats.mtl.syntax.state
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
-import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS
-import it.evadid.workbook.abstractions.grading.GradingStatus.{NotExecuted, TestError}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
-import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
+import it.evadid.workbook.abstractions.grading.GradingStatus.*
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputLlmGrader
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader
+import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
+import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
+import scala.runtime.LazyVals.Names.state
 
 trait WorkbookInteractionGrader[T, A] {
   given ec: ExecutionContext = ExecutionContext.global
 
-  def gradeStateSafe(state: T, forceGrading: Boolean, availableExecutionClients: List[ExecutionClient]): Future[GradingResult[T, A]] =
-    safely(state, forceGrading)(gradeState(state, availableExecutionClients))
+  private def failWith(state: T, err: Either[String, Throwable]): Future[GradingResult[T, A]] = err.match {
+    case Left(str) => Future.successful(GradingResult[T, A](this, state, TestError(SerializedException(str))))
+    case Right(err) => Future.successful(GradingResult[T, A](this, state, TestError(SerializedException(err))))
+  }
 
-  def gradeStateSafe(state: T, forceGrading: Boolean, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[GradingResult[T, A]] =
-    safely(state, forceGrading)(gradeState(state, availableExecutionClients, resolver))
-
-  private def safely(state: T, forceGrading: Boolean)(run: => Future[GradingResult[T, A]]): Future[GradingResult[T, A]] =
-    if (forceGrading || runningBehavior == RUN_ALWAYS) {
-      Try(run).fold(Future.failed, identity).recover {
-        case (err: Throwable) => GradingResult[T, A](this, state, TestError(SerializedException(err)))
+  def gradeStateSafe(state: T, forceGrading: Boolean, contextInformation: ExecutionContextInformation): Future[GradingResult[T, A]] =
+    try {
+      if (runningBehavior != RUN_ALWAYS && !forceGrading) Future.successful(GradingResult[T, A](this, state, NotRequested()))
+      else handleGrading(state, contextInformation).recoverWith {
+        case err: Throwable => failWith(state, Right(err))
       }
-    } else {
-      Future.successful(new GradingResult[T, A](this, state, NotExecuted()))
+    } catch {
+      case (err: Throwable) => failWith(state, Right(err))
+      case any: Any => failWith(state, Left(s"Unknown grading error (${any.toString})"))
     }
 
-  def gradeState(state: T, availableExecutionClients: List[ExecutionClient]): Future[GradingResult[T, A]]
-
-  /** Localized graders resolve authored content at request time, never in their saved configuration. */
-  def gradeState(state: T, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[GradingResult[T, A]] =
-    gradeState(state, availableExecutionClients)
+  protected def handleGrading(state: T, contextInformation: ExecutionContextInformation): Future[GradingResult[T, A]]
 
   def importance: GradingImportance
 
@@ -63,7 +59,7 @@ object WorkbookInteractionGrader {
 
   val universalSerializer: Serializer[WorkbookInteractionGraderUntyped] = Serializer.universalTraitSerializer(knownGraderReadWrites)
 
-  given[T: ReadWriter, A: ReadWriter]: ReadWriter[WorkbookInteractionGrader[T, A]] = WorkbookInteractionGrader.universalSerializer.deriveForSubclass[WorkbookInteractionGrader[T, A]].uPickleReadWrite
+  given [T: ReadWriter, A: ReadWriter]: ReadWriter[WorkbookInteractionGrader[T, A]] = WorkbookInteractionGrader.universalSerializer.deriveForSubclass[WorkbookInteractionGrader[T, A]].uPickleReadWrite
 
 
 }

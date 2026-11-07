@@ -1,28 +1,38 @@
 package it.evadid.workbook.abstractions.scaffolding
 
-import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.core.util.io.serializer.DefaultSerializer
+import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.FeedbackEntity
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.*
 import upickle.default.*
-import java.time.LocalDateTime
 
+import java.time.LocalDateTime
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingError
 
 case class ScaffoldingResult[T, A](
-                                 forState: T,
-                                 scaffoldingResult: LanguageMap[HumanLanguage],
-                                 scaffoldingEntity: FeedbackEntity,
-                                 additionalInformation: Option[A],
-                                 scaffoldingTime: LocalDateTime = LocalDateTime.now()
-                               )
+                                    forState: T,
+                                    scaffoldingStatus: ScaffoldingStatus,
+                                    scaffoldingEntity: FeedbackEntity,
+                                    additionalInformation: Option[A],
+                                    scaffoldingTime: LocalDateTime
+                                  ) derives ReadWriter
+
 
 object ScaffoldingResult {
-  private case class Saved[T, A](forState: T, scaffoldingResult: LanguageMap[HumanLanguage],
-      scaffoldingEntity: FeedbackEntity, additionalInformation: Option[A],
-      scaffoldingTime: LocalDateTime = LocalDateTime.MIN) derives ReadWriter
 
-  // Old hints must not acquire a fresh timestamp each time their history is read.
-  given [T: ReadWriter, A: ReadWriter]: ReadWriter[ScaffoldingResult[T, A]] = readwriter[Saved[T, A]].bimap(
-    value => Saved(value.forState, value.scaffoldingResult, value.scaffoldingEntity, value.additionalInformation, value.scaffoldingTime),
-    value => ScaffoldingResult(value.forState, value.scaffoldingResult, value.scaffoldingEntity, value.additionalInformation, value.scaffoldingTime))
+  DefaultSerializer
+  def apply[T, A](forState: T,
+                  scaffoldingStatus: ScaffoldingStatus,
+                  scaffoldingEntity: FeedbackEntity,
+                  additionalInformation: Option[A]): ScaffoldingResult[T, A] = ScaffoldingResult[T, A](forState, scaffoldingStatus, scaffoldingEntity, additionalInformation, LocalDateTime.now())
+
+  def forError[T, A](state: T, errEither: Either[String, Throwable], entity: FeedbackEntity): ScaffoldingResult[T, A] = {
+    val err = errEither.match {
+      case Left(str) => SerializedException(str)
+      case Right(err) => SerializedException(err)
+    }
+    ScaffoldingResult(state, ScaffoldingError(err), entity, None)
+  }
+
 }
