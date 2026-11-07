@@ -101,6 +101,19 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
       [...document.querySelectorAll('.text-input-feedback__result strong')].every(element => element.textContent === 'Correct'));
     assert(requests.slice(-1).every(request => request.feedbackLanguage === 'English' && request.answer === answer));
     await page.waitForFunction(() => !document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
+    await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
+    assert.equal(await input.inputValue(),answer);
+    assert.equal(await results.count(),0,'a changed grade discards superseded feedback in another language');
+    await grade.click();
+    await content.getByText('Deine Begründung passt.',{exact:true}).waitFor();
+    await results.getByText('Teilweise richtig',{exact:true}).waitFor();
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
+    assert.equal(await results.count(),0,'the saved status and localized feedback belong to the same assessment');
+    await grade.click();
+    await content.getByText('Clear reasoning.',{exact:true}).waitFor();
+    await results.getByText('Correct',{exact:true}).waitFor();
+    assert.equal(requests.length,7,'returning to a superseded assessment requests fresh feedback');
+    await page.waitForFunction(() => !document.querySelector('.interaction-grading__request')?.disabled);
     const persisted = await page.evaluate(() => new Promise(resolve => {
       const open = indexedDB.open('EvaDidInteractionDB');
       open.onerror = () => resolve(false);
@@ -121,7 +134,7 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
     assert.equal(await input.inputValue(),answer,'the same interaction restores the saved answer');
     await content.getByText('Clear reasoning.',{exact:true}).first().waitFor();
     assert.equal(await results.count(),1,'the same history restores the saved grades');
-    assert.equal(requests.length,4,'reloading never calls the LLM');
+    assert.equal(requests.length,7,'reloading never calls the LLM');
 
     policy.mode = 'hold';
     await input.fill('A draft about sorted cards.');
