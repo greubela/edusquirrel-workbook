@@ -112,5 +112,9 @@
   "editorUnavailable": "This draft is not available in the configured languages.",
   "editorLanguages": "Programming languages",
   "editorSwitchFailed": "Could not switch language",
-  "editorLoading": "Loading editor…"
+  "editorLoading": "Loading editor…",
+  "gradingInfoTooltipStart": "Click to execute _ tests!",
+  "gradingInfoTooltipUnfinished": "Waiting for  _ results (currently _ / _ correct)",
+  "gradingInfoTooltipError": "Error while executing _ Tests (currently _ / _ correct))",
+  "gradingInfoTooltipNrCorrect": "Passed _ / _ tests"
 }

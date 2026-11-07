@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.{child, *}
 import com.raquo.laminar.nodes.{ReactiveHtmlElement, ReactiveSvgElement}
+import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel.interactionInfoCssString
@@ -15,12 +16,11 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
   val iconSync = IconSync(fullInfo, laminarHelper, workbookInteractionElement)
 
 
-
   lazy val domElement: Element = {
     div(
       cls := interactionInfoCssString,
       div(cls := "interaction-info__icons",
-        div(cls := "current-grading-icon", iconGrading.gradingControls(workbookInteractionElement)),
+        div(cls := "grading-report-icon", child <-- iconGrading.gradingReporter.currentGradingSignal.toEventStream().map(iconGrading.deriveGradingSymbol)),
         div(cls := "sync-report-icon", child <-- iconSync.syncReport.map(iconSync.deriveSyncSymbol)),
         Option.when(workbookInteractionElement.scaffoldingElement.nonEmpty)(iconScaffolding.hintButton)),
       child.maybe <-- iconScaffolding.expanded.signal.map(open => Option.when(open)(iconScaffolding.hintBody()))

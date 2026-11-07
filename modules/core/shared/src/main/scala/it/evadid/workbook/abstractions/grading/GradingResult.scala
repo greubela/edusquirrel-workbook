@@ -22,8 +22,8 @@ case class GradingResult[T, A]
   def merge(other: GradingResult[T, A]): GradingResult[T, A] = {
     require(grader == other.grader && gradedState == other.gradedState, "Only results for the same grader and state can be merged.")
     val preferred =
-      if (gradingStatus == NotRequested() || gradingStatus == NotFinished()) && !other.gradingStatus.isErrorOrUnfinished then other
-      else if (other.gradingStatus == NotRequested() || other.gradingStatus == NotFinished()) && !gradingStatus.isErrorOrUnfinished then this
+      if (gradingStatus == NotRequested() || gradingStatus == NotFinished()) && !other.gradingStatus.shouldRetryExecution then other
+      else if (other.gradingStatus == NotRequested() || other.gradingStatus == NotFinished()) && !gradingStatus.shouldRetryExecution then this
       else if other.gradingTime.isAfter(gradingTime) then other
       else if gradingTime == other.gradingTime && GradingResult.statusPriority(other.gradingStatus) > GradingResult.statusPriority(gradingStatus) then other
       else this
