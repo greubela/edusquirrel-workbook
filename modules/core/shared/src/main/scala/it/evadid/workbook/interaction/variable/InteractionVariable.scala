@@ -11,7 +11,6 @@ import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
 import it.evadid.workbook.meta.ExecutionContextInformation
-import it.evadid.workbook.meta.ExecutionContextInformation.default.syncControl
 import upickle.default.*
 
 import java.time.LocalDateTime
@@ -41,7 +40,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
   private val defaultState = InteractionVariableState[T](underlyingInteraction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now())
   private val defaultHistory: InteractionVariableHistory[T, GA, SA] = InteractionVariableHistory[T, GA, SA](List(defaultState).toSet)
 
-  private def safeLastState: InteractionVariableState[T] = innerState.now().historyStates.lastStateOption.getOrElse(defaultState)
+  def safeLastState: InteractionVariableState[T] = innerState.now().historyStates.lastStateOption.getOrElse(defaultState)
 
   private val innerState: State[InteractionVariableHistory[T, GA, SA]] = State(defaultHistory)
 
@@ -50,7 +49,10 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
   val keyForSerialization: String = underlyingInteraction.elementId + "_history"
   val serializerHistory: Serializer[InteractionVariableHistory[T, GA, SA]] = Serializer.fromUpickleJson(InteractionVariableHistory.given_ReadWriter_InteractionVariableHistory[T, GA, SA])
 
-  lazy val observableState: ObservableValue[InteractionVariableHistory[T, GA, SA]] = innerState.observable
+  lazy val observableHistoryWithDefault: ObservableValue[InteractionVariableHistory[T, GA, SA]] = innerState.observable.deriveValue(curHistory => {
+    if (curHistory.historyStates.lastStateOption.nonEmpty) curHistory
+    else defaultHistory.addState(defaultState)
+  })
 
   lazy val observableValue: ObservableValue[T] = this.synchronized {
     innerState.observable.deriveValue(_.historyStates.lastStateOption.getOrElse(safeLastState).value, ExecutionMethod.executeSync, DeriveOnlyLastValues)
@@ -68,7 +70,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
       val last = safeLastState
       val newState = DesignatedInteractionState(newValue, LocalDateTime.now())
       val importance = relevanceFunc(InteractionVariableStateChanged(last, newState))
-      setStateFromUserInteraction( newValue, importance, newState.timestamp, context)
+      setStateFromUserInteraction(newValue, importance, newState.timestamp, context)
     })
     outerState
   }
@@ -89,6 +91,9 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
 
   def updateHistory(func: InteractionVariableHistory[T, GA, SA] => InteractionVariableHistory[T, GA, SA], executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
     innerState.update(func)
+    if (innerState.now().historyStates.lastStateOption.isEmpty) {
+      innerState.update(_.addState(defaultState))
+    }
     if (executionContextInformation.syncControl.nonEmpty) {
       executionContextInformation.syncControl.get.requestStore(this)
     }

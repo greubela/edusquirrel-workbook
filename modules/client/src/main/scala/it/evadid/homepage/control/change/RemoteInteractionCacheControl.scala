@@ -57,7 +57,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
 
   override def createObservableReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): ObservableValue[InteractionVariableSyncReport[T, GA, SA]] = remoteCache.syncLock.synchronized {
     val observableContext: ObservableValue[UsageContext] = fullInfo.signals.currentUsageContext.toObservableValue
-    val observableHistory: ObservableValue[InteractionVariableHistory[T, GA, SA]] = forVariable.observableState
+    val observableHistory: ObservableValue[InteractionVariableHistory[T, GA, SA]] = forVariable.observableHistoryWithDefault
     val observableCache = remoteCache.observableCache
 
     observableCache.combineWith(observableContext, observableHistory).deriveValue(tup => {

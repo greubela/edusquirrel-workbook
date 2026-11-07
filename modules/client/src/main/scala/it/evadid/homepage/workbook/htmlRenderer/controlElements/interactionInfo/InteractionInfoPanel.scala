@@ -10,10 +10,11 @@ import org.scalajs.dom.HTMLDivElement
 
 case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionUntyped) extends HtmlAppElement {
 
-
   val iconGrading = IconGrading(fullInfo, laminarHelper, workbookInteractionElement)
   val iconScaffolding = IconScaffolding(fullInfo, laminarHelper, workbookInteractionElement)
   val iconSync = IconSync(fullInfo, laminarHelper, workbookInteractionElement)
+
+
 
   lazy val domElement: Element = {
     div(

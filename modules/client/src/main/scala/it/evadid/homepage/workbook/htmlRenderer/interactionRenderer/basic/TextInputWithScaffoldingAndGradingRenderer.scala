@@ -17,7 +17,7 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
     val answer = variable.createBoundStateWithUpdateLogic( TextInteraction.decideTextareaUpdateImportance, fullInfo.executionContextInformation).toAirstreamVar
     def label(key: String) = laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
     val feedback: Signal[List[Element]] = {
-      val history = variable.observableState.toEventStream().toSignal(variable.currentHistory)
+      val history = variable.observableHistoryWithDefault.toEventStream().toSignal(variable.currentHistory)
       history.combineWith(answer.signal, fullInfo.signals.currentLanguage).map { (saved, source, language) =>
         element.gradingElements.flatMap { grader =>
           saved.historyGrading.gradingsMap.get(source).filter(_.state == source).flatMap(_.graderResultMap.get(grader))

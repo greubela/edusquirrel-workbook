@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
+import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
@@ -9,9 +10,10 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingResult, GradingStatus}
 import it.evadid.workbook.abstractions.{WorkbookInteractionElementFull, WorkbookInteractionUntyped}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.meta.InteractionVariableGradingReporter
+import org.scalajs.dom.{SVGPathElement, SVGSVGElement}
 
 import scala.concurrent.Future
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.Try
 
@@ -20,14 +22,32 @@ object IconGrading {
   private case class GradingView(mount: Option[AnyRef] = None, revision: Long = 0,
                                  pending: Option[AnyRef] = None, failed: Boolean = false)
 
+
+
+
+
+
 }
 
+
+
 case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, workbookInteractionElement: WorkbookInteractionUntyped) {
+
+  val gradingReporter: InteractionVariableGradingReporter[?, ?, ?] = InteractionVariableGradingReporter(workbookInteractionElement.interactionVariable)
+
+  val domElement: Element = div(cls := "interaction-grading",
+    button(typ := "button", cls := "interaction-grading__request",
+      onClick --> (_ => workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.executionContextInformation, true)))
+  )
+
+
+
+
 
   def gradingControls[T, GA, SA](interaction: WorkbookInteractionElementFull[T, GA, SA]): Option[Element] =
     Option.when(interaction.gradingElements.nonEmpty) {
       val variable = interaction.interactionVariable
-      val history = variable.observableState.toEventStream().toSignal(variable.currentHistory)
+      val history = variable.observableHistoryWithDefault.toEventStream().toSignal(variable.currentHistory)
       val view = Var(GradingView())
       val visible = interaction.gradingElements.filter(_.importance != GradingImportance.HIDDEN_TEST).distinct
 
@@ -60,10 +80,13 @@ case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, w
         queue.execute { () =>
           def unchanged: Boolean = clicked.mount.nonEmpty && view.now().mount == clicked.mount &&
             view.now().revision == clicked.revision && variable.currentValue == source
+
           if unchanged && view.now().pending.isEmpty then {
             val id = new Object
             view.set(clicked.copy(pending = Some(id)))
+
             def pending: Boolean = unchanged && view.now().pending.contains(id)
+
             if pending then Try(variable.control.getOrCalculateGrading(fullInfo.executionContextInformation, forceGrading = true))
               .fold(Future.failed, identity).onComplete { result =>
                 if pending then view.update(_.copy(pending = None, failed = result.isFailure))
@@ -71,6 +94,7 @@ case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, w
           }
         }
       }
+
       val message: Signal[String] = history.combineWith(view.signal).map { (snapshot, current) =>
         if current.pending.nonEmpty then "gradingLoading"
         else if current.failed then "gradingError"
@@ -93,7 +117,6 @@ case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, w
           child.text <-- message.flatMapSwitch(key => laminarHelper.plaintextStringSignal(s"basic/$key"))
         ))
     }
-
 
 
 }

@@ -1648,7 +1648,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val sync = new RestoreSync(value, Nil)
     val retried = State(Option.empty[Future[GradedState[String, String]]])
     val first = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
-    value.observableState.addNextChangeObserver { _ => retried.set(Some(value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync))))) }
+    value.observableHistory.addNextChangeObserver { _ => retried.set(Some(value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync))))) }
     pending.now().head.failure(IllegalStateException("retry immediately"))
     first.flatMap { _ =>
       assertEquals(pending.now().size, 1)

@@ -18,38 +18,32 @@ import scala.util.Success
 
 case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA]) {
 
-  def getCurrentStateOfGrading(): Option[GradedState[T, GA]] = interactionVariable.synchronized {
+
+  def getCurrentStateOfGrading(forState: T): GradedState[T, GA] = interactionVariable.synchronized {
     val gradeMap = interactionVariable.currentHistory.historyGrading.gradingsMap
-    val curValOp = interactionVariable.currentHistory.historyStates.lastStateOption
-    if (curValOp.isEmpty) None else {
-      val curVal = curValOp.get.value
-      val gradeInHistoryOp = interactionVariable.currentHistory.historyGrading.gradingsMap.get(curVal)
-      if (gradeInHistoryOp.isDefined) gradeInHistoryOp else {
-        val gradeInCacheOp = gradingCache.getSyncIfInCache(curVal)
-        if (gradeInCacheOp.isDefined) gradeInCacheOp else {
-          gradingCache.getCurrentElementStatus(curVal).match {
-            case UNKNOWN() => Some(GradedState(curVal).fillMapForUnavailable(interactionVariable.underlyingInteraction, NotRequested()))
-            case _ => Some(GradedState(curVal).fillMapForUnavailable(interactionVariable.underlyingInteraction, NotFinished()))
-          }
+    val gradeInHistoryOp = interactionVariable.currentHistory.historyGrading.gradingsMap.get(forState)
+    if (gradeInHistoryOp.isDefined) gradeInHistoryOp.get else {
+      val gradeInCacheOp = gradingCache.getSyncIfInCache(forState)
+      if (gradeInCacheOp.isDefined) gradeInCacheOp.get else {
+        gradingCache.getCurrentElementStatus(forState).match {
+          case UNKNOWN() => GradedState(forState).fillMapForUnavailable(interactionVariable.underlyingInteraction, NotRequested())
+          case _ => GradedState(forState).fillMapForUnavailable(interactionVariable.underlyingInteraction, NotFinished())
         }
       }
     }
   }
 
-  def getCurrentStateOfScaffolding(): Option[ScaffoldingResult[T, SA]] = interactionVariable.synchronized {
+
+  def getCurrentStateOfScaffolding(forState: T): Option[ScaffoldingResult[T, SA]] = interactionVariable.synchronized {
     val scaffMap = interactionVariable.currentHistory.historyScaffolding.scaffoldingMap
-    val curValOp = interactionVariable.currentHistory.historyStates.lastStateOption
-    if (curValOp.isEmpty) None else {
-      val curVal = curValOp.get.value
-      val scaffInHistoryOp = interactionVariable.currentHistory.historyScaffolding.scaffoldingMap.get(curVal)
-      if (scaffInHistoryOp.isDefined) scaffInHistoryOp else {
-        val scaffInCacheOp = scaffoldingCache.getSyncIfInCache(curVal)
-        if (scaffInCacheOp.isDefined) scaffInCacheOp else {
-          scaffoldingCache.getCurrentElementStatus(curVal).match {
-            case UNKNOWN() => None
-            case FAILED(err) => Some(ScaffoldingResult(curVal, ScaffoldingError(err), SystemEntity(), None, LocalDateTime.now()))
-            case _ => Some(ScaffoldingResult(curVal, ScaffoldingRequestedButNotFinished(), SystemEntity(), None, LocalDateTime.now()))
-          }
+    val scaffInHistoryOp = interactionVariable.currentHistory.historyScaffolding.scaffoldingMap.get(forState)
+    if (scaffInHistoryOp.isDefined) scaffInHistoryOp else {
+      val scaffInCacheOp = scaffoldingCache.getSyncIfInCache(forState)
+      if (scaffInCacheOp.isDefined) scaffInCacheOp else {
+        scaffoldingCache.getCurrentElementStatus(forState).match {
+          case UNKNOWN() => None
+          case FAILED(err) => Some(ScaffoldingResult(forState, ScaffoldingError(err), SystemEntity(), None, LocalDateTime.now()))
+          case _ => Some(ScaffoldingResult(forState, ScaffoldingRequestedButNotFinished(), SystemEntity(), None, LocalDateTime.now()))
         }
       }
     }
