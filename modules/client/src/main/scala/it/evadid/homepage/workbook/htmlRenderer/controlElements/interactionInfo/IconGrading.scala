@@ -1,23 +1,14 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
-import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.IconGrading.GradingView
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT_UNDERSCORE_REPLACABLE
+import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
+import it.evadid.workbook.abstractions.grading.GradedState
 import it.evadid.workbook.abstractions.grading.GradingStatus.{Correct, NotFinished, NotRequested}
-import it.evadid.workbook.abstractions.grading.{GradedState, GradingImportance, GradingResult, GradingStatus}
-import it.evadid.workbook.abstractions.{WorkbookInteractionElementFull, WorkbookInteractionUntyped}
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
-
-import scala.concurrent.Future
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.util.Try
 
 object IconGrading {
 
@@ -38,7 +29,8 @@ case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, w
   )
 
 
-  def deriveGradingSymbol(gradedState: GradedState[?, ?]): Element = {
+  def deriveGradingSymbol(gradedState: GradedState[?, ?]): Element = if (workbookInteractionElement.gradingElements.isEmpty) div() else {
+
     val gradingResults = gradedState.graderResultMap.values
 
     val availableGraders = workbookInteractionElement.gradingElements.size
@@ -77,7 +69,7 @@ case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, w
 
     InteractionInfoPanel.infoPanelIcon("grading-info", svgGradingIcon, svgGradingTooltip).amend(
       role := "img", tabIndex := 0, aria.label <-- svgGradingTooltip,
-      span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/syncInfoLabel")),
+      span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/gradingInfoLabel")),
       onClick --> (_ => workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.executionContextInformation, forceGrading = true))
     )
   }

@@ -33,7 +33,6 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
 
 object InteractionInfoPanel {
 
-
   def withEditor(interaction: WorkbookInteractionUntyped, editor: HtmlAppElement): HtmlAppElement =
     if interaction.scaffoldingElement.isEmpty && interaction.gradingElements.isEmpty then editor
     else new HtmlAppElement {

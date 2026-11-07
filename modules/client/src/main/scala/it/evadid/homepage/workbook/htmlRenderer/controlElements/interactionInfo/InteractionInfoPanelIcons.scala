@@ -63,15 +63,15 @@ object InteractionInfoPanelIcons {
 
   def createGradingAllPassed(): ReactiveSvgElement[SVGSVGElement] = createGradingIcon("grading-info-svg-fully", List(gradingThumbsUpPath))
 
-  def createGradingNonePassed(): ReactiveSvgElement[SVGSVGElement] = createCloudSyncSvg("grading-info-svg-fully", List(gradingThumbsDownPath))
+  def createGradingNonePassed(): ReactiveSvgElement[SVGSVGElement] = createGradingIcon("grading-info-svg-fully", List(gradingThumbsDownPath))
 
-  def createGradingSomePassed(): ReactiveSvgElement[SVGSVGElement] = createCloudSyncSvg("grading-info-svg-fully", List(gradingNoThumbsPath))
+  def createGradingSomePassed(): ReactiveSvgElement[SVGSVGElement] = createGradingIcon("grading-info-svg-fully", List(gradingNoThumbsPath))
 
-  def createGradingLoading(): ReactiveSvgElement[SVGSVGElement] = createCloudSyncSvg("grading-info-svg-fully", List(gradingNoThumbsPath, gradingLoadingPath))
+  def createGradingLoading(): ReactiveSvgElement[SVGSVGElement] = createGradingIcon("grading-info-svg-fully", List(gradingNoThumbsPath, gradingLoadingPath))
 
-  def createGradingTestError(): ReactiveSvgElement[SVGSVGElement] = createCloudSyncSvg("grading-info-svg-fully", List(gradingNoThumbsPath, gradingErrorPath))
+  def createGradingTestError(): ReactiveSvgElement[SVGSVGElement] = createGradingIcon("grading-info-svg-fully", List(gradingNoThumbsPath, gradingErrorPath))
 
-  def createGradingUnrequested(): ReactiveSvgElement[SVGSVGElement] = createCloudSyncSvg("grading-info-svg-fully", List(gradingNoThumbsPath, gradingStartPath))
+  def createGradingUnrequested(): ReactiveSvgElement[SVGSVGElement] = createGradingIcon("grading-info-svg-fully", List(gradingNoThumbsPath, gradingStartPath))
 
   /**
    * https://www.flaticon.com/packs/hand-gestures-131

@@ -112,6 +112,7 @@
   "editorLanguages": "Programmiersprachen",
   "editorSwitchFailed": "Sprache konnte nicht gewechselt werden",
   "editorLoading": "Editor wird geladen…",
+  "gradingInfoLabel": "Tests",
   "gradingInfoTooltipStart": "Klicken um _ Tests zu starten!",
   "gradingInfoTooltipUnfinished": "Warte auf _ Ergebnisse (bisher _ / _ bestanden)",
   "gradingInfoTooltipError": "Fehler bei der Ausführung von _ Tests (insgesamt _ / _ bestanden)",
