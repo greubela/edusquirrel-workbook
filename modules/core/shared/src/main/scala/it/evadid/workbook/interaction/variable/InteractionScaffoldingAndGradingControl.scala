@@ -16,7 +16,6 @@ import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
 
-
 case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA]) {
 
   def getCurrentStateOfGrading(): Option[GradedState[T, GA]] = interactionVariable.synchronized {
