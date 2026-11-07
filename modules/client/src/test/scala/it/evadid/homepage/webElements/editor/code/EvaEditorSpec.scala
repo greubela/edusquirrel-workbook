@@ -19,7 +19,9 @@ import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.abstractions.grading.*
-import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, WorkbookInteractionScaffolder}
+import it.evadid.workbook.abstractions.scaffolding.{AdditionalInfoLlmScaffolding, ScaffoldingResult, ScaffoldingStatus, WorkbookInteractionScaffolder}
+import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.interaction.variable.{InteractionVariableGradingHistory, InteractionVariableScaffoldingHistory}
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingHintScaffolder
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -32,6 +34,14 @@ import scala.util.Try
 import upickle.default.*
 
 class EvaEditorSpec extends EditorDomSuite {
+  private def executionContext(clients: List[ExecutionClient], resolver: LanguageMapIdResolver): ExecutionContextInformation = new ExecutionContextInformation {
+    override val availableExecutionClients = clients
+    override val languageMapIdResolver = Some(resolver)
+    override val syncControl = None
+    override def getCurrentLanguage = resolver.languageFuture().value.flatMap(_.toOption).getOrElse(English)
+    override val futureExecutionContext = queue
+  }
+
   private val specLabels = EvaEditorLabels(
     unavailable = Val("_"),
     languages = Val("_"),
@@ -76,8 +86,7 @@ class EvaEditorSpec extends EditorDomSuite {
     def status: dom.Element = element.ref.querySelector("[role='status']")
     def text: String = status.textContent
     def answer(value: String = source.now(), text: String = "1. What changes here?", locale: HumanLanguage = language.now()): HintResult =
-      ScaffoldingResult(value, LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(locale -> text)),
-        FeedbackEntity.TestEntity(), None)
+      ScaffoldingResult(value, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(locale -> text))), FeedbackEntity.TestEntity(), None)
     open()
   }
 
@@ -107,15 +116,15 @@ class EvaEditorSpec extends EditorDomSuite {
       override val importance = if hidden then GradingImportance.HIDDEN_TEST else GradingImportance.REQUIRED_TEST
       override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
       override val gradingEntity = FeedbackEntity.TestEntity()
-      override def gradeStateSafe(state: String, force: Boolean, available: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[Result] = {
+      override def gradeStateSafe(state: String, force: Boolean, context: ExecutionContextInformation): Future[Result] = {
         forced.update(_ :+ force)
-        resolvers.update(_ :+ resolver)
-        super.gradeStateSafe(state, force, available, resolver)
+        resolvers.update(_ :+ context.languageMapIdResolver.get)
+        super.gradeStateSafe(state, force, context)
       }
-      override def gradeState(state: String, available: List[ExecutionClient]): Future[Result] = {
+      override protected def handleGrading(state: String, context: ExecutionContextInformation): Future[Result] = {
         val pending = Promise[Result]()
         requests.update(_ :+ (state -> pending))
-        clients.update(_ :+ available)
+        clients.update(_ :+ context.availableExecutionClients)
         pending.future
       }
     }
@@ -133,8 +142,7 @@ class EvaEditorSpec extends EditorDomSuite {
     def close(): Unit = { release.now().foreach(_()); release.set(None) }
     def button: dom.html.Button = element.ref.querySelector(".interaction-grading__request").asInstanceOf[dom.html.Button]
     def status: String = element.ref.querySelector(".interaction-grading__status").getAttribute("data-status")
-    def change(answer: String): Unit = variable.setStateFromUserInteraction(fullInfo.syncControl, answer,
-      it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, variable.currentHistory.lastStateOption.get.timestamp.plusSeconds(1))
+    def change(answer: String): Unit = variable.setStateFromUserInteraction(answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, variable.currentHistory.historyStates.lastStateOption.get.timestamp.plusSeconds(1), fullInfo.executionContextInformation)
     def answer(index: Int, status: GradingStatus): Unit = {
       val (source, pending) = requests.now()(index)
       pending.success(GradingResult(grader, source, status,
@@ -154,7 +162,7 @@ class EvaEditorSpec extends EditorDomSuite {
 
   test("manual grading uses the generic info controls once per click batch and publishes only safe status") {
     withGrading() { f =>
-      val events = f.variable.currentHistory.events
+      val events = f.variable.currentHistory.historyStates.events
       val terminations = gradingWorkerTerminations.now()
       assertEquals(f.requests.now(), Vector.empty)
       assertEquals(f.status, "gradingNotRun")
@@ -174,8 +182,8 @@ class EvaEditorSpec extends EditorDomSuite {
         assertEquals(f.status, "gradingCorrect")
         assert(!f.element.ref.textContent.contains("private"))
         assertEquals(f.variable.currentValue, "original answer")
-        assertEquals(f.variable.currentHistory.events, events)
-        assert(f.variable.currentHistory.gradings.contains("original answer"))
+        assertEquals(f.variable.currentHistory.historyStates.events, events)
+        assert(f.variable.currentHistory.historyGrading.gradingsMap.contains("original answer"))
         f.close()
         assertEquals(gradingWorkerTerminations.now(), terminations)
         val editor = new HtmlAppElement { override def getDomElement(): Element = div("Editor") }
@@ -262,8 +270,8 @@ class EvaEditorSpec extends EditorDomSuite {
         withGrading() { f =>
           val wrong = GradingResult[String, String](f.grader, "another answer", GradingStatus.Correct())
           val foreign = GradingResult[String, String](hidden.grader, f.variable.currentValue, GradingStatus.Correct())
-          f.variable.updateHistory(_.copy(gradings = Map(f.variable.currentValue ->
-            GradedState(f.variable.currentValue, Set(wrong, foreign)))))
+          f.variable.updateHistory(_.copy(historyGrading = new InteractionVariableGradingHistory(Map(f.variable.currentValue ->
+            GradedState(f.variable.currentValue, (Set(wrong, foreign)).iterator.map(result => result.grader -> result).toMap)))), fullInfo.executionContextInformation)
           later().map { _ => assertEquals(f.status, "gradingNotRun") }
         }
       }
@@ -273,16 +281,17 @@ class EvaEditorSpec extends EditorDomSuite {
   test("interaction rendering publishes a requested hint to its existing history without changing the answer") {
     assertEquals(fullInfo.current.userInfo, None)
     assertEquals(fullInfo.current.workbookInfo, None)
-    assertEquals(fullInfo.signals.currentSyncDestinations.now(), Nil)
+    assertEquals(fullInfo.syncControl.createCurrentReport(TextInteraction("locations").interactionVariable).allSyncLocations, Nil)
     val requested = Var(Vector.empty[String])
     val clients = Var(Vector.empty[List[ExecutionClient]])
     val resolvers = Var(Vector.empty[LanguageMapIdResolver])
     val pending = Promise[HintResult]()
     val scaffolder = new WorkbookInteractionScaffolder[String, String] {
-      override def handleFeedbackGeneration(state: String, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[HintResult] = {
+      override val scaffoldingEntity = FeedbackEntity.TestEntity()
+      override def handleFeedbackGeneration(state: String, contextInformation: ExecutionContextInformation): Future[HintResult] = {
         requested.update(_ :+ state)
-        clients.update(_ :+ availableExecutionClients)
-        resolvers.update(_ :+ resolver)
+        clients.update(_ :+ contextInformation.availableExecutionClients)
+        resolvers.update(_ :+ contextInformation.languageMapIdResolver.get)
         pending.future
       }
     }
@@ -313,17 +322,14 @@ class EvaEditorSpec extends EditorDomSuite {
       assertEquals(requested.now(), Vector(variable.currentValue))
       val available = clients.now().head
       assertEquals(clients.now().size, 1)
-      assertEquals(available.size, 1)
-      assert(available.head.isInstanceOf[RoutedExecutionClient])
-      assert(available.head.canExecuteCommand(ExecutionCommand(LLMCommands.feedbackLlmCommandFactory.name, ujson.Obj())))
-      assertEquals(resolvers.now(), Vector(fullInfo.signals.idResolver))
-      val feedback = ScaffoldingResult[String, String](variable.currentValue, LanguageMap.universalMap("1. What changes here?"),
-        FeedbackEntity.TestEntity(), None)
+      assertEquals(available, List(fullInfo.defaults.workerExecuter, fullInfo.defaults.backendExecutor))
+      assertEquals(resolvers.now(), Vector(fullInfo.executionContextInformation.languageMapIdResolver.get))
+      val feedback = ScaffoldingResult[String, String](variable.currentValue, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("1. What changes here?")), FeedbackEntity.TestEntity(), None)
       pending.success(feedback)
       later().map { _ =>
-        assertEquals(variable.currentHistory.scaffoldings, Map(feedback.forState -> feedback))
-        assertEquals(variable.currentHistory.events, before.events)
-        assertEquals(variable.currentHistory.gradings, before.gradings)
+        assertEquals(variable.currentHistory.historyScaffolding.scaffoldingMap, Map(feedback.forState -> feedback))
+        assertEquals(variable.currentHistory.historyStates.events, before.historyStates.events)
+        assertEquals(variable.currentHistory.historyGrading.gradingsMap, before.historyGrading.gradingsMap)
         assertEquals(variable.currentValue, interaction.defaultValue)
         assertEquals(element.ref.querySelector("[role='status']").textContent, "1. What changes here?")
         assertEquals(element.ref.querySelector(".status-correct"), null)
@@ -364,12 +370,12 @@ class EvaEditorSpec extends EditorDomSuite {
         task.future
       }
     }
-    val interaction = new WorkbookInteractionElementFull[ProgrammingState, String, String] {
+    val interaction = new WorkbookInteractionElementFull[ProgrammingState, String, AdditionalInfoLlmScaffolding] {
       override val elementId = "pending-java-hint"
       override val defaultValue: ProgrammingState = ProgrammingStateJavaString("class Drawing {")
       override lazy val childrenOfThisElement = List.empty[WorkbookElement]
       override val associatedFactory = TextInteraction.factory
-      override val scaffoldingElement = Some(new ProgrammingHintScaffolder[String](this, taskId))
+      override val scaffoldingElement = Some(new ProgrammingHintScaffolder(this, taskId))
     }
     val client = LLMCommands.feedbackLlmCommandFactory.toLocalExecutionClient { (_, _) =>
       calls.update(_ + 1)
@@ -380,10 +386,10 @@ class EvaEditorSpec extends EditorDomSuite {
     val before = variable.currentHistory
     val context = new EventBus[Unit]
     val label = Signal.fromValue("Hint")
-    val panel = new InteractionScaffoldingPanel[ProgrammingState, String](
+    val panel = new InteractionScaffoldingPanel[ProgrammingState, AdditionalInfoLlmScaffolding](
       () => variable.currentValue, variable.observableValue.toEventStream(), language.signal, context.events,
-      state => interaction.scaffoldingElement.get.handleFeedbackGeneration(state, List(client), resolver),
-      result => variable.updateHistory(_.updateScaffoldings(_ + (result.forState -> result))),
+      state => interaction.scaffoldingElement.get.handleFeedbackGeneration(state, executionContext(List(client), resolver)),
+      result => variable.updateHistory(_.addScaffolding(result), fullInfo.executionContextInformation),
       InteractionScaffoldingPanel.Labels(label, label, label, label, label, label))
     val element = panel.getDomElement()
     val release = mount(element)
@@ -403,13 +409,14 @@ class EvaEditorSpec extends EditorDomSuite {
     }.andThen { case _ => release() }
   }
 
-  test("fullscreen hints use the current Java answer and reject completions from a closed editor") {
+  test("fullscreen hints use the current Java answer and cache completions without reviving a closed editor") {
 
     import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
     type Result = ScaffoldingResult[ProgrammingState, String]
     val requests = Var(Vector.empty[(ProgrammingState, Promise[Result])])
     val scaffolder = new WorkbookInteractionScaffolder[ProgrammingState, String] {
-      override def handleFeedbackGeneration(source: ProgrammingState, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[Result] = {
+      override val scaffoldingEntity = FeedbackEntity.TestEntity()
+      override def handleFeedbackGeneration(source: ProgrammingState, contextInformation: ExecutionContextInformation): Future[Result] = {
         val result = Promise[Result]()
         requests.update(_ :+ (source -> result))
         result.future
@@ -424,7 +431,7 @@ class EvaEditorSpec extends EditorDomSuite {
       override val scaffoldingElement = Some(scaffolder)
     }
     val variable = interaction.interactionVariable
-    val answer = variable.createBoundVarWithUpdateImportance(fullInfo.syncControl, MAJOR)
+    val answer = variable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.executionContextInformation)
     val mounted = Var(0)
     val release = Var(Option.empty[() => Unit])
     def open(): Element = {
@@ -456,11 +463,11 @@ class EvaEditorSpec extends EditorDomSuite {
       assertEquals(requests.now().map(_._1), Vector(answer.now()))
       close()
       assertEquals(mounted.now(), 0)
-      requests.now().head._2.success(ScaffoldingResult(requests.now().head._1,
-        LanguageMap.universalMap("Old hint"), FeedbackEntity.TestEntity(), None))
+      requests.now().head._2.success(ScaffoldingResult(requests.now().head._1, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("Old hint")), FeedbackEntity.TestEntity(), None))
       later()
     }.flatMap { _ =>
-      assertEquals(variable.currentHistory.scaffoldings, Map.empty)
+      assertEquals(variable.currentHistory.historyScaffolding.scaffoldingMap.keySet, Set(answer.now()))
+      assertEquals(mounted.now(), 0)
       val current: ProgrammingState = ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { Turtle.forward(30); } }")
       answer.set(current)
       val second = open()
@@ -469,22 +476,21 @@ class EvaEditorSpec extends EditorDomSuite {
       request(second)
       later().flatMap { _ =>
         assertEquals(requests.now().map(_._1), Vector(interaction.defaultValue, current))
-        val events = variable.currentHistory.events
-        val feedback = ScaffoldingResult[ProgrammingState, String](current,
-          LanguageMap.universalMap("Check the distance."), FeedbackEntity.TestEntity(), None)
+        val events = variable.currentHistory.historyStates.events
+        val feedback = ScaffoldingResult[ProgrammingState, String](current, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("Check the distance.")), FeedbackEntity.TestEntity(), None)
         requests.now().last._2.success(feedback)
         later().map { _ =>
-          assertEquals(variable.currentHistory.scaffoldings, Map(current -> feedback))
-          assertEquals(variable.currentHistory.events, events)
+          assertEquals(variable.currentHistory.historyScaffolding.scaffoldingMap.get(current), Some(feedback))
+          assertEquals(variable.currentHistory.historyStates.events, events)
           assertEquals(variable.currentValue, current)
-          assertEquals(variable.currentHistory.gradings, Map.empty)
+          assertEquals(variable.currentHistory.historyGrading.gradingsMap, Map.empty)
           assert(second.ref.querySelector(".interaction-element-info").contains(second.ref.querySelector(".interaction-scaffolding")))
         }
       }
     }.andThen { case _ => close() }
   }
 
-  test("closing the info panel with Escape restores focus and rejects pending feedback") {
+  test("closing the info panel with Escape restores focus while the shared control caches completed feedback") {
     val requested = Var(0)
     val pending = Promise[HintResult]()
     val interaction = new WorkbookInteractionElementFull[String, String, String] {
@@ -493,7 +499,8 @@ class EvaEditorSpec extends EditorDomSuite {
       override lazy val childrenOfThisElement = List.empty[WorkbookElement]
       override val associatedFactory = TextInteraction.factory
       override val scaffoldingElement = Some(new WorkbookInteractionScaffolder[String, String] {
-        override def handleFeedbackGeneration(source: String, availableExecutionClients: List[ExecutionClient], resolver: LanguageMapIdResolver): Future[HintResult] = {
+      override val scaffoldingEntity = FeedbackEntity.TestEntity()
+        override def handleFeedbackGeneration(source: String, contextInformation: ExecutionContextInformation): Future[HintResult] = {
           requested.update(_ + 1)
           pending.future
         }
@@ -521,9 +528,9 @@ class EvaEditorSpec extends EditorDomSuite {
       assertEquals(element.ref.querySelector(".interaction-scaffolding"), null)
       assertEquals(toggle.getAttribute("aria-expanded"), "false")
       assertEquals(dom.document.activeElement, toggle)
-      pending.success(ScaffoldingResult("answer", LanguageMap.universalMap("Old hint"), FeedbackEntity.TestEntity(), None))
+      pending.success(ScaffoldingResult("answer", ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("Old hint")), FeedbackEntity.TestEntity(), None))
       later().map { _ =>
-        assertEquals(interaction.interactionVariable.currentHistory.scaffoldings, Map.empty)
+        assertEquals(interaction.interactionVariable.currentHistory.historyScaffolding.scaffoldingMap.keySet, Set("answer"))
         assertEquals(interaction.interactionVariable.currentValue, "answer")
       }
     }.andThen { case _ => release() }
@@ -622,7 +629,7 @@ class EvaEditorSpec extends EditorDomSuite {
         f.requests.now().last._2.success(feedback)
         later().map { _ =>
           assertEquals(f.accepted.now(), Vector(feedback))
-          assertEquals(f.text, feedback.scaffoldingResult.getInLanguage(English))
+          assertEquals(f.text, feedback.scaffoldingStatus.asInstanceOf[ScaffoldingStatus.ScaffoldingFeedback].feedback.getInLanguage(English))
           assert(!f.element.ref.textContent.contains(secret))
         }
       }

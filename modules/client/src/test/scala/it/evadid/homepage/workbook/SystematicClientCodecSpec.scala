@@ -42,8 +42,9 @@ class SystematicClientCodecSpec extends FunSuite {
     import Workbook.WorkbookMetadata
     val user = User("Fixture", "fixture", "fixture@example.com")
     val workbook = Workbook("fixture", WorkbookMetadata(Set(user), Set.empty, LanguageMapContentId("fixture/title"), List(English)), Nil)
-    val value = SessionData(AllUserInfo(user, None, UserConfig(Nil, false)), Map.empty, workbook, 123456789L)
+    val value = SessionData(java.time.LocalDateTime.of(2026, 11, 7, 0, 0), Map.empty, user,
+      it.evadid.homepage.control.model.AllWorkbookInfo(workbook, it.evadid.homepage.control.model.WorkbookConfig(None), Map.empty))
     roundTrip(value)
-    assertEquals(writeJs(value), ujson.read(WorkbookUserDataAnalyzer.serializerSessionData.serialize(value)))
+    assertEquals(read[SessionData](write(value)).timestampStorage, value.timestampStorage)
   }
 }

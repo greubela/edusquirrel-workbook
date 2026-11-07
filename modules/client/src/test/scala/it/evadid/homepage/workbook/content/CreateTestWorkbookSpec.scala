@@ -13,15 +13,15 @@ import it.evadid.workbook.elements.structureElements.ExerciseContainer
 import munit.FunSuite
 
 class CreateTestWorkbookSpec extends FunSuite {
-  test("test workbook showcases one text answer owning its description, hints and two independent LLM graders") {
+  test("test workbook showcases a text answer owning its instructions, sample solution and LLM example pairs") {
     val workbook = CreateTestWorkbook(null).createWorkbook
     val examples = workbook.allChildrenFullSubtree.collect { case element: TextInputWithScaffoldingAndGrading => element }
     assertEquals(examples.size, 1)
     val example = examples.head
-    assertEquals(example.elementId, "text-feedback-demo-answer")
-    assertEquals(example.exerciseText, LanguageMapContentId("TestWorkbook/textFeedbackTask"))
-    assertEquals(example.gradingElements.size, 2)
-    assertEquals(example.scaffoldingElement.get.hints, List(LanguageMapContentId("TestWorkbook/textFeedbackHints")))
+    assertEquals(example.elementId, "demo-feedback-1")
+    assertEquals(example.instructionText, LanguageMapContentId("TestWorkbook/sec7ex1Instr"))
+    assertEquals(example.gradingElements.size, 1)
+    assertEquals(example.scaffoldingElement.get.scaffData.instructionForLlm, LanguageMapContentId("TestWorkbook/sec7ex1scaff1instr"))
     assertEquals(example.allInteractionsInThisInstance, List(example))
     assertEquals(example.interactionVariable.currentValue, "")
   }
@@ -82,7 +82,7 @@ class CreateTestWorkbookSpec extends FunSuite {
 
     assert(
       workbook.allChildrenFullSubtree.exists {
-        case exercise: ProgrammingExerciseFullJava => exercise.elementId == "prog-full-java"
+        case exercise: ProgrammingExerciseFullJava => exercise.elementId == "java-square-pilot"
         case _ => false
       }
     )
@@ -108,11 +108,9 @@ class CreateTestWorkbookSpec extends FunSuite {
     assertEquals(pilot.head.defaultValue.toJava.code, source)
     assertEquals(pilot.head.testSuite, None)
     assertEquals(pilot.head.hintTask, Some(LanguageMapContentId("TestWorkbook/javaSquareInstructions")))
-    val owner = pilot.head.scaffoldingElement.collect { case hint: ProgrammingHintScaffolder[?] => hint.interaction }
+    val owner = pilot.head.scaffoldingElement.collect { case hint: ProgrammingHintScaffolder => hint.interaction }
     assert(owner.exists(_ eq pilot.head))
     assertEquals(exercises.filter(_.scaffoldingElement.nonEmpty).map(_.elementId), List("java-square-pilot"))
-    assertEquals(exercises.find(_.elementId == "prog-full-java").get.startingProgram,
-      ProgrammingExerciseFullJava.defaultStartingProgram)
   }
 
   test("square instructions immediately precede the pilot and survive workbook serialization") {

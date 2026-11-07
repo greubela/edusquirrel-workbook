@@ -20,10 +20,17 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
       val history = variable.observableState.toEventStream().toSignal(variable.currentHistory)
       history.combineWith(answer.signal, fullInfo.signals.currentLanguage).map { (saved, source, language) =>
         element.gradingElements.flatMap { grader =>
-          saved.historyGrading.gradingsMap.get(source).flatMap(_.graderResultMap.values.headOption)
-            .maxByOption(_.gradingTime).toList.filter(result => result.feedbackInformation.isEmpty ||
+          saved.historyGrading.gradingsMap.get(source).filter(_.state == source).flatMap(_.graderResultMap.get(grader))
+            .filter(result => result.gradedState == source && result.grader == grader).toList.filter(result => result.feedbackInformation.isEmpty ||
               result.feedbackInformation.flatMap(_.tryGetInLanguage(language)).nonEmpty).map { result =>
-              val key = result.gradingStatus.toString
+              val key = result.gradingStatus match {
+                case GradingStatus.Correct() => "textGradingCorrect"
+                case GradingStatus.Incorrect() => "textGradingIncorrect"
+                case GradingStatus.PartiallyCorrect() => "textGradingPartiallyCorrect"
+                case GradingStatus.TestError(_) => "gradingError"
+                case GradingStatus.NotFinished() => "gradingLoading"
+                case GradingStatus.NotRequested() => "gradingNotRun"
+              }
               div(cls := "text-input-feedback__result",
                 strong(child.text <-- label(key)),
                 result.feedbackInformation.flatMap(_.tryGetInLanguage(language)).map(text =>

@@ -50,7 +50,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
     )
 
     section("text-feedback-demo", "TestWorkbook/sec7", List(
-      container("TestWorkbook/sec7cont", List(
+      container("TestWorkbook/sec7cont1", List(
         TextInputWithScaffoldingAndGrading(
           "demo-feedback-1",
           instr,

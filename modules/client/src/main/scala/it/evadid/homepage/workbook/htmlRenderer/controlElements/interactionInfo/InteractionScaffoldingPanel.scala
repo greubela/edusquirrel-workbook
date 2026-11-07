@@ -6,7 +6,9 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 
 import scala.concurrent.Future
-import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout}
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.util.{Failure, Success, Try}
+import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 
 object InteractionScaffoldingPanel {
 
@@ -45,8 +47,49 @@ final class InteractionScaffoldingPanel[T, A](
   }
 
   private def request(): Unit = {
+    val clicked = view.now()
     val source = currentState()
-    generateFeedback(source)
+    val locale = language.now()
+    queue.execute { () =>
+      def unchanged: Boolean = view.now().mount == clicked.mount && clicked.mount.nonEmpty &&
+        view.now().revision == clicked.revision && currentState() == source && language.now() == locale
+
+      if unchanged && !view.now().phase.isInstanceOf[Phase.Pending] then {
+        val id = new Object
+        def pending: Boolean = unchanged && view.now().phase == Phase.Pending(id)
+        view.set(clicked.copy(phase = Phase.Pending(id), timer = None))
+        if pending then {
+          val timer = setTimeout(timeoutMillis.toDouble) {
+            if pending then view.update(_.copy(phase = Phase.TimedOut, timer = None))
+          }
+          if pending then {
+            view.update(_.copy(timer = Some(timer)))
+            if pending then Try(generateFeedback(source)).fold(Future.failed, identity).onComplete { result =>
+              if pending then {
+                clearTimeout(timer)
+                val accepted = result.flatMap { feedback => Try {
+                  require(feedback.forState == source)
+                  val text = feedback.scaffoldingStatus match {
+                    case it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingFeedback(content) => content.tryGetInLanguage(locale)
+                    case _ => None
+                  }
+                  val resolved = text
+                    .filter(value => value != null && value.trim.nonEmpty && value.length <= 4096)
+                    .getOrElse(throw IllegalArgumentException("Missing feedback text."))
+                  accept(feedback)
+                  resolved
+                }}
+                if pending then view.update(_.copy(timer = None, phase = accepted match {
+                  case Success(text) => Phase.Ready(text)
+                  case Failure(_) => Phase.Failed
+                }))
+              }
+            }
+            else clearTimeout(timer)
+          } else clearTimeout(timer)
+        }
+      }
+    }
   }
 
   private lazy val domElement = div(

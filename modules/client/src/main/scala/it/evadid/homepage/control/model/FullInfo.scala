@@ -31,15 +31,15 @@ case class FullInfo(
 
     override def getCurrentLanguage: AppLanguage.HumanLanguage = currentLanguageObservable.now().getOrElse(English)
 
-    override def languageMapIdResolver: Option[LanguageMapIdResolver] = Some(new LanguageMapIdResolver(currentLanguageObservable) {
+    override lazy val languageMapIdResolver: Option[LanguageMapIdResolver] = Some(new LanguageMapIdResolver(currentLanguageObservable) {
       override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = Future {
-        fullInfo.homepageInfoState.now().languageMapStore.languageMaps(id)
+        homepageInfoState.now().languageMapStore.languageMaps(id)
       }(using ExecutionContext.global)
     })
 
     override def futureExecutionContext: ExecutionContext = ExecutionContext.global
 
-    override def syncControl: Option[SyncControl] = Some(fullInfo.syncControl)
+    override def syncControl: Option[SyncControl] = Some(FullInfo.this.syncControl)
   }
 
 

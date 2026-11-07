@@ -12,6 +12,7 @@ import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.Try
 
 object IconGrading {
@@ -35,7 +36,7 @@ case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, w
 
       def status(history: InteractionVariableHistory[T, GA, SA]): String = {
         val results: List[GradingResult[?, ?]] = history.historyStates.lastStateOption.toList.flatMap { current =>
-          workbookInteractionElement.interactionVariable.control.getCurrentStateOfGrading().map(_.graderResultMap.values).getOrElse(List())
+          history.historyGrading.gradingsMap.get(current.value).filter(_.state == current.value).toList.flatMap(_.testsWithResults).filter(_.gradedState == current.value)
         }
         val statuses = visible.map { grader =>
           val matches = results.filter(_.grader == grader)
@@ -47,16 +48,29 @@ case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, w
         if visible.isEmpty then "gradingPrivate"
         else if statuses.exists(value => value.size > 1 || value.exists(_.isInstanceOf[GradingStatus.TestError])) then "gradingError"
         else if statuses.exists(value => value.isEmpty || value.contains(GradingStatus.NotRequested())) then "gradingNotRun"
-        else if statuses.exists(value => value.isEmpty || value.contains(GradingStatus.NotFinished())) then "gradingNotFinished"
+        else if statuses.exists(value => value.isEmpty || value.contains(GradingStatus.NotFinished())) then "gradingLoading"
         else if statuses.flatten.contains(GradingStatus.Incorrect()) then "gradingIncorrect"
         else if statuses.flatten.contains(GradingStatus.PartiallyCorrect()) then "gradingPartial"
         else "gradingCorrect"
       }
 
       def request(): Unit = {
-        variable.control.getOrCalculateGrading(fullInfo.executionContextInformation, true)
+        val clicked = view.now()
+        val source = variable.currentValue
+        queue.execute { () =>
+          def unchanged: Boolean = clicked.mount.nonEmpty && view.now().mount == clicked.mount &&
+            view.now().revision == clicked.revision && variable.currentValue == source
+          if unchanged && view.now().pending.isEmpty then {
+            val id = new Object
+            view.set(clicked.copy(pending = Some(id)))
+            def pending: Boolean = unchanged && view.now().pending.contains(id)
+            if pending then Try(variable.control.getOrCalculateGrading(fullInfo.executionContextInformation, forceGrading = true))
+              .fold(Future.failed, identity).onComplete { result =>
+                if pending then view.update(_.copy(pending = None, failed = result.isFailure))
+              }
+          }
+        }
       }
-
       val message: Signal[String] = history.combineWith(view.signal).map { (snapshot, current) =>
         if current.pending.nonEmpty then "gradingLoading"
         else if current.failed then "gradingError"
@@ -76,7 +90,7 @@ case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, w
           onClick --> (_ => request())),
         p(cls := "interaction-grading__status", role := "status", aria.live := "polite",
           aria.busy <-- view.signal.map(_.pending.nonEmpty), dataAttr("status") <-- message,
-          child.text <-- message
+          child.text <-- message.flatMapSwitch(key => laminarHelper.plaintextStringSignal(s"basic/$key"))
         ))
     }
 
