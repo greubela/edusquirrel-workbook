@@ -35,6 +35,11 @@ trait WorkbookInteractionGrader[T, A] {
       case any: Any => failWith(state, Left(s"Unknown grading error (${any.toString})"))
     }
 
+  /** Completed assessments are reusable; execution errors and skipped tests are not. */
+  def canReuseResult(result: GradingResult[T, A], context: ExecutionContextInformation): Boolean =
+    !result.gradingStatus.isErrorOrUnfinished &&
+      result.feedbackInformation.forall(_.tryGetInLanguage(context.getCurrentLanguage).nonEmpty)
+
   protected def handleGrading(state: T, contextInformation: ExecutionContextInformation): Future[GradingResult[T, A]]
 
   def importance: GradingImportance

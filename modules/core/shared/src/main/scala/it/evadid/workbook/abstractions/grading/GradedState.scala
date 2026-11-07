@@ -15,7 +15,7 @@ case class GradedState[T, A]
 ) derives ReadWriter {
 
   lazy val testsWithResults: Set[GradingResult[T, A]] = graderResultMap.values.toSet
-  val timestampLatestTest: LocalDateTime = testsWithResults.map(_.gradingTime).max
+  val timestampLatestTest: LocalDateTime = testsWithResults.map(_.gradingTime).maxOption.getOrElse(LocalDateTime.MIN)
 
 
   def fillMapForUnavailable(interaction: WorkbookInteractionElementFull[T, A, ?], gradingStatusOfUnavailable: GradingStatus): GradedState[T, A] = {

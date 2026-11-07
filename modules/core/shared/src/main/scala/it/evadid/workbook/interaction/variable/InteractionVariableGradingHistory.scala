@@ -13,7 +13,7 @@ case class InteractionVariableGradingHistory[T, GA]
 
   private[interaction] def merge(other: InteractionVariableGradingHistory[T, GA]): InteractionVariableGradingHistory[T, GA] = {
     val mergedMaps = MapUtils.mergeMaps[T, GradedState[T, GA]](gradingsMap, other.gradingsMap, (k, v1, v2) => v1.merge(v2))
-    InteractionVariableGradingHistory[T, GA](gradingsMap)
+    InteractionVariableGradingHistory[T, GA](mergedMaps)
   }
 
   private[interaction] def get(state: T): Option[GradedState[T, GA]] = gradingsMap.get(state)

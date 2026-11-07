@@ -22,27 +22,18 @@ case class GradingResult[T, A]
 
 
   def merge(other: GradingResult[T, A]): GradingResult[T, A] = {
-    if (this == other || this.gradedState != other.gradedState) this
-    else if (this.gradingStatus.isErrorOrUnfinished && !other.gradingStatus.isErrorOrUnfinished)
-      other
-    else if (!this.gradingStatus.isErrorOrUnfinished && other.gradingStatus.isErrorOrUnfinished)
-      this
-    else {
-      val combinedData = if (additionalData.isEmpty) other.additionalData else additionalData
-      val combinedFeedback: LanguageMap[HumanLanguage] =
-        if (feedbackInformation.nonEmpty && other.feedbackInformation.nonEmpty) {
-          LanguageMap.merge(feedbackInformation.get, other.feedbackInformation.get)
-        } else if (feedbackInformation.nonEmpty) {
-          feedbackInformation.get
-        } else {
-          other.feedbackInformation.get
-        }
-      val combinedTime = if (gradingTime.isAfter(other.gradingTime)) gradingTime else other.gradingTime
-
-      GradingResult(grader, gradedState, gradingStatus, Some(combinedFeedback), combinedData, gradingTime)
-
+    require(grader == other.grader && gradedState == other.gradedState, "Only results for the same grader and state can be merged.")
+    val preferred =
+      if gradingStatus.isErrorOrUnfinished != other.gradingStatus.isErrorOrUnfinished then
+        if gradingStatus.isErrorOrUnfinished then other else this
+      else if other.gradingTime.isAfter(gradingTime) then other
+      else this
+    val remaining = if preferred eq this then other else this
+    val feedback = (remaining.feedbackInformation, preferred.feedbackInformation) match {
+      case (Some(previous), Some(current)) => Some(LanguageMap.merge(previous, current))
+      case _ => preferred.feedbackInformation.orElse(remaining.feedbackInformation)
     }
-
+    preferred.copy(feedbackInformation = feedback, additionalData = preferred.additionalData.orElse(remaining.additionalData))
   }
 
 
