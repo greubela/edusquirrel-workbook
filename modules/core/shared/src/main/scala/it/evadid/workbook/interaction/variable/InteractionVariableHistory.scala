@@ -109,7 +109,8 @@ object InteractionVariableHistory {
           val decoded = scala.util.Try(read[T](ujson.Str(text))).getOrElse(read[T](text))
           InteractionVariableState(decoded, read[it.evadid.workbook.interaction.sync.UpdateImportance](entry("updateImportance")), LocalDateTime.parse(entry("timestamp").str))
         }
-        InteractionVariableHistory(parsed.historyStates.withAddedEvents(oldStates.toSet), parsed.historyGrading, parsed.historyScaffolding)
+        val states = if oldStates.isEmpty then parsed.historyStates else parsed.historyStates.withAddedEvents(oldStates.toSet)
+        InteractionVariableHistory(states, parsed.historyGrading, parsed.historyScaffolding)
       })
 
   def apply[T, GA, SA](

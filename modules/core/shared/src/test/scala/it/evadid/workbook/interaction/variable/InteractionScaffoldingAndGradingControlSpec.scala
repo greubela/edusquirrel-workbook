@@ -1,6 +1,9 @@
 package it.evadid.workbook.interaction.variable
 
 import it.evadid.core.datastructures.state.State
+import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
+import it.evadid.core.datastructures.language.LanguageMap
+import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus, WorkbookInteractionScaffolder}
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
@@ -109,6 +112,83 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
       assertEquals(result.graderResultMap(grader).gradingStatus, GradingStatus.Correct())
       assertEquals(value.currentHistory.historyGrading.gradingsMap("answer"), result)
       assertEquals(grader.calls.now(), 2)
+    }
+  }
+
+  test("batch history insertion selects the newest result of each grader regardless of input order") {
+    val first = new CountingGrader()
+    val second = new CountingGrader()
+    val time = java.time.LocalDateTime.of(2026, 11, 7, 0, 0)
+    val old = GradingResult[String, String](first, "answer", GradingStatus.Incorrect(), gradingTime = time)
+    val current = old.copy(gradingStatus = GradingStatus.Correct(), gradingTime = time.plusSeconds(1))
+    val other = GradingResult[String, String](second, "answer", GradingStatus.Incorrect(), gradingTime = time)
+    List(old, current, other).permutations.foreach { results =>
+      val saved = InteractionVariableGradingHistory.fromResults(results).gradingsMap("answer")
+      assertEquals(saved.graderResultMap, Map[WorkbookInteractionGrader[String, String], GradingResult[String, String]](first -> current, second -> other))
+    }
+  }
+
+  private def hintVariable(scaffolder: WorkbookInteractionScaffolder[String, String]) =
+    new WorkbookInteractionElementFull[String, String, String] {
+      override val elementId = "hint-cache-tests"
+      override val defaultValue = "answer"
+      override lazy val childrenOfThisElement = List.empty[WorkbookElement]
+      override val associatedFactory = TextInteraction.factory
+      override val scaffoldingElement = Some(scaffolder)
+    }.interactionVariable
+
+  test("an obsolete-language hint completion is not published as cached current feedback") {
+    val language = State[HumanLanguage](German)
+    val pending = State(Vector.empty[Promise[ScaffoldingResult[String, String]]])
+    val scaffolder = new WorkbookInteractionScaffolder[String, String] {
+      override val scaffoldingEntity = FeedbackEntity.TestEntity()
+      override def handleFeedbackGeneration(state: String, context: it.evadid.workbook.meta.ExecutionContextInformation) = {
+        val promise = Promise[ScaffoldingResult[String, String]]()
+        pending.update(_ :+ promise)
+        promise.future
+      }
+    }
+    val value = hintVariable(scaffolder)
+    val context = TestExecutionContext(language = () => language.now())
+    val first = value.control.getOrCalculateScaffolding(context)
+    assert(first eq value.control.getOrCalculateScaffolding(context))
+    language.set(English)
+    pending.now().head.success(ScaffoldingResult("answer", ScaffoldingStatus.ScaffoldingFeedback(
+      LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Old hint"))), FeedbackEntity.TestEntity(), None))
+    first.flatMap { _ =>
+      assertEquals(value.currentHistory.historyScaffolding.scaffoldingMap, Map.empty)
+      val current = value.control.getOrCalculateScaffolding(context)
+      assertEquals(pending.now().size, 2)
+      pending.now().last.success(ScaffoldingResult("answer", ScaffoldingStatus.ScaffoldingFeedback(
+        LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "Current hint"))), FeedbackEntity.TestEntity(), None))
+      current.flatMap { expected =>
+        assertEquals(value.currentHistory.historyScaffolding.scaffoldingMap("answer"), expected)
+        value.control.getOrCalculateScaffolding(context).map { cached =>
+          assertEquals(cached, expected)
+          assertEquals(pending.now().size, 2)
+        }
+      }
+    }
+  }
+
+  test("a failed cached hint can be retried even when both results have the same timestamp") {
+    val calls = State(0)
+    val time = java.time.LocalDateTime.of(2026, 11, 7, 0, 0)
+    val scaffolder = new WorkbookInteractionScaffolder[String, String] {
+      override val scaffoldingEntity = FeedbackEntity.TestEntity()
+      override def handleFeedbackGeneration(state: String, context: it.evadid.workbook.meta.ExecutionContextInformation) = {
+        calls.update(_ + 1)
+        val status = if calls.now() == 1 then ScaffoldingStatus.ScaffoldingError(
+          it.evadid.distribution.command.SerializedException("outage")) else
+          ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("A hint"))
+        Future.successful(ScaffoldingResult[String, String](state, status, scaffoldingEntity, None, time))
+      }
+    }
+    val value = hintVariable(scaffolder)
+    value.control.getOrCalculateScaffolding(context).flatMap(_ => value.control.getOrCalculateScaffolding(context)).flatMap { current =>
+      assert(current.scaffoldingStatus.isInstanceOf[ScaffoldingStatus.ScaffoldingFeedback])
+      assertEquals(value.currentHistory.historyScaffolding.scaffoldingMap("answer"), current)
+      value.control.getOrCalculateScaffolding(context).map(_ => assertEquals(calls.now(), 2))
     }
   }
 

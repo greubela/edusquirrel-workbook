@@ -31,7 +31,18 @@ object HistoryJson {
       "historyStates" -> ujson.Obj("events" -> events),
       "historyGrading" -> ujson.Obj("gradingsMap" -> asMap(entries(grades).map { (state, group) =>
         val results = group.obj.get("graderResultMap").getOrElse(asMap(group.obj.get("testsWithResults").toList.flatMap(_.arr).map(result => result("grader") -> result)))
-        state -> ujson.Obj("state" -> group("state"), "graderResultMap" -> results)
+        val answerTime = events.arr.filter(_("value") == state).flatMap(_.obj.get("timestamp"))
+          .map(value => LocalDateTime.parse(value.str)).maxOption.getOrElse(LocalDateTime.MIN)
+        val normalizedResults = entries(results).map { (grader, result) =>
+          val fields = result.obj.toMap
+          val status = fields("gradingStatus") match {
+            case obj: ujson.Obj => ujson.Obj.from(obj.value.toMap.updated("$type", ujson.Str(obj("$type").str.replace("NotExecuted", "NotRequested"))))
+            case other => other
+          }
+          grader -> ujson.Obj.from(fields.updated("gradingStatus", status)
+            .updated("gradingTime", fields.getOrElse("gradingTime", ujson.Str(answerTime.toString))))
+        }
+        state -> ujson.Obj("state" -> group("state"), "graderResultMap" -> asMap(normalizedResults))
       })),
       "historyScaffolding" -> ujson.Obj("scaffoldingMap" -> asMap(entries(hints).map { (state, hint) =>
         val fields = hint.obj.toMap

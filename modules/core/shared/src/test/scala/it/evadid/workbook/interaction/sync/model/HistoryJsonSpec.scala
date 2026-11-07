@@ -111,6 +111,27 @@ class HistoryJsonSpec extends FunSuite {
       .fetchedValues.size, 1)
   }
 
+  test("flat saved histories migrate skipped grades with a stable answer-based timestamp") {
+    type History = InteractionVariableHistory[SlideshowState, Nothing, String]
+    given ReadWriter[Nothing] = readwriter[ujson.Value].bimap[Nothing](
+      (_: Nothing) => throw IllegalArgumentException("No payload"),
+      (_: ujson.Value) => throw IllegalArgumentException("No payload"))
+    val state = SlideshowState(Nil, Set.empty)
+    val grader: WorkbookInteractionGrader[SlideshowState, Nothing] = SlideshowGrader(true)
+    val result = writeJs(GradingResult[SlideshowState, Nothing](grader, state, GradingStatus.NotRequested()))
+    result.obj.remove("gradingTime")
+    result("gradingStatus")("$type") = ujson.Str(result("gradingStatus")("$type").str.replace("NotRequested", "NotExecuted"))
+    val flat = ujson.Obj("events" -> ujson.Arr(writeJs(InteractionVariableState(state, UpdateImportance.MAJOR, time))),
+      "gradings" -> ujson.Arr(ujson.Arr(writeJs(state), ujson.Obj("state" -> writeJs(state), "testsWithResults" -> ujson.Arr(result)))),
+      "scaffoldings" -> ujson.Arr())
+    val restored = read[History](flat)
+    val saved = restored.historyGrading.gradingsMap(state).graderResultMap(grader)
+    assertEquals(saved.gradingStatus, GradingStatus.NotRequested())
+    assertEquals(saved.gradingTime, time)
+    assertEquals(read[History](flat), restored)
+    assertEquals(HistoryJson.lastTimestamp(ujson.write(flat)), Some(time))
+  }
+
   test("merging histories preserves feedback with string map keys and chooses the first duplicate") {
     val first = history("Grüße", 1)
     val second = history("second", 2)

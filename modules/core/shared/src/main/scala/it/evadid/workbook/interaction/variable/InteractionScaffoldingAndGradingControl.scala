@@ -96,7 +96,10 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
                 scaffoldingRequests.update(_ - key)
                 outcome match {
                   case Success(result) =>
-                    Try(interactionVariable.updateHistory(_.addScaffolding(result), contextInformation)) match {
+                    Try {
+                      if contextInformation.getCurrentLanguage == key._2 then
+                        interactionVariable.updateHistory(_.addScaffolding(result), contextInformation)
+                    } match {
                       case Success(_) => completed.trySuccess(result)
                       case Failure(error) => completed.tryFailure(error)
                     }

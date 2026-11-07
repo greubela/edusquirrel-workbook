@@ -19,6 +19,11 @@ class InteractionHistoryPackageSpec extends FunSuite {
     val last = state(2, DEFAULT, 1)
     assertEquals(InteractionVariableHistory[Int, Int, Int](InteractionVariableStateHistory[Int](Set(first, last)), new InteractionVariableGradingHistory[Int, Int](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[Int, Int](scaffoldingMap = Map.empty)).historyStates.cleanedHistory().events, Set(last))
   }
+  test("canonical history codecs preserve explicitly constructed default snapshots") {
+    val history = InteractionVariableHistory[Int, Int, Int](Set(state(1, DEFAULT, 0), state(2, DEFAULT, 1)))
+    assertEquals(read[InteractionVariableHistory[Int, Int, Int]](write(history)), history)
+    assertEquals(readBinary[InteractionVariableHistory[Int, Int, Int]](writeBinary(history)), history)
+  }
   test("history merges deduplicate events and drop defaults after a meaningful update") {
     val initial = state(1, DEFAULT, 0)
     val update = state(2, MINOR, 1)

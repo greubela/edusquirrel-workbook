@@ -14,7 +14,7 @@ case class InteractionVariableScaffoldingHistory[T, SA]
     val merged = other.scaffoldingMap.foldLeft(scaffoldingMap) { case (current, (state, incoming)) =>
       if incoming.forState != state then current
       else current.get(state) match {
-        case Some(saved) if saved.forState == state && !incoming.scaffoldingTime.isAfter(saved.scaffoldingTime) => current
+        case Some(saved) if saved.forState == state && incoming.scaffoldingTime.isBefore(saved.scaffoldingTime) => current
         case _ => current.updated(state, incoming)
       }
     }
