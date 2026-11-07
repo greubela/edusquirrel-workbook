@@ -111,6 +111,25 @@ class AsyncDataCacheSpec extends FunSuite {
     }
   }
 
+  test("reloading a deleted entry starts the loader once and preserves its observable") {
+    val cache = new Cache()
+    val observable = cache.loadIntoVariable("a")
+    val first = cache.loadAsFuture("a")
+    cache.requests.head._2.success("old")
+    first.flatMap { _ =>
+      cache.removeFromCache(List("a"))
+      val next = cache.loadIntoVariable("a", forceReloading = true)
+      val completed = cache.loadAsFuture("a")
+      assertEquals(cache.requests.size, 2, "Reading the previous observable must not start an extra load")
+      cache.requests.last._2.success("new")
+      completed.map { result =>
+        assertEquals(result, "new")
+        assertEquals(observable.stateNow().value, Some("new"))
+        assertEquals(next.stateNow().value, Some("new"))
+      }
+    }
+  }
+
   test("batch requests preserve successes and failures independently") {
     val cache = new Cache(retry = false)
     val error = new IllegalArgumentException("bad input")

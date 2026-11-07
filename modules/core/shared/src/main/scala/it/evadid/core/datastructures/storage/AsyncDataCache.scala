@@ -81,7 +81,7 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
       cache_misses = cache_misses + 1
       startExecution(input, emptyAsyncState)
     }
-    else if (forceReloading(cachedElement.get)) {
+    else if (forceReloading(cachedElement.get) || cachedElement.get.isInstanceOf[DeletedRequest[?, ?]]) {
       cacheLogger.logInfo("Forced reloading of input " + formatInputForLogging(input) + " (element in cache: " + cachedElement.get + ")")
       val useVar: State[AsyncDataState[Nothing, O]] = cachedElement.map(_.getVariable).getOrElse(emptyAsyncState)
       startExecution(input, useVar)
@@ -278,7 +278,7 @@ object AsyncDataCache {
 
     def createFuture: Future[O] = associatedStore.startExecution(input, outputVar).createFuture
 
-    def getVariable: State[AsyncDataState[Nothing, O]] = associatedStore.startExecution(input, outputVar).getVariable
+    def getVariable: State[AsyncDataState[Nothing, O]] = outputVar
 
     override def associatedStatus: CacheElementStatus = DELETED()
   }
