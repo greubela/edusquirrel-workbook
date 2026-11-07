@@ -6,7 +6,6 @@
   "sec1cont2": "Testabschnitt 2: JavaEditor & ProgrammingExercise",
   "Sec1Instr3": "ProgrammingExercise (regular Eva Editor)",
   "Sec1Instr4": "ProgrammingExerciseFullJava (Ultrich Dev)",
-
   "sec2": "Anzeige",
   "sec2cont1": "Elemente mit Überschrift",
   "sec2cont1goalTitle": "Ziel (Titel)",
@@ -15,7 +14,6 @@
   "sec2cont1instText": "Aufgabe (Text)",
   "sec2cont1hintTitle": "Hinweis (Titel)",
   "sec2cont1hintText": "Hinweis (Text)",
-
   "sec7": "Text & LLM",
   "sec7cont1": "Text with GPT Grading",
   "sec7ex1context": "The students just read a picture-based story about monks sorting cards. Each monk took the highest card and gave the other cards to the next monks. When the tablet was empty, each monk swept all existing cards on the tablet to the left, then added their own card to the right. The goal is to provide a light-hearted example of recursive sorting.",
@@ -29,7 +27,6 @@
   "sec7ex1grade1resp1": "INCORRECT\n\nDie Abbruchbedingung beendet den Rekursionsaufbau, nicht den gesamten Algorithmus. Sie kann also nicht erst erreicht werden, wenn der Algorithmus terminiert",
   "sec7ex1grade1stud2": "Die Abbruchbedingung ist erfüllt, wenn wieder einsortiert wird",
   "sec7ex1grade1resp2": "PARTIALLY CORRECT\n\nDie Abbruchbedingung ist in diesem Fall tatsächlich befüllt. Aber was genau ist die Abbruchbedingung und wann wechselt sie von 'erfüllt' auf 'nicht erfüllt'?",
-
   "workbookTitle": "Beispielheft",
   "exerciseTitle": "Das ist der Titel",
   "writeText1": "Schreibe einen Text!",
@@ -51,5 +48,7 @@
   "textFeedbackTitle": "Textantworten mit Hinweisen und KI-Feedback",
   "textFeedbackTask": "Erkläre, warum ein vertrauter Absendername nicht beweist, dass eine E-Mail echt ist. Beschreibe einen sicheren Weg, eine verdächtige Anfrage zu überprüfen. Schreibe einige Sätze, fordere bei Bedarf einen Hinweis und anschließend Feedback an. Die beiden Kriterien werden unabhängig geprüft.",
   "textFeedbackCriterionReason": "Prüfe nur, ob erklärt wird, dass ein angezeigter Absendername kopiert oder gefälscht werden kann und deshalb keine Echtheit belegt. Gib konstruktives Feedback zu dieser Begründung.",
-  "textFeedbackCriterionAction": "Prüfe nur, ob ein sicherer unabhängiger Prüfschritt beschrieben wird, etwa den vermeintlichen Absender über einen bekannten Kontaktweg zu erreichen, statt einen Link oder eine Nummer aus der verdächtigen E-Mail zu nutzen. Gib konstruktives Feedback zu diesem Schritt."
+  "textFeedbackCriterionAction": "Prüfe nur, ob ein sicherer unabhängiger Prüfschritt beschrieben wird, etwa den vermeintlichen Absender über einen bekannten Kontaktweg zu erreichen, statt einen Link oder eine Nummer aus der verdächtigen E-Mail zu nutzen. Gib konstruktives Feedback zu diesem Schritt.",
+  "section2Title": "Zeichne einen Kreis",
+  "textFeedbackHints": "Bitte die Lernenden, den angezeigten Namen von der tatsächlichen Absenderadresse zu unterscheiden und einen unabhängigen Kontaktweg zu erwägen. Stelle eine kurze Leitfrage, ohne die vollständige Antwort vorzugeben."
 }
