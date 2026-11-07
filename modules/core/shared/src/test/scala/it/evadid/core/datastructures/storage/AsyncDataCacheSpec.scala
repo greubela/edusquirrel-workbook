@@ -150,6 +150,54 @@ class AsyncDataCacheSpec extends FunSuite {
     }
   }
 
+  test("a waiter attached after completion immediately receives the cached request outcome") {
+    val cache = new Cache()
+    val state = State[AsyncDataState[Nothing, String]](AsyncDataLoading())
+    val request = StartedRequest(cache, "a", state)
+    request.succeeded("already finished")
+    val late = request.createFuture
+    assert(late.isCompleted, "Completion must not be lost before the first waiter is attached")
+    late.map(result => assertEquals(result, "already finished"))
+  }
+
+  test("a waiter attached after failure immediately receives the original cause") {
+    val cache = new Cache()
+    val request = StartedRequest(cache, "a", State[AsyncDataState[Nothing, String]](AsyncDataLoading()))
+    val failure = IllegalStateException("already failed")
+    request.failed("a", failure)
+    val late = request.createFuture
+    assert(late.isCompleted, "A completed failure must not leave subsequent waiters pending")
+    late.failed.map(error => assert(error eq failure))
+  }
+
+  test("invalidated in-flight results resolve their waiters without reappearing in the cache") {
+    val cache = new Cache()
+    assertEquals(cache.statusSnapshot, Map.empty)
+    val pending = cache.loadAsFuture("a")
+    assertEquals(cache.statusSnapshot.get("a"), Some(CacheElementStatus.STARTED()))
+    cache.removeFromCache(List("a"))
+    cache.requests.head._2.success("obsolete")
+    pending.map { result =>
+      assertEquals(result, "obsolete")
+      assertEquals(cache.getSyncIfInCache("a", false), None)
+      assertEquals(cache.statusSnapshot.get("a"), Some(CacheElementStatus.DELETED()))
+    }
+  }
+
+  test("an older load cannot overwrite the completed replacement") {
+    val cache = new Cache()
+    val old = cache.loadAsFuture("a")
+    val replacement = cache.loadAsFuture("a", forceReloading = true)
+    cache.requests.last._2.success("current")
+    replacement.flatMap { _ =>
+      cache.requests.head._2.success("old")
+      old.map { result =>
+        assertEquals(result, "old")
+        assertEquals(cache.getSyncIfInCache("a", false), Some("current"))
+      }
+    }
+  }
+
   test("FailedRequest exposes its state and timestamp without an output") {
     val cache = new Cache(retry = false)
     val state = State[AsyncDataState[Nothing, String]](AsyncDataLoading())

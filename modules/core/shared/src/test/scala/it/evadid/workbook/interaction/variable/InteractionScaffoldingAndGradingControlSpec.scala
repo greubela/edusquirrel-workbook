@@ -211,6 +211,63 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     }
   }
 
+  test("reading feedback status never starts a load and exposes pending cache requests") {
+    val gate = Promise[Unit]()
+    val grader = new CountingGrader(gate = Some(gate))
+    val graded = variable(List(grader))
+    assertEquals(graded.control.getCurrentStateOfGrading().get.graderResultMap(grader).gradingStatus, GradingStatus.NotRequested())
+    assertEquals(grader.calls.now(), 0)
+    val grading = graded.control.getOrCalculateGrading(context)
+    assertEquals(graded.control.getCurrentStateOfGrading().get.graderResultMap(grader).gradingStatus, GradingStatus.NotFinished())
+    gate.success(())
+    val reply = Promise[ScaffoldingResult[String, String]]()
+    val calls = State(0)
+    val hinted = hintVariable(new WorkbookInteractionScaffolder[String, String] {
+      override val scaffoldingEntity = FeedbackEntity.TestEntity()
+      override def handleFeedbackGeneration(state: String, context: it.evadid.workbook.meta.ExecutionContextInformation) = {
+        calls.update(_ + 1)
+        reply.future
+      }
+    })
+    assertEquals(hinted.control.getCurrentStateOfScaffolding(), None)
+    assertEquals(calls.now(), 0)
+    val hint = hinted.control.getOrCalculateScaffolding(context)
+    assertEquals(hinted.control.getCurrentStateOfScaffolding().get.scaffoldingStatus, ScaffoldingStatus.ScaffoldingRequestedButNotFinished())
+    reply.success(ScaffoldingResult("answer", ScaffoldingStatus.ScaffoldingFeedback(
+      LanguageMap.universalMap[HumanLanguage]("A hint")), FeedbackEntity.TestEntity(), None))
+    grading.zip(hint).map { _ =>
+      assertEquals(grader.calls.now(), 1)
+      assertEquals(calls.now(), 1)
+    }
+  }
+
+  test("completed AsyncDataCache entries remain reusable after local history is reset") {
+    val grader = new CountingGrader()
+    val value = variable(List(grader))
+    val hintCalls = State(0)
+    val hinted = hintVariable(new WorkbookInteractionScaffolder[String, String] {
+      override val scaffoldingEntity = FeedbackEntity.TestEntity()
+      override def handleFeedbackGeneration(state: String, context: it.evadid.workbook.meta.ExecutionContextInformation) = {
+        hintCalls.update(_ + 1)
+        Future.successful(ScaffoldingResult[String, String](state, ScaffoldingStatus.ScaffoldingFeedback(
+          LanguageMap.universalMap[HumanLanguage]("Cached hint")), scaffoldingEntity, None))
+      }
+    })
+    value.control.getOrCalculateGrading(context).zip(hinted.control.getOrCalculateScaffolding(context)).flatMap { expected =>
+      value.resetLocalHistory()
+      hinted.resetLocalHistory()
+      assertEquals(value.control.getCurrentStateOfGrading().get, expected._1)
+      assertEquals(hinted.control.getCurrentStateOfScaffolding().get, expected._2)
+      value.control.getOrCalculateGrading(context).zip(hinted.control.getOrCalculateScaffolding(context)).map { reused =>
+        assertEquals(reused, expected)
+        assertEquals(grader.calls.now(), 1)
+        assertEquals(hintCalls.now(), 1)
+        assertEquals(value.currentHistory.historyGrading.gradingsMap("answer"), expected._1)
+        assertEquals(hinted.currentHistory.historyScaffolding.scaffoldingMap("answer"), expected._2)
+      }
+    }
+  }
+
   test("an interaction with no graders has an empty completed result") {
     variable(Nil).control.getOrCalculateGrading(context).map(result => assertEquals(result.testsWithResults, Set.empty))
   }

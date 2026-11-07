@@ -136,7 +136,8 @@ Importance does not by itself run every grader; see the current grading paths in
 [interaction architecture](workbook-interaction-architecture.md).
 
 Grading and scaffolding run through `interactionVariable.control` with an
-`ExecutionContextInformation`. Pending requests are shared; execution errors and
+`ExecutionContextInformation`. Its two `AsyncDataCache`s share pending requests
+and completed results; execution errors and
 unexecuted tests remain retryable, while completed assessments (including
 `Incorrect`) are reused. Closing a panel clears its transient display; completed
 feedback remains cached against its captured answer. Histories separate

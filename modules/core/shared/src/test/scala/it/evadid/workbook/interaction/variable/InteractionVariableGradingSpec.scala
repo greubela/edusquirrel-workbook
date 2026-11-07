@@ -1635,7 +1635,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  test("a grading publication observer can retry immediately without old cleanup removing the new request") {
+  test("publication observers share the completing cache load and can retry after it completes") {
     val pending = State(Vector.empty[Promise[GradingResult[String, String]]])
     val grader = new RecordingGrader {
       override protected def handleGrading(state: String, context: ExecutionContextInformation): Future[GradingResult[String, String]] = {
@@ -1651,8 +1651,9 @@ class InteractionVariableGradingSpec extends FunSuite {
     value.observableState.addNextChangeObserver { _ => retried.set(Some(value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync))))) }
     pending.now().head.failure(IllegalStateException("retry immediately"))
     first.flatMap { _ =>
-      assertEquals(pending.now().size, 2)
-      val retry = retried.now().get
+      assertEquals(pending.now().size, 1)
+      assert(retried.now().get eq first)
+      val retry = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
       assert(value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync))) eq retry)
       assertEquals(pending.now().size, 2)
       pending.now().last.success(GradingResult[String, String](grader, "", GradingStatus.Correct()))
@@ -1687,17 +1688,13 @@ class InteractionVariableGradingSpec extends FunSuite {
       }
     }
     val value = variable(grader)
-    val failed = Promise[GradedState[String, String]]()
-    value.observableState.addNextChangeObserver(next => failed.trySuccess(next.historyGrading.gradingsMap("")))
-    value.control.getOrCalculateGrading(TestExecutionContext())
-    failed.future.flatMap { result =>
+    value.control.getOrCalculateGrading(TestExecutionContext()).flatMap { result =>
       assert(result.testsWithResults.head.gradingStatus.isInstanceOf[GradingStatus.TestError])
-      val completed = Promise[GradedState[String, String]]()
+      assertEquals(value.currentHistory.historyGrading.gradingsMap(""), result)
       val client = factory.toLocalExecutionClient((_, _) => Future.successful("accepted"))
-      value.observableState.addNextChangeObserver(next => completed.trySuccess(next.historyGrading.gradingsMap("")))
-      value.control.getOrCalculateGrading(TestExecutionContext(List(client)))
-      completed.future.map { corrected =>
+      value.control.getOrCalculateGrading(TestExecutionContext(List(client))).map { corrected =>
         assertEquals(corrected.testsWithResults.map(_.gradingStatus), Set[GradingStatus](GradingStatus.Correct()))
+        assertEquals(value.currentHistory.historyGrading.gradingsMap(""), corrected)
         assertEquals(grader.clients.now(), List(Nil, List(client)))
         value.control.getOrCalculateGrading(TestExecutionContext())
         assertEquals(grader.requests.size, 2)
