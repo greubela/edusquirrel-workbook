@@ -17,9 +17,18 @@ case class GradedState[T, A]
   lazy val testsWithResults: Set[GradingResult[T, A]] = graderResultMap.values.toSet
   val timestampLatestTest: LocalDateTime = testsWithResults.map(_.gradingTime).maxOption.getOrElse(LocalDateTime.MIN)
 
+  lazy val shouldRetry: Seq[WorkbookInteractionGrader[T, A]] = graderResultMap.toList.filter(_._2.gradingStatus.shouldRetryExecution).map(_._1)
+
+  def retryFailed(contextInformation: ExecutionContextInformation, forceGrading: Boolean): Future[GradedState[T, A]] = {
+    if (!forceGrading || shouldRetry.isEmpty) Future.successful(this)
+    else {
+      GradedState
+        .executeGradingSafe(shouldRetry, state, forceGrading, contextInformation)
+        .map(_.merge(this))(using contextInformation.futureExecutionContext)
+    }
+  }
 
   def fillMapForUnavailable(interaction: WorkbookInteractionElementFull[T, A, ?], gradingStatusOfUnavailable: GradingStatus): GradedState[T, A] = {
-
     def ifUnavailable(grader: WorkbookInteractionGrader[T, A]): GradingResult[T, A] = GradingResult(grader, state, gradingStatusOfUnavailable, None, None, LocalDateTime.now())
 
     val fullMap = interaction.gradingElements.map(curGradingElement => {
@@ -40,9 +49,10 @@ object GradedState {
   def apply[T, A](state: T) = new GradedState[T, A](state, Map())
 
 
-  def executeGradingSafe[T, A](graders: Seq[WorkbookInteractionGrader[T, A]], state: T, forceGrading: Boolean, context: ExecutionContextInformation): Future[GradedState[T, A]] = {
-    given ExecutionContext  = context.futureExecutionContext
-    val graderRes: Future[Seq[GradingResult[T, A]]] = Future.traverse(graders)(curGrader => curGrader.gradeStateSafe(state, forceGrading, context))
+  def executeGradingSafe[T, A](graders: IterableOnce[WorkbookInteractionGrader[T, A]], state: T, forceGrading: Boolean, context: ExecutionContextInformation): Future[GradedState[T, A]] = {
+    given ExecutionContext = context.futureExecutionContext
+
+    val graderRes: Future[Seq[GradingResult[T, A]]] = Future.traverse(graders.iterator.toList)(curGrader => curGrader.gradeStateSafe(state, forceGrading, context))
     graderRes.map(graderResults => {
       GradedState(state, graderResults.map(curRes => curRes.grader -> curRes).toMap)
     })(using context.futureExecutionContext)

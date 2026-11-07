@@ -13,6 +13,7 @@ import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
+import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.runtime.LazyVals.Names.state
 

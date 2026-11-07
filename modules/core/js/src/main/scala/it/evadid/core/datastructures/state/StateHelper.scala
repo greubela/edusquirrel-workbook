@@ -4,8 +4,8 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl}
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.sync.UpdateImportance.TEMPORARY
-import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.meta.ExecutionContextInformation
 
@@ -121,7 +121,7 @@ object StateHelper {
       //interactionVariable.observableValue.addObserver(newValue => res.set(newValue))
       //res.signal
 
-      createBoundVarWithUpdateImportance( TEMPORARY, context).signal
+      createBoundVarWithUpdateImportance(TEMPORARY, context).signal
     }
 
   }

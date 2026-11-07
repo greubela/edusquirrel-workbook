@@ -14,12 +14,10 @@ case class GradingResult[T, A]
   grader: WorkbookInteractionGrader[T, A],
   gradedState: T,
   gradingStatus: GradingStatus,
-  feedbackInformation: Option[LanguageMap[HumanLanguage]] = None,
-  additionalData: Option[A] = None,
-  @upickle.implicits.serializeDefaults(true) gradingTime: LocalDateTime = LocalDateTime.now(),
+  feedbackInformation: Option[LanguageMap[HumanLanguage]],
+  additionalData: Option[A],
+  gradingTime: LocalDateTime
 ) derives ReadWriter {
-
-
 
   def merge(other: GradingResult[T, A]): GradingResult[T, A] = {
     require(grader == other.grader && gradedState == other.gradedState, "Only results for the same grader and state can be merged.")
@@ -45,6 +43,13 @@ object GradingResult {
 
   type GradingResultUntyped = GradingResult[?, ?]
 
+  def apply[T, A](grader: WorkbookInteractionGrader[T, A],
+                  gradedState: T,
+                  gradingStatus: GradingStatus,
+                  feedbackInformation: Option[LanguageMap[HumanLanguage]] = None,
+                  additionalData: Option[A] = None,
+                 ): GradingResult[T, A] = GradingResult(grader, gradedState, gradingStatus, feedbackInformation, additionalData, LocalDateTime.now())
+
   private def statusPriority(status: GradingStatus): Int = status match {
     case TestError(_) => 1
     case Incorrect() => 4
@@ -53,7 +58,6 @@ object GradingResult {
     case NotFinished() => 0
     case NotRequested() => -1
   }
-
 
 
 }
