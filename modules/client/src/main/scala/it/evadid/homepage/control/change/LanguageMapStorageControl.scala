@@ -72,20 +72,17 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
   }
 
   private def ensureDefaultLanguageSourcesLoaded(): Future[?] = {
-    val loadLanguageMapDirs: Set[String] = Set(
-      "basic", "login", "workbookSelection", "entitynames", "turtlestitch", "blockeditor", "embroideryworkbook", "embroiderypreviewworkbook", "testworkbook", "plantworkshop", "prompts", "compressionworkbook", "monksworkbook", "emailSimulator", "digitalWorkbooks", "blockchainworkbook"
-    )
-
     val snapFiles: Set[LanguageMapInputSource] = Set(
       LanguageMapFileBasedSourceInfo[HumanLanguage](fullInfo.contentControl.fileFactory.relativeToTechnicalResources(s"programs/20260704Snap/locale/lang-de.js"), "originalSnap", German, ec),
       LanguageMapFileBasedSourceInfo[HumanLanguage](fullInfo.contentControl.fileFactory.relativeToTechnicalResources(s"programs/20260704Snap/locale/lang-dk.js"), "originalSnap", Danish, ec)
       //LanguageMapFileBasedSourceInfo[HumanLanguage](fileFactory.relativeToResourceFolder(s"programs/20260704Snap/locale/lang-en.js"), "originalSnap", English, ec),
     ).flatMap(LanguageMapSourceFileBased.forSnapFile(_, str => str))
 
-    def evaLangDir(dirName: String): EvaDirectorySource = EvaDirectorySource(dirName, fullInfo.contentControl.fileFactory.relativeToTechnicalResources(s"/languageMaps/eva/${dirName}"))
+    def evaLangDir(dirName: String, suffixes: Set[String]): EvaDirectorySource =
+      EvaDirectorySource(dirName, fullInfo.contentControl.fileFactory.relativeToTechnicalResources(s"/languageMaps/eva/${dirName}"), suffixes)
 
     val defaultEvaFiles: Set[LanguageMapInputSource] = Set(
-      LanguageMapInputSource.forEvaLanguageMapFiles(loadLanguageMapDirs.map(evaLangDir))
+      LanguageMapInputSource.forEvaLanguageMapFiles(AvailableLanguageMaps.suffixesByDirectory.map((name, suffixes) => evaLangDir(name, suffixes)).toSet)
     )
     ensureLanguageSourcesLoaded(snapFiles ++ defaultEvaFiles)
   }

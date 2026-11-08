@@ -23,6 +23,7 @@ test('login preserves email, explains duplicate registration and observes failed
     const page = await browser.newPage();
     const requests = [];
     const errors = [];
+    const missingTranslations = [];
     let transportFailure = false;
     let validLogin = false;
     page.on('pageerror', error => errors.push(error.message));
@@ -52,7 +53,10 @@ test('login preserves email, explains duplicate registration and observes failed
       const file = path.resolve(root, '.' + decodeURIComponent(url.pathname) + (url.pathname.endsWith('/') ? 'index.html' : ''));
       if (!file.startsWith(root + path.sep)) return route.abort();
       try { await route.fulfill({body:await fs.readFile(file),contentType:mime[path.extname(file)] || 'application/octet-stream'}); }
-      catch { await route.fulfill({status:404,body:'Not found'}); }
+      catch {
+        if (url.pathname.includes('/languageMaps/eva/')) missingTranslations.push(url.pathname);
+        await route.fulfill({status:404,body:'Not found'});
+      }
     });
     await page.goto(origin + '/homepage/workbookDesign/index.html');
     const registration = page.locator('.section-register .login-area').first();
@@ -96,5 +100,6 @@ test('login preserves email, explains duplicate registration and observes failed
     const storedUser = await page.evaluate(() => JSON.parse(localStorage.getItem('edusquirrel-alluserinfo')));
     assert.equal(storedUser.user.mail, 'first.last@example.org', 'successful login persists the backend user');
     assert.deepEqual(errors, []);
+    assert.deepEqual(missingTranslations, [], 'startup requests only bundled translation files');
   } finally { await browser.close(); }
 });

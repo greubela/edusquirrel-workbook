@@ -37,7 +37,7 @@ object AuthHandling {
   }
 
   def mayAccessIdBased(userIdRequester: String, userIdOwner: String): Boolean = {
-    userIdOwner == userIdOwner
+    userIdRequester == userIdOwner
   }
 
   def mayAccessMailBased(mailRequester: String, mailOwner: String): Boolean = {

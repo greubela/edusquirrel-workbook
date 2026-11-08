@@ -68,6 +68,9 @@ lazy val client = (project in file("./modules/client"))
   .dependsOn(core.js)
   .settings(
     name := "client",
+    Compile / sourceGenerators += Def.task {
+      LanguageMapInventory.generate((LocalRootProject / baseDirectory).value, (Compile / sourceManaged).value)
+    }.taskValue,
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("mainApp"),
     libraryDependencies += "org.scalameta" %%% "munit" % "1.3.6" % Test,

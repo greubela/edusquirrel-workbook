@@ -13,7 +13,6 @@ import it.evadid.distribution.commandTypes.UserCommands
 import it.evadid.distribution.commandTypes.UserCommands.{CreateAccountRequest, LoginRequest, LoginResponse}
 import it.evadid.homepage.control.info.{SessionData, WorkbookUserDataAnalyzer}
 import it.evadid.homepage.control.model.*
-import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.homepage.workbook.syncDestination.LocalStorageSyncHandler
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
@@ -170,7 +169,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def tryLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = Future {
-    val userConfig: UserConfig = withConfig.getOrElse(UserConfig(HomepageDefaults.defaultSyncLocations, false))
+    val userConfig: UserConfig = withConfig.getOrElse(UserConfig(UserConfig.defaultSyncDestinations, false))
     val user: User = withUser.getOrElse(User.createNewUser("Anonymous", "no-reply@evadid.it"))
     val allUserInfo = AllUserInfo(user, None, userConfig)
     changeUser(Some(allUserInfo))
@@ -181,7 +180,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     if (!User.isEmail(normalizedEmail)) Future.failed(AuthenticationFailure("login/errorEmail"))
     else if (name.trim.isEmpty) Future.failed(AuthenticationFailure("login/errorName"))
     else {
-      val userConfig = UserConfig(HomepageDefaults.defaultSyncLocations, true)
+      val userConfig = UserConfig(UserConfig.defaultSyncDestinations, true)
       val user = AllUserInfo.createNewUser(name.trim, normalizedEmail, userConfig)
       UserCommands.createAccountCommand
         .sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user))
