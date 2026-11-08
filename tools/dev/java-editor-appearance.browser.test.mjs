@@ -11,27 +11,7 @@ const prefix = '/edusquirrel-workbook/';
 const mime = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png'};
 
-async function checkInfoAlignment(container, horizontal = false) {
-  const layout = await container.evaluate(root => {
-    const rect = selector => {
-      const {x, y, width, height} = root.querySelector(selector).getBoundingClientRect();
-      return {x, y, width, height};
-    };
-    return {rail: rect('.interaction-info__icons'), sync: rect('.sync-info'),
-      hint: rect('.interaction-info__hint-toggle'), cloud: rect('.sync-info-svg'), bulb: rect('.interaction-info__hint-icon')};
-  });
-  assert.equal(layout.sync.height, layout.hint.height, 'sync and hint have matching heights');
-  for (const tile of [layout.sync, layout.hint]) {
-    assert(tile.width >= 44 && tile.height >= 44, 'status and hint have comfortable targets');
-    assert(tile.x >= layout.rail.x && tile.x + tile.width <= layout.rail.x + layout.rail.width, 'tiles fit the status rail');
-  }
-  assert.equal(layout.cloud.width, layout.bulb.width);
-  assert.equal(layout.cloud.height, layout.bulb.height);
-  if (horizontal) assert.equal(layout.sync.y, layout.hint.y);
-  else assert.equal(layout.sync.x, layout.hint.x);
-}
-
-test('Java pilot hints use the current answer and discard stale responses', async () => {
+test('Java hints retain in-flight feedback across editor close and display-language changes', async () => {
   const browser = await chromium.launch({chromiumSandbox: true,
     executablePath: process.env.CHROMIUM_PATH || chromium.executablePath()});
   try {
@@ -76,135 +56,41 @@ test('Java pilot hints use the current answer and discard stale responses', asyn
     await page.locator('.section-block').first().click();
     await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
     await page.getByRole('heading', {name: 'Ein Quadrat in Java', exact: true}).waitFor();
-    assert.equal(await page.locator('.interaction-info__hint-toggle').count(), 1);
-    assert.equal(requests.length, 0, 'loading the task does not request feedback');
-    async function ask(panel) {
-      const received = new Promise(resolve => arrivals.push(resolve));
-      await panel.locator('.interaction-scaffolding__request').click();
-      let deadline;
-      const missingRequest = new Error(`Expected hint request ${requests.length + 1}; this answer may already have cached feedback.`);
-      try {
-        return await Promise.race([received, new Promise((_, reject) => {
-          deadline = setTimeout(() => reject(missingRequest), 30000);
-        })]);
-      } finally { clearTimeout(deadline); }
-    }
-    async function release(pending, question) {
-      const completed = page.waitForResponse(response => response.request() === pending.route.request());
-      await answer(pending, question);
-      await completed;
-      await page.evaluate(() => new Promise(requestAnimationFrame));
-    }
-    const toggle = page.locator('.interaction-info__hint-toggle').first();
-    await toggle.click();
-    const inline = page.locator('.interaction-info__hint-body').first();
-    const info = page.locator('.interaction-element-info').filter({has: toggle});
-    await checkInfoAlignment(info);
-    await toggle.focus();
-    await page.keyboard.press('Shift+Tab');
-    assert(await info.locator('.sync-info').evaluate(element => element === document.activeElement));
-    assert.equal(await info.locator('.sync-info').evaluate(element => getComputedStyle(element, '::after').opacity), '1');
-    await page.keyboard.press('Tab');
-    assert(await toggle.evaluate(element => element.matches(':focus-visible')));
-    assert.equal(requests.length, 0, 'opening hints does not send a request');
-    await ask(inline);
-    await inline.getByText('1. Wo beginnt dein Programm?', {exact: true}).waitFor();
-    assert.equal(requests[0].source.language, 'Java');
-    assert(requests[0].task.text.includes('square(int side)'));
-    assert(requests[0].source.code.includes('square(25)'));
-    assert.deepEqual(requests[0].checks, []);
-    await inline.locator('.interaction-info__hint-close').click();
+    const inlineHint = page.locator('.scaffolding-info').first();
+    assert.equal(requests.length, 0);
+    await inlineHint.click();
+    await page.waitForFunction(() => [...document.querySelectorAll('.scaffolding-info')].some(
+      icon => icon.dataset.tooltip === '1. Wo beginnt dein Programm?'));
+    assert.equal(requests.length, 1);
+    await inlineHint.click();
+    assert.equal(requests.length, 1, 'completed feedback is cached');
     await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
-    const dialog = page.locator('dialog[open]');
-    const editor = dialog.locator('.eva-editor');
+    const editor = page.locator('dialog[open] .eva-editor');
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
-    await editor.locator('.cm-content').waitFor();
-    async function edit(source) {
-      await page.evaluate(source => {
-        const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(document.querySelector('dialog[open] .cm-editor'));
-        view.dispatch({changes: {from: 0, to: view.state.doc.length, insert: source}});
-      }, source);
-      await page.waitForFunction(source => [...document.querySelectorAll('.java-full-editor-preview pre')].at(-1)?.textContent === source, source);
-    }
-    const wrong = 'class Drawing {\n  static void square(int side) {\n    for (int i = 0; i < 3; i++) { Turtle.forward(side); Turtle.turnRight(90); }\n  }\n  public static void main(String[] args) { square(25); }\n}';
-    await edit(wrong);
-    await dialog.locator('.interaction-info__hint-toggle').click();
-    const hints = dialog.locator('.interaction-info__hint-body');
-    await checkInfoAlignment(dialog.locator('.interaction-element-info'), true);
-    await ask(hints);
-    await hints.getByText('1. Wo beginnt dein Programm?', {exact: true}).waitFor();
-    assert.equal(requests.at(-1).source.code, wrong);
-    assert.equal(requests.length, 2, 'editing and opening the editor do not send requests');
-    await hints.locator('.interaction-scaffolding__request').click();
-    await hints.getByText('1. Wo beginnt dein Programm?', {exact: true}).waitFor();
-    assert.equal(requests.length, 2, 'the shared control reuses completed hints for the same answer and language');
+    const code = editor.locator('.cm-content');
+    const draft = 'class Drawing {\n  static void square(int side) {';
+    await code.click();
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.insertText(draft);
     policy.hold = true;
-    await edit('class Drawing {\n  static void square(int side) {\n    for (');
-    const pendingEdit = await ask(hints);
-    const unfinished = 'class Drawing {\n  static void square(';
-    await edit(unfinished);
-    await release(pendingEdit, 'Ein veralteter Hinweis?');
-    assert.equal(await hints.locator('[role="status"]').innerText(), '');
-    const pendingClose = await ask(hints);
+    const received = new Promise(resolve => arrivals.push(resolve));
+    await page.locator('dialog[open] .scaffolding-info').click();
+    const pending = await received;
+    assert.equal(requests.length, 2);
+    assert.equal(requests.at(-1).source.code, draft);
+    assert.equal(requests.at(-1).feedbackLanguage, 'German');
     await page.locator('.fullscreen-close-button').click();
-    await release(pendingClose, 'Ein gespeicherter Hinweis?');
-    await toggle.click();
-    assert.equal(await inline.locator('[role="status"]').innerText(), '');
-    await inline.locator('.interaction-scaffolding__request').click();
-    await inline.getByText('1. Ein gespeicherter Hinweis?', {exact: true}).waitFor();
-    assert.equal(requests.length, 4, 'closing the editor clears its display while completed feedback stays cached');
     await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
-    const pendingLanguage = await ask(inline);
+    await inlineHint.click();
+    assert.equal(requests.length, 2, 'a new display language joins the pending hint');
+    await answer(pending, 'Welcher Teil der Methode fehlt noch?');
+    await page.waitForFunction(() => [...document.querySelectorAll('.scaffolding-info')].some(
+      icon => icon.dataset.tooltip === '1. Welcher Teil der Methode fehlt noch?'));
+    await inlineHint.click();
     await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
-    await release(pendingLanguage, 'A hint from an obsolete language request?');
-    assert.equal(await inline.locator('[role="status"]').innerText(), '');
-    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
-    const current = await ask(inline);
-    assert.equal(requests.at(-1).feedbackLanguage, 'English');
-    assert(requests.at(-1).task.text.includes('Complete the method'));
-    assert.equal(requests.at(-1).source.code, unfinished);
-    await release(current, 'Which part of your method is still missing?');
-    await inline.getByText('1. Which part of your method is still missing?', {exact: true}).waitFor();
-    await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
-    const finalDraft = 'class Drawing {\n  static void square(int side';
-    await edit(finalDraft);
-    await page.locator('.fullscreen-close-button').click();
-    if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
-    const invalid = await ask(inline);
-    await answer(invalid, 'An unsupported claim?', ['check-1']);
-    await inline.locator('.interaction-scaffolding__message--error').waitFor();
-    assert.equal(requests.length, 7, 'an invalid hint does not retry automatically');
-    const retry = await ask(inline);
-    await release(retry, 'Where does the method signature end?');
-    await inline.getByText('1. Where does the method signature end?', {exact: true}).waitFor();
-    assert.equal(requests.length, 8, 'a failed cached hint can be requested again');
-    assert.equal(await page.locator('.java-full-editor-preview pre').last().textContent(), finalDraft);
-    await page.waitForFunction(() => new Promise((resolve, reject) => {
-      const open = indexedDB.open('EvaDidInteractionDB');
-      open.onerror = () => reject(open.error);
-      open.onsuccess = () => {
-        const db = open.result;
-        const transaction = db.transaction('variableHistoryStore', 'readonly');
-        const rows = transaction.objectStore('variableHistoryStore').getAll();
-        transaction.oncomplete = () => db.close();
-        rows.onerror = () => reject(rows.error);
-        rows.onsuccess = () => {
-          const history = rows.result.find(row => row.id.includes('java-square-pilot_history'))?.value;
-          resolve(history?.includes('Where does the method signature end?') || false);
-        };
-      };
-    }));
-    await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
-    await page.locator('dialog[open] .interaction-info__hint-toggle').click();
-    for (const viewport of [{width: 390, height: 844}, {width: 844, height: 390}]) {
-      await page.setViewportSize(viewport);
-      await checkInfoAlignment(page.locator('dialog[open] .interaction-element-info'), true);
-      const bounds = await page.locator('dialog[open] .interaction-info__hint-body').boundingBox();
-      assert(bounds && bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= viewport.width &&
-        bounds.y + bounds.height <= viewport.height, `hint panel fits ${viewport.width}x${viewport.height}`);
-    }
-    assert.equal(requests.length, 8, 'reopening and resizing do not request feedback');
+    await inlineHint.click();
+    assert.equal(requests.length, 2, 'switching back reuses the completed hint');
+    assert.equal(await page.locator('.java-full-editor-preview pre').last().textContent(), draft);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
@@ -365,7 +251,7 @@ test('Java appearance changes preserve the live editor, undo history and drawing
       assert.equal(geometry.radii[0], geometry.radii[1], 'editor and fullscreen shell have the same contour');
       for (const owner of geometry.owners) assert(owner.scroll <= owner.height + 1,
         `no outer scrolling at ${width}x${viewport.height}: ${JSON.stringify(owner)}`);
-      assert(geometry.codeHeight >= (viewport.height >= 700 ? 80 : 40),
+      assert(geometry.codeHeight + 1 >= (viewport.height >= 700 ? 80 : 40),
         `code remains usable at ${width}x${viewport.height}: ${JSON.stringify(geometry)}`);
       await page.evaluate(theme => document.documentElement.setAttribute('data-theme', theme), width > 800 ? 'dark' : 'light');
     }

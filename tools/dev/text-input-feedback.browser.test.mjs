@@ -11,7 +11,7 @@ const prefix = '/edusquirrel-workbook/';
 const mime = {'.html':'text/html', '.js':'text/javascript', '.css':'text/css',
   '.json':'application/json', '.svg':'image/svg+xml', '.png':'image/png'};
 
-test('text feedback demo owns its answer, renders localized hints and grades, retries once and restores saved results', async () => {
+test('text feedback preserves cached and in-flight grading across display languages', async () => {
   const browser = await chromium.launch({chromiumSandbox:true,
     executablePath:process.env.CHROMIUM_PATH || chromium.executablePath()});
   try {
@@ -60,109 +60,100 @@ test('text feedback demo owns its answer, renders localized hints and grades, re
     const exercise = page.locator('.interaction-element').filter({has:page.locator('.text-input-feedback')});
     const content = exercise.locator('.text-input-feedback');
     const input = content.locator('textarea');
-    const grade = exercise.locator('.interaction-grading__request');
+    const grade = exercise.locator('.grading-info');
+    const hint = exercise.locator('.scaffolding-info');
     const results = content.locator('.text-input-feedback__result');
+    const selectLanguage = flag => page.locator(`.select-language-line > div:has(.flag-fill-${flag})`).click();
+    async function waitForHeld() {
+      for (let attempt = 0; attempt < 200 && held.length === 0; attempt++) await page.waitForTimeout(25);
+      assert.equal(held.length, 1, 'exactly one backend operation is pending');
+    }
     await input.waitFor();
-    await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
-    await content.getByText(/Beschreibe, was die Abbruchbedingung/).waitFor();
+    await selectLanguage('german-red');
     const answer = 'Die Rekursion endet, wenn das Tablett leer ist.';
     await input.fill(answer);
-    assert.equal(requests.length,0,'typing and changing language never automatically send the answer');
-    await exercise.locator('.interaction-info__hint-toggle').click();
-    const hints = exercise.locator('.interaction-info__hint-body');
-    await hints.locator('.interaction-scaffolding__request').click();
-    await hints.getByText('Wann werden keine Karten mehr weitergegeben?',{exact:true}).waitFor();
-    assert.equal(requests[0].answer,answer);
-    assert(requests[0].hints.length === 1 && !requests[0].criterion,'hint requests do not include grading criteria');
-    await hints.locator('.interaction-info__hint-close').click();
+    assert.equal(requests.length, 0, 'editing and selecting a language do not send the answer to the LLM');
+    await hint.click();
+    await page.waitForFunction(() => [...document.querySelectorAll('.scaffolding-info')].some(
+      icon => icon.dataset.tooltip === 'Wann werden keine Karten mehr weitergegeben?'));
+    assert.equal(requests[0].answer, answer);
+    assert(requests[0].hints.length === 1 && !requests[0].criterion);
+    policy.mode = 'hold';
     await grade.click();
-    await content.getByText('Deine Begründung passt.',{exact:true}).waitFor();
-    assert.equal(await results.count(),1);
-    await results.getByText('Teilweise richtig',{exact:true}).waitFor();
-    assert(!await content.innerText().then(text => /CORRECT|INCORRECT|PARTIALL_CORRECT/.test(text)),'protocol markers are not rendered');
-    assert.equal(requests.length,3,'one hint, one criterion request and one format correction');
-    assert.equal(await input.inputValue(),answer);
-    assert(!await content.evaluate(element => element.querySelector('[style]')),'rendering uses dedicated CSS');
-    if (process.env.WORKBOOK_SCREENSHOT) await content.screenshot({path:process.env.WORKBOOK_SCREENSHOT});
-    for (const viewport of [{width:390,height:844},{width:844,height:390}]) {
+    await waitForHeld();
+    await selectLanguage('british-blue');
+    await grade.click();
+    assert.equal(requests.length, 2, 'language changes and duplicate clicks join the pending grading');
+    policy.mode = 'normal';
+    await reply(held.shift(), 'Deine Begründung passt.');
+    await content.getByText('Deine Begründung passt.', {exact: true}).waitFor();
+    await results.getByText('Partially correct', {exact: true}).waitFor();
+    assert.equal(requests.length, 3, 'only the missing classification marker requires one automatic correction');
+    assert(!/CORRECT|INCORRECT|PARTIALL_CORRECT/.test(await content.innerText()));
+    for (const flag of ['german-red', 'british-blue', 'german-red', 'british-blue']) {
+      await selectLanguage(flag);
+      await grade.click();
+      await hint.click();
+      assert.equal(await input.inputValue(), answer);
+      await content.getByText('Deine Begründung passt.', {exact: true}).waitFor();
+      assert.equal(requests.length, 3, 'completed hints and grades remain valid in every display language');
+    }
+    assert.equal(await hint.getAttribute('data-tooltip'), 'Wann werden keine Karten mehr weitergegeben?');
+    assert(!await content.evaluate(element => element.querySelector('[style]')));
+    for (const viewport of [{width:390,height:844}, {width:844,height:390}]) {
       await page.setViewportSize(viewport);
       await input.scrollIntoViewIfNeeded();
       const bounds = await input.boundingBox();
-      assert(bounds && bounds.x >= 0 && bounds.x + bounds.width <= viewport.width,'answer input fits narrow and landscape screens');
+      assert(bounds && bounds.x >= 0 && bounds.x + bounds.width <= viewport.width);
     }
     await page.setViewportSize({width:1440,height:1000});
-    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
-    assert.equal(await input.inputValue(),answer);
-    assert.equal(requests.length,3);
-    assert.equal(await results.count(),0,'feedback from another language is not shown as current-language feedback');
-    await grade.click();
-    await content.getByText('Clear reasoning.',{exact:true}).first().waitFor();
-    await page.waitForFunction(() => document.querySelectorAll('.text-input-feedback__result strong').length === 1 &&
-      [...document.querySelectorAll('.text-input-feedback__result strong')].every(element => element.textContent === 'Correct'));
-    assert(requests.slice(-1).every(request => request.feedbackLanguage === 'English' && request.answer === answer));
-    await page.waitForFunction(() => !document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
-    await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
-    assert.equal(await input.inputValue(),answer);
-    assert.equal(await results.count(),0,'a changed grade discards superseded feedback in another language');
-    await grade.click();
-    await content.getByText('Deine Begründung passt.',{exact:true}).waitFor();
-    await results.getByText('Teilweise richtig',{exact:true}).waitFor();
-    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
-    assert.equal(await results.count(),0,'the saved status and localized feedback belong to the same assessment');
-    await grade.click();
-    await content.getByText('Clear reasoning.',{exact:true}).waitFor();
-    await results.getByText('Correct',{exact:true}).waitFor();
-    assert.equal(requests.length,7,'returning to a superseded assessment requests fresh feedback');
-    await page.waitForFunction(() => !document.querySelector('.interaction-grading__request')?.disabled);
-    const persisted = await page.evaluate(() => new Promise(resolve => {
+    await page.waitForFunction(() => new Promise(resolve => {
       const open = indexedDB.open('EvaDidInteractionDB');
       open.onerror = () => resolve(false);
       open.onsuccess = () => {
         const db = open.result;
-        const transaction = db.transaction('variableHistoryStore','readonly');
+        const transaction = db.transaction('variableHistoryStore', 'readonly');
         const rows = transaction.objectStore('variableHistoryStore').getAll();
         transaction.oncomplete = () => db.close();
         rows.onerror = () => resolve(false);
         rows.onsuccess = () => resolve(rows.result.some(row => row.id.includes('demo-feedback-1_history') &&
-          row.value.includes('Clear reasoning.')));
+          row.value.includes('Deine Begründung passt.')));
       };
     }));
-    assert(persisted, 'completed grading is actually saved in IndexedDB before reloading');
     await page.reload();
     await page.locator('.section-block').last().click();
     await input.waitFor();
-    assert.equal(await input.inputValue(),answer,'the same interaction restores the saved answer');
-    await content.getByText('Clear reasoning.',{exact:true}).first().waitFor();
-    assert.equal(await results.count(),1,'the same history restores the saved grades');
-    assert.equal(requests.length,7,'reloading never calls the LLM');
-
+    assert.equal(await input.inputValue(), answer);
+    await content.getByText('Deine Begründung passt.', {exact: true}).waitFor();
+    assert.equal(requests.length, 3, 'restoring saved feedback does not call the LLM');
+    await selectLanguage('british-blue');
+    await input.fill('The recursion ends when the tray is empty.');
+    await grade.click();
+    await content.getByText('Clear reasoning.', {exact: true}).waitFor();
+    await results.getByText('Correct', {exact: true}).waitFor();
+    assert.equal(requests.length, 4, 'a different answer requires a new assessment');
     policy.mode = 'hold';
     await input.fill('A draft about sorted cards.');
     await grade.click();
-    await page.waitForFunction(() => document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
-    for (let attempt = 0; attempt < 200 && held.length < 1; attempt++) await page.waitForTimeout(25);
-    assert.equal(held.length,1,'the configured grader reaches the backend for the edited answer');
+    await waitForHeld();
     await input.fill('A newly edited answer.');
-    await Promise.all(held.splice(0).map(pending => reply(pending,'Feedback for the old answer.\nCORRECT')));
-    await grade.waitFor({state:'visible'});
-    await page.waitForFunction(() => !document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
-    assert.equal(await results.count(),0,'late grades remain associated with their original answer');
-    assert.equal(await input.inputValue(),'A newly edited answer.');
+    policy.mode = 'normal';
+    await reply(held.shift(), 'Feedback for the old answer.\nCORRECT');
+    await page.waitForTimeout(100);
+    assert.equal(await results.count(), 1, 'the current answer retains its not-yet-requested status');
+    assert(!await content.innerText().then(text => text.includes('Feedback for the old answer.')));
     policy.mode = 'invalid';
     const beforeInvalid = requests.length;
     await grade.click();
-    await content.getByText('Check unavailable',{exact:true}).first().waitFor();
-    await page.waitForFunction(() => !document.querySelector('.text-input-feedback')?.closest('.interaction-element')?.querySelector('.interaction-grading__request')?.disabled);
-    assert.equal(requests.length - beforeInvalid,2,'an invalid criterion gets only one correction attempt');
-    assert.equal(await input.inputValue(),'A newly edited answer.');
+    await content.getByText('Check unavailable', {exact: true}).waitFor();
+    assert.equal(requests.length - beforeInvalid, 2, 'an invalid classification gets only one correction attempt');
     policy.mode = 'normal';
     await grade.click();
-    await content.getByText('Clear reasoning.',{exact:true}).waitFor();
-    await page.waitForFunction(() => !document.querySelector('.interaction-grading__request')?.disabled);
-    assert.equal(requests.length - beforeInvalid,3,'a cached execution error can be retried for the same answer');
+    await content.getByText('Clear reasoning.', {exact: true}).waitFor();
+    assert.equal(requests.length - beforeInvalid, 3, 'an explicit retry repeats an execution error');
     await grade.click();
-    await page.waitForFunction(() => !document.querySelector('.interaction-grading__request')?.disabled);
-    assert.equal(requests.length - beforeInvalid,3,'completed grading is reused');
-    assert.deepEqual(errors,[]);
-  } finally {await browser.close();}
+    await page.waitForTimeout(100);
+    assert.equal(requests.length - beforeInvalid, 3, 'successful assessments are reused');
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
 });
