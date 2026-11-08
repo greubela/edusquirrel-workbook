@@ -28,17 +28,24 @@ async function checkClickableBackgrounds(page, container) {
       assert(await icons.count() > 0, 'the exercise exposes clickable icons');
       for (const icon of await icons.all()) {
         await page.mouse.move(0, 0);
-        for (const state of ['rest', 'hover', 'focus']) {
-          if (state === 'hover') await icon.hover();
-          if (state === 'focus') { await page.mouse.move(0, 0); await icon.focus(); }
-          assert.equal(await icon.evaluate(node => getComputedStyle(node).backgroundColor), expected,
-            `clickable icons keep the interactive surface in ${theme} mode at ${state}`);
-        }
+        const resting = await icon.evaluate(node => getComputedStyle(node).backgroundColor);
+        assert.notEqual(resting, expected, 'the hover color differs from the resting background');
+        await icon.hover();
+        assert.equal(await icon.evaluate(node => getComputedStyle(node).backgroundColor), expected,
+          `clickable icons show the interactive surface on hover in ${theme} mode`);
+        await icon.locator('svg').hover();
+        assert.equal(await icon.evaluate(node => getComputedStyle(node).backgroundColor), expected,
+          'hovering the SVG keeps the entire clickable tile highlighted');
+        await page.mouse.move(0, 0);
+        await icon.focus();
+        assert.equal(await icon.evaluate(node => getComputedStyle(node).backgroundColor), resting,
+          'leaving the icon restores its background, including while focused');
         assert.equal(await icon.evaluate(node => getComputedStyle(node).cursor), 'pointer');
       }
       const sync = container.locator('.sync-info').first();
+      await sync.hover();
       assert.equal(await sync.evaluate(node => getComputedStyle(node).backgroundColor), 'rgba(0, 0, 0, 0)',
-        'the status-only sync icon stays transparent');
+        'the status-only sync icon stays transparent even on hover');
     }
   } finally {
     await page.locator('html').evaluate((node, value) => value === null

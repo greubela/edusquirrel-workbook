@@ -126,8 +126,10 @@
     background: transparent;
 }
 .info-svg-container.clickable {
-    background: var(--color-background-workarea-interactible);
     cursor: pointer;
+}
+.info-svg-container.clickable:hover {
+    background: var(--color-background-workarea-interactible);
 }
 .interaction-element-info .interaction-info__hint-toggle .sync-info-svg {
     cursor: pointer;
