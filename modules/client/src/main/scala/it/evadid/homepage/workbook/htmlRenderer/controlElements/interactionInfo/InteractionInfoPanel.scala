@@ -7,6 +7,8 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel.interactionInfoCssString
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
+import it.evadid.workbook.interaction.sync.UpdateImportance.DEFAULT
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import org.scalajs.dom.{HTMLDivElement, MouseEvent}
 
 case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionUntyped) extends HtmlAppElement {
@@ -15,13 +17,38 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
   val iconSync = IconSync(fullInfo, laminarHelper, workbookInteractionElement)
 
 
+  def historyToCss(curHistory: InteractionVariableHistory[?, ?, ?]): String =
+    if (curHistory.historyStates.lastStateOption.exists(_.updateImportance != DEFAULT)) {
+      interactionInfoCssString + " status-interacted"
+    } else {
+      interactionInfoCssString + " -default?"
+    }
+
+  def classSignalGradedEntity: EventStream[String] = {
+    val gradingSignal = iconGradingScaffolding.gradingReporter.currentGradingSignal.toEventStream()
+    val historySignal = iconGradingScaffolding.gradingReporter.currentHistorySignal.toEventStream()
+    gradingSignal.combineWith(historySignal).map((curGradedState, curHistory) => try {
+      if (curGradedState.totalEvaluation().isCorrect) {
+        if (curGradedState.doesEvaluationRelyOnLlm()) interactionInfoCssString + " status-correct-ai"
+        else interactionInfoCssString + " status-correct"
+      } else historyToCss(curHistory)
+    } catch case (err: Throwable) => interactionInfoCssString + s" -err:${err.getMessage}")
+  }
+
+  def classSignalCss: EventStream[String] = {
+    if (!iconGradingScaffolding.gradingReporter.isGradingSupported) iconGradingScaffolding.gradingReporter.currentHistorySignal.toEventStream().map(historyToCss)
+    else classSignalGradedEntity
+  }
+
+
   lazy val domElement: Element = {
-    div(cls := interactionInfoCssString,
+    div(cls <-- classSignalCss,
       div(cls := "interaction-info__icons",
         div(cls := "grading-report-icon", child <-- iconGradingScaffolding.gradingReporter.currentGradingSignal.toEventStream().map(iconGradingScaffolding.deriveGradingSymbol)),
         div(cls := "scaffolding-report-icon", child <-- iconGradingScaffolding.gradingReporter.currentScaffoldingSignal.toEventStream().map(iconGradingScaffolding.deriveScaffoldingSymbol)),
         div(cls := "sync-report-icon", child <-- iconSync.syncReport.map(iconSync.deriveSyncSymbol)),
-      ))
+      )
+    )
   }
 
   override def getDomElement(): Element = domElement

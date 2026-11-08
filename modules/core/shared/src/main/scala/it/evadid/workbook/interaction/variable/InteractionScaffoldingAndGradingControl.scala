@@ -49,7 +49,6 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
   }
 
   // GRADING CALCULATION
-
   def getOrCalculateGrading(contextInformation: ExecutionContextInformation, forceGrading: Boolean = false): Future[GradedState[T, GA]] = interactionVariable.synchronized {
     val curValOp = interactionVariable.currentHistory.historyStates.lastStateOption
     if (curValOp.isEmpty) Future.failed(SerializedException("Cannot start grading on an InteractionVariable with no current state")) else {
@@ -152,13 +151,10 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
   }
 
   private val scaffoldingCache: AsyncDataCache[T, ScaffoldingResult[T, SA]] = new AsyncDataCache[T, ScaffoldingResult[T, SA]](logger) {
-
     override protected def executeLoading(in: T)(ec: ExecutionContext): Future[ScaffoldingResult[T, SA]] = {
       getOrCalculateScaffolding(ExecutionContextInformation.default, in)
     }
-
     override protected def formatInputForLogging(in: T): String = in.toString
-
     override protected def formatOutputForLogging(out: ScaffoldingResult[T, SA]): String = out.toString
   }
 

@@ -38,8 +38,6 @@ case class IconGradingAndScaffolding(fullInfo: FullInfo, laminarHelper: LaminarR
         span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/scaffoldingLabel"))
       )
 
-
-
     } else {
       val status = curScaffolding.get.scaffoldingStatus
       val svgScaffoldingIcon = if (status == ScaffoldingRequestedButNotFinished()) {

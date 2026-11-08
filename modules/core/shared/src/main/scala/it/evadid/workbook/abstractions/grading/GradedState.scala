@@ -1,7 +1,10 @@
 package it.evadid.workbook.abstractions.grading
 
+import it.evadid.distribution.command.SerializedException
 import it.evadid.util.MapUtils
+import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
 import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
+import it.evadid.workbook.abstractions.grading.GradingStatus.*
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
@@ -18,6 +21,28 @@ case class GradedState[T, A]
   val timestampLatestTest: LocalDateTime = testsWithResults.map(_.gradingTime).maxOption.getOrElse(LocalDateTime.MIN)
 
   lazy val shouldRetry: Seq[WorkbookInteractionGrader[T, A]] = graderResultMap.toList.filter(_._2.gradingStatus.shouldRetryExecution).map(_._1)
+
+  def doesEvaluationRelyOnLlm(): Boolean = {
+    graderResultMap.values.exists(_.grader.gradingEntity == LlmEntity())
+  }
+
+  def totalEvaluation(): GradingStatus = {
+    val gradingResults = graderResultMap.values
+    val notRequested = gradingResults.count(_.gradingStatus == NotRequested())
+    val notFinished = gradingResults.map(_.gradingStatus).count(_ == NotFinished())
+    val testError = gradingResults.map(_.gradingStatus).count(_.isError)
+    val shouldRetry = gradingResults.map(_.gradingStatus).count(_.shouldRetryExecution)
+    val correct = gradingResults.count(_.gradingStatus.isCorrect)
+    val incorrect = gradingResults.size - correct
+
+    if (notRequested > 0) NotRequested()
+    else if (notFinished > 0) NotFinished()
+    else if (testError > 0 || shouldRetry > 0) TestError(SerializedException(s"There are ${testError} tests with error (${shouldRetry} should be retries)"))
+    else if (correct == 0 && incorrect > 0) Incorrect()
+    else if (correct > 0 && incorrect == 0) Correct()
+    else PartiallyCorrect()
+
+  }
 
   def retryFailed(contextInformation: ExecutionContextInformation, forceGrading: Boolean): Future[GradedState[T, A]] = {
     if (!forceGrading || shouldRetry.isEmpty) Future.successful(this)

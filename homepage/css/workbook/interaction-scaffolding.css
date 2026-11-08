@@ -116,7 +116,7 @@
     padding: var(--space-xs);
     border: 1px solid transparent;
     border-radius: var(--radius-sm);
-    color: var(--color-text-secondary);
+    color: black;
     font: inherit;
     font-size: 0.625rem;
     line-height: 1.3;
@@ -126,7 +126,8 @@
     background: transparent;
 }
 .info-svg-container.hovering{
-    background: var(--color-background-workarea-interactible)
+    background: var(--color-background-workarea-interactible);
+    cursor: pointer;
 }
 .interaction-element-info .interaction-info__hint-toggle .sync-info-svg {
     cursor: pointer;
@@ -137,14 +138,14 @@
     width: 24px;
     height: 24px;
     fill: transparent;
-    stroke: currentColor;
+    stroke: black;
     stroke-width: 20px;
 }
 
 .interaction-element-info .sync-info-svg {
     width: 24px;
     height: 24px;
-    fill: currentColor;
+    fill: black;
 }
 
 .interaction-info__hint-icon {
@@ -157,7 +158,7 @@
 .interaction-element-info .interaction-info__hint-toggle[aria-expanded="true"] {
     background: var(--color-surface-base);
     border-color: var(--color-border-soft);
-    color: var(--color-accent-strong);
+    color: black;
 }
 
 .interaction-element-info .interaction-info__hint-toggle:focus {
@@ -166,24 +167,6 @@
     font-size: 0.625rem;
 }
 
-.interaction-element-info .interaction-info__hint-toggle:focus-visible,
-.interaction-element-info .sync-info:focus-visible,
-.interaction-info__hint-close:focus-visible {
-    outline: 2px solid var(--color-focus);
-    outline-offset: 2px;
-}
-
-.interaction-element-info .sync-info::after {
-    inset-inline-start: calc(100% + var(--space-md));
-    bottom: 50%;
-    transform: translateY(50%);
-    width: max-content;
-    max-width: min(18rem, calc(100vw - 80px));
-    border-radius: var(--radius-sm);
-    white-space: normal;
-    font-size: 0.75rem;
-    line-height: 1.5;
-}
 
 .interaction-element-info .sync-info:focus-visible::after {
     opacity: 1;
