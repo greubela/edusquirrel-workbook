@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.core.datastructures.state.StateHelper.{StateBasedVar, RichObservableValue}
 import it.evadid.homepage.webElements.editor.SimpleTextEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -21,8 +22,7 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
       history.combineWith(answer.signal, fullInfo.signals.currentLanguage).map { (saved, source, language) =>
         element.gradingElements.flatMap { grader =>
           saved.historyGrading.gradingsMap.get(source).filter(_.state == source).flatMap(_.graderResultMap.get(grader))
-            .filter(result => result.gradedState == source && result.grader == grader).toList.filter(result => result.feedbackInformation.isEmpty ||
-              result.feedbackInformation.flatMap(_.tryGetInLanguage(language)).nonEmpty).map { result =>
+            .filter(result => result.gradedState == source && result.grader == grader).toList.map { result =>
               val key = result.gradingStatus match {
                 case GradingStatus.Correct() => "textGradingCorrect"
                 case GradingStatus.Incorrect() => "textGradingIncorrect"
@@ -33,7 +33,7 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
               }
               div(cls := "text-input-feedback__result",
                 strong(child.text <-- label(key)),
-                result.feedbackInformation.flatMap(_.tryGetInLanguage(language)).map(text =>
+                result.feedbackInformation.filter(_.availableLanguages.nonEmpty).map(_.getWithLanguagePreference(List(language, English))).map(text =>
                   p(cls := "interaction-scaffolding__message", text)))
             }
         }

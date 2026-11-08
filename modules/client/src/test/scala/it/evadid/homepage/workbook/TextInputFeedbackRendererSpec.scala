@@ -32,7 +32,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     } finally close()
   }
 
-  test("feedback for another answer or language is not shown as current feedback") {
+  test("feedback for another answer is hidden while an available language remains usable") {
     val exercise = TextInputWithScaffoldingAndGrading("renderer-stale", LanguageMapContentId("test/task"),
       contentGrading = List(ContentForLlmInteraction(LanguageMapContentId("test/check"), Map.empty)))
     val grader = exercise.gradingElements.head
@@ -44,11 +44,13 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
     val close = mount(element)
     try {
-      List(wrongAnswer, wrongLanguage).foreach { result =>
-        exercise.interactionVariable.updateHistory(_.copy(historyGrading = new InteractionVariableGradingHistory(
-          Map("" -> GradedState("", Map(grader -> result))))), fullInfo.executionContextInformation)
-        assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 0)
-      }
+      exercise.interactionVariable.updateHistory(_.copy(historyGrading = new InteractionVariableGradingHistory(
+        Map("" -> GradedState("", Map(grader -> wrongAnswer))))), fullInfo.executionContextInformation)
+      assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 0)
+      exercise.interactionVariable.updateHistory(_.copy(historyGrading = new InteractionVariableGradingHistory(
+        Map("" -> GradedState("", Map(grader -> wrongLanguage))))), fullInfo.executionContextInformation)
+      assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 1)
+      assert(element.ref.textContent.contains("Wrong language feedback"))
     } finally close()
   }
 }

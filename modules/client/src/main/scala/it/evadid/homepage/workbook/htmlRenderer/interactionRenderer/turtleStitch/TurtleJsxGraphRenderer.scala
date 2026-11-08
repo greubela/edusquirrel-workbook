@@ -173,9 +173,12 @@ object TurtleJsxGraphRenderer:
   def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene =
     buildScene(graphic(program), expected, tolerance, gradeJumps)
 
+  private[turtleStitch] def buildScene(comparison: TurtleGraphicComparison): Scene =
+    Scene(renderedLines(comparison.difference), renderedAngles(comparison.angles))
+
   private[turtleStitch] def buildScene(actual: TurtleGraphic, expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene = {
     val comparison = TurtleGraphicComparison(actual, expected, tolerance, gradeJumps)
-    Scene(renderedLines(comparison.difference), renderedAngles(comparison.angles))
+    buildScene(comparison)
   }
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */

@@ -137,10 +137,12 @@ Importance does not by itself run every grader; see the current grading paths in
 
 Grading and scaffolding run through `interactionVariable.control` with an
 `ExecutionContextInformation`. Its two `AsyncDataCache`s share pending requests
-and completed results; execution errors and
-unexecuted tests remain retryable, while completed assessments (including
-`Incorrect`) are reused. Closing a panel clears its transient display; completed
-feedback remains cached against its captured answer. Histories separate
+and completed results. Explicit grading requests may retry execution errors and
+unexecuted tests; completed assessments (including `Incorrect`) are reused.
+Changing display language never invalidates or repeats a computation. Feedback
+translations merge into the existing `LanguageMap`; renderers use an available
+translation as fallback. Results stay associated with their captured answer.
+Histories separate
 `historyStates`, `historyGrading` and `historyScaffolding`; readers accept the
 previous saved format without retaining the old source API.
 

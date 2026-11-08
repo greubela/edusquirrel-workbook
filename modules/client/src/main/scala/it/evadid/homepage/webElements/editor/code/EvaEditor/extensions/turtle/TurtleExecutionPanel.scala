@@ -20,9 +20,7 @@ object TurtleExecutionPanel {
     case Failed(message: String)
   }
 
-  private[code] def validateDrawing(commands: List[TurtleCommand[Double]]): Unit = TurtleDrawingGrading.validateDrawing(commands)
-  private[code] def compare(commands: List[TurtleCommand[Double]], target: TurtleGraphic): Boolean =
-    TurtleDrawingGrading.compare(commands, target).matches
+
 }
 
 final class TurtleExecutionPanel(

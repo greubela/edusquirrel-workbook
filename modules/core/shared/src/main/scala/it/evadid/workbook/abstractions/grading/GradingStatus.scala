@@ -22,7 +22,7 @@ object GradingStatus {
   case class Incorrect() extends GradingStatus derives upickle.default.ReadWriter
 
   case class TestError(err: SerializedException) extends GradingStatus derives upickle.default.ReadWriter {
-    override def isError: Boolean = false
+    override def isError: Boolean = true
     override def shouldRetryExecution: Boolean = true
   }
 

@@ -67,7 +67,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       override val gradingEntity: FeedbackEntity = FeedbackEntity.TestEntity())
       extends WorkbookInteractionGrader[ProgrammingState, String] {
     val runs = State(0)
-    override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS
+    override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
     override protected def handleGrading(state: ProgrammingState, context: ExecutionContextInformation): Future[GradingResult[ProgrammingState, String]] = {
       runs.update(_ + 1)
       Future.failed(IllegalStateException("Hints must not run graders."))
@@ -134,7 +134,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       override val publishProgramObservation: Boolean = false) extends ProgrammingTestGrader {
     override def testId: String = name
     val runs = State(0)
-    override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS
+    override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
     override protected def handleGrading(state: ProgrammingState, context: ExecutionContextInformation): Future[DescribedResult] = {
       runs.update(_ + 1)
       Future.failed(IllegalStateException("Hints must not rerun described checks."))
@@ -180,7 +180,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       GradingResult(check, state, status, feedbackInformation = None, additionalData = info, gradingTime = time)
     }
     def setResults(results: Set[DescribedResult]): Unit =
-      variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(source -> GradedState(source, results.groupBy(_.grader).view.mapValues(_.maxBy(_.gradingTime)).toMap)))), ExecutionContextInformation.default)
+      variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(source -> GradedState(source, results.groupBy(_.grader).view.mapValues(_.maxBy(_.gradingTime)).toMap)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     def generate(currentResolver: LanguageMapIdResolver = resolver): Future[ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding]] =
       element.scaffoldingElement.get.handleFeedbackGeneration(source, TestExecutionContext(List(worker, client), languageMapIdResolver = Some(currentResolver)))
     def context: ujson.Value = ujson.read(requests.now().last.prompt)
@@ -206,7 +206,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assertEquals(f.context("checks").arr.toVector, Vector.empty)
         assertEquals(result.forState, source)
         assert(result.additionalInformation.nonEmpty)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
         assertEquals(f.lookups.now(), 1)
       }
     }).map(_ => ())
@@ -240,7 +241,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assertEquals(f.context("checks").arr.toVector, Vector.empty)
         assertEquals(result.forState, source)
         assertEquals(f.requests.now().size, 1)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }).map(_ => ())
   }
@@ -261,7 +263,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         f.generateFeedback(source).failed.map { error =>
           assert(error.isInstanceOf[IllegalArgumentException])
           assertEquals(f.requests.now().size, 1)
-          assertEquals(f.variable.currentHistory, before)
+          assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+          assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
         }
       }).map(_ => ())
     }
@@ -327,7 +330,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assertEquals(f.context("feedbackLanguage").str, English.name)
         assertEquals(f.context("task")("text").str, "Draw a line.")
         assertEquals(second.scaffoldingStatus.asInstanceOf[ScaffoldingStatus.ScaffoldingFeedback].feedback.getInLanguage(English), "1. Which condition will you inspect first?")
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }
   }
@@ -338,7 +342,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val check = HintCheck("public check", GradingImportance.REQUIRED_TEST)
     val f = new HintFixture(checks = List(check), response = _ => reply.future)
     val correct = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Correct())
-    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(correct.grader -> correct))))), ExecutionContextInformation.default)
+    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(correct.grader -> correct))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     val resolver = f.resolverFor(_ => task.future)
     val first = f.scaffolder.handleFeedbackGeneration(f.source, TestExecutionContext(List(f.executor.now()), languageMapIdResolver = Some(resolver)))
     assertEquals(f.resolutions.now(), Vector(f.taskId))
@@ -351,7 +355,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val originalTime = f.variable.currentHistory.historyStates.lastStateOption.get.timestamp
     f.variable.updateHistory(_.addState(InteractionVariableState[ProgrammingState](
       restored, MAJOR, originalTime.plusSeconds(1))).copy(historyGrading = InteractionVariableGradingHistory(Map(
-      f.source -> GradedState(f.source, (Set(correct.copy(gradingStatus = GradingStatus.Incorrect()))).iterator.map(result => result.grader -> result).toMap)))), ExecutionContextInformation.default)
+      f.source -> GradedState(f.source, (Set(correct.copy(gradingStatus = GradingStatus.Incorrect()))).iterator.map(result => result.grader -> result).toMap)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     val second = f.generateFeedback(restored)
     val beforeReply = f.variable.currentHistory
     task.success(LanguageMap.mapBasedLanguageMap(Map(German -> "Ursprüngliche Aufgabe.", English -> "Original task.")))
@@ -368,7 +372,8 @@ class InteractionVariableGradingSpec extends FunSuite {
       assertEquals(f.lookups.now(), 1)
       assertEquals(f.requests.now().size, 1)
       assertEquals(check.runs.now(), 0)
-      assertEquals(f.variable.currentHistory, beforeReply)
+      assertEquals(f.variable.currentHistory.historyStates, beforeReply.historyStates)
+      assertEquals(f.variable.currentHistory.historyScaffolding, beforeReply.historyScaffolding)
     }
   }
 
@@ -378,13 +383,13 @@ class InteractionVariableGradingSpec extends FunSuite {
     val check = HintCheck("public check", GradingImportance.REQUIRED_TEST)
     val f = new HintFixture(checks = List(check), response = _ => reply.future)
     val correct = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Correct())
-    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(correct.grader -> correct))))), ExecutionContextInformation.default)
+    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(correct.grader -> correct))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     val answer = f.variable.currentHistory.historyStates.lastStateOption
     val first = f.scaffolder.handleFeedbackGeneration(f.source, TestExecutionContext(List(f.executor.now()), languageMapIdResolver = Some(f.resolverFor(_ => task.future))))
     f.language.set(English)
     f.executor.set(f.client(_ => Future.successful(hintReply("Which condition will you inspect first?"))))
     val stored = ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding](f.source, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("An earlier hint.")), FeedbackEntity.TestEntity(), None, answer.get.timestamp.plusHours(1))
-    f.variable.updateHistory(_.addScaffolding(stored), ExecutionContextInformation.default)
+    f.variable.updateHistory(_.addScaffolding(stored), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     val second = f.generateFeedback(f.source)
     val beforeReply = f.variable.currentHistory
     task.success(LanguageMap.mapBasedLanguageMap(Map(German -> "Ursprüngliche Aufgabe.", English -> "Original task.")))
@@ -406,7 +411,8 @@ class InteractionVariableGradingSpec extends FunSuite {
       assertEquals(f.lookups.now(), 2)
       assertEquals(check.runs.now(), 0)
       assertEquals(f.variable.currentHistory.historyStates.lastStateOption, answer)
-      assertEquals(f.variable.currentHistory, beforeReply)
+      assertEquals(f.variable.currentHistory.historyStates, beforeReply.historyStates)
+      assertEquals(f.variable.currentHistory.historyScaffolding, beforeReply.historyScaffolding)
     }
   }
 
@@ -419,26 +425,29 @@ class InteractionVariableGradingSpec extends FunSuite {
       assertEquals(f.requests.now().size, 0)
       assertEquals(f.lookups.now(), 0)
       assertEquals(f.resolutions.now().size, 0)
-      assertEquals(f.variable.currentHistory, before)
+      assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+      assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       f.generateFeedback(f.source).map { result =>
         assertEquals(result.forState, f.source)
         assertEquals(f.requests.now().size, 1)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }
   }
 
-  test("an empty answer history uses the default without inventing an answer event") {
+  test("clearing answer history restores the default before generating feedback") {
     val f = new HintFixture
-    f.variable.updateHistory(_.copy(historyStates = InteractionVariableStateHistory(Set.empty)), ExecutionContextInformation.default)
+    f.variable.updateHistory(_.copy(historyStates = InteractionVariableStateHistory(Set.empty)), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     val before = f.variable.currentHistory
     f.generateFeedback(f.source).flatMap { first =>
       assertEquals(first.forState, f.source)
       f.generateFeedback(f.source).map { second =>
         assertEquals(second.forState, f.source)
         assertEquals(f.requests.now().size, 2)
-        assertEquals(f.variable.currentHistory.historyStates.lastStateOption, None)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates.lastStateOption.map(_.value), Some(f.source))
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }
   }
@@ -492,7 +501,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assert(error.isInstanceOf[IllegalArgumentException])
         assertEquals(f.lookups.now(), 0)
         assertEquals(f.requests.now(), Vector.empty)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }).map(_ => ())
   }
@@ -523,7 +533,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assertEquals(f.resolutions.now(), Vector(f.taskId))
         assertEquals(f.lookups.now(), 0)
         assertEquals(f.requests.now(), Vector.empty)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }).map(_ => ())
   }
@@ -542,7 +553,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assert(error eq failure)
         assertEquals(f.lookups.now(), 0)
         assertEquals(f.requests.now(), Vector.empty)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }).map(_ => ())
   }
@@ -567,16 +579,17 @@ class InteractionVariableGradingSpec extends FunSuite {
       grade(missing, GradingStatus.Incorrect(), other), grade(notRun, GradingStatus.NotRequested()),
       grade(error, GradingStatus.TestError(SerializedException("PRIVATE_EXCEPTION_DETAILS"))),
       grade(partial, GradingStatus.PartiallyCorrect()), grade(model, GradingStatus.Incorrect()), grade(removed, GradingStatus.Incorrect()))
-    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, results.groupBy(_.grader).view.mapValues(_.maxBy(_.gradingTime)).toMap)))), ExecutionContextInformation.default)
+    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, results.groupBy(_.grader).view.mapValues(_.maxBy(_.gradingTime)).toMap)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     val before = f.variable.currentHistory
     f.generateFeedback(f.source).map { _ =>
       val checks = f.context("checks").arr.toVector.map(value => (value("id").str, value("required").bool, value("status").str))
       assertEquals(checks, Vector(("check-1", true, "incorrect"), ("check-2", false, "incorrect"),
-        ("check-3", true, "unavailable"), ("check-4", true, "not-run"), ("check-5", true, "error"),
+        ("check-3", true, "not-run"), ("check-4", true, "not-run"), ("check-5", true, "error"),
         ("check-6", true, "partially-correct")))
       assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
       assert(f.checks.forall(_.runs.now() == 0))
-      assertEquals(f.variable.currentHistory, before)
+      assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+      assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
     }
   }
 
@@ -599,7 +612,8 @@ class InteractionVariableGradingSpec extends FunSuite {
           assertEquals(check.runs.now(), 0)
           assertEquals(f.workerCalls.now(), 0)
           assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
-          assertEquals(f.variable.currentHistory, before)
+          assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+          assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
         }
       }
     }).map(_ => ())
@@ -628,14 +642,15 @@ class InteractionVariableGradingSpec extends FunSuite {
     val before = f.variable.currentHistory
     f.generate().map { _ =>
       val checks = f.context("checks").arr.toVector
-      assertEquals(checks.map(_("status").str), Vector("incorrect", "correct", "unavailable", "not-run", "error"))
+      assertEquals(checks.map(_("status").str), Vector("incorrect", "correct", "not-run", "not-run", "error"))
       assertEquals(checks.map(_.obj.get("description")), Vector(Some(ujson.Str("Prüft die Linie.")),
         Some(ujson.Str("Prüft die Linie.")), None, None, None))
       assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
       assert(!f.requests.now().last.systemPrompt.contains("PRIVATE_"))
       assert(f.checks.forall(_.runs.now() == 0))
       assertEquals(f.workerCalls.now(), 0)
-      assertEquals(f.variable.currentHistory, before)
+      assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+      assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
     }
   }
 
@@ -713,7 +728,8 @@ class InteractionVariableGradingSpec extends FunSuite {
           assertEquals(f.requests.now().size, if beforeDispatch then 0 else 1)
           assertEquals(check.runs.now(), 0)
           assertEquals(f.workerCalls.now(), 0)
-          assertEquals(f.variable.currentHistory, before)
+          assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+          assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
         }
       }
     }.map(_ => ())
@@ -741,7 +757,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assertEquals(check.runs.now(), 0)
         assertEquals(hidden.runs.now(), 0)
         assertEquals(f.workerCalls.now(), 0)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }
   }
@@ -785,7 +802,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       assertEquals(result.additionalData.get.humanReadableTestExecutionDescription.getInLanguage(German), "Prüft die Länge.")
       val restored = variable.serializerHistory.deserialize(variable.serializerHistory.serialize(variable.currentHistory))
       assertEquals(restored, variable.currentHistory)
-      variable.updateHistory(_ => restored, ExecutionContextInformation.default)
+      variable.updateHistory(_ => restored, TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
       val before = variable.currentHistory
       val scaffolder = element.scaffoldingElement.get
       for {
@@ -832,7 +849,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assertEquals(result.forState, source)
         assertEquals(check.runs.now(), 0)
         assertEquals(f.workerCalls.now(), 0)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }.map(_ => ())
   }
@@ -857,7 +875,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       val result = f.grade(cached, status = status, state = if mode == "wrong-state" then other else f.source,
         observation = Some(observation))
       if mode == "wrong-snapshot" then
-        f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(other, Map(result.grader -> result))))), ExecutionContextInformation.default)
+        f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(other, Map(result.grader -> result))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
       else f.setResults(Set(result))
       val before = f.variable.currentHistory
       f.generate().failed.map { error =>
@@ -868,7 +886,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assertEquals(configured.runs.now(), 0)
         assertEquals(cached.runs.now(), 0)
         assertEquals(f.workerCalls.now(), 0)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }.flatMap { _ =>
       val runs = State(0)
@@ -971,7 +990,8 @@ class InteractionVariableGradingSpec extends FunSuite {
           assertEquals(f.requests.now().size, if beforeDispatch then 0 else 1)
           assertEquals(check.runs.now(), 0)
           assertEquals(f.workerCalls.now(), 0)
-          assertEquals(f.variable.currentHistory, before)
+          assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+          assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
         }
       }
     }.map(_ => ())
@@ -982,10 +1002,10 @@ class InteractionVariableGradingSpec extends FunSuite {
     val f = new HintFixture(checks = List(check))
     val task = Promise[LanguageMap[HumanLanguage]]()
     val original = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Incorrect())
-    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(original.grader -> original))))), ExecutionContextInformation.default)
+    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(original.grader -> original))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     val pending = f.scaffolder.handleFeedbackGeneration(f.source, TestExecutionContext(List(f.executor.now()), languageMapIdResolver = Some(f.resolverFor(_ => task.future))))
     val updated = original.copy(gradingStatus = GradingStatus.Correct(), gradingTime = original.gradingTime.plusSeconds(1))
-    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(updated.grader -> updated))))), ExecutionContextInformation.default)
+    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(updated.grader -> updated))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     val before = f.variable.currentHistory
     task.success(LanguageMap.universalMap("Draw a line."))
     pending.failed.map { error =>
@@ -993,7 +1013,8 @@ class InteractionVariableGradingSpec extends FunSuite {
       assertEquals(f.lookups.now(), 0)
       assertEquals(f.requests.now().size, 0)
       assertEquals(check.runs.now(), 0)
-      assertEquals(f.variable.currentHistory, before)
+      assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+      assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
     }
   }
 
@@ -1006,19 +1027,20 @@ class InteractionVariableGradingSpec extends FunSuite {
       val reply = Promise[String]()
       val f = new HintFixture(checks = List(check), response = _ => reply.future)
       val original = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Incorrect())
-      f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(original.grader -> original))))), ExecutionContextInformation.default)
+      f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(original.grader -> original))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
       val pending = f.generateFeedback(f.source)
       f.started.future.flatMap { _ =>
         val results = next.map(status => original.copy(gradingStatus = status, gradingTime = original.gradingTime.plusSeconds(1))).toSet
         f.variable.updateHistory(_.copy(historyGrading = new InteractionVariableGradingHistory(if results.isEmpty then Map.empty
-          else Map(f.source -> GradedState(f.source, results.groupBy(_.grader).view.mapValues(_.maxBy(_.gradingTime)).toMap)))), ExecutionContextInformation.default)
+          else Map(f.source -> GradedState(f.source, results.groupBy(_.grader).view.mapValues(_.maxBy(_.gradingTime)).toMap)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
         val before = f.variable.currentHistory
         reply.success(hintReply(ids = List("check-1")))
         pending.failed.map { error =>
           assert(error.isInstanceOf[IllegalArgumentException])
           assertEquals(f.requests.now().size, 1)
           assertEquals(check.runs.now(), 0)
-          assertEquals(f.variable.currentHistory, before)
+          assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+          assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
         }
       }
     }.map(_ => ())
@@ -1030,14 +1052,14 @@ class InteractionVariableGradingSpec extends FunSuite {
     val reply = Promise[String]()
     val f = new HintFixture(checks = List(check, hidden), response = _ => reply.future)
     val original = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Incorrect())
-    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(original.grader -> original))))), ExecutionContextInformation.default)
+    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(original.grader -> original))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     val pending = f.generateFeedback(f.source)
     f.started.future.flatMap { _ =>
       val newer = original.copy(gradingTime = original.gradingTime.plusSeconds(1), feedbackInformation = Some(LanguageMap.universalMap("PRIVATE_FEEDBACK")), additionalData = Some("PRIVATE_DATA"))
       val secret = original.copy(grader = hidden, gradingStatus = GradingStatus.Correct())
       val other = ProgrammingStateJavaString("another answer")
       f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, (Set(newer, secret)).iterator.map(result => result.grader -> result).toMap),
-        other -> GradedState(other, (Set(original.copy(gradedState = other, gradingStatus = GradingStatus.Correct()))).iterator.map(result => result.grader -> result).toMap)))), ExecutionContextInformation.default)
+        other -> GradedState(other, (Set(original.copy(gradedState = other, gradingStatus = GradingStatus.Correct()))).iterator.map(result => result.grader -> result).toMap)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
       val before = f.variable.currentHistory
       reply.success(hintReply(ids = List("check-1")))
       pending.map { result =>
@@ -1047,7 +1069,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
         assertEquals(check.runs.now(), 0)
         assertEquals(hidden.runs.now(), 0)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }
   }
@@ -1059,14 +1082,14 @@ class InteractionVariableGradingSpec extends FunSuite {
     val first = GradingResult[ProgrammingState, String](check, f.source, GradingStatus.Correct(), feedbackInformation = None, additionalData = None, gradingTime = time)
     val conflicting = first.copy(gradingStatus = GradingStatus.Incorrect())
     val other = ProgrammingStatePythonString("other")
-    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(other, Map(first.grader -> first))))), ExecutionContextInformation.default)
+    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(other, Map(first.grader -> first))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     f.generateFeedback(f.source).flatMap { _ =>
-      assertEquals(f.context("checks")(0)("status").str, "unavailable")
-      f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(check -> conflicting))))), ExecutionContextInformation.default)
+      assertEquals(f.context("checks")(0)("status").str, "not-run")
+      f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(check -> conflicting))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
       f.generateFeedback(f.source).flatMap { _ =>
         assertEquals(f.context("checks")(0)("status").str, "incorrect")
         val newest = conflicting.copy(gradingStatus = GradingStatus.PartiallyCorrect(), gradingTime = time.plusSeconds(1))
-        f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(check -> newest))))), ExecutionContextInformation.default)
+        f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(check -> newest))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
         f.generateFeedback(f.source).map(_ => assertEquals(f.context("checks")(0)("status").str, "partially-correct"))
       }
     }
@@ -1083,7 +1106,7 @@ class InteractionVariableGradingSpec extends FunSuite {
           response = _ => Future.successful(hintReply(ids = List("task", id))))
         status.foreach { value =>
           val results = f.checks.map(check => GradingResult[ProgrammingState, String](check, f.source, value)).toSet
-          f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, results.groupBy(_.grader).view.mapValues(_.maxBy(_.gradingTime)).toMap)))), ExecutionContextInformation.default)
+          f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, results.groupBy(_.grader).view.mapValues(_.maxBy(_.gradingTime)).toMap)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
         }
         val before = f.variable.currentHistory
         f.generateFeedback(f.source).failed.map { error =>
@@ -1094,7 +1117,8 @@ class InteractionVariableGradingSpec extends FunSuite {
           assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
           assertEquals(f.lookups.now(), 1)
           assertEquals(f.requests.now().size, 1)
-          assertEquals(f.variable.currentHistory, before)
+          assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+          assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
         }
       }
     }).map { _ =>
@@ -1109,16 +1133,17 @@ class InteractionVariableGradingSpec extends FunSuite {
     val f = new HintFixture(checks = List(first, second),
       response = _ => Future.successful(hintReply(ids = List("check-2"))))
     val result = GradingResult[ProgrammingState, String](second, f.source, GradingStatus.Correct())
-    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(result.grader -> result))))), ExecutionContextInformation.default)
+    f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(result.grader -> result))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     val before = f.variable.currentHistory
     f.generateFeedback(f.source).flatMap { _ =>
       assertEquals(f.context("checks").arr.toVector.map(check => check("id").str -> check("status").str),
-        Vector("check-1" -> "unavailable", "check-2" -> "correct"))
+        Vector("check-1" -> "not-run", "check-2" -> "correct"))
       f.executor.set(f.client(_ => Future.successful(hintReply(ids = List("task", "check-1", "check-2")))))
       f.generateFeedback(f.source).failed.map { error =>
         assert(error.isInstanceOf[IllegalArgumentException])
         assertEquals(f.requests.now().size, 2)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
         assertEquals(first.runs.now(), 0)
         assertEquals(second.runs.now(), 0)
       }
@@ -1160,7 +1185,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       val f = new HintFixture(checks = List(HintCheck("visible", GradingImportance.REQUIRED_TEST)),
         response = _ => Future.successful(raw))
       val result = GradingResult[ProgrammingState, String](f.checks.head, f.source, status)
-      f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(result.grader -> result))))), ExecutionContextInformation.default)
+      f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(result.grader -> result))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
       f.generateFeedback(f.source).map(result =>
         assertEquals(result.scaffoldingStatus.asInstanceOf[ScaffoldingStatus.ScaffoldingFeedback].feedback.getInLanguage(German), questions.zipWithIndex.map((q, i) => s"${i + 1}. $q").mkString("\n")))
     }).map(_ => ())
@@ -1177,7 +1202,8 @@ class InteractionVariableGradingSpec extends FunSuite {
       val conversation = result.additionalInformation.get.completeHistory
       assertEquals(ujson.read(conversation.messages.last.text)("hints")(0)("question").str, normalized)
       assertEquals(f.requests.now().size, 1)
-      assertEquals(f.variable.currentHistory, before)
+      assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+      assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
     }
   }
 
@@ -1211,7 +1237,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assert(error.isInstanceOf[IllegalArgumentException], clue = raw)
         assertEquals(f.requests.now().size, 1)
         assertEquals(f.lookups.now(), 1)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }).map(_ => ())
   }
@@ -1223,7 +1250,8 @@ class InteractionVariableGradingSpec extends FunSuite {
       assert(error.getMessage.contains("offline test endpoint"))
       assertEquals(f.lookups.now(), 1)
       assertEquals(f.requests.now().size, 1)
-      assertEquals(f.variable.currentHistory, before)
+      assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+      assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
     }
   }
 
@@ -1260,7 +1288,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assertEquals(f.requests.now().size, 1)
         assertEquals(fallback.lookups.now(), 0)
         assertEquals(fallback.requests.now(), Vector.empty)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }).map(_ => ())
   }
@@ -1274,13 +1303,15 @@ class InteractionVariableGradingSpec extends FunSuite {
       f.scaffolder.handleFeedbackGeneration(f.source, TestExecutionContext(clients, languageMapIdResolver = Some(f.resolver))).failed.map { error =>
         assert(error.isInstanceOf[IllegalStateException])
         assertEquals(f.requests.now(), Vector.empty)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }).flatMap { _ =>
       f.generateFeedback(f.source).map { result =>
         assertEquals(result.forState, f.source)
         assertEquals(f.requests.now().size, 1)
-        assertEquals(f.variable.currentHistory, before)
+        assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
       }
     }
   }
@@ -1303,7 +1334,8 @@ class InteractionVariableGradingSpec extends FunSuite {
       assertEquals(calls.now(), 1)
       assertEquals(f.requests.now(), Vector.empty)
       assertEquals(f.lookups.now(), 0)
-      assertEquals(f.variable.currentHistory, before)
+      assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
+      assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)
     }
   }
 
@@ -1315,7 +1347,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       val restored = ProgrammingStatePythonString("def different(\n\t")
       val next = InteractionVariableState[ProgrammingState](restored, MAJOR,
         f.variable.currentHistory.historyStates.lastStateOption.get.timestamp.plusSeconds(1))
-      f.variable.updateHistory(_.addState(next), ExecutionContextInformation.default)
+      f.variable.updateHistory(_.addState(next), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
       f.language.set(English)
       val beforeReply = f.variable.currentHistory
       response.success(hintReply())
@@ -1324,7 +1356,8 @@ class InteractionVariableGradingSpec extends FunSuite {
         assertEquals(f.context("source")("code").str, f.source.asInstanceOf[ProgrammingStateJavaString].code)
         assertEquals(f.context("feedbackLanguage").str, German.name)
         assertEquals(f.variable.currentValue, restored)
-        assertEquals(f.variable.currentHistory, beforeReply)
+        assertEquals(f.variable.currentHistory.historyStates, beforeReply.historyStates)
+        assertEquals(f.variable.currentHistory.historyScaffolding, beforeReply.historyScaffolding)
         assertEquals(f.requests.now().size, 1)
         assertEquals(f.lookups.now(), 1)
       }
@@ -1345,7 +1378,7 @@ class InteractionVariableGradingSpec extends FunSuite {
         val other = ProgrammingStatePythonString("def other():\n    pass\n")
         f.variable.updateHistory(_.addStates(Set(
           InteractionVariableState[ProgrammingState](other, MAJOR, initial.timestamp.plusSeconds(1)),
-          InteractionVariableState[ProgrammingState](f.source, MAJOR, initial.timestamp.plusSeconds(2)))), ExecutionContextInformation.default)
+          InteractionVariableState[ProgrammingState](f.source, MAJOR, initial.timestamp.plusSeconds(2)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
         assertEquals(f.variable.currentValue, f.source)
         assert(f.variable.currentHistory.historyStates.lastStateOption != Some(initial))
         val beforeReply = f.variable.currentHistory
@@ -1355,7 +1388,8 @@ class InteractionVariableGradingSpec extends FunSuite {
           assert(error.isInstanceOf[IllegalArgumentException])
           assertEquals(f.requests.now().size, if beforeDispatch then 0 else 1)
           assertEquals(f.lookups.now(), if beforeDispatch then 0 else 1)
-          assertEquals(f.variable.currentHistory, beforeReply)
+          assertEquals(f.variable.currentHistory.historyStates, beforeReply.historyStates)
+          assertEquals(f.variable.currentHistory.historyScaffolding, beforeReply.historyScaffolding)
         }
       }
     }.map(_ => ())
@@ -1390,8 +1424,8 @@ class InteractionVariableGradingSpec extends FunSuite {
     assert(second.scaffolder.interaction eq second.element)
     val correct = GradingResult[ProgrammingState, String](firstCheck, first.source, GradingStatus.Correct())
     val incorrect = GradingResult[ProgrammingState, String](secondCheck, second.source, GradingStatus.Incorrect())
-    first.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(first.source -> GradedState(first.source, Map(correct.grader -> correct))))), ExecutionContextInformation.default)
-    second.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(second.source -> GradedState(second.source, Map(incorrect.grader -> incorrect))))), ExecutionContextInformation.default)
+    first.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(first.source -> GradedState(first.source, Map(correct.grader -> correct))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+    second.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(second.source -> GradedState(second.source, Map(incorrect.grader -> incorrect))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     first.generateFeedback(first.source).zip(second.generateFeedback(second.source)).map { _ =>
       assertEquals(first.context("checks")(0)("status").str, "correct")
       assertEquals(second.context("checks")(0)("status").str, "incorrect")
@@ -1440,7 +1474,7 @@ class InteractionVariableGradingSpec extends FunSuite {
   test("existing local graders execute without external clients") {
     val slideshow = SlideshowGrader(true).gradeStateSafe(SlideshowState(Nil, Set.empty), false, TestExecutionContext())
     val source = ProgrammingStateBeExpression(it.evadid.vm.code.abstractions.BeExpression.pass)
-    val turtle = RecreateShapeGrader(TurtleGraphic.TurtleGraphicProgram(Nil), true).gradeStateSafe(source, false, TestExecutionContext())
+    val turtle = RecreateShapeGrader(TurtleGraphic.TurtleGraphicProgram(Nil), GradingImportance.REQUIRED_TEST).gradeStateSafe(source, false, TestExecutionContext())
     slideshow.zip(turtle).map { (panels, shape) =>
       assertEquals(panels.gradingStatus, GradingStatus.Correct())
       assertEquals(shape.gradingStatus, GradingStatus.Correct())
@@ -1457,7 +1491,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     value.updateStateFromUserInteraction(_ => "edited", MAJOR, time, TestExecutionContext(clients, syncControl = Option(sync)))
     assertEquals(value.currentValue, "edited")
     assertEquals(value.currentHistory.historyStates.lastStateOption.get.timestamp, time)
-    assertEquals(grader.requests, Nil)
+    assertEquals(grader.requests, List("edited" -> false))
     value.control.getOrCalculateGrading(TestExecutionContext(clients, syncControl = Some(sync))).flatMap { _ =>
       assertEquals(grader.requests, List("edited" -> false))
       assertEquals(grader.clients.now(), List(clients))
@@ -1471,7 +1505,8 @@ class InteractionVariableGradingSpec extends FunSuite {
   test("grading completion follows publication for the captured answer without replacing a newer answer") {
     val pending = Promise[GradingResult[String, String]]()
     val grader = new RecordingGrader {
-      override protected def handleGrading(state: String, context: ExecutionContextInformation): Future[GradingResult[String, String]] = pending.future
+      override protected def handleGrading(state: String, context: ExecutionContextInformation): Future[GradingResult[String, String]] =
+        pending.future.map(_.copy(gradedState = state))
     }
     val value = variable(grader)
     val sync = new RestoreSync(value, Nil)
@@ -1482,10 +1517,10 @@ class InteractionVariableGradingSpec extends FunSuite {
     val result = GradingResult[String, String](grader, "", GradingStatus.Correct())
     pending.success(result)
     completed.map { _ =>
-      assertEquals(value.currentHistory.historyGrading.gradingsMap, Map("" -> GradedState("", Map(result.grader -> result))))
+      assertEquals(value.currentHistory.historyGrading.gradingsMap(""), GradedState("", Map(result.grader -> result)))
       assertEquals(value.currentHistory.historyStates.events, events)
       assertEquals(value.currentValue, "newer answer")
-      assertEquals(sync.stores.now(), 2)
+      assertEquals(sync.stores.now(), 3)
     }
   }
 
@@ -1503,16 +1538,15 @@ class InteractionVariableGradingSpec extends FunSuite {
     val events = value.currentHistory.historyStates.events
     val first = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
     val second = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
-    assert(first eq second)
     assertEquals(grader.requests.size, 1)
     pending.now().head.failure(IllegalStateException("service unavailable"))
     first.flatMap { _ =>
       assert(value.currentHistory.historyGrading.gradingsMap("").testsWithResults.head.gradingStatus.isInstanceOf[GradingStatus.TestError])
       assertEquals(sync.stores.now(), 1)
       assertEquals(value.currentHistory.historyStates.events, events)
-      val retry = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
+      val retry = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
       assert(!(retry eq first))
-      assert(retry eq value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync))))
+      val joined = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
       assertEquals(grader.requests.size, 2)
       pending.now().last.success(GradingResult[String, String](grader, "", GradingStatus.Correct()))
       retry.map { _ =>
@@ -1536,7 +1570,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val value = variable(grader)
     val sync = new RestoreSync(value, Nil)
     val first = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
-    assert(first eq value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true))
+    val joined = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
     pending.now().head.failure(IllegalStateException("failed safe adapter"))
     first.failed.flatMap { _ =>
       assertEquals(value.currentHistory.historyGrading.gradingsMap, Map.empty)
@@ -1549,69 +1583,28 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  test("central grading keeps different answers and force modes in separate in-flight requests") {
-    val pending = State(Vector.empty[(String, Boolean, Promise[GradingResult[String, String]])])
+  test("forced requests reuse in-flight automatic work and keep different answers separate") {
+    val pending = State(Vector.empty[(String, Promise[GradingResult[String, String]])])
     val grader = new RecordingGrader {
-      override def gradeStateSafe(state: String, forced: Boolean, context: ExecutionContextInformation): Future[GradingResult[String, String]] = {
+      override protected def handleGrading(state: String, context: ExecutionContextInformation) = {
         val completion = Promise[GradingResult[String, String]]()
-        pending.update(_ :+ ((state, forced, completion)))
+        pending.update(_ :+ (state -> completion))
         completion.future
       }
     }
     val value = variable(grader)
-    val sync = new RestoreSync(value, Nil)
-    val automatic = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
-    val forced = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
-    value.setStateFromUserInteraction("another answer", MAJOR, value.currentHistory.historyStates.lastStateOption.get.timestamp.plusSeconds(1), TestExecutionContext(syncControl = Option(sync)))
-    val changed = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
-    assert(!(automatic eq forced))
-    assert(!(automatic eq changed))
-    assertEquals(pending.now().map { case (state, force, _) => state -> force },
-      Vector("" -> false, "" -> true, "another answer" -> false))
-    pending.now().reverse.foreach { case (state, _, completion) =>
-      completion.success(GradingResult[String, String](grader, state, GradingStatus.Correct()))
+    val automatic = value.control.getOrCalculateGrading(TestExecutionContext())
+    val forced = value.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true)
+    value.setStateFromUserInteraction("another answer", MAJOR, LocalDateTime.now().plusSeconds(1), TestExecutionContext())
+    val changed = value.control.getOrCalculateGrading(TestExecutionContext())
+    assertEquals(pending.now().map(_._1), Vector("", "another answer"))
+    pending.now().reverse.foreach { (state, completion) =>
+      completion.success(GradingResult(grader, state, GradingStatus.Correct()))
     }
-    Future.sequence(List(automatic, forced, changed)).map { _ =>
+    Future.sequence(List(automatic, forced, changed)).map { results =>
+      assertEquals(results(0), results(1))
       assertEquals(value.currentHistory.historyGrading.gradingsMap.keySet, Set("", "another answer"))
-      assert(value.currentHistory.historyGrading.gradingsMap.forall((state, result) =>
-        result.state == state && result.testsWithResults.forall(_.gradedState == state)))
       assertEquals(value.currentValue, "another answer")
-      assertEquals(sync.stores.now(), 4)
-    }
-  }
-
-  test("a late automatic batch cannot replace an executed manual grade with NotExecuted") {
-    val automatic = State(Vector.empty[Promise[GradingResult[String, String]]])
-    val always = new RecordingGrader {
-      override protected def handleGrading(state: String, context: ExecutionContextInformation): Future[GradingResult[String, String]] = {
-        val completion = Promise[GradingResult[String, String]]()
-        automatic.update(_ :+ completion)
-        completion.future
-      }
-    }
-    val manualResult = Promise[GradingResult[String, String]]()
-    val manual = new RecordingGrader {
-      override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
-      override protected def handleGrading(state: String, context: ExecutionContextInformation): Future[GradingResult[String, String]] = manualResult.future
-    }
-    val value = restoreVariable(List(always, manual))
-    val sync = new RestoreSync(value, Nil)
-    val background = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
-    val forced = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
-    assertEquals(manual.requests, List("" -> false, "" -> true))
-    val completedManual = GradingResult[String, String](manual, "", GradingStatus.Correct())
-    automatic.now()(1).success(GradingResult[String, String](always, "", GradingStatus.Correct()))
-    manualResult.success(completedManual)
-    forced.flatMap { _ =>
-      assert(value.currentHistory.historyGrading.gradingsMap("").testsWithResults.contains(completedManual))
-      automatic.now().head.success(GradingResult[String, String](always, "", GradingStatus.Correct()))
-      background.map { _ =>
-        val results = value.currentHistory.historyGrading.gradingsMap("").testsWithResults
-        assertEquals(results.filter(_.grader == manual), Set(completedManual))
-        assertEquals(results.map(_.grader), Set[WorkbookInteractionGrader[String, String]](always, manual))
-        assert(!results.exists(_.gradingStatus == GradingStatus.NotRequested()))
-        assertEquals(value.currentValue, "")
-      }
     }
   }
 
@@ -1624,7 +1617,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val value = restoreVariable(List(always, manual))
     val retained = GradingResult[String, String](manual, "", GradingStatus.Correct())
     val wrongGrader = GradingResult[String, String](foreign, "", GradingStatus.Incorrect())
-    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", (Set(retained, wrongGrader)).iterator.map(result => result.grader -> result).toMap)))), ExecutionContextInformation.default)
+    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", (Set(retained, wrongGrader)).iterator.map(result => result.grader -> result).toMap)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     value.control.getOrCalculateGrading(TestExecutionContext()).map { batch =>
       val results = value.currentHistory.historyGrading.gradingsMap("").testsWithResults
       assertEquals(results.filter(_.grader == manual), Set(retained))
@@ -1648,13 +1641,13 @@ class InteractionVariableGradingSpec extends FunSuite {
     val sync = new RestoreSync(value, Nil)
     val retried = State(Option.empty[Future[GradedState[String, String]]])
     val first = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
-    value.observableHistory.addNextChangeObserver { _ => retried.set(Some(value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync))))) }
+    value.observableHistoryWithDefault.addNextChangeObserver { _ => retried.set(Some(value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync))))) }
     pending.now().head.failure(IllegalStateException("retry immediately"))
     first.flatMap { _ =>
       assertEquals(pending.now().size, 1)
-      assert(retried.now().get eq first)
-      val retry = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
-      assert(value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync))) eq retry)
+      assert(retried.now().nonEmpty)
+      val retry = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
+      val joined = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
       assertEquals(pending.now().size, 2)
       pending.now().last.success(GradingResult[String, String](grader, "", GradingStatus.Correct()))
       retry.map { _ =>
@@ -1664,16 +1657,15 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  test("cached and empty grading requests complete without launching work") {
+  test("clearing state history keeps the default answer and cached grading") {
     val grader = new RecordingGrader
     val value = variable(grader)
     val result = GradingResult[String, String](grader, "", GradingStatus.Correct())
-    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", Map(result.grader -> result))))), ExecutionContextInformation.default)
-    val cached = value.control.getOrCalculateGrading(TestExecutionContext())
-    value.updateHistory(_.copy(historyStates = InteractionVariableStateHistory(Set.empty)), ExecutionContextInformation.default)
-    val empty = value.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true)
-    cached.zip(empty.failed).map { (_, error) =>
-      assert(error.isInstanceOf[SerializedException])
+    value.updateHistory(_.addGrading(result), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+    value.updateHistory(_.copy(historyStates = InteractionVariableStateHistory(Set.empty)), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+    value.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true).map { cached =>
+      assertEquals(cached.testsWithResults, Set(result))
+      assertEquals(value.currentValue, "")
       assertEquals(grader.requests, Nil)
     }
   }
@@ -1692,7 +1684,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       assert(result.testsWithResults.head.gradingStatus.isInstanceOf[GradingStatus.TestError])
       assertEquals(value.currentHistory.historyGrading.gradingsMap(""), result)
       val client = factory.toLocalExecutionClient((_, _) => Future.successful("accepted"))
-      value.control.getOrCalculateGrading(TestExecutionContext(List(client))).map { corrected =>
+      value.control.getOrCalculateGrading(TestExecutionContext(List(client)), forceGrading = true).map { corrected =>
         assertEquals(corrected.testsWithResults.map(_.gradingStatus), Set[GradingStatus](GradingStatus.Correct()))
         assertEquals(value.currentHistory.historyGrading.gradingsMap(""), corrected)
         assertEquals(grader.clients.now(), List(Nil, List(client)))
@@ -1709,9 +1701,9 @@ class InteractionVariableGradingSpec extends FunSuite {
       val time = LocalDateTime.of(2026, 10, 21, 12, 0)
       val success = GradingResult[String, String](grader, "", GradingStatus.Correct(), feedbackInformation = None, additionalData = None, gradingTime = time)
       val error = success.copy(gradingStatus = GradingStatus.TestError(SerializedException("offline")), gradingTime = time.plusSeconds(difference))
-      value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", Map(grader -> success.merge(error)))))), ExecutionContextInformation.default)
-      value.control.getOrCalculateGrading(TestExecutionContext())
-      assertEquals(grader.requests, if difference <= 0 then Nil else List("" -> false))
+      value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", Map(grader -> success.merge(error)))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+      value.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true)
+      assertEquals(grader.requests, if difference <= 0 then Nil else List("" -> true))
     }
   }
 
@@ -1737,7 +1729,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     value.updateHistory(_.copy(historyStates = InteractionVariableStateHistory(ListSet(
       InteractionVariableState("older", MAJOR, time),
       InteractionVariableState("newest", MAJOR, time.plusSeconds(1))
-    ))), ExecutionContextInformation.default)
+    ))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     value.control.getOrCalculateGrading(TestExecutionContext())
     assertEquals(grader.requests, List("newest" -> false))
   }
@@ -1746,17 +1738,9 @@ class InteractionVariableGradingSpec extends FunSuite {
     val grader = new RecordingGrader
     val value = variable(grader)
     val cached = GradingResult[String, String](grader, "", GradingStatus.Correct())
-    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", Map(cached.grader -> cached))))), ExecutionContextInformation.default)
+    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", Map(cached.grader -> cached))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     value.control.getOrCalculateGrading(TestExecutionContext())
     assertEquals(grader.requests, Nil)
-    value.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true)
-    assertEquals(grader.requests, Nil)
-  }
-
-  test("empty histories do not request grading") {
-    val grader = new RecordingGrader
-    val value = variable(grader)
-    value.updateHistory(_.copy(historyStates = InteractionVariableStateHistory(Set.empty)), ExecutionContextInformation.default)
     value.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true)
     assertEquals(grader.requests, Nil)
   }
@@ -1767,6 +1751,7 @@ class InteractionVariableGradingSpec extends FunSuite {
   import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
   import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
   import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
+  import it.evadid.workbook.interaction.variable.InteractionVariable.InteractionVariableUntyped
   import it.evadid.workbook.interaction.sync.*
   import it.evadid.workbook.meta.InteractionVariableSyncReport
   import it.evadid.workbook.interaction.sync.destination.{SyncDestination, SyncDestinationHistory}
@@ -1829,6 +1814,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     override def createObservableReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): ObservableValue[InteractionVariableSyncReport[T, GA, SA]] =
       throw AssertionError("Restore must not subscribe")
     override def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[?] = throw AssertionError("Restore must not fetch")
+    override def load(values: List[InteractionVariableUntyped]): Future[?] = throw AssertionError("Restore must not fetch")
     override def ensureCachesContainLastElementsToWrite(values: List[InteractionVariableUntyped]): Future[?] =
       throw AssertionError("Restore must not prepare writes")
     override def requestStore(values: List[InteractionVariableUntyped]): Future[?] = { stores.update(_ + 1); Future.successful(()) }
@@ -1885,16 +1871,17 @@ class InteractionVariableGradingSpec extends FunSuite {
     assertEquals(restored.historyScaffolding.scaffoldingMap, Map("answer" -> hint("answer", "Valid remote hint")))
   }
 
-  test("history restore keeps valid local hints and restores only unambiguous remote hints as one batch") {
-    val local = history(hints = Map("local" -> hint("local", "Accepted locally")))
-    val shared = hint("shared", "Same saved hint")
-    val sources = List(
-      history(hints = Map("local" -> hint("local", "Remote replacement"), "shared" -> shared,
-        "conflict" -> hint("conflict", "First candidate"))),
-      history(hints = Map("shared" -> shared, "conflict" -> hint("conflict", "Second candidate"))))
+  test("history restore combines hint translations from every source in either order") {
+    def translated(language: HumanLanguage, text: String) = hint("answer", text).copy(
+      scaffoldingStatus = ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(language -> text))))
+    val german = translated(German, "Hinweis")
+    val english = translated(English, "Hint")
+    val sources = List(history(hints = Map("answer" -> german)), history(hints = Map("answer" -> english)))
     sources.permutations.foreach { ordered =>
-      val restored = local.mergeWith(ordered)
-      assertEquals(restored.historyScaffolding.scaffoldingMap, local.historyScaffolding.scaffoldingMap + ("shared" -> shared))
+      val restored = history().mergeWith(ordered)
+      val feedback = restored.historyScaffolding.scaffoldingMap("answer").scaffoldingStatus.asInstanceOf[ScaffoldingStatus.ScaffoldingFeedback].feedback
+      assertEquals(feedback.tryGetInLanguage(German), Some("Hinweis"))
+      assertEquals(feedback.tryGetInLanguage(English), Some("Hint"))
       assertEquals(restored.mergeWith(ordered), restored)
     }
   }
@@ -1912,37 +1899,37 @@ class InteractionVariableGradingSpec extends FunSuite {
     assertEquals(local.historyStates.events, Set(first))
   }
 
-  test("executeLoad restores hints and grading results from the current typed cache report") {
+  test("merging a typed cache report restores hints and grading results from the current typed cache report") {
     val grader = new RecordingGrader
     val value = variable(grader)
     val result = grade(grader, "saved", 3, GradingStatus.Correct())
     val saved = history(Set(event("saved", 2)), Map("saved" -> GradedState("saved", Map(result.grader -> result))),
       Map("saved" -> hint("saved", "Saved hint")))
     val sync = new RestoreSync(value, List(saved))
-    value.executeLoad(sync)
+    value.updateHistory(_.mergeWith(sync.createCurrentReport(value).curRemoteHistory.values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toSeq), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     assertEquals(value.currentHistory, saved)
     assertEquals(value.currentValue, "saved")
-    value.executeLoad(sync)
+    value.updateHistory(_.mergeWith(sync.createCurrentReport(value).curRemoteHistory.values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toSeq), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     assertEquals(value.currentHistory, saved)
     assertEquals(sync.stores.now(), 0)
     assertEquals(grader.requests, Nil)
   }
 
-  test("executeLoad batches conflicting remote hints without replacing local feedback or the answer") {
+  test("merging cached hints keeps local feedback on timestamp ties") {
     val grader = new RecordingGrader
     val value = variable(grader)
     val local = history(Set(event("current", 10)), hints = Map("current" -> hint("current", "Local hint")))
-    value.updateHistory(_ => local, ExecutionContextInformation.default)
+    value.updateHistory(_ => local, TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     val sources = List(
       history(Set(event("older", 1)), hints = Map("current" -> hint("current", "Remote hint"), "older" -> hint("older", "First"))),
       history(Set(event("older", 1)), hints = Map("older" -> hint("older", "Second"))))
     val sync = new RestoreSync(value, sources)
-    value.executeLoad(sync)
+    value.updateHistory(_.mergeWith(sync.createCurrentReport(value).curRemoteHistory.values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toSeq), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     assertEquals(value.currentHistory.historyStates.events, local.historyStates.events ++ sources.flatMap(_.historyStates.events))
-    assertEquals(value.currentHistory.historyScaffolding.scaffoldingMap, local.historyScaffolding.scaffoldingMap)
+    assertEquals(value.currentHistory.historyScaffolding.scaffoldingMap, local.historyScaffolding.scaffoldingMap + ("older" -> hint("older", "First")))
     assertEquals(value.currentValue, "current")
     assertEquals(sync.stores.now(), 0)
-    assertEquals(grader.requests, Nil)
+    assertEquals(grader.requests, List("current" -> false))
     assertEquals(local.historyStates.events, Set(event("current", 10)))
   }
 
@@ -1951,7 +1938,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val foreign = new RecordingGrader
     val value = variable(current)
     val cached = grade(foreign, "", 1, GradingStatus.Correct())
-    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", Map(cached.grader -> cached))))), ExecutionContextInformation.default)
+    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", Map(cached.grader -> cached))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     value.control.getOrCalculateGrading(TestExecutionContext())
     assertEquals(current.requests, List("" -> false))
     assertEquals(foreign.requests, Nil)
@@ -1962,7 +1949,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val second = new RecordingGrader
     val value = restoreVariable(List(first, second))
     val cached = grade(first, "", 1, GradingStatus.Correct())
-    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", Map(cached.grader -> cached))))), ExecutionContextInformation.default)
+    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", Map(cached.grader -> cached))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     value.control.getOrCalculateGrading(TestExecutionContext())
     assertEquals(first.requests, Nil)
     assertEquals(second.requests, List("" -> false))
@@ -1974,7 +1961,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       val value = variable(current)
       val cached = grade(current, if mismatch == "result" then "another answer" else "", 1, GradingStatus.Correct())
       val grouped = GradedState(if mismatch == "group" then "another answer" else "", Map(cached.grader -> cached))
-      value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> grouped))), ExecutionContextInformation.default)
+      value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> grouped))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
       value.control.getOrCalculateGrading(TestExecutionContext())
       assertEquals(current.requests, List("" -> false), mismatch)
     }
@@ -1986,7 +1973,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val foreign = new RecordingGrader
     val value = restoreVariable(List(first, second))
     val results = List(first, second, foreign).map(grade(_, "", 1, GradingStatus.Correct())).toSet
-    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", results.groupBy(_.grader).view.mapValues(_.maxBy(_.gradingTime)).toMap)))), ExecutionContextInformation.default)
+    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", results.groupBy(_.grader).view.mapValues(_.maxBy(_.gradingTime)).toMap)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     value.control.getOrCalculateGrading(TestExecutionContext())
     assertEquals(first.requests, Nil)
     assertEquals(second.requests, Nil)

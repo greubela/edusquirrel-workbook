@@ -14,7 +14,7 @@ case class InteractionVariableScaffoldingHistory[T, SA]
     val merged = other.scaffoldingMap.foldLeft(scaffoldingMap) { case (current, (state, incoming)) =>
       if incoming.forState != state then current
       else current.get(state) match {
-        case Some(saved) if saved.forState == state && incoming.scaffoldingTime.isBefore(saved.scaffoldingTime) => current
+        case Some(saved) if saved.forState == state => current.updated(state, saved.merge(incoming))
         case _ => current.updated(state, incoming)
       }
     }
@@ -30,7 +30,7 @@ object InteractionVariableScaffoldingHistory {
   given [T: ReadWriter, SA: ReadWriter]: ReadWriter[InteractionVariableScaffoldingHistory[T, SA]] = macroRW
 
   def apply[T, SA](scaffoldingsFinished: Set[ScaffoldingResult[T, SA]]): InteractionVariableScaffoldingHistory[T, SA] = {
-    val resMap = scaffoldingsFinished.map(curGrad => curGrad.forState -> curGrad).toMap
+    val resMap = scaffoldingsFinished.groupBy(_.forState).view.mapValues(_.reduce(_.merge(_))).toMap
     InteractionVariableScaffoldingHistory(resMap)
   }
 

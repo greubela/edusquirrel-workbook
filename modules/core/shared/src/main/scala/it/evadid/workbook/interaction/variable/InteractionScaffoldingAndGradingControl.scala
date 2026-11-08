@@ -14,7 +14,6 @@ import it.evadid.workbook.meta.ExecutionContextInformation
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Success
 
 case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA]) {
 
@@ -42,7 +41,6 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
           case UNKNOWN() => None
           case FAILED(err) => Some(ScaffoldingResult(forState, ScaffoldingError(err), SystemEntity(), None, LocalDateTime.now()))
           case anyStatus => {
-            println(s"status: ${anyStatus} ")
             Some(ScaffoldingResult(forState, ScaffoldingRequestedButNotFinished(), SystemEntity(), None, LocalDateTime.now()))
           }
         }
@@ -61,14 +59,22 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
 
   def getOrCalculateGrading(contextInformation: ExecutionContextInformation, forceGrading: Boolean, forState: T): Future[GradedState[T, GA]] = interactionVariable.synchronized {
     val ec = contextInformation.futureExecutionContext
-    if (interactionVariable.currentHistory.historyGrading.gradingsMap.contains(forState)) {
-      Future.successful(interactionVariable.currentHistory.historyGrading.gradingsMap(forState))
+    if (gradingCache.getCurrentElementStatus(forState) == STARTED()) {
+      gradingCache.loadAsFuture(forState)(using ec).flatMap { completed =>
+        if forceGrading && completed.testsWithResults.exists(_.gradingStatus == NotRequested()) then
+          getOrCalculateGrading(contextInformation, true, forState)
+        else Future.successful(completed)
+      }(using ec)
+    } else if (interactionVariable.currentHistory.historyGrading.gradingsMap.contains(forState)) {
+      val saved = interactionVariable.currentHistory.historyGrading.gradingsMap(forState)
+      if saved.state != forState then startGrading(contextInformation, forceGrading, forState)
+      else retryGradingIfNecessary(contextInformation, forceGrading, saved)
     } else {
       gradingCache.getSyncIfInCache(forState, false).match {
         case Some(gradedState) =>
           retryGradingIfNecessary(contextInformation, forceGrading, gradedState)
         case None => gradingCache.getCurrentElementStatus(forState).match {
-          case STARTED() => gradingCache.loadAsFuture(forState)(using contextInformation.futureExecutionContext)
+          case STARTED() => gradingCache.loadAsFuture(forState)(using ec)
           case _ => startGrading(contextInformation, forceGrading, forState)
         }
       }
@@ -77,25 +83,35 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
 
 
   private def retryGradingIfNecessary(contextInformation: ExecutionContextInformation, forceGrading: Boolean, existing: GradedState[T, GA]): Future[GradedState[T, GA]] = interactionVariable.synchronized {
-    if (!forceGrading || existing.shouldRetry.isEmpty) Future.successful(existing)
+    val configured = interactionVariable.underlyingInteraction.gradingElements
+    val valid = existing.copy(graderResultMap = existing.graderResultMap.filter { (grader, result) =>
+      configured.contains(grader) && result.grader == grader && result.gradedState == existing.state
+    })
+    val missing = configured.filterNot(valid.graderResultMap.contains)
+    val retry = if forceGrading then valid.shouldRetry else Seq.empty
+    if (missing.isEmpty && retry.isEmpty) Future.successful(valid)
     else {
-      val futureRes = existing.retryFailed(contextInformation, forceGrading)
-      futureRes.onComplete {
-        case Success(gradedState) => interactionVariable.updateHistory(_.addGrading(gradedState), contextInformation)
+      val futureRes = valid.retryFailed(contextInformation, forceGrading)
+        .zip(GradedState.executeGradingSafe(missing, existing.state, forceGrading, contextInformation))
+        .map((retried, added) => added.merge(retried))(using contextInformation.futureExecutionContext)
+      val published = futureRes.map { gradedState =>
+        interactionVariable.updateHistory(_.addGrading(gradedState), contextInformation)
+        gradedState
       }(using contextInformation.futureExecutionContext)
-      gradingCache.informAboutExistingFuture(existing.state, futureRes, true)
-      futureRes
+      gradingCache.informAboutExistingFuture(existing.state, published, true)
+      gradingCache.loadAsFuture(existing.state)(using contextInformation.futureExecutionContext)
     }
   }
 
   private def startGrading(contextInformation: ExecutionContextInformation, forceGrading: Boolean, forState: T): Future[GradedState[T, GA]] = interactionVariable.synchronized {
     val graders: Seq[WorkbookInteractionGrader[T, GA]] = interactionVariable.underlyingInteraction.gradingElements
     val futureRes = GradedState.executeGradingSafe(graders, forState, forceGrading, contextInformation)
-    futureRes.onComplete {
-      case Success(gradedState) => interactionVariable.updateHistory(_.addGrading(gradedState), contextInformation)
+    val published = futureRes.map { gradedState =>
+      interactionVariable.updateHistory(_.addGrading(gradedState), contextInformation)
+      gradedState
     }(using contextInformation.futureExecutionContext)
-    gradingCache.informAboutExistingFuture(forState, futureRes, true)
-    futureRes
+    gradingCache.informAboutExistingFuture(forState, published, true)
+    gradingCache.loadAsFuture(forState)(using contextInformation.futureExecutionContext)
   }
 
   // SCAFFOLDING CALCULATION
@@ -125,11 +141,12 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
     if (scaffolderOp.isEmpty) Future.failed(SerializedException("Cannot calculate scaffolding on an interaction without scaffoldert!")) else {
       val scaffolder = scaffolderOp.get
       val futureRes = scaffolder.generateFeedbackSafe(forState, contextInformation)
-      futureRes.onComplete {
-        case Success(scaffResult) => interactionVariable.updateHistory(_.addScaffolding(scaffResult), contextInformation)
+      val published = futureRes.map { scaffResult =>
+        interactionVariable.updateHistory(_.addScaffolding(scaffResult), contextInformation)
+        scaffResult
       }(using ec)
-      scaffoldingCache.informAboutExistingFuture(forState, futureRes)
-      futureRes
+      scaffoldingCache.informAboutExistingFuture(forState, published)
+      scaffoldingCache.loadAsFuture(forState)(using ec)
     }
   }
 

@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.*
@@ -50,7 +51,8 @@ case class IconGradingAndScaffolding(fullInfo: FullInfo, laminarHelper: LaminarR
       }
 
       val scaffoldingTooltip = status.getInfoString.match {
-        case Left(langMap) => fullInfo.signals.stringFromLanguageMap(langMap)
+        case Left(langMap) => fullInfo.signals.currentLanguage.map(language =>
+          if langMap.availableLanguages.nonEmpty then langMap.getWithLanguagePreference(List(language, English)) else "")
         case Right(langMapId) => laminarHelper.plaintextStringSignal(langMapId)
       }
 
@@ -73,7 +75,7 @@ case class IconGradingAndScaffolding(fullInfo: FullInfo, laminarHelper: LaminarR
     val notFinished = gradingResults.map(_.gradingStatus).count(_ == NotFinished())
     val testError = gradingResults.map(_.gradingStatus).count(_.isError)
     val shouldRetry = gradingResults.map(_.gradingStatus).count(_.shouldRetryExecution)
-    val correct = gradingResults.count(_ == Correct())
+    val correct = gradingResults.count(_.gradingStatus.isCorrect)
     val incorrect = availableGraders - correct
 
     val svgGradingIcon =
@@ -116,12 +118,10 @@ case class IconGradingAndScaffolding(fullInfo: FullInfo, laminarHelper: LaminarR
 
   def onScaffoldingRequested(): Unit = {
     workbookInteractionElement.interactionVariable.control.getOrCalculateScaffolding(fullInfo.executionContextInformation)
-    println("requested Scaffolding?!!!")
   }
 
   def onGradingRequested(): Unit = {
     workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.executionContextInformation, forceGrading = true)
-    println("grading Rquested!!!")
   }
 
 }

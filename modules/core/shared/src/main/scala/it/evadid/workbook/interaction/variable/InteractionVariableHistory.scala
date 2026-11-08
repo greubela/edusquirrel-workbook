@@ -72,18 +72,11 @@ case class InteractionVariableHistory[T, GA, SA]
     if others.isEmpty then this
     else {
       val grades = others.foldLeft(historyGrading)((current, other) => current.merge(other.historyGrading))
-      val localHints = historyScaffolding.scaffoldingMap.filter((state, hint) => hint.forState == state)
-      val remoteHints = others.flatMap(_.historyScaffolding.scaffoldingMap).filter((state, hint) => hint.forState == state)
-        .groupMap(_._1)(_._2).flatMap { (state, candidates) =>
-          candidates.distinct match {
-            case Seq(single) => Some(state -> single)
-            case _ => None
-          }
-        }
+      val hints = others.foldLeft(historyScaffolding)((current, other) => current.merge(other.historyScaffolding))
       InteractionVariableHistory(
         historyStates.withAddedEvents(others.flatMap(_.historyStates.events).toSet),
         grades,
-        new InteractionVariableScaffoldingHistory(remoteHints ++ localHints))
+        hints)
     }
   }
 

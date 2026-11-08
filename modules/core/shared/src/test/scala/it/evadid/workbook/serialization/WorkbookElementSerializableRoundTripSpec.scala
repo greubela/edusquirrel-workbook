@@ -161,9 +161,9 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     assertEquals(WorkbookElementFactory.parse(serialized.copy(allConstructorFields = serialized.allConstructorFields - "diff")), element)
   }
 
-  test("legacy turtle definitions default to stroke grading without changing their saved source") {
+  test("turtle definitions default to stroke grading without changing their saved source") {
     val source = ProgrammingStatePythonString(" \r\nforward(10)\n\t ")
-    val original = TurtleRecreateShapeInteraction(" turtle-legacy-policy \n", source,
+    val original = TurtleRecreateShapeInteraction("turtle-default-policy", source,
       TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), limitTurtleCommandUsage = Map("forward" -> Integer.valueOf(2)))
     val serialized = original.toSerialized
     val legacy = serialized.copy(allConstructorFields = serialized.allConstructorFields - "comparisonPolicy")
@@ -186,7 +186,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       policy <- TurtleDrawingPolicy.values
       source <- sources
     } do {
-      val original = TurtleRecreateShapeInteraction(s" turtle-policy-$policy \n", source,
+      val original = TurtleRecreateShapeInteraction(s"turtle-policy-$policy", source,
         TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), limitTurtleCommandUsage = Map("forward" -> Integer.valueOf(2)),
         comparisonPolicy = policy)
       val explicit = original.toSerialized.withElementAddedAs("comparisonPolicy", policy)

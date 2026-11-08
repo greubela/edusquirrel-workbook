@@ -1204,7 +1204,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](write(previousResult)), result)
     assertEquals(readBinary[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](writeBinary(previousResult)), result)
     val encoded = writeJs(result).obj.toMap
-    List(encoded - "additionalData", encoded.updated("additionalData", writeJs[Option[Any]](None))).foreach { fields =>
+    List(encoded, encoded.updated("additionalData", writeJs[Option[Any]](None))).foreach { fields =>
       val restored = read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](ujson.Obj.from(fields))
       assertEquals(restored, result)
     }
@@ -1374,7 +1374,8 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       assertEquals(canonical("pythonTestCode"), legacySuite("pythonTestCode"))
       assertEquals(read[ProgrammingUnitTestGrader](canonical), expected)
       val resultJson = ujson.Obj("grader" -> ujson.Str(json), "gradedState" -> stateJson,
-        "gradingStatus" -> ujson.Obj("$type" -> "Incorrect"), "gradingTime" -> "2026-10-26T12:00")
+        "gradingStatus" -> ujson.Obj("$type" -> "Incorrect"), "gradingTime" -> "2026-10-26T12:00",
+        "feedbackInformation" -> writeJs[Option[LanguageMap[HumanLanguage]]](None), "additionalData" -> writeJs[Option[AdditionalProgrammingTestInfo]](None))
       val result = GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](expected, state, GradingStatus.Incorrect(), feedbackInformation = None, additionalData = None, gradingTime = time)
       assertEquals(read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](resultJson), result)
       assertEquals(readBinary[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](writeBinary(resultJson)), result)
@@ -1428,7 +1429,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("programming collections preserve assertion and shape graders together") {
     val assertion = ProgrammingUnitTestGrader("sum", "assert add(1, 2) == 3")
-    val drawing = RecreateShapeGrader(TurtleGraphic[Double](Seq.empty), isRequired = true, testId = "drawing")
+    val drawing = RecreateShapeGrader(TurtleGraphic[Double](Seq.empty), importance = GradingImportance.REQUIRED_TEST, testId = "drawing")
     val suite: BeTestSuite = ProgrammingTestSuite(List(assertion, drawing))
     List(read[BeTestSuite](write(suite)), readBinary[BeTestSuite](writeBinary(suite))).foreach { restored =>
       assertEquals(restored, suite)

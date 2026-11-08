@@ -4,10 +4,36 @@ import it.evadid.workbook.elements.interactionElements.programming.state.{Progra
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleDrawingPolicy, TurtleGraphic}
 import munit.FunSuite
 
 class TurtleJsxGraphRendererSpec extends FunSuite {
+  private def coverage(commands: List[TurtleCommand[Double]], target: TurtleGraphic) =
+    TurtleDrawingGrading.assess(commands, target, TurtleDrawingPolicy.Coverage)
+
+  test("stored grades and visual line colors agree for every drawing policy") {
+    import it.evadid.workbook.abstractions.grading.GradingImportance
+    import it.evadid.workbook.meta.ExecutionContextInformation
+    import scala.concurrent.Future
+    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+    val cases = List(
+      ("forward(100)\nturn_right(90)\nforward(100)\nturn_right(270)\nforward(100)", "M0 0 L100 0 L100 100 L200 100"),
+      ("forward(5)\nforward(5)", "M0 0 L10 0"),
+      ("forward(10)\npen_up()\ngoto_x_y(10, 5)\ngoto_x_y(20, 0)\npen_down()\nforward(10)", "M0 0 L10 0 M20 0 L30 0"))
+    Future.traverse(cases) { (code, path) =>
+      val source = ProgrammingStatePythonString(code)
+      val target = TurtleGraphic.TurtleGraphicSvgString(path)
+      Future.traverse(TurtleDrawingPolicy.values.toList) { policy =>
+        val visual = TurtleDrawingGrading.assess(source.toBeExpression.deriveTurtleCommands, target, policy)
+        RecreateShapeGrader(target, GradingImportance.REQUIRED_TEST, comparisonPolicy = policy)
+          .gradeStateSafe(source, false, ExecutionContextInformation.default).map { saved =>
+            assertEquals(visual.matches, saved.gradingStatus.isCorrect, clues(code, policy))
+            assertEquals(visual.scene.lines.forall(_.result == LineResult.Correct), saved.gradingStatus.isCorrect)
+          }
+      }
+    }
+  }
+
   test("preview conversion retains Java drafts it cannot display") {
     List("class Drawing {", "class Drawing { static void main(String[] args) {} }").foreach { code =>
       val state = ProgrammingStateJavaString(code)
@@ -230,9 +256,9 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     val split = List(command("forward", 5), command("forward", 5))
     val repeated = List(command("forward", 10), command("backward", 10), command("forward", 10))
     List(split, repeated).foreach { commands =>
-      val result = TurtleDrawingGrading.compare(commands, expected)
+      val result = coverage(commands, expected)
       assert(result.matches, clue = result)
-      val scene = TurtleDrawingGrading.assessedScene(commands, expected, result)
+      val scene = result.scene
       assertEquals(scene.lines.map(_.result), List(LineResult.Correct))
       assertEquals(scene.lines.map(_.jump), List(false))
     }
@@ -246,8 +272,8 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     val expected = graphic(List(command("forward", 10)))
     val reversed = List(command("penup"), command("forward", 10), command("pendown"),
       command("backward", 10), command("penup"), command("goto", 50, 50))
-    assert(TurtleDrawingGrading.compare(reversed, expected).matches)
-    val scene = TurtleDrawingGrading.assessedScene(reversed, expected)
+    assert(coverage(reversed, expected).matches)
+    val scene = coverage(reversed, expected).scene
     assertEquals(scene.lines.map(_.result), List(LineResult.Correct))
     assertEquals(scene.lines.map(_.jump), List(false))
     assertPoint(scene.lines.head.start, Point(0.0, 0.0))
@@ -258,9 +284,9 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     val expected = graphic(List(command("forward", 10), command("right", 90), command("forward", 10)))
     val actual = List(command("forward", 10), command("penup"), command("goto", 30, 30),
       command("pendown"), command("forward", 5))
-    val result = TurtleDrawingGrading.compare(actual, expected)
+    val result = coverage(actual, expected)
     assert(!result.matches)
-    val scene = TurtleDrawingGrading.assessedScene(actual, expected, result)
+    val scene = result.scene
     assertEquals(scene.lines.map(_.result), List(LineResult.Correct, LineResult.Missing, LineResult.Unexpected))
     assertPoint(scene.lines.last.start, Point(30.0, 30.0))
     assertPoint(scene.lines.last.end, Point(35.0, 30.0))
@@ -278,8 +304,8 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     val nearby = List(command("penup"), command("forward", 2), command("pendown"),
       command("forward", 9.9), command("right", 90), command("forward", 10))
     List(split, reversed, nearby).foreach { commands =>
-      assert(TurtleDrawingGrading.compare(commands, expected).matches)
-      val scene = TurtleDrawingGrading.assessedScene(commands, expected)
+      assert(coverage(commands, expected).matches)
+      val scene = coverage(commands, expected).scene
       assertEquals(scene.lines.map(_.result), List(LineResult.Correct, LineResult.Correct))
       assertEquals(scene.angles.map(angle => (angle.lineBefore, angle.lineAfter)), List((0, 1)))
       assertPoint(scene.angles.head.vertex, Point(12.0, 0.0))
@@ -306,10 +332,10 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     assertPoint(TurtleDrawingGrading.drawingScene(reset).lines.head.start, Point(0.0, 0.0))
     assertPoint(TurtleDrawingGrading.drawingScene(reset).lines.head.end, Point(5.0, 0.0))
     val home = List(command("forward", 10), command("right", 45), command("home"), command("forward", 5))
-    assert(TurtleDrawingGrading.compare(home, graphic(List(command("forward", 10)))).matches)
+    assert(coverage(home, graphic(List(command("forward", 10)))).matches)
     assertEquals(TurtleDrawingGrading.drawingScene(home).angles, Nil)
     List(clear, reset).foreach { commands =>
-      assert(TurtleDrawingGrading.compare(commands, graphic(commands)).matches)
+      assert(coverage(commands, graphic(commands)).matches)
     }
   }
 
@@ -317,8 +343,8 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     val expected = graphic(List(command("forward", 10)))
     val inside = List(command("penup"), command("goto", 0, 0.25), command("pendown"), command("forward", 10))
     val outside = List(command("penup"), command("goto", 0, 0.251), command("pendown"), command("forward", 10))
-    assert(TurtleDrawingGrading.compare(inside, expected).matches)
-    assert(!TurtleDrawingGrading.compare(outside, expected).matches)
+    assert(coverage(inside, expected).matches)
+    assert(!coverage(outside, expected).matches)
   }
 
   test("coverage rejects invalid commands and nonfinite arguments before interpretation") {
@@ -336,25 +362,25 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     val overflow = List(command("forward", Double.MaxValue), command("forward", Double.MaxValue), command("reset"))
     intercept[IllegalArgumentException](TurtleDrawingGrading.validateDrawing(overflow))
     intercept[IllegalArgumentException](TurtleDrawingGrading.validateDrawing(List(command("goto", Double.MaxValue, 0))))
-    intercept[IllegalArgumentException](TurtleDrawingGrading.compare(Nil, graphic(overflow)))
+    intercept[IllegalArgumentException](coverage(Nil, graphic(overflow)))
   }
 
   test("coverage bounds sample, comparison and command workloads") {
     val expected = graphic(List(command("forward", 1250)))
-    intercept[IllegalArgumentException](TurtleDrawingGrading.compare(List(command("forward", 1250)), expected))
+    intercept[IllegalArgumentException](coverage(List(command("forward", 1250)), expected))
     val manySegments = List.fill(1001)(command("forward", 0.001))
-    intercept[IllegalArgumentException](TurtleDrawingGrading.compare(manySegments, graphic(manySegments)))
+    intercept[IllegalArgumentException](coverage(manySegments, graphic(manySegments)))
     intercept[IllegalArgumentException](TurtleDrawingGrading.validateDrawing(List.fill(10001)(command("forward", 0))))
   }
 
   test("coverage handles empty and zero-only drawings without assigning a success color at rest") {
     val zero = List(command("forward", 0), command("right", 90), command("forward", -0.0))
     val empty = graphic(Nil)
-    assert(TurtleDrawingGrading.compare(zero, empty).matches)
+    assert(coverage(zero, empty).matches)
     assertEquals(TurtleDrawingGrading.targetScene(empty).lines, Nil)
-    assertEquals(TurtleDrawingGrading.assessedScene(zero, empty).lines, Nil)
-    assert(!TurtleDrawingGrading.compare(List(command("forward", 1)), empty).matches)
-    assertEquals(TurtleDrawingGrading.assessedScene(List(command("forward", 1)), empty).lines.map(_.result),
+    assertEquals(coverage(zero, empty).scene.lines, Nil)
+    assert(!coverage(List(command("forward", 1)), empty).matches)
+    assertEquals(coverage(List(command("forward", 1)), empty).scene.lines.map(_.result),
       List(LineResult.Unexpected))
   }
   test("recreate graphics allow different pen-up routes but require real strokes") {

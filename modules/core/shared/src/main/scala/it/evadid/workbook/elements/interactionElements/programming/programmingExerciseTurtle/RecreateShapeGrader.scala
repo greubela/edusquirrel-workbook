@@ -15,7 +15,8 @@ import upickle.default.*
 
 import scala.concurrent.Future
 
-case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val importance: GradingImportance, testId: String = "shape")
+case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val importance: GradingImportance, testId: String = "shape",
+    comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes)
   extends ProgrammingTestGrader derives ReadWriter {
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
 
@@ -24,16 +25,9 @@ case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val import
                                         contextInformation: ExecutionContextInformation
                                       ): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
 
-    val comp = TurtleGraphicComparison(TurtleGraphic(state.toBeExpression.deriveTurtleCommands), desiredResult)
-    val incorrect = comp.difference.filter(_.status != CORRECT)
-    val correct = comp.difference.filter(_.status == CORRECT)
-    val grade = {
-      if (incorrect.isEmpty) Correct()
-      else if (correct.nonEmpty) PartiallyCorrect()
-      else Incorrect()
-    }
-    println("#################grade: " + grade + "(correct: " + correct + ", incorrect: " + incorrect + ")")
-    GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, grade)
+    val actual = TurtleGraphic(state.toBeExpression.deriveTurtleCommands)
+    val comparison = TurtleGradingLogic.compare(actual, desiredResult, comparisonPolicy)
+    GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, comparison.gradingStatus)
   }(using contextInformation.futureExecutionContext)
 
 

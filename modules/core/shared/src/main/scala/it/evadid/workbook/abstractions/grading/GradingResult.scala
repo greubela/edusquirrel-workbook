@@ -28,9 +28,12 @@ case class GradingResult[T, A]
       else if gradingTime == other.gradingTime && GradingResult.statusPriority(other.gradingStatus) > GradingResult.statusPriority(gradingStatus) then other
       else this
     val remaining = if preferred eq this then other else this
-    val feedback = if gradingStatus != other.gradingStatus then preferred.feedbackInformation
-    else (remaining.feedbackInformation, preferred.feedbackInformation) match {
-      case (Some(previous), Some(current)) => Some(LanguageMap.merge(previous, current))
+    val feedback = (remaining.feedbackInformation, preferred.feedbackInformation) match {
+      case (Some(previous), Some(current)) => if it.evadid.core.datastructures.language.AppLanguage.humanLanguages.forall(language =>
+          previous.tryGetInLanguage(language).isEmpty || current.tryGetInLanguage(language).nonEmpty) then Some(current)
+        else Some(LanguageMap.mapBasedLanguageMap(it.evadid.core.datastructures.language.AppLanguage.humanLanguages.flatMap { language =>
+          current.tryGetInLanguage(language).orElse(previous.tryGetInLanguage(language)).map(language -> _)
+        }.toMap))
       case _ => preferred.feedbackInformation.orElse(remaining.feedbackInformation)
     }
     preferred.copy(feedbackInformation = feedback)
