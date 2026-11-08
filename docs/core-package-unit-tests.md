@@ -57,3 +57,23 @@ When measuring coverage, report the tool, platform, source scope and current
 revision. Line/branch measurements, class inventories and test totals answer
 different questions. Do not reuse historical percentages after code moves or API
 removal, and do not add artificial assertions just to raise a count.
+
+## Keep the suite focused
+
+Keep checks for domain behavior, saved-data compatibility, persistence,
+authentication and execution. Browser checks should exercise integration that
+unit tests cannot prove; the runner uses two isolated processes and reports each
+suite's duration. Use its filename filter for focused runs, for example
+`npm run test:workbooks -- codemirror`.
+
+Do not freeze chapter counts, lesson wording, button inventories, CSS dimensions
+or source-code spelling in automated tests. Review those when editing content or
+presentation. `WorkbookDefinitionsSpec` checks the current catalogue factories
+for unique element IDs and serialization without fixing their lesson structure.
+Migration-era content snapshots and individual workbook browser tours were removed;
+shared domain tests still cover their algorithms, grading and answer models.
+
+CI caches incremental Scala output separately from downloaded dependencies, with
+build-definition changes starting a new cache family. Scala still checks the
+current sources and test discovery on every run. A cold cache requires a full
+compile; deleting fast domain assertions does little to reduce that cost.

@@ -1,10 +1,11 @@
 import {access, readFile, mkdir, readdir} from 'node:fs/promises';
-import {spawnSync} from 'node:child_process';
+import {spawn} from 'node:child_process';
 import path from 'node:path';
 import {build} from 'esbuild';
 import {chromium} from 'playwright';
 
 const root = path.resolve(import.meta.dirname, '../..');
+const suiteStarted = performance.now();
 await access(path.join(root, 'artifacts/newest/client.js')).catch(() => {
   throw new Error('Build the current client first: sbt -batch buildClientDev');
 });
@@ -40,24 +41,36 @@ for (const name of (await readdir(path.join(root, 'tools/dev'))).filter(name => 
 }
 if (files.length === 0) throw new Error('No browser tests matched the selection');
 const failures = [];
-for (const file of files) {
+// Each suite owns its browser/context and uses routed fixtures or an ephemeral port.
+// Two processes reduce wall time without flooding a small CI runner with Chromium.
+async function run(file) {
   console.log(`\n[workbook] ${file}`);
-  // Separate processes keep fixtures isolated and report failures immediately; run every selected file.
-  // The experimental spelling works on both CI's Node 22 and local Node 24.
-  const result = spawnSync(process.execPath, ['--test', '--experimental-test-isolation=none', file], {
-    cwd: root, stdio: 'inherit', timeout: 300_000,
-    env: {...process.env, CODEMIRROR_TEST_BUNDLE: bundle,
-      CHROMIUM_PATH: process.env.CHROMIUM_PATH || chromium.executablePath()}
+  const started = performance.now();
+  const result = await new Promise(resolve => {
+    const child = spawn(process.execPath, ['--test', '--experimental-test-isolation=none', file], {
+      cwd: root, stdio: 'inherit', timeout: 120_000,
+      env: {...process.env, CODEMIRROR_TEST_BUNDLE: bundle,
+        CHROMIUM_PATH: process.env.CHROMIUM_PATH || chromium.executablePath()}
+    });
+    child.once('error', error => resolve({error}));
+    child.once('close', (status, signal) => resolve({status, signal}));
   });
+  console.log(`[workbook] ${file}: ${((performance.now() - started) / 1000).toFixed(1)}s`);
   if (result.error) console.error(result.error);
   if (result.error || result.status !== 0) {
     const reason = result.error?.code || result.signal || `exit ${result.status}`;
     failures.push(`${file} (${reason})`);
   }
 }
+const queue = [...files];
+async function consume() {
+  while (queue.length) await run(queue.shift());
+}
+await Promise.all([consume(), consume()]);
+
 if (failures.length) {
   console.error(`\nWorkbook browser checks failed (${failures.length}/${files.length} files):\n${failures.join('\n')}`);
   process.exitCode = 1;
 } else {
-  console.log(`\nWorkbook browser checks passed (${files.length} file${files.length === 1 ? '' : 's'}).`);
+  console.log(`\nWorkbook browser checks passed (${files.length} file${files.length === 1 ? '' : 's'}, ${((performance.now() - suiteStarted) / 1000).toFixed(1)}s).`);
 }

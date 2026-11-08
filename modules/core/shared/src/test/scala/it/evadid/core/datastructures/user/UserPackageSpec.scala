@@ -36,7 +36,7 @@ class UserPackageSpec extends FunSuite {
   test("user and database records have default codecs") {
     val user = User("Ada", "id", "ada@example.org")
     assertEquals(read[User](write(user)), user)
-    val record = User.UserInDatabase(user, "{\"language\":\"English\"}")
+    val record = User.UserInDatabase(user, UserConfig(Nil, isOnlineAccount = true))
     assertEquals(read[User.UserInDatabase](write(record)), record)
   }
   test("secure access tokens are distinct, hexadecimal, expire after 30 minutes and round-trip") {

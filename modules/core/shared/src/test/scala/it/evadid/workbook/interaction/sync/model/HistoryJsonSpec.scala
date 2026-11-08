@@ -60,7 +60,7 @@ class HistoryJsonSpec extends FunSuite {
     val event = InteractionVariableState(state, UpdateImportance.MAJOR, time)
     val grade = GradingResult[String, MessengerModel](element.gradingElements.head, state, GradingStatus.Correct(), feedbackInformation = None, additionalData = None, gradingTime = time.plusSeconds(10))
     val graded = InteractionVariableHistory[String, MessengerModel, MessengerModel](InteractionVariableStateHistory[String](Set(event)), new InteractionVariableGradingHistory[String, MessengerModel](Map(state -> GradedState(state, Map(grade.grader -> grade)))), new InteractionVariableScaffoldingHistory[String, MessengerModel](scaffoldingMap = Map.empty))
-    val location = SyncInformation(null, SyncStrategy.SYNC_LAST).forContext(UsageContext("p", "s", "u"))
+    val location = SyncInformation(null, SyncStrategy.SYNC_LAST).forContext(UsageContext("p", "s", "u"), _ => null)
     val variable = element.interactionVariable
     variable.updateHistory(_ => graded, ExecutionContextInformation.default)
     assertEquals(graded.timestampLastChanged, Some(grade.gradingTime))

@@ -1,12 +1,12 @@
 package it.evadid.server
 
-import it.evadid.server.commandHandler.sql.DatabaseConfig
+import it.evadid.sql.DatabaseConfig
 import munit.FunSuite
 import upickle.default.*
 
 class ConfigurationCodecSpec extends FunSuite {
   test("database settings serialize as values without opening a connection") {
-    val value = DatabaseConfig("localhost", "3306", "fixture", "fixture-user", "fixture-password")
+    val value = DatabaseConfig("mysql", "localhost", "3306", "fixture", "fixture-user", "fixture-password")
     for (decoded <- List(read[DatabaseConfig](write(value)), readBinary[DatabaseConfig](writeBinary(value)))) {
       assertEquals(decoded, value)
       assertEquals(decoded.jdbcUrl, "jdbc:mysql://localhost:3306/fixture")

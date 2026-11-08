@@ -15,8 +15,8 @@ concurrency:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    # A clean cross-platform Scala build plus serial browser checks can exceed 30 minutes.
-    timeout-minutes: 90
+    # Allow a clean dependency/build cache; the browser suite runs with two processes.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -29,6 +29,15 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - name: Restore incremental Scala build
+        uses: actions/cache@v5
+        with:
+          path: |
+            target
+            project/target
+          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-
       # Scala.js DOM suites require jsdom while constructing their fixtures.
       - name: Install Node test dependencies
         run: npm ci
