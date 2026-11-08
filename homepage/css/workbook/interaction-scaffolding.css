@@ -125,7 +125,7 @@
 .info-svg-container{
     background: transparent;
 }
-.info-svg-container.hovering{
+.info-svg-container.clickable {
     background: var(--color-background-workarea-interactible);
     cursor: pointer;
 }

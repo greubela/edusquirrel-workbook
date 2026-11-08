@@ -11,6 +11,41 @@ const prefix = '/edusquirrel-workbook/';
 const mime = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png'};
 
+async function checkClickableBackgrounds(page, container) {
+  const originalTheme = await page.locator('html').getAttribute('data-theme');
+  try {
+    for (const theme of ['light', 'dark']) {
+      await page.locator('html').evaluate((node, value) => node.setAttribute('data-theme', value), theme);
+      const expected = await page.evaluate(() => {
+        const probe = document.createElement('span');
+        probe.style.backgroundColor = 'var(--color-background-workarea-interactible)';
+        document.body.append(probe);
+        const color = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return color;
+      });
+      const icons = container.locator('.grading-info, .scaffolding-info');
+      assert(await icons.count() > 0, 'the exercise exposes clickable icons');
+      for (const icon of await icons.all()) {
+        await page.mouse.move(0, 0);
+        for (const state of ['rest', 'hover', 'focus']) {
+          if (state === 'hover') await icon.hover();
+          if (state === 'focus') { await page.mouse.move(0, 0); await icon.focus(); }
+          assert.equal(await icon.evaluate(node => getComputedStyle(node).backgroundColor), expected,
+            `clickable icons keep the interactive surface in ${theme} mode at ${state}`);
+        }
+        assert.equal(await icon.evaluate(node => getComputedStyle(node).cursor), 'pointer');
+      }
+      const sync = container.locator('.sync-info').first();
+      assert.equal(await sync.evaluate(node => getComputedStyle(node).backgroundColor), 'rgba(0, 0, 0, 0)',
+        'the status-only sync icon stays transparent');
+    }
+  } finally {
+    await page.locator('html').evaluate((node, value) => value === null
+      ? node.removeAttribute('data-theme') : node.setAttribute('data-theme', value), originalTheme);
+  }
+}
+
 test('Java hints retain in-flight feedback across editor close and display-language changes', async () => {
   const browser = await chromium.launch({chromiumSandbox: true,
     executablePath: process.env.CHROMIUM_PATH || chromium.executablePath()});
@@ -57,6 +92,7 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
     await page.getByRole('heading', {name: 'Ein Quadrat in Java', exact: true}).waitFor();
     const inlineHint = page.locator('.scaffolding-info').first();
+    await checkClickableBackgrounds(page, page.locator('body'));
     assert.equal(requests.length, 0);
     await inlineHint.click();
     await page.waitForFunction(() => [...document.querySelectorAll('.scaffolding-info')].some(
@@ -66,6 +102,7 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     assert.equal(requests.length, 1, 'completed feedback is cached');
     await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
     const editor = page.locator('dialog[open] .eva-editor');
+    await checkClickableBackgrounds(page, page.locator('dialog[open] .interaction-element-info'));
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
     const code = editor.locator('.cm-content');
     const draft = 'class Drawing {\n  static void square(int side) {';
