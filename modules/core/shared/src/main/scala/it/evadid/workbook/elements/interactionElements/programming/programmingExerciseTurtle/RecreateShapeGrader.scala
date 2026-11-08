@@ -2,7 +2,7 @@ package it.evadid.workbook.elements.interactionElements.programming.programmingE
 
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
-import it.evadid.workbook.abstractions.grading.*
+import it.evadid.workbook.abstractions.grading.{GradingResult, *}
 import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS
 import it.evadid.workbook.abstractions.grading.GradingImportance.{OPTIONAL_TEST, REQUIRED_TEST}
 import it.evadid.workbook.abstractions.grading.GradingStatus.{Correct, Incorrect, PartiallyCorrect}
@@ -23,7 +23,7 @@ case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val import
                                         state: ProgrammingState,
                                         contextInformation: ExecutionContextInformation
                                       ): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
-    println("###########RecreateShapeGrader::handleGrading!")
+
     val comp = TurtleGraphicComparison(TurtleGraphic(state.toBeExpression.deriveTurtleCommands), desiredResult)
     val incorrect = comp.difference.filter(_.status != CORRECT)
     val correct = comp.difference.filter(_.status == CORRECT)
@@ -32,6 +32,7 @@ case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val import
       else if (correct.nonEmpty) PartiallyCorrect()
       else Incorrect()
     }
+    println("#################grade: " + grade + "(correct: " + correct + ", incorrect: " + incorrect + ")")
     GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, grade)
   }(using contextInformation.futureExecutionContext)
 

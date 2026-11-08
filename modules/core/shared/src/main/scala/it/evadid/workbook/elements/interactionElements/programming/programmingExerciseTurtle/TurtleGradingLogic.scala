@@ -34,7 +34,7 @@ object TurtleGradingLogic {
     }
   }
 
-  def compareLines(actual: Seq[Movement], expected: Seq[Movement], tolerance: Double = 1e-7,
+  def compareLines(actual: Seq[Movement], expected: Seq[Movement], tolerance: Double = 0.1,
                    gradeJumps: Boolean = true): List[GradingLine] = {
     require(tolerance.isFinite && tolerance >= 0, "Turtle tolerance must be finite and nonnegative")
     require((actual.iterator ++ expected.iterator).forall { movement =>
@@ -64,6 +64,10 @@ object TurtleGradingLogic {
     (close(a.start, b.start, tolerance) && close(a.end, b.end, tolerance)) ||
       (close(a.start, b.end, tolerance) && close(a.end, b.start, tolerance))
 
-  private def close(a: Point[Double], b: Point[Double], tolerance: Double): Boolean =
-    math.abs(a.x - b.x) <= tolerance && math.abs(a.y - b.y) <= tolerance
+  private def close(a: Point[Double], b: Point[Double], tolerance: Double): Boolean = {
+    val dx = a.x - b.x
+    val dy = a.y - b.y
+    val dist = Math.sqrt(dx * dx + dy * dy)
+    dist < tolerance
+  }
 }
