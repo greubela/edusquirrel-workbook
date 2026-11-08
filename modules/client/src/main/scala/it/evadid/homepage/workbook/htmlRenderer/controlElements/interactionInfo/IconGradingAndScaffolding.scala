@@ -34,8 +34,11 @@ case class IconGradingAndScaffolding(fullInfo: FullInfo, laminarHelper: LaminarR
         Some(_ => onScaffoldingRequested())
       ).amend(
         role := "img", tabIndex := 0, aria.label <-- curScaffLabel,
-        span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/gradingInfoLabel"))
+        span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/scaffoldingLabel"))
       )
+
+
+
     } else {
       val status = curScaffolding.get.scaffoldingStatus
       val svgScaffoldingIcon = if (status == ScaffoldingRequestedButNotFinished()) {
@@ -52,7 +55,7 @@ case class IconGradingAndScaffolding(fullInfo: FullInfo, laminarHelper: LaminarR
       }
 
       InteractionInfoPanel.infoPanelIcon(
-        "grading-info",
+        "scaffolding-info",
         svgScaffoldingIcon,
         scaffoldingTooltip,
         Some(_ => onScaffoldingRequested())

@@ -18,12 +18,11 @@ import scala.util.Success
 
 case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA]) {
 
-
   def getCurrentStateOfGrading(forState: T): GradedState[T, GA] = interactionVariable.synchronized {
     val gradeMap = interactionVariable.currentHistory.historyGrading.gradingsMap
     val gradeInHistoryOp = interactionVariable.currentHistory.historyGrading.gradingsMap.get(forState)
     if (gradeInHistoryOp.isDefined) gradeInHistoryOp.get else {
-      val gradeInCacheOp = gradingCache.getSyncIfInCache(forState)
+      val gradeInCacheOp = gradingCache.getSyncIfInCache(forState, false)
       if (gradeInCacheOp.isDefined) gradeInCacheOp.get else {
         gradingCache.getCurrentElementStatus(forState).match {
           case UNKNOWN() => GradedState(forState).fillMapForUnavailable(interactionVariable.underlyingInteraction, NotRequested())
@@ -33,17 +32,19 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
     }
   }
 
-
   def getCurrentStateOfScaffolding(forState: T): Option[ScaffoldingResult[T, SA]] = interactionVariable.synchronized {
     val scaffMap = interactionVariable.currentHistory.historyScaffolding.scaffoldingMap
     val scaffInHistoryOp = interactionVariable.currentHistory.historyScaffolding.scaffoldingMap.get(forState)
     if (scaffInHistoryOp.isDefined) scaffInHistoryOp else {
-      val scaffInCacheOp = scaffoldingCache.getSyncIfInCache(forState)
+      val scaffInCacheOp = scaffoldingCache.getSyncIfInCache(forState, false)
       if (scaffInCacheOp.isDefined) scaffInCacheOp else {
         scaffoldingCache.getCurrentElementStatus(forState).match {
           case UNKNOWN() => None
           case FAILED(err) => Some(ScaffoldingResult(forState, ScaffoldingError(err), SystemEntity(), None, LocalDateTime.now()))
-          case _ => Some(ScaffoldingResult(forState, ScaffoldingRequestedButNotFinished(), SystemEntity(), None, LocalDateTime.now()))
+          case anyStatus => {
+            println(s"status: ${anyStatus} ")
+            Some(ScaffoldingResult(forState, ScaffoldingRequestedButNotFinished(), SystemEntity(), None, LocalDateTime.now()))
+          }
         }
       }
     }

@@ -1,14 +1,14 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class TurtleRecreateShapeInteraction
 (
   override val elementId: String,
@@ -23,6 +23,9 @@ case class TurtleRecreateShapeInteraction
   override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingState.serializer
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val associatedFactory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = TurtleRecreateShapeInteraction.factory
+
+
+
 }
 
 object TurtleRecreateShapeInteraction {

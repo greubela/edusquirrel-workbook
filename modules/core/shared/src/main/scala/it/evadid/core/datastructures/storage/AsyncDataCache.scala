@@ -46,7 +46,7 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
     } else UNKNOWN()
   }
 
-  def getSyncIfInCache(input: I, loadIfNotPresent: Boolean = true): Option[O] = syncLock.synchronized {
+  def getSyncIfInCache(input: I, loadIfNotPresent: Boolean): Option[O] = syncLock.synchronized {
     val res: Option[O] = cachedRequests.get(input).match {
       case Some(finished: SucceededRequest[I, O]) => Some(finished.output)
       case _ => None

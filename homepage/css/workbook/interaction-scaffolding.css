@@ -101,6 +101,7 @@
 
 .interaction-element-info .interaction-info__icons .sync-info,
 .interaction-element-info .interaction-info__icons .grading-info,
+.interaction-element-info .interaction-info__icons .scaffolding-info,
 .interaction-element-info .interaction-info__icons .interaction-info__hint-toggle {
     box-sizing: border-box;
     display: flex;

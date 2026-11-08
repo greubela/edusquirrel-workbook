@@ -116,9 +116,9 @@ object InteractionInfoPanelIcons {
     ).amend(paths *)
   }
 
-  def createScaffoldingNothing(): ReactiveSvgElement[SVGSVGElement] = createScaffoldingIcon("scaffolding-info-svg-fully", List(svgScaffoldingLight))
+  def createScaffoldingNothing(): ReactiveSvgElement[SVGSVGElement] = createScaffoldingIcon("scaffolding-info-svg-fully", List(svgScaffoldingBulb))
 
-  def createScaffoldingFinished(): ReactiveSvgElement[SVGSVGElement] = createScaffoldingIcon("scaffolding-info-svg-fully", List(svgScaffoldingLight, svgScaffoldingLight))
+  def createScaffoldingFinished(): ReactiveSvgElement[SVGSVGElement] = createScaffoldingIcon("scaffolding-info-svg-fully", List(svgScaffoldingBulb, svgScaffoldingLight))
 
   def createScaffoldingError(): ReactiveSvgElement[SVGSVGElement] = createScaffoldingIcon("scaffolding-info-svg-fully", List(svgScaffoldingBulb, svgScaffoldingCross))
 
