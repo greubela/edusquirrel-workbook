@@ -587,7 +587,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     f.generateFeedback(f.source).map { _ =>
       val checks = f.context("checks").arr.toVector.map(value => (value("id").str, value("required").bool, value("status").str))
       assertEquals(checks, Vector(("check-1", true, "incorrect"), ("check-2", false, "incorrect"),
-        ("check-3", true, "not-run"), ("check-4", true, "not-run"), ("check-5", true, "error"),
+        ("check-3", true, "unavailable"), ("check-4", true, "not-run"), ("check-5", true, "error"),
         ("check-6", true, "partially-correct")))
       assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
       assert(f.checks.forall(_.runs.now() == 0))
@@ -645,7 +645,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val before = f.variable.currentHistory
     f.generate().map { _ =>
       val checks = f.context("checks").arr.toVector
-      assertEquals(checks.map(_("status").str), Vector("incorrect", "correct", "not-run", "not-run", "error"))
+      assertEquals(checks.map(_("status").str), Vector("incorrect", "correct", "unavailable", "not-run", "error"))
       assertEquals(checks.map(_.obj.get("description")), Vector(Some(ujson.Str("Prüft die Linie.")),
         Some(ujson.Str("Prüft die Linie.")), None, None, None))
       assert(!f.requests.now().last.prompt.contains("PRIVATE_"))
@@ -1087,7 +1087,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val other = ProgrammingStatePythonString("other")
     f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(other, Map(first.grader -> first))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     f.generateFeedback(f.source).flatMap { _ =>
-      assertEquals(f.context("checks")(0)("status").str, "not-run")
+      assertEquals(f.context("checks")(0)("status").str, "unavailable")
       f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(check -> conflicting))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
       f.generateFeedback(f.source).flatMap { _ =>
         assertEquals(f.context("checks")(0)("status").str, "incorrect")
@@ -1140,7 +1140,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     val before = f.variable.currentHistory
     f.generateFeedback(f.source).flatMap { _ =>
       assertEquals(f.context("checks").arr.toVector.map(check => check("id").str -> check("status").str),
-        Vector("check-1" -> "not-run", "check-2" -> "correct"))
+        Vector("check-1" -> "unavailable", "check-2" -> "correct"))
       f.executor.set(f.client(_ => Future.successful(hintReply(ids = List("task", "check-1", "check-2")))))
       f.generateFeedback(f.source).failed.map { error =>
         assert(error.isInstanceOf[IllegalArgumentException])
@@ -1611,23 +1611,23 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  test("automatic grading returns configured results while preserving earlier foreign history") {
+  test("automatic grading reuses completed assessments of configured graders") {
     val always = new RecordingGrader
     val manual = new RecordingGrader {
       override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
     }
-    val foreign = new RecordingGrader
     val value = restoreVariable(List(always, manual))
     val retained = GradingResult[String, String](manual, "", GradingStatus.Correct())
-    val wrongGrader = GradingResult[String, String](foreign, "", GradingStatus.Incorrect())
-    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", (Set(retained, wrongGrader)).iterator.map(result => result.grader -> result).toMap)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+    val completed = GradingResult[String, String](always, "", GradingStatus.Incorrect())
+    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", (Set(retained, completed)).iterator.map(result => result.grader -> result).toMap)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     value.control.getOrCalculateGrading(TestExecutionContext()).map { batch =>
       val results = value.currentHistory.historyGrading.gradingsMap("").testsWithResults
       assertEquals(results.filter(_.grader == manual), Set(retained))
       assertEquals(batch.testsWithResults.map(_.grader), Set[WorkbookInteractionGrader[String, String]](always, manual))
-      assert(results.contains(wrongGrader))
+      assert(results.contains(completed))
       assert(results.forall(_.gradedState == ""))
       assertEquals(manual.requests, Nil)
+      assertEquals(always.requests, Nil)
     }
   }
 
@@ -1936,55 +1936,53 @@ class InteractionVariableGradingSpec extends FunSuite {
     assertEquals(local.historyStates.events, Set(event("current", 10)))
   }
 
-  test("a cached foreign grader does not suppress the currently configured grader") {
+  test("completed incorrect assessments remain cached alongside other configured graders") {
     val current = new RecordingGrader
-    val foreign = new RecordingGrader
-    val value = variable(current)
-    val cached = grade(foreign, "", 1, GradingStatus.Correct())
-    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", Map(cached.grader -> cached))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+    val other = new RecordingGrader
+    val value = restoreVariable(List(current, other))
+    val results = List(grade(current, "", 1, GradingStatus.Incorrect()), grade(other, "", 1, GradingStatus.Correct()))
+    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory.fromResults(results)), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     value.control.getOrCalculateGrading(TestExecutionContext())
-    assertEquals(current.requests, List("" -> false))
-    assertEquals(foreign.requests, Nil)
+    assertEquals(current.requests, Nil)
+    assertEquals(other.requests, Nil)
   }
 
-  test("a partially covered grading cache runs only missing configured graders") {
+  test("explicit grading executes configured unrequested graders without repeating completed assessments") {
     val first = new RecordingGrader
     val second = new RecordingGrader
     val value = restoreVariable(List(first, second))
     val cached = grade(first, "", 1, GradingStatus.Correct())
-    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", Map(cached.grader -> cached))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
-    value.control.getOrCalculateGrading(TestExecutionContext())
+    val unrequested = grade(second, "", 1, GradingStatus.NotRequested())
+    value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory.fromResults(List(cached, unrequested))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+    value.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true)
     assertEquals(first.requests, Nil)
-    assertEquals(second.requests, List("" -> false))
+    assertEquals(second.requests, List("" -> true))
   }
 
-  test("cached grading groups and individual results must both match the current answer") {
-    List("group", "result").foreach { mismatch =>
+  test("only grading cached for the current answer is reused") {
+    List("", "another answer").foreach { answer =>
       val current = new RecordingGrader
       val value = variable(current)
-      val cached = grade(current, if mismatch == "result" then "another answer" else "", 1, GradingStatus.Correct())
-      val grouped = GradedState(if mismatch == "group" then "another answer" else "", Map(cached.grader -> cached))
-      value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> grouped))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+      val cached = grade(current, answer, 1, GradingStatus.Correct())
+      val grouped = GradedState(answer, Map(cached.grader -> cached))
+      value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(answer -> grouped))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
       value.control.getOrCalculateGrading(TestExecutionContext())
-      assertEquals(current.requests, List("" -> false), mismatch)
+      assertEquals(current.requests, if answer == "" then Nil else List("" -> false))
     }
   }
 
-  test("complete current grader coverage reuses the cache even when foreign results remain") {
+  test("completed configured grading is reused even for forced requests") {
     val first = new RecordingGrader
     val second = new RecordingGrader
-    val foreign = new RecordingGrader
     val value = restoreVariable(List(first, second))
-    val results = List(first, second, foreign).map(grade(_, "", 1, GradingStatus.Correct())).toSet
+    val results = List(first, second).map(grade(_, "", 1, GradingStatus.Correct())).toSet
     value.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map("" -> GradedState("", results.groupBy(_.grader).view.mapValues(_.maxBy(_.gradingTime)).toMap)))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     value.control.getOrCalculateGrading(TestExecutionContext())
     assertEquals(first.requests, Nil)
     assertEquals(second.requests, Nil)
-    assertEquals(foreign.requests, Nil)
     value.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true)
     assertEquals(first.requests, Nil)
     assertEquals(second.requests, Nil)
-    assertEquals(foreign.requests, Nil)
   }
 
 }

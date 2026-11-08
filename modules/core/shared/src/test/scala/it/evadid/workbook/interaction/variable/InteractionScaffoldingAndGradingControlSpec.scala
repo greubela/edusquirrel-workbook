@@ -81,19 +81,43 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     }
   }
 
-  test("restored errors and absent graders are executed while restored incorrect answers are cached") {
+  test("explicit retries execute errors and unrequested graders while retaining completed assessments") {
     val failed = new CountingGrader()
     val missing = new CountingGrader()
     val incorrect = new CountingGrader(GradingStatus.Incorrect())
     val value = variable(List(failed, missing, incorrect))
     value.updateHistory(_.addGradings(List(
       GradingResult(failed, "answer", GradingStatus.TestError(it.evadid.distribution.command.SerializedException("old failure"))),
+      GradingResult(missing, "answer", GradingStatus.NotRequested()),
       GradingResult(incorrect, "answer", GradingStatus.Incorrect()))), context)
     value.control.getOrCalculateGrading(context).flatMap(_ => value.control.getOrCalculateGrading(context, forceGrading = true)).map { result =>
       assertEquals(result.testsWithResults.size, 3)
       assertEquals(failed.calls.now(), 1)
       assertEquals(missing.calls.now(), 1)
       assertEquals(incorrect.calls.now(), 0)
+    }
+  }
+
+  test("forced requests join pending automatic grading without scheduling another execution") {
+    val gate = Promise[Unit]()
+    val automatic = new CountingGrader(gate = Some(gate))
+    val manual = new CountingGrader() {
+      override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
+    }
+    val value = variable(List(automatic, manual))
+    val first = value.control.getOrCalculateGrading(context)
+    val joined = value.control.getOrCalculateGrading(context, forceGrading = true)
+    gate.success(())
+    first.zip(joined).flatMap { (original, shared) =>
+      assertEquals(shared, original)
+      assertEquals(shared.graderResultMap(manual).gradingStatus, GradingStatus.NotRequested())
+      assertEquals(automatic.calls.now(), 1)
+      assertEquals(manual.calls.now(), 0)
+      value.control.getOrCalculateGrading(context, forceGrading = true).map { explicit =>
+        assertEquals(explicit.graderResultMap(manual).gradingStatus, GradingStatus.Correct())
+        assertEquals(automatic.calls.now(), 1)
+        assertEquals(manual.calls.now(), 1)
+      }
     }
   }
 

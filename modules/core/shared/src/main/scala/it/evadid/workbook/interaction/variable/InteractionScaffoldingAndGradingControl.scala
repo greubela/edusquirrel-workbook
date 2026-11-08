@@ -60,15 +60,9 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
   def getOrCalculateGrading(contextInformation: ExecutionContextInformation, forceGrading: Boolean, forState: T): Future[GradedState[T, GA]] = interactionVariable.synchronized {
     val ec = contextInformation.futureExecutionContext
     if (gradingCache.getCurrentElementStatus(forState) == STARTED()) {
-      gradingCache.loadAsFuture(forState)(using ec).flatMap { completed =>
-        if forceGrading && completed.testsWithResults.exists(_.gradingStatus == NotRequested()) then
-          getOrCalculateGrading(contextInformation, true, forState)
-        else Future.successful(completed)
-      }(using ec)
+      gradingCache.loadAsFuture(forState)(using ec)
     } else if (interactionVariable.currentHistory.historyGrading.gradingsMap.contains(forState)) {
-      val saved = interactionVariable.currentHistory.historyGrading.gradingsMap(forState)
-      if saved.state != forState then startGrading(contextInformation, forceGrading, forState)
-      else retryGradingIfNecessary(contextInformation, forceGrading, saved)
+      retryGradingIfNecessary(contextInformation, forceGrading, interactionVariable.currentHistory.historyGrading.gradingsMap(forState))
     } else {
       gradingCache.getSyncIfInCache(forState, false).match {
         case Some(gradedState) =>
@@ -83,17 +77,9 @@ case class InteractionScaffoldingAndGradingControl[T, GA, SA](interactionVariabl
 
 
   private def retryGradingIfNecessary(contextInformation: ExecutionContextInformation, forceGrading: Boolean, existing: GradedState[T, GA]): Future[GradedState[T, GA]] = interactionVariable.synchronized {
-    val configured = interactionVariable.underlyingInteraction.gradingElements
-    val valid = existing.copy(graderResultMap = existing.graderResultMap.filter { (grader, result) =>
-      configured.contains(grader) && result.grader == grader && result.gradedState == existing.state
-    })
-    val missing = configured.filterNot(valid.graderResultMap.contains)
-    val retry = if forceGrading then valid.shouldRetry else Seq.empty
-    if (missing.isEmpty && retry.isEmpty) Future.successful(valid)
+    if (!forceGrading || existing.shouldRetry.isEmpty) Future.successful(existing)
     else {
-      val futureRes = valid.retryFailed(contextInformation, forceGrading)
-        .zip(GradedState.executeGradingSafe(missing, existing.state, forceGrading, contextInformation))
-        .map((retried, added) => added.merge(retried))(using contextInformation.futureExecutionContext)
+      val futureRes = existing.retryFailed(contextInformation, forceGrading)
       val published = futureRes.map { gradedState =>
         interactionVariable.updateHistory(_.addGrading(gradedState), contextInformation)
         gradedState

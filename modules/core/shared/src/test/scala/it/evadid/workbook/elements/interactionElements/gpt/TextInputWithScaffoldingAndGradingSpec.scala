@@ -275,7 +275,9 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val f = new Fixture(List(Right("First feedback.\nCORRECT"), Right("Second feedback.\nCORRECT")))
     val element = TextInputWithScaffoldingAndGrading("pipeline", task, contentScaffolding = Some(ContentForLlmInteraction(hint, Map.empty)), contentGrading = List(criterion, secondCriterion).map(ContentForLlmInteraction(_, Map.empty)))
     element.interactionVariable.setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = TestExecutionContext())
-    element.interactionVariable.control.getOrCalculateGrading(TestExecutionContext(List(f.client), languageMapIdResolver = Some(f.resolver)), forceGrading = true).map { _ =>
+    element.interactionVariable.control.getOrCalculateGrading(TestExecutionContext()).flatMap { _ =>
+      element.interactionVariable.control.getOrCalculateGrading(TestExecutionContext(List(f.client), languageMapIdResolver = Some(f.resolver)), forceGrading = true)
+    }.map { _ =>
       val results = element.interactionVariable.currentHistory.historyGrading.gradingsMap("answer").testsWithResults
       assertEquals(results.size, 2)
       assertEquals(results.map(_.grader), element.gradingElements.toSet[WorkbookInteractionGrader[String, MessengerModel]])
@@ -327,7 +329,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     element.interactionVariable.setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = TestExecutionContext())
     def grade() = element.interactionVariable.control.getOrCalculateGrading(
       TestExecutionContext(List(client), Some(f.resolver), language = () => f.language.now()), forceGrading = true)
-    val first = grade()
+    val first = element.interactionVariable.control.getOrCalculateGrading(TestExecutionContext()).flatMap(_ => grade())
     started.future.flatMap { _ =>
       f.language.set(English)
       val second = grade()

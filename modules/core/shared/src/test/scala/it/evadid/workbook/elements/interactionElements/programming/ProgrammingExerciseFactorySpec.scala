@@ -1293,7 +1293,9 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val variable = exercise.interactionVariable
     val state: ProgrammingState = ProgrammingStatePythonString("pass")
     variable.updateHistory(_.copy(historyStates = InteractionVariableStateHistory(Set(InteractionVariableState(state, UpdateImportance.MAJOR, LocalDateTime.now())))), ExecutionContextInformation.default)
-    variable.control.getOrCalculateGrading(TestExecutionContext(List(client)), forceGrading = true).map { _ =>
+    variable.control.getOrCalculateGrading(TestExecutionContext()).flatMap { _ =>
+      variable.control.getOrCalculateGrading(TestExecutionContext(List(client)), forceGrading = true)
+    }.map { _ =>
       assertEquals(calls.now(), graders.map(_.testId -> 1).toMap)
       val results = variable.currentHistory.historyGrading.gradingsMap(state).testsWithResults
       assertEquals(results.size, 5)
