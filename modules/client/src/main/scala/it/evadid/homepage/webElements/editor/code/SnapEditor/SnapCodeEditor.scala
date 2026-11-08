@@ -36,7 +36,7 @@ case class SnapCodeEditor(
   private def publishProgramFromSnapXml(xml: String): Unit = {
     if state.now().associatedLanguage == SnapLanguage then {
       val current = snapState.now()
-      val next = SnapCodeEditor.typed(ProgrammingStateSnapXml(xml, current.legacyFloatingObjects))
+      val next = SnapCodeEditor.typed(ProgrammingStateSnapXml(xml))
       impl.acknowledgeProgramFromEditor(next.toSnapXml)
       if !current.meaningfullyEquals(next) then snapState.set(next)
     }

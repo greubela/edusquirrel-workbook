@@ -182,39 +182,7 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
     })
   }
 
-  test("Snap metadata-only A-to-B-to-A restores reject stale drawing results") {
-    import TurtleExecutionPanel.Status
-    val original = ProgrammingStateSnapXml(ProgrammingStateSnapXml.mini.snapXml, List(" watcher A "))
-    val changed = original.copy(legacyFloatingObjects = List(" watcher B "))
-    assertNotEquals(original.fingerprint(), changed.fingerprint())
-    val source = Var[ProgrammingState](original)
-    var requests = Vector.empty[Promise[List[TurtleCommand[Double]]]]
-    var stops = 0
-    val panel = new TurtleExecutionPanel(source,
-      () => { val result = Promise[List[TurtleCommand[Double]]](); requests :+= result; result.future },
-      () => stops += 1)
-    mountPanel(panel)
-    panel.run()
-    source.set(original.copy())
-    assertEquals(panel.status.now(), Status.Running)
-    assertEquals(stops, 0)
-    source.set(changed)
-    source.set(original)
-    assertEquals(panel.status.now(), Status.Idle)
-    assertEquals(stops, 1)
-    assertEquals(source.now().fingerprint(), original.fingerprint())
-    panel.run()
-    val newest = requests.last
-    requests.head.success(squareDrawing())
-    requests.head.future.flatMap(_ => Future.unit.map { _ =>
-      assertEquals(panel.status.now(), Status.Running)
-      newest.success(squareDrawing(24))
-    }).flatMap(_ => newest.future).flatMap(_ => Future.unit.map { _ =>
-      assertEquals(panel.status.now(), Status.Ready(squareDrawing(24), None))
-      assertEquals(source.now(), original)
-      unmountPanel(panel)
-    })
-  }
+
 
   test("Java execution panel unmount clears results and rejects late completion") {
     import TurtleExecutionPanel.Status

@@ -145,15 +145,6 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     }
   }
 
-  test("legacy turtle state preserves absent and present XML and reads the old raw format") {
-    val serializer = TurtleStitchRecreateShapeInteractionLegacy("legacy", "project.xml").serializerInteractionContent
-    val xml = "<project name=\"Grüße\">\n<notes> \\ </notes></project>"
-    for (state <- List(TurtleStitchProjectState.empty(), TurtleStitchProjectState.parseFromString("").get, TurtleStitchProjectState.parseFromString(xml).get)) {
-      assertEquals(serializer.deserialize(serializer.serialize(state)), state)
-    }
-    assertEquals(serializer.deserialize(xml), TurtleStitchProjectState.parseFromString(xml).get)
-    assertEquals(serializer.deserialize(""), TurtleStitchProjectState.empty())
-  }
 
   test("old number elements without diff retain the default step") {
     val element = LabeledNumberInteraction("number", content("number/label"), NumberType.IntegerLike)

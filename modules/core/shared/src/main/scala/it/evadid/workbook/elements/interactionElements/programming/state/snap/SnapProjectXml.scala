@@ -15,7 +15,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Sn
 /**
  * BeExpression → Snap/TurtleStitch project XML.
  *
- * Used for legacy Python payload migration and Python-apply writeback.
+ * Used for Python-to-Snap conversion and Python-apply writeback.
  * Live Snap edits persist `getProjectXML()` instead of going through this path.
  *
  * Custom blocks are merged rather than regenerated: pass the XML being replaced as

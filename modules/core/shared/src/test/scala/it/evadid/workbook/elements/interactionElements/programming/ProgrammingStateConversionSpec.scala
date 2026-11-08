@@ -799,7 +799,6 @@ class ProgrammingStateConversionSpec extends FunSuite {
       assert(xml != snap.snapXml, clue = "The unsupported edit must change its XML fixture.")
       assert(JavaTurtleEditingBridge.fromSnap(snap.copy(snapXml = xml)).isLeft, clue = xml.take(200))
     }
-    assert(JavaTurtleEditingBridge.fromSnap(snap.copy(legacyFloatingObjects = List("kept"))).isLeft)
     assertEquals(bridgePython(program), python)
     assertEquals(bridgeSnap(program), snap)
   }

@@ -143,8 +143,9 @@ Changing display language never invalidates or repeats a computation. Feedback
 translations merge into the existing `LanguageMap`; renderers use an available
 translation as fallback. Results stay associated with their captured answer.
 Histories separate
-`historyStates`, `historyGrading` and `historyScaffolding`; readers accept the
-previous saved format without retaining the old source API.
+`historyStates`, `historyGrading` and `historyScaffolding`. Accept only the current
+saved schema. At storage boundaries, catch invalid data and discard the affected
+record instead of migrating older formats or interrupting startup.
 
 ## Default uPickle codecs
 

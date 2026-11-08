@@ -8,7 +8,7 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 
 class ProgrammingStateSerializationSpec extends FunSuite {
   test("current programming states round-trip as JSON, MessagePack and interaction content") {
-    val xml = ProgrammingStateSnapXml("\n<project name='🐢'><notes>draft &amp; notes</notes><scripts/></project>\r\n", List("watcher\n", "", "opaque"))
+    val xml = ProgrammingStateSnapXml("\n<project name='🐢'><notes>draft &amp; notes</notes><scripts/></project>\r\n")
     val states: List[ProgrammingState] = List(
       ProgrammingStatePythonString("\tdef unfinished(\r\n  "),
       ProgrammingStateJavaString("\r\npublic class Drawing {\t"), xml,
@@ -26,7 +26,7 @@ class ProgrammingStateSerializationSpec extends FunSuite {
   test("empty source, Unicode, line separators and opaque strings stay content") {
     List("", " ", "\t\r\n\n  ", "🐢\r\n\u0000").foreach { code =>
       val states: List[ProgrammingState] = List(ProgrammingStatePythonString(code), ProgrammingStateJavaString(code),
-        ProgrammingStateSnapXml(code, List("a" + 0.toChar + "b", "comment\r\n")))
+        ProgrammingStateSnapXml(code))
       states.foreach(state => assertEquals(read[ProgrammingState](write(state)), state))
     }
   }

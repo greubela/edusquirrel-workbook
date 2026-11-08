@@ -80,10 +80,11 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     val restored: scala.util.Try[Option[AllUserInfo]] = scala.util.Try(Option(org.scalajs.dom.window.localStorage.getItem(allUserInfoStorageKey)))
       .flatMap {
         case None => Success(None)
-        case Some(raw) => StoredUserInfo.decode(raw).map(Some(_))
+        case Some(raw) => scala.util.Try(read[AllUserInfo](raw)).map(Some(_))
       }
     restored.recover { case scala.util.control.NonFatal(_) =>
-      logger.logWarn("Could not restore the saved login. Workbook answers are unchanged; please sign in again.")
+      scala.util.Try(org.scalajs.dom.window.localStorage.removeItem(allUserInfoStorageKey))
+      logger.logWarn("Discarded an invalid saved login; please sign in again.")
       None
     }.get
   }
@@ -213,12 +214,6 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
       changeUser(localUser)
     }
   }
-
-  def storeUserLocally(allUserInfo: AllUserInfo): Unit = {
-    val rawToken = allUserInfo.token.get.toJson
-    val safeToken = js.URIUtils.encodeURIComponent(rawToken)
-  }
-
 
   def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = fullInfo.synchronized {
 

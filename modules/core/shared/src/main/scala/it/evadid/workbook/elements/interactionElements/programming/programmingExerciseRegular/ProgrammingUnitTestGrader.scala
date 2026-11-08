@@ -84,7 +84,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
 }
 
 object ProgrammingUnitTestGrader {
-  private[evadid] val LegacyTestId = "legacy-python-assertions"
+  private[evadid] val SampleTestId = "python-assertions"
 
   private case class Payload(testId: String, pythonTestCode: String,
                              importance: GradingImportance = GradingImportance.REQUIRED_TEST,
@@ -100,15 +100,7 @@ object ProgrammingUnitTestGrader {
       val fields = value.obj.toMap
       require(fields.get("serializedType").forall(_ == ujson.Str("ProgrammingUnitTestGrader")),
         "Unexpected programming grader type.")
-      val payload = if fields.contains("testSuite") then {
-        require(fields.keySet.subsetOf(Set("testSuite", "importance", "serializedType")),
-          "Ambiguous legacy programming test.")
-        val test = fields("testSuite").obj
-        require(test.keySet.toSet == Set("$type", "pythonTestCode") && test("$type") == ujson.Str("SampleBeTest"),
-          "The legacy grader must contain one SampleBeTest definition.")
-        Payload(LegacyTestId, test("pythonTestCode").str,
-          fields.get("importance").map(read[GradingImportance](_)).getOrElse(GradingImportance.REQUIRED_TEST))
-      } else {
+      val payload = {
         require(fields.keySet.subsetOf(Set("testId", "pythonTestCode", "importance", "publicDescription",
           "publishProgramObservation", "publishInvocationArguments", "publishCommandComparison", "serializedType")),
           "Unexpected programming test fields.")

@@ -9,12 +9,14 @@ const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 
-test('saved legacy and malformed logins cannot crash workbook startup or clear saved answers', async () => {
+test('current logins restore and unsupported saved logins are discarded without clearing answers', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
   try {
     const legacy = JSON.stringify({user:{name:'Saved student',id:'saved-student',mail:'saved@example.org'},token:null,
       config:JSON.stringify({syncDestinations:['localIndexedDb'],isOnlineAccount:false})});
-    for (const saved of [legacy, '{broken JSON']) {
+    const current = JSON.stringify({user:{name:'Current student',id:'current-student',mail:'current@example.org'},
+      token:null,config:{syncDestinations:[],isOnlineAccount:false}});
+    for (const saved of [legacy, '{broken JSON', current]) {
       const page = await browser.newPage();
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
@@ -33,16 +35,16 @@ test('saved legacy and malformed logins cannot crash workbook startup or clear s
       }, saved);
       await page.goto(origin + '/homepage/embroideryWorkbook/');
       await page.locator('.workbook-app-shell').waitFor();
-      if (saved === legacy) {
+      if (saved === current) {
         await page.waitForFunction(() => {
           const restored = JSON.parse(localStorage.getItem('edusquirrel-alluserinfo'));
-          return restored.user.id === 'saved-student' && typeof restored.config === 'object';
+          return restored.user.id === 'current-student' && typeof restored.config === 'object';
         });
         assert.equal(await page.locator('.container-login').count(), 0, 'the existing local identity is restored');
       } else {
         await page.locator('.container-login').waitFor();
-        assert.equal(await page.evaluate(() => localStorage.getItem('edusquirrel-alluserinfo')), saved,
-          'an unreadable login is left intact for recovery');
+        assert.equal(await page.evaluate(() => localStorage.getItem('edusquirrel-alluserinfo')), null,
+          'unsupported or corrupt saved logins are discarded');
       }
       assert.equal(await page.evaluate(() => localStorage.getItem('saved-answer-fixture')), 'keep this answer');
       assert.deepEqual(errors, []);

@@ -101,15 +101,8 @@ object InteractionVariableHistory {
     readwriter[ujson.Value].bimap(
       history => writeJs(Payload(history.historyStates, history.historyGrading, history.historyScaffolding)),
       value => {
-        val normalized = it.evadid.workbook.interaction.sync.model.HistoryJson.normalized(value)
-        val parsed = read[Payload[T, GA, SA]](normalized)
-        val oldStates = normalized.obj.get("states").toList.flatMap(_.arr).map { entry =>
-          val text = entry("serializedValue").str
-          val decoded = scala.util.Try(read[T](ujson.Str(text))).getOrElse(read[T](text))
-          InteractionVariableState(decoded, read[it.evadid.workbook.interaction.sync.UpdateImportance](entry("updateImportance")), LocalDateTime.parse(entry("timestamp").str))
-        }
-        val states = if oldStates.isEmpty then parsed.historyStates else parsed.historyStates.withAddedEvents(oldStates.toSet)
-        InteractionVariableHistory(states, parsed.historyGrading, parsed.historyScaffolding)
+        val parsed = read[Payload[T, GA, SA]](value)
+        InteractionVariableHistory(parsed.historyStates, parsed.historyGrading, parsed.historyScaffolding)
       })
 
   def apply[T, GA, SA](

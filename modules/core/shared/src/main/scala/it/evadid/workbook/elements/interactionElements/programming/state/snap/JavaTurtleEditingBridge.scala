@@ -558,7 +558,6 @@ object JavaTurtleEditingBridge {
   }
 
   def fromSnap(state: ProgrammingStateSnapXml): Either[String, ProgrammingStateJavaString] = attempt {
-    ensure(!state.hasLegacyFloatingObjects, "Legacy floating blocks cannot be converted without losing data.")
     bounded(state.snapXml)
     fromCleanSnap(state.copy(snapXml = SnapGeneratedImages.remove(state.snapXml)))
   }

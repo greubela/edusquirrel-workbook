@@ -235,9 +235,9 @@ object Serializer {
 
 
   val intDecimalIO: Serializer[BigInt] = integerBaseIO(10, "")
-  val intBinaryIO: Serializer[BigInt] = integerBaseIO(2, "0b", Map("Ob" -> 2))
-  val intHexIO: Serializer[BigInt] = integerBaseIO(16, "0x", Map("Ox" -> 8))
-  val intOctalIO: Serializer[BigInt] = integerBaseIO(8, "0o", Map("O" -> 8))
+  val intBinaryIO: Serializer[BigInt] = integerBaseIO(2, "0b")
+  val intHexIO: Serializer[BigInt] = integerBaseIO(16, "0x")
+  val intOctalIO: Serializer[BigInt] = integerBaseIO(8, "0o")
 
   /** Source-code string literals accept both quote styles; this is not a JSON codec. */
   def stringLiteralIO(parseEverything: Boolean = false): Serializer[String] = new Serializer[String] {
@@ -257,7 +257,7 @@ object Serializer {
     }
   }
 
-  def integerBaseIO(base: Int, prefix: String = "", legacyPrefixes: Map[String, Int] = Map.empty): Serializer[BigInt] = new Serializer[BigInt] {
+  def integerBaseIO(base: Int, prefix: String = ""): Serializer[BigInt] = new Serializer[BigInt] {
     override def serialize(obj: BigInt): String =
       (if (obj < 0) "-" else "") + prefix + obj.abs.toString(base)
 
@@ -265,7 +265,7 @@ object Serializer {
       val trimmed = str.trim
       val negative = trimmed.startsWith("-")
       val magnitude = if (negative || trimmed.startsWith("+")) trimmed.drop(1) else trimmed
-      val prefixes = ((if (prefix.nonEmpty) List(prefix -> base) else Nil) ++ legacyPrefixes.toList).sortBy(-_._1.length)
+      val prefixes = (if (prefix.nonEmpty) List(prefix -> base) else Nil).sortBy(-_._1.length)
       val matched = prefixes.find((p, _) => magnitude.toLowerCase.startsWith(p.toLowerCase))
       val number = matched match {
         case Some((p, radix)) =>

@@ -107,13 +107,7 @@ object DefaultSerializer {
 
   val serializerJsonStringMap: Serializer[Map[String, String]] = Serializer.fromUpickleJson(stringMapRW)
 
-  def serializerAllUserInfo(serializerUserConfig: Serializer[UserConfig]): Serializer[AllUserInfo] = {
-    given ucrw: ReadWriter[UserConfig] = serializerUserConfig.uPickleReadWrite
 
-    given rw: ReadWriter[AllUserInfo] = macroRW
-
-    Serializer.fromUpickleJson(rw)
-  }
 
 
   /*

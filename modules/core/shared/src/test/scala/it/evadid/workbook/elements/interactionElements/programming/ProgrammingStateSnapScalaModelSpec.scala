@@ -46,14 +46,13 @@ two</options></input></inputs>
 </project>
 """
 
-  private def converted(xml: String, floating: List[String] = Nil): ProgrammingStateSnapScalaModel =
-    ProgrammingStateSnapXml(xml, floating).toSnapScalaModel.fold(message => fail(message), identity)
+  private def converted(xml: String): ProgrammingStateSnapScalaModel =
+    ProgrammingStateSnapXml(xml).toSnapScalaModel.fold(message => fail(message), identity)
 
   private def assertRoundTrip(xml: String): Unit = {
-    val source = ProgrammingStateSnapXml(xml, List("watcher\nopaque", "", "unicode 🐢"))
+    val source = ProgrammingStateSnapXml(xml)
     val typed = source.toSnapScalaModel.toOption.get
     assertEquals(typed.toSnapXml, source)
-    assertEquals(converted(typed.toSnapXml.snapXml, typed.legacyFloatingObjects), typed)
     assertEquals(read[ProgrammingStateSnapScalaModel](write(typed)), typed.persistent)
     assertEquals(readBinary[ProgrammingStateSnapScalaModel](writeBinary(typed)), typed.persistent)
     assertEquals(read[ProgrammingState](write[ProgrammingState](typed)), typed.persistent)
@@ -115,13 +114,12 @@ two</options></input></inputs>
     assertRoundTrip(unsupported)
   }
   test("typed immutable edits preserve unrelated scenes, assets, unknown attributes and metadata") {
-    val state = converted(fullProject, List("legacy"))
+    val state = converted(fullProject)
     val edited = state.copy(model = state.model.transform {
       case sprite: Sprite if sprite.id.contains("sprite1") => sprite.withAttribute("x", "12.25")
       case node => node
     })
     assertEquals(edited.model.project.get.scenes.head.stage.get.sprites.head.x, Some(12.25))
-    assertEquals(edited.toSnapXml.legacyFloatingObjects, List("legacy"))
     assertEquals(edited.toSnapXml.snapXml, fullProject.replace("x=\"-2.5\"", "x=\"12.25\""))
     assertEquals(state.toSnapXml.snapXml, fullProject)
     assertRoundTrip(edited.toSnapXml.snapXml)
@@ -161,14 +159,13 @@ two</options></input></inputs>
   }
   test("persisted models omit generated media while retaining authored assets and opaque data") {
     val state = converted("<project><thumbnail>huge-preview</thumbnail><stage><pentrails>huge-trails</pentrails>" +
-      "<costumes><costume image='authored-image'/></costumes><extension>keep me</extension></stage></project>", List("opaque"))
+      "<costumes><costume image='authored-image'/></costumes><extension>keep me</extension></stage></project>")
     val saved = read[ProgrammingStateSnapScalaModel](write(state))
     assertEquals(saved, state.persistent)
     assert(!write(state).contains("huge-preview"))
     assert(!write(state).contains("huge-trails"))
     assert(saved.toSnapXml.snapXml.contains("authored-image"))
     assert(saved.toSnapXml.snapXml.contains("keep me"))
-    assertEquals(saved.legacyFloatingObjects, List("opaque"))
     assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(state)), state.persistent)
   }
 
@@ -179,13 +176,7 @@ two</options></input></inputs>
     for ((before, after) <- List("10" -> "11", "forward" -> "turn", "x='1'" -> "x='2'", "name='a'" -> "name='b'"))
       assert(!first.meaningfullyEquals(converted(first.toSnapXml.snapXml.replace(before, after))))
     assert(!converted("<project><l> </l></project>").meaningfullyEquals(converted("<project><l></l></project>")))
-    assert(!first.meaningfullyEquals(first.copy(legacyFloatingObjects = List("new"))))
   }
 
-  test("typed persistence keeps the default empty legacy payload optional") {
-    val state = converted("<project><thumbnail>generated</thumbnail></project>")
-    val json = ujson.Obj("model" -> writeJs(state.model))
-    assertEquals(read[ProgrammingStateSnapScalaModel](json), state.persistent)
-  }
 
 }
