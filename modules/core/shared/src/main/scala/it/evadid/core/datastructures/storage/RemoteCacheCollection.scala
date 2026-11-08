@@ -4,14 +4,11 @@ import upickle.default.ReadWriter
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.core.datastructures.storage.RemoteCacheCollection.{CacheCollectionReport, CacheKey}
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
-import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.model.DataEntryToSync.*
 import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, SyncStatus}
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
 case class RemoteCacheCollection[K , D , CK <: CacheKey[K, D]](baseLogger: SyncLogger, remoteCaches: Map[CK, RemoteSyncDataCache[K, D]]) {
 
@@ -42,55 +39,41 @@ case class RemoteCacheCollection[K , D , CK <: CacheKey[K, D]](baseLogger: SyncL
   def mapAllCachesWithKey[O](func: (CacheKey[K, D], RemoteSyncDataCache[K, D]) => O): List[O] =
     remoteCaches.iterator.map(tup => func.apply(tup._1, tup._2)).toList
 
-  def mapAllAsync(func: RemoteSyncDataCache[K, D] => Future[RemoteSyncDataCache[K, D]]): Future[RemoteCacheCollection[K, D, CK]] = {
-    val it: Iterator[(CK, RemoteSyncDataCache[K, D])] = remoteCaches.iterator
-    val singleFut: Future[Iterator[(CK, RemoteSyncDataCache[K, D])]] = Future.traverse(it)(tup => func.apply(tup._2).map(res => tup._1 -> res))
-    singleFut.map(res => RemoteCacheCollection[K, D, CK](baseLogger, res.toMap))
-  }
+  def mapAllAsync(func: RemoteSyncDataCache[K, D] => Future[RemoteSyncDataCache[K, D]]): Future[RemoteCacheCollection[K, D, CK]] =
+    mapAllAsyncWithKey((_, cache) => func(cache))
 
-  def mapAllAsyncWithKey(func: (CK, RemoteSyncDataCache[K, D]) => Future[RemoteSyncDataCache[K, D]]): Future[RemoteCacheCollection[K, D, CK]] = {
-    val it: Iterator[(CK, RemoteSyncDataCache[K, D])] = remoteCaches.iterator
-    val singleFut: Future[Iterator[(CK, RemoteSyncDataCache[K, D])]] = Future.traverse(it)(tup => func.apply(tup._1, tup._2).map(res => tup._1 -> res))
-    singleFut.map(res => RemoteCacheCollection[K, D, CK](baseLogger, res.toMap))
-  }
+  def mapAllAsyncWithKey(func: (CK, RemoteSyncDataCache[K, D]) => Future[RemoteSyncDataCache[K, D]]): Future[RemoteCacheCollection[K, D, CK]] =
+    Future.traverse(remoteCaches.iterator) { (key, cache) =>
+      func(key, cache).map(key -> _)
+    }.map(updated => copy(remoteCaches = updated.toMap))
 
-  def mapAllAsyncWithKeyAndOutput[O](func: (CK, RemoteSyncDataCache[K, D]) => Future[(RemoteSyncDataCache[K, D], O)]): Future[(RemoteCacheCollection[K, D, CK], Map[CK, O])] = {
-    val it: Iterator[(CK, RemoteSyncDataCache[K, D])] = remoteCaches.iterator
-    val singleFut: Future[Iterator[(CK, RemoteSyncDataCache[K, D], O)]] = Future.traverse(it)(tup => func.apply(tup._1, tup._2).map(res => (tup._1, res._1, res._2)))
-    singleFut.map(res => {
-      val results = res.toList
-      val updated = RemoteCacheCollection[K, D, CK](baseLogger, results.map(trip => trip._1 -> trip._2).toMap)
-      val output = results.map(trip => trip._1 -> trip._3).toMap
-      (updated, output)
-    })
-  }
+  def mapAllAsyncWithKeyAndOutput[O](func: (CK, RemoteSyncDataCache[K, D]) => Future[(RemoteSyncDataCache[K, D], O)]): Future[(RemoteCacheCollection[K, D, CK], Map[CK, O])] =
+    Future.traverse(remoteCaches.iterator) { (key, cache) =>
+      func(key, cache).map { (updated, output) => (key, updated, output) }
+    }.map { completed =>
+      val results = completed.toList
+      val updated = results.map { case (key, cache, _) => key -> cache }.toMap
+      val output = results.map { case (key, _, value) => key -> value }.toMap
+      (copy(remoteCaches = updated), output)
+    }
 
   def requestCacheDependentUpdate(func: CK => LocalDateTime): Future[RemoteCacheCollection[K, D, CK]] = {
     mapAllAsyncWithKey((cacheKey, cache) => cache.ensureCacheIsAtLeastThisRecent(func(cacheKey)))
   }
 
-  def requestCacheDependentStore(func: CK => List[DataEntryToSync[K, D]]): Future[RemoteCacheCollection[K, D, CK]] = {
-
-    Future.traverse(remoteCaches.iterator)((cacheKey, cache) => {
-      val toWrite = func(cacheKey)
-      if (toWrite.isEmpty) Future.successful(cacheKey -> cache)
+  def requestCacheDependentStore(func: CK => List[DataEntryToSync[K, D]]): Future[RemoteCacheCollection[K, D, CK]] =
+    mapAllAsyncWithKey { (key, cache) =>
+      val toWrite = func(key)
+      if toWrite.isEmpty then Future.successful(cache)
       else {
         val ensureCacheUntil = toWrite.map(_.timestamp).max
-        cache.writeIfNecessary(toWrite).transformWith {
-          case Success(syncSuccess) => cache.ensureCacheIsAtLeastThisRecent(ensureCacheUntil).map(cacheKey -> _)
-          case Failure(error) => cache.ensureCacheIsAtLeastThisRecent(ensureCacheUntil).map(cacheKey -> _)
-        }
+        // Refresh after either write outcome; a failed refresh still propagates.
+        cache.writeIfNecessary(toWrite).transformWith(_ => cache.ensureCacheIsAtLeastThisRecent(ensureCacheUntil))
       }
-    }).map((res: Iterator[(CK, RemoteSyncDataCache[K, D])]) => RemoteCacheCollection(baseLogger, res.toMap))
-
-    /*val res2: Future[(RemoteCacheCollection[K, D, CK], Map[CK, SyncSuccess])] = mapAllAsyncWithKeyAndOutput((key, cache) => cache.writeIfNecessary(func(key)))
-    res.map(tup => tup._1 -> tup._2.values.foldLeft(SyncSuccess.emptyNow())(_.combine(_)))*/
-  }
+    }
 
   def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[RemoteCacheCollection[K, D, CK]] = {
     mapAllAsync(_.tryEnsureCacheIsAtLeastThisRecent(maxAge))
-    //println("RemoteCacheCollection::70 --> ignoring ensure Cache request (:")
-    //Future.successful(this)
   }
 
   lazy val ageOfCaches: Map[CK, Option[LocalDateTime]] = remoteCaches.iterator.map(tup => tup._1 -> tup._2.lastCacheUpdate).toMap
@@ -110,7 +93,6 @@ object RemoteCacheCollection {
 
         override def syncLogger: SyncLogger = baseLogger.forSyncDest(cacheKey.toString)
 
-        // override def readTimestamp(value: D): LocalDateTime = pReadTimestamp.apply(value)
       }
       (cacheKey, RemoteSyncDataCache(config, None, Set()))
     }

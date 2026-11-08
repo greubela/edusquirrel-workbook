@@ -171,4 +171,61 @@ class RemoteStoragePackageSpec extends FunSuite {
       }
     }
   }
+
+  test("collection store refreshes only destinations with requested writes and leaves the original immutable") {
+    val destination = new Destination
+    val untouched = new Destination
+    val collection = RemoteCacheCollection.fromCacheKeys[String, String, Destination](logger, List(destination, untouched))
+    collection.requestCacheDependentStore { key =>
+      if key == destination then List(DataEntryToWriteToServer("a", "new", time)) else Nil
+    }.map { updated =>
+      assertEquals(destination.writes, List(Map("a" -> "new")))
+      assertEquals(destination.fetchCount, 1)
+      assertEquals(untouched.writes, Nil)
+      assertEquals(untouched.fetchCount, 0)
+      assert(updated.remoteCaches(untouched) eq collection.remoteCaches(untouched))
+      assertEquals(updated.remoteCaches.keySet, Set(destination, untouched))
+      assertEquals(updated.remoteCaches(destination).asMap("a").dataValue, "remote")
+      assertEquals(collection.allKnownKeys(), Set.empty[String])
+      assertEquals(collection.ageOfCaches, Map(destination -> None, untouched -> None))
+    }
+  }
+
+  test("collection store propagates a refresh failure after either write outcome") {
+    val refreshError = new IllegalStateException("refresh failed")
+    val results = List(Future.successful(SyncSuccess(1, 0, 0, time)),
+      Future.failed[SyncSuccess](new IllegalStateException("write failed")))
+    Future.traverse(results) { writeResult =>
+      val destination = new Destination
+      destination.writeResult = writeResult
+      destination.fetched = Future.failed(refreshError)
+      val collection = RemoteCacheCollection.fromCacheKeys[String, String, Destination](logger, List(destination))
+      collection.requestCacheDependentStore(_ => List(DataEntryToWriteToServer("a", "new", time))).failed.map { error =>
+        assert(error eq refreshError)
+        assertEquals(destination.fetchCount, 1)
+        assertEquals(destination.writes, List(Map("a" -> "new")))
+      }
+    }
+  }
+
+  test("keyed asynchronous mappings keep destinations and outputs paired when completed out of order") {
+    val first = new Destination
+    val second = new Destination
+    val collection = RemoteCacheCollection.fromCacheKeys[String, String, Destination](logger, List(first, second))
+    val firstResult = scala.concurrent.Promise[(RemoteSyncDataCache[String, String], String)]()
+    val secondResult = scala.concurrent.Promise[(RemoteSyncDataCache[String, String], String)]()
+    val mapped = collection.mapAllAsyncWithKeyAndOutput { (key, _) =>
+      if key == first then firstResult.future else secondResult.future
+    }
+    val updatedFirst = populated(first)
+    val updatedSecond = populated(second).addAll(Set(DataEntryReadFromServer("b", "second", time)), time)
+    secondResult.success((updatedSecond, "second"))
+    firstResult.success((updatedFirst, "first"))
+    mapped.map { (updated, output) =>
+      assertEquals(updated.remoteCaches, Map(first -> updatedFirst, second -> updatedSecond))
+      assertEquals(output, Map(first -> "first", second -> "second"))
+      assertEquals(collection.allKnownKeys(), Set.empty[String])
+    }
+  }
+
 }
