@@ -3,7 +3,7 @@ package it.evadid.workbook.jsonFactory
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.universalReader
+import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.regularSerializer
 import upickle.ReadWriter
 import upickle.core.LinkedHashMap
 import upickle.default.*
@@ -23,40 +23,6 @@ object WorkbookElementSerializable {
     WorkbookElementSerializable(elementId, read.elementType, fields)
   }
 
-  def tryFromString(str: String): Option[WorkbookElementSerializable] = try {
-    Some(fromStringConstructorLike(str))
-  } catch case _ => try {
-    Some(read(str)(using regularSerializer))
-  } catch case _ => {
-    None
-  }
-
-  // Older workbooks stored registry entries as JSON strings; new ones store objects.
-  val universalReader: Reader[WorkbookElementSerializable] = reader[ujson.Value].map {
-    case ujson.Str(str) =>
-      tryFromString(str).getOrElse(throw new IllegalArgumentException(s"Cannot parse workbook element: $str"))
-    case json => read(json)(using regularSerializer)
-  }
-
-  /*
-
-
-    def parse(element: WorkbookElementSerializable): WorkbookElement = WorkbookElementFactory.parse(element)
-
-    def parseAll(elements: List[WorkbookElementSerializable]): List[WorkbookElement] = WorkbookElementFactory.parseAll(elements)
-
-    val prefix = "WorkbookElementFactory"
-
-    given rw: ReadWriter[WorkbookElementSerializable] = macroRW
-
-    val serializer: Serializer[WorkbookElementSerializable] = Serializer.fromUpickleJson(rw)
-
-    def base[T <: WorkbookElement](obj: T): WorkbookElementSerializable = {
-      WorkbookElementSerializable(obj.elementId, obj.getClass.getSimpleName, Map())
-    }
-
-  */
-
   given regularSerializer: ReadWriter[WorkbookElementSerializable] = macroRW
 
   //val knownSubtypeSerializer: Map[String, Serializer[WorkbookElement]] = Map()
@@ -72,11 +38,6 @@ case class WorkbookElementSerializable(
   lazy val toRegularJson: String = {
     write(allConstructorFields)
   }
-
-  /*def getRegularSerializer(elementType: String): Serializer[WorkbookElement] = {
-    val res = WorkbookElementSerializable.regularSerializer.get(elementType)
-    res.getOrElse(throw SerializedException(s"No Serializer for '${elementType}' found in regularSerializerMap!"))
-  }*/
 
   // Single Object
   def withElementAdded(key: String, value: String): WorkbookElementSerializable = {
@@ -118,10 +79,6 @@ case class WorkbookElementSerializable(
     }
   }
 
-  /*def getElementAs[T](elementKey: String)(serializer: Serializer[T]): T = {
-    getElementAs(elementKey)(serializer.uPickleReadWrite)
-  }*/
-
   def getOptionalElement(elementKey: String, defaultValue: String): String = {
     allConstructorFields.get(elementKey).map(_.str).getOrElse(defaultValue)
   }
@@ -145,14 +102,12 @@ case class WorkbookElementSerializable(
   def getElementsAs[T](elementKey: String)(implicit rw: Reader[T]): List[T] = {
     read[List[T]](allConstructorFields(elementKey))
   }
-  /*def getElementsAs[T](elementKey: String)(serializer: Serializer[T]): List[T] = {
-      getElementsAs[T](elementKey)(serializer.uPickleReadWrite)
-  }*/
+
 
   // Other
 
   def getElementsAsSerializableElement(elementKey: String): List[WorkbookElementSerializable] = {
-    getElementsAs(elementKey)(using universalReader)
+    getElementsAs(elementKey)(using regularSerializer)
   }
 
   private def resolveReference[T <: WorkbookElement](ref: WorkbookElementReference, parsedElements: Map[String, WorkbookElement]): T = {

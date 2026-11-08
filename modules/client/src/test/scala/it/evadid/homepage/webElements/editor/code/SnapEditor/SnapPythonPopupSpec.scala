@@ -35,21 +35,9 @@ class SnapPythonPopupSpec extends FunSuite {
     assert(SnapPythonPopup.OverviewExamples.exists(_.contains("def ")), clue = SnapPythonPopup.OverviewExamples)
   }
 
-  test("Python apply replaces project XML while preserving legacy floating metadata") {
-    val source = ProgrammingStateSnapXml(ProgrammingStateSnapXml.mini.snapXml,
-      legacyFloatingObjects = List(" watcher ", "comment\r\n\t "))
-    val next = SnapPythonPopup.applyPython(source, "forward(12)").fold(message => fail(message), identity)
-    assertNotEquals(next.snapXml, source.snapXml)
-    assertEquals(next.legacyFloatingObjects, source.legacyFloatingObjects)
-    assertEquals(next.toBeExpression.deriveTurtleCommands,
-      List(TurtleCommand[Double]("forward", List(12.0))))
-    assertEquals(ProgrammingState.serializer.deserialize(
-      ProgrammingState.serializer.serialize(next)), next)
-  }
 
   test("invalid Python apply leaves the stored Snap project and metadata intact") {
-    val source = ProgrammingStateSnapXml(ProgrammingStateSnapXml.mini.snapXml,
-      legacyFloatingObjects = List(" watcher ", "comment\nline two"))
+    val source = ProgrammingStateSnapXml(ProgrammingStateSnapXml.mini.snapXml)
     val stored = ProgrammingState.serializer.serialize(source)
     assert(SnapPythonPopup.applyPython(source, "forward(").isLeft)
     assertEquals(ProgrammingState.serializer.serialize(source), stored)

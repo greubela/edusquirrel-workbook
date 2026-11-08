@@ -18,10 +18,7 @@ case class InteractionVariableState[T](value: T, updateImportance: UpdateImporta
 }
 
 object InteractionVariableState {
-/*
-  def apply[T](io: Serializer[T], serializedState: InteractionVariableStateSerialized): InteractionVariableState[T] =
-    InteractionVariableState(io.deserialize(serializedState.serializedValue), serializedState.updateImportance, serializedState.timestamp)
-*/
+
   case class DesignatedInteractionState[T](value: T, timestamp: LocalDateTime) derives ReadWriter
 
   case class InteractionVariableStateChanged[T](lastState: InteractionVariableState[T], newState: DesignatedInteractionState[T]) derives ReadWriter

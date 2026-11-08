@@ -21,7 +21,7 @@ class ProgrammingLanguageConversionSpec extends FunSuite {
   test("matching languages preserve incomplete source without invoking another parser") {
     val java = ProgrammingStateJavaString("\r\n class Drawing {\t")
     val python = ProgrammingStatePythonString("\n def incomplete(\t")
-    val snap = ProgrammingStateSnapXml("unfinished project", List("opaque metadata"))
+    val snap = ProgrammingStateSnapXml("unfinished project")
     assertEquals(java.toLanguage(Java), java)
     assertEquals(python.toLanguage(Python), python)
     assertEquals(snap.toLanguage(SnapLanguage), snap)

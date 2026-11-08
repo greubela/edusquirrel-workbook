@@ -44,8 +44,6 @@ sealed trait ProgrammingState {
   def fingerprint(): String = this match
     case ProgrammingStateBeExpression(root: JavaTurtleVmPrograms.Root) => s"java:${root.bindings.source.source}"
     case ProgrammingStateBeExpression(expression) => s"expression:${expression.toString}"
-    case snap: ProgrammingStateSnapXml if snap.hasLegacyFloatingObjects =>
-      s"snap-legacy:${write((snap.snapXml, snap.legacyFloatingObjects))}"
     case ProgrammingStateSnapXml(xml) => s"snap:$xml"
     case snap: ProgrammingStateSnapScalaModel => snap.toSnapXml.fingerprint()
     case ProgrammingStatePythonString(code) => s"python:$code"
@@ -149,14 +147,12 @@ object ProgrammingStateBeExpression {
     })
 }
 
-final case class ProgrammingStateSnapXml(snapXml: String, legacyFloatingObjects: List[String] = Nil) extends ProgrammingState derives ReadWriter {
-  require(legacyFloatingObjects != null && legacyFloatingObjects.forall(_ != null), "Invalid legacy Snap data.")
+final case class ProgrammingStateSnapXml(snapXml: String) extends ProgrammingState derives ReadWriter {
 
-  def hasLegacyFloatingObjects: Boolean = legacyFloatingObjects.nonEmpty
 
   /** Lossless full-project conversion, independent of the executable Turtle subset. */
   def toSnapScalaModel: Either[String, ProgrammingStateSnapScalaModel] =
-    snap.SnapScalaModel.parse(snapXml).map(ProgrammingStateSnapScalaModel(_, legacyFloatingObjects))
+    snap.SnapScalaModel.parse(snapXml).map(ProgrammingStateSnapScalaModel(_))
 
   /** Drop regenerated preview/pen images without changing scripts or authored costumes. */
   def removeBloatFromXml: ProgrammingStateSnapXml = {
@@ -170,14 +166,9 @@ final case class ProgrammingStateSnapXml(snapXml: String, legacyFloatingObjects:
 
   override def toSnapXml: ProgrammingStateSnapXml = this
 
-  private def requireTextConversion(): Unit =
-    if hasLegacyFloatingObjects then
-      throw IllegalArgumentException("This project contains legacy extra blocks. Keep editing it in Snap until they can be migrated.")
-
-  override def toPython: ProgrammingStatePythonString = { requireTextConversion(); toBeExpression.toPython }
+  override def toPython: ProgrammingStatePythonString = toBeExpression.toPython
 
   override def toJava: ProgrammingStateJavaString = {
-    requireTextConversion()
     if JavaTurtleEditingBridge.hasSnapMetadata(snapXml) then converted(JavaTurtleEditingBridge.fromSnap(this))
     else toBeExpression.toJava
   }
@@ -300,26 +291,24 @@ final case class ProgrammingStateJavaString(code: String) extends ProgrammingSta
   override val toString: String = s"ProgrammingStateJavaString(${code.toString.take(300)})"
 }
 
-/** Full Snap project state. Converting representations preserves XML and opaque legacy data.
+/** Full Snap project state. Converting representations preserves native project XML.
   * Executing or translating this state still uses the existing checked subset converters.
   */
 final case class ProgrammingStateSnapScalaModel(
-    model: snap.SnapScalaModel.Document,
-    legacyFloatingObjects: List[String] = Nil
+    model: snap.SnapScalaModel.Document
 ) extends ProgrammingState {
-  require(legacyFloatingObjects != null && legacyFloatingObjects.forall(_ != null), "Invalid legacy Snap data.")
   def persistent: ProgrammingStateSnapScalaModel = copy(model = model.withoutGeneratedImages)
   def meaningfullyEquals(other: ProgrammingStateSnapScalaModel): Boolean =
-    legacyFloatingObjects == other.legacyFloatingObjects && model.meaningfullyEquals(other.model)
-  override def toSnapXml: ProgrammingStateSnapXml = ProgrammingStateSnapXml(model.toXml, legacyFloatingObjects)
+    model.meaningfullyEquals(other.model)
+  override def toSnapXml: ProgrammingStateSnapXml = ProgrammingStateSnapXml(model.toXml)
   override def toBeExpression: ProgrammingStateBeExpression = toSnapXml.toBeExpression
   override def toPython: ProgrammingStatePythonString = toSnapXml.toPython
   override def toJava: ProgrammingStateJavaString = toSnapXml.toJava
 }
 
 object ProgrammingStateSnapScalaModel {
-  private case class Saved(model: snap.SnapScalaModel.Document, legacyFloatingObjects: List[String] = Nil) derives ReadWriter
+  private case class Saved(model: snap.SnapScalaModel.Document) derives ReadWriter
   given ReadWriter[ProgrammingStateSnapScalaModel] = upickle.default.readwriter[Saved].bimap(
-    state => Saved(state.model.withoutGeneratedImages, state.legacyFloatingObjects),
-    saved => ProgrammingStateSnapScalaModel(saved.model.withoutGeneratedImages, saved.legacyFloatingObjects))
+    state => Saved(state.model.withoutGeneratedImages),
+    saved => ProgrammingStateSnapScalaModel(saved.model.withoutGeneratedImages))
 }

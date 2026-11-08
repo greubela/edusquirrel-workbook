@@ -36,9 +36,10 @@ case class TurtleStitchRecreateShapeInteractionLegacy(
     override def serialize(t: TurtleStitchProjectState): String = header + write(t)
 
     override def deserialize(s: String): TurtleStitchProjectState =
-      if (s.startsWith(header)) read[TurtleStitchProjectState](s.drop(header.length))
-      else if (s.isEmpty) TurtleStitchProjectState.empty()
-      else TurtleStitchProjectState.parseFromStringOrEmpty(s)
+      {
+        require(s.startsWith(header), "Unsupported turtle state format")
+        read[TurtleStitchProjectState](s.drop(header.length))
+      }
   }
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()

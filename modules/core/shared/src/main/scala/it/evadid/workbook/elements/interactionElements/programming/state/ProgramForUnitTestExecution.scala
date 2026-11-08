@@ -26,8 +26,7 @@ private[evadid] object ProgramForUnitTestExecution {
           JavaTurtleEditingBridge.fromPython(code).flatMap(convertedFromState)
         else Right(ProgramForUnitTestExecution(code))
       case value: ProgrammingStateSnapXml =>
-        if value.hasLegacyFloatingObjects then Left("Legacy extra blocks cannot be included in unit-test execution.")
-        else if JavaTurtleEditingBridge.hasSnapMetadata(value.snapXml) then
+        if JavaTurtleEditingBridge.hasSnapMetadata(value.snapXml) then
           JavaTurtleEditingBridge.fromSnap(value).flatMap(convertedFromState)
         else SnapStateConversion.expressionForExecution(value.snapXml).flatMap(fromExpression)
       case value: ProgrammingStateSnapScalaModel => convertedFromState(value.toSnapXml)

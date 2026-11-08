@@ -68,25 +68,6 @@ class WorkbookSerializerSpec extends FunSuite {
     }
   }
 
-  test("legacy string-encoded registry entries and section metadata remain readable") {
-    import it.evadid.workbook.elements.structureElements.WorkbookSection
-    import WorkbookSection.WorkbookSectionMetadata
-    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-    import upickle.default.*
-    val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("section/first")), List(TextInteraction("text")))
-    val second = WorkbookSection("second", WorkbookSectionMetadata(LanguageMapContentId("section/second"), List(first), List(first)), Nil)
-    val populated = workbook.copy(sections = List(second, first))
-    val root = populated.toSerialized
-    val registry = root.allConstructorFields("serializedElements").arr.toList.map { json =>
-      val entry = read[it.evadid.workbook.jsonFactory.WorkbookElementSerializable](json)
-      if (entry.elementType == "WorkbookSection") {
-        val metadata = entry.allConstructorFields("metadata")
-        val legacy = ujson.write(ujson.Obj.from(metadata.obj.toSeq.map { (key, value) => key -> ujson.Str(ujson.write(value)) }))
-        write(entry.withElementAdded("metadata", legacy))
-      } else write(entry)
-    }
-    assertEquals(WorkbookElementFactory.parse(root.withElementsAdded("serializedElements", registry)), populated)
-  }
 
   test("registry round trip resolves nonempty sections and prerequisites regardless of input order") {
     import it.evadid.workbook.elements.structureElements.WorkbookSection
@@ -107,35 +88,12 @@ class WorkbookSerializerSpec extends FunSuite {
     import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
     val root = workbook.toSerialized
       .withElementsAddedAs("sections", List(WorkbookElementReference("missing", Some("WorkbookSection"))))
-      .withElementsAdded("serializedElements", List(upickle.default.write(TextInteraction("unrelated").toSerialized)))
+      .withElementsAddedAs("serializedElements", List(TextInteraction("unrelated").toSerialized))
     val error = intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(root))
     assert(error.getMessage.contains("no progress"))
   }
 
 
-  test("one registry accepts native JSON, legacy JSON strings and constructor strings in reverse dependency order") {
-    import it.evadid.workbook.elements.structureElements.WorkbookSection
-    import WorkbookSection.WorkbookSectionMetadata
-    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-    import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-    import upickle.default.*
-    val text = TextInteraction("shared/\"text\"")
-    val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("section/first")), List(text))
-    val second = WorkbookSection("second", WorkbookSectionMetadata(LanguageMapContentId("section/second"), List(first), List(first)), List(text))
-    val populated = workbook.copy(sections = List(second, first))
-    val entries = populated.toSerialized.allConstructorFields("serializedElements").arr.toList
-      .map(json => read[WorkbookElementSerializable](json)).map(entry => entry.elementId -> entry).toMap
-    val mixed = ujson.Arr(
-      writeJs(entries("second")),
-      ujson.Str(write(entries("first"))),
-      ujson.Str(WorkbookElementFactory.serializerConstructorLike.serialize(text)))
-    val root = populated.toSerialized.withMapAdded(Map("serializedElements" -> mixed))
-    val restored = WorkbookElementFactory.parse(root)
-    assertEquals(restored, populated)
-    for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)) {
-      assertEquals(serializer.deserialize(serializer.serialize(restored)), populated)
-    }
-  }
 
   test("workbooks discover interactions inside sections, exercise containers and display wrappers") {
     import it.evadid.workbook.elements.structureElements.{ExerciseContainer, WorkbookSection}

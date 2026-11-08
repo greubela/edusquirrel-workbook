@@ -19,7 +19,7 @@ class EvaEditorTabSpec extends FunSuite {
     assertEquals(tabs.find(_.language == Python).get.convert(python), python)
   }
   test("Snap conversion preserves the full typed project and opaque assets") {
-    val source = ProgrammingStateSnapXml("<project/>", List("watcher", "comment")).toSnapScalaModel.toOption.get
+    val source = ProgrammingStateSnapXml("<project/>").toSnapScalaModel.toOption.get
     assertEquals(tabs.find(_.language == SnapLanguage).get.convert(source), source)
   }
   test("tab metadata follows the configured order without constructing editors") {

@@ -44,7 +44,7 @@ previews and saved programs after reopen/reload.
 
 ```sh
 sbt 'coreJVM/testOnly *ProgrammingStateConversionSpec' 'coreJS/testOnly *ProgrammingStateConversionSpec'
-sbt 'client/testOnly *CreateEmbroideryPreviewWorkbookSpec *TurtleJsxGraphRendererSpec'
+sbt 'client/testOnly *WorkbookDefinitionsSpec *TurtleJsxGraphRendererSpec'
 sbt buildClientDev buildWorkerDev
 npm run test:workbooks -- embroidery-preview-workbook
 ```

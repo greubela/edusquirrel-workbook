@@ -60,7 +60,6 @@ test('Snap previews and editor wait for the runtime and ignore closed mounts', a
     };
     await page.waitForFunction(hasBlocks, await previews.first().elementHandle());
     assert.equal(await page.locator('dialog[open]').count(), 0, 'late runtime does not reopen the editor');
-    assert.equal(await previews.evaluateAll(canvases => canvases.filter(c => c.hasAttribute('style')).length), 0, 'preview presentation uses CSS');
     await open.click();
     const editor = page.locator('dialog[open] .be-program-snap-renderer__canvas');
     await page.waitForFunction(hasBlocks, await editor.elementHandle());

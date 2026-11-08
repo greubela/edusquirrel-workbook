@@ -64,15 +64,14 @@ are loaded by the native client.
 
 `generate-compression-parity.mjs` creates reference fixtures from the original
 storage operations. Shared JVM/JS tests compare behavior against those fixtures;
-content checks compare the native chapters with retained sources. Browser checks
-cover native controls, persistence, playback cleanup and responsive layout.
+the shared workbook definition checks verify serialization and unique IDs.
+Content and layout changes are reviewed against the retained source materials.
 
 ```sh
 node tools/dev/sync-compression-source.mjs
 node tools/dev/generate-compression-parity.mjs
 node tools/dev/generate-compression-slides.mjs
 sbt 'coreJVM/testOnly *CompressionExperimentSpec' 'coreJS/testOnly *CompressionExperimentSpec'
-sbt 'client/testOnly *CreateCompressionWorkbookSpec' 'client/fastLinkJS'
-node --test tools/dev/compression-workbook-content.test.mjs tools/dev/workbook-stylesheets.test.mjs
-node --test tools/dev/compression-workbook.test.mjs
+sbt 'client/testOnly *WorkbookDefinitionsSpec'
+npm run test:static
 ```

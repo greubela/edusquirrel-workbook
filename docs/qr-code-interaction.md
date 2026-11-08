@@ -59,14 +59,8 @@ python-qrcode 8.2 and qrcodegen 1.8.0. Committed fixtures compare complete matri
 checksums for every version/correction combination, full-capacity payloads and
 UTF-8 automatic-mask examples. Runtime Scala uses neither reference library.
 Run `coreJVM/testOnly *QrCodeSpec`, `coreJS/testOnly *QrCodeSpec`, and
-`client/testOnly *QrCode*Spec *CreateTestWorkbookSpec` for targeted checks.
+`client/testOnly *QrCode*Spec *WorkbookDefinitionsSpec` for targeted checks.
 
-The browser integration test uses test-only jsQR to decode the actual rendered
-SVG back to Unicode text, and checks grading, invalid drafts, reopening and
-responsive layout. Run `sbt buildJS`, `npm ci --ignore-scripts`, then
-`node --test tools/dev/qr-interaction.test.mjs` (requires Chromium; override
-`CHROMIUM_PATH` when necessary). It serves all assets locally and aborts external
-requests; it does not use the backend or an online account.
 
 ## Region colors
 

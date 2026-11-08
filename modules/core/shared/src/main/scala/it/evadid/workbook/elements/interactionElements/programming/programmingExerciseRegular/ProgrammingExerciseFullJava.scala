@@ -33,12 +33,6 @@ object ProgrammingExerciseFullJava {
     |}
     |""".stripMargin
 
-  private def startingProgramFromSerialized(element: WorkbookElementSerializable): String =
-    element.allConstructorFields.get("startingProgram").map(_.str).getOrElse {
-      element.getOptionalElementAs[Option[ujson.Value]]("turtleTask", None)
-        .map(_("startingProgram").str).getOrElse(defaultStartingProgram)
-    }
-
   val factory: WorkbookElementFactory[ProgrammingExerciseFullJava] =
     new WorkbookElementFactory[ProgrammingExerciseFullJava]() {
       override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set()
@@ -50,7 +44,7 @@ object ProgrammingExerciseFullJava {
         ProgrammingExerciseFullJava(
           element.elementId,
           element.getOptionalElementAs[Option[BeTestSuite]]("testSuite", None),
-          startingProgramFromSerialized(element),
+          element.getOptionalElementAs[String]("startingProgram", defaultStartingProgram),
           element.getOptionalElementAs[Option[LanguageMapContentId]]("hintTask", None)
         )
 

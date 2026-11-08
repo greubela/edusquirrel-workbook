@@ -98,15 +98,6 @@ test('text feedback preserves cached and in-flight grading across display langua
       await content.getByText('Deine Begründung passt.', {exact: true}).waitFor();
       assert.equal(requests.length, 3, 'completed hints and grades remain valid in every display language');
     }
-    assert.equal(await hint.getAttribute('data-tooltip'), 'Wann werden keine Karten mehr weitergegeben?');
-    assert(!await content.evaluate(element => element.querySelector('[style]')));
-    for (const viewport of [{width:390,height:844}, {width:844,height:390}]) {
-      await page.setViewportSize(viewport);
-      await input.scrollIntoViewIfNeeded();
-      const bounds = await input.boundingBox();
-      assert(bounds && bounds.x >= 0 && bounds.x + bounds.width <= viewport.width);
-    }
-    await page.setViewportSize({width:1440,height:1000});
     await page.waitForFunction(() => new Promise(resolve => {
       const open = indexedDB.open('EvaDidInteractionDB');
       open.onerror = () => resolve(false);

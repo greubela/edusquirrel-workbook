@@ -40,7 +40,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   private def assertionGrader(suite: SampleBeTest,
       importance: GradingImportance = GradingImportance.REQUIRED_TEST): ProgrammingUnitTestGrader =
-    ProgrammingUnitTestGrader(ProgrammingUnitTestGrader.LegacyTestId, suite.pythonTestCode, importance)
+    ProgrammingUnitTestGrader(ProgrammingUnitTestGrader.SampleTestId, suite.pythonTestCode, importance)
 
   private def pythonClient(value: ujson.Value, inspect: WorkerCommands.RunPythonRequest => Unit = _ => ()): ExecutionClient =
     WorkerCommands.runPython.toLocalExecutionClient((request, _) => {
@@ -88,17 +88,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(restored.testSuite, None)
   }
 
-  test("factory defaults missing optional fields for legacy payloads") {
-    val legacy = it.evadid.workbook.jsonFactory.WorkbookElementSerializable(
-      "prog-legacy",
-      "ProgrammingExercise",
-      Map("elementId" -> upickle.default.writeJs("prog-legacy"))
-    )
-    val restored = ProgrammingExercise.factory.fromSerializedElement(legacy, Map.empty)
-    assertEquals(restored.editorPalette, ProgrammingEditorPalette.Default)
-    assertEquals(restored.referencePython, None)
-    assertEquals(restored.testSuite, None)
-  }
 
   test("full Java exercise is registered and preserves its type and test suite") {
     val original = ProgrammingExerciseFullJava("full-java")
@@ -118,42 +107,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     )
   }
 
-  test("legacy full Java JSON without a turtle task retains its IDs, test suite and exact default source") {
-    val defaultSource = "public class Main {\n  public static void main(String[] args) {\n  }\n}\n"
-    val testSuite: Option[BeTestSuite] = Some(SampleBeTest("assert True\n"))
-    val legacyPayloads = List(
-      (
-        """{"elementId":"prog-full-java","elementType":"ProgrammingExerciseFullJava","allConstructorFields":{"testSuite":null}}""",
-        "prog-full-java",
-        Option.empty[BeTestSuite]
-      ),
-      (
-        """{"elementId":"full-java","elementType":"ProgrammingExerciseFullJava","allConstructorFields":{}}""",
-        "full-java",
-        Option.empty[BeTestSuite]
-      ),
-      (
-        upickle.default.write(
-          WorkbookElementSerializable(
-            "full-java-with-suite",
-            "ProgrammingExerciseFullJava",
-            Map("testSuite" -> upickle.default.writeJs(testSuite))
-          )
-        )(using WorkbookElementSerializable.regularSerializer),
-        "full-java-with-suite",
-        testSuite
-      )
-    )
-
-    legacyPayloads.foreach { (json, expectedId, expectedSuite) =>
-      val restored = WorkbookElementFactory.serializerRefBasedJson.deserialize(json)
-        .asInstanceOf[ProgrammingExerciseFullJava]
-      assertEquals(restored.elementId, expectedId)
-      assertEquals(restored.testSuite, expectedSuite)
-      assertEquals(restored.startingProgram, defaultSource)
-      assertEquals(restored.defaultValue, ProgrammingStateJavaString(defaultSource))
-    }
-  }
 
   test("full Java exercises roundtrip their exact starting source and suite") {
     val source = " \r\npublic class Drawing {\r\n  public static void main(String[] args) {\n    square(25);\n  }\r\n}\n\n\t "
@@ -172,33 +125,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
   }
 
-  test("legacy full Java task definitions migrate only their exact starting source") {
-    val source = " \r\npublic class Drawing {\n  static void square(int side) {}\r\n}\t "
-    val suite: Option[BeTestSuite] = Some(SampleBeTest("assert True\n"))
-    val legacyTask = ujson.Obj(
-      "startingProgram" -> source,
-      "methodName" -> "square",
-      "cases" -> ujson.Arr(),
-      "comparisonPolicy" -> "removed-policy"
-    )
-    val legacy = WorkbookElementSerializable(" java-square-pilot ", "ProgrammingExerciseFullJava",
-      Map("testSuite" -> upickle.default.writeJs(suite),
-        "turtleTask" -> upickle.default.writeJs[Option[ujson.Value]](Some(legacyTask))))
-    val restored = WorkbookElementFactory.parse(legacy).asInstanceOf[ProgrammingExerciseFullJava]
-    assertEquals(restored.elementId, legacy.elementId)
-    assertEquals(restored.testSuite, suite)
-    assertEquals(restored.startingProgram, source)
-    assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
-
-    val rewritten = restored.toSerialized
-    assert(!rewritten.allConstructorFields.contains("turtleTask"))
-    assertEquals(rewritten.getElement("startingProgram"), source)
-    val savedDraft = ProgrammingStateJavaString(" \r\npublic class Drawing {\n  static void square(\r\n\t ")
-    val saved = restored.serializerInteractionContent.serialize(savedDraft)
-    assertEquals(restored.serializerInteractionContent.deserialize(saved), savedDraft)
-    assertEquals(restored.serializerInteractionContent.deserialize(saved).fingerprint(),
-      savedDraft.fingerprint())
-  }
 
   test("explicit full Java starting source takes precedence over a legacy task definition") {
     val source = " \r\npublic class Restored {\n\t "
@@ -209,13 +135,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
   }
 
-  test("malformed legacy full Java starter source cannot silently become a different program") {
-    List(ujson.Obj(), ujson.Obj("startingProgram" -> 25)).foreach { task =>
-      val legacy = WorkbookElementSerializable("java-invalid-starter", "ProgrammingExerciseFullJava",
-        Map("turtleTask" -> upickle.default.writeJs[Option[ujson.Value]](Some(task))))
-      intercept[Exception](WorkbookElementFactory.parse(legacy))
-    }
-  }
 
   test("a full Java exercise preserves unfinished student source independently of its starter") {
     val source = "public class Drawing {\n  static void square(int side) {}\n}\n"
@@ -255,20 +174,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     restored.foreach(exercise => assert(!(exercise.scaffoldingElement.get eq original.scaffoldingElement.get)))
   }
 
-  test("legacy full Java definitions keep hints disabled without changing their serialized fields") {
-    val original = ProgrammingExerciseFullJava("java-without-hints")
-    assertEquals(original.scaffoldingElement, None)
-    assert(!original.toSerialized.allConstructorFields.contains("hintTask"))
-    val definitions = List(original.toSerialized, original.toSerialized.withMapAdded(Map("hintTask" -> ujson.Null)))
-    val exercises = definitions.map(ProgrammingExerciseFullJava.factory.fromSerializedElement(_, Map.empty)) ++
-      List(read[ProgrammingExerciseFullJava](write(original)), readBinary[ProgrammingExerciseFullJava](writeBinary(original)))
-    exercises.foreach { restored =>
-      assertEquals(restored, original)
-      assertEquals(restored.hintTask, None)
-      assertEquals(restored.scaffoldingElement, None)
-      assert(!restored.toSerialized.allConstructorFields.contains("hintTask"))
-    }
-  }
 
   test("invalid Java hint configuration fails rather than silently disabling hints") {
     val original = ProgrammingExerciseFullJava("java-invalid-hints").toSerialized
@@ -1117,8 +1022,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       |<block s="unsupportedPrimitive"><l>1</l></block></script>""".stripMargin)
     val concurrent = nativeSnap("""<script><block s="receiveGo"/><block s="forward"><l>12</l></block></script>
       |<script><block s="receiveGo"/><block s="forward"><l>3</l></block></script>""".stripMargin)
-    val legacy = nativeSnap("<script><block s=\"receiveGo\"/></script>")
-      .copy(legacyFloatingObjects = List("opaque block data"))
+
     val invalidScripts = List(
       """<script><unknown/><block s="receiveGo"/><block s="forward"><l>12</l></block></script>""",
       """<script><block s="receiveGo"><l>1</l></block></script>""",
@@ -1133,7 +1037,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val mixedStage = nativeSnap("").copy(snapXml = nativeSnap("").snapXml.replace("</project>", "<scenes/></project>"))
     val doubleScripts = nativeSnap("").copy(snapXml = nativeSnap("").snapXml.replace("<scripts></scripts>",
       "<scripts/><scripts><script><block s=\"receiveGo\"/><block s=\"forward\"><l>12</l></block></script></scripts>"))
-    val states: List[ProgrammingState] = (List(unknown, concurrent, legacy, doubleStage, mixedStage, doubleScripts) ++ invalidScripts).flatMap { state =>
+    val states: List[ProgrammingState] = (List(unknown, concurrent, doubleStage, mixedStage, doubleScripts) ++ invalidScripts).flatMap { state =>
       List[ProgrammingState](state, state.toSnapScalaModel.fold(message => fail(message), identity))
     } :+ ProgrammingStateSnapXml("<project><stage>")
     val grader = ProgrammingUnitTestGrader("complete-only", "assert run_program()['commands'] == [['forward', 12]]")
@@ -1221,16 +1125,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     intercept[Exception](read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](unknownData))
   }
 
-  test("a legacy assertion block retains its exact suite JSON and creates one grader") {
-    val json = """{"$type":"SampleBeTest","pythonTestCode":"assert True\r\nassert False\n"}"""
-    val suite = read[BeTestSuite](json)
-    val expected = assertionGrader(SampleBeTest("assert True\r\nassert False\n"))
-    assertEquals(write[BeTestSuite](suite), json)
-    assertEquals(readBinary[BeTestSuite](writeBinary(suite)), suite)
-    assertEquals(suite.graders, List(expected))
-    assertEquals(ProgrammingExercise("old-block", Some(suite)).gradingElements, List(expected))
-    assertEquals(ProgrammingExerciseFullJava("old-java-block", Some(suite)).gradingElements, List(expected))
-  }
 
   test("five explicit programming graders retain their identities in suites and workbook definitions") {
     val graders: List[ProgrammingTestGrader] = (1 to 5).map { index =>
@@ -1350,46 +1244,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     intercept[IllegalArgumentException](ProgrammingTestSuite(List(null)))
   }
 
-  test("legacy grader fixtures read through direct and registered codecs and write canonical fields") {
-    val legacySuite = ujson.read("""{"$type":"SampleBeTest","pythonTestCode":"assert True\r\nassert False\n"}""")
-    val fixtures = List(
-      ("""{"testSuite":{"$type":"SampleBeTest","pythonTestCode":"assert True\r\nassert False\n"},"serializedType":"ProgrammingUnitTestGrader"}""", GradingImportance.REQUIRED_TEST),
-      ("""{"testSuite":{"$type":"SampleBeTest","pythonTestCode":"assert True\r\nassert False\n"},"importance":"HIDDEN_TEST","serializedType":"ProgrammingUnitTestGrader"}""", GradingImportance.HIDDEN_TEST))
-    val stateJson = ujson.read("""{"$type":"PythonSource","value":{"$type":"ProgrammingStatePythonString","code":"pass\r\n"}}""")
-    val state: ProgrammingState = ProgrammingStatePythonString("pass\r\n")
-    val time = LocalDateTime.parse("2026-10-26T12:00")
-    fixtures.foreach { (json, importance) =>
-      val expected = assertionGrader(SampleBeTest("assert True\r\nassert False\n"), importance)
-      assertEquals(expected.publicDescription, None)
-      assertEquals(expected.publishProgramObservation, false)
-      val direct = ujson.Obj.from(ujson.read(json).obj.toMap - "serializedType")
-      assertEquals(read[ProgrammingUnitTestGrader](direct), expected)
-      assertEquals(readBinary[ProgrammingUnitTestGrader](writeBinary(direct)), expected)
-      assertEquals(read[ProgrammingTestGrader](ujson.Str(json)), expected)
-      assertEquals(readBinary[ProgrammingTestGrader](writeBinary[ujson.Value](ujson.Str(json))), expected)
-      assertEquals(read[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](ujson.Str(json)), expected)
-      val canonical = writeJs(expected)
-      assertEquals(canonical.obj.keySet.toSet,
-        if importance == GradingImportance.REQUIRED_TEST then Set("testId", "pythonTestCode")
-        else Set("testId", "pythonTestCode", "importance"))
-      assertEquals(canonical("testId"), ujson.Str(ProgrammingUnitTestGrader.LegacyTestId))
-      assertEquals(canonical("pythonTestCode"), legacySuite("pythonTestCode"))
-      assertEquals(read[ProgrammingUnitTestGrader](canonical), expected)
-      val resultJson = ujson.Obj("grader" -> ujson.Str(json), "gradedState" -> stateJson,
-        "gradingStatus" -> ujson.Obj("$type" -> "Incorrect"), "gradingTime" -> "2026-10-26T12:00",
-        "feedbackInformation" -> writeJs[Option[LanguageMap[HumanLanguage]]](None), "additionalData" -> writeJs[Option[AdditionalProgrammingTestInfo]](None))
-      val result = GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](expected, state, GradingStatus.Incorrect(), feedbackInformation = None, additionalData = None, gradingTime = time)
-      assertEquals(read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](resultJson), result)
-      assertEquals(readBinary[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](writeBinary(resultJson)), result)
-      val historyJson = ujson.Obj("events" -> ujson.Arr(ujson.Obj("value" -> stateJson,
-        "updateImportance" -> "MAJOR", "timestamp" -> "2026-10-26T12:00")),
-        "gradings" -> ujson.Arr(ujson.Arr(stateJson, ujson.Obj("state" -> stateJson,
-          "testsWithResults" -> ujson.Arr(resultJson)))), "scaffoldings" -> ujson.Arr())
-      val history = read[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding]](historyJson)
-      assertEquals(history.historyGrading.gradingsMap(state).testsWithResults, Set(result))
-      assertEquals(readBinary[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding]](writeBinary(historyJson)), history)
-    }
-  }
 
   test("canonical grader readers reject ambiguous and unknown legacy suite payloads") {
     val suite = ujson.Obj("$type" -> "SampleBeTest", "pythonTestCode" -> "assert True")

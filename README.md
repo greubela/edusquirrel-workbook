@@ -132,8 +132,8 @@ Run all Scala suites, including both shared platforms:
 sbt 'coreJVM/test' 'coreJS/test' 'client/test' 'server/test' 'worker/test'
 ```
 
-Run all asset/DOM checks and all browser checks (including catalogue cache recovery,
-monk stories and embroidery preview exercises):
+Run the static integrity checks and browser integration checks (authentication, editor lifecycle,
+saved answers and worker execution):
 
 ```sh
 npm ci
@@ -143,7 +143,8 @@ npx playwright install chromium
 npm run test:workbooks
 ```
 
-The browser runner uses Playwright's installed Chromium, or `CHROMIUM_PATH` when set
+The browser runner runs two isolated suites at a time and reports per-file durations.
+It uses Playwright's installed Chromium, or `CHROMIUM_PATH` when set
 (for example `/usr/bin/chromium`). It serves the native CodeMirror packages from pinned local npm dependencies, so
 editor tests do not depend on a live CDN. Both runners
 disable Node test-worker isolation for compatibility with restricted environments.

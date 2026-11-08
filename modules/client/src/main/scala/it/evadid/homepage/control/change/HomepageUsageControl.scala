@@ -77,7 +77,16 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   private val allUserInfoStorageKey: String = "edusquirrel-alluserinfo"
 
   def tryParsingExistingUser(): Option[AllUserInfo] = {
-     LocalStorageSyncHandler.fetchAllRawSync().get(allUserInfoStorageKey).map(curStr => read(curStr))
+    val restored: scala.util.Try[Option[AllUserInfo]] = scala.util.Try(Option(org.scalajs.dom.window.localStorage.getItem(allUserInfoStorageKey)))
+      .flatMap {
+        case None => Success(None)
+        case Some(raw) => scala.util.Try(read[AllUserInfo](raw)).map(Some(_))
+      }
+    restored.recover { case scala.util.control.NonFatal(_) =>
+      scala.util.Try(org.scalajs.dom.window.localStorage.removeItem(allUserInfoStorageKey))
+      logger.logWarn("Discarded an invalid saved login; please sign in again.")
+      None
+    }.get
   }
 
   private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken]): Future[?] = {
@@ -205,12 +214,6 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
       changeUser(localUser)
     }
   }
-
-  def storeUserLocally(allUserInfo: AllUserInfo): Unit = {
-    val rawToken = allUserInfo.token.get.toJson
-    val safeToken = js.URIUtils.encodeURIComponent(rawToken)
-  }
-
 
   def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = fullInfo.synchronized {
 

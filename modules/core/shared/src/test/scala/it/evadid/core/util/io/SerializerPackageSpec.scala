@@ -59,12 +59,6 @@ class SerializerPackageSpec extends FunSuite {
       }
     }
   }
-  test("legacy numeric prefixes remain readable, including historically octal hex output") {
-    assertEquals(Serializer.intBinaryIO.deserialize("Ob-1111"), BigInt(-15))
-    assertEquals(Serializer.intHexIO.deserialize("Ox17"), BigInt(15))
-    assertEquals(Serializer.intOctalIO.deserialize("O17"), BigInt(15))
-    assertEquals(Serializer.intHexIO.deserialize("0xff"), BigInt(255))
-  }
   test("constructor-like wrappers trim outer whitespace without losing payload characters") {
     val io = Serializer.constructorLikeSerializer("Value", plainString)
     assertEquals(io.deserialize("  Value( payload )  "), " payload ")

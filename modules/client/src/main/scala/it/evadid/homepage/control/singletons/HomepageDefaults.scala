@@ -17,7 +17,6 @@ import it.evadid.workbook.interaction.sync.SyncStrategy.{SYNC_LAST, SYNC_LAST_AN
 import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
 import upickle.{ReadWriter, macroRW}
 
-import scala.util.Random
 
 object HomepageDefaults {
 
@@ -30,24 +29,6 @@ object HomepageDefaults {
 }
 
 case class HomepageDefaults(fullInfo: FullInfo) {
-
-  /* LANGUAGE MAP INPUT SOURCES */
-
-  /*
-
-
-  lazy val availableLanguages: List[HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
-
-  lazy val defaultLanguage: HumanLanguage = AppLanguage.German
-
-
-
-
-  lazy val defaultDisplay: AllDisplayInfo = AllDisplayInfo(false, None)
-
-  lazy val defaultUser: AllUserInfo = selectableUsers.head
-*/
-
 
   lazy val defaultLanguagesAvailable: List[HumanLanguage] = List(German, English)
 
@@ -71,26 +52,5 @@ case class HomepageDefaults(fullInfo: FullInfo) {
     backendExecutorWithCredentials(useToken)
   }
 
-  private lazy val rnd: List[Int] = 1.to(3).map(_ => Random().nextInt(10000) + 10000).toList
-  /*
-    lazy val selectableUsers: List[AllUserInfo] = {
-      val default = List(
-        User("André Greubel", "andre.greubel@hu-berlin.de", "ag1"),
-        User("Niels Pinkwart", "niels@testhomepage.de", "np1"),
-        User("De Mo", "demo@website.com", "demo"),
-      )
-      val random = rnd.map(curNr => {
-        User(s"Random ${curNr}", s"random-${curNr}@homepage.com", "random-"+curNr)
-      })
-      default ++ random
-    }.map(createDefaultUserInfo)
 
-
-    lazy val defaultUserConfig: UserConfig = UserConfig(
-      defaultSyncLocation, None
-    )
-
-    def createDefaultUserInfo(user: User): AllUserInfo = AllUserInfo(user, defaultUserConfig)
-
-  */
 }

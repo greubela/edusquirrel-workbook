@@ -57,7 +57,7 @@ exception data rather than throwable identity. Replace manual demos with discove
 assertions when they cover useful behavior. Remove tests of deleted APIs or
 meaningless smoke assertions instead of hiding failures with `ignore`.
 
-Test both JSON and MessagePack, concrete and interface codecs, legacy/default
+Test both JSON and MessagePack, concrete and interface codecs, current optional/default
 fields, malformed input and behavior after restoration. Command tests use synthetic
 data and local/injected handlers rather than sending real mail or opening a
 production connection. Browser tests cover integration paths that Node/JVM tests

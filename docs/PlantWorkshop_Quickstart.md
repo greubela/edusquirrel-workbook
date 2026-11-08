@@ -29,7 +29,7 @@ Die frühere Liste fehlender Sensor-, Pumpen-, Gesamtsystem- und Download-Intera
 ## Prüfung
 
 ```sh
-sbt 'client/testOnly *PlantWorkshopWorkbookRoundTripSpec'
+sbt 'client/testOnly *WorkbookDefinitionsSpec'
 sbt buildJS
 ```
 

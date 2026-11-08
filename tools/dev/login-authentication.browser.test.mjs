@@ -41,9 +41,8 @@ test('login preserves email, explains duplicate registration and observes failed
         else if (command.name === 'login-command') {
           const user = {name:'Different Name',id:'test-user',mail:'first.last@example.org'};
           const token = {info:{user,createdAt:'2026-10-13T01:40:00',expiresAt:'2099-01-01T00:00:00'},tokenStringWithSignature:'mock-token'};
-          value = {userKnown:true,tokenValid:validLogin,user:validLogin ? user : null,
-            signedToken:validLogin ? token : null,
-            userConfigJson:validLogin ? JSON.stringify({syncDestinations:[],isOnlineAccount:true}) : null};
+          value = {userKnown:true,tokenValid:validLogin,allUserInfo:validLogin ? {
+            user,token,config:{syncDestinations:[],isOnlineAccount:true}} : null};
         }
         else if (command.name === 'auth-mail-request') value = {user:null,sent:true};
         else throw new Error('Unexpected command ' + command.name);
@@ -75,7 +74,7 @@ test('login preserves email, explains duplicate registration and observes failed
     await registration.locator('button').click();
     await page.waitForFunction(() => /exist|already/i.test(document.querySelector('.section-register [role="status"]').textContent));
     assert.match(await status.innerText(), /exist|already/i);
-    assert.equal(requests[0].json.user.mail, 'first.last@example.org');
+    assert.equal(requests[0].json.userInfo.user.mail, 'first.last@example.org');
     assert.equal(await login.locator('.login-email-input').inputValue(), 'First.Last@example.org');
     await login.locator('.login-name-input').fill('  emailed-token  ');
     await login.locator('button').last().click();

@@ -60,7 +60,7 @@ class HistoryJsonSpec extends FunSuite {
     val event = InteractionVariableState(state, UpdateImportance.MAJOR, time)
     val grade = GradingResult[String, MessengerModel](element.gradingElements.head, state, GradingStatus.Correct(), feedbackInformation = None, additionalData = None, gradingTime = time.plusSeconds(10))
     val graded = InteractionVariableHistory[String, MessengerModel, MessengerModel](InteractionVariableStateHistory[String](Set(event)), new InteractionVariableGradingHistory[String, MessengerModel](Map(state -> GradedState(state, Map(grade.grader -> grade)))), new InteractionVariableScaffoldingHistory[String, MessengerModel](scaffoldingMap = Map.empty))
-    val location = SyncInformation(null, SyncStrategy.SYNC_LAST).forContext(UsageContext("p", "s", "u"))
+    val location = SyncInformation(null, SyncStrategy.SYNC_LAST).forContext(UsageContext("p", "s", "u"), _ => null)
     val variable = element.interactionVariable
     variable.updateHistory(_ => graded, ExecutionContextInformation.default)
     assertEquals(graded.timestampLastChanged, Some(grade.gradingTime))
@@ -86,51 +86,8 @@ class HistoryJsonSpec extends FunSuite {
     assertEquals(HistoryJson.lastTimestamp(write(structured)), Some(hint.scaffoldingTime))
   }
 
-  test("legacy scaffolding gets a stable timestamp and retains its original payload") {
-    val original = ScaffoldingResult("answer", ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[AppLanguage.HumanLanguage]("Old hint")), FeedbackEntity.TestEntity(), Some("evidence"), time.plusSeconds(1))
-    val json = writeJs(original)
-    json.obj.remove("scaffoldingTime")
-    val first = read[ScaffoldingResult[String, String]](json)
-    val second = read[ScaffoldingResult[String, String]](json)
-    assertEquals(first.scaffoldingTime, LocalDateTime.MIN)
-    assertEquals(first, second)
-    assertEquals(first.additionalInformation, original.additionalInformation)
-    assertEquals(read[ScaffoldingResult[String, String]](write(first)), first)
-    assertEquals(InteractionVariableHistory.empty[String, Int, Int].timestampLastChanged, None)
-  }
 
-  test("legacy grades with an omitted default timestamp still load using the answer timestamp") {
-    val task = LanguageMapContentId("test/task")
-    val grader = TextInputLlmGrader(task, None, TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(LanguageMapContentId("test/criterion"), Map.empty))
-    val result = GradingResult[String, MessengerModel](grader, "answer", GradingStatus.Correct(), feedbackInformation = None, additionalData = None, gradingTime = time)
-    val history = InteractionVariableHistory[String, MessengerModel, MessengerModel](InteractionVariableStateHistory[String](Set(InteractionVariableState("answer", UpdateImportance.MAJOR, time))), new InteractionVariableGradingHistory[String, MessengerModel](Map("answer" -> GradedState("answer", Map(result.grader -> result)))), new InteractionVariableScaffoldingHistory[String, MessengerModel](scaffoldingMap = Map.empty))
-    val json = writeJs(history)
-    json("historyGrading")("gradingsMap")("answer")("graderResultMap").arr.foreach(pair => pair(1).obj.remove("gradingTime"))
-    assertEquals(HistoryJson.lastTimestamp(ujson.write(json)), Some(time))
-    assertEquals(FetchResponse.fromMap(time.plusSeconds(1), Map("answer" -> ujson.write(json)), HistoryJson.lastTimestamp)
-      .fetchedValues.size, 1)
-  }
 
-  test("flat saved histories migrate skipped grades with a stable answer-based timestamp") {
-    type History = InteractionVariableHistory[SlideshowState, Nothing, String]
-    given ReadWriter[Nothing] = readwriter[ujson.Value].bimap[Nothing](
-      (_: Nothing) => throw IllegalArgumentException("No payload"),
-      (_: ujson.Value) => throw IllegalArgumentException("No payload"))
-    val state = SlideshowState(Nil, Set.empty)
-    val grader: WorkbookInteractionGrader[SlideshowState, Nothing] = SlideshowGrader(true)
-    val result = writeJs(GradingResult[SlideshowState, Nothing](grader, state, GradingStatus.NotRequested()))
-    result.obj.remove("gradingTime")
-    result("gradingStatus")("$type") = ujson.Str(result("gradingStatus")("$type").str.replace("NotRequested", "NotExecuted"))
-    val flat = ujson.Obj("events" -> ujson.Arr(writeJs(InteractionVariableState(state, UpdateImportance.MAJOR, time))),
-      "gradings" -> ujson.Arr(ujson.Arr(writeJs(state), ujson.Obj("state" -> writeJs(state), "testsWithResults" -> ujson.Arr(result)))),
-      "scaffoldings" -> ujson.Arr())
-    val restored = read[History](flat)
-    val saved = restored.historyGrading.gradingsMap(state).graderResultMap(grader)
-    assertEquals(saved.gradingStatus, GradingStatus.NotRequested())
-    assertEquals(saved.gradingTime, time)
-    assertEquals(read[History](flat), restored)
-    assertEquals(HistoryJson.lastTimestamp(ujson.write(flat)), Some(time))
-  }
 
   test("merging histories preserves feedback with string map keys and chooses the first duplicate") {
     val first = history("Grüße", 1)
@@ -149,22 +106,6 @@ class HistoryJsonSpec extends FunSuite {
     assertEquals(merged.historyScaffolding.scaffoldingMap, first.historyScaffolding.scaffoldingMap ++ second.historyScaffolding.scaffoldingMap)
   }
 
-  test("an interaction restores legacy database envelopes and mixed old and new histories") {
-    val variable = TextInteraction("answer").interactionVariable
-    val old = ujson.Obj("states" -> ujson.Arr(ujson.Obj("serializedValue" -> "older",
-      "updateImportance" -> "MAJOR", "timestamp" -> time.toString)))
-    val envelope = ujson.write(ujson.Obj("keyForSerialisation" -> "answer_history", "fullHistory" -> ujson.write(old)))
-    val newer = InteractionVariableHistory[String, Int, Int](InteractionVariableStateHistory[String](Set(InteractionVariableState("newer", UpdateImportance.MAJOR, time.plusSeconds(1)))), new InteractionVariableGradingHistory[String, Int](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[String, Int](scaffoldingMap = Map.empty))
-    val restored = variable.serializerHistory.deserialize(HistoryJson.merge(List(envelope, write(newer))))
-    assertEquals(restored.historyStates.events.map(_.value), Set("older", "newer"))
-    assertEquals(restored.historyStates.lastStateOption.map(_.value), Some("newer"))
-  }
-  test("legacy text retains literal quotes instead of being interpreted as JSON") {
-    val variable = TextInteraction("answer").interactionVariable
-    val old = ujson.Obj("states" -> ujson.Arr(ujson.Obj("serializedValue" -> "\"quoted\"",
-      "updateImportance" -> "MAJOR", "timestamp" -> time.toString)))
-    assertEquals(variable.serializerHistory.deserialize(ujson.write(old)).historyStates.lastStateOption.map(_.value), Some("\"quoted\""))
-  }
 
   test("restoring structured keys retains typed hints through JSON and MessagePack") {
     type History = InteractionVariableHistory[List[String], Int, List[Int]]
@@ -181,28 +122,5 @@ class HistoryJsonSpec extends FunSuite {
     }
   }
 
-  test("restoring a decoded mixed legacy envelope preserves sources and current hints") {
-    import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
-
-    val variable = new WorkbookInteractionElementFull[String, Int, Int] {
-      override val elementId = "answer"
-      override val defaultValue = ""
-      override lazy val childrenOfThisElement = List.empty[WorkbookElement]
-      override val associatedFactory = TextInteraction.factory
-    }.interactionVariable
-    val legacy = ujson.Obj("states" -> ujson.Arr(ujson.Obj("serializedValue" -> "legacy source",
-      "updateImportance" -> "MAJOR", "timestamp" -> time.toString)))
-    val oldEnvelope = ujson.write(ujson.Obj("keyForSerialisation" -> "answer_history", "fullHistory" -> ujson.write(legacy)))
-    val hint = ScaffoldingResult("current source", ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[AppLanguage.HumanLanguage]("Check the condition.")), FeedbackEntity.TestEntity(), Some(7))
-    val current = InteractionVariableHistory[String, Int, Int](InteractionVariableStateHistory[String](Set(InteractionVariableState("current source", UpdateImportance.MAJOR, time.plusSeconds(1)))), new InteractionVariableGradingHistory[String, Int](gradingsMap = Map.empty), InteractionVariableScaffoldingHistory[String, Int](Map("current source" -> hint)))
-    val decoded = variable.serializerHistory.deserialize(HistoryJson.stored("answer_history", HistoryJson.merge(List(oldEnvelope, write(current)))))
-    val local = InteractionVariableHistory[String, Int, Int](InteractionVariableStateHistory[String](Set(InteractionVariableState("local source", UpdateImportance.MAJOR, time.plusSeconds(2)))), new InteractionVariableGradingHistory[String, Int](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[String, Int](scaffoldingMap = Map.empty))
-    val restored = local.mergeWith(List(decoded))
-    assertEquals(restored.historyStates.events, local.historyStates.events ++ decoded.historyStates.events)
-    assertEquals(restored.historyStates.events.map(_.value), Set("legacy source", "current source", "local source"))
-    assertEquals(restored.historyStates.lastStateOption.map(_.value), Some("local source"))
-    assertEquals(restored.historyScaffolding.scaffoldingMap, Map("current source" -> hint))
-    assertEquals(ujson.read(write(restored)).obj.keySet.toSet, Set("historyStates", "historyGrading", "historyScaffolding"))
-  }
 
 }

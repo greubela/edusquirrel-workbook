@@ -89,31 +89,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     override def destroy(): Unit = ()
   }
 
-  test("native Snap edits retain typed state, legacy data and authored assets without an echo reload") {
-    val source = ProgrammingStateSnapXml("<project/>", List("watcher")).toSnapScalaModel.toOption.get
-    val state = Var[ProgrammingState](source)
-    val impl = new RecordingImpl
-    var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
-    val owner = new ManualOwner
-    state.signal.changes.distinct.foreach(next => edits = edits :+ next)(using owner)
-    try {
-      editor.mountEditorInto(null, owner)
-      assertEquals(impl.current, Some(source.toSnapXml))
-      val live = "<project><thumbnail>generated</thumbnail><costumes><costume name='authored' image='asset'/></costumes></project>"
-      impl.listener(live)
-      val next = state.now().asInstanceOf[ProgrammingStateSnapScalaModel]
-      assertEquals(next.legacyFloatingObjects, source.legacyFloatingObjects)
-      assertEquals(next.model.project.get.costumes.head.image, Some("asset"))
-      assertEquals(next.model.project.get.thumbnail, None)
-      assertEquals(impl.reloads, 0)
-      assertEquals(edits, List(next))
-      impl.listener(live)
-      assertEquals(edits, List(next))
-      assertEquals(ProgrammingState.serializer.deserialize(
-        ProgrammingState.serializer.serialize(next)), next)
-    } finally owner.killSubscriptions()
-  }
 
   test("mount once, publish Snap edits once, and reload only external changes") {
     val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
@@ -255,30 +230,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     } finally owner.killSubscriptions()
   }
 
-  test("cleaning regenerated Snap images retains legacy metadata and authored costumes") {
-    val source = ProgrammingStateSnapXml("<project/>", legacyFloatingObjects = List(" watcher ", "comment\nline two"))
-    val state = Var[ProgrammingState](source)
-    val impl = new RecordingImpl
-    var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
-    val owner = new ManualOwner
-    state.signal.changes.distinct.foreach(next => edits = edits :+ next)(using owner)
-    try {
-      editor.mountEditorInto(null, owner)
-      def liveXml(image: Int) =
-        s"<project><thumbnail>image-$image</thumbnail><costumes><costume image=\"authored\"/></costumes><stage><pentrails>trails-$image</pentrails><scripts>edited</scripts></stage></project>"
-      val cleaned = source.copy(snapXml = "<project><costumes><costume image=\"authored\"/></costumes><stage><scripts>edited</scripts></stage></project>").toSnapScalaModel.toOption.get
-      impl.listener(liveXml(0))
-      impl.listener(liveXml(1))
-      assertEquals(state.now(), cleaned)
-      assertEquals(edits, List(cleaned))
-      assertEquals(impl.current, Some(cleaned.toSnapXml))
-      assertEquals(impl.reloads, 0)
-      assertEquals(impl.librariesCleared, 0)
-      assertEquals(ProgrammingState.serializer.deserialize(
-        ProgrammingState.serializer.serialize(state.now())), cleaned)
-    } finally owner.killSubscriptions()
-  }
 
   test("closing an editor before the Snap runtime loads does not touch Process") {
     new SnapCodeEditorImplDelegateToOriginal().pauseWorldCycles()
@@ -345,35 +296,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     }
   }
 
-  test("preview reuse compares complete XML and legacy data across typed Snap representations") {
-    withRoot { container =>
-      val initial = ProgrammingStateSnapXml(
-        "<project><stage><sprites><sprite name=\"Turtle\"><scripts>" +
-          "<script x=\"10\" y=\"20\"><block s=\"forward\"><l>30</l></block></script>" +
-          "</scripts></sprite></sprites></stage></project>")
-      val state = Var[ProgrammingState](initial)
-      val impl = new RecordingImpl
-      val mounted = render(container, SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl).getDomElement())
-      try {
-        val canvas = container.querySelector("canvas")
-        state.set(initial.toSnapScalaModel.toOption.get)
-        state.set(initial.copy())
-        assert(container.querySelector("canvas") eq canvas)
-        assertEquals(impl.previewed, List(initial))
-        val moved = initial.copy(snapXml = initial.snapXml.replace("x=\"10\"", "x=\"80\""))
-        val legacy = moved.copy(legacyFloatingObjects = List("watcher\r\n\t "))
-        val changed = legacy.copy(snapXml = legacy.snapXml.replace("<l>30</l>", "<l>40</l>"))
-        List(moved, legacy, changed, initial).foreach { next =>
-          val previousCanvas = container.querySelector("canvas")
-          state.set(next)
-          assert(!(container.querySelector("canvas") eq previousCanvas))
-          for (_ <- 1 to 5) state.set(next.copy())
-          assertEquals(state.now(), next)
-        }
-        assertEquals(impl.previewed, List(initial, moved, legacy, changed, initial))
-      } finally mounted.unmount()
-    }
-  }
 
   test("invalid drafts remove the old preview and restoring its source renders it again") {
     withRoot { container =>
@@ -590,7 +512,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
 
   test("the typed interaction view publishes only meaningful changes and excludes generated media") {
     val xml = "<project><stage name='Turtle' tempo='60'><scripts><script><block s='forward'><l>10</l></block></script></scripts></stage></project>"
-    val source = ProgrammingStateSnapXml(xml, List("legacy"))
+    val source = ProgrammingStateSnapXml(xml)
     val state = Var[ProgrammingState](source)
     val impl = new RecordingImpl
     val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl)
@@ -608,7 +530,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       impl.listener(next)
       val typed = state.now().asInstanceOf[ProgrammingStateSnapScalaModel]
       assertEquals(typed, editor.snapState.now())
-      assertEquals(typed.legacyFloatingObjects, List("legacy"))
       assert(!typed.toSnapXml.snapXml.contains("huge"))
       assertEquals(changes.now(), List(typed))
       impl.listener(next.replace("huge", "another-preview"))

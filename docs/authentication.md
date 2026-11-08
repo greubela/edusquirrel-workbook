@@ -16,6 +16,11 @@ asynchronous failures reach translated feedback rather than disappearing in the
 transport layer. Styles belong in `homepage/css/workbook/workbook-structure.css`
 and messages in the login language maps.
 
+Saved login restoration accepts only the current schema. Unreadable or obsolete
+login records are discarded so startup can show the login form. Other saved
+answers and browser storage are left intact. Do not add data migrations during
+development; reject unsupported data at its storage boundary.
+
 ## Diagnosing failures
 
 A command-pool error is a transport/handler summary; inspect its underlying server
@@ -29,7 +34,7 @@ alone does not update a running installation.
 
 ```sh
 sbt 'server/test' 'client/test' buildJS
-npm run test:workbooks -- login-authentication
+npm run test:workbooks -- login-authentication saved-user-startup
 ```
 
 Tests use JDBC doubles and intercepted backend requests. They cover duplicate

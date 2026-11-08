@@ -43,8 +43,6 @@ case class LocalStorageSyncHandler(localStorageSyncDefinition: LocalStorageSyncD
 
   private val storage: Storage = dom.window.localStorage
 
-
-
   override def storeElementRaw(logger: SyncLogger, key: String, value: String)(using ec: ExecutionContext): Future[SyncSuccess] = Future {
     storage.setItem(key.toString, value.toString)
     SyncSuccess(1, 0, 0, LocalDateTime.now())
@@ -71,79 +69,3 @@ case class LocalStorageSyncHandler(localStorageSyncDefinition: LocalStorageSyncD
     LocalStorageSyncHandler.fetchAllRawSync()
   }(using ec)
 }
-
-/*
-  private val historyKeyPrefix = "synced-variable"
-
-  private val ec: ExecutionContext = ExecutionContext.global
-
-
-  private val contextToBrowserKeySerializer: Serializer[SyncContext] = SyncContext.serializer
-
-  override def storeTo(logger: SyncLogger, context: SyncContext, history: String): Future[SyncSuccess] = Future {
-    try {
-      val value: String = HistoryJson.stored(context.keyForSerialisation, history)
-      if (value.length > maxValueCharakterSize) {
-        throw new IllegalArgumentException(s"Value exceeds ${maxValueCharakterSize} characters (has ${value.length}). Will not save to LocalStorage!")
-      }
-      val serializedKey: String = historyKeyPrefix + contextToBrowserKeySerializer.serialize(context)
-      //println(s"###################### [DEBUG] storing to local storage: $serializedKey -> $value")
-      storage.setItem(serializedKey.toString, value.toString)
-      SyncSuccess(1, 0, 0, LocalDateTime.now())
-    } catch case e: Exception => {
-      logger.logExceptionWarn("LocalStorageSync, error at storeTo (ignoring write)", e)
-      e.printStackTrace()
-      throw e
-    }
-  }(using ec)
-
-  override def shouldBePersistant(): Boolean = false
-
-  override def clearAllValues(logger: SyncLogger, context: UsageContext): Future[SyncSuccess] = Future {
-    resetCompleteStorage()
-  }(using ec)
-
-
-  override def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess] = Future {
-    resetCompleteStorage()
-  }(using ec)
-
-
-
-
-
-  private def transformBack(logger: SyncLogger, browserKey: String, browserValue: String): Option[(SyncContext, String)] = try {
-    if (!browserKey.startsWith(historyKeyPrefix)) None else {
-      val browserKeyWithoutPrefix = browserKey.substring(historyKeyPrefix.length, browserKey.length)
-      Some(contextToBrowserKeySerializer.deserialize(browserKeyWithoutPrefix) -> ujson.write(HistoryJson.payload(browserValue)))
-    }
-  } catch case (e: Exception) => {
-    logger.log(s"LocalStorageSync: Ignore tuple (${browserKey}, ${browserValue}) because it was unparsable: ${e.getMessage}", WARN, Option(false))
-    None
-  }
-
-
-  override def fetchAll(logger: SyncLogger, context: UsageContext): Future[FetchResponse[SyncContext, String]] = {
-    val resMap: Map[SyncContext, String] = (0 until storage.length).flatMap(i =>
-      val browserKey = storage.key(i)
-      val browserValue = storage.getItem(browserKey)
-      transformBack(logger, browserKey, browserValue)
-    ).filter(_._1.toUsageContext == context).toMap
-
-    val res = FetchResponse.fromMap[SyncContext, String](time.LocalDateTime.now(), resMap, HistoryJson.lastTimestamp)
-    Future.successful(res)
-  }
-
-  override def isLocal: Boolean = true
-
-  override def toString: String = s"LocalStorageSync(${maxValueCharakterSize})"
-
-
-  override protected def deserializeFromConstructorLikeString(from: ConstructorLikeReadResult): Option[SyncDestinationHandler] = {
-    if (from.elementType == this.getClass.getSimpleName) Some(LocalStorageSyncHandler(from.jsonPayloads.head.toInt))
-    else None
-  }
-
-  override protected def serializeToConstructorLikeString(): ConstructorLikeReadResult = {
-    ConstructorLikeReadResult(this.getClass.getSimpleName, List(maxValueCharakterSize.toString))
-  }*/
