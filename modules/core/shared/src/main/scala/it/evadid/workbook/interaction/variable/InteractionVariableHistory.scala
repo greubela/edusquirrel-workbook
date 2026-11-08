@@ -1,5 +1,7 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.core.util.io.Serializer
+import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.interaction.sync.SyncStrategy
@@ -83,12 +85,16 @@ case class InteractionVariableHistory[T, GA, SA]
   def mergeWith(other: InteractionVariableHistory[T, GA, SA]): InteractionVariableHistory[T, GA, SA] = mergeWith(Seq(other))
 
 
-
 }
+
 object InteractionVariableHistory {
 
+
+
+
   private case class Payload[T, GA, SA](historyStates: InteractionVariableStateHistory[T],
-      historyGrading: InteractionVariableGradingHistory[T, GA], historyScaffolding: InteractionVariableScaffoldingHistory[T, SA])
+                                        historyGrading: InteractionVariableGradingHistory[T, GA], historyScaffolding: InteractionVariableScaffoldingHistory[T, SA])
+
   private given [T: ReadWriter, GA: ReadWriter, SA: ReadWriter]: ReadWriter[Payload[T, GA, SA]] = macroRW
 
   given [T: ReadWriter, GA: ReadWriter, SA: ReadWriter]: ReadWriter[InteractionVariableHistory[T, GA, SA]] =

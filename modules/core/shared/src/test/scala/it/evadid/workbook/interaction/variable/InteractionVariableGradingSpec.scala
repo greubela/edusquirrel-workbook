@@ -1757,7 +1757,7 @@ class InteractionVariableGradingSpec extends FunSuite {
   import it.evadid.workbook.interaction.variable.InteractionVariable.InteractionVariableUntyped
   import it.evadid.workbook.interaction.sync.*
   import it.evadid.workbook.meta.InteractionVariableSyncReport
-  import it.evadid.workbook.interaction.sync.destination.{SyncDestination, SyncDestinationHistory}
+  import it.evadid.workbook.interaction.sync.destination.{SyncDestinationHandler, SyncDestinationHistoryHandler}
   import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse, SyncDirection, SyncStatus}
 
   private def restoreVariable(graders: List[RecordingGrader]): InteractionVariable[String, String, String] = {
@@ -1784,10 +1784,10 @@ class InteractionVariableGradingSpec extends FunSuite {
     InteractionVariableHistory(InteractionVariableStateHistory(events), InteractionVariableGradingHistory(grades), InteractionVariableScaffoldingHistory(hints))
 
   private def restoreLocation(): SyncInformationWithContext = {
-    val destination = new SyncDestinationHistory {
+    val destination = new SyncDestinationHistoryHandler {
       override def shouldBePersistant(): Boolean = true
       override def isLocal: Boolean = true
-      override def fetchAll(logger: SyncLogger, context: UsageContext): Future[FetchResponse[SyncContext, String]] =
+      override def fetchAllInteractions(logger: SyncLogger, context: UsageContext): Future[FetchResponse[SyncContext, String]] =
         throw AssertionError("Restore must use its existing report")
       override def storeTo(logger: SyncLogger, context: SyncContext, payload: String): Future[SyncSuccess] =
         throw AssertionError("Restore must not write")
@@ -1795,7 +1795,7 @@ class InteractionVariableGradingSpec extends FunSuite {
         throw AssertionError("Restore must not clear storage")
       override def clearAllValues(logger: SyncLogger, context: UsageContext): Future[SyncSuccess] =
         throw AssertionError("Restore must not clear storage")
-      override protected def deserializeFromConstructorLikeString(from: ConstructorLikeReadResult): Option[SyncDestination] = None
+      override protected def deserializeFromConstructorLikeString(from: ConstructorLikeReadResult): Option[SyncDestinationHandler] = None
       override protected def serializeToConstructorLikeString(): ConstructorLikeReadResult = ConstructorLikeReadResult("RestoreTest", Nil)
     }
     SyncInformation(destination, SyncStrategy.SYNC_EVERYTHING).forContext(UsageContext("test", "workbook", "user"))

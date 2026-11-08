@@ -3,13 +3,13 @@ package it.evadid.homepage.control.info
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.homepage.control.model.{AllWorkbookInfo, HomepageInfo}
+import it.evadid.homepage.control.model.{AllWorkbookInfo, FullInfo, HomepageInfo}
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
 import it.evadid.workbook.interaction.sync.SyncContext
 import upickle.default.*
 
 import java.time.LocalDateTime
-
+import it.evadid.homepage.control.model.FullInfo.*
 case class SessionData(
                         timestampStorage: LocalDateTime,
                         knownUsageData: Map[SyncContext, String],

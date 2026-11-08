@@ -30,6 +30,18 @@ trait Serializer[T] extends TypeConverter[T, String] {
 
   def tryDeserializeAll(in: IterableOnce[String]): ConverterResult[T, String] = super.tryConvertAllToI(in)
 
+  def trySerialize(obj: T): Either[SerializedException, String] = try {
+    Right(serialize(obj))
+  } catch case (err: Throwable) => {
+    Left(SerializedException(s"Error during Serialization of '${obj.toString.take(60)}': ${err.getMessage}", err))
+  }
+
+  def tryDeserialize(str: String): Either[SerializedException, T] = try {
+    Right(deserialize(str))
+  } catch case (err: Throwable) => {
+    Left(SerializedException(s"Error during Deserialisation of '${str.take(60)}': ${err.getMessage}", err))
+  }
+
   def serialize(obj: T): String
 
   def deserialize(str: String): T
@@ -78,6 +90,7 @@ object Serializer {
         } catch case (err: Throwable) => {
           throw SerializedException(s"Error at serializing object '${obj}' (${obj.getClass.getSimpleName})", err)
         }
+
       override def deserialize(str: String): TraitType = {
         val res = try {
           read(str)(using rw)

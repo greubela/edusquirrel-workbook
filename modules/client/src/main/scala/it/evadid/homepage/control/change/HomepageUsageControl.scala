@@ -15,11 +15,10 @@ import it.evadid.homepage.control.info.{SessionData, WorkbookUserDataAnalyzer}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.workbook.content.WorkbookFactory
-import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
+import it.evadid.homepage.workbook.syncDestination.LocalStorageSyncHandler
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
 import upickle.default.*
 
-import scala.Console.err
 import scala.concurrent.*
 import scala.scalajs.js
 import scala.util.{Failure, Success}
@@ -35,11 +34,6 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   def changeDisplay(func: AllDisplayInfo => AllDisplayInfo): Unit = fullInfo.synchronized {
     updateInfoWithoutContextChange((curInfo: HomepageInfo) => curInfo.copy(displayInfo = func(curInfo.displayInfo)))
   }
-
-  /*def updateInfoWithContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
-
-
-  }*/
 
   private[change] def updateInfoWithoutContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
     fullInfo.syncControl
@@ -77,16 +71,13 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     } else {
       logger.logWarn("[WARN] ignore updated workbook config because there is no workbook loaded!")
     }
-
   }
 
   /* USER */
   private val allUserInfoStorageKey: String = "edusquirrel-alluserinfo"
-  private val serializer: Serializer[AllUserInfo] = DefaultSerializer.serializerAllUserInfo(HomepageDefaults.defaultSerializerUserConfig)
 
   def tryParsingExistingUser(): Option[AllUserInfo] = {
-    val value: Option[String] = LocalStorageSync.fetchAllRawSync(logger).get(allUserInfoStorageKey)
-    serializer.tryDeserializeAll(value).inputAfterOperation.headOption
+     LocalStorageSyncHandler.fetchAllRawSync().get(allUserInfoStorageKey).map(curStr => read(curStr))
   }
 
   private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken]): Future[?] = {
@@ -99,7 +90,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     loginRes.flatMap {
       case (exInfo: ExecutionSuccess[LoginResponse]) =>
         val loginResponse = exInfo.result
-        val userInfoOp = loginResponse.toInfo(HomepageDefaults.defaultSerializerUserConfig)
+        val userInfoOp = loginResponse.allUserInfo
         if (!loginResponse.userKnown) {
           removeUserFromLocalStorage()
           throw AuthenticationFailure("login/errorUnknownUser")
@@ -119,7 +110,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def removeUserFromLocalStorage(): Unit = {
-    LocalStorageSync.instance.removeKey(allUserInfoStorageKey)
+    LocalStorageSyncHandler.removeKey(allUserInfoStorageKey)
   }
 
   def tryLoginWith(mail: String, singleAccessToken: SingleAccessToken): Future[?] = {
@@ -134,7 +125,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
     val loginFuture: Future[_] = if (fullInfo.current.userInfo.isEmpty || fullInfo.current.userInfo.get.user.id != sessionData.userInfo.id) {
       tryLoginOrLocalRegistration(Some(sessionData.userInfo), sessionData.userConfig)
-    } else Future.successful( () )
+    } else Future.successful(())
 
 
     def actuallyLoadData(): Unit = {
@@ -145,7 +136,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
       }
     }
 
-    loginFuture.onComplete{
+    loginFuture.onComplete {
       case Success(_) => actuallyLoadData()
       case Failure(err) => {
         logger.logExceptionWarn("Could not locally log in even though that should work. Loading without user account set", err)
@@ -170,7 +161,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def tryLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = Future {
-    val userConfig: UserConfig = withConfig.getOrElse(UserConfig(HomepageDefaults.useDefaultLocalSyncLocations, false))
+    val userConfig: UserConfig = withConfig.getOrElse(UserConfig(HomepageDefaults.defaultSyncLocations, false))
     val user: User = withUser.getOrElse(User.createNewUser("Anonymous", "no-reply@evadid.it"))
     val allUserInfo = AllUserInfo(user, None, userConfig)
     changeUser(Some(allUserInfo))
@@ -181,11 +172,10 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     if (!User.isEmail(normalizedEmail)) Future.failed(AuthenticationFailure("login/errorEmail"))
     else if (name.trim.isEmpty) Future.failed(AuthenticationFailure("login/errorName"))
     else {
-      val userConfig = UserConfig(HomepageDefaults.useDefaultOnlineSyncLocations, true)
+      val userConfig = UserConfig(HomepageDefaults.defaultSyncLocations, true)
       val user = AllUserInfo.createNewUser(name.trim, normalizedEmail, userConfig)
-      val configJson = HomepageDefaults.defaultSerializerUserConfig.serialize(user.config)
       UserCommands.createAccountCommand
-        .sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user.user, configJson))
+        .sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user))
         .flatMap { exInfo =>
           val result = exInfo.result
           if (!result.accountCreated) {
@@ -225,12 +215,12 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = fullInfo.synchronized {
 
     def actuallySetNewUser(): Unit = try {
-      LocalStorageSync.instance.removeKey(allUserInfoStorageKey)
+      LocalStorageSyncHandler.removeKey(allUserInfoStorageKey)
       if (newUserInfo.isDefined) {
         val allUserInfo = newUserInfo.get
         logger.logInfo(s"Loading user ${allUserInfo.toString}")
-        val serialized = serializer.serialize(allUserInfo)
-        LocalStorageSync.storeToRawSync(logger, allUserInfoStorageKey, serialized)
+        val serialized = write(allUserInfo)
+        LocalStorageSyncHandler.instance.storeElementRaw(fullInfo.syncControl.syncLogger, allUserInfoStorageKey, serialized)
       }
       fullInfo.homepageInfoState.update(_.copy(userInfo = newUserInfo))
     } catch case (err: Throwable) => logger.logException(err)

@@ -6,10 +6,11 @@ import it.evadid.core.datastructures.language.serialization.abstractions.ParsedT
 import it.evadid.core.datastructures.language.serialization.{LanguageMapCollectionSource, LanguageMapInputSource, LanguageMapSourceFileBased}
 import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.homepage.workbook.syncDestination.LocalIndexedDbStorageSync
+import it.evadid.homepage.workbook.syncDestination.LocalIndexedDbStorageSyncHandler
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.destination.SyncDestination.SyncDestinationForType
+import it.evadid.workbook.interaction.sync.destination.*
+import it.evadid.workbook.interaction.sync.destination.SyncDestinationForKey
 import upickle.default.*
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -31,22 +32,28 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
 
   val syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
 
-  private lazy val localCache: SyncDestinationForType[ParsedTriples] = {
-    LocalIndexedDbStorageSync.instanceForCaching.getSyncDestinationForType(syncLogger, "tripleCache", ParsedTriples.serializer)
+  private lazy val localCache: SyncDestinationForKey[String, ParsedTriples] = {
+    LocalIndexedDbStorageSyncHandler(LocalIndexedDbStorageSyncHandler.instanceForCaching)
+      .withSyncLogger(syncLogger)
+      .forSpecificType[String, ParsedTriples]
+      .forSpecificKey("tripleCache")
   }
 
 
   def ensureStartup(startupStrategy: STARTUP_STRATEGY): Future[Unit] =
     LanguageCacheStartup.run(
       startupStrategy,
-      () => localCache.readElement,
+      () => localCache.readValue,
       triples => {
         syncLogger.logInfo(s"Restoring ${triples.size} language triples from IndexedDB")
         // Installing an existing cache must not serialize and write it again.
         addTriples(Set.empty, triples)
       },
       () => ensureDefaultLanguageSourcesLoaded(),
-      work => { org.scalajs.dom.window.setTimeout(() => work(), 0); () },
+      work => {
+        org.scalajs.dom.window.setTimeout(() => work(), 0);
+        ()
+      },
       error => syncLogger.logExceptionWarn("Language cache/startup refresh unavailable", error))
 
   private def addTriples(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit =
@@ -56,7 +63,7 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
   private def addTriplesAndStoreToCache(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit = {
     addTriples(loadedSources, loadedTriples)
     if (loadedTriples.size > 0) {
-      scala.util.Try(localCache.storeElement(fullInfo.homepageInfoNow().languageMapStore.parsedTriples))
+      scala.util.Try(localCache.storeValue(fullInfo.homepageInfoNow().languageMapStore.parsedTriples))
         .fold(Future.failed, identity).recover { case scala.util.control.NonFatal(error) =>
           syncLogger.logExceptionWarn("Could not persist language cache", error)
           false

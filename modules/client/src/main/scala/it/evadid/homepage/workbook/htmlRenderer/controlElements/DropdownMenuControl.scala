@@ -9,7 +9,7 @@ import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer
 import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlDropdownMenu
-import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
+import it.evadid.homepage.workbook.syncDestination.LocalStorageSyncHandler
 import org.scalajs.dom.{File, HTMLInputElement}
 
 import scala.concurrent.ExecutionContext
@@ -26,7 +26,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
   private def closeMenu(): Unit = isOpen.set(false)
 
   private def downloadAll(): Unit = {
-    fullInfo.current.workbookUserData.foreach(_.downloadAllData())
+    WorkbookUserDataAnalyzer().downloadAllData(fullInfo)
   }
 
 

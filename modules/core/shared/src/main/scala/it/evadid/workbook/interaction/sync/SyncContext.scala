@@ -1,9 +1,8 @@
 package it.evadid.workbook.interaction.sync
 
-import upickle.default.*
-
 import it.evadid.core.util.io.Serializer
 import upickle.ReadWriter
+import upickle.default.*
 
 case class SyncContext(
                         programId: String,
@@ -14,6 +13,10 @@ case class SyncContext(
 
 
   def toUsageContext: UsageContext = UsageContext(programId, scenarioId, userId)
+
+  def doesMatch(usageContext: UsageContext): Boolean = {
+    programId == usageContext.programId && scenarioId == usageContext.scenarioId && userId == usageContext.scenarioId
+  }
 
 }
 

@@ -15,12 +15,8 @@ object UserCommands {
 
   case class LoginRequest(userMail: String, accessToken: Either[SingleAccessToken, SignedToken]) derives ReadWriter
 
-  case class LoginResponse(userKnown: Boolean, tokenValid: Boolean, user: Option[User], signedToken: Option[SignedToken], userConfigJson: Option[String]) derives ReadWriter {
-    def loginSucceeded: Boolean = userKnown && tokenValid && user.nonEmpty && signedToken.nonEmpty && userConfigJson.nonEmpty
-
-    def toInfo(userConfigSerializer: Serializer[UserConfig]): Option[AllUserInfo] = if (!loginSucceeded) None else Try {
-      AllUserInfo(signedToken.get.info.user, signedToken, userConfigSerializer.deserialize(userConfigJson.get))
-    }.toOption
+  case class LoginResponse(userKnown: Boolean, tokenValid: Boolean, allUserInfo: Option[AllUserInfo]) derives ReadWriter {
+    def loginSucceeded: Boolean = userKnown && tokenValid && allUserInfo.nonEmpty
   }
 
   lazy val loginCommand: ExecutionCommandFactory[LoginRequest, LoginResponse] = ExecutionCommandFactory(
@@ -35,7 +31,7 @@ object UserCommands {
     "create-account"
   )
 
-  case class CreateAccountRequest(user: User, userConfigJson: String) derives ReadWriter
+  case class CreateAccountRequest(user: AllUserInfo) derives ReadWriter
 
   case class CreateAccountResponse(accountCreated: Boolean, token: Option[SignedToken]) derives ReadWriter
 

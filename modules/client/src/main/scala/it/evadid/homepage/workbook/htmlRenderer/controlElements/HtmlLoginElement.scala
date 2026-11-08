@@ -112,14 +112,13 @@ case class HtmlLoginElement() extends HtmlAppElement {
   // Start and Continue together (Insert Mail --> Insert Name or Token)
 
   private val localStartBody: List[Element] = {
-
     List(
       ul(
         li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit1")),
         li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit2")),
         li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit3")),
       ),
-      HtmlButtonElement.withTextLabel("login/buttonLocalLogin", _ => fullInfo.usageControl.tryLocalRegistration()).getDomElement()
+      HtmlButtonElement.withTextLabel("login/buttonLocalLogin", _ => fullInfo.usageControl.tryLocalRegistration(None, None)).getDomElement()
     )
   }
 

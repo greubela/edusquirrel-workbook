@@ -54,9 +54,8 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
       if (allUserInfoOp.isEmpty) laminarHelper.plaintextStringSignal("login/privacyFooterNoLogin")
       else if (!allUserInfoOp.get.config.isOnlineAccount) laminarHelper.plaintextStringSignal("login/privacyFooterLocalLogin")
       else {
-        val syncDest = allUserInfoOp.get.config.syncDestinations
-        val syncDestStr = syncDest.map(HomepageDefaults.defaultSyncLocationSerializer.serialize)
-        laminarHelper.contentIdStringSignal(LanguageMapContentId("login/privacyFooterOnlineLogin"), PLAINTEXT_UNDERSCORE_REPLACABLE, List(syncDest.size.toString, syncDestStr.mkString("(", ", ", ")")))
+        val syncDest = allUserInfoOp.get.config.syncDestinations.map(_.syncDestination.toString)
+        laminarHelper.contentIdStringSignal(LanguageMapContentId("login/privacyFooterOnlineLogin"), PLAINTEXT_UNDERSCORE_REPLACABLE, List(syncDest.size.toString, syncDest.mkString("(", ", ", ")")))
       }
     })
 

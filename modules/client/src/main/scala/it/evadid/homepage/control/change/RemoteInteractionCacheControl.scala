@@ -77,7 +77,11 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
   }
 
   override def requestStore(from: List[InteractionVariableUntyped]): Future[?] = remoteCache.syncLock.synchronized {
-    remoteCache.requestCacheDependentStore(curSyncInfo => from.flatMap(curSyncInfo.dataToStore(_)))
+    remoteCache.requestCacheDependentStore(curSyncInfo => {
+      from.flatMap(curVariable => {
+        curSyncInfo.dataToStore(curVariable)
+      })
+    })
   }
 
   override def controlLogger: it.evadid.util.logging.Logger = fullInfo.loggerSystemInfo.syncControlLogger

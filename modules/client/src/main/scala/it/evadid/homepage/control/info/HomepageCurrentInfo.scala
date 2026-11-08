@@ -3,9 +3,10 @@ package it.evadid.homepage.control.info
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
-import it.evadid.workbook.abstractions.{WorkbookInteractionElement, WorkbookInteractionUntyped}
-import it.evadid.workbook.interaction.sync.{SyncInformation, UsageContext}
-import it.evadid.workbook.interaction.sync.SyncInformation.*
+import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServerHandler, LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
+import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
+import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.{LocalIndexedDbSyncDefinition, LocalStorageSyncDefinition, SyncDestinationBasedOnHistoryDatabase}
+import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
 import it.evadid.workbook.interaction.sync.*
 
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
@@ -16,19 +17,15 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().workbookInfo
   }
 
-  def currentSyncSources: List[SyncInformationWithContext] = fullInfo.synchronized {
-    val curContext: UsageContext = fullInfo.homepageInfoState.now().toContext
-    val syncInformation: List[SyncInformation] = userInfo.map(_.config.syncDestinations.toList).toList.flatten
-    val syncWithContext: List[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext))
-    syncWithContext
-  }
+
+
 
   def currentHomepageContext: UsageContext = now().toContext
 
-  def workbookUserData: Option[WorkbookUserDataAnalyzer] = fullInfo.synchronized {
+  /*def workbookUserData: Option[WorkbookUserDataAnalyzer] = fullInfo.synchronized {
     if (userInfo.isEmpty || workbookInfo.isEmpty) None
     else Some(WorkbookUserDataAnalyzer(fullInfo.loggerSystemInfo.contentControlLogger, fullInfo.contentControl.downloadToDisc, now()))
-  }
+  }*/
 
   def userInfo: Option[AllUserInfo] = fullInfo.synchronized {
     now().userInfo
