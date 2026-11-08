@@ -111,6 +111,25 @@ class AsyncDataCacheSpec extends FunSuite {
     }
   }
 
+  test("reloading a deleted entry starts the loader once and preserves its observable") {
+    val cache = new Cache()
+    val observable = cache.loadIntoVariable("a")
+    val first = cache.loadAsFuture("a")
+    cache.requests.head._2.success("old")
+    first.flatMap { _ =>
+      cache.removeFromCache(List("a"))
+      val next = cache.loadIntoVariable("a", forceReloading = true)
+      val completed = cache.loadAsFuture("a")
+      assertEquals(cache.requests.size, 2, "Reading the previous observable must not start an extra load")
+      cache.requests.last._2.success("new")
+      completed.map { result =>
+        assertEquals(result, "new")
+        assertEquals(observable.stateNow().value, Some("new"))
+        assertEquals(next.stateNow().value, Some("new"))
+      }
+    }
+  }
+
   test("batch requests preserve successes and failures independently") {
     val cache = new Cache(retry = false)
     val error = new IllegalArgumentException("bad input")
@@ -147,6 +166,54 @@ class AsyncDataCacheSpec extends FunSuite {
     first.zip(second).map { result =>
       assertEquals(result, ("done", "done"))
       assertEquals(state.now().value, Some("done"))
+    }
+  }
+
+  test("a waiter attached after completion immediately receives the cached request outcome") {
+    val cache = new Cache()
+    val state = State[AsyncDataState[Nothing, String]](AsyncDataLoading())
+    val request = StartedRequest(cache, "a", state)
+    request.succeeded("already finished")
+    val late = request.createFuture
+    assert(late.isCompleted, "Completion must not be lost before the first waiter is attached")
+    late.map(result => assertEquals(result, "already finished"))
+  }
+
+  test("a waiter attached after failure immediately receives the original cause") {
+    val cache = new Cache()
+    val request = StartedRequest(cache, "a", State[AsyncDataState[Nothing, String]](AsyncDataLoading()))
+    val failure = IllegalStateException("already failed")
+    request.failed("a", failure)
+    val late = request.createFuture
+    assert(late.isCompleted, "A completed failure must not leave subsequent waiters pending")
+    late.failed.map(error => assert(error eq failure))
+  }
+
+  test("invalidated in-flight results resolve their waiters without reappearing in the cache") {
+    val cache = new Cache()
+    assertEquals(cache.statusSnapshot, Map.empty)
+    val pending = cache.loadAsFuture("a")
+    assertEquals(cache.statusSnapshot.get("a"), Some(CacheElementStatus.STARTED()))
+    cache.removeFromCache(List("a"))
+    cache.requests.head._2.success("obsolete")
+    pending.map { result =>
+      assertEquals(result, "obsolete")
+      assertEquals(cache.getSyncIfInCache("a", false), None)
+      assertEquals(cache.statusSnapshot.get("a"), Some(CacheElementStatus.DELETED()))
+    }
+  }
+
+  test("an older load cannot overwrite the completed replacement") {
+    val cache = new Cache()
+    val old = cache.loadAsFuture("a")
+    val replacement = cache.loadAsFuture("a", forceReloading = true)
+    cache.requests.last._2.success("current")
+    replacement.flatMap { _ =>
+      cache.requests.head._2.success("old")
+      old.map { result =>
+        assertEquals(result, "old")
+        assertEquals(cache.getSyncIfInCache("a", false), Some("current"))
+      }
     }
   }
 

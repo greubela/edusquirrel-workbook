@@ -151,7 +151,6 @@ dialog {
     grid-template-columns: var(--interaction-info-total-width) calc(100% - var(--space-element-left) - var(--interaction-info-total-width));
     gap: var(--space-element-left);
     align-items: stretch;
-
 }
 
 /* INTERACTION INFO */
@@ -172,8 +171,8 @@ dialog {
     background-color: var(--color-background-colored-correct);
 }
 
-.interaction-element-info.status-incorrect {
-    background-color: var(--color-background-colored-incorrect);
+.interaction-element-info.status-correct-ai {
+    background-color: var(--color-background-colored-correct);
 }
 
 

@@ -41,7 +41,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
   }
 
   private def requestCompletion(messageState: MessengerModel, mmState: State[MessengerModel]): Unit = {
-    val systemPromptFuture = fullInfo.signals.idResolver.resolveMap(systemPromptId)
+    val systemPromptFuture = fullInfo.executionContextInformation.languageMapIdResolver.get.resolveMap(systemPromptId)
     /*val curValTextarea = textInteraction.interactionVariable.currentValue
     val inputStr = if (curValTextarea.trim.nonEmpty) s"@assistant: the textarea for the solution reads '$curValTextarea'" else s"@assistant: currently no text in solution area"
     val languageStr = s", please answer in ${fullInfo.signals.currentLanguage.now()}"
@@ -84,14 +84,14 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
     val interactionVariable: InteractionVariable[MessengerModelScaffolding, Any, Any] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
     if (workbookElement.scaffoldingInteractionOp.nonEmpty) {
       val boundState = interactionVariable
-        .createBoundStateWithUpdateImportance(fullInfo.syncControl, MAJOR)
+        .createBoundStateWithUpdateImportance( MAJOR, fullInfo.executionContextInformation)
         .biMap(_.messengerModel, MessengerModelScaffolding.apply)
       val scaffoldingChat = SimpleChatEditor(boundState, State(""), msg => onUserSendMessage(msg, boundState))
       val openChatButton = HtmlButtonElement.withSvgContent(createScaffoldingButtonSvg(), event => {
 
         val currentUser: ChatParticipant = fullInfo.current.userInfo.map(_.user).getOrElse(MessengerModel.pFallbackStudent)
 
-        workbookElement.initScaffoldingIfEmpty(currentUser,fullInfo.syncControl, fullInfo.signals.idResolver).onComplete {
+        workbookElement.initScaffoldingIfEmpty(fullInfo.executionContextInformation, currentUser, fullInfo.executionContextInformation.languageMapIdResolver.get).onComplete {
           case Success(bool) => if (bool) requestCompletion(workbookElement.scaffoldingInteractionOp.get.interactionVariable.currentValue.messengerModel, boundState)
           case e: Any => fullInfo.loggerSystemInfo.workbookElementLogger.logWarn(s"HtmlGptTextfieldInteractionRenderer::createRendering -> error of some sort..: ${e.toString}")
         }(using ExecutionContext.global)

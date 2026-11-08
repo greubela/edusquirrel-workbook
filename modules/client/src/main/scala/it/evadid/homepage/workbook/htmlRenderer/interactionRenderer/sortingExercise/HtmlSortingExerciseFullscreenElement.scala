@@ -6,8 +6,8 @@ import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.{AssignmentResult, SortingInteraction, SortingInteractionState}
-
 import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interaction.sync.UpdateImportance.MINOR
 import org.scalajs.dom.DragEvent
 
 import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
@@ -20,7 +20,7 @@ case class HtmlSortingExerciseFullscreenElement(
   private val fieldCount = interaction.fields.size
   private val gridColumns = SortingFieldLayoutHelper.resolvedColumns(fieldCount)
 
-  private val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MINOR)
+  private val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.executionContextInformation)
   private val draggingItemIndex: Var[Option[Int]] = Var(None)
   private val errorPopupContentId: Var[Option[LanguageMapContentId]] = Var(None)
   private var wrongFlashTimeout: Option[SetTimeoutHandle] = None

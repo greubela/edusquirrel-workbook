@@ -77,11 +77,11 @@ case class HomepageDefaults(fullInfo: FullInfo) {
 
 
   /** Claim the Scala.js startup pool rather than starting a second worker. */
-  lazy val workerBackendExecutor: WebWorkerExecutionClient =
+  lazy val workerExecuter: WebWorkerExecutionClient =
     WebWorkerExecutionClient.fromWorker(Workers.takeOrCreate(ClientRuntimeConfig.workerUrl))
 
   def scaffoldingExecutor: ExecutionClient = RoutedExecutionClient(command =>
-    if WorkerCommands.supportedCommands.contains(command.name) then workerBackendExecutor else backendExecutor)
+    if WorkerCommands.supportedCommands.contains(command.name) then workerExecuter else backendExecutor)
 
   def backendExecutorWithCredentials(signedToken: Option[SignedToken]): ExecutionClient = defaultBackend.executor(signedToken)
 

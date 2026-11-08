@@ -8,7 +8,7 @@ import scala.scalajs.js
 /** Real mount ownership for editor tests, including unmount cleanup. */
 trait EditorDomSuite extends FunSuite {
   private val globals = js.Dynamic.global.globalThis
-  private val names = List("window", "document", "Element", "Node")
+  private val names = List("window", "document", "Element", "Node", "HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement")
   private val previous = Var(List.empty[(String, js.Dynamic)])
   private lazy val window = {
     val req = js.Dynamic.global.selectDynamic("require")

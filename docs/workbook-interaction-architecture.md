@@ -50,15 +50,13 @@ whereas answer tables save entered strings.
 An interaction attaches independent `WorkbookInteractionGrader[T, GA]` checks and
 at most one `WorkbookInteractionScaffolder[T, SA]`. Results belong to the exact
 answer assessed, with localized feedback and optional typed additional data.
-Keep grading policy explicit: ordinary bound-value edits do not automatically
-run graders, and expensive LLM grading runs only on request.
+`InteractionVariable` requests automatic grading on history updates; each grader's
+`runningBehavior` decides whether it executes. LLM grading and hints require an
+explicit request through the shared info panel.
 
-The standard interaction info panel provides shared grading controls and manual
-hints. Interactions can add detailed feedback views; hints are invalidated when
-the answer or language changes.
-Shared requests are scoped to the answer and feedback language; obsolete localized
-responses are discarded. Synchronization includes feedback updates even when the
-answer itself is unchanged.
+Pending and completed computations are cached by answer, independently of display
+language. A language change reuses them; result merges retain available feedback
+translations. Synchronization includes feedback updates even when the answer is unchanged.
 
 `TextInputWithScaffoldingAndGrading` owns its description, string answer, hint IDs
 and grading-criterion IDs. Each LLM grader evaluates one criterion in the selected
@@ -75,8 +73,9 @@ another invalid response is a grading error. Transcripts are typed additional da
 | [Turtle recreation](embroidery-preview-workbook.md) | `TurtleRecreateShapeInteraction` owns a program and target drawing; the renderer composes the programming editor and comparison preview |
 | Text feedback | Inline text editor and standard hint controls; see [the model](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/gpt/TextInputWithScaffoldingAndGrading.scala) and [renderer](../modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/basic/TextInputWithScaffoldingAndGradingRenderer.scala) |
 
-Turtle drawing comparison is not a complete generic grader; command-usage limits
-remain an integration gap. The text-feedback example is in the test workbook's
+`TurtleGradingLogic` supplies the policy-aware line comparison used by both
+`RecreateShapeGrader` and the colored Turtle preview. Command-usage limits remain
+an integration gap. The text-feedback example is in the test workbook's
 “Text answers with hints and AI feedback” section, in German and English.
 
 ## Presentation, dependencies and registration

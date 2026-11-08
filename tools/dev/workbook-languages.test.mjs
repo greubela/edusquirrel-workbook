@@ -30,6 +30,16 @@ test('all native workbook and shared UI maps have German and English entries', (
   }
 });
 
+test('every test-workbook content reference resolves in both languages', () => {
+  const source = read('modules/client/src/main/scala/it/evadid/homepage/workbook/content/test/CreateTestWorkbook.scala');
+  const keys = [...source.matchAll(/"TestWorkbook\/([^"\n]+)"/g)].map(match => match[1].toLowerCase());
+  const universal = normalized(load('testworkbook', 'universal'));
+  for (const language of ['de', 'en']) {
+    const entries = normalized(load('testworkbook', language));
+    for (const key of keys) assert((entries.get(key) ?? universal.get(key))?.trim(), `${key}: missing ${language}`);
+  }
+});
+
 const compression = load('compressionworkbook', 'de');
 const englishCompression = load('compressionworkbook', 'en');
 const sourceKey = key => 'src_' + key.replaceAll('.', '_');

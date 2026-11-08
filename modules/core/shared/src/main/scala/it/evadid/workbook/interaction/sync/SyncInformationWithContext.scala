@@ -5,10 +5,12 @@ import it.evadid.core.datastructures.storage.RemoteSyncDataCache.{RemoteDataRead
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.model.SyncDirection.CLIENT_TO_SERVER
 import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse}
-import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableUntyped}
+import it.evadid.workbook.interaction.variable.InteractionVariable.InteractionVariableUntyped
+import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
+import upickle.default.*
 
 case class SyncInformationWithContext(syncInformation: SyncInformation, usageContext: UsageContext) extends CacheKey[SyncContext, String] {
 
@@ -25,10 +27,11 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
   }
 
   def dataToStore[T, GA, SA](variable: InteractionVariable[T, GA, SA]): List[DataEntryToSync[SyncContext, String]] = {
-    val historyToStore = variable.history.filterWithStrategy(syncInformation.syncStrategy)
-    val syncContext = usageContext.toSyncContext(variable.keyForSerialization)
-    if (historyToStore.events.isEmpty) List()
-    else List(DataEntryToSync(syncContext, variable.serializeHistory(historyToStore), historyToStore.latestChangeTimestamp.get, CLIENT_TO_SERVER))
+    val historyToStore: InteractionVariableHistory[T, GA, SA] = variable.currentHistory.filterWithStrategy(syncInformation.syncStrategy)
+    val syncContext: SyncContext = usageContext.toSyncContext(variable.keyForSerialization)
+
+    if (historyToStore.size == 0) List()
+    else List(DataEntryToSync(syncContext, variable.serializerHistory.serialize(historyToStore), historyToStore.timestampLastChanged.get, CLIENT_TO_SERVER))
   }
 
   lazy val reader: RemoteDataReader[SyncContext, String] = new RemoteDataReader[SyncContext, String]() {

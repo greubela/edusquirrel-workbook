@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.htmlRenderer.controlElements
+package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
@@ -7,10 +7,11 @@ import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 import scala.util.{Failure, Success, Try}
-
+import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
+/*
 object InteractionScaffoldingPanel {
+
   case class Labels(request: Signal[String], loading: Signal[String], dismiss: Signal[String],
                     error: Signal[String], timeout: Signal[String], notice: Signal[String])
 
@@ -19,20 +20,22 @@ object InteractionScaffoldingPanel {
     case Pending(id: AnyRef)
     case Ready(text: String)
   }
+
   private case class View(mount: Option[AnyRef] = None, revision: Long = 0, phase: Phase = Phase.Idle,
                           timer: Option[SetTimeoutHandle] = None)
 }
 
 final class InteractionScaffoldingPanel[T, A](
-    currentState: () => T,
-    stateChanges: EventStream[T],
-    language: StrictSignal[HumanLanguage],
-    contextChanges: EventStream[Unit],
-    generateFeedback: T => Future[ScaffoldingResult[T, A]],
-    accept: ScaffoldingResult[T, A] => Unit,
-    labels: InteractionScaffoldingPanel.Labels,
-    timeoutMillis: Int = 60000
-) extends HtmlAppElement {
+                                               currentState: () => T,
+                                               stateChanges: EventStream[T],
+                                               language: StrictSignal[HumanLanguage],
+                                               contextChanges: EventStream[Unit],
+                                               generateFeedback: T => Future[ScaffoldingResult[T, A]],
+                                               accept: ScaffoldingResult[T, A] => Unit,
+                                               labels: InteractionScaffoldingPanel.Labels,
+                                               timeoutMillis: Int = 60000
+                                             ) extends HtmlAppElement {
+
   import InteractionScaffoldingPanel.*
 
   require(timeoutMillis > 0)
@@ -66,11 +69,15 @@ final class InteractionScaffoldingPanel[T, A](
                 clearTimeout(timer)
                 val accepted = result.flatMap { feedback => Try {
                   require(feedback.forState == source)
-                  val text = feedback.scaffoldingResult.tryGetInLanguage(locale)
+                  val text = feedback.scaffoldingStatus match {
+                    case it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingFeedback(content) => content.tryGetInLanguage(locale)
+                    case _ => None
+                  }
+                  val resolved = text
                     .filter(value => value != null && value.trim.nonEmpty && value.length <= 4096)
                     .getOrElse(throw IllegalArgumentException("Missing feedback text."))
                   accept(feedback)
-                  text
+                  resolved
                 }}
                 if pending then view.update(_.copy(timer = None, phase = accepted match {
                   case Success(text) => Phase.Ready(text)
@@ -115,3 +122,4 @@ final class InteractionScaffoldingPanel[T, A](
 
   override def getDomElement(): Element = domElement
 }
+*/

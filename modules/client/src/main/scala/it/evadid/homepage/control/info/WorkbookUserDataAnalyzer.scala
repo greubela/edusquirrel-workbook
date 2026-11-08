@@ -1,56 +1,68 @@
 package it.evadid.homepage.control.info
 
 import it.evadid.core.datastructures.user.*
+import it.evadid.core.util.InfoUtil
 import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.DefaultSerializer
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.util.DownloadToDisc
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement, WorkbookInteractionUntyped}
+import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
 import it.evadid.workbook.elements.structureElements.Workbook
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory.InteractionVariableHistoryUntyped
+import it.evadid.workbook.interaction.sync.SyncContext
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
-import upickle.default.ReadWriter.join
+import upickle.default.*
+
+import java.time.LocalDateTime
 
 object WorkbookUserDataAnalyzer {
 
-  private given userConfigRW: upickle.ReadWriter[UserConfig] = HomepageDefaults.defaultSerializerUserConfig.uPickleReadWrite
 
-  private given usiRW: upickle.ReadWriter[AllUserInfo] = upickle.macroRW
-
-  private given woRW: upickle.ReadWriter[Workbook] = WorkbookElementFactory.serializerRegularJsonWorkbook.uPickleReadWrite
-
-  given seRW: upickle.ReadWriter[SessionData] = upickle.macroRW
-
-  val serializerSessionData: Serializer[SessionData] = Serializer.fromUpickleJson(seRW)
-
-  case class SessionData(currentUserInfo: AllUserInfo, interactionHistorySerialized: Map[String, String], workbook: Workbook, epochTimestampMillis: Long)
-
+  case class SessionData(
+                          timestampStorage: LocalDateTime,
+                          knownUsageData: Map[SyncContext, String],
+                          userInfo: User,
+                          workbookInfo: AllWorkbookInfo) derives ReadWriter
 
 }
 
-case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDisc, userInfo: AllUserInfo, workbookInfo: AllWorkbookInfo) {
+case class WorkbookUserDataAnalyzer(logger: Logger, downloadToDisc: DownloadToDisc, homepageInfo: HomepageInfo) {
+
+
+  def createSessionData(): Option[SessionData] = {
+
+    if (homepageInfo.workbookInfo.isEmpty || homepageInfo.userInfo.isEmpty) {
+      None
+    } else {
+      val allInteractions: List[WorkbookInteractionUntyped] = homepageInfo.workbookInfo.map(_.loadedWorkbook.allContainedInteractionsById.values.toList).getOrElse(List())
+      val userInfo = homepageInfo.userInfo.get.removeToken()
+      val workbookInfo = homepageInfo.workbookInfo.get
+      val historyMap: Map[SyncContext, String] = allInteractions.map(interaction => {
+        val syncContext = homepageInfo.toContext.toSyncContext(interaction.interactionVariable.keyForSerialization)
+        val historySerialized = interaction.interactionVariable.serializerHistory.serialize(interaction.interactionVariable.currentHistory)
+        syncContext -> historySerialized
+      }).toMap
+
+      val data = SessionData(LocalDateTime.now(), historyMap, userInfo.user, workbookInfo)
+      Some(data)
+    }
+
+
+  }
+
 
   def downloadAllData(): Unit = {
     logger.logInfo("WorkbookUserDataAnalyzer: now downloading all session data!")
-    val allInteractions: List[WorkbookInteractionUntyped] = workbookInfo.loadedWorkbook.allInteractionsInThisInstance
-    val history: Map[String, String] = allInteractions.map(interaction => interaction.interactionVariable.keyForSerialization -> interaction.interactionVariable.serializeHistory(interaction.interactionVariable.history)).toMap
-    val data = SessionData(userInfo, history, workbookInfo.loadedWorkbook, System.currentTimeMillis())
-    val str = serializerSessionData.serialize(data)
-    val name = s"${data.currentUserInfo}-${data.workbook.workbookId}-${data.epochTimestampMillis}.json"
-    downloadToDisc.downloadFile(name, str)
-  }
+    val dataOp = createSessionData()
+    if (dataOp.nonEmpty) {
+      val data = dataOp.get
+      val name = s"${InfoUtil.datetimeFormattedForFilenames(data.timestampStorage)}-eva-${data.userInfo.id}-${data.workbookInfo.loadedWorkbook.elementId.replace("[/]", "-")}.eva"
 
-  private def tryToLoad(sessionData: SessionData): Unit = {
-    logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
-    if (sessionData.currentUserInfo.user.id == userInfo.user.id) {
-      workbookInfo.loadedWorkbook.allInteractionsInThisInstance.foreach(curInteraction => {
-        sessionData.interactionHistorySerialized.foreach(historyTup => if (historyTup._1 == curInteraction.interactionVariable.keyForSerialization) {
-          curInteraction.interactionVariable.withAddedEvents(logger, historyTup._2)
-        })
-      })
+      downloadToDisc.downloadFile(name, write(data))
+
     }
   }
 

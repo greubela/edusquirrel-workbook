@@ -54,9 +54,11 @@ class TurtleGradingLogicSpec extends FunSuite {
   }
 
   test("tolerance is inclusive and applies to both endpoints; invalid tolerances are rejected") {
-    val nearby = stroke.copy(start = Point(0.25, -0.25), end = Point(10.25, 0.25))
+    val nearby = stroke.copy(start = Point(0.25, 0.0), end = Point(10.0, 0.25))
     assertEquals(TurtleGradingLogic.compareLines(List(nearby), List(stroke), tolerance = 0.25).map(_.status), List(CORRECT))
     assertEquals(TurtleGradingLogic.compareLines(List(nearby), List(stroke), tolerance = 0.2).map(_.status), List(EXISTING_BUT_UNEXPECTED, EXPECTED_BUT_MISSING))
+    val diagonal = stroke.copy(start = Point(0.25, 0.25))
+    assertEquals(TurtleGradingLogic.compareLines(List(diagonal), List(stroke), tolerance = 0.25).map(_.status), List(EXISTING_BUT_UNEXPECTED, EXPECTED_BUT_MISSING))
     assertEquals(TurtleGradingLogic.compareLines(List(stroke), List(stroke), tolerance = 0).map(_.status), List(CORRECT))
     for invalid <- List(-1.0, Double.NaN, Double.PositiveInfinity) do {
       intercept[IllegalArgumentException](TurtleGraphicComparison(graphic(), graphic(), invalid))

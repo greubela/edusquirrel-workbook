@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.util.logging.LoggingLevel
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
@@ -36,7 +37,7 @@ class PracticeValueCodecSpec extends FunSuite {
   test("grading status codecs preserve each refactored status variant") {
     import GradingStatus.*
     import it.evadid.distribution.command.SerializedException
-    val values: List[GradingStatus] = List(Correct(), PartiallyCorrect(), Incorrect(), NotExecuted(),
+    val values: List[GradingStatus] = List(Correct(), PartiallyCorrect(), Incorrect(), NotRequested(),
       TestError(SerializedException(new IllegalArgumentException("fixture"))))
     values.foreach { value =>
       for (decoded <- List(read[GradingStatus](write(value)), readBinary[GradingStatus](writeBinary(value)))) {

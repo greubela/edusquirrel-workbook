@@ -1,7 +1,7 @@
 package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.file.LoadedFile
-import it.evadid.core.datastructures.language.AppLanguage.{ser, *}
+import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.user.User.SingleAccessToken
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
@@ -10,17 +10,17 @@ import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionInfo.ExecutionSuccess
 import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.commandTypes.UserCommands
-import it.evadid.distribution.commandTypes.UserCommands.{AuthMailRequest, CreateAccountRequest, LoginRequest, LoginResponse}
-import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer
+import it.evadid.distribution.commandTypes.UserCommands.{CreateAccountRequest, LoginRequest, LoginResponse}
+import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer.SessionData
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
-import it.evadid.workbook.abstractions.{WorkbookInteractionElement, WorkbookInteractionUntyped}
+import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
+import upickle.default.*
 
 import scala.concurrent.*
 import scala.scalajs.js
-
 
 case class HomepageUsageControl(fullInfo: FullInfo) {
 
@@ -128,18 +128,16 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     val logger = fullInfo.loggerSystemInfo.uiAndDomLogger
     logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
 
-    val sessionData = WorkbookUserDataAnalyzer.serializerSessionData.deserialize(loadedFile.fileDataAsUtf8String)
+    val sessionData = read[SessionData](loadedFile.fileDataAsUtf8String)
     if (fullInfo.current.userInfo.isEmpty) {
-      changeUser(Some(sessionData.currentUserInfo))
+      //changeUser(Some(sessionData.))
+    }
+    if (fullInfo.current.userInfo.isEmpty || fullInfo.current.userInfo.get.user.id == sessionData.userInfo.id) {
+      fullInfo.current.workbookInfo.foreach(_.loadedWorkbook.loadDataNoUserCheck(
+        logger, sessionData.knownUsageData, fullInfo.executionContextInformation
+      ))
     }
 
-    sessionData.interactionHistorySerialized.foreachEntry((varId, serHist) => {
-      interactions.map(_.interactionVariable).foreach(curInteraction => {
-        if (curInteraction.keyForSerialization == varId) {
-          curInteraction.withAddedEvents(logger, serHist)
-        }
-      })
-    })
   }
 
   def tryLocalRegistration(): Future[Unit] = {

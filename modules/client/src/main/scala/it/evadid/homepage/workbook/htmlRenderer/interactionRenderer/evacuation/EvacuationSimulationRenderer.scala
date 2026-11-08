@@ -8,11 +8,11 @@ import it.evadid.homepage.webElements.editor.evacuation.EvacuationSimulationEdit
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
+import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 
 case object EvacuationSimulationRenderer extends LineBasedRenderingFactory[EvacuationSimulationInteraction] {
   override protected def createRendering(e: EvacuationSimulationInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(fullInfo.syncControl,
-      it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.executionContextInformation).toAirstreamVar
     val open = HtmlButtonElement.withTextLabel("basic/OpenEditor", _ =>
       fullInfo.displayControl.setFullscreen(EvacuationSimulationEditor(state, e.initial, e.isDisabledState.toAirstreamVar.signal)))
     val preview = p(cls := "evacuation-simulation-preview", role := "status",

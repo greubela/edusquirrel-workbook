@@ -7,7 +7,7 @@ import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElemen
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
-import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
+import it.evadid.workbook.elements.interactionElements.gpt.{GptInteractionElement, TextInputWithScaffoldingAndGrading}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
@@ -97,7 +97,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       CreateQrCodeInteraction("qr", QrCodeRequirements(minBytes = 2, maxBytes = Some(200), requiredMask = Some(3)), QrCode.fromText(special)),
       TextInteraction("text-1"),
       it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading("text-feedback",
-        content("text/task"), List(content("text/hint")), List(content("text/criterion")), special),
+        content("text/task"), Some(content("text/solution")), Some(TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(content("text/hint"), Map.empty)), List(TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(content("text/criterion"), Map.empty))),
       MessagingInteraction("messaging-1"),
       LabeledCheckboxInteraction("checkbox-1", content("label/checkbox")),
       LabeledNumberInteraction("number-1", content("label/number"), NumberType.FractionLike, "1.5", BigDecimal("0.125")),
@@ -161,9 +161,9 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     assertEquals(WorkbookElementFactory.parse(serialized.copy(allConstructorFields = serialized.allConstructorFields - "diff")), element)
   }
 
-  test("legacy turtle definitions default to stroke grading without changing their saved source") {
+  test("turtle definitions default to stroke grading without changing their saved source") {
     val source = ProgrammingStatePythonString(" \r\nforward(10)\n\t ")
-    val original = TurtleRecreateShapeInteraction(" turtle-legacy-policy \n", source,
+    val original = TurtleRecreateShapeInteraction("turtle-default-policy", source,
       TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), limitTurtleCommandUsage = Map("forward" -> Integer.valueOf(2)))
     val serialized = original.toSerialized
     val legacy = serialized.copy(allConstructorFields = serialized.allConstructorFields - "comparisonPolicy")
@@ -186,7 +186,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       policy <- TurtleDrawingPolicy.values
       source <- sources
     } do {
-      val original = TurtleRecreateShapeInteraction(s" turtle-policy-$policy \n", source,
+      val original = TurtleRecreateShapeInteraction(s"turtle-policy-$policy", source,
         TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), limitTurtleCommandUsage = Map("forward" -> Integer.valueOf(2)),
         comparisonPolicy = policy)
       val explicit = original.toSerialized.withElementAddedAs("comparisonPolicy", policy)

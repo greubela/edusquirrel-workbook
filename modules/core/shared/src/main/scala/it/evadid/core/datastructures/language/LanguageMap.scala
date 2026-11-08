@@ -1,7 +1,8 @@
 package it.evadid.core.datastructures.language
 
-import scala.reflect.ClassTag
 import upickle.default.*
+
+import scala.reflect.ClassTag
 
 sealed trait LanguageMap[T <: AppLanguage]() derives ReadWriter {
   def getInLanguage(language: T): String = tryGetInLanguage(language).getOrElse(getFallback(language))
@@ -18,14 +19,26 @@ sealed trait LanguageMap[T <: AppLanguage]() derives ReadWriter {
   }
 
   def withFallback(other: LanguageMap[T]): LanguageMap[T] = LanguageMap.baseMapWithFallback(this, other)
-  
+
 }
 
 object LanguageMap {
 
+  def baseMapWithFallback[T <: AppLanguage](base: LanguageMap[T], fallback: LanguageMap[T]): LanguageMap[T] = merge(base, fallback)
+
+  def merge[T <: AppLanguage](mapA: LanguageMap[T], mapB: LanguageMap[T]): LanguageMap[T] = {
+    (mapA, mapB).match {
+      case (LanguageMapMapBased(pMap1), LanguageMapMapBased(pMap2)) => LanguageMapMapBased(pMap1 ++ pMap2)
+      case (LanguageMapUniversal, _) => mapA
+      case (_, LanguageMapUniversal) => mapB
+      case (_, _) => LanguageMapBaseWithFallback(mapA, mapB)
+    }
+  }
+
+
   def empty[T <: AppLanguage]: LanguageMap[T] = mapBasedLanguageMap(Map.empty)
 
-  private case class LanguageMapMapBased[T <: AppLanguage](pMap: Map[T, String]) extends LanguageMap[T] derives ReadWriter{
+  private case class LanguageMapMapBased[T <: AppLanguage](pMap: Map[T, String]) extends LanguageMap[T] derives ReadWriter {
 
     def tryGetInLanguage(language: T): Option[String] = pMap.get(language)
 
@@ -34,9 +47,11 @@ object LanguageMap {
     val availableLanguages: Set[T] = pMap.keys.toSet
 
     override val toString: String = "LanguageMapMapBased(" + pMap + ")"
+
+
   }
 
-  private case class LanguageMapUniversal[T <: AppLanguage](returnString: String) extends LanguageMap[T]() derives ReadWriter{
+  private case class LanguageMapUniversal[T <: AppLanguage](returnString: String) extends LanguageMap[T]() derives ReadWriter {
     def tryGetInLanguage(language: T): Option[String] = Some(returnString)
 
     def availableLanguages: Set[T] = {
@@ -46,9 +61,7 @@ object LanguageMap {
     override def toString: String = "UniversalLanguageMap('" + returnString + "')"
   }
 
-
-
-  private case class LanguageMapBaseWithFallback[T <: AppLanguage](base: LanguageMap[T], fallback: LanguageMap[T]) extends LanguageMap[T] derives ReadWriter{
+  private case class LanguageMapBaseWithFallback[T <: AppLanguage](base: LanguageMap[T], fallback: LanguageMap[T]) extends LanguageMap[T] derives ReadWriter {
     override def tryGetInLanguage(language: T): Option[String] = base.tryGetInLanguage(language).match {
       case Some(resultStr) => Some(resultStr)
       case None => fallback.tryGetInLanguage(language)
@@ -67,7 +80,6 @@ object LanguageMap {
     def availableLanguages: Set[T] = base.availableLanguages
   }*/
 
-  def baseMapWithFallback[T <: AppLanguage](base: LanguageMap[T], fallback: LanguageMap[T]): LanguageMap[T] = LanguageMapBaseWithFallback(base, fallback)
 
   def concatLanguageMaps[T <: AppLanguage](firstMap: LanguageMap[T], secondMap: LanguageMap[T]): LanguageMap[T] = {
     val types = firstMap.availableLanguages.intersect(secondMap.availableLanguages)
@@ -102,14 +114,14 @@ object LanguageMap {
     }
     concatLanguageMaps(res, universalMap(end))
   }
-/*
-  def emptyMap[T <: AppLanguage](): LanguageMap[T] = new LanguageMap[T]() {
+  /*
+    def emptyMap[T <: AppLanguage](): LanguageMap[T] = new LanguageMap[T]() {
 
-    override def tryGetInLanguage(language: T): Option[String] = None
+      override def tryGetInLanguage(language: T): Option[String] = None
 
-    override def getInLanguage(language: T): String = "[error: empty language map!]"
+      override def getInLanguage(language: T): String = "[error: empty language map!]"
 
-    override def availableLanguages: Set[T] = Set.empty
-  }
-*/
+      override def availableLanguages: Set[T] = Set.empty
+    }
+  */
 }

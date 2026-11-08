@@ -39,7 +39,7 @@ object TurtleDrawingComparison {
     val targetSegs = extractSegments(target)
     val actualSegs = extractSegments(actual)
     val effective = tolerance.getOrElse(defaultTolerance(targetSegs))
-    coverage(targetSegs, actualSegs, effective)
+    compareSegments(targetSegs, actualSegs, effective)
   }
 
   def extractSegments(builder: TurtlePathBuilder[Double]): List[Segment] =
@@ -81,7 +81,7 @@ object TurtleDrawingComparison {
       math.hypot(maxX - minX, maxY - minY)
   }
 
-  private def coverage(
+  def compareSegments(
       target: List[Segment],
       actual: List[Segment],
       tolerance: Double

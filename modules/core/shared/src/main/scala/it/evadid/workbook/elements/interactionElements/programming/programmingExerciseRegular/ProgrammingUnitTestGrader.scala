@@ -1,17 +1,16 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgramForUnitTestExecution}
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
+import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.SerializedException
 import it.evadid.vm.test.{BeTestResult, ProgrammingTestRunner}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgramForUnitTestExecution, ProgrammingState}
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
+import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
 import scala.concurrent.Future
@@ -19,18 +18,32 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
-    importance: GradingImportance = GradingImportance.REQUIRED_TEST,
-    publicDescription: Option[LanguageMapContentId] = None,
-    override val publishProgramObservation: Boolean = false,
-    publishInvocationArguments: Boolean = false,
-    publishCommandComparison: Boolean = false)
-    extends ProgrammingTestGrader {
+                                     importance: GradingImportance = GradingImportance.REQUIRED_TEST,
+                                     publicDescription: Option[LanguageMapContentId] = None,
+                                     override val publishProgramObservation: Boolean = false,
+                                     publishInvocationArguments: Boolean = false,
+                                     publishCommandComparison: Boolean = false)
+  extends ProgrammingTestGrader {
+
+
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
   require(!publishCommandComparison || publishInvocationArguments, "A public command comparison requires its invocation arguments.")
+
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
   override val gradingEntity = FeedbackEntity.TestEntity()
 
-  override def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
+  override protected def handleGrading(state: ProgrammingState, contextInformation: ExecutionContextInformation): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
+
+    if (contextInformation.languageMapIdResolver.isEmpty) {
+      gradeState(state, contextInformation.availableExecutionClients)
+    } else {
+      gradeState(state, contextInformation.availableExecutionClients, contextInformation.languageMapIdResolver.get)
+    }
+
+  }
+
+
+  def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
     val evaluation = Future(ProgramForUnitTestExecution.fromState(state)).flatMap {
       case Right(program) => ProgrammingTestRunner.execute(program, pythonTestCode, clients,
         observeProgram = publishProgramObservation && importance != GradingImportance.HIDDEN_TEST,
@@ -51,8 +64,8 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
     }
   }
 
-  override def gradeState(state: ProgrammingState, clients: List[ExecutionClient], resolver: LanguageMapIdResolver):
-      Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] =
+  def gradeState(state: ProgrammingState, clients: List[ExecutionClient], resolver: LanguageMapIdResolver):
+  Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] =
     gradeState(state, clients).flatMap { result =>
       val described = publicDescription.filter(_ => importance != GradingImportance.HIDDEN_TEST &&
         Set[GradingStatus](GradingStatus.Correct(), GradingStatus.Incorrect(), GradingStatus.PartiallyCorrect()).contains(result.gradingStatus))
@@ -67,17 +80,18 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
         }.recover { case NonFatal(_) => result })
       }
     }
+
 }
 
 object ProgrammingUnitTestGrader {
   private[evadid] val LegacyTestId = "legacy-python-assertions"
 
   private case class Payload(testId: String, pythonTestCode: String,
-      importance: GradingImportance = GradingImportance.REQUIRED_TEST,
-      publicDescription: Option[LanguageMapContentId] = None,
-      publishProgramObservation: Boolean = false,
-      publishInvocationArguments: Boolean = false,
-      publishCommandComparison: Boolean = false) derives ReadWriter
+                             importance: GradingImportance = GradingImportance.REQUIRED_TEST,
+                             publicDescription: Option[LanguageMapContentId] = None,
+                             publishProgramObservation: Boolean = false,
+                             publishInvocationArguments: Boolean = false,
+                             publishCommandComparison: Boolean = false) derives ReadWriter
 
   given ReadWriter[ProgrammingUnitTestGrader] = readwriter[ujson.Value].bimap(
     grader => writeJs(Payload(grader.testId, grader.pythonTestCode, grader.importance, grader.publicDescription,

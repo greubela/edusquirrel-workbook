@@ -52,7 +52,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 def answerInput(element: TextInteraction, fullInfo: FullInfo): Element = {
   val answer = element.interactionVariable
-    .createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR)
+    .createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation)
     .toAirstreamVar
   div(
     textArea(value <-- answer.signal, onInput.mapToValue --> answer.writer),
@@ -134,6 +134,17 @@ an offline or unauthenticated server has committed the value. Each destination's
 and the workbook's cloud indicator describe actual synchronization status.
 Importance does not by itself run every grader; see the current grading paths in
 [interaction architecture](workbook-interaction-architecture.md).
+
+Grading and scaffolding run through `interactionVariable.control` with an
+`ExecutionContextInformation`. Its two `AsyncDataCache`s share pending requests
+and completed results. Explicit grading requests may retry execution errors and
+unexecuted tests; completed assessments (including `Incorrect`) are reused.
+Changing display language never invalidates or repeats a computation. Feedback
+translations merge into the existing `LanguageMap`; renderers use an available
+translation as fallback. Results stay associated with their captured answer.
+Histories separate
+`historyStates`, `historyGrading` and `historyScaffolding`; readers accept the
+previous saved format without retaining the old source API.
 
 ## Default uPickle codecs
 

@@ -1,4 +1,5 @@
 package it.evadid.homepage.webElements.editor.code
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleDrawingGrading
 import munit.FunSuite
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.ManualOwner
@@ -13,6 +14,9 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 
 class TurtleExecutionPanelSpec extends EditorDomSuite {
+  private def compare(commands: List[TurtleCommand[Double]], target: TurtleGraphic): Boolean =
+    TurtleDrawingGrading.assess(commands, target, TurtleDrawingPolicy.Coverage).matches
+
   private val mountedPanels = Var(Map.empty[TurtleExecutionPanel, () => Unit])
   private def mountPanel(panel: TurtleExecutionPanel): Unit = {
     val close = mount(panel.getDomElement())
@@ -76,29 +80,29 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
 
   test("Java drawing comparison rejects wrong lengths, turns, empty drawings and extra strokes") {
     val target = TurtleGraphic.TurtleGraphicProgram(squareDrawing())
-    assert(TurtleExecutionPanel.compare(squareDrawing(), target))
+    assert(compare(squareDrawing(), target))
     for commands <- List(squareDrawing(24), squareDrawing(26), squareDrawing(25, 89), squareDrawing(25, 45),
       Nil, squareDrawing() :+ TurtleCommand[Double]("backward", List(10.0))) do
-      assert(!TurtleExecutionPanel.compare(commands, target), clue = commands)
+      assert(!compare(commands, target), clue = commands)
   }
 
   test("Java drawing display rejects accumulated coordinate overflow without requiring a target") {
-    intercept[IllegalArgumentException](TurtleExecutionPanel.validateDrawing(
+    intercept[IllegalArgumentException](TurtleDrawingGrading.validateDrawing(
       List.fill(2)(TurtleCommand[Double]("forward", List(1e308)))))
-    intercept[IllegalArgumentException](TurtleExecutionPanel.validateDrawing(
+    intercept[IllegalArgumentException](TurtleDrawingGrading.validateDrawing(
       List(TurtleCommand[Double]("goto", List(-1e308, 0.0)), TurtleCommand[Double]("goto", List(1e308, 0.0)))))
-    intercept[IllegalArgumentException](TurtleExecutionPanel.validateDrawing(
+    intercept[IllegalArgumentException](TurtleDrawingGrading.validateDrawing(
       List(TurtleCommand[Double]("forward", List(Double.MaxValue)))))
-    TurtleExecutionPanel.validateDrawing(squareDrawing(10.0 / 3.0))
-    TurtleExecutionPanel.validateDrawing(Nil)
+    TurtleDrawingGrading.validateDrawing(squareDrawing(10.0 / 3.0))
+    TurtleDrawingGrading.validateDrawing(Nil)
   }
 
   test("Java drawing comparison accepts split strokes and ignores duplicate tracing") {
     val split = List.fill(4)(List(TurtleCommand[Double]("forward", List(12.0)),
       TurtleCommand[Double]("forward", List(13.0)), TurtleCommand[Double]("right", List(90.0)))).flatten
     val target = TurtleGraphic.TurtleGraphicProgram(squareDrawing())
-    assert(TurtleExecutionPanel.compare(split, target))
-    assert(TurtleExecutionPanel.compare(squareDrawing() ++ squareDrawing(), target))
+    assert(compare(split, target))
+    assert(compare(squareDrawing() ++ squareDrawing(), target))
   }
 
   test("Java drawing comparison uses pen-up moves for disconnected targets without drawing their gaps") {
@@ -106,8 +110,8 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
     val target = TurtleGraphic.TurtleLineBasedProgram(List(
       Line(Point(0.0, 0.0), Point(10.0, 0.0)),
       Line(Point(20.0, 0.0), Point(30.0, 0.0))))
-    assert(TurtleExecutionPanel.compare(target.toTurtleProgram.toList, target))
-    assert(!TurtleExecutionPanel.compare(List(TurtleCommand[Double]("forward", List(30.0))), target))
+    assert(compare(target.toTurtleProgram.toList, target))
+    assert(!compare(List(TurtleCommand[Double]("forward", List(30.0))), target))
   }
 
   test("Java drawing comparison bounds huge traces and rejects unsupported or non-finite commands") {
@@ -116,10 +120,10 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
       List(TurtleCommand[Double]("forward", List(Double.PositiveInfinity))),
       List(TurtleCommand[Double]("forward", List(Double.NaN))),
       List(TurtleCommand[Double]("circle", Nil)), List.fill(100)(squareDrawing()).flatten) do
-      intercept[IllegalArgumentException](TurtleExecutionPanel.compare(commands, target))
+      intercept[IllegalArgumentException](compare(commands, target))
     val empty = TurtleGraphic.TurtleGraphicProgram(Nil)
-    assert(TurtleExecutionPanel.compare(Nil, empty))
-    assert(!TurtleExecutionPanel.compare(squareDrawing(), empty))
+    assert(compare(Nil, empty))
+    assert(!compare(squareDrawing(), empty))
   }
 
   test("Java execution panel publishes assessed drawing only after successful completion") {

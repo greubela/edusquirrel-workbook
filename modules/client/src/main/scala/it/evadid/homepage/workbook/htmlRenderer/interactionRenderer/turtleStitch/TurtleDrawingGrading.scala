@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.{TurtleDrawingComparison, 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleDrawingComparison.{Segment, TurtleComparisonResult}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedAngle, RenderedLine, Scene}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic, TurtleGradingLogic}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 
 object TurtleDrawingGrading {
@@ -31,17 +31,9 @@ object TurtleDrawingGrading {
       lines: List[Segment], lineIndexes: Map[Int, Int])
   final case class Assessment(matches: Boolean, scene: Scene)
 
-  def assess(commands: List[TurtleCommand[Double]], target: TurtleGraphic, policy: TurtleDrawingPolicy): Assessment = policy match {
-    case TurtleDrawingPolicy.Coverage =>
-      val result = compare(commands, target)
-      Assessment(result.matches, assessedScene(commands, target, result))
-    case _ =>
-      val actual = checkedDrawing(commands)
-      val expected = checkedDrawing(target.toTurtleProgram.toList)
-      if actual.graphic.renderMovements.size.toLong * expected.graphic.renderMovements.size > maxComparisons then tooLarge()
-      val scene = TurtleJsxGraphRenderer.buildScene(actual.graphic, expected.graphic, 1e-7,
-        gradeJumps = policy == TurtleDrawingPolicy.Segments)
-      Assessment(scene.lines.forall(_.result == LineResult.Correct), scene)
+  def assess(commands: List[TurtleCommand[Double]], target: TurtleGraphic, policy: TurtleDrawingPolicy): Assessment = {
+    val comparison = checkedComparison(commands, target, policy)
+    Assessment(comparison.gradingStatus.isCorrect, TurtleJsxGraphRenderer.buildScene(comparison))
   }
 
   def validateDrawing(commands: List[TurtleCommand[Double]]): Unit = {
@@ -49,7 +41,8 @@ object TurtleDrawingGrading {
     ()
   }
 
-  def compare(commands: List[TurtleCommand[Double]], target: TurtleGraphic): TurtleComparisonResult = {
+  private def checkedComparison(commands: List[TurtleCommand[Double]], target: TurtleGraphic,
+      policy: TurtleDrawingPolicy): TurtleGradingLogic.TurtleGraphicComparison = {
     val actual = checkedDrawing(commands)
     val expected = checkedDrawing(target.toTurtleProgram.toList)
     def samples(lines: List[Segment]): Long = lines.foldLeft(0L) { (total, line) =>
@@ -59,23 +52,10 @@ object TurtleDrawingGrading {
     }
     val actualSamples = samples(actual.lines)
     val expectedSamples = samples(expected.lines)
-    if actualSamples + expectedSamples > maxSamples ||
-      actualSamples * expected.lines.size + expectedSamples * actual.lines.size > maxComparisons then tooLarge()
-    TurtleDrawingComparison.compare(expected.path, actual.path, Some(tolerance))
-  }
-
-  def assessedScene(commands: List[TurtleCommand[Double]], target: TurtleGraphic): Scene =
-    assessedScene(commands, target, compare(commands, target))
-
-  def assessedScene(commands: List[TurtleCommand[Double]], target: TurtleGraphic, comparison: TurtleComparisonResult): Scene = {
-    validateDrawing(commands)
-    val scene = drawingScene(checkedDrawing(target.toTurtleProgram.toList))
-    val missing = comparison.missing.toSet
-    val lines = scene.lines.map { line =>
-      line.copy(result = if missing.contains(Segment(line.start, line.end)) then LineResult.Missing else LineResult.Correct)
-    }
-    val extra = comparison.extra.map(line => RenderedLine(line.from, line.to, LineResult.Unexpected, jump = false))
-    Scene(lines ++ extra, scene.angles)
+    if policy == TurtleDrawingPolicy.Coverage && (actualSamples + expectedSamples > maxSamples ||
+      actualSamples * expected.lines.size + expectedSamples * actual.lines.size > maxComparisons) then tooLarge()
+    if actual.graphic.renderMovements.size.toLong * expected.graphic.renderMovements.size > maxComparisons then tooLarge()
+    TurtleGradingLogic.compare(actual.graphic, expected.graphic, policy)
   }
 
   def targetScene(target: TurtleGraphic): Scene = drawingScene(checkedDrawing(target.toTurtleProgram.toList))

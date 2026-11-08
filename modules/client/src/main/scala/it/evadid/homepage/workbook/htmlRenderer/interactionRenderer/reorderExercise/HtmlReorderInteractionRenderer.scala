@@ -7,6 +7,9 @@ import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRende
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderCorrectness, ReorderInteraction, ReorderInteractionState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interaction.sync.UpdateImportance.MINOR
+
+import java.time.LocalDateTime
 
 object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderInteraction[?]] {
 
@@ -50,7 +53,7 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
                                 renderElementContent: (ReorderInteractionState[T], Int) => Element,
                                 itemCssClass: String
                               ): Element = {
-    val stateVar = reorder.interactionVariable.createBoundVarWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MINOR)
+    val stateVar = reorder.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.executionContextInformation)
     val draggingId: Var[Option[Int]] = Var(None)
     val hoverIndex: Var[Option[Int]] = Var(None)
 
@@ -104,14 +107,14 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
 
     def updateOrder(rawOrder: List[Int]): Unit = {
       reorder.interactionVariable.updateStateFromUserInteraction(
-        fullInfo.syncControl,
         state => {
           val sanitized = sanitizeOrder(rawOrder, state)
           if (sanitized != state.currentOrder) state.copy(currentOrder = sanitized)
           else state
         },
         UpdateImportance.MINOR,
-        List(fullInfo.defaults.backendExecutor)
+        LocalDateTime.now(),
+        fullInfo.executionContextInformation
       )
     }
 

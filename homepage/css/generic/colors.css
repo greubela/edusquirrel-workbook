@@ -162,7 +162,8 @@
     --color-background-colored-accented: var(--color-blue-2);
     --color-background-colored-accented-strong: var(--color-blue-4);
 
-    --color-background-colored-correct: var(--color-green-2);
+    --color-background-colored-correct: var(--color-green-5);
+    --color-background-colored-correct-ai: var(--color-green-2);
     --color-background-colored-incorrect: var(--color-red-2);
 
     /* Workbook aliases */

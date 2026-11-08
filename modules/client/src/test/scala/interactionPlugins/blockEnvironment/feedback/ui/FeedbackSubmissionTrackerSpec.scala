@@ -95,7 +95,7 @@ final class FeedbackDemoRestoreSpec extends FunSuite:
       )
     )
 
-  test("feedback is restorable when its task, language and source match") {
+  test("feedback is restorable when its saved context and source match") {
     assert(FeedbackDemoElement.canRestoreFeedback(savedState()))
   }
 
@@ -119,12 +119,6 @@ final class FeedbackDemoRestoreSpec extends FunSuite:
   test("feedback from another task is rejected even when the code matches") {
     val state = savedState()
     state.feedback.exerciseId = "maximum"
-    assert(!FeedbackDemoElement.canRestoreFeedback(state))
-  }
-
-  test("feedback in another language is rejected even when the code matches") {
-    val state = savedState()
-    state.feedback.language = "German"
     assert(!FeedbackDemoElement.canRestoreFeedback(state))
   }
 

@@ -4,9 +4,10 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl}
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.sync.UpdateImportance.TEMPORARY
-import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.workbook.interaction.variable.InteractionVariable
+import it.evadid.workbook.meta.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
@@ -109,17 +110,18 @@ object StateHelper {
 
   implicit class InteractionVariableOnJS[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA]) {
 
-    def createBoundVarWithUpdateImportance(syncControl: SyncControl, updateImportance: UpdateImportance): Var[T] = {
-      val state = interactionVariable.createBoundStateWithUpdateImportance(syncControl, updateImportance)
+    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[T] = {
+
+      val state = interactionVariable.createBoundStateWithUpdateImportance(updateImportance, context)
       fromStateToAirstreamVar(state)
     }
 
-    def createInteractionSignal(syncControl: SyncControl): StrictSignal[T] = {
+    def createInteractionSignal(context: ExecutionContextInformation): StrictSignal[T] = {
       // val res = Var[T](interactionVariable.currentValue)
       //interactionVariable.observableValue.addObserver(newValue => res.set(newValue))
       //res.signal
 
-      createBoundVarWithUpdateImportance(syncControl, TEMPORARY).signal
+      createBoundVarWithUpdateImportance(TEMPORARY, context).signal
     }
 
   }
@@ -140,7 +142,6 @@ object StateHelper {
     state.observable.addObserver(nextValue => if (airstreamVar.now() != nextValue) airstreamVar.set(nextValue))
     airstreamVar.signal.distinct.foreach(nextValue => if (state.now() != nextValue) state.set(nextValue))(using unsafeWindowOwner)
   }
-
 
 
 }
