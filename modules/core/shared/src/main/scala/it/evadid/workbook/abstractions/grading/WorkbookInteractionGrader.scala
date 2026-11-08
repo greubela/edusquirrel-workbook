@@ -1,6 +1,5 @@
 package it.evadid.workbook.abstractions.grading
 
-import cats.mtl.syntax.state
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.FeedbackEntity
@@ -13,9 +12,7 @@ import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
-import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
-import scala.runtime.LazyVals.Names.state
 
 trait WorkbookInteractionGrader[T, A] {
   given ec: ExecutionContext = ExecutionContext.global
@@ -27,10 +24,10 @@ trait WorkbookInteractionGrader[T, A] {
 
   def gradeStateSafe(state: T, forceGrading: Boolean, contextInformation: ExecutionContextInformation): Future[GradingResult[T, A]] =
     try {
-      if (runningBehavior != RUN_ALWAYS && !forceGrading) Future.successful(GradingResult[T, A](this, state, NotRequested()))
-      else handleGrading(state, contextInformation).recoverWith {
+      if (runningBehavior == RUN_ALWAYS || forceGrading) handleGrading(state, contextInformation).recoverWith {
         case err: Throwable => failWith(state, Right(err))
       }
+      else Future.successful(GradingResult[T, A](this, state, NotRequested()))
     } catch {
       case (err: Throwable) => failWith(state, Right(err))
       case any: Any => failWith(state, Left(s"Unknown grading error (${any.toString})"))

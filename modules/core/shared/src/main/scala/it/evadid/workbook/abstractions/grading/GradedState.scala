@@ -48,7 +48,6 @@ object GradedState {
 
   def apply[T, A](state: T) = new GradedState[T, A](state, Map())
 
-
   def executeGradingSafe[T, A](graders: IterableOnce[WorkbookInteractionGrader[T, A]], state: T, forceGrading: Boolean, context: ExecutionContextInformation): Future[GradedState[T, A]] = {
     given ExecutionContext = context.futureExecutionContext
 

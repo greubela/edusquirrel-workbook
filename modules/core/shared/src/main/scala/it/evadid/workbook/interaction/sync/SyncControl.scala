@@ -4,8 +4,9 @@ import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.SyncControl.*
-import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableUntyped}
-import it.evadid.workbook.meta.InteractionVariableSyncReport
+import it.evadid.workbook.interaction.variable.InteractionVariable.InteractionVariableUntyped
+import it.evadid.workbook.interaction.variable.InteractionVariable
+import it.evadid.workbook.meta.{ExecutionContextInformation, InteractionVariableSyncReport}
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,10 +31,10 @@ trait SyncControl {
 
   def requestStore[T, GA, SA](from: InteractionVariable[T, GA, SA]): Future[?] = requestStore(List(from))
 
-  def load(into: List[InteractionVariableUntyped]): Future[?] = {
-    into.foreach(_.executeLoad(this))
+  def load(into: List[InteractionVariableUntyped]): Future[?]  /* ={
+    into.foreach(_.executeLoad(executionContext))
     Future.successful(())
-  }
+  }*/
 
   def updateAndStoreAll(from: List[InteractionVariableUntyped]): Future[?] = updateAllCaches().transformWith(_ => requestStore(from))
 

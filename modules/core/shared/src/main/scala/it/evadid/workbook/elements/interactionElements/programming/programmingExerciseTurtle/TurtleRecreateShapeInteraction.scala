@@ -2,7 +2,11 @@ package it.evadid.workbook.elements.interactionElements.programming.programmingE
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.grading.GradingImportance.REQUIRED_TEST
+import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
+import it.evadid.workbook.abstractions.scaffolding.WorkbookInteractionScaffolder
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
@@ -17,7 +21,7 @@ case class TurtleRecreateShapeInteraction
   availablePalette: ProgrammingEditorPalette = ProgrammingEditorPalette.BeginnerTurtle,
   limitTurtleCommandUsage: Map[String, Integer],
   comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes
-) extends WorkbookInteractionElement[ProgrammingState] derives ReadWriter {
+) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Any] derives ReadWriter {
 
   override val defaultValue: ProgrammingState = initProgram
   override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingState.serializer
@@ -25,7 +29,9 @@ case class TurtleRecreateShapeInteraction
   override val associatedFactory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = TurtleRecreateShapeInteraction.factory
 
 
-
+  override val gradingElements: List[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]] =
+    List(RecreateShapeGrader(desiredResult, REQUIRED_TEST, elementId + "-grader"))
+  //val scaffoldingElement: Option[WorkbookInteractionScaffolder[ProgrammingState, ?]] = None
 }
 
 object TurtleRecreateShapeInteraction {

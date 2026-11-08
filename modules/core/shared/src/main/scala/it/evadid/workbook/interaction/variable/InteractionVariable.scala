@@ -8,7 +8,7 @@ import it.evadid.core.datastructures.state.{ExecutionMethod, State}
 import it.evadid.core.util.io.Serializer
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
-import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
@@ -18,9 +18,9 @@ import scala.concurrent.ExecutionContext
 
 object InteractionVariable {
 
-}
+  type InteractionVariableUntyped = InteractionVariable[?, ?, ?]
 
-type InteractionVariableUntyped = InteractionVariable[?, ?, ?]
+}
 
 case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](underlyingInteraction: WorkbookInteractionElementFull[T, GA, SA], debug: Boolean = false) {
 
@@ -55,7 +55,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
   })
 
   lazy val observableValue: ObservableValue[T] = this.synchronized {
-    innerState.observable.deriveValue(_.historyStates.lastStateOption.getOrElse(safeLastState).value, ExecutionMethod.executeSync, DeriveOnlyLastValues)
+    observableHistoryWithDefault.deriveValue(_.historyStates.lastStateOption.getOrElse(safeLastState).value, ExecutionMethod.executeSync, DeriveOnlyLastValues)
   }
 
   lazy val asAsync: AsyncData[Nothing, T] = this.synchronized {
@@ -65,7 +65,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
 
   def createBoundStateWithUpdateLogic(relevanceFunc: InteractionVariableStateChanged[T] => UpdateImportance, context: ExecutionContextInformation): State[T] = this.synchronized {
     val outerState = State[T](currentValue)
-    innerState.observable.addObserver(newValue => if (newValue != outerState.now()) outerState.set(currentValue))
+    observableValue.addObserver(newValue => if (newValue != outerState.now()) outerState.set(currentValue))
     outerState.observable.addObserver(newValue => if (newValue != currentValue) {
       val last = safeLastState
       val newState = DesignatedInteractionState(newValue, LocalDateTime.now())
@@ -97,6 +97,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     if (executionContextInformation.syncControl.nonEmpty) {
       executionContextInformation.syncControl.get.requestStore(this)
     }
+    control.getOrCalculateGrading(executionContextInformation, false)
   }
 
   /*def withAddedEvents(logger: Logger, serializedHistory: String): Unit = {
@@ -111,14 +112,17 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     }
   }*/
 
-  def executeLoad(syncControl: SyncControl): Unit = this.synchronized {
-    val histories = syncControl.createCurrentReport(this).curRemoteHistory.values
-      .flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toVector
-    innerState.update(_.mergeWith(histories))
-  }
+  /*def executeLoad(context: ExecutionContextInformation): Unit = this.synchronized {
+    val histories: Option[Vector[InteractionVariableHistory[T, GA, SA]]] = context.syncControl.map(syncControl => {
+      syncControl.createCurrentReport(this).curRemoteHistory.values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toVector
+    })
+    histories.foreach(curHistories => {
+      updateHistory(_.mergeWith(curHistories), context)
+    })
+  }*/
 
   def resetLocalHistory(): Unit = this.synchronized {
-    innerState.set(defaultHistory)
+    updateHistory(_ => defaultHistory, ExecutionContextInformation.default)
   }
 
   def updateStateFromUserInteraction(updater: T => T, updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now(), context: ExecutionContextInformation): Unit = this.synchronized {

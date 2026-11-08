@@ -5,7 +5,8 @@ import it.evadid.core.datastructures.storage.RemoteSyncDataCache.{RemoteDataRead
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.model.SyncDirection.CLIENT_TO_SERVER
 import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse}
-import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableUntyped}
+import it.evadid.workbook.interaction.variable.InteractionVariable.InteractionVariableUntyped
+import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
