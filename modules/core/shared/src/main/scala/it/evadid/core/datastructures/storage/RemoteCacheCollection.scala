@@ -99,7 +99,6 @@ case class RemoteCacheCollection[K , D , CK <: CacheKey[K, D]](baseLogger: SyncL
 
 object RemoteCacheCollection {
 
-
   def fromCacheKeys[K , D , CK <: CacheKey[K, D]](baseLogger: SyncLogger, keyForCaches: List[CK]): RemoteCacheCollection[K, D, CK] = {
     def buildRemoteCache(cacheKey: CK): (CK, RemoteSyncDataCache[K, D]) = {
 

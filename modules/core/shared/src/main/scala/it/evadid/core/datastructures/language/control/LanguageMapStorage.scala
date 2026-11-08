@@ -9,12 +9,8 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.AutoSerializable
 import it.evadid.core.util.io.serializer.AutoSerializable.{AutoSerializableMainType, AutoSerializableSubType}
 import it.evadid.util.logging.Logger
-import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.destination.{SyncDestination, SyncDestinationRaw}
 import upickle.default
 import upickle.default.*
-
-import scala.concurrent.Future
 
 case class LanguageMapStorage
 (
@@ -49,6 +45,7 @@ case class LanguageMapStorage
     logger.logInfo(s"Increased Language Map Storage from ${parsedTriples.size} to ${newStorage.languageMaps.size} triples, (stats: ${stats})!")
     newStorage
   }
+
   override lazy val rwSub: default.ReadWriter[LanguageMapStorageSerializable] = macroRW
   override lazy val toSerializableSubType: LanguageMapStorageSerializable = LanguageMapStorageSerializable(parsedTriples)
 }
@@ -69,7 +66,6 @@ object LanguageMapStorage {
   given rw: ReadWriter[LanguageMapStorage] = AutoSerializable.getReadWriter(using macroRW)
 
   val serializerMain: Serializer[LanguageMapStorage] = Serializer.fromUpickleJson(rw)
-  
 
-  
+
 }

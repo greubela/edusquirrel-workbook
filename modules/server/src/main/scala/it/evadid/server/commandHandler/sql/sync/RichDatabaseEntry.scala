@@ -1,8 +1,8 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
-
-sealed trait RichDatabaseEntry derives upickle.default.ReadWriter {
+import upickle.default.*
+sealed trait RichDatabaseEntry derives ReadWriter {
   def keyForSerialisation: String
 
   def eventId: String

@@ -21,7 +21,7 @@ class SyncDestinationRawSpec extends FunSuite {
         stored = Some(key -> value)
         Future.successful(true)
       }
-      def deserializeFromConstructorLikeString(value: ConstructorLikeReadResult): Option[SyncDestination] = None
+      def deserializeFromConstructorLikeString(value: ConstructorLikeReadResult): Option[SyncDestinationHandler] = None
       def serializeToConstructorLikeString(): ConstructorLikeReadResult = ConstructorLikeReadResult("Test", Nil)
     }
     raw.getSyncDestinationForType(SyncLogger(BasicLogger()), "cache", codec).storeElement("data")

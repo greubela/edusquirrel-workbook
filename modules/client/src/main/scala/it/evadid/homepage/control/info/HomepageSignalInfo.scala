@@ -8,15 +8,17 @@ import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
+import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServerHandler, LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
 import it.evadid.workbook.elements.structureElements.WorkbookSection
 import it.evadid.workbook.interaction.sync.SyncInformation.*
 import it.evadid.workbook.interaction.sync.UsageContext
 import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
+import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.{LocalIndexedDbSyncDefinition, LocalStorageSyncDefinition, SyncDestinationBasedOnHistoryDatabase}
 
 import scala.concurrent.*
 
 case class HomepageSignalInfo(fullInfo: FullInfo) {
-
 
   private lazy val baseSignal: StrictSignal[HomepageInfo] = {
     fullInfo.homepageInfoState.signal
@@ -41,9 +43,23 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   lazy val currentUsageContext: StrictSignal[UsageContext] = baseSignal.mapLazy(_.toContext)
 
+  private def resolveSyncDefinition(syncDestinationDefinition: SyncDestinationDefinition): SyncDestinationHistoryHandler = syncDestinationDefinition.match {
+    case db: SyncDestinationBasedOnHistoryDatabase => DatabaseSyncViaBackendServerHandler(fullInfo.syncControl.syncLogger, db)
+    case li: LocalIndexedDbSyncDefinition => LocalIndexedDbStorageSyncHandler(li).withSyncLogger(fullInfo.syncControl.syncLogger).forHistory()
+    case ls: LocalStorageSyncDefinition => LocalStorageSyncHandler(ls).withSyncLogger(fullInfo.syncControl.syncLogger).forHistory()
+    case _ => ???
+  }
+
+  /*def currentSyncSources: List[SyncInformationWithContext] = fullInfo.synchronized {
+    val curContext: UsageContext = fullInfo.homepageInfoState.now().toContext
+    val syncInformation: List[SyncInformation] = userInfo.map(_.config.syncDestinations.toList).toList.flatten
+    val syncWithContext: List[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext, resolveSyncDefinition))
+    syncWithContext
+  }*/
+
   lazy val currentSyncDestinations: StrictSignal[List[SyncInformationWithContext]] = {
     baseSignal.mapLazy(homepageInfo => {
-      homepageInfo.userInfo.map(curUserInfo => curUserInfo.config.syncDestinations.map(_.forContext(homepageInfo.toContext))).getOrElse(List())
+      homepageInfo.userInfo.map(curUserInfo => curUserInfo.config.syncDestinations.map(_.forContext(homepageInfo.toContext, resolveSyncDefinition))).getOrElse(List())
     })
   }
 

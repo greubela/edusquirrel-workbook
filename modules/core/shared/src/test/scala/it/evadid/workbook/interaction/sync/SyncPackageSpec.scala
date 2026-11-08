@@ -12,7 +12,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.meta.InteractionVariableSyncReport
-import it.evadid.workbook.interaction.sync.destination.{SyncDestination, SyncDestinationHistory}
+import it.evadid.workbook.interaction.sync.destination.{SyncDestinationHandler, SyncDestinationHistoryHandler}
 import it.evadid.workbook.interaction.variable.*
 import munit.FunSuite
 
@@ -43,7 +43,7 @@ class SyncPackageSpec extends FunSuite {
   private val history = InteractionVariableHistory[String, Any, Any](InteractionVariableStateHistory[String](Set(major, minor, temporary, default)), new InteractionVariableGradingHistory[String, Any](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[String, Any](scaffoldingMap = Map.empty))
   private val serialized = write(InteractionVariableHistory[String, Any, Any](InteractionVariableStateHistory[String](Set(major, minor, temporary)), new InteractionVariableGradingHistory[String, Any](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[String, Any](scaffoldingMap = Map.empty)))
 
-  private class Destination extends SyncDestinationHistory {
+  private class DestinationHandler extends SyncDestinationHistoryHandler {
     var fetched: Future[FetchResponse[SyncContext, String]] =
       Future.successful(FetchResponse(time, Set(DataEntryReadFromServer(context, serialized, time))))
     var stored = List.empty[(SyncContext, String)]
@@ -53,7 +53,7 @@ class SyncPackageSpec extends FunSuite {
     var synchronousWriteError: Option[Throwable] = None
     override def shouldBePersistant(): Boolean = true
     override def isLocal: Boolean = true
-    override def fetchAll(logger: SyncLogger, context: UsageContext): Future[FetchResponse[SyncContext, String]] = {
+    override def fetchAllInteractions(logger: SyncLogger, context: UsageContext): Future[FetchResponse[SyncContext, String]] = {
       synchronousReadError.foreach(error => throw error)
       fetchArguments = fetchArguments :+ context
       fetched
@@ -65,11 +65,11 @@ class SyncPackageSpec extends FunSuite {
     }
     override def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
     override def clearAllValues(logger: SyncLogger, context: UsageContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
-    override protected def deserializeFromConstructorLikeString(from: ConstructorLikeReadResult): Option[SyncDestination] = None
+    override protected def deserializeFromConstructorLikeString(from: ConstructorLikeReadResult): Option[SyncDestinationHandler] = None
     override protected def serializeToConstructorLikeString(): ConstructorLikeReadResult = ConstructorLikeReadResult("TestDestination", Nil)
   }
 
-  private def location(destination: Destination = new Destination, strategy: SyncStrategy = SyncStrategy.SYNC_EVERYTHING) =
+  private def location(destination: DestinationHandler = new DestinationHandler, strategy: SyncStrategy = SyncStrategy.SYNC_EVERYTHING) =
     SyncInformation(destination, strategy).forContext(usage)
 
   test("UsageContext and SyncContext convert without losing identifiers and serialize special characters") {
@@ -122,7 +122,7 @@ class SyncPackageSpec extends FunSuite {
   }
 
   test("SyncInformation binds a usage context and fetch responses retain opaque JSON") {
-    val info = SyncInformation(new Destination, SyncStrategy.SYNC_LAST)
+    val info = SyncInformation(new DestinationHandler, SyncStrategy.SYNC_LAST)
     assertEquals(info.forContext(usage).syncInformation, info)
     assertEquals(info.forContext(usage).usageContext, usage)
     val entries = Set(DataEntryReadFromServer(context, serialized, time.minusSeconds(1)))
@@ -132,7 +132,7 @@ class SyncPackageSpec extends FunSuite {
   }
 
   test("SyncInformationWithContext fetches through its configured destination and reader") {
-    val destination = new Destination
+    val destination = new DestinationHandler
     val bound = location(destination)
     bound.fetchAllFrom(logger).flatMap { response =>
       assertEquals(response.fetchedValues, Set(DataEntryReadFromServer(context, serialized, time)))
@@ -147,7 +147,7 @@ class SyncPackageSpec extends FunSuite {
   }
 
   test("SyncInformationWithContext turns synchronous destination exceptions into failed futures") {
-    val destination = new Destination
+    val destination = new DestinationHandler
     val error = new IllegalStateException("destination unavailable")
     destination.synchronousReadError = Some(error)
     destination.synchronousWriteError = Some(error)
@@ -159,7 +159,7 @@ class SyncPackageSpec extends FunSuite {
   }
 
   test("SyncInformationWithContext preserves asynchronous read and write failures") {
-    val destination = new Destination
+    val destination = new DestinationHandler
     val error = new IllegalStateException("offline")
     destination.fetched = Future.failed(error)
     destination.writeResult = Future.failed(error)
@@ -171,7 +171,7 @@ class SyncPackageSpec extends FunSuite {
   }
 
   test("SyncInformationWithContext batches writes and combines their acknowledgements") {
-    val destination = new Destination
+    val destination = new DestinationHandler
     val bound = location(destination)
     val otherKey = usage.toSyncContext("other")
     bound.writer.writeAll(logger, Map(context -> serialized, otherKey -> serialized)).flatMap { success =>

@@ -6,48 +6,27 @@ import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.clients.{ExecutionClient, RemoteExecutionConfig, RoutedExecutionClient, WebWorkerExecutionClient}
 import it.evadid.distribution.commandTypes.WorkerCommands
-import it.evadid.homepage.control.startup.ClientRuntimeConfig
 import it.evadid.facades.Workers
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer, LocalIndexedDbStorageSync, LocalStorageSync}
-import it.evadid.workbook.interaction.sync.SyncStrategy.{SYNC_LAST, SYNC_LAST_AND_MAJOR, SYNC_MAJOR}
+import it.evadid.homepage.control.startup.ClientRuntimeConfig
+import it.evadid.homepage.workbook.syncDestination.LocalIndexedDbStorageSyncHandler
+import it.evadid.sql.DatabaseConfig.DatabaseConfigPartialInformation
+import it.evadid.sql.DatabaseHistoryFormat.{ClassicJsonWithKey, ClassicKeylessJson}
 import it.evadid.workbook.interaction.sync.SyncInformation
+import it.evadid.workbook.interaction.sync.SyncStrategy.{SYNC_LAST, SYNC_LAST_AND_MAJOR, SYNC_MAJOR}
+import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
 import upickle.{ReadWriter, macroRW}
-import it.evadid.workbook.interaction.sync.*
 
 import scala.util.Random
 
 object HomepageDefaults {
 
-  private val localIndexStorage: SyncInformation = SyncInformation(LocalIndexedDbStorageSync.instanceForHistory, SYNC_LAST_AND_MAJOR)
-
-  val useDefaultLocalSyncLocations: List[SyncInformation] = List(localIndexStorage)
-
-  def useDefaultOnlineSyncLocations: List[SyncInformation] = defaultSyncLocations.filter(_._1 != "localStorage").map(_._2)
-
-  private lazy val defaultSyncLocations: List[(String, SyncInformation)] = List(
-    "localStorage" -> SyncInformation(LocalStorageSync(50000), SYNC_LAST),
-    "db1" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", true), SYNC_MAJOR),
-    "db2" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", false), SYNC_MAJOR),
-    "localIndexedDb" -> localIndexStorage
+  lazy val defaultSyncLocations: List[SyncInformation] = List(
+    SyncInformation(LocalIndexedDbStorageSyncHandler.instanceForHistory, SYNC_LAST_AND_MAJOR),
+    SyncInformation(SyncDestinationBasedOnHistoryDatabase(DatabaseConfigPartialInformation(databaseOp = Some("db_332371_12")), ClassicJsonWithKey), SYNC_MAJOR),
+    SyncInformation(SyncDestinationBasedOnHistoryDatabase(DatabaseConfigPartialInformation(databaseOp = Some("db_332371_12")), ClassicKeylessJson), SYNC_MAJOR),
   )
 
-  lazy val defaultSyncLocationSerializer: Serializer[SyncInformation] = new Serializer[SyncInformation] {
-    override def serialize(obj: SyncInformation): String = {
-      defaultSyncLocations.find(_._2 == obj).map(_._1).getOrElse("unknown")
-    }
-
-    override def deserialize(str: String): SyncInformation = {
-      val default = defaultSyncLocations.head._2
-      defaultSyncLocations.find(_._1 == str).map(_._2).getOrElse(default)
-    }
-  }
-
-  private given ReadWriter[SyncInformation] = defaultSyncLocationSerializer.uPickleReadWrite
-
-  private given ucRW: ReadWriter[UserConfig] = macroRW
-
-  lazy val defaultSerializerUserConfig: Serializer[UserConfig] = Serializer.fromUpickleJson(HomepageDefaults.ucRW)
 }
 
 case class HomepageDefaults(fullInfo: FullInfo) {

@@ -1,14 +1,5 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
-import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
-
-import scala.concurrent.Future
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.util.{Failure, Success, Try}
-import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
 /*
 object InteractionScaffoldingPanel {
 

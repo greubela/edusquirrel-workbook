@@ -3,16 +3,15 @@ package it.evadid.workbook.interaction.sync
 import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey
 import it.evadid.core.datastructures.storage.RemoteSyncDataCache.{RemoteDataReader, RemoteDataWriter}
 import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
 import it.evadid.workbook.interaction.sync.model.SyncDirection.CLIENT_TO_SERVER
 import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse}
-import it.evadid.workbook.interaction.variable.InteractionVariable.InteractionVariableUntyped
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
-import upickle.default.*
 
-case class SyncInformationWithContext(syncInformation: SyncInformation, usageContext: UsageContext) extends CacheKey[SyncContext, String] {
+case class SyncInformationWithContext(syncInformation: SyncInformation, usageContext: UsageContext, resolveDefinition: SyncDestinationDefinition => SyncDestinationHistoryHandler) extends CacheKey[SyncContext, String] {
 
   private given ec: ExecutionContext = ExecutionContext.global
 
@@ -22,9 +21,8 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
     //if (!syncSource.shouldBePersistant()) syncSource.clearAllValues(usageContext) else Future.successful(SyncSuccess(0, 0, 0, LocalDateTime.now()))
   }
 
-  def fetchAllFrom(logger: SyncLogger): Future[FetchResponse[SyncContext, String]] = {
-    syncInformation.syncDestination.fetchAll(logger, usageContext)
-  }
+  lazy val handler: SyncDestinationHistoryHandler = resolveDefinition(syncInformation.syncDestination)
+
 
   def dataToStore[T, GA, SA](variable: InteractionVariable[T, GA, SA]): List[DataEntryToSync[SyncContext, String]] = {
     val historyToStore: InteractionVariableHistory[T, GA, SA] = variable.currentHistory.filterWithStrategy(syncInformation.syncStrategy)
@@ -37,14 +35,14 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
   lazy val reader: RemoteDataReader[SyncContext, String] = new RemoteDataReader[SyncContext, String]() {
 
     override def fetchByKey(logger: SyncLogger, key: SyncContext): Future[FetchResponse[SyncContext, String]] = try {
-      syncInformation.syncDestination.fetchFrom(logger, key)
+      handler.readHistoryJson(key)
     } catch case (e: Throwable) => {
       logger.logExceptionWarn(s"Error while calling SyncLogger::fetchByKey, ignoring data of ${key} from ${syncInformation.syncDestination.toString}", e)
       Future.failed(e)
     }
 
     override def fetchAll(logger: SyncLogger): Future[FetchResponse[SyncContext, String]] = try {
-      fetchAllFrom(logger)
+      handler.readHistoriesJson(usageContext)
     } catch case (e: Throwable) => {
       logger.logExceptionWarn(s"Error while calling SyncLogger::fetchAllFrom, ignoring data from ${syncInformation.syncDestination.toString}", e)
       Future.failed(e)
@@ -53,7 +51,7 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
 
   lazy val writer: RemoteDataWriter[SyncContext, String] = new RemoteDataWriter[SyncContext, String]() {
     override def writeForKey(logger: SyncLogger, key: SyncContext, dataValue: String): Future[SyncSuccess] = try {
-      syncInformation.syncDestination.storeTo(logger, key, dataValue)
+      handler.storeHistoryJson(key, dataValue)
     } catch case (e: Throwable) => {
       logger.logExceptionWarn(s"Could not create future, ignoring write for key ${key} to ${syncInformation.syncDestination.toString}", e)
       Future.failed(e)
