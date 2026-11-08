@@ -20,5 +20,4 @@ object AllUserInfo {
     AllUserInfo(user, None, config)
   }
 
-
 }

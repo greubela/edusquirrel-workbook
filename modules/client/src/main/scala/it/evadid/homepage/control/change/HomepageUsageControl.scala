@@ -11,7 +11,7 @@ import it.evadid.distribution.command.ExecutionInfo.ExecutionSuccess
 import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.commandTypes.UserCommands
 import it.evadid.distribution.commandTypes.UserCommands.{CreateAccountRequest, LoginRequest, LoginResponse}
-import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer.SessionData
+import it.evadid.homepage.control.info.{SessionData, WorkbookUserDataAnalyzer}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.workbook.content.WorkbookFactory
@@ -19,8 +19,10 @@ import it.evadid.homepage.workbook.syncDestination.LocalStorageSync
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
 import upickle.default.*
 
+import scala.Console.err
 import scala.concurrent.*
 import scala.scalajs.js
+import scala.util.{Failure, Success}
 
 case class HomepageUsageControl(fullInfo: FullInfo) {
 
@@ -129,22 +131,49 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
 
     val sessionData = read[SessionData](loadedFile.fileDataAsUtf8String)
-    if (fullInfo.current.userInfo.isEmpty) {
-      //changeUser(Some(sessionData.))
+
+    val loginFuture: Future[_] = if (fullInfo.current.userInfo.isEmpty || fullInfo.current.userInfo.get.user.id != sessionData.userInfo.id) {
+      tryLoginOrLocalRegistration(Some(sessionData.userInfo), sessionData.userConfig)
+    } else Future.successful( () )
+
+
+    def actuallyLoadData(): Unit = {
+      if (fullInfo.current.userInfo.isEmpty || fullInfo.current.userInfo.get.user.id == sessionData.userInfo.id) {
+        fullInfo.current.workbookInfo.foreach(_.loadedWorkbook.loadDataNoUserCheck(
+          logger, sessionData.knownUsageData, fullInfo.executionContextInformation
+        ))
+      }
     }
-    if (fullInfo.current.userInfo.isEmpty || fullInfo.current.userInfo.get.user.id == sessionData.userInfo.id) {
-      fullInfo.current.workbookInfo.foreach(_.loadedWorkbook.loadDataNoUserCheck(
-        logger, sessionData.knownUsageData, fullInfo.executionContextInformation
-      ))
+
+    loginFuture.onComplete{
+      case Success(_) => actuallyLoadData()
+      case Failure(err) => {
+        logger.logExceptionWarn("Could not locally log in even though that should work. Loading without user account set", err)
+        actuallyLoadData()
+      }
     }
 
   }
 
-  def tryLocalRegistration(): Future[Unit] = {
-    val userConfig = UserConfig(HomepageDefaults.useDefaultLocalSyncLocations, false)
-    val user = AllUserInfo.createNewUser("Anonymous", "no-reply.evadid.it", userConfig)
-    changeUser(Some(user))
-    Future.successful(())
+  def tryLoginOrLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = {
+    if (withUser.nonEmpty && withConfig.nonEmpty && withConfig.get.isOnlineAccount) {
+      logger.logInfo("TryLoginOrLocalRegistration -> requested with online account, trying to log in")
+      tryOnlineRegistration(withUser.get.name, withUser.get.mail).recover {
+        case (err: Throwable) => {
+          logger.logExceptionWarn(s"TryLoginOrLocalRegistration did not succeed for user ${withUser.get}, likely because of missing credentials. Using local mode!", err)
+          tryLocalRegistration(withUser, withConfig)
+        }
+      }
+    } else {
+      tryLocalRegistration(withUser, withConfig)
+    }
+  }
+
+  def tryLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = Future {
+    val userConfig: UserConfig = withConfig.getOrElse(UserConfig(HomepageDefaults.useDefaultLocalSyncLocations, false))
+    val user: User = withUser.getOrElse(User.createNewUser("Anonymous", "no-reply@evadid.it"))
+    val allUserInfo = AllUserInfo(user, None, userConfig)
+    changeUser(Some(allUserInfo))
   }
 
   def tryOnlineRegistration(name: String, email: String): Future[Unit] = {
@@ -192,6 +221,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     val safeToken = js.URIUtils.encodeURIComponent(rawToken)
   }
 
+
   def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = fullInfo.synchronized {
 
     def actuallySetNewUser(): Unit = try {
@@ -210,7 +240,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
     if (newUserInfo == oldUser) Future.successful(()) else {
       val waitFor: Future[?] = if (oldUser.isEmpty) Future.successful(()) else {
-        // download all?
+        WorkbookUserDataAnalyzer().downloadAllData(fullInfo)
         fullInfo.syncControl.storeAndReset(interactions.map(_.interactionVariable)).recover {
           err => logger.logExceptionWarn("Ignore Store and Reset!", err)
         }
