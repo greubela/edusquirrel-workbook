@@ -13,6 +13,12 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 class CommandPayloadCodecsSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
 
+  test("account creation, update, login and login-code requests have distinct command names") {
+    val commands = List(UserCommands.createAccountCommand.name, UserCommands.updateAccountCommand.name,
+      UserCommands.loginCommand.name, UserCommands.authMailCommand.name)
+    assertEquals(commands.distinct.size, commands.size)
+  }
+
   test("feedback logging copies retain only bounded metadata without changing execution payloads") {
     val name = LLMCommands.feedbackLlmCommandFactory.name
     val valid = ujson.Obj("prompt" -> "private source Grüße 🐢", "systemPrompt" -> "private instructions",

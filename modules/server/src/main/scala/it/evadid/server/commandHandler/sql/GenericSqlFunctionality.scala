@@ -7,7 +7,6 @@ import it.evadid.workbook.interaction.sync.UsageContext
 import java.sql.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import scala.collection.mutable
 
 private[sql] case class GenericSqlFunctionality(
                                                  connection: Connection,
@@ -62,11 +61,9 @@ private[sql] case class GenericSqlFunctionality(
   }
 
   private def readAll(resultSet: ResultSet, fields: List[String]): List[List[String]] = {
-    val events = mutable.ListBuffer[Option[List[String]]]()
-    events += readOne(resultSet, fields)
-    while (resultSet.next()) events += readOne(resultSet, fields)
-    val res = events.toList.flatten
-    logger.logInfo(s"read ${events.size} events from database with the following ${fields.size} fields: ${fields.mkString(",")}")
+    val res = Iterator.continually(resultSet.next()).takeWhile(identity)
+      .flatMap(_ => readOne(resultSet, fields)).toList
+    logger.logInfo(s"read ${res.size} rows from database with the following ${fields.size} fields: ${fields.mkString(",")}")
     res
   }
 

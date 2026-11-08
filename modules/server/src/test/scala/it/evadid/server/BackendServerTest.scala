@@ -8,6 +8,11 @@ import java.net.InetAddress
 import java.time.LocalDateTime
 
 class BackendServerTest extends FunSuite {
+  test("account changes are limited to the authenticated user's ID") {
+    assert(AuthHandling.mayAccessIdBased("owner", "owner"))
+    assert(!AuthHandling.mayAccessIdBased("another-user", "owner"))
+  }
+
   test("BackendCommandHandler rejects empty command name") {
     val command = ExecutionCommand("   ", ujson.Obj())
 

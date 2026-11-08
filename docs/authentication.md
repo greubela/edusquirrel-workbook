@@ -21,6 +21,12 @@ login records are discarded so startup can show the login form. Other saved
 answers and browser storage are left intact. Do not add data migrations during
 development; reject unsupported data at its storage boundary.
 
+Account identity and configurable preferences are separate: invalid database
+preferences are discarded and replaced by `UserConfig.onlineDefaults`. They must
+not prevent login-code delivery or account lookup. No legacy schema is decoded.
+Creation and account updates use distinct command names, and updates require the
+authenticated user's ID.
+
 ## Diagnosing failures
 
 A command-pool error is a transport/handler summary; inspect its underlying server
@@ -28,7 +34,10 @@ exception to diagnose an incident. Check submitted account identity, backend
 configuration and token expiry before changing client behavior. Token-row parsing
 must accept the database timestamp format as well as ISO timestamps. Server and
 client fixes require deployment of their respective artifacts; pushing source
-alone does not update a running installation.
+alone does not update a running installation. After copying the rebuilt
+`artifacts/newest/server.jar` to the server's configured bind-mount path, recreate
+the backend container (`docker compose up -d --force-recreate edusquirrel`).
+The Pages workflow deploys the browser separately.
 
 ## Verification
 

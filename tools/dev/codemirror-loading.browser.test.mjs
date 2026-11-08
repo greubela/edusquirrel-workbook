@@ -53,6 +53,8 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
     release();
     await page.waitForFunction(() => !!window.EduSquirrelCodeMirror);
+    assert(await page.evaluate(() => fetch('https://esm.sh/editor-debug.mjs.map').then(response => response.ok)),
+      'the module CDN is allowed for source-map connections as well as script imports');
     await page.waitForTimeout(300);
     assert.equal(await page.locator('.cm-editor').count(), 0, 'resolved load cannot mount a stale Python tab');
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();

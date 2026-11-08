@@ -1,32 +1,13 @@
 package it.evadid.homepage.control.singletons
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
-import it.evadid.core.datastructures.user.UserConfig
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
-import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.clients.{ExecutionClient, RemoteExecutionConfig, RoutedExecutionClient, WebWorkerExecutionClient}
 import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.facades.Workers
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.control.startup.ClientRuntimeConfig
-import it.evadid.homepage.workbook.syncDestination.LocalIndexedDbStorageSyncHandler
-import it.evadid.sql.DatabaseConfig.DatabaseConfigPartialInformation
-import it.evadid.sql.DatabaseHistoryFormat.{ClassicJsonWithKey, ClassicKeylessJson}
-import it.evadid.workbook.interaction.sync.SyncInformation
-import it.evadid.workbook.interaction.sync.SyncStrategy.{SYNC_LAST, SYNC_LAST_AND_MAJOR, SYNC_MAJOR}
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
-import upickle.{ReadWriter, macroRW}
 
-
-object HomepageDefaults {
-
-  lazy val defaultSyncLocations: List[SyncInformation] = List(
-    SyncInformation(LocalIndexedDbStorageSyncHandler.instanceForHistory, SYNC_LAST_AND_MAJOR),
-    SyncInformation(SyncDestinationBasedOnHistoryDatabase(DatabaseConfigPartialInformation(databaseOp = Some("db_332371_12")), ClassicJsonWithKey), SYNC_MAJOR),
-    SyncInformation(SyncDestinationBasedOnHistoryDatabase(DatabaseConfigPartialInformation(databaseOp = Some("db_332371_12")), ClassicKeylessJson), SYNC_MAJOR),
-  )
-
-}
 
 case class HomepageDefaults(fullInfo: FullInfo) {
 

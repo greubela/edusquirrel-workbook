@@ -86,12 +86,12 @@ class LanguageSerializationSpec extends FunSuite {
       bad.loadAllTriples(BasicLogger()).map(result => assertEquals(result, empty))
     }
   }
-  test("unsupported file types are rejected and directory factories create nine language sources") {
+  test("directory factories request only declared language files") {
     assertEquals(LanguageMapSourceFileBased.forEvaFile(info(file("map.txt", ""), English)), None)
-    val collection = forEvaLanguageMapFiles(Set(EvaDirectorySource("lesson", file("translations", "{}"))))
-    assertEquals(collection.inputSources.size, 9)
+    val collection = forEvaLanguageMapFiles(Set(EvaDirectorySource("lesson", file("translations", "{}"), Set("en", "universal"))))
+    assertEquals(collection.inputSources.size, 2)
     assertEquals(collection.inputSources.collect { case f: LanguageMapSourceFileBased[?] => f.associatedLanguage },
-      Set[AppLanguage](English, German, French, Ukrainian, Russian, Turkish, Danish, Spanish, UniversalLanguage))
+      Set[AppLanguage](English, UniversalLanguage))
   }
   test("empty source collections avoid loading sources") {
     val collection = LanguageMapCollectionSource(Set.empty, summon[ExecutionContext])

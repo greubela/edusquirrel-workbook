@@ -48,4 +48,36 @@ class LoginTokenTimestampSpec extends FunSuite {
     assertEquals(token.token, "secret")
     assertEquals(token.expires, LocalDateTime.parse("2026-10-13T01:40:00.123456"))
   }
+  test("invalid account preferences cannot prevent identity lookup and JDBC reads begin on the first row") {
+    import it.evadid.core.datastructures.user.UserConfig
+    val configured = UserConfig(Nil, isOnlineAccount = true)
+    val rows = List(
+      Map("id" -> "one", "name" -> "First", "mail" -> "first@example.org", "config" -> upickle.default.write(configured)),
+      Map("id" -> "two", "name" -> "Second", "mail" -> "second@example.org", "config" -> "invalid settings"))
+    var row = -1
+    var prematureReads = 0
+    val result = stub(classOf[ResultSet]) { (method, args) => method match {
+      case "next" => row += 1; java.lang.Boolean.valueOf(row < rows.size)
+      case "getString" =>
+        if (row < 0 || row >= rows.size) {
+          prematureReads += 1
+          throw new java.sql.SQLException("Cursor is not on a row")
+        }
+        rows(row)(args(0).toString)
+      case _ => null
+    }}
+    val statement = stub(classOf[PreparedStatement]) { (method, _) =>
+      if (method == "executeQuery") result else if (method == "toString") "user query" else null
+    }
+    val connection = stub(classOf[Connection]) { (method, _) =>
+      if (method == "prepareStatement") statement else null
+    }
+    val accounts = SqlUserCommands(connection, BasicLogger()).findUserWithMail("fixture@example.org")
+    assertEquals(accounts.map(_.user.id), List("one", "two"))
+    assertEquals(accounts.head.config, configured)
+    assertEquals(accounts.last.config, UserConfig.onlineDefaults)
+    assertEquals(upickle.default.read[UserConfig](upickle.default.write(accounts.last.config)), accounts.last.config)
+    assertEquals(prematureReads, 0)
+  }
+
 }

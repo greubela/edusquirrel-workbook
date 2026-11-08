@@ -131,7 +131,11 @@ class SqlUserCommands(
     if (userColumns.isEmpty || userColumns.size < 4) None
     else {
       val user = User(userColumns(1), userColumns(0), userColumns(2))
-      val userConfig = read(userColumns(3))(using UserConfig.derived$ReadWriter)
+      val userConfig = scala.util.Try(read[UserConfig](userColumns(3))).recover {
+        case scala.util.control.NonFatal(_) =>
+          logger.logWarn("Discarded invalid account settings; using current defaults.")
+          UserConfig.onlineDefaults
+      }.get
       Some(UserInDatabase(user, userConfig))
     }
   }

@@ -36,29 +36,21 @@ object LanguageMapInputSource {
   )
 
   def forEvaLanguageMapFiles(directoryNames: Set[EvaDirectorySource])(implicit ec: ExecutionContext): LanguageMapCollectionSource = {
-    lazy val evaLanguageFileInfo: Set[(EvaDirectorySource, (String, HumanLanguage))] = for {
-      a <- directoryNames
-      b <- languageByEvaFileSuffix.toList
-    } yield (a, b)
-    val evaLanguageFiles: Set[LanguageMapSourceFileBased[HumanLanguage]] = evaLanguageFileInfo.flatMap(tup => buildEvaReader[HumanLanguage](tup._1, tup._2._2, tup._2._1, ec))
-    lazy val evaUniversalFiles: Set[LanguageMapSourceFileBased[SpecialLanguage]] = directoryNames.flatMap(curFile => buildEvaReader[SpecialLanguage](curFile, UniversalLanguage, "universal", ec))
-    val res: Set[LanguageMapInputSource] = (evaLanguageFiles ++ evaUniversalFiles).toSet
-    //println(s"${evaLanguageFiles.size} + ${evaUniversalFiles.size} = ${res.size} language map files?")
-    LanguageMapCollectionSource(res, ec)
+    val files: Set[LanguageMapInputSource] = directoryNames.flatMap { source =>
+      source.availableFileSuffixes.flatMap { suffix =>
+        languageByEvaFileSuffix.get(suffix).flatMap(language => buildEvaReader[AppLanguage](source, language, suffix, ec))
+      }
+    }
+    LanguageMapCollectionSource(files, ec)
   }
 
+  case class EvaDirectorySource(languageMapName: String, dirFileDescription: FileDescription,
+                                availableFileSuffixes: Set[String])
 
-  case class EvaDirectorySource(languageMapName: String, dirFileDescription: FileDescription)
-
-  private lazy val languageByEvaFileSuffix: Map[String, HumanLanguage] = Map(
-    "en" -> English,
-    "de" -> German,
-    "fr" -> French,
-    "ua" -> Ukrainian,
-    "ru" -> Russian,
-    "tr" -> Turkish,
-    "dk" -> Danish,
-    "es" -> Spanish
+  private lazy val languageByEvaFileSuffix: Map[String, AppLanguage] = Map(
+    "en" -> English, "de" -> German, "fr" -> French, "ua" -> Ukrainian,
+    "ru" -> Russian, "tr" -> Turkish, "dk" -> Danish, "es" -> Spanish,
+    "universal" -> UniversalLanguage
   )
 
   private def buildEvaReader[T <: AppLanguage](source: EvaDirectorySource, language: T, languageSuffix: String, ec: ExecutionContext): Option[LanguageMapSourceFileBased[T]] = {
