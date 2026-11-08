@@ -1,9 +1,9 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.workbook.interaction.sync.model.HistoryJson
-
 import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, FetchAllFromDbRequest}
-import it.evadid.server.commandHandler.sql.{DatabaseConfig, GenericSqlFunctionality}
+import it.evadid.server.commandHandler.sql.{GenericSqlFunctionality, RichDatabaseConfig}
+import it.evadid.sql.DatabaseConfig
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
 
@@ -100,7 +100,7 @@ object FetchFromDatabase {
     val control = FetchFromDatabase(connection, request.usageContext, logger)
 
     val resMap: Map[SyncContext, List[RichDatabaseEntry]] = {
-      if (!request.hasDatabaseKeyColumn) control.fetchAllInDbWithoutKeys("events")
+      if (!request.databaseFormat.hasKeyTable) control.fetchAllInDbWithoutKeys("events")
       else if (request.mayLimitToKey.isEmpty) control.fetchAllInDbWithKeys()
       else control.fetchForKeyInDbWithKey(request.mayLimitToKey.get).map(e => Map(e.syncContext -> List(e))).getOrElse(Map.empty)
     }

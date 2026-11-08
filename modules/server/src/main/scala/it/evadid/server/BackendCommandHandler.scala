@@ -84,7 +84,7 @@ object BackendCommandHandler {
 
     UserCommands.updateAccountCommand.toLocalExecutionClient(
       (request: UpdateAccountRequest, logger: Logger) => SqlUserCommands.handleUpdateAccountCommand(request, logger),
-      (request: UpdateAccountRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.user.id),
+      (request: UpdateAccountRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.allUserInfo.user.id),
     ),
 
   ))

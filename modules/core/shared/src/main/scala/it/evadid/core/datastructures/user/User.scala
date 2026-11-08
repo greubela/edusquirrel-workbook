@@ -41,7 +41,7 @@ object User {
     def apply(token: String): SingleAccessToken = SingleAccessToken(token, LocalDateTime.now())
   }
 
-  case class UserInDatabase(user: User, configJson: String) derives ReadWriter {
+  case class UserInDatabase(user: User, config: UserConfig) derives ReadWriter {
 
   }
 

@@ -1,6 +1,8 @@
 package it.evadid.server.commandHandler.sql
 
 import it.evadid.distribution.commandTypes.SqlEditorCommands.*
+import it.evadid.sql.DatabaseConfig
+
 import java.sql.{Connection, DriverManager, SQLException, Statement}
 import scala.util.{Try, Using}
 

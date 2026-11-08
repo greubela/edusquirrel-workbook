@@ -1,7 +1,8 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.distribution.commandTypes.SQLCommands.DeleteInDbRequest
-import it.evadid.server.commandHandler.sql.{DatabaseConfig, GenericSqlFunctionality}
+import it.evadid.server.commandHandler.sql.{GenericSqlFunctionality, RichDatabaseConfig}
+import it.evadid.sql.DatabaseConfig
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
@@ -95,10 +96,10 @@ object DeleteInDatabase {
     val control = DeleteInDatabase(connection, request.usageContext, logger)
 
     if (request.limitToKey.isEmpty) {
-      if (request.hasDatabaseKeyColumn) control.deleteAllEventsOfUsage("eventsWithKey")
+      if (request.databaseFormat.hasKeyTable) control.deleteAllEventsOfUsage("eventsWithKey")
       else control.deleteAllEventsOfUsage("events")
     } else {
-      if (request.hasDatabaseKeyColumn) control.deleteByKeyInDatabaseWithKey(request.limitToKey.get)
+      if (request.databaseFormat.hasKeyTable) control.deleteByKeyInDatabaseWithKey(request.limitToKey.get)
       else control.deleteByKeyInDatabaseWithoutKey(request.limitToKey.get, "events")
     }
   }

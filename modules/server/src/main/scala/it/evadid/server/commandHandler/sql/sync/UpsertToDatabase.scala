@@ -1,14 +1,14 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.workbook.interaction.sync.model.HistoryJson
-
 import it.evadid.distribution.commandTypes.SQLCommands.StoreToDbRequest
-import it.evadid.server.commandHandler.sql.{DatabaseConfig, GenericSqlFunctionality}
+import it.evadid.server.commandHandler.sql.{GenericSqlFunctionality, RichDatabaseConfig}
+import it.evadid.sql.DatabaseConfig
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.UsageContext
 
-import java.sql.{Connection, Timestamp}
+import java.sql.{Connection, DriverManager, PreparedStatement, Timestamp}
 import java.time.LocalDateTime
 
 case class UpsertToDatabase(
@@ -82,6 +82,9 @@ case class UpsertToDatabase(
 
 object UpsertToDatabase {
 
+
+
+
   def handleRequest(request: StoreToDbRequest, logger: Logger): SyncSuccess =
     if (HistoryJson.lastTimestamp(request.historyJson).isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now()) else {
       val config = DatabaseConfig.readFromEnv(Some(request.databaseName))
@@ -89,7 +92,7 @@ object UpsertToDatabase {
 
       val control = UpsertToDatabase(connection, request.usageContext, logger)
 
-      if (request.hasDatabaseKeyColumn) control.upsertIntoTableWithKeys(request)
+      if (request.databaseFormat.hasKeyTable) control.upsertIntoTableWithKeys(request)
       else control.upsertIntoTableWithoutKeys(request, "events")
     }
 

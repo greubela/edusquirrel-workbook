@@ -2,6 +2,7 @@ package it.evadid.server.commandHandler.sql
 
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.distribution.command.ExecutionCommand
+import it.evadid.sql.DatabaseConfig
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.SyncSuccess
