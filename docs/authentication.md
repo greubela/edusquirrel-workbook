@@ -16,6 +16,11 @@ asynchronous failures reach translated feedback rather than disappearing in the
 transport layer. Styles belong in `homepage/css/workbook/workbook-structure.css`
 and messages in the login language maps.
 
+Saved login restoration accepts the legacy string-encoded configuration and
+migrates its named synchronization destinations at the browser-storage boundary.
+It preserves identity and tokens. An unreadable saved login leaves the workbook
+usable for signing in again and does not clear answers or browser storage.
+
 ## Diagnosing failures
 
 A command-pool error is a transport/handler summary; inspect its underlying server
@@ -29,7 +34,7 @@ alone does not update a running installation.
 
 ```sh
 sbt 'server/test' 'client/test' buildJS
-npm run test:workbooks -- login-authentication
+npm run test:workbooks -- login-authentication saved-user-startup
 ```
 
 Tests use JDBC doubles and intercepted backend requests. They cover duplicate

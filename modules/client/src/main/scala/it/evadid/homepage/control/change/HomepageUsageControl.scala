@@ -77,7 +77,15 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   private val allUserInfoStorageKey: String = "edusquirrel-alluserinfo"
 
   def tryParsingExistingUser(): Option[AllUserInfo] = {
-     LocalStorageSyncHandler.fetchAllRawSync().get(allUserInfoStorageKey).map(curStr => read(curStr))
+    val restored: scala.util.Try[Option[AllUserInfo]] = scala.util.Try(Option(org.scalajs.dom.window.localStorage.getItem(allUserInfoStorageKey)))
+      .flatMap {
+        case None => Success(None)
+        case Some(raw) => StoredUserInfo.decode(raw).map(Some(_))
+      }
+    restored.recover { case scala.util.control.NonFatal(_) =>
+      logger.logWarn("Could not restore the saved login. Workbook answers are unchanged; please sign in again.")
+      None
+    }.get
   }
 
   private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken]): Future[?] = {
