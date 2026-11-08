@@ -68,10 +68,13 @@ case class IconGradingAndScaffolding(fullInfo: FullInfo, laminarHelper: LaminarR
     }
 
   def deriveGradingSymbol(gradedState: GradedState[?, ?]): Element = if (workbookInteractionElement.gradingElements.isEmpty) div() else {
-    val gradingResults = gradedState.graderResultMap.values
+    val configured = workbookInteractionElement.gradingElements
+    val gradingResults = gradedState.graderResultMap.iterator.collect {
+      case (grader, result) if configured.contains(grader) && result.grader == grader && result.gradedState == gradedState.state => result
+    }.toList
 
-    val availableGraders = workbookInteractionElement.gradingElements.size
-    val notRequested = gradingResults.map(_.gradingStatus).count(_ == NotRequested())
+    val availableGraders = configured.size
+    val notRequested = availableGraders - gradingResults.size + gradingResults.count(_.gradingStatus == NotRequested())
     val notFinished = gradingResults.map(_.gradingStatus).count(_ == NotFinished())
     val testError = gradingResults.map(_.gradingStatus).count(_.isError)
     val shouldRetry = gradingResults.map(_.gradingStatus).count(_.shouldRetryExecution)

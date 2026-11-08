@@ -40,6 +40,27 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
     }
   }
 
+  test("grading icons ignore old graders and wrong-answer results while showing missing checks as unrequested") {
+    val interaction = exercise
+    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction)
+    val foreign = interaction.gradingElements.head.copy(exerciseText = LanguageMapContentId("test/foreign-task"))
+    val current: Map[WorkbookInteractionGrader[String, MessengerModel], GradingResult[String, MessengerModel]] =
+      interaction.gradingElements.map(grader => grader -> GradingResult(grader, "", GradingStatus.Correct())).toMap
+    val old = GradingResult(foreign, "", GradingStatus.TestError(it.evadid.distribution.command.SerializedException("old failure")))
+    val complete = icons.deriveGradingSymbol(GradedState("", current.updated(foreign, old)))
+    val closeComplete = mount(complete)
+    try {
+      assert(complete.ref.querySelector(".grading-icon-thumbs-up-path") != null)
+      assertEquals(complete.ref.querySelector(".grading-error-path"), null)
+    } finally closeComplete()
+    val grader = interaction.gradingElements.head
+    val wrong = current(grader).copy(gradedState = "another answer")
+    val missing = icons.deriveGradingSymbol(GradedState("", current.updated(grader, wrong)))
+    val closeMissing = mount(missing)
+    try assert(missing.ref.querySelector(".grading-start-path") != null)
+    finally closeMissing()
+  }
+
   test("completed scaffolding remains available when the display language changes") {
     val interaction = exercise
     val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction)

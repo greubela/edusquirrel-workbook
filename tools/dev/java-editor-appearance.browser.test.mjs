@@ -75,7 +75,10 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     policy.hold = true;
     const received = new Promise(resolve => arrivals.push(resolve));
     await page.locator('dialog[open] .scaffolding-info').click();
-    const pending = await received;
+    let requestDeadline;
+    const pending = await Promise.race([received, new Promise((_, reject) => {
+      requestDeadline = setTimeout(() => reject(new Error('Expected a hint request for the edited Java answer.')), 30000);
+    })]).finally(() => clearTimeout(requestDeadline));
     assert.equal(requests.length, 2);
     assert.equal(requests.at(-1).source.code, draft);
     assert.equal(requests.at(-1).feedbackLanguage, 'German');
