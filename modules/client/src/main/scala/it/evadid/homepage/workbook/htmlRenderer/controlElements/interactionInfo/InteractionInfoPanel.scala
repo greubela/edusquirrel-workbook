@@ -74,11 +74,8 @@ object InteractionInfoPanel {
   /* Tooltip functionality */
 
   def infoPanelIcon(additionalCssStr: String, svgIcon: ReactiveSvgElement[org.scalajs.dom.SVGSVGElement], tooltipSignal: Signal[String], onMouseClick: Option[MouseEvent => Any]): ReactiveHtmlElement[HTMLDivElement] = {
-    val isHovering: Var[Boolean] = Var(false)
     div(
-      onMouseOver.mapTo(true) --> isHovering,
-      onMouseOut.mapTo(false) --> isHovering,
-      cls <-- isHovering.signal.map(curHovering => s"info-svg-container ${additionalCssStr} ${if (curHovering && onMouseClick.nonEmpty) "hovering" else ""}"),
+      cls := s"info-svg-container ${additionalCssStr} ${if (onMouseClick.nonEmpty) "clickable" else ""}",
       LaminarRenderHelper.singleton.createTooltip(tooltipSignal),
       svgIcon,
       onClick --> (mouseEvent => if (onMouseClick.nonEmpty) onMouseClick.get.apply(mouseEvent))

@@ -125,9 +125,11 @@
 .info-svg-container{
     background: transparent;
 }
-.info-svg-container.hovering{
-    background: var(--color-background-workarea-interactible);
+.info-svg-container.clickable {
     cursor: pointer;
+}
+.info-svg-container.clickable:hover {
+    background: var(--color-background-workarea-interactible);
 }
 .interaction-element-info .interaction-info__hint-toggle .sync-info-svg {
     cursor: pointer;
