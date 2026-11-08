@@ -116,5 +116,7 @@
   "gradingInfoTooltipStart": "Klicken um _ Tests zu starten!",
   "gradingInfoTooltipUnfinished": "Warte auf _ Ergebnisse (bisher _ / _ bestanden)",
   "gradingInfoTooltipError": "Fehler bei der Ausführung von _ Tests (insgesamt _ / _ bestanden)",
-  "gradingInfoTooltipNrCorrect": "Aktuell _ / _ Tests bestanden"
+  "gradingInfoTooltipNrCorrect": "Aktuell _ / _ Tests bestanden",
+  "requestScaffoldingHint": "Klicke für einen Tipp (auf Basis deiner aktuellen Lösung)",
+  "scaffoldingLoading": "Tipp wird geladen!"
 }

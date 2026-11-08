@@ -8,18 +8,12 @@ import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT_UNDERSCORE_RE
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
 import it.evadid.workbook.abstractions.grading.GradedState
 import it.evadid.workbook.abstractions.grading.GradingStatus.{Correct, NotFinished, NotRequested}
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingRequestedButNotFinished
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
 
-object IconGrading {
 
-  private case class GradingView(mount: Option[AnyRef] = None, revision: Long = 0,
-                                 pending: Option[AnyRef] = None, failed: Boolean = false)
-
-
-}
-
-
-case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, workbookInteractionElement: WorkbookInteractionUntyped) {
+case class IconGradingAndScaffolding(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, workbookInteractionElement: WorkbookInteractionUntyped) {
 
   val gradingReporter: InteractionVariableGradingReporter[?, ?, ?] = InteractionVariableGradingReporter(workbookInteractionElement.interactionVariable)
 
@@ -29,8 +23,46 @@ case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, w
   )
 
 
-  def deriveGradingSymbol(gradedState: GradedState[?, ?]): Element = if (workbookInteractionElement.gradingElements.isEmpty) div() else {
+  def deriveScaffoldingSymbol(curScaffolding: Option[ScaffoldingResult[?, ?]]): Element =
+    if (workbookInteractionElement.scaffoldingElement.isEmpty) div()
+    else if (curScaffolding.isEmpty) {
+      val curScaffLabel =laminarHelper.plaintextStringSignal("basic/requestScaffoldingHint")
+      InteractionInfoPanel.infoPanelIcon(
+        "scaffolding-info",
+        createScaffoldingNothing(),
+        curScaffLabel,
+        Some(_ => onScaffoldingRequested())
+      ).amend(
+        role := "img", tabIndex := 0, aria.label <-- curScaffLabel,
+        span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/gradingInfoLabel"))
+      )
+    } else {
+      val status = curScaffolding.get.scaffoldingStatus
+      val svgScaffoldingIcon = if (status == ScaffoldingRequestedButNotFinished()) {
+        createScaffoldingLoading()
+      } else if (status.isError) {
+        createScaffoldingError()
+      } else {
+        createScaffoldingFinished()
+      }
 
+      val scaffoldingTooltip = status.getInfoString.match {
+        case Left(langMap) => fullInfo.signals.stringFromLanguageMap(langMap)
+        case Right(langMapId) => laminarHelper.plaintextStringSignal(langMapId)
+      }
+
+      InteractionInfoPanel.infoPanelIcon(
+        "grading-info",
+        svgScaffoldingIcon,
+        scaffoldingTooltip,
+        Some(_ => onScaffoldingRequested())
+      ).amend(
+        role := "img", tabIndex := 0, aria.label <-- scaffoldingTooltip,
+        span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/scaffoldingLabel"))
+      )
+    }
+
+  def deriveGradingSymbol(gradedState: GradedState[?, ?]): Element = if (workbookInteractionElement.gradingElements.isEmpty) div() else {
     val gradingResults = gradedState.graderResultMap.values
 
     val availableGraders = workbookInteractionElement.gradingElements.size
@@ -67,11 +99,26 @@ case class IconGrading(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, w
         laminarHelper.contentIdStringSignal("basic/gradingInfoTooltipNrCorrect", PLAINTEXT_UNDERSCORE_REPLACABLE, List("" + correct, "" + availableGraders))
       }
 
-    InteractionInfoPanel.infoPanelIcon("grading-info", svgGradingIcon, svgGradingTooltip).amend(
+
+    InteractionInfoPanel.infoPanelIcon(
+      "grading-info",
+      svgGradingIcon,
+      svgGradingTooltip,
+      Some(_ => onGradingRequested())
+    ).amend(
       role := "img", tabIndex := 0, aria.label <-- svgGradingTooltip,
-      span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/gradingInfoLabel")),
-      onClick --> (_ => workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.executionContextInformation, forceGrading = true))
+      span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/gradingInfoLabel"))
     )
+  }
+
+  def onScaffoldingRequested(): Unit = {
+    workbookInteractionElement.interactionVariable.control.getOrCalculateScaffolding(fullInfo.executionContextInformation)
+    println("requested Scaffolding?!!!")
+  }
+
+  def onGradingRequested(): Unit = {
+    workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.executionContextInformation, forceGrading = true)
+    println("grading Rquested!!!")
   }
 
 }

@@ -9,7 +9,7 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success, Try}
 import scala.scalajs.js.timers.{SetTimeoutHandle, clearTimeout, setTimeout}
-
+/*
 object InteractionScaffoldingPanel {
 
   case class Labels(request: Signal[String], loading: Signal[String], dismiss: Signal[String],
@@ -122,3 +122,4 @@ final class InteractionScaffoldingPanel[T, A](
 
   override def getDomElement(): Element = domElement
 }
+*/

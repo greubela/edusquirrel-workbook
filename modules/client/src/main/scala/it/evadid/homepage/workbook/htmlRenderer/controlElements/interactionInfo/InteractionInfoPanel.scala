@@ -1,30 +1,27 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
-import com.raquo.laminar.api.L.{child, *}
+import com.raquo.laminar.api.L.{child, div, *}
 import com.raquo.laminar.nodes.{ReactiveHtmlElement, ReactiveSvgElement}
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel.interactionInfoCssString
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
-import org.scalajs.dom.HTMLDivElement
+import org.scalajs.dom.{HTMLDivElement, MouseEvent}
 
 case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionUntyped) extends HtmlAppElement {
 
-  val iconGrading = IconGrading(fullInfo, laminarHelper, workbookInteractionElement)
-  val iconScaffolding = IconScaffolding(fullInfo, laminarHelper, workbookInteractionElement)
+  val iconGradingScaffolding = IconGradingAndScaffolding(fullInfo, laminarHelper, workbookInteractionElement)
   val iconSync = IconSync(fullInfo, laminarHelper, workbookInteractionElement)
 
 
   lazy val domElement: Element = {
-    div(
-      cls := interactionInfoCssString,
+    div(cls := interactionInfoCssString,
       div(cls := "interaction-info__icons",
-        div(cls := "grading-report-icon", child <-- iconGrading.gradingReporter.currentGradingSignal.toEventStream().map(iconGrading.deriveGradingSymbol)),
+        div(cls := "grading-report-icon", child <-- iconGradingScaffolding.gradingReporter.currentGradingSignal.toEventStream().map(iconGradingScaffolding.deriveGradingSymbol)),
+        div(cls := "scaffolding-report-icon", child <-- iconGradingScaffolding.gradingReporter.currentScaffoldingSignal.toEventStream().map(iconGradingScaffolding.deriveScaffoldingSymbol)),
         div(cls := "sync-report-icon", child <-- iconSync.syncReport.map(iconSync.deriveSyncSymbol)),
-        Option.when(workbookInteractionElement.scaffoldingElement.nonEmpty)(iconScaffolding.hintButton)),
-      child.maybe <-- iconScaffolding.expanded.signal.map(open => Option.when(open)(iconScaffolding.hintBody()))
-    )
+      ))
   }
 
   override def getDomElement(): Element = domElement
@@ -49,11 +46,17 @@ object InteractionInfoPanel {
 
   /* Tooltip functionality */
 
-  def infoPanelIcon(additionalCssStr: String, svgIcon: ReactiveSvgElement[org.scalajs.dom.SVGSVGElement], tooltipSignal: Signal[String]): ReactiveHtmlElement[HTMLDivElement] = div(
-    cls := s"info-svg-container ${additionalCssStr}",
-    LaminarRenderHelper.singleton.createTooltip(tooltipSignal),
-    svgIcon,
-  )
+  def infoPanelIcon(additionalCssStr: String, svgIcon: ReactiveSvgElement[org.scalajs.dom.SVGSVGElement], tooltipSignal: Signal[String], onMouseClick: Option[MouseEvent => Any]): ReactiveHtmlElement[HTMLDivElement] = {
+    val isHovering: Var[Boolean] = Var(false)
+    div(
+      onMouseOver.mapTo(true) --> isHovering,
+      onMouseOut.mapTo(false) --> isHovering,
+      cls <-- isHovering.signal.map(curHovering => s"info-svg-container ${additionalCssStr} ${if (curHovering && onMouseClick.nonEmpty) "hovering" else ""}"),
+      LaminarRenderHelper.singleton.createTooltip(tooltipSignal),
+      svgIcon,
+      onClick --> (mouseEvent => if (onMouseClick.nonEmpty) onMouseClick.get.apply(mouseEvent))
+    )
+  }
 
 
 }

@@ -1,6 +1,5 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
-import cats.mtl.syntax.state
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
@@ -9,7 +8,7 @@ import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.{WorkbookInteractionElementFull, WorkbookInteractionUntyped}
 
 import java.util.UUID
-
+/*
 case class IconScaffolding(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, workbookInteractionElement: WorkbookInteractionUntyped) {
 
   private lazy val hintAction = expanded.signal.flatMapSwitch(curVal => {
@@ -41,14 +40,13 @@ case class IconScaffolding(fullInfo: FullInfo, laminarHelper: LaminarRenderHelpe
         "×", onClick --> (_ => closeHints()))),
     scaffoldingPanel(workbookInteractionElement))
 
+
   lazy val hintButton = button(
     typ := "button", cls := "interaction-info__hint-toggle",
     aria.label <-- hintAction,
     title <-- hintAction,
     aria.expanded <-- expanded.signal, aria.controls := hintId,
-    svg.svg(svg.cls := "interaction-info__hint-icon", svg.viewBox := "0 0 24 24",
-      svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.7",
-      svg.path(svg.d := "M9 18h6M10 21h4M8.5 14.5a6 6 0 1 1 7 0c-.9.7-1.5 1.3-1.5 3.5h-4c0-2.2-.6-2.8-1.5-3.5Z")),
+    hintSvg,
     span(child.text <-- laminarHelper.plaintextStringSignal("basic/scaffoldingLabel")),
     onClick --> (_ => expanded.update(!_)))
 
@@ -75,5 +73,5 @@ case class IconScaffolding(fullInfo: FullInfo, laminarHelper: LaminarRenderHelpe
 
 
 }
-
+*/
 

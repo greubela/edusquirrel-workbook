@@ -5,13 +5,10 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.IconSync.*
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
-import it.evadid.workbook.interaction.sync.SyncControl.*
 import it.evadid.workbook.meta.InteractionVariableSyncReport
-import org.scalajs.dom.{SVGPathElement, SVGSVGElement}
 
 case class IconSync(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, workbookInteractionElement: WorkbookInteractionUntyped) {
 
@@ -31,7 +28,7 @@ case class IconSync(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, work
       else if (report.latestStateIsSyncedTo.size == report.allSyncLocations.size) laminarHelper.contentIdStringSignal("basic/syncInfoTooltipFull", PLAINTEXT_UNDERSCORE_REPLACABLE, List[String](report.allSyncLocations.size.toString))
       else laminarHelper.contentIdStringSignal("basic/syncInfoTooltipPartial", PLAINTEXT_UNDERSCORE_REPLACABLE, List[String](report.latestStateIsSyncedTo.size.toString, report.allSyncLocations.size.toString))
 
-    InteractionInfoPanel.infoPanelIcon("sync-info", svgSyncIcon, svgSyncTooltip).amend(
+    InteractionInfoPanel.infoPanelIcon("sync-info", svgSyncIcon, svgSyncTooltip, None).amend(
       role := "img", tabIndex := 0, aria.label <-- svgSyncTooltip,
       span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/syncInfoLabel")))
   }
@@ -40,9 +37,6 @@ case class IconSync(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, work
 
 object IconSync {
   /* Cloud Sync Elements */
-
-
-
 
 
 }

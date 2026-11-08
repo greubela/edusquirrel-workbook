@@ -117,5 +117,7 @@
   "gradingInfoTooltipStart": "Click to execute _ tests!",
   "gradingInfoTooltipUnfinished": "Waiting for  _ results (currently _ / _ correct)",
   "gradingInfoTooltipError": "Error while executing _ Tests (currently _ / _ correct))",
-  "gradingInfoTooltipNrCorrect": "Passed _ / _ tests"
+  "gradingInfoTooltipNrCorrect": "Passed _ / _ tests",
+  "requestScaffoldingHint": "Click for a hint (based on your current solution)",
+  "scaffoldingLoading": "Hint is generated!"
 }
