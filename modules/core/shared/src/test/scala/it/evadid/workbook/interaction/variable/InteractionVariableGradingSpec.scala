@@ -317,18 +317,21 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  test("every explicit programming hint uses the supplied client and current feedback language without caching") {
+  test("an explicit hint for a changed answer uses the supplied client and selected language") {
     val f = new HintFixture
-    val before = f.variable.currentHistory
     f.generateFeedback(f.source).flatMap { first =>
       assertEquals(first.scaffoldingStatus.asInstanceOf[ScaffoldingStatus.ScaffoldingFeedback].feedback.availableLanguages, Set[HumanLanguage](German))
       f.language.set(English)
+      val next = ProgrammingStatePythonString("forward(10)")
+      f.variable.setStateFromUserInteraction(next, MAJOR, context = TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+      val before = f.variable.currentHistory
       f.executor.set(f.client(_ => Future.successful(hintReply("Which condition will you inspect first?"))))
-      f.generateFeedback(f.source).map { second =>
+      f.generateFeedback(next).map { second =>
         assertEquals(f.requests.now().size, 2)
         assertEquals(f.lookups.now(), 2)
         assertEquals(f.context("feedbackLanguage").str, English.name)
         assertEquals(f.context("task")("text").str, "Draw a line.")
+        assertEquals(second.forState, next)
         assertEquals(second.scaffoldingStatus.asInstanceOf[ScaffoldingStatus.ScaffoldingFeedback].feedback.getInLanguage(English), "1. Which condition will you inspect first?")
         assertEquals(f.variable.currentHistory.historyStates, before.historyStates)
         assertEquals(f.variable.currentHistory.historyScaffolding, before.historyScaffolding)

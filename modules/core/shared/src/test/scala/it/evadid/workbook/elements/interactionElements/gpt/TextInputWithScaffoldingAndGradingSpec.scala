@@ -200,11 +200,12 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     }
   }
 
-  test("the same grader resolves the newly selected language on the next request") {
+  test("an explicit assessment of a changed answer uses the currently selected language") {
     val f = new Fixture(List(Right("Gut.\nCORRECT"), Right("Good.\nCORRECT")))
     f.grade().flatMap { _ =>
       f.language.set(English)
-      f.grade().map { result =>
+      f.grade("An updated answer").map { result =>
+        assertEquals(ujson.read(f.requests.now().last.prompt)("answer").str, "An updated answer")
         assertEquals(ujson.read(f.requests.now().last.prompt)("criterion").str, "English: test/criterion")
         assertEquals(result.feedbackInformation.get.tryGetInLanguage(English), Some("Good."))
       }
