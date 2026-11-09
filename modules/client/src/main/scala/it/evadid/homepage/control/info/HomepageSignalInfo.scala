@@ -47,7 +47,6 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     case db: SyncDestinationBasedOnHistoryDatabase => DatabaseSyncViaBackendServerHandler(fullInfo.syncControl.syncLogger, db)
     case li: LocalIndexedDbSyncDefinition => LocalIndexedDbStorageSyncHandler(li).withSyncLogger(fullInfo.syncControl.syncLogger).forHistory()
     case ls: LocalStorageSyncDefinition => LocalStorageSyncHandler(ls).withSyncLogger(fullInfo.syncControl.syncLogger).forHistory()
-    case _ => ???
   }
 
   /*def currentSyncSources: List[SyncInformationWithContext] = fullInfo.synchronized {
@@ -59,7 +58,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   lazy val currentSyncDestinations: StrictSignal[List[SyncInformationWithContext]] = {
     baseSignal.mapLazy(homepageInfo => {
-      homepageInfo.userInfo.map(curUserInfo => curUserInfo.effectiveSyncDestinations.map(_.forContext(homepageInfo.toContext, resolveSyncDefinition))).getOrElse(List())
+      homepageInfo.userInfo.map(curUserInfo => curUserInfo.config.syncDestinations.map(_.forContext(homepageInfo.toContext, resolveSyncDefinition))).getOrElse(List())
     })
   }
 

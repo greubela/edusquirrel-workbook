@@ -8,17 +8,8 @@ case class AllUserInfo(user: User, credentials: UserCredentials, config: UserCon
     s"${user.name} (${user.mail}@${user.id}, logged in: ${credentials.signedBackendToken.nonEmpty}, syncDestinations: ${config.syncDestinations.size})"
   }
 
-  def effectiveSyncDestinations: List[it.evadid.workbook.interaction.sync.SyncInformation] = {
-    import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
-    config.syncDestinations.map { info => info.syncDestination match {
-      case destination: SyncDestinationBasedOnHistoryDatabase if destination.databaseConfig == it.evadid.sql.DatabaseConfiguration.defaultDb =>
-        credentials.databaseConfig.fold(info)(database => info.copy(syncDestination = destination.copy(databaseConfig = database.publicInformation)))
-      case _ => info
-    }}
-  }
-
   def withoutCredentials(): AllUserInfo = {
-    copy(credentials = UserCredentials())
+    copy(credentials = UserCredentials(), config = config.withoutCredentials)
   }
 
 }

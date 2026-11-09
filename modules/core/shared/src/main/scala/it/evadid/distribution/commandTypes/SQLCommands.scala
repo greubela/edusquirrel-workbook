@@ -3,21 +3,21 @@ package it.evadid.distribution.commandTypes
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.sql.DatabaseConfiguration
-import it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation
 import it.evadid.sql.DatabaseHistoryFormat
 import it.evadid.sql.DatabaseTable
 import it.evadid.workbook.interaction.sync.*
 import upickle.default.*
 
 object SQLCommands {
-  private def redactCredentials(payload: ujson.Value): ujson.Value =
-    payload.objOpt.map(fields => ujson.Obj.from(fields.filterNot(_._1 == "databaseCredentials"))).getOrElse(ujson.Obj("redacted" -> true))
+  private def redactCredentials(payload: ujson.Value): ujson.Value = payload.objOpt.map { fields =>
+    val safe = fields.get("databaseConfig").flatMap(value => scala.util.Try(read[DatabaseConfiguration](value)).toOption)
+      .map(config => writeJs[DatabaseConfiguration](config.withoutCredentials)).getOrElse(ujson.Obj("redacted" -> true))
+    ujson.Obj.from(fields.toList.filterNot(_._1 == "databaseConfig") :+ ("databaseConfig" -> safe))
+  }.getOrElse(ujson.Obj("redacted" -> true))
 
 
   trait DbRequest {
-    def databaseConfig: PartialDatabaseInformation
-
-    def databaseCredentials: Option[DatabaseConfiguration]
+    def databaseConfig: DatabaseConfiguration
 
     def usageContext: UsageContext
 
@@ -27,9 +27,8 @@ object SQLCommands {
   case class StoreToDbRequest(
                                syncContext: SyncContext,
                                historyJson: String,
-                               databaseConfig: PartialDatabaseInformation,
-                               databaseFormat: DatabaseHistoryFormat,
-                               databaseCredentials: Option[DatabaseConfiguration] = None
+                               databaseConfig: DatabaseConfiguration,
+                               databaseFormat: DatabaseHistoryFormat
                              ) extends DbRequest derives ReadWriter {
 
     lazy val usageContext: UsageContext = syncContext.toUsageContext
@@ -38,19 +37,17 @@ object SQLCommands {
 
   case class FetchAllFromDbRequest(
                                     usageContext: UsageContext,
-                                    databaseConfig: PartialDatabaseInformation,
+                                    databaseConfig: DatabaseConfiguration,
                                     mayLimitToKey: Option[String],
-                                    databaseFormat: DatabaseHistoryFormat,
-                               databaseCredentials: Option[DatabaseConfiguration] = None
+                                    databaseFormat: DatabaseHistoryFormat
                                   ) extends DbRequest derives ReadWriter
 
 
   case class DeleteInDbRequest(
                                 usageContext: UsageContext,
                                 limitToKey: Option[String],
-                                databaseConfig: PartialDatabaseInformation,
-                                databaseFormat: DatabaseHistoryFormat,
-                               databaseCredentials: Option[DatabaseConfiguration] = None
+                                databaseConfig: DatabaseConfiguration,
+                                databaseFormat: DatabaseHistoryFormat
                               ) extends DbRequest derives ReadWriter {
   }
 

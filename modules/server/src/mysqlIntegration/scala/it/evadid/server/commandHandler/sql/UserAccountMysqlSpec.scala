@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.core.datastructures.user.User.{SingleAccessToken, UserInDatabase}
 import it.evadid.distribution.commandTypes.UserCommands.*
 import it.evadid.server.AuthHandling
-import it.evadid.sql.DatabaseConfiguration
+import it.evadid.sql.DatabaseConfigWithCredentials
 import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
 
@@ -30,7 +30,7 @@ class UserAccountMysqlSpec extends FunSuite {
   private def normalized(user: User): User = user.copy(mail = user.mail.toLowerCase)
 
   private def withDatabase[A](run: Connection => A): A =
-    Using.resource(DatabaseConfiguration.readFromEnv().newConnection())(run)
+    Using.resource(DatabaseConfigWithCredentials.readFromEnv().newConnection())(run)
 
   private def queries[A](run: SqlUserCommands => A): A =
     withDatabase(connection => run(SqlUserCommands(connection, logger)))
@@ -79,8 +79,12 @@ class UserAccountMysqlSpec extends FunSuite {
   test("account writes never persist supplied session credentials") {
     val credentials = UserCredentials(singleAccessToken = Some(SingleAccessToken("ephemeral-login-secret")),
       llmApiConfig = Some(it.evadid.llm.LlmConfiguration("https://fixture.invalid/chat", "model", Some("ephemeral-llm-secret"))),
-      databaseConfig = Some(DatabaseConfiguration("mysql", "fixture.invalid", "3306", "history", "owner", "ephemeral-db-secret")))
-    val info = AllUserInfo(alice, credentials, config)
+      databaseConfig = Some(DatabaseConfigWithCredentials("mysql", "fixture.invalid", "3306", "history", "owner", "ephemeral-db-secret")))
+    val destination = it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
+      credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalEvents)
+    val settings = UserConfig(List(it.evadid.workbook.interaction.sync.SyncInformation(destination,
+      it.evadid.workbook.interaction.sync.SyncStrategy.SYNC_MAJOR)), isOnlineAccount = true)
+    val info = AllUserInfo(alice, credentials, settings)
     assert(Await.result(SqlUserCommands.handleCreateAccountCommand(CreateAccountRequest(info), logger), 10.seconds).accountCreated)
     Await.result(SqlUserCommands.handleUpdateAccountCommand(UpdateAccountRequest(info), logger), 10.seconds)
     withDatabase { connection =>

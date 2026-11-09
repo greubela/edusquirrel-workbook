@@ -27,7 +27,7 @@ import scala.util.{Failure, Success}
 
 object FeedbackDemoElement:
 
-  private def demoLlmClient = CommandLlmClient(HtmlFullWorkbookApp.fullInfo.defaults.backendExecutor)
+  private def demoLlmClient = CommandLlmClient(HtmlFullWorkbookApp.fullInfo.defaults.backendExecutor, HtmlFullWorkbookApp.fullInfo.executionContextInformation.llmConfiguration)
 
   private val defaultLanguage: HumanLanguage = AppLanguage.English
 

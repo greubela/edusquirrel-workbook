@@ -13,7 +13,6 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 
 object LocalIndexedDbStorageSyncHandler {
-  val instanceForHistory = LocalIndexedDbSyncDefinition("EvaDidInteractionDB", "variableHistoryStore", 1)
   val instanceForCaching = LocalIndexedDbSyncDefinition("EvaDidCacheDb", "cache", 1)
 }
 

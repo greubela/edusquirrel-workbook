@@ -21,7 +21,9 @@ object SqlLogCommands {
 
   def handleLog(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Unit = {
     executionCommand.storeLogIntoTable.foreach { table =>
-      try Using.resource(table.inDatabase.completeWithEnvironment().newConnection()) { connection =>
+      try Using.resource(it.evadid.server.database.DatabaseRequestConnection.resolve(
+        table.inDatabase.getOrElse(it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()),
+        it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()).newConnection()) { connection =>
         handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger, connection)
       }
       catch case NonFatal(error) => logger.logExceptionWarn("Could not store command log for " + executionCommand.name, error)

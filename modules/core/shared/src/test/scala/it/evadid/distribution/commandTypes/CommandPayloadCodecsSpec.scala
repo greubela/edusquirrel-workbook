@@ -37,6 +37,25 @@ class CommandPayloadCodecsSpec extends FunSuite {
     intercept[IllegalArgumentException](DatabaseTable("commandLog`; DROP TABLE user; --"))
   }
 
+  test("both explicit database configurations work in destinations and requests while logs exclude credentials") {
+    import it.evadid.sql.{DatabaseConfiguration, DatabaseConfig, DatabaseConfigWithCredentials, DatabaseHistoryFormat}
+    import it.evadid.workbook.interaction.sync.UsageContext
+    import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
+    val context = UsageContext("program", "scenario", "user")
+    val supplied = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "private-owner", "private-password")
+    List[DatabaseConfiguration](supplied.withoutCredentials, supplied).foreach { config =>
+      val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.ClassicJsonWithKey)
+      assertEquals(read[SyncDestinationBasedOnHistoryDatabase](write(destination)), destination)
+      val request = SQLCommands.FetchAllFromDbRequest(context, config, None, DatabaseHistoryFormat.ClassicJsonWithKey)
+      assertEquals(read[SQLCommands.FetchAllFromDbRequest](write(request)), request)
+      val command = ExecutionCommand(SQLCommands.fetchFromDbCommand.name, writeJs(request))
+      val safe = command.stripPrivacySensitiveInformation()
+      assert(!safe.toJson.contains("private-"))
+      assertEquals(read[DatabaseConfiguration](safe.json("databaseConfig")), config.withoutCredentials)
+      assertEquals(safe.stripPrivacySensitiveInformation(), safe)
+    }
+  }
+
   test("account logs cannot retain submitted login codes, session tokens or connection settings") {
     List(UserCommands.loginCommand.name, UserCommands.createAccountCommand.name, UserCommands.updateAccountCommand.name).foreach { name =>
       val payload = ujson.Obj("userMail" -> "fixture@example.invalid", "accessToken" -> "private-code",
@@ -87,8 +106,23 @@ class CommandPayloadCodecsSpec extends FunSuite {
     assertEquals(ordinary.stripPrivacySensitiveInformation().toJson, ordinary.toJson)
   }
 
+  test("LLM commands carry either one complete configuration or no configuration") {
+    import it.evadid.llm.LlmConfiguration
+    import it.evadid.core.datastructures.chat.MessengerModel
+    for (configuration <- List(None, Some(LlmConfiguration("https://fixture.invalid/chat", "model", Some("api-key"))))) {
+      val feedback = LLMCommands.FeedbackLlmRequest("prompt", "system", configuration)
+      val chat = LLMCommands.MessengerChatCompletionRequest("system", MessengerModel.empty, configuration)
+      assertEquals(read[LLMCommands.FeedbackLlmRequest](write(feedback)), feedback)
+      assertEquals(read[LLMCommands.MessengerChatCompletionRequest](write(chat)), chat)
+      val logged = ExecutionCommand(LLMCommands.completeLLMCommandFactory.name, writeJs(chat)).stripPrivacySensitiveInformation()
+      assert(!logged.toJson.contains("api-key"))
+    }
+    assertEquals(read[LLMCommands.FeedbackLlmRequest](ujson.Obj("prompt" -> "question", "systemPrompt" -> "instructions")).llmConfiguration, None)
+  }
+
   test("feedback factory logs omit prompts and client credentials while execution keeps the exact request") {
-    val request = LLMCommands.FeedbackLlmRequest("private learner source\r\n学校", "private system rules")
+    val request = LLMCommands.FeedbackLlmRequest("private learner source\r\n学校", "private system rules",
+      Some(it.evadid.llm.LlmConfiguration("https://fixture.invalid/chat", "model", Some("private-api-key"))))
     val logger = BasicLogger()
     val client = new LocalExecutionClient[LLMCommands.FeedbackLlmRequest, String] {
       override def toString: String = "private client token"

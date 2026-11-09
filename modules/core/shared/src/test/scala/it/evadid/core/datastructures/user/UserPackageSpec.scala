@@ -70,19 +70,24 @@ class UserPackageSpec extends FunSuite {
   }
 
   test("saved preferences exclude all session secrets and public database information has no credentials") {
-    import it.evadid.sql.DatabaseConfiguration
+    import it.evadid.sql.DatabaseConfigWithCredentials
     import it.evadid.llm.LlmConfiguration
     val user = User("Ada", "id", "ada@example.org")
     val credentials = UserCredentials(
       singleAccessToken = Some(User.SingleAccessToken("login-secret")),
       llmApiConfig = Some(LlmConfiguration("https://example.com/chat", "model", Some("llm-secret"))),
-      databaseConfig = Some(DatabaseConfiguration("mysql", "localhost", "3306", "history", "owner", "db-secret")))
-    val info = AllUserInfo(user, credentials, UserConfig(Nil, isOnlineAccount = false))
+      databaseConfig = Some(DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "owner", "db-secret")))
+    val destination = it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
+      credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalEvents)
+    val config = UserConfig(List(it.evadid.workbook.interaction.sync.SyncInformation(destination,
+      it.evadid.workbook.interaction.sync.SyncStrategy.SYNC_MAJOR)), isOnlineAccount = false)
+    val info = AllUserInfo(user, credentials, config)
     assertEquals(read[AllUserInfo](write(info)), info)
-    val saved = write(SavedUserPreferences(info.user, info.config))
+    val saved = write(SavedUserPreferences(info.user, info.config.withoutCredentials))
     List("login-secret", "llm-secret", "db-secret", "credentials").foreach(secret => assert(!saved.contains(secret)))
     assertEquals(info.withoutCredentials().credentials, UserCredentials())
-    assert(!write(credentials.databaseConfig.get.publicInformation).contains("db-secret"))
+    assert(!write(info.withoutCredentials()).contains("db-secret"))
+    assert(!write(credentials.databaseConfig.get.withoutCredentials).contains("db-secret"))
     assert(!credentials.toString.contains("secret"))
   }
 

@@ -48,7 +48,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
     val currentStateMsg = Message(inputStr + languageStr, LLMCommands.workbookPerson, LocalDateTime.now())
     val nextMessageState = messageState.addMessage(currentStateMsg)*/
 
-    val requestFuture = systemPromptFuture.map { systemPrompt => MessengerChatCompletionRequest(systemPrompt.getWithLanguagePreference(langPreferences), messageState) }(using ExecutionContext.global)
+    val requestFuture = systemPromptFuture.map { systemPrompt => MessengerChatCompletionRequest(systemPrompt.getWithLanguagePreference(langPreferences), messageState, fullInfo.executionContextInformation.llmConfiguration) }(using ExecutionContext.global)
     LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.defaults.backendExecutor, requestFuture, None).onComplete {
       case Success(result) => mmState.update(_.addMessage(result.result))
       case Failure(err) => sendError(err, mmState)
