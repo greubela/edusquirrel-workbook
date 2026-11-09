@@ -109,25 +109,4 @@ object SyncDestinationHistoryHandler {
     }
   }
 
-
-  /**
-   *
-   * private val localIndexStorage: SyncInformation = SyncInformation(LocalIndexedDbStorageSync.instanceForHistory, SYNC_LAST_AND_MAJOR)
-   * private lazy val defaultSyncLocations: List[(String, SyncInformation)] = List(
-   * "localStorage" -> SyncInformation(LocalStorageSync(50000), SYNC_LAST),
-   * "db1" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", true), SYNC_MAJOR),
-   * "db2" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", false), SYNC_MAJOR),
-   * "localIndexedDb" -> localIndexStorage
-   * )
-   */
-
-  /*private val localIndexStorage: SyncInformation = SyncInformation(LocalIndexedDbStorageSync.instanceForHistory, SYNC_LAST_AND_MAJOR)
-  private lazy val defaultSyncLocations: List[(String, SyncInformation)] = List(
-    "localStorage" -> SyncInformation(LocalStorageSync(50000), SYNC_LAST),
-    "db1" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", true), SYNC_MAJOR),
-    "db2" -> SyncInformation(DatabaseSyncViaBackendServer("db_332371_12", false), SYNC_MAJOR),
-    "localIndexedDb" -> localIndexStorage
-  )*/
-
-
 }

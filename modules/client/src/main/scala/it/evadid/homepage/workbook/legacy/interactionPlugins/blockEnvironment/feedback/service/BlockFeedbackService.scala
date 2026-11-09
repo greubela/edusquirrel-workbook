@@ -318,34 +318,9 @@ object BlockFeedbackService:
       val planWithAiFuture: Future[BlockFeedbackTestPlan] =
         if llmEligibleEffective && shouldUseProxyLlm then
           val prompt = promptOpt.get
-          val logTag =
-            effectiveRequest.meta.exerciseId.flatMap { id =>
-              BlockFeedbackExerciseRegistry
-                .byExerciseId
-                .get(id)
-                .map(_.titleTranslations.getOrElse(effectiveRequest.humanLanguage, id))
-                .orElse(Some(id))
-            }
-
-          val failedTestNames = outcome.tests.filterNot(_.passed).map(_.name).filter(_.nonEmpty).mkString(", ")
-          val llmDebugMeta = Map(
-            "exerciseId"      -> effectiveRequest.meta.exerciseId.getOrElse(""),
-            "primaryIssue"    -> decision.primaryIssue.toString,
-            "templateId"      -> templateId,
-            "testsTotal"      -> outcome.tests.size.toString,
-            "testsFailed"     -> outcome.tests.count(!_.passed).toString,
-            "failedTests"     -> failedTestNames,
-            "hasRuntimeError" -> outcome.runtimeError.exists(_.trim.nonEmpty).toString
-          )
-
           def llmWithRetries(currentPrompt: String, attempt: Int): Future[String] =
             llmClient
-              .completeWithMeta(
-                currentPrompt,
-                logTag      = logTag,
-                studentCode = Some(rawPython),
-                debugMeta   = llmDebugMeta
-              )
+              .complete(currentPrompt)
               .recover { case _ => fallbackCandidate }
               .flatMap { candidate =>
                 val gated = QualityGate.enforce(candidate, prompt.constraints, prompt.testNames, rawPython)
