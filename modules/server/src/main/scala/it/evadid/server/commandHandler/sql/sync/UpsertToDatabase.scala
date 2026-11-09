@@ -87,7 +87,7 @@ object UpsertToDatabase {
 
   def handleRequest(request: StoreToDbRequest, logger: Logger): SyncSuccess =
     if (HistoryJson.lastTimestamp(request.historyJson).isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now()) else {
-      val config = DatabaseConfig.readFromEnv(Some(request.databaseName))
+      val config = DatabaseConfig.readFromEnv(dbName = Some(request.databaseName))
       val connection = config.newConnection()
 
       val control = UpsertToDatabase(connection, request.usageContext, logger)
