@@ -1,60 +1,31 @@
 package it.evadid.server
 
-import it.evadid.sql.DatabaseConfig
+import it.evadid.sql.DatabaseConfiguration
 import munit.FunSuite
 import upickle.default.*
 
 class ConfigurationCodecSpec extends FunSuite {
   test("database settings serialize as values without opening a connection") {
-    val value = DatabaseConfig("mysql", "localhost", "3306", "fixture", "fixture-user", "fixture-password")
-    for (decoded <- List(read[DatabaseConfig](write(value)), readBinary[DatabaseConfig](writeBinary(value)))) {
+    val value = DatabaseConfiguration("mysql", "localhost", "3306", "fixture", "fixture-user", "fixture-password")
+    for (decoded <- List(read[DatabaseConfiguration](write(value)), readBinary[DatabaseConfiguration](writeBinary(value)))) {
       assertEquals(decoded, value)
       assertEquals(decoded.jdbcUrl, "jdbc:mysql://localhost:3306/fixture")
     }
   }
 
-  test("history requests use the requested database with the MySQL JDBC protocol") {
+  test("custom history targets require matching session credentials") {
     import it.evadid.distribution.commandTypes.SQLCommands.*
-    import it.evadid.server.commandHandler.sql.sync.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
+    import it.evadid.server.database.DatabaseRequestConnection
+    import it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation
     import it.evadid.sql.DatabaseHistoryFormat.ClassicJsonWithKey
-    import it.evadid.util.logging.BasicLogger
     import it.evadid.workbook.interaction.sync.UsageContext
-    import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
-    import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
-    import java.time.LocalDateTime
-    import java.sql.{Connection, Driver, DriverManager, DriverPropertyInfo}
-
-    val database = "history_connection_fixture"
-    val stopped = new UnsupportedOperationException("Connection intercepted before database access")
-    val driver = new Driver {
-      override def acceptsURL(url: String): Boolean = url.contains(database)
-      override def connect(url: String, info: java.util.Properties): Connection = {
-        if !acceptsURL(url) then null else {
-          assert(url.startsWith("jdbc:mysql://"), url)
-          assert(url.endsWith("/" + database), url)
-          throw stopped
-        }
-      }
-      override def getPropertyInfo(url: String, info: java.util.Properties): Array[DriverPropertyInfo] = Array.empty
-      override def getMajorVersion: Int = 1
-      override def getMinorVersion: Int = 0
-      override def jdbcCompliant: Boolean = false
-      override def getParentLogger: java.util.logging.Logger = java.util.logging.Logger.getGlobal
-    }
-    val context = UsageContext("program", "scenario", "user")
-    val logger = BasicLogger()
-    val history = write(InteractionVariableHistory.empty[String, String, String]
-      .addState(InteractionVariableState("answer", MAJOR, LocalDateTime.of(2026, 1, 1, 0, 0))))
-    val requests: List[() => Any] = List(
-      () => FetchFromDatabase.handleRequest(FetchAllFromDbRequest(context, database, None, ClassicJsonWithKey), logger),
-      () => UpsertToDatabase.handleRequest(StoreToDbRequest(context.toSyncContext("answer"), history, database, ClassicJsonWithKey), logger),
-      () => DeleteInDatabase.handleRequest(DeleteInDbRequest(context, None, database, ClassicJsonWithKey), logger)
-    )
-    DriverManager.registerDriver(driver)
-    try requests.foreach { request =>
-      assert(intercept[UnsupportedOperationException](request()) eq stopped)
-    }
-    finally DriverManager.deregisterDriver(driver)
+    val defaults = DatabaseConfiguration("mysql", "backend", "3306", "main", "server", "server-secret")
+    val custom = DatabaseConfiguration("mysql", "custom", "3306", "history", "owner", "session-secret")
+    val request = FetchAllFromDbRequest(UsageContext("p", "s", "u"), PartialDatabaseInformation(), None, ClassicJsonWithKey)
+    assertEquals(DatabaseRequestConnection.resolve(request, defaults), defaults)
+    intercept[IllegalArgumentException](DatabaseRequestConnection.resolve(request.copy(databaseConfig = custom.publicInformation), defaults))
+    assertEquals(DatabaseRequestConnection.resolve(request.copy(databaseConfig = custom.publicInformation, databaseCredentials = Some(custom)), defaults), custom)
+    intercept[IllegalArgumentException](DatabaseRequestConnection.resolve(request.copy(databaseConfig = defaults.publicInformation, databaseCredentials = Some(custom)), defaults))
   }
 
   test("mail settings have their own default codec") {

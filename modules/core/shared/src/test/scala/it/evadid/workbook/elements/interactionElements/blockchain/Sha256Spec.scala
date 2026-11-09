@@ -2,7 +2,7 @@ package it.evadid.workbook.elements.interactionElements.blockchain
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
-import it.evadid.workbook.model.blockchain.Sha256
+import it.evadid.core.util.crypto.Sha256
 import munit.FunSuite
 
 class Sha256Spec extends FunSuite {

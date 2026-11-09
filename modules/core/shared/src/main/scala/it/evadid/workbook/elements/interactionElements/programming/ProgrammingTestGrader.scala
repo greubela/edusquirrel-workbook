@@ -5,7 +5,6 @@ import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
 import upickle.default.{ReadWriter, readwriter}
 
 trait ProgrammingTestGrader extends WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo] {
-  def withKey(value: String): ProgrammingTestGrader
   def testId: String
   def publishProgramObservation: Boolean = false
 }

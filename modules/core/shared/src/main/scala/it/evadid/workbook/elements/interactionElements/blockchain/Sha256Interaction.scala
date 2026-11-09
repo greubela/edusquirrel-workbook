@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
-import it.evadid.workbook.model.blockchain.Sha256
+import it.evadid.core.util.crypto.Sha256
 import upickle.default.*
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given

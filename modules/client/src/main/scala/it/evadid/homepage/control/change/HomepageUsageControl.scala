@@ -1,5 +1,7 @@
 package it.evadid.homepage.control.change
 
+import it.evadid.core.datastructures.user.{UserCredentials, SavedUserPreferences}
+
 import it.evadid.core.datastructures.file.LoadedFile
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.user.User.SingleAccessToken
@@ -79,7 +81,12 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     val restored: scala.util.Try[Option[AllUserInfo]] = scala.util.Try(Option(org.scalajs.dom.window.localStorage.getItem(allUserInfoStorageKey)))
       .flatMap {
         case None => Success(None)
-        case Some(raw) => scala.util.Try(read[AllUserInfo](raw)).map(Some(_))
+        case Some(raw) => scala.util.Try {
+          val json = ujson.read(raw)
+          require(json.obj.keySet.toSet == Set("user", "config"), "Saved credentials are not supported")
+          val saved = read[SavedUserPreferences](json)
+          Some(AllUserInfo(saved.user, UserCredentials(), saved.config))
+        }
       }
     restored.recover { case scala.util.control.NonFatal(_) =>
       scala.util.Try(org.scalajs.dom.window.localStorage.removeItem(allUserInfoStorageKey))
@@ -109,7 +116,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
           throw AuthenticationFailure("login/errorLogin")
         } else {
           logger.logInfo(s"Successfully logged in for ${userInfoOp.get.user}")
-          changeUser(userInfoOp)
+          changeUser(userInfoOp.map(info => info.copy(credentials = info.credentials.copy(singleAccessToken = token.left.toOption))))
         }
     }.recoverWith { case err =>
       logger.logExceptionWarn("login attempt failed", err)
@@ -171,7 +178,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   def tryLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = Future {
     val userConfig: UserConfig = withConfig.getOrElse(UserConfig(UserConfig.defaultSyncDestinations, false))
     val user: User = withUser.getOrElse(User.createNewUser("Anonymous", "no-reply@evadid.it"))
-    val allUserInfo = AllUserInfo(user, None, userConfig)
+    val allUserInfo = AllUserInfo(user, UserCredentials(signedBackendToken = None), userConfig)
     changeUser(Some(allUserInfo))
   }
 
@@ -192,7 +199,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
           } else if (result.token.isEmpty) {
             Future.failed(AuthenticationFailure("login/errorRegistration"))
           } else {
-            val aui = AllUserInfo(result.token.get.info.user, result.token, user.config)
+            val aui = AllUserInfo(result.token.get.info.user, UserCredentials(signedBackendToken = result.token), user.config)
             changeUser(Some(aui)).map(_ => ())
           }
         }.recoverWith { case err =>
@@ -207,8 +214,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     if (localUser.isEmpty) {
       Future.failed[Unit](SerializedException("No local user with token stored to try auto login with!"))
     } else if (localUser.get.config.isOnlineAccount) {
-      if (localUser.get.token.isEmpty) Future.failed(SerializedException("Local user is an online account but has no token!"))
-      else tryServerLoginWith(localUser.get.user.mail, Right(localUser.get.token.get))
+      Future.failed(AuthenticationFailure("login/errorLogin"))
     } else {
       changeUser(localUser)
     }
@@ -216,16 +222,20 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = fullInfo.synchronized {
 
-    def actuallySetNewUser(): Unit = try {
-      LocalStorageSyncHandler.removeKey(allUserInfoStorageKey)
-      if (newUserInfo.isDefined) {
-        val allUserInfo = newUserInfo.get
-        logger.logInfo(s"Loading user ${allUserInfo.toString}")
-        val serialized = write(allUserInfo)
-        LocalStorageSyncHandler.instance.storeElementRaw(fullInfo.syncControl.syncLogger, allUserInfoStorageKey, serialized)
-      }
+    def actuallySetNewUser(): Unit = {
+      try {
+        LocalStorageSyncHandler.removeKey(allUserInfoStorageKey)
+        newUserInfo.foreach { allUserInfo =>
+          logger.logInfo(s"Loading user ${allUserInfo.toString}")
+          val serialized = write(SavedUserPreferences(allUserInfo.user, allUserInfo.config))
+          LocalStorageSyncHandler.instance.storeElementRaw(fullInfo.syncControl.syncLogger, allUserInfoStorageKey, serialized)
+            .failed.foreach(error => logger.logExceptionWarn("Could not save user preferences", error))
+        }
+      } catch case scala.util.control.NonFatal(error) =>
+        logger.logExceptionWarn("Could not update saved user preferences", error)
+      // Browser storage is optional. It must never prevent clearing session credentials.
       fullInfo.homepageInfoState.update(_.copy(userInfo = newUserInfo))
-    } catch case (err: Throwable) => logger.logException(err)
+    }
 
     val oldUser = fullInfo.homepageInfoNow().userInfo
     logger.logInfo(s"Change User: ${oldUser.map(_.user.mail).getOrElse("none")} -> ${newUserInfo.map(_.user.mail).getOrElse("none")}")
@@ -246,6 +256,12 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
         err => logger.logExceptionWarn("Ignore Fetch and Load!", err)
       }
     }
+  }
+
+  def updateCredentials(credentials: UserCredentials): Future[?] = {
+    require(fullInfo.current.userInfo.nonEmpty, "Create or log in to a profile first")
+    fullInfo.homepageInfoState.update(info => info.copy(userInfo = info.userInfo.map(_.copy(credentials = credentials))))
+    fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable))
   }
 
   def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {

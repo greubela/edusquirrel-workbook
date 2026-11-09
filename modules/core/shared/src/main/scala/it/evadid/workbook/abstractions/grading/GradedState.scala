@@ -76,7 +76,7 @@ object GradedState {
   def executeGradingSafe[T, A](graders: IterableOnce[WorkbookInteractionGrader[T, A]], state: T, forceGrading: Boolean, context: ExecutionContextInformation): Future[GradedState[T, A]] = {
     given ExecutionContext = context.futureExecutionContext
 
-    val graderRes: Future[Seq[GradingResult[T, A]]] = Future.traverse(graders.iterator.toList)(curGrader => curGrader.gradeStateSafe(state, forceGrading, context))
+    val graderRes: Future[Seq[GradingResult[T, A]]] = Future.traverse(graders.iterator.toList.distinctBy(_.key))(curGrader => curGrader.gradeStateSafe(state, forceGrading, context))
     graderRes.map(graderResults => {
       GradedState(state, graderResults.map(curRes => curRes.grader -> curRes).toMap)
     })(using context.futureExecutionContext)

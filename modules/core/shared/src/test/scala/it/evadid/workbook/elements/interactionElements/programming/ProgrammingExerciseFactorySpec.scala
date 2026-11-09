@@ -40,7 +40,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   private def assertionGrader(suite: SampleBeTest,
       importance: GradingImportance = GradingImportance.REQUIRED_TEST): ProgrammingUnitTestGrader =
-    ProgrammingUnitTestGrader("standalone:0", ProgrammingUnitTestGrader.SampleTestId, suite.pythonTestCode, importance)
+    ProgrammingUnitTestGrader(ProgrammingUnitTestGrader.SampleTestId, suite.pythonTestCode, importance)
 
   private def pythonClient(value: ujson.Value, inspect: WorkerCommands.RunPythonRequest => Unit = _ => ()): ExecutionClient =
     WorkerCommands.runPython.toLocalExecutionClient((request, _) => {
@@ -188,8 +188,8 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val java = ProgrammingExerciseFullJava("java-unit-tests", Some(suite))
     val general = ProgrammingExercise("programming-unit-tests", Some(suite))
     val expected = List(assertionGrader(suite))
-    assertEquals(java.gradingElements, expected.map(_.withKey("java-unit-tests_history:0")))
-    assertEquals(general.gradingElements, expected.map(_.withKey("programming-unit-tests_history:0")))
+    assertEquals(java.gradingElements, expected)
+    assertEquals(general.gradingElements, expected)
     assertEquals(ProgrammingExerciseFullJava("no-suite-java").gradingElements, Nil)
     assertEquals(ProgrammingExercise("no-suite-general").gradingElements, Nil)
     assertEquals(java.toSerialized.allConstructorFields.keySet, Set("testSuite"))
@@ -201,7 +201,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
         case value: ProgrammingExercise => value.gradingElements
         case _ => fail("Unexpected exercise type")
       }
-      assertEquals(graders, expected.map(_.withKey(s"${exercise.elementId}_history:0")))
+      assertEquals(graders, expected)
       assertEquals(graders.head.runningBehavior, GraderRunningBehavior.RUN_ONLY_MANUALLY)
     }
   }
@@ -295,7 +295,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       val report = if passed then ujson.Obj("status" -> "passed", "reason" -> "")
         else ujson.Obj("status" -> "failed", "reason" -> "assertion")
       val client = pythonClient(report, _ => calls.update(_ + 1))
-      val grader = ProgrammingUnitTestGrader("standalone:0", "addition", "assert add(1, 2) == 3", importance, Some(descriptionId))
+      val grader = ProgrammingUnitTestGrader("addition", "assert add(1, 2) == 3", importance, Some(descriptionId))
       grader.gradeStateSafe(source, forceGrading = true, TestExecutionContext(List(client), languageMapIdResolver = Some(resolver))).map { result =>
         assertEquals(calls.now(), 1)
         assertEquals(lookups.now(), 1)
@@ -312,7 +312,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("hidden unexecuted and unavailable test descriptions are never resolved") {
     val source = ProgrammingStatePythonString("pass")
-    val configured = ProgrammingUnitTestGrader("standalone:0", "public", "assert True",
+    val configured = ProgrammingUnitTestGrader("public", "assert True",
       publicDescription = Some(LanguageMapContentId("tests/public-description")))
     val cases = List(
       (configured.copy(publicDescription = None), true, true, false),
@@ -347,7 +347,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("description bounds and resolver failures cannot change a test outcome") {
     val source = ProgrammingStatePythonString("pass")
-    val grader = ProgrammingUnitTestGrader("standalone:0", "bounded", "assert False",
+    val grader = ProgrammingUnitTestGrader("bounded", "assert False",
       publicDescription = Some(LanguageMapContentId("tests/bounded-description")))
     def translated(values: Map[HumanLanguage, String]): Future[LanguageMap[HumanLanguage]] =
       Future.successful(LanguageMap.mapBasedLanguageMap(values))
@@ -444,7 +444,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("invocation arguments require explicit public consent independently of descriptions and program output") {
     val source = ProgrammingStatePythonString("pass")
-    val default = ProgrammingUnitTestGrader("standalone:0", "invocation", "assert run_program()['commands'] == []")
+    val default = ProgrammingUnitTestGrader("invocation", "assert run_program()['commands'] == []")
     val enabled = default.copy(publishInvocationArguments = true)
     val rows = List(default -> false, enabled -> true,
       enabled.copy(importance = GradingImportance.OPTIONAL_TEST) -> true,
@@ -492,7 +492,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val expected = ProgrammingTestInvocation(Some("draw"), values)
     val calls = State(0)
     val saved = write[ProgrammingState](source)
-    val grader = ProgrammingUnitTestGrader("standalone:0", "typed-invocation",
+    val grader = ProgrammingUnitTestGrader("typed-invocation",
       "assert run_java('draw', (False, True, -2147483648, 2147483647, 0.0, -0.0, 5e-324, 1.7976931348623157e308))['commands'] == [['forward', 1]]",
       publishInvocationArguments = true)
     val client = pythonClient(invocationReport(invocationPacket(ujson.Str("draw"), arguments)), _ => calls.update(_ + 1))
@@ -510,7 +510,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
   test("unusable invocation metadata is omitted without changing a completed test outcome") {
     val source = ProgrammingStateJavaString(
       "public class Main { static void draw(int n) {} public static void main(String[] args) {} }")
-    val grader = ProgrammingUnitTestGrader("standalone:0", "bounded-invocation", "assert run_program()['commands'] == []",
+    val grader = ProgrammingUnitTestGrader("bounded-invocation", "assert run_program()['commands'] == []",
       publishInvocationArguments = true)
     def argument(kind: String, value: ujson.Value): ujson.Value =
       invocationPacket(ujson.Str("draw"), List(ujson.Obj("kind" -> kind, "value" -> value)))
@@ -545,7 +545,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("resolving descriptions preserves both independent program and invocation metadata") {
     val source = ProgrammingStatePythonString("forward(2)")
-    val grader = ProgrammingUnitTestGrader("standalone:0", "both-metadata", "assert run_program()['commands'] == []",
+    val grader = ProgrammingUnitTestGrader("both-metadata", "assert run_program()['commands'] == []",
       publicDescription = Some(LanguageMapContentId("tests/both-metadata")),
       publishProgramObservation = true, publishInvocationArguments = true)
     val report = ujson.Obj.from(observedReport(observationPayload(1, List(ujson.Arr("forward", 2))), "failed", "assertion").obj.toVector :+
@@ -577,7 +577,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("invocation publication and bounded scalar metadata retain defaults through existing codecs") {
     import ProgrammingTestInvocation.Scalar
-    val grader = ProgrammingUnitTestGrader("standalone:0", "invocation-codec", "assert False", publishInvocationArguments = true)
+    val grader = ProgrammingUnitTestGrader("invocation-codec", "assert False", publishInvocationArguments = true)
     assertEquals(read[ProgrammingUnitTestGrader](write(grader)), grader)
     assertEquals(readBinary[ProgrammingUnitTestGrader](writeBinary(grader)), grader)
     val old = ujson.Obj.from(writeJs(grader).obj.toMap - "publishInvocationArguments")
@@ -600,7 +600,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("command comparisons require separate consent and remain attached to their public invocation") {
     val source = ProgrammingStatePythonString("forward(8)")
-    val configured = ProgrammingUnitTestGrader("standalone:0", "comparison", "assert run_program()['commands'] == [['forward', 10]]",
+    val configured = ProgrammingUnitTestGrader("comparison", "assert run_program()['commands'] == [['forward', 10]]",
       publishInvocationArguments = true, publishCommandComparison = true)
     val comparison = ujson.Obj("actualCount" -> 1, "expectedCount" -> 1, "commandIndex" -> 0,
       "actual" -> ujson.Arr("forward", 8), "expected" -> ujson.Arr("forward", 10))
@@ -626,7 +626,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
   }
 
   test("malformed comparisons do not discard the invocation or change its grade") {
-    val grader = ProgrammingUnitTestGrader("standalone:0", "comparison", "assert False", publishInvocationArguments = true, publishCommandComparison = true)
+    val grader = ProgrammingUnitTestGrader("comparison", "assert False", publishInvocationArguments = true, publishCommandComparison = true)
     val valid = ujson.Obj("actualCount" -> 1, "expectedCount" -> 1, "commandIndex" -> 0,
       "actual" -> ujson.Arr("forward", 8), "expected" -> ujson.Arr("forward", 10))
     val malformed = List(ujson.Null, ujson.Str("PRIVATE_COMPARISON"), ujson.Obj()) ++ List(
@@ -654,8 +654,8 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       assertEquals(readBinary[ProgrammingTestInvocation](writeBinary(invocation)), invocation)
     }
     intercept[IllegalArgumentException](ProgrammingTestCommandComparison(0, 2, 1, None, Some(forward)))
-    intercept[IllegalArgumentException](ProgrammingUnitTestGrader("standalone:0", "invalid", "assert False", publishCommandComparison = true))
-    val grader = ProgrammingUnitTestGrader("standalone:0", "public-comparison", "assert False", publishInvocationArguments = true, publishCommandComparison = true)
+    intercept[IllegalArgumentException](ProgrammingUnitTestGrader("invalid", "assert False", publishCommandComparison = true))
+    val grader = ProgrammingUnitTestGrader("public-comparison", "assert False", publishInvocationArguments = true, publishCommandComparison = true)
     assertEquals(read[ProgrammingUnitTestGrader](write(grader)), grader)
     assertEquals(readBinary[ProgrammingUnitTestGrader](writeBinary(grader)), grader)
     val old = ujson.Obj.from(writeJs(grader).obj.toMap - "publishCommandComparison")
@@ -669,7 +669,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("only explicitly configured public graders request program observations") {
     val source = ProgrammingStatePythonString("forward(2)\n")
-    val default = ProgrammingUnitTestGrader("standalone:0", "default", "assert run_program()")
+    val default = ProgrammingUnitTestGrader("default", "assert run_program()")
     val enabled = default.copy(testId = "enabled", publishProgramObservation = true)
     val hidden = enabled.copy(testId = "hidden", importance = GradingImportance.HIDDEN_TEST)
     val oldReport = ujson.Obj("status" -> "passed", "reason" -> "")
@@ -689,7 +689,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("observation decoding preserves exact bounded prefixes for successful and failed assertions") {
     val source = ProgrammingStatePythonString("forward(2)\n")
-    val grader = ProgrammingUnitTestGrader("standalone:0", "observed", "assert run_program()", publishProgramObservation = true)
+    val grader = ProgrammingUnitTestGrader("observed", "assert run_program()", publishProgramObservation = true)
     val rows = for {
       count <- List(0, 1, 32, 33, 10000)
       (status, reason, expectedStatus) <- List(("passed", "", GradingStatus.Correct()),
@@ -719,7 +719,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("unexpected or malformed observations fail safely instead of changing the learner grade") {
     val source = ProgrammingStatePythonString("forward(2)\n")
-    val grader = ProgrammingUnitTestGrader("standalone:0", "observed", "assert run_program()", publishProgramObservation = true)
+    val grader = ProgrammingUnitTestGrader("observed", "assert run_program()", publishProgramObservation = true)
     val valid = observationPayload(1, List(ujson.Arr("forward", 2)))
     val prefix32 = (1 to 32).map(value => ujson.Arr("forward", value))
     val invalid = List(
@@ -767,7 +767,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
   test("resolving descriptions preserves an existing observation when text is missing or fails") {
     val source = ProgrammingStatePythonString("forward(2)\n")
     val descriptionId = LanguageMapContentId("tests/observed-description")
-    val grader = ProgrammingUnitTestGrader("standalone:0", "observed", "assert run_program()",
+    val grader = ProgrammingUnitTestGrader("observed", "assert run_program()",
       publicDescription = Some(descriptionId), publishProgramObservation = true)
     val observation = observationPayload(1, List(ujson.Arr("forward", 2)))
     val rows: List[(() => Future[LanguageMap[HumanLanguage]], Option[String])] = List(
@@ -836,7 +836,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("observation configuration and decoded reports survive the existing history codecs") {
     val descriptionId = LanguageMapContentId("tests/observed-count")
-    val grader = ProgrammingUnitTestGrader("standalone:0", "observed-count", "assert len(run_program()['commands']) == 34",
+    val grader = ProgrammingUnitTestGrader("observed-count", "assert len(run_program()['commands']) == 34",
       publicDescription = Some(descriptionId), publishProgramObservation = true)
     assertEquals(writeJs(grader).obj("publishProgramObservation"), ujson.Bool(true))
     assertEquals(read[ProgrammingUnitTestGrader](write(grader)), grader)
@@ -935,7 +935,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val model = snap.toSnapScalaModel.fold(message => fail(message), identity)
     val states: List[(ProgrammingState, Boolean)] = List(python -> false, java -> true, snap -> false, model -> false)
     val test = "assert run_program()['commands'] == [['forward', 12], ['right', 90], ['forward', 3]]"
-    val grader = ProgrammingUnitTestGrader("standalone:0", "full-program", test)
+    val grader = ProgrammingUnitTestGrader("full-program", test)
     Future.traverse(states) { (state, checked) =>
       val saved = write[ProgrammingState](state)
       val fingerprint = state.fingerprint()
@@ -975,7 +975,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val snap = ProgrammingStateSnapXml.mini
     val states = List[ProgrammingState](snap, snap.toSnapScalaModel.fold(message => fail(message), identity))
     val tests = "assert run_program()['commands'] == [['forward', 100], ['forward', 100]]"
-    val grader = ProgrammingUnitTestGrader("standalone:0", "snap-mini", tests)
+    val grader = ProgrammingUnitTestGrader("snap-mini", tests)
     Future.traverse(states) { state =>
       val saved = write(state)
       val calls = State(0)
@@ -998,7 +998,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val snap = nativeSnap("""<script><block s="receiveGo"/><block s="forward"><l>12</l></block></script>
       |<script x="300" y="200"><block s="forward"><l>999</l></block></script>""".stripMargin)
     val states: List[ProgrammingState] = List(snap, snap.toSnapScalaModel.fold(message => fail(message), identity))
-    val grader = ProgrammingUnitTestGrader("standalone:0", "started-script", "assert run_program()['commands'] == [['forward', 12]]")
+    val grader = ProgrammingUnitTestGrader("started-script", "assert run_program()['commands'] == [['forward', 12]]")
     Future.traverse(states) { state =>
       val saved = write[ProgrammingState](state)
       val calls = State(0)
@@ -1040,7 +1040,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val states: List[ProgrammingState] = (List(unknown, concurrent, doubleStage, mixedStage, doubleScripts) ++ invalidScripts).flatMap { state =>
       List[ProgrammingState](state, state.toSnapScalaModel.fold(message => fail(message), identity))
     } :+ ProgrammingStateSnapXml("<project><stage>")
-    val grader = ProgrammingUnitTestGrader("standalone:0", "complete-only", "assert run_program()['commands'] == [['forward', 12]]")
+    val grader = ProgrammingUnitTestGrader("complete-only", "assert run_program()['commands'] == [['forward', 12]]")
     val calls = State(0)
     val client = pythonClient(ujson.Obj("status" -> "passed", "reason" -> ""), _ => calls.update(_ + 1))
     Future.traverse(states) { state =>
@@ -1128,7 +1128,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("five explicit programming graders retain their identities in suites and workbook definitions") {
     val graders: List[ProgrammingTestGrader] = (1 to 5).map { index =>
-      ProgrammingUnitTestGrader("standalone:0", s"check-$index", s"assert $index == $index\r\n",
+      ProgrammingUnitTestGrader(s"check-$index", s"assert $index == $index\r\n",
         if index == 5 then GradingImportance.HIDDEN_TEST else GradingImportance.REQUIRED_TEST,
         if index == 2 then Some(LanguageMapContentId("tests/second-public-check")) else None)
     }.toList
@@ -1147,7 +1147,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     val exercises: List[WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, ?]] = List(
       ProgrammingExercise("five-general", Some(suite)), ProgrammingExerciseFullJava("five-java", Some(suite)))
     exercises.foreach { exercise =>
-      assertEquals(exercise.gradingElements, graders.zipWithIndex.map((grader, index) => grader.withKey(s"${exercise.elementId}_history:$index")))
+      assertEquals(exercise.gradingElements, graders)
       assertEquals(exercise.gradingElements.map(_.runningBehavior).toSet, Set(GraderRunningBehavior.RUN_ONLY_MANUALLY))
       val binary: WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, ?] = exercise match {
         case value: ProgrammingExercise => readBinary[ProgrammingExercise](writeBinary(value))
@@ -1168,7 +1168,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("central grading executes each explicit test once and publishes independent failures") {
     val graders = List("passed", "failed", "invalid", "unavailable", "last").map { id =>
-      ProgrammingUnitTestGrader("standalone:0", id, s"assert True # $id")
+      ProgrammingUnitTestGrader(id, s"assert True # $id")
     }
     val byCode = graders.map(grader => grader.pythonTestCode -> grader.testId).toMap
     val calls = State(Map.empty[String, Int])
@@ -1205,8 +1205,8 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
   }
 
   test("equal assertion bodies with different IDs remain separate in saved grading histories") {
-    val first = ProgrammingUnitTestGrader("standalone:0", "first", "assert True\r\n")
-    val second = ProgrammingUnitTestGrader("standalone:0", "second", first.pythonTestCode)
+    val first = ProgrammingUnitTestGrader("first", "assert True\r\n")
+    val second = ProgrammingUnitTestGrader("second", first.pythonTestCode)
     val suite = ProgrammingTestSuite(List(first, second))
     val exercise = ProgrammingExerciseFullJava("separate-identities", Some(suite))
     val variable = exercise.interactionVariable
@@ -1227,12 +1227,12 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
 
   test("programming collections reject missing or repeated test identities") {
     List[String]("", " ", " leading", "trailing ", null).foreach { id =>
-      intercept[IllegalArgumentException](ProgrammingUnitTestGrader("standalone:0", id, "assert True"))
+      intercept[IllegalArgumentException](ProgrammingUnitTestGrader(id, "assert True"))
       val json = ujson.Obj("testId" -> writeJs(id), "pythonTestCode" -> "assert True")
       intercept[Exception](read[ProgrammingUnitTestGrader](json))
     }
-    val first = ProgrammingUnitTestGrader("standalone:0", "same", "assert True")
-    val second = ProgrammingUnitTestGrader("standalone:0", "same", "assert False")
+    val first = ProgrammingUnitTestGrader("same", "assert True")
+    val second = ProgrammingUnitTestGrader("same", "assert False")
     List(List(first, first), List(first, second)).foreach { graders =>
       intercept[IllegalArgumentException](ProgrammingTestSuite(graders))
       val json = ujson.Obj("$type" -> "ProgrammingTestSuite",
@@ -1271,7 +1271,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
   }
 
   test("programming suite codecs reject registered graders from other interaction types") {
-    val foreign = WorkbookInteractionGrader.universalSerializer.serialize(SlideshowGrader("standalone:0", true))
+    val foreign = WorkbookInteractionGrader.universalSerializer.serialize(SlideshowGrader(true))
     val encoded = ujson.Str(foreign)
     intercept[Exception](read[ProgrammingTestGrader](encoded))
     intercept[Exception](readBinary[ProgrammingTestGrader](writeBinary[ujson.Value](encoded)))
@@ -1284,15 +1284,15 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
   }
 
   test("programming collections preserve assertion and shape graders together") {
-    val assertion = ProgrammingUnitTestGrader("standalone:0", "sum", "assert add(1, 2) == 3")
-    val drawing = RecreateShapeGrader("standalone:0", TurtleGraphic[Double](Seq.empty), importance = GradingImportance.REQUIRED_TEST, testId = "drawing")
+    val assertion = ProgrammingUnitTestGrader("sum", "assert add(1, 2) == 3")
+    val drawing = RecreateShapeGrader(TurtleGraphic[Double](Seq.empty), importance = GradingImportance.REQUIRED_TEST, testId = "drawing")
     val suite: BeTestSuite = ProgrammingTestSuite(List(assertion, drawing))
     List(read[BeTestSuite](write(suite)), readBinary[BeTestSuite](writeBinary(suite))).foreach { restored =>
       assertEquals(restored, suite)
       assertEquals(restored.graders.map(_.testId), List("sum", "drawing"))
     }
     val exercise = ProgrammingExerciseFullJava("mixed-graders", Some(suite))
-    assertEquals(exercise.gradingElements, List(assertion.withKey("mixed-graders_history:0"), drawing.withKey("mixed-graders_history:1")))
+    assertEquals(exercise.gradingElements, List(assertion, drawing))
     val restored = WorkbookElementFactory.serializerRefBasedJson
       .deserialize(WorkbookElementFactory.serializerRefBasedJson.serialize(exercise))
       .asInstanceOf[ProgrammingExerciseFullJava]

@@ -9,13 +9,13 @@ const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 
-test('current logins restore and unsupported saved logins are discarded without clearing answers', async () => {
+test('local preferences restore and credential-bearing saved logins are discarded without clearing answers', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
   try {
     const legacy = JSON.stringify({user:{name:'Saved student',id:'saved-student',mail:'saved@example.org'},token:null,
       config:JSON.stringify({syncDestinations:['localIndexedDb'],isOnlineAccount:false})});
     const current = JSON.stringify({user:{name:'Current student',id:'current-student',mail:'current@example.org'},
-      token:null,config:{syncDestinations:[],isOnlineAccount:false}});
+      config:{syncDestinations:[],isOnlineAccount:false}});
     for (const saved of [legacy, '{broken JSON', current]) {
       const page = await browser.newPage();
       const errors = [];

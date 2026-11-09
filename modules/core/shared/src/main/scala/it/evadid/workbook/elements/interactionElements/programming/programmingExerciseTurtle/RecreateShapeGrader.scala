@@ -15,10 +15,9 @@ import upickle.default.*
 
 import scala.concurrent.Future
 
-case class RecreateShapeGrader(key: String, desiredResult: TurtleGraphic, override val importance: GradingImportance, testId: String = "shape",
+case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val importance: GradingImportance, testId: String = "shape",
     comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes)
   extends ProgrammingTestGrader derives ReadWriter {
-  override def withKey(value: String): RecreateShapeGrader = copy(key = value)
 
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
 

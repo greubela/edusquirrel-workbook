@@ -3,7 +3,7 @@ package it.evadid.server.commandHandler.sql.sync
 import it.evadid.workbook.interaction.sync.model.HistoryJson
 import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, FetchAllFromDbRequest}
 import it.evadid.server.commandHandler.sql.{GenericSqlFunctionality, RichDatabaseConfig}
-import it.evadid.sql.DatabaseConfig
+import it.evadid.sql.DatabaseConfiguration
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
 
@@ -94,8 +94,7 @@ object FetchFromDatabase {
   private def union(list: List[String]): String = HistoryJson.merge(list)
 
   def handleRequest(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
-    val config = DatabaseConfig.readFromEnv(dbName = Some(request.databaseName))
-    scala.util.Using.resource(config.newConnection()) { connection =>
+    it.evadid.server.database.DatabaseRequestConnection.use(request) { connection =>
       request.databaseFormat match {
         case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => new RelationalHistoryStorage(connection, logger).fetch(request)
         case format: it.evadid.sql.DatabaseHistoryFormat.Snapshot =>

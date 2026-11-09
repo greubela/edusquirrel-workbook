@@ -1,6 +1,6 @@
 package it.evadid.server.database
 
-import it.evadid.sql.DatabaseConfig
+import it.evadid.sql.DatabaseConfiguration
 import it.evadid.util.logging.Logger
 import java.sql.{Connection, DatabaseMetaData, DriverManager}
 import net.sf.jsqlparser.statement.create.table.ForeignKeyIndex
@@ -17,14 +17,16 @@ object EnsureDatabaseProperlySetup {
   private def rows[A](result: java.sql.ResultSet)(read: java.sql.ResultSet => A): List[A] =
     Using.resource(result)(rs => Iterator.continually(rs.next()).takeWhile(identity).map(_ => read(rs)).toList)
 
-  def inspect(connection: Connection): Report = {
+  def inspect(connection: Connection, requiredTables: Set[String] = Set.empty): Report = {
     import DatabaseSqlScripts.identifier
     val metadata = connection.getMetaData
     val catalog = connection.getCatalog
     val existing = rows(metadata.getTables(catalog, null, "%", null))(_.getString("TABLE_NAME")).toSet
     val routines = rows(metadata.getProcedures(catalog, null, "%"))(_.getString("PROCEDURE_NAME")).toSet ++
       rows(metadata.getFunctions(catalog, null, "%"))(_.getString("FUNCTION_NAME"))
-    val definitions = DatabaseSqlScripts.tables
+    val allDefinitions = DatabaseSqlScripts.tables
+    require(requiredTables.subsetOf(allDefinitions.map(table => identifier(table.getTable.getName)).toSet), "Unknown required database table")
+    val definitions = if requiredTables.isEmpty then allDefinitions else allDefinitions.filter(table => requiredTables(identifier(table.getTable.getName)))
     val expected = definitions.map(table => identifier(table.getTable.getName)).toSet
     val conflicts = definitions.filter(table => existing(identifier(table.getTable.getName))).flatMap { definition =>
       val name = identifier(definition.getTable.getName)
@@ -143,7 +145,7 @@ object EnsureDatabaseProperlySetup {
     }
   }
 
-  def check(config: DatabaseConfig, initializeEmpty: Boolean = false): Report =
+  def check(config: DatabaseConfiguration, initializeEmpty: Boolean = false): Report =
     Try(DriverManager.getConnection(config.jdbcUrl + "?connectTimeout=3000&socketTimeout=3000", config.user, config.password)).fold(
       error => Report(false, Set.empty, Set.empty, List(Option(error.getMessage).getOrElse(error.getClass.getSimpleName))),
       connection => Using.resource(connection) { connection =>
@@ -152,8 +154,12 @@ object EnsureDatabaseProperlySetup {
       })
 
   def onStartup(logger: Logger): Report = {
-    val report = check(DatabaseConfig.readFromEnv(), initializeEmpty = true)
-    if !report.valid then logger.logWarn(s"Database schema check: reachable=${report.reachable}; missing=${report.missingTables.mkString(",")}; conflicts=${report.conflicts.mkString("; ")}")
+    val report = check(DatabaseConfiguration.readFromEnv(), initializeEmpty = true)
+    if !report.valid then {
+      val message = s"Database schema check failed: reachable=${report.reachable}; missing=${report.missingTables.mkString(",")}; conflicts=${report.conflicts.mkString("; ")}"
+      logger.logError(message)
+      throw IllegalStateException(message)
+    }
     report
   }
 }

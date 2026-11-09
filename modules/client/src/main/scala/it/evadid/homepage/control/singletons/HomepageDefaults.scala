@@ -11,6 +11,8 @@ import it.evadid.homepage.control.startup.ClientRuntimeConfig
 
 case class HomepageDefaults(fullInfo: FullInfo) {
 
+  val defaultDb: it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation = it.evadid.sql.DatabaseConfiguration.defaultDb
+
   lazy val defaultLanguagesAvailable: List[HumanLanguage] = List(German, English)
 
 
@@ -24,12 +26,13 @@ case class HomepageDefaults(fullInfo: FullInfo) {
   def scaffoldingExecutor: ExecutionClient = RoutedExecutionClient(command =>
     if WorkerCommands.supportedCommands.contains(command.name) then workerExecuter else backendExecutor)
 
-  def backendExecutorWithCredentials(signedToken: Option[SignedToken]): ExecutionClient = defaultBackend.executor(signedToken)
+  def backendExecutorWithCredentials(signedToken: Option[SignedToken]): ExecutionClient =
+    it.evadid.distribution.clients.SessionLlmExecutionClient(defaultBackend.executor(signedToken),
+      () => fullInfo.homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig))
 
   def backendExecutor: ExecutionClient = {
-    val fullInfoToken = fullInfo.homepageInfoNow().userInfo.flatMap(_.token)
-    val localStorageToken = fullInfo.usageControl.tryParsingExistingUser().flatMap(_.token)
-    val useToken: Option[SignedToken] = (fullInfoToken ++ localStorageToken).headOption
+    val fullInfoToken = fullInfo.homepageInfoNow().userInfo.flatMap(_.credentials.signedBackendToken)
+    val useToken: Option[SignedToken] = fullInfoToken
     backendExecutorWithCredentials(useToken)
   }
 

@@ -77,7 +77,6 @@ object DefaultSerializer {
           if (str.startsWith("Left(")) str.substring("Left(".length, str.length - 1)
           else if (str.startsWith("Right(")) str.substring("Right(".length, str.length - 1)
           else throw new IllegalArgumentException(s"Serializer[Either[SingleAccessToken,SignedToken]]: '${str}' does neither start with 'Left(' nor 'Right('!")
-        println(s"### Default Serializer for Token Either, deserializing '${cleaned}'")
         try {
           if (str.startsWith("Left(")) Left(serializerSat.deserialize(cleaned))
           else if (str.startsWith("Right(")) Right(serializerSig.deserialize(cleaned))

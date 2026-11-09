@@ -33,7 +33,7 @@ class HistoryJsonSpec extends FunSuite {
       (_: ujson.Value) => throw IllegalArgumentException("A grading payload cannot contain Nothing."))
     type History = InteractionVariableHistory[SlideshowState, Nothing, String]
     val state = SlideshowState(List(WorkbookElementReference("slide-Grüße", None)), Set.empty)
-    val grader: WorkbookInteractionGrader[SlideshowState, Nothing] = SlideshowGrader("standalone:0", true)
+    val grader: WorkbookInteractionGrader[SlideshowState, Nothing] = SlideshowGrader(true)
     val grading = GradingResult[SlideshowState, Nothing](grader, state, GradingStatus.Correct(), feedbackInformation = None, additionalData = None, gradingTime = time)
     val scaffolding = ScaffoldingResult(state, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[AppLanguage.HumanLanguage]("Try again")), FeedbackEntity.TestEntity(), Some("public observation"))
     val original = InteractionVariableHistory[SlideshowState, Nothing, String](InteractionVariableStateHistory[SlideshowState](Set(InteractionVariableState(state, UpdateImportance.MAJOR, time))), InteractionVariableGradingHistory[SlideshowState, Nothing](Map(state -> GradedState(state, Map(grading.grader -> grading)))), InteractionVariableScaffoldingHistory[SlideshowState, String](Map(state -> scaffolding)))

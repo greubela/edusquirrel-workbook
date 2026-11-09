@@ -18,7 +18,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
 
   private class CountingGrader(status: GradingStatus = GradingStatus.Correct(), failFirst: Boolean = false,
       synchronous: Boolean = false, gate: Option[Promise[Unit]] = None, retryGate: Option[Promise[Unit]] = None) extends WorkbookInteractionGrader[String, String] {
-    override val key = "fixture:0"
+    override val key = java.util.UUID.randomUUID().toString
     val calls = State(0)
     override val importance = GradingImportance.REQUIRED_TEST
     override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS

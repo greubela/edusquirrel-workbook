@@ -1,6 +1,6 @@
 package it.evadid.server.database
 
-import it.evadid.sql.DatabaseConfig
+import it.evadid.sql.DatabaseConfiguration
 import it.evadid.server.commandHandler.sql.RichDatabaseConfig
 import java.sql.Connection
 import scala.util.Using
@@ -9,7 +9,7 @@ object MysqlTestDatabase {
   def withConnection[A](run: Connection => A): A = {
     require(sys.env.get("SQL_DATABASE").contains("edusquirrel_account_test"), "Use only the disposable edusquirrel_account_test database")
     require(sys.env.get("SQL_HOST").exists(Set("127.0.0.1", "localhost")), "Use only a localhost test database")
-    Using.resource(DatabaseConfig.readFromEnv().newConnection())(run)
+    Using.resource(DatabaseConfiguration.readFromEnv().newConnection())(run)
   }
 
   def clearSchema(connection: Connection): Unit = {

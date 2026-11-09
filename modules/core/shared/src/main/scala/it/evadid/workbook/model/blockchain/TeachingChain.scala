@@ -1,5 +1,7 @@
 package it.evadid.workbook.model.blockchain
 
+import it.evadid.core.util.crypto.Sha256
+
 import upickle.default.*
 
 import java.nio.charset.StandardCharsets

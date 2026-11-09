@@ -2,7 +2,7 @@ package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.distribution.commandTypes.SQLCommands.DeleteInDbRequest
 import it.evadid.server.commandHandler.sql.{GenericSqlFunctionality, RichDatabaseConfig}
-import it.evadid.sql.DatabaseConfig
+import it.evadid.sql.DatabaseConfiguration
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
@@ -90,8 +90,7 @@ case class DeleteInDatabase(
 object DeleteInDatabase {
 
   def handleRequest(request: DeleteInDbRequest, logger: Logger): SyncSuccess = {
-    val config = DatabaseConfig.readFromEnv(dbName = Some(request.databaseName))
-    scala.util.Using.resource(config.newConnection()) { connection =>
+    it.evadid.server.database.DatabaseRequestConnection.use(request) { connection =>
       request.databaseFormat match {
         case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => new RelationalHistoryStorage(connection, logger).delete(request)
         case format: it.evadid.sql.DatabaseHistoryFormat.Snapshot =>

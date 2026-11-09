@@ -111,7 +111,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) {
       HistoryJson.entries(group("graderResultMap")).foreach { (definition, incoming) =>
         require(incoming("gradedState") == state && incoming("grader") == definition, "Inconsistent grading result")
         val grader = read[WorkbookInteractionGrader[ujson.Value, ujson.Value]](definition)
-        require(grader.key.startsWith(request.syncContext.keyForSerialisation + ":"), "Grader key belongs to another variable")
+        require(grader.key.nonEmpty, "Grader identity must not be empty")
         val answer = answerFor(state)
         val previous = query("SELECT * FROM grading_event WHERE sync_id=? AND answer_id=? AND grader_key=?", List(sync, answer, grader.key)) { row =>
           safe("previous grading " + row.getLong("id")) {

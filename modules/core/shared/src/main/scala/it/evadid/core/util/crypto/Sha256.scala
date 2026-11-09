@@ -1,4 +1,4 @@
-package it.evadid.workbook.model.blockchain
+package it.evadid.core.util.crypto
 
 import java.nio.charset.StandardCharsets
 

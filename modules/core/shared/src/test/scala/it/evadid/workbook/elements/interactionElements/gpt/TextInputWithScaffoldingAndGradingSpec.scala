@@ -54,7 +54,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
         reply.fold(Future.failed, Future.successful)
       }
     }
-    val grader = TextInputLlmGrader("standalone:0", task, None, ContentForLlmInteraction(criterion, Map.empty))
+    val grader = TextInputLlmGrader(task, None, ContentForLlmInteraction(criterion, Map.empty))
     def grade(answer: String = "Meine Antwort", forced: Boolean = true) =
       grader.gradeStateSafe(answer, forced, TestExecutionContext(List(client), languageMapIdResolver = Some(resolver)))
   }
@@ -217,7 +217,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val solution = LanguageMapContentId("test/solution")
     val example = LanguageMapContentId("test/example-answer")
     val reply = LanguageMapContentId("test/example-feedback")
-    val grader = TextInputLlmGrader("standalone:0", task, Some(solution), ContentForLlmInteraction(criterion, Map(example -> reply)))
+    val grader = TextInputLlmGrader(task, Some(solution), ContentForLlmInteraction(criterion, Map(example -> reply)))
     grader.gradeStateSafe("answer", true, TestExecutionContext(List(f.client), Some(f.resolver))).map { result =>
       val prompt = ujson.read(f.requests.now().head.prompt)
       assertEquals(prompt("solution").str, "Deutsch: test/solution")

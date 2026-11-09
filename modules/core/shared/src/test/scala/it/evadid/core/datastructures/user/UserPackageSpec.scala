@@ -64,9 +64,26 @@ class UserPackageSpec extends FunSuite {
     val config = UserConfig(Nil, isOnlineAccount = false)
     val info = AllUserInfo.createNewUser("ADA LOVELACE", "ada@example.org", config)
     assertEquals(info.user.name, "Ada Lovelace")
-    assertEquals(info.token, None)
+    assertEquals(info.credentials.signedBackendToken, None)
     assertEquals(info.config, config)
     assert(info.toString.contains("logged in: false"))
+  }
+
+  test("saved preferences exclude all session secrets and public database information has no credentials") {
+    import it.evadid.sql.DatabaseConfiguration
+    import it.evadid.llm.LlmConfiguration
+    val user = User("Ada", "id", "ada@example.org")
+    val credentials = UserCredentials(
+      singleAccessToken = Some(User.SingleAccessToken("login-secret")),
+      llmApiConfig = Some(LlmConfiguration("https://example.com/chat", "model", Some("llm-secret"))),
+      databaseConfig = Some(DatabaseConfiguration("mysql", "localhost", "3306", "history", "owner", "db-secret")))
+    val info = AllUserInfo(user, credentials, UserConfig(Nil, isOnlineAccount = false))
+    assertEquals(read[AllUserInfo](write(info)), info)
+    val saved = write(SavedUserPreferences(info.user, info.config))
+    List("login-secret", "llm-secret", "db-secret", "credentials").foreach(secret => assert(!saved.contains(secret)))
+    assertEquals(info.withoutCredentials().credentials, UserCredentials())
+    assert(!write(credentials.databaseConfig.get.publicInformation).contains("db-secret"))
+    assert(!credentials.toString.contains("secret"))
   }
 
 }

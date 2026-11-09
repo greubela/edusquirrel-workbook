@@ -1,6 +1,6 @@
 package it.evadid.workbook.interaction.sync.destination
 
-import it.evadid.sql.DatabaseConfig.DatabaseConfigPartialInformation
+import it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation
 import it.evadid.sql.DatabaseHistoryFormat
 import upickle.default.*
 
@@ -21,7 +21,7 @@ object SyncDestinationDefinition {
 
   }
 
-  case class SyncDestinationBasedOnHistoryDatabase(databaseConfig: DatabaseConfigPartialInformation, format: DatabaseHistoryFormat) extends SyncDestinationDefinition derives ReadWriter {
+  case class SyncDestinationBasedOnHistoryDatabase(databaseConfig: PartialDatabaseInformation, format: DatabaseHistoryFormat) extends SyncDestinationDefinition derives ReadWriter {
 
     override def toString: String =
       s"DatabaseDestination(${databaseConfig.hostOp.getOrElse("defaultRemoteHost")}->${databaseConfig.databaseOp.getOrElse("defaultRemoteDb")}/${format.tables.mkString(",")})"

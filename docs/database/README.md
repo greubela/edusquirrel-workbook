@@ -23,7 +23,7 @@ with the packaged SQL definitions. Inspection does not read application rows,
 run migrations or modify data. Startup initializes only a completely empty
 database. Any existing table or view prevents automatic creation, including a
 partially configured or conflicting schema. Explicit `setupIfEmpty` uses the
-same rule. Missing/incompatible structures are reported for operator review;
+same rule. Missing/incompatible structures cause startup to fail;
 existing databases are never repaired automatically.
 An advisory lock coordinates concurrent backend initializers; setup rechecks
 emptiness while holding that lock and requires a dedicated auto-commit connection.
@@ -47,10 +47,11 @@ in `SyncDestinationBasedOnHistoryDatabase`; configuring it does not convert data
 from another format.
 
 Numeric database IDs are implementation details and never enter client payloads
-or determine answer equality. Graders expose a string `key` composed of the
-variable sync key and the zero-based position in its configured grader list.
-Keep list order stable when maintaining an exercise; reordering graders changes
-their identities. Ordinary feedback and entity-specific additional data are
+or determine answer equality. Graders expose a lazy string `key`: SHA-256 of
+canonical constructor content, including grader type. Map/set order and grader
+list position do not affect it. Equal configurations share an identity; changed
+criteria receive a different identity. Non-product custom graders must override
+`identityContent` with stable JSON. Ordinary feedback and entity-specific additional data are
 stored separately. See the [storage behavior](interaction-history.md).
 
 ## Command logging and proxy addresses
@@ -72,3 +73,29 @@ conflicts with the host, adjust the subnet, Caddy address and trusted address
 together and recreate the services. An additional proxy in front of Caddy needs
 explicit Caddy `trusted_proxies` configuration and `{client_ip}` forwarding;
 never trust arbitrary incoming forwarding headers or all private address ranges.
+
+## Session connections
+
+`AllUserInfo.credentials: UserCredentials` holds the backend token, single-use
+login token, optional `DatabaseConfiguration` and optional `LlmConfiguration`
+only in memory. The user menu's **Session connections** form edits custom
+connections. Closing/reloading the page requires entering them again. Browser
+preferences use `SavedUserPreferences(user, config)`; exported sessions and
+account rows contain no credentials. Online users must sign in again each session.
+
+`HomepageDefaults.defaultDb` is public `PartialDatabaseInformation` (MySQL host,
+port and database only). Sync requests carry this information and, when supplied,
+temporary session database credentials. The backend fills absent values from
+`SQL_*`. Server credentials are used only for the exact configured server target;
+a custom host or database requires matching session credentials. Before executing
+history queries, the backend validates every table required by the selected
+history format. Create a custom history database with its corresponding SQL
+script first. It is never repaired automatically.
+
+LLM requests carry `LlmPartialConfiguration`; the transport adds current session
+settings immediately before sending. Backend defaults are `OPENAI_API_URL`
+(default `https://api.openai.com/v1/chat/completions`), `OPENAI_MODEL` (default
+`gpt-4o-mini`), `OPENAI_API_KEY` and optional `OPENAI_MAX_TOKENS`. A custom endpoint
+never receives the backend API key; HTTP redirects are not followed. Custom local
+services may omit a key. Database credentials, API keys and prompts are removed
+from command-log payloads; provider error bodies are not retained.

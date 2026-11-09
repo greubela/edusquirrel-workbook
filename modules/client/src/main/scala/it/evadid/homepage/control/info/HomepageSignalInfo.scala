@@ -59,7 +59,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   lazy val currentSyncDestinations: StrictSignal[List[SyncInformationWithContext]] = {
     baseSignal.mapLazy(homepageInfo => {
-      homepageInfo.userInfo.map(curUserInfo => curUserInfo.config.syncDestinations.map(_.forContext(homepageInfo.toContext, resolveSyncDefinition))).getOrElse(List())
+      homepageInfo.userInfo.map(curUserInfo => curUserInfo.effectiveSyncDestinations.map(_.forContext(homepageInfo.toContext, resolveSyncDefinition))).getOrElse(List())
     })
   }
 
