@@ -106,15 +106,21 @@ test('login preserves email, explains duplicate registration and observes failed
     await page.locator('.workbook-user-menu-button').click();
     await page.getByRole('menuitem', {name:'Session connections', exact:true}).click();
     const connections = page.getByRole('dialog', {name:'Session connections'});
+    await connections.getByLabel('Use my MySQL database').check();
+    await connections.getByLabel('Host', {exact:true}).fill('db.fixture.invalid');
+    await connections.getByLabel('Database', {exact:true}).fill('user_history');
+    await connections.getByLabel('User', {exact:true}).fill('session-owner');
+    await connections.getByLabel('Password', {exact:true}).fill('ephemeral-database-password');
     await connections.getByLabel('Use my LLM configuration').check();
     await connections.getByLabel('Chat completion URL').fill('https://fixture.invalid/chat');
     await connections.getByLabel('API key').fill('ephemeral-browser-key');
     await connections.getByRole('button', {name:'Apply', exact:true}).click();
     await connections.waitFor({state:'detached'});
-    assert(!await page.evaluate(() => JSON.stringify(localStorage).includes('ephemeral-browser-key')));
+    assert(!await page.evaluate(() => /ephemeral-browser-key|ephemeral-database-password/.test(JSON.stringify(localStorage))));
     await page.locator('.workbook-user-menu-button').click();
     await page.getByRole('menuitem', {name:'Session connections', exact:true}).click();
     assert.equal(await connections.getByLabel('API key').inputValue(), 'ephemeral-browser-key', 'session credentials remain available in memory');
+    assert.equal(await connections.getByLabel('Password', {exact:true}).inputValue(), 'ephemeral-database-password');
     await connections.getByRole('button', {name:'Cancel', exact:true}).click();
     // Storage restrictions must not keep a signed-in session alive after logout.
     await page.evaluate(() => {
@@ -125,7 +131,10 @@ test('login preserves email, explains duplicate registration and observes failed
       };
     });
     await page.locator('.workbook-user-menu-button').click();
+    const exportedSession = page.waitForEvent('download');
     await page.getByRole('menuitem', {name:/^(Abmelden|Log out)$/}).click();
+    const exported = await fs.readFile(await (await exportedSession).path(), 'utf8');
+    assert(!/ephemeral-browser-key|ephemeral-database-password|mock-token|emailed-token/.test(exported), 'session exports exclude credentials');
     await page.locator('.container-login').waitFor();
     await login.locator('.login-email-input').fill('first.last@example.org');
     await login.locator('button').first().click();
@@ -134,7 +143,7 @@ test('login preserves email, explains duplicate registration and observes failed
 
     await page.reload();
     await page.locator('.container-login').waitFor();
-    assert(!await page.evaluate(() => JSON.stringify(localStorage).includes('ephemeral-browser-key')));
+    assert(!await page.evaluate(() => /ephemeral-browser-key|ephemeral-database-password/.test(JSON.stringify(localStorage))));
 
     assert.deepEqual(errors, []);
     assert.deepEqual(missingTranslations, [], 'startup requests only bundled translation files');

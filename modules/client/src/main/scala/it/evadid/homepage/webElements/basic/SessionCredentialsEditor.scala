@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.basic
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.llm.LlmConfiguration
-import it.evadid.sql.DatabaseConfiguration
+import it.evadid.sql.DatabaseConfigWithCredentials
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
 
@@ -36,7 +36,7 @@ case class SessionCredentialsEditor(close: () => Unit) extends HtmlAppElement {
       val db = Option.when(dbEnabled.now()) {
         require(host.now().trim.nonEmpty && schema.now().trim.nonEmpty && user.now().trim.nonEmpty, "Enter database host, database name and user")
         require(Try(port.now().toInt).toOption.exists(p => p > 0 && p <= 65535), "Invalid database port")
-        DatabaseConfiguration("mysql", host.now().trim, port.now().trim, schema.now().trim, user.now().trim, password.now())
+        DatabaseConfigWithCredentials("mysql", host.now().trim, port.now().trim, schema.now().trim, user.now().trim, password.now())
       }
       val config = Option.when(llmEnabled.now()) {
         require(endpoint.now().trim.nonEmpty && model.now().trim.nonEmpty, "Enter LLM endpoint and model")

@@ -4,6 +4,14 @@ import it.evadid.workbook.interaction.sync.SyncInformation
 import upickle.default.*
 
 case class UserConfig(syncDestinations: List[SyncInformation], isOnlineAccount: Boolean) derives ReadWriter {
+  def withoutCredentials: UserConfig = copy(syncDestinations = syncDestinations.map { info =>
+    info.syncDestination match {
+      case database: it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase =>
+        info.copy(syncDestination = database.copy(databaseConfig = database.databaseConfig.withoutCredentials))
+      case _ => info
+    }
+  })
+
   lazy val toJson: String = write(this)(using UserConfig.derived$ReadWriter)
 }
 

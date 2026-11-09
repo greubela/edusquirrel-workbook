@@ -37,6 +37,25 @@ class CommandPayloadCodecsSpec extends FunSuite {
     intercept[IllegalArgumentException](DatabaseTable("commandLog`; DROP TABLE user; --"))
   }
 
+  test("both explicit database configurations work in destinations and requests while logs exclude credentials") {
+    import it.evadid.sql.{DatabaseConfiguration, DatabaseConfig, DatabaseConfigWithCredentials, DatabaseHistoryFormat}
+    import it.evadid.workbook.interaction.sync.UsageContext
+    import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
+    val context = UsageContext("program", "scenario", "user")
+    val supplied = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "private-owner", "private-password")
+    List[DatabaseConfiguration](supplied.withoutCredentials, supplied).foreach { config =>
+      val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.ClassicJsonWithKey)
+      assertEquals(read[SyncDestinationBasedOnHistoryDatabase](write(destination)), destination)
+      val request = SQLCommands.FetchAllFromDbRequest(context, config, None, DatabaseHistoryFormat.ClassicJsonWithKey)
+      assertEquals(read[SQLCommands.FetchAllFromDbRequest](write(request)), request)
+      val command = ExecutionCommand(SQLCommands.fetchFromDbCommand.name, writeJs(request))
+      val safe = command.stripPrivacySensitiveInformation()
+      assert(!safe.toJson.contains("private-"))
+      assertEquals(read[DatabaseConfiguration](safe.json("databaseConfig")), config.withoutCredentials)
+      assertEquals(safe.stripPrivacySensitiveInformation(), safe)
+    }
+  }
+
   test("account logs cannot retain submitted login codes, session tokens or connection settings") {
     List(UserCommands.loginCommand.name, UserCommands.createAccountCommand.name, UserCommands.updateAccountCommand.name).foreach { name =>
       val payload = ujson.Obj("userMail" -> "fixture@example.invalid", "accessToken" -> "private-code",

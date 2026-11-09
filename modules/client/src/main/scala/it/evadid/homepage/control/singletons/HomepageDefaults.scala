@@ -11,7 +11,7 @@ import it.evadid.homepage.control.startup.ClientRuntimeConfig
 
 case class HomepageDefaults(fullInfo: FullInfo) {
 
-  val defaultDb: it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation = it.evadid.sql.DatabaseConfiguration.defaultDb
+  val defaultDb: it.evadid.sql.DatabaseConfig = it.evadid.sql.DatabaseConfig.defaultDb
 
   lazy val defaultLanguagesAvailable: List[HumanLanguage] = List(German, English)
 

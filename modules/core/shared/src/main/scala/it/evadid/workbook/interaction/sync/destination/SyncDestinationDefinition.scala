@@ -1,6 +1,6 @@
 package it.evadid.workbook.interaction.sync.destination
 
-import it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation
+import it.evadid.sql.DatabaseConfiguration
 import it.evadid.sql.DatabaseHistoryFormat
 import upickle.default.*
 
@@ -16,10 +16,10 @@ sealed trait SyncDestinationDefinition derives ReadWriter {
 
 object SyncDestinationDefinition {
 
-  case class SyncDestinationBasedOnHistoryDatabase(databaseConfig: PartialDatabaseInformation, format: DatabaseHistoryFormat) extends SyncDestinationDefinition derives ReadWriter {
+  case class SyncDestinationBasedOnHistoryDatabase(databaseConfig: DatabaseConfiguration, format: DatabaseHistoryFormat) extends SyncDestinationDefinition derives ReadWriter {
 
     override def toString: String =
-      s"DatabaseDestination(${databaseConfig.hostOp.getOrElse("defaultRemoteHost")}->${databaseConfig.databaseOp.getOrElse("defaultRemoteDb")}/${format.tables.mkString(",")})"
+      s"DatabaseDestination(${databaseConfig.host}->${databaseConfig.database}/${format.tables.mkString(",")})"
   }
 
   case class LocalIndexedDbSyncDefinition(dbName: String, storeName: String, dbVersion: Int) extends SyncDestinationDefinition derives ReadWriter {
@@ -34,13 +34,13 @@ object SyncDestinationDefinition {
     LocalIndexedDbSyncDefinition("EvaDidInteractionDB", "variableHistoryStore", 1)
 
   val defaultDatabaseWithKey: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfiguration.defaultDb, DatabaseHistoryFormat.ClassicJsonWithKey)
+    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.ClassicJsonWithKey)
 
   val defaultDatabaseKeyless: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfiguration.defaultDb, DatabaseHistoryFormat.ClassicKeylessJson)
+    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.ClassicKeylessJson)
 
   val defaultDatabaseV2: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfiguration.defaultDb, DatabaseHistoryFormat.RelationalEvents)
+    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalEvents)
 
 }
 

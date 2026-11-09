@@ -227,7 +227,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
         LocalStorageSyncHandler.removeKey(allUserInfoStorageKey)
         newUserInfo.foreach { allUserInfo =>
           logger.logInfo(s"Loading user ${allUserInfo.toString}")
-          val serialized = write(SavedUserPreferences(allUserInfo.user, allUserInfo.config))
+          val serialized = write(SavedUserPreferences(allUserInfo.user, allUserInfo.config.withoutCredentials))
           LocalStorageSyncHandler.instance.storeElementRaw(fullInfo.syncControl.syncLogger, allUserInfoStorageKey, serialized)
             .failed.foreach(error => logger.logExceptionWarn("Could not save user preferences", error))
         }

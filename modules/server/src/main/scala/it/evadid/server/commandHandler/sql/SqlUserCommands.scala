@@ -9,7 +9,7 @@ import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMa
 import it.evadid.distribution.commandTypes.UserCommands.*
 import it.evadid.server.AuthHandling
 import it.evadid.server.SendMailCommand.sendMail
-import it.evadid.sql.DatabaseConfiguration
+import it.evadid.sql.DatabaseConfigWithCredentials
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.SyncInformation.*
@@ -105,13 +105,13 @@ object SqlUserCommands {
   }
 
   def instance(logger: Logger): SqlUserCommands = {
-    val connection = DatabaseConfiguration.readFromEnv().newConnection()
+    val connection = DatabaseConfigWithCredentials.readFromEnv().newConnection()
     val control = SqlUserCommands(connection, logger)
     control
   }
 
   def handleUpdateAccountCommand(request: UpdateAccountRequest, logger: Logger): Future[UpdateAccountResponse] = Future {
-    val connection = DatabaseConfiguration.readFromEnv().newConnection()
+    val connection = DatabaseConfigWithCredentials.readFromEnv().newConnection()
     val control = SqlUserCommands(connection, logger)
     val changes = control.upsertUser(request.allUserInfo.user, request.allUserInfo.config)
     val token = AuthHandling.createToken(request.allUserInfo.user)
@@ -248,7 +248,7 @@ class SqlUserCommands(
     stmt.setString(1, user.id)
     stmt.setString(2, user.name)
     stmt.setString(3, user.mail.toLowerCase)
-    stmt.setString(4, userConfig.toJson)
+    stmt.setString(4, userConfig.withoutCredentials.toJson)
 
     generic.executeUpdate(stmt)
   }

@@ -1,6 +1,6 @@
 package it.evadid.server.database
 
-import it.evadid.sql.DatabaseConfiguration
+import it.evadid.sql.DatabaseConfigWithCredentials
 import it.evadid.util.logging.Logger
 import java.sql.{Connection, DatabaseMetaData, DriverManager}
 import net.sf.jsqlparser.statement.create.table.ForeignKeyIndex
@@ -145,7 +145,7 @@ object EnsureDatabaseProperlySetup {
     }
   }
 
-  def check(config: DatabaseConfiguration, initializeEmpty: Boolean = false): Report =
+  def check(config: DatabaseConfigWithCredentials, initializeEmpty: Boolean = false): Report =
     Try(DriverManager.getConnection(config.jdbcUrl + "?connectTimeout=3000&socketTimeout=3000", config.user, config.password)).fold(
       error => Report(false, Set.empty, Set.empty, List(Option(error.getMessage).getOrElse(error.getClass.getSimpleName))),
       connection => Using.resource(connection) { connection =>
@@ -154,7 +154,7 @@ object EnsureDatabaseProperlySetup {
       })
 
   def onStartup(logger: Logger): Report = {
-    val report = check(DatabaseConfiguration.readFromEnv(), initializeEmpty = true)
+    val report = check(DatabaseConfigWithCredentials.readFromEnv(), initializeEmpty = true)
     if !report.valid then {
       val message = s"Database schema check failed: reachable=${report.reachable}; missing=${report.missingTables.mkString(",")}; conflicts=${report.conflicts.mkString("; ")}"
       logger.logError(message)

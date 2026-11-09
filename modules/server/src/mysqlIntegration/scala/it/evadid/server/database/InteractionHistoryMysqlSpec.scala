@@ -43,9 +43,9 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       Set(GradedState(value, grades)), Set(scaffolding))
   }
   private def store(history: History, format: DatabaseHistoryFormat = RelationalEvents): Unit =
-    UpsertToDatabase.handleRequest(StoreToDbRequest(sync, write(history), it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), format), logger)
+    UpsertToDatabase.handleRequest(StoreToDbRequest(sync, write(history), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, format), logger)
   private def fetch(format: DatabaseHistoryFormat = RelationalEvents): Map[it.evadid.workbook.interaction.sync.SyncContext, String] =
-    FetchFromDatabase.handleRequest(FetchAllFromDbRequest(context, it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), None, format), logger).fetchedElements
+    FetchFromDatabase.handleRequest(FetchAllFromDbRequest(context, it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, None, format), logger).fetchedElements
   private def scalar(sql: String): Long = MysqlTestDatabase.withConnection { connection =>
     Using.resource(connection.createStatement())(statement => Using.resource(statement.executeQuery(sql))(rows => { rows.next(); rows.getLong(1) }))
   }
@@ -56,20 +56,20 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val saved = history()
       store(saved, format)
       assertEquals(read[History](fetch(format)(sync)), saved)
-      DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), format), logger)
+      DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, format), logger)
       assertEquals(fetch(format), Map.empty)
     }
   }
 
   test("session database credentials support all history formats and are removed from logs") {
-    val credentials = it.evadid.sql.DatabaseConfiguration.readFromEnv()
+    val credentials = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()
     List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
-      val request = StoreToDbRequest(sync, write(history()), credentials.publicInformation, format, Some(credentials))
+      val request = StoreToDbRequest(sync, write(history()), credentials, format)
       UpsertToDatabase.handleRequest(request, logger)
-      val fetched = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(context, credentials.publicInformation, None, format, Some(credentials)), logger)
+      val fetched = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(context, credentials, None, format), logger)
       assertEquals(read[History](fetched.fetchedElements(sync)), history())
       val command = it.evadid.distribution.command.ExecutionCommand(StoreToDbCommand.name, writeJs(request))
-      assert(!command.stripPrivacySensitiveInformation().json.obj.contains("databaseCredentials"))
+      assert(!command.stripPrivacySensitiveInformation().json.toString.contains(credentials.password))
     }
   }
 
@@ -130,10 +130,10 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   test("reads, deletes and feedback foreign keys stay within their sync context") {
     store(history())
     val other = context.copy(userId = "other-student").toSyncContext(key)
-    UpsertToDatabase.handleRequest(StoreToDbRequest(other, write(history()), it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), RelationalEvents), logger)
-    DeleteInDatabase.handleRequest(DeleteInDbRequest(context, None, it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), RelationalEvents), logger)
+    UpsertToDatabase.handleRequest(StoreToDbRequest(other, write(history()), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalEvents), logger)
+    DeleteInDatabase.handleRequest(DeleteInDbRequest(context, None, it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalEvents), logger)
     assertEquals(fetch(), Map.empty)
-    val retained = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(other.toUsageContext, it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), None, RelationalEvents), logger)
+    val retained = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(other.toUsageContext, it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, None, RelationalEvents), logger)
     assertEquals(read[History](retained.fetchedElements(other)), history())
     MysqlTestDatabase.withConnection { connection =>
       Using.resource(connection.createStatement()) { statement =>
@@ -267,11 +267,11 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     val variants = List(context, context.copy(programId = "PROGRAM"), context.copy(programId = "program "))
     variants.foreach { usage =>
       val identity = usage.toSyncContext(key)
-      UpsertToDatabase.handleRequest(StoreToDbRequest(identity, write(history()), it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), RelationalEvents), logger)
+      UpsertToDatabase.handleRequest(StoreToDbRequest(identity, write(history()), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalEvents), logger)
     }
     assertEquals(scalar("SELECT COUNT(*) FROM sync_context_id"), 3L)
     variants.foreach { usage =>
-      val response = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(usage, it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), None, RelationalEvents), logger)
+      val response = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(usage, it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, None, RelationalEvents), logger)
       assertEquals(response.fetchedElements.keySet, Set(usage.toSyncContext(key)))
     }
   }

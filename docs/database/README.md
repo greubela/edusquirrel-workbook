@@ -81,23 +81,31 @@ never trust arbitrary incoming forwarding headers or all private address ranges.
 ## Session connections
 
 `AllUserInfo.credentials: UserCredentials` holds the backend token, single-use
-login token, optional `DatabaseConfiguration` and optional `LlmConfiguration`
+login token, optional `DatabaseConfigWithCredentials` and optional `LlmConfiguration`
 only in memory. The user menu's **Session connections** form edits custom
 connections. Closing/reloading the page requires entering them again. Browser
 preferences use `SavedUserPreferences(user, config)`; exported sessions and
 account rows contain no credentials. Online users must sign in again each session.
 
-`HomepageDefaults.defaultDb` is public `PartialDatabaseInformation` (MySQL host,
-port and database only). Sync requests carry this information and, when supplied,
-temporary session database credentials. The `databaseConfig` request field is
-required and carries non-secret connection information; it is not an optional
-"use some default" selector. Default database credentials come only from server
-`SQL_*` settings. User-supplied credentials are used for execution and are never
-written to account rows, preferences or command logs. Server credentials are used only for the exact configured server target;
-a custom host or database requires matching session credentials. Before executing
-history queries, the backend validates every table required by the selected
-history format. Create a custom history database with its corresponding SQL
-script first. It is never repaired automatically.
+Database connections have two explicit types under `DatabaseConfiguration`:
+`DatabaseConfig` contains format, host, port and database; `DatabaseConfigWithCredentials`
+also contains username and password. Both are accepted by sync destinations and
+by the required `databaseConfig` field of every database request. There is no
+parallel credential field or per-field merging. Public default presets live in
+`SyncDestinationDefinition`; both classic formats remain active.
+
+For `DatabaseConfig`, the backend uses credentials from `SQL_*` only if its target
+matches the configured server database. `DatabaseConfigWithCredentials` is used
+as-is without consulting server defaults. The session form provides the latter
+for user-owned databases. Request construction selects session configuration
+or the destination definition directly; it does not rewrite account preferences.
+User-supplied credentials are removed from account persistence, browser preferences,
+exports and command logs, including credentials attached directly to a destination.
+
+Before executing history queries, the backend validates every table required by
+the selected history format. Create a custom history database with its corresponding
+SQL script first. It is never repaired automatically. Startup inspection remains
+disabled while the new schema is not live.
 
 LLM requests carry `llmConfiguration: Option[LlmConfiguration]`. Callers pass the
 current session configuration explicitly. `Some(config)` is used as-is, including

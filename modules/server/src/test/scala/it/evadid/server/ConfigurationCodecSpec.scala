@@ -1,31 +1,28 @@
 package it.evadid.server
 
-import it.evadid.sql.DatabaseConfiguration
+import it.evadid.sql.{DatabaseConfiguration, DatabaseConfigWithCredentials}
 import munit.FunSuite
 import upickle.default.*
 
 class ConfigurationCodecSpec extends FunSuite {
   test("database settings serialize as values without opening a connection") {
-    val value = DatabaseConfiguration("mysql", "localhost", "3306", "fixture", "fixture-user", "fixture-password")
+    val value: DatabaseConfiguration = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "fixture", "fixture-user", "fixture-password")
     for (decoded <- List(read[DatabaseConfiguration](write(value)), readBinary[DatabaseConfiguration](writeBinary(value)))) {
       assertEquals(decoded, value)
       assertEquals(decoded.jdbcUrl, "jdbc:mysql://localhost:3306/fixture")
     }
   }
 
-  test("custom history targets require matching session credentials") {
-    import it.evadid.distribution.commandTypes.SQLCommands.*
+  test("public targets resolve server credentials; supplied credentials bypass server defaults") {
     import it.evadid.server.database.DatabaseRequestConnection
-    import it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation
-    import it.evadid.sql.DatabaseHistoryFormat.ClassicJsonWithKey
-    import it.evadid.workbook.interaction.sync.UsageContext
-    val defaults = DatabaseConfiguration("mysql", "backend", "3306", "main", "server", "server-secret")
-    val custom = DatabaseConfiguration("mysql", "custom", "3306", "history", "owner", "session-secret")
-    val request = FetchAllFromDbRequest(UsageContext("p", "s", "u"), PartialDatabaseInformation(), None, ClassicJsonWithKey)
-    assertEquals(DatabaseRequestConnection.resolve(request, defaults), defaults)
-    intercept[IllegalArgumentException](DatabaseRequestConnection.resolve(request.copy(databaseConfig = custom.publicInformation), defaults))
-    assertEquals(DatabaseRequestConnection.resolve(request.copy(databaseConfig = custom.publicInformation, databaseCredentials = Some(custom)), defaults), custom)
-    intercept[IllegalArgumentException](DatabaseRequestConnection.resolve(request.copy(databaseConfig = defaults.publicInformation, databaseCredentials = Some(custom)), defaults))
+    val defaults = DatabaseConfigWithCredentials("mysql", "backend", "3306", "main", "server", "server-secret")
+    val custom = DatabaseConfigWithCredentials("mysql", "custom", "3306", "history", "owner", "session-secret")
+    assertEquals(DatabaseRequestConnection.resolve(defaults.withoutCredentials, defaults), defaults)
+    intercept[IllegalArgumentException](DatabaseRequestConnection.resolve(custom.withoutCredentials, defaults))
+    assertEquals(DatabaseRequestConnection.resolve(custom, throw AssertionError("Must not read default credentials")), custom)
+    List[DatabaseConfiguration](defaults.withoutCredentials, custom).foreach { config =>
+      assertEquals(read[DatabaseConfiguration](write(config)), config)
+    }
   }
 
   test("mail settings have their own default codec") {
