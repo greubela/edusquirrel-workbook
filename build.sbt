@@ -35,11 +35,16 @@ lazy val desktop = (project in file("./modules/desktop"))
     libraryDependencies ++= desktopDependencies
   )
 
+lazy val MysqlIntegration = config("mysqlIntegration") extend Test
+
 lazy val server = (project in file("./modules/server"))
+  .configs(MysqlIntegration)
   .settings(Settings.globalSettings).settings(Settings.jvmSettings)
+  .settings(inConfig(MysqlIntegration)(Defaults.testSettings))
   .dependsOn(core.jvm)
   .settings(
     name := "server",
+    MysqlIntegration / parallelExecution := false,
     Compile / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / assemblyJarName := "server.jar",
