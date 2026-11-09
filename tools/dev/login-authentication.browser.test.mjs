@@ -27,6 +27,7 @@ test('login preserves email, explains duplicate registration and observes failed
     const missingTranslations = [];
     let transportFailure = false;
     let validLogin = false;
+    let unknownAccount = false;
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', msg => { if (process.env.LOGIN_TEST_DEBUG) console.error(msg.text()); });
     await page.route('**/*', async route => {
@@ -47,7 +48,7 @@ test('login preserves email, explains duplicate registration and observes failed
           value = {userKnown:true,tokenValid:validLogin,allUserInfo:validLogin ? {
             user,credentials:{signedBackendToken:token,singleAccessToken:null,llmApiConfig:null,databaseConfig:null},config:{syncDestinations:[],isOnlineAccount:true}} : null};
         }
-        else if (command.name === 'auth-mail-request') value = {user:null,sent:true};
+        else if (command.name === 'auth-mail-request') value = {associatedUser:null,sent:!unknownAccount};
         else throw new Error('Unexpected command ' + command.name);
         return route.fulfill({headers,contentType:'application/json',body:response(command,value)});
       }
@@ -64,6 +65,7 @@ test('login preserves email, explains duplicate registration and observes failed
     const registration = page.locator('.section-register .login-area').first();
     const login = page.locator('.section-continue .login-area').first();
     const status = registration.locator('[role="status"]');
+    await page.waitForFunction(() => [...document.querySelectorAll('.container-login input[placeholder]')].every(input => input.placeholder && !input.placeholder.startsWith('[')));
     assert.equal(await registration.locator('.login-name-input').inputValue(), '');
     assert.equal(await registration.locator('.login-email-input').inputValue(), '');
     await registration.locator('button').click();
@@ -96,6 +98,15 @@ test('login preserves email, explains duplicate registration and observes failed
     await login.locator('button').first().click();
     await page.waitForFunction(() => /gesendet|sent/i.test(document.querySelector('.section-continue [role="status"]').textContent));
     assert.equal(requests.filter(command => command.name === 'auth-mail-request').length, 1, 'mail requests only follow the explicit button');
+    transportFailure = true;
+    await login.locator('button').first().click();
+    await page.waitForFunction(() => /server.*(could not send|konnte keinen)/i.test(document.querySelector('.section-continue [role="status"]').textContent));
+    assert.equal(await login.locator('button').first().isDisabled(), false, 'mail-service failures allow retry');
+    transportFailure = false;
+    unknownAccount = true;
+    await login.locator('button').first().click();
+    await page.waitForFunction(() => /No account|kein Konto/i.test(document.querySelector('.section-continue [role="status"]').textContent));
+    unknownAccount = false;
     validLogin = true;
     await login.locator('button').last().click();
     await page.waitForFunction(() => !document.querySelector('.container-login'));

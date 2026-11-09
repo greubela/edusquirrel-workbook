@@ -99,6 +99,24 @@ class UserAccountMysqlSpec extends FunSuite {
     }
   }
 
+  test("a login-code request for an unknown account reports it without sending mail") {
+    val response = Await.result(SqlUserCommands.requestAuthMail(AuthMailRequest("missing@example.invalid"), logger), 10.seconds)
+    assertEquals(response, it.evadid.distribution.commandTypes.MailCommands.SendMailResponse(None, false))
+  }
+
+  test("invalid stored login codes are discarded and replaced rather than preventing login") {
+    assert(register().accountCreated)
+    val renewed = queries { control =>
+      control.upsertToken(alice.id, SingleAccessToken("", LocalDateTime.now().plusHours(1)))
+      assertEquals(control.findAccessTokens(alice.id), None)
+      val token = control.ensureAndGetUserTokenFromDb(alice.id, logger).get
+      assert(token.token.matches("[0-9a-f]{40}"))
+      assertEquals(control.findAccessTokens(alice.id).map(_.token), Some(token.token))
+      token
+    }
+    assert(login(alice.mail, renewed).loginSucceeded)
+  }
+
   test("duplicate registration rejects an existing email or ID without replacing the account") {
     assert(register().accountCreated)
     val duplicateMail = register(bob.copy(mail = "ALICE@EXAMPLE.INVALID"))

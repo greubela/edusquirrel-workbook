@@ -32,6 +32,9 @@
   "errorUnknownUser": "Für diese E-Mail-Adresse wurde kein Konto gefunden. Bitte registriere dich zuerst.",
   "errorInvalidToken": "Dieser Token ist ungültig oder abgelaufen. Fordere einen neuen Anmelde-Token an.",
   "errorTokenRequired": "Bitte füge den Token aus deiner E-Mail ein.",
-  "errorTokenRequest": "Der Anmelde-Token konnte nicht gesendet werden. Prüfe deine E-Mail-Adresse und versuche es erneut.",
-  "errorLogin": "Anmeldung fehlgeschlagen. Bitte versuche es später erneut."
+  "errorTokenRequest": "Der Server konnte keinen Anmelde-Token senden. Bitte versuche es später erneut oder kontaktiere die Administration.",
+  "errorLogin": "Anmeldung fehlgeschlagen. Bitte versuche es später erneut.",
+  "insertNamePlaceholder": "Dein Name",
+  "enterMail": "E-Mail-Adresse",
+  "uploadFile": "Fortschrittsdatei hochladen"
 }

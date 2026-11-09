@@ -6,7 +6,6 @@ import it.evadid.workbook.interaction.sync.UsageContext
 
 import java.sql.*
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 private[sql] case class GenericSqlFunctionality(
                                                  connection: Connection,
@@ -40,13 +39,8 @@ private[sql] case class GenericSqlFunctionality(
     }
   }
 
-  def parseDatabaseTimestamp(databaseTimestampString: String): LocalDateTime = {
-    // JDBC timestamp strings use a space and may include fractional seconds.
-    // Keep accepting ISO strings for existing fixtures/imported data.
-    try Timestamp.valueOf(databaseTimestampString.trim).toLocalDateTime
-    catch case _: IllegalArgumentException =>
-      LocalDateTime.parse(databaseTimestampString.trim, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-  }
+  def parseDatabaseTimestamp(databaseTimestampString: String): LocalDateTime =
+    Timestamp.valueOf(databaseTimestampString).toLocalDateTime
 
   def executeSyncQuere(preparedStatement: PreparedStatement, fieldsToRead: List[String], usageContext: UsageContext): List[RichDatabaseEntry] = {
     val asList = executeQuery(preparedStatement, fieldsToRead)

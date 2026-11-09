@@ -25,6 +25,18 @@ class ConfigurationCodecSpec extends FunSuite {
     }
   }
 
+  test("missing SMTP credentials report configuration names without exposing secrets") {
+    val configured = Map("MAIL_EMAIL" -> "fixture@example.invalid", "MAIL_PW" -> "private-mail-password")
+    List("MAIL_EMAIL", "MAIL_PW").foreach { missing =>
+      val error = intercept[IllegalStateException](SendMailCommand.readMailConfig((configured - missing).get))
+      assert(error.getMessage.contains(missing))
+      assert(!error.getMessage.contains("private-mail-password"))
+    }
+    val settings = SendMailCommand.readMailConfig(configured.get)
+    assertEquals(settings.host, "smtp.lima-city.de")
+    assertEquals(settings.port, "587")
+  }
+
   test("mail settings have their own default codec") {
     val value = SendMailCommand.MailConfig("fixture@example.com", "fixture-password", "localhost", "587")
     assertEquals(read[SendMailCommand.MailConfig](write(value)), value)
