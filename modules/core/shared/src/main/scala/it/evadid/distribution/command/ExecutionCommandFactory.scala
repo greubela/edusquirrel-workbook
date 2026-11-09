@@ -4,6 +4,8 @@ import it.evadid.distribution.clients.{ExecutionClient, LocalExecutionClient}
 import it.evadid.distribution.command.ExecutionInfo.*
 import it.evadid.distribution.formats.ExecutionClientResponse.AdditionalLoggingOutput
 import it.evadid.util.logging.Logger
+import it.evadid.sql.DatabaseTable
+import it.evadid.distribution.commandTypes.*
 import it.evadid.util.logging.derived.PrintToStdLogger
 import upickle.default
 import upickle.default.*
@@ -12,13 +14,20 @@ import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 object ExecutionCommandFactory {
+  lazy val knownCommands: List[ExecutionCommandFactory[?, ?]] = List(
+    UserCommands.loginCommand, UserCommands.updateAccountCommand, UserCommands.createAccountCommand, UserCommands.authMailCommand,
+    SQLCommands.StoreToDbCommand, SQLCommands.fetchFromDbCommand, SQLCommands.clearValuesDbCommand,
+    MailCommands.sendMailCommand, LLMCommands.completeLLMCommandFactory, LLMCommands.feedbackLlmCommandFactory,
+    SqlEditorCommands.execute, WorkerCommands.health, WorkerCommands.parseSnapXml, WorkerCommands.pythonFlowchart,
+    WorkerCommands.calculateQrCode, WorkerCommands.runPython, WorkerCommands.javaExecutionEvidence)
 
-
+  def forName(name: String): Option[ExecutionCommandFactory[?, ?]] = knownCommands.find(_.name == name)
 }
 
 case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
                                                                   name: String,
-                                                                  private val privacyFilter: Option[ujson.Value => ujson.Value] = None
+                                                                  private val privacyFilter: Option[ujson.Value => ujson.Value] = None,
+                                                                  storeLogIntoTable: Option[DatabaseTable] = Some(DatabaseTable.commandLog)
                                                                 ) {
 
   given ec: ExecutionContext = ExecutionContext.global

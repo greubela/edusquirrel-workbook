@@ -50,6 +50,9 @@ Tests use JDBC doubles and intercepted backend requests. They cover duplicate
 registration, token failures, transport errors, explicit token requests and saved
 account details without creating real accounts or sending email.
 
+See the [database guide](database/README.md) for account/log table relationships,
+the anonymous logging identity and proxy configuration.
+
 ### MySQL account queries
 
 The `mysql-accounts` job in `.github/workflows/tests.yml` runs

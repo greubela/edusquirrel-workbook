@@ -1,8 +1,9 @@
 package it.evadid.server.commandHandler.sql
 
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
+import it.evadid.core.datastructures.user.User
 import it.evadid.distribution.command.ExecutionCommand
-import it.evadid.sql.DatabaseConfig
+import it.evadid.sql.DatabaseTable
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.SyncSuccess
@@ -10,6 +11,8 @@ import it.evadid.workbook.interaction.sync.SyncSuccess
 import java.net.InetAddress
 import java.sql.{Connection, Timestamp}
 import java.time.LocalDateTime
+import scala.util.Using
+import scala.util.control.NonFatal
 
 object SqlLogCommands {
 
@@ -17,15 +20,18 @@ object SqlLogCommands {
     command.stripPrivacySensitiveInformation().toJson
 
   def handleLog(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Unit = {
-    val config = DatabaseConfig.readFromEnv()
-    val connection = config.newConnection()
-    handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger, connection)
+    executionCommand.storeLogIntoTable.foreach { table =>
+      try Using.resource(table.inDatabase.completeWithEnvironment().newConnection()) { connection =>
+        handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger, connection)
+      }
+      catch case NonFatal(error) => logger.logExceptionWarn("Could not store command log for " + executionCommand.name, error)
+    }
   }
 
   private[sql] def handleLog(commandReceived: LocalDateTime, executionCommand: ExecutionCommand,
       verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger, connection: Connection): Unit = {
     val control = SqlLogCommands(connection, logger)
-    val res = control.logCommand(commandReceived, executionCommand, verifiedToken, remoteAddress, logger)
+    val res = control.logCommand(commandReceived, executionCommand, verifiedToken, remoteAddress, executionCommand.storeLogIntoTable)
     if (res.elementsAdded <= 0) logger.logWarn("Failed db logging for command: " + executionCommand.name + " (" + payloadForLog(executionCommand) + ")")
   }
 
@@ -38,27 +44,31 @@ class SqlLogCommands(
 
   private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection, logger)
 
-  def logCommand(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken],remoteAddress: InetAddress, logger: Logger): SyncSuccess = {
-    val storeOrigin: String = remoteAddress.getCanonicalHostName
+  def logCommand(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken],
+                 remoteAddress: InetAddress, storeLogIntoTable: Option[DatabaseTable]): SyncSuccess = {
+    if storeLogIntoTable.isEmpty then return SyncSuccess(0, 0, 0, LocalDateTime.now())
+    val storeOrigin: String = remoteAddress.getHostAddress
     val storeTimestamp: Timestamp = Timestamp.valueOf(commandReceived)
     val storeType: String = executionCommand.name
     val storePayload: String = SqlLogCommands.payloadForLog(executionCommand)
-    val storeInfo = verifiedToken.map(_.info.toJson).getOrElse("")
+    val userId = verifiedToken.map(_.info.user.id).getOrElse(User.Anonymous.id)
 
     val sql =
       s"""
-         |INSERT INTO `commandLog` (`timestamp`, `origin`, `type`, `payload`, `tokenInfo`)
-         |VALUES (?, ?, ?, ?, ?)
+         |INSERT INTO `${storeLogIntoTable.get.name}` (`timestamp`, `origin`, `type`, `payload`, `userid`, `ipAddress`)
+         |VALUES (?, ?, ?, ?, ?, ?)
          |""".stripMargin
 
-    val stmt = connection.prepareStatement(sql)
-    stmt.setTimestamp(1, storeTimestamp)
-    stmt.setString(2, storeOrigin)
-    stmt.setString(3, storeType)
-    stmt.setString(4, storePayload)
-    stmt.setString(5, storeInfo)
+    val res = Using.resource(connection.prepareStatement(sql)) { stmt =>
+      stmt.setTimestamp(1, storeTimestamp)
+      stmt.setString(2, storeOrigin)
+      stmt.setString(3, storeType)
+      stmt.setString(4, storePayload)
+      stmt.setString(5, userId)
+      stmt.setString(6, remoteAddress.getHostAddress)
 
-    val res = generic.executeUpdate(stmt)
+      generic.executeUpdate(stmt)
+    }
     SyncSuccess(res, 0, 0, LocalDateTime.now())
   }
 

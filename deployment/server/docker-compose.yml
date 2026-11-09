@@ -14,6 +14,9 @@ services:
     depends_on:
       edusquirrel:
         condition: service_started
+    networks:
+      backend:
+        ipv4_address: 172.30.0.2
 
   edusquirrel:
     image: eclipse-temurin:21-jre-alpine
@@ -22,11 +25,9 @@ services:
     command: [
       "java", 
       "-Dplay.http.forwarded.version=x-forwarded",
-      "-Dplay.http.trustedProxies.0=127.0.0.1",
-      "-Dplay.http.trustedProxies.1=::1",
-      "-Dplay.http.trustedProxies.2=172.16.0.0/12",
-      "-Dplay.http.trustedProxies.3=192.168.0.0/16",
-      "-Dplay.http.trustedProxies.4=10.0.0.0/8",
+      "-Dplay.http.forwarded.trustedProxies.0=127.0.0.1",
+      "-Dplay.http.forwarded.trustedProxies.1=::1",
+      "-Dplay.http.forwarded.trustedProxies.2=172.30.0.2",
       "-jar", 
       "/app/server.jar"
     ]
@@ -41,6 +42,8 @@ services:
           create_host_path: false
     expose:
       - "9000"
+    networks:
+      - backend
     environment:
       TZ: Europe/Berlin
     healthcheck:
@@ -81,6 +84,13 @@ configs:
           }
 
           reverse_proxy edusquirrel:9000 {
+              header_up X-Forwarded-For {remote_host}
               header_up X-Real-IP {remote_host}
           }
       }
+
+networks:
+  backend:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

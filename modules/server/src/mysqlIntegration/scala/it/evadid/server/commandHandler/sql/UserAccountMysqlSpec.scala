@@ -9,6 +9,10 @@ import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
 
 import java.sql.Connection
+import java.net.InetAddress
+import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory}
+import it.evadid.distribution.commandTypes.{SQLCommands, LLMCommands}
+import it.evadid.sql.DatabaseTable
 import java.time.LocalDateTime
 import scala.concurrent.Await
 import scala.concurrent.duration.*
@@ -44,9 +48,13 @@ class UserAccountMysqlSpec extends FunSuite {
       "MySQL integration tests require a disposable database on localhost")
     require(sys.env.get("SERVER_SECRET").exists(_.nonEmpty),
       "Set a disposable SERVER_SECRET for signed-token integration tests")
-    val schema = Using.resource(Source.fromResource("sql/account-schema.sql"))(_.mkString)
+    val schema = List("sql/account-schema.sql", "command-logging.sql")
+      .map(path => Using.resource(Source.fromResource(path))(_.mkString)).mkString("\n")
     withDatabase { connection =>
       Using.resource(connection.createStatement()) { statement =>
+        List("syncedLog", "commandLog", "loginTokens", "user").foreach { table =>
+          statement.executeUpdate(s"DROP TABLE IF EXISTS `$table`")
+        }
         schema.split(";").map(_.trim).filter(_.nonEmpty).foreach(statement.executeUpdate)
       }
     }
@@ -54,9 +62,12 @@ class UserAccountMysqlSpec extends FunSuite {
 
   override def beforeEach(context: BeforeEach): Unit = withDatabase { connection =>
     Using.resource(connection.createStatement()) { statement =>
+      statement.executeUpdate("DELETE FROM `syncedLog`")
+      statement.executeUpdate("DELETE FROM `commandLog`")
       statement.executeUpdate("DELETE FROM `loginTokens`")
       statement.executeUpdate("DELETE FROM `user`")
     }
+    SqlUserCommands(connection, logger).upsertUser(User.Anonymous, UserConfig(Nil, isOnlineAccount = false))
   }
 
   test("registration persists Unicode identity, normalized email and current account settings") {
@@ -180,5 +191,58 @@ class UserAccountMysqlSpec extends FunSuite {
       control.ensureAndGetUserTokenFromDb(alice.id, logger).get
     }
     assert(login(alice.mail, token).loginSucceeded)
+  }
+
+  private def logRows(table: String): List[List[String]] = withDatabase { connection =>
+    Using.resource(connection.createStatement()) { statement =>
+      Using.resource(statement.executeQuery(s"SELECT `type`, `userid`, `ipAddress`, `payload` FROM `$table` ORDER BY `id`")) { rows =>
+        Iterator.continually(rows.next()).takeWhile(identity).map { _ =>
+          (1 to 4).map(rows.getString).toList
+        }.toList
+      }
+    }
+  }
+
+  test("ordinary and sync commands log in separate tables with account IDs and IPv4/IPv6 addresses") {
+    val token = register().token.get
+    val address = InetAddress.getByName("2001:db8::42")
+    val ordinary = ExecutionCommand("login-command", ujson.Obj("event" -> "fixture"))
+    SqlLogCommands.handleLog(LocalDateTime.now(), ordinary, Some(token), address, logger)
+    val sync = ExecutionCommand(SQLCommands.StoreToDbCommand.name, ujson.Obj("event" -> "sync fixture"))
+    SqlLogCommands.handleLog(LocalDateTime.now(), sync, None, InetAddress.getByName("192.0.2.12"), logger)
+    assertEquals(logRows("commandLog").map(_.take(3)), List(List(ordinary.name, alice.id, address.getHostAddress)))
+    assertEquals(logRows("syncedLog").map(_.take(3)), List(List(sync.name, User.Anonymous.id, "192.0.2.12")))
+  }
+
+  test("logging preserves privacy filtering and disabled destinations perform no SQL") {
+    val command = ExecutionCommand(LLMCommands.feedbackLlmCommandFactory.name,
+      ujson.Obj("prompt" -> "private learner answer", "systemPrompt" -> "private instructions"))
+    SqlLogCommands.handleLog(LocalDateTime.now(), command, None, InetAddress.getLoopbackAddress, logger)
+    val payload = logRows("commandLog").head(3)
+    assert(ujson.read(payload)("json")("redacted").bool)
+    assert(!payload.contains("private"))
+    val disabled = ExecutionCommandFactory[String, String]("disabled", storeLogIntoTable = None)
+    val result = SqlLogCommands(null, logger).logCommand(LocalDateTime.now(), ExecutionCommand(disabled.name, ujson.Obj()),
+      None, InetAddress.getLoopbackAddress, disabled.storeLogIntoTable)
+    assertEquals(result.elementsAdded, 0)
+    assertEquals(logRows("commandLog").size, 1)
+    assertEquals(logRows("syncedLog"), Nil)
+  }
+
+  test("a configured custom log table receives the same structured event") {
+    val definition = ExecutionCommandFactory[String, String]("custom-audit",
+      storeLogIntoTable = Some(DatabaseTable("customCommandLog")))
+    withDatabase { connection =>
+      Using.resource(connection.createStatement())(_.executeUpdate("CREATE TABLE `customCommandLog` LIKE `commandLog`"))
+      try {
+        val command = ExecutionCommand(definition.name, ujson.Obj("event" -> "custom"))
+        val result = SqlLogCommands(connection, logger).logCommand(LocalDateTime.now(), command,
+          None, InetAddress.getByName("192.0.2.1"), definition.storeLogIntoTable)
+        assertEquals(result.elementsAdded, 1)
+        assertEquals(logRows("customCommandLog").map(_.take(3)),
+          List(List(definition.name, User.Anonymous.id, "192.0.2.1")))
+        assertEquals(logRows("commandLog"), Nil)
+      } finally Using.resource(connection.createStatement())(_.executeUpdate("DROP TABLE `customCommandLog`"))
+    }
   }
 }

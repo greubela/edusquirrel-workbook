@@ -11,7 +11,10 @@ import play.api.libs.json.Json
 import play.api.mvc.*
 import play.api.mvc.Results.*
 import play.api.routing.sird.*
-import play.core.server.{NettyServer, ServerConfig}
+import play.api.routing.Router
+import play.api.BuiltInComponents
+import play.api.NoHttpFiltersComponents
+import play.core.server.{NettyServerComponents, Server, ServerConfig}
 
 import java.io.{PrintWriter, StringWriter}
 import java.net.InetAddress
@@ -106,16 +109,20 @@ object BackendServer {
     }
   }
 
+  private[server] def createServer(config: ServerConfig)(routes: DefaultActionBuilder => PartialFunction[RequestHeader, Handler]): Server =
+    new NettyServerComponents with BuiltInComponents with NoHttpFiltersComponents {
+      override lazy val serverConfig: ServerConfig = config
+      override lazy val configuration: play.api.Configuration = config.configuration
+      override def router: Router = Router.from(routes(defaultActionBuilder))
+    }.server
+
   def main(args: Array[String]): Unit = {
     val port = JvmUtils.envInt("SERVER_PORT").getOrElse(9000)
     val host = JvmUtils.env("SERVER_HOSTNAME").getOrElse("[unknown]")
 
     println(s"[server] Booting Play HTTP server on $host:$port ...")
 
-    val server = NettyServer.fromRouterWithComponents(ServerConfig(port = Some(port), address = "0.0.0.0")) { components =>
-      import components.defaultActionBuilder as Action
-      buildApiRouter(Action)
-    }
+    val server = createServer(ServerConfig(port = Some(port), address = "0.0.0.0"))(buildApiRouter)
 
     println(s"[server] Ready and serving requests at http://$host:$port")
 

@@ -13,6 +13,44 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 class CommandPayloadCodecsSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
 
+  test("command log destinations come from registered definitions, with a default and sync override") {
+    import it.evadid.sql.DatabaseTable
+    val syncNames = Set(SQLCommands.StoreToDbCommand.name, SQLCommands.fetchFromDbCommand.name, SQLCommands.clearValuesDbCommand.name)
+    val definitions = ExecutionCommandFactory.knownCommands
+    assertEquals(definitions.map(_.name).distinct.size, definitions.size)
+    definitions.foreach { definition =>
+      val expected = Some(if syncNames.contains(definition.name) then DatabaseTable.syncedLog else DatabaseTable.commandLog)
+      assertEquals(definition.storeLogIntoTable, expected)
+      assertEquals(ExecutionCommand(definition.name, ujson.Obj()).storeLogIntoTable, expected)
+    }
+    assertEquals(ExecutionCommand("unknown-command", ujson.Obj()).storeLogIntoTable, Some(DatabaseTable.commandLog))
+    val forged = read[ExecutionCommand](ujson.Obj("name" -> SQLCommands.StoreToDbCommand.name, "json" -> ujson.Obj(),
+      "storeLogIntoTable" -> "another_table"))
+    assertEquals(forged.storeLogIntoTable, Some(DatabaseTable.syncedLog))
+  }
+
+  test("database table destinations serialize and reject SQL identifier injection") {
+    import it.evadid.sql.DatabaseTable
+    val value = DatabaseTable("customLog")
+    assertEquals(read[DatabaseTable](write(value)), value)
+    assertEquals(readBinary[DatabaseTable](writeBinary(value)), value)
+    intercept[IllegalArgumentException](DatabaseTable("commandLog`; DROP TABLE user; --"))
+  }
+
+  test("account logs cannot retain submitted login codes, session tokens or connection settings") {
+    List(UserCommands.loginCommand.name, UserCommands.createAccountCommand.name, UserCommands.updateAccountCommand.name).foreach { name =>
+      val payload = ujson.Obj("userMail" -> "fixture@example.invalid", "accessToken" -> "private-code",
+        "userInfo" -> ujson.Obj("token" -> "private-token", "config" -> "private-password"),
+        "allUserInfo" -> ujson.Obj("token" -> "private-token", "config" -> "private-password"))
+      val command = ExecutionCommand(name, payload)
+      val safe = command.stripPrivacySensitiveInformation()
+      assert(!safe.toJson.contains("private"))
+      assertEquals(safe.json("userMail").str, "fixture@example.invalid")
+      assertEquals(safe.stripPrivacySensitiveInformation(), safe)
+      assert(command.toJson.contains("private-code"))
+    }
+  }
+
   test("account creation, update, login and login-code requests have distinct command names") {
     val commands = List(UserCommands.createAccountCommand.name, UserCommands.updateAccountCommand.name,
       UserCommands.loginCommand.name, UserCommands.authMailCommand.name)

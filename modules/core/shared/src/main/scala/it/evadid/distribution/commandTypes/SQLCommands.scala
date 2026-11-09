@@ -3,6 +3,7 @@ package it.evadid.distribution.commandTypes
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.sql.DatabaseHistoryFormat
+import it.evadid.sql.DatabaseTable
 import it.evadid.workbook.interaction.sync.*
 import upickle.default.*
 
@@ -49,15 +50,15 @@ object SQLCommands {
   }
 
   lazy val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory[StoreToDbRequest, SyncSuccess](
-    "sync-to-db-request"
+    "sync-to-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog)
   )
 
   lazy val fetchFromDbCommand: ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse](
-    "fetch-from-db-request"
+    "fetch-from-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog)
   )
 
   lazy val clearValuesDbCommand: ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess] = ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess](
-    "clear-values-in-db-request"
+    "clear-values-in-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog)
   )
 
 }

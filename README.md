@@ -36,7 +36,7 @@ The [worker execution backend](docs/worker-execution-backend.md) documents backg
 
 The [authentication guide](docs/authentication.md) describes registration, email/token login, failure diagnosis and regression checks.
 
-The [relational interaction-history proposal](docs/interaction-history-relational-proposal.md) describes separate answer-event, grading and scaffolding tables; it does not change the current storage format.
+The [database guide](docs/database/README.md) documents the current account, history and command-log tables, database setup and proxy-aware client IP logging. The [relational history proposal](docs/database/interaction-history-proposal.md) describes a possible future format.
 
 ### Choosing a location for new content
 

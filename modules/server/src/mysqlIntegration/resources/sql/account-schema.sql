@@ -8,6 +8,17 @@ CREATE TABLE IF NOT EXISTS `user` (
   INDEX `user_mail` (`mail`)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
+CREATE TABLE IF NOT EXISTS `commandLog` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `timestamp` TIMESTAMP NULL,
+  `origin` VARCHAR(128),
+  `type` VARCHAR(128),
+  `payload` LONGTEXT,
+  `userid` VARCHAR(128),
+  `ipAddress` VARCHAR(16),
+  FOREIGN KEY (`userid`) REFERENCES `user` (`id`)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+
 CREATE TABLE IF NOT EXISTS `loginTokens` (
   `userId` VARCHAR(255) NOT NULL PRIMARY KEY,
   `token` VARCHAR(255) NOT NULL,

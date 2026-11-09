@@ -65,7 +65,7 @@ object DatabaseConfig {
     def passwordOp: Option[String]
 
     def completeWithEnvironment(): DatabaseConfig = DatabaseConfig(
-      dbFormatOp.getOrElse(System.getenv("DB_FORMAT")),
+      dbFormatOp.getOrElse(Option(System.getenv("DB_FORMAT")).getOrElse("mysql")),
       hostOp.getOrElse(System.getenv("SQL_HOST")),
       portOp.getOrElse(System.getenv("SQL_PORT")),
       databaseOp.getOrElse(System.getenv("SQL_DATABASE")),

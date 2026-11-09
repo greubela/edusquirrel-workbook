@@ -45,6 +45,8 @@ lazy val server = (project in file("./modules/server"))
   .settings(
     name := "server",
     MysqlIntegration / parallelExecution := false,
+    MysqlIntegration / fork := true,
+    MysqlIntegration / unmanagedResourceDirectories += (LocalRootProject / baseDirectory).value / "deployment" / "server" / "sql",
     Compile / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / assemblyJarName := "server.jar",
