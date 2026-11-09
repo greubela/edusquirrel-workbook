@@ -47,7 +47,8 @@ scripts in a disposable database; there is no separate test schema. See the
 in `SyncDestinationBasedOnHistoryDatabase`; configuring it does not convert data
 from another format. Its companion defines `defaultDatabaseWithKey`,
 `defaultDatabaseKeyless` and `defaultDatabaseV2`; account preferences select these
-presets rather than constructing their own defaults.
+presets rather than constructing their own defaults. Online accounts deliberately
+keep both classic formats active until V2 is deployed and verified.
 
 Numeric database IDs are implementation details and never enter client payloads
 or determine answer equality. Graders expose a lazy string `key`: SHA-256 of
@@ -88,8 +89,11 @@ account rows contain no credentials. Online users must sign in again each sessio
 
 `HomepageDefaults.defaultDb` is public `PartialDatabaseInformation` (MySQL host,
 port and database only). Sync requests carry this information and, when supplied,
-temporary session database credentials. The backend fills absent values from
-`SQL_*`. Server credentials are used only for the exact configured server target;
+temporary session database credentials. The `databaseConfig` request field is
+required and carries non-secret connection information; it is not an optional
+"use some default" selector. Default database credentials come only from server
+`SQL_*` settings. User-supplied credentials are used for execution and are never
+written to account rows, preferences or command logs. Server credentials are used only for the exact configured server target;
 a custom host or database requires matching session credentials. Before executing
 history queries, the backend validates every table required by the selected
 history format. Create a custom history database with its corresponding SQL

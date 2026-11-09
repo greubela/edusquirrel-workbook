@@ -47,7 +47,6 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     case db: SyncDestinationBasedOnHistoryDatabase => DatabaseSyncViaBackendServerHandler(fullInfo.syncControl.syncLogger, db)
     case li: LocalIndexedDbSyncDefinition => LocalIndexedDbStorageSyncHandler(li).withSyncLogger(fullInfo.syncControl.syncLogger).forHistory()
     case ls: LocalStorageSyncDefinition => LocalStorageSyncHandler(ls).withSyncLogger(fullInfo.syncControl.syncLogger).forHistory()
-    case _ => ???
   }
 
   /*def currentSyncSources: List[SyncInformationWithContext] = fullInfo.synchronized {

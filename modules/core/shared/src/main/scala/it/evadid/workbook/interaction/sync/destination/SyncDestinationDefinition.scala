@@ -7,7 +7,6 @@ import upickle.default.*
 sealed trait SyncDestinationDefinition derives ReadWriter {
 
   def isRemote: Boolean = this match {
-    case _: SyncDestinationDefinition.SyncDestinationBasedOnConfigMap => ???
     case _: SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase => true
     case _: SyncDestinationDefinition.LocalIndexedDbSyncDefinition => false
     case _: SyncDestinationDefinition.LocalStorageSyncDefinition => false
@@ -16,10 +15,6 @@ sealed trait SyncDestinationDefinition derives ReadWriter {
 }
 
 object SyncDestinationDefinition {
-
-  case class SyncDestinationBasedOnConfigMap(instanceTypeToCreate: String, config: Map[String, String]) extends SyncDestinationDefinition derives ReadWriter {
-
-  }
 
   case class SyncDestinationBasedOnHistoryDatabase(databaseConfig: PartialDatabaseInformation, format: DatabaseHistoryFormat) extends SyncDestinationDefinition derives ReadWriter {
 
