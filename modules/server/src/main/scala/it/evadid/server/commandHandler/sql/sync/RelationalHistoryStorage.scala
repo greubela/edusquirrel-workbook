@@ -107,7 +107,11 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) {
         val grader = read[WorkbookInteractionGrader[ujson.Value, ujson.Value]](definition)
         require(grader.key.startsWith(request.syncContext.keyForSerialisation + ":"), "Grader key belongs to another variable")
         val answer = answerFor(state)
-        val previous = query("SELECT * FROM grading_event WHERE sync_id=? AND answer_id=? AND grader_key=?", List(sync, answer, grader.key))(gradeJson(_, state)).headOption
+        val previous = query("SELECT * FROM grading_event WHERE sync_id=? AND answer_id=? AND grader_key=?", List(sync, answer, grader.key)) { row =>
+          safe("previous grading " + row.getLong("id")) {
+            writeJs(read[GradingResult[ujson.Value, ujson.Value]](gradeJson(row, state)))
+          }
+        }.flatten.headOption
         val result = previous.map { previous =>
           val old = read[GradingResult[ujson.Value, ujson.Value]](previous)
           val current = read[GradingResult[ujson.Value, ujson.Value]](incoming)
@@ -116,8 +120,9 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) {
         }.getOrElse(incoming)
         val regular = ujson.Obj("gradingStatus" -> result("gradingStatus"),
           "feedbackInformation" -> result.obj.getOrElse("feedbackInformation", ujson.Null))
+        val storedGrader = read[WorkbookInteractionGrader[ujson.Value, ujson.Value]](result("grader"))
         update("INSERT INTO grading_event (sync_id,answer_id,grader_key,grader_definition,grading_entity,grading_status,timestamp,serialized_data,additional_data) VALUES (?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE grader_definition=VALUES(grader_definition),grading_entity=VALUES(grading_entity),grading_status=VALUES(grading_status),timestamp=VALUES(timestamp),serialized_data=VALUES(serialized_data),additional_data=VALUES(additional_data)",
-          sync, answer, grader.key, result("grader").str, write(grader.gradingEntity),
+          sync, answer, grader.key, result("grader").str, write(storedGrader.gradingEntity),
           read[GradingStatus](result("gradingStatus")).getClass.getSimpleName, time(result("gradingTime")),
           ujson.write(regular), optionalData(result, "additionalData"))
       }
@@ -125,7 +130,11 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) {
     HistoryJson.entries(history("historyScaffolding")("scaffoldingMap")).foreach { (state, incoming) =>
       require(incoming("forState") == state, "Scaffolding state does not match its map key")
       val answer = answerFor(state)
-      val previous = query("SELECT * FROM scaffolding_event WHERE sync_id=? AND answer_id=?", List(sync, answer))(scaffoldingJson(_, state)).headOption
+      val previous = query("SELECT * FROM scaffolding_event WHERE sync_id=? AND answer_id=?", List(sync, answer)) { row =>
+        safe("previous scaffolding " + row.getLong("id")) {
+          writeJs(read[ScaffoldingResult[ujson.Value, ujson.Value]](scaffoldingJson(row, state)))
+        }
+      }.flatten.headOption
       val result = previous.map { old => writeJs(read[ScaffoldingResult[ujson.Value, ujson.Value]](old)
         .merge(read[ScaffoldingResult[ujson.Value, ujson.Value]](incoming))) }.getOrElse(incoming)
       update("INSERT INTO scaffolding_event (sync_id,answer_id,timestamp,scaffolding_entity,scaffolding_status,serialized_data,additional_data) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE timestamp=VALUES(timestamp),scaffolding_entity=VALUES(scaffolding_entity),scaffolding_status=VALUES(scaffolding_status),serialized_data=VALUES(serialized_data),additional_data=VALUES(additional_data)",

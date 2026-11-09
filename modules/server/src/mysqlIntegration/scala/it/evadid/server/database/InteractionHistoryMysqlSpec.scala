@@ -73,6 +73,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     val restored = read[History](fetch()(sync))
     assertEquals(restored.historyStates.events.map(_.timestamp), Set(time, time.plusNanos(1)))
     assertEquals(restored.historyStates.lastStateOption.map(_.value), Some("second"))
+    assertEquals(restored.historyGrading.gradingsMap.keySet, Set("first", "second"))
     assert(!fetch()(sync).contains("answer_id"))
     assert(!fetch()(sync).contains("sync_id"))
   }
@@ -148,6 +149,69 @@ class InteractionHistoryMysqlSpec extends FunSuite {
           assert(rows.next()); assertEquals(rows.getString(1), "untouched")
         }
       }
+    }
+  }
+
+  test("late feedback does not create edits or replace a newer answer, and pending retries do not erase completed feedback") {
+    val first = history()
+    store(first)
+    store(history("second", time.plusNanos(1)))
+    val late = first.copy(historyStates = InteractionVariableStateHistory(Set.empty))
+    store(late)
+    val pending = first.copy(historyGrading = InteractionVariableGradingHistory.fromResults(
+      first.historyGrading.gradingsFinished.flatMap(_.testsWithResults).map(result =>
+        result.copy(gradingStatus = GradingStatus.NotFinished(), gradingTime = time.plusDays(1), additionalData = None))))
+    store(pending)
+    val restored = read[History](fetch()(sync))
+    assertEquals(restored.historyStates.events.size, 2)
+    assertEquals(restored.historyStates.lastStateOption.map(_.value), Some("second"))
+    assertEquals(restored.historyGrading.gradingsMap("first"), first.historyGrading.gradingsMap("first"))
+  }
+
+  test("malformed feedback is isolated on reads and can be replaced without losing other records") {
+    store(history())
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement())(_.executeUpdate("UPDATE grading_event SET serialized_data='{}' WHERE grader_key='answer_history:0'"))
+    }
+    val restored = read[History](fetch()(sync))
+    assertEquals(restored.historyGrading.gradingsMap("first").graderResultMap.size, 1)
+    assertEquals(restored.historyScaffolding.scaffoldingsFinished.size, 1)
+    store(history())
+    assertEquals(read[History](fetch()(sync)), history())
+  }
+
+  test("schema inspection detects collation changes and never repairs them") {
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement())(_.executeUpdate(
+        "ALTER TABLE sync_context_id MODIFY program_id VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL"))
+      val report = EnsureDatabaseProperlySetup.inspect(connection)
+      assert(report.conflicts.exists(_.contains("collation")), report.toString)
+      assert(!EnsureDatabaseProperlySetup.setupIfEmpty(connection).created)
+      assertEquals(EnsureDatabaseProperlySetup.inspect(connection).conflicts, report.conflicts)
+    }
+  }
+
+  test("the interaction-history script alone creates its complete format in an empty database") {
+    MysqlTestDatabase.withConnection { connection =>
+      MysqlTestDatabase.clearSchema(connection)
+      Using.resource(connection.createStatement()) { statement =>
+        DatabaseSqlScripts.statementsFor("createInteractionHistoryTables.sql").foreach(sql => statement.executeUpdate(sql.toString))
+      }
+      val report = EnsureDatabaseProperlySetup.inspect(connection)
+      assertEquals(report.existingTables, RelationalEvents.tables.toSet)
+      assertEquals(report.conflicts, Nil)
+      assert(!EnsureDatabaseProperlySetup.setupIfEmpty(connection).created)
+    }
+  }
+
+  test("schema inspection rejects additional uniqueness that would change answer upsert semantics") {
+    store(history())
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement())(_.executeUpdate("ALTER TABLE answer_event ADD UNIQUE KEY wrong_single_answer (sync_id)"))
+      val report = EnsureDatabaseProperlySetup.inspect(connection)
+      assert(report.conflicts.exists(_.contains("unexpected uniqueness")), report.toString)
+      assert(!EnsureDatabaseProperlySetup.setupIfEmpty(connection).created)
+      assertEquals(read[History](fetch()(sync)), history())
     }
   }
 }

@@ -12,10 +12,17 @@ object DatabaseSqlScripts {
   val names: List[String] = List("createUserTables.sql", "createLogTables.sql",
     "createClassicHistoryTables.sql", "createInteractionHistoryTables.sql")
 
-  lazy val statements: List[Statement] = names.flatMap { name =>
+  def statementsFor(name: String): List[Statement] = {
+    require(names.contains(name), "Unknown database schema script")
     val sql = Using.resource(Source.fromResource(name))(_.mkString)
-    CCJSqlParserUtil.parseStatements(sql).getStatements.asScala.toList
+    CCJSqlParserUtil.parseStatements(sql).asScala.toList
   }
-  lazy val tables: List[CreateTable] = statements.collect { case table: CreateTable => table }
+  lazy val statements: List[Statement] = names.flatMap(statementsFor)
+  lazy val tables: List[CreateTable] = {
+    val definitions = statements.collect { case table: CreateTable => table }
+    val identifiers = definitions.map(table => identifier(table.getTable.getName))
+    require(identifiers.distinct.size == identifiers.size, "Duplicate table definitions in database scripts")
+    definitions
+  }
   def identifier(value: String): String = value.stripPrefix("`").stripSuffix("`")
 }

@@ -49,7 +49,7 @@ or determine answer equality. Graders expose a string `key` composed of the
 variable sync key and the zero-based position in its configured grader list.
 Keep list order stable when maintaining an exercise; reordering graders changes
 their identities. Ordinary feedback and entity-specific additional data are
-stored separately. See the [storage behavior](interaction-history-proposal.md).
+stored separately. See the [storage behavior](interaction-history.md).
 
 ## Command logging and proxy addresses
 

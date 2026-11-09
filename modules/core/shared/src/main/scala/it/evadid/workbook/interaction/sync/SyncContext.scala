@@ -15,7 +15,7 @@ case class SyncContext(
   def toUsageContext: UsageContext = UsageContext(programId, scenarioId, userId)
 
   def doesMatch(usageContext: UsageContext): Boolean = {
-    programId == usageContext.programId && scenarioId == usageContext.scenarioId && userId == usageContext.scenarioId
+    toUsageContext == usageContext
   }
 
 }
