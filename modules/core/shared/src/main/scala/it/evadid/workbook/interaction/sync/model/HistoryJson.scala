@@ -11,7 +11,7 @@ object HistoryJson {
     history
   }
 
-  private def entries(value: ujson.Value): List[(ujson.Value, ujson.Value)] = value match {
+  def entries(value: ujson.Value): List[(ujson.Value, ujson.Value)] = value match {
     case obj: ujson.Obj => obj.value.toList.map((key, item) => ujson.Str(key) -> item)
     case arr: ujson.Arr => arr.value.toList.map(pair => pair(0) -> pair(1))
     case _ => throw IllegalArgumentException("Invalid history map.")

@@ -49,3 +49,42 @@ npm run test:workbooks -- login-authentication saved-user-startup
 Tests use JDBC doubles and intercepted backend requests. They cover duplicate
 registration, token failures, transport errors, explicit token requests and saved
 account details without creating real accounts or sending email.
+
+See the [database guide](database/README.md) for account/log table relationships,
+the anonymous logging identity and proxy configuration.
+
+### MySQL account queries
+
+The `mysql-accounts` job in `.github/workflows/tests.yml` runs
+`sbt 'server / MysqlIntegration / test'` against a temporary MySQL 8.4 service.
+It needs no repository secrets: test credentials are derived from the workflow
+run, and GitHub removes the service afterward. It runs in parallel with the
+ordinary checks and gates the reusable test workflow used before Pages deployment.
+Normal `server/test` runs do not require Docker or a database.
+
+The suite exercises the actual registration, update and login handlers plus
+`SqlUserCommands` token queries. It checks duplicate accounts, email normalization,
+Unicode values, parameter binding, account isolation, token expiry/renewal,
+signed-token ownership, and malformed preferences. It never calls SMTP. The tests use the authoritative SQL creation scripts under `artifacts/database/`,
+which are also packaged with the server and used by its schema inspector.
+
+To run locally with Docker:
+
+```sh
+export SQL_HOST=127.0.0.1 SQL_PORT=13306 SQL_DATABASE=edusquirrel_account_test
+export SQL_USER=account_test
+export SQL_PW="$(openssl rand -hex 16)"
+export SERVER_SECRET="$(openssl rand -hex 32)"
+docker run --detach --rm --name edusquirrel-account-tests \
+  -p 127.0.0.1:13306:3306 \
+  -e MYSQL_DATABASE="$SQL_DATABASE" -e MYSQL_USER="$SQL_USER" \
+  -e MYSQL_PASSWORD="$SQL_PW" -e MYSQL_RANDOM_ROOT_PASSWORD=yes \
+  --health-cmd='mysqladmin ping -h 127.0.0.1 --silent' \
+  --health-interval=5s --health-timeout=5s --health-retries=30 mysql:8.4
+```
+
+Once `docker inspect --format '{{.State.Health.Status}}' edusquirrel-account-tests`
+reports `healthy`, run the sbt command above. Finish with
+`docker stop edusquirrel-account-tests`. The suite clears its tables before each
+test and refuses to run unless the database name is `edusquirrel_account_test`
+and the host is localhost; never point it at a database containing valuable data.

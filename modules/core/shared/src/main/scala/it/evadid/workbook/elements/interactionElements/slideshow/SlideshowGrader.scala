@@ -14,7 +14,7 @@ import upickle.default.*
 import java.time.LocalDateTime
 import scala.concurrent.Future
 
-case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrader[SlideshowState, Nothing] derives ReadWriter {
+case class SlideshowGrader(key: String, isRequired: Boolean) extends WorkbookInteractionGrader[SlideshowState, Nothing] derives ReadWriter {
 
   override def runningBehavior: GraderRunningBehavior = RUN_ALWAYS
 

@@ -13,7 +13,7 @@ import upickle.default.*
 
 import scala.concurrent.Future
 
-case class TextInputLlmGrader(
+case class TextInputLlmGrader(key: String,
                                exerciseText: LanguageMapContentId,
                                solution: Option[LanguageMapContentId],
                                gradeData: ContentForLlmInteraction)

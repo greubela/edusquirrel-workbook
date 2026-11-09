@@ -82,7 +82,7 @@ object SqlUserCommands {
         }
       }
       case Right(signedToken) => {
-        if (!AuthHandling.isTokenValid(logger, signedToken)) {
+        if (!dbUser.exists(_.user.id == signedToken.info.user.id) || !AuthHandling.isTokenValid(logger, signedToken)) {
           LoginResponse(dbUser.isDefined, false, None)
         } else {
           val userInfo = AllUserInfo(user.get, Some(signedToken), dbUser.get.config)

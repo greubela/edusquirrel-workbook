@@ -9,6 +9,16 @@ import upickle.default.*
 
 object UserCommands {
 
+  private def identityForLog(infoField: Option[String])(payload: ujson.Value): ujson.Value = {
+    val fields = payload.objOpt
+    val user = infoField.flatMap(field => fields.flatMap(_.get(field)).flatMap(_.objOpt)
+      .flatMap(_.get("user")).flatMap(_.objOpt))
+    def text(field: String, userField: String): ujson.Value =
+      fields.flatMap(_.get(field)).flatMap(_.strOpt)
+        .orElse(user.flatMap(_.get(userField)).flatMap(_.strOpt)).map(ujson.Str(_)).getOrElse(ujson.Null)
+    ujson.Obj("redacted" -> true, "userId" -> text("userId", "id"), "userMail" -> text("userMail", "mail"))
+  }
+
   case class LoginRequest(userMail: String, accessToken: Either[SingleAccessToken, SignedToken]) derives ReadWriter
 
   case class LoginResponse(userKnown: Boolean, tokenValid: Boolean, allUserInfo: Option[AllUserInfo]) derives ReadWriter {
@@ -16,7 +26,7 @@ object UserCommands {
   }
 
   lazy val loginCommand: ExecutionCommandFactory[LoginRequest, LoginResponse] = ExecutionCommandFactory(
-    "login-command"
+    "login-command", privacyFilter = Some(identityForLog(None))
   )
 
   case class UpdateAccountRequest(allUserInfo: AllUserInfo) derives ReadWriter
@@ -24,7 +34,7 @@ object UserCommands {
   case class UpdateAccountResponse(accountChanged: Boolean, token: SignedToken) derives ReadWriter
 
   lazy val updateAccountCommand: ExecutionCommandFactory[UpdateAccountRequest, UpdateAccountResponse] = ExecutionCommandFactory(
-    "update-account"
+    "update-account", privacyFilter = Some(identityForLog(Some("allUserInfo")))
   )
 
   case class CreateAccountRequest(userInfo: AllUserInfo) derives ReadWriter
@@ -32,7 +42,7 @@ object UserCommands {
   case class CreateAccountResponse(accountCreated: Boolean, token: Option[SignedToken]) derives ReadWriter
 
   lazy val createAccountCommand: ExecutionCommandFactory[CreateAccountRequest, CreateAccountResponse] = ExecutionCommandFactory(
-    "create-account"
+    "create-account", privacyFilter = Some(identityForLog(Some("userInfo")))
   )
 
   case class AuthMailRequest(

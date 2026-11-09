@@ -34,6 +34,7 @@ class SqlEditorResultSpec extends munit.FunSuite {
       case "setTimestamp" => null
       case "executeUpdate" => writes.update(_ :+ parameters.now()); Int.box(rows)
       case "clearParameters" => parameters.set(Map.empty); null
+      case "close" => null
       case "toString" => "commandLog fixture: " + writes.now().lastOption
       case other => throw new UnsupportedOperationException(other)
     }}
@@ -59,7 +60,8 @@ class SqlEditorResultSpec extends munit.FunSuite {
     val stored = writes.now().head
     assertEquals(ujson.read(stored(4)), expected)
     assertEquals(stored(3), command.name)
-    assertEquals(stored(5), "")
+    assertEquals(stored(5), "user-unknown")
+    assertEquals(stored(6), InetAddress.getLoopbackAddress.getHostAddress)
     assertEquals(ujson.write(command.json), original)
     List(prompt, system, "private-unknown-key", "private-extra-value").foreach { secret =>
       assert(!stored(4).contains(secret))

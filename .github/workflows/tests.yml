@@ -13,6 +13,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  mysql-accounts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: edusquirrel_account_test
+          MYSQL_USER: account_test
+          # Disposable credentials unique to this run; no repository secrets needed.
+          MYSQL_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+          MYSQL_RANDOM_ROOT_PASSWORD: 'yes'
+        ports:
+          - 3306/tcp
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      SQL_HOST: 127.0.0.1
+      SQL_DATABASE: edusquirrel_account_test
+      SQL_USER: account_test
+      SQL_PW: ${{ github.run_id }}-${{ github.run_attempt }}
+      SERVER_SECRET: disposable-account-tests-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+      - name: Restore incremental Scala build
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            target
+            project/target
+          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-
+      - name: Test account queries against MySQL
+        env:
+          SQL_PORT: ${{ job.services.mysql.ports['3306'] }}
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'server / MysqlIntegration / test'
+
   tests:
     runs-on: ubuntu-latest
     # Allow a clean dependency/build cache; the browser suite runs with two processes.

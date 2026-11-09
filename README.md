@@ -15,7 +15,7 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 | `homepage/` | Entry pages, CSS and catalogue presentation |
 | `resources/` | Language maps, teaching materials and bundled programs/libraries |
 | `tools/` | Site assembly, browser checks, fixture generators and optional LLM proxies |
-| `artifacts/` | Generated bundles and server assemblies |
+| `artifacts/` | Generated bundles and server assemblies; tracked database creation scripts in `artifacts/database/` |
 | `project/` | sbt build definitions, plugins and artifact tasks |
 | `deployment/` | Deployment configuration and operational assets |
 | `docs/` | Maintained architecture, migration status, authoring and development guides |
@@ -35,6 +35,8 @@ The [browser startup loading guide](docs/browser-startup-loading.md) describes t
 The [worker execution backend](docs/worker-execution-backend.md) documents background command execution, the shared transport protocol and the worker client in `HomepageDefaults`.
 
 The [authentication guide](docs/authentication.md) describes registration, email/token login, failure diagnosis and regression checks.
+
+The [database guide](docs/database/README.md) links the authoritative SQL setup scripts and explains schema inspection, history formats and proxy-aware logging. The [interaction-history guide](docs/database/interaction-history.md) describes storage behavior.
 
 ### Choosing a location for new content
 

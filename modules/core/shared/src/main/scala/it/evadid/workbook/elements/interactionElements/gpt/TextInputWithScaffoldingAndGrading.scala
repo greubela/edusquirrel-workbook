@@ -20,7 +20,7 @@ case class TextInputWithScaffoldingAndGrading(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
 
-  override val gradingElements: List[TextInputLlmGrader] = contentGrading.map(gradeData => TextInputLlmGrader(instructionText, sampleSolution, gradeData))
+  override val gradingElements: List[TextInputLlmGrader] = contentGrading.zipWithIndex.map((gradeData, index) => TextInputLlmGrader(s"${elementId}_history:$index", instructionText, sampleSolution, gradeData))
   override val scaffoldingElement: Option[TextInputLlmScaffolder] = contentScaffolding.map(scaffData => TextInputLlmScaffolder(instructionText, sampleSolution, scaffData))
 
   override val defaultValue: String = ""

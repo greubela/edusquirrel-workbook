@@ -10,6 +10,8 @@ import java.time.LocalDateTime
 
 object User {
 
+  val Anonymous: User = User("Anonymous", "user-unknown", "info@eva-did.it")
+
   val AndreGreubel = User(
     "Andre Greubel",
     "user-andre",

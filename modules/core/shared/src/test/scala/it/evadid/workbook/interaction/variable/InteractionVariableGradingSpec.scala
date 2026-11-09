@@ -37,6 +37,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 
 class InteractionVariableGradingSpec extends FunSuite {
   private class RecordingGrader extends WorkbookInteractionGrader[String, String] {
+    override val key = "fixture:0"
     private val recorded = State(List.empty[(String, Boolean)])
     val clients = State(List.empty[List[ExecutionClient]])
     def requests: List[(String, Boolean)] = recorded.now()
@@ -66,6 +67,7 @@ class InteractionVariableGradingSpec extends FunSuite {
   private case class HintCheck(name: String, override val importance: GradingImportance,
       override val gradingEntity: FeedbackEntity = FeedbackEntity.TestEntity())
       extends WorkbookInteractionGrader[ProgrammingState, String] {
+    override val key = "fixture:0"
     val runs = State(0)
     override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
     override protected def handleGrading(state: ProgrammingState, context: ExecutionContextInformation): Future[GradingResult[ProgrammingState, String]] = {
@@ -131,7 +133,8 @@ class InteractionVariableGradingSpec extends FunSuite {
 
   private case class DescribedHintCheck(name: String, override val importance: GradingImportance,
       override val gradingEntity: FeedbackEntity = FeedbackEntity.TestEntity(),
-      override val publishProgramObservation: Boolean = false) extends ProgrammingTestGrader {
+      override val publishProgramObservation: Boolean = false, key: String = "fixture:0") extends ProgrammingTestGrader {
+    override def withKey(value: String): DescribedHintCheck = copy(key = value)
     override def testId: String = name
     val runs = State(0)
     override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
@@ -769,7 +772,7 @@ class InteractionVariableGradingSpec extends FunSuite {
   test("a resolved test description survives history restoration and supplies hints without another grade") {
     val taskId = LanguageMapContentId("test/described-task")
     val descriptionId = LanguageMapContentId("test/public-test-description")
-    val grader = ProgrammingUnitTestGrader("line-length",
+    val grader = ProgrammingUnitTestGrader("standalone:0", "line-length",
       "assert run_program()['commands'] == [['forward', 3]] # PRIVATE_ASSERTION_BODY",
       publicDescription = Some(descriptionId))
     val element = ProgrammingExerciseFullJava("cached-description", Some(ProgrammingTestSuite(List(grader))),
@@ -895,6 +898,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     }.flatMap { _ =>
       val runs = State(0)
       val generic = new WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo] {
+        override val key = "fixture:0"
         override val importance = GradingImportance.REQUIRED_TEST
         override val gradingEntity = FeedbackEntity.TestEntity()
         override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS
@@ -1475,9 +1479,9 @@ class InteractionVariableGradingSpec extends FunSuite {
   }
 
   test("existing local graders execute without external clients") {
-    val slideshow = SlideshowGrader(true).gradeStateSafe(SlideshowState(Nil, Set.empty), false, TestExecutionContext())
+    val slideshow = SlideshowGrader("standalone:0", true).gradeStateSafe(SlideshowState(Nil, Set.empty), false, TestExecutionContext())
     val source = ProgrammingStateBeExpression(it.evadid.vm.code.abstractions.BeExpression.pass)
-    val turtle = RecreateShapeGrader(TurtleGraphic.TurtleGraphicProgram(Nil), GradingImportance.REQUIRED_TEST).gradeStateSafe(source, false, TestExecutionContext())
+    val turtle = RecreateShapeGrader("standalone:0", TurtleGraphic.TurtleGraphicProgram(Nil), GradingImportance.REQUIRED_TEST).gradeStateSafe(source, false, TestExecutionContext())
     slideshow.zip(turtle).map { (panels, shape) =>
       assertEquals(panels.gradingStatus, GradingStatus.Correct())
       assertEquals(shape.gradingStatus, GradingStatus.Correct())
@@ -1711,7 +1715,7 @@ class InteractionVariableGradingSpec extends FunSuite {
   }
 
   test("standalone graders retain JSON and MessagePack codecs") {
-    val grader = SlideshowGrader(true)
+    val grader = SlideshowGrader("standalone:0", true)
     val json = write(grader)
     val binary = writeBinary(grader).toVector
     val hash = grader.hashCode()

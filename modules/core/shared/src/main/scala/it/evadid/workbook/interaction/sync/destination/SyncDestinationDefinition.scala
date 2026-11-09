@@ -24,7 +24,7 @@ object SyncDestinationDefinition {
   case class SyncDestinationBasedOnHistoryDatabase(databaseConfig: DatabaseConfigPartialInformation, format: DatabaseHistoryFormat) extends SyncDestinationDefinition derives ReadWriter {
 
     override def toString: String =
-      s"DatabaseDestination(${databaseConfig.hostOp.getOrElse("defaultRemoteHost")}->${databaseConfig.databaseOp.getOrElse("defaultRemoteDb")}/${format.useTableForStorage})"
+      s"DatabaseDestination(${databaseConfig.hostOp.getOrElse("defaultRemoteHost")}->${databaseConfig.databaseOp.getOrElse("defaultRemoteDb")}/${format.tables.mkString(",")})"
   }
 
   case class LocalIndexedDbSyncDefinition(dbName: String, storeName: String, dbVersion: Int) extends SyncDestinationDefinition derives ReadWriter {
