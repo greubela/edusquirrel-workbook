@@ -181,6 +181,7 @@ avoid exhaustive class/method lists and historical test-run logs.
 - [Email simulator](docs/email-simulator.md): state, grading, content handling and verification.
 - [QR interaction](docs/qr-code-interaction.md): encoding model, requirements, region colors and reference tests.
 - [Plant workshop](docs/PlantWorkshop_Quickstart.md): implemented sections and remaining migration work.
+- [EV3 robot workbook](docs/ev3-pybricks-workbook.md): Pybricks discovery, decisions, block set draft and phase plan for the Roberta workshop.
 - [Eva programming state](docs/eva-editor-programming-state.md) and [Snap editor](docs/snap-editor.md): representations and editor lifecycle.
 - [Snap command execution service](docs/snap-turtle-command-execution-overview.md): implemented snapshot extraction, Pyodide boundary and editor integration.
 - [Python parsing](docs/python-parsing-architecture.md): normalization and parser responsibilities.
