@@ -19,11 +19,13 @@ to run during editing as scaffolding.
 | D2 | Generated code targets the public Pybricks Python API only. The official block editor module `pybricks-blocks` is proprietary and is never copied, decompiled or bypassed. | License boundary. Firmware, API, `pybricksdev`, `pybricks-code` and `mpy-cross` are MIT. |
 | D3 | Hardware facts (motor ports and directions, wheel diameter, axle track, sensor ports) live in a typed hardware profile owned by the workbook content, never in block defaults or saved answers. | Ten builds may differ; the generator and the simulation read the same profile. |
 | D4 | Phase 1 ships motor-level motion (degrees, rotations) plus display, light, sound, wait and console blocks. Distance/turn blocks in cm and degrees follow once wheel diameter and axle track are measured. | No assumed geometry; the connection test from the Roberta folder is the first reproducible target program. |
-| D5 | In the browser the program runs in the Pyodide worker against a `pybricks` stub package written in Python. The stub records events through the existing callback channel, keeps a virtual clock and answers sensor reads from a scenario. The worker contract does not change. | Reuses the worker, transport and timeout handling; the stub follows the `java_turtle` installation-source pattern; keeps shared core free of hardware code. See "Contract changes in detail". |
+| D5 | In the browser the Pybricks Python printed from the program runs in the Pyodide worker against a `pybricks` stub package written in Python. The stub records events through the existing callback channel, keeps a virtual clock and answers sensor reads from a scenario. The worker contract does not change. | Reuses the worker, transport and timeout handling; the stub follows the `java_turtle` installation-source pattern; what is simulated is exactly what the brick receives. See "Contract changes in detail". |
 | D6 | Transfer to the brick is a later phase and runs in the browser over WebUSB with the open Pybricks protocol, compiled with the `@pybricks/mpy-cross-v6` WASM compiler. Until then the workbook exports `main.py` for the institute's `pybricksdev` setup. | `pybricks-code` shows the whole chain is open; the thin protocol client is about 200 lines. |
 | D7 | Java stays a representation of the same program (the existing Java bridge pattern), executed only in the simulation. The brick receives Python. | Pybricks has no Java runtime; "no duplicated behavior" (EvaStructure). Scope is settled with Ultrich's Java/scaffolding work. |
 | D8 | Language switching is a requirement. Block labels, palette tab names and panel texts come from Snap translation dictionaries and language maps; German and English are mandatory, other languages fall back to English. No learner-visible text is hard-coded. | The workbook switches languages at runtime; the embroidery blocks already follow this pattern. |
-| D9 | One Python program, two parts: a generated Roberta prelude (Pybricks imports, device setup from the hardware profile, small helper functions) followed by the learner's program, which keeps using flat catalog functions. The same file is simulated, exported and transferred. | The VM parser round-trips flat function calls today; method calls on device objects would need a parser extension. The prelude makes the file valid Pybricks MicroPython without that extension. |
+| D9 | The learner's Python is real Pybricks code: a generated header (imports and device setup from the hardware profile) followed by calls such as `robot.straight(200)` and `ev3.screen.print("Hallo")`. No helper-function layer. The same file is simulated, exported and transferred, and it runs unchanged in Pybricks Code. | Downloaded Python must run 1:1 in another IDE with its own imports (André, 2026-11-09). Replaces the earlier prelude-with-helpers idea. |
+| D10 | The robot catalog is separate from the turtle catalog. No turtle primitive is reused, not even `doWait`; the robot has its own wait, its own Python mapping and its own imports. The shared `Primitive` structure is generalized, the entries are not. | Commands that look alike in different contexts map to different APIs and imports; sharing them breaks the 1:1 Python goal (André, 2026-11-09). |
+| D11 | The robot program is modeled on `BeExpression`: the catalog defines typed function signatures (kind, reported type, input kinds), and Snap XML, Python and Java are projections with their own printers. Every conversion runs source → `BeExpression` → target; what a target cannot represent is a `BeExpressionUnsupported` node, never silently dropped. | Long-term plan: `State[ProgrammingStateBeExpression]` is the central format of all editors; star-shaped conversion avoids pairwise parsers that disagree (André, 2026-11-09). |
 
 ## Discovery results
 
@@ -87,11 +89,11 @@ Analysis of the public repository, read only:
 
 | Concern | Existing contract | What the EV3 workbook adds |
 | --- | --- | --- |
-| Block catalog | [SnapTurtleCatalog.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapTurtleCatalog.scala): `Primitive(snapSelector, pythonName, aliases, turtleCommand, example, tab, extraPrimitive, extraSpec, inputKinds)` drives parsing, validation, XML rendering and callback decoding | A robot catalog with new `PaletteTab` values. `Primitive` needs a block kind (command, reporter, predicate) and typed inputs for ports and colors; `turtleCommand` is turtle-specific and must become a general command name |
+| Block catalog | [SnapTurtleCatalog.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapTurtleCatalog.scala): `Primitive(snapSelector, pythonName, aliases, turtleCommand, example, tab, extraPrimitive, extraSpec, inputKinds)` drives parsing, validation, XML rendering and callback decoding | A separate robot catalog (D10) with new `PaletteTab` values, defined as typed function signatures on `BeExpression` (D11). `Primitive` needs a block kind (command, reporter, predicate), a reported type and typed inputs for ports and colors; `turtleCommand` is turtle-specific and must become a general command name |
 | Palette | [ProgrammingEditorPalette.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/ProgrammingEditorPalette.scala) → `PaletteLayout` → `SnapCodeEditorConfig.libraryTabs`; renderers match on the palette ([HtmlProgrammingExerciseRenderer.scala](../modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/basic/HtmlProgrammingExerciseRenderer.scala)) | `ProgrammingEditorPalette.Ev3Roberta`, a `SnapCategoryColor` role for robot blocks, and a renderer branch that supplies the EV3 panel |
 | Block injection | `SnapCodeEditorImplDelegateToOriginal.injectExtraPrimitives` adds non-vanilla specs (embroidery pattern); `JavaTurtleSnapPrimitives` shows `Process.prototype` implementations | Robot blocks are injected the same way; reporters need the reporter block type |
-| Python view | `SnapStateConversion.expressionFromXml` renders Snap XML to Python, `BeProgram.fromPythonString` parses it, [SnapTurtlePythonBridge.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapTurtlePythonBridge.scala) prints and validates the subset | Unchanged for the learner's part. A prelude generator (shared core) emits Pybricks imports, device setup from the hardware profile and the helper functions the program uses; export, simulation and transfer use prelude plus program (D9) |
-| Simulation | [SnapTurtleCommandExecution.scala](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/execution/SnapTurtleCommandExecution.scala): Pyodide worker, synthetic `turtle` module, `PythonCallback` recorder, `TurtleExecutionProvider` panels | An EV3 panel with its own runner: the `pybricks` stub package records events; recorded calls become a timeline. Drive commands map onto `TurtleCommand`s so the robot path reuses `TurtlePathBuilder` and the existing SVG renderer |
+| Python view | `SnapStateConversion.expressionFromXml` renders Snap XML to Python, `BeProgram.fromPythonString` parses it, [SnapTurtlePythonBridge.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapTurtlePythonBridge.scala) prints and validates the subset | A Pybricks printer (shared core) prints the `BeExpression` program as real API calls with a generated import and device header from the hardware profile (D9). Reading Python back goes through the parser to `BeExpression`; the Python AST already parses dotted calls (`PyAttributeAccess`), but the AST → `BeExpression` step does not map them onto catalog primitives yet. That mapping is new and serves turtle (`turtle.forward`) as well, see "Contract changes in detail" |
+| Simulation | [SnapTurtleCommandExecution.scala](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/execution/SnapTurtleCommandExecution.scala): Pyodide worker, synthetic `turtle` module, `PythonCallback` recorder, `TurtleExecutionProvider` panels | An EV3 panel with its own runner: it prints the program as Pybricks Python and runs it against the `pybricks` stub package, which records events; recorded calls become a timeline. Drive commands map onto `TurtleCommand`s so the robot path reuses `TurtlePathBuilder` and the existing SVG renderer |
 | Worker | `RunPythonRequest(code, context, callbacks, ...)` in `WorkerCommands.scala`; recorder proxies return `undefined` | Unchanged. The scenario (sensor values over time) travels in `context`; events leave through one registered callback module |
 | Block labels | `adjusted/lang-<code>.js` in `resources/programs/20260212TurtleStitch/` translate injected specs by their English text (`'running stitch by _ steps': 'Laufstich in _ er Schritten'`); `Snap.changeLanguage` relabels on switch | One dictionary entry per robot block and language; tab names and panel texts through `resources/languageMaps/eva/ev3workbook/` |
 | Workbook wiring | `DigitalWorkbookCatalog.entries`, `HomepageStartupLogic.turtlePages`/`tryToLoad`, `homepage/<page>/index.html`, factory under `modules/client/.../workbook/content/`, `resources/languageMaps/eva/<group>/` | `ev3Workbook` page, factory and `ev3workbook` language group (DE, EN) |
@@ -102,14 +104,26 @@ in place; no aliases are introduced.
 
 ## Contract changes in detail
 
-One shared contract has to grow for robot blocks (section 1). It is small, but
-it touches code every turtle workbook uses, so the team should know it before
-phase 1 starts. Sensor values in the simulation (section 2) looked like a second
-contract change but are purely additive.
+Two shared contracts have to grow for robot blocks: the catalog's block kinds
+(section 1) and the mapping of dotted Python calls onto primitives (section 3).
+Both are small, but they touch code every turtle workbook uses, so the team
+agreed to discuss them before phase 1 starts. Sensor values in the simulation
+(section 2) looked like a contract change but are purely additive.
+
+None of this changes the native Snap editor or `ProgrammingStateSnapXml`. The
+editor is vanilla Snap: the workbook hands it "remove all blocks, take these
+blocks", reads its XML back and converts it into the typed state. The changes
+below concern our own side of that boundary: the block definitions we hand to
+Snap and the `BeExpression` conversions.
 
 ### 1. Reporter and predicate primitives in the catalog
 
-Today every catalog `Primitive` is a command block:
+Today every catalog `Primitive` is a command block. Native Snap blocks
+(control, operators, variables) carry their own types; the gap is only in the
+blocks the workbook injects itself (embroidery, `backward`, `home`, `circle`
+are all commands) and in our conversions. `JavaTurtleSnapPrimitives` already
+injects reporters with `type = "reporter", reports = "number"`, but through its
+own path, outside the catalog:
 
 - `injectExtraPrimitives` in `SnapCodeEditorImplDelegateToOriginal` writes
   `type = "command"` for every injected spec, so Snap offers injected blocks only
@@ -117,7 +131,7 @@ Today every catalog `Primitive` is a command block:
   (hexagonal, usable in `wenn`/`warte bis`), "Abstand in cm" a reporter.
 - `SnapControlFlow.isSupportedCondition` and `isSupportedValue` accept only
   operators, literals and variables. A call to a catalog primitive inside a
-  condition is rejected, so `while not touch_pressed():` would not round-trip.
+  condition is rejected, so `while not touch.pressed():` would not round-trip.
 - The parts that already work: `SnapStateConversion.value` renders a catalog
   block in expression position as `python_name(args)`, and
   `SnapProjectXml.renderCondition`/`renderCall` write a primitive call back as
@@ -136,8 +150,9 @@ in `doIf`, `doUntil` and `reportNot`.
 The worker recorder (`PyodideCommandRuntime`) registers one JS module per
 callback entry whose functions log `PythonCallback(module, method, args)` and
 return `undefined`. That is enough for turtle commands, which never return
-anything. A robot program needs `touch_pressed()` to return a boolean and
-`distance_cm()` a number, otherwise loops never end and comparisons fail.
+anything. A robot program needs `touch.pressed()` to return a boolean and
+`ultrasonic.distance()` a number, otherwise loops never end and comparisons
+fail.
 
 The earlier idea of teaching the recorder to return values is not needed. The
 `java_turtle` path already installs Python source into `sys.modules` before the
@@ -159,8 +174,27 @@ does the same with a `pybricks` stub package written in Python:
 Consequences: no change in `WorkerCommands`, the worker handler or the Pyodide
 runtime; one new shared Python source constant beside the Java helpers; one
 runner class in the client that builds the request and decodes the events. The
-only convention other code must respect is the prelude marker of D9, and it is
-read only by the EV3 workbook's own conversion.
+only convention other code must respect is the generated-header marker of D9,
+and it is read only by the EV3 workbook's own conversion.
+
+### 3. Dotted API calls in the Python → `BeExpression` step
+
+Real Pybricks code calls methods on device objects: `robot.straight(200)`,
+`ev3.screen.print("Hallo")`, `touch.pressed()`. The Python AST parser
+(`PythonAstParserSimple`) already produces `PyAttributeAccess(receiver, name)`
+for such calls, and its fixtures contain `turtle.forward(100)`. The step that
+turns the AST into `BeExpression` does not map dotted calls onto catalog
+primitives yet; today a primitive is recognized by its flat name only.
+
+Change: the catalog maps each primitive to its qualified Python name per
+context (`robot.straight` for the robot catalog, `turtle.forward` for the
+turtle catalog), the printer emits that name, and the AST → `BeExpression` step
+resolves a dotted call against the active catalog. The turtle context is
+touched as well because André wants its Python to become `turtle.forward` with
+`import turtle`, so the mechanism is shared and the catalog entries are not.
+Anything else with a dot (user objects, unknown modules) stays unparsable or
+becomes `BeExpressionUnsupported`, as today. This is the second point for team
+alignment, with André (VM) and Yanneck (Snap editor).
 
 ## Simulation options
 
@@ -199,60 +233,56 @@ simulation.
 ## Block set draft
 
 Labels below are the German dictionary entries; the English spec text is the
-key in every translation file, and the Snap selector plus the Python name are
-the contract. Ports come from the hardware profile unless a block names one.
+key in every translation file, and the Snap selector plus the qualified Python
+name are the contract. Device variables (`ev3`, `robot`, `motor_b`, `touch`,
+`ultrasonic`, `color`) are declared in the generated header from the hardware
+profile; a block that names a port picks among the profile's devices.
 
-| Tab | Block (German label) | Learner Python | Prelude maps to |
-| --- | --- | --- | --- |
-| Robot (phase 1) | Motor `%port` um `%n` Grad drehen (Geschwindigkeit `%n`) | `motor_run_angle("B", 90, 200)` | `motors["B"].run_angle(speed, angle)` |
-| Robot (phase 1) | Motor `%port` `%n` Umdrehungen drehen | `motor_run_rotations("B", 2, 200)` | `run_angle(speed, rotations * 360)` |
-| Robot (phase 1) | Motor `%port` starten mit `%n` Grad/s · anhalten | `motor_run("B", 200)` · `motor_stop("B")` | `run(speed)` · `stop()` |
-| Robot (phase 2) | `%n` cm vorwärts fahren · `%n` Grad drehen · anhalten | `drive_straight(20)` · `turn_degrees(90)` · `drive_stop()` | `robot.straight(cm * 10)` · `robot.turn(deg)` · `robot.stop()` |
-| Sensors (predicate, reporters) | Taster gedrückt? · Abstand in cm · Farbe · reflektiertes Licht | `touch_pressed()` · `distance_cm()` · `color_name()` · `reflection()` | `touch.pressed()` · `ultrasonic.distance() / 10` · `color.color()` · `color.reflection()` |
-| Output | zeige `%s` · Display löschen · Ton `%n` Hz für `%n` ms · Licht `%color` an · Licht aus · in Konsole schreiben `%s` | `screen_print(text)` · `screen_clear()` · `beep(f, ms)` · `light_on("green")` · `light_off()` · `print(text)` | `ev3.screen.print` · `ev3.screen.clear` · `ev3.speaker.beep` · `ev3.light.on(Color.GREEN)` · `ev3.light.off` · `print` |
-| Control | warte `%n` s (existing `doWait`) · wiederhole · wiederhole fortlaufend · wenn/sonst · warte bis | `wait_seconds(1)` · `for _ in range(n)` · `while True` · `if/else` · `while not cond:` | `wait(ms)` · native Python |
+| Tab | Block (German label) | Python (Pybricks API) |
+| --- | --- | --- |
+| Robot (phase 1) | Motor `%port` um `%n` Grad drehen (Geschwindigkeit `%n`) | `motor_b.run_angle(200, 90)` |
+| Robot (phase 1) | Motor `%port` `%n` Umdrehungen drehen | `motor_b.run_angle(200, 2 * 360)` |
+| Robot (phase 1) | Motor `%port` starten mit `%n` Grad/s · anhalten | `motor_b.run(200)` · `motor_b.stop()` |
+| Robot (phase 2) | `%n` cm vorwärts fahren · `%n` Grad drehen · anhalten | `robot.straight(200)` · `robot.turn(90)` · `robot.stop()` |
+| Sensors (predicate, reporters) | Taster gedrückt? · Abstand in mm · Farbe · reflektiertes Licht | `touch.pressed()` · `ultrasonic.distance()` · `color.color()` · `color.reflection()` |
+| Output | zeige `%s` · Display löschen · Ton `%n` Hz für `%n` ms · Licht `%color` an · Licht aus · in Konsole schreiben `%s` | `ev3.screen.print(text)` · `ev3.screen.clear()` · `ev3.speaker.beep(440, 200)` · `ev3.light.on(Color.GREEN)` · `ev3.light.off()` · `print(text)` |
+| Control | warte `%n` ms (own block, not turtle `doWait`) · wiederhole · wiederhole fortlaufend · wenn/sonst · warte bis | `wait(1000)` · `for _ in range(n)` · `while True` · `if/else` · `while not cond:` |
 
-Port and color inputs are string slots with Snap dropdown menus so the Python
-stays plain function calls; the prelude resolves them to `Port.B` and
-`Color.GREEN`.
+Units follow the API (mm, degrees, ms) so the Python needs no conversion; the
+block label can still say "cm" and the catalog scales the literal in both
+directions. Port and color slots are Snap dropdown menus whose values print as
+the device variable or `Color.GREEN`.
 
-Generated program shape (D9), from the connection test. The prelude is
-generated from the hardware profile and the devices the program uses; the
-learner's part is the editing Python the Snap project already round-trips:
+Generated program shape (D9), from the connection test. The header is
+generated from the hardware profile and the devices the program uses; the rest
+is what the Snap project round-trips through `BeExpression`:
 
 ```python
-# --- Roberta prelude (generated) ---
+# --- generated by EduSquirrel from hardware profile "roberta-ev3" ---
 from pybricks.hubs import EV3Brick
 from pybricks.parameters import Color
 from pybricks.tools import wait
 
 ev3 = EV3Brick()
-
-def screen_print(text):
-    ev3.screen.print(text)
-
-def light_on(color):
-    ev3.light.on(getattr(Color, color.upper()))
-
-def wait_seconds(seconds):
-    wait(int(seconds * 1000))
 # --- program ---
-screen_print("Pybricks laeuft")
-light_on("green")
+ev3.screen.print("Pybricks laeuft")
+ev3.light.on(Color.GREEN)
 print("Verbindung zum EV3 hergestellt.")
-wait_seconds(5)
+wait(5000)
 ev3.light.off()
 ```
 
-Drive and sensor helpers (`drive_straight(cm)`, `turn_degrees(deg)`,
-`touch_pressed()`, `distance_cm()`) are defined the same way on top of
-`DriveBase` and the sensor objects. Reading the file back into blocks strips
-the prelude at its marker; the Python tab shows the learner's part.
+Reading the file back into blocks parses the whole file; the header lines are
+recognized by their marker and the known device declarations, everything else
+goes through the catalog. A line no catalog entry matches becomes a
+`BeExpressionUnsupported` node that the editor shows and the Snap projection
+leaves out.
 
 ## Verification chain before transfer
 
-1. Subset validation of the Snap project (`validateSubset`, arity and block
-   allow-list), as for turtle programs.
+1. Projection check on `BeExpression`: the Pybricks printer reports every
+   `BeExpressionUnsupported` node and every call outside the robot catalog
+   (arity and input kinds), before any text is produced.
 2. Python syntax check in the worker (`compile()` in Pyodide).
 3. Bytecode compilation with `@pybricks/mpy-cross-v6` and a size check against
    the brick's `maxUserProgramSize`.
@@ -267,7 +297,7 @@ Ultrich's `ProgrammingState` scaffolding is available.
 | Phase | Deliverable | Done when |
 | --- | --- | --- |
 | 0 | This document; team alignment on D1–D7 | Decisions confirmed, open questions assigned |
-| 1 | Robot catalog with reporter kinds, `Ev3Roberta` palette, prelude generator, hardware profile type, German and English dictionaries, `main.py` export; the connection test rebuilt from blocks | Golden-file tests for Snap → Python and prelude on JVM and JS; palette visible and switchable between German and English in the test workbook; no hardware involved |
+| 1 | Catalog kinds and dotted-call mapping (sections 1 and 3), robot catalog on `BeExpression`, `Ev3Roberta` palette, Pybricks printer with generated header, hardware profile type, German and English dictionaries, `main.py` export; the connection test rebuilt from blocks | Round-trip tests Snap → `BeExpression` → Python → `BeExpression` → Snap on JVM and JS without artificial fields; palette visible and switchable between German and English in the test workbook; no hardware involved |
 | 2 | Simulation panel: timeline of calls, display/light/console log, robot path for drive blocks; scripted sensor values; DriveBase blocks after measurement | Browser checks for run/cancel/unmount; path matches `TurtlePathBuilder` expectations |
 | 3 | WebUSB transfer client in `it.evadid.facades`, mpy-cross compilation, stdout panel | Real EV3 run logged with firmware version; failures documented, never marked passed without a brick |
 | 4 | `ev3Workbook` content: workshop tasks, DE/EN language maps, catalogue entry | Workbook browser suite passes; tasks reviewed with the workshop team |
@@ -288,6 +318,9 @@ Ultrich's `ProgrammingState` scaffolding is available.
    affects D8; the relabeling of injected blocks on a switch must be verified
    with the embroidery palette first. Palette tab names are English constants
    today (`LibraryTab.name`) and need language-map IDs.
+7. Dotted-call mapping (section 3): agreed shape of the qualified-name table
+   and whether the turtle catalog switches to `turtle.forward` in the same
+   step or later.
 
 ## Verification
 
@@ -297,6 +330,10 @@ Pybricks printer and catalog, and client tests for the palette config:
 ```sh
 sbt 'coreJVM/testOnly *Ev3*' 'coreJS/testOnly *Ev3*' 'client/testOnly *Ev3*'
 ```
+
+Round-trip tests must not be made green by artificial fields or parameters
+that exist only to survive a conversion. Either a conversion carries the
+information for real, or the loss is accepted, documented and not tested.
 
 Hardware steps are recorded only after they were executed on a brick, with the
 firmware version and the transport used.
