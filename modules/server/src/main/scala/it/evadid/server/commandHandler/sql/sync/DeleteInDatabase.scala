@@ -91,18 +91,17 @@ object DeleteInDatabase {
 
   def handleRequest(request: DeleteInDbRequest, logger: Logger): SyncSuccess = {
     val config = DatabaseConfig.readFromEnv(dbName = Some(request.databaseName))
-    val connection = config.newConnection()
-
-    val control = DeleteInDatabase(connection, request.usageContext, logger)
-
-    if (request.limitToKey.isEmpty) {
-      if (request.databaseFormat.hasKeyTable) control.deleteAllEventsOfUsage("eventsWithKey")
-      else control.deleteAllEventsOfUsage("events")
-    } else {
-      if (request.databaseFormat.hasKeyTable) control.deleteByKeyInDatabaseWithKey(request.limitToKey.get)
-      else control.deleteByKeyInDatabaseWithoutKey(request.limitToKey.get, "events")
+    scala.util.Using.resource(config.newConnection()) { connection =>
+      request.databaseFormat match {
+        case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => new RelationalHistoryStorage(connection, logger).delete(request)
+        case format: it.evadid.sql.DatabaseHistoryFormat.Snapshot =>
+          val control = DeleteInDatabase(connection, request.usageContext, logger)
+          request.limitToKey match {
+            case None => control.deleteAllEventsOfUsage(format.table)
+            case Some(key) => if format.hasKeyTable then control.deleteByKeyInDatabaseWithKey(key)
+              else control.deleteByKeyInDatabaseWithoutKey(key, format.table)
+          }
+      }
     }
   }
-
-
 }

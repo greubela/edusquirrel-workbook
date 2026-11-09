@@ -15,7 +15,7 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 | `homepage/` | Entry pages, CSS and catalogue presentation |
 | `resources/` | Language maps, teaching materials and bundled programs/libraries |
 | `tools/` | Site assembly, browser checks, fixture generators and optional LLM proxies |
-| `artifacts/` | Generated bundles and server assemblies |
+| `artifacts/` | Generated bundles and server assemblies; tracked database creation scripts in `artifacts/database/` |
 | `project/` | sbt build definitions, plugins and artifact tasks |
 | `deployment/` | Deployment configuration and operational assets |
 | `docs/` | Maintained architecture, migration status, authoring and development guides |

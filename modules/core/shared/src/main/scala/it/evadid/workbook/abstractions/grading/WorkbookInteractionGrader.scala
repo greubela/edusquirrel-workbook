@@ -15,6 +15,8 @@ import upickle.default.*
 import scala.concurrent.{ExecutionContext, Future}
 
 trait WorkbookInteractionGrader[T, A] {
+  def key: String
+
   given ec: ExecutionContext = ExecutionContext.global
 
   private def failWith(state: T, err: Either[String, Throwable]): Future[GradingResult[T, A]] = err.match {

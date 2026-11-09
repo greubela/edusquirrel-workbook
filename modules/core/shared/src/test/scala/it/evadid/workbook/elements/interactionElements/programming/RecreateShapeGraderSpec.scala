@@ -16,7 +16,7 @@ class RecreateShapeGraderSpec extends FunSuite {
     val commands = state.toBeExpression.deriveTurtleCommands
     assertEquals(commands.size, 5, clues(commands))
     Future.traverse(List(state, state.toSnapXml, state.toJava)) { source =>
-      RecreateShapeGrader(target, GradingImportance.REQUIRED_TEST).gradeStateSafe(source, true, TestExecutionContext()).map { result =>
+      RecreateShapeGrader("standalone:0", target, GradingImportance.REQUIRED_TEST).gradeStateSafe(source, true, TestExecutionContext()).map { result =>
         assertEquals(result.gradingStatus, GradingStatus.Correct(), clues(source, commands))
       }
     }

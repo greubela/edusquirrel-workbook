@@ -122,6 +122,9 @@ object BackendServer {
 
     println(s"[server] Booting Play HTTP server on $host:$port ...")
 
+    it.evadid.server.database.EnsureDatabaseProperlySetup.onStartup(
+      Logger.withNameAndPrefixes(Some("DatabaseSetup"), PrintToStdLogger.printEverything))
+
     val server = createServer(ServerConfig(port = Some(port), address = "0.0.0.0"))(buildApiRouter)
 
     println(s"[server] Ready and serving requests at http://$host:$port")

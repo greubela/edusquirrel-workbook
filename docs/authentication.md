@@ -65,10 +65,8 @@ Normal `server/test` runs do not require Docker or a database.
 The suite exercises the actual registration, update and login handlers plus
 `SqlUserCommands` token queries. It checks duplicate accounts, email normalization,
 Unicode values, parameter binding, account isolation, token expiry/renewal,
-signed-token ownership, and malformed preferences. It never calls SMTP. The DDL
-under `modules/server/src/mysqlIntegration/resources/sql/` defines the tested
-account-query contract; it does not validate the indexes/types of a deployed
-database. Keep that fixture aligned with intentional schema changes.
+signed-token ownership, and malformed preferences. It never calls SMTP. The tests use the authoritative SQL creation scripts under `artifacts/database/`,
+which are also packaged with the server and used by its schema inspector.
 
 To run locally with Docker:
 

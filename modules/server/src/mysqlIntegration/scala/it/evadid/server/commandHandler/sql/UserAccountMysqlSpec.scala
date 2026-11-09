@@ -48,16 +48,7 @@ class UserAccountMysqlSpec extends FunSuite {
       "MySQL integration tests require a disposable database on localhost")
     require(sys.env.get("SERVER_SECRET").exists(_.nonEmpty),
       "Set a disposable SERVER_SECRET for signed-token integration tests")
-    val schema = List("sql/account-schema.sql", "command-logging.sql")
-      .map(path => Using.resource(Source.fromResource(path))(_.mkString)).mkString("\n")
-    withDatabase { connection =>
-      Using.resource(connection.createStatement()) { statement =>
-        List("syncedLog", "commandLog", "loginTokens", "user").foreach { table =>
-          statement.executeUpdate(s"DROP TABLE IF EXISTS `$table`")
-        }
-        schema.split(";").map(_.trim).filter(_.nonEmpty).foreach(statement.executeUpdate)
-      }
-    }
+    withDatabase(it.evadid.server.database.MysqlTestDatabase.reset)
   }
 
   override def beforeEach(context: BeforeEach): Unit = withDatabase { connection =>

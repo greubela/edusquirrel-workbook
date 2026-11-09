@@ -95,17 +95,18 @@ object FetchFromDatabase {
 
   def handleRequest(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
     val config = DatabaseConfig.readFromEnv(dbName = Some(request.databaseName))
-    val connection = config.newConnection()
-
-    val control = FetchFromDatabase(connection, request.usageContext, logger)
-
-    val resMap: Map[SyncContext, List[RichDatabaseEntry]] = {
-      if (!request.databaseFormat.hasKeyTable) control.fetchAllInDbWithoutKeys("events")
-      else if (request.mayLimitToKey.isEmpty) control.fetchAllInDbWithKeys()
-      else control.fetchForKeyInDbWithKey(request.mayLimitToKey.get).map(e => Map(e.syncContext -> List(e))).getOrElse(Map.empty)
+    scala.util.Using.resource(config.newConnection()) { connection =>
+      request.databaseFormat match {
+        case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => new RelationalHistoryStorage(connection, logger).fetch(request)
+        case format: it.evadid.sql.DatabaseHistoryFormat.Snapshot =>
+          val control = FetchFromDatabase(connection, request.usageContext, logger)
+          val result = if !format.hasKeyTable then control.fetchAllInDbWithoutKeys(format.table)
+            else request.mayLimitToKey.fold(control.fetchAllInDbWithKeys()) { key =>
+              control.fetchForKeyInDbWithKey(key).map(entry => Map(entry.syncContext -> List(entry))).getOrElse(Map.empty)
+            }
+          DbFetchResponse(result.map((context, rows) => context -> union(rows.map(_.historyJson))))
+      }
     }
-
-    DbFetchResponse(resMap.iterator.map(tup => tup._1 -> union(tup._2.map(_.historyJson))).toMap)
   }
 
 }
