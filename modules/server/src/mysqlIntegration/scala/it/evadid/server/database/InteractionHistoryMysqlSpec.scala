@@ -246,4 +246,17 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assertEquals(restored.historyGrading.gradingsMap("first"), changed.historyGrading.gradingsMap("first"))
     assertEquals(restored.historyStates.events.size, 2)
   }
+
+  test("context uniqueness preserves case and trailing spaces exactly like Scala strings") {
+    val variants = List(context, context.copy(programId = "PROGRAM"), context.copy(programId = "program "))
+    variants.foreach { usage =>
+      val identity = usage.toSyncContext(key)
+      UpsertToDatabase.handleRequest(StoreToDbRequest(identity, write(history()), database, RelationalEvents), logger)
+    }
+    assertEquals(scalar("SELECT COUNT(*) FROM sync_context_id"), 3L)
+    variants.foreach { usage =>
+      val response = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(usage, database, None, RelationalEvents), logger)
+      assertEquals(response.fetchedElements.keySet, Set(usage.toSyncContext(key)))
+    }
+  }
 }
