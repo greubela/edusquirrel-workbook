@@ -1,27 +1,23 @@
 package it.evadid.distribution.commandTypes
 
 import it.evadid.core.datastructures.chat.*
-import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionCommandFactory
 import upickle.default.*
-import it.evadid.llm.LlmPartialConfiguration
+import it.evadid.llm.LlmConfiguration
 
 object LLMCommands {
 
   case class MessengerChatCompletionResponse(newTextGenerated: String)  derives ReadWriter
 
   case class MessengerChatCompletionRequest(systemPrompt: String, messengerModel: MessengerModel,
-      llmConfiguration: LlmPartialConfiguration = LlmPartialConfiguration()) derives ReadWriter {
-
-  }
+      llmConfiguration: Option[LlmConfiguration] = None) derives ReadWriter
 
   lazy val completeLLMCommandFactory: ExecutionCommandFactory[MessengerChatCompletionRequest, Message] = ExecutionCommandFactory[MessengerChatCompletionRequest, Message](
     "complete-llm-request", privacyFilter = Some(_ => ujson.Obj("redacted" -> true))
   )
 
   case class FeedbackLlmRequest(prompt: String, systemPrompt: String,
-      llmConfiguration: LlmPartialConfiguration = LlmPartialConfiguration()) derives ReadWriter
+      llmConfiguration: Option[LlmConfiguration] = None) derives ReadWriter
 
   lazy val feedbackLlmCommandFactory: ExecutionCommandFactory[FeedbackLlmRequest, String] =
     ExecutionCommandFactory[FeedbackLlmRequest, String](

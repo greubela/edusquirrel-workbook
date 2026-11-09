@@ -41,7 +41,7 @@ final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElemen
             .filter(text => text != null && text.trim.nonEmpty && text.length <= 8000)
             .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
           verifyChecks(currentState, context, locale)
-          val request = context.request(locale, task)
+          val request = context.request(locale, task).copy(llmConfiguration = contextInformation.llmConfiguration)
           val factory = LLMCommands.feedbackLlmCommandFactory
           val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
           val client = contextInformation.availableExecutionClients.find(_.canExecuteCommand(command))

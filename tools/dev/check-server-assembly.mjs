@@ -31,15 +31,6 @@ child.stdout.on('data', data => { output += data; });
 child.stderr.on('data', data => { output += data; });
 child.on('error', error => { startupError = error; });
 try {
-  if (!process.env.SQL_HOST || !process.env.SQL_DATABASE) {
-    await Promise.race([
-      new Promise(done => child.once('close', done)),
-      delay(30000, null, {ref: false}).then(() => { throw new Error('Server did not refuse startup without a database'); })
-    ]);
-    assert.notEqual(child.exitCode, 0, output);
-    assert(output.includes('Database schema check failed'), output);
-    console.log('Server fat JAR: schema resources, runtime dependencies and refusal to start without a valid database passed.');
-  } else {
   const deadline = Date.now() + 30000;
   let health;
   while (Date.now() < deadline) {
@@ -55,7 +46,6 @@ try {
   assert.equal(health.service, 'edusquirrel-server');
   assert(!/No SLF4J providers|NOP logger|Failed to load class.*StaticLoggerBinder/.test(output), output);
   console.log('Server fat JAR: standalone startup, health, logging and desktop isolation passed.');
-  }
 } finally {
   if (child.pid && child.exitCode === null) {
     await new Promise(done => {

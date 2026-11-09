@@ -1,5 +1,6 @@
 package it.evadid.workbook.meta
 
+import it.evadid.llm.LlmConfiguration
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.distribution.clients.ExecutionClient
@@ -10,6 +11,8 @@ import scala.concurrent.ExecutionContext
 trait ExecutionContextInformation {
 
   def syncControl: Option[SyncControl]
+
+  def llmConfiguration: Option[LlmConfiguration] = None
 
   def availableExecutionClients: List[ExecutionClient]
 

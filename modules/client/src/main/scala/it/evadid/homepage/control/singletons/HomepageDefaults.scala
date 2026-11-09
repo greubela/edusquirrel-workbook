@@ -27,8 +27,7 @@ case class HomepageDefaults(fullInfo: FullInfo) {
     if WorkerCommands.supportedCommands.contains(command.name) then workerExecuter else backendExecutor)
 
   def backendExecutorWithCredentials(signedToken: Option[SignedToken]): ExecutionClient =
-    it.evadid.distribution.clients.SessionLlmExecutionClient(defaultBackend.executor(signedToken),
-      () => fullInfo.homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig))
+    defaultBackend.executor(signedToken)
 
   def backendExecutor: ExecutionClient = {
     val fullInfoToken = fullInfo.homepageInfoNow().userInfo.flatMap(_.credentials.signedBackendToken)

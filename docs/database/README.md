@@ -20,10 +20,11 @@ script creates the anonymous logging identity `user-unknown`.
 
 `EnsureDatabaseProperlySetup` reads MySQL/JDBC schema metadata and compares it
 with the packaged SQL definitions. Inspection does not read application rows,
-run migrations or modify data. Startup initializes only a completely empty
-database. Any existing table or view prevents automatic creation, including a
+run migrations or modify data. Automatic startup inspection and initialization
+are currently disabled while the new schema is not live. Explicit setup initializes
+only a completely empty database. Any existing table or view prevents automatic creation, including a
 partially configured or conflicting schema. Explicit `setupIfEmpty` uses the
-same rule. Missing/incompatible structures cause startup to fail;
+same rule. Explicit checks report missing/incompatible structures;
 existing databases are never repaired automatically.
 An advisory lock coordinates concurrent backend initializers; setup rechecks
 emptiness while holding that lock and requires a dedicated auto-commit connection.
@@ -44,7 +45,9 @@ scripts in a disposable database; there is no separate test schema. See the
 `ClassicKeylessJson` and `ClassicJsonWithKey` remain supported. The third option,
 `RelationalEvents`, stores answers and feedback independently. Choose the format
 in `SyncDestinationBasedOnHistoryDatabase`; configuring it does not convert data
-from another format.
+from another format. Its companion defines `defaultDatabaseWithKey`,
+`defaultDatabaseKeyless` and `defaultDatabaseV2`; account preferences select these
+presets rather than constructing their own defaults.
 
 Numeric database IDs are implementation details and never enter client payloads
 or determine answer equality. Graders expose a lazy string `key`: SHA-256 of
@@ -92,10 +95,12 @@ history queries, the backend validates every table required by the selected
 history format. Create a custom history database with its corresponding SQL
 script first. It is never repaired automatically.
 
-LLM requests carry `LlmPartialConfiguration`; the transport adds current session
-settings immediately before sending. Backend defaults are `OPENAI_API_URL`
-(default `https://api.openai.com/v1/chat/completions`), `OPENAI_MODEL` (default
-`gpt-4o-mini`), `OPENAI_API_KEY` and optional `OPENAI_MAX_TOKENS`. A custom endpoint
-never receives the backend API key; HTTP redirects are not followed. Custom local
-services may omit a key. Database credentials, API keys and prompts are removed
-from command-log payloads; provider error bodies are not retained.
+LLM requests carry `llmConfiguration: Option[LlmConfiguration]`. Callers pass the
+current session configuration explicitly. `Some(config)` is used as-is, including
+an absent API key or token limit; no fields are filled from server settings.
+`None` selects the server default: `OPENAI_API_URL` (default
+`https://api.openai.com/v1/chat/completions`), `OPENAI_MODEL` (default
+`gpt-4o-mini`), `OPENAI_API_KEY` and optional `OPENAI_MAX_TOKENS`.
+HTTP redirects are not followed. Custom local services may omit a key.
+Database credentials, API keys and prompts are removed from command-log payloads;
+provider error bodies are not retained.

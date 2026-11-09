@@ -13,7 +13,8 @@ case class TestExecutionContext(
     languageMapIdResolver: Option[LanguageMapIdResolver] = None,
     syncControl: Option[SyncControl] = None,
     language: () => HumanLanguage = () => English,
-    futureExecutionContext: ExecutionContext = ExecutionContext.global
+    futureExecutionContext: ExecutionContext = ExecutionContext.global,
+    override val llmConfiguration: Option[it.evadid.llm.LlmConfiguration] = None
 ) extends ExecutionContextInformation {
   override def getCurrentLanguage: HumanLanguage = language()
 }

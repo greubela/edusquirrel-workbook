@@ -35,5 +35,17 @@ object SyncDestinationDefinition {
     override def toString: String = "DatabaseDestination(browser/localStorage->default)"
   }
 
+  val defaultBrowserHistory: LocalIndexedDbSyncDefinition =
+    LocalIndexedDbSyncDefinition("EvaDidInteractionDB", "variableHistoryStore", 1)
+
+  val defaultDatabaseWithKey: SyncDestinationBasedOnHistoryDatabase =
+    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfiguration.defaultDb, DatabaseHistoryFormat.ClassicJsonWithKey)
+
+  val defaultDatabaseKeyless: SyncDestinationBasedOnHistoryDatabase =
+    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfiguration.defaultDb, DatabaseHistoryFormat.ClassicKeylessJson)
+
+  val defaultDatabaseV2: SyncDestinationBasedOnHistoryDatabase =
+    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfiguration.defaultDb, DatabaseHistoryFormat.RelationalEvents)
+
 }
 

@@ -87,8 +87,23 @@ class CommandPayloadCodecsSpec extends FunSuite {
     assertEquals(ordinary.stripPrivacySensitiveInformation().toJson, ordinary.toJson)
   }
 
+  test("LLM commands carry either one complete configuration or no configuration") {
+    import it.evadid.llm.LlmConfiguration
+    import it.evadid.core.datastructures.chat.MessengerModel
+    for (configuration <- List(None, Some(LlmConfiguration("https://fixture.invalid/chat", "model", Some("api-key"))))) {
+      val feedback = LLMCommands.FeedbackLlmRequest("prompt", "system", configuration)
+      val chat = LLMCommands.MessengerChatCompletionRequest("system", MessengerModel.empty, configuration)
+      assertEquals(read[LLMCommands.FeedbackLlmRequest](write(feedback)), feedback)
+      assertEquals(read[LLMCommands.MessengerChatCompletionRequest](write(chat)), chat)
+      val logged = ExecutionCommand(LLMCommands.completeLLMCommandFactory.name, writeJs(chat)).stripPrivacySensitiveInformation()
+      assert(!logged.toJson.contains("api-key"))
+    }
+    assertEquals(read[LLMCommands.FeedbackLlmRequest](ujson.Obj("prompt" -> "question", "systemPrompt" -> "instructions")).llmConfiguration, None)
+  }
+
   test("feedback factory logs omit prompts and client credentials while execution keeps the exact request") {
-    val request = LLMCommands.FeedbackLlmRequest("private learner source\r\n学校", "private system rules")
+    val request = LLMCommands.FeedbackLlmRequest("private learner source\r\n学校", "private system rules",
+      Some(it.evadid.llm.LlmConfiguration("https://fixture.invalid/chat", "model", Some("private-api-key"))))
     val logger = BasicLogger()
     val client = new LocalExecutionClient[LLMCommands.FeedbackLlmRequest, String] {
       override def toString: String = "private client token"

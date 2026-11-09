@@ -59,6 +59,20 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       grader.gradeStateSafe(answer, forced, TestExecutionContext(List(client), languageMapIdResolver = Some(resolver)))
   }
 
+  test("session configuration is carried by grading, classification retries and scaffolding requests") {
+    val f = new Fixture(List(Right("Please classify again"), Right("CORRECT"), Right("A helpful hint")))
+    val configuration = Some(it.evadid.llm.LlmConfiguration("https://own.example/chat", "own-model", Some("session-key")))
+    val context = TestExecutionContext(List(f.client), languageMapIdResolver = Some(f.resolver), llmConfiguration = configuration)
+    f.grader.gradeStateSafe("answer", true, context).flatMap { result =>
+      assertEquals(result.gradingStatus, GradingStatus.Correct())
+      TextInputLlmScaffolder(task, None, ContentForLlmInteraction(hint, Map.empty))
+        .handleFeedbackGeneration("answer", context).map { _ =>
+          assertEquals(f.requests.now().size, 3)
+          assert(f.requests.now().forall(_.llmConfiguration == configuration))
+        }
+    }
+  }
+
   for ((marker, expected) <- List("CORRECT" -> GradingStatus.Correct(), "INCORRECT" -> GradingStatus.Incorrect(),
     "PARTIALL_CORRECT" -> GradingStatus.PartiallyCorrect())) {
     test(s"$marker becomes a typed grade with marker-free localized plaintext feedback") {

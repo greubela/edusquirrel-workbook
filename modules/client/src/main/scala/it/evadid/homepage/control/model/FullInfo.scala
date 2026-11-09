@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.model
 
+import it.evadid.llm.LlmConfiguration
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
@@ -26,6 +27,9 @@ case class FullInfo(
 
   lazy val executionContextInformation: ExecutionContextInformation = new ExecutionContextInformation() {
     private val currentLanguageObservable = signals.currentLanguage.toObservableValue
+
+    override def llmConfiguration: Option[LlmConfiguration] =
+      homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig)
 
     override def availableExecutionClients: List[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutor)
 
