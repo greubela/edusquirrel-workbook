@@ -40,11 +40,12 @@ class LlmConfigurationSpec extends FunSuite {
       val json = ujson.read(body)
       assertEquals(json("model").str, "own-model")
       assertEquals(json("max_tokens").num, 123d)
-      val logged = feedbackLlmCommandFactory.toCommand(request).stripPrivacySensitiveInformation().json.toString
+      val logged = it.evadid.distribution.command.ExecutionCommand(feedbackLlmCommandFactory.name, upickle.default.writeJs(request)).stripPrivacySensitiveInformation().json.toString
       assert(!logged.contains("session-secret"))
       assert(!logged.contains("question"))
       val chat = MessengerChatCompletionRequest("instructions", it.evadid.core.datastructures.chat.MessengerModel(Nil), config)
-      assert(!completeLLMCommandFactory.toCommand(chat).stripPrivacySensitiveInformation().json.toString.contains("session-secret"))
+      assertEquals(Await.result(CompleteChatWithLLMCommand.handleLlmChatRequest(chat, BasicLogger()), 10.seconds).text, "fixture response")
+      assert(!it.evadid.distribution.command.ExecutionCommand(completeLLMCommandFactory.name, upickle.default.writeJs(chat)).stripPrivacySensitiveInformation().json.toString.contains("session-secret"))
     } finally server.stop(0)
   }
 }

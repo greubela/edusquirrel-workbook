@@ -61,6 +61,18 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
+  test("session database credentials support all history formats and are removed from logs") {
+    val credentials = it.evadid.sql.DatabaseConfiguration.readFromEnv()
+    List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
+      val request = StoreToDbRequest(sync, write(history()), credentials.publicInformation, format, Some(credentials))
+      UpsertToDatabase.handleRequest(request, logger)
+      val fetched = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(context, credentials.publicInformation, None, format, Some(credentials)), logger)
+      assertEquals(read[History](fetched.fetchedElements(sync)), history())
+      val command = it.evadid.distribution.command.ExecutionCommand(StoreToDbCommand.name, writeJs(request))
+      assert(!command.stripPrivacySensitiveInformation().json.obj.contains("databaseCredentials"))
+    }
+  }
+
   test("nanosecond-distinct answers survive, retries retain IDs, and context IDs never enter payloads") {
     store(history())
     val answerId = scalar("SELECT id FROM answer_event")
@@ -211,7 +223,8 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val report = EnsureDatabaseProperlySetup.inspect(connection)
       assert(report.conflicts.exists(_.contains("unexpected uniqueness")), report.toString)
       assert(!EnsureDatabaseProperlySetup.setupIfEmpty(connection).created)
-      assertEquals(read[History](fetch()(sync)), history())
+      intercept[IllegalArgumentException](fetch())
+      assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
     }
   }
 
@@ -233,7 +246,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assertEquals(results.count(_.created), 1)
   }
 
-  test("repeated answer values retain one grading result per logical grader key after configuration changes") {
+  test("changed grader content preserves historical identities and updates unchanged identities") {
     store(history())
     val newer = history("first", time.plusDays(1))
     val changedResults = newer.historyGrading.gradingsFinished.flatMap(_.testsWithResults).map { result =>
@@ -243,7 +256,10 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     val changed = newer.copy(historyGrading = InteractionVariableGradingHistory.fromResults(changedResults))
     store(changed)
     val restored = read[History](fetch()(sync))
-    assertEquals(restored.historyGrading.gradingsMap("first"), changed.historyGrading.gradingsMap("first"))
+    val results = restored.historyGrading.gradingsMap("first").testsWithResults.map(result => result.grader.key -> result).toMap
+    val expected = (history().historyGrading.gradingsMap("first").testsWithResults.toList ++ changedResults.toList).map(result => result.grader.key -> result).toMap
+    assertEquals(results, expected)
+    assertEquals(results.size, 3)
     assertEquals(restored.historyStates.events.size, 2)
   }
 

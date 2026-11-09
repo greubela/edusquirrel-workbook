@@ -76,6 +76,25 @@ class UserAccountMysqlSpec extends FunSuite {
     }
   }
 
+  test("account writes never persist supplied session credentials") {
+    val credentials = UserCredentials(singleAccessToken = Some(SingleAccessToken("ephemeral-login-secret")),
+      llmApiConfig = Some(it.evadid.llm.LlmConfiguration("https://fixture.invalid/chat", "model", Some("ephemeral-llm-secret"))),
+      databaseConfig = Some(DatabaseConfiguration("mysql", "fixture.invalid", "3306", "history", "owner", "ephemeral-db-secret")))
+    val info = AllUserInfo(alice, credentials, config)
+    assert(Await.result(SqlUserCommands.handleCreateAccountCommand(CreateAccountRequest(info), logger), 10.seconds).accountCreated)
+    Await.result(SqlUserCommands.handleUpdateAccountCommand(UpdateAccountRequest(info), logger), 10.seconds)
+    withDatabase { connection =>
+      Using.resource(connection.createStatement()) { statement =>
+        Using.resource(statement.executeQuery("SELECT config FROM user WHERE id='alice'")) { rows =>
+          assert(rows.next())
+          val saved = rows.getString(1)
+          assert(!saved.contains("ephemeral-"))
+          assert(!saved.contains("credentials"))
+        }
+      }
+    }
+  }
+
   test("duplicate registration rejects an existing email or ID without replacing the account") {
     assert(register().accountCreated)
     val duplicateMail = register(bob.copy(mail = "ALICE@EXAMPLE.INVALID"))
