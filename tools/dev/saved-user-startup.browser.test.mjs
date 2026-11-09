@@ -45,6 +45,12 @@ test('local preferences restore and credential-bearing saved logins are discarde
         await page.locator('.container-login').waitFor();
         assert.equal(await page.evaluate(() => localStorage.getItem('edusquirrel-alluserinfo')), null,
           'unsupported or corrupt saved logins are discarded');
+        if (saved === legacy) {
+          await page.locator('.select-language-line svg[viewBox="0 0 37 28"]').click();
+          await page.waitForFunction(() => document.querySelector('.section-register .login-name-input')?.placeholder === 'Dit navn');
+          assert.equal(await page.locator('.section-register .login-email-input').first().getAttribute('placeholder'), 'E-mailadresse',
+            'Danish login entries are discovered and rendered by the current client');
+        }
       }
       assert.equal(await page.evaluate(() => localStorage.getItem('saved-answer-fixture')), 'keep this answer');
       assert.deepEqual(errors, []);

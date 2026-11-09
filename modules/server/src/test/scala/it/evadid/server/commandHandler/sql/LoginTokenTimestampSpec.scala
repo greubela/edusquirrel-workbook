@@ -11,15 +11,15 @@ class LoginTokenTimestampSpec extends FunSuite {
   private val parser = GenericSqlFunctionality(null, BasicLogger())
 
   List("2026-10-13 01:40:00", "2026-10-13 01:40:00.0",
-    "2026-10-13 01:40:00.123456", "2026-10-13 01:40:00.123456789",
-    "2026-10-13T01:40:00").foreach { value =>
+    "2026-10-13 01:40:00.123456", "2026-10-13 01:40:00.123456789").foreach { value =>
     test(s"token expiry accepts $value") {
       assertEquals(parser.parseDatabaseTimestamp(value), LocalDateTime.parse(value.replace(' ', 'T')))
     }
   }
 
-  test("invalid expiry fails rather than turning into a valid token") {
-    intercept[RuntimeException](parser.parseDatabaseTimestamp("not a timestamp"))
+  test("unsupported expiry formats are rejected rather than interpreted as legacy data") {
+    List("not a timestamp", "2026-10-13T01:40:00").foreach(value =>
+      intercept[RuntimeException](parser.parseDatabaseTimestamp(value)))
   }
 
   private def stub[T](kind: Class[T])(handle: (String, Array[AnyRef]) => AnyRef): T =
@@ -28,9 +28,11 @@ class LoginTokenTimestampSpec extends FunSuite {
         handle(method.getName, Option(args).getOrElse(Array.empty[AnyRef]))
     }).asInstanceOf[T]
 
-  test("login reads a token and its fractional expiry through JDBC without a database dependency") {
+  for ((code, expiry) <- List("secret" -> "2026-10-13 01:40:00.123456", "" -> "2026-10-13 01:40:00.123456",
+      "secret" -> "invalid expiry", "secret" -> "2026-10-13T01:40:00", "secret" -> null)) {
+  test(s"stored token with blank code=${code.isEmpty} and expiry=$expiry is read or safely discarded") {
     var row = -1
-    val fields = Map("userId" -> "user-1", "token" -> "secret", "tokenExpires" -> "2026-10-13 01:40:00.123456")
+    val fields = Map("userId" -> "user-1", "token" -> code, "tokenExpires" -> expiry)
     val result = stub(classOf[ResultSet]) { (method, args) => method match {
       case "next" => row += 1; java.lang.Boolean.valueOf(row == 0)
       case "getString" =>
@@ -44,9 +46,12 @@ class LoginTokenTimestampSpec extends FunSuite {
     val connection = stub(classOf[Connection]) { (method, _) =>
       if (method == "prepareStatement") statement else null
     }
-    val token = SqlUserCommands(connection, BasicLogger()).findAccessTokens("user-1").get
-    assertEquals(token.token, "secret")
-    assertEquals(token.expires, LocalDateTime.parse("2026-10-13T01:40:00.123456"))
+    val token = SqlUserCommands(connection, BasicLogger()).findAccessTokens("user-1")
+    if code.nonEmpty && expiry == "2026-10-13 01:40:00.123456" then {
+      assertEquals(token.map(_.token), Some("secret"))
+      assertEquals(token.map(_.expires), Some(LocalDateTime.parse("2026-10-13T01:40:00.123456")))
+    } else assertEquals(token, None)
+  }
   }
   test("invalid account preferences cannot prevent identity lookup and JDBC reads begin on the first row") {
     import it.evadid.core.datastructures.user.UserConfig

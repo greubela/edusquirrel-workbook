@@ -37,6 +37,20 @@ class CommandPayloadCodecsSpec extends FunSuite {
     intercept[IllegalArgumentException](DatabaseTable("commandLog`; DROP TABLE user; --"))
   }
 
+  test("default sync requests use the current explicit database wire fields on JVM and JavaScript") {
+    import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
+    import it.evadid.workbook.interaction.sync.UsageContext
+    val request = SQLCommands.FetchAllFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"),
+      DatabaseConfig.defaultDb, None, DatabaseHistoryFormat.ClassicJsonWithKey)
+    val encoded = writeJs(request)
+    val config = encoded("databaseConfig")
+    assertEquals(config.obj.keySet.toSet, Set("$type", "dbFormat", "host", "port", "database"))
+    assertEquals(config("database").str, "db_332371_12")
+    assertEquals(config("host").str, "herrgreubel.lima-db.de")
+    assertEquals(config("dbFormat").str, "mysql")
+    assertEquals(config("port").str, "3306")
+  }
+
   test("both explicit database configurations work in destinations and requests while logs exclude credentials") {
     import it.evadid.sql.{DatabaseConfiguration, DatabaseConfig, DatabaseConfigWithCredentials, DatabaseHistoryFormat}
     import it.evadid.workbook.interaction.sync.UsageContext

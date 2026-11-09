@@ -32,6 +32,9 @@
   "errorUnknownUser": "No account was found for this email address. Please register first.",
   "errorInvalidToken": "This token is invalid or expired. Request a new login token.",
   "errorTokenRequired": "Please paste the token from your email.",
-  "errorTokenRequest": "The login token could not be sent. Check your email address and try again.",
-  "errorLogin": "Login failed. Please try again later."
+  "errorTokenRequest": "The server could not send a login token. Please try again later or contact the administrator.",
+  "errorLogin": "Login failed. Please try again later.",
+  "insertNamePlaceholder": "Your name",
+  "enterMail": "Email address",
+  "uploadFile": "Upload progress file"
 }

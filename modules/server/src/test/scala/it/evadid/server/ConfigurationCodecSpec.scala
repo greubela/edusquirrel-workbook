@@ -13,6 +13,18 @@ class ConfigurationCodecSpec extends FunSuite {
     }
   }
 
+  test("backend accepts the current browser sync wire format and rejects the removed partial format") {
+    import it.evadid.distribution.commandTypes.SQLCommands.FetchAllFromDbRequest
+    import it.evadid.sql.DatabaseConfig
+    val json = ujson.read("""{"usageContext":{"programId":"edusquirrel","scenarioId":"workbookTest","userId":"student"},
+      "databaseConfig":{"$type":"DatabaseConfig","dbFormat":"mysql","host":"herrgreubel.lima-db.de","port":"3306","database":"db_332371_12"},
+      "mayLimitToKey":null,"databaseFormat":"ClassicJsonWithKey"}""")
+    assertEquals(read[FetchAllFromDbRequest](json).databaseConfig, DatabaseConfig.defaultDb)
+    val unsupported = ujson.read("""{"databaseOp":"db_332371_12","dbFormatOp":"mysql","hostOp":"herrgreubel.lima-db.de","portOp":"3306"}""")
+    json("databaseConfig") = unsupported
+    assert(scala.util.Try(read[FetchAllFromDbRequest](json)).isFailure)
+  }
+
   test("public targets resolve server credentials; supplied credentials bypass server defaults") {
     import it.evadid.server.database.DatabaseRequestConnection
     val defaults = DatabaseConfigWithCredentials("mysql", "backend", "3306", "main", "server", "server-secret")
@@ -23,6 +35,18 @@ class ConfigurationCodecSpec extends FunSuite {
     List[DatabaseConfiguration](defaults.withoutCredentials, custom).foreach { config =>
       assertEquals(read[DatabaseConfiguration](write(config)), config)
     }
+  }
+
+  test("missing SMTP credentials report configuration names without exposing secrets") {
+    val configured = Map("MAIL_EMAIL" -> "fixture@example.invalid", "MAIL_PW" -> "private-mail-password")
+    List("MAIL_EMAIL", "MAIL_PW").foreach { missing =>
+      val error = intercept[IllegalStateException](SendMailCommand.readMailConfig((configured - missing).get))
+      assert(error.getMessage.contains(missing))
+      assert(!error.getMessage.contains("private-mail-password"))
+    }
+    val settings = SendMailCommand.readMailConfig(configured.get)
+    assertEquals(settings.host, "smtp.lima-city.de")
+    assertEquals(settings.port, "587")
   }
 
   test("mail settings have their own default codec") {

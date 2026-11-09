@@ -25,8 +25,14 @@ test('login preserves email, explains duplicate registration and observes failed
     const requestHeaders = [];
     const errors = [];
     const missingTranslations = [];
+    const destinations = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalEvents'].map(format => ({
+      syncDestination: {$type:'SyncDestinationBasedOnHistoryDatabase', format,
+        databaseConfig: {$type:'DatabaseConfig', dbFormat:'mysql', host:'herrgreubel.lima-db.de', port:'3306', database:'db_332371_12'}},
+      syncStrategy: {$type:'DesiredRelevance', desired:['MAJOR']}
+    }));
     let transportFailure = false;
     let validLogin = false;
+    let unknownAccount = false;
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', msg => { if (process.env.LOGIN_TEST_DEBUG) console.error(msg.text()); });
     await page.route('**/*', async route => {
@@ -45,9 +51,11 @@ test('login preserves email, explains duplicate registration and observes failed
           const user = {name:'Different Name',id:'test-user',mail:'first.last@example.org'};
           const token = {info:{user,createdAt:'2026-10-13T01:40:00',expiresAt:'2099-01-01T00:00:00'},tokenStringWithSignature:'mock-token'};
           value = {userKnown:true,tokenValid:validLogin,allUserInfo:validLogin ? {
-            user,credentials:{signedBackendToken:token,singleAccessToken:null,llmApiConfig:null,databaseConfig:null},config:{syncDestinations:[],isOnlineAccount:true}} : null};
+            user,credentials:{signedBackendToken:token,singleAccessToken:null,llmApiConfig:null,databaseConfig:null},config:{syncDestinations:destinations,isOnlineAccount:true}} : null};
         }
-        else if (command.name === 'auth-mail-request') value = {user:null,sent:true};
+        else if (command.name === 'fetch-from-db-request') value = {fetchedElements:[]};
+        else if (command.name === 'sync-to-db-request' || command.name === 'clear-values-in-db-request') value = {elementsAdded:1,elementsChanged:0,elementsRemoved:0,timestampCommitted:'2026-11-09T12:00:00'};
+        else if (command.name === 'auth-mail-request') value = {associatedUser:null,sent:!unknownAccount};
         else throw new Error('Unexpected command ' + command.name);
         return route.fulfill({headers,contentType:'application/json',body:response(command,value)});
       }
@@ -64,6 +72,7 @@ test('login preserves email, explains duplicate registration and observes failed
     const registration = page.locator('.section-register .login-area').first();
     const login = page.locator('.section-continue .login-area').first();
     const status = registration.locator('[role="status"]');
+    await page.waitForFunction(() => [...document.querySelectorAll('.container-login input[placeholder]')].every(input => input.placeholder && !input.placeholder.startsWith('[')));
     assert.equal(await registration.locator('.login-name-input').inputValue(), '');
     assert.equal(await registration.locator('.login-email-input').inputValue(), '');
     await registration.locator('button').click();
@@ -96,9 +105,29 @@ test('login preserves email, explains duplicate registration and observes failed
     await login.locator('button').first().click();
     await page.waitForFunction(() => /gesendet|sent/i.test(document.querySelector('.section-continue [role="status"]').textContent));
     assert.equal(requests.filter(command => command.name === 'auth-mail-request').length, 1, 'mail requests only follow the explicit button');
+    transportFailure = true;
+    await login.locator('button').first().click();
+    await page.waitForFunction(() => /server.*(could not send|konnte keinen)/i.test(document.querySelector('.section-continue [role="status"]').textContent));
+    assert.equal(await login.locator('button').first().isDisabled(), false, 'mail-service failures allow retry');
+    transportFailure = false;
+    unknownAccount = true;
+    await login.locator('button').first().click();
+    await page.waitForFunction(() => /No account|kein Konto/i.test(document.querySelector('.section-continue [role="status"]').textContent));
+    unknownAccount = false;
+    const defaultFetches = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalEvents'].map(format => page.waitForRequest(request => {
+      if (request.method() !== 'POST' || !request.url().endsWith('/executeCommand')) return false;
+      const payload = request.postDataJSON();
+      return payload?.name === 'fetch-from-db-request' && payload.json.databaseFormat === format;
+    }));
     validLogin = true;
     await login.locator('button').last().click();
     await page.waitForFunction(() => !document.querySelector('.container-login'));
+    for (const request of await Promise.all(defaultFetches)) {
+      const config = request.postDataJSON().json.databaseConfig;
+      assert.deepEqual(Object.keys(config).sort(), ['$type','database','dbFormat','host','port'].sort());
+      assert.equal(config.$type, 'DatabaseConfig');
+      assert.equal(config.database, 'db_332371_12');
+    }
     const storedUser = await page.evaluate(() => JSON.parse(localStorage.getItem('edusquirrel-alluserinfo')));
     assert.equal(storedUser.user.mail, 'first.last@example.org', 'successful login persists the backend user');
     assert.equal(storedUser.credentials, undefined, 'credentials stay out of browser storage');
@@ -116,6 +145,7 @@ test('login preserves email, explains duplicate registration and observes failed
     await connections.getByLabel('API key').fill('ephemeral-browser-key');
     await connections.getByRole('button', {name:'Apply', exact:true}).click();
     await connections.waitFor({state:'detached'});
+    assert(requests.some(command => command.name === 'fetch-from-db-request' && command.json.databaseConfig.$type === 'DatabaseConfigWithCredentials'), 'custom database sync uses the explicit credential-bearing configuration');
     assert(!await page.evaluate(() => /ephemeral-browser-key|ephemeral-database-password/.test(JSON.stringify(localStorage))));
     await page.locator('.workbook-user-menu-button').click();
     await page.getByRole('menuitem', {name:'Session connections', exact:true}).click();

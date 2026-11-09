@@ -29,6 +29,12 @@ login records are discarded so startup can show the login form. Other saved
 answers and browser storage are left intact. Do not add data migrations during
 development; reject unsupported data at its storage boundary.
 
+Unknown email addresses are reported as an unknown account without attempting SMTP.
+Delivery/transport failures display a server-error message and allow retry; they do
+not claim that the email address is wrong. Missing/invalid stored login codes are
+discarded, and requesting a code creates a new one. Only native JDBC timestamp
+values are accepted at this boundary; no legacy-format reader is provided.
+
 Account identity and configurable preferences are separate: invalid database
 preferences are discarded and replaced by `UserConfig.onlineDefaults`. They must
 not prevent login-code delivery or account lookup. No legacy schema is decoded.

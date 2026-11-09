@@ -188,6 +188,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
           UserCommands.authMailCommand.sendCommandTo(fullInfo.defaults.backendExecutor,
             AuthMailRequest(validatedEmail), Some(logger)).flatMap { response =>
             if (response.result.sent) Future.successful(())
+            else if (response.result.associatedUser.isEmpty) Future.failed(AuthenticationFailure("login/errorUnknownUser"))
             else Future.failed(AuthenticationFailure("login/errorTokenRequest"))
           }, "login/statusTokenSent", "login/errorTokenRequest")
       },

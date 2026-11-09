@@ -47,8 +47,7 @@ scripts in a disposable database; there is no separate test schema. See the
 in `SyncDestinationBasedOnHistoryDatabase`; configuring it does not convert data
 from another format. Its companion defines `defaultDatabaseWithKey`,
 `defaultDatabaseKeyless` and `defaultDatabaseV2`; account preferences select these
-presets rather than constructing their own defaults. Online accounts deliberately
-keep both classic formats active until V2 is deployed and verified.
+presets rather than constructing their own defaults. Online accounts synchronize to all three presets: both classic formats and V2.
 
 Numeric database IDs are implementation details and never enter client payloads
 or determine answer equality. Graders expose a lazy string `key`: SHA-256 of
@@ -92,7 +91,7 @@ Database connections have two explicit types under `DatabaseConfiguration`:
 also contains username and password. Both are accepted by sync destinations and
 by the required `databaseConfig` field of every database request. There is no
 parallel credential field or per-field merging. Public default presets live in
-`SyncDestinationDefinition`; both classic formats remain active.
+`SyncDestinationDefinition`; all three database formats remain active.
 
 For `DatabaseConfig`, the backend uses credentials from `SQL_*` only if its target
 matches the configured server database. `DatabaseConfigWithCredentials` is used

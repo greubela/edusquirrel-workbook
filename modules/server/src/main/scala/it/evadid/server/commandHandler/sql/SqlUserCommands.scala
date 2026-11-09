@@ -32,11 +32,6 @@ object SqlUserCommands {
 
     def accountNotFound(): SendMailResponse = {
       logger.logWarn(s"No Account for '${authMailRequest.userMail}' found in the database!")
-      val infoMail = SendMailRequest(
-        authMailRequest.userMail,
-        "Versuchter Login für evadid.it",
-        s"Guten Tag,\nJemand hat versucht, sich mit Ihrer Mailadresse bei evadid.it anzumelden. Dies hat nicht funktioniert, da Sie dort keinen Account besitzen. Die IP-Adresse des Versuches wurde auf unserem Server gespeichert. Weitere Schritte Ihrerseits sind nicht nötig!")
-      sendMail(infoMail, logger, JvmUtils.env)
       SendMailResponse(None, false)
     }
 
@@ -161,7 +156,15 @@ class SqlUserCommands(
     stmt.setString(1, userId)
 
     val result: List[List[String]] = generic.executeQuery(stmt, List("userId", "token", "tokenExpires"))
-    result.map(userColumns => SingleAccessToken(userColumns(1), generic.parseDatabaseTimestamp(userColumns(2)))).headOption
+    result.headOption.flatMap { columns =>
+      scala.util.Try {
+        require(Option(columns(1)).exists(_.trim.nonEmpty), "Empty login code")
+        SingleAccessToken(columns(1), generic.parseDatabaseTimestamp(columns(2)))
+      }.fold(_ => {
+        logger.logWarn("Discarded an invalid stored login code; a new code can be requested.")
+        None
+      }, Some(_))
+    }
   }
 
 
@@ -208,7 +211,7 @@ class SqlUserCommands(
       logger.logWarn("Cannot ensure token since user is unknown!")
       None
     } else if (token.isEmpty) {
-      createNewToken("none existed")
+      createNewToken("missing or invalid")
     }
     else if (token.get.expires.isBefore(LocalDateTime.now())) {
       createNewToken(s"old expired at ${token.get.expires}")
