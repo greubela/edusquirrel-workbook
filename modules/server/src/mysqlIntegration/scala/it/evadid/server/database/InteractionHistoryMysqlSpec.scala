@@ -232,4 +232,18 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assert(results.forall(_.valid), results.toString)
     assertEquals(results.count(_.created), 1)
   }
+
+  test("repeated answer values retain one grading result per logical grader key after configuration changes") {
+    store(history())
+    val newer = history("first", time.plusDays(1))
+    val changedResults = newer.historyGrading.gradingsFinished.flatMap(_.testsWithResults).map { result =>
+      if result.grader.key == s"$key:0" then result.copy(grader = grader(0).copy(exerciseText = LanguageMapContentId("test/changed-task")))
+      else result
+    }
+    val changed = newer.copy(historyGrading = InteractionVariableGradingHistory.fromResults(changedResults))
+    store(changed)
+    val restored = read[History](fetch()(sync))
+    assertEquals(restored.historyGrading.gradingsMap("first"), changed.historyGrading.gradingsMap("first"))
+    assertEquals(restored.historyStates.events.size, 2)
+  }
 }

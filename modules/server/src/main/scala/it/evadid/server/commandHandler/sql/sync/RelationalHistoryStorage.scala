@@ -65,6 +65,12 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) {
   private def readOptional(value: String): ujson.Value =
     Option(value).map(ujson.read(_)).getOrElse(ujson.Null)
 
+  private def mergeGrade(previous: GradingResult[ujson.Value, ujson.Value], incoming: GradingResult[ujson.Value, ujson.Value]) = {
+    require(previous.grader.key == incoming.grader.key)
+    if previous.grader == incoming.grader then previous.merge(incoming)
+    else if previous.gradingTime.isAfter(incoming.gradingTime) then previous else incoming
+  }
+
   private def upsertAnswer(sync: Long, event: ujson.Value): Unit = {
     val timestamp = time(event("timestamp"))
     val value = event("value")
@@ -115,8 +121,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) {
         val result = previous.map { previous =>
           val old = read[GradingResult[ujson.Value, ujson.Value]](previous)
           val current = read[GradingResult[ujson.Value, ujson.Value]](incoming)
-          if old.grader == current.grader then writeJs(old.merge(current))
-          else if old.gradingTime.isAfter(current.gradingTime) then previous else incoming
+          writeJs(mergeGrade(old, current))
         }.getOrElse(incoming)
         val regular = ujson.Obj("gradingStatus" -> result("gradingStatus"),
           "feedbackInformation" -> result.obj.getOrElse("feedbackInformation", ujson.Null))
@@ -167,7 +172,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) {
         states.get(row.getLong("answer_id")).flatMap(event => safe("grading " + row.getLong("id")) {
           val result = read[GradingResult[ujson.Value, ujson.Value]](gradeJson(row, event("value")))
           require(result.grader.key == row.getString("grader_key"), "Stored grader key mismatch")
-          result
+          result -> LocalDateTime.parse(event("timestamp").str)
         })
       }.flatten
       val scaffoldings = query("SELECT * FROM scaffolding_event WHERE sync_id=?", List(sync)) { row =>
@@ -175,7 +180,10 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) {
           read[ScaffoldingResult[ujson.Value, ujson.Value]](scaffoldingJson(row, event("value")))
         })
       }.flatten
-      val gradingHistory = writeJs(InteractionVariableGradingHistory.fromResults(grades))
+      val keyedGrades = grades.groupBy((result, _) => (result.gradedState, result.grader.key)).values.map { results =>
+        results.sortBy((result, answerTime) => (result.gradingTime, answerTime)).map(_._1).reduce(mergeGrade)
+      }
+      val gradingHistory = writeJs(InteractionVariableGradingHistory.fromResults(keyedGrades))
       val scaffoldingHistory = scaffoldings.groupBy(_.forState).map { (state, results) =>
         state -> writeJs(results.reduce(_.merge(_)))
       }
