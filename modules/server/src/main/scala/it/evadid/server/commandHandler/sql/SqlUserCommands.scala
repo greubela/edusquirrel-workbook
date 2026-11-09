@@ -8,6 +8,7 @@ import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
 import it.evadid.distribution.commandTypes.UserCommands.*
 import it.evadid.server.AuthHandling
+import it.evadid.server.database.UserAccountDatabase
 import it.evadid.server.SendMailCommand.sendMail
 import it.evadid.sql.DatabaseConfigWithCredentials
 import it.evadid.util.JvmUtils
@@ -25,7 +26,9 @@ object SqlUserCommands {
 
   given ExecutionContext = ExecutionContext.global
 
-  def requestAuthMail(authMailRequest: AuthMailRequest, logger: Logger): Future[SendMailResponse] = Future {
+  private val database = new UserAccountDatabase(() => DatabaseConfigWithCredentials.readFromEnv().newConnection())
+
+  def requestAuthMail(authMailRequest: AuthMailRequest, logger: Logger): Future[SendMailResponse] = {
 
     def accountNotFound(): SendMailResponse = {
       logger.logWarn(s"No Account for '${authMailRequest.userMail}' found in the database!")
@@ -43,21 +46,19 @@ object SqlUserCommands {
       SendMailResponse(Some(account), mailRes.sent)
     }
 
-    val control = instance(logger)
-    val accounts = control.findUserWithMail(authMailRequest.userMail)
-    logger.logInfo(s"Accounts found for mail ${authMailRequest.userMail}: " + accounts)
-    if (accounts.isEmpty) {
-      accountNotFound()
-    } else {
-      val account = accounts.head
-      val token = control.ensureAndGetUserTokenFromDb(account.user.id, logger)
-      if (token.isEmpty) accountNotFound()
-      else informationFound(account.user, token.get)
+    database.execute(logger) { control =>
+      val accounts = control.findUserWithMail(authMailRequest.userMail)
+      logger.logInfo(s"Accounts found for mail ${authMailRequest.userMail}: " + accounts)
+      accounts.headOption.flatMap { account =>
+        control.ensureAndGetUserTokenFromDb(account.user.id, logger).map(token => account.user -> token)
+      }
+    }.map {
+      case None => accountNotFound()
+      case Some((account, token)) => informationFound(account, token)
     }
   }
 
-  def handleLoginCommand(loginRequest: LoginRequest, logger: Logger): Future[LoginResponse] = Future {
-    val ctrl = instance(logger)
+  def handleLoginCommand(loginRequest: LoginRequest, logger: Logger): Future[LoginResponse] = database.execute(logger) { ctrl =>
     val dbUser = ctrl.findUserWithMail(loginRequest.userMail).headOption
     val user = dbUser.map(_.user)
 
@@ -94,9 +95,9 @@ object SqlUserCommands {
     }
   }
 
-  def handleCreateAccountCommand(request: CreateAccountRequest, logger: Logger): Future[CreateAccountResponse] = Future {
-    if (AuthHandling.mayCreateAccount(request.userInfo.user, logger)) {
-      instance(logger).upsertUser(request.userInfo.user, request.userInfo.config)
+  def handleCreateAccountCommand(request: CreateAccountRequest, logger: Logger): Future[CreateAccountResponse] = database.execute(logger) { control =>
+    if (control.mayCreateAccount(request.userInfo.user)) {
+      control.upsertUser(request.userInfo.user, request.userInfo.config)
       val token = AuthHandling.createToken(request.userInfo.user)
       CreateAccountResponse(true, Some(token))
     } else {
@@ -104,15 +105,7 @@ object SqlUserCommands {
     }
   }
 
-  def instance(logger: Logger): SqlUserCommands = {
-    val connection = DatabaseConfigWithCredentials.readFromEnv().newConnection()
-    val control = SqlUserCommands(connection, logger)
-    control
-  }
-
-  def handleUpdateAccountCommand(request: UpdateAccountRequest, logger: Logger): Future[UpdateAccountResponse] = Future {
-    val connection = DatabaseConfigWithCredentials.readFromEnv().newConnection()
-    val control = SqlUserCommands(connection, logger)
+  def handleUpdateAccountCommand(request: UpdateAccountRequest, logger: Logger): Future[UpdateAccountResponse] = database.execute(logger) { control =>
     val changes = control.upsertUser(request.allUserInfo.user, request.allUserInfo.config)
     val token = AuthHandling.createToken(request.allUserInfo.user)
     UpdateAccountResponse(changes > 0, token)
@@ -125,6 +118,20 @@ class SqlUserCommands(
                        connection: Connection,
                        logger: Logger,
                      ) {
+
+  def mayCreateAccount(requestedUser: User): Boolean = {
+    val findMail = findUserWithMail(requestedUser.mail)
+    val findId = readUserInfoFromDb(requestedUser.id)
+    if (findMail.nonEmpty) {
+      logger.logWarn(s"Mail ${requestedUser.mail} already associated with users ${findMail.map(_.user.id).mkString(", ")}!")
+      false
+    } else if (findId.nonEmpty) {
+      logger.logWarn(s"Id ${requestedUser.id} already in use (associated with mail ${findId.head.user.mail})!")
+      false
+    } else {
+      true
+    }
+  }
 
   private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection, logger)
 

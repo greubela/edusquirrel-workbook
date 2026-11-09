@@ -33,7 +33,10 @@ Account identity and configurable preferences are separate: invalid database
 preferences are discarded and replaced by `UserConfig.onlineDefaults`. They must
 not prevent login-code delivery or account lookup. No legacy schema is decoded.
 Creation and account updates use distinct command names, and updates require the
-authenticated user's ID.
+authenticated user's ID. All account operations run through
+`UserAccountDatabase.execute`, which owns one connection and closes it on success
+or failure. Registration checks and insertion share that scope; SMTP delivery
+runs after database work has released its connection.
 
 ## Diagnosing failures
 

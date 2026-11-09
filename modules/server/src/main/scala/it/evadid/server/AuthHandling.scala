@@ -3,7 +3,6 @@ package it.evadid.server
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.{User, UserTokenInfo}
 import it.evadid.core.util.io.serializer.DefaultSerializer
-import it.evadid.server.commandHandler.sql.SqlUserCommands
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
 import pdi.jwt.*
@@ -20,21 +19,6 @@ object AuthHandling {
   implicit val clock: Clock = Clock.systemUTC
   val algo = JwtAlgorithm.HS256
 
-
-  def mayCreateAccount(requestedUser: User, logger: Logger): Boolean = {
-    val instance = SqlUserCommands.instance(logger)
-    val findMail = instance.findUserWithMail(requestedUser.mail)
-    val findId = instance.readUserInfoFromDb(requestedUser.id)
-    if (findMail.nonEmpty) {
-      logger.logWarn(s"Mail ${requestedUser.mail} already associated with users ${findMail.map(_.user.id).mkString(", ")}!")
-      false
-    } else if (findId.nonEmpty) {
-      logger.logWarn(s"Id ${requestedUser.id} already in use (associated with mail ${findId.head.user.mail})!")
-      false
-    } else {
-      true
-    }
-  }
 
   def mayAccessIdBased(userIdRequester: String, userIdOwner: String): Boolean = {
     userIdRequester == userIdOwner
