@@ -6,7 +6,6 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.AllWorkbookInfo
-import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT_UNDERSCORE_REPLACABLE
 import org.scalajs.dom
@@ -50,12 +49,25 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
 
   lazy val privacyFooterStringSignal: Signal[String] = {
+
     fullInfo.signals.user.flatMapSwitch(allUserInfoOp => {
       if (allUserInfoOp.isEmpty) laminarHelper.plaintextStringSignal("login/privacyFooterNoLogin")
-      else if (!allUserInfoOp.get.config.isOnlineAccount) laminarHelper.plaintextStringSignal("login/privacyFooterLocalLogin")
+      else if (!allUserInfoOp.get.config.isOnlineAccount) {
+        val syncDest = allUserInfoOp.get.config.syncDestinations.map(_.syncDestination)
+        laminarHelper.contentIdStringSignal(
+          "login/privacyFooterLocalLogin",
+          PLAINTEXT_UNDERSCORE_REPLACABLE,
+          List(syncDest.mkString("(", ", ", ")"))
+        )
+      }
       else {
-        val syncDest = allUserInfoOp.get.config.syncDestinations.map(_.syncDestination.toString)
-        laminarHelper.contentIdStringSignal(LanguageMapContentId("login/privacyFooterOnlineLogin"), PLAINTEXT_UNDERSCORE_REPLACABLE, List(syncDest.size.toString, syncDest.mkString("(", ", ", ")")))
+        val syncDest = allUserInfoOp.get.config.syncDestinations.map(_.syncDestination)
+
+
+        laminarHelper.contentIdStringSignal(
+          LanguageMapContentId("login/privacyFooterOnlineLogin"),
+          PLAINTEXT_UNDERSCORE_REPLACABLE,
+          List(syncDest.size.toString, syncDest.count(!_.isRemote) + "", syncDest.count(_.isRemote) + ""))
       }
     })
 

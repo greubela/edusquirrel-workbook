@@ -6,6 +6,13 @@ import upickle.default.*
 
 sealed trait SyncDestinationDefinition derives ReadWriter {
 
+  def isRemote: Boolean = this match {
+    case _: SyncDestinationDefinition.SyncDestinationBasedOnConfigMap => ???
+    case _: SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase => true
+    case _: SyncDestinationDefinition.LocalIndexedDbSyncDefinition => false
+    case _: SyncDestinationDefinition.LocalStorageSyncDefinition => false
+  }
+
 }
 
 object SyncDestinationDefinition {
@@ -26,7 +33,6 @@ object SyncDestinationDefinition {
 
   case class LocalStorageSyncDefinition(maxValueCharakterSize: Int) extends SyncDestinationDefinition derives ReadWriter {
     override def toString: String = "DatabaseDestination(browser/localStorage->default)"
-
   }
 
 }
