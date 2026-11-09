@@ -10,5 +10,6 @@
   "showExpected": "Forventet resultat",
   "uploadTitle": "Upload projekt",
   "uploadButton": "Upload TurtleStitch-projekt (XML)",
-  "downloadButton": "Download det viste projekt"
+  "downloadButton": "Download det viste projekt",
+  "redownloadProgram": "Download din afgift"
 }
