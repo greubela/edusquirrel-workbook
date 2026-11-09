@@ -22,6 +22,7 @@ test('login preserves email, explains duplicate registration and observes failed
   try {
     const page = await browser.newPage();
     const requests = [];
+    const requestHeaders = [];
     const errors = [];
     const missingTranslations = [];
     let transportFailure = false;
@@ -36,6 +37,7 @@ test('login preserves email, explains duplicate registration and observes failed
         if (route.request().method() === 'OPTIONS') return route.fulfill({status:204,headers});
         const command = route.request().postDataJSON();
         requests.push(command);
+        requestHeaders.push(route.request().headers());
         if (transportFailure) return route.fulfill({status:503,headers,body:'Unavailable'});
         let value;
         if (command.name === 'create-account') value = {accountCreated:false,token:null};
@@ -114,6 +116,22 @@ test('login preserves email, explains duplicate registration and observes failed
     await page.getByRole('menuitem', {name:'Session connections', exact:true}).click();
     assert.equal(await connections.getByLabel('API key').inputValue(), 'ephemeral-browser-key', 'session credentials remain available in memory');
     await connections.getByRole('button', {name:'Cancel', exact:true}).click();
+    // Storage restrictions must not keep a signed-in session alive after logout.
+    await page.evaluate(() => {
+      const removeItem = Storage.prototype.removeItem;
+      Storage.prototype.removeItem = function(key) {
+        if (key === 'edusquirrel-alluserinfo') throw new DOMException('Fixture storage denied', 'SecurityError');
+        return removeItem.call(this, key);
+      };
+    });
+    await page.locator('.workbook-user-menu-button').click();
+    await page.getByRole('menuitem', {name:/^(Abmelden|Log out)$/}).click();
+    await page.locator('.container-login').waitFor();
+    await login.locator('.login-email-input').fill('first.last@example.org');
+    await login.locator('button').first().click();
+    await page.waitForFunction(() => /gesendet|sent/i.test(document.querySelector('.section-continue [role="status"]').textContent));
+    assert(!requestHeaders.at(-1).authorization, 'logout clears the backend token even when browser storage is unavailable');
+
     await page.reload();
     await page.locator('.container-login').waitFor();
     assert(!await page.evaluate(() => JSON.stringify(localStorage).includes('ephemeral-browser-key')));

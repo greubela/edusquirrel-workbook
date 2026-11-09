@@ -21,7 +21,8 @@ token, login code, custom database password and LLM key) live in
 `AllUserInfo.credentials` in memory. Online accounts require a fresh login after
 reload; local profile preferences may be restored. No credentials are written to
 account preferences, browser storage or exported sessions. The existing short-lived
-server login-code verification workflow is unchanged.
+server login-code verification workflow is unchanged. Browser storage failures
+do not prevent login or logout from updating the in-memory session.
 
 Saved preference restoration accepts only the current schema. Unreadable or obsolete
 login records are discarded so startup can show the login form. Other saved

@@ -222,16 +222,20 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = fullInfo.synchronized {
 
-    def actuallySetNewUser(): Unit = try {
-      LocalStorageSyncHandler.removeKey(allUserInfoStorageKey)
-      if (newUserInfo.isDefined) {
-        val allUserInfo = newUserInfo.get
-        logger.logInfo(s"Loading user ${allUserInfo.toString}")
-        val serialized = write(SavedUserPreferences(allUserInfo.user, allUserInfo.config))
-        LocalStorageSyncHandler.instance.storeElementRaw(fullInfo.syncControl.syncLogger, allUserInfoStorageKey, serialized)
-      }
+    def actuallySetNewUser(): Unit = {
+      try {
+        LocalStorageSyncHandler.removeKey(allUserInfoStorageKey)
+        newUserInfo.foreach { allUserInfo =>
+          logger.logInfo(s"Loading user ${allUserInfo.toString}")
+          val serialized = write(SavedUserPreferences(allUserInfo.user, allUserInfo.config))
+          LocalStorageSyncHandler.instance.storeElementRaw(fullInfo.syncControl.syncLogger, allUserInfoStorageKey, serialized)
+            .failed.foreach(error => logger.logExceptionWarn("Could not save user preferences", error))
+        }
+      } catch case scala.util.control.NonFatal(error) =>
+        logger.logExceptionWarn("Could not update saved user preferences", error)
+      // Browser storage is optional. It must never prevent clearing session credentials.
       fullInfo.homepageInfoState.update(_.copy(userInfo = newUserInfo))
-    } catch case (err: Throwable) => logger.logException(err)
+    }
 
     val oldUser = fullInfo.homepageInfoNow().userInfo
     logger.logInfo(s"Change User: ${oldUser.map(_.user.mail).getOrElse("none")} -> ${newUserInfo.map(_.user.mail).getOrElse("none")}")
