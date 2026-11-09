@@ -46,7 +46,7 @@ lazy val server = (project in file("./modules/server"))
     name := "server",
     MysqlIntegration / parallelExecution := false,
     MysqlIntegration / fork := true,
-    MysqlIntegration / unmanagedResourceDirectories += (LocalRootProject / baseDirectory).value / "deployment" / "server" / "sql",
+    Compile / unmanagedResourceDirectories += (LocalRootProject / baseDirectory).value / "artifacts" / "database",
     Compile / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / assemblyJarName := "server.jar",
@@ -63,6 +63,7 @@ lazy val server = (project in file("./modules/server"))
     // Dependencies exported by core.jvm are already on this project's classpath.
     libraryDependencies ++= serverDependencies.value ++ Seq(
       "com.mysql" % "mysql-connector-j" % "26.10.0",
+      "com.github.jsqlparser" % "jsqlparser" % "5.3",
       "org.eclipse.angus" % "jakarta.mail" % "2.0.5",
       "org.slf4j" % "slf4j-simple" % "2.0.20" % Runtime,
       "org.scalameta" %% "munit" % "1.3.6" % Test
