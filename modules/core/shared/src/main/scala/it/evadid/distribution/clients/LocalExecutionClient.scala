@@ -24,7 +24,7 @@ trait LocalExecutionClient[I: ReadWriter, O: ReadWriter] extends ExecutionClient
     val input: I = try {
       read(executionCommand.json)
     } catch case (err: Throwable) => {
-      throw SerializedException(s"${this.getClass.getSimpleName} could not parse ${executionCommand.stripPrivacySensitiveInformation().json} as input!")
+      throw SerializedException(s"Unsupported request format for command ${executionCommand.name}. Rebuild and reload the client and restart the server using the same version. Request with secrets removed: ${executionCommand.stripPrivacySensitiveInformation().json}")
     }
     rawExecution(logger, input).transform {
       case Success(res) => Try {

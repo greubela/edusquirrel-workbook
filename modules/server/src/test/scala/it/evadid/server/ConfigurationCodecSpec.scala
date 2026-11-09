@@ -13,6 +13,18 @@ class ConfigurationCodecSpec extends FunSuite {
     }
   }
 
+  test("backend accepts the current browser sync wire format and rejects the removed partial format") {
+    import it.evadid.distribution.commandTypes.SQLCommands.FetchAllFromDbRequest
+    import it.evadid.sql.DatabaseConfig
+    val json = ujson.read("""{"usageContext":{"programId":"edusquirrel","scenarioId":"workbookTest","userId":"student"},
+      "databaseConfig":{"$type":"DatabaseConfig","dbFormat":"mysql","host":"herrgreubel.lima-db.de","port":"3306","database":"db_332371_12"},
+      "mayLimitToKey":null,"databaseFormat":"ClassicJsonWithKey"}""")
+    assertEquals(read[FetchAllFromDbRequest](json).databaseConfig, DatabaseConfig.defaultDb)
+    val unsupported = ujson.read("""{"databaseOp":"db_332371_12","dbFormatOp":"mysql","hostOp":"herrgreubel.lima-db.de","portOp":"3306"}""")
+    json("databaseConfig") = unsupported
+    assert(scala.util.Try(read[FetchAllFromDbRequest](json)).isFailure)
+  }
+
   test("public targets resolve server credentials; supplied credentials bypass server defaults") {
     import it.evadid.server.database.DatabaseRequestConnection
     val defaults = DatabaseConfigWithCredentials("mysql", "backend", "3306", "main", "server", "server-secret")

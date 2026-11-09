@@ -23,7 +23,8 @@ object UserConfig {
     List(
       SyncInformation(defaultBrowserHistory, SYNC_LAST_AND_MAJOR),
       SyncInformation(defaultDatabaseWithKey, SYNC_MAJOR),
-      SyncInformation(defaultDatabaseKeyless, SYNC_MAJOR)
+      SyncInformation(defaultDatabaseKeyless, SYNC_MAJOR),
+      SyncInformation(defaultDatabaseV2, SYNC_MAJOR)
     )
   }
 
