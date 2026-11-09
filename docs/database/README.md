@@ -25,6 +25,8 @@ database. Any existing table or view prevents automatic creation, including a
 partially configured or conflicting schema. Explicit `setupIfEmpty` uses the
 same rule. Missing/incompatible structures are reported for operator review;
 existing databases are never repaired automatically.
+An advisory lock coordinates concurrent backend initializers; setup rechecks
+emptiness while holding that lock and requires a dedicated auto-commit connection.
 
 All scripts are parsed before the first creation statement. MySQL DDL is not
 transactional across tables: a permissions, connection or disk failure during

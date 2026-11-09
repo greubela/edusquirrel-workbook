@@ -214,4 +214,22 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       assertEquals(read[History](fetch()(sync)), history())
     }
   }
+
+  test("simultaneous initializers create an empty database once and both observe a valid schema") {
+    import scala.concurrent.{Await, ExecutionContext, Future}
+    import scala.concurrent.duration.*
+    given ExecutionContext = ExecutionContext.global
+    MysqlTestDatabase.withConnection(MysqlTestDatabase.clearSchema)
+    val ready = new java.util.concurrent.CountDownLatch(2)
+    val attempts = List.fill(2)(Future {
+      MysqlTestDatabase.withConnection { connection =>
+        ready.countDown()
+        assert(ready.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        EnsureDatabaseProperlySetup.setupIfEmpty(connection)
+      }
+    })
+    val results = Await.result(Future.sequence(attempts), 20.seconds)
+    assert(results.forall(_.valid), results.toString)
+    assertEquals(results.count(_.created), 1)
+  }
 }
