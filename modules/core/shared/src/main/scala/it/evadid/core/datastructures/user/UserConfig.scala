@@ -9,6 +9,9 @@ case class UserConfig(syncDestinations: List[SyncInformation], isOnlineAccount: 
 
 
 object UserConfig {
+
+
+
   lazy val defaultSyncDestinations: List[SyncInformation] = {
     import it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation
     import it.evadid.sql.DatabaseHistoryFormat.{ClassicJsonWithKey, ClassicKeylessJson}

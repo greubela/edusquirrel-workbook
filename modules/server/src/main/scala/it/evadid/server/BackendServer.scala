@@ -30,8 +30,6 @@ object BackendServer {
 
   private val serverStartedAt: LocalDateTime = LocalDateTime.now()
 
-
-
   def fail(commandReceived: LocalDateTime, msg: String, cause: Option[SerializedException], command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
     logger.logError(msg)
     ExecutionClientResponse(
@@ -113,6 +111,7 @@ object BackendServer {
     new NettyServerComponents with BuiltInComponents with NoHttpFiltersComponents {
       override lazy val serverConfig: ServerConfig = config
       override lazy val configuration: play.api.Configuration = config.configuration
+
       override def router: Router = Router.from(routes(defaultActionBuilder))
     }.server
 
@@ -122,8 +121,7 @@ object BackendServer {
 
     println(s"[server] Booting Play HTTP server on $host:$port ...")
 
-    it.evadid.server.database.EnsureDatabaseProperlySetup.onStartup(
-      Logger.withNameAndPrefixes(Some("DatabaseSetup"), PrintToStdLogger.printEverything))
+    //it.evadid.server.database.EnsureDatabaseProperlySetup.onStartup(Logger.withNameAndPrefixes(Some("DatabaseSetup"), PrintToStdLogger.printEverything))
 
     val server = createServer(ServerConfig(port = Some(port), address = "0.0.0.0"))(buildApiRouter)
 
