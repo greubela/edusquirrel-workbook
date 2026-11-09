@@ -94,7 +94,7 @@ object FetchFromDatabase {
   private def union(list: List[String]): String = HistoryJson.merge(list)
 
   def handleRequest(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
-    val config = DatabaseConfig.readFromEnv(Some(request.databaseName))
+    val config = DatabaseConfig.readFromEnv(dbName = Some(request.databaseName))
     val connection = config.newConnection()
 
     val control = FetchFromDatabase(connection, request.usageContext, logger)

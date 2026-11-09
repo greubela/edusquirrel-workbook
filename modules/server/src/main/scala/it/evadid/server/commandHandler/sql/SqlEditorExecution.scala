@@ -21,7 +21,7 @@ object SqlEditorExecution {
     if !allowedDatabase(name, allowed) || user.isEmpty || password.isEmpty then
       return Response(Status.ConfigurationError, "Exercise database is not configured on the server.")
 
-    val config = DatabaseConfig.readFromEnv(Some(name)).copy(user = user.get, password = password.get)
+    val config = DatabaseConfig.readFromEnv(dbName = Some(name)).copy(user = user.get, password = password.get)
     if Option(config.host).forall(_.trim.isEmpty) ||
         !Option(config.port).flatMap(port => Try(port.toInt).toOption).exists(port => port >= 1 && port <= 65535) then
       return Response(Status.ConfigurationError, "Exercise database host or port is not configured on the server.")

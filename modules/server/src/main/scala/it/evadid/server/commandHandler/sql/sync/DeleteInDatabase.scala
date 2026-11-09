@@ -90,7 +90,7 @@ case class DeleteInDatabase(
 object DeleteInDatabase {
 
   def handleRequest(request: DeleteInDbRequest, logger: Logger): SyncSuccess = {
-    val config = DatabaseConfig.readFromEnv(Some(request.databaseName))
+    val config = DatabaseConfig.readFromEnv(dbName = Some(request.databaseName))
     val connection = config.newConnection()
 
     val control = DeleteInDatabase(connection, request.usageContext, logger)
