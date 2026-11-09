@@ -19,47 +19,15 @@ import scala.concurrent.*
 
 case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definition: SyncDestinationBasedOnHistoryDatabase) extends SyncDestinationHistoryHandler {
 
-  assert(definition.databaseConfig.databaseOp.nonEmpty, "database name must not be empty!")
-  val dbName: String = definition.databaseConfig.databaseOp.get
-
   private def backend: ExecutionClient = fullInfo.defaults.backendExecutor
-
   private given ec: ExecutionContext = ExecutionContext.global
-
-  /*
-
-
-
-
-
-  override def fetchAllInteractions(logger: SyncLogger, context: UsageContext): Future[FetchResponse[SyncContext, String]] = {
-
-  }
-
-  override def shouldBePersistant(): Boolean = true
-
-  override def clearAllValues(logger: SyncLogger, context: UsageContext): Future[SyncSuccess] = {
-    clearValues(context, None)
-  }
-
-  override def clearValues(logger: SyncLogger, context: SyncContext): Future[SyncSuccess] = {
-    clearValues(context.toUsageContext, Some(context.keyForSerialisation))
-  }
-
-  def clearValues(context: UsageContext, limitToKey: Option[String]): Future[SyncSuccess] = {
-    val request = SQLCommands.DeleteInDbRequest(context, limitToKey, dbName, definition.format)
-    val exInfoFut: Future[ExecutionSuccess[SyncSuccess]] = SQLCommands.clearValuesDbCommand.sendCommandTo(backend, request, None, None)
-    exInfoFut.map(_.result)(using ec)
-  }
-
-  override def isLocal: Boolean = false
-
-*/
+  private def connectionInfo = definition.databaseConfig.withFallback(fullInfo.defaults.defaultDb)
+  private def credentials = fullInfo.homepageInfoNow().userInfo.flatMap(_.credentials.databaseConfig)
 
   override def syncLogger: SyncLogger = pSyncLogger
 
   private def clearValues(context: UsageContext, limitToKey: Option[String]): Future[SyncSuccess] = {
-    val request = SQLCommands.DeleteInDbRequest(context, limitToKey, dbName, definition.format)
+    val request = SQLCommands.DeleteInDbRequest(context, limitToKey, connectionInfo, definition.format, credentials)
     val exInfoFut: Future[ExecutionSuccess[SyncSuccess]] = SQLCommands.clearValuesDbCommand.sendCommandTo(backend, request, None, None)
     exInfoFut.map(_.result)(using ec)
   }
@@ -71,7 +39,7 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
   override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = clearValues(context, None)
 
   override def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
-    val dbRequest = StoreToDbRequest(syncContext, historyJson, definition.databaseConfig.databaseOp.get, definition.format)
+    val dbRequest = StoreToDbRequest(syncContext, historyJson, connectionInfo, definition.format, credentials)
     val exInfo: Future[ExecutionSuccess[SyncSuccess]] = SQLCommands.StoreToDbCommand.sendCommandTo(backend, dbRequest)
     exInfo.map(exInfo => exInfo.result)(using ec)
   }
@@ -81,7 +49,7 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
   }
 
   override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
-    val request = SQLCommands.FetchAllFromDbRequest(usageContext, dbName, None, definition.format)
+    val request = SQLCommands.FetchAllFromDbRequest(usageContext, connectionInfo, None, definition.format, credentials)
     val exInfoFut: Future[ExecutionSuccess[DbFetchResponse]] = SQLCommands.fetchFromDbCommand.sendCommandTo(backend, request)
     exInfoFut.map(toFetchResponse)
   }

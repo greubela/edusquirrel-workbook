@@ -28,8 +28,8 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   private val database = "edusquirrel_account_test"
   private val time = LocalDateTime.of(2026, 11, 9, 12, 13, 14, 123456789)
   private val transcript = MessengerModel(List(Message("entity-specific transcript", MessengerModel.pAgent)))
-  private def grader(index: Int) = TextInputLlmGrader(s"$key:$index", LanguageMapContentId("test/task"), None,
-    TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(LanguageMapContentId("test/criterion"), Map.empty))
+  private def grader(index: Int) = TextInputLlmGrader(LanguageMapContentId("test/task"), None,
+    TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(LanguageMapContentId(s"test/criterion-$index"), Map.empty))
   private def history(value: String = "first", at: LocalDateTime = time): History = {
     val grades: Map[WorkbookInteractionGrader[String, MessengerModel], GradingResult[String, MessengerModel]] = (0 to 1).map { index =>
       val check = grader(index)
@@ -43,9 +43,9 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       Set(GradedState(value, grades)), Set(scaffolding))
   }
   private def store(history: History, format: DatabaseHistoryFormat = RelationalEvents): Unit =
-    UpsertToDatabase.handleRequest(StoreToDbRequest(sync, write(history), database, format), logger)
+    UpsertToDatabase.handleRequest(StoreToDbRequest(sync, write(history), it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), format), logger)
   private def fetch(format: DatabaseHistoryFormat = RelationalEvents): Map[it.evadid.workbook.interaction.sync.SyncContext, String] =
-    FetchFromDatabase.handleRequest(FetchAllFromDbRequest(context, database, None, format), logger).fetchedElements
+    FetchFromDatabase.handleRequest(FetchAllFromDbRequest(context, it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), None, format), logger).fetchedElements
   private def scalar(sql: String): Long = MysqlTestDatabase.withConnection { connection =>
     Using.resource(connection.createStatement())(statement => Using.resource(statement.executeQuery(sql))(rows => { rows.next(); rows.getLong(1) }))
   }
@@ -56,7 +56,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val saved = history()
       store(saved, format)
       assertEquals(read[History](fetch(format)(sync)), saved)
-      DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), database, format), logger)
+      DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), format), logger)
       assertEquals(fetch(format), Map.empty)
     }
   }
@@ -118,10 +118,10 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   test("reads, deletes and feedback foreign keys stay within their sync context") {
     store(history())
     val other = context.copy(userId = "other-student").toSyncContext(key)
-    UpsertToDatabase.handleRequest(StoreToDbRequest(other, write(history()), database, RelationalEvents), logger)
-    DeleteInDatabase.handleRequest(DeleteInDbRequest(context, None, database, RelationalEvents), logger)
+    UpsertToDatabase.handleRequest(StoreToDbRequest(other, write(history()), it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), RelationalEvents), logger)
+    DeleteInDatabase.handleRequest(DeleteInDbRequest(context, None, it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), RelationalEvents), logger)
     assertEquals(fetch(), Map.empty)
-    val retained = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(other.toUsageContext, database, None, RelationalEvents), logger)
+    val retained = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(other.toUsageContext, it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), None, RelationalEvents), logger)
     assertEquals(read[History](retained.fetchedElements(other)), history())
     MysqlTestDatabase.withConnection { connection =>
       Using.resource(connection.createStatement()) { statement =>
@@ -171,7 +171,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   test("malformed feedback is isolated on reads and can be replaced without losing other records") {
     store(history())
     MysqlTestDatabase.withConnection { connection =>
-      Using.resource(connection.createStatement())(_.executeUpdate("UPDATE grading_event SET serialized_data='{}' WHERE grader_key='answer_history:0'"))
+      Using.resource(connection.createStatement())(_.executeUpdate(s"UPDATE grading_event SET serialized_data='{}' WHERE grader_key='${grader(0).key}'"))
     }
     val restored = read[History](fetch()(sync))
     assertEquals(restored.historyGrading.gradingsMap("first").graderResultMap.size, 1)
@@ -237,7 +237,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     store(history())
     val newer = history("first", time.plusDays(1))
     val changedResults = newer.historyGrading.gradingsFinished.flatMap(_.testsWithResults).map { result =>
-      if result.grader.key == s"$key:0" then result.copy(grader = grader(0).copy(exerciseText = LanguageMapContentId("test/changed-task")))
+      if result.grader.key == grader(0).key then result.copy(grader = grader(0).copy(exerciseText = LanguageMapContentId("test/changed-task")))
       else result
     }
     val changed = newer.copy(historyGrading = InteractionVariableGradingHistory.fromResults(changedResults))
@@ -251,11 +251,11 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     val variants = List(context, context.copy(programId = "PROGRAM"), context.copy(programId = "program "))
     variants.foreach { usage =>
       val identity = usage.toSyncContext(key)
-      UpsertToDatabase.handleRequest(StoreToDbRequest(identity, write(history()), database, RelationalEvents), logger)
+      UpsertToDatabase.handleRequest(StoreToDbRequest(identity, write(history()), it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), RelationalEvents), logger)
     }
     assertEquals(scalar("SELECT COUNT(*) FROM sync_context_id"), 3L)
     variants.foreach { usage =>
-      val response = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(usage, database, None, RelationalEvents), logger)
+      val response = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(usage, it.evadid.sql.DatabaseConfiguration.PartialDatabaseInformation(databaseOp = Some(database)), None, RelationalEvents), logger)
       assertEquals(response.fetchedElements.keySet, Set(usage.toSyncContext(key)))
     }
   }

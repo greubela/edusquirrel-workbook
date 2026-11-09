@@ -1242,3 +1242,20 @@ textarea.workbook-interaction {
 .login-status-error {
     color: var(--color-accent-error);
 }
+
+.session-credentials {
+  position: fixed;
+  inset: 8vh max(1rem, calc((100vw - 36rem) / 2));
+  z-index: 1100;
+  overflow-y: auto;
+  background: var(--surface, white);
+  color: var(--text-color, #222);
+  border: 1px solid #888;
+  border-radius: .5rem;
+  padding: 1.25rem;
+  box-shadow: 0 .5rem 2rem #0005;
+}
+.session-credentials label { display: block; margin: .6rem 0; }
+.session-credentials label > span { display: block; }
+.session-credentials input[type="text"], .session-credentials input[type="password"] { width: 100%; box-sizing: border-box; }
+.session-credentials button { margin-right: .5rem; }

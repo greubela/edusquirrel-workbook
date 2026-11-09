@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.workbook.elements.interactionElements.blockchain.*
-import it.evadid.workbook.model.blockchain.Sha256
+import it.evadid.core.util.crypto.Sha256
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object Sha256Renderer extends LineBasedRenderingFactory[Sha256Interaction] {

@@ -1,10 +1,12 @@
 package it.evadid.server.commandHandler.sql
 
+import it.evadid.core.datastructures.user.UserCredentials
+
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.core.datastructures.user.User.{SingleAccessToken, UserInDatabase}
 import it.evadid.distribution.commandTypes.UserCommands.*
 import it.evadid.server.AuthHandling
-import it.evadid.sql.DatabaseConfig
+import it.evadid.sql.DatabaseConfiguration
 import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
 
@@ -28,14 +30,14 @@ class UserAccountMysqlSpec extends FunSuite {
   private def normalized(user: User): User = user.copy(mail = user.mail.toLowerCase)
 
   private def withDatabase[A](run: Connection => A): A =
-    Using.resource(DatabaseConfig.readFromEnv().newConnection())(run)
+    Using.resource(DatabaseConfiguration.readFromEnv().newConnection())(run)
 
   private def queries[A](run: SqlUserCommands => A): A =
     withDatabase(connection => run(SqlUserCommands(connection, logger)))
 
   private def register(user: User = alice): CreateAccountResponse =
     Await.result(SqlUserCommands.handleCreateAccountCommand(
-      CreateAccountRequest(AllUserInfo(user, None, config)), logger), 10.seconds)
+      CreateAccountRequest(AllUserInfo(user, UserCredentials(signedBackendToken = None), config)), logger), 10.seconds)
 
   private def login(mail: String, token: SingleAccessToken): LoginResponse =
     Await.result(SqlUserCommands.handleLoginCommand(LoginRequest(mail, Left(token)), logger), 10.seconds)
@@ -92,7 +94,7 @@ class UserAccountMysqlSpec extends FunSuite {
     val changed = alice.copy(name = "Updated ' name", mail = "Changed@Example.Invalid")
     val settings = UserConfig(Nil, isOnlineAccount = true)
     val response = Await.result(SqlUserCommands.handleUpdateAccountCommand(
-      UpdateAccountRequest(AllUserInfo(changed, None, settings)), logger), 10.seconds)
+      UpdateAccountRequest(AllUserInfo(changed, UserCredentials(signedBackendToken = None), settings)), logger), 10.seconds)
     assert(response.accountChanged)
     assertEquals(response.token.info.user, changed)
     queries { control =>
@@ -148,7 +150,7 @@ class UserAccountMysqlSpec extends FunSuite {
     assert(response.loginSucceeded)
     assertEquals(response.allUserInfo.map(_.user), Some(normalized(alice)))
     assertEquals(response.allUserInfo.map(_.config), Some(config))
-    assert(response.allUserInfo.flatMap(_.token).exists(AuthHandling.isTokenValid(logger, _)))
+    assert(response.allUserInfo.flatMap(_.credentials.signedBackendToken).exists(AuthHandling.isTokenValid(logger, _)))
 
     queries(_.upsertToken(alice.id, token.copy(expires = LocalDateTime.now().minusDays(1))))
     assert(!login(alice.mail, token).loginSucceeded)

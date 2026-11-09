@@ -15,7 +15,9 @@ import upickle.default.*
 import scala.concurrent.{ExecutionContext, Future}
 
 trait WorkbookInteractionGrader[T, A] {
-  def key: String
+  protected def identityContent: ujson.Value = it.evadid.core.util.crypto.ContentIdentity.json(this)
+  private lazy val contentKey: String = it.evadid.core.util.crypto.ContentIdentity.key(identityContent)
+  def key: String = contentKey
 
   given ec: ExecutionContext = ExecutionContext.global
 

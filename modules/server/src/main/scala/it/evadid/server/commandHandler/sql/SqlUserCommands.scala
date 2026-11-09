@@ -1,5 +1,7 @@
 package it.evadid.server.commandHandler.sql
 
+import it.evadid.core.datastructures.user.UserCredentials
+
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.core.datastructures.user.User.*
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
@@ -7,7 +9,7 @@ import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMa
 import it.evadid.distribution.commandTypes.UserCommands.*
 import it.evadid.server.AuthHandling
 import it.evadid.server.SendMailCommand.sendMail
-import it.evadid.sql.DatabaseConfig
+import it.evadid.sql.DatabaseConfiguration
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.SyncInformation.*
@@ -76,7 +78,7 @@ object SqlUserCommands {
             LoginResponse(dbUser.isDefined, false, None)
           } else {
             val token = AuthHandling.createToken(user.get)
-            val userInfo = AllUserInfo(user.get, Some(token), dbUser.get.config)
+            val userInfo = AllUserInfo(user.get, UserCredentials(signedBackendToken = Some(token)), dbUser.get.config)
             LoginResponse(dbUser.isDefined, true, Some(userInfo))
           }
         }
@@ -85,7 +87,7 @@ object SqlUserCommands {
         if (!dbUser.exists(_.user.id == signedToken.info.user.id) || !AuthHandling.isTokenValid(logger, signedToken)) {
           LoginResponse(dbUser.isDefined, false, None)
         } else {
-          val userInfo = AllUserInfo(user.get, Some(signedToken), dbUser.get.config)
+          val userInfo = AllUserInfo(user.get, UserCredentials(signedBackendToken = Some(signedToken)), dbUser.get.config)
           LoginResponse(dbUser.isDefined, true, Some(userInfo))
         }
       }
@@ -103,13 +105,13 @@ object SqlUserCommands {
   }
 
   def instance(logger: Logger): SqlUserCommands = {
-    val connection = DatabaseConfig.readFromEnv().newConnection()
+    val connection = DatabaseConfiguration.readFromEnv().newConnection()
     val control = SqlUserCommands(connection, logger)
     control
   }
 
   def handleUpdateAccountCommand(request: UpdateAccountRequest, logger: Logger): Future[UpdateAccountResponse] = Future {
-    val connection = DatabaseConfig.readFromEnv().newConnection()
+    val connection = DatabaseConfiguration.readFromEnv().newConnection()
     val control = SqlUserCommands(connection, logger)
     val changes = control.upsertUser(request.allUserInfo.user, request.allUserInfo.config)
     val token = AuthHandling.createToken(request.allUserInfo.user)

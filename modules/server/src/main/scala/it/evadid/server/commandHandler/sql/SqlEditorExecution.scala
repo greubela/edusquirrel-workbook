@@ -1,7 +1,7 @@
 package it.evadid.server.commandHandler.sql
 
 import it.evadid.distribution.commandTypes.SqlEditorCommands.*
-import it.evadid.sql.DatabaseConfig
+import it.evadid.sql.DatabaseConfiguration
 
 import java.sql.{Connection, DriverManager, SQLException, Statement}
 import scala.util.{Try, Using}
@@ -21,7 +21,7 @@ object SqlEditorExecution {
     if !allowedDatabase(name, allowed) || user.isEmpty || password.isEmpty then
       return Response(Status.ConfigurationError, "Exercise database is not configured on the server.")
 
-    val config = DatabaseConfig.readFromEnv(dbName = Some(name)).copy(user = user.get, password = password.get)
+    val config = DatabaseConfiguration.readFromEnv(dbName = Some(name)).copy(user = user.get, password = password.get)
     if Option(config.host).forall(_.trim.isEmpty) ||
         !Option(config.port).flatMap(port => Try(port.toInt).toOption).exists(port => port >= 1 && port <= 65535) then
       return Response(Status.ConfigurationError, "Exercise database host or port is not configured on the server.")

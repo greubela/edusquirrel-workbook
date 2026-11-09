@@ -18,6 +18,6 @@ case class ProgrammingTestSuite(graders: List[ProgrammingTestGrader]) extends Be
 
 case class SampleBeTest(pythonTestCode: String) extends BeTestSuite derives ReadWriter {
   override def graders: List[ProgrammingTestGrader] =
-    List(ProgrammingUnitTestGrader("standalone:0", ProgrammingUnitTestGrader.SampleTestId, pythonTestCode))
+    List(ProgrammingUnitTestGrader(ProgrammingUnitTestGrader.SampleTestId, pythonTestCode))
 }
 

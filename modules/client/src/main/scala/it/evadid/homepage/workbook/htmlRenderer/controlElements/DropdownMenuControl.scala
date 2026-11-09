@@ -8,7 +8,7 @@ import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer
 import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.basic.HtmlDropdownMenu
+import it.evadid.homepage.webElements.basic.{HtmlDropdownMenu, SessionCredentialsEditor}
 import it.evadid.homepage.workbook.syncDestination.LocalStorageSyncHandler
 import org.scalajs.dom.{File, HTMLInputElement}
 
@@ -17,6 +17,7 @@ import scala.concurrent.ExecutionContext
 case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Option[AllUserInfo]) extends HtmlAppElement {
 
   private val isOpen: Var[Boolean] = Var(false)
+  private val credentialsOpen = Var(false)
 
   private val currentUserInitials: Signal[String] = fullInfo.signals.user.map(_.map(_.user.initials).getOrElse("[?]"))
 
@@ -65,6 +66,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
       HtmlDropdownMenu.menuLabel(userNameOrNobodySignal),
       HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => downloadAll()),
       HtmlDropdownMenu.menuItem("basic/buttonLocalUpload", _ => uploadInput.ref.click()),
+      HtmlDropdownMenu.menuItem(Val("Session connections"), _ => { closeMenu(); credentialsOpen.set(true) }),
       HtmlDropdownMenu.menuItem("basic/logout", _ => logout())
     )
   }
@@ -92,6 +94,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
       span(cls := "workbook-user-menu-icon", child.text <-- currentUserInitials),
       span(cls := "workbook-user-menu-caret", "▾")
     ),
+    child.maybe <-- credentialsOpen.signal.map(open => Option.when(open)(SessionCredentialsEditor(() => credentialsOpen.set(false)).getDomElement())),
     child.maybe <-- isOpen.signal.map(open => Option.when(open)(menu.getDomElement()))
   )
 

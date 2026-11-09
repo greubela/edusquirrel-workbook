@@ -17,14 +17,13 @@ import scala.concurrent.Future
 import scala.util.Try
 import scala.util.control.NonFatal
 
-case class ProgrammingUnitTestGrader(key: String, testId: String, pythonTestCode: String,
+case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
                                      importance: GradingImportance = GradingImportance.REQUIRED_TEST,
                                      publicDescription: Option[LanguageMapContentId] = None,
                                      override val publishProgramObservation: Boolean = false,
                                      publishInvocationArguments: Boolean = false,
                                      publishCommandComparison: Boolean = false)
   extends ProgrammingTestGrader {
-  override def withKey(value: String): ProgrammingUnitTestGrader = copy(key = value)
 
 
 
@@ -88,7 +87,7 @@ case class ProgrammingUnitTestGrader(key: String, testId: String, pythonTestCode
 object ProgrammingUnitTestGrader {
   private[evadid] val SampleTestId = "python-assertions"
 
-  private case class Payload(key: String, testId: String, pythonTestCode: String,
+  private case class Payload(testId: String, pythonTestCode: String,
                              importance: GradingImportance = GradingImportance.REQUIRED_TEST,
                              publicDescription: Option[LanguageMapContentId] = None,
                              publishProgramObservation: Boolean = false,
@@ -96,14 +95,14 @@ object ProgrammingUnitTestGrader {
                              publishCommandComparison: Boolean = false) derives ReadWriter
 
   given ReadWriter[ProgrammingUnitTestGrader] = readwriter[ujson.Value].bimap(
-    grader => writeJs(Payload(grader.key, grader.testId, grader.pythonTestCode, grader.importance, grader.publicDescription,
+    grader => writeJs(Payload(grader.testId, grader.pythonTestCode, grader.importance, grader.publicDescription,
       grader.publishProgramObservation, grader.publishInvocationArguments, grader.publishCommandComparison)),
     value => {
       val fields = value.obj.toMap
       require(fields.get("serializedType").forall(_ == ujson.Str("ProgrammingUnitTestGrader")),
         "Unexpected programming grader type.")
       val payload = {
-        require(fields.keySet.subsetOf(Set("key", "testId", "pythonTestCode", "importance", "publicDescription",
+        require(fields.keySet.subsetOf(Set("testId", "pythonTestCode", "importance", "publicDescription",
           "publishProgramObservation", "publishInvocationArguments", "publishCommandComparison", "serializedType")),
           "Unexpected programming test fields.")
         require(fields.get("publishProgramObservation").forall(_.boolOpt.isDefined),
@@ -114,7 +113,7 @@ object ProgrammingUnitTestGrader {
           "Publishing command comparisons requires a boolean setting.")
         read[Payload](ujson.Obj.from(fields - "serializedType"))
       }
-      ProgrammingUnitTestGrader(payload.key, payload.testId, payload.pythonTestCode, payload.importance, payload.publicDescription,
+      ProgrammingUnitTestGrader(payload.testId, payload.pythonTestCode, payload.importance, payload.publicDescription,
         payload.publishProgramObservation, payload.publishInvocationArguments, payload.publishCommandComparison)
     })
 }

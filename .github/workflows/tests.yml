@@ -59,6 +59,16 @@ jobs:
         env:
           SQL_PORT: ${{ job.services.mysql.ports['3306'] }}
         run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'server / MysqlIntegration / test'
+      - name: Verify standalone startup against a valid database
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Build and start the standalone server against MySQL
+        env:
+          SQL_PORT: ${{ job.services.mysql.ports['3306'] }}
+        run: |
+          sbt -batch -J-Xmx4G -Dsbt.supershell=false buildServerDev
+          node tools/dev/check-server-assembly.mjs
 
   tests:
     runs-on: ubuntu-latest

@@ -47,7 +47,6 @@ object AuthHandling {
 
   def findAuthCookies(cookies: Cookies, headers: Headers): Seq[SignedToken] = {
     val claimedAuth: Seq[String] = cookies.filter(_.name == SignedToken.cookieKey).map(_.value).toList ++ headers.toSimpleMap.get(SignedToken.cookieKey).toList
-    println("claimAuth: " + claimedAuth)
     val deserialized = it.evadid.core.util.io.Serializer.fromImplicitRW[SignedToken].tryDeserializeAll(claimedAuth)
     deserialized.inputAfterOperation.toList
   }

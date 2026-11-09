@@ -25,7 +25,7 @@ object SessionData {
       None
     } else {
       val allInteractions: List[WorkbookInteractionUntyped] = homepageInfo.workbookInfo.map(_.loadedWorkbook.allContainedInteractionsById.values.toList).getOrElse(List())
-      val userInfo = homepageInfo.userInfo.get.removeToken()
+      val userInfo = homepageInfo.userInfo.get.withoutCredentials()
       val workbookInfo = homepageInfo.workbookInfo.get
       val historyMap: Map[SyncContext, String] = allInteractions.map(interaction => {
         val syncContext = homepageInfo.toContext.toSyncContext(interaction.interactionVariable.keyForSerialization)
