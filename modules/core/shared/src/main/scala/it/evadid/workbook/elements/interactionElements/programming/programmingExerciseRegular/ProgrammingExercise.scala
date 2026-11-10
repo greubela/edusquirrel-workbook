@@ -20,7 +20,7 @@ case class ProgrammingExercise(
 
                                 /** Optional Python turtle program whose drawing is the target for geometric matching. */
                                 referencePython: Option[String] = None
-                              ) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Any] derives upickle.default.ReadWriter {
+                              ) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit] derives upickle.default.ReadWriter {
   override val associatedFactory = ProgrammingExercise.factory
 
   override val defaultValue: ProgrammingState = ProgrammingStateSnapXml.mini

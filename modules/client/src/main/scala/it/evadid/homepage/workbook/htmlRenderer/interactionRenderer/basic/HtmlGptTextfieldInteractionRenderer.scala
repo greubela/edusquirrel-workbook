@@ -81,7 +81,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
     val elements: mutable.ListBuffer[Element] = mutable.ListBuffer()
 
-    val interactionVariable: InteractionVariable[MessengerModelScaffolding, Any, Any] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
+    val interactionVariable: InteractionVariable[MessengerModelScaffolding, Unit, Unit] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
     if (workbookElement.scaffoldingInteractionOp.nonEmpty) {
       val boundState = interactionVariable
         .createBoundStateWithUpdateImportance( MAJOR, fullInfo.executionContextInformation)

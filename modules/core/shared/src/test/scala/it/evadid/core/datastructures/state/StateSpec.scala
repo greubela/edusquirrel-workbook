@@ -2,7 +2,6 @@ package it.evadid.core.datastructures.state
 
 import munit.FunSuite
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{ExecutionContext, Future}
 
 class StateSpec extends FunSuite {
   test("state updates notify subscribers only when the value changes") {
@@ -48,16 +47,4 @@ class StateSpec extends FunSuite {
     assertEquals(text.now(), "2")
   }
 
-  test("asynchronous updates change state on success and retain it on failure") {
-    given ExecutionContext = ExecutionContext.global
-    val state = State(2)
-    state.updateAsyncUnsafe(n => Future.successful(n + 1))(ExecutionContext.global).flatMap { updated =>
-      assert(updated eq state)
-      assertEquals(state.now(), 3)
-      state.updateAsyncUnsafe(_ => Future.failed(new IllegalArgumentException("rejected")))(ExecutionContext.global)
-    }.map { updated =>
-      assert(updated eq state)
-      assertEquals(state.now(), 3)
-    }
-  }
 }

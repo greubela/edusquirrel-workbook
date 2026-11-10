@@ -175,25 +175,21 @@ class SystematicDerivedCodecSpec extends FunSuite {
     intercept[IllegalArgumentException](write(value))
   }
 
-  test("Snap primitive defaults preserve their primitive types and reject executable values") {
+  test("Snap primitive defaults round-trip as JSON numbers, strings and booleans") {
     import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.*
     Primitives.foreach(roundTrip(_))
-    val value = ExtraBlockSpec("example", "motion", List(10, 1.25, true, "学校"))
+    val value = ExtraBlockSpec("example", "motion", List(ujson.Num(10), ujson.Num(1.25), ujson.Bool(true), ujson.Str("学校")))
     roundTrip(value)
-    assertEquals(read[ExtraBlockSpec](write(value)).defaults.map(_.getClass), value.defaults.map(_.getClass))
-    intercept[Exception](write(ExtraBlockSpec("bad", "motion", List(() => 1))))
-    intercept[Exception](read[ExtraBlockSpec]("""{"spec":"bad","category":"motion","defaults":[{"kind":"int","value":1.5}]}"""))
+    assertEquals(read[ExtraBlockSpec](write(value)).defaults, value.defaults)
   }
 
-  test("Snap Double defaults retain non-finite values in JSON and MessagePack") {
+  test("Snap primitive defaults reject structured and non-finite JSON values") {
     import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.ExtraBlockSpec
-    val value = ExtraBlockSpec("numeric", "motion", List(Double.NaN, Double.PositiveInfinity, Double.NegativeInfinity))
-    copies(value).foreach { decoded =>
-      val numbers = decoded.defaults.map(_.asInstanceOf[Double])
-      assert(numbers.head.isNaN)
-      assertEquals(numbers(1), Double.PositiveInfinity)
-      assertEquals(numbers(2), Double.NegativeInfinity)
+    List(ujson.Null, ujson.Arr(1), ujson.Obj("x" -> 1), ujson.Num(Double.NaN),
+      ujson.Num(Double.PositiveInfinity), ujson.Num(Double.NegativeInfinity)).foreach { invalid =>
+      intercept[IllegalArgumentException](ExtraBlockSpec("invalid", "motion", List(invalid)))
     }
+    intercept[Exception](read[ExtraBlockSpec]("""{"spec":"invalid","category":"motion","defaults":[{}]}"""))
   }
 
   test("constant observables and observer policies retain their value semantics") {

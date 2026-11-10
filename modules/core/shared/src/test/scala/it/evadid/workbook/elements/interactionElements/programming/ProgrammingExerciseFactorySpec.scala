@@ -1098,33 +1098,22 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     check(ProgrammingExerciseFullJava("typed-java-history", suite))
   }
 
-  test("existing status-only results and histories retain their empty additional data") {
+  test("status-only results and histories round-trip with the current typed schema") {
     val exercise = ProgrammingExerciseFullJava("status-history", Some(SampleBeTest("assert True")))
     val variable = exercise.interactionVariable
     val state = variable.currentValue
     val result = GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](exercise.gradingElements.head, state, GradingStatus.Incorrect())
-    val previousGrader = read[WorkbookInteractionGrader[ProgrammingState, Any]](write(exercise.gradingElements.head))
-    val previousResult = GradingResult[ProgrammingState, Any](previousGrader, state, GradingStatus.Incorrect(), feedbackInformation = None, additionalData = None, gradingTime = result.gradingTime)
-    assertEquals(read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](write(previousResult)), result)
-    assertEquals(readBinary[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](writeBinary(previousResult)), result)
-    val encoded = writeJs(result).obj.toMap
-    List(encoded, encoded.updated("additionalData", writeJs[Option[Any]](None))).foreach { fields =>
-      val restored = read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](ujson.Obj.from(fields))
-      assertEquals(restored, result)
-    }
+    assertEquals(read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](write(result)), result)
+    assertEquals(readBinary[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](writeBinary(result)), result)
     variable.updateHistory(history => history.copy(historyGrading = InteractionVariableGradingHistory(Map(state -> GradedState(state, Map(result.grader -> result))))), ExecutionContextInformation.default)
     val original = variable.currentHistory
     assertEquals(variable.serializerHistory.deserialize(variable.serializerHistory.serialize(original)), original)
-    assert(readBinary[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding]](
-      writeBinary(original)) == original)
-    val previousHistory = InteractionVariableHistory[ProgrammingState, Any, Any](InteractionVariableStateHistory[ProgrammingState](original.historyStates.events), new InteractionVariableGradingHistory[ProgrammingState, Any](Map(state -> GradedState(state, Map(previousResult.grader -> previousResult)))), new InteractionVariableScaffoldingHistory[ProgrammingState, Any](scaffoldingMap = Map.empty))
-    assertEquals(variable.serializerHistory.deserialize(write(previousHistory)), original)
     assertEquals(readBinary[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding]](
-      writeBinary(previousHistory)), original)
-    val unknownData = writeJs(previousResult.copy(additionalData = Some("old untyped payload")))
-    intercept[Exception](read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](unknownData))
+      writeBinary(original)), original)
+    val malformed = writeJs(result)
+    malformed.obj.update("additionalData", writeJs[Option[String]](Some("untyped payload")))
+    intercept[Exception](read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](malformed))
   }
-
 
   test("five explicit programming graders retain their identities in suites and workbook definitions") {
     val graders: List[ProgrammingTestGrader] = (1 to 5).map { index =>

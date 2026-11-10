@@ -15,12 +15,6 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
 
   private given ec: ExecutionContext = ExecutionContext.global
 
-  def informAboutContextSwitch(): Future[SyncSuccess] = {
-    println("[UGLY WARN in SYNCINFORMATION]: context switch detected, currently not clearing any values")
-    Future.successful(SyncSuccess(0, 0, 0, LocalDateTime.now()))
-    //if (!syncSource.shouldBePersistant()) syncSource.clearAllValues(usageContext) else Future.successful(SyncSuccess(0, 0, 0, LocalDateTime.now()))
-  }
-
   lazy val handler: SyncDestinationHistoryHandler = resolveDefinition(syncInformation.syncDestination)
 
 

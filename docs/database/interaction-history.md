@@ -3,6 +3,10 @@
 The implemented relational schema is defined only in
 [createInteractionHistoryTables.sql](../../artifacts/database/createInteractionHistoryTables.sql).
 It is selected with `DatabaseHistoryFormat.RelationalEvents`.
+All history inserts and upserts, including V2 relational writes, are implemented in
+[UpsertToDatabase.scala](../../modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/UpsertToDatabase.scala).
+`RelationalHistoryStorage` handles V2 reads and deletes; `RelationalHistorySql`
+shares JDBC resource handling and row decoding without defining history writes.
 
 A sync context is resolved from the same four strings used by `SyncContext`.
 Repeated stores reuse its internal database ID. Answer upserts are identified by

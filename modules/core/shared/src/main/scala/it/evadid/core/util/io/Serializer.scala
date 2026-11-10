@@ -73,10 +73,10 @@ trait Serializer[T] extends TypeConverter[T, String] {
 object Serializer {
 
 
-  val anySerializer = new Serializer[Any]() {
-    override def serialize(obj: Any): String = obj.toString
-
-    override def deserialize(str: String): Any = str
+  /** Opaque source text for unknown language literals; never a codec for arbitrary values. */
+  val rawStringIO: Serializer[String] = new Serializer[String] {
+    override def serialize(value: String): String = value
+    override def deserialize(value: String): String = value
   }
 
   def serializerForSubclass[SubType <: TraitType : ReadWriter, TraitType](exClass: Class[SubType]): (String, Serializer[TraitType]) = {

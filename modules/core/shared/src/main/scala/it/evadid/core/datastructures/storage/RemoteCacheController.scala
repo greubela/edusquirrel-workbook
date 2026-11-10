@@ -102,11 +102,6 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
     promise.future
   }
 
-  /*
-  println(s"ensureMaxAgeSafe(${maxAge}")
-  val res: Future[?] = cacheState.updateAsyncUnsafe(_.ensureCachesAreAtLeastThisRecent(maxAge))(ExecutionContext.global).transform(_ => Success(()))
-  res
-}*/
 
   def requestCacheDependentUpdate(func: CK => LocalDateTime): Future[?] = syncLock.synchronized {
     val context = currentContext

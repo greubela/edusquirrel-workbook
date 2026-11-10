@@ -21,7 +21,7 @@ case class TurtleRecreateShapeInteraction
   availablePalette: ProgrammingEditorPalette = ProgrammingEditorPalette.BeginnerTurtle,
   limitTurtleCommandUsage: Map[String, Integer],
   comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes
-) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Any] derives ReadWriter {
+) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit] derives ReadWriter {
 
   override val defaultValue: ProgrammingState = initProgram
   override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingState.serializer
