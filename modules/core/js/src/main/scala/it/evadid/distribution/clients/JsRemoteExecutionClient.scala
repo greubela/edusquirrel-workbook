@@ -15,18 +15,26 @@ private case class JsRemoteExecutionClient(hostname: String, port: Int, token: O
 
   def sendCommand(logger: Logger, executionCommand: ExecutionCommand, pDest: String, pBody: String): Future[Response] = {
     logger.logInfo("JsRemoteExecutionClient: sent request and waiting for a response")
-    dom.fetch(
-      pDest,
-      new dom.RequestInit {
+    val encoded: Future[(dom.BodyInit, Boolean)] =
+      if (pBody.length >= 1024 && js.typeOf(js.Dynamic.global.CompressionStream) != "undefined") {
+        val source = new dom.Blob(js.Array(pBody)).asInstanceOf[js.Dynamic].stream()
+        val compressed = source.pipeThrough(js.Dynamic.newInstance(js.Dynamic.global.CompressionStream)("gzip"))
+        new dom.Response(compressed.asInstanceOf[dom.BodyInit]).arrayBuffer().toFuture
+          .map(bytes => (bytes.asInstanceOf[dom.BodyInit], true))
+      } else Future.successful((pBody, false))
+
+    encoded.flatMap { (payload, gzip) =>
+      val requestHeaders = List(
+        "Content-Type" -> "application/json",
+        SignedToken.cookieKey -> token.map(_.toJson).getOrElse("")
+      ) ++ Option.when(gzip)("Content-Encoding" -> "gzip")
+      dom.fetch(pDest, new dom.RequestInit {
         method = dom.HttpMethod.POST
-        headers = js.Dictionary(
-          "Content-Type" -> "application/json",
-          SignedToken.cookieKey -> token.map(_.toJson).getOrElse("")
-        ).asInstanceOf[dom.HeadersInit]
-        body = pBody
+        headers = js.Dictionary(requestHeaders*).asInstanceOf[dom.HeadersInit]
+        body = payload
         credentials = RequestCredentials.include
-      }
-    ).toFuture
+      }).toFuture
+    }
   }
 
 

@@ -1,3 +1,4 @@
+import {readCommandRequest} from './command-request.mjs';
 import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -20,7 +21,7 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     const errors = [], requests = [], arrivals = [];
     const policy = {hold: false};
     const headers = {'access-control-allow-origin': origin, 'access-control-allow-credentials': 'true',
-      'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'Content-Type, Authorization'};
+      'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'Content-Type, Authorization, Content-Encoding'};
     page.on('pageerror', error => errors.push(error.message));
     async function answer(pending, question = 'Wo beginnt dein Programm?', ids = ['source-1']) {
       const now = '2026-10-22T12:00:00';
@@ -35,7 +36,7 @@ test('Java hints retain in-flight feedback across editor close and display-langu
       const url = new URL(route.request().url());
       if (url.pathname === '/executeCommand') {
         if (route.request().method() === 'OPTIONS') return route.fulfill({status: 204, headers});
-        const command = route.request().postDataJSON();
+        const command = readCommandRequest(route.request());
         if (command.name !== 'feedback-llm-request') return route.abort();
         const pending = {route, command};
         requests.push(JSON.parse(command.json.prompt));
