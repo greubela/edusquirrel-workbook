@@ -1,3 +1,4 @@
+import {readCommandRequest} from './command-request.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -54,9 +55,9 @@ test('login validates accounts, restores cached credentials after reload and cle
       const url = new URL(route.request().url());
       if (url.pathname === '/executeCommand') {
         const headers = {'access-control-allow-origin':origin,'access-control-allow-credentials':'true',
-          'access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'Content-Type, Authorization'};
+          'access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'Content-Type, Authorization, Content-Encoding'};
         if (route.request().method() === 'OPTIONS') return route.fulfill({status:204,headers});
-        const command = route.request().postDataJSON();
+        const command = readCommandRequest(route.request());
         requests.push(command);
         requestHeaders.push(route.request().headers());
         if (transportFailure) return route.fulfill({status:503,headers,body:'Unavailable'});
@@ -131,14 +132,14 @@ test('login validates accounts, restores cached credentials after reload and cle
     unknownAccount = false;
     const defaultFetches = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalEvents'].map(format => page.waitForRequest(request => {
       if (request.method() !== 'POST' || !request.url().endsWith('/executeCommand')) return false;
-      const payload = request.postDataJSON();
+      const payload = readCommandRequest(request);
       return payload?.name === 'fetch-from-db-request' && payload.json.databaseFormat === format;
     }));
     validLogin = true;
     await login.locator('button').last().click();
     await page.waitForFunction(() => !document.querySelector('.container-login'));
     for (const request of await Promise.all(defaultFetches)) {
-      const config = request.postDataJSON().json.databaseConfig;
+      const config = readCommandRequest(request).json.databaseConfig;
       assert.deepEqual(Object.keys(config).sort(), ['$type','database','dbFormat','host','port'].sort());
       assert.equal(config.$type, 'DatabaseConfig');
       assert.equal(config.database, 'db_332371_12');

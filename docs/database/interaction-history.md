@@ -33,10 +33,20 @@ compatibility readers for obsolete serialized payloads.
 
 ## Sync failures
 
-`/executeCommand` accepts UTF-8 command bodies up to 16 MiB, including cumulative
-history and feedback. Larger bodies return HTTP 413 with an `ExecutionClientResponse`
-failure explaining the limit. Both synchronous and asynchronous command errors use
-this envelope; the browser preserves its explanation even for non-2xx responses.
+`/executeCommand` accepts JSON command bodies with `Content-Encoding: gzip` or
+no content encoding. The browser uses asynchronous native `CompressionStream`
+for requests of at least 1,024 UTF-16 code units when available; smaller requests
+and browsers without this API send plain JSON. This only changes HTTP transport:
+command codecs, database formats and `SyncStrategy` filtering stay unchanged.
+The proxy permits `Content-Encoding` in cross-origin requests.
+
+Play's Netty backend decompresses gzip before the existing command parser;
+there is no second application decompressor. Decoded bodies are limited to
+16 MiB, including cumulative history and feedback. Larger bodies return HTTP 413
+with an `ExecutionClientResponse` failure explaining the limit. Both synchronous
+and asynchronous command errors use this envelope; the browser preserves its
+explanation even for non-2xx responses. Transport-level gzip decoding failures are
+handled by Netty before the command boundary and may surface as transport errors.
 Database failures include an actionable reason, SQLState and vendor error code;
 raw vendor messages remain in server logs because they can contain answer data or
 credentials. Failed V2 stores roll back and do not prevent subsequent requests.

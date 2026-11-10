@@ -5,6 +5,10 @@ import it.evadid.distribution.formats.ExecutionClientResponse
 import munit.FunSuite
 import play.api.Mode
 import play.core.server.ServerConfig
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets.UTF_8
+import java.util.zip.GZIPOutputStream
+import scala.util.Using
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import upickle.default.*
@@ -24,6 +28,40 @@ class BackendCommandHttpSpec extends FunSuite {
     client.send(HttpRequest.newBuilder(URI.create(base + "/executeCommand"))
       .header("Content-Type", "application/json")
       .POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString())
+
+  private def gzip(body: String): Array[Byte] = {
+    val output = new ByteArrayOutputStream()
+    Using.resource(new GZIPOutputStream(output))(_.write(body.getBytes(UTF_8)))
+    output.toByteArray
+  }
+
+  private def postEncoded(client: HttpClient, base: String, body: Array[Byte], encoding: String): HttpResponse[String] =
+    client.send(HttpRequest.newBuilder(URI.create(base + "/executeCommand"))
+      .timeout(java.time.Duration.ofSeconds(20))
+      .header("Content-Type", "application/json").header("Content-Encoding", encoding)
+      .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build(), HttpResponse.BodyHandlers.ofString())
+
+  test("gzip commands preserve large Unicode payloads at the execution boundary") {
+    withServer { (client, base) =>
+      val command = ExecutionCommand("requires-login", ujson.Obj("data" -> ("Grüße 学校 🐿️\n" * 20000)))
+      val json = write(command)
+      val compressed = gzip(json)
+      assert(compressed.length < json.getBytes(UTF_8).length / 10)
+      val response = postEncoded(client, base, compressed, "gzip")
+      assertEquals(response.statusCode(), 200)
+      assertEquals(read[ExecutionClientResponse](response.body()).receivedExecutionCommand, Some(command))
+    }
+  }
+
+  test("the decoded size limit also applies to highly compressible requests") {
+    withServer { (client, base) =>
+      val compressed = gzip("x" * (BackendServer.maxCommandBodyBytes.toInt + 1))
+      assert(compressed.length < 100000)
+      val response = postEncoded(client, base, compressed, "gzip")
+      assertEquals(response.statusCode(), 413)
+      assert(read[ExecutionClientResponse](response.body()).result.left.toOption.get.msg.contains("byte request limit"))
+    }
+  }
 
   test("commands larger than Play's default buffer reach execution instead of returning HTML 413") {
     withServer { (client, base) =>

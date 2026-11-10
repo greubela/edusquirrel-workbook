@@ -12,6 +12,9 @@ import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.formats.ExecutionClientResponse
 import play.api.Mode
 import play.core.server.ServerConfig
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets.UTF_8
+import java.util.zip.GZIPOutputStream
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import it.evadid.server.commandHandler.sql.sync.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
@@ -63,10 +66,12 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     val token = AuthHandling.createToken(User("Sync test", context.userId, "sync-test@example.test"))
     try run { request =>
       val command = ExecutionCommand(StoreToDbCommand.name, writeJs(request))
+      val compressed = new ByteArrayOutputStream()
+      Using.resource(new GZIPOutputStream(compressed))(_.write(write(command).getBytes(UTF_8)))
       val http = HttpRequest.newBuilder(URI.create(s"http://127.0.0.1:${server.httpPort.get}/executeCommand"))
-        .header("Content-Type", "application/json")
+        .header("Content-Type", "application/json").header("Content-Encoding", "gzip")
         .header(UserTokenInfo.SignedToken.cookieKey, write(token))
-        .POST(HttpRequest.BodyPublishers.ofString(write(command))).build()
+        .POST(HttpRequest.BodyPublishers.ofByteArray(compressed.toByteArray)).build()
       val response = client.send(http, HttpResponse.BodyHandlers.ofString())
       assertEquals(response.statusCode(), 200)
       read[ExecutionClientResponse](response.body())
@@ -158,7 +163,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assert(!fetch()(sync).contains("sync_id"))
   }
 
-  test("large cumulative histories sync repeatedly over HTTP with the same context and different timestamps") {
+  test("large cumulative gzip histories sync repeatedly over HTTP with the same context and different timestamps") {
     withHttpStore { send =>
       val first = InteractionVariableState("x" * 350000, UpdateImportance.MAJOR, time)
       val second = InteractionVariableState("second edit", UpdateImportance.MAJOR, time.plusSeconds(1))

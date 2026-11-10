@@ -63,7 +63,7 @@ configs:
               header Access-Control-Allow-Origin "{header.Origin}"
               header Access-Control-Allow-Credentials "true"
               header Access-Control-Allow-Methods "GET, POST, OPTIONS"
-              header Access-Control-Allow-Headers "Content-Type, Authorization"
+              header Access-Control-Allow-Headers "Content-Type, Authorization, Content-Encoding"
               header Vary "Origin"
               respond "" 204
           }
@@ -76,7 +76,7 @@ configs:
           header Access-Control-Allow-Methods "GET, POST, OPTIONS" {
               defer
           }
-          header Access-Control-Allow-Headers "Content-Type, Authorization" {
+          header Access-Control-Allow-Headers "Content-Type, Authorization, Content-Encoding" {
               defer
           }
           header Vary "Origin" {

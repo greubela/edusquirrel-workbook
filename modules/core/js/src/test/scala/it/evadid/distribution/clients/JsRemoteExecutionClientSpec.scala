@@ -3,10 +3,62 @@ package it.evadid.distribution.clients
 import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
 import org.scalajs.dom.Response
+import org.scalajs.dom
+import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class JsRemoteExecutionClientSpec extends FunSuite {
+  private def inspectSentBody(body: String)(inspect: dom.RequestInit => Future[Unit]): Future[Unit] = {
+    val captured = Promise[dom.RequestInit]()
+    val originalFetch = js.Dynamic.global.fetch
+    js.Dynamic.global.fetch = ((url: String, init: dom.RequestInit) => {
+      captured.success(init)
+      js.Promise.resolve(new dom.Response("{}"))
+    }): js.Function2[String, dom.RequestInit, js.Promise[dom.Response]]
+    Future.unit.flatMap { _ =>
+      JsRemoteExecutionClient("localhost", 443, None).sendCommand(BasicLogger(),
+        it.evadid.distribution.command.ExecutionCommand("test", ujson.Obj()), "https://localhost/executeCommand", body)
+    }.flatMap(_ => captured.future).flatMap(inspect)
+      .andThen { case _ => js.Dynamic.global.fetch = originalFetch }
+  }
+
+  test("large requests use native gzip and preserve Unicode JSON exactly") {
+    val body = ujson.write(ujson.Obj("history" -> ("Grüße 学校 🐿️\n" * 20000)))
+    inspectSentBody(body) { init =>
+      val headers = new dom.Headers(init.headers.get)
+      assertEquals(headers.get("Content-Encoding"), "gzip")
+      assertEquals(headers.get("Content-Type"), "application/json")
+      val compressed = init.body.asInstanceOf[js.typedarray.ArrayBuffer]
+      assert(compressed.byteLength < body.length / 10)
+      val stream = new dom.Blob(js.Array(compressed)).asInstanceOf[js.Dynamic].stream()
+        .pipeThrough(js.Dynamic.newInstance(js.Dynamic.global.DecompressionStream)("gzip"))
+      new dom.Response(stream.asInstanceOf[dom.BodyInit]).text().toFuture.map { restored =>
+        assertEquals(restored, body)
+      }
+    }
+  }
+
+  test("small requests remain plain JSON") {
+    val body = "{\"name\":\"health\"}"
+    inspectSentBody(body) { init =>
+      assertEquals(new dom.Headers(init.headers.get).get("Content-Encoding"), null)
+      assertEquals(init.body.asInstanceOf[String], body)
+      Future.unit
+    }
+  }
+
+  test("browsers without CompressionStream can still send large JSON requests") {
+    val originalCompression = js.Dynamic.global.CompressionStream
+    js.Dynamic.global.CompressionStream = js.undefined
+    val body = ujson.write(ujson.Obj("history" -> ("x" * 5000)))
+    inspectSentBody(body) { init =>
+      assertEquals(new dom.Headers(init.headers.get).get("Content-Encoding"), null)
+      assertEquals(init.body.asInstanceOf[String], body)
+      Future.unit
+    }.andThen { case _ => js.Dynamic.global.CompressionStream = originalCompression }
+  }
+
   test("HTTP failures retain their status and server reason instead of decoding a success envelope") {
     val response = js.Dynamic.literal(ok = false, status = 503, statusText = "Unavailable",
       text = (() => js.Promise.resolve("""{"error":"SMTP unavailable"}""")): js.Function0[js.Promise[String]])
