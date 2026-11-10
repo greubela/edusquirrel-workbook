@@ -91,9 +91,11 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
 
   def updateHistory(func: InteractionVariableHistory[T, GA, SA] => InteractionVariableHistory[T, GA, SA], executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
     innerState.update(oldVal => {
-      val transformedHistory = func(oldVal).cleanedHistory()
-      if (transformedHistory.historyStates.lastStateOption.isEmpty) defaultHistory
+      val transformedHistory = func(oldVal)
+      val withCurrentState = if (transformedHistory.historyStates.lastStateOption.isEmpty)
+        transformedHistory.addState(defaultState)
       else transformedHistory
+      withCurrentState.cleanedHistory()
     })
     if (executionContextInformation.syncControl.nonEmpty) {
       executionContextInformation.syncControl.get.requestStore(this)
