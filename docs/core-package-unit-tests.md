@@ -77,3 +77,9 @@ CI caches incremental Scala output separately from downloaded dependencies, with
 build-definition changes starting a new cache family. Scala still checks the
 current sources and test discovery on every run. A cold cache requires a full
 compile; deleting fast domain assertions does little to reduce that cost.
+
+The Pages build restores that same Scala cache after tests finish, then runs the
+release linker against the checked-out sources. CI test-job durations also include
+browser installation and compilation; use individual step/suite timings before
+removing coverage. Ubuntu package-mirror delays can dominate the Playwright
+installation step and are separate from test execution and Pages publishing.

@@ -37,6 +37,18 @@ jobs:
         with:
           node-version: '24'
 
+      # The test job already compiled this revision and saved its Zinc output.
+      # Restore it before release linking instead of compiling all sources again.
+      - name: Restore tested Scala build
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            target
+            project/target
+          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-
+
       - name: Test Pages export
         run: node --test tools/dev/assemble-pages.test.mjs
 
