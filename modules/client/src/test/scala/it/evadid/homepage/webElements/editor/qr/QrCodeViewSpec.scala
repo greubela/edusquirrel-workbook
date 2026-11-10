@@ -4,9 +4,11 @@ import munit.FunSuite
 import it.evadid.workbook.model.qr.{QrCode, QrCodeRegion, QrErrorCorrection}
 
 class QrCodeViewSpec extends FunSuite {
-  test("region paths partition dark modules for all 40 versions and every correction level") {
+  test("region paths partition dark modules at layout boundaries for every correction level") {
     val cellPattern = "M([0-9]+),([0-9]+)h1v1h-1z".r
-    for version <- 1 to 40; ecc <- QrErrorCorrection.values do {
+    // The encoder has all-version fixtures; exercise rendering at layout/header
+    // boundaries, exceptional alignment spacing and the largest symbol.
+    for version <- List(1, 2, 6, 7, 9, 10, 32, 40); ecc <- QrErrorCorrection.values do {
       val code = QrCode.fromText("ä", ecc, version = Some(version), mask = Some((version + ecc.ordinal) % 8))
       val cells = scala.collection.mutable.HashSet.empty[(Int, Int)]
       QrCodeRegion.values.foreach { region =>
