@@ -45,8 +45,8 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     }
   }
 
-  override def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[?] = remoteCache.syncLock.synchronized {
-    remoteCache.ensureMaxAgeSafe(maxAge)
+  override def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[Unit] = remoteCache.syncLock.synchronized {
+    remoteCache.ensureMaxAgeSafe(maxAge).map(_ => ())
   }
 
   override def createCurrentReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): InteractionVariableSyncReport[T, GA, SA] = remoteCache.syncLock.synchronized {
@@ -66,35 +66,34 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     })
   }
 
-  override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariableUntyped]): Future[?] = remoteCache.syncLock.synchronized {
+  override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariableUntyped]): Future[Unit] = remoteCache.syncLock.synchronized {
 
     def shouldSyncUntil(syncInfo: SyncInformationWithContext): LocalDateTime = variables.flatMap(curVar => {
       val history = curVar.currentHistory.filterWithStrategy(syncInfo.syncInformation.syncStrategy)
       history.timestampLastChanged
     }).maxOption.getOrElse(LocalDateTime.now())
 
-    remoteCache.requestCacheDependentUpdate(shouldSyncUntil)
+    remoteCache.requestCacheDependentUpdate(shouldSyncUntil).map(_ => ())
   }
 
-  override def requestStore(from: List[InteractionVariableUntyped]): Future[?] = remoteCache.syncLock.synchronized {
+  override def requestStore(from: List[InteractionVariableUntyped]): Future[Unit] = remoteCache.syncLock.synchronized {
     remoteCache.requestCacheDependentStore(curSyncInfo => {
       from.flatMap(curVariable => {
         curSyncInfo.dataToStore(curVariable)
       })
-    })
+    }).map(_ => ())
   }
 
   override def controlLogger: it.evadid.util.logging.Logger = fullInfo.loggerSystemInfo.syncControlLogger
 
   override def syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
 
-  def load[T, GA, SA](intoVar: InteractionVariable[T, GA, SA]): Future[_] = Future {
+  private def load[T, GA, SA](intoVar: InteractionVariable[T, GA, SA]): Future[Unit] = Future {
     val histories = createCurrentReport(intoVar).curRemoteHistory.values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toVector
     intoVar.updateHistory(_.mergeWith(histories), fullInfo.executionContextInformation)
   }
 
-  override def load(into: List[InteractionVariableUntyped]): Future[_] = Future {
-    Future.traverse(into)(curVar => load(curVar))
-  }
+  override def load(into: List[InteractionVariableUntyped]): Future[Unit] =
+    Future.traverse(into)(curVar => load(curVar)).map(_ => ())
 
 }

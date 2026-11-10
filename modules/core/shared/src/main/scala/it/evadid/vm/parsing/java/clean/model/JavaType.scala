@@ -1,7 +1,7 @@
 package it.evadid.vm.parsing.java.clean.model
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.Serializer.anySerializer
+import it.evadid.core.util.io.Serializer.rawStringIO
 import it.evadid.vm.parsing.generic.abstractions.GenericAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaAST.JavaLiteral
 
@@ -78,7 +78,7 @@ object JavaType {
 
   sealed class JAVA_BOOL extends JavaType[Boolean]("boolean", Serializer.fromImplicitRW[Boolean], Serializer.fromImplicitRW[Boolean])
 
-  sealed class JAVA_ANY extends JavaType[Any]("Object", anySerializer, anySerializer)
+  sealed class JAVA_ANY extends JavaType[String]("Object", rawStringIO, rawStringIO)
 
   sealed class JAVA_LIST[Element](val elementType: JavaType[Element]) extends JavaType[List[Element]](
     s"List<${elementType.typenameInCode}>",
@@ -93,7 +93,7 @@ object JavaType {
   )
 
 
-  sealed class JAVA_UNPARSABLE_TYPE(val str: String) extends JavaType[Any](str, anySerializer, anySerializer)
+  sealed class JAVA_UNPARSABLE_TYPE(val str: String) extends JavaType[String](str, rawStringIO, rawStringIO)
 
 
 }

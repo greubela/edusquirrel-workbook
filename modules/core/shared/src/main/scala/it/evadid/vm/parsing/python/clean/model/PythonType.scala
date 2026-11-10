@@ -1,7 +1,7 @@
 package it.evadid.vm.parsing.python.clean.model
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.Serializer.anySerializer
+import it.evadid.core.util.io.Serializer.rawStringIO
 import it.evadid.vm.parsing.generic.abstractions.GenericAST.*
 import it.evadid.vm.parsing.python.clean.model.PyAST.{PyExpression, PythonLiteral}
 import upickle.default.*
@@ -148,9 +148,9 @@ object PythonType {
   }
 
 
-  sealed class PYTHON_ANY extends PythonTypeImpl[Any]("Any", anySerializer, anySerializer)
+  sealed class PYTHON_ANY extends PythonTypeImpl[String]("Any", rawStringIO, rawStringIO)
 
-  sealed class PYTHON_UNPARSABLE_TYPE(val str: String) extends PythonTypeImpl[Any](str, anySerializer, anySerializer) {
+  sealed class PYTHON_UNPARSABLE_TYPE(val str: String) extends PythonTypeImpl[String](str, rawStringIO, rawStringIO) {
 
   }
 

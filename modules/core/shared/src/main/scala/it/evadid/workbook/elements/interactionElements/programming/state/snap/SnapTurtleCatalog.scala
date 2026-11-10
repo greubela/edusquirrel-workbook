@@ -19,31 +19,13 @@ object SnapTurtleCatalog {
   final case class ExtraBlockSpec(
       spec: String,
       category: String,
-      defaults: List[Any] = Nil
-  ) derives upickle.default.ReadWriter
-
-  object ExtraBlockSpec {
-    // Snap defaults are primitive values. Keep their Scala types without a global Any codec.
-    private case class StoredDefault(kind: String, value: ujson.Value) derives ReadWriter
-    private given ReadWriter[Any] = upickle.default.readwriter[StoredDefault].bimap(
-      {
-        case value: String => StoredDefault("string", ujson.Str(value))
-        case value: Boolean => StoredDefault("boolean", ujson.Bool(value))
-        case value: Int => StoredDefault("int", ujson.Num(value))
-        case value: Double => StoredDefault("double", upickle.default.writeJs(value))
-        case value => throw new IllegalArgumentException(s"Unsupported Snap default: $value")
-      },
-      stored => stored.kind match {
-        case "string" => stored.value.str
-        case "boolean" => stored.value.bool
-        case "int" =>
-          val number = stored.value.num
-          require(number.isValidInt, "Snap integer default is out of range or fractional")
-          number.toInt
-        case "double" => upickle.default.read[Double](stored.value)
-        case kind => throw new IllegalArgumentException(s"Unknown Snap default kind: $kind")
-      }
-    )
+      defaults: List[ujson.Value] = Nil
+  ) derives upickle.default.ReadWriter {
+    require(defaults.forall {
+      case ujson.Num(value) => value.isFinite
+      case _: ujson.Str | _: ujson.Bool => true
+      case _ => false
+    }, "Snap defaults must be finite JSON numbers, strings or booleans")
   }
 
   /**
@@ -65,7 +47,7 @@ object SnapTurtleCatalog {
     def arity: Int = inputKinds.size
   }
 
-  private def extra(spec: String, category: String, defaults: List[Any] = Nil): ExtraBlockSpec =
+  private def extra(spec: String, category: String, defaults: List[ujson.Value] = Nil): ExtraBlockSpec =
     ExtraBlockSpec(spec, category, defaults)
 
   import SnapInputKind.{Bool, Color, Numeric}

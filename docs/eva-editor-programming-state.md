@@ -33,6 +33,10 @@ including Pyodide and the checked Java runtime. Native libraries still need
 callbacks at their JavaScript boundary. Keep those callbacks inside the adapter;
 Scala consumers observe the bound Var or a supplied diagnostic signal.
 
+The [conversion design review](programming-conversion-review.md) examines repeated
+transformations, metadata routing and Java semantic guarantees. Its alternatives
+are pending a separate decision; the conversion bridge is unchanged.
+
 ## Mounting and panels
 
 Laminar owns lifetime. Closing the workbook dialog removes its child; it does not

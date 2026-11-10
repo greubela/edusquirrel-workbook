@@ -99,7 +99,7 @@ trait WorkbookInteractionElementFull[T: ReadWriter, GA: ReadWriter, SA: ReadWrit
   val serializerInteractionContent: Serializer[T] = Serializer.fromImplicitRW
 }
 
-type WorkbookInteractionElement[T] = WorkbookInteractionElementFull[T, Any, Any]
+type WorkbookInteractionElement[T] = WorkbookInteractionElementFull[T, Unit, Unit]
 
 type WorkbookInteractionUntyped = WorkbookInteractionElementFull[?, ?, ?]
 

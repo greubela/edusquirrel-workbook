@@ -3,8 +3,7 @@ package it.evadid.core.datastructures.state
 import it.evadid.core.datastructures.state.ExecutionMethod.ExecuteLocalSync
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl, ObserverDerivationLogic}
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.Success
 
 trait State[T] {
 
@@ -16,20 +15,8 @@ trait State[T] {
 
   def update(func: T => T): State[T]
 
-  def updateAsyncUnsafe(func: T => Future[T])(ec: ExecutionContext): Future[State[T]] = this.synchronized {
-    func(now()).transform {
-      case Success(result) =>
-        set(result)
-        Success(this)
-      case Failure(err) =>
-        println("[UGLY WARN STATE] ignored state update because of exception: " + err.getMessage)
-        Success(this)
-    }(using ec)
-  }
-
   def biMap[O](mapForward: T => O, mapBackward: O => T, executionMethod: ExecutionMethod = ExecuteLocalSync()): State[O]
 }
-
 
 object State {
 
@@ -88,51 +75,5 @@ object State {
   }
 
 
-  /*
-
-  def biMap[O](mapForward: T => O, mapBackward: O => T): State[O] = {
-    val otherState = State(mapForward(currentValue))
-
-    val backwardObserver: Observer[O] = Observer(
-      newValue => notifyObservers(Success(mapBackward(newValue))),
-      newError => notifyObservers(Failure(newError)),
-      ExecutionMethod.executeSync)
-
-    val forwardObserver = Observer[T](
-      newValue => otherState.notifyObservers(Success(mapForward(newValue)), List(backwardObserver)),
-      newError => otherState.notifyObservers(Failure(newError), List(backwardObserver)),
-      ExecutionMethod.executeSync)
-
-    // todo: would be nice if backward also does not trigger forward unless strictly necessary (update on backward triggers backward -> forward, even though forward would not be necessary)
-
-    derivedObserver += forwardObserver
-    otherState.derivedObserver += backwardObserver
-
-    otherState
-  }
-   */
-
-  /*def biMap[O](mapForward: T => O, mapBackward: O => T): State[O] = {
-    val resForward = mapForward(currentValue)
-    val otherState = State(resForward)
-
-    val backwardObserver: Observer[O] = Observer(
-
-      newValue => notifyObservers(Success(mapBackward(newValue))),
-      newError => notifyObservers(Failure(newError)),
-      ExecutionMethod.executeSync)
-
-    val forwardObserver = Observer[T](
-      newValue => otherState.notifyObservers(Success(mapForward(newValue)), List(backwardObserver)),
-      newError => otherState.notifyObservers(Failure(newError), List(backwardObserver)),
-      ExecutionMethod.executeSync)
-
-    // todo: would be nice if backward also does not trigger forward unless strictly necessary (update on backward triggers backward -> forward, even though forward would not be necessary)
-
-    derivedObserver += forwardObserver
-    otherState.derivedObserver += backwardObserver
-
-    otherState
-  }*/
 
 }

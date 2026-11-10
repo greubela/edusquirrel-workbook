@@ -790,13 +790,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         obj.updateDynamic("spec")(spec.spec)
         obj.updateDynamic("only")(js.Dynamic.global.SpriteMorph)
         if spec.defaults.nonEmpty then
-          val defaults = spec.defaults.map {
-            case b: Boolean => b
-            case n: Int => n
-            case n: Long => n.toInt
-            case n: Double => n
-            case other => other.toString
-          }.toJSArray
+          val defaults = spec.defaults.map(value => js.JSON.parse(ujson.write(value))).toJSArray
           obj.updateDynamic("defaults")(defaults)
         blocks.updateDynamic(primitive.snapSelector)(obj)
       }
