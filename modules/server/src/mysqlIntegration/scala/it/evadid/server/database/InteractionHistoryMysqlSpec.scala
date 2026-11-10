@@ -166,10 +166,16 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val cumulative = InteractionVariableHistory[String, MessengerModel, MessengerModel](Set(first, second))
       def request(value: History) = StoreToDbRequest(sync, write(value),
         it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalEvents)
-      assert(send(request(initial)).result.isRight)
+      def sendBounded(value: History): Unit = {
+        val response = send(request(value))
+        assert(response.result.isRight)
+        assert(response.additionalOutput.loggerOut.length < 16384)
+        assert(!response.additionalOutput.loggerOut.contains("x" * 1000))
+      }
+      sendBounded(initial)
       val syncId = scalar("SELECT id FROM sync_context_id")
-      assert(send(request(cumulative)).result.isRight)
-      assert(send(request(cumulative)).result.isRight)
+      sendBounded(cumulative)
+      sendBounded(cumulative)
       assertEquals(scalar("SELECT id FROM sync_context_id"), syncId)
       assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 2L)
       assertEquals(read[History](fetch()(sync)).historyStates, cumulative.historyStates)
