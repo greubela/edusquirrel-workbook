@@ -11,71 +11,12 @@ permissions:
 jobs:
   tests:
     uses: ./.github/workflows/tests.yml
-
-  build:
-    needs: tests
-    runs-on: ubuntu-latest
-    # A deploy-only retry must retain the artifact name from its producing build.
-    outputs:
-      pages_artifact_name: github-pages-${{ github.run_attempt }}
-    concurrency:
-      group: pages-build-${{ github.ref }}
-      cancel-in-progress: true
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: 'sbt'
-
-      - name: Set up sbt
-        uses: sbt/setup-sbt@v1
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-
-      # The test job already compiled this revision and saved its Zinc output.
-      # Restore it before release linking instead of compiling all sources again.
-      - name: Restore tested Scala build
-        uses: actions/cache/restore@v5
-        with:
-          path: |
-            target
-            project/target
-          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-
-
-      - name: Test Pages export
-        run: node --test tools/dev/assemble-pages.test.mjs
-
-      - name: Build client and worker
-        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false buildClientDeploy buildWorkerDeploy
-
-      - name: Build MathWorld
-        working-directory: resources/programs/20260907MathworldMain
-        run: |
-          npm ci
-          npm run build -- --base=./
-
-      - name: Assemble GitHub Pages site
-        run: node tools/dev/assemble-pages.mjs
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          name: github-pages-${{ github.run_attempt }}
-          path: _site
+    with:
+      build-pages: true
 
   deploy:
     if: github.ref == 'refs/heads/main'
-    needs: build
+    needs: tests
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -92,4 +33,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5
         with:
-          artifact_name: ${{ needs.build.outputs.pages_artifact_name }}
+          artifact_name: ${{ needs.tests.outputs.pages_artifact_name }}

@@ -3,6 +3,15 @@ name: Tests
 on:
   pull_request:
   workflow_call:
+    inputs:
+      build-pages:
+        description: Build the Pages artifact alongside browser checks
+        type: boolean
+        default: false
+    outputs:
+      pages_artifact_name:
+        description: Pages artifact produced by the release build
+        value: ${{ jobs.pages-build.outputs.pages_artifact_name }}
   workflow_dispatch:
 
 permissions:
@@ -70,9 +79,11 @@ jobs:
           sbt -batch -J-Xmx4G -Dsbt.supershell=false buildServerDev
           node tools/dev/check-server-assembly.mjs
 
-  tests:
+  scala-tests:
     runs-on: ubuntu-latest
-    # Allow a clean dependency/build cache; the browser suite runs with two processes.
+    outputs:
+      browser_artifact_name: browser-bundles-${{ github.run_attempt }}
+    # Allow a clean dependency/build cache.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -99,9 +110,34 @@ jobs:
       - name: Install Node test dependencies
         run: npm ci
       - name: Test every Scala module and build browser artifacts
-        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false coreJVM/test coreJS/test client/test server/test worker/test desktop/compile buildClientDev buildWorkerDev buildServerDev
-      - name: Verify standalone server assembly
-        run: node tools/dev/check-server-assembly.mjs
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false coreJVM/test coreJS/test client/test server/test worker/test desktop/compile buildClientDev buildWorkerDev
+      - run: npm run test:static
+      - name: Upload browser bundles
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-bundles-${{ github.run_attempt }}
+          path: |
+            artifacts/newest/client.js
+            artifacts/newest/worker.js
+          if-no-files-found: error
+          retention-days: 1
+
+  browser-tests:
+    needs: scala-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Download tested browser bundles
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.scala-tests.outputs.browser_artifact_name }}
+          path: artifacts/newest
       - run: npx playwright install --with-deps chromium
       - name: Allow Chromium's sandbox on Ubuntu
         shell: bash
@@ -118,5 +154,82 @@ jobs:
           EOF
             sudo apparmor_parser -r /etc/apparmor.d/edusquirrel-playwright
           fi
-      - run: npm run test:static
       - run: npm run test:workbooks
+
+  pages-build:
+    if: ${{ inputs.build-pages }}
+    needs: scala-tests
+    runs-on: ubuntu-latest
+    # A deploy-only retry must retain the artifact name from its producing build.
+    outputs:
+      pages_artifact_name: github-pages-${{ github.run_attempt }}
+    concurrency:
+      group: pages-build-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: 'sbt'
+
+      - name: Set up sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      # The Scala job already compiled this revision and saved its Zinc output.
+      # Restore it before release linking instead of compiling all sources again.
+      - name: Restore tested Scala build
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            target
+            project/target
+          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-
+
+      - name: Test Pages export
+        run: node --test tools/dev/assemble-pages.test.mjs
+
+      - name: Build client and worker
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false buildClientDeploy buildWorkerDeploy
+
+      - name: Build MathWorld
+        working-directory: resources/programs/20260907MathworldMain
+        run: |
+          npm ci
+          npm run build -- --base=./
+
+      - name: Assemble GitHub Pages site
+        run: node tools/dev/assemble-pages.mjs
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          name: github-pages-${{ github.run_attempt }}
+          path: _site
+
+  # Preserve the required "tests" status as the gate for the whole test suite.
+  tests:
+    if: ${{ always() }}
+    needs: [scala-tests, browser-tests, mysql-accounts]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every test job to pass
+        env:
+          SCALA_RESULT: ${{ needs.scala-tests.result }}
+          BROWSER_RESULT: ${{ needs.browser-tests.result }}
+          MYSQL_RESULT: ${{ needs.mysql-accounts.result }}
+        run: |
+          test "$SCALA_RESULT" = success
+          test "$BROWSER_RESULT" = success
+          test "$MYSQL_RESULT" = success

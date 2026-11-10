@@ -41,8 +41,12 @@ class QrCodeSpec extends FunSuite {
       assertEquals(code.text, text)
     }
   }
-  test("semantic regions match QR structure for every version, correction level and header mode") {
-    for version <- 1 to 40; ecc <- QrErrorCorrection.values; utf8 <- List(false, true) do {
+  test("semantic regions match QR structure at layout boundaries for every correction level and header mode") {
+    // First alignment/version patterns, byte-count width, each alignment-grid
+    // size, version 32's exceptional spacing, and the largest symbol. Independent
+    // full-matrix fixtures above still cover every version/correction pair.
+    val versions = List(1, 2, 6, 7, 9, 10, 14, 21, 28, 32, 35, 40)
+    for version <- versions; ecc <- QrErrorCorrection.values; utf8 <- List(false, true) do {
       val code = QrCode(Array[Byte](65), QrCodeConfig(version, ecc, 0, utf8))
       val counts = code.regions.flatten.groupMapReduce(identity)(_ => 1)(_ + _)
       def count(region: QrCodeRegion): Int = counts.getOrElse(region, 0)
@@ -100,7 +104,9 @@ class QrCodeSpec extends FunSuite {
   test("byte capacity boundaries, explicit versions and oversized content") {
     assertEquals(QrCode.capacity(QrCodeConfig(1, QrErrorCorrection.L)), 17)
     assertEquals(QrCode.capacity(QrCodeConfig(1, QrErrorCorrection.M)), 14)
-    for v <- 1 to 40; ecc <- QrErrorCorrection.values; utf8 <- List(false, true) do {
+    // Byte-mode count fields change at version 10. Full-capacity matrix
+    // fixtures above independently cover the remaining encoder boundaries.
+    for v <- List(1, 9, 10, 40); ecc <- QrErrorCorrection.values; utf8 <- List(false, true) do {
       val config = QrCodeConfig(v, ecc, 0, utf8)
       val capacity = QrCode.capacity(config)
       assertEquals(QrCode(Array.fill[Byte](capacity)(0), config).byteCount, capacity)
