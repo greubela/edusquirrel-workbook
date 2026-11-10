@@ -14,8 +14,8 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
 
   def canExecuteCommand(executionCommand: ExecutionCommand): Boolean = clients.exists(_.canExecuteCommand(executionCommand))
 
-  private def failFuture(logger: Logger, msg: String, cause: Option[Throwable] = None): Future[ExecutionClientResponse] = {
-    val err = if (cause.nonEmpty) SerializedException(msg + " (reason: " + cause.get.getMessage + ")", cause) else SerializedException(msg)
+  private def failFuture(logger: Logger, msg: String, cause: Option[SerializedException] = None): Future[ExecutionClientResponse] = {
+    val err = SerializedException(msg + cause.map(error => " (reason: " + error.msg + ")").getOrElse("")).copy(cause = cause)
     logger.logError(err.getMessage)
     if (cause.nonEmpty) logger.logError(cause.get.getMessage + "\n" + cause.get.getStackTrace.mkString("\n"))
     throw err
@@ -41,9 +41,7 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
     if (handlers.isEmpty && failures.isEmpty) {
       failFuture(logger, s"ExecutionClientPool: no handler for command ${command.name} registered!", failures)
     } else if (handlers.isEmpty && failures.nonEmpty) {
-      val msg = s"ExecutionClientPool: all handlers for command ${command.name} failed! See logs or cause(s) for reasons."
-      val newFailure: SerializedException = failures.get.asCauseOf(new Exception(msg, failures.get))
-      failFuture(logger, s"ExecutionClientPool: all handlers for command ${command.name} failed! See logs or cause(s) for reasons.)", Some(newFailure))
+      failFuture(logger, s"ExecutionClientPool: all handlers for command ${command.name} failed!", failures)
     } else {
       val timestampStarted: LocalDateTime = LocalDateTime.now()
       logger.logInfo("Tried execution with handler " + handlers.head + " at " + timestampStarted + " (prior failures: " + failures.map(_.getMessage).getOrElse("none") + ")")
@@ -55,7 +53,12 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
           case err: Throwable => {
             val msg = s"Execution Client ${handlers.head} failed execution at ${LocalDateTime.now()}, trying next handler!"
             logger.logError(msg + "\n" + err.getMessage + "\n" + err.getStackTrace.mkString("\n"))
-            val newFailure: SerializedException = if (failures.isEmpty) SerializedException(err) else failures.get.asCauseOf(Exception(msg))
+            val current = err match {
+              case serialized: SerializedException => serialized
+              case other => SerializedException(other)
+            }
+            val newFailure = failures.fold(current)(previous =>
+              SerializedException(current.msg + "; previous handler: " + previous.msg).copy(cause = Some(current)))
             tryExecutionWithHandlers(timestampReceived, handlers.tail, command, Some(newFailure), logger)
           }
         }

@@ -90,7 +90,7 @@ case class DeleteInDatabase(
 object DeleteInDatabase {
 
   def handleRequest(request: DeleteInDbRequest, logger: Logger): SyncSuccess = {
-    it.evadid.server.database.DatabaseRequestConnection.use(request) { connection =>
+    it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
       request.databaseFormat match {
         case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => new RelationalHistoryStorage(connection, logger).delete(request)
         case format: it.evadid.sql.DatabaseHistoryFormat.Snapshot =>
