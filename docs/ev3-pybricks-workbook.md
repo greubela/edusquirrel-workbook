@@ -137,6 +137,21 @@ own path, outside the catalog:
   `SnapProjectXml.renderCondition`/`renderCall` write a primitive call back as
   `<block s="selector">` wherever it appears.
 
+Where the rejection happens (confirmed by Yannek, 10.11.2026): the stored
+state `ProgrammingStateSnapXml` is XML text and carries no block types. A
+block's kind is implied by its selector (`<block s="reportNot">`) or, for
+injected and custom blocks, by the `type` in its definition, which Snap
+resolves against its own sources (`objects.js`, `reportNot` is
+`type: 'predicate'`). The editor works on a typed view of that XML
+(`ProgrammingStateSnapScalaModel`), so regenerated preview and pen images do
+not count as changes. `while not touch.pressed():` therefore never reaches the
+editor: `SnapTurtlePythonBridge.applyPython` parses the Python into
+`BeExpression`, and `validateSubset` rejects the condition before any XML is
+written. The same `validateSubset` guards
+`ProgrammingStateBeExpression.toSnapXml`, so the extension below is a change
+to the `BeExpression` → Snap XML projection, not to the editor or the stored
+state.
+
 Change: `Primitive` gets a `kind` (command, reporter, predicate) and a reported
 type; `ExtraBlockSpec` carries it to the injection; `isSupportedCondition` and
 `isSupportedValue` accept catalog reporters and predicates with valid arguments.
