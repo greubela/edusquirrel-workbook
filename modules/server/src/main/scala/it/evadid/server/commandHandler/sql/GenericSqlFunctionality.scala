@@ -44,7 +44,13 @@ private[sql] case class GenericSqlFunctionality(
 
   def executeSyncQuere(preparedStatement: PreparedStatement, fieldsToRead: List[String], usageContext: UsageContext): List[RichDatabaseEntry] = {
     val asList = executeQuery(preparedStatement, fieldsToRead)
-    convertAll(asList, tup => RichDatabaseEntry(usageContext, tup))
+    convertAll(asList, tup => {
+      val entry = RichDatabaseEntry(usageContext, tup)
+      // Force validation inside the per-record boundary, including lazy keyless keys.
+      entry.keyForSerialisation
+      it.evadid.workbook.interaction.sync.model.HistoryJson.lastTimestamp(entry.historyJson)
+      entry
+    })
   }
 
   private def readOne(resultSet: ResultSet, fields: List[String]): Option[List[String]] = try {

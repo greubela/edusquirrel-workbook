@@ -40,7 +40,21 @@ case class LocalIndexedDbStorageSyncHandler(definition: LocalIndexedDbSyncDefini
     }
   }
 
-  override def removeKeyRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[SyncSuccess] = ???
+  override def removeKeyRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[SyncSuccess] =
+    openDatabase().flatMap { db =>
+      val promise = Promise[SyncSuccess]()
+      val transaction = db.transaction(js.Array(definition.storeName), IDBTransactionMode.readwrite)
+      transaction.objectStore(definition.storeName).delete(key)
+      transaction.oncomplete = (_: dom.Event) => {
+        db.close()
+        promise.trySuccess(SyncSuccess(0, 0, 1, LocalDateTime.now()))
+      }
+      transaction.onabort = (_: dom.Event) => {
+        db.close()
+        promise.tryFailure(new RuntimeException("IndexedDB delete transaction aborted"))
+      }
+      promise.future
+    }
 
   override def storeElementRaw(logger: SyncLogger, key: String, value: String)(using ec: ExecutionContext): Future[SyncSuccess] = {
     openDatabase().flatMap { db =>

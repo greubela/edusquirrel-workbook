@@ -73,6 +73,47 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
+  test("classic history queries accept existing column types without enforcing new-script DDL") {
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement()) { statement =>
+        List("events", "eventsWithKey").foreach { table =>
+          statement.executeUpdate(s"ALTER TABLE `$table` MODIFY eventid INT NOT NULL AUTO_INCREMENT, MODIFY timestamp DATETIME NULL, MODIFY serializeddata LONGTEXT NULL, CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci")
+        }
+        statement.executeUpdate("ALTER TABLE events DROP INDEX events_context")
+        statement.executeUpdate("ALTER TABLE events MODIFY programid TEXT NULL, MODIFY scenarioid TEXT NULL, MODIFY userid TEXT NULL")
+      }
+    }
+    List(ClassicKeylessJson, ClassicJsonWithKey).foreach { format =>
+      store(history(), format)
+      store(history("updated"), format)
+      assertEquals(read[History](fetch(format)(sync)), history("updated"))
+      DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, format), logger)
+      assertEquals(fetch(format), Map.empty)
+    }
+  }
+
+  test("malformed classic rows do not block valid histories or keyless replacements") {
+    List(ClassicKeylessJson, ClassicJsonWithKey).foreach { format =>
+      store(history(), format)
+      MysqlTestDatabase.withConnection { connection =>
+        val keyed = format == ClassicJsonWithKey
+        val table = format.tables.head
+        val columns = if keyed then ",eventkey" else ""
+        val value = if keyed then ",'broken-key'" else ""
+        Using.resource(connection.prepareStatement(s"INSERT INTO `$table` (programid,scenarioid,userid,timestamp,serializeddata$columns) VALUES (?,?,?,NOW(),?$value)")) { statement =>
+          statement.setString(1, context.programId)
+          statement.setString(2, context.scenarioId)
+          statement.setString(3, context.userId)
+          statement.setString(4, "{broken JSON")
+          statement.executeUpdate()
+        }
+      }
+      assertEquals(read[History](fetch(format)(sync)), history())
+      store(history("replacement"), format)
+      assertEquals(read[History](fetch(format)(sync)), history("replacement"))
+    }
+  }
+
   test("nanosecond-distinct answers survive, retries retain IDs, and context IDs never enter payloads") {
     store(history())
     val answerId = scalar("SELECT id FROM answer_event")

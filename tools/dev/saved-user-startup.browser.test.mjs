@@ -9,7 +9,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 
-test('local preferences restore and credential-bearing saved logins are discarded without clearing answers', async () => {
+test('local preferences restore and malformed cached logins are discarded without clearing answers', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
   try {
     const legacy = JSON.stringify({user:{name:'Saved student',id:'saved-student',mail:'saved@example.org'},token:null,
@@ -40,6 +40,7 @@ test('local preferences restore and credential-bearing saved logins are discarde
           const restored = JSON.parse(localStorage.getItem('edusquirrel-alluserinfo'));
           return restored.user.id === 'current-student' && typeof restored.config === 'object';
         });
+        await page.locator('.container-login').waitFor({state:'detached'});
         assert.equal(await page.locator('.container-login').count(), 0, 'the existing local identity is restored');
       } else {
         await page.locator('.container-login').waitFor();
@@ -50,6 +51,35 @@ test('local preferences restore and credential-bearing saved logins are discarde
           await page.waitForFunction(() => document.querySelector('.section-register .login-name-input')?.placeholder === 'Dit navn');
           assert.equal(await page.locator('.section-register .login-email-input').first().getAttribute('placeholder'), 'E-mailadresse',
             'Danish login entries are discovered and rendered by the current client');
+          await page.evaluate(() => new Promise((resolve, reject) => {
+            const request = indexedDB.open('EvaDidCacheDb', 1);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+              const db = request.result;
+              const transaction = db.transaction('cache', 'readwrite');
+              const store = transaction.objectStore('cache');
+              store.put({id:'edusquirrel-session', value:'{broken JSON'});
+              store.put({id:'unrelated-cache-record', value:'keep this cache'});
+              transaction.oncomplete = () => { db.close(); resolve(); };
+              transaction.onabort = () => reject(transaction.error);
+            };
+          }));
+          await page.reload();
+          await page.locator('.container-login').waitFor();
+          await page.waitForFunction(() => new Promise(resolve => {
+            const request = indexedDB.open('EvaDidCacheDb', 1);
+            request.onsuccess = () => {
+              const db = request.result;
+              const transaction = db.transaction('cache', 'readonly');
+              const store = transaction.objectStore('cache');
+              const login = store.get('edusquirrel-session');
+              const unrelated = store.get('unrelated-cache-record');
+              transaction.oncomplete = () => {
+                db.close();
+                resolve(!login.result && unrelated.result?.value === 'keep this cache');
+              };
+            };
+          }));
         }
       }
       assert.equal(await page.evaluate(() => localStorage.getItem('saved-answer-fixture')), 'keep this answer');

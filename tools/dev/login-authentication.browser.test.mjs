@@ -17,7 +17,22 @@ function response(command, value) {
   });
 }
 
-test('login preserves email, explains duplicate registration and observes failed token login', async () => {
+async function cachedSession(page) {
+  return page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('EvaDidCacheDb', 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction('cache', 'readonly');
+      const read = transaction.objectStore('cache').get('edusquirrel-session');
+      read.onsuccess = () => resolve(read.result ? JSON.parse(read.result.value) : null);
+      read.onerror = () => reject(read.error);
+      transaction.oncomplete = () => db.close();
+    };
+  }));
+}
+
+test('login validates accounts, restores cached credentials after reload and clears them on logout', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
   try {
     const page = await browser.newPage();
@@ -130,7 +145,7 @@ test('login preserves email, explains duplicate registration and observes failed
     }
     const storedUser = await page.evaluate(() => JSON.parse(localStorage.getItem('edusquirrel-alluserinfo')));
     assert.equal(storedUser.user.mail, 'first.last@example.org', 'successful login persists the backend user');
-    assert.equal(storedUser.credentials, undefined, 'credentials stay out of browser storage');
+    assert.equal(storedUser.credentials, undefined, 'credentials stay out of localStorage preferences');
     assert(!JSON.stringify(storedUser).includes('mock-token'));
     await page.locator('.workbook-user-menu-button').click();
     await page.getByRole('menuitem', {name:'Session connections', exact:true}).click();
@@ -147,9 +162,19 @@ test('login preserves email, explains duplicate registration and observes failed
     await connections.waitFor({state:'detached'});
     assert(requests.some(command => command.name === 'fetch-from-db-request' && command.json.databaseConfig.$type === 'DatabaseConfigWithCredentials'), 'custom database sync uses the explicit credential-bearing configuration');
     assert(!await page.evaluate(() => /ephemeral-browser-key|ephemeral-database-password/.test(JSON.stringify(localStorage))));
+    const cached = await cachedSession(page);
+    assert.equal(cached.credentials.signedBackendToken.tokenStringWithSignature, 'mock-token');
+    assert.equal(cached.credentials.singleAccessToken.token, 'emailed-token');
+    assert.equal(cached.credentials.llmApiConfig.apiKey, 'ephemeral-browser-key');
+    assert.equal(cached.credentials.databaseConfig.password, 'ephemeral-database-password');
+    const loginsBeforeReload = requests.filter(command => command.name === 'login-command').length;
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('.workbook-user-menu-button') && !document.querySelector('.container-login'));
+    assert.equal(requests.filter(command => command.name === 'login-command').length, loginsBeforeReload + 1, 'reload validates the cached signed token');
+    assert.deepEqual(requests.filter(command => command.name === 'login-command').at(-1).json.accessToken[0], 1);
     await page.locator('.workbook-user-menu-button').click();
     await page.getByRole('menuitem', {name:'Session connections', exact:true}).click();
-    assert.equal(await connections.getByLabel('API key').inputValue(), 'ephemeral-browser-key', 'session credentials remain available in memory');
+    assert.equal(await connections.getByLabel('API key').inputValue(), 'ephemeral-browser-key', 'LLM credentials survive a reload');
     assert.equal(await connections.getByLabel('Password', {exact:true}).inputValue(), 'ephemeral-database-password');
     await connections.getByRole('button', {name:'Cancel', exact:true}).click();
     // Storage restrictions must not keep a signed-in session alive after logout.
@@ -166,6 +191,7 @@ test('login preserves email, explains duplicate registration and observes failed
     const exported = await fs.readFile(await (await exportedSession).path(), 'utf8');
     assert(!/ephemeral-browser-key|ephemeral-database-password|mock-token|emailed-token/.test(exported), 'session exports exclude credentials');
     await page.locator('.container-login').waitFor();
+    assert.equal(await cachedSession(page), null, 'logout removes only the cached login');
     await login.locator('.login-email-input').fill('first.last@example.org');
     await login.locator('button').first().click();
     await page.waitForFunction(() => /gesendet|sent/i.test(document.querySelector('.section-continue [role="status"]').textContent));
