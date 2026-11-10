@@ -15,6 +15,9 @@ jobs:
   build:
     needs: tests
     runs-on: ubuntu-latest
+    # A deploy-only retry must retain the artifact name from its producing build.
+    outputs:
+      pages_artifact_name: github-pages-${{ github.run_attempt }}
     concurrency:
       group: pages-build-${{ github.ref }}
       cancel-in-progress: true
@@ -67,6 +70,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
+          name: github-pages-${{ github.run_attempt }}
           path: _site
 
   deploy:
@@ -87,3 +91,5 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          artifact_name: ${{ needs.build.outputs.pages_artifact_name }}
