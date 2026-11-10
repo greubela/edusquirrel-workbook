@@ -21,8 +21,8 @@ script creates the anonymous logging identity `user-unknown`.
 `EnsureDatabaseProperlySetup` reads MySQL/JDBC schema metadata and compares it
 with the packaged SQL definitions. Inspection does not read application rows,
 run migrations or modify data. Automatic startup inspection and initialization
-are currently disabled while the new schema is not live. Explicit setup initializes
-only a completely empty database. Any existing table or view prevents automatic creation, including a
+remain disabled; deployment does not automatically change existing databases.
+Explicit setup initializes only a completely empty database. Any existing table or view prevents automatic creation, including a
 partially configured or conflicting schema. Explicit `setupIfEmpty` uses the
 same rule. Explicit checks report missing/incompatible structures;
 existing databases are never repaired automatically.
@@ -80,11 +80,12 @@ never trust arbitrary incoming forwarding headers or all private address ranges.
 ## Session connections
 
 `AllUserInfo.credentials: UserCredentials` holds the backend token, single-use
-login token, optional `DatabaseConfigWithCredentials` and optional `LlmConfiguration`
-only in memory. The user menu's **Session connections** form edits custom
-connections. Closing/reloading the page requires entering them again. Browser
+login token, optional `DatabaseConfigWithCredentials` and optional `LlmConfiguration`.
+The user menu's **Session connections** form edits custom connections. The full
+current profile is cached in browser IndexedDB and restored after reload, with
+backend-token validation. Logout removes the cached credentials. localStorage
 preferences use `SavedUserPreferences(user, config)`; exported sessions and
-account rows contain no credentials. Online users must sign in again each session.
+account rows contain no credentials.
 
 Database connections have two explicit types under `DatabaseConfiguration`:
 `DatabaseConfig` contains format, host, port and database; `DatabaseConfigWithCredentials`
@@ -98,13 +99,22 @@ matches the configured server database. `DatabaseConfigWithCredentials` is used
 as-is without consulting server defaults. The session form provides the latter
 for user-owned databases. Request construction selects session configuration
 or the destination definition directly; it does not rewrite account preferences.
-User-supplied credentials are removed from account persistence, browser preferences,
+User-supplied credentials are removed from account persistence, localStorage preferences,
 exports and command logs, including credentials attached directly to a destination.
 
-Before executing history queries, the backend validates every table required by
-the selected history format. Create a custom history database with its corresponding
-SQL script first. It is never repaired automatically. Startup inspection remains
-disabled while the new schema is not live.
+Relational history requests validate their required tables before querying. Classic
+snapshot requests execute their existing queries directly: working classic tables
+need not match the creation scripts' exact column types, nullability or collations.
+Malformed snapshot records are skipped individually without accepting old payload
+schemas or modifying stored data. Create custom databases with the corresponding
+SQL scripts first. Startup inspection remains disabled; databases are never
+repaired automatically.
+
+If `syncedLog` is missing in an existing deployment, execute its `CREATE TABLE`
+statement from [createLogTables.sql](../../artifacts/database/createLogTables.sql)
+manually, after ensuring the referenced user table exists. Do not rerun the full
+script over existing tables. Logging failures are warnings and do not prevent
+history requests from executing.
 
 LLM requests carry `llmConfiguration: Option[LlmConfiguration]`. Callers pass the
 current session configuration explicitly. `Some(config)` is used as-is, including

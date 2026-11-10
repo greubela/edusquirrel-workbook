@@ -16,13 +16,14 @@ asynchronous failures reach translated feedback rather than disappearing in the
 transport layer. Styles belong in `homepage/css/workbook/workbook-structure.css`
 and messages in the login language maps.
 
-Saved preferences contain only `user` and `config`. Session credentials (backend
-token, login code, custom database password and LLM key) live in
-`AllUserInfo.credentials` in memory. Online accounts require a fresh login after
-reload; local profile preferences may be restored. No credentials are written to
-account preferences, browser storage or exported sessions. The existing short-lived
-server login-code verification workflow is unchanged. Browser storage failures
-do not prevent login or logout from updating the in-memory session.
+Saved localStorage preferences contain only `user` and `config`. The current
+`AllUserInfo`, including backend/login tokens and custom database/LLM credentials,
+is cached under `edusquirrel-session` in IndexedDB (`EvaDidCacheDb`, `cache`).
+Reload validates the cached backend token and restores custom connections; logout
+removes that cache record. Credentials remain excluded from server account
+preferences, localStorage and exported sessions. The existing short-lived server
+login-code verification workflow is unchanged. Browser storage failures do not
+prevent login or logout from updating the in-memory session.
 
 Saved preference restoration accepts only the current schema. Unreadable or obsolete
 login records are discarded so startup can show the login form. Other saved

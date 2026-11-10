@@ -16,7 +16,7 @@ import it.evadid.distribution.commandTypes.UserCommands.{CreateAccountRequest, L
 import it.evadid.homepage.control.info.{SessionData, WorkbookUserDataAnalyzer}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
-import it.evadid.homepage.workbook.syncDestination.LocalStorageSyncHandler
+import it.evadid.homepage.workbook.syncDestination.{LocalStorageSyncHandler, LocalIndexedDbStorageSyncHandler}
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
 import upickle.default.*
 
@@ -77,6 +77,33 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   /* USER */
   private val allUserInfoStorageKey: String = "edusquirrel-alluserinfo"
 
+  private val sessionStorageKey = "edusquirrel-session"
+  private val sessionCache = LocalIndexedDbStorageSyncHandler(LocalIndexedDbStorageSyncHandler.instanceForCaching)
+
+  private def saveSession(info: Option[AllUserInfo]): Future[Unit] = {
+    val stored = info match {
+      case Some(user) => sessionCache.storeElementRaw(fullInfo.syncControl.syncLogger, sessionStorageKey, write(user))
+      case None => sessionCache.removeKeyRaw(fullInfo.syncControl.syncLogger, sessionStorageKey)
+    }
+    stored.map(_ => ()).recover { case scala.util.control.NonFatal(error) =>
+      logger.logExceptionWarn("Could not update cached login", error)
+    }
+  }
+
+  private def restoreSession(): Future[Option[AllUserInfo]] =
+    sessionCache.readElementRaw(fullInfo.syncControl.syncLogger, sessionStorageKey).transformWith {
+      case Failure(_: NoSuchElementException) => Future.successful(None)
+      case Failure(error) =>
+        logger.logExceptionWarn("Could not read cached login", error)
+        Future.successful(None)
+      case Success(raw) => scala.util.Try(read[AllUserInfo](raw)) match {
+        case Success(info) => Future.successful(Some(info))
+        case Failure(_) =>
+          logger.logWarn("Discarded an invalid cached login; please sign in again.")
+          saveSession(None).map(_ => None)
+      }
+    }
+
   def tryParsingExistingUser(): Option[AllUserInfo] = {
     val restored: scala.util.Try[Option[AllUserInfo]] = scala.util.Try(Option(org.scalajs.dom.window.localStorage.getItem(allUserInfoStorageKey)))
       .flatMap {
@@ -95,7 +122,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     }.get
   }
 
-  private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken]): Future[?] = {
+  private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken], cachedCredentials: UserCredentials = UserCredentials()): Future[?] = {
     val loginReq = LoginRequest(userMail.trim.toLowerCase, token)
     val backend = token.match {
       case Left(sat) => fullInfo.defaults.backendExecutor
@@ -107,16 +134,21 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
         val loginResponse = exInfo.result
         val userInfoOp = loginResponse.allUserInfo
         if (!loginResponse.userKnown) {
-          removeUserFromLocalStorage()
+          clearSavedLogin()
           throw AuthenticationFailure("login/errorUnknownUser")
         } else if (!loginResponse.tokenValid) {
+          clearSavedLogin()
           throw AuthenticationFailure("login/errorInvalidToken")
         } else if (userInfoOp.isEmpty) {
-          removeUserFromLocalStorage()
+          clearSavedLogin()
           throw AuthenticationFailure("login/errorLogin")
         } else {
           logger.logInfo(s"Successfully logged in for ${userInfoOp.get.user}")
-          changeUser(userInfoOp.map(info => info.copy(credentials = info.credentials.copy(singleAccessToken = token.left.toOption))))
+          changeUser(userInfoOp.map { info =>
+            info.copy(credentials = cachedCredentials.copy(
+              signedBackendToken = info.credentials.signedBackendToken,
+              singleAccessToken = token.left.toOption.orElse(cachedCredentials.singleAccessToken)))
+          })
         }
     }.recoverWith { case err =>
       logger.logExceptionWarn("login attempt failed", err)
@@ -124,8 +156,9 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     }
   }
 
-  def removeUserFromLocalStorage(): Unit = {
-    LocalStorageSyncHandler.removeKey(allUserInfoStorageKey)
+  private def clearSavedLogin(): Unit = {
+    saveSession(None)
+    scala.util.Try(LocalStorageSyncHandler.removeKey(allUserInfoStorageKey))
   }
 
   def tryLoginWith(mail: String, singleAccessToken: SingleAccessToken): Future[?] = {
@@ -138,7 +171,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
     val sessionData = read[SessionData](loadedFile.fileDataAsUtf8String)
 
-    val loginFuture: Future[_] = if (fullInfo.current.userInfo.isEmpty || fullInfo.current.userInfo.get.user.id != sessionData.userInfo.id) {
+    val loginFuture: Future[?] = if (fullInfo.current.userInfo.isEmpty || fullInfo.current.userInfo.get.user.id != sessionData.userInfo.id) {
       tryLoginOrLocalRegistration(Some(sessionData.userInfo), sessionData.userConfig)
     } else Future.successful(())
 
@@ -209,14 +242,15 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     }
   }
 
-  def tryAutoLogin(): Future[?] = {
-    val localUser = tryParsingExistingUser()
-    if (localUser.isEmpty) {
-      Future.failed[Unit](SerializedException("No local user with token stored to try auto login with!"))
-    } else if (localUser.get.config.isOnlineAccount) {
-      Future.failed(AuthenticationFailure("login/errorLogin"))
-    } else {
-      changeUser(localUser)
+  def tryAutoLogin(): Future[?] = restoreSession().flatMap { cached =>
+    cached.orElse(tryParsingExistingUser()) match {
+      case None => Future.failed(SerializedException("No cached login available"))
+      case Some(info) if info.config.isOnlineAccount =>
+        info.credentials.signedBackendToken match {
+          case Some(token) => tryServerLoginWith(info.user.mail, Right(token), info.credentials)
+          case None => Future.failed(AuthenticationFailure("login/errorLogin"))
+        }
+      case Some(info) => changeUser(Some(info))
     }
   }
 
@@ -249,8 +283,10 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
       }
       waitFor.flatMap(res => {
         actuallySetNewUser()
-        if (newUserInfo.isEmpty || fullInfo.current.workbookInfo.isEmpty) Future.successful(()) else {
-          fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable))
+        saveSession(newUserInfo).flatMap { _ =>
+          if (newUserInfo.isEmpty || fullInfo.current.workbookInfo.isEmpty) Future.successful(()) else {
+            fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable))
+          }
         }
       }).recover {
         err => logger.logExceptionWarn("Ignore Fetch and Load!", err)
@@ -261,7 +297,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   def updateCredentials(credentials: UserCredentials): Future[?] = {
     require(fullInfo.current.userInfo.nonEmpty, "Create or log in to a profile first")
     fullInfo.homepageInfoState.update(info => info.copy(userInfo = info.userInfo.map(_.copy(credentials = credentials))))
-    fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable))
+    saveSession(fullInfo.current.userInfo).flatMap(_ => fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable)))
   }
 
   def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {

@@ -6,7 +6,7 @@ import it.evadid.llm.LlmConfiguration
 import it.evadid.sql.DatabaseConfigWithCredentials
 import upickle.default.*
 
-/** Transient session state. Never include this object in account preferences or saved sessions. */
+/** Client credentials cached in IndexedDB. Never include them in server account preferences or exported sessions. */
 case class UserCredentials(signedBackendToken: Option[SignedToken] = None,
     singleAccessToken: Option[SingleAccessToken] = None,
     llmApiConfig: Option[LlmConfiguration] = None,

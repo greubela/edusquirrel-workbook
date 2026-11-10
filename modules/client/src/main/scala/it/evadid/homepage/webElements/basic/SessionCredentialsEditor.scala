@@ -59,7 +59,7 @@ case class SessionCredentialsEditor(close: () => Unit) extends HtmlAppElement {
 
   override def getDomElement(): Element = div(cls := "session-credentials", role := "dialog", aria.label := "Session connections",
     h3("Session connections"),
-    p("These credentials are held in memory for this session. Enter them again after reloading. Leave custom connections disabled to use the server defaults."),
+    p("These credentials are cached in this browser until you log out. Leave custom connections disabled to use the server defaults."),
     label(input(typ := "checkbox", checked <-- dbEnabled.signal, onChange.mapToChecked --> dbEnabled), " Use my MySQL database"),
     child.maybe <-- dbEnabled.signal.map(enabled => Option.when(enabled)(div(
       field("Host", host), field("Port", port), field("Database", schema), field("User", user), field("Password", password, true)))),
