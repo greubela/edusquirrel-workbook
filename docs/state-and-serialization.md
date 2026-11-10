@@ -149,6 +149,12 @@ record instead of migrating older formats or interrupting startup.
 
 ## Default uPickle codecs
 
+Do not provide a `ReadWriter[Any]` or serialize arbitrary values through `toString`.
+Use concrete payload models with derived codecs; use `ujson.Value` for genuinely
+dynamic JSON data. Interactions with no grading/scaffolding payload use `Unit`.
+Unknown language literals retain opaque source text through a `Serializer[String]`,
+which does not imply a codec for arbitrary runtime objects.
+
 Use uPickle rather than browser-only JSON/XML APIs for shared values:
 
 ```scala

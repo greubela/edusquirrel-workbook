@@ -1817,11 +1817,11 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
     override def createObservableReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): ObservableValue[InteractionVariableSyncReport[T, GA, SA]] =
       throw AssertionError("Restore must not subscribe")
-    override def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[?] = throw AssertionError("Restore must not fetch")
-    override def load(values: List[InteractionVariableUntyped]): Future[?] = throw AssertionError("Restore must not fetch")
-    override def ensureCachesContainLastElementsToWrite(values: List[InteractionVariableUntyped]): Future[?] =
+    override def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[Unit] = throw AssertionError("Restore must not fetch")
+    override def load(values: List[InteractionVariableUntyped]): Future[Unit] = throw AssertionError("Restore must not fetch")
+    override def ensureCachesContainLastElementsToWrite(values: List[InteractionVariableUntyped]): Future[Unit] =
       throw AssertionError("Restore must not prepare writes")
-    override def requestStore(values: List[InteractionVariableUntyped]): Future[?] = { stores.update(_ + 1); Future.successful(()) }
+    override def requestStore(values: List[InteractionVariableUntyped]): Future[Unit] = { stores.update(_ + 1); Future.successful(()) }
   }
 
   test("history restore keeps full feedback and the newest result of each grader in any source order") {
