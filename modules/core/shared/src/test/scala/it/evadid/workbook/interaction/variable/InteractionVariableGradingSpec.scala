@@ -1081,7 +1081,7 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  test("wrong grading snapshots stay unavailable and matching snapshots expose their saved status") {
+  test("wrong grading snapshots are discarded and matching snapshots expose their saved status") {
     val check = HintCheck("public check", GradingImportance.REQUIRED_TEST)
     val f = new HintFixture(checks = List(check))
     val time = LocalDateTime.of(2026, 10, 17, 12, 0)
@@ -1090,7 +1090,8 @@ class InteractionVariableGradingSpec extends FunSuite {
     val other = ProgrammingStatePythonString("other")
     f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(other, Map(first.grader -> first))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     f.generateFeedback(f.source).flatMap { _ =>
-      assertEquals(f.context("checks")(0)("status").str, "unavailable")
+      assertEquals(f.context("checks")(0)("status").str, "not-run")
+      assertEquals(check.runs.now(), 0)
       f.variable.updateHistory(_.copy(historyGrading = InteractionVariableGradingHistory(Map(f.source -> GradedState(f.source, Map(check -> conflicting))))), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
       f.generateFeedback(f.source).flatMap { _ =>
         assertEquals(f.context("checks")(0)("status").str, "incorrect")
@@ -1516,6 +1517,8 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
     val value = variable(grader)
     val sync = new RestoreSync(value, Nil)
+    // Mark the captured value as a submitted answer so cleanup retains it.
+    value.setStateFromUserInteraction("", MAJOR, context = TestExecutionContext(syncControl = Option(sync)))
     val completed = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
     assert(!completed.isCompleted)
     value.setStateFromUserInteraction("newer answer", MAJOR, value.currentHistory.historyStates.lastStateOption.get.timestamp.plusSeconds(1), TestExecutionContext(syncControl = Option(sync)))
@@ -1599,6 +1602,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       }
     }
     val value = variable(grader)
+    value.setStateFromUserInteraction("", MAJOR, context = TestExecutionContext())
     val automatic = value.control.getOrCalculateGrading(TestExecutionContext())
     val forced = value.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true)
     value.setStateFromUserInteraction("another answer", MAJOR, LocalDateTime.now().plusSeconds(1), TestExecutionContext())
@@ -1663,15 +1667,17 @@ class InteractionVariableGradingSpec extends FunSuite {
     }
   }
 
-  test("clearing state history keeps the default answer and cached grading") {
+  test("clearing state history restores the default and preserves matching feedback") {
     val grader = new RecordingGrader
     val value = variable(grader)
     val result = GradingResult[String, String](grader, "", GradingStatus.Correct())
-    value.updateHistory(_.addGrading(result), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+    val savedHint = hint("", "Saved default feedback")
+    value.updateHistory(_.addGrading(result).addScaffolding(savedHint), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     value.updateHistory(_.copy(historyStates = InteractionVariableStateHistory(Set.empty)), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     value.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true).map { cached =>
       assertEquals(cached.testsWithResults, Set(result))
       assertEquals(value.currentValue, "")
+      assertEquals(value.currentHistory.historyScaffolding.scaffoldingMap(""), savedHint)
       assertEquals(grader.requests, Nil)
     }
   }
@@ -1822,6 +1828,23 @@ class InteractionVariableGradingSpec extends FunSuite {
     override def ensureCachesContainLastElementsToWrite(values: List[InteractionVariableUntyped]): Future[Unit] =
       throw AssertionError("Restore must not prepare writes")
     override def requestStore(values: List[InteractionVariableUntyped]): Future[Unit] = { stores.update(_ + 1); Future.successful(()) }
+  }
+
+  test("history cleanup removes obsolete defaults and their feedback together") {
+    val grader = new RecordingGrader
+    val initial = event("default", 0, UpdateImportance.DEFAULT)
+    val answer = event("answer", 1)
+    val defaultGrade = grade(grader, "default", 2, GradingStatus.Correct())
+    val answerGrade = grade(grader, "answer", 3, GradingStatus.Correct())
+    val original = history(Set(initial, answer), Map(
+      "default" -> GradedState("default", Map(grader -> defaultGrade)),
+      "answer" -> GradedState("answer", Map(grader -> answerGrade))),
+      Map("default" -> hint("default", "Unused default"), "answer" -> hint("answer", "Answer feedback")))
+    val cleaned = original.cleanedHistory()
+    assertEquals(cleaned.historyStates.events, Set(answer))
+    assertEquals(cleaned.historyGrading.gradingsMap.keySet, Set("answer"))
+    assertEquals(cleaned.historyScaffolding.scaffoldingMap.keySet, Set("answer"))
+    assertEquals(cleaned.cleanedHistory(), cleaned)
   }
 
   test("history restore keeps full feedback and the newest result of each grader in any source order") {

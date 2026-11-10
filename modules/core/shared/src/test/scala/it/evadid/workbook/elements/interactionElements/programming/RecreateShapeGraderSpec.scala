@@ -45,6 +45,7 @@ class RecreateShapeGraderSpec extends FunSuite {
     val corrected = ProgrammingStatePythonString("forward(100)\nturn_right(90)\nforward(100)\nturn_right(270)\nforward(100)")
     val interaction = TurtleRecreateShapeInteraction("edited-staircase", first, target, limitTurtleCommandUsage = Map.empty)
     val variable = interaction.interactionVariable
+    variable.setStateFromUserInteraction(first, MAJOR, context = TestExecutionContext())
     variable.control.getOrCalculateGrading(TestExecutionContext()).flatMap { old =>
       assertEquals(old.testsWithResults.head.gradingStatus, GradingStatus.PartiallyCorrect())
       variable.setStateFromUserInteraction(corrected, MAJOR, context = TestExecutionContext())

@@ -95,11 +95,14 @@ class SyncPackageSpec extends FunSuite {
 
   test("every SyncStrategy selects the specified relevance and never mistakes a default for the latest update") {
     val expected = List(
-      SyncStrategy.SYNC_EVERYTHING -> history.historyStates.events,
+      SyncStrategy.SYNC_EVERYTHING -> Set(major, minor, temporary),
+      SyncStrategy.SYNC_LAST_FIVE -> Set(major, minor, temporary),
       SyncStrategy.SYNC_MAJOR -> Set(major),
       SyncStrategy.SYNC_MINOR -> Set(major, minor),
       SyncStrategy.SYNC_LAST -> Set(temporary),
       SyncStrategy.SYNC_LAST_AND_MAJOR -> Set(major, temporary))
+    // The strategy selects all events; history normalization removes obsolete defaults.
+    assertEquals(SyncStrategy.SYNC_EVERYTHING.selectEventsToSync(history.historyStates.events), history.historyStates.events)
     expected.foreach((strategy, events) => {
       assertEquals(history.filterWithStrategy(strategy).historyStates.events, events)
       assertEquals(strategy.selectEventsToSync(Set.empty[InteractionVariableState[String]]), Set.empty[InteractionVariableState[String]])

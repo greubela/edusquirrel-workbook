@@ -198,7 +198,11 @@ The exercise definition, learner answer and live controller are different things
 - `associatedFactory` serializes the authored definition and element references.
   Register a new element in `WorkbookElementFactory` as well as `HtmlRenderFactory`.
 - `serializerInteractionContent` handles the learner value. History travels as
-  typed history JSON with answer events and grading/scaffolding maps.
+  typed history JSON with answer events and grading/scaffolding maps. Cleanup removes
+  obsolete default events and feedback without a retained answer. If an update
+  leaves no answer events, restore the default before cleaning and preserve feedback
+  matching that default. Explicit history resets still start from a fresh default
+  history.
 - The default `ReadWriter[WorkbookElement]` stores a self-contained element registry,
   including children and section prerequisites. It resolves references through the
   factories and rejects conflicting IDs. A reference-only element JSON needs its
