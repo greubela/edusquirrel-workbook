@@ -5,6 +5,7 @@ import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.interaction.sync.SyncStrategy
+import it.evadid.workbook.interaction.sync.UpdateImportance.DEFAULT
 import upickle.default.*
 
 import java.time.LocalDateTime
@@ -27,15 +28,16 @@ case class InteractionVariableHistory[T, GA, SA]
     timestamps.maxOption
   }
 
-  private def cleanGradingAndScaffolding(): InteractionVariableHistory[T, GA, SA] = {
-    val allStates: Set[T] = historyStates.events.map(_.value).toSet
-    val cleanedGradings: Set[GradedState[T, GA]] = historyGrading.gradingsFinished.filter(curGrading => allStates.contains(curGrading.state))
-    val cleanedScaffolding: Set[ScaffoldingResult[T, SA]] = historyScaffolding.scaffoldingsFinished.filter(curScaffolding => allStates.contains(curScaffolding.forState))
+  def cleanedHistory(): InteractionVariableHistory[T, GA, SA] = {
+    val cleanedHistory = historyStates.cleanedHistory()
+    val allExistingStates: Set[T] = cleanedHistory.events.map(_.value).toSet
+    val cleanedGradings: Set[GradedState[T, GA]] = historyGrading.gradingsFinished.filter(curGrading => allExistingStates.contains(curGrading.state))
+    val cleanedScaffolding: Set[ScaffoldingResult[T, SA]] = historyScaffolding.scaffoldingsFinished.filter(curScaffolding => allExistingStates.contains(curScaffolding.forState))
     InteractionVariableHistory[T, GA, SA].apply(historyStates.events, cleanedGradings, cleanedScaffolding)
   }
 
   def filterWithStrategy(syncStrategy: SyncStrategy): InteractionVariableHistory[T, GA, SA] = {
-    copy(historyStates = historyStates.copy(events = syncStrategy.selectEventsToSync(historyStates.events))).cleanGradingAndScaffolding()
+    copy(historyStates = historyStates.copy(events = syncStrategy.selectEventsToSync(historyStates.events))).cleanedHistory()
   }
 
   def updateStates(eventFunc: Set[InteractionVariableState[T]] => Set[InteractionVariableState[T]]): InteractionVariableHistory[T, GA, SA] = {

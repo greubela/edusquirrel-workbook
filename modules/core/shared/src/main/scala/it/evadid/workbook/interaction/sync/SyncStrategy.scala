@@ -19,6 +19,14 @@ object SyncStrategy {
     override val toString: String = "SYNC_EVERYTHING"
   }
 
+  case object SYNC_LAST_FIVE extends SyncStrategy {
+    override def selectEventsToSync[T](history: Set[InteractionVariableState[T]]): Set[InteractionVariableState[T]] = {
+      history.toList.sortBy(_.timestamp).takeRight(5).toSet
+    }
+
+    override val toString: String = "SYNC_ONLY_LAST"
+  }
+
   private case class DesiredRelevance(desired: List[UpdateImportance]) extends SyncStrategy derives upickle.default.ReadWriter {
     override def selectEventsToSync[T](history: Set[InteractionVariableState[T]]): Set[InteractionVariableState[T]] = history.filter(e => desired.contains(e.updateImportance))
 

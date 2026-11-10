@@ -23,6 +23,8 @@ case class SyncInformation(
                             syncStrategy: SyncStrategy
                           ) derives ReadWriter {
 
+  def withoutCredentials: SyncInformation = copy(syncDestination = syncDestination.withoutCredentials)
+
   def forContext(context: UsageContext, resolver: SyncDestinationDefinition => SyncDestinationHistoryHandler): SyncInformationWithContext = SyncInformationWithContext(this, context, resolver)
 
 }

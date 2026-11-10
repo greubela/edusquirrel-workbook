@@ -1,7 +1,6 @@
 package it.evadid.workbook.interaction.sync.destination
 
-import it.evadid.sql.DatabaseConfiguration
-import it.evadid.sql.DatabaseHistoryFormat
+import it.evadid.sql.{DatabaseConfiguration, DatabaseHistoryFormat}
 import upickle.default.*
 
 sealed trait SyncDestinationDefinition derives ReadWriter {
@@ -10,6 +9,12 @@ sealed trait SyncDestinationDefinition derives ReadWriter {
     case _: SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase => true
     case _: SyncDestinationDefinition.LocalIndexedDbSyncDefinition => false
     case _: SyncDestinationDefinition.LocalStorageSyncDefinition => false
+  }
+
+  def withoutCredentials: SyncDestinationDefinition = this match {
+    case db: SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase =>
+      db.copy(databaseConfig = db.databaseConfig.withoutCredentials)
+    case other => other
   }
 
 }

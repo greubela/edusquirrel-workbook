@@ -90,36 +90,16 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
   }
 
   def updateHistory(func: InteractionVariableHistory[T, GA, SA] => InteractionVariableHistory[T, GA, SA], executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
-    innerState.update(func)
-    if (innerState.now().historyStates.lastStateOption.isEmpty) {
-      innerState.update(_.addState(defaultState))
-    }
+    innerState.update(oldVal => {
+      val transformedHistory = func(oldVal).cleanedHistory()
+      if (transformedHistory.historyStates.lastStateOption.isEmpty) defaultHistory
+      else transformedHistory
+    })
     if (executionContextInformation.syncControl.nonEmpty) {
       executionContextInformation.syncControl.get.requestStore(this)
     }
     control.getOrCalculateGrading(executionContextInformation, false)
   }
-
-  /*def withAddedEvents(logger: Logger, serializedHistory: String): Unit = {
-    try {
-      val res = deserializeHistory(serializedHistory)
-      innerState.update(current => current.withAddedEvents(res.events).copy(
-        gradings = current.gradings ++ res.gradings, scaffoldings = current.scaffoldings ++ res.scaffoldings
-      ))
-    } catch case (err: Throwable) => {
-      logger.logExceptionWarn(s"InteractionVariableHistory -> withAddedEvents: cannot parse serializedHistory, ignoring content'${serializedHistory}'", err)
-      this
-    }
-  }*/
-
-  /*def executeLoad(context: ExecutionContextInformation): Unit = this.synchronized {
-    val histories: Option[Vector[InteractionVariableHistory[T, GA, SA]]] = context.syncControl.map(syncControl => {
-      syncControl.createCurrentReport(this).curRemoteHistory.values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toVector
-    })
-    histories.foreach(curHistories => {
-      updateHistory(_.mergeWith(curHistories), context)
-    })
-  }*/
 
   def resetLocalHistory(): Unit = this.synchronized {
     updateHistory(_ => defaultHistory, ExecutionContextInformation.default)
