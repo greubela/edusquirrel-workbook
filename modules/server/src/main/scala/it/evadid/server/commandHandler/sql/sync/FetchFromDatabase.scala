@@ -94,7 +94,7 @@ object FetchFromDatabase {
   private def union(list: List[String]): String = HistoryJson.merge(list)
 
   def handleRequest(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
-    it.evadid.server.database.DatabaseRequestConnection.use(request) { connection =>
+    it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
       request.databaseFormat match {
         case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => new RelationalHistoryStorage(connection, logger).fetch(request)
         case format: it.evadid.sql.DatabaseHistoryFormat.Snapshot =>

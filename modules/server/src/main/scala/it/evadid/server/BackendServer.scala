@@ -16,12 +16,11 @@ import play.api.BuiltInComponents
 import play.api.NoHttpFiltersComponents
 import play.core.server.{NettyServerComponents, Server, ServerConfig}
 
-import java.io.{PrintWriter, StringWriter}
 import java.net.InetAddress
 import java.time.LocalDateTime
 import scala.concurrent.*
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
+import scala.util.control.NonFatal
 
 /**
  * Minimal Play-based HTTP server with dummy REST functionality.
@@ -43,17 +42,22 @@ object BackendServer {
     val commandReceived: LocalDateTime = LocalDateTime.now()
     val backendLogger: Logger = Logger.withNameAndPrefixes(Some(s"BackendServerLogger(Request@${commandReceived.toString})"), PrintToStdLogger.printEverything)
 
-    val verifiedToken = AuthHandling.findAuthCookies(cookies, headers).find(AuthHandling.isTokenValid(backendLogger, _))
-
-    if (bodyOption.isEmpty || bodyOption.get.isEmpty)
-      Future.successful(fail(commandReceived, "No Request Body Found", None, None, backendLogger))
-    else ExecutionCommand.tryParse(bodyOption.get).match {
-      case Failure(err) => Future.successful(fail(commandReceived, "Could not parse ExecutionCommand", Some(SerializedException(err)), None, backendLogger))
-      case Success(command) => BackendCommandHandler.handleExecution(commandReceived, command, verifiedToken, remoteAddress, backendLogger)
-        .recover { err => {
-          fail(commandReceived, "Could not handle ExecutionCommand: " + err.getMessage, Some(SerializedException(err)), Some(command), backendLogger)
+    Future {
+      val verifiedToken = AuthHandling.findAuthCookies(cookies, headers).find(AuthHandling.isTokenValid(backendLogger, _))
+      val command = bodyOption.filter(_.nonEmpty).getOrElse(throw IllegalArgumentException("No Request Body Found"))
+      (ExecutionCommand.tryParse(command).get, verifiedToken)
+    }.flatMap { (command, verifiedToken) =>
+      Future(BackendCommandHandler.handleExecution(commandReceived, command, verifiedToken, remoteAddress, backendLogger)).flatten
+        .recover { case NonFatal(error) =>
+          fail(commandReceived, "Could not handle ExecutionCommand: " + error.getMessage,
+            Some(error match {
+              case serialized: SerializedException => serialized
+              case other => SerializedException(other)
+            }), Some(command), backendLogger)
         }
-        }
+    }.recover { case NonFatal(error) =>
+      fail(commandReceived, "Could not read ExecutionCommand: " + error.getMessage,
+        Some(SerializedException(error)), None, backendLogger)
     }
   }
 
@@ -66,37 +70,25 @@ object BackendServer {
   ).toString()
 
 
-  def fail(err: Throwable): Result = {
-    val stackWriter = StringWriter()
-    println("Internal Execution error: " + err.getMessage)
-    err.printStackTrace(PrintWriter(stackWriter))
+  private[server] val maxCommandBodyBytes: Long = 16L * 1024 * 1024
 
-    InternalServerError(Json.obj(
-      "error" -> Option(err.getMessage).getOrElse(err.getClass.getName),
-      "errorDetailed" -> err.getLocalizedMessage,
-      "logErr" -> "missing",
-      "exceptionType" -> err.getClass.getName,
-      "stackTrace" -> stackWriter.toString
-    ).toString()).as("application/json")
-
-  }
-
-  private def buildApiRouter(action: DefaultActionBuilder): PartialFunction[RequestHeader, Handler] = {
+  private[server] def buildApiRouter(action: DefaultActionBuilder, parsers: PlayBodyParsers): PartialFunction[RequestHeader, Handler] = {
+    val commandParser = BodyParser("execution command") { request =>
+      parsers.tolerantText(maxLength = maxCommandBodyBytes)(request).map {
+        case Left(result) if result.header.status == 413 =>
+          val logger = Logger.withNameAndPrefixes(Some("CommandBodyParser"), PrintToStdLogger.printEverything)
+          val response = fail(LocalDateTime.now(),
+            s"Execution command exceeds the $maxCommandBodyBytes byte request limit. Reduce the saved history or attached data.",
+            None, None, logger)
+          Left(EntityTooLarge(write(response)).as("application/json"))
+        case result => result
+      }
+    }
     {
       case POST(p"/executeCommand") =>
-        action.async { request =>
-          try {
-            val bodyAsText = request.body.asText.orElse(request.body.asJson.map(_.toString))
-            val authInfo = AuthHandling.findAuthCookies(request.cookies, request.headers)
-            handleExecuteCommand(bodyAsText, request.cookies, request.headers, request.connection.remoteAddress).map {
-              (response: ExecutionClientResponse) => {
-                Ok(write(response)).as("application/json")
-              }
-            }.recover {
-              case err => fail(err)
-            }
-          } catch case err: Throwable => Future.successful(fail(err))
-
+        action.async(commandParser) { request =>
+          handleExecuteCommand(Some(request.body), request.cookies, request.headers, request.connection.remoteAddress)
+            .map(response => Ok(write(response)).as("application/json"))
         }
 
 
@@ -107,12 +99,12 @@ object BackendServer {
     }
   }
 
-  private[server] def createServer(config: ServerConfig)(routes: DefaultActionBuilder => PartialFunction[RequestHeader, Handler]): Server =
+  private[server] def createServer(config: ServerConfig)(routes: (DefaultActionBuilder, PlayBodyParsers) => PartialFunction[RequestHeader, Handler]): Server =
     new NettyServerComponents with BuiltInComponents with NoHttpFiltersComponents {
       override lazy val serverConfig: ServerConfig = config
       override lazy val configuration: play.api.Configuration = config.configuration
 
-      override def router: Router = Router.from(routes(defaultActionBuilder))
+      override def router: Router = Router.from(routes(defaultActionBuilder, playBodyParsers))
     }.server
 
   def main(args: Array[String]): Unit = {

@@ -6,6 +6,14 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.sql.DatabaseHistoryFormat
 import it.evadid.sql.DatabaseHistoryFormat.*
+import it.evadid.server.{AuthHandling, BackendServer}
+import it.evadid.core.datastructures.user.{User, UserTokenInfo}
+import it.evadid.distribution.command.ExecutionCommand
+import it.evadid.distribution.formats.ExecutionClientResponse
+import play.api.Mode
+import play.core.server.ServerConfig
+import java.net.URI
+import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import it.evadid.server.commandHandler.sql.sync.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
@@ -49,6 +57,25 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   private def scalar(sql: String): Long = MysqlTestDatabase.withConnection { connection =>
     Using.resource(connection.createStatement())(statement => Using.resource(statement.executeQuery(sql))(rows => { rows.next(); rows.getLong(1) }))
   }
+  private def withHttpStore(run: (StoreToDbRequest => ExecutionClientResponse) => Unit): Unit = {
+    val server = BackendServer.createServer(ServerConfig(port = Some(0), address = "127.0.0.1", mode = Mode.Test))(BackendServer.buildApiRouter)
+    val client = HttpClient.newHttpClient()
+    val token = AuthHandling.createToken(User("Sync test", context.userId, "sync-test@example.test"))
+    try run { request =>
+      val command = ExecutionCommand(StoreToDbCommand.name, writeJs(request))
+      val http = HttpRequest.newBuilder(URI.create(s"http://127.0.0.1:${server.httpPort.get}/executeCommand"))
+        .header("Content-Type", "application/json")
+        .header(UserTokenInfo.SignedToken.cookieKey, write(token))
+        .POST(HttpRequest.BodyPublishers.ofString(write(command))).build()
+      val response = client.send(http, HttpResponse.BodyHandlers.ofString())
+      assertEquals(response.statusCode(), 200)
+      read[ExecutionClientResponse](response.body())
+    } finally {
+      client.close()
+      server.stop()
+    }
+  }
+
   override def beforeEach(context: BeforeEach): Unit = MysqlTestDatabase.withConnection(MysqlTestDatabase.reset)
 
   test("all three supported formats round-trip current answers, multiple graders and scaffolding") {
@@ -129,6 +156,45 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assertEquals(restored.historyGrading.gradingsMap.keySet, Set("first", "second"))
     assert(!fetch()(sync).contains("answer_id"))
     assert(!fetch()(sync).contains("sync_id"))
+  }
+
+  test("large cumulative histories sync repeatedly over HTTP with the same context and different timestamps") {
+    withHttpStore { send =>
+      val first = InteractionVariableState("x" * 350000, UpdateImportance.MAJOR, time)
+      val second = InteractionVariableState("second edit", UpdateImportance.MAJOR, time.plusSeconds(1))
+      val initial = InteractionVariableHistory[String, MessengerModel, MessengerModel](Set(first))
+      val cumulative = InteractionVariableHistory[String, MessengerModel, MessengerModel](Set(first, second))
+      def request(value: History) = StoreToDbRequest(sync, write(value),
+        it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalEvents)
+      assert(send(request(initial)).result.isRight)
+      val syncId = scalar("SELECT id FROM sync_context_id")
+      assert(send(request(cumulative)).result.isRight)
+      assert(send(request(cumulative)).result.isRight)
+      assertEquals(scalar("SELECT id FROM sync_context_id"), syncId)
+      assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 2L)
+      assertEquals(read[History](fetch()(sync)).historyStates, cumulative.historyStates)
+    }
+  }
+
+  test("database SQL and authentication failures return useful errors without preventing the next sync") {
+    withHttpStore { send =>
+      val credentials = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()
+      val request = StoreToDbRequest(sync, write(history()), credentials, RelationalEvents)
+      val invalid = request.copy(syncContext = context.toSyncContext("oversized-key-" + "x" * 300))
+      val error = send(invalid).result.left.toOption.get
+      assert(error.msg.contains("column limits"))
+      assert(error.msg.contains("SQLState=22001"))
+      assert(error.msg.contains("errorCode=1406"))
+      assert(error.cause.exists(_.msg.contains("SQLState=22001")))
+      assert(!write(error).contains("Data truncation"))
+      assertEquals(scalar("SELECT COUNT(*) FROM sync_context_id"), 0L)
+      val auth = send(request.copy(databaseConfig = credentials.copy(password = "incorrect-test-password"))).result.left.toOption.get
+      assert(auth.msg.contains("rejected the credentials"))
+      assert(auth.msg.contains("SQLState=28000"))
+      assert(!auth.msg.contains("incorrect-test-password"))
+      assert(send(request).result.isRight)
+      assertEquals(read[History](fetch()(sync)), history())
+    }
   }
 
   test("replacing an answer at the same timestamp retains its ID and invalidates old feedback") {

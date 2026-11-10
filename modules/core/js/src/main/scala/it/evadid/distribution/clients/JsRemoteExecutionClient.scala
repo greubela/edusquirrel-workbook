@@ -34,7 +34,8 @@ private case class JsRemoteExecutionClient(hostname: String, port: Int, token: O
     logger.logInfo(s"JsRemoteExecutionClient: received a response (code ${response.status})!")
     response.text().toFuture.flatMap { text =>
       if (!response.ok) {
-        val detail = scala.util.Try(ujson.read(text)("error").str).getOrElse(response.statusText)
+        val error = scala.util.Try(handleText(logger, text)).toOption.flatMap(_.result.left.toOption)
+        val detail = error.map(_.msg).getOrElse(scala.util.Try(ujson.read(text)("error").str).getOrElse(response.statusText))
         Future.failed(SerializedException(s"Server responded with status ${response.status}: $detail"))
       } else Future.fromTry(scala.util.Try(handleText(logger, text)))
     }

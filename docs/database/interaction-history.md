@@ -30,3 +30,17 @@ are stored separately, then reconstructed using the existing domain codecs.
 The two classic snapshot formats remain independent supported options. This
 implementation does not migrate stored records between formats or introduce
 compatibility readers for obsolete serialized payloads.
+
+## Sync failures
+
+`/executeCommand` accepts UTF-8 command bodies up to 16 MiB, including cumulative
+history and feedback. Larger bodies return HTTP 413 with an `ExecutionClientResponse`
+failure explaining the limit. Both synchronous and asynchronous command errors use
+this envelope; the browser preserves its explanation even for non-2xx responses.
+Database failures include an actionable reason, SQLState and vendor error code;
+raw vendor messages remain in server logs because they can contain answer data or
+credentials. Failed V2 stores roll back and do not prevent subsequent requests.
+
+An existing sync context is reused for new timestamps. Each `(sync_id, timestamp)`
+is a separate answer; retrying the same event preserves its ID. Growing histories
+can cross HTTP limits independently of database keys or timestamps.

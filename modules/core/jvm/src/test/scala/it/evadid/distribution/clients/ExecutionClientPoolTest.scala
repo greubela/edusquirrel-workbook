@@ -38,6 +38,19 @@ class ExecutionClientPoolTest extends FunSuite {
     pool.handleCommand[Map[String, String]](BasicLogger(), ExecutionCommand("sync-to-db-request", ujson.Obj())).failed.map { error =>
       assert(error.isInstanceOf[SerializedException])
       assert(error.getMessage.contains("ExecutionClientPool: all handlers for command sync-to-db-request failed"))
+      assert(error.getMessage.contains("database connection failed"))
+    }
+  }
+
+  test("a later handler can still succeed after an earlier handler fails") {
+    val successful = new LocalExecutionClient[ujson.Value, Map[String, String]] {
+      override def canExecuteCommand(command: ExecutionCommand): Boolean = command.name == "sync-to-db-request"
+      override protected def rawExecution(logger: Logger, input: ujson.Value): Future[Map[String, String]] =
+        Future.successful(Map("status" -> "stored"))
+    }
+    val pool = ExecutionClientPool(List(failingClient("sync-to-db-request"), successful))
+    pool.handleCommand[Map[String, String]](BasicLogger(), ExecutionCommand("sync-to-db-request", ujson.Obj())).map { result =>
+      assertEquals(result.resultOp, Some(Map("status" -> "stored")))
     }
   }
 
@@ -48,7 +61,9 @@ class ExecutionClientPoolTest extends FunSuite {
 
     pool.handleCommand[Map[String, String]](BasicLogger(), ExecutionCommand("sync-to-db-request", ujson.Obj())).failed.map { error =>
       assert(error.isInstanceOf[SerializedException])
-      assert(error.getMessage.contains("ExecutionClientPool: all handlers for command sync-to-db-request failed"))
+      assert(error.getMessage.contains("Could not connect to database"))
+      def messages(error: SerializedException): List[String] = error.msg :: error.cause.toList.flatMap(messages)
+      assert(messages(error.asInstanceOf[SerializedException]).contains("Connection refused"))
     }
   }
 }

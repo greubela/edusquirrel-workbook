@@ -15,7 +15,7 @@ class ForwardedAddressSpec extends FunSuite {
     properties.setProperty("play.http.forwarded.version", "x-forwarded")
     properties.setProperty("play.http.forwarded.trustedProxies.0", trusted)
     val config = ServerConfig(port = Some(0), address = "127.0.0.1", mode = Mode.Test, properties = properties)
-    val server = BackendServer.createServer(config) { action =>
+    val server = BackendServer.createServer(config) { (action, _) =>
       { case _ => action { request =>
         Ok(request.connection.remoteAddress.getHostAddress)
       }}

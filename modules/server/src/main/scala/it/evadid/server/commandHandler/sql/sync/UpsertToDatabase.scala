@@ -168,7 +168,7 @@ object UpsertToDatabase {
 
   def handleRequest(request: StoreToDbRequest, logger: Logger): SyncSuccess =
     if (HistoryJson.lastTimestamp(request.historyJson).isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now()) else {
-      it.evadid.server.database.DatabaseRequestConnection.use(request) { connection =>
+      it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
         val control = UpsertToDatabase(connection, request.usageContext, logger)
         request.databaseFormat match {
           case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => control.upsertIntoRelationalTables(request)
