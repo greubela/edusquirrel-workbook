@@ -91,9 +91,10 @@ object BackendCommandHandler {
 
 
   private[server] def logReceivedCommand(command: ExecutionCommand, logger: Logger): Unit = {
-    val forLogging = command.stripPrivacySensitiveInformation()
-    if forLogging eq command then logger.logInfo(s"[server] Received command: ${command.name} with params keys: ${command.json.obj.keys}")
-    else logger.logInfo(s"[server] Received command: ${forLogging.toJson}")
+    // Diagnostic output is also returned to the client. Never serialize request
+    // values here: growing histories can otherwise flood both responses and CI logs.
+    val fields = command.json.objOpt.fold(0)(_.size)
+    logger.logInfo(s"[server] Received command: ${command.name.take(128)}; parameter count: $fields")
   }
 
   private[server] def validateFeedbackRequest(command: ExecutionCommand): Unit =

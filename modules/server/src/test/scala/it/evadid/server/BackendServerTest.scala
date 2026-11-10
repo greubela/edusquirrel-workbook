@@ -38,21 +38,22 @@ class BackendServerTest extends FunSuite {
     assert(restored.parse[String](logger, command, time).isInstanceOf[it.evadid.distribution.command.ExecutionInfo.ExecutionFailure[?]])
   }
 
-  test("received feedback logs omit request values and unknown keys even for malformed payloads") {
-    val name = it.evadid.distribution.commandTypes.LLMCommands.feedbackLlmCommandFactory.name
-    List(ujson.Obj("prompt" -> "private source", "systemPrompt" -> "private rules", "private key" -> "private value"),
-      ujson.Str("private non-object payload")).foreach { payload =>
+  test("request diagnostics remain bounded and omit values and keys for large or malformed payloads") {
+    val feedback = it.evadid.distribution.commandTypes.LLMCommands.feedbackLlmCommandFactory.name
+    val sync = it.evadid.distribution.commandTypes.SQLCommands.StoreToDbCommand.name
+    val commands = List(
+      ExecutionCommand(feedback, ujson.Obj("prompt" -> "private source", "systemPrompt" -> "private rules", "private key" -> "private value")),
+      ExecutionCommand(feedback, ujson.Str("private non-object payload")),
+      ExecutionCommand("another-command", ujson.Obj("private key" -> "private value")),
+      ExecutionCommand(sync, ujson.Obj("historyJson" -> ("private history" * 100000), "databaseConfig" -> ujson.Obj())))
+    commands.foreach { command =>
       val logger = BasicLogger()
-      BackendCommandHandler.logReceivedCommand(ExecutionCommand(name, payload), logger)
-      assert(logger.getOut().contains(name))
-      assert(logger.getOut().contains("\"redacted\":true"))
+      BackendCommandHandler.logReceivedCommand(command, logger)
+      assert(logger.getOut().contains(command.name))
+      assert(logger.getOut().length < 300)
       assert(!logger.getOut().contains("private"))
       assert(!logger.getErr().contains("private"))
     }
-    val command = ExecutionCommand("another-command", ujson.Obj("original-key" -> "original-value"))
-    val logger = BasicLogger()
-    BackendCommandHandler.logReceivedCommand(command, logger)
-    assertEquals(logger.getOut(), s"[server] Received command: ${command.name} with params keys: ${command.json.obj.keys}\n")
   }
 
   test("malformed feedback requests fail without retaining a payload-bearing cause") {
