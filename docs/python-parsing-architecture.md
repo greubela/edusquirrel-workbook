@@ -15,11 +15,13 @@ building VM expressions and returning definitions/symbol information. Callers
 should not normalize it a second time. Normalization handles line endings and
 indentation, builds a statement tree, and renders canonical source.
 
-All front-end implementations live under
-[it/evadid/vm/parsing/python](../modules/core/shared/src/main/scala/it/evadid/vm/parsing/python/),
+The Python-to-VM conversion frontend lives under
+[it/evadid/vm/conversion/pythonexpression](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/pythonexpression/),
 with typed stages in `normalization/`. Parser and normalizer share configuration
 and lexical/tree utilities so their treatment of Python stays consistent. Tests
-run on both JVM and Scala.js.
+run on both JVM and Scala.js. The independent Python AST parser remains in
+`vm.parsing.python.clean`; see [programming conversions](programming-conversions.md)
+for the state conversion API.
 
 ## API Boundary Rules
 

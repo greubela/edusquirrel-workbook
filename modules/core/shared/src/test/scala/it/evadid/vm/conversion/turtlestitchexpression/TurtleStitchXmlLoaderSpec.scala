@@ -1,13 +1,10 @@
-package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
+package it.evadid.vm.conversion.turtlestitchexpression
 
-import it.evadid.vm.conversion.turtlestitchexpression.*
 
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.*
 import munit.FunSuite
-import it.evadid.vm.conversion.turtlestitchexpression.{TurtleStitchToBeExpressionParser, TurtleStitchXmlLoader}
-import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 
 class TurtleStitchXmlLoaderSpec extends FunSuite {
 
@@ -68,4 +65,13 @@ class TurtleStitchXmlLoaderSpec extends FunSuite {
     assertEquals(sprite.scripts.length, 1)
     assertEquals(sprite.scripts.head.blocks.length, 2)
   }
+  test("non-block project XML preserves authored metadata without browser APIs") {
+    val project = TurtleStitchXmlLoader.load(
+      """<?xml version="1.0"?><project name="A &amp; B"><notes><![CDATA[Keep <this>]]></notes><scenes select="1"><scene name="first"><stage name="Stage"><sprites><sprite name="Sprite"/></sprites></stage></scene></scenes></project>""")
+    assertEquals(project.name, "A & B")
+    assertEquals(project.notes, "Keep <this>")
+    assertEquals(project.scenes.head.stage.sprites.head.name, "Sprite")
+    assertEquals(TurtleStitchXmlLoader.load("<project>").scenes, Vector.empty)
+  }
+
 }

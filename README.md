@@ -185,6 +185,8 @@ avoid exhaustive class/method lists and historical test-run logs.
 - [Plant workshop](docs/PlantWorkshop_Quickstart.md): implemented sections and remaining migration work.
 - [Eva programming state](docs/eva-editor-programming-state.md) and [Snap editor](docs/snap-editor.md): representations and editor lifecycle.
 - [Snap command execution service](docs/snap-turtle-command-execution-overview.md): implemented snapshot extraction, Pyodide boundary and editor integration.
+- [Core extraction proposals](docs/core-extraction-proposals.md): reviewed dependency boundaries and proposed follow-up tasks.
+- [Programming conversions](docs/programming-conversions.md): shared VM transformation packages and their state conversion API.
 - [Python parsing](docs/python-parsing-architecture.md): normalization and parser responsibilities.
 - [Core test audit](docs/core-package-unit-tests.md): test locations, behavioral expectations and verification commands.
 - [Testing and serialization audit](docs/testing-and-serialization-audit.md): regression coverage, default codecs and decisions about previously skipped/manual tests.
@@ -193,5 +195,3 @@ avoid exhaustive class/method lists and historical test-run logs.
 Markdown under bundled third-party libraries documents those distributions. Imported teaching projects retain their conceptual and historical documents; their upstream setup/team instructions do not describe the EduSquirrel repository workflow. MathWorld's README and deployment guide explain its integration here.
 
 Classic PDF/ZIP downloads coexist with digital editions. The public catalogue currently marks native editions as in development for content-review purposes; this is separate from the implementation status of their editors or the working worker backend. See the [migration policy](docs/digital-workbook-migration.md) for edition-specific scope.
-
-- [Programming conversions](docs/programming-conversions.md): shared VM transformation packages and their state conversion API.
