@@ -1,12 +1,9 @@
 package it.evadid.vm.conversion.javapython
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport
 import it.evadid.vm.conversion.pythonjava.PythonToJava
 
 import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
-import it.evadid.vm.parsing.python.clean.model.PyAST.*
-import it.evadid.vm.parsing.python.clean.model.PythonType.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 
 import it.evadid.vm.conversion.javaediting.JavaEditingMetadata.*

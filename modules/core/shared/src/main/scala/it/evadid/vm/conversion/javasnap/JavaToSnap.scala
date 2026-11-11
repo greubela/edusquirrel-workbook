@@ -8,8 +8,6 @@ import it.evadid.vm.conversion.snapjava.SnapToJava
 import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
 import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
-import it.evadid.vm.parsing.python.clean.model.PyAST.*
-import it.evadid.vm.parsing.python.clean.model.PythonType.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 
 import it.evadid.vm.conversion.javaediting.JavaEditingMetadata.*

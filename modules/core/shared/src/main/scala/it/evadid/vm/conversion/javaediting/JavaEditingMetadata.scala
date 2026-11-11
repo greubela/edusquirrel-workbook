@@ -6,8 +6,6 @@ import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
 import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleInputLimits, JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
-import it.evadid.vm.parsing.python.clean.model.PyAST.*
-import it.evadid.vm.parsing.python.clean.model.PythonType.*
 import it.evadid.vm.simulation.java.JavaTurtleEvaluation as E
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 

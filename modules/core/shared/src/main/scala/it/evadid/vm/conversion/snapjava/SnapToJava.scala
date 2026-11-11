@@ -7,8 +7,6 @@ import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
 import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution as R
-import it.evadid.vm.parsing.python.clean.model.PyAST.*
-import it.evadid.vm.parsing.python.clean.model.PythonType.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 
 import it.evadid.vm.conversion.javaediting.JavaEditingMetadata.*

@@ -1,20 +1,15 @@
 package it.evadid.vm.conversion.snappython
 
-import it.evadid.vm.conversion.expressionpython.ExpressionToPython
-import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
-
-import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchToBeExpressionParser
+import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
-import it.evadid.workbook.elements.interactionElements.programming.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout}
+import it.evadid.vm.conversion.expressionpython.ExpressionToPython
+import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
+import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchToBeExpressionParser
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
 
 /**
  * XML → BeProgram / Python derivation for ProgrammingExercise consumers.

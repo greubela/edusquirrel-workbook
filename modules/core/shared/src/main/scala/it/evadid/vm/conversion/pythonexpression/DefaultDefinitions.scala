@@ -2,8 +2,6 @@ package it.evadid.vm.conversion.pythonexpression
 
 import it.evadid.vm.types.BeDataType.{AnyType, Boolean => BooleanType, Numeric => NumericType, String => StringType}
 
-import it.evadid.vm.types.BeDataType.AnyType
-
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
