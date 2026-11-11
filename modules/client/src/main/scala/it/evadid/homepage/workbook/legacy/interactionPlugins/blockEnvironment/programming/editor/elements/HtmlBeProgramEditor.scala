@@ -12,7 +12,7 @@ import it.evadid.homepage.webElements.sqlEditor.HtmlSqlCommandExerciseRenderer.f
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.parsing.cpp.CppParser
-import it.evadid.vm.parsing.python.PythonParser
+import it.evadid.vm.conversion.pythonexpression.PythonParser
 import todomove.webElementsOld.webElements.*
 import todomove.webElementsOld.webElements.genericHtmlElements.other.{HtmlTab, HtmlTabElement}
 

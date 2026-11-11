@@ -1,10 +1,12 @@
 package it.evadid.workbook.elements.interactionElements.programming
+
+import it.evadid.vm.conversion.pythonsnap.PythonToSnap
+import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCustomBlockRules, SnapTurtlePythonBridge}
 import munit.FunSuite
 
 class SnapCustomBlockRulesSpec extends FunSuite {
@@ -195,7 +197,7 @@ class SnapCustomBlockRulesSpec extends FunSuite {
       "def square(n):\n    forward(n)\n\nfor _ in range(4):\n    square(50)\n"
     )
     sources.foreach { source =>
-      val result = SnapTurtlePythonBridge.applyPython(source)
+      val result = PythonToSnap.applyPython(source)
       assert(result.isRight, clue = s"$source -> $result")
       val xml = result.toOption.get.snapXml
       assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = s"$source -> $xml")

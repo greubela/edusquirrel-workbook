@@ -145,7 +145,6 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     }
   }
 
-
   test("old number elements without diff retain the default step") {
     val element = LabeledNumberInteraction("number", content("number/label"), NumberType.IntegerLike)
     val serialized = element.toSerialized

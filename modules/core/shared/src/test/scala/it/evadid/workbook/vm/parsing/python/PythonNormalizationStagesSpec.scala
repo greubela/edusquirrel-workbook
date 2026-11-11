@@ -1,7 +1,7 @@
 package it.evadid.workbook.vm.parsing.python
 
-import it.evadid.vm.parsing.python.PythonNormalizer
-import it.evadid.vm.parsing.python.normalization.PythonCommentScanner
+import it.evadid.vm.conversion.pythonexpression.PythonNormalizer
+import it.evadid.vm.conversion.pythonexpression.normalization.PythonCommentScanner
 import munit.FunSuite
 
 class PythonNormalizationStagesSpec extends FunSuite {

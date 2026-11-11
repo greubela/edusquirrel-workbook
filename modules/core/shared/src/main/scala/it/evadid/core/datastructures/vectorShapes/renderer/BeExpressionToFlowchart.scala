@@ -16,7 +16,7 @@ import it.evadid.vm.code.controlStructures.*
 import it.evadid.vm.code.errors.BeSingleLineComment
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
-import it.evadid.vm.io.stringPrinter.python.BeExpressionToPythonString
+import it.evadid.vm.conversion.expressionpython.BeExpressionToPythonString
 import it.evadid.vm.naming.NamingStyle.SnakeCase
 
 import scala.collection.mutable

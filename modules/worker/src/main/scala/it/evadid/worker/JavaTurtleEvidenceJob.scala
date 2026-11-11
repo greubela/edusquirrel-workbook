@@ -1,7 +1,7 @@
 package it.evadid.worker
 
 import it.evadid.distribution.commandTypes.WorkerCommands.{JavaExecutionEvidenceRequest, RunPythonRequest, RunPythonResult}
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleInputLimits, JavaTurtleVmPrograms}
+import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleInputLimits, JavaTurtleVmPrograms}
 import it.evadid.vm.simulation.java.JavaTurtleExecutionEvidence
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal

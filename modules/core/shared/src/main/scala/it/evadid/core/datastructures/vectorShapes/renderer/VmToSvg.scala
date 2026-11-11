@@ -13,7 +13,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.{BeExpressionToTurtleComma
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtlePenStyle
 import it.evadid.util.logging.Logger
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapInputCodec
+import it.evadid.vm.conversion.snapexpression.SnapInputCodec
 
 object VmToSvg {
 

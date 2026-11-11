@@ -8,7 +8,7 @@ import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.parsing.python.DefaultDefinitions
+import it.evadid.vm.conversion.pythonexpression.DefaultDefinitions
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
 
 /**

@@ -1,0 +1,16 @@
+package it.evadid.vm.conversion.pythonexpression
+
+import it.evadid.vm.conversion.pythonexpression.PythonSymbolTable.KnownStructure
+
+final case class PythonFrontendConfig(
+                                       defaultIndent: Int,
+                                       defaultKnownStructures: Seq[KnownStructure]
+                                     ) derives upickle.default.ReadWriter
+
+object PythonFrontendConfig {
+  val default: PythonFrontendConfig =
+    PythonFrontendConfig(
+      defaultIndent = 4,
+      defaultKnownStructures = PythonSymbolTable.defaultKnownStructures
+    )
+}

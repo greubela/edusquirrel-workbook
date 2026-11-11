@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
+import it.evadid.vm.conversion.pythonexpression.PythonToExpression
+
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement.AppShapeComposition
 import it.evadid.core.datastructures.vectorShapes.atomar.AppShapeDrawingRoutineElement
@@ -9,7 +11,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.types.BeDataValueLiteral
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapControlFlow
+import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.workbook.elements.interactionElements.programming.state.snap
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import munit.FunSuite
@@ -25,7 +27,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   }
 
   test("forward and repeat unroll into turtle commands") {
-    val program = BeProgram.fromPythonString(
+    val program = PythonToExpression.program(
       """for _ in range(2):
         |    forward(10)
         |""".stripMargin
@@ -36,7 +38,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   }
 
   test("quoted text preserves digits and inner quotes") {
-    val program = BeProgram.fromPythonString(
+    val program = PythonToExpression.program(
       """color("#112233")
         |color("bird's blue")
         |color('say "blue"')
@@ -51,7 +53,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   }
 
   test("scientific numeric literals produce only numeric arguments") {
-    val program = BeProgram.fromPythonString("forward(1e3)\nforward(2.5e2)")
+    val program = PythonToExpression.program("forward(1e3)\nforward(2.5e2)")
     assertEquals(
       BeExpressionToTurtleCommands(program.fullProgram),
       List(TurtleCommand[Double]("forward", List(1000.0)), TurtleCommand[Double]("forward", List(250.0)))
@@ -59,7 +61,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   }
 
   test("raw non-numeric literals retain their textual payload") {
-    val call = SnapControlFlow.topLevelStatements(BeProgram.fromPythonString("color('red')").fullProgram)
+    val call = SnapControlFlow.topLevelStatements(PythonToExpression.program("color('red')").fullProgram)
       .collectFirst { case call: BeFunctionCall => call }.get
     List("NaN", "Infinity").foreach { text =>
       val literalCall = call.copy(parameterValueMap = call.parameterValueMap.map { (parameter, _) =>
@@ -70,7 +72,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   }
 
   test("boolean stitch arguments stay separate from numeric arguments") {
-    val program = BeProgram.fromPythonString("jump_stitch(True)\njump_stitch(False)\ncross_stitch(8, 13, False)")
+    val program = PythonToExpression.program("jump_stitch(True)\njump_stitch(False)\ncross_stitch(8, 13, False)")
     assertEquals(
       BeExpressionToTurtleCommands(program.fullProgram),
       List(
@@ -82,7 +84,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   }
 
   test("color, running stitch, and arithmetic for-loop produce a path") {
-    val program = BeProgram.fromPythonString(
+    val program = PythonToExpression.program(
       """running_stitch(10)
         |color("red")
         |for i in range(1, 4 + 1):
@@ -106,7 +108,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   }
 
   test("VmToSvg renders overlaid path segments instead of the duck stub") {
-    val program = BeProgram.fromPythonString("forward(40)\nturn(90)\nforward(40)")
+    val program = PythonToExpression.program("forward(40)\nturn(90)\nforward(40)")
     val shape = VmToSvg.renderBeExpression(logger, program.fullProgram)
     assert(shape.isInstanceOf[AppShapeComposition[Double]], clue = shape.getClass.getName)
     assert(shape.childrenInRenderingOrder.forall(_.isInstanceOf[AppShapeDrawingRoutineElement[Double]]))
@@ -114,7 +116,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   }
 
   test("VmToSvg splits styled segments by pen color and width") {
-    val program = BeProgram.fromPythonString(
+    val program = PythonToExpression.program(
       """color("red")
         |pensize(2)
         |forward(10)
@@ -135,7 +137,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   }
 
   test("custom def calls are interpreted") {
-    val program = BeProgram.fromPythonString(
+    val program = PythonToExpression.program(
       """def square(n):
         |    forward(n)
         |    turn(90)
@@ -147,7 +149,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
     assertEquals(commands.head.args, List(20.0))
   }
   test("recursive calls restore their caller's parameters and local variables") {
-    val program = BeProgram.fromPythonString(
+    val program = PythonToExpression.program(
       """def branch(length, depth):
         |    if depth == 0:
         |        forward(length)
@@ -163,7 +165,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   }
   test("modulo drives alternating shapes and every-fourth branches") {
     for (period <- List(2, 4)) {
-      val program = BeProgram.fromPythonString(s"""for i in range(1, 8):
+      val program = PythonToExpression.program(s"""for i in range(1, 8):
         |    if i % $period == 0:
         |        forward(40)
         |    else:
@@ -175,7 +177,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   }
 
   test("remainder agrees with Python for signed integer and fractional operands") {
-    val program = BeProgram.fromPythonString("negative_divisor = -3\nforward(-5 % 3)\nforward(5 % negative_divisor)\nforward(5.5 % 2)\n")
+    val program = PythonToExpression.program("negative_divisor = -3\nforward(-5 % 3)\nforward(5 % negative_divisor)\nforward(5.5 % 2)\n")
     assertEquals(BeExpressionToTurtleCommands(program.fullProgram).map(_.args),
       List(List(1.0), List(-1.0), List(1.5)))
   }

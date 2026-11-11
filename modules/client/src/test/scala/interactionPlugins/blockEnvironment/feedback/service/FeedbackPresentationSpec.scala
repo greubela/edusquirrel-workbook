@@ -9,7 +9,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.{BlockFeedbackFeedbackBuilder, BlockFeedbackTestPlan}
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.parsing.python.PythonParser
+import it.evadid.vm.conversion.pythonexpression.PythonParser
 import munit.FunSuite
 
 final class FeedbackPresentationSpec extends FunSuite:

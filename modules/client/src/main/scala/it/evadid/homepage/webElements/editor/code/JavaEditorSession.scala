@@ -1,8 +1,10 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleCommandRunner
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleSource, JavaTurtleVmPrograms}
+import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleSource, JavaTurtleVmPrograms}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation, JavaTurtleRuntime}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 

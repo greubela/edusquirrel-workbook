@@ -1,15 +1,17 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleExecutionProvider
 import it.evadid.homepage.webElements.editor.code.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.HtmlTurtleRecreateShapeRenderer
-import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
+import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.JavaTurtleEditingBridge
+import it.evadid.vm.conversion.javaediting.JavaEditingMetadata
 
 import scala.util.Try
 import scala.concurrent.Future
@@ -18,9 +20,9 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 object TurtleTaskEditorExtension {
   private[code] def requiresRun(source: ProgrammingState): Boolean = source match {
     case java: ProgrammingStateJavaString => Try(java.isClassProgram).getOrElse(true)
-    case ProgrammingStatePythonString(code) => JavaTurtleEditingBridge.hasPythonMetadata(code)
-    case snap: ProgrammingStateSnapXml => JavaTurtleEditingBridge.hasSnapMetadata(snap.snapXml)
-    case snap: ProgrammingStateSnapScalaModel => JavaTurtleEditingBridge.hasSnapMetadata(snap.toSnapXml.snapXml)
+    case ProgrammingStatePythonString(code) => JavaEditingMetadata.hasPythonMetadata(code)
+    case snap: ProgrammingStateSnapXml => JavaEditingMetadata.hasSnapMetadata(snap.snapXml)
+    case snap: ProgrammingStateSnapScalaModel => JavaEditingMetadata.hasSnapMetadata(snap.toSnapXml.snapXml)
     case ProgrammingStateBeExpression(_: JavaTurtleVmPrograms.Root) => true
     case _ => false
   }

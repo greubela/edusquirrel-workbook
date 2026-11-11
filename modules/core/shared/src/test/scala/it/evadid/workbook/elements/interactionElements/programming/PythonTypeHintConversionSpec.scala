@@ -1,4 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
+
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
@@ -6,10 +9,10 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.vm.naming.NamingStyle
-import it.evadid.vm.parsing.python.PythonParser
+import it.evadid.vm.conversion.pythonexpression.PythonParser
 import it.evadid.vm.types.BeDataType
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
+import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import munit.FunSuite
 
 class PythonTypeHintConversionSpec extends FunSuite {
@@ -110,9 +113,9 @@ class PythonTypeHintConversionSpec extends FunSuite {
 
   test("annotation imports are accepted by Snap but unrelated imports remain unsupported") {
     val python = converted("def line(length):\n    forward(length)\nline(10)")
-    assert(SnapTurtlePythonBridge.applyPython(python.code).isRight, clue = python.code)
-    assert(SnapTurtlePythonBridge.applyPython("from typing import cast\nforward(10)").isLeft)
-    assert(SnapTurtlePythonBridge.applyPython("import os\nforward(10)").isLeft)
+    assert(PythonToSnap.applyPython(python.code).isRight, clue = python.code)
+    assert(PythonToSnap.applyPython("from typing import cast\nforward(10)").isLeft)
+    assert(PythonToSnap.applyPython("import os\nforward(10)").isLeft)
   }
 
   test("a printer-shaped comment cannot bypass checked compilation of a static Java main") {

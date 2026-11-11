@@ -1,5 +1,7 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import it.evadid.workbook.abstractions.scaffolding.AdditionalInfoLlmScaffolding
 
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus

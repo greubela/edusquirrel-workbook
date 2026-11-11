@@ -20,7 +20,6 @@ object TurtleExecutionPanel {
     case Failed(message: String)
   }
 
-
 }
 
 final class TurtleExecutionPanel(

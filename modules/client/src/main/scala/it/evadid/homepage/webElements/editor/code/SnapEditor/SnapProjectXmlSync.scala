@@ -1,9 +1,12 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.vm.conversion.javaediting.JavaEditingMetadata
+import it.evadid.vm.conversion.snapxml.SnapXmlParser
+
 import com.raquo.airstream.state.Var
 
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{JavaTurtleEditingBridge, SnapXmlParser}
 
 /** Compare persisted XML, so Snap's regenerated images cannot trigger save/reload echoes. */
 private[SnapEditor] final class SnapProjectXmlSync {
@@ -15,7 +18,7 @@ private[SnapEditor] final class SnapProjectXmlSync {
   private val runtimePose = """\s+(?:x|y|heading)="[^"]*"""".r
 
   private def snapshotKey(xml: String): String =
-    if !JavaTurtleEditingBridge.hasSnapMetadata(xml) then xml
+    if !JavaEditingMetadata.hasSnapMetadata(xml) then xml
     else SnapXmlParser.elements(xml, "sprite").reverse.foldLeft(xml) { (current, sprite) =>
       val headerEnd = sprite.start + sprite.outer.indexOf('>')
       current.substring(0, sprite.start) + runtimePose.replaceAllIn(current.substring(sprite.start, headerEnd), "") +

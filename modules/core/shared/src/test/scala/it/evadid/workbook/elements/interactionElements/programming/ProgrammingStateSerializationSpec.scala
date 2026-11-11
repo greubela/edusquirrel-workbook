@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import munit.FunSuite
 import upickle.default.*
 import it.evadid.vm.code.abstractions.BeExpression

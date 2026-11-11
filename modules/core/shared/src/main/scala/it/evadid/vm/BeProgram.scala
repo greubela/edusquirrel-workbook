@@ -1,5 +1,7 @@
 package it.evadid.vm
 
+import it.evadid.vm.conversion.pythonexpression.PythonToExpression
+
 import upickle.default.ReadWriter
 
 import it.evadid.core.datastructures.language.AppLanguage.*
@@ -11,7 +13,7 @@ import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.parsing.python.PythonParser
+import it.evadid.vm.conversion.pythonexpression.PythonParser
 
 case class BeProgram(fullProgram: BeExpression) derives ReadWriter {
   override val toString: String = s"BeProgram($fullProgram)"
@@ -19,9 +21,6 @@ case class BeProgram(fullProgram: BeExpression) derives ReadWriter {
 
 object BeProgram {
   lazy val empty: BeProgram = BeProgram(BeStartProgram(BeExpression.pass))
-
-  def fromPythonString(pythonString: String): BeProgram =
-    BeProgram(parsePythonExpression(pythonString))
 
   def createSimpleFunc(functionName: LanguageMap[HumanLanguage], parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
     val parVariables = defineParameters(parNames, parTypes)
@@ -67,7 +66,7 @@ object BeProgram {
   def miniProgram(): BeProgram =
     BeProgram(miniProgramExpression())
 
-  def debugGraphicsProgram2(): BeProgram = fromPythonString(
+  def debugGraphicsProgram2(): BeProgram = PythonToExpression.program(
     """
       |i = 1
       |while i < 3:
@@ -76,7 +75,7 @@ object BeProgram {
       |""".stripMargin
   )
 
-  def parseSimpleWhile(): BeProgram = fromPythonString(
+  def parseSimpleWhile(): BeProgram = PythonToExpression.program(
     """
       |i: int = 3
       |while i < 5:
@@ -84,7 +83,7 @@ object BeProgram {
       |""".stripMargin
   )
 
-  def parseSimpleIf(): BeProgram = fromPythonString(
+  def parseSimpleIf(): BeProgram = PythonToExpression.program(
     """
       |if c:
       |    x = "hi"
@@ -93,7 +92,7 @@ object BeProgram {
       |""".stripMargin
   )
 
-  def debugGraphicsProgram3(): BeProgram = fromPythonString(
+  def debugGraphicsProgram3(): BeProgram = PythonToExpression.program(
     """
       |import turtle
       |# comments are supported
@@ -105,7 +104,7 @@ object BeProgram {
       |""".stripMargin
   )
 
-  def debugGraphicsProgram(): BeProgram = fromPythonString(
+  def debugGraphicsProgram(): BeProgram = PythonToExpression.program(
     """
       |import turtle
       |# comments are supported
@@ -123,7 +122,7 @@ object BeProgram {
       |""".stripMargin
   )
 
-  def sampleParsedProgram(): BeProgram = fromPythonString(
+  def sampleParsedProgram(): BeProgram = PythonToExpression.program(
     """
       |import turtle
       |callFunc("duck")
@@ -138,7 +137,7 @@ object BeProgram {
       |""".stripMargin
   )
 
-  def sampleParsedProgram2(): BeProgram = fromPythonString(
+  def sampleParsedProgram2(): BeProgram = PythonToExpression.program(
     """
       |import os
       |x=3
@@ -152,11 +151,6 @@ object BeProgram {
       |    forward(1000)
       |""".stripMargin
   )
-
-  private def parsePythonExpression(pythonString: String): BeExpression = {
-    val parsingResult = PythonParser.default.parsePythonWithDetails(pythonString)
-    BeStartProgram(parsingResult.codeExpression)
-  }
 
   private def defineParameters(parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType]): List[BeDefineVariable] =
     parNames.zip(parTypes).map((curName, curType) => BeDefineVariable(BeEntityName.fromMapInCodeNotation(curName), curType))

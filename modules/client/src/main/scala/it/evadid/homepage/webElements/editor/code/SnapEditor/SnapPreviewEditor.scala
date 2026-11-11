@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import com.raquo.laminar.api.L.{canvasTag, *}
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement

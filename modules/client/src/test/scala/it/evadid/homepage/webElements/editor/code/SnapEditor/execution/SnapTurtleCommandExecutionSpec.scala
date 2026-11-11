@@ -1,12 +1,16 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
+import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport
+import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonHelpers
+import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
+import it.evadid.vm.conversion.pythonexpression.PythonToExpression
+
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.facades
 import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPythonRequest, RunPythonResult}
 import it.evadid.vm.BeProgram
-import it.evadid.vm.io.stringPrinter.python.{JavaTurtlePythonExport, JavaTurtlePythonHelpers}
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
+import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
 import munit.FunSuite
@@ -406,8 +410,8 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
         executed = python
         Future.successful(expected)
 
-    val state = ProgrammingStateSnapXml.fromProgram(
-      BeProgram.fromPythonString("for i in range(1, 4):\n    forward(i * 10)")
+    val state = ExpressionToSnap.fromProgram(
+      PythonToExpression.program("for i in range(1, 4):\n    forward(i * 10)")
     )
     new SnapTurtleCommandExecution(runner).commandsFor(state).map { actual =>
       assertEquals(actual, expected)

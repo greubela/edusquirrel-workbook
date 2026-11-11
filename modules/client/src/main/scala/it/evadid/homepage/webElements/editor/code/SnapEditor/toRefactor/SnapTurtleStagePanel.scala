@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.{Line, Point}

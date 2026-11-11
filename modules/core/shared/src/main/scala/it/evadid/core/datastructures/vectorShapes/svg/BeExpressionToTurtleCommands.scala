@@ -1,5 +1,8 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
+import it.evadid.vm.conversion.snapexpression.SnapControlFlow
+import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
+
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
@@ -9,7 +12,7 @@ import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapControlFlow, SnapTurtleCatalog, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapTurtleCatalog}
 
 /**
  * Interprets a turtle-subset BeExpression into TurtleCommands for SVG preview.
@@ -40,7 +43,7 @@ object BeExpressionToTurtleCommands {
       val defs = scala.collection.mutable.LinkedHashMap.empty[String, BeDefineFunction]
       def collect(node: BeExpression): Unit = node match
         case defn: BeDefineFunction =>
-          defs += SnapTurtlePythonBridge.pythonNameOf(defn) -> defn
+          defs += SnapExpressionSupport.pythonNameOf(defn) -> defn
           collect(defn.body)
         case seq: BeSequence => seq.body.foreach(collect)
         case BeStartProgram(Some(seq)) => seq.body.foreach(collect)
@@ -93,7 +96,7 @@ object BeExpressionToTurtleCommands {
   private def interpretCall(call: BeFunctionCall, state: InterpState): InterpState = {
     if SnapControlFlow.isOperatorCall(call) then state
     else
-      val python = SnapTurtlePythonBridge.pythonName(call)
+      val python = SnapExpressionSupport.pythonName(call)
       val args = SnapControlFlow.orderedArgs(call)
       state.defs.get(python) match
         case Some(defn) =>

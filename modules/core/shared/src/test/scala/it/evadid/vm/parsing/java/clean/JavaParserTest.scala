@@ -2,10 +2,10 @@ package it.evadid.vm.parsing.java.clean
 
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleInputLimits, JavaTurtleResolution, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
+import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleInputLimits, JavaTurtleResolution, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
 import it.evadid.vm.simulation.java.JavaTurtleEvaluation as E
 import it.evadid.vm.simulation.java.JavaTurtleRuntime as T
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
+import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {

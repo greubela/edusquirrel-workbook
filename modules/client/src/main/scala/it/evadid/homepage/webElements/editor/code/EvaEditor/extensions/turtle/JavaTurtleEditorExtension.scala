@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
@@ -7,7 +9,7 @@ import com.raquo.laminar.api.L.div
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleExecutionProvider
 import it.evadid.homepage.webElements.editor.code.JavaEditorSession
-import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution
+import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution
 import it.evadid.vm.simulation.java.JavaTurtleRuntime
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 

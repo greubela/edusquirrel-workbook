@@ -1,7 +1,7 @@
 package it.evadid.vm.simulation.java
 
 import it.evadid.core.datastructures.state.State
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
+import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleTrace as J}
 import scala.collection.mutable
 import upickle.default.ReadWriter

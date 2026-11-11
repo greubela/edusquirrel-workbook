@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineToRender
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.*
-import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.TurtleStitchProgramModel.*
+import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.*
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
 import munit.FunSuite
 import upickle.default.*

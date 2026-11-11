@@ -1,5 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
+import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
+
 import munit.FunSuite
 import upickle.default.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -132,7 +136,7 @@ two</options></input></inputs>
       case p: Project => p.withAttribute("name", "\"&<>'")
       case node => node
     }
-    assertEquals(SnapScalaModel.parse(edited.toXml).toOption.get.root.name, Some("\"&<>'"))
+    assertEquals(SnapScalaXmlCodec.parse(edited.toXml).toOption.get.root.name, Some("\"&<>'"))
     assertRoundTrip(edited.toXml)
   }
   test("DOCTYPE entities remain opaque and external resources are never resolved") {
@@ -177,6 +181,5 @@ two</options></input></inputs>
       assert(!first.meaningfullyEquals(converted(first.toSnapXml.snapXml.replace(before, after))))
     assert(!converted("<project><l> </l></project>").meaningfullyEquals(converted("<project><l></l></project>")))
   }
-
 
 }

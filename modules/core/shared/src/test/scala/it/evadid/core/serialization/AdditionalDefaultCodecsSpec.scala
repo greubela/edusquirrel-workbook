@@ -1,5 +1,10 @@
 package it.evadid.core.serialization
 
+import it.evadid.vm.conversion.expressionsnap.SnapCustomBlockMerge
+import it.evadid.vm.conversion.snapexpression.SnapControlFlow
+import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
+import it.evadid.vm.conversion.snapxml.SnapXmlParser
+
 import it.evadid.workbook.interaction.sync.model.*
 import munit.FunSuite
 import upickle.default.*

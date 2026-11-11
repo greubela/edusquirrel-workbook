@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import it.evadid.workbook.abstractions.scaffolding.AdditionalInfoLlmScaffolding
 
 import it.evadid.workbook.support.TestExecutionContext
@@ -88,7 +90,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(restored.testSuite, None)
   }
 
-
   test("full Java exercise is registered and preserves its type and test suite") {
     val original = ProgrammingExerciseFullJava("full-java")
     val serialized = it.evadid.workbook.jsonFactory.WorkbookElementFactory.serializerRefBasedJson.serialize(original)
@@ -107,7 +108,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     )
   }
 
-
   test("full Java exercises roundtrip their exact starting source and suite") {
     val source = " \r\npublic class Drawing {\r\n  public static void main(String[] args) {\n    square(25);\n  }\r\n}\n\n\t "
     val testSuite: Option[BeTestSuite] = Some(SampleBeTest("  assert True\r\n"))
@@ -125,7 +125,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
   }
 
-
   test("explicit full Java starting source takes precedence over a legacy task definition") {
     val source = " \r\npublic class Restored {\n\t "
     val legacy = WorkbookElementSerializable("java-source-priority", "ProgrammingExerciseFullJava",
@@ -134,7 +133,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     assertEquals(restored.startingProgram, source)
     assertEquals(restored.defaultValue, ProgrammingStateJavaString(source))
   }
-
 
   test("a full Java exercise preserves unfinished student source independently of its starter") {
     val source = "public class Drawing {\n  static void square(int side) {}\n}\n"
@@ -173,7 +171,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     }
     restored.foreach(exercise => assert(!(exercise.scaffoldingElement.get eq original.scaffoldingElement.get)))
   }
-
 
   test("invalid Java hint configuration fails rather than silently disabling hints") {
     val original = ProgrammingExerciseFullJava("java-invalid-hints").toSerialized
@@ -1232,7 +1229,6 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
     intercept[IllegalArgumentException](ProgrammingTestSuite(null))
     intercept[IllegalArgumentException](ProgrammingTestSuite(List(null)))
   }
-
 
   test("canonical grader readers reject ambiguous and unknown legacy suite payloads") {
     val suite = ujson.Obj("$type" -> "SampleBeTest", "pythonTestCode" -> "assert True")

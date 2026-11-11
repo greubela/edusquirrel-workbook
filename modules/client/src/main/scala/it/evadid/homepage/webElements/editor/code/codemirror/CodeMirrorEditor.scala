@@ -90,7 +90,6 @@ case class CodeMirrorEditor(
 object CodeMirrorEditor {
   def languageToJs(language: ProgrammingLanguage): String = language.asJsLanguage.getOrElse("python")
 
-
   def apply(logger: Logger, state: Var[String], language: ProgrammingLanguage): CodeMirrorEditor =
     CodeMirrorEditor(logger, state, language, Var(CodeMirrorEditorConfig.Default))
 

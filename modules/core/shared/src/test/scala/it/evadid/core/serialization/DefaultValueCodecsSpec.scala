@@ -1,5 +1,7 @@
 package it.evadid.core.serialization
 
+import it.evadid.vm.conversion.pythonexpression.normalization.PythonNormalizationModel
+
 import it.evadid.core.datastructures.geometry.*
 import it.evadid.core.datastructures.matrix.*
 import it.evadid.workbook.interaction.sync.*
@@ -47,7 +49,7 @@ class DefaultValueCodecsSpec extends FunSuite {
   }
 
   test("normalized Python models preserve nested statements and indentation") {
-    import it.evadid.vm.parsing.python.normalization.PythonNormalizationModel.*
+    import it.evadid.vm.conversion.pythonexpression.normalization.PythonNormalizationModel.*
     roundTrip(RawLine(4, "print('x')"))
     roundTrip(Line(1, "print('x')"))
     val statements: List[Statement] = List(SimpleStatement("x = 1"),
