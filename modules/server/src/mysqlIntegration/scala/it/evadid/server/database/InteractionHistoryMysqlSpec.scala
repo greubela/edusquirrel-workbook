@@ -93,6 +93,63 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
+  test("programming answers and typed grading data restore through the interaction history codec in every format") {
+    import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
+    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction}
+    import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStatePythonString}
+    val source: ProgrammingState = ProgrammingStatePythonString("forward(10)")
+    val interaction = TurtleRecreateShapeInteraction("db-program", source,
+      TurtleGraphic.TurtleGraphicSvgString("M0 0 L10 0"), limitTurtleCommandUsage = Map.empty)
+    val variable = interaction.interactionVariable
+    val identity = context.toSyncContext(variable.keyForSerialization)
+    val check = interaction.gradingElements.head
+    val grade = GradingResult(check, source, GradingStatus.Correct(),
+      Some(LanguageMap.universalMap("Matches the target")),
+      Some(AdditionalProgrammingTestInfo(LanguageMap.universalMap("Checked the drawing"))), time.plusSeconds(1))
+    val saved = InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, Unit](
+      Set(InteractionVariableState(source, UpdateImportance.MAJOR, time)), Set(GradedState(source, Map(check -> grade))), Set.empty[ScaffoldingResult[ProgrammingState, Unit]])
+    List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
+      UpsertToDatabase.handleRequest(StoreToDbRequest(identity, write(saved), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, format), logger)
+      val json = fetch(format)(identity)
+      assertEquals(variable.serializerHistory.deserialize(json), saved)
+    }
+  }
+
+  test("a corrupt relational answer timestamp is isolated on reads and does not block later writes") {
+    store(history())
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement())(_.executeUpdate("UPDATE answer_event SET timestamp='invalid-timestamp'"))
+    }
+    assertEquals(read[History](fetch()(sync)).historyStates.events, Set.empty[InteractionVariableState[String]])
+    val next = history("next", time.plusDays(1))
+    store(next)
+    assertEquals(read[History](fetch()(sync)), next)
+  }
+
+  test("a corrupt relational importance does not prevent restoring valid answers and their feedback") {
+    store(history())
+    val firstId = scalar("SELECT id FROM answer_event")
+    val next = history("next", time.plusDays(1))
+    store(next)
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement())(_.executeUpdate(s"UPDATE IGNORE answer_event SET update_importance='' WHERE id=$firstId"))
+    }
+    assertEquals(read[History](fetch()(sync)), next)
+    store(history("later", time.plusDays(2)))
+    assertEquals(read[History](fetch()(sync)).historyStates.events.map(_.value), Set("next", "later"))
+  }
+
+  test("a failed keyless replacement preserves the previously stored history") {
+    val original = history()
+    store(original, ClassicKeylessJson)
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement())(_.executeUpdate(
+        "ALTER TABLE events ADD CONSTRAINT reject_event_replacement CHECK (LOCATE('replacement', serializeddata) = 0)"))
+    }
+    intercept[java.sql.SQLException](store(history("replacement"), ClassicKeylessJson))
+    assertEquals(fetch(ClassicKeylessJson).get(sync).map(json => read[History](json)), Some(original))
+  }
+
   test("session database credentials support all history formats and are removed from logs") {
     val credentials = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()
     List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>

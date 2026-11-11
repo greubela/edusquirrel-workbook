@@ -2,6 +2,7 @@ package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.grading.GradingResult
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import java.sql.{Connection, PreparedStatement, ResultSet, Types}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -55,6 +56,11 @@ abstract class RelationalHistorySql(connection: Connection, logger: Logger) {
     if previous.grader == incoming.grader then previous.merge(incoming)
     else if previous.gradingTime.isAfter(incoming.gradingTime) then previous else incoming
   }
+
+  protected def answerJson(row: ResultSet): ujson.Value =
+    ujson.Obj("value" -> ujson.read(row.getString("serialized_data")),
+      "timestamp" -> restoredTime(row.getString("timestamp")),
+      "updateImportance" -> UpdateImportance.valueOf(row.getString("update_importance")).toString)
 
   protected def gradeJson(row: ResultSet, state: ujson.Value): ujson.Value = {
     val regular = ujson.read(row.getString("serialized_data"))

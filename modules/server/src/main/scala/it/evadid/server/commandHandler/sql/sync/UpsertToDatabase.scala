@@ -51,9 +51,12 @@ case class UpsertToDatabase(
     val history = HistoryJson.payload(request.historyJson)
     val sync = ensureContext(request.syncContext)
     history("historyStates")("events").arr.toList.sortBy(event => LocalDateTime.parse(event("timestamp").str)).foreach(upsertAnswer(sync, _))
-    val answers = query("SELECT id,timestamp,serialized_data FROM answer_event WHERE sync_id=?", List(sync)) { row =>
-      (row.getLong(1), LocalDateTime.parse(row.getString(2)), ujson.read(row.getString(3)))
-    }
+    val answers = query("SELECT id,timestamp,update_importance,serialized_data FROM answer_event WHERE sync_id=?", List(sync)) { row =>
+      safe("answer " + row.getLong("id")) {
+        val event = answerJson(row)
+        (row.getLong("id"), LocalDateTime.parse(event("timestamp").str), event("value"))
+      }
+    }.flatten
     def answerFor(state: ujson.Value): Long = answers.filter(_._3 == state).maxByOption(_._2)
       .map(_._1).getOrElse(throw IllegalArgumentException("Feedback has no matching saved answer in this sync context"))
 
@@ -131,7 +134,7 @@ case class UpsertToDatabase(
       SyncSuccess(0, res, 0, LocalDateTime.now())
     }
 
-  def upsertIntoTableWithoutKeys(request: StoreToDbRequest, tableName: String = "events"): SyncSuccess = {
+  def upsertIntoTableWithoutKeys(request: StoreToDbRequest, tableName: String = "events"): SyncSuccess = transaction {
     val key = request.syncContext.keyForSerialisation
     delete.deleteByKeyInDatabaseWithoutKey(key, tableName)
     insertIntoTableWithoutKeys(request, tableName)

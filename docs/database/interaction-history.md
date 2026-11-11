@@ -27,9 +27,16 @@ rounded or used as generated database IDs. Numeric database IDs never cross
 the backend boundary. JSON regular feedback and entity-specific additional data
 are stored separately, then reconstructed using the existing domain codecs.
 
+V2 reads and feedback lookup share answer-row decoding. Invalid timestamps or
+importance values are skipped consistently, and reads omit feedback attached to
+those invalid answers while preserving valid answers in the same context.
+
 The two classic snapshot formats remain independent supported options. This
 implementation does not migrate stored records between formats or introduce
 compatibility readers for obsolete serialized payloads.
+ Keyless snapshot replacement
+runs its delete and insert in one transaction, so a failed insert preserves the
+previously saved history.
 
 ## Sync failures
 
