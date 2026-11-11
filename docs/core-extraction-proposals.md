@@ -1,20 +1,18 @@
 # Next shared-core extractions
 
-Dependency review after the programming-conversion refactor, 11 November 2026. These are proposed follow-up tasks, not additional moves in this change. “Direct move” means the implementation and the small dependency bundle listed below use only Scala, upickle and existing shared-core types. This is a source/import review, not a claim that the proposed extractions have already been compiled.
+Dependency review after the programming-conversion refactor, 11 November 2026. The first two extractions below are implemented; turtle assessment and ML inference remain proposed follow-up tasks. Their remaining dependency assessments are source/import reviews.
 
-## 1. SQL clause operations — small, direct move
+## 1. SQL clause operations — implemented
 
-[`SqlBlocks`](../modules/client/src/main/scala/it/evadid/homepage/webElements/sqlEditor/SqlBlocks.scala) splits and rejoins SQL without losing strings, comments or nested queries. Its only project import is `SnapPaletteCatalog`, already in shared core. Inputs and outputs are strings and lists; there are no DOM, JavaScript, Laminar, network or editor-state dependencies.
+[`SqlBlocks`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/sqlblocks/SqlBlocks.scala) now lives in shared `vm.conversion.sqlblocks`. Scanning, splitting, joining, clause insertion and block ordering consume strings/lists without browser or editor-state dependencies. Its behavioral tests run on JVM and Scala.js, covering exact text reconstruction, quoted keywords, comments, nested queries and semicolon handling.
 
-Move clause scanning, splitting, joining and insertion into `vm.conversion.sqlblocks`. Keep the editor's palette labels/templates in the client if separating presentation from syntax. Update `SqlEditor` to call the shared functions and move the existing clause tests to core JVM and JS. Validate exact text reconstruction, quoted keywords, comments, nested queries and semicolon handling. Leave `SqlDatabaseDiagram` and drag/drop event handling in the client; they return Laminar/SVG elements.
+[`SqlEditorPalette`](../modules/client/src/main/scala/it/evadid/homepage/webElements/sqlEditor/SqlEditorPalette.scala) retains the editor's templates and comparison-button definitions, reusing `SnapPaletteCatalog`. `SqlEditor` invokes the shared clause functions. Diagram rendering and drag/drop event handling remain in the client.
 
-## 2. Static programming-feedback rules — small, direct bundle
+## 2. Static programming-feedback rules — implemented
 
-Move [`PythonStaticRules`](../modules/client/src/main/scala/it/evadid/homepage/workbook/legacy/interactionPlugins/blockEnvironment/feedback/rules/PythonStaticRules.scala), [`VmStaticRules`](../modules/client/src/main/scala/it/evadid/homepage/workbook/legacy/interactionPlugins/blockEnvironment/feedback/rules/VmStaticRules.scala) and [`RuleResult` / `RuleSeverity`](../modules/client/src/main/scala/it/evadid/homepage/workbook/legacy/interactionPlugins/blockEnvironment/feedback/rules/RuleResult.scala) together into a focused `vm.analysis.feedback` package.
+[`PythonStaticRules`](../modules/core/shared/src/main/scala/it/evadid/vm/analysis/feedback/PythonStaticRules.scala), [`VmStaticRules`](../modules/core/shared/src/main/scala/it/evadid/vm/analysis/feedback/VmStaticRules.scala) and [`RuleResult` / `RuleSeverity`](../modules/core/shared/src/main/scala/it/evadid/vm/analysis/feedback/RuleResult.scala) now live in shared `vm.analysis.feedback`.
 
-The dependency boundary closes over these three files: the rules consume source strings or `BeExpression` and a core `HumanLanguage`, use Scala collections/regexes, and return immutable result records. `RuleResult` depends only on upickle. Neither rule object needs `BlockFeedbackService`, the browser runtime, a request controller or UI elements. Current callers in the feedback service can retain orchestration and render the returned results.
-
-Move behavioral tests for variable use, unreachable code and source-rule findings into core; keep presentation tests in the client. Preserve the current messages first, then consider localization separately. Do not move the whole feedback service: its execution/runtime dependencies are a different boundary.
+The dependency boundary closes over these three files: they consume source strings or `BeExpression` and a core `HumanLanguage`, use Scala collections/regexes, and return immutable result records. Existing rule behavior and messages are preserved. Tests for source findings, variable use and unreachable code run on JVM and Scala.js. Feedback orchestration, execution/runtime services and presentation remain in the client and import the shared rules directly.
 
 ## 3. Turtle drawing assessment and scene data — medium, extract a boundary first
 
@@ -34,6 +32,6 @@ Keep [`MlRouter`](../modules/client/src/main/scala/it/evadid/homepage/workbook/l
 
 ## Recommended order and exclusions
 
-Start with SQL clause operations and static rules: each has a small, closed dependency set. Next separate turtle assessment from display data; move ML inference when its JSON contract is covered by a fixture.
+SQL clause operations and static rules are now shared. Next separate turtle assessment from display data; move ML inference when its JSON contract is covered by a fixture.
 
 Compression algorithms and experiment models already live in shared `workbook.model.compression`; moving `CompressionActivitiesEditor` would mostly move DOM events and Laminar bindings. `WorkbookUserDataAnalyzer` primarily reads client session/control state and triggers downloads. Those are poor whole-file candidates. Likewise, the programming conversion refactor does not make Snap's native runtime, Pyodide loading or CodeMirror lifecycle suitable for shared core: their browser adapters should remain in the client or workers.

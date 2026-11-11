@@ -8,7 +8,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.diagnosis.{DiagnosisAdapters, DiagnosisEngine}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer, FeatureExtractor, MlRouter, MlTrainingLogger, RouterMode}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackMeta, BlockFeedbackRequest, BlockFeedbackResult, FeedbackDebug, PythonRuntimeOutcome}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.{PythonStaticRules, VmStaticRules}
+import it.evadid.vm.analysis.feedback.{PythonStaticRules, VmStaticRules}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
 import it.evadid.vm.code.abstractions.BeExpression
 

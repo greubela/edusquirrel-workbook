@@ -1,6 +1,5 @@
-package interactionPlugins.blockEnvironment.feedback.rules
+package it.evadid.vm.analysis.feedback
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.PythonStaticRules
 import munit.FunSuite
 
 final class PythonStaticRulesSpec extends FunSuite {

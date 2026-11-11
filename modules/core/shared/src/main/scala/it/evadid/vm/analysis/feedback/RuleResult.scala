@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules
+package it.evadid.vm.analysis.feedback
 
 /**
  * Severity level of a rule violation.

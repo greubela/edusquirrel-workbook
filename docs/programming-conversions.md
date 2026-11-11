@@ -11,6 +11,7 @@ Import `it.evadid.vm.conversion.ProgrammingStateConversions.*` to use `state.toL
 | Snap XML → expression, with subset checks | `snapexpression` |
 | Expression → Snap XML, preserving custom blocks and layout | `expressionsnap` |
 | Expression → Java / JavaScript, Python, Lisp | `expressionjava`, `expressionpython`, `expressionlisp` |
+| SQL source ↔ lossless clause blocks | `sqlblocks` |
 | Python source → Snap XML | `pythonsnap` |
 | Snap project → Python source and per-script views | `snappython` |
 | Checked Java → editable Snap / Python | `javasnap`, `javapython` |

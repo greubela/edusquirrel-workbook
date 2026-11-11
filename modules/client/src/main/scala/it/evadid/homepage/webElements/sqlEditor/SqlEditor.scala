@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.sqlEditor
 
+import it.evadid.vm.conversion.sqlblocks.SqlBlocks
+
 import com.raquo.laminar.api.L.*
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.SqlEditorCommands
@@ -85,10 +87,10 @@ final case class SqlEditor(logger: Logger,state: Var[String], databaseConfig: Sq
   private def renderBlocks(): Element = div(
     cls := "sql-editor__blocks",
     div(cls := "sql-editor__palette", aria.label := "SQL block palette",
-      SqlBlocks.palette.map { case (name, text) => button(typ := "button", name, onClick --> (_ => add(text))) }),
+      SqlEditorPalette.palette.map { case (name, text) => button(typ := "button", name, onClick --> (_ => add(text))) }),
     div(cls := "sql-editor__palette", aria.label := "SQL comparison blocks",
       span("Conditions: "),
-      SqlBlocks.comparisonOperators.map(operator => button(typ := "button", s"WHERE $operator",
+      SqlEditorPalette.comparisonOperators.map(operator => button(typ := "button", s"WHERE $operator",
         onClick --> (_ => add(s"WHERE column_name $operator 1"))))),
     p("Add clauses from the palette. Drag blocks or use the arrow buttons to reorder them."),
     div(

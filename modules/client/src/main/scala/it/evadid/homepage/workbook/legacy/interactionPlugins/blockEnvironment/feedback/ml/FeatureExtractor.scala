@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml
 
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.RuleSeverity
+import it.evadid.vm.analysis.feedback.RuleSeverity
 
 /**
  * Converts [[BlockFeedbackSignals]] into a numeric feature vector.
