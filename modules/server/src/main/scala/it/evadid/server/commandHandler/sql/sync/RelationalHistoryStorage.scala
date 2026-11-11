@@ -20,8 +20,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends R
     val histories = contexts.map { (sync, key) =>
       val states = query("SELECT id,timestamp,update_importance,serialized_data FROM answer_event WHERE sync_id=?", List(sync)) { row =>
         safe("answer " + row.getLong(1)) {
-          row.getLong(1) -> ujson.Obj("value" -> ujson.read(row.getString(4)), "timestamp" -> restoredTime(row.getString(2)),
-            "updateImportance" -> row.getString(3))
+          row.getLong(1) -> answerJson(row)
         }
       }.flatten.toMap
       val grades = query("SELECT * FROM grading_event WHERE sync_id=?", List(sync)) { row =>
