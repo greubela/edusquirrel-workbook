@@ -1,10 +1,13 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.vm.conversion.javaediting.JavaEditingMetadata
+
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapProgramDerivation
 import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPythonRequest}
-import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonHelpers
+import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonHelpers
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 
@@ -21,7 +24,7 @@ trait TurtleCommandRunner:
 /** Derives and executes a Snap project without modifying editor state. */
 final class SnapTurtleCommandExecution(runner: TurtleCommandRunner):
   def commandsFor(state: ProgrammingStateSnapXml): Future[List[TurtleCommand[Double]]] =
-    if it.evadid.workbook.elements.interactionElements.programming.state.snap.JavaTurtleEditingBridge.hasSnapMetadata(state.snapXml) then
+    if it.evadid.vm.conversion.javaediting.JavaEditingMetadata.hasSnapMetadata(state.snapXml) then
       return Try(state.toPython.code).fold(Future.failed, runner.execute)
     val derived = SnapProgramDerivation.fromState(state)
     if !derived.pythonCompatible then

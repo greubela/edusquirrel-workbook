@@ -1,5 +1,8 @@
 package it.evadid.server.database
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given

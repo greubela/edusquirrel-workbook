@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
 import upickle.default.ReadWriter
+import it.evadid.vm.conversion.snapxml.SnapXmlText.*
 
 /** Complete, immutable Snap serialization tree. Unknown extension nodes are first-class data.
   * Lexical XML details are retained independently of the typed Snap views, so loading and saving
@@ -8,30 +9,23 @@ import upickle.default.ReadWriter
   */
 object SnapScalaModel {
   sealed trait Node derives ReadWriter {
-    def toXml: String
   }
 
   final case class Text(raw: String) extends Node derives ReadWriter {
     def value: String = decode(raw)
-    def toXml: String = raw
   }
   final case class CData(value: String) extends Node derives ReadWriter {
-    def toXml: String = "<![CDATA[" + value + "]]>"
   }
   final case class XmlComment(value: String) extends Node derives ReadWriter {
-    def toXml: String = "<!--" + value + "-->"
   }
   final case class ProcessingInstruction(value: String) extends Node derives ReadWriter {
-    def toXml: String = "<?" + value + "?>"
   }
   /** DTDs are retained, never loaded or evaluated (including external entities). */
   final case class Declaration(raw: String) extends Node derives ReadWriter {
-    def toXml: String = raw
   }
   final case class Attribute(name: String, rawValue: String, leading: String = " ",
       beforeEquals: String = "", afterEquals: String = "", quote: String = "\"") derives ReadWriter {
     def value: String = decode(rawValue)
-    def toXml: String = leading + name + beforeEquals + "=" + afterEquals + quote + rawValue + quote
     def withValue(value: String): Attribute = copy(rawValue = escape(value))
   }
   /** Ordered attributes and mixed content are authoritative, rather than a lossy Map. */
@@ -61,16 +55,11 @@ object SnapScalaModel {
       else attributes :+ Attribute(name, escape(value))
       copy(attributes = updated)
     }
-    def toXml: String = {
-      val start = "<" + tag + attributes.map(_.toXml).mkString + trailing
-      if selfClosing && children.isEmpty then start + "/>"
-      else start + ">" + children.map(_.toXml).mkString + (if closing.nonEmpty then closing else "</" + tag + ">")
-    }
+
   }
 
   sealed trait SnapElement extends Node derives ReadWriter {
     def element: Element
-    final def toXml: String = element.toXml
     final def id: Option[String] = element.attribute("id")
     final def name: Option[String] = element.attribute("name")
     final def text: String = element.text
@@ -323,7 +312,6 @@ object SnapScalaModel {
       case data: SnapData => data.element.named("project").collectFirst { case p: Project => p }
       case _ => None
     }
-    def toXml: String = nodes.map(_.toXml).mkString
     /** Generated display media belongs to the native runtime, not answer history. */
     def withoutGeneratedImages: Document = transform { node =>
       classify(node.element.copy(children = node.element.children.filterNot {
@@ -362,9 +350,7 @@ object SnapScalaModel {
     }
   }
 
-  def parse(xml: String): Either[String, Document] = SnapScalaXmlCodec.parse(xml)
-
-  private[snap] def classify(e: Element): SnapElement = e.tag match {
+  def classify(e: Element): SnapElement = e.tag match {
     case "project" => Project(e)
     case "scene" => Scene(e)
     case "stage" => Stage(e)
@@ -428,34 +414,4 @@ object SnapScalaModel {
     case _ => Extension(e)
   }
 
-  private[snap] def escape(value: String): String = value.replace("&", "&amp;")
-    .replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;")
-
-  /** Unknown DTD entities stay opaque. No network access or entity expansion is performed. */
-  private[snap] def decode(raw: String): String = {
-    val entity = "&(#x[0-9a-fA-F]+|#[0-9]+|amp|lt|gt|quot|apos);".r
-    val out = new StringBuilder
-    var previous = 0
-    entity.findAllMatchIn(raw).foreach { m =>
-      out.append(raw.substring(previous, m.start))
-      val decoded = m.group(1) match {
-        case "amp" => "&"
-        case "lt" => "<"
-        case "gt" => ">"
-        case "quot" => "\""
-        case "apos" => "'"
-        case number =>
-          val code = if number.startsWith("#x") then Integer.parseInt(number.drop(2), 16) else Integer.parseInt(number.drop(1))
-          require(code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff), "Invalid XML character reference.")
-          if code <= 0xffff then code.toChar.toString
-          else {
-            val n = code - 0x10000
-            (0xd800 + (n >> 10)).toChar.toString + (0xdc00 + (n & 0x3ff)).toChar.toString
-          }
-      }
-      out.append(decoded)
-      previous = m.end
-    }
-    out.append(raw.substring(previous)).toString
-  }
 }

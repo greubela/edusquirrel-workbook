@@ -1,0 +1,106 @@
+package it.evadid.vm.conversion.expressionpython
+
+import it.evadid.vm.conversion.pythonexpression.PythonParser
+
+import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Python}
+import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
+import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.usage.BeFunctionCall
+import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter
+import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter.PythonSeparation
+import it.evadid.vm.naming.NamingStyle
+
+case class BeExpressionToPythonString
+(language: HumanLanguage, skipUnparsable: Boolean)
+  extends GenericJavaLikeStringPrinter(
+    Python, language, PythonSeparation(), skipUnparsable
+  ) derives upickle.default.ReadWriter {
+
+  override def forDefinition(definition: BeDefineStructure): String = definition match {
+    // Avoid Java's metadata comments on Python declarations so reparsing stays stable.
+    case BeDefineVariable(name, variableType, initValue) =>
+      defineVariableLine(
+        name.getNameIn(language, NamingStyle.SnakeCase),
+        variableType.formatTypeForDisplay.getInLanguage(Python),
+        initValue
+      )
+    case _ => super.forDefinition(definition)
+  }
+
+  override def forOther(other: BeExpression): String = other match {
+    case call: BeFunctionCall if isOperatorCall(call) =>
+      formatOperatorCall(call)
+    case _ =>
+      super.forOther(other)
+  }
+
+  private def isOperatorCall(call: BeFunctionCall): Boolean =
+    call.funcDef.functionTypeInfo.funcType match
+      case BeDefineFunction.Operator(_) => true
+      case _ => false
+
+  private def formatOperatorCall(call: BeFunctionCall): String = {
+    val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
+    val args = call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable)).map(forExpression)
+    symbol match {
+      case "not" =>
+        s"not ${args.headOption.getOrElse("")}"
+      case _ if args.size >= 2 =>
+        args.mkString(s" $symbol ")
+      case _ if args.size == 1 =>
+        s"$symbol${args.head}"
+      case _ =>
+        super.forOther(call)
+    }
+  }
+
+  override protected def assignToFunctionPar(parName: String, parType: String, parValue: BeExpression): String = {
+    // Positional call args (same as Java). Named "par = value" is not parsed by
+    // PythonParser.parseFunctionCall and would drop Snap slot literals on reload.
+    forExpression(parValue)
+  }
+
+  override protected def assignToDefinedVar(varName: String, varType: String, varValue: BeExpression): String = {
+    val renderedValue = forExpression(varValue)
+    if (renderedValue.trim.startsWith("lambda ")) s"$varName = $renderedValue"
+    else s"$varName: $varType = $renderedValue"
+  }
+
+  override protected def defineVariableLine(nameStr: String, variableTypeString: String, initValue: Option[BeExpression]): String = {
+    if (initValue.isEmpty) s"${nameStr} : ${variableTypeString}"
+    else s"${nameStr} : ${variableTypeString} = ${forExpression(initValue.get)}"
+  }
+
+  override protected def defineClassLine(nameStr: String, nameComment: String): String =
+    s"class $nameStr:"
+
+  override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String = {
+    s"def $nameStr$parStr -> $outputTypeStr:"
+  }
+
+  override protected def formatFunctionParameters(inputs: List[BeDefineVariable]): String =
+    inputs.map(variable =>
+      s"${variable.name.getNameIn(language, NamingStyle.SnakeCase)}: ${variable.variableType.formatTypeForDisplay.getInLanguage(Python)}"
+    ).mkString("(", ", ", ")")
+
+  override protected def fixedRepetitionLine(amount: Int): String = {
+    s"for _ in range(${amount}):"
+  }
+
+  override protected def namedRangeLine(varName: String, start: String, end: String): String = {
+    val minusOne = """^(.+)\s-\s1$""".r
+    (start, end) match {
+      case ("0", minusOne(stop)) =>
+        s"for $varName in range(${stop.trim}):"
+      case ("0", digits) if digits.nonEmpty && digits.forall(_.isDigit) =>
+        s"for $varName in range(${digits.toInt + 1}):"
+      case _ =>
+        s"for $varName in range($start, $end + 1):"
+    }
+  }
+
+  override protected def repetitionParsingHint(amount: Int): String = ""
+
+  override protected def emptyFunctionBody: String = "pass"
+
+}

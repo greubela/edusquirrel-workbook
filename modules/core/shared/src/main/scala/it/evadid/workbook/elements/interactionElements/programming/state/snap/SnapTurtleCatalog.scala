@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
+import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
+
 import upickle.default.ReadWriter
 
 /**

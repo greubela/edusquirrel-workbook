@@ -1,9 +1,13 @@
 package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
 
-import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.TurtleStitchProgramModel.*
+import it.evadid.vm.conversion.turtlestitchexpression.*
+
+import it.evadid.vm.conversion.expressionpython.ExpressionToPython
+
+import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.*
 import munit.FunSuite
-import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.{TurtleStitchToBeExpressionParser, TurtleStitchXmlLoader}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtlePythonBridge
+import it.evadid.vm.conversion.turtlestitchexpression.{TurtleStitchToBeExpressionParser, TurtleStitchXmlLoader}
+import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 
 class TurtleStitchXmlLoaderSpec extends FunSuite {
 
@@ -37,13 +41,13 @@ class TurtleStitchXmlLoaderSpec extends FunSuite {
     assertEquals(listInput.items.head.asInstanceOf[NestedBlock].value.asInstanceOf[PrimitiveBlock].variable, Some("test"))
 
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
-    val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
+    val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("if test == 1:"), clue = python)
   }
 
   test("model path renders variable comparisons as infix python") {
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(comparisonWithVariableXml)
-    val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
+    val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("if steps < 10:"), clue = python)
     assert(!python.contains("<("), clue = python)
   }

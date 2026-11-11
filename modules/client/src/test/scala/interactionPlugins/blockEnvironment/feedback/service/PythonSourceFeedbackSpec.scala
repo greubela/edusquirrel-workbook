@@ -5,7 +5,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackConfig
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.BlockFeedbackRequest
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.parsing.python.PythonParser
+import it.evadid.vm.conversion.pythonexpression.PythonParser
 import munit.FunSuite
 
 import scala.concurrent.Future

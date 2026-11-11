@@ -1,4 +1,14 @@
 package it.evadid.workbook.elements.interactionElements.programming
+
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.vm.conversion.expressionpython.ExpressionToPython
+import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
+import it.evadid.vm.conversion.pythonexpression.PythonToExpression
+import it.evadid.vm.conversion.pythonsnap.PythonToSnap
+import it.evadid.vm.conversion.snapexpression.SnapControlFlow
+import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
+import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
+import it.evadid.vm.conversion.snapxml.SnapXmlParser
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
@@ -6,27 +16,27 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 
 import it.evadid.vm.BeProgram
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript, SnapControlFlow, SnapCustomBlockRules, SnapProjectXml, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
 import munit.FunSuite
 
-class SnapTurtlePythonBridgeSpec extends FunSuite {
+class SnapExpressionSupportSpec extends FunSuite {
 
   test("allowed python names include forward") {
     assert(
       SnapTurtleCatalog.AllowedPythonNames.contains("forward"),
       clue = SnapTurtleCatalog.AllowedPythonNames.toList.sorted.mkString(",")
     )
-    val program = BeProgram.fromPythonString("forward(10)")
-    val statements = SnapTurtlePythonBridge.topLevelStatements(program.fullProgram)
+    val program = PythonToExpression.program("forward(10)")
+    val statements = SnapExpressionSupport.topLevelStatements(program.fullProgram)
     val call = statements.collectFirst { case c: it.evadid.vm.code.usage.BeFunctionCall => c }.get
-    assertEquals(SnapTurtlePythonBridge.pythonName(call), "forward")
+    assertEquals(SnapExpressionSupport.pythonName(call), "forward")
     val args = SnapControlFlow.orderedArgs(call)
     assert(args.forall(SnapControlFlow.isSupportedValue), clue = args.map(_.getClass.getName).mkString(","))
-    assertEquals(SnapTurtlePythonBridge.validateSubset(program.fullProgram), Right(statements))
+    assertEquals(SnapExpressionSupport.validateSubset(program.fullProgram), Right(statements))
   }
 
   test("applyPython accepts turtle-subset calls") {
-    val result = SnapTurtlePythonBridge.applyPython(
+    val result = PythonToSnap.applyPython(
       """receive_go()
         |forward(50)
         |turn(90)
@@ -44,7 +54,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
   }
 
   test("applyPython puts all Python statements below one green-flag hat") {
-    val result = SnapTurtlePythonBridge.applyPython("forward(10)\nturn(90)")
+    val result = PythonToSnap.applyPython("forward(10)\nturn(90)")
     assert(result.isRight, clue = result)
     val xml = result.toOption.get.snapXml
     val script = """(?s)<script x="156" y="66">(.*?)</script>""".r
@@ -68,26 +78,26 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
   }
 
   test("applyPython rejects unknown calls") {
-    val result = SnapTurtlePythonBridge.applyPython("move(10)")
+    val result = PythonToSnap.applyPython("move(10)")
     assert(result.isLeft, clue = result)
   }
 
   test("snapSelectorOf maps python snake_case to Snap ids") {
-    val program = BeProgram.fromPythonString("goto_x_y(1, 2)\nset_heading(90)\nreceive_go()")
+    val program = PythonToExpression.program("goto_x_y(1, 2)\nset_heading(90)\nreceive_go()")
     val selectors =
-      SnapTurtlePythonBridge
+      SnapExpressionSupport
         .topLevelStatements(program.fullProgram)
         .collect { case c: it.evadid.vm.code.usage.BeFunctionCall => c }
-        .map(SnapTurtlePythonBridge.snapSelectorOf)
+        .map(SnapExpressionSupport.snapSelectorOf)
     assertEquals(selectors, List("gotoXY", "setHeading", "receiveGo"))
-    val applied = SnapTurtlePythonBridge.applyPython(
+    val applied = PythonToSnap.applyPython(
       "goto_x_y(1, 2)\nset_heading(90)\nreceive_go()"
     )
     assert(applied.isRight, clue = applied)
   }
 
   test("applyPython accepts arithmetic in assignments") {
-    val result = SnapTurtlePythonBridge.applyPython(
+    val result = PythonToSnap.applyPython(
       """x = 1 * 2
         |forward(10)
         |""".stripMargin
@@ -104,9 +114,9 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
         |    i = i + 1
         |forward(i)
         |""".stripMargin
-    val result = SnapTurtlePythonBridge.applyPython(source)
+    val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
+    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("i: float = 1"), clue = python)
     assert(python.contains("while i < 3:"), clue = python)
     assert(python.contains("i: float = i + 1"), clue = python)
@@ -117,7 +127,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
   }
 
   test("applyPython accepts arithmetic outside change-variable pattern") {
-    val result = SnapTurtlePythonBridge.applyPython("i = 1 * 2")
+    val result = PythonToSnap.applyPython("i = 1 * 2")
     assert(result.isRight, clue = result)
     assert(result.toOption.get.snapXml.contains("""s="reportVariadicProduct""""), clue = result.toOption.get.snapXml)
   }
@@ -127,16 +137,16 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
       """steps = 1
         |steps += 2
         |""".stripMargin
-    val result = SnapTurtlePythonBridge.applyPython(source)
+    val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
+    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("steps: float = 1"), clue = python)
     assert(python.contains("steps: float = steps + 2"), clue = python)
     assert(result.toOption.get.snapXml.contains("""s="doChangeVar""""), clue = result.toOption.get.snapXml)
   }
 
   test("applyPython accepts control-flow subset") {
-    val result = SnapTurtlePythonBridge.applyPython(
+    val result = PythonToSnap.applyPython(
       """receive_go()
         |for _ in range(2):
         |    forward(10)
@@ -162,9 +172,9 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
         |while 3 > 1:
         |    turn(90)
         |""".stripMargin
-    val result = SnapTurtlePythonBridge.applyPython(source)
+    val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
+    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("if 1 < 2:"), clue = python)
     assert(python.contains("while 3 > 1:"), clue = python)
     assert(!python.contains("<("), clue = python)
@@ -177,7 +187,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
         SnapCanvasScript(200, 150, 1)
       )
     )
-    val result = SnapTurtlePythonBridge.applyPython(
+    val result = PythonToSnap.applyPython(
       """forward(1)
         |forward(2)
         |turn(3)
@@ -198,7 +208,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
         SnapCanvasScript(200, 150, 1)
       )
     )
-    val result = SnapTurtlePythonBridge.applyPython(
+    val result = PythonToSnap.applyPython(
       """forward(1)
         |turn(2)
         |""".stripMargin,
@@ -211,13 +221,13 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
   }
 
   test("empty python clears scripts") {
-    val result = SnapTurtlePythonBridge.applyPython("")
+    val result = PythonToSnap.applyPython("")
     assert(result.isRight, clue = result)
     assertEquals(result.toOption.get.snapXml, SnapProjectXml.empty)
   }
 
   test("python to state fingerprint is stable for positional calls") {
-    val a = SnapTurtlePythonBridge.applyPython("forward(12345)").toOption.get
+    val a = PythonToSnap.applyPython("forward(12345)").toOption.get
     val stored = ProgrammingState.serializer.serialize(a)
     val restored = ProgrammingState.serializer.deserialize(stored)
     assert(stored.contains("12345"), clue = stored)
@@ -242,9 +252,9 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
         |    up()
         |clear()
         |""".stripMargin
-    val result = SnapTurtlePythonBridge.applyPython(source)
+    val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
+    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("receive_go()"), clue = python)
     assert(python.contains("do_wait(1)"), clue = python)
     assert(python.contains("down()"), clue = python)
@@ -268,35 +278,35 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
   test("unsupportedSnapSelectors names the wait block and the undefined custom block") {
     val xml =
       """<project><scripts><script><block s="forward"><l>10</l></block><block s="wait"><l>1</l></block><custom-block s="foo"></custom-block></script></scripts></project>"""
-    val reported = SnapTurtlePythonBridge.unsupportedSnapSelectors(xml)
+    val reported = SnapExpressionSupport.unsupportedSnapSelectors(xml)
     assert(reported.contains("wait"), clue = reported)
     assert(reported.exists(_.contains("'foo'")), clue = reported)
-    assert(!SnapTurtlePythonBridge.isPythonCompatibleXml(xml))
-    assert(SnapTurtlePythonBridge.isPythonCompatibleXml("""<project><block s="forward"><l>1</l></block></project>"""))
+    assert(!SnapExpressionSupport.isPythonCompatibleXml(xml))
+    assert(SnapExpressionSupport.isPythonCompatibleXml("""<project><block s="forward"><l>1</l></block></project>"""))
   }
 
   test("unsupportedSnapSelectors allows a custom-block whose definition declares the same blockSpec") {
     val xml =
       """<project><blocks><block-definition s="square %n" type="command"><inputs><input type="%n"></input></inputs></block-definition></blocks><scripts><script><custom-block s="square %n"><l>50</l></custom-block></script></scripts></project>"""
-    assertEquals(SnapTurtlePythonBridge.unsupportedSnapSelectors(xml), Nil)
+    assertEquals(SnapExpressionSupport.unsupportedSnapSelectors(xml), Nil)
   }
 
   test("unsupportedSnapSelectors reports reporter and script-slot custom blocks by spec") {
     val reporter =
       """<project><blocks><block-definition s="area %size" type="reporter"><inputs><input type="%n"></input></inputs></block-definition></blocks></project>"""
-    assert(SnapTurtlePythonBridge.unsupportedSnapSelectors(reporter).exists(_.contains("area %size")))
+    assert(SnapExpressionSupport.unsupportedSnapSelectors(reporter).exists(_.contains("area %size")))
     val scripted =
       """<project><blocks><block-definition s="twice %action" type="command"><inputs><input type="%cs"></input></inputs></block-definition></blocks></project>"""
-    assert(SnapTurtlePythonBridge.unsupportedSnapSelectors(scripted).exists(_.contains("%cs")))
+    assert(SnapExpressionSupport.unsupportedSnapSelectors(scripted).exists(_.contains("%cs")))
   }
 
   test("snapSelectorOf maps python aliases to Snap ids") {
-    val program = BeProgram.fromPythonString("right(90)\nleft(15)\ngoto(1, 2)\npenup()\npendown()\ncolor(\"red\")")
+    val program = PythonToExpression.program("right(90)\nleft(15)\ngoto(1, 2)\npenup()\npendown()\ncolor(\"red\")")
     val selectors =
-      SnapTurtlePythonBridge
+      SnapExpressionSupport
         .topLevelStatements(program.fullProgram)
         .collect { case c: it.evadid.vm.code.usage.BeFunctionCall => c }
-        .map(SnapTurtlePythonBridge.snapSelectorOf)
+        .map(SnapExpressionSupport.snapSelectorOf)
     assertEquals(selectors, List("turn", "turnLeft", "gotoXY", "up", "down", "setColor"))
   }
 
@@ -308,11 +318,11 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
         |        forward(n / edges)
         |        turn_right(360 / edges)
         |""".stripMargin
-    val result = SnapTurtlePythonBridge.applyPython(source)
+    val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
     val xml = result.toOption.get.snapXml
     assert(xml.contains("""<block s="doFor"><l>_</l>"""), clue = xml)
-    val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
+    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("for _ in range(edges):"), clue = python)
     assert(!python.contains("for 0 in range"), clue = python)
   }
@@ -327,7 +337,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
         |color("red")
         |home()
         |""".stripMargin
-    val result = SnapTurtlePythonBridge.applyPython(source)
+    val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
     val xml = result.toOption.get.snapXml
     assert(xml.contains("""s="doFor""""), clue = xml)
@@ -336,7 +346,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(xml.contains("""s="runningStitch""""), clue = xml)
     assert(xml.contains("""s="setColor""""), clue = xml)
     assert(xml.contains("""s="home""""), clue = xml)
-    val python = SnapTurtlePythonBridge.printedPython(BeProgram.fromPythonString(source).fullProgram)
+    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("for i in range(1, 4 + 1):"), clue = python)
     assert(python.contains("forward(i * 10)"), clue = python)
   }
@@ -348,7 +358,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
         |    turn(90)
         |square(50)
         |""".stripMargin
-    val result = SnapTurtlePythonBridge.applyPython(source)
+    val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
     val xml = result.toOption.get.snapXml
     assert(xml.contains("""<block-definition s="square %n""""), clue = xml)
@@ -362,7 +372,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
   }
 
   test("applyPython names slots in the definition and uses their types on calls") {
-    val result = SnapTurtlePythonBridge.applyPython(
+    val result = PythonToSnap.applyPython(
       """def square(size):
         |    forward(size)
         |square(50)
@@ -374,11 +384,11 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(xml.contains("""<custom-block s="square %n">"""), clue = xml)
     assertEquals(SnapCustomBlockRules.globalDefinitions(xml).map(_.blockSpec), List("square %n"))
     assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil)
-    assert(SnapTurtlePythonBridge.isPythonCompatibleXml(xml), clue = xml)
+    assert(SnapExpressionSupport.isPythonCompatibleXml(xml), clue = xml)
   }
 
   test("applyPython accepts empty and pass custom-block bodies") {
-    val emptyResult = SnapTurtlePythonBridge.applyPython(
+    val emptyResult = PythonToSnap.applyPython(
       """def square(n):
         |    pass
         |""".stripMargin
@@ -389,18 +399,18 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     assert(xml.contains("""category="Variables""""), clue = xml)
     val definition = """(?s)<block-definition[^>]*>.*?</block-definition>""".r.findFirstIn(xml).getOrElse("")
     assert(!definition.contains("<script>"), clue = definition)
-    val python = SnapTurtlePythonBridge.printedPython(
-      it.evadid.vm.BeProgram.fromPythonString("def square(n):\n    pass\n").fullProgram
+    val python = ExpressionToPython.printedPython(
+      it.evadid.vm.conversion.pythonexpression.PythonToExpression.program("def square(n):\n    pass\n").fullProgram
     )
     assert(python.contains("def square(n: Any) -> None:"), clue = python)
     assert(python.contains("pass"), clue = python)
   }
 
   test("applyPython rejects primitive arity mismatches") {
-    val tooMany = SnapTurtlePythonBridge.applyPython("forward(1, 2)")
+    val tooMany = PythonToSnap.applyPython("forward(1, 2)")
     assert(tooMany.isLeft, clue = tooMany)
     assert(tooMany.swap.toOption.get.contains("forward"), clue = tooMany)
-    val tooFew = SnapTurtlePythonBridge.applyPython("goto_x_y(1)")
+    val tooFew = PythonToSnap.applyPython("goto_x_y(1)")
     assert(tooFew.isLeft, clue = tooFew)
     assert(tooFew.swap.toOption.get.contains("goto_x_y"), clue = tooFew)
   }
@@ -411,7 +421,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
         |    forward(n)
         |square(1, 2)
         |""".stripMargin
-    val result = SnapTurtlePythonBridge.applyPython(source)
+    val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
     val xml = result.toOption.get.snapXml
     assert(xml.contains("""<custom-block s="square %n"><l>1</l></custom-block>"""), clue = xml)
@@ -437,7 +447,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
   }
 
   test("applyPython maps canonical pen and position names and native colors") {
-    val result = SnapTurtlePythonBridge.applyPython(
+    val result = PythonToSnap.applyPython(
       """set_x(10)
         |set_y(20)
         |pensize(3)
@@ -454,13 +464,13 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
   }
 
   test("applyPython rejects unsupported color literals") {
-    val result = SnapTurtlePythonBridge.applyPython("""color("not-a-color")""")
+    val result = PythonToSnap.applyPython("""color("not-a-color")""")
     assert(result.isLeft, clue = result)
     assert(result.swap.toOption.get.toLowerCase.contains("color"), clue = result)
   }
 
   test("applyPython accepts color aliases and rgb strings") {
-    val result = SnapTurtlePythonBridge.applyPython("""pencolor("rgb(0, 128, 0)")""")
+    val result = PythonToSnap.applyPython("""pencolor("rgb(0, 128, 0)")""")
     assert(result.isRight, clue = result)
     val xml = result.toOption.get.snapXml
     assert(xml.contains("""s="setColor""""), clue = xml)
@@ -472,7 +482,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
     s"""<project name="t" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="t"><notes></notes><palette><category name="Variables" color="243,118,29,1"/></palette><hidden></hidden><headers></headers><code></code><blocks>$definitions</blocks><primitives></primitives><stage name="Stage" width="480" height="360"><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Sprite" idx="1"><blocks></blocks><variables></variables><scripts></scripts></sprite></sprites></stage><variables></variables></scene></scenes></project>"""
 
   private def applied(python: String, previousXml: String): String = {
-    val result = SnapTurtlePythonBridge.applyPython(python, SnapCanvasLayout.empty, previousXml)
+    val result = PythonToSnap.applyPython(python, SnapCanvasLayout.empty, previousXml)
     assert(result.isRight, clue = s"$python -> $result")
     val xml = result.toOption.get.snapXml
     assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
@@ -617,7 +627,7 @@ class SnapTurtlePythonBridgeSpec extends FunSuite {
   }
 
   test("applyPython rejects two defs that would share one block") {
-    val result = SnapTurtlePythonBridge.applyPython(
+    val result = PythonToSnap.applyPython(
       """def square(n):
         |    forward(n)
         |def square(n):

@@ -1,5 +1,8 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
+import it.evadid.vm.conversion.pythonsnap.PythonToSnap
+import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
+
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -15,7 +18,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasScript, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasScript}
 
 /**
  * FEATURE: Snap editable Python overlay (dual-mode with blocks).
@@ -37,7 +40,7 @@ object SnapPythonPopup {
 
   private[SnapEditor] def applyPython(current: ProgrammingStateSnapXml, python: String): Either[String, ProgrammingStateSnapXml] = {
     val derived = SnapProgramDerivation.fromState(current)
-    SnapTurtlePythonBridge.applyPython(python, derived.canvasLayout, current.snapXml)
+    PythonToSnap.applyPython(python, derived.canvasLayout, current.snapXml)
       .map(next => current.copy(snapXml = next.snapXml))
   }
 
@@ -47,9 +50,9 @@ object SnapPythonPopup {
   /** Example signatures for the turtle allow-list (Python snake_case). */
   val OverviewExamples: List[String] =
     SnapTurtleCatalog.Primitives.map(_.example) ++
-      SnapTurtlePythonBridge.ControlFlowExamples ++
-      SnapTurtlePythonBridge.VariableExamples ++
-      SnapTurtlePythonBridge.UserFunctionExamples
+      SnapExpressionSupport.ControlFlowExamples ++
+      SnapExpressionSupport.VariableExamples ++
+      SnapExpressionSupport.UserFunctionExamples
 
   private val SupportedFunctionExamples: List[String] = OverviewExamples
 
@@ -284,14 +287,14 @@ object SnapPythonPopup {
   def scriptsOf(state: ProgrammingStateSnapXml): List[ScriptView] = {
     val derived = SnapProgramDerivation.fromState(state)
     val statements =
-      SnapTurtlePythonBridge.scriptStatements(
-        SnapTurtlePythonBridge.topLevelStatements(derived.program.fullProgram)
+      SnapExpressionSupport.scriptStatements(
+        SnapExpressionSupport.topLevelStatements(derived.program.fullProgram)
       )
     if statements.isEmpty then Nil
     else
       val chunks =
         if derived.canvasLayout.isEmpty ||
-            !SnapTurtlePythonBridge.layoutMatches(derived.canvasLayout, statements.size) then
+            !SnapExpressionSupport.layoutMatches(derived.canvasLayout, statements.size) then
           List((156, 66, statements))
         else
           splitByLayout(statements, derived.canvasLayout.scripts)

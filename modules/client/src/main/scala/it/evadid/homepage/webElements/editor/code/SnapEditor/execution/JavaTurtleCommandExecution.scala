@@ -2,8 +2,8 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
 import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.{RunPythonRequest, RunPythonResult}
-import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
+import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport
+import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleExecutionReport, JavaTurtleRuntime as T}
 
 import java.util.concurrent.{CancellationException, TimeoutException}

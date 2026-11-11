@@ -2,8 +2,8 @@ package it.evadid.core.datastructures.vectorShapes.renderer
 
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.tree.BeExpressionReference
-import it.evadid.vm.parsing.python.{PythonNormalizer, PythonParser}
-import it.evadid.vm.parsing.python.normalization.PythonNormalizationModel.*
+import it.evadid.vm.conversion.pythonexpression.{PythonNormalizer, PythonParser}
+import it.evadid.vm.conversion.pythonexpression.normalization.PythonNormalizationModel.*
 import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeScope}
 
 import scala.collection.mutable

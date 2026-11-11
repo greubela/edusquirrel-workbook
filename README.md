@@ -193,3 +193,5 @@ avoid exhaustive class/method lists and historical test-run logs.
 Markdown under bundled third-party libraries documents those distributions. Imported teaching projects retain their conceptual and historical documents; their upstream setup/team instructions do not describe the EduSquirrel repository workflow. MathWorld's README and deployment guide explain its integration here.
 
 Classic PDF/ZIP downloads coexist with digital editions. The public catalogue currently marks native editions as in development for content-review purposes; this is separate from the implementation status of their editors or the working worker backend. See the [migration policy](docs/digital-workbook-migration.md) for edition-specific scope.
+
+- [Programming conversions](docs/programming-conversions.md): shared VM transformation packages and their state conversion API.

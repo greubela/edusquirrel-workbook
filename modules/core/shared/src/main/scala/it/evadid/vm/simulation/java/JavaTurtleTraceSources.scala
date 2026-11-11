@@ -4,7 +4,7 @@ import it.evadid.vm.parsing.java.clean.JavaSourceMap.{Node, SourceRange}
 import it.evadid.vm.parsing.java.clean.model.JavaAST
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType.*
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R}
+import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R}
 import it.evadid.vm.simulation.java.JavaTurtleTrace.SourceNode
 
 private[java] object JavaTurtleTraceSources {

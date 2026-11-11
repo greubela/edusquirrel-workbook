@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleGraphic, TurtleDrawingPolicy, TurtleRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString

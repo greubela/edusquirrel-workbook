@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
-import it.evadid.vm.parsing.java.turtle.JavaTurtleResolution as R
+import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution as R
 import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E}
 import scala.scalajs.js
 

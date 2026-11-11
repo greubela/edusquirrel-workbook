@@ -3,7 +3,7 @@ package it.evadid.worker
 import it.evadid.distribution.clients.{ExecutionClient, ExecutionClientPool}
 import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapXmlParser
+import it.evadid.vm.conversion.snapxml.SnapXmlParser
 import it.evadid.workbook.model.qr.QrCode
 import it.evadid.util.logging.BasicLogger
 import scala.concurrent.{ExecutionContext, Future}

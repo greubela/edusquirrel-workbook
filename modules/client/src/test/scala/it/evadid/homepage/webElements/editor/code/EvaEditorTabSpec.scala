@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import munit.FunSuite
 import com.raquo.laminar.api.L.Val
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorConfig, EvaEditorLabels}

@@ -1,7 +1,7 @@
 package it.evadid.vm.simulation.java
 
-import it.evadid.vm.io.stringPrinter.python.JavaTurtlePythonExport as Y
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
+import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport as Y
+import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T, JavaTurtleTrace as J}
 import upickle.default.ReadWriter
 

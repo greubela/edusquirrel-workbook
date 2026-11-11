@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId
 import it.evadid.distribution.command.{ExecutionCommand, SerializedException}
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.util.logging.BasicLogger
-import it.evadid.vm.parsing.java.turtle.JavaTurtleVmPrograms
+import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.*
@@ -24,7 +24,6 @@ import scala.util.Try
 final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElementFull[ProgrammingState, ?, ?],
                                       publicTaskId: LanguageMapContentId)
   extends WorkbookInteractionScaffolder[ProgrammingState, AdditionalInfoLlmScaffolding] {
-
 
   override def scaffoldingEntity: FeedbackEntity = LlmEntity()
 
@@ -249,6 +248,5 @@ object ProgrammingHintScaffolder {
     require(hints.map(_.question).distinct.size == hints.size)
     hints
   }.getOrElse(throw IllegalArgumentException("The hint response does not match the expected format."))
-
 
 }

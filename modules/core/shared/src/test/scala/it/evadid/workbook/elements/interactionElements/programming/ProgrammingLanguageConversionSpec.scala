@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import munit.FunSuite
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*

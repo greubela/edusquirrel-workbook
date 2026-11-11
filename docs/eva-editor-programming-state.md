@@ -11,6 +11,9 @@ answer, rather than resuming an inactive editor with a stale draft.
 
 ## State and conversion
 
+Language transformations live in shared core under [`vm.conversion`](programming-conversions.md).
+Import `ProgrammingStateConversions.*` for the state conversion extension methods.
+
 The central Var is the answer. A change is a change, regardless of whether it
 comes from an editor, restoration, conversion or another component. Use signals
 to observe it. Do not add `onStateEdited`, input-listener constructor arguments,

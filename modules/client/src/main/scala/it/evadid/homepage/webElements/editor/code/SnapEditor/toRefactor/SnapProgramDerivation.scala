@@ -1,13 +1,16 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
-import it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion.TurtleStitchToBeExpressionParser
+import it.evadid.vm.conversion.expressionpython.ExpressionToPython
+import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
+
+import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchToBeExpressionParser
 import it.evadid.vm.BeProgram
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapTurtlePythonBridge}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout}
 
 /**
  * XML → BeProgram / Python derivation for ProgrammingExercise consumers.
@@ -37,9 +40,9 @@ object SnapProgramDerivation {
   def fromXml(xml: String): DerivedView = {
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
     val program = BeProgram(parsed.expression)
-    val python = SnapTurtlePythonBridge.printedPython(parsed.expression)
-    val unsupported = SnapTurtlePythonBridge.unsupportedSnapSelectors(xml)
-    val astOk = SnapTurtlePythonBridge.validateSubset(program.fullProgram).isRight
+    val python = ExpressionToPython.printedPython(parsed.expression)
+    val unsupported = SnapExpressionSupport.unsupportedSnapSelectors(xml)
+    val astOk = SnapExpressionSupport.validateSubset(program.fullProgram).isRight
     val pythonCompatible = unsupported.isEmpty && astOk
     DerivedView(program, parsed.canvasLayout, python, pythonCompatible, unsupported)
   }

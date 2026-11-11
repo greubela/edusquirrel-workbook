@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.vm.conversion.unittest.ProgramForUnitTestExecution
+
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
@@ -8,7 +10,7 @@ import it.evadid.distribution.command.SerializedException
 import it.evadid.vm.test.{BeTestResult, ProgrammingTestRunner}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgramForUnitTestExecution, ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
@@ -25,8 +27,6 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
                                      publishCommandComparison: Boolean = false)
   extends ProgrammingTestGrader {
 
-
-
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
   require(!publishCommandComparison || publishInvocationArguments, "A public command comparison requires its invocation arguments.")
 
@@ -42,7 +42,6 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
     }
 
   }
-
 
   def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
     val evaluation = Future(ProgramForUnitTestExecution.fromState(state)).flatMap {

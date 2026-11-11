@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
+import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
 object SnapGeneratedImages {
 

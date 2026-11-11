@@ -2,7 +2,7 @@ package it.evadid.distribution.commandTypes
 
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapXmlParser
+import it.evadid.vm.conversion.snapxml.SnapXmlParser
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
 import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence, JavaTurtleRuntime, JavaTurtleTrace}
 import upickle.default.*

@@ -5,14 +5,11 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import it.evadid.vm.controlflow.ControlFlowType
 import it.evadid.vm.io.BeSegmentedCodeElement.BeExpressionLine
-import it.evadid.vm.io.stringPrinter.java.BeExpressionToJavaStr
-import it.evadid.vm.io.stringPrinter.python.BeExpressionToPythonString
+import it.evadid.vm.conversion.expressionjava.BeExpressionToJavaStr
+import it.evadid.vm.conversion.expressionpython.BeExpressionToPythonString
 import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeScope}
 
-
 object BeExpressionStructureInfo {
-
-
 
 }
 
@@ -24,7 +21,7 @@ trait BeExpressionStructureInfo[T <: BeExpression](expression: T) {
       case Python => BeExpressionToPythonString(humanLanguage, skipUnparsable).forExpression(expression)
       case Java => BeExpressionToJavaStr(humanLanguage, skipUnparsable).forExpression(expression)
       case Cpp | JavaScript => BeExpressionToJavaStr(humanLanguage, skipUnparsable, programmingLanguage).forExpression(expression)
-      case Lisp => it.evadid.vm.io.stringPrinter.lisp.BeExpressionToLispString(humanLanguage, skipUnparsable).forExpression(expression)
+      case Lisp => it.evadid.vm.conversion.expressionlisp.BeExpressionToLispString(humanLanguage, skipUnparsable).forExpression(expression)
       case _ => throw new IllegalArgumentException(s"Language ${programmingLanguage} not implemented yet for toStringInLanguage!")
     }
   }

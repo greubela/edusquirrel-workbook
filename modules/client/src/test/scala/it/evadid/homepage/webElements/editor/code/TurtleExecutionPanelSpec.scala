@@ -1,4 +1,5 @@
 package it.evadid.homepage.webElements.editor.code
+
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleDrawingGrading
 import munit.FunSuite
 import com.raquo.airstream.state.Var
@@ -181,8 +182,6 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
       unmountPanel(fixture.panel)
     })
   }
-
-
 
   test("Java execution panel unmount clears results and rejects late completion") {
     import TurtleExecutionPanel.Status

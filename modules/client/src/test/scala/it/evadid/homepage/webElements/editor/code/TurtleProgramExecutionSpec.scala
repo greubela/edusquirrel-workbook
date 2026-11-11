@@ -1,4 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
+
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import munit.FunSuite
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.ManualOwner
@@ -8,7 +10,7 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.vm.parsing.java.turtle.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
+import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
 import java.util.concurrent.CancellationException
 import scala.concurrent.{Future, Promise}

@@ -8,7 +8,7 @@ The central answer is one `Var[ProgrammingState]`. Changing languages converts t
 
 | Operation | Current path | Consequence |
 | --- | --- | --- |
-| Java class to editable Python | Java source → checked Java program → `JavaTurtleEditingBridge` → Python source with Java helpers and metadata | The Python view deliberately retains Java semantics. |
+| Java class to editable Python | Java source → checked Java program → `javapython.JavaToPython` → Python source with Java helpers and metadata | The Python view deliberately retains Java semantics. |
 | Java class to editable Snap | Checked Java program → custom blocks and metadata notes → Snap XML/model | This is a Java editing project, rather than a normal native turtle project. |
 | Edited bridge Python/Snap to Java | Parse the edited representation and metadata → reconstruct Java source → check/compile Java | Edits are reconstructed; the bridge does not replay a hidden saved Java program. |
 | Java class drawing | Checked Java program → Java worker runtime → turtle commands | No Python translation is required for this execution path. |
@@ -19,7 +19,7 @@ The central answer is one `Var[ProgrammingState]`. Changing languages converts t
 | Unit tests on bridge Python/Snap | Bridge representation → Java source → checked program → `JavaTurtlePythonExport` → Pyodide worker | Test execution uses a different Python export from the editable Python form. |
 | Unit tests on native Snap | Typed project validation → restricted execution expression → Python → Pyodide worker | The accepted subset is narrower than the drawing importer's subset. |
 
-These paths are implemented in [ProgrammingState](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/ProgrammingState.scala), [JavaTurtleEditingBridge](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/JavaTurtleEditingBridge.scala), [ProgramForUnitTestExecution](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/ProgramForUnitTestExecution.scala) and [SnapTurtleCommandExecution](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/execution/SnapTurtleCommandExecution.scala). Both worker backends are implemented; they are not future prerequisites for this review.
+These paths are implemented in the shared [VM conversion packages](programming-conversions.md) and [SnapTurtleCommandExecution](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/execution/SnapTurtleCommandExecution.scala). The former monolithic Java editing bridge is split by conversion direction, with shared semantic metadata. Both worker backends are implemented; they are not future prerequisites for this review.
 
 ## Potential problems
 
@@ -48,7 +48,7 @@ Ordinary translations are not enough to retain Java behavior:
 | Increment `2147483647` as an `int` | Wraps to `-2147483648` | Python integers grow without 32-bit overflow. |
 | Floating division by zero | Java floating-point infinities/NaN as applicable | Ordinary Python division raises an exception. |
 
-Prefix/postfix updates, short-circuit evaluation, mutable method parameters, recursive locals, scope, signed zero and non-finite numbers also need explicit treatment. Existing [conversion tests](../modules/core/shared/src/test/scala/it/evadid/workbook/elements/interactionElements/programming/ProgrammingStateConversionSpec.scala) cover many of these cases, repeated view changes, edited bridge programs, malformed metadata and native Snap normalization. This is useful evidence for the checked subset, not a proof of general Java/Python/Snap equivalence.
+Prefix/postfix updates, short-circuit evaluation, mutable method parameters, recursive locals, scope, signed zero and non-finite numbers also need explicit treatment. Existing [conversion tests](../modules/core/shared/src/test/scala/it/evadid/vm/conversion/ProgrammingStateConversionSpec.scala) cover many of these cases, repeated view changes, edited bridge programs, malformed metadata and native Snap normalization. This is useful evidence for the checked subset, not a proof of general Java/Python/Snap equivalence.
 
 ## Alternatives
 

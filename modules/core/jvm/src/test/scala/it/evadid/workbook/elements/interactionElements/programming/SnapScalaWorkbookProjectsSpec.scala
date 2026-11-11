@@ -1,5 +1,10 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
+
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
+
 import java.nio.file.{Files, Path}
 import java.nio.charset.StandardCharsets
 import scala.jdk.CollectionConverters.*

@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
+
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapScalaModel, ProgrammingStateSnapXml}
 
 import com.raquo.airstream.ownership.{ManualOwner, Owner}
@@ -88,7 +90,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     override def removeAllLibraries(includeDefaultLibraries: Boolean): Unit = { librariesCleared += 1 }
     override def destroy(): Unit = ()
   }
-
 
   test("mount once, publish Snap edits once, and reload only external changes") {
     val state = Var[ProgrammingState](ProgrammingStateSnapXml.mini)
@@ -230,7 +231,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     } finally owner.killSubscriptions()
   }
 
-
   test("closing an editor before the Snap runtime loads does not touch Process") {
     new SnapCodeEditorImplDelegateToOriginal().pauseWorldCycles()
   }
@@ -295,7 +295,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       }
     }
   }
-
 
   test("invalid drafts remove the old preview and restoring its source renders it again") {
     withRoot { container =>
