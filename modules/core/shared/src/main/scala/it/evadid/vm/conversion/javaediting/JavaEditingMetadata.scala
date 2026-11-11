@@ -95,8 +95,6 @@ object JavaEditingMetadata {
   def hasSnapMetadata(xml: String): Boolean =
     SnapXmlParser.elements(xml, "notes").exists(node => noteContent(node.inner).startsWith(NotesPrefix)) ||
       SnapMetadataHeader.findFirstIn(xml).nonEmpty
-  def recognizesPython(source: String): Boolean = hasPythonMetadata(source)
-  def recognizesSnap(xml: String): Boolean = hasSnapMetadata(xml)
 
   private[conversion] def metadata(program: P.Program): (Metadata, Map[R.VariableId, String]) = {
     val names = mutable.Map.empty[R.VariableId, String]

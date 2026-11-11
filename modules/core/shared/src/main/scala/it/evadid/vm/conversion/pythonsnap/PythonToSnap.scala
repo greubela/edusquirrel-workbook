@@ -11,6 +11,13 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport.*
 
 object PythonToSnap {
+  /** Apply Python while retaining the current project's layout and authored block definitions. */
+  def replacing(current: ProgrammingStateSnapXml, source: String): Either[String, ProgrammingStateSnapXml] = {
+    val derived = it.evadid.vm.conversion.snappython.SnapProgramDerivation.fromState(current)
+    applyPython(source, derived.canvasLayout, current.snapXml)
+      .map(next => current.copy(snapXml = next.snapXml))
+  }
+
   /**
    * Parse Python, validate the turtle subset, and write Snap XML.
    * @param previousLayout derived script partitions from the current XML, if known

@@ -13,8 +13,7 @@ import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
 
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapProgramDerivation
+import it.evadid.vm.conversion.snappython.SnapProgramDerivation
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchToBeExpressionParser
 import it.evadid.vm.BeProgram
@@ -168,7 +167,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
 
     val nested =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><block var="test"/><l>0</l></block></script></scripts></sprite></sprites></stage><variables><variable name="test"><l>0</l></variable></variables></scene></scenes></project>"""
-    val nestedDerived = toRefactor.SnapProgramDerivation.fromXml(nested)
+    val nestedDerived = SnapProgramDerivation.fromXml(nested)
     val nestedLines = nestedDerived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList
     assert(nestedLines.contains("test: Any = 0"), clue = nestedDerived.python)
     assert(!nestedLines.contains("test"), clue = nestedDerived.python)
@@ -177,7 +176,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
 
     val sibling =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><l>test</l><l>0</l></block><block var="test"/></script></scripts></sprite></sprites></stage><variables><variable name="test"><l>0</l></variable></variables></scene></scenes></project>"""
-    val siblingDerived = toRefactor.SnapProgramDerivation.fromXml(sibling)
+    val siblingDerived = SnapProgramDerivation.fromXml(sibling)
     val siblingLines = siblingDerived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList
     assert(siblingLines.contains("test: Any = 0"), clue = siblingDerived.python)
     assert(!siblingLines.contains("test"), clue = siblingDerived.python)
@@ -267,7 +266,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("do_wait(1)"), clue = python)
 
-    val derived = toRefactor.SnapProgramDerivation.fromXml(xml)
+    val derived = SnapProgramDerivation.fromXml(xml)
     assert(derived.pythonCompatible, clue = derived)
     assert(!derived.unsupportedSelectors.contains("doWait"), clue = derived.unsupportedSelectors)
 
@@ -477,7 +476,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       """<block-definition s="area %size" type="reporter" category="Pen"><inputs><input type="%n"></input></inputs><script><block s="doReport"><block var="size"/></block></script></block-definition>""",
       """<block s="receiveGo"></block>"""
     )
-    val derived = toRefactor.SnapProgramDerivation.fromXml(xml)
+    val derived = SnapProgramDerivation.fromXml(xml)
     assert(!derived.pythonCompatible, clue = derived)
     assert(derived.unsupportedSelectors.exists(_.contains("area %size")), clue = derived.unsupportedSelectors)
   }

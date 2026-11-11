@@ -1,6 +1,8 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
+import it.evadid.vm.conversion.snappython.SnapProgramDerivation
+import it.evadid.vm.conversion.snappython.SnapProgramDerivation.ScriptView
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 
 import com.raquo.airstream.state.Var
@@ -37,15 +39,6 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.{S
  * the current project contains blocks outside the Python-compatible allow-list.
  */
 object SnapPythonPopup {
-
-  private[SnapEditor] def applyPython(current: ProgrammingStateSnapXml, python: String): Either[String, ProgrammingStateSnapXml] = {
-    val derived = SnapProgramDerivation.fromState(current)
-    PythonToSnap.applyPython(python, derived.canvasLayout, current.snapXml)
-      .map(next => current.copy(snapXml = next.snapXml))
-  }
-
-  /** One Snap top-level script rendered as Python (plus canvas position). */
-  final case class ScriptView(index: Int, x: Int, y: Int, python: String) derives upickle.default.ReadWriter
 
   /** Example signatures for the turtle allow-list (Python snake_case). */
   val OverviewExamples: List[String] =
@@ -122,7 +115,7 @@ object SnapPythonPopup {
       val current = state.now()
       val derived = SnapProgramDerivation.fromState(current)
       textVar.set(derived.python.trim)
-      scriptHints.set(scriptsOf(current))
+      scriptHints.set(SnapProgramDerivation.scriptsOf(current))
       textDirty.set(false)
       applyAllowed.set(derived.pythonCompatible)
       warningVar.set(derived.applyBlockedMessage)
@@ -139,14 +132,14 @@ object SnapPythonPopup {
       val current = state.now()
       val derived = SnapProgramDerivation.fromState(current)
       val pythonSource = textVar.now()
-      SnapPythonPopup.applyPython(current, pythonSource) match
+      PythonToSnap.replacing(current, pythonSource) match
         case Left(message) =>
           warningVar.set(Some(message))
         case Right(next) =>
           textDirty.set(false)
           warningVar.set(None)
           state.set(next)
-          scriptHints.set(scriptsOf(next))
+          scriptHints.set(SnapProgramDerivation.scriptsOf(next))
           val nextDerived = SnapProgramDerivation.fromState(next)
           textVar.set(nextDerived.python.trim)
           applyAllowed.set(nextDerived.pythonCompatible)
@@ -283,43 +276,5 @@ object SnapPythonPopup {
     )
   }
 
-  /** Partition top-level BeProgram statements by derived canvas layout. */
-  def scriptsOf(state: ProgrammingStateSnapXml): List[ScriptView] = {
-    val derived = SnapProgramDerivation.fromState(state)
-    val statements =
-      SnapExpressionSupport.scriptStatements(
-        SnapExpressionSupport.topLevelStatements(derived.program.fullProgram)
-      )
-    if statements.isEmpty then Nil
-    else
-      val chunks =
-        if derived.canvasLayout.isEmpty ||
-            !SnapExpressionSupport.layoutMatches(derived.canvasLayout, statements.size) then
-          List((156, 66, statements))
-        else
-          splitByLayout(statements, derived.canvasLayout.scripts)
-      chunks.zipWithIndex.map { case ((x, y, chunk), idx) =>
-        ScriptView(idx + 1, x, y, renderStatements(chunk))
-      }
-  }
 
-  private def splitByLayout(
-      statements: List[BeExpression],
-      scripts: List[SnapCanvasScript]
-  ): List[(Int, Int, List[BeExpression])] = {
-    var remaining = statements
-    scripts.map { script =>
-      val (chunk, rest) = remaining.splitAt(script.callCount)
-      remaining = rest
-      (script.x, script.y, chunk)
-    }
-  }
-
-  private def renderStatements(statements: List[BeExpression]): String =
-    if statements.isEmpty then ""
-    else
-      BeStartProgram(BeSequence.optionalBody(statements))
-        .structureInfo
-        .toStringInLanguage(Python, English, false)
-        .trim
 }

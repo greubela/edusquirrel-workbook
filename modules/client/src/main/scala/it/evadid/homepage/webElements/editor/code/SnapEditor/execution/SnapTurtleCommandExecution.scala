@@ -4,7 +4,7 @@ import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.javaediting.JavaEditingMetadata
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapProgramDerivation
+import it.evadid.vm.conversion.snappython.SnapProgramDerivation
 import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPythonRequest}
 import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonHelpers

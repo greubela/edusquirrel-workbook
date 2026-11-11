@@ -36,7 +36,7 @@ class BackendWorkerTest extends FunSuite {
   test("Snap XML parsing preserves nested elements, Unicode and attributes") {
     val xml = "<project><block s=\"外\"><block s=\"inner\"/></block></project>"
     send("xml", parseSnapXml.name, writeJs(ParseSnapXmlRequest(xml, "block"))).map { reply =>
-      val result = reply.response.result.toOption.get.getAs[List[it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapXmlParser.Element]]
+      val result = reply.response.result.toOption.get.getAs[List[it.evadid.vm.conversion.snapxml.SnapXmlParser.Element]]
       assertEquals(result.map(_.attrOrEmpty("s")), List("外", "inner"))
     }(using scala.concurrent.ExecutionContext.global)
   }

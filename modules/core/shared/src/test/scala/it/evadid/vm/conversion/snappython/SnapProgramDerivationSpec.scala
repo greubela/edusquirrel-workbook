@@ -1,20 +1,17 @@
-package it.evadid.homepage.webElements.editor.code.SnapEditor
+package it.evadid.vm.conversion.snappython
 
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
+import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
 
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapPythonPopup
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
 import it.evadid.vm.BeProgram
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
 import munit.FunSuite
 
-/**
- * FEATURE: SnapPythonPopup — delete with SnapPythonPopup.scala when removing the button.
- */
-class SnapPythonPopupSpec extends FunSuite {
+class SnapProgramDerivationSpec extends FunSuite {
 
   test("scriptsOf splits flat calls by layout into multiple views") {
     val program = BeProgram.miniProgram() // two forward(100) calls
@@ -24,7 +21,7 @@ class SnapPythonPopupSpec extends FunSuite {
         SnapCanvasScript(200, 150, 1)
       )
     )
-    val scripts = SnapPythonPopup.scriptsOf(ExpressionToSnap.fromProgram(program, layout))
+    val scripts = SnapProgramDerivation.scriptsOf(ExpressionToSnap.fromProgram(program, layout))
     assertEquals(scripts.size, 2)
     assertEquals(scripts(0).x, 70)
     assertEquals(scripts(1).x, 200)
@@ -32,14 +29,10 @@ class SnapPythonPopupSpec extends FunSuite {
     assert(scripts(1).python.nonEmpty)
   }
 
-  test("overview examples include def user functions") {
-    assert(SnapPythonPopup.OverviewExamples.exists(_.contains("def ")), clue = SnapPythonPopup.OverviewExamples)
-  }
-
   test("invalid Python apply leaves the stored Snap project and metadata intact") {
     val source = ProgrammingStateSnapXml(ProgrammingStateSnapXml.mini.snapXml)
     val stored = ProgrammingState.serializer.serialize(source)
-    assert(SnapPythonPopup.applyPython(source, "forward(").isLeft)
+    assert(PythonToSnap.replacing(source, "forward(").isLeft)
     assertEquals(ProgrammingState.serializer.serialize(source), stored)
   }
 }
