@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.BlockFeedbackTestResultFormatter
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackRequest, FeedbackTestDisplay, PythonRuntimeOutcome, PythonTestResult, BlockFeedbackResult}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.{RuleResult, RuleSeverity}
+import it.evadid.vm.analysis.feedback.{RuleResult, RuleSeverity}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.runtime.PythonRunStatus
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
 

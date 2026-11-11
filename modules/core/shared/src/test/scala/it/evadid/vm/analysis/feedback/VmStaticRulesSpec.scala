@@ -1,12 +1,11 @@
-package interactionPlugins.blockEnvironment.feedback.rules
+package it.evadid.vm.analysis.feedback
 
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.VmStaticRules
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.BeDefineVariable
-import it.evadid.vm.code.others.BeStartProgram
+import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.BeUseValue
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
@@ -55,4 +54,18 @@ final class VmStaticRulesSpec extends FunSuite {
 
     assert(ruleOpt.passed, "VM_UNUSED_VARIABLES should pass when variable is used at least once.")
   }
+  test("statements after return are unreachable but a final return is valid") {
+    val variable = mkVar("unreachable")
+    val unreachable = BeStartProgram(BeSequence.optionalBody(List(BeReturn(None), variable)))
+    val warning = VmStaticRules.runAll(unreachable, English).find(_.id == "VM_UNREACHABLE_AFTER_RETURN")
+      .getOrElse(fail("Expected unreachable-code warning."))
+    assert(!warning.passed)
+    assertEquals(warning.severity, RuleSeverity.Warning)
+
+    val finalReturn = BeStartProgram(BeSequence.optionalBody(List(variable, BeReturn(None))))
+    val rules = VmStaticRules.runAll(finalReturn, English)
+    assert(!rules.exists(_.id == "VM_UNREACHABLE_AFTER_RETURN"))
+    assert(rules.exists(rule => rule.id == "VM_NO_UNREACHABLE_AFTER_RETURN" && rule.passed))
+  }
+
 }

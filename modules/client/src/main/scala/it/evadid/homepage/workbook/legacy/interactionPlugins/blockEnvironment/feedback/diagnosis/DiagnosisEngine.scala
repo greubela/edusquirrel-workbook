@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml.{BlockFeedbackSignals, DecisionLayer}
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackRequest, PythonTestResult}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.RuleResult
+import it.evadid.vm.analysis.feedback.RuleResult
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.BlockFeedbackTestPlan
 
 object DiagnosisEngine:

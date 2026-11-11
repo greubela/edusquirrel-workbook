@@ -1,7 +1,7 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ml
 
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.{BlockFeedbackRequest, PythonRuntimeOutcome}
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.rules.{RuleResult, RuleSeverity}
+import it.evadid.vm.analysis.feedback.{RuleResult, RuleSeverity}
 
 /**
  * Internal, centralized data container for downstream analytics/ML.

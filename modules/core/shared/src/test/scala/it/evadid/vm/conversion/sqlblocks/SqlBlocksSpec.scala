@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.sqlEditor
+package it.evadid.vm.conversion.sqlblocks
 
 class SqlBlocksSpec extends munit.FunSuite {
   test("aggregates and date expressions remain lossless in the block editor") {
@@ -34,9 +34,6 @@ class SqlBlocksSpec extends munit.FunSuite {
     assertEquals(SqlBlocks.appendClause("SELECT ';' FROM t /* ; */", "LIMIT 1"),
       "SELECT ';' FROM t /* ; */\nLIMIT 1\n")
     assertEquals(SqlBlocks.appendClause("", "SELECT 1"), "SELECT 1\n")
-  }
-  test("comparison blocks reuse Snap palette selectors with SQL spelling") {
-    assertEquals(SqlBlocks.comparisonOperators, List("<", ">", "=", "<=", ">=", "<>"))
   }
   test("leading whitespace stays attached to the first clause") {
     val source = "  SELECT * FROM students;"

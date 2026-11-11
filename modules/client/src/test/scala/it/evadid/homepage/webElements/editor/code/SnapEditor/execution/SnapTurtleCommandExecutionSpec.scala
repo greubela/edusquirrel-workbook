@@ -241,7 +241,8 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
           second = runner.execute("forward(10)")
           _ <- fresh.started()
           _ = if execution then old.complete(report = pythonReport(99)) else old.readiness.success(())
-          _ <- delayed(0)
+          // Complete the retry in this turn; it shares the deliberately short timeout budget.
+          // The final result must still come from fresh, even though old completed first.
           _ = assert(!second.isCompleted)
           _ = assertEquals(old.requests.size, if execution then 1 else 0)
           _ = fresh.complete()
