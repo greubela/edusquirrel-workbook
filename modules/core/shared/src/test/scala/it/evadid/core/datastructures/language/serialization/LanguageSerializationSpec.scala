@@ -78,6 +78,46 @@ class LanguageSerializationSpec extends FunSuite {
     LanguageMapSourceFileBased.forEvaFile(info(file("map.json", "", Some(SerializedException("missing")), true), English)).get
       .loadAllTriples(BasicLogger()).map(result => assertEquals(result, empty))
   }
+  test("synchronous fatal loader errors are not converted into missing translations") {
+    val fatal = new LinkageError("fatal dependency error")
+    val loader = LanguageMapSourceFileBased.forEvaFile(info(file("map.json", "", Some(fatal), synchronous = true), English)).get
+    def thrownBy(action: => Any): Option[LinkageError] =
+      try { action; None } catch { case error: LinkageError => Some(error) }
+    assert(thrownBy(loader.loadAllTriples(BasicLogger())).contains(fatal))
+    val failing = source(throw fatal)
+    val collection = LanguageMapCollectionSource(Set(failing), summon[ExecutionContext])
+    assert(thrownBy(collection.loadTriples(BasicLogger(), failing)).contains(fatal))
+  }
+
+  test("parser failures are reported as parsing errors rather than missing files") {
+    val logger = BasicLogger()
+    val loader = LanguageMapSourceFileBased(info(file("map.json", "{}"), English),
+      (_, _) => throw SerializedException("parser declined"))
+    loader.loadAllTriples(logger).map { result =>
+      assertEquals(result, empty)
+      assert(logger.getOut().contains("parser declined"))
+      assert(!logger.getOut().contains("IO Error"))
+    }
+  }
+
+  test("unsupported translation languages recover without unchecked casts escaping") {
+    val logger = BasicLogger()
+    val loader = LanguageMapSourceFileBased.forEvaFile(info(file("map.json", "{\"hello\":\"value\"}"), Python)).get
+    loader.loadAllTriples(logger).map { result =>
+      assertEquals(result, empty)
+      assert(logger.getOut().contains("human or special"))
+    }
+  }
+
+  test("successful file loads log counts instead of translation contents") {
+    val logger = BasicLogger()
+    val loader = LanguageMapSourceFileBased.forEvaFile(info(file("map.json", "{\"hello\":\"private translation text\"}"), English)).get
+    loader.loadAllTriples(logger).map { result =>
+      assertEquals(result.regularTriples.head.value, "private translation text")
+      assert(!logger.getOut().contains("private translation text"))
+    }
+  }
+
   test("Snap translation files remap keys and recover malformed payloads") {
     val good = LanguageMapSourceFileBased.forSnapFile(info(file("map.js", "dictionary = {\n\"Hello\": \"Hi\"\n}"), English), _.toLowerCase).get
     val bad = LanguageMapSourceFileBased.forSnapFile(info(file("bad.js", "dictionary = {\nbad\n}"), English), identity).get

@@ -17,9 +17,13 @@ test('test workbook preserves edits across human languages, programming language
     const errors = [];
     await page.addInitScript(() => {
       window.snapHistoryWrites = [];
+      window.snapCommittedHistoryWrites = [];
       const put = IDBObjectStore.prototype.put;
       IDBObjectStore.prototype.put = function(value,...args) {
-        if (this.name === 'variableHistoryStore') snapHistoryWrites.push(value.value);
+        if (this.name === 'variableHistoryStore') {
+          snapHistoryWrites.push(value.value);
+          this.transaction.addEventListener('complete', () => snapCommittedHistoryWrites.push(value.value), {once:true});
+        }
         return put.call(this,value,...args);
       };
     });
@@ -179,6 +183,8 @@ test('test workbook preserves edits across human languages, programming language
     assert.match(await code.innerText(), /void line\(int size\)/);
     assert.match(await code.innerText(), /line\(64\)/);
     await page.locator('.fullscreen-close-button').click();
+    // Reload only after this answer's IndexedDB transaction has committed.
+    await page.waitForFunction(() => snapCommittedHistoryWrites.some(value => value.includes('void line(int size)')));
     await page.reload();
     await page.locator('.section-block').first().click();
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
