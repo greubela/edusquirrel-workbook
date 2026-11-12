@@ -190,6 +190,9 @@ test('test workbook preserves edits across human languages, programming language
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
+    // Saved-state restoration and editor conversion complete asynchronously.
+    await page.waitForFunction(() => document.querySelector('dialog[open] .eva-editor .cm-content')
+      ?.textContent.includes('void line(int size)'));
     assert.match(await code.innerText(), /void line\(int size\)/, 'saved methods survive a page reload');
     assert.match(await code.innerText(), /line\(64\)/);
     await page.locator('.fullscreen-close-button').click();
