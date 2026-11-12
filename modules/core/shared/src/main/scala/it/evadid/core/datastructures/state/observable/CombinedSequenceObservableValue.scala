@@ -18,18 +18,21 @@ case class CombinedSequenceObservableValue[A](observables: List[ObservableValue[
   }
 
   private[state] def onValueChanged(): Unit = syncLock.synchronized {
-    val empty = lastValues.filter(_.isEmpty)
-    if (empty.isEmpty) {
-      val failedWithIndex = lastValues.zipWithIndex.filter(_._1.get.isFailure)
-      val propagateValue: Try[List[A]] = if (failedWithIndex.nonEmpty) {
-        val throwException = new IllegalStateException(s"Observable at positions ${failedWithIndex.map(_._2).mkString("(", ", ", ")")} contain failures (cause reflects ${failedWithIndex.head._2})", failedWithIndex.head._1.get.failed.get)
-        Failure(throwException)
-      } else {
-        Success(lastValues.map(_.get.get))
-      }
-      outObs.onNewValueArrived(propagateValue)
-    }
+    combinedResult(lastValues).foreach(outObs.onNewValueArrived)
   }
+
+  private def combinedResult(values: List[Option[Try[A]]]): Option[Try[List[A]]] =
+    if values.exists(_.isEmpty) then None
+    else {
+      val results = values.flatten
+      val failures = results.zipWithIndex.collect { case (Failure(error), index) => error -> index }
+      Some(failures match {
+        case (firstError, firstIndex) :: _ =>
+          val positions = failures.map(_._2).mkString("(", ", ", ")")
+          Failure(new IllegalStateException(s"Observable at positions $positions contain failures (cause reflects $firstIndex)", firstError))
+        case Nil => Success(results.collect { case Success(value) => value })
+      })
+    }
 
   override def currentValueOrWaitForUpdate: Future[List[A]] = outObs.currentValueOrWaitForUpdate
 

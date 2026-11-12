@@ -171,6 +171,27 @@ class ObservableValueSpec extends FunSuite {
     assertEquals(combined.now(), Some(List(1, 2)))
   }
 
+  test("combined lists wait for every input and retain all failure positions in input order") {
+    val a = ObservableValueImpl[Int](None)
+    val b = ObservableValueImpl[Int](None)
+    val c = ObservableValueImpl[Int](None)
+    val combined = ObservableValue.fromList(List(a, b, c))
+    val first = new IllegalArgumentException("first failure")
+    val second = new IllegalStateException("second failure")
+    c.onNewValueArrived(Failure(second))
+    b.onNewValueArrived(Failure(first))
+    val waiting = combined.currentValueOrWaitForUpdate
+    assert(!waiting.isCompleted)
+    a.onNewValueArrived(Success(1))
+    val failure = waiting.value.get.failed.get
+    assert(failure.getMessage.contains("(1, 2)"))
+    assert(failure.getCause eq first)
+    b.onNewValueArrived(Success(2))
+    assert(combined.currentValueOrWaitForUpdate.value.get.failed.get.getCause eq second)
+    c.onNewValueArrived(Success(3))
+    assertEquals(combined.now(), Some(List(1, 2, 3)))
+  }
+
   test("an empty list is immediately available") {
     assertEquals(ObservableValue.fromList[Int](Nil).now(), Some(Nil))
   }
@@ -259,6 +280,31 @@ class ObservableValueSpec extends FunSuite {
       assertEquals(seen.toList, expected)
       assertEquals(derived.now(), Some(30))
     }
+  }
+
+  test("derived observers can enqueue another input while a result is being published") {
+    val source = ObservableValueImpl(Some(1))
+    val derived = source.deriveAsync(n => scala.concurrent.Future.successful(n * 10))
+    val received = ListBuffer.empty[Int]
+    derived.addObserver((n: Int) => {
+      received += n
+      if n == 20 then source.onNewValueArrived(Success(3))
+    })
+    source.onNewValueArrived(Success(2))
+    assertEquals(received.toList, List(10, 20, 30))
+    assertEquals(derived.now(), Some(30))
+  }
+
+  test("an in-flight failure releases queued derivations and preserves the original waiting future") {
+    val source = ObservableValueImpl(Some(1))
+    val first = Promise[Int]()
+    val derived = source.deriveAsync(n => if n == 1 then first.future else scala.concurrent.Future.successful(n * 10))
+    val waiting = derived.currentValueOrWaitForUpdate
+    source.onNewValueArrived(Success(2))
+    val error = new IllegalStateException("first failed")
+    first.failure(error)
+    assertEquals(waiting.value, Some(Failure(error)))
+    assertEquals(derived.now(), Some(20))
   }
 
   test("future derivation propagates failed futures, thrown functions and base failures") {

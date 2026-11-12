@@ -27,6 +27,87 @@ class AsyncDataCacheSpec extends FunSuite {
     override protected def formatOutputForLogging(output: String): String = output
   }
 
+  test("registered futures share cache waiters without invoking the loader") {
+    val cache = new Cache()
+    val supplied = Promise[String]()
+    val ignored = Promise[String]()
+    cache.informAboutExistingFuture("a", supplied.future)
+    val waiting = cache.loadAsFuture("a")
+    cache.informAboutExistingFuture("a", ignored.future)
+    ignored.success("ignored")
+    supplied.success("registered")
+    waiting.flatMap { value =>
+      assertEquals(value, "registered")
+      assertEquals(cache.requests.size, 0)
+      cache.informAboutExistingFuture("a", Future.successful("also ignored"))
+      cache.loadAsFuture("a").map(result => assertEquals(result, "registered"))
+    }
+  }
+
+  test("replacement registered futures retain the observable and reject stale completion") {
+    val cache = new Cache()
+    val observable = cache.loadIntoVariable("a")
+    val original = cache.loadAsFuture("a")
+    val replacement = Promise[String]()
+    cache.informAboutExistingFuture("a", replacement.future, replaceIfExist = true)
+    val current = cache.loadAsFuture("a")
+    replacement.success("current")
+    current.flatMap { _ =>
+      cache.requests.head._2.success("stale")
+      original.map { oldResult =>
+        assertEquals(oldResult, "stale")
+        assertEquals(cache.cacheCopy(), Map("a" -> "current"))
+        assertEquals(observable.stateNow().value, Some("current"))
+      }
+    }
+  }
+
+  test("registered futures replace failed and deleted entries without forcing replacement") {
+    val cache = new Cache(retry = false)
+    val failed = cache.loadAsFuture("a")
+    cache.requests.head._2.failure(new IllegalStateException("failed"))
+    failed.failed.flatMap { _ =>
+      cache.informAboutExistingFuture("a", Future.successful("recovered"))
+      cache.loadAsFuture("a").flatMap { recovered =>
+        assertEquals(recovered, "recovered")
+        cache.removeFromCache(List("a"))
+        cache.informAboutExistingFuture("a", Future.successful("replaced deleted"))
+        cache.loadAsFuture("a").map(value => assertEquals(value, "replaced deleted"))
+      }
+    }
+  }
+
+  test("request registration precedes synchronous loader reentry") {
+    val pending = Promise[String]()
+    val reentered = Promise[Future[String]]()
+    val cache = new AsyncDataCache[String, String](logger) {
+      def formatInputForLogging(input: String): String = input
+      def formatOutputForLogging(output: String): String = output
+      def executeLoading(input: String)(ec: ExecutionContext): Future[String] = {
+        assertEquals(getCurrentElementStatus(input), CacheElementStatus.STARTED())
+        reentered.success(loadAsFuture(input))
+        pending.future
+      }
+    }
+    val first = cache.loadAsFuture("a")
+    pending.success("loaded")
+    reentered.future.flatMap(second => first.zip(second)).map(values => assertEquals(values, ("loaded", "loaded")))
+  }
+
+  test("synchronous loader errors fail the returned future and can be replaced") {
+    val error = new IllegalStateException("loader threw")
+    val cache = new AsyncDataCache[String, String](logger, retryFailedOnNextFetch = false) {
+      def formatInputForLogging(input: String): String = input
+      def formatOutputForLogging(output: String): String = output
+      def executeLoading(input: String)(ec: ExecutionContext): Future[String] = throw error
+    }
+    cache.loadAsFuture("a").failed.flatMap { failure =>
+      assert(failure eq error)
+      cache.informAboutExistingFuture("a", Future.successful("replacement"))
+      cache.loadAsFuture("a").map(value => assertEquals(value, "replacement"))
+    }
+  }
+
   test("concurrent requests share one load and successful results are reused") {
     val cache = new Cache()
     val first = cache.loadAsFuture("a")

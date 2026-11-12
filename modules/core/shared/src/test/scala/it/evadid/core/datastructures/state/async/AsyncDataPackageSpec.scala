@@ -1,5 +1,6 @@
 package it.evadid.core.datastructures.state.async
 
+import it.evadid.core.datastructures.state.observable.ObservableValueImpl
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.distribution.command.SerializedException
@@ -59,6 +60,43 @@ class AsyncDataPackageSpec extends FunSuite {
       assertEquals(value.stateNow().value, Some(2))
       assertEquals(value.observeLoadedValues.now(), Some(2))
     }
+  }
+
+  private class TrackedStates(initial: AsyncDataState[String, Int])
+    extends ObservableValueImpl[AsyncDataState[String, Int]](Some(initial)) {
+    def observerCount: Int = observers.size
+  }
+
+  test("AsyncState releases its observer after synchronous replay of success or failure") {
+    List[AsyncDataState[String, Int]](AsyncDataSuccess(3), AsyncDataFailed(Exception("offline"), Some("details"))).foreach { initial =>
+      val source = new TrackedStates(initial)
+      val value = AsyncState(source)
+      assert(value.futureFirstState.value.exists(_.get == initial))
+      assertEquals(source.observerCount, 0)
+    }
+  }
+
+  test("AsyncState ignores loading updates and releases its observer after completion") {
+    val source = new TrackedStates(AsyncDataLoading())
+    val value = AsyncState(source)
+    assertEquals(source.observerCount, 1)
+    source.onNewValueArrived(scala.util.Success(AsyncDataLoading()))
+    assert(!value.futureFirstState.isCompleted)
+    source.onNewValueArrived(scala.util.Success(AsyncDataSuccess(5)))
+    assertEquals(source.observerCount, 0)
+    source.onNewValueArrived(scala.util.Success(AsyncDataSuccess(6)))
+    assertEquals(value.futureFirstState.value.map(_.get.value), Some(Some(5)))
+    assertEquals(value.stateNow().value, Some(6))
+  }
+
+  test("AsyncState completion cleanup is safe when a callback immediately publishes another state") {
+    val source = new TrackedStates(AsyncDataLoading())
+    val value = AsyncState(source)
+    value.futureFirstState.foreach(_ => source.onNewValueArrived(scala.util.Success(AsyncDataSuccess(2))))(using ExecutionContext.parasitic)
+    source.onNewValueArrived(scala.util.Success(AsyncDataSuccess(1)))
+    assertEquals(source.observerCount, 0)
+    assertEquals(value.futureFirstState.value.map(_.get.value), Some(Some(1)))
+    assertEquals(value.stateNow().value, Some(2))
   }
 
   test("AsyncFuture exposes loading state and preserves failure metadata") {

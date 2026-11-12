@@ -111,6 +111,33 @@ class RemoteCacheControllerSpec extends FunSuite {
     }
   }
 
+  test("a throwing store callback fails its request without blocking the next queued store") {
+    val local = new Destination(() => Future.successful(response("saved")))
+    val cache = controller(State(List(local)))
+    val error = new IllegalStateException("store callback failed")
+    val failed = cache.requestCacheDependentStore(_ => throw error)
+    val next = cache.requestStore(List(DataEntryToWriteToServer("program", "edited", timestamp.plusSeconds(1))))
+    failed.failed.zip(next).map { (failure, _) =>
+      assert(failure eq error)
+      assertEquals(local.written, Map("program" -> "edited"))
+      assertEquals(cache.currentReport("program").allAvailableCacheKeys, List(local))
+    }
+  }
+
+  test("an observer can queue a store while a completed refresh is being published") {
+    val local = new Destination(() => Future.successful(response("saved")))
+    val cache = controller(State(List(local)))
+    val followup = Promise[Future[?]]()
+    val subscription = cache.observableCache.addObserver { collection =>
+      if collection.createReportFor("program").cacheStatus(local).lastKnownRemoteValue.nonEmpty && !followup.isCompleted then
+        followup.success(cache.requestStore(List(DataEntryToWriteToServer("program", "observer edit", timestamp.plusSeconds(1)))))
+    }
+    cache.ensureMaxAgeSafe(timestamp).flatMap(_ => followup.future.flatMap(identity)).map { _ =>
+      subscription.cancel()
+      assertEquals(local.written, Map("program" -> "observer edit"))
+    }
+  }
+
   test("cache-dependent update propagates a fetch failure while safe refresh retains the cache") {
     val error = new IllegalStateException("offline")
     val local = new Destination(() => Future.failed(error))
