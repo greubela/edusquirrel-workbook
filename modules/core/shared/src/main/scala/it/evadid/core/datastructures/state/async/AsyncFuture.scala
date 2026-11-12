@@ -5,7 +5,8 @@ import it.evadid.core.datastructures.state.observable.{ObservableValue, Observab
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 
 import scala.concurrent.*
-import scala.util.{Failure, Success}
+import scala.util.{Success, Try}
+import scala.util.control.NonFatal
 
 
 case class AsyncFuture[F, S](underlying: Future[Either[FailureInfo[F], S]]) extends AsyncData[F, S] {
@@ -15,22 +16,15 @@ case class AsyncFuture[F, S](underlying: Future[Either[FailureInfo[F], S]]) exte
   override def mapIfError[F2](func: F => F2): AsyncData[F2, S] = AsyncFuture(underlying.map(_.swap.map(_.map(func)).swap))
 
   override def mapAsync[S2](func: S => Future[S2]): AsyncData[F, S2] = {
-    val res = Promise[Either[FailureInfo[F], S2]]()
-
-    def fail(msg: String, cause: Throwable, data: Option[F]): Unit = {
-      val err = Exception(msg, cause)
-      res.success(Left(FailureInfo(err, data)))
+    val mapped: Future[Either[FailureInfo[F], S2]] = futureFirstState.flatMap {
+      case AsyncDataSuccess(data) =>
+        Try(func(data)).fold(Future.failed, identity).map(value => Right(value)).recover {
+          case NonFatal(error) => Left(FailureInfo(Exception("AsyncFuture failed because of future error: " + error.getMessage, error), None))
+        }
+      case AsyncDataFailed(error, data) =>
+        Future.successful(Left(FailureInfo(Exception("AsyncFunction could not be executed because underlying value was error: " + error.msg, error), data)))
     }
-
-    withFinishedFirstState {
-      case AsyncDataSuccess(data) => scala.util.Try(func(data)).fold(Future.failed, identity).onComplete {
-        case Success(value) => res.success(Right(value))
-        case Failure(error) => fail("AsyncFuture failed because of future error: " + error.getMessage, error, None)
-      }(using ExecutionContext.global)
-      case AsyncDataFailed(err, data) => fail("AsyncFunction could not be executed because underlying value was error: " + err.msg, err, data)
-    }
-
-    AsyncFuture(res.future)
+    AsyncFuture(mapped)
   }
 
   val futureFirstState: Future[AsyncDataStateFinished[F, S]] = underlying.map {

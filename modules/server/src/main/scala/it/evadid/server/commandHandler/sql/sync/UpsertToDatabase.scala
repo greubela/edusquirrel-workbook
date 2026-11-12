@@ -19,7 +19,7 @@ case class UpsertToDatabase(
                              logger: Logger
                            ) extends RelationalHistorySql(connection, logger) {
 
-  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection, logger)
+  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
   private lazy val delete: DeleteInDatabase = new DeleteInDatabase(connection, usageContext, logger)
 
   private def contextValues(context: SyncContext): List[String] =

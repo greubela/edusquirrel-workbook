@@ -2,23 +2,19 @@ package it.evadid.core.datastructures.tree.nodeImpl
 
 import it.evadid.core.datastructures.tree.{Tree, TreeStructureContext}
 
-import scala.collection.mutable
 
 class NodeBasedTreeImpl[D](protected val firstLayerNodes: List[NodeBasedTreeNode[D]]) extends Tree[NodeBasedTreePosition, D] {
 
   private val firstLayerTravelInfo: List[NodeBasedTraversalInformation[D]] = firstLayerNodes.zipWithIndex.map((curRootChild, curIndex) => NodeBasedTraversalInformation(curRootChild, rootPosition.forChild(curIndex), None, this))
 
-  private lazy val structureCache: Map[NodeBasedTreePosition, NodeBasedTraversalInformation[D]] = {
-    val res = mutable.HashMap[NodeBasedTreePosition, NodeBasedTraversalInformation[D]]()
-
-    def recAppend(traversalInfo: NodeBasedTraversalInformation[D]): Unit = {
-      traversalInfo.traversalInfoForChildren.foreach(curChildInfo => recAppend(curChildInfo))
-      res.put(traversalInfo.curPosition, traversalInfo)
-    }
-
-    firstLayerTravelInfo.foreach(curInfo => recAppend(curInfo))
-    res.toMap
+  private def traversal(bottomUp: Boolean): Iterator[NodeBasedTraversalInformation[D]] = {
+    def visit(info: NodeBasedTraversalInformation[D]): Iterator[NodeBasedTraversalInformation[D]] =
+      if bottomUp then info.traversalInfoForChildren.iterator.flatMap(visit) ++ Iterator.single(info)
+      else Iterator.single(info) ++ info.traversalInfoForChildren.iterator.flatMap(visit)
+    firstLayerTravelInfo.iterator.flatMap(visit)
   }
+
+  private lazy val structureCache = traversal(false).map(info => info.curPosition -> info).toMap
 
   override val isEmpty: Boolean = firstLayerNodes.isEmpty
 
@@ -33,19 +29,8 @@ class NodeBasedTreeImpl[D](protected val firstLayerNodes: List[NodeBasedTreeNode
     structureCache.get(position).map(_.traversalInfoForChildren.map(_.curPosition)).getOrElse(List())
 
 
-  override def foreachWithStructure(consumer: TreeStructureContext[NodeBasedTreePosition, D] => Any, bottomUp: Boolean = true): Unit = {
-    def recTraverse(curNode: NodeBasedTraversalInformation[D]): Unit =
-      if (bottomUp) {
-        curNode.traversalInfoForChildren.foreach(recTraverse)
-        consumer(curNode)
-      } else {
-        consumer(curNode)
-        curNode.traversalInfoForChildren.foreach(recTraverse)
-      }
-
-    firstLayerTravelInfo.foreach(recTraverse)
-  }
-
+  override def foreachWithStructure(consumer: TreeStructureContext[NodeBasedTreePosition, D] => Any, bottomUp: Boolean = true): Unit =
+    traversal(bottomUp).foreach(consumer)
 
   override def addAsLastChild(positionToAdd: NodeBasedTreePosition, newData: D): Tree[NodeBasedTreePosition, D] = if (positionToAdd.isRoot) {
     NodeBasedTreeImpl[D](firstLayerNodes :+ NodeBasedTreeNode[D](newData, List()))
@@ -61,45 +46,21 @@ class NodeBasedTreeImpl[D](protected val firstLayerNodes: List[NodeBasedTreeNode
   }
 
   override def addSubtreeAsChildNr(insertAtPosition: NodeBasedTreePosition, childNr: Int, subtree: Tree[NodeBasedTreePosition, D]): Tree[NodeBasedTreePosition, D] = {
-
-    var res: Tree[NodeBasedTreePosition, D] = this
-    // roots at correct position (in reverse to keep order)
-    val subtreeRootPositions = subtree.getChildren(subtree.rootPosition)
-    subtreeRootPositions.reverse.foreach(curRootPosition => {
-      res = res.addAsChildNr(insertAtPosition, childNr, subtree.getData(curRootPosition).get)
-    })
-    // remainder step by step at last elements
-    subtree.foreachWithStructure(structure =>
-      if (structure.curPosition.level > 1) {
-        val newPosition = structure.curPosition.relativeTo(insertAtPosition, childNr)
-        res = res.addAsLastChild(newPosition.forParent().get, structure.curValue)
-      }
-      , false)
-    res
+    def copyNode(position: NodeBasedTreePosition): NodeBasedTreeNode[D] =
+      NodeBasedTreeNode(subtree.getData(position).get, subtree.getChildren(position).map(copyNode))
+    insertChildren(insertAtPosition, childNr, subtree.getChildren(subtree.rootPosition).map(copyNode))
   }
 
-
-  private def addNodeAsChildNr(positionToAdd: NodeBasedTreePosition, childNr: Int, newNode: NodeBasedTreeNode[D]): Tree[NodeBasedTreePosition, D] = {
-    if (positionToAdd.isRoot) {
-      val newRoots = firstLayerNodes.slice(0, childNr) ++ List(newNode) ++ firstLayerNodes.slice(childNr, firstLayerNodes.size)
-      NodeBasedTreeImpl(newRoots)
-    } else {
-      def updateNode(curNode: NodeBasedTraversalInformation[D]): NodeBasedTreeNode[D] = {
-        val updatedChildren = curNode.traversalInfoForChildren.map(updateNode)
-        val newChildren: List[NodeBasedTreeNode[D]] = if (curNode.curPosition == positionToAdd) {
-          updatedChildren.slice(0, childNr) ++ List(newNode) ++ updatedChildren.slice(childNr, updatedChildren.size)
-        } else {
-          updatedChildren
-        }
-        NodeBasedTreeNode[D](curNode.curValue, newChildren)
-      }
-
-      NodeBasedTreeImpl[D](firstLayerTravelInfo.map(updateNode))
+  private def insertChildren(position: NodeBasedTreePosition, index: Int, nodes: List[NodeBasedTreeNode[D]]): NodeBasedTreeImpl[D] = {
+    def updateNode(info: NodeBasedTraversalInformation[D]): NodeBasedTreeNode[D] = {
+      val children = info.traversalInfoForChildren.map(updateNode)
+      NodeBasedTreeNode(info.curValue, if info.curPosition == position then children.patch(index, nodes, 0) else children)
     }
+    NodeBasedTreeImpl(if position.isRoot then firstLayerNodes.patch(index, nodes, 0) else firstLayerTravelInfo.map(updateNode))
   }
 
   override def addAsChildNr(positionToAdd: NodeBasedTreePosition, childNr: Int, newData: D): Tree[NodeBasedTreePosition, D] = {
-    addNodeAsChildNr(positionToAdd, childNr, NodeBasedTreeNode(newData, List()))
+    insertChildren(positionToAdd, childNr, List(NodeBasedTreeNode(newData, Nil)))
   }
 
   override def addSubtreeAsLastChild(insertAtPosition: NodeBasedTreePosition, subtree: Tree[NodeBasedTreePosition, D]): Tree[NodeBasedTreePosition, D] = {
@@ -127,11 +88,9 @@ class NodeBasedTreeImpl[D](protected val firstLayerNodes: List[NodeBasedTreeNode
   override def traverseStructureAndAddChildren(calcChildrenToAdd: TSC => List[(Int, D)], childrenToAddToRoot: List[(Int, D)] = List()): Tree[NodeBasedTreePosition, D] = {
 
     def insertNodes(oldNodes: List[NodeBasedTreeNode[D]], newNodes: List[(Int, D)]): List[NodeBasedTreeNode[D]] = {
-      var transformedChildren = oldNodes
-      newNodes.sortBy(_._1).reverse.foreach((index, data) => {
-        transformedChildren = transformedChildren.slice(0, index) ++ List(NodeBasedTreeNode(data, List())) ++ transformedChildren.slice(index, transformedChildren.size)
-      })
-      transformedChildren
+      newNodes.sortBy(_._1).foldRight(oldNodes) { case ((index, data), children) =>
+        children.patch(index, List(NodeBasedTreeNode(data, Nil)), 0)
+      }
     }
 
     def updateNode(curNode: NodeBasedTraversalInformation[D]): NodeBasedTreeNode[D] = {
@@ -157,28 +116,11 @@ class NodeBasedTreeImpl[D](protected val firstLayerNodes: List[NodeBasedTreeNode
     NodeBasedTreeImpl[O](firstLayerTravelInfo.map(curRootNodeTravelInfo => recreateNode(curRootNodeTravelInfo)))
   }
 
-  def applyWithChildResults[O](callFunc: (TreeStructureContext[NodeBasedTreePosition, D], Map[D, O]) => O): Map[NodeBasedTreePosition, O] = {
-
-    val resMap: mutable.Map[NodeBasedTreePosition, O] = mutable.Map[NodeBasedTreePosition, O]()
-
-    def recApply(curNode: NodeBasedTraversalInformation[D]): O = {
-      val childResMap = curNode.traversalInfoForChildren.map(curTravInfo => {
-        val res = curTravInfo.curValue -> recApply(curTravInfo)
-        resMap.put(curTravInfo.curPosition, res._2)
-        res
-      }).toMap
-
-      callFunc(curNode, childResMap)
+  def applyWithChildResults[O](callFunc: (TreeStructureContext[NodeBasedTreePosition, D], Map[D, O]) => O): Map[NodeBasedTreePosition, O] =
+    traversal(true).foldLeft(Map.empty[NodeBasedTreePosition, O]) { (results, info) =>
+      val children = info.traversalInfoForChildren.map(child => child.curValue -> results(child.curPosition)).toMap
+      results.updated(info.curPosition, callFunc(info, children))
     }
-
-    firstLayerTravelInfo.foreach(curRootNodeTravelInfo => {
-      val res = recApply(curRootNodeTravelInfo)
-      resMap += curRootNodeTravelInfo.curPosition -> res
-    })
-    resMap.toMap
-
-
-  }
 
 }
 

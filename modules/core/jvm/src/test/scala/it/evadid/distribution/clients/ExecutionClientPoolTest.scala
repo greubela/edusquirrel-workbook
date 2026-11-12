@@ -26,10 +26,9 @@ class ExecutionClientPoolTest extends FunSuite {
   test("reports no matching handler separately from matching handler failures") {
     val pool = ExecutionClientPool(List(failingClient("sync-to-db-request")))
 
-    val error = intercept[SerializedException] {
-      pool.handleCommand[Map[String, String]](BasicLogger(), ExecutionCommand("missing-command", ujson.Obj()))
+    pool.handleCommand[Map[String, String]](BasicLogger(), ExecutionCommand("missing-command", ujson.Obj())).failed.map { error =>
+      assertEquals(error.getMessage, "ExecutionClientPool: no handler for command missing-command registered!")
     }
-    assertEquals(error.getMessage, "ExecutionClientPool: no handler for command missing-command registered!")
   }
 
   test("reports matching handler failures without claiming the handler is missing") {
@@ -66,4 +65,21 @@ class ExecutionClientPoolTest extends FunSuite {
       assert(messages(error.asInstanceOf[SerializedException]).contains("Connection refused"))
     }
   }
+  test("synchronous handler failures fall back just like failed Futures") {
+    val synchronous = new LocalExecutionClient[ujson.Value, Map[String, String]] {
+      override def canExecuteCommand(command: ExecutionCommand): Boolean = true
+      override protected def rawExecution(logger: Logger, input: ujson.Value): Future[Map[String, String]] =
+        throw IllegalStateException("synchronous failure")
+    }
+    val fallback = new LocalExecutionClient[ujson.Value, Map[String, String]] {
+      override def canExecuteCommand(command: ExecutionCommand): Boolean = true
+      override protected def rawExecution(logger: Logger, input: ujson.Value): Future[Map[String, String]] =
+        Future.successful(Map("status" -> "fallback"))
+    }
+    ExecutionClientPool(List(synchronous, fallback)).handleCommand[Map[String, String]](
+      BasicLogger(), ExecutionCommand("test", ujson.Obj())).map { result =>
+      assertEquals(result.resultOp, Some(Map("status" -> "fallback")))
+    }
+  }
+
 }

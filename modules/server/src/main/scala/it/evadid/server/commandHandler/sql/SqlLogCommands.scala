@@ -44,7 +44,7 @@ class SqlLogCommands(
                       logger: Logger,
                     ) {
 
-  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection, logger)
+  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
 
   def logCommand(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken],
                  remoteAddress: InetAddress, storeLogIntoTable: Option[DatabaseTable]): SyncSuccess = {

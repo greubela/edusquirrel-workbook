@@ -87,6 +87,28 @@ class AsyncDataPackageSpec extends FunSuite {
     }
   }
 
+  test("AsyncFuture mapping waits for the mapper and preserves upstream failure data") {
+    val entered = Promise[Unit]()
+    val completed = Promise[Int]()
+    val mapped = AsyncFuture[String, Int](Future.successful(Right(1))).mapAsync { _ =>
+      entered.success(())
+      completed.future
+    }
+    entered.future.flatMap { _ =>
+      assert(!mapped.futureFirstState.isCompleted)
+      completed.success(7)
+      mapped.futureFirstValue.flatMap { result =>
+        assertEquals(result, 7)
+        val skipped = AsyncFuture[String, Int](Future.successful(Left(FailureInfo(Exception("offline"), Some("context")))))
+          .mapAsync[Int](_ => throw AssertionError("Mapper must not run on upstream failure"))
+        skipped.futureFirstState.map { state =>
+          assertEquals(state.failure.get.data, Some("context"))
+          assert(state.failure.get.error.msg.contains("offline"))
+        }
+      }
+    }
+  }
+
   test("AsyncValue asynchronous mapping and recovery publish results") {
     val value = AsyncValue[String, Int](AsyncDataSuccess(3))
     value.mapAsync(n => Future.successful(n * 2)).futureFirstValue.flatMap { mapped =>
