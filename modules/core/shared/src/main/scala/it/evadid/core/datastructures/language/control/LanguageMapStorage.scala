@@ -23,26 +23,20 @@ case class LanguageMapStorage
     mapWithIds.map(lm => lm.contentId -> lm.languageMap).toMap
   }
 
-  private def langMapStats(languageMaps: Map[LanguageMapContentId, LanguageMap[HumanLanguage]]): String = {
-    val fewestLanguages = languageMaps.minByOption(_._2.availableLanguages.size)
-    val mostLanguages = languageMaps.maxByOption(_._2.availableLanguages.size)
-    if (fewestLanguages.nonEmpty && mostLanguages.nonEmpty) {
-      val fewId = fewestLanguages.get._1
-      val fewNum = fewestLanguages.get._2
-      val mostId = mostLanguages.get._1
-      val mostNum = mostLanguages.get._2
-      s"${fewId} has the fewest entries (${fewNum}) and ${mostId} the most entries (${mostNum})"
-    } else {
-      "no maps are present"
+  private def languageCoverage(maps: Map[LanguageMapContentId, LanguageMap[HumanLanguage]]): String = {
+    val counts = maps.toList.map((id, map) => id -> map.availableLanguages.size)
+    (counts.minByOption(_._2), counts.maxByOption(_._2)) match {
+      case (Some((fewestId, fewestCount)), Some((mostId, mostCount))) =>
+        s"$fewestId has the fewest entries ($fewestCount) and $mostId the most entries ($mostCount)"
+      case _ => "no maps are present"
     }
-
   }
 
   def withLoadedTriples(logger: Logger, additionalSources: IterableOnce[LanguageMapInputSource], additionalTriples: ParsedTriples): LanguageMapStorage = {
     val unionTriples: ParsedTriples = parsedTriples.withOverrides(additionalTriples)
     val newStorage = LanguageMapStorage(unionTriples, loadedSources ++ additionalSources)
-    val stats = langMapStats(newStorage.languageMaps)
-    logger.logInfo(s"Increased Language Map Storage from ${parsedTriples.size} to ${newStorage.languageMaps.size} triples, (stats: ${stats})!")
+    val stats = languageCoverage(newStorage.languageMaps)
+    logger.logInfo(s"Increased Language Map Storage from ${parsedTriples.size} to ${newStorage.parsedTriples.size} triples, (stats: ${stats})!")
     newStorage
   }
 

@@ -5,7 +5,8 @@ import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId
 import it.evadid.core.datastructures.state.observable.ObservableValue
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.Try
+import scala.util.control.NonFatal
 
 trait LanguageMapIdResolver(private val currentLanguage: ObservableValue[HumanLanguage]) {
 
@@ -14,10 +15,10 @@ trait LanguageMapIdResolver(private val currentLanguage: ObservableValue[HumanLa
   def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]]
 
   def resolveToString(id: LanguageMapContentId): Future[String] = {
-    resolveMap(id).zip(currentLanguage.currentValueOrWaitForUpdate).map(tup => {
-      if (tup._1.availableLanguages.contains(tup._2)) tup._1.getInLanguage(tup._2)
-      else (tup._1.getInLanguage(English))
-    })
+    resolveMap(id).zip(currentLanguage.currentValueOrWaitForUpdate).map { (translations, language) =>
+      val selected = if translations.availableLanguages.contains(language) then language else English
+      translations.getInLanguage(selected)
+    }
   }
 
   def languageFuture(): Future[HumanLanguage] = currentLanguage.currentValueOrWaitForUpdate
@@ -26,16 +27,13 @@ trait LanguageMapIdResolver(private val currentLanguage: ObservableValue[HumanLa
     resolveToStrings(ids).flatMap(resMap => languageFuture().map(lang => (resMap, lang)))
   }
 
-  def resolveToStrings(ids: Seq[LanguageMapContentId]): Future[Map[LanguageMapContentId, String]] = {
-    val resMapOp: Future[Seq[(LanguageMapContentId, Option[String])]] = Future.traverse(ids)(id => resolveToString(id).transform {
-      case Success(str) => Success(Some(str))
-      case Failure(err) =>
-        println("[UGLY ERROR AT LanguageMapIdReserver]: " + err.getMessage)
-        Success(None)
-    }.map(id -> _))
+  private def resolveEntry(id: LanguageMapContentId): Future[Option[(LanguageMapContentId, String)]] =
+    Try(resolveToString(id)).fold(Future.failed, identity).map(text => Some(id -> text)).recover {
+      case NonFatal(error) =>
+        println(s"Could not resolve language map $id: ${error.getMessage}")
+        None
+    }
 
-    resMapOp.map(_.filter(_._2.nonEmpty).map(tup => tup._1 -> tup._2.get)).map(_.toMap)
-
-  }
-
+  def resolveToStrings(ids: Seq[LanguageMapContentId]): Future[Map[LanguageMapContentId, String]] =
+    Future.traverse(ids)(resolveEntry).map(_.flatten.toMap)
 }

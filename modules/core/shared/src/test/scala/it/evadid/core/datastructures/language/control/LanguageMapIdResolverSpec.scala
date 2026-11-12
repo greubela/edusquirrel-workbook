@@ -52,6 +52,16 @@ class LanguageMapIdResolverSpec extends FunSuite {
     }
   }
 
+  test("batch resolution also isolates providers that throw before returning a Future") {
+    val resolver = new LanguageMapIdResolver(ConstantValueObservable[HumanLanguage](English)) {
+      def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] =
+        if id == second then throw IllegalStateException("synchronous lookup failure") else Future.successful(translations)
+    }
+    resolver.resolveToStrings(Seq(first, second)).map { result =>
+      assertEquals(result, Map(first -> "hello"))
+    }
+  }
+
   test("empty batches succeed with the current language") {
     val resolver = new LanguageMapIdResolver(ConstantValueObservable[HumanLanguage](German)) {
       def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] = throw new AssertionError("unexpected lookup")

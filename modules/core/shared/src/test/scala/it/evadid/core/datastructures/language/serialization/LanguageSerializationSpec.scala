@@ -147,6 +147,16 @@ class LanguageSerializationSpec extends FunSuite {
     assertEquals(maps(onlyRegular).tryGetInLanguage(German), None)
     assertEquals(empty.createMapsFromTriples(), Set.empty[LanguageMapWithId])
   }
+  test("cache round trips preserve multiple explicit translations ahead of their universal fallback") {
+    val entries = ParsedTriples(Set(regular, regular.copy(language = German, value = "Hallo")), Set(universal))
+    val restored = read[ParsedTriples](write(entries))
+    val maps = restored.createMapsFromTriples().map(map => map.contentId -> map.languageMap).toMap
+    assertEquals(maps.keySet, Set(id))
+    assertEquals(maps(id).getInLanguage(English), "Hello")
+    assertEquals(maps(id).getInLanguage(German), "Hallo")
+    assertEquals(maps(id).getInLanguage(French), "fallback")
+  }
+
   test("serialized triple tables skip unresolved references while retaining valid entries") {
     val table = ParsedTriples.ParsedTriplesSerialized(List(id), List(English), List(UniversalLanguage),
       List(LanguageTripel(0, 0, "Hello"), LanguageTripel(5, 0, "bad")), List(LanguageTripel(0, 0, "fallback"), LanguageTripel(0, 5, "bad")))
