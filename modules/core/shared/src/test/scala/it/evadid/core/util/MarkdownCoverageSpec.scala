@@ -65,4 +65,29 @@ class MarkdownCoverageSpec extends FunSuite {
     assertEquals(html("<script>\"x\" & 'y'</script> [broken]( `open"),
       "<p>&lt;script&gt;&quot;x&quot; &amp; &#39;y&#39;&lt;/script&gt; [broken]( `open</p>")
   }
+  test("fence boundaries preserve blank code lines and final newlines") {
+    assertEquals(html("```\n\n```\n"), "<pre><code>\n</code></pre>")
+    assertEquals(html("```\nline\n"), "<pre><code>line\n</code></pre>")
+    assertEquals(html("```\nline\n```\nafter"), "<pre><code>line\n</code></pre><p>after</p>")
+    assertEquals(html("```"), "<pre><code></code></pre>")
+  }
+
+  test("list continuation at end of input and blank separators keep their boundaries") {
+    assertEquals(html("- first\n  continued\n- second\n  last"),
+      "<ul><li>first continued</li><li>second last</li></ul>")
+    assertEquals(html("- first\n\n  paragraph\n1. next"),
+      "<ul><li>first</li></ul><p>paragraph</p><ol><li>next</li></ol>")
+  }
+
+  test("inline protection preserves nested literals and multiple placeholder-like prefixes") {
+    assertEquals(html("@@MDTOKEN0@@ @@MDTOKENX0@@ [`a_b`](url) ![x](/image) **$5**"),
+      "<p>@@MDTOKEN0@@ @@MDTOKENX0@@ <a href=\"url\"><code>a_b</code></a> <img src=\"/image\" alt=\"x\" /> <strong>$5</strong></p>")
+  }
+
+  test("large mixed documents retain block order without recursive stack growth") {
+    val block = "## Title\ntext\n- one\n  continued\n> quote\n\n"
+    val rendered = "<h2>Title</h2><p>text</p><ul><li>one continued</li></ul><blockquote><p>quote</p></blockquote>"
+    assertEquals(html(List.fill(2000)(block).mkString), List.fill(2000)(rendered).mkString)
+  }
+
 }

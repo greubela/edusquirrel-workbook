@@ -228,4 +228,58 @@ class AsyncDataPackageSpec extends FunSuite {
     }
   }
 
+  test("AsyncData mappings serialize inputs even when a later result is already available") {
+    val source = State[AsyncDataState[String, Int]](AsyncDataSuccess(1))
+    val first = Promise[Int]()
+    val second = Promise[Int]()
+    val secondStarted = Promise[Unit]()
+    val mapped = AsyncState(source.observable).mapAsync { value =>
+      if value == 1 then first.future else { secondStarted.success(()); second.future }
+    }
+    val latest = Promise[Int]()
+    mapped.observeLoadedValues.addObserver(value => if value == 20 then latest.trySuccess(value))
+    source.set(AsyncDataSuccess(2))
+    assert(!secondStarted.isCompleted)
+    second.success(20)
+    first.success(10)
+    mapped.futureFirstValue.zip(latest.future).map { (initial, last) =>
+      assertEquals(initial, 10)
+      assertEquals(last, 20)
+      assertEquals(mapped.stateNow().value, Some(20))
+    }
+  }
+
+  test("a failed asynchronous mapping does not block later source values") {
+    val source = State[AsyncDataState[String, Int]](AsyncDataSuccess(1))
+    val first = Promise[Int]()
+    val mapped = AsyncState(source.observable).mapAsync(value => if value == 1 then first.future else Future.successful(value))
+    val latest = mapped.observeLoadedValues.currentValueOrWaitForUpdate
+    source.set(AsyncDataSuccess(2))
+    first.failure(new IllegalStateException("mapping failed"))
+    mapped.futureFirstState.zip(latest).map { (initial, last) =>
+      assert(initial.failure.get.error.msg.contains("mapping failed"))
+      assertEquals(last, 2)
+      assertEquals(mapped.stateNow().value, Some(2))
+    }
+  }
+
+  test("ignore-error recovery follows source order and retains the last result across loading") {
+    val source = State[AsyncDataState[String, Int]](AsyncDataFailed(Exception("offline")))
+    val pending = Promise[AsyncDataStateFinished[String, Int]]()
+    val recovered = AsyncState(source.observable).recoverOnErrorIgnoreError(_ => pending.future)
+    val latest = Promise[Int]()
+    recovered.observeLoadedValues.addObserver(value => if value == 3 then latest.trySuccess(value))
+    source.set(AsyncDataSuccess(2))
+    source.set(AsyncDataLoading())
+    source.set(AsyncDataSuccess(3))
+    assert(recovered.stateNow().isLoading)
+    pending.success(AsyncDataSuccess(1))
+    recovered.futureFirstValue.zip(latest.future).map { (initial, last) =>
+      assertEquals(initial, 1)
+      assertEquals(last, 3)
+      source.set(AsyncDataLoading())
+      assertEquals(recovered.stateNow().value, Some(3))
+    }
+  }
+
 }
