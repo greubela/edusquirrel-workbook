@@ -69,7 +69,11 @@ without preventing handler execution. Anonymous logging does not grant access
 to authenticated commands.
 
 The Compose deployment trusts only loopback and Caddy's fixed `172.30.0.2`
-address on `172.30.0.0/24`. Play uses
+address on `172.30.0.0/24`. Automatic container addresses are allocated from
+`172.30.0.128/25`, reserving the lower half for static addresses. Without this
+separation, the backend can acquire `.2` before Caddy starts. Network changes
+require `docker compose down` followed by `docker compose up -d` so Docker
+recreates the network. Play uses
 `play.http.forwarded.trustedProxies`; Caddy overwrites `X-Forwarded-For` with the
 validated direct peer address. Backend port 9000 is not published. If that subnet
 conflicts with the host, adjust the subnet, Caddy address and trusted address
