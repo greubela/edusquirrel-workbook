@@ -199,26 +199,40 @@ class SyncPackageSpec extends FunSuite {
     assertEquals(bound.dataToStore(variable), Nil)
   }
 
-  test("InteractionVariableSyncReport merges histories and partitions synced locations at timestamp boundaries") {
+  test("InteractionVariableSyncReport confirms selected contents rather than cache request timestamps") {
     val synced = location()
     val stale = location()
     val missing = location()
     val local = InteractionVariableHistory[String, Unit, Unit](InteractionVariableStateHistory[String](Set(temporary)), new InteractionVariableGradingHistory[String, Unit](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[String, Unit](scaffoldingMap = Map.empty))
     val remote = InteractionVariableHistory[String, Unit, Unit](InteractionVariableStateHistory[String](Set(major, minor)), new InteractionVariableGradingHistory[String, Unit](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[String, Unit](scaffoldingMap = Map.empty))
     val statuses = Map(
-      synced -> SyncStatus(Some(temporary.timestamp), context, Some(DataEntryReadFromServer(context, remote, time))),
-      stale -> SyncStatus(Some(temporary.timestamp.minusNanos(1)), context, Some(DataEntryReadFromServer(context, remote, time))),
+      synced -> SyncStatus(Some(time), context, Some(DataEntryReadFromServer(context, local.mergeWith(remote), temporary.timestamp))),
+      stale -> SyncStatus(Some(temporary.timestamp.plusDays(1)), context, Some(DataEntryReadFromServer(context, remote, time))),
       missing -> SyncStatus[SyncContext, InteractionVariableHistory[String, Unit, Unit]](None, context, None))
     val report = InteractionVariableSyncReport(local, statuses, List(synced, stale, missing))
     assertEquals(report.lastRemoteStates.keySet, Set(synced, stale))
-    assertEquals(report.lastRemoteStates.get(synced), Some(minor))
+    assertEquals(report.lastRemoteStates.get(synced), Some(temporary))
     assertEquals(report.lastRemoteStates.get(missing), None)
     assertEquals(report.latestStateIsSyncedTo, Set(synced))
     assertEquals(report.latestStateIsNotSyncedTo, Set(stale, missing))
-    assertEquals(report.curRemoteHistory.values.flatMap(_.lastKnownRemoteValue).flatMap(_.dataValue.historyStates.events).toSet, Set(major, minor))
+    assertEquals(report.curRemoteHistory.values.flatMap(_.lastKnownRemoteValue).flatMap(_.dataValue.historyStates.events).toSet, Set(major, minor, temporary))
     assertEquals(report.allInformationEverywhere.historyStates.events, Set(major, minor, temporary))
     val emptyLocal = report.copy(curLocalHistory = InteractionVariableHistory.empty[String, Unit, Unit])
     assertEquals(emptyLocal.latestStateIsSyncedTo, Set(synced, stale, missing))
+  }
+
+  test("sync reports respect each destination strategy and include missing destination statuses") {
+    val lastOnly = location(strategy = SyncStrategy.SYNC_LAST)
+    val everything = location(strategy = SyncStrategy.SYNC_EVERYTHING)
+    val absent = location()
+    val local = InteractionVariableHistory[String, Unit, Unit](Set(major, minor, temporary))
+    val selected = local.filterWithStrategy(SyncStrategy.SYNC_LAST)
+    val status = SyncStatus(Some(time.plusDays(1)), context, Some(DataEntryReadFromServer(context, selected, temporary.timestamp)))
+    val report = InteractionVariableSyncReport(local, Map(lastOnly -> status, everything -> status), List(lastOnly, everything, absent))
+    assertEquals(report.latestStateIsSyncedTo, Set(lastOnly))
+    assertEquals(report.latestStateIsNotSyncedTo, Set(everything, absent))
+    val onlyDefault = InteractionVariableHistory[String, Unit, Unit](Set(default))
+    assertEquals(report.copy(curLocalHistory = onlyDefault).latestStateIsSyncedTo, Set(lastOnly, everything))
   }
 
   test("SyncCache retains JSON for the owner to decode and isolates context keys") {

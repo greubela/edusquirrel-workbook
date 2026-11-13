@@ -61,3 +61,39 @@ credentials. Failed V2 stores roll back and do not prevent subsequent requests.
 An existing sync context is reused for new timestamps. Each `(sync_id, timestamp)`
 is a separate answer; retrying the same event preserves its ID. Growing histories
 can cross HTTP limits independently of database keys or timestamps.
+
+### Confirming synchronization
+
+A destination is synced only when its fetched history contains the answers,
+grading and scaffolding selected by its `SyncStrategy` (or newer merged results).
+A recent fetch timestamp alone proves nothing about a store. Store failures reach
+the caller and leave local history available for retry. Successful stores fetch
+again even when their event timestamps predate the previous cache refresh.
+
+### Deploying gzip support
+
+The public proxy must allow `Content-Encoding` as well as `Authorization` and
+`Content-Type`. Otherwise reads and login can succeed while the browser blocks
+all compressed writes during CORS preflight. This appears as `net::ERR_FAILED`
+with no HTTP response for the POST; no database write reaches the server.
+
+Deploy the current `deployment/server/docker-compose.yml` and recreate the proxy
+from its deployment directory, as well as the backend after replacing its JAR:
+
+```sh
+docker compose up -d --force-recreate proxy edusquirrel
+```
+
+Deploy the matching browser bundle separately. GitHub Pages deployment does not
+update the running backend or proxy. Verify the **public** endpoint afterward
+(no login or learner data is sent):
+
+```sh
+node tools/dev/check-sync-preflight.mjs \
+  https://ypcgzj23.trafficplex.cloud/executeCommand https://evadid.it
+```
+
+This check rejects the older proxy header list even when OPTIONS returns 204.
+The MySQL integration suite additionally sends current gzip store/fetch/delete
+commands for all three supported formats and verifies feedback-only updates to
+an existing answer, V2 row counts and idempotent retries.

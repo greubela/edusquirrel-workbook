@@ -63,19 +63,32 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   private def scalar(sql: String): Long = MysqlTestDatabase.withConnection { connection =>
     Using.resource(connection.createStatement())(statement => Using.resource(statement.executeQuery(sql))(rows => { rows.next(); rows.getLong(1) }))
   }
-  private def withHttpStore(run: (StoreToDbRequest => ExecutionClientResponse) => Unit): Unit = {
-    val server = BackendServer.createServer(ServerConfig(port = Some(0), address = "127.0.0.1", mode = Mode.Test))(BackendServer.buildApiRouter)
+  private def storeCommand(request: StoreToDbRequest): ExecutionCommand =
+    ExecutionCommand(StoreToDbCommand.name, writeJs(request))
+
+  private def withHttpCommands(forwardedAddress: Option[String] = None, trustedProxy: String = "192.0.2.1")
+                              (run: (ExecutionCommand => ExecutionClientResponse) => Unit): Unit = {
+    val properties = new java.util.Properties()
+    properties.setProperty("play.http.forwarded.version", "x-forwarded")
+    properties.setProperty("play.http.forwarded.trustedProxies.0", trustedProxy)
+    val server = BackendServer.createServer(ServerConfig(port = Some(0), address = "127.0.0.1", mode = Mode.Test,
+      properties = properties))(BackendServer.buildApiRouter)
     val client = HttpClient.newHttpClient()
-    val token = AuthHandling.createToken(User("Sync test", context.userId, "sync-test@example.test"))
-    try run { request =>
-      val command = ExecutionCommand(StoreToDbCommand.name, writeJs(request))
+    val user = User("Sync test", context.userId, "sync-test@example.test")
+    MysqlTestDatabase.withConnection { connection =>
+      it.evadid.server.commandHandler.sql.SqlUserCommands(connection, logger)
+        .upsertUser(user, it.evadid.core.datastructures.user.UserConfig.onlineDefaults)
+    }
+    val token = AuthHandling.createToken(user)
+    try run { command =>
       val compressed = new ByteArrayOutputStream()
       Using.resource(new GZIPOutputStream(compressed))(_.write(write(command).getBytes(UTF_8)))
-      val http = HttpRequest.newBuilder(URI.create(s"http://127.0.0.1:${server.httpPort.get}/executeCommand"))
+      val builder = HttpRequest.newBuilder(URI.create(s"http://127.0.0.1:${server.httpPort.get}/executeCommand"))
         .header("Content-Type", "application/json").header("Content-Encoding", "gzip")
         .header(UserTokenInfo.SignedToken.cookieKey, write(token))
-        .POST(HttpRequest.BodyPublishers.ofByteArray(compressed.toByteArray)).build()
-      val response = client.send(http, HttpResponse.BodyHandlers.ofString())
+        .POST(HttpRequest.BodyPublishers.ofByteArray(compressed.toByteArray))
+      forwardedAddress.foreach(address => builder.header("X-Forwarded-For", address))
+      val response = client.send(builder.build(), HttpResponse.BodyHandlers.ofString())
       assertEquals(response.statusCode(), 200)
       read[ExecutionClientResponse](response.body())
     } finally {
@@ -223,8 +236,66 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assert(!fetch()(sync).contains("sync_id"))
   }
 
+  test("current gzip HTTP commands store, fetch, update feedback and delete in all three formats") {
+    withHttpCommands() { send =>
+      val config = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
+      List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
+        val graded = history()
+        val answerOnly = graded.copy(historyGrading = InteractionVariableGradingHistory(Map.empty[String, GradedState[String, MessengerModel]]),
+          historyScaffolding = InteractionVariableScaffoldingHistory(Map.empty[String, ScaffoldingResult[String, MessengerModel]]))
+        def save(value: History): Unit = {
+          val response = send(storeCommand(StoreToDbRequest(sync, write(value), config, format)))
+          assert(response.result.isRight, response.result.left.toOption.map(_.msg).getOrElse(""))
+        }
+        def load(): Map[it.evadid.workbook.interaction.sync.SyncContext, String] = {
+          val request = FetchAllFromDbRequest(context, config, Some(key), format)
+          send(ExecutionCommand(fetchFromDbCommand.name, writeJs(request))).throwIfContainsError.result.toOption.get.getAs[DbFetchResponse].fetchedElements
+        }
+        save(answerOnly)
+        assertEquals(read[History](load()(sync)), answerOnly)
+        save(graded) // The answer is unchanged: only grading and scaffolding were added.
+        save(graded) // Retry must not duplicate feedback rows.
+        assertEquals(read[History](load()(sync)), graded)
+        if format == RelationalEvents then {
+          assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
+          assertEquals(scalar("SELECT COUNT(*) FROM grading_event"), 2L)
+          assertEquals(scalar("SELECT COUNT(*) FROM scaffolding_event"), 1L)
+        }
+        val deleted = send(ExecutionCommand(clearValuesDbCommand.name, writeJs(DeleteInDbRequest(context, Some(key), config, format))))
+        assert(deleted.result.isRight)
+        assertEquals(load(), Map.empty)
+      }
+    }
+  }
+
+  test("HTTP command logs persist trusted client IPv4 and IPv6 and reject untrusted forwarded addresses") {
+    val config = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
+    def loggedAddress(table: String): (String, String) = MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement()) { statement =>
+        Using.resource(statement.executeQuery(s"SELECT origin,ipAddress FROM `$table` ORDER BY id DESC LIMIT 1")) { rows =>
+          assert(rows.next())
+          rows.getString(1) -> rows.getString(2)
+        }
+      }
+    }
+    List(
+      ("127.0.0.1", "198.51.100.42", "198.51.100.42"),
+      ("127.0.0.1", "2001:db8::42", java.net.InetAddress.getByName("2001:db8::42").getHostAddress),
+      ("192.0.2.1", "198.51.100.99", "127.0.0.1")
+    ).foreach { (trusted, forwarded, expected) =>
+      withHttpCommands(Some(forwarded), trusted) { send =>
+        val fetch = ExecutionCommand(fetchFromDbCommand.name, writeJs(FetchAllFromDbRequest(context, config, None, RelationalEvents)))
+        assert(send(fetch).result.isRight)
+        assertEquals(loggedAddress("syncedLog"), expected -> expected)
+        // Unsupported commands still go through the ordinary command log and error envelope.
+        assert(send(ExecutionCommand("ip-log-fixture", ujson.Obj())).result.isLeft)
+        assertEquals(loggedAddress("commandLog"), expected -> expected)
+      }
+    }
+  }
+
   test("large cumulative gzip histories sync repeatedly over HTTP with the same context and different timestamps") {
-    withHttpStore { send =>
+    withHttpCommands() { send =>
       val first = InteractionVariableState("x" * 350000, UpdateImportance.MAJOR, time)
       val second = InteractionVariableState("second edit", UpdateImportance.MAJOR, time.plusSeconds(1))
       val initial = InteractionVariableHistory[String, MessengerModel, MessengerModel](Set(first))
@@ -232,7 +303,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       def request(value: History) = StoreToDbRequest(sync, write(value),
         it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalEvents)
       def sendBounded(value: History): Unit = {
-        val response = send(request(value))
+        val response = send(storeCommand(request(value)))
         assert(response.result.isRight)
         assert(response.additionalOutput.loggerOut.length < 16384)
         assert(!response.additionalOutput.loggerOut.contains("x" * 1000))
@@ -248,22 +319,22 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   }
 
   test("database SQL and authentication failures return useful errors without preventing the next sync") {
-    withHttpStore { send =>
+    withHttpCommands() { send =>
       val credentials = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()
       val request = StoreToDbRequest(sync, write(history()), credentials, RelationalEvents)
       val invalid = request.copy(syncContext = context.toSyncContext("oversized-key-" + "x" * 300))
-      val error = send(invalid).result.left.toOption.get
+      val error = send(storeCommand(invalid)).result.left.toOption.get
       assert(error.msg.contains("column limits"))
       assert(error.msg.contains("SQLState=22001"))
       assert(error.msg.contains("errorCode=1406"))
       assert(error.cause.exists(_.msg.contains("SQLState=22001")))
       assert(!write(error).contains("Data truncation"))
       assertEquals(scalar("SELECT COUNT(*) FROM sync_context_id"), 0L)
-      val auth = send(request.copy(databaseConfig = credentials.copy(password = "incorrect-test-password"))).result.left.toOption.get
+      val auth = send(storeCommand(request.copy(databaseConfig = credentials.copy(password = "incorrect-test-password")))).result.left.toOption.get
       assert(auth.msg.contains("rejected the credentials"))
       assert(auth.msg.contains("SQLState=28000"))
       assert(!auth.msg.contains("incorrect-test-password"))
-      assert(send(request).result.isRight)
+      assert(send(storeCommand(request)).result.isRight)
       assertEquals(read[History](fetch()(sync)), history())
     }
   }

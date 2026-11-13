@@ -17,16 +17,18 @@ case class InteractionVariableSyncReport[T, GA, SA](
     curRemoteHistory.keySet.flatMap(curKey => getOldestFrom(curRemoteHistory(curKey)).map(curVal => curKey -> curVal)).toMap
   }
 
+  // A recent read is not a write acknowledgement. Check the data selected for each
+  // destination, including grading and scaffolding, against its confirmed history.
   lazy val latestSyncedAt: Map[SyncInformationWithContext, Boolean] =
-    curRemoteHistory.map(tup => tup._1 -> {
-      if (curLocalHistory.timestampLastChanged.isEmpty) true
-      else if (tup._2.lastCacheRequest.isEmpty) false
-      else !curLocalHistory.timestampLastChanged.get.isAfter(tup._2.lastCacheRequest.get)
-    }).toMap
+    allSyncLocations.map { location =>
+      val expected = curLocalHistory.filterWithStrategy(location.syncInformation.syncStrategy)
+      val confirmed = curRemoteHistory.get(location).flatMap(_.lastKnownRemoteValue).map(_.dataValue)
+      location -> (expected.size == 0 || confirmed.exists(remote => remote.mergeWith(expected) == remote))
+    }.toMap
 
 
   lazy val latestStateIsSyncedTo: Set[SyncInformationWithContext] = latestSyncedAt.filter(_._2).keySet
-  lazy val latestStateIsNotSyncedTo: Set[SyncInformationWithContext] = curRemoteHistory.keys.filter(!latestStateIsSyncedTo.contains(_)).toSet
+  lazy val latestStateIsNotSyncedTo: Set[SyncInformationWithContext] = allSyncLocations.filterNot(latestStateIsSyncedTo.contains).toSet
 
   lazy val allInformationEverywhere: InteractionVariableHistory[T, GA, SA] = {
     val remoteHistories: Iterable[InteractionVariableHistory[T, GA, SA]] = curRemoteHistory.values.flatMap(_.lastKnownRemoteValue).map(_.dataValue)

@@ -34,6 +34,10 @@ class ForwardedAddressSpec extends FunSuite {
     assertEquals(observedAddress("127.0.0.1", address), InetAddress.getByName(address).getHostAddress)
   }
 
+  test("forwarding chains stop at the nearest untrusted client rather than accepting a spoofed prefix") {
+    assertEquals(observedAddress("127.0.0.1", "198.51.100.99, 198.51.100.42"), "198.51.100.42")
+  }
+
   test("an untrusted connection cannot spoof the logged client address") {
     assertEquals(observedAddress("192.0.2.1", "198.51.100.7"), "127.0.0.1")
   }

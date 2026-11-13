@@ -237,12 +237,15 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
       write <- source.writes.at(0)
       _ = assertEquals(write._1, Map("exercise" -> editedJava))
       _ = write._2.success(SyncSuccess.emptyNow())
+      confirmation <- source.reads.at(1)
+      _ = assert(!store.isCompleted, "stores wait for confirmed remote contents")
+      _ = confirmation.success(source.response(value = editedJava))
       _ <- store
       _ = assert(!hook.done.isCompleted)
       _ = hook.done.success(())
     } yield {
       assertEquals(evaluated.snapshot, List(source, source))
-      fixture.assertCurrent(source)
+      fixture.assertCurrent(source, editedJava)
     }
   }
 
@@ -264,15 +267,17 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
         write <- source.writes.at(0)
         _ = assertEquals(write._1, Map("exercise" -> editedJava))
         _ = write._2.success(SyncSuccess.emptyNow())
+        confirmation <- source.reads.at(1)
+        _ = confirmation.success(source.response(value = editedJava))
         _ <- store
         _ = assert(!update.isCompleted)
-        _ = fixture.assertCurrent(source)
+        _ = fixture.assertCurrent(source, editedJava)
         _ = oldRead.success(oldSource.response(fetchedAt.plusSeconds(1)))
         _ <- update
       } yield {
         assertEquals(evaluated.snapshot, List(source))
         assertEquals(oldSource.writes.size, 0)
-        fixture.assertCurrent(source)
+        fixture.assertCurrent(source, editedJava)
       }
     }
   }
@@ -404,6 +409,7 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
     withLoadedSource().flatMap { (fixture, oldSource) =>
       val source = new Source("B")
       val evaluated = new Calls[Source]
+      val refreshIndex = oldSource.reads.size
       val store = fixture.controller.requestCacheDependentStore(_ => entry)
       for {
         write <- oldSource.writes.at(0)
@@ -415,6 +421,8 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
         _ = assert(!store.isCompleted)
         _ = fixture.assertCurrent(source)
         _ = write._2.success(SyncSuccess.emptyNow())
+        confirmation <- oldSource.reads.at(refreshIndex)
+        _ = confirmation.success(oldSource.response(value = editedJava))
         _ <- store
       } yield {
         assertEquals(write._1, Map("exercise" -> editedJava))
@@ -447,21 +455,25 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
         writeB <- sourceB.writes.at(0)
         _ = assertEquals(writeB._1, Map("exercise" -> editedJava))
         _ = writeB._2.success(SyncSuccess.emptyNow())
+        confirmationB <- sourceB.reads.at(1)
+        _ = confirmationB.success(sourceB.response(value = editedJava))
         _ <- storeB
         _ = assertEquals(evaluatedA.snapshot, Nil)
         _ = assertEquals(sourceA.writes.size, 0)
         _ = assert(!storeA.isCompleted)
-        _ = fixture.assertCurrent(sourceB)
+        _ = fixture.assertCurrent(sourceB, editedJava)
         _ = readA.success(sourceA.response(fetchedAt.plusSeconds(1)))
         _ <- updateA
         writeA <- sourceA.writes.at(0)
         _ = assertEquals(writeA._1, Map("exercise" -> privateDraft))
         _ = writeA._2.success(SyncSuccess.emptyNow())
+        confirmationA <- sourceA.reads.at(firstReadA + 1)
+        _ = confirmationA.success(sourceA.response(value = privateDraft))
         _ <- storeA
       } yield {
         assertEquals(evaluatedA.snapshot, List(sourceA))
         assertEquals(sourceB.writes.snapshot.map(_._1), List(Map("exercise" -> editedJava)))
-        fixture.assertCurrent(sourceB)
+        fixture.assertCurrent(sourceB, editedJava)
       }
     }
   }
@@ -484,6 +496,8 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
         _ <- ensureB
         writeB <- sourceB.writes.at(0)
         _ = writeB._2.success(SyncSuccess.emptyNow())
+        confirmationB <- sourceB.reads.at(1)
+        _ = confirmationB.success(sourceB.response(value = editedJava))
         _ <- storeB
         _ = assert(!updateA.isCompleted)
         _ = assertEquals(sourceB.storedValues, Map("exercise" -> editedJava))
