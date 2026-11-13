@@ -9,7 +9,7 @@ sealed trait LanguageMap[T <: AppLanguage]() derives ReadWriter {
 
   def tryGetInLanguage(language: T): Option[String]
 
-  def getFallback(language: T): String = "[no " + language + "]"
+  def getFallback(language: T): String = s"[no ${language} (available: ${availableLanguages})]"
 
   def availableLanguages: Set[T]
 

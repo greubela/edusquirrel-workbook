@@ -65,15 +65,17 @@ object SyncDestinationHandlerForType {
     }
 
     private def deserializeAndWarn(input: Map[String, String]): Map[K, V] = {
-      val res = MapUtils.convertMap(input)(keySerializer.reversed, valueSerializer.reversed)
-      if (res.size < input.size) basic.syncLogger.log(s"${basic.underlyingDefinition}: Could not convert ${res._2.size} elements: ${res._2.toString}", WARN, Some(false))
-      res._1
+      val (converted, rejected) = MapUtils.convertMap(input)(keySerializer.reversed, valueSerializer.reversed)
+      if (rejected.nonEmpty) basic.syncLogger.log(
+        s"${basic.underlyingDefinition}: Ignoring ${rejected.size} unreadable records out of ${input.size}; saved data must match the current schema.", WARN, Some(false))
+      converted
     }
 
     private def serializeAndWarn(input: Map[K, V]): Map[String, String] = {
-      val res = MapUtils.convertMap(input)(keySerializer, valueSerializer)
-      if (res.size < input.size) basic.syncLogger.log(s"${basic.underlyingDefinition}: Could not serialize ${res._2.size} elements, ignore them during storing: ${res._2.toString}", WARN, Some(true))
-      res._1
+      val (converted, rejected) = MapUtils.convertMap(input)(keySerializer, valueSerializer)
+      if (rejected.nonEmpty) basic.syncLogger.log(
+        s"${basic.underlyingDefinition}: Could not serialize ${rejected.size} records out of ${input.size}; excluding them from this store request.", WARN, Some(true))
+      converted
     }
 
     override def storeAll(valueMap: Map[K, V])(implicit ec: ExecutionContext): Future[SyncSuccess] = {
