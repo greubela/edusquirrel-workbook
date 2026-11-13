@@ -94,3 +94,5 @@ networks:
     ipam:
       config:
         - subnet: 172.30.0.0/24
+          # Keep automatic allocations away from the proxy's fixed address.
+          ip_range: 172.30.0.128/25
