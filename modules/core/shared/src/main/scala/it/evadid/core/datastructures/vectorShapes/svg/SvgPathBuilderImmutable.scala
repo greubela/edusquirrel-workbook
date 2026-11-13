@@ -3,7 +3,6 @@ package it.evadid.core.datastructures.vectorShapes.svg
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 
-import scala.collection.mutable
 
 object SvgPathBuilderImmutable {
   given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[SvgPathBuilderImmutable[T]] =
@@ -27,36 +26,31 @@ case class SvgPathBuilderImmutable[T: Fractional](
   lazy val absStartPoint: Point[T] = startCommand.absoluteStartPos
 
   lazy val absoluteCommands: List[AbsoluteCommand[T]] = {
-    var curPoint = startCommand.absoluteStartPos
-    var subpathStart = curPoint
-    var res = mutable.ListBuffer[AbsoluteCommand[T]]()
-    for (curCommand <- furtherCommands) {
-      val absCommand = curCommand match {
-        case _: ClosePath[T] => AddControlLinesCommand(subpathStart, Nil)
-        case other => other.toAbsoluteCommand(curPoint)
-      }
-      curCommand match {
-        case _: MoveAbs[T] | _: MoveRel[T] => subpathStart = absCommand.positionAfterCommand
-        case _ => ()
-      }
-      res += absCommand
-      curPoint = absCommand.positionAfterCommand
+    val (_, _, reversed) = furtherCommands.foldLeft((absStartPoint, absStartPoint, List.empty[AbsoluteCommand[T]])) {
+      case ((current, subpathStart, converted), command) =>
+        val absolute = command match {
+          case _: ClosePath[?] => AddControlLinesCommand(subpathStart, Nil)
+          case other => other.toAbsoluteCommand(current)
+        }
+        val nextStart = command match {
+          case _: MoveAbs[?] | _: MoveRel[?] => absolute.positionAfterCommand
+          case _ => subpathStart
+        }
+        (absolute.positionAfterCommand, nextStart, absolute :: converted)
     }
-    res.toList
+    reversed.reverse
   }
 
   lazy val relativeCommands: List[RelativeCommand[T]] = {
-    var curPoint = startCommand.absoluteStartPos
-    var res = mutable.ListBuffer[RelativeCommand[T]]()
-    for ((curCommand, absoluteCommand) <- furtherCommands.zip(absoluteCommands)) {
-      val relCommand = curCommand match {
-        case _: ClosePath[T] => AddControlLinesCommand(absoluteCommand.positionAfterCommand, Nil)
-        case other => other.toRelativeCommand(curPoint)
-      }
-      res += relCommand
-      curPoint = absoluteCommand.positionAfterCommand
+    val (_, reversed) = furtherCommands.zip(absoluteCommands).foldLeft((absStartPoint, List.empty[RelativeCommand[T]])) {
+      case ((current, converted), (command, absolute)) =>
+        val relative = command match {
+          case _: ClosePath[?] => AddControlLinesCommand(absolute.positionAfterCommand, Nil)
+          case other => other.toRelativeCommand(current)
+        }
+        (absolute.positionAfterCommand, relative :: converted)
     }
-    res.toList
+    reversed.reverse
   }
 
   def moveToRel(dimension: Dimension[T]): SvgPathBuilderImmutable[T] =

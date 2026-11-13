@@ -1,240 +1,127 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
+import scala.annotation.tailrec
 
-// SvgPathParser.scala
 object SvgPathParser {
+  private val commandLetters = "AaCcHhLlMmQqVvZz"
+  private val numberPattern = "[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?".r
 
-  import scala.collection.mutable
+  private case class Command(letter: Char, arguments: List[Double]) derives upickle.default.ReadWriter
+  private case class BuildState(path: SvgPathBuilder[Double], current: Point[Double], subpathStart: Point[Double])
+    derives upickle.default.ReadWriter
 
-  def parseString(pathDString: String): Option[SvgPathBuilder[Double]] = {
-    // === Types ===
-    case class Tok(cmd: Char, args: List[Double]) derives upickle.default.ReadWriter
+  def parseString(pathDString: String): Option[SvgPathBuilder[Double]] =
+    tokenize(pathDString.trim).flatMap(readCommands).flatMap(build)
 
-    // === Tokenization ===
-    val cmdLetters = "AaCcHhLlMmQqVvZz"
-    val s0 = pathDString.trim
+  private def isCommand(part: String): Boolean = part.length == 1 && commandLetters.contains(part.head)
 
-    def tokenize(): Option[List[Tok]] = {
-      // SVG numbers may be adjacent when a sign or decimal point separates them.
-      // Splitting on whitespace alone loses valid inputs such as "M.5-.25".
-      val numberPattern = "[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?".r
-      val partsBuffer = mutable.ListBuffer.empty[String]
-      var offset = 0
-      while (offset < s0.length) {
-        val ch = s0.charAt(offset)
-        if (ch == ',' || ch.isWhitespace) offset += 1
-        else if (cmdLetters.indexOf(ch) >= 0) {
-          partsBuffer += ch.toString
-          offset += 1
-        } else {
-          numberPattern.findPrefixOf(s0.substring(offset)) match {
-            case Some(number) =>
-              partsBuffer += number
-              offset += number.length
-            case None => return None
-          }
+  private def tokenize(source: String): Option[Vector[String]] = {
+    @tailrec def scan(offset: Int, reversed: List[String]): Option[Vector[String]] =
+      if offset == source.length then Some(reversed.reverse.toVector)
+      else {
+        val char = source.charAt(offset)
+        if char == ',' || char.isWhitespace then scan(offset + 1, reversed)
+        else if commandLetters.contains(char) then scan(offset + 1, char.toString :: reversed)
+        else numberPattern.findPrefixOf(source.substring(offset)) match {
+          case Some(number) => scan(offset + number.length, number :: reversed)
+          case None => None
         }
       }
-      val parts = partsBuffer.toList
+    scan(0, Nil)
+  }
 
-      def arity(c: Char): Int = c.toLower match {
-        case 'm' => 2
-        case 'l' => 2
-        case 'h' => 1
-        case 'v' => 1
-        case 'c' => 6
-        case 'q' => 4
-        case 'a' => 7
-        case 'z' => 0
-        case _   => -1
+  private def arity(letter: Char): Int = letter.toLower match {
+    case 'm' | 'l' => 2
+    case 'h' | 'v' => 1
+    case 'c' => 6
+    case 'q' => 4
+    case 'a' => 7
+    case 'z' => 0
+    case other => throw new IllegalArgumentException(s"Unsupported internal SVG command: $other")
+  }
+
+  private def readArguments(parts: Vector[String], start: Int, letter: Char): Option[List[Double]] = {
+    val count = arity(letter)
+    if start + count > parts.size then None
+    else {
+      val numbers = parts.slice(start, start + count).map(_.toDoubleOption.filter(_.isFinite))
+      if numbers.exists(_.isEmpty) then None
+      else {
+        val arguments = numbers.flatten.toList
+        Option.when(validArguments(letter, arguments))(arguments)
       }
-
-      val buf = mutable.ListBuffer[Tok]()
-      var idx = 0
-      var currentCmd: Char = 0
-      var pendingArgs = false
-      var valid = true
-
-      def isCommandToken(s: String): Boolean = s.length == 1 && cmdLetters.indexOf(s.head) >= 0
-
-      def readArgs(n: Int): Option[List[Double]] = {
-        if (idx + n > parts.length) None
-        else {
-          val slice = parts.slice(idx, idx + n).map(_.toDoubleOption)
-          if (slice.forall(_.exists(_.isFinite))) Some(slice.flatten) else None
-        }
-      }
-
-      while (valid && idx < parts.length) {
-        val part = parts(idx)
-        if (isCommandToken(part)) {
-          if (pendingArgs) valid = false
-          currentCmd = part.head
-          idx += 1
-          val n = arity(currentCmd)
-          if (n == 0) {
-            buf += Tok(currentCmd, Nil)
-            pendingArgs = false
-            currentCmd = 0
-          } else {
-            pendingArgs = true
-          }
-        } else if (currentCmd != 0) {
-          val n = arity(currentCmd)
-          readArgs(n) match {
-            case Some(nums) =>
-              if (currentCmd.toLower == 'a' &&
-                (nums(0) < 0 || nums(1) < 0 ||
-                  !Set(0.0, 1.0).contains(nums(3)) || !Set(0.0, 1.0).contains(nums(4)))) valid = false
-              buf += Tok(currentCmd, nums)
-              idx += n
-              pendingArgs = false
-              currentCmd =
-                if (currentCmd == 'M') 'L'
-                else if (currentCmd == 'm') 'l'
-                else currentCmd
-            case None =>
-              valid = false
-          }
-        } else {
-          valid = false
-        }
-      }
-
-      if (!valid || pendingArgs || buf.isEmpty) None
-      else if (buf.head.cmd != 'M' && buf.head.cmd != 'm') None
-      else Some(buf.toList)
     }
+  }
 
-    def build(tokens: List[Tok]): Option[SvgPathBuilder[Double]] = {
-      // === Build using only the SvgPathBuilder interface ===
-      var builderOpt: Option[SvgPathBuilder[Double]] = None
-      var current = Point(0.0, 0.0)
-      var subStart = Point(0.0, 0.0)
-      var haveStart = false
-      var failed = false
+  private def validArguments(letter: Char, arguments: List[Double]): Boolean =
+    letter.toLower != 'a' || (arguments(0) >= 0 && arguments(1) >= 0 &&
+      Set(0.0, 1.0).contains(arguments(3)) && Set(0.0, 1.0).contains(arguments(4)))
 
-      def ensureStart(p: Point[Double]): Boolean = {
-        if (!haveStart) {
-          builderOpt = Some(SvgPathBuilder[Double](p))
-          current = p
-          subStart = p
-          haveStart = true
+  private def implicitCommand(letter: Char): Char = letter match {
+    case 'M' => 'L'
+    case 'm' => 'l'
+    case other => other
+  }
+
+  private def readCommands(parts: Vector[String]): Option[List[Command]] = {
+    @tailrec def read(index: Int, active: Option[Char], reversed: List[Command]): Option[List[Command]] =
+      if index == parts.size then Option.when(reversed.nonEmpty)(reversed.reverse)
+      else {
+        val next = if isCommand(parts(index)) then Some(parts(index).head -> (index + 1)) else active.map(_ -> index)
+        next match {
+          case Some((letter, start)) if letter.toLower == 'z' =>
+            read(start, None, Command(letter, Nil) :: reversed)
+          case Some((letter, start)) => readArguments(parts, start, letter) match {
+            case Some(arguments) =>
+              read(start + arguments.size, Some(implicitCommand(letter)), Command(letter, arguments) :: reversed)
+            case None => None
+          }
+          case None => None
         }
-        true
       }
+    read(0, None, Nil)
+  }
 
-      tokens.foreach {
-        // M: absolute moveto
-        case Tok('M', List(x, y)) =>
-          val p = Point(x, y)
-          ensureStart(p)
-          builderOpt = builderOpt.map(_.moveToAbs(p))
-          current = p
-          subStart = p
+  private def build(commands: List[Command]): Option[SvgPathBuilder[Double]] = commands match {
+    case Command('M' | 'm', List(x, y)) :: remaining =>
+      val start = Point(x, y)
+      // Retain the explicit initial move, including the existing path-string representation.
+      val initial = BuildState(SvgPathBuilder(start).moveToAbs(start), start, start)
+      remaining.foldLeft(Option(initial))((state, command) => state.flatMap(appendCommand(_, command))).map(_.path)
+    case _ => None
+  }
 
-        // m: relative moveto
-        case Tok('m', List(dx, dy)) =>
-          val p = if (!haveStart) Point(dx, dy) else Point(current.x + dx, current.y + dy)
-          ensureStart(p)
-          builderOpt = builderOpt.map(_.moveToAbs(p))
-          current = p
-          subStart = p
+  private def appendCommand(state: BuildState, command: Command): Option[BuildState] = {
+    val current = state.current
+    val path = state.path
+    def at(next: SvgPathBuilder[Double], end: Point[Double]): Option[BuildState] =
+      Some(state.copy(path = next, current = end))
+    def moveTo(point: Point[Double]): Option[BuildState] =
+      Some(BuildState(path.moveToAbs(point), point, point))
 
-        // L: absolute line
-        case Tok('L', List(x, y)) =>
-          val p = Point(x, y)
-          builderOpt = builderOpt.map(_.lineToAbs(p))
-          current = p
-
-        // l: relative line
-        case Tok('l', List(dx, dy)) =>
-          builderOpt = builderOpt.map(_.lineToRel(Dimension(dx, dy)))
-          current = Point(current.x + dx, current.y + dy)
-
-        // H: absolute horizontal (translate to relative)
-        case Tok('H', List(x)) =>
-          val dx = x - current.x
-          builderOpt = builderOpt.map(_.horizontalLineWithWidth(dx))
-          current = Point(x, current.y)
-
-        // h: relative horizontal
-        case Tok('h', List(dx)) =>
-          builderOpt = builderOpt.map(_.horizontalLineWithWidth(dx))
-          current = Point(current.x + dx, current.y)
-
-        // V: absolute vertical (translate to relative)
-        case Tok('V', List(y)) =>
-          val dy = y - current.y
-          builderOpt = builderOpt.map(_.verticalLineWithHeight(dy))
-          current = Point(current.x, y)
-
-        // v: relative vertical
-        case Tok('v', List(dy)) =>
-          builderOpt = builderOpt.map(_.verticalLineWithHeight(dy))
-          current = Point(current.x, current.y + dy)
-
-        // C: absolute cubic bezier
-        case Tok('C', List(x1, y1, x2, y2, x, y)) =>
-          val cp1 = Point(x1, y1)
-          val cp2 = Point(x2, y2)
-          val e   = Point(x, y)
-          builderOpt = builderOpt.map(_.cubicBezierToAbs(cp1, cp2, e))
-          current = e
-
-        // c: relative cubic bezier
-        case Tok('c', List(dx1, dy1, dx2, dy2, dx, dy)) =>
-          builderOpt = builderOpt.map(_.cubicBezierToRel(
-            Dimension(dx1, dy1),
-            Dimension(dx2, dy2),
-            Dimension(dx, dy)
-          ))
-          current = Point(current.x + dx, current.y + dy)
-
-        // Q: absolute quadratic
-        case Tok('Q', List(cx, cy, x, y)) =>
-          val cp = Point(cx, cy)
-          val e  = Point(x, y)
-          builderOpt = builderOpt.map(_.quadraticBezierToAbs(cp, e))
-          current = e
-
-        // q: relative quadratic
-        case Tok('q', List(dcx, dcy, dx, dy)) =>
-          builderOpt = builderOpt.map(_.quadraticBezierWithRel(
-            Dimension(dcx, dcy),
-            Dimension(dx, dy)
-          ))
-          current = Point(current.x + dx, current.y + dy)
-
-        // a: relative arc
-        case Tok('a', List(rx, ry, rot, largeFlag, sweepFlag, dx, dy)) =>
-          val largeArc = largeFlag != 0.0
-          val sweep = sweepFlag != 0.0
-          builderOpt = builderOpt.map(_.arcToRel(rx, ry, rot, largeArc, sweep, Dimension(dx, dy)))
-          current = Point(current.x + dx, current.y + dy)
-
-        // A: absolute arc
-        case Tok('A', List(rx, ry, rot, largeFlag, sweepFlag, x, y)) =>
-          val largeArc = largeFlag != 0.0
-          val sweep = sweepFlag != 0.0
-          val end = Point(x, y)
-          builderOpt = builderOpt.map(_.arcToAbs(rx, ry, rot, largeArc, sweep, end))
-          current = end
-
-        // Z / z
-        case Tok('Z', Nil) | Tok('z', Nil) =>
-          builderOpt = builderOpt.map(_.closePath())
-          current = subStart
-
-        // Anything else (S/s/T/t or malformed)
-        case _ =>
-          failed = true
-      }
-
-      if (failed) None else builderOpt
+    command match {
+      case Command('M', List(x, y)) => moveTo(Point(x, y))
+      case Command('m', List(dx, dy)) => moveTo(Point(current.x + dx, current.y + dy))
+      case Command('L', List(x, y)) => at(path.lineToAbs(Point(x, y)), Point(x, y))
+      case Command('l', List(dx, dy)) => at(path.lineToRel(Dimension(dx, dy)), Point(current.x + dx, current.y + dy))
+      case Command('H', List(x)) => at(path.horizontalLineWithWidth(x - current.x), Point(x, current.y))
+      case Command('h', List(dx)) => at(path.horizontalLineWithWidth(dx), Point(current.x + dx, current.y))
+      case Command('V', List(y)) => at(path.verticalLineWithHeight(y - current.y), Point(current.x, y))
+      case Command('v', List(dy)) => at(path.verticalLineWithHeight(dy), Point(current.x, current.y + dy))
+      case Command('C', List(x1, y1, x2, y2, x, y)) =>
+        at(path.cubicBezierToAbs(Point(x1, y1), Point(x2, y2), Point(x, y)), Point(x, y))
+      case Command('c', List(dx1, dy1, dx2, dy2, dx, dy)) =>
+        at(path.cubicBezierToRel(Dimension(dx1, dy1), Dimension(dx2, dy2), Dimension(dx, dy)), Point(current.x + dx, current.y + dy))
+      case Command('Q', List(cx, cy, x, y)) => at(path.quadraticBezierToAbs(Point(cx, cy), Point(x, y)), Point(x, y))
+      case Command('q', List(dcx, dcy, dx, dy)) =>
+        at(path.quadraticBezierWithRel(Dimension(dcx, dcy), Dimension(dx, dy)), Point(current.x + dx, current.y + dy))
+      case Command('A', List(rx, ry, rotation, large, sweep, x, y)) =>
+        at(path.arcToAbs(rx, ry, rotation, large != 0, sweep != 0, Point(x, y)), Point(x, y))
+      case Command('a', List(rx, ry, rotation, large, sweep, dx, dy)) =>
+        at(path.arcToRel(rx, ry, rotation, large != 0, sweep != 0, Dimension(dx, dy)), Point(current.x + dx, current.y + dy))
+      case Command('Z' | 'z', Nil) => at(path.closePath(), state.subpathStart)
+      case _ => None
     }
-
-    if (s0.isEmpty) None else tokenize().flatMap(build)
   }
 }
