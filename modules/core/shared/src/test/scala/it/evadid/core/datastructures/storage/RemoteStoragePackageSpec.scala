@@ -223,19 +223,43 @@ class RemoteStoragePackageSpec extends FunSuite {
     }
   }
 
-  test("collection store refreshes data even after a write failure and skips empty requests") {
+  test("collection store preserves write failures, skips empty requests and allows retry") {
     val destination = new Destination
-    destination.writeResult = Future.failed(new IllegalStateException("offline"))
+    val error = new IllegalStateException("offline")
+    destination.writeResult = Future.failed(error)
     val collection = RemoteCacheCollection.fromCacheKeys[String, String, Destination](logger, List(destination))
     collection.requestCacheDependentStore(_ => Nil).flatMap { skipped =>
       assertEquals(skipped.remoteCaches, collection.remoteCaches)
       assertEquals(destination.fetchCount, 0)
-      collection.requestCacheDependentStore(_ => List(DataEntryToWriteToServer("a", "new", time))).map { refreshed =>
-        assertEquals(destination.fetchCount, 1)
-        assertEquals(refreshed.allKnownKeys(), Set("a"))
+      val entries = List(DataEntryToWriteToServer("a", "new", time))
+      collection.requestCacheDependentStore(_ => entries).failed.flatMap { failure =>
+        assert(failure eq error)
+        assertEquals(destination.fetchCount, 0, "a read must not conceal a failed store")
+        destination.writeResult = Future.successful(SyncSuccess(1, 0, 0, time))
+        destination.fetched = Future.successful(FetchResponse.fromMap(time.plusSeconds(1), Map("a" -> "new"), _ => Some(time)))
+        collection.requestCacheDependentStore(_ => entries).map { retried =>
+          assertEquals(retried.remoteCaches(destination).asMap("a").dataValue, "new")
+          assertEquals(destination.writes, List.fill(2)(Map("a" -> "new")))
+        }
       }
     }
   }
+
+  test("a successful store refreshes even when its event predates the last cache request") {
+    val destination = new Destination
+    val cache = populated(destination)
+    val changed = DataEntryToWriteToServer("a", "with feedback", time.minusSeconds(1))
+    assert(cache.needsWriting(changed), "equal timestamps do not imply equal payloads")
+    destination.fetched = Future.successful(FetchResponse.fromMap(time.plusSeconds(1), Map("a" -> "with feedback"), _ => Some(changed.timestamp)))
+    val collection = RemoteCacheCollection(logger, Map(destination -> cache))
+    collection.requestCacheDependentStore(_ => List(changed)).map { updated =>
+      assertEquals(destination.fetchCount, 1)
+      assertEquals(updated.remoteCaches(destination).asMap("a").dataValue, "with feedback")
+      assert(!updated.remoteCaches(destination).needsWriting(changed))
+      assertEquals(cache.asMap("a").dataValue, "remote", "previous snapshots remain immutable")
+    }
+  }
+
   test("collection store refresh failures propagate and empty destinations stay empty") {
     val destination = new Destination
     val error = new IllegalStateException("refresh failed")

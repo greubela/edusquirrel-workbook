@@ -63,11 +63,10 @@ case class RemoteCacheCollection[K , D , CK <: CacheKey[K, D]](baseLogger: SyncL
 
   private def storeAndRefresh(cache: RemoteSyncDataCache[K, D], entries: List[DataEntryToSync[K, D]]): Future[RemoteSyncDataCache[K, D]] =
     if entries.isEmpty then Future.successful(cache)
-    else {
-      val requiredAge = entries.map(_.timestamp).max
-      // Refresh after either outcome: the remote state may have changed despite a failed response.
-      cache.writeIfNecessary(entries).transformWith(_ => cache.ensureCacheIsAtLeastThisRecent(requiredAge))
-    }
+    // Failed stores must reach the caller; a successful read cannot turn them
+    // into successful writes. After a store, always fetch its confirmed contents.
+    else cache.writeIfNecessary(entries).flatMap(_ => cache.refresh())
+
 
   def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[RemoteCacheCollection[K, D, CK]] = {
     mapAllAsync(_.tryEnsureCacheIsAtLeastThisRecent(maxAge))

@@ -125,3 +125,12 @@ an absent API key or token limit; no fields are filled from server settings.
 HTTP redirects are not followed. Custom local services may omit a key.
 Database credentials, API keys and prompts are removed from command-log payloads;
 provider error bodies are not retained.
+
+Client IPs are written to `origin` and `ipAddress` in both `commandLog` and
+`syncedLog` from Play's resolved connection address. The MySQL HTTP integration
+tests verify trusted IPv4/IPv6 forwarding and reject spoofed forwarding headers
+from untrusted peers. With the supplied Compose configuration, Caddy must be the
+public entry point: it forwards its socket peer's address and Play trusts only
+Caddy and loopback. If another proxy or NAT hides the original address before
+Caddy, that address cannot be recovered without a trusted forwarding arrangement
+at that hop; do not accept arbitrary client-supplied `X-Forwarded-For` values.

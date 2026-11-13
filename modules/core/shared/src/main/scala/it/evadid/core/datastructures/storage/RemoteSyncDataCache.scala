@@ -48,7 +48,8 @@ case class RemoteSyncDataCache[K , D ](
 
     config.syncLogger.logInfo(s"needsWriting for entry at ${entry.timestamp}--> lastCacheUpdate: ${lastCacheUpdate} (newer: ${isEntryNewerThanCache}), lastKnown: ${curSyncStatus.lastKnownRemoteValue.map(_.timestamp)} (newer: ${isEntryNewerThanLastKnown})")
 
-    isEntryNewerThanLastKnown || isEntryNewerThanCache
+    isEntryNewerThanLastKnown || isEntryNewerThanCache ||
+      curSyncStatus.lastKnownRemoteValue.exists(remote => remote.timestamp == entry.timestamp && remote.dataValue != entry.dataValue)
   }
 
   def chooseNewerTimestamp(other: LocalDateTime): Option[LocalDateTime] = {
@@ -56,7 +57,9 @@ case class RemoteSyncDataCache[K , D ](
   }
 
   def addAll(set: Set[DataEntryToSync[K, D]], remoteTimestamp: LocalDateTime): RemoteSyncDataCache[K, D] = syncLock.synchronized {
-    RemoteSyncDataCache(config, chooseNewerTimestamp(remoteTimestamp), latestEntries(knownEntries ++ set).values.toSet)
+    val incoming = latestEntries(set)
+    val retained = knownEntries.filterNot(entry => incoming.get(entry.dataKey).exists(value => !value.timestamp.isBefore(entry.timestamp)))
+    RemoteSyncDataCache(config, chooseNewerTimestamp(remoteTimestamp), latestEntries(retained ++ set).values.toSet)
   }
 
   private def latestEntries(entries: Iterable[DataEntryToSync[K, D]]): Map[K, DataEntryToSync[K, D]] =
@@ -89,13 +92,14 @@ case class RemoteSyncDataCache[K , D ](
         Future.successful(this)
       case _ =>
         config.syncLogger.log(s"Fetching cache (last request $lastCacheUpdate, required $maxAge)", INFO, Some(false))
-        executeFetch()
+        refresh()
     }
   }
 
-  private def executeFetch(): Future[RemoteSyncDataCache[K, D]] =
+  def refresh(): Future[RemoteSyncDataCache[K, D]] = syncLock.synchronized {
     Try(config.reader.fetchAll(config.syncLogger)).fold(Future.failed, identity)
       .map(response => addAll(response.fetchedValues, response.timestampFetchResponse))
+  }
 
 }
 

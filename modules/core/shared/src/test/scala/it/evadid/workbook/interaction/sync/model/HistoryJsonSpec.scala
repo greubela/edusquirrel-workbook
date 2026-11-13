@@ -78,8 +78,16 @@ class HistoryJsonSpec extends FunSuite {
     val report = it.evadid.workbook.meta.InteractionVariableSyncReport(
       withHint, Map(location -> stale), List(location))
     assertEquals(report.latestSyncedAt(location), false)
-    assertEquals(report.copy(curRemoteHistory = Map(location -> stale.copy(lastCacheRequest = Some(hint.scaffoldingTime))))
-      .latestSyncedAt(location), true)
+    val recentRead = stale.copy(lastCacheRequest = Some(hint.scaffoldingTime.plusDays(1)))
+    assertEquals(report.copy(curRemoteHistory = Map(location -> recentRead)).latestSyncedAt(location), false)
+    val gradeOnly = recentRead.copy(lastKnownRemoteValue = Some(DataEntryToSync(key, graded, grade.gradingTime, SyncDirection.SERVER_TO_CLIENT)))
+    assertEquals(report.copy(curRemoteHistory = Map(location -> gradeOnly)).latestSyncedAt(location), false, "missing hints are not synced")
+    val answerOnly = graded.copy(historyGrading = InteractionVariableGradingHistory(Map.empty[String, GradedState[String, MessengerModel]]))
+    val missingGrade = recentRead.copy(lastKnownRemoteValue = Some(DataEntryToSync(key, answerOnly, time, SyncDirection.SERVER_TO_CLIENT)))
+    assertEquals(report.copy(curLocalHistory = graded, curRemoteHistory = Map(location -> missingGrade)).latestSyncedAt(location), false,
+      "an unchanged answer without its grading must remain unsynced")
+    val confirmed = recentRead.copy(lastKnownRemoteValue = Some(DataEntryToSync(key, read[History](write(withHint)), hint.scaffoldingTime, SyncDirection.SERVER_TO_CLIENT)))
+    assertEquals(report.copy(curRemoteHistory = Map(location -> confirmed)).latestSyncedAt(location), true)
     val fetched = FetchResponse.fromMap(time.plusMinutes(1), Map("answer" -> write(withHint)), HistoryJson.lastTimestamp)
     assertEquals(fetched.fetchedValues.head.timestamp, hint.scaffoldingTime)
     val structured = InteractionVariableHistory[List[String], Int, Int](InteractionVariableStateHistory[List[String]](Set(InteractionVariableState(List(state), UpdateImportance.MAJOR, time))), new InteractionVariableGradingHistory[List[String], Int](gradingsMap = Map.empty), InteractionVariableScaffoldingHistory[List[String], Int](Map(List(state) -> hint.copy(forState = List(state), additionalInformation = Some(1)))))
