@@ -6,7 +6,7 @@ import munit.FunSuite
 class LanguageMapBranchCoverageTest extends FunSuite {
   test("empty and mkLanguageMap") {
     val empty = LanguageMap.empty[HumanLanguage]
-    assertEquals(empty.getInLanguage(English), "[no English]")
+    assertEquals(empty.getInLanguage(English), "[no English (available: Set())]")
 
     val mk = LanguageMap.mkLanguageMap[HumanLanguage]("(", ",", ")", List(LanguageMap.universalMap("x")))
     assertEquals(mk.getInLanguage(English), "(x,)")
