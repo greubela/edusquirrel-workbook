@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitc
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGradingLogic, TurtleGraphic}
 import TurtleGradingLogic.{GradingLine, TurtleGraphicComparison, TurtleLineStatus}
@@ -141,7 +141,7 @@ object TurtleJsxGraphRenderer:
   private def graphic[T: Fractional](program: List[TurtleCommand[T]]): TurtleGraphic = {
     val numeric = summon[Fractional[T]]
     TurtleGraphic.TurtleGraphicProgram(program.map(command =>
-      TurtleCommand(command.name, command.args.map(numeric.toDouble), command.stringArgs)))
+      command.mapNumbers(numeric.toDouble)))
   }
 
   private def renderedLines(lines: List[GradingLine]): List[RenderedLine] = lines.map { graded =>

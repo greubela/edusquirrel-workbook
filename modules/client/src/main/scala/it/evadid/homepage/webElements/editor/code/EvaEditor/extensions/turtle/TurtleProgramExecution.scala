@@ -4,7 +4,7 @@ import it.evadid.vm.conversion.ProgrammingStateConversions.*
 
 import com.raquo.airstream.state.Var
 import java.util.concurrent.CancellationException
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleExecutionProvider
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{PyodideTurtleCommandRunner, SnapTurtleCommandExecution}
 import it.evadid.workbook.elements.interactionElements.programming.state.*

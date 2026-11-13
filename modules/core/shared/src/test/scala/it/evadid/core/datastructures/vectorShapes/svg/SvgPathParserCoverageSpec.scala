@@ -63,4 +63,26 @@ class SvgPathParserCoverageSpec extends FunSuite {
       assertEquals(SvgPathParser.parseString(input), None, input)
     }
   }
+  test("repeated close commands and a new relative move preserve subpath spelling and origin") {
+    val path = parse("M1\u20032 L3,4 zz m5,6 7,8")
+    assertEquals(path.current, Point(13.0, 16.0))
+    assertEquals(path.toSvgPathD, "M 1 2 M 1 2 L 3 4 Z Z M 6 8 l 7 8")
+    assertEquals(SvgPathParser.parseString("M1 2zz3 4"), None)
+  }
+
+  test("equivalent absolute and relative curves retain the same endpoint sequence") {
+    val absolute = parse("M10 20 L12 23 H14 V26 C15 28 17 30 19 32 Q20 34 22 36 A3 4 45 0 1 24 38 Z L11 22")
+    val relative = parse("m10 20 l2 3 h2 v3 c1 2 3 4 5 6 q1 2 3 4 a3 4 45 0 1 2 2 z l1 2")
+    assertEquals(relative.pathPoints, absolute.pathPoints)
+    assertEquals(relative.current, absolute.current)
+    assert(relative.toSvgPathD.contains(" c1 2") || relative.toSvgPathD.contains(" c 1 2"))
+  }
+
+  test("long paths preserve all implicit segments and resume from a closed subpath") {
+    val path = parse("M0 0 l" + List.fill(2000)("1 -1").mkString(" ") + "z l2 3")
+    assertEquals(path.pathPoints.size, 2004)
+    assertEquals(path.current, Point(2.0, 3.0))
+    assertEquals(path.pathPoints(path.pathPoints.size - 3), Point(2000.0, -2000.0))
+  }
+
 }

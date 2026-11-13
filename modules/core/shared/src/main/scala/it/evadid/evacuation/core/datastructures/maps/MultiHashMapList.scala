@@ -16,7 +16,7 @@ object MultiHashMapList {
 
 class MultiHashMapList[K, V] {
 
-  private var map: mutable.Map[K, mutable.ListBuffer[V]] = mutable.HashMap[K, mutable.ListBuffer[V]]()
+  private val map: mutable.Map[K, mutable.ListBuffer[V]] = mutable.HashMap[K, mutable.ListBuffer[V]]()
 
   def contains(k: K): Boolean = map.contains(k)
 
@@ -24,89 +24,44 @@ class MultiHashMapList[K, V] {
 
   def clear(): Unit = map.clear()
 
-  def addAll(otherMap: MultiHashMapList[K, V]): Unit = {
-    val entries = otherMap.iterator.map { case (key, values) => key -> values.toList }.toList
-    entries.foreach { case (key, values) => values.foreach(value => addElement(key -> value)) }
+  private def snapshot: List[(K, List[V])] = this.synchronized {
+    map.iterator.map((key, values) => key -> values.toList).toList
   }
 
-  def getAllEntries: Set[(K, V)] = {
-    val res: mutable.HashSet[(K, V)] = new mutable.HashSet[(K, V)]()
-    keys().foreach(key => {
-      this (key).toSeq.foreach(value => {
-        res += ((key, value))
-      })
-    })
-    res.toSet
+  def addAll(otherMap: MultiHashMapList[K, V]): Unit =
+    otherMap.snapshot.foreach((key, values) => values.foreach(value => addElement(key -> value)))
+
+  def getAllEntries: Set[(K, V)] = snapshot.iterator.flatMap((key, values) => values.map(key -> _)).toSet
+
+  def getAllValues: Set[V] = snapshot.iterator.flatMap(_._2).toSet
+
+  private def copyEntries[KK, O](entries: Iterator[(KK, IterableOnce[O])]): MultiHashMapList[KK, O] = {
+    val result = new MultiHashMapList[KK, O]
+    entries.foreach((key, values) => values.iterator.foreach(value => result.addElement(key -> value)))
+    result
   }
 
-  def getAllValues: Set[V] = {
-    val res: mutable.HashSet[V] = new mutable.HashSet[V]()
-    keys().foreach(key => {
-      this (key).toSeq.foreach(value => {
-        res += value
-      })
-    })
-    res.toSet
-  }
+  def getCopy: MultiHashMapList[K, V] = copyEntries(snapshot.iterator)
 
-  def getCopy: MultiHashMapList[K, V] = {
-    val res = new MultiHashMapList[K, V]()
-    keys().foreach(key => {
-      this (key).toSeq.foreach(resValue => {
-        res.addElement((key, resValue))
-      })
-    })
-    res
-  }
+  def getCopyWithMappedKeys[KK](function: K => KK): MultiHashMapList[KK, V] =
+    copyEntries(snapshot.iterator.map((key, values) => function(key) -> values))
 
-  def getCopyWithMappedKeys[KK](function: K => KK):MultiHashMapList[KK, V] = {
-    val res = new MultiHashMapList[KK, V]()
-    keys().foreach(key => {
-        val transformedKey = function(key)
-        this.apply(key).foreach(value => res.addElement((transformedKey, value)))
+  def getCopyWithFilteredKeys(function: K => Boolean): MultiHashMapList[K, V] =
+    copyEntries(snapshot.iterator.filter((key, _) => function(key)))
 
-    })
-    res
-  }
+  def getCopyWithReplacedValues[O](function: Seq[V] => Seq[O]): MultiHashMapList[K, O] =
+    copyEntries(snapshot.iterator.map((key, values) => key -> function(values)))
 
-  def getCopyWithFilteredKeys(function: K => Boolean): MultiHashMapList[K, V] = {
-    val res = new MultiHashMapList[K, V]()
-    keys().foreach(key => {
-      if (function(key)) {
-        this.apply(key).foreach(value => res.addElement((key, value)))
-      }
-    })
-    res
-  }
-
-  def getCopyWithReplacedValues[O](function: Seq[V] => Seq[O]): MultiHashMapList[K, O] = {
-    val res = new MultiHashMapList[K, O]()
-    keys().foreach(key => {
-      function(this (key).toSeq).foreach(resValue => {
-        res.addElement((key, resValue))
-      })
-    })
-    res
-  }
-
-  def getCopyWithApplied[O](function: V => O): MultiHashMapList[K, O] = {
-    val res = new MultiHashMapList[K, O]()
-    keys().foreach(key => {
-      this (key).foreach(value => {
-        res.addElement((key, function(value)))
-      })
-    })
-    res
-  }
+  def getCopyWithApplied[O](function: V => O): MultiHashMapList[K, O] =
+    getCopyWithReplacedValues(_.map(function))
 
   def +=(kv: (K, ListBuffer[V])): MultiHashMapList.this.type = this.synchronized {
     map += kv
     this
   }
 
-  def apply(k: K): ListBuffer[V] = {
-    ensureKey(k)
-    map(k)
+  def apply(k: K): ListBuffer[V] = this.synchronized {
+    bucket(k)
   }
 
   def getOrElse(k: K, v: ListBuffer[V]): ListBuffer[V] = {
@@ -127,14 +82,12 @@ class MultiHashMapList[K, V] {
   }
 
   def addElement(kv: (K, V)): MultiHashMapList.this.type = this.synchronized {
-    ensureKey(kv._1).get(kv._1).get += kv._2
+    bucket(kv._1) += kv._2
     this
   }
 
   def removeAllValues(useFilter: V => Boolean): MultiHashMapList.this.type = this synchronized {
-    map.keys.foreach(key => {
-      map(key).filter(useFilter).toList.foreach(this.removeElement(key, _))
-    })
+    map.valuesIterator.foreach(_.filterInPlace(value => !useFilter(value)))
     this
   }
 
@@ -147,12 +100,7 @@ class MultiHashMapList[K, V] {
     this.-=(kv)
   }
 
-  private def ensureKey(k: K): MultiHashMapList.this.type = this.synchronized {
-    map.getOrElseUpdate(k, mutable.ListBuffer[V]())
-    this
-  }
-
-
+  private def bucket(key: K): ListBuffer[V] = map.getOrElseUpdate(key, ListBuffer.empty[V])
 
   override def hashCode(): Int = map.hashCode()
 
@@ -165,17 +113,9 @@ class MultiHashMapList[K, V] {
     println(toString())
   }
 
-  override def toString(): String = {
-    var str = "MultiHashMap (" + hashCode() + "):\n"
-    keys().foreach(key => {
-      str += ("    key \"" + key + "\":\n")
-      this (key).foreach(value => {
-        str += ("        " + value + "\n")
-      })
-    })
-    str
-
-  }
-
+  override def toString(): String =
+    snapshot.map { (key, values) =>
+      s"    key \"$key\":\n" + values.map(value => s"        $value\n").mkString
+    }.mkString(s"MultiHashMap (${hashCode()}):\n", "", "")
 
 }

@@ -213,7 +213,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("behavior is available after switching representations") {
     val commands = ProgrammingStatePythonString("forward(12)").toSnapXml
       .toBeExpression.deriveTurtleCommands
-    assertEquals(commands.map(_.name), List("forward"))
+    assertEquals(commands.map(_.name.universalInterpretation()), List("forward"))
     assertEquals(commands.flatMap(_.args), List(12.0))
   }
 
@@ -465,7 +465,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     sources.foreach { source =>
       val state = ProgrammingStateJavaString(source)
       assert(!state.isClassProgram, clue = source)
-      assertEquals(state.toLegacyTurtleCommands.map(_.name), List("forward"))
+      assertEquals(state.toLegacyTurtleCommands.map(_.name.universalInterpretation()), List("forward"))
       assertEquals(state.toLegacyTurtleCommands.flatMap(_.args), List(12.0))
       assert(state.toSnapXml.snapXml.contains("forward"), clue = source)
       assertEquals(state.code, source)
@@ -483,7 +483,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
     assert(source.contains("//EvaEntityName("), clue = source)
     assert(!state.isClassProgram, clue = source)
-    assertEquals(state.toLegacyTurtleCommands.map(_.name), List("forward"))
+    assertEquals(state.toLegacyTurtleCommands.map(_.name.universalInterpretation()), List("forward"))
     assertEquals(state.toLegacyTurtleCommands.flatMap(_.args), List(12.0))
     assert(state.toSnapXml.snapXml.contains("custom-block"), clue = source)
     assertEquals(state.code, source)

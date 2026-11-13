@@ -8,7 +8,25 @@
 
 `PyodideTurtleCommandRunner` installs all Python names/aliases from `SnapTurtleCatalog` in a synthetic `turtle` module, and runs `from turtle import *` followed by the derived program. Globals reset for each run. Runtime callbacks, including repeated loop/function calls, determine the command sequence.
 
-Callback decoding preserves order, ignores other modules, maps aliases to canonical command names, and separates finite numbers into `args` and strings/booleans into `stringArgs`. Unknown turtle callbacks, unsupported values and non-finite numbers fail explicitly. Derivation and execution failures propagate through the returned `Future[List[TurtleCommand[Double]]]`; callers must not treat a failed run as a complete empty or partial result.
+Callback decoding preserves order, ignores other modules, checks finite numbers, and resolves text aliases through `TurtleCommand.fromCall` / `fromText`. Drawing operations become typed cases such as `TurtleCommand.Forward(distance)` and `Goto(x, y)` with `BeEntityName` names. `args` and `stringArgs` are derived views for observation/interchange, not parallel stored command state. Embroidery calls retain their currently uninterpreted numeric/text payload alongside a typed stitch mode. Unknown turtle callbacks, unsupported values and non-finite numbers fail explicitly. Derivation and execution failures propagate through the returned `Future[List[TurtleCommand[Double]]]`; callers must not treat a failed run as a complete empty or partial result.
+
+For authored programs, construct typed operations directly:
+
+```scala
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
+
+val commands: List[TurtleCommand[Double]] = List(
+  TurtleCommand.Forward(40),
+  TurtleCommand.Right(90),
+  TurtleCommand.PenUp()
+)
+```
+
+`TurtlePathBuilder.handleCommand` and geometric tracing dispatch on these cases.
+Text decoding belongs at language/runtime boundaries. Unsupported or malformed
+calls remain explicit `Unsupported` values; grading validates them separately.
+The sealed hierarchy and individual cases provide default uPickle codecs with
+named fields. Saved tuple commands from the former model are not supported.
 
 ## Worker lifecycle
 

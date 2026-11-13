@@ -128,7 +128,7 @@ class SqlUserCommands(
     }
   }
 
-  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection, logger)
+  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
 
 
   private def parseUser(userColumns: List[String]): Option[UserInDatabase] = {

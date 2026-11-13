@@ -1,6 +1,6 @@
 package it.evadid.core.util
 
-import scala.collection.mutable
+import scala.annotation.tailrec
 import scala.util.matching.Regex
 
 final class MarkdownToHtml {
@@ -8,197 +8,148 @@ final class MarkdownToHtml {
   private val specialChars: Set[Char] = Set('\\', '`', '*', '_', '{', '}', '[', ']', '(', ')', '#', '+', '-', '.', '!')
 
   def transform(markdown: String): String = {
-    val lines = markdown.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1).toList
-    val html = new StringBuilder
-
-    var index = 0
-    while (index < lines.length) {
-      val line = lines(index)
-      val trimmed = line.trim
-
-      if (trimmed.isEmpty) {
-        index += 1
-      } else if (trimmed.startsWith("```")) {
-        val (nextIndex, codeHtml) = parseFencedCodeBlock(lines, index)
-        html.append(codeHtml)
-        index = nextIndex
-      } else if (isHorizontalRule(trimmed)) {
-        html.append("<hr />")
-        index += 1
-      } else if (isHeading(trimmed)) {
-        val headingMatch = "^(#{1,6})\\s+(.+)$".r.findFirstMatchIn(trimmed).get
-        val level = headingMatch.group(1).length
-        html.append(s"<h$level>${parseInline(headingMatch.group(2).trim)}</h$level>")
-        index += 1
-      } else if (trimmed.startsWith(">")) {
-        val (nextIndex, quoteHtml) = parseBlockQuote(lines, index)
-        html.append(quoteHtml)
-        index = nextIndex
-      } else if (isListLine(trimmed)) {
-        val (nextIndex, listHtml) = parseList(lines, index)
-        html.append(listHtml)
-        index = nextIndex
-      } else {
-        val (nextIndex, paragraphHtml) = parseParagraph(lines, index)
-        html.append(paragraphHtml)
-        index = nextIndex
+    val lines = markdown.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1).toVector
+    @tailrec def render(index: Int, blocks: List[String]): String =
+      if index >= lines.size then blocks.reverse.mkString
+      else {
+        val (next, html) = parseBlock(lines, index)
+        render(next, html :: blocks)
       }
-    }
-
-    html.toString()
+    render(0, Nil)
   }
 
-  private def parseFencedCodeBlock(lines: List[String], startIndex: Int): (Int, String) = {
-    val opening = lines(startIndex).trim
-    val info = opening.drop(3).trim
-    val languageClass = if (info.nonEmpty) s" class=\"language-${escapeHtml(info)}\"" else ""
-
-    val codeLines = new StringBuilder
-    var idx = startIndex + 1
-    var closed = false
-
-    while (idx < lines.length && !closed) {
-      val cur = lines(idx)
-      if (cur.trim.startsWith("```")) {
-        closed = true
-        idx += 1
-      } else {
-        codeLines.append(cur)
-        if (idx < lines.length - 1) codeLines.append("\n")
-        idx += 1
-      }
+  private def parseBlock(lines: IndexedSeq[String], index: Int): (Int, String) = {
+    val trimmed = lines(index).trim
+    if trimmed.isEmpty then (index + 1, "")
+    else if trimmed.startsWith("```") then parseFencedCodeBlock(lines, index)
+    else if isHorizontalRule(trimmed) then (index + 1, "<hr />")
+    else trimmed match {
+      case headingRegex(hashes, content) =>
+        val level = hashes.length
+        (index + 1, s"<h$level>${parseInline(content.trim)}</h$level>")
+      case _ if trimmed.startsWith(">") => parseBlockQuote(lines, index)
+      case _ if isListLine(trimmed) => parseList(lines, index)
+      case _ => parseParagraph(lines, index)
     }
-
-    (idx, s"<pre><code$languageClass>${escapeHtml(codeLines.toString())}</code></pre>")
   }
 
-  private def parseBlockQuote(lines: List[String], startIndex: Int): (Int, String) = {
-    val quoteLines = mutable.ListBuffer.empty[String]
-    var idx = startIndex
-
-    while (idx < lines.length && lines(idx).trim.startsWith(">")) {
-      val stripped = lines(idx).trim.stripPrefix(">")
-      quoteLines += stripped.stripPrefix(" ")
-      idx += 1
-    }
-
-    (idx, s"<blockquote>${transform(quoteLines.mkString("\n"))}</blockquote>")
+  private def parseFencedCodeBlock(lines: IndexedSeq[String], startIndex: Int): (Int, String) = {
+    val info = lines(startIndex).trim.drop(3).trim
+    val languageClass = if info.nonEmpty then s" class=\"language-${escapeHtml(info)}\"" else ""
+    val closing = lines.indexWhere(_.trim.startsWith("```"), startIndex + 1)
+    val end = if closing < 0 then lines.size else closing
+    val codeLines = lines.slice(startIndex + 1, end)
+    val trailingNewline = if closing >= 0 && codeLines.nonEmpty then "\n" else ""
+    val code = codeLines.mkString("\n") + trailingNewline
+    (if closing < 0 then end else end + 1, s"<pre><code$languageClass>${escapeHtml(code)}</code></pre>")
   }
 
-  private def parseList(lines: List[String], startIndex: Int): (Int, String) = {
+  private def parseBlockQuote(lines: IndexedSeq[String], startIndex: Int): (Int, String) = {
+    val quotes = lines.view.drop(startIndex).takeWhile(_.trim.startsWith(">"))
+      .map(_.trim.stripPrefix(">").stripPrefix(" ")).toVector
+    (startIndex + quotes.size, s"<blockquote>${transform(quotes.mkString("\n"))}</blockquote>")
+  }
+
+  private def parseList(lines: IndexedSeq[String], startIndex: Int): (Int, String) = {
     val ordered = orderedListRegex.pattern.matcher(lines(startIndex).trim).matches()
-    val itemRegex = if (ordered) orderedListRegex else unorderedListRegex
-    val tag = if (ordered) "ol" else "ul"
-
-    val items = mutable.ListBuffer.empty[String]
-    var idx = startIndex
-
-    while (idx < lines.length) {
-      val trimmed = lines(idx).trim
-      if (trimmed.isEmpty || !itemRegex.pattern.matcher(trimmed).matches()) {
-        if (trimmed.nonEmpty && lines(idx).startsWith("  ") && items.nonEmpty) {
-          val previous = items.remove(items.length - 1)
-          items += (previous + " " + parseInline(trimmed))
-          idx += 1
-        } else {
-          return (idx, s"<$tag>${items.map(i => s"<li>$i</li>").mkString}</$tag>")
+    val itemRegex = if ordered then orderedListRegex else unorderedListRegex
+    val tag = if ordered then "ol" else "ul"
+    @tailrec def collect(index: Int, items: Vector[String]): (Int, Vector[String]) =
+      if index >= lines.size then (index, items)
+      else {
+        val trimmed = lines(index).trim
+        itemRegex.findFirstMatchIn(trimmed) match {
+          case Some(item) => collect(index + 1, items :+ parseInline(item.group(1).trim))
+          case None if trimmed.nonEmpty && lines(index).startsWith("  ") && items.nonEmpty =>
+            collect(index + 1, items.updated(items.size - 1, items.last + " " + parseInline(trimmed)))
+          case None => (index, items)
         }
-      } else {
-        val itemContent = itemRegex.findFirstMatchIn(trimmed).map(_.group(1)).getOrElse("")
-        items += parseInline(itemContent.trim)
-        idx += 1
       }
-    }
-
-    (idx, s"<$tag>${items.map(i => s"<li>$i</li>").mkString}</$tag>")
+    val (next, items) = collect(startIndex, Vector.empty)
+    (next, items.map(item => s"<li>$item</li>").mkString(s"<$tag>", "", s"</$tag>"))
   }
 
-  private def parseParagraph(lines: List[String], startIndex: Int): (Int, String) = {
-    val paragraphLines = mutable.ListBuffer.empty[String]
-    var idx = startIndex
-
-    while (idx < lines.length && !isParagraphStop(lines, idx)) {
-      paragraphLines += lines(idx)
-      idx += 1
-    }
-
-    val body = paragraphLines.zipWithIndex.map { case (rawLine, lineIndex) =>
-      val trimmedLine = rawLine.trim
+  private def parseParagraph(lines: IndexedSeq[String], startIndex: Int): (Int, String) = {
+    val paragraph = lines.view.drop(startIndex).takeWhile(line => !isParagraphStop(line)).toVector
+    val body = paragraph.zipWithIndex.map { (rawLine, index) =>
       val explicitBreak = rawLine.endsWith("  ") || rawLine.endsWith("\\")
-      val inlineText = parseInline(trimmedLine.stripSuffix("\\").stripSuffix("  "))
-      val separator = if (lineIndex < paragraphLines.length - 1) {
-        if (explicitBreak) "<br />" else " "
-      } else ""
+      val inlineText = parseInline(rawLine.trim.stripSuffix("\\").stripSuffix("  "))
+      val separator = if index == paragraph.size - 1 then "" else if explicitBreak then "<br />" else " "
       inlineText + separator
     }.mkString
-
-    (idx, s"<p>$body</p>")
+    (startIndex + paragraph.size, s"<p>$body</p>")
   }
 
-  private def isParagraphStop(lines: List[String], idx: Int): Boolean = {
-    val trimmed = lines(idx).trim
-    trimmed.isEmpty ||
-      trimmed.startsWith("```") ||
-      isHorizontalRule(trimmed) ||
-      isHeading(trimmed) ||
-      trimmed.startsWith(">") ||
-      isListLine(trimmed)
+  private def isParagraphStop(line: String): Boolean = {
+    val trimmed = line.trim
+    trimmed.isEmpty || trimmed.startsWith("```") || isHorizontalRule(trimmed) ||
+      isHeading(trimmed) || trimmed.startsWith(">") || isListLine(trimmed)
   }
 
   private def parseInline(text: String): String = {
     // Protect literal punctuation, code and generated tags from subsequent markup passes.
     // Choose a prefix absent from the input so user text can never become a placeholder.
-    var prefix = "@@MDTOKEN"
-    while (text.contains(prefix)) prefix += "X"
-    val protectedHtml = mutable.ArrayBuffer.empty[String]
-    def protect(html: String): String = {
-      val token = s"$prefix${protectedHtml.length}@@"
-      protectedHtml += html
-      token
+    val prefix = Iterator.iterate("@@MDTOKEN")(_ + "X").dropWhile(text.contains).next()
+    val (source, literalTokens) = protectInlineLiterals(text, prefix)
+    val (withImages, imageTokens) = protectMatches(source, imageRegex, prefix, literalTokens) { image =>
+      val alt = escapeHtml(image.group(1))
+      val src = escapeHtml(image.group(2))
+      val titleAttr = Option(image.group(4)).map(v => s" title=\"${escapeHtml(v)}\"").getOrElse("")
+      s"<img src=\"$src\" alt=\"$alt\"$titleAttr />"
+    }
+    val (withLinks, tokens) = protectMatches(withImages, linkRegex, prefix, imageTokens) { link =>
+      val label = parseInline(link.group(1))
+      val href = escapeHtml(link.group(2))
+      val titleAttr = Option(link.group(4)).map(v => s" title=\"${escapeHtml(v)}\"").getOrElse("")
+      s"<a href=\"$href\"$titleAttr>$label</a>"
     }
 
-    val source = new StringBuilder
-    var index = 0
-    while (index < text.length) {
-      val ch = text.charAt(index)
-      if (ch == '\\' && index + 1 < text.length && specialChars.contains(text.charAt(index + 1))) {
-        source.append(protect(escapeHtml(text.charAt(index + 1).toString)))
-        index += 2
-      } else if (ch == '`' && text.indexOf('`', index + 1) >= 0) {
-        val end = text.indexOf('`', index + 1)
-        source.append(protect(s"<code>${escapeHtml(text.substring(index + 1, end))}</code>"))
-        index = end + 1
-      } else {
-        source.append(ch)
-        index += 1
+    val withEm = renderEmphasis(escapeHtml(withLinks))
+
+    // Tags may contain earlier placeholders, for example escaped punctuation in link labels.
+    tokens.indices.reverse.foldLeft(withEm) { (acc, i) =>
+      acc.replace(s"$prefix$i@@", tokens(i))
+    }
+  }
+
+  private def protectInlineLiterals(text: String, prefix: String): (String, Vector[String]) = {
+    @tailrec def collect(index: Int, parts: List[String], tokens: Vector[String]): (String, Vector[String]) =
+      if index >= text.length then (parts.reverse.mkString, tokens)
+      else {
+        val ch = text.charAt(index)
+        val closing = if ch == '`' then text.indexOf('`', index + 1) else -1
+        val (next, protectedHtml) =
+          if ch == '\\' && index + 1 < text.length && specialChars.contains(text.charAt(index + 1)) then
+            (index + 2, Some(escapeHtml(text.charAt(index + 1).toString)))
+          else if closing >= 0 then
+            (closing + 1, Some(s"<code>${escapeHtml(text.substring(index + 1, closing))}</code>"))
+          else (index + 1, None)
+        protectedHtml match {
+          case Some(html) => collect(next, s"$prefix${tokens.size}@@" :: parts, tokens :+ html)
+          case None => collect(next, text.substring(index, next) :: parts, tokens)
+        }
       }
+    collect(0, Nil, Vector.empty)
+  }
+
+  private def protectMatches(source: String, pattern: Regex, prefix: String, initialTokens: Vector[String])
+                            (render: Regex.Match => String): (String, Vector[String]) = {
+    val (end, parts, tokens) = pattern.findAllMatchIn(source).foldLeft((0, List.empty[String], initialTokens)) {
+      case ((previousEnd, parts, tokens), matched) =>
+        val token = s"$prefix${tokens.size}@@"
+        (matched.end, token :: source.substring(previousEnd, matched.start) :: parts, tokens :+ render(matched))
     }
+    (parts.reverse.mkString + source.substring(end), tokens)
+  }
 
-    val withImages = imageRegex.replaceAllIn(source.toString(), m => {
-      val alt = escapeHtml(m.group(1))
-      val src = escapeHtml(m.group(2))
-      val titleAttr = Option(m.group(4)).map(v => s" title=\"${escapeHtml(v)}\"").getOrElse("")
-      protect(s"<img src=\"$src\" alt=\"$alt\"$titleAttr />")
-    })
-
-    val withLinks = linkRegex.replaceAllIn(withImages, m => {
-      val label = parseInline(m.group(1))
-      val href = escapeHtml(m.group(2))
-      val titleAttr = Option(m.group(4)).map(v => s" title=\"${escapeHtml(v)}\"").getOrElse("")
-      protect(s"<a href=\"$href\"$titleAttr>$label</a>")
-    })
-
+  private def renderEmphasis(source: String): String = {
     def literalReplacement(value: String): String = java.util.regex.Matcher.quoteReplacement(value)
-    val escapedSource = escapeHtml(withLinks)
-    val withStrongEmphasis = strongEmRegex.replaceAllIn(escapedSource, m => literalReplacement(s"<strong><em>${m.group(2)}</em></strong>"))
+    val withStrongEmphasis = strongEmRegex.replaceAllIn(source, m => literalReplacement(s"<strong><em>${m.group(2)}</em></strong>"))
     val withStrong = strongRegex.replaceAllIn(withStrongEmphasis, m => literalReplacement(s"<strong>${m.group(2)}</strong>"))
     val withStarEm = emAsteriskRegex.replaceAllIn(withStrong, m => literalReplacement(s"<em>${m.group(1)}</em>"))
     val withEm = emUnderscoreRegex.replaceAllIn(withStarEm, m => literalReplacement(s"<em>${m.group(1)}</em>"))
 
-    // Tags may contain earlier placeholders, for example escaped punctuation in link labels.
-    protectedHtml.indices.reverse.foldLeft(withEm) { (acc, i) =>
-      acc.replace(s"$prefix$i@@", protectedHtml(i))
-    }
+    withEm
   }
 
   private def escapeHtml(raw: String): String =
@@ -217,7 +168,7 @@ final class MarkdownToHtml {
   private def isHorizontalRule(trimmed: String): Boolean =
     trimmed.matches("^(-{3,}|\\*{3,}|_{3,}|(-\\s-\\s-)|(_\\s_\\s_)|(\\*\\s\\*\\s\\*))$")
 
-  private val headingRegex: Regex = "^(#{1,6})\\s+.+$".r
+  private val headingRegex: Regex = "^(#{1,6})\\s+(.+)$".r
   private val unorderedListRegex: Regex = "^[-*+]\\s+(.+)$".r
   private val orderedListRegex: Regex = "^\\d+\\.\\s+(.+)$".r
 

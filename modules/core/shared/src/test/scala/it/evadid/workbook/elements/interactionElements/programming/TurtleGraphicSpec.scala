@@ -5,7 +5,7 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
 import it.evadid.core.datastructures.geometry.{Line, Point}
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{SvgToTurtleProgram, TurtleGraphic}
 import munit.FunSuite
 
@@ -29,20 +29,20 @@ class TurtleGraphicSpec extends FunSuite {
   }
 
   test("TurtleGraphicProgram converts to turtle program") {
-    val program: List[TurtleCommand[Double]] = List(TurtleCommand("penUp"), TurtleCommand("forward", List(10.0)))
+    val program: List[TurtleCommand[Double]] = List(TurtleCommand.PenUp(), TurtleCommand.Forward(10.0))
     val graphic = TurtleGraphic.TurtleGraphicProgram(program)
     val commands = graphic.toTurtleProgram
     assertEquals(commands.size, 2)
-    assertEquals(commands.head.name, "penUp")
-    assertEquals(commands(1).name, "forward")
+    assertEquals(commands.head.name.universalInterpretation(), "pen_up")
+    assertEquals(commands(1).name.universalInterpretation(), "forward")
   }
 
   test("TurtleGraphicProgram converts to SVG path") {
     val program: List[TurtleCommand[Double]] = List(
-      TurtleCommand("penUp"),
-      TurtleCommand("forward", List(10.0)),
-      TurtleCommand("penDown"),
-      TurtleCommand("forward", List(10.0))
+      TurtleCommand.PenUp(),
+      TurtleCommand.Forward(10.0),
+      TurtleCommand.PenDown(),
+      TurtleCommand.Forward(10.0)
     )
     val graphic = TurtleGraphic.TurtleGraphicProgram(program)
     val svg = graphic.toSvgPathDString
@@ -56,7 +56,7 @@ class TurtleGraphicSpec extends FunSuite {
     
     // Should have penUp to start, then forward
     assert(commands.nonEmpty)
-    val penCommands = commands.filter(_.name == "penUp")
+    val penCommands = commands.filter(_.name.universalInterpretation() == "pen_up")
     assert(penCommands.nonEmpty)
   }
 
@@ -68,7 +68,7 @@ class TurtleGraphicSpec extends FunSuite {
     val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
     val commands = graphic.toTurtleProgram
     
-    val forwards = commands.filter(_.name == "forward")
+    val forwards = commands.filter(_.name.universalInterpretation() == "forward")
     assert(forwards.size >= 2)
   }
 
@@ -111,8 +111,8 @@ class TurtleGraphicSpec extends FunSuite {
     val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
     val commands = graphic.toTurtleProgram
     
-    val penUps = commands.filter(_.name == "penUp")
-    val penDowns = commands.filter(_.name == "penDown")
+    val penUps = commands.filter(_.name.universalInterpretation() == "pen_up")
+    val penDowns = commands.filter(_.name.universalInterpretation() == "pen_down")
     
     // Should have penUp before the gap and penDown after
     assert(penUps.nonEmpty)
@@ -127,7 +127,7 @@ class TurtleGraphicSpec extends FunSuite {
     val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
     val commands = graphic.toTurtleProgram
     
-    val turns = commands.filter(c => c.name == "turnLeft" || c.name == "turnRight")
+    val turns = commands.filter(c => c.name.universalInterpretation() == "left" || c.name.universalInterpretation() == "right")
       .flatMap(_.args)
     
     assert(turns.forall(angle => angle >= 0 && angle <= 180))
@@ -142,11 +142,11 @@ class TurtleGraphicSpec extends FunSuite {
     val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
     val commands = graphic.toTurtleProgram
     
-    val forwards = commands.filter(_.name == "forward")
+    val forwards = commands.filter(_.name.universalInterpretation() == "forward")
     assertEquals(forwards.size, 3)
   }
 
-  private def cmd(name: String, args: Double*): TurtleCommand[Double] = TurtleCommand(name, args.toList)
+  private def cmd(name: String, args: Double*): TurtleCommand[Double] = TurtleCommand.fromText(name, args.toList)
   private def trace(commands: TurtleCommand[Double]*): TurtleGraphic = TurtleGraphic.TurtleGraphicProgram(commands.toList)
   private def point(actual: Point[Double], x: Double, y: Double): Unit = {
     assertEqualsDouble(actual.x, x, 1e-7)

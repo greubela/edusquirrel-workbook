@@ -1,7 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.core.datastructures.geometry.Point
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleGradingLogic}
 import TurtleGraphic.Movement
 import TurtleGradingLogic.{TurtleGraphicComparison, TurtleLineStatus}
@@ -9,7 +9,7 @@ import TurtleLineStatus.*
 import munit.FunSuite
 
 class TurtleGradingLogicSpec extends FunSuite {
-  private def cmd(name: String, args: Double*): TurtleCommand[Double] = TurtleCommand(name, args.toList)
+  private def cmd(name: String, args: Double*): TurtleCommand[Double] = TurtleCommand.fromText(name, args.toList)
   private def graphic(commands: TurtleCommand[Double]*): TurtleGraphic = TurtleGraphic.TurtleGraphicProgram(commands.toList)
   private val stroke = Movement(Point(0.0, 0.0), Point(10.0, 0.0))
 

@@ -5,7 +5,7 @@ import munit.FunSuite
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.core.datastructures.language.AppLanguage
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
@@ -28,7 +28,7 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
     mountedPanels.update(_ - panel)
   }
   private def squareDrawing(side: Double = 25, turn: Double = 90): List[TurtleCommand[Double]] =
-    List.fill(4)(List(TurtleCommand[Double]("forward", List(side)), TurtleCommand[Double]("right", List(turn)))).flatten
+    List.fill(4)(List(TurtleCommand.Forward[Double](side), TurtleCommand.Right[Double](turn))).flatten
 
   private class PanelFixture {
     val source = Var[ProgrammingState](ProgrammingStateJavaString("class Drawing {}"))
@@ -43,8 +43,8 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
   test("drawing runs follow the configured policy for Java, Python and Snap sources") {
     val sources: List[ProgrammingState] = List(ProgrammingStateJavaString("forward(5); forward(5);"),
       ProgrammingStatePythonString("forward(5)\nforward(5)"), ProgrammingStateSnapXml.empty)
-    val commands = List(TurtleCommand[Double]("forward", List(5.0)), TurtleCommand[Double]("forward", List(5.0)))
-    val target = TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand[Double]("forward", List(10.0))))
+    val commands = List(TurtleCommand.Forward[Double](5.0), TurtleCommand.Forward[Double](5.0))
+    val target = TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand.Forward[Double](10.0)))
     Future.sequence(for {
       original <- sources
       policy <- TurtleDrawingPolicy.values.toList
@@ -65,7 +65,7 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
 
   test("drawing execution reads the current central answer without capturing an editor") {
     val state = Var[ProgrammingState](ProgrammingStatePythonString("forward(5)"))
-    val commands = List(TurtleCommand[Double]("forward", List(10.0)))
+    val commands = List(TurtleCommand.Forward[Double](10.0))
     val panel = new TurtleExecutionPanel(state, () => {
       assertEquals(state.now(), ProgrammingStatePythonString("forward(10)"))
       Future.successful(commands)
@@ -83,24 +83,24 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
     val target = TurtleGraphic.TurtleGraphicProgram(squareDrawing())
     assert(compare(squareDrawing(), target))
     for commands <- List(squareDrawing(24), squareDrawing(26), squareDrawing(25, 89), squareDrawing(25, 45),
-      Nil, squareDrawing() :+ TurtleCommand[Double]("backward", List(10.0))) do
+      Nil, squareDrawing() :+ TurtleCommand.Backward[Double](10.0)) do
       assert(!compare(commands, target), clue = commands)
   }
 
   test("Java drawing display rejects accumulated coordinate overflow without requiring a target") {
     intercept[IllegalArgumentException](TurtleDrawingGrading.validateDrawing(
-      List.fill(2)(TurtleCommand[Double]("forward", List(1e308)))))
+      List.fill(2)(TurtleCommand.Forward[Double](1e308))))
     intercept[IllegalArgumentException](TurtleDrawingGrading.validateDrawing(
-      List(TurtleCommand[Double]("goto", List(-1e308, 0.0)), TurtleCommand[Double]("goto", List(1e308, 0.0)))))
+      List(TurtleCommand.Goto[Double](-1e308, 0.0), TurtleCommand.Goto[Double](1e308, 0.0))))
     intercept[IllegalArgumentException](TurtleDrawingGrading.validateDrawing(
-      List(TurtleCommand[Double]("forward", List(Double.MaxValue)))))
+      List(TurtleCommand.Forward[Double](Double.MaxValue))))
     TurtleDrawingGrading.validateDrawing(squareDrawing(10.0 / 3.0))
     TurtleDrawingGrading.validateDrawing(Nil)
   }
 
   test("Java drawing comparison accepts split strokes and ignores duplicate tracing") {
-    val split = List.fill(4)(List(TurtleCommand[Double]("forward", List(12.0)),
-      TurtleCommand[Double]("forward", List(13.0)), TurtleCommand[Double]("right", List(90.0)))).flatten
+    val split = List.fill(4)(List(TurtleCommand.Forward[Double](12.0),
+      TurtleCommand.Forward[Double](13.0), TurtleCommand.Right[Double](90.0))).flatten
     val target = TurtleGraphic.TurtleGraphicProgram(squareDrawing())
     assert(compare(split, target))
     assert(compare(squareDrawing() ++ squareDrawing(), target))
@@ -112,15 +112,15 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
       Line(Point(0.0, 0.0), Point(10.0, 0.0)),
       Line(Point(20.0, 0.0), Point(30.0, 0.0))))
     assert(compare(target.toTurtleProgram.toList, target))
-    assert(!compare(List(TurtleCommand[Double]("forward", List(30.0))), target))
+    assert(!compare(List(TurtleCommand.Forward[Double](30.0)), target))
   }
 
   test("Java drawing comparison bounds huge traces and rejects unsupported or non-finite commands") {
     val target = TurtleGraphic.TurtleGraphicProgram(squareDrawing())
-    for commands <- List(List(TurtleCommand[Double]("forward", List(Int.MaxValue.toDouble))),
-      List(TurtleCommand[Double]("forward", List(Double.PositiveInfinity))),
-      List(TurtleCommand[Double]("forward", List(Double.NaN))),
-      List(TurtleCommand[Double]("circle", Nil)), List.fill(100)(squareDrawing()).flatten) do
+    for commands <- List(List(TurtleCommand.Forward[Double](Int.MaxValue.toDouble)),
+      List(TurtleCommand.Forward[Double](Double.PositiveInfinity)),
+      List(TurtleCommand.Forward[Double](Double.NaN)),
+      List(TurtleCommand.fromText[Double]("circle", Nil)), List.fill(100)(squareDrawing()).flatten) do
       intercept[IllegalArgumentException](compare(commands, target))
     val empty = TurtleGraphic.TurtleGraphicProgram(Nil)
     assert(compare(Nil, empty))

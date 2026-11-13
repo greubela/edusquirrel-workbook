@@ -7,6 +7,7 @@ import it.evadid.util.logging.Logger
 import upickle.default.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import java.time.LocalDateTime
+import scala.util.Try
 
 object ExecutionClientResponse {
 
@@ -32,11 +33,9 @@ object ExecutionClientResponse {
 
 
   def forValue[T: ReadWriter](timestamps: ExecutionClientResponseTimestamps, result: T, cmd: ExecutionCommand, output: AdditionalLoggingOutput = AdditionalLoggingOutput.empty): ExecutionClientResponse = {
-    try{
-      ExecutionClientResponse(timestamps, Right(SerializedValue(result)), Some(cmd), output)
-    }catch case (err: Throwable) => {
-      ExecutionClientResponse.forError(timestamps, SerializedException(s"Error while trying to build ExecutionClientResponse with ${result}", err), cmd, output)
-    }
+    Try(ExecutionClientResponse(timestamps, Right(SerializedValue(result)), Some(cmd), output)).fold(
+      error => forError(timestamps, SerializedException("Could not serialize execution result", error), cmd, output),
+      identity)
   }
 
   def forError(timestamps: ExecutionClientResponseTimestamps, err: SerializedException, cmd: ExecutionCommand, output: AdditionalLoggingOutput = AdditionalLoggingOutput.empty): ExecutionClientResponse = {
@@ -54,7 +53,7 @@ case class ExecutionClientResponse(
 
   def fixReceived(newReceived: LocalDateTime): ExecutionClientResponse = this.copy(timestamps = timestamps.copy(timestampReceived = newReceived))
 
-  def throwIfContainsError: ExecutionClientResponse = if (result.isLeft) throw result.left.get else this
+  def throwIfContainsError: ExecutionClientResponse = result.fold(throw _, _ => this)
 
   def successOrThrow[T: ReadWriter](logger: Logger, commandSent: ExecutionCommand, timestampRequested: LocalDateTime): ExecutionSuccess[T] = parse(logger, commandSent, timestampRequested).match {
     case s: ExecutionSuccess[T] => s
@@ -64,12 +63,10 @@ case class ExecutionClientResponse(
   def parse[T: ReadWriter](logger: Logger, commandSent: ExecutionCommand, timestampRequested: LocalDateTime): ExecutionInfo[T] = {
     val history = timestamps.toHistory(timestampRequested)
     result.match {
-      case Right(exRes) => try {
-        ExecutionSuccess(commandSent, history, exRes.getAs[T])
-      } catch case (err: Throwable) => {
-        val wasName = result.getClass.getSimpleName
-        ExecutionFailure(commandSent, Some(history), SerializedException(s"ExecutionClientResponse had an result but of the wrong type (was $wasName"))
-      }
+      case Right(value) => Try(value.getAs[T]).fold(
+        error => ExecutionFailure(commandSent, Some(history), SerializedException(
+          s"ExecutionClientResponse had a result of the wrong type (was ${value.classSimpleName})", error)),
+        decoded => ExecutionSuccess(commandSent, history, decoded))
       case Left(err) => ExecutionFailure(commandSent, Some(history), err)
     }
   }

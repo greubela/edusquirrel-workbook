@@ -7,7 +7,7 @@ import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution
 
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.core.datastructures.vectorShapes.svg.BeExpressionToTurtleCommands
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
 import it.evadid.vm.simulation.java.JavaTurtleRuntime
@@ -73,11 +73,10 @@ final case class ProgrammingStateBeExpression(expression: BeExpression) extends 
         throw IllegalArgumentException(s"Java execution did not complete: ${execution.status}.")
       execution.commands.toList.map { command =>
         if !command.value.isFinite then throw IllegalArgumentException("A drawing command needs a finite number.")
-        val name = command.command match {
-          case it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution.TurtleCommand.Forward => "forward"
-          case it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution.TurtleCommand.TurnRight => "right"
+        command.command match {
+          case it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution.TurtleCommand.Forward => TurtleCommand.Forward(command.value)
+          case it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution.TurtleCommand.TurnRight => TurtleCommand.Right(command.value)
         }
-        TurtleCommand[Double](name, List(command.value))
       }
     case _ => BeExpressionToTurtleCommands(expression)
   }

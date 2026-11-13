@@ -14,7 +14,7 @@ trait Serializer[T] extends TypeConverter[T, String] {
   override def convertToI(in: String): T = deserialize(in)
 
   lazy val safeSeqReadWriter: ReadWriter[Seq[T]] = readwriter[ujson.Value].bimap(
-    (seq: Seq[T]) => ujson.Arr(seq.map(item => writeJs(item)(using uPickleReadWrite)): _*),
+    (seq: Seq[T]) => ujson.Arr(seq.map(item => writeJs(item)(using uPickleReadWrite))*),
     (json: ujson.Value) => json.arr.flatMap { elementBlob =>
       try {
         Some(read[T](elementBlob)(using uPickleReadWrite))
@@ -58,12 +58,15 @@ trait Serializer[T] extends TypeConverter[T, String] {
     }
 
     override def deserialize(str: String): O = {
-      val tryMain = Try {
-        Serializer.this.deserialize(str)
-      }
-      if (tryMain.isFailure) throw SerializedException(s"Could not parse str ${str.take(60)} with base parser: >>${tryMain.failed.get.getMessage}<<", tryMain.failed.get)
-      else try funcForward(tryMain.get)
-      catch case NonFatal(err) => throw SerializedException(s"Could not convert obj ${tryMain.getClass.getSimpleName} ('${tryMain.get.toString.take(60)}') with funcForward: ${err.getMessage}", err)
+      val baseValue = Try(Serializer.this.deserialize(str)).fold(
+        error => throw SerializedException(s"Could not parse str ${str.take(60)} with base parser: >>${error.getMessage}<<", error),
+        identity)
+      try funcForward(baseValue)
+      catch case NonFatal(error) =>
+        val valueType = Option(baseValue).map(_.getClass.getSimpleName).getOrElse("null")
+        val valueSummary = Option(baseValue).fold("null")(_.toString.take(60))
+        throw SerializedException(s"Could not convert obj $valueType ('$valueSummary') with funcForward: ${error.getMessage}", error)
+
     }
   }
 
@@ -81,7 +84,6 @@ object Serializer {
 
   def serializerForSubclass[SubType <: TraitType : ReadWriter, TraitType](exClass: Class[SubType]): (String, Serializer[TraitType]) = {
     val rw: ReadWriter[SubType] = summon[ReadWriter[SubType]]
-    val className = exClass.getSimpleName
     val baseSer = new Serializer[TraitType]() {
       override def serialize(obj: TraitType): String =
         if (obj.getClass.getSimpleName != exClass.getSimpleName) throw SerializedException(s"Cannot serialize object of type '${obj.getClass.getSimpleName} with serializer for ${exClass.getSimpleName}")
@@ -139,39 +141,6 @@ object Serializer {
   }
 
   def fromImplicitRW[T](implicit rw: ReadWriter[T]): Serializer[T] = Serializer.fromUpickleJson(rw)
-
-  /*
-    def constructorLikeSerializer[T](
-                                      constructorName: String,
-                                      construct: Seq[ujson.Value] => T,
-                                      deconstruct: T => List[ujson.Value]
-                                    ): Serializer[T] = new Serializer[T] {
-
-      override def serialize(obj: T): String = {
-        constructorName + deconstruct(obj).mkString("(", ")(", ")")
-      }
-
-      override def deserialize(str: String): T = {
-        ConstructorLikeParserWithJsonElements.parseString(str).match {
-          case Success(ConstructorLikeReadResult(parsedConstructor, jsons)) => if (constructorName != parsedConstructor) {
-            throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) cannot parse objects of type ${parsedConstructor}")
-          } else try {
-            construct(jsons.map(ujson.read(_)))
-          } catch case NonFatal(err) => {
-            throw SerializedException(s"ConstructorLikeSerializer(${constructorName}) had error while parsing jsons", err)
-          }
-          case Failure(err) => throw SerializedException(s"Could not parse ${str} with ConstructorLikeSerializer(${constructorName}", err)
-        }
-      }
-    }*/
-
-
-  /*def combineSerializerUseFirst[T](serializer: Seq[Serializer[T]]): Serializer[T] = new Serializer[T]{
-
-    override def serialize(obj: T): String = ???
-
-    override def deserialize(str: String): T = ???
-  }*/
 
   def constructorLikeSerializer[T](constructorName: String)(forward: T => String)(backward: String => T): Serializer[T] = {
     constructorLikeSerializer(constructorName, new Serializer[T]() {

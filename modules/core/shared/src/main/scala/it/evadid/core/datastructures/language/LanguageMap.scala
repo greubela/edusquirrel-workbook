@@ -62,23 +62,12 @@ object LanguageMap {
   }
 
   private case class LanguageMapBaseWithFallback[T <: AppLanguage](base: LanguageMap[T], fallback: LanguageMap[T]) extends LanguageMap[T] derives ReadWriter {
-    override def tryGetInLanguage(language: T): Option[String] = base.tryGetInLanguage(language).match {
-      case Some(resultStr) => Some(resultStr)
-      case None => fallback.tryGetInLanguage(language)
-    }
+    override def tryGetInLanguage(language: T): Option[String] =
+      base.tryGetInLanguage(language).orElse(fallback.tryGetInLanguage(language))
 
     def availableLanguages: Set[T] = base.availableLanguages ++ fallback.availableLanguages
   }
 
-  /*private case class LanguageMapMappedContent[T <: AppLanguage](base: LanguageMap[T], func: String => String) extends LanguageMap[T] derives ReadWriter {
-    override def tryGetInLanguage(language: T): Option[String] = try {
-      Some(func(base.getInLanguage(language)))
-    } catch {
-      case e: Throwable => None
-    }
-
-    def availableLanguages: Set[T] = base.availableLanguages
-  }*/
 
 
   def concatLanguageMaps[T <: AppLanguage](firstMap: LanguageMap[T], secondMap: LanguageMap[T]): LanguageMap[T] = {
@@ -87,14 +76,6 @@ object LanguageMap {
     mapBasedLanguageMap(pMap)
   }
 
-  /*def unionLanguageMap[T <: AppLanguage](maps: List[LanguageMap[T]]) = new LanguageMap[T]() {
-    override def tryGetInLanguage(language: T): Option[String] =
-      maps
-        .find(_.availableLanguages.contains(language))
-        .map(curMap => curMap.getInLanguage(language))
-
-    def availableLanguages: Set[T] = maps.flatMap(_.availableLanguages).toSet
-  }*/
 
   def universalMap[T <: AppLanguage](string: String): LanguageMap[T] = LanguageMapUniversal(string)
 
@@ -107,21 +88,10 @@ object LanguageMap {
   def mapBasedLanguageMap[T <: AppLanguage](pMap: Map[T, String]): LanguageMap[T] = LanguageMapMapBased(pMap)
 
   def mkLanguageMap[T <: AppLanguage](start: String, sep: String, end: String, maps: List[LanguageMap[T]])(using classTag: ClassTag[T]): LanguageMap[T] = {
-    var res: LanguageMap[T] = universalMap(start)
-    for (curMap <- maps) {
-      res = concatLanguageMaps(res, curMap)
-      res = concatLanguageMaps(res, universalMap(sep))
-    }
-    concatLanguageMaps(res, universalMap(end))
+    val separator = universalMap[T](sep)
+    def appendWithSeparator(current: LanguageMap[T], next: LanguageMap[T]): LanguageMap[T] =
+      concatLanguageMaps(concatLanguageMaps(current, next), separator)
+    val content = maps.foldLeft(universalMap[T](start))(appendWithSeparator)
+    concatLanguageMaps(content, universalMap[T](end))
   }
-  /*
-    def emptyMap[T <: AppLanguage](): LanguageMap[T] = new LanguageMap[T]() {
-
-      override def tryGetInLanguage(language: T): Option[String] = None
-
-      override def getInLanguage(language: T): String = "[error: empty language map!]"
-
-      override def availableLanguages: Set[T] = Set.empty
-    }
-  */
 }

@@ -107,6 +107,14 @@ stored representation; it is not a general semantic-equivalence test.
 currently compares cleaned XML and handles runtime-pose metadata. The adapter's
 subscriptions, polling and cleanup belong to its Laminar mount lifecycle.
 
+`State.biMap` provides a synchronous bidirectional view; mappings should be pure.
+Chained views compose their forward and reverse functions against the base state.
+
+Shared core `AsyncData` mappings and recoveries run sequentially in source order,
+including across failures. A pending computation delays later inputs; its late
+result cannot overwrite a newer result. The first-result future retains its first
+finished state while the observable continues to update.
+
 ## History, importance and destinations
 
 `InteractionVariable[T, GA, SA]` stores `InteractionVariableHistory[T, GA, SA]`:
@@ -132,6 +140,10 @@ an offline or unauthenticated server has committed the value. Each destination's
 `SyncStrategy` selects events. Current local defaults use IndexedDB with
 `SYNC_LAST_AND_MAJOR`; configured remote destinations use `SYNC_MAJOR`. Reports
 and the workbook's cloud indicator describe actual synchronization status.
+Sync caches select the newest timestamp for each key and reject conflicting
+entries at the same newest timestamp. Refreshing after a write failure retains the
+existing reconciliation behavior; successful refresh alone does not prove a write
+succeeded.
 Importance does not by itself run every grader; see the current grading paths in
 [interaction architecture](workbook-interaction-architecture.md).
 

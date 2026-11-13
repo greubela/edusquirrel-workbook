@@ -2,7 +2,7 @@ package it.evadid.workbook.elements.interactionElements.programming.programmingE
 
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.SvgToTurtleProgram.convert
 import upickle.default.*
 
@@ -105,37 +105,28 @@ object TurtleGraphic {
       lastForwardLine = None
 
     program.foreach { command =>
-      val name = command.name.trim.toLowerCase.replace('-', '_')
-      val args = command.args
-      require(args.forall(_.isFinite), "Turtle arguments must be finite")
-      name match
-        case "forward" | "fd" => args.headOption.foreach(forward)
-        case "backward" | "back" | "bk" => args.headOption.foreach(d => forward(-d))
-        case "left" | "lt" | "turn_left" | "turnleft" => args.headOption.foreach { degrees =>
-          turn(degrees)
-        }
-        case "right" | "rt" | "turn" | "turn_right" | "turnright" => args.headOption.foreach { degrees =>
-          turn(-degrees)
-        }
-        case "goto" | "setpos" | "setposition" | "goto_x_y" | "gotoxy" if args.size >= 2 =>
-          move(Point(args(0), args(1)), jump = !penDown, isForward = false)
-        case "setx" | "set_x" | "setxposition" => args.headOption.foreach(x => move(Point(x, position.y), jump = !penDown, isForward = false))
-        case "sety" | "set_y" | "setyposition" => args.headOption.foreach(y => move(Point(position.x, y), jump = !penDown, isForward = false))
-        case "setheading" | "seth" | "set_heading" => args.headOption.foreach { h =>
-          heading = normal(h)
-          pendingAngle = None
-          lastForwardLine = None
-        }
-        case "penup" | "pu" | "up" | "pen_up" => penDown = false
-        case "pendown" | "pd" | "down" | "pen_down" => penDown = true
-        case "home" => move(Point(0.0, 0.0), jump = !penDown, isForward = false); heading = 0.0
-        case "clear" | "clearscreen" => movements.clear(); angles.clear(); lastForwardLine = None; pendingAngle = None
-        case "reset" => movements.clear(); angles.clear(); position = Point(0.0, 0.0); heading = 0.0; penDown = true; lastForwardLine = None; pendingAngle = None
-        case "circle" if args.nonEmpty => arc(args.head, args.lift(1).getOrElse(360.0), left = true)
-        case "arc" | "arcleft" | "arc_left" if args.size >= 2 => arc(args(0), args(1), left = true)
-        case "arcright" | "arc_right" if args.size >= 2 => arc(args(0), args(1), left = false)
-        case "dot" => args.headOption.foreach(dot)
+      import TurtleCommand.*
+      require(command.args.forall(_.isFinite), "Turtle arguments must be finite")
+      command match {
+        case Forward(distance) => forward(distance)
+        case Backward(distance) => forward(-distance)
+        case Left(degrees) => turn(degrees)
+        case Right(degrees) => turn(-degrees)
+        case Goto(x, y) => move(Point(x, y), jump = !penDown, isForward = false)
+        case SetX(x) => move(Point(x, position.y), jump = !penDown, isForward = false)
+        case SetY(y) => move(Point(position.x, y), jump = !penDown, isForward = false)
+        case SetHeading(degrees) => heading = normal(degrees); pendingAngle = None; lastForwardLine = None
+        case PenUp() => penDown = false
+        case PenDown() => penDown = true
+        case Home() => move(Point(0.0, 0.0), jump = !penDown, isForward = false); heading = 0.0
+        case Clear() => movements.clear(); angles.clear(); lastForwardLine = None; pendingAngle = None
+        case Reset() => movements.clear(); angles.clear(); position = Point(0.0, 0.0); heading = 0.0; penDown = true; lastForwardLine = None; pendingAngle = None
+        case Circle(radius, extent, _) => arc(radius, extent.getOrElse(360.0), left = true)
+        case ArcLeft(radius, extent) => arc(radius, extent, left = true)
+        case ArcRight(radius, extent) => arc(radius, extent, left = false)
+        case Dot(size) => dot(size)
         case _ => ()
+      }
     }
 
     (movements.toList, angles.toList)
@@ -157,7 +148,7 @@ object TurtleGraphic {
 
     lazy val toSvgPathDString: String = {
       val builder = it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder[Double]()
-      val finalBuilder = program.foldLeft(builder) { (tb, cmd) => tb.handleStringCommand(cmd) }
+      val finalBuilder = program.foldLeft(builder) { (tb, cmd) => tb.handleCommand(cmd) }
       finalBuilder.svgPathBuilder.furtherCommands.map(_.getPathDString()).mkString.trim
     }
   }
@@ -209,7 +200,7 @@ object TurtleGraphic {
         // If we're not at the start of this line, we need to move there (pen up)
         if (current != start) {
           if (penDown) {
-            result += TurtleCommand("penUp")
+            result += TurtleCommand.PenUp()
             penDown = false
           }
           val dx = start.x - current.x
@@ -218,16 +209,16 @@ object TurtleGraphic {
           if (distance > 1e-12) {
             val target = math.toDegrees(math.atan2(-dy, dx))
             val delta = ((target - heading + 540) % 360) - 180
-            if (delta > 1e-10) result += TurtleCommand("turnLeft", List(delta))
-            else if (delta < -1e-10) result += TurtleCommand("turnRight", List(-delta))
-            result += TurtleCommand("forward", List(distance))
+            if (delta > 1e-10) result += TurtleCommand.Left(delta)
+            else if (delta < -1e-10) result += TurtleCommand.Right(-delta)
+            result += TurtleCommand.Forward(distance)
             heading = target
           }
         }
 
         // Draw the line (pen down)
         if (!penDown) {
-          result += TurtleCommand("penDown")
+          result += TurtleCommand.PenDown()
           penDown = true
         }
 
@@ -237,16 +228,16 @@ object TurtleGraphic {
         if (distance > 1e-12) {
           val target = math.toDegrees(math.atan2(-dy, dx))
           val delta = ((target - heading + 540) % 360) - 180
-          if (delta > 1e-10) result += TurtleCommand("turnLeft", List(delta))
-          else if (delta < -1e-10) result += TurtleCommand("turnRight", List(-delta))
-          result += TurtleCommand("forward", List(distance))
+          if (delta > 1e-10) result += TurtleCommand.Left(delta)
+          else if (delta < -1e-10) result += TurtleCommand.Right(-delta)
+          result += TurtleCommand.Forward(distance)
           heading = target
         }
 
         current = end
       }
 
-      if (penDown) result += TurtleCommand("penUp")
+      if (penDown) result += TurtleCommand.PenUp()
       result.toList
     }
   }

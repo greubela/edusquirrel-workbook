@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.javaediting.JavaEditingMetadata
 
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.conversion.snappython.SnapProgramDerivation
 import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPythonRequest}
@@ -144,4 +144,4 @@ object PyodideTurtleCommandRunner:
           s"Unsupported argument for ${callback.method}: ${value.getClass.getSimpleName}"
         )
     }
-    TurtleCommand(canonicalName, numeric, textual)
+    TurtleCommand.fromText(canonicalName, numeric, textual)

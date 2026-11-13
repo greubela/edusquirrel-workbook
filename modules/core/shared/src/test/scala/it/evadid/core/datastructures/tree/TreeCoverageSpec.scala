@@ -84,4 +84,26 @@ class TreeCoverageSpec extends FunSuite {
     assertEquals(root.toString, "TreePosition(root)")
     assertEquals(root.forChild(1).forChild(2).toString, "TreePosition(root->1->2)")
   }
+  test("subtrees retain descendants when insertion indices clamp to either end") {
+    List(-10, 0, 1, 100).foreach { index =>
+      val original = sample
+      val inserted = original.addSubtreeAsChildNr(root.forChild(0), index, sample)
+      val effectiveIndex = index.max(0).min(2)
+      assertEquals(children(inserted, root.forChild(0)), List("a1", "a2").patch(effectiveIndex, List("a", "b"), 0))
+      assertEquals(children(inserted, root.forChild(0).forChild(effectiveIndex)), List("a1", "a2"))
+      assertEquals(original.size, 4)
+      assertEquals(inserted.size, 8)
+    }
+  }
+
+  test("child-result evaluation retains every position even when data values repeat") {
+    val tree = NodeBasedTreeImpl(List(NodeBasedTreeNode("parent", List(
+      NodeBasedTreeNode("same", List(NodeBasedTreeNode("leaf", Nil))), NodeBasedTreeNode("same", Nil)))))
+    val results = tree.applyWithChildResults[Int]((_, childResults) => 1 + childResults.values.sum)
+    assertEquals(results(root.forChild(0).forChild(0)), 2)
+    assertEquals(results(root.forChild(0).forChild(1)), 1)
+    assertEquals(results(root.forChild(0)), 2) // The public child-result map is keyed by data, so the last duplicate wins.
+    assertEquals(results.size, 4)
+  }
+
 }

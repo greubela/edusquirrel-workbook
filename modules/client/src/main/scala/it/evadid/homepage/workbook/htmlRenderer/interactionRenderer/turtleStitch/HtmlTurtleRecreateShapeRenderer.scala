@@ -4,7 +4,7 @@ import it.evadid.vm.conversion.ProgrammingStateConversions.*
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement

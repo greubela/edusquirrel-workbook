@@ -15,7 +15,7 @@ case class FetchFromDatabase(
                               logger: Logger
                             ) {
 
-  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection,  logger)
+  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
 
   def fetchAllInDbWithoutKeys(tableName: String = "events"): Map[SyncContext, List[RichDatabaseEntry]] = {
     logger.logInfo("Fetching all events from database (without keys) for usage context: " + usageContext.toString)

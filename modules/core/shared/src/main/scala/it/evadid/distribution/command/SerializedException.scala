@@ -10,9 +10,9 @@ case class SerializedException(msg: String, stackTrace: Array[SimpleStackTraceEl
 
   def asCauseOf(e: Throwable): SerializedException = SerializedException(e, this)
 
-  val serializer: Serializer[SerializedException] = DefaultSerializer.serializerExceptionS
+  lazy val serializer: Serializer[SerializedException] = DefaultSerializer.serializerExceptionS
 
-  val toJson: String = serializer.serialize(this)
+  lazy val toJson: String = serializer.serialize(this)
 
 }
 
@@ -26,21 +26,23 @@ object SerializedException {
 
   private def toSimple(el: StackTraceElement): SimpleStackTraceElement = SimpleStackTraceElement(el.getClassName, el.getMethodName, el.getFileName, el.getLineNumber)
 
-  def apply(err: Throwable, cause: Throwable): SerializedException = SerializedException(err.getMessage, err.getStackTrace.map(toSimple), Option(SerializedException(cause)))
-
-  def apply(err: Throwable): SerializedException = {
-    val cause = Option(err.getCause).map(SerializedException.apply)
-    SerializedException(err.getMessage, err.getStackTrace.map(toSimple), cause)
+  private def serializedStackTrace(error: Throwable): Array[SimpleStackTraceElement] = error match {
+    case serialized: SerializedException => serialized.stackTrace
+    case other => other.getStackTrace.map(toSimple)
   }
 
-  def apply(msg: String): SerializedException = SerializedException(Exception(msg))
+  def apply(err: Throwable, cause: Throwable): SerializedException =
+    SerializedException(err.getMessage, serializedStackTrace(err), Option(cause).map(apply))
 
-  def apply(msg: String, cause: Throwable): SerializedException = SerializedException(Exception(msg, cause))
-
-  def apply(msg: String, cause: Option[Throwable]): SerializedException = {
-    val exception = if (cause.nonEmpty) Exception(msg, cause.get) else Exception(msg)
-    SerializedException(exception)
+  def apply(err: Throwable): SerializedException = err match {
+    case serialized: SerializedException => serialized
+    case other => SerializedException(other.getMessage, serializedStackTrace(other), Option(other.getCause).map(apply))
   }
 
+  def apply(msg: String): SerializedException = apply(Exception(msg))
+
+  def apply(msg: String, cause: Throwable): SerializedException = apply(msg, Option(cause))
+
+  def apply(msg: String, cause: Option[Throwable]): SerializedException =
+    apply(msg).copy(cause = cause.map(apply))
 }
-

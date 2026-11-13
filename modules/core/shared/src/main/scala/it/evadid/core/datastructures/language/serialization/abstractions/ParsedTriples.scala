@@ -78,24 +78,23 @@ case class ParsedTriples(regularTriples: Set[LanguageMapEntry[HumanLanguage]], u
 
   lazy override val toString: String = s"ParsedTriples($size triples: ${regularTriples.size} regular + ${universalTriples.size} universal)"
 
-  def createMapsFromTriples(): Set[LanguageMapWithId] = {
-    val resMap: Map[LanguageMapContentId, Set[LanguageMapEntry[HumanLanguage]]] = regularTriples.groupBy(_.contentId)
-    val universal: Map[LanguageMapContentId, Set[LanguageMapEntry[SpecialLanguage]]] = universalTriples.groupBy(_.contentId)
-
-    val resMaps: Set[LanguageMapWithId] = (resMap.keySet ++ universal.keySet).map((curKey: LanguageMapContentId) => {
-      val regularMap: Map[HumanLanguage, String] = resMap.getOrElse(curKey, Set()).map(trip => trip.language -> trip.value).toMap
-      val universalValue: Option[String] = universal.get(curKey).flatMap(_.headOption).map(_.value)
-      val languageMap: LanguageMap[HumanLanguage] =
-        if (regularMap.isEmpty && universalValue.isEmpty) LanguageMap.empty // this should be impossible because of key iteration -> no warning
-        else if (regularMap.isEmpty) LanguageMap.universalMap(universalValue.getOrElse("[WorkbookContentControl::createLanguageMaps... this should never be visible]"))
-        else if (universalValue.isEmpty) LanguageMap.mapBasedLanguageMap(regularMap)
-        else LanguageMap.mapBasedLanguageMap(regularMap).withFallback(LanguageMap.universalMap(universalValue.get))
-      LanguageMapWithId(curKey, languageMap)
-    })
-
-    resMaps
+  private def languageMapFor(regular: Set[LanguageMapEntry[HumanLanguage]], universal: Set[LanguageMapEntry[SpecialLanguage]]): LanguageMap[HumanLanguage] = {
+    val translations = regular.map(entry => entry.language -> entry.value).toMap
+    val map = LanguageMap.mapBasedLanguageMap(translations)
+    universal.headOption match {
+      case Some(entry) if translations.isEmpty => LanguageMap.universalMap(entry.value)
+      case Some(entry) => map.withFallback(LanguageMap.universalMap(entry.value))
+      case None => map
+    }
   }
 
+  def createMapsFromTriples(): Set[LanguageMapWithId] = {
+    val regularById = regularTriples.groupBy(_.contentId)
+    val universalById = universalTriples.groupBy(_.contentId)
+    (regularById.keySet ++ universalById.keySet).map { id =>
+      LanguageMapWithId(id, languageMapFor(regularById.getOrElse(id, Set.empty), universalById.getOrElse(id, Set.empty)))
+    }
+  }
 
   override lazy val rwSub: default.ReadWriter[ParsedTriplesSerialized] = ParsedTriples.sub
   override lazy val toSerializableSubType: ParsedTriplesSerialized = {

@@ -1,5 +1,6 @@
 package it.evadid.core.datastructures.state.async
 
+import it.evadid.core.datastructures.state.observable.ObservableValueImpl
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.distribution.command.SerializedException
@@ -61,6 +62,43 @@ class AsyncDataPackageSpec extends FunSuite {
     }
   }
 
+  private class TrackedStates(initial: AsyncDataState[String, Int])
+    extends ObservableValueImpl[AsyncDataState[String, Int]](Some(initial)) {
+    def observerCount: Int = observers.size
+  }
+
+  test("AsyncState releases its observer after synchronous replay of success or failure") {
+    List[AsyncDataState[String, Int]](AsyncDataSuccess(3), AsyncDataFailed(Exception("offline"), Some("details"))).foreach { initial =>
+      val source = new TrackedStates(initial)
+      val value = AsyncState(source)
+      assert(value.futureFirstState.value.exists(_.get == initial))
+      assertEquals(source.observerCount, 0)
+    }
+  }
+
+  test("AsyncState ignores loading updates and releases its observer after completion") {
+    val source = new TrackedStates(AsyncDataLoading())
+    val value = AsyncState(source)
+    assertEquals(source.observerCount, 1)
+    source.onNewValueArrived(scala.util.Success(AsyncDataLoading()))
+    assert(!value.futureFirstState.isCompleted)
+    source.onNewValueArrived(scala.util.Success(AsyncDataSuccess(5)))
+    assertEquals(source.observerCount, 0)
+    source.onNewValueArrived(scala.util.Success(AsyncDataSuccess(6)))
+    assertEquals(value.futureFirstState.value.map(_.get.value), Some(Some(5)))
+    assertEquals(value.stateNow().value, Some(6))
+  }
+
+  test("AsyncState completion cleanup is safe when a callback immediately publishes another state") {
+    val source = new TrackedStates(AsyncDataLoading())
+    val value = AsyncState(source)
+    value.futureFirstState.foreach(_ => source.onNewValueArrived(scala.util.Success(AsyncDataSuccess(2))))(using ExecutionContext.parasitic)
+    source.onNewValueArrived(scala.util.Success(AsyncDataSuccess(1)))
+    assertEquals(source.observerCount, 0)
+    assertEquals(value.futureFirstState.value.map(_.get.value), Some(Some(1)))
+    assertEquals(value.stateNow().value, Some(2))
+  }
+
   test("AsyncFuture exposes loading state and preserves failure metadata") {
     val pending = Promise[Either[FailureInfo[String], Int]]()
     val value = AsyncFuture(pending.future)
@@ -84,6 +122,28 @@ class AsyncDataPackageSpec extends FunSuite {
     synchronous.futureFirstState.zip(asynchronous.futureFirstState).map { (sync, async) =>
       assert(sync.failure.get.error.msg.contains("sync mapping"))
       assert(async.failure.get.error.msg.contains("async mapping"))
+    }
+  }
+
+  test("AsyncFuture mapping waits for the mapper and preserves upstream failure data") {
+    val entered = Promise[Unit]()
+    val completed = Promise[Int]()
+    val mapped = AsyncFuture[String, Int](Future.successful(Right(1))).mapAsync { _ =>
+      entered.success(())
+      completed.future
+    }
+    entered.future.flatMap { _ =>
+      assert(!mapped.futureFirstState.isCompleted)
+      completed.success(7)
+      mapped.futureFirstValue.flatMap { result =>
+        assertEquals(result, 7)
+        val skipped = AsyncFuture[String, Int](Future.successful(Left(FailureInfo(Exception("offline"), Some("context")))))
+          .mapAsync[Int](_ => throw AssertionError("Mapper must not run on upstream failure"))
+        skipped.futureFirstState.map { state =>
+          assertEquals(state.failure.get.data, Some("context"))
+          assert(state.failure.get.error.msg.contains("offline"))
+        }
+      }
     }
   }
 
@@ -165,6 +225,60 @@ class AsyncDataPackageSpec extends FunSuite {
     untouched.futureFirstValue.zip(recovered.futureFirstValue).map { (first, second) =>
       assertEquals(first, 4)
       assertEquals(second, 9)
+    }
+  }
+
+  test("AsyncData mappings serialize inputs even when a later result is already available") {
+    val source = State[AsyncDataState[String, Int]](AsyncDataSuccess(1))
+    val first = Promise[Int]()
+    val second = Promise[Int]()
+    val secondStarted = Promise[Unit]()
+    val mapped = AsyncState(source.observable).mapAsync { value =>
+      if value == 1 then first.future else { secondStarted.success(()); second.future }
+    }
+    val latest = Promise[Int]()
+    mapped.observeLoadedValues.addObserver(value => if value == 20 then latest.trySuccess(value))
+    source.set(AsyncDataSuccess(2))
+    assert(!secondStarted.isCompleted)
+    second.success(20)
+    first.success(10)
+    mapped.futureFirstValue.zip(latest.future).map { (initial, last) =>
+      assertEquals(initial, 10)
+      assertEquals(last, 20)
+      assertEquals(mapped.stateNow().value, Some(20))
+    }
+  }
+
+  test("a failed asynchronous mapping does not block later source values") {
+    val source = State[AsyncDataState[String, Int]](AsyncDataSuccess(1))
+    val first = Promise[Int]()
+    val mapped = AsyncState(source.observable).mapAsync(value => if value == 1 then first.future else Future.successful(value))
+    val latest = mapped.observeLoadedValues.currentValueOrWaitForUpdate
+    source.set(AsyncDataSuccess(2))
+    first.failure(new IllegalStateException("mapping failed"))
+    mapped.futureFirstState.zip(latest).map { (initial, last) =>
+      assert(initial.failure.get.error.msg.contains("mapping failed"))
+      assertEquals(last, 2)
+      assertEquals(mapped.stateNow().value, Some(2))
+    }
+  }
+
+  test("ignore-error recovery follows source order and retains the last result across loading") {
+    val source = State[AsyncDataState[String, Int]](AsyncDataFailed(Exception("offline")))
+    val pending = Promise[AsyncDataStateFinished[String, Int]]()
+    val recovered = AsyncState(source.observable).recoverOnErrorIgnoreError(_ => pending.future)
+    val latest = Promise[Int]()
+    recovered.observeLoadedValues.addObserver(value => if value == 3 then latest.trySuccess(value))
+    source.set(AsyncDataSuccess(2))
+    source.set(AsyncDataLoading())
+    source.set(AsyncDataSuccess(3))
+    assert(recovered.stateNow().isLoading)
+    pending.success(AsyncDataSuccess(1))
+    recovered.futureFirstValue.zip(latest.future).map { (initial, last) =>
+      assertEquals(initial, 1)
+      assertEquals(last, 3)
+      source.set(AsyncDataLoading())
+      assertEquals(recovered.stateNow().value, Some(3))
     }
   }
 

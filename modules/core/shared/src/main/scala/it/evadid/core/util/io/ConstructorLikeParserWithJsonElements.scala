@@ -3,6 +3,7 @@ package it.evadid.core.util.io
 import fastparse.*
 import fastparse.MultiLineWhitespace.*
 import it.evadid.distribution.command.SerializedException
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
 import it.evadid.util.parsing.{Js, JsonGrammar}
 import upickle.default.*
 
@@ -13,23 +14,24 @@ object ConstructorLikeParserWithJsonElements {
   case class ConstructorLikeReadResult(elementType: String, jsonPayloads: Seq[String]) derives ReadWriter {
     
     /** Positional arguments need the same field layout used by the writer. */
-    def valuesWithOrder(order: Map[Int, List[it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig]]): Map[String, ujson.Value] = {
-      val fields = scala.collection.mutable.LinkedHashMap.empty[String, ujson.Value]
-      def add(key: String, value: ujson.Value): Unit = {
+    def valuesWithOrder(order: Map[Int, List[VariableDisplayConfig]]): Map[String, ujson.Value] =
+      jsonPayloads.zipWithIndex.iterator.flatMap { (payload, position) =>
+        fieldsInGroup(payload, position, order.getOrElse(position, Nil))
+      }.foldLeft(Map.empty[String, ujson.Value]) { case (fields, (key, value)) =>
         require(!fields.contains(key), s"Duplicate constructor field: $key")
-        fields(key) = value
+        fields.updated(key, value)
       }
-      jsonPayloads.zipWithIndex.foreach { (payload, position) =>
-        val arguments = ujson.read("[" + payload + "]").arr.toList
-        val positional = order.getOrElse(position, Nil).filter(_.suppressKey)
-        require(arguments.size >= positional.size, s"Missing positional arguments in constructor group $position")
-        positional.zip(arguments).foreach { (config, value) => add(config.varId, value) }
-        arguments.drop(positional.size).foreach {
-          case obj: ujson.Obj => obj.obj.foreach { (key, value) => add(key, value) }
-          case _ => throw new IllegalArgumentException(s"Unnamed argument in constructor group $position")
-        }
+
+    private def fieldsInGroup(payload: String, position: Int, layout: List[VariableDisplayConfig]): List[(String, ujson.Value)] = {
+      val arguments = ujson.read("[" + payload + "]").arr.toList
+      val positional = layout.filter(_.suppressKey)
+      require(arguments.size >= positional.size, s"Missing positional arguments in constructor group $position")
+      val positionalFields = positional.zip(arguments).map((config, value) => config.varId -> value)
+      val namedFields = arguments.drop(positional.size).flatMap {
+        case obj: ujson.Obj => obj.obj.toList
+        case _ => throw new IllegalArgumentException(s"Unnamed argument in constructor group $position")
       }
-      fields.toMap
+      positionalFields ++ namedFields
     }
 
     lazy val values: Map[String, ujson.Value] = valuesWithOrder(Map.empty)

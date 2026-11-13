@@ -18,40 +18,36 @@ private case class DerivedObservableValue[I, O](
   private var runningExecution: Option[Promise[O]] = None
   private val outObs: ObservableValueImpl[O] = ObservableValueImpl[O](None)
 
+  private def takeNextInput(): Try[I] = deriveLogic match {
+    case ObserverDerivationLogic.DeriveOnlyLastValues => inputQueue.dequeueAll(_ => true).last
+    case ObserverDerivationLogic.DeriveAllValues => inputQueue.dequeue()
+  }
+
   private def ensureActivationRunning(): Unit = syncLock.synchronized {
     if (inputQueue.nonEmpty && runningExecution.isEmpty) {
       runningExecution = Some(Promise[O]())
-
-      val startDerivationOn: Try[I] = deriveLogic.match {
-        case ObserverDerivationLogic.DeriveOnlyLastValues => inputQueue.dequeueAll(_ => true).last
-        case ObserverDerivationLogic.DeriveAllValues => inputQueue.dequeue()
-      }
-
-      startDerivationOn.match {
-        case Success(baseValue) => {
-          deriveFunc match {
-            case Left(function) => executeDerivateFunctionWith.handleExecution(function, baseValue, finishedDerivation)
-            case Right(function) =>
-              executeDerivateFunctionWith.handleExecution[I, Future[O]](function, baseValue, {
-                case Success(future) => future.onComplete(finishedDerivation)(using ExecutionContext.parasitic)
-                case Failure(error) => finishedDerivation(Failure(error))
-              })
-          }
-        }
-        case Failure(error) => {
-          val throwException = new IllegalStateException("Derived Observable Value failed because of base value error", error)
-          finishedDerivation(Failure(throwException))
-        }
-      }
+      runDerivation(takeNextInput())
     }
   }
 
-  private def finishedDerivation(derivedValue: Try[O]): Unit = syncLock.synchronized {
-    if (runningExecution.nonEmpty) {
-      runningExecution.get.complete(derivedValue)
-      runningExecution = None
+  private def runDerivation(input: Try[I]): Unit = input match {
+    case Failure(error) =>
+      finishedDerivation(Failure(new IllegalStateException("Derived Observable Value failed because of base value error", error)))
+    case Success(value) => deriveFunc match {
+      case Left(function) =>
+        executeDerivateFunctionWith.handleExecution(function, value, finishedDerivation)
+      case Right(function) =>
+        executeDerivateFunctionWith.handleExecution[I, Future[O]](function, value, {
+          case Success(future) => future.onComplete(finishedDerivation)(using ExecutionContext.parasitic)
+          case Failure(error) => finishedDerivation(Failure(error))
+        })
     }
-    outObs.onNewValueArrived(derivedValue)
+  }
+
+  private def finishedDerivation(result: Try[O]): Unit = syncLock.synchronized {
+    runningExecution.foreach(_.complete(result))
+    runningExecution = None
+    outObs.onNewValueArrived(result)
     ensureActivationRunning()
   }
 
@@ -61,8 +57,7 @@ private case class DerivedObservableValue[I, O](
   }
 
   override def currentValueOrWaitForUpdate: Future[O] = syncLock.synchronized {
-    if (runningExecution.nonEmpty) runningExecution.get.future
-    else outObs.currentValueOrWaitForUpdate
+    runningExecution.fold(outObs.currentValueOrWaitForUpdate)(_.future)
   }
 
   override def addObserver(observer: Observer[O]): Subscription[O] = syncLock.synchronized {

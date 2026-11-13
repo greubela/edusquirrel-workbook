@@ -11,21 +11,25 @@ case class LanguageMapCollectionSource(inputSources: Set[LanguageMapInputSource]
 
   given ExecutionContext = ec
 
-  def loadTriples(logger: Logger, source: LanguageMapInputSource): Future[ParsedTriples] = if(inputSources.nonEmpty){
-    Try(source.loadAllTriples(logger)).fold(Future.failed, identity).recover {
-      case NonFatal(e) => {
-        logger.logExceptionWarn(s"ignoring triples of source ${source} because of error", e)
-        ParsedTriples(Set(), Set())
+  private def emptyTriples: ParsedTriples = ParsedTriples(Set.empty, Set.empty)
+
+  def loadTriples(logger: Logger, source: LanguageMapInputSource): Future[ParsedTriples] =
+    if inputSources.isEmpty then Future.successful(emptyTriples)
+    else Try(source.loadAllTriples(logger)).fold(Future.failed, identity).recover {
+      case NonFatal(error) =>
+        logger.logExceptionWarn(s"Ignoring triples of source $source because of error", error)
+        emptyTriples
+    }
+
+  override def loadAllTriples(logger: Logger): Future[ParsedTriples] = {
+    if inputSources.isEmpty then {
+      logger.logWarn("Ignoring input source collection (collection is empty)")
+      Future.successful(emptyTriples)
+    } else {
+      logger.logInfo(s"Fetching language maps from ${inputSources.size} sources")
+      Future.traverse(inputSources)(source => loadTriples(logger, source)).map { sources =>
+        ParsedTriples(sources.flatMap(_.regularTriples), sources.flatMap(_.universalTriples))
       }
     }
-  }else Future.successful(ParsedTriples(Set(), Set()))
-
-  override def loadAllTriples(logger: Logger): Future[ParsedTriples] = if(inputSources.nonEmpty){
-    logger.logInfo(s"Starting Fetching LanguageMapIds in a collection with ${inputSources.size} elements (first: ${inputSources.head})")
-    Future.traverse(inputSources)(source => loadTriples(logger, source))
-      .map(tripleSet => ParsedTriples(tripleSet.flatMap(_.regularTriples), tripleSet.flatMap(_.universalTriples)))
-  }else{
-    logger.logWarn("Ignoring Input Source Collection (collection is empty)")
-    Future.successful(ParsedTriples(Set(), Set()))
   }
 }

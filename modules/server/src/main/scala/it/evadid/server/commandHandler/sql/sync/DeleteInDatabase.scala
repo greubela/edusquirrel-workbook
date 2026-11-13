@@ -16,7 +16,7 @@ case class DeleteInDatabase(
                              logger: Logger
                            ) {
 
-  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection,  logger)
+  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
   private lazy val fetch: FetchFromDatabase = new FetchFromDatabase(connection, usageContext, logger)
 
   private def deleteEventsById(ids: Set[Long], tableName: String): SyncSuccess = {

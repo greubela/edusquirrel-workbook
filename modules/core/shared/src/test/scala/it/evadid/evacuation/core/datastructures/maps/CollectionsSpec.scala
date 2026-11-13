@@ -38,6 +38,43 @@ class CollectionsSpec extends FunSuite {
     assertEquals(map("a").toList, Nil)
     assertEquals(map("b").toList, List(2, 2))
   }
+  test("list transformations use independent snapshots even when callbacks mutate the source") {
+    val map = new MultiHashMapList[String, Int]
+    map.addElement("a" -> 1).addElement("a" -> 2)
+    val copied = map.getCopyWithMappedKeys { key =>
+      map.addElement(key -> 99)
+      "all"
+    }
+    assertEquals(copied("all").toList, List(1, 2))
+    assertEquals(map("a").toList, List(1, 2, 99))
+    val replaced = map.getCopyWithReplacedValues(values => values.reverse.take(2))
+    assertEquals(replaced("a").toList, List(99, 2))
+    replaced("a").clear()
+    assertEquals(map("a").toList, List(1, 2, 99))
+  }
+
+  test("list buffer access retains its existing ownership contract") {
+    val map = new MultiHashMapList[String, Int]
+    val bucket = ListBuffer(1, 2, 2)
+    map += ("a" -> bucket)
+    assert(map.get("a").exists(_ eq bucket))
+    assert(map.iterator.next()._2 eq bucket)
+    bucket += 3
+    map.removeAllValues(_ == 2)
+    assertEquals(bucket.toList, List(1, 3))
+    assertEquals(map.getAllEntries, Set("a" -> 1, "a" -> 3))
+  }
+
+  test("empty list buckets retain their rendering and copy behavior") {
+    val map = new MultiHashMapList[String, Int]
+    map("empty")
+    assert(map.toString.contains("key \"empty\":\n"))
+    assertEquals(map.getCopy.keys().toSet, Set.empty[String])
+    assertEquals(map.getAllValues, Set.empty[Int])
+    val populated = map.getCopyWithReplacedValues(_ => Seq(7))
+    assertEquals(populated("empty").toList, List(7))
+  }
+
   test("set buckets deduplicate, transform values and compare structurally") {
     val map = new MultiHashMapSet[String, Int]
     map.addElement("a" -> 1).addElement("a" -> 1).addElement("a" -> 2)
@@ -79,4 +116,28 @@ class CollectionsSpec extends FunSuite {
     assertEquals(pool.removed("abc"), Map.empty[String, Int])
     assertEquals(pool.iterator.toMap, Map("abc" -> 3))
   }
+  test("set-map transformations use snapshots when callbacks mutate the source") {
+    val map = new MultiHashMapSet[String, Int]
+    map.addElement("a" -> 1).addElement("a" -> 2)
+    val copied = map.getCopyWithApplied { value =>
+      map.addElement("a" -> 99)
+      value * 2
+    }
+    assertEquals(copied("a").toSet, Set(2, 4))
+    assertEquals(map("a").toSet, Set(1, 2, 99))
+    copied("a").clear()
+    assertEquals(map("a").toSet, Set(1, 2, 99))
+    map.addAll(map)
+    assertEquals(map("a").toSet, Set(1, 2, 99))
+  }
+
+  test("set-map removal preserves exposed bucket ownership") {
+    val map = new MultiHashMapSet[String, Int]
+    val bucket = HashSet(1, 2, 3)
+    map += ("a" -> bucket)
+    map.removeAllValues(_ % 2 == 1)
+    assert(map.get("a").exists(_ eq bucket))
+    assertEquals(bucket.toSet, Set(2))
+  }
+
 }

@@ -7,6 +7,7 @@ import it.evadid.distribution.command.SerializedException
 
 import scala.concurrent.*
 import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
 
 /*
   Basically a cleaned up Observable[AsyncDataState[]] that fails explicitly with its type and has syntactic sugar for values still loading / failed computations
@@ -51,21 +52,14 @@ trait AsyncData[F, S] {
 
   private def mapStates[F2, S2](func: AsyncDataState[F, S] => AsyncDataState[F2, S2]): AsyncData[F2, S2] = AsyncState(observeAllStates.deriveValue(func))
 
-  private def mapStatesAsync[F2, S2](func: AsyncDataState[F, S] => Future[AsyncDataState[F2, S2]]): AsyncData[F2, S2] = {
-    val res: ObservableValueImpl[AsyncDataState[F2, S2]] = ObservableValueImpl(Some(AsyncDataLoading[F2, S2]()))
+  // Serialize mappings in source order: a slow earlier result must not overwrite a later one.
+  private def mapStatesAsync[F2, S2](func: AsyncDataState[F, S] => Future[AsyncDataState[F2, S2]]): AsyncData[F2, S2] =
+    AsyncState(observeAllStates.deriveAsync(state => finishComputation(func(state), "Error during computation of Async Value")))
 
-    observeAllStates.addObserver(curState => {
-      val fut: Future[AsyncDataState[F2, S2]] = Try(func(curState)).fold(Future.failed, identity)
-      fut.onComplete {
-        case Success(value) => res.onNewValueArrived(Success(value))
-        case Failure(error) => {
-          val exception = new Exception("Error during computation of Async Value: " + error.getMessage, error)
-          res.onNewValueArrived(Success(AsyncDataFailed(SerializedException(exception), None)))
-        }
-      }
-    })
-    AsyncState(res)
-  }
+  private def finishComputation[F2, S2](pending: => Future[AsyncDataState[F2, S2]], context: String): Future[AsyncDataState[F2, S2]] =
+    Try(pending).fold(Future.failed, identity).recover {
+      case NonFatal(error) => AsyncDataFailed(new Exception(s"$context: ${error.getMessage}", error), None)
+    }
 
 
   def mapAsync[S2](func: S => Future[S2]): AsyncData[F, S2] = mapStatesAsync {
@@ -77,25 +71,15 @@ trait AsyncData[F, S] {
     case l: AsyncDataLoading[F, S] => Future.successful(l.asInstanceOf[AsyncDataState[F, S2]])
   }
 
-  def recoverOnErrorIgnoreError(func: AsyncDataFailed[F, S] => Future[AsyncDataStateFinished[F, S]]) = {
-    val res: ObservableValueImpl[AsyncDataState[F, S]] = ObservableValueImpl(Some(AsyncDataLoading[F, S]()))
-
-    observeAllStates.addObserver {
-      case f: AsyncDataFailed[F, S] => Try(func(f)).fold(Future.failed, identity).onComplete {
-        case Failure(err) => {
-          val newErr = Exception("Error during recovery of AsyncDataFailed: " + err.getMessage, err)
-          res.onNewValueArrived(Success(AsyncDataFailed(newErr, None)))
-        }
-        case Success(state) => {
-          res.onNewValueArrived(Success(state))
-        }
-      }
-      case other: AsyncDataSuccess[F, S] => res.onNewValueArrived(Success(other))
-      case loading: AsyncDataLoading[F, S] => {}
+  def recoverOnErrorIgnoreError(func: AsyncDataFailed[F, S] => Future[AsyncDataStateFinished[F, S]]): AsyncData[F, S] = {
+    val finishedStates = observeAllStates.deriveSome[AsyncDataState[F, S]] {
+      case _: AsyncDataLoading[F, S] => None
+      case finished => Some(finished)
     }
-
-    AsyncState(res)
-
+    AsyncState(finishedStates.deriveAsync {
+      case failed: AsyncDataFailed[F, S] => finishComputation[F, S](func(failed), "Error during recovery of AsyncDataFailed")
+      case state => Future.successful(state)
+    })
   }
 
   def recoverOnErrorPushError(func: AsyncDataFailed[F, S] => Future[AsyncDataStateFinished[F, S]]): AsyncData[F, S] = mapStatesAsync {

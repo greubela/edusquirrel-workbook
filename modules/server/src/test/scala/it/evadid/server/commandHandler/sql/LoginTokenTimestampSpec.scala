@@ -8,7 +8,7 @@ import java.sql.{Connection, PreparedStatement, ResultSet}
 import java.time.LocalDateTime
 
 class LoginTokenTimestampSpec extends FunSuite {
-  private val parser = GenericSqlFunctionality(null, BasicLogger())
+  private val parser = GenericSqlFunctionality(BasicLogger())
 
   List("2026-10-13 01:40:00", "2026-10-13 01:40:00.0",
     "2026-10-13 01:40:00.123456", "2026-10-13 01:40:00.123456789").foreach { value =>

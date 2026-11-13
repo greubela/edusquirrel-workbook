@@ -1,7 +1,7 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
 import it.evadid.core.datastructures.geometry.Point
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import munit.FunSuite
 
 class TurtlePathBuilderSpec extends FunSuite {
@@ -10,10 +10,10 @@ class TurtlePathBuilderSpec extends FunSuite {
     val builder = TurtlePathBuilder[Double](
       Point(0.0, 0.0),
       List(
-        TurtleCommand("color", stringArgs = List("red")),
-        TurtleCommand("forward", List(10.0)),
-        TurtleCommand("right", List(90.0)),
-        TurtleCommand("forward", List(10.0))
+        TurtleCommand.Color("red"),
+        TurtleCommand.Forward(10.0),
+        TurtleCommand.Right(90.0),
+        TurtleCommand.Forward(10.0)
       ),
       90
     )
@@ -27,12 +27,12 @@ class TurtlePathBuilderSpec extends FunSuite {
     val builder = TurtlePathBuilder[Double](
       Point(0.0, 0.0),
       List(
-        TurtleCommand("color", stringArgs = List("red")),
-        TurtleCommand("pensize", List(2.0)),
-        TurtleCommand("forward", List(10.0)),
-        TurtleCommand("color", stringArgs = List("blue")),
-        TurtleCommand("pensize", List(4.0)),
-        TurtleCommand("forward", List(10.0))
+        TurtleCommand.Color("red"),
+        TurtleCommand.PenSize(2.0),
+        TurtleCommand.Forward(10.0),
+        TurtleCommand.Color("blue"),
+        TurtleCommand.PenSize(4.0),
+        TurtleCommand.Forward(10.0)
       ),
       90
     )
@@ -45,12 +45,12 @@ class TurtlePathBuilderSpec extends FunSuite {
     val builder = TurtlePathBuilder[Double](
       Point(0.0, 0.0),
       List(
-        TurtleCommand("color", stringArgs = List("red")),
-        TurtleCommand("forward", List(10.0)),
-        TurtleCommand("penup"),
-        TurtleCommand("forward", List(10.0)),
-        TurtleCommand("pendown"),
-        TurtleCommand("forward", List(10.0))
+        TurtleCommand.Color("red"),
+        TurtleCommand.Forward(10.0),
+        TurtleCommand.PenUp(),
+        TurtleCommand.Forward(10.0),
+        TurtleCommand.PenDown(),
+        TurtleCommand.Forward(10.0)
       ),
       90
     )
@@ -63,9 +63,9 @@ class TurtlePathBuilderSpec extends FunSuite {
     val builder = TurtlePathBuilder[Double](
       Point(0.0, 0.0),
       List(
-        TurtleCommand("forward", List(20.0)),
-        TurtleCommand("clear"),
-        TurtleCommand("forward", List(10.0))
+        TurtleCommand.Forward(20.0),
+        TurtleCommand.Clear(),
+        TurtleCommand.Forward(10.0)
       ),
       90
     )
@@ -75,14 +75,14 @@ class TurtlePathBuilderSpec extends FunSuite {
   }
 
   test("Snap heading starts at 90 degrees and updates bounds") {
-    val builder = TurtlePathBuilder[Double](Point(0.0, 0.0), List(TurtleCommand("forward", List(50.0))), 90)
+    val builder = TurtlePathBuilder[Double](Point(0.0, 0.0), List(TurtleCommand.Forward(50.0)), 90)
     assertEquals(builder.turtleState.x, 0.0)
     assertEquals(builder.turtleState.y, -50.0)
     assert(builder.svgPathBuilder.pathPoints.exists(_.y == -50.0))
   }
 
   test("default pen color is black and width is 1") {
-    val builder = TurtlePathBuilder[Double](Point(0.0, 0.0), List(TurtleCommand("forward", List(5.0))), 90)
+    val builder = TurtlePathBuilder[Double](Point(0.0, 0.0), List(TurtleCommand.Forward(5.0)), 90)
     val segments = builder.completedStyledSegments
     assertEquals(segments.head.style.color, "black")
     assertEquals(segments.head.style.size, 1.0)
@@ -90,8 +90,8 @@ class TurtlePathBuilderSpec extends FunSuite {
 
   test("circle accepts Vector arguments with the same geometry as List arguments") {
     List(Vector(10.0), Vector(10.0, 90.0), Vector(10.0, 90.0, 12.0)).foreach { args =>
-      val expected = TurtlePathBuilder[Double]().handleStringCommand(TurtleCommand("circle", args.toList))
-      val actual = TurtlePathBuilder[Double]().handleStringCommand(TurtleCommand("circle", args))
+      val expected = TurtlePathBuilder[Double]().handleCommand(TurtleCommand.fromText("circle", args.toList))
+      val actual = TurtlePathBuilder[Double]().handleCommand(TurtleCommand.fromText("circle", args))
       assert(expected.completedStyledSegments.nonEmpty)
       assertEquals(actual.svgPathBuilder.toSvgPathD, expected.svgPathBuilder.toSvgPathD)
       assertEquals(actual.turtleState, expected.turtleState)

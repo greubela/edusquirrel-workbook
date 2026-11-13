@@ -12,6 +12,7 @@ import upickle.default.*
 
 import java.sql.{Connection, Timestamp}
 import java.time.LocalDateTime
+import scala.util.Using
 
 case class UpsertToDatabase(
                              connection: Connection,
@@ -19,7 +20,7 @@ case class UpsertToDatabase(
                              logger: Logger
                            ) extends RelationalHistorySql(connection, logger) {
 
-  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(connection, logger)
+  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
   private lazy val delete: DeleteInDatabase = new DeleteInDatabase(connection, usageContext, logger)
 
   private def contextValues(context: SyncContext): List[String] =
@@ -67,39 +68,13 @@ case class UpsertToDatabase(
         val grader = read[WorkbookInteractionGrader[ujson.Value, ujson.Value]](definition)
         require(grader.key.nonEmpty, "Grader identity must not be empty")
         val answer = answerFor(state)
-        val previous = query("SELECT * FROM grading_event WHERE sync_id=? AND answer_id=? AND grader_key=?", List(sync, answer, grader.key)) { row =>
-          safe("previous grading " + row.getLong("id")) {
-            writeJs(read[GradingResult[ujson.Value, ujson.Value]](gradeJson(row, state)))
-          }
-        }.flatten.headOption
-        val result = previous.map { previous =>
-          val old = read[GradingResult[ujson.Value, ujson.Value]](previous)
-          val current = read[GradingResult[ujson.Value, ujson.Value]](incoming)
-          writeJs(mergeGrade(old, current))
-        }.getOrElse(incoming)
-        val regular = ujson.Obj("gradingStatus" -> result("gradingStatus"),
-          "feedbackInformation" -> result.obj.getOrElse("feedbackInformation", ujson.Null))
-        val storedGrader = read[WorkbookInteractionGrader[ujson.Value, ujson.Value]](result("grader"))
-        update("INSERT INTO grading_event (sync_id,answer_id,grader_key,grader_definition,grading_entity,grading_status,timestamp,serialized_data,additional_data) VALUES (?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE grader_definition=VALUES(grader_definition),grading_entity=VALUES(grading_entity),grading_status=VALUES(grading_status),timestamp=VALUES(timestamp),serialized_data=VALUES(serialized_data),additional_data=VALUES(additional_data)",
-          sync, answer, grader.key, result("grader").str, write(storedGrader.gradingEntity),
-          read[GradingStatus](result("gradingStatus")).getClass.getSimpleName, time(result("gradingTime")),
-          ujson.write(regular), optionalData(result, "additionalData"))
+        upsertGrading(sync, answer, state, grader, incoming)
       }
     }
     HistoryJson.entries(history("historyScaffolding")("scaffoldingMap")).foreach { (state, incoming) =>
       require(incoming("forState") == state, "Scaffolding state does not match its map key")
       val answer = answerFor(state)
-      val previous = query("SELECT * FROM scaffolding_event WHERE sync_id=? AND answer_id=?", List(sync, answer)) { row =>
-        safe("previous scaffolding " + row.getLong("id")) {
-          writeJs(read[ScaffoldingResult[ujson.Value, ujson.Value]](scaffoldingJson(row, state)))
-        }
-      }.flatten.headOption
-      val result = previous.map { old => writeJs(read[ScaffoldingResult[ujson.Value, ujson.Value]](old)
-        .merge(read[ScaffoldingResult[ujson.Value, ujson.Value]](incoming))) }.getOrElse(incoming)
-      update("INSERT INTO scaffolding_event (sync_id,answer_id,timestamp,scaffolding_entity,scaffolding_status,serialized_data,additional_data) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE timestamp=VALUES(timestamp),scaffolding_entity=VALUES(scaffolding_entity),scaffolding_status=VALUES(scaffolding_status),serialized_data=VALUES(serialized_data),additional_data=VALUES(additional_data)",
-        sync, answer, time(result("scaffoldingTime")), ujson.write(result("scaffoldingEntity")),
-        read[ScaffoldingStatus](result("scaffoldingStatus")).getClass.getSimpleName,
-        ujson.write(result("scaffoldingStatus")), optionalData(result, "additionalInformation"))
+      upsertScaffolding(sync, answer, state, incoming)
     }
     val feedbackCount = HistoryJson.entries(history("historyGrading")("gradingsMap"))
       .map((_, group) => HistoryJson.entries(group("graderResultMap")).size).sum +
@@ -107,32 +82,45 @@ case class UpsertToDatabase(
     SyncSuccess(0, history("historyStates")("events").arr.size + feedbackCount, 0, LocalDateTime.now())
   }
 
+  private def upsertGrading(sync: Long, answer: Long, state: ujson.Value,
+                            grader: WorkbookInteractionGrader[ujson.Value, ujson.Value], incoming: ujson.Value): Unit = {
+    val previous = query("SELECT * FROM grading_event WHERE sync_id=? AND answer_id=? AND grader_key=?", List(sync, answer, grader.key)) { row =>
+      safe("previous grading " + row.getLong("id")) {
+        writeJs(read[GradingResult[ujson.Value, ujson.Value]](gradeJson(row, state)))
+      }
+    }.flatten.headOption
+    val result = previous.map { previous =>
+      val old = read[GradingResult[ujson.Value, ujson.Value]](previous)
+      val current = read[GradingResult[ujson.Value, ujson.Value]](incoming)
+      writeJs(mergeGrade(old, current))
+    }.getOrElse(incoming)
+    val regular = ujson.Obj("gradingStatus" -> result("gradingStatus"),
+      "feedbackInformation" -> result.obj.getOrElse("feedbackInformation", ujson.Null))
+    val storedGrader = read[WorkbookInteractionGrader[ujson.Value, ujson.Value]](result("grader"))
+    update("INSERT INTO grading_event (sync_id,answer_id,grader_key,grader_definition,grading_entity,grading_status,timestamp,serialized_data,additional_data) VALUES (?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE grader_definition=VALUES(grader_definition),grading_entity=VALUES(grading_entity),grading_status=VALUES(grading_status),timestamp=VALUES(timestamp),serialized_data=VALUES(serialized_data),additional_data=VALUES(additional_data)",
+      sync, answer, grader.key, result("grader").str, write(storedGrader.gradingEntity),
+      read[GradingStatus](result("gradingStatus")).getClass.getSimpleName, time(result("gradingTime")),
+      ujson.write(regular), optionalData(result, "additionalData"))
+  }
+
+  private def upsertScaffolding(sync: Long, answer: Long, state: ujson.Value, incoming: ujson.Value): Unit = {
+    val previous = query("SELECT * FROM scaffolding_event WHERE sync_id=? AND answer_id=?", List(sync, answer)) { row =>
+      safe("previous scaffolding " + row.getLong("id")) {
+        writeJs(read[ScaffoldingResult[ujson.Value, ujson.Value]](scaffoldingJson(row, state)))
+      }
+    }.flatten.headOption
+    val result = previous.map { old => writeJs(read[ScaffoldingResult[ujson.Value, ujson.Value]](old)
+      .merge(read[ScaffoldingResult[ujson.Value, ujson.Value]](incoming))) }.getOrElse(incoming)
+    update("INSERT INTO scaffolding_event (sync_id,answer_id,timestamp,scaffolding_entity,scaffolding_status,serialized_data,additional_data) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE timestamp=VALUES(timestamp),scaffolding_entity=VALUES(scaffolding_entity),scaffolding_status=VALUES(scaffolding_status),serialized_data=VALUES(serialized_data),additional_data=VALUES(additional_data)",
+      sync, answer, time(result("scaffoldingTime")), ujson.write(result("scaffoldingEntity")),
+      read[ScaffoldingStatus](result("scaffoldingStatus")).getClass.getSimpleName,
+      ujson.write(result("scaffoldingStatus")), optionalData(result, "additionalInformation"))
+  }
+
   def findMaxTimestamp(history: String): Option[LocalDateTime] = HistoryJson.lastTimestamp(history)
 
   def upsertIntoTableWithKeys(request: StoreToDbRequest): SyncSuccess =
-    if (HistoryJson.lastTimestamp(request.historyJson).isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now()) else {
-      val sql =
-        s"""
-           |INSERT INTO `eventsWithKey` (`programid`, `scenarioid`, `userid`, `timestamp`, `serializeddata`, `eventkey`)
-           |VALUES (?, ?, ?, ?, ?, ?)
-           |ON DUPLICATE KEY UPDATE
-           |  `timestamp` = VALUES(`timestamp`),
-           |  `serializeddata` = VALUES(`serializeddata`)
-           |""".stripMargin
-
-
-      val stmt = connection.prepareStatement(sql)
-      stmt.setString(1, request.syncContext.programId)
-      stmt.setString(2, request.syncContext.scenarioId)
-      stmt.setString(3, request.syncContext.userId)
-      stmt.setTimestamp(4, Timestamp.valueOf(HistoryJson.lastTimestamp(request.historyJson).get))
-      stmt.setString(5, HistoryJson.stored(request.syncContext.keyForSerialisation, request.historyJson))
-      stmt.setString(6, request.syncContext.keyForSerialisation)
-
-      val res = generic.executeUpdate(stmt)
-      println(s"Upserted $res event into database")
-      SyncSuccess(0, res, 0, LocalDateTime.now())
-    }
+    storeSnapshot(request, "eventsWithKey", includeKey = true)
 
   def upsertIntoTableWithoutKeys(request: StoreToDbRequest, tableName: String = "events"): SyncSuccess = transaction {
     val key = request.syncContext.keyForSerialisation
@@ -140,31 +128,30 @@ case class UpsertToDatabase(
     insertIntoTableWithoutKeys(request, tableName)
   }
 
-  def insertIntoTableWithoutKeys(request: StoreToDbRequest, tableName: String = "events"): SyncSuccess = {
-    if (HistoryJson.lastTimestamp(request.historyJson).isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now()) else {
-      val sql =
-        s"""
-           |INSERT INTO `$tableName` (`programid`, `scenarioid`, `userid`, `timestamp`, `serializeddata`)
-           |VALUES (?, ?, ?, ?, ?)
-           |ON DUPLICATE KEY UPDATE
-           |  `timestamp` = VALUES(`timestamp`),
-           |  `serializeddata` = VALUES(`serializeddata`)
-           |""".stripMargin
+  def insertIntoTableWithoutKeys(request: StoreToDbRequest, tableName: String = "events"): SyncSuccess =
+    storeSnapshot(request, tableName, includeKey = false)
 
-      val stmt = connection.prepareStatement(sql)
-
-      stmt.setString(1, request.syncContext.programId)
-      stmt.setString(2, request.syncContext.scenarioId)
-      stmt.setString(3, request.syncContext.userId)
-      stmt.setTimestamp(4, Timestamp.valueOf(HistoryJson.lastTimestamp(request.historyJson).get))
-      stmt.setString(5, HistoryJson.stored(request.syncContext.keyForSerialisation, request.historyJson))
-
-      val res = generic.executeUpdate(stmt)
-      println(s"Inserted $res event into database")
-      SyncSuccess(res, 0, 0, LocalDateTime.now())
+  private def storeSnapshot(request: StoreToDbRequest, tableName: String, includeKey: Boolean): SyncSuccess =
+    HistoryJson.lastTimestamp(request.historyJson).fold(SyncSuccess.emptyNow()) { timestamp =>
+      val keyColumn = if includeKey then ", `eventkey`" else ""
+      val keyPlaceholder = if includeKey then ", ?" else ""
+      val sql = s"""INSERT INTO `$tableName` (`programid`, `scenarioid`, `userid`, `timestamp`, `serializeddata`$keyColumn)
+                   |VALUES (?, ?, ?, ?, ?$keyPlaceholder)
+                   |ON DUPLICATE KEY UPDATE `timestamp` = VALUES(`timestamp`), `serializeddata` = VALUES(`serializeddata`)
+                   |""".stripMargin
+      val affected = Using.resource(connection.prepareStatement(sql)) { statement =>
+        statement.setString(1, request.syncContext.programId)
+        statement.setString(2, request.syncContext.scenarioId)
+        statement.setString(3, request.syncContext.userId)
+        statement.setTimestamp(4, Timestamp.valueOf(timestamp))
+        statement.setString(5, HistoryJson.stored(request.syncContext.keyForSerialisation, request.historyJson))
+        if includeKey then statement.setString(6, request.syncContext.keyForSerialisation)
+        generic.executeUpdate(statement)
+      }
+      if includeKey then SyncSuccess(0, affected, 0, LocalDateTime.now())
+      else SyncSuccess(affected, 0, 0, LocalDateTime.now())
     }
 
-  }
 }
 
 object UpsertToDatabase {

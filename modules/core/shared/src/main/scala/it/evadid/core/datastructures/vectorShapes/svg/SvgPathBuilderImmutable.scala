@@ -3,7 +3,6 @@ package it.evadid.core.datastructures.vectorShapes.svg
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 
-import scala.collection.mutable
 
 object SvgPathBuilderImmutable {
   given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[SvgPathBuilderImmutable[T]] =
@@ -27,69 +26,64 @@ case class SvgPathBuilderImmutable[T: Fractional](
   lazy val absStartPoint: Point[T] = startCommand.absoluteStartPos
 
   lazy val absoluteCommands: List[AbsoluteCommand[T]] = {
-    var curPoint = startCommand.absoluteStartPos
-    var subpathStart = curPoint
-    var res = mutable.ListBuffer[AbsoluteCommand[T]]()
-    for (curCommand <- furtherCommands) {
-      val absCommand = curCommand match {
-        case _: ClosePath[T] => AddControlLinesCommand(subpathStart, Nil)
-        case other => other.toAbsoluteCommand(curPoint)
-      }
-      curCommand match {
-        case _: MoveAbs[T] | _: MoveRel[T] => subpathStart = absCommand.positionAfterCommand
-        case _ => ()
-      }
-      res += absCommand
-      curPoint = absCommand.positionAfterCommand
+    val (_, _, reversed) = furtherCommands.foldLeft((absStartPoint, absStartPoint, List.empty[AbsoluteCommand[T]])) {
+      case ((current, subpathStart, converted), command) =>
+        val absolute = command match {
+          case _: ClosePath[?] => AddControlLinesCommand(subpathStart, Nil)
+          case other => other.toAbsoluteCommand(current)
+        }
+        val nextStart = command match {
+          case _: MoveAbs[?] | _: MoveRel[?] => absolute.positionAfterCommand
+          case _ => subpathStart
+        }
+        (absolute.positionAfterCommand, nextStart, absolute :: converted)
     }
-    res.toList
+    reversed.reverse
   }
 
   lazy val relativeCommands: List[RelativeCommand[T]] = {
-    var curPoint = startCommand.absoluteStartPos
-    var res = mutable.ListBuffer[RelativeCommand[T]]()
-    for ((curCommand, absoluteCommand) <- furtherCommands.zip(absoluteCommands)) {
-      val relCommand = curCommand match {
-        case _: ClosePath[T] => AddControlLinesCommand(absoluteCommand.positionAfterCommand, Nil)
-        case other => other.toRelativeCommand(curPoint)
-      }
-      res += relCommand
-      curPoint = absoluteCommand.positionAfterCommand
+    val (_, reversed) = furtherCommands.zip(absoluteCommands).foldLeft((absStartPoint, List.empty[RelativeCommand[T]])) {
+      case ((current, converted), (command, absolute)) =>
+        val relative = command match {
+          case _: ClosePath[?] => AddControlLinesCommand(absolute.positionAfterCommand, Nil)
+          case other => other.toRelativeCommand(current)
+        }
+        (absolute.positionAfterCommand, relative :: converted)
     }
-    res.toList
+    reversed.reverse
   }
 
-  def moveToRel(dimension: Dimension[T]): SvgPathBuilder[T] =
+  def moveToRel(dimension: Dimension[T]): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ MoveRel(dimension))
 
-  def moveToAbs(endPoint: Point[T]): SvgPathBuilder[T] =
+  def moveToAbs(endPoint: Point[T]): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ MoveAbs(endPoint))
 
-  def closePath(): SvgPathBuilder[T] =
+  def closePath(): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ ClosePath[T]())
 
-  def lineToAbs(point: Point[T]): SvgPathBuilder[T] =
+  def lineToAbs(point: Point[T]): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ LineAbs(point))
 
-  def lineToRel(dimension: Dimension[T]): SvgPathBuilder[T] =
+  def lineToRel(dimension: Dimension[T]): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ LineRel(dimension))
 
-  def horizontalLineWithWidth(width: T): SvgPathBuilder[T] =
+  def horizontalLineWithWidth(width: T): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ HorizontalRel(width))
 
-  def verticalLineWithHeight(height: T): SvgPathBuilder[T] =
+  def verticalLineWithHeight(height: T): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ VerticalRel(height))
 
-  def cubicBezierToAbs(cpStart: Point[T], cpEnd: Point[T], end: Point[T]): SvgPathBuilder[T] =
+  def cubicBezierToAbs(cpStart: Point[T], cpEnd: Point[T], end: Point[T]): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ CubicAbs(cpStart, cpEnd, end))
 
-  def cubicBezierToRel(cpStart: Dimension[T], cpEnd: Dimension[T], end: Dimension[T]): SvgPathBuilder[T] =
+  def cubicBezierToRel(cpStart: Dimension[T], cpEnd: Dimension[T], end: Dimension[T]): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ CubicRel(cpStart, cpEnd, end))
 
-  def quadraticBezierToAbs(controlPoint: Point[T], endPoint: Point[T]): SvgPathBuilder[T] =
+  def quadraticBezierToAbs(controlPoint: Point[T], endPoint: Point[T]): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ QuadAbs(controlPoint, endPoint))
 
-  def quadraticBezierWithRel(controlDimension: Dimension[T], endPointDimension: Dimension[T]): SvgPathBuilder[T] =
+  def quadraticBezierWithRel(controlDimension: Dimension[T], endPointDimension: Dimension[T]): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ QuadRel(controlDimension, endPointDimension))
 
   def arcToAbs(radiusX: T,
@@ -97,7 +91,7 @@ case class SvgPathBuilderImmutable[T: Fractional](
                xAxisRotationDeg: T,
                largeArc: Boolean,
                sweep: Boolean,
-               endPoint: Point[T]): SvgPathBuilder[T] =
+               endPoint: Point[T]): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ ArcAbs(radiusX, radiusY, xAxisRotationDeg, largeArc, sweep, endPoint))
 
   def arcToRel(radiusX: T,
@@ -105,20 +99,20 @@ case class SvgPathBuilderImmutable[T: Fractional](
                xAxisRotationDeg: T,
                largeArc: Boolean,
                sweep: Boolean,
-               dimension: Dimension[T]): SvgPathBuilder[T] =
+               dimension: Dimension[T]): SvgPathBuilderImmutable[T] =
     copy(furtherCommands = furtherCommands :+ ArcRel(radiusX, radiusY, xAxisRotationDeg, largeArc, sweep, dimension))
 
-  def addArcToTheTopMoveRight(radius: T): SvgPathBuilder[T] = {
+  def addArcToTheTopMoveRight(radius: T): SvgPathBuilderImmutable[T] = {
     val dia = radius * fromInt(2)
     arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = true, Dimension(dia, fromInt(0)))
   }
 
-  def addArcToTheRightMoveBottom(radius: T): SvgPathBuilder[T] = {
+  def addArcToTheRightMoveBottom(radius: T): SvgPathBuilderImmutable[T] = {
     val dia = radius * fromInt(2)
     arcToRel(radius, radius, fromInt(0), largeArc = true, sweep = true, Dimension(fromInt(0), dia))
   }
 
-  def addCenteredCircle(radius: T): SvgPathBuilder[T] = {
+  def addCenteredCircle(radius: T): SvgPathBuilderImmutable[T] = {
     val dia = radius * fromInt(2)
     copy(furtherCommands = furtherCommands ++ List(
       MoveRel(Dimension(-radius, fromInt(0))),
@@ -130,7 +124,7 @@ case class SvgPathBuilderImmutable[T: Fractional](
     ))
   }
 
-  def drawBoundRectangle(bounds: Bounds[T]): SvgPathBuilder[T] = {
+  def drawBoundRectangle(bounds: Bounds[T]): SvgPathBuilderImmutable[T] = {
     val w = bounds.width;
     val h = bounds.height
     copy(furtherCommands = furtherCommands ++ List(
@@ -138,7 +132,7 @@ case class SvgPathBuilderImmutable[T: Fractional](
     ))
   }
 
-  def addControlFlowConnector(segmentWidth: T, invertHeight: Boolean = false): SvgPathBuilder[T] = {
+  def addControlFlowConnector(segmentWidth: T, invertHeight: Boolean = false): SvgPathBuilderImmutable[T] = {
     val segH = if (invertHeight) -segmentWidth else segmentWidth
     copy(furtherCommands = furtherCommands ++ List(
       LineRel(Dimension(segmentWidth, fromInt(0))),
@@ -160,7 +154,7 @@ case class SvgPathBuilderImmutable[T: Fractional](
   def calcNextPoint(dimension: Dimension[T]): Point[T] =
     current.withDimension(dimension).endPoint
 
-  def moveWholePath(delta: Dimension[T]): SvgPathBuilder[T] = {
+  def moveWholePath(delta: Dimension[T]): SvgPathBuilderImmutable[T] = {
 
     def shift(p: Point[T]) = p.moveWithDimension(delta)
 

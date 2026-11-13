@@ -81,6 +81,71 @@ class RemoteStoragePackageSpec extends FunSuite {
     assertEquals(cache.getCurrentSyncStatus("missing"), SyncStatus[String, String](None, "missing", None))
   }
 
+  test("cache lookups and merged snapshots consistently select the newest version per key") {
+    val destination = new Destination
+    val oldest = DataEntryReadFromServer("a", "oldest", time.minusSeconds(3))
+    val newest = DataEntryReadFromServer("a", "newest", time.minusSeconds(1))
+    val middle = DataEntryReadFromServer("a", "middle", time.minusSeconds(2))
+    val cache = RemoteSyncDataCache(destination, Some(time), Set(oldest, newest, middle))
+    assertEquals(cache.asMap("a"), newest)
+    assertEquals(cache.getCurrentSyncStatus("a").lastKnownRemoteValue, Some(newest))
+    assert(!cache.needsWriting(DataEntryToWriteToServer("a", "middle", middle.timestamp)))
+    val merged = cache.addAll(Set(oldest, DataEntryReadFromServer("b", "other", time)), time.minusDays(1))
+    assertEquals(merged.knownEntries, Set(newest, DataEntryReadFromServer("b", "other", time)))
+    assertEquals(merged.lastCacheUpdate, Some(time))
+    assertEquals(cache.knownEntries.size, 3)
+  }
+
+  test("cache rejects conflicting newest timestamps but ignores obsolete conflicts") {
+    val destination = new Destination
+    val first = DataEntryReadFromServer("a", "first", time)
+    val conflict = DataEntryReadFromServer("a", "conflict", time)
+    val cache = RemoteSyncDataCache(destination, Some(time), Set(first, conflict))
+    intercept[IllegalArgumentException](cache.asMap)
+    val newer = DataEntryReadFromServer("a", "newer", time.plusSeconds(1))
+    assertEquals(cache.addAll(Set(newer), time).asMap("a"), newer)
+    val valid = populated(destination)
+    valid.writeIfNecessary(List(first, conflict)).failed.map { error =>
+      assert(error.getMessage.contains("Conflicting cache entries"))
+      assertEquals(destination.writes, Nil)
+    }
+  }
+
+  test("write batches select the latest version independently of list order") {
+    val destination = new Destination
+    val cache = populated(destination)
+    val newer = DataEntryToWriteToServer("a", "newer", time.plusSeconds(2))
+    val older = DataEntryToWriteToServer("a", "older", time.plusSeconds(1))
+    cache.writeIfNecessary(List(newer, older)).flatMap { _ =>
+      cache.writeIfNecessary(List(older, newer)).map { _ =>
+        assertEquals(destination.writes, List.fill(2)(Map("a" -> "newer")))
+      }
+    }
+  }
+
+  test("synchronous reader and writer exceptions are returned as failed futures") {
+    val error = new IllegalStateException("transport threw")
+    val config = new RemoteCacheConfig[String, String] {
+      val syncLogger = logger
+      val reader = new RemoteDataReader[String, String] {
+        def fetchAll(logger: SyncLogger): Future[FetchResponse[String, String]] = throw error
+        def fetchByKey(logger: SyncLogger, key: String): Future[FetchResponse[String, String]] = throw error
+      }
+      val writer = new RemoteDataWriter[String, String] {
+        def writeAll(logger: SyncLogger, values: Map[String, String]): Future[SyncSuccess] = throw error
+        def writeForKey(logger: SyncLogger, key: String, value: String): Future[SyncSuccess] = throw error
+      }
+    }
+    val cache = RemoteSyncDataCache(config, None, Set.empty[DataEntryToSync[String, String]])
+    cache.ensureCacheIsAtLeastThisRecent(time).failed.flatMap { failure =>
+      assert(failure eq error)
+      cache.tryEnsureCacheIsAtLeastThisRecent(time).flatMap { unchanged =>
+        assert(unchanged eq cache)
+        cache.writeIfNecessary(List(DataEntryToWriteToServer("a", "new", time))).failed.map(failure => assert(failure eq error))
+      }
+    }
+  }
+
   test("RemoteSyncDataCache writes only new entries and preserves writer failures") {
     val destination = new Destination
     val cache = populated(destination)
@@ -171,4 +236,18 @@ class RemoteStoragePackageSpec extends FunSuite {
       }
     }
   }
+  test("collection store refresh failures propagate and empty destinations stay empty") {
+    val destination = new Destination
+    val error = new IllegalStateException("refresh failed")
+    destination.fetched = Future.failed(error)
+    val collection = RemoteCacheCollection.fromCacheKeys[String, String, Destination](logger, List(destination))
+    collection.requestCacheDependentStore(_ => List(DataEntryToWriteToServer("a", "new", time))).failed.flatMap { failure =>
+      assert(failure eq error)
+      assertEquals(destination.fetchCount, 1)
+      assertEquals(destination.writes, List(Map("a" -> "new")))
+      RemoteCacheCollection.fromCacheKeys[String, String, Destination](logger, Nil)
+        .requestCacheDependentStore(_ => fail("empty collection invoked callback")).map(result => assertEquals(result.remoteCaches.size, 0))
+    }
+  }
+
 }

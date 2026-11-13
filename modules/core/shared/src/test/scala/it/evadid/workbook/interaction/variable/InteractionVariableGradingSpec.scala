@@ -23,7 +23,7 @@ import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestProgramObservation}
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExerciseFullJava, ProgrammingHintScaffolder, ProgrammingUnitTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleGraphic, TurtleRecreateShapeInteraction}
@@ -840,7 +840,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       else "public class Drawing { public static void main(String[] args) { for (int i = 1; i <= 33; i++) { Turtle.forward(i); } } }")
       val f = new DescribedHintFixture(List(check),
         _ => Future.successful(hintReply("Welche Bewegungen kannst du nachvollziehen?", List("check-1-program-output"))), source)
-      val commands = (1 to math.min(32, count)).map(value => TurtleCommand[Double]("forward", List(value.toDouble))).toList
+      val commands = (1 to math.min(32, count)).map(value => TurtleCommand.Forward[Double](value.toDouble)).toList
       f.setResults(Set(f.grade(check, status = GradingStatus.Correct(),
         observation = Some(ProgrammingTestProgramObservation(count, commands)))))
       val before = f.variable.currentHistory
@@ -863,7 +863,7 @@ class InteractionVariableGradingSpec extends FunSuite {
   }
 
   test("unapproved hidden foreign and nonconclusive outputs cannot be cited") {
-    val observation = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(2.0))))
+    val observation = ProgrammingTestProgramObservation(1, List(TurtleCommand.Forward[Double](2.0)))
     val modes = List("default", "hidden", "model", "foreign-grader", "removed", "wrong-state", "wrong-snapshot", "not-run", "error")
     Future.traverse(modes) { mode =>
       val check = DescribedHintCheck("PRIVATE_SAME_ID", GradingImportance.REQUIRED_TEST,
@@ -942,8 +942,8 @@ class InteractionVariableGradingSpec extends FunSuite {
   test("the latest observation never falls back to an older output") {
     val check = DescribedHintCheck("latest output", GradingImportance.REQUIRED_TEST, publishProgramObservation = true)
     val f = new DescribedHintFixture(List(check))
-    val first = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(2.0))))
-    val second = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(3.0))))
+    val first = ProgrammingTestProgramObservation(1, List(TurtleCommand.Forward[Double](2.0)))
+    val second = ProgrammingTestProgramObservation(1, List(TurtleCommand.Forward[Double](3.0)))
     val description = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Prüft die Linie.", English -> "Old text"))
     val old = f.grade(check, Some(description), observation = Some(first))
     val latest = old.copy(gradingTime = old.gradingTime.plusSeconds(1))
@@ -981,8 +981,8 @@ class InteractionVariableGradingSpec extends FunSuite {
       val reply = Promise[String]()
       val task = Promise[LanguageMap[HumanLanguage]]()
       val f = new DescribedHintFixture(List(check), _ => reply.future)
-      val first = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(2.0))))
-      val second = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(3.0))))
+      val first = ProgrammingTestProgramObservation(1, List(TurtleCommand.Forward[Double](2.0)))
+      val second = ProgrammingTestProgramObservation(1, List(TurtleCommand.Forward[Double](3.0)))
       val original = f.grade(check, observation = Some(first))
       f.setResults(Set(original))
       val pending = if beforeDispatch then f.generate(f.resolverFor(_ => task.future)) else f.generate()

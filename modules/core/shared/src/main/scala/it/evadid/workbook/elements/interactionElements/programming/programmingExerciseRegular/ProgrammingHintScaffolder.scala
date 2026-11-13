@@ -129,7 +129,7 @@ object ProgrammingHintScaffolder {
         "id" -> outputId, "scope" -> "whole-program", "commandCount" -> observation.commandCount,
         "omittedCommands" -> observation.omittedCommands,
         "commands" -> ujson.Arr.from(observation.commands.map(command =>
-          ujson.Arr.from(List(ujson.Str(command.name)) ++ command.args.map(ujson.Num(_))))))))
+          ujson.Arr.from(List(ujson.Str(command.name.universalInterpretation())) ++ command.args.map(ujson.Num(_))))))))
   }
 
   private case class Check(id: String, grader: WorkbookInteractionGrader[ProgrammingState, ?], required: Boolean,

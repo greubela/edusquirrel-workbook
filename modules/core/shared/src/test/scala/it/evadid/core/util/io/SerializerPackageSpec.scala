@@ -8,6 +8,8 @@ class SerializerPackageSpec extends FunSuite {
   private trait Entry
   private case class TextEntry(text: String, values: List[Int]) extends Entry derives ReadWriter
   private case class CountEntry(value: Int) extends Entry derives ReadWriter
+  private case class GenericEntry[A](value: A) extends Entry derives ReadWriter
+
   private val entrySerializer = Serializer.universalTraitSerializer[Entry](Map(
     Serializer.serializerForSubclass[TextEntry, Entry](classOf[TextEntry]),
     Serializer.serializerForSubclass[CountEntry, Entry](classOf[CountEntry])))
@@ -118,6 +120,26 @@ class SerializerPackageSpec extends FunSuite {
     val either = Serializer.eitherPlainValueIO(fatal, plainString)
     val readError = try { either.deserialize("x"); None } catch { case e: LinkageError => Some(e) }
     assertEquals(readError.map(_.getMessage), Some("fatal read"))
+  }
+
+  test("generic subtype serializers leave payload validation to their supplied codec") {
+    val (_, io) = Serializer.serializerForSubclass[GenericEntry[Int], Entry](classOf[GenericEntry[Int]])
+    assertEquals(io.deserialize(io.serialize(GenericEntry(7))), GenericEntry(7): Entry)
+    intercept[SerializedException](io.deserialize("{\"value\":\"not an integer\"}"))
+  }
+
+  test("mapped serializers retain the failing stage and original cause") {
+    val parseError = new IllegalArgumentException("base parsing")
+    val convertError = new IllegalStateException("conversion")
+    val base = new Serializer[String] {
+      def serialize(value: String): String = value
+      def deserialize(value: String): String = if value == "bad" then throw parseError else value
+    }
+    val mapped = base.map[Int](_ => throw convertError, _.toString)
+    assert(intercept[SerializedException](mapped.deserialize("bad")).cause.exists(_.msg == parseError.getMessage))
+    val failed = intercept[SerializedException](mapped.deserialize("valid"))
+    assert(failed.cause.exists(_.msg == convertError.getMessage))
+    assert(failed.getMessage.contains("String"))
   }
 
 }

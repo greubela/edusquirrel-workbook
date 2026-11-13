@@ -132,4 +132,36 @@ class SvgPathBuildersSpec extends FunSuite {
     assert(logger.getOut().contains("> 100"))
     assertEquals(initial.baseBuilder.current, start)
   }
+  test("immutable conversions preserve exact decimal coordinates across subpaths") {
+    val zero = BigDecimal(0)
+    val path = SvgPathBuilderImmutable(Point(zero, zero))
+      .moveToAbs(Point(BigDecimal("1.5"), BigDecimal("2.5")))
+      .lineToRel(Dimension(BigDecimal(".25"), BigDecimal("-.5"))).closePath()
+      .moveToRel(Dimension(BigDecimal(".5"), BigDecimal(".5")))
+      .lineToAbs(Point(BigDecimal("4.25"), BigDecimal("6.75"))).closePath()
+    val expected = List(Point(BigDecimal("1.5"), BigDecimal("2.5")),
+      Point(BigDecimal("1.75"), BigDecimal("2")), Point(BigDecimal("1.5"), BigDecimal("2.5")),
+      Point(BigDecimal("2"), BigDecimal("3")), Point(BigDecimal("4.25"), BigDecimal("6.75")),
+      Point(BigDecimal("2"), BigDecimal("3")))
+    assertEquals(path.absoluteCommands.map(_.positionAfterCommand), expected)
+    val (_, reversed) = path.relativeCommands.foldLeft((path.absStartPoint, List.empty[Point[BigDecimal]])) {
+      case ((current, points), command) =>
+        val next = command.toAbsoluteCommand(current).positionAfterCommand
+        (next, next :: points)
+    }
+    assertEquals(reversed.reverse, expected)
+  }
+
+  test("immutable close markers and curve controls retain their original coordinate frames") {
+    val path = SvgPathBuilderImmutable(start).moveToRel(Dimension(2.0, 3.0))
+      .cubicBezierToRel(Dimension(1.0, 2.0), Dimension(3.0, 4.0), Dimension(5.0, 6.0))
+      .closePath().quadraticBezierWithRel(Dimension(1.0, 2.0), Dimension(3.0, 4.0))
+    val absolute = path.absoluteCommands
+    assertEquals(absolute(1).controlPointsAbsolute, List(Point(13.0, 25.0), Point(15.0, 27.0)))
+    assertEquals(absolute(2).positionAfterCommand, Point(12.0, 23.0))
+    assertEquals(absolute(3).controlPointsAbsolute, List(Point(13.0, 25.0)))
+    assertEquals(path.current, Point(15.0, 27.0))
+    assertEquals(path.relativeCommands.size, absolute.size)
+  }
+
 }
