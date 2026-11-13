@@ -33,6 +33,7 @@ private case class JsRemoteExecutionClient(hostname: String, port: Int, token: O
         headers = js.Dictionary(requestHeaders*).asInstanceOf[dom.HeadersInit]
         body = payload
         credentials = RequestCredentials.include
+        signal = js.Dynamic.global.AbortSignal.timeout(JsRemoteExecutionClient.requestTimeoutMillis).asInstanceOf[dom.AbortSignal]
       }).toFuture
     }
   }
@@ -58,7 +59,9 @@ private case class JsRemoteExecutionClient(hostname: String, port: Int, token: O
     sendCommand(logger, executionCommand, dest, body).flatMap(response => handleResponse(logger, response))
   }
 
+}
 
-
-
+private object JsRemoteExecutionClient {
+  /** Queued sync operations wait for each request, so an unresponsive backend must fail in bounded time. */
+  val requestTimeoutMillis: Int = 60000
 }

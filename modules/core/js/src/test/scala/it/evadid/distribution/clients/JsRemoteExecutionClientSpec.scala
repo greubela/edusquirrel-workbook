@@ -39,6 +39,14 @@ class JsRemoteExecutionClientSpec extends FunSuite {
     }
   }
 
+  test("requests carry a timeout signal so an unresponsive backend cannot stall the sync queue") {
+    inspectSentBody("{}") { init =>
+      assert(init.signal.isDefined)
+      assert(!init.signal.get.aborted)
+      Future.unit
+    }
+  }
+
   test("small requests remain plain JSON") {
     val body = "{\"name\":\"health\"}"
     inspectSentBody(body) { init =>
