@@ -97,3 +97,14 @@ This check rejects the older proxy header list even when OPTIONS returns 204.
 The MySQL integration suite additionally sends current gzip store/fetch/delete
 commands for all three supported formats and verifies feedback-only updates to
 an existing answer, V2 row counts and idempotent retries.
+
+### Browser cache schema warnings
+
+Unreadable browser records are excluded from reads; valid records remain usable.
+The warning reports a count without printing stored answers or conversations.
+Old development records (for example histories with `fullHistory.events` from
+before the current history schema) are unsupported and are not migrated. Remove
+those obsolete records using browser developer tools under IndexedDB →
+`EvaDidInteractionDB` → `variableHistoryStore`. This is separate from the server
+database and from the language-triple cache. Such a warning alone does not show
+that an HTTP sync request failed.
