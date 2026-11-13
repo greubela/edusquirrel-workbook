@@ -19,7 +19,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
       GradingResult[String, MessengerModel](grader, "", if index == 0 then GradingStatus.Correct() else GradingStatus.PartiallyCorrect(),
         Some(LanguageMap.universalMap[HumanLanguage](s"Feedback for criterion $index")))
     }
-    exercise.interactionVariable.updateHistory(_.addGradings(results), fullInfo.executionContextInformation)
+    exercise.interactionVariable.updateHistory(_.addGradings(results), fullInfo.workbookContextInformation)
     val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
     val close = mount(element)
     try {
@@ -45,10 +45,10 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val close = mount(element)
     try {
       exercise.interactionVariable.updateHistory(_.copy(historyGrading = new InteractionVariableGradingHistory(
-        Map("" -> GradedState("", Map(grader -> wrongAnswer))))), fullInfo.executionContextInformation)
+        Map("" -> GradedState("", Map(grader -> wrongAnswer))))), fullInfo.workbookContextInformation)
       assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 0)
       exercise.interactionVariable.updateHistory(_.copy(historyGrading = new InteractionVariableGradingHistory(
-        Map("" -> GradedState("", Map(grader -> wrongLanguage))))), fullInfo.executionContextInformation)
+        Map("" -> GradedState("", Map(grader -> wrongLanguage))))), fullInfo.workbookContextInformation)
       assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 1)
       assert(element.ref.textContent.contains("Wrong language feedback"))
     } finally close()

@@ -12,7 +12,7 @@ import org.scalajs.dom.HTMLLabelElement
 object HtmlBasicCheckboxRenderer extends LineBasedRenderingFactory[LabeledCheckboxInteraction] {
 
   override protected def createRendering(lci: LabeledCheckboxInteraction): AtomarLineRendering = {
-    val checkboxVar: Var[Boolean] = lci.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation).toAirstreamVar
+    val checkboxVar: Var[Boolean] = lci.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
     val dom: ReactiveHtmlElement[HTMLLabelElement] =
       label(

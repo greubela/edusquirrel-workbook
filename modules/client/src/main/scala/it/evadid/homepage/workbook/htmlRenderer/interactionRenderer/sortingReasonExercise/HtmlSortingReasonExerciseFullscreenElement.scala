@@ -22,7 +22,7 @@ case class HtmlSortingReasonExerciseFullscreenElement(
   private val fieldCount = interaction.fields.size
   private val gridColumns = SortingFieldLayoutHelper.resolvedColumns(fieldCount)
 
-  private val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance( UpdateImportance.MINOR, fullInfo.executionContextInformation)
+  private val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance( UpdateImportance.MINOR, fullInfo.workbookContextInformation)
   private val draggingItemIndex: Var[Option[Int]] = Var(None)
   private val errorPopupContentId: Var[Option[LanguageMapContentId]] = Var(None)
   private var wrongFlashTimeout: Option[SetTimeoutHandle] = None

@@ -12,7 +12,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 case object AnswerTableRenderer extends LineBasedRenderingFactory[AnswerTableInteraction] {
   private val headerScope = new HtmlAttr[String]("scope", StringAsIsCodec)
   override protected def createRendering(e: AnswerTableInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
     def cell(row: Int, column: Int, config: AnswerTableCell): Element = config match {
       case FixedTableCell(content) => td(text <-- laminarHelper.plaintextStringSignal(content))

@@ -11,7 +11,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 
 case object BlockchainRenderer extends LineBasedRenderingFactory[BlockchainInteraction] {
   override protected def createRendering(e: BlockchainInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.executionContextInformation).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val open = HtmlButtonElement.withTextLabel("basic/OpenEditor", _ =>
       fullInfo.displayControl.setFullscreen(BlockchainEditor(state, e.initial, e.difficultyZeros, e.isDisabledState.toAirstreamVar.signal)))
     val summary = p(cls := "blockchain-preview", role := "status",

@@ -41,14 +41,14 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
   }
 
   private def requestCompletion(messageState: MessengerModel, mmState: State[MessengerModel]): Unit = {
-    val systemPromptFuture = fullInfo.executionContextInformation.languageMapIdResolver.get.resolveMap(systemPromptId)
+    val systemPromptFuture = fullInfo.workbookContextInformation.languageMapIdResolver.get.resolveMap(systemPromptId)
     /*val curValTextarea = textInteraction.interactionVariable.currentValue
     val inputStr = if (curValTextarea.trim.nonEmpty) s"@assistant: the textarea for the solution reads '$curValTextarea'" else s"@assistant: currently no text in solution area"
     val languageStr = s", please answer in ${fullInfo.signals.currentLanguage.now()}"
     val currentStateMsg = Message(inputStr + languageStr, LLMCommands.workbookPerson, LocalDateTime.now())
     val nextMessageState = messageState.addMessage(currentStateMsg)*/
 
-    val requestFuture = systemPromptFuture.map { systemPrompt => MessengerChatCompletionRequest(systemPrompt.getWithLanguagePreference(langPreferences), messageState, fullInfo.executionContextInformation.llmConfiguration) }(using ExecutionContext.global)
+    val requestFuture = systemPromptFuture.map { systemPrompt => MessengerChatCompletionRequest(systemPrompt.getWithLanguagePreference(langPreferences), messageState, fullInfo.workbookContextInformation.llmConfiguration) }(using ExecutionContext.global)
     LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.defaults.backendExecutor, requestFuture, None).onComplete {
       case Success(result) => mmState.update(_.addMessage(result.result))
       case Failure(err) => sendError(err, mmState)
@@ -84,14 +84,14 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
     val interactionVariable: InteractionVariable[MessengerModelScaffolding, Unit, Unit] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
     if (workbookElement.scaffoldingInteractionOp.nonEmpty) {
       val boundState = interactionVariable
-        .createBoundStateWithUpdateImportance( MAJOR, fullInfo.executionContextInformation)
+        .createBoundStateWithUpdateImportance( MAJOR, fullInfo.workbookContextInformation)
         .biMap(_.messengerModel, MessengerModelScaffolding.apply)
       val scaffoldingChat = SimpleChatEditor(boundState, State(""), msg => onUserSendMessage(msg, boundState))
       val openChatButton = HtmlButtonElement.withSvgContent(createScaffoldingButtonSvg(), event => {
 
         val currentUser: ChatParticipant = fullInfo.current.userInfo.map(_.user).getOrElse(MessengerModel.pFallbackStudent)
 
-        workbookElement.initScaffoldingIfEmpty(fullInfo.executionContextInformation, currentUser, fullInfo.executionContextInformation.languageMapIdResolver.get).onComplete {
+        workbookElement.initScaffoldingIfEmpty(fullInfo.workbookContextInformation, currentUser, fullInfo.workbookContextInformation.languageMapIdResolver.get).onComplete {
           case Success(bool) => if (bool) requestCompletion(workbookElement.scaffoldingInteractionOp.get.interactionVariable.currentValue.messengerModel, boundState)
           case e: Any => fullInfo.loggerSystemInfo.workbookElementLogger.logWarn(s"HtmlGptTextfieldInteractionRenderer::createRendering -> error of some sort..: ${e.toString}")
         }(using ExecutionContext.global)

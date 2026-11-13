@@ -12,7 +12,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object HtmlMailInteractionRenderer extends LineBasedRenderingFactory[MailInteraction] {
   override protected def createRendering(element: MailInteraction): AtomarLineRendering = {
-    val state = element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation).toAirstreamVar
+    val state = element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val open = HtmlButtonElement.withTextLabel("basic/OpenEditor", _ =>
       fullInfo.displayControl.setFullscreen(Editor(state, element.account, element.allowCompose)))
     val helper = it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper.singleton

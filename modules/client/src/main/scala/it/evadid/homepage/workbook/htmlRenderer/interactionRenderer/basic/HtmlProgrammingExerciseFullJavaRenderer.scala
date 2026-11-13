@@ -21,7 +21,7 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 
 case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFactory[ProgrammingExerciseFullJava] {
   private[homepage] def editorState(element: ProgrammingExerciseFullJava, syncControl: SyncControl): Var[ProgrammingState] =
-    element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation).toAirstreamVar
+    element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
   private[homepage] def editorFor(workbookElement: ProgrammingExerciseFullJava,
       boundVar: Var[ProgrammingState]): HtmlAppElement  = {

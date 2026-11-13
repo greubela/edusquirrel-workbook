@@ -14,7 +14,7 @@ object HtmlSortingInteractionRenderer extends LineBasedRenderingFactory[SortingI
 
   override protected def createRendering(interaction: SortingInteraction): AtomarLineRendering = {
     val errorCountSignal =
-      interaction.interactionVariable.createInteractionSignal(fullInfo.executionContextInformation)
+      interaction.interactionVariable.createInteractionSignal(fullInfo.workbookContextInformation)
         .combineWith(fullInfo.signals.stringFromLanguageMapId(errorCountLabelId))
         .map { case (state, template) =>
           val totalErrors = state.lastSessionErrorCount + state.sessionErrorCount

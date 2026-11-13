@@ -15,7 +15,7 @@ import java.time.LocalDateTime
 object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskToggleInteraction] {
 
   override protected def createRendering(interaction: CodeTaskToggleInteraction): AtomarLineRendering = {
-    val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MINOR, fullInfo.executionContextInformation)
+    val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MINOR, fullInfo.workbookContextInformation)
     val advancedCodeVar: Var[String] = Var(stateVar.now().advancedCode)
 
     val reorderDom =
@@ -47,7 +47,7 @@ object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskTogg
         state => state.copy(isBeginnerMode = value),
         UpdateImportance.MINOR,
         LocalDateTime.now(),
-        fullInfo.executionContextInformation
+        fullInfo.workbookContextInformation
       )
     }
 
@@ -62,7 +62,7 @@ object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskTogg
                 state => state.copy(advancedCode = code),
                 UpdateImportance.MINOR,
                 LocalDateTime.now(),
-                fullInfo.executionContextInformation
+                fullInfo.workbookContextInformation
               )
             }
           }(using ctx.owner)

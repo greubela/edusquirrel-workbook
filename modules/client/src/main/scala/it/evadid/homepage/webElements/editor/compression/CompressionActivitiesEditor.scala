@@ -140,7 +140,7 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
       fullInfo.current.allAvailableInteractions.collectFirst { case e: it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction if e.elementId == v.referenceId => e } match {
         case Some(e) =>
           import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
-          val state=e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.executionContextInformation).toAirstreamVar
+          val state=e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
           blockQuote(text <-- state.signal.flatMapSwitch(a => { val text=a.asInstanceOf[WrittenAnswer].text; if text.isEmpty then localized("comparisonEmpty") else Val(text) }))
         case None => p(text <-- localized("comparisonEmpty"))
       }

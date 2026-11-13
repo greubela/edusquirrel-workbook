@@ -20,7 +20,7 @@ case class IconGradingAndScaffolding(fullInfo: FullInfo, laminarHelper: LaminarR
 
   val domElement: Element = div(cls := "interaction-grading",
     button(typ := "button", cls := "interaction-grading__request",
-      onClick --> (_ => workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.executionContextInformation, true)))
+      onClick --> (_ => workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.workbookContextInformation, true)))
   )
 
 
@@ -115,11 +115,11 @@ case class IconGradingAndScaffolding(fullInfo: FullInfo, laminarHelper: LaminarR
   }
 
   def onScaffoldingRequested(): Unit = {
-    workbookInteractionElement.interactionVariable.control.getOrCalculateScaffolding(fullInfo.executionContextInformation)
+    workbookInteractionElement.interactionVariable.control.getOrCalculateScaffolding(fullInfo.workbookContextInformation)
   }
 
   def onGradingRequested(): Unit = {
-    workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.executionContextInformation, forceGrading = true)
+    workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.workbookContextInformation, forceGrading = true)
   }
 
 }

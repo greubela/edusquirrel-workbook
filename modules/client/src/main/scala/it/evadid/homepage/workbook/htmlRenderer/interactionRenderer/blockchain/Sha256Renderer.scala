@@ -10,7 +10,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object Sha256Renderer extends LineBasedRenderingFactory[Sha256Interaction] {
   override protected def createRendering(e: Sha256Interaction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
     def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"blockchainworkbook/$key")
     def textField(first: Boolean): Element = label(

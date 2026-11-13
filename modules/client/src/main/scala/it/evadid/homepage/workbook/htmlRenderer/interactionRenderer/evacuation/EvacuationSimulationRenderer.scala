@@ -12,7 +12,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 
 case object EvacuationSimulationRenderer extends LineBasedRenderingFactory[EvacuationSimulationInteraction] {
   override protected def createRendering(e: EvacuationSimulationInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.executionContextInformation).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val open = HtmlButtonElement.withTextLabel("basic/OpenEditor", _ =>
       fullInfo.displayControl.setFullscreen(EvacuationSimulationEditor(state, e.initial, e.isDisabledState.toAirstreamVar.signal)))
     val preview = p(cls := "evacuation-simulation-preview", role := "status",

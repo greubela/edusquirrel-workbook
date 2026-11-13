@@ -53,7 +53,7 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
                                 renderElementContent: (ReorderInteractionState[T], Int) => Element,
                                 itemCssClass: String
                               ): Element = {
-    val stateVar = reorder.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.executionContextInformation)
+    val stateVar = reorder.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.workbookContextInformation)
     val draggingId: Var[Option[Int]] = Var(None)
     val hoverIndex: Var[Option[Int]] = Var(None)
 
@@ -114,7 +114,7 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
         },
         UpdateImportance.MINOR,
         LocalDateTime.now(),
-        fullInfo.executionContextInformation
+        fullInfo.workbookContextInformation
       )
     }
 

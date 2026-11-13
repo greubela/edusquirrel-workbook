@@ -179,7 +179,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     def actuallyLoadData(): Unit = {
       if (fullInfo.current.userInfo.isEmpty || fullInfo.current.userInfo.get.user.id == sessionData.userInfo.id) {
         fullInfo.current.workbookInfo.foreach(_.loadedWorkbook.loadDataNoUserCheck(
-          logger, sessionData.knownUsageData, fullInfo.executionContextInformation
+          logger, sessionData.knownUsageData, fullInfo.workbookContextInformation
         ))
       }
     }

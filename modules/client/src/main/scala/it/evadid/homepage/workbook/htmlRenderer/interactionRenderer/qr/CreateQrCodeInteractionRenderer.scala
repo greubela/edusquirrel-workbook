@@ -11,7 +11,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object CreateQrCodeInteractionRenderer extends LineBasedRenderingFactory[CreateQrCodeInteraction] {
   override protected def createRendering(element: CreateQrCodeInteraction): AtomarLineRendering = {
-    val state = element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation).toAirstreamVar
+    val state = element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     // Construct on opening, so draft controls always start with the currently restored state.
     val open = HtmlButtonElement.withTextLabel("basic/OpenEditor", _ =>
       fullInfo.displayControl.setFullscreen(QrCodeEditor(state, element.requirements)))

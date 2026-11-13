@@ -90,7 +90,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
 
   private def load[T, GA, SA](intoVar: InteractionVariable[T, GA, SA]): Future[Unit] = Future {
     val histories = createCurrentReport(intoVar).curRemoteHistory.values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toVector
-    intoVar.updateHistory(_.mergeWith(histories), fullInfo.executionContextInformation)
+    intoVar.updateHistory(_.mergeWith(histories), fullInfo.workbookContextInformation)
   }
 
   override def load(into: List[InteractionVariableUntyped]): Future[Unit] =

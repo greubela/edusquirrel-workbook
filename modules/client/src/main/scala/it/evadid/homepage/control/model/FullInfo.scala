@@ -25,7 +25,7 @@ case class FullInfo(
 
   val defaults: HomepageDefaults = HomepageDefaults(this)
 
-  lazy val executionContextInformation: ExecutionContextInformation = new ExecutionContextInformation() {
+  lazy val workbookContextInformation: ExecutionContextInformation = new ExecutionContextInformation() {
     private val currentLanguageObservable = signals.currentLanguage.toObservableValue
 
     override def llmConfiguration: Option[LlmConfiguration] =

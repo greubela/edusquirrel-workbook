@@ -15,7 +15,7 @@ import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffold
 object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFactory[TextInputWithScaffoldingAndGrading] {
   override protected def createRendering(element: TextInputWithScaffoldingAndGrading): AtomarLineRendering = {
     val variable = element.interactionVariable
-    val answer = variable.createBoundStateWithUpdateLogic( TextInteraction.decideTextareaUpdateImportance, fullInfo.executionContextInformation).toAirstreamVar
+    val answer = variable.createBoundStateWithUpdateLogic( TextInteraction.decideTextareaUpdateImportance, fullInfo.workbookContextInformation).toAirstreamVar
     def label(key: String) = laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
     val feedback: Signal[List[Element]] = {
       val history = variable.observableHistoryWithDefault.toEventStream().toSignal(variable.currentHistory)
