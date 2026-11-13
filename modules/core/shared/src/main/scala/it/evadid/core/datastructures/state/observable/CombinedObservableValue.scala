@@ -24,25 +24,17 @@ private case class CombinedObservableValue[A, B](baseA: ObservableValue[A], base
   }
 
   private def onValueChanged(): Unit = syncLock.synchronized {
-    if (lastA.isDefined && lastB.isDefined) {
-      val propagateValue: Try[(A, B)] =
-        if (lastA.get.isSuccess && lastB.get.isSuccess) {
-          Success((lastA.get.get, lastB.get.get))
-        } else if (lastA.get.isFailure && lastB.get.isFailure) {
-          val throwException = new IllegalStateException("Combined Observable Value failed because of invalid A and B (cause reflects A)", lastA.get.failed.get)
-          Failure(throwException)
-        } else if (lastA.get.isFailure && lastB.get.isSuccess) {
-          val throwException = new IllegalStateException("Combined Observable Value failed because of invalid A", lastA.get.failed.get)
-          Failure(throwException)
-        } else if (lastB.get.isFailure && lastA.get.isSuccess) {
-          val throwException = new IllegalStateException("Combined Observable Value failed because of invalid B", lastB.get.failed.get)
-          Failure(throwException)
-        } else {
-          ??? // unreachable
-        }
+    lastA.zip(lastB).foreach((a, b) => outObs.onNewValueArrived(combineResults(a, b)))
+  }
 
-      outObs.onNewValueArrived(propagateValue)
-    }
+  private def combineResults(a: Try[A], b: Try[B]): Try[(A, B)] = (a, b) match {
+    case (Success(valueA), Success(valueB)) => Success(valueA -> valueB)
+    case (Failure(error), Failure(_)) =>
+      Failure(new IllegalStateException("Combined Observable Value failed because of invalid A and B (cause reflects A)", error))
+    case (Failure(error), _) =>
+      Failure(new IllegalStateException("Combined Observable Value failed because of invalid A", error))
+    case (_, Failure(error)) =>
+      Failure(new IllegalStateException("Combined Observable Value failed because of invalid B", error))
   }
 
   override def currentValueOrWaitForUpdate: Future[(A, B)] = outObs.currentValueOrWaitForUpdate

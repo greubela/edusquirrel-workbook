@@ -142,6 +142,34 @@ class ObservableValueSpec extends FunSuite {
     assertEquals(combined.now(), Some((3, 4)))
   }
 
+  test("combined values wait for both inputs even when the first available input failed") {
+    val a = ObservableValueImpl[Int](None)
+    val b = ObservableValueImpl[String](None)
+    val combined = a.combineWith(b)
+    val waiting = combined.currentValueOrWaitForUpdate
+    val error = new IllegalStateException("first available input failed")
+    a.onNewValueArrived(Failure(error))
+    assert(!waiting.isCompleted)
+    b.onNewValueArrived(Success("ready"))
+    assert(waiting.value.get.failed.get.getCause eq error)
+    a.onNewValueArrived(Success(2))
+    assertEquals(combined.now(), Some((2, "ready")))
+  }
+
+  test("combined observers can update another input while a pair is being published") {
+    val a = ObservableValueImpl(Some(1))
+    val b = ObservableValueImpl(Some(2))
+    val combined = a.combineWith(b)
+    val seen = ListBuffer.empty[(Int, Int)]
+    combined.addObserver { pair =>
+      seen += pair
+      if pair == (3, 2) then b.onNewValueArrived(Success(4))
+    }
+    a.onNewValueArrived(Success(3))
+    assertEquals(seen.toList, List((1, 2), (3, 2), (3, 4)))
+    assertEquals(combined.now(), Some((3, 4)))
+  }
+
   test("three and four inputs preserve tuple order") {
     val a = ConstantValueObservable(1)
     assertEquals(a.combineWith(ConstantValueObservable("b"), ConstantValueObservable(true)).now(), Some((1, "b", true)))
