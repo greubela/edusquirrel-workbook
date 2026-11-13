@@ -4,7 +4,7 @@ import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import munit.FunSuite
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.ManualOwner
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.EvaEditor.*
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -81,7 +81,7 @@ class TurtleProgramExecutionSpec extends FunSuite {
     ProgrammingStateJavaString(s"\n\tpublic class Drawing {\r\n  static void draw(int distance) {\r\n    Turtle.forward(distance);\r\n    Turtle.turnRight(-90);\r\n  }\r\n  public static void main(String[] args) { draw($distance); }\r\n}\r\n\t ")
 
   private def mappedCommands(distance: Double = 12.0): List[TurtleCommand[Double]] =
-    List(TurtleCommand[Double]("forward", List(distance)), TurtleCommand[Double]("right", List(-90.0)))
+    List(TurtleCommand.Forward[Double](distance), TurtleCommand.Right[Double](-90.0))
 
   private def completedJava(distance: Int = 12): T.Execution =
     T.Execution(T.Status.Completed, Vector(
@@ -151,7 +151,7 @@ class TurtleProgramExecutionSpec extends FunSuite {
   test("legacy Java snippets remain convertible without running a full Java class") {
     val source = ProgrammingStateJavaString("forward(12);")
     val editor = editorFor(source)
-    assertEquals(source.toBeExpression.deriveTurtleCommands, List(TurtleCommand[Double]("forward", List(12.0))))
+    assertEquals(source.toBeExpression.deriveTurtleCommands, List(TurtleCommand.Forward[Double](12.0)))
     assertEquals(editor.currentState(), source)
   }
 
@@ -540,7 +540,7 @@ class TurtleProgramExecutionSpec extends FunSuite {
       val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
         runnerFactory = factory.create)
       editor.getCurrentTurtleCommands().map { commands =>
-        assertEquals(commands, List(TurtleCommand[Double]("forward", List(12.0))))
+        assertEquals(commands, List(TurtleCommand.Forward[Double](12.0)))
         assertEquals(factory.runners.size, 0)
         assertEquals(editor.currentState(), source)
       }

@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitc
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.{TurtleDrawingComparison, TurtlePathBuilder}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleDrawingComparison.{Segment, TurtleComparisonResult}
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedAngle, RenderedLine, Scene}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic, TurtleGradingLogic}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
@@ -88,7 +88,7 @@ object TurtleDrawingGrading {
     if commands.size > maxCommands then tooLarge()
     var traceWork = 0L
     commands.foreach { command =>
-      val name = command.name.trim.toLowerCase.replace('-', '_')
+      val name = command.name.universalInterpretation()
       val geometry = commandArity.get(name).exists(_.contains(command.args.size)) && command.stringArgs.isEmpty
       val decoration = SnapTurtleCatalog.primitiveByPythonName.get(name).exists { primitive =>
         Set(SnapTurtleCatalog.PaletteTab.Pen, SnapTurtleCatalog.PaletteTab.Control).contains(primitive.tab) &&

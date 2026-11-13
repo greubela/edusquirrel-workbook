@@ -2,7 +2,7 @@ package it.evadid.core.datastructures.vectorShapes.svg
 
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtleCommand, TurtlePenStyle, TurtleState, TurtleStyledSegment}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtlePenStyle, TurtleState, TurtleStyledSegment}
 import it.evadid.core.util.io.serializer.AutoSerializable.*
 
 import upickle.ReadWriter
@@ -31,12 +31,9 @@ case class TurtlePathBuilder[T : Fractional](
   def completedStyledSegments: List[TurtleStyledSegment[T]] =
     flushCurrentSegment.styledSegments
 
-  private def asImmutable(builder: SvgPathBuilder[T]): SvgPathBuilderImmutable[T] =
-    builder.asInstanceOf[SvgPathBuilderImmutable[T]]
-
   private def appendGeometry(endPoint: Point[T], draw: Boolean): TurtlePathBuilder[T] = {
     val applyOp = (path: SvgPathBuilderImmutable[T]) =>
-      if draw then asImmutable(path.lineToAbs(endPoint)) else asImmutable(path.moveToAbs(endPoint))
+      if draw then path.lineToAbs(endPoint) else path.moveToAbs(endPoint)
     copy(
       turtleState = turtleState.copy(x = endPoint.x, y = endPoint.y),
       svgPathBuilder = applyOp(svgPathBuilder),
@@ -147,105 +144,56 @@ case class TurtlePathBuilder[T : Fractional](
   def reset(): TurtlePathBuilder[T] = TurtlePathBuilder[T]()
 
   def dot(size: T): TurtlePathBuilder[T] = {
-    this.copy(svgPathBuilder = svgPathBuilder.addCenteredCircle(size / fromInt(2)).asInstanceOf[SvgPathBuilderImmutable[T]])
+    this.copy(svgPathBuilder = svgPathBuilder.addCenteredCircle(size / fromInt(2)))
   }
 
   /** Walk a circle like Python turtle (center to the left of the current heading). */
   def circle(radius: T): TurtlePathBuilder[T] = circle(radius, fromInt(360))
 
-  def circle(radius: T, extentDeg: T): TurtlePathBuilder[T] = {
+  def circle(radius: T, extentDeg: T): TurtlePathBuilder[T] = drawArc(radius, extentDeg, turnLeft = true)
+
+  def arcLeft(radius: T, extentDeg: T): TurtlePathBuilder[T] = drawArc(radius, extentDeg, turnLeft = true)
+
+  def arcRight(radius: T, extentDeg: T): TurtlePathBuilder[T] = drawArc(radius, extentDeg, turnLeft = false)
+
+  private def drawArc(radius: T, extentDeg: T, turnLeft: Boolean): TurtlePathBuilder[T] = {
     val extent = extentDeg.toDouble
     val steps = math.max(8, math.round(math.abs(extent) / 10.0).toInt)
-    val stepLen = (2 * Math.PI * radius.toDouble) * (extent / 360.0) / steps
-    val stepAngle = extent / steps
-    val lenT = SvgPathBuilder.fromDouble[T](stepLen)
-    val angT = SvgPathBuilder.fromDouble[T](stepAngle)
-    (0 until steps).foldLeft(this) { (builder, _) =>
-      builder.forward(lenT).left(angT)
-    }
-  }
-
-  def arcLeft(radius: T, extentDeg: T): TurtlePathBuilder[T] = circle(radius, extentDeg)
-
-  def arcRight(radius: T, extentDeg: T): TurtlePathBuilder[T] = {
-    val extent = extentDeg.toDouble
-    val steps = math.max(8, math.round(math.abs(extent) / 10.0).toInt)
-    val stepLen = (2 * Math.PI * radius.toDouble) * (extent / 360.0) / steps
-    val stepAngle = extent / steps
-    val lenT = SvgPathBuilder.fromDouble[T](stepLen)
-    val angT = SvgPathBuilder.fromDouble[T](stepAngle)
-    (0 until steps).foldLeft(this) { (builder, _) =>
-      builder.forward(lenT).right(angT)
-    }
+    val length = SvgPathBuilder.fromDouble[T]((2 * Math.PI * radius.toDouble) * (extent / 360.0) / steps)
+    val rotation = SvgPathBuilder.fromDouble[T](extent / steps * (if turnLeft then 1 else -1))
+    (0 until steps).foldLeft(this)((builder, _) => builder.forward(length).left(rotation))
   }
 
   def getX(): T = turtleState.x
 
-  def handleStringCommand(turtleCommand: TurtleCommand[T]): TurtlePathBuilder[T] = {
-    val name = turtleCommand.name.trim.toLowerCase.replace("-", "_")
-    name match {
-      case "forward" | "fd" =>
-        turtleCommand.args.headOption.map(forward).getOrElse(this)
-      case "backward" | "back" | "bk" =>
-        turtleCommand.args.headOption.map(backward).getOrElse(this)
-      case "left" | "lt" | "turn_left" | "turnleft" =>
-        turtleCommand.args.headOption.map(left).getOrElse(this)
-      case "right" | "rt" | "turn" | "turn_right" | "turnright" =>
-        turtleCommand.args.headOption.map(right).getOrElse(this)
-      case "goto" | "setpos" | "setposition" | "goto_x_y" | "gotoxy" =>
-        if (turtleCommand.args.size >= 2) goto(turtleCommand.args(0), turtleCommand.args(1)) else this
-      case "setheading" | "seth" | "set_heading" =>
-        turtleCommand.args.headOption.map(setHeading).getOrElse(this)
-      case "towards" =>
-        this
-      case "setx" | "set_x" | "setxposition" =>
-        turtleCommand.args.headOption.map(setX).getOrElse(this)
-      case "sety" | "set_y" | "setyposition" =>
-        turtleCommand.args.headOption.map(setY).getOrElse(this)
-      case "home" => home()
-      case "reset" => reset()
-      case "clear" | "clearscreen" => clear()
-      case "penup" | "pu" | "up" | "pen_up" =>
-        penUp()
-      case "pendown" | "pd" | "down" | "pen_down" =>
-        penDown()
-      case "showturtle" | "st" => showTurtle()
-      case "hideturtle" | "ht" => hideTurtle()
-      case "dot" => turtleCommand.args.headOption.map(dot).getOrElse(this)
-      case "circle" =>
-        turtleCommand.args match
-          case Seq(radius, extent, _*) => circle(radius, extent)
-          case Seq(radius) => circle(radius)
-          case _ => this
-      case "arc" | "arcleft" | "arc_left" =>
-        if turtleCommand.args.size >= 2 then arcLeft(turtleCommand.args(0), turtleCommand.args(1)) else this
-      case "arcright" | "arc_right" =>
-        if turtleCommand.args.size >= 2 then arcRight(turtleCommand.args(0), turtleCommand.args(1)) else this
-      case "color" | "pencolor" | "setcolor" =>
-        val color =
-          turtleCommand.stringArgs.headOption.orElse {
-            if turtleCommand.args.size >= 3 then
-              Some(s"rgb(${turtleCommand.args(0).toDouble.toInt},${turtleCommand.args(1).toDouble.toInt},${turtleCommand.args(2).toDouble.toInt})")
-            else None
-          }
-        color.map(setPenColor).getOrElse(this)
-      case "pensize" | "setsize" | "width" =>
-        turtleCommand.args.headOption.map(setPenSize).getOrElse(this)
-      case "running_stitch" | "runningstitch" | "cross_stitch" | "crossstitch" |
-           "bean_stitch" | "beanstitch" | "zigzag_stitch" | "zigzagstitch" |
-           "z_stitch" | "zstitch" | "satin_stitch" | "satinstitch" |
-           "tatami_stitch" | "tatamistitch" | "jump_stitch" | "jumpstitch" |
-           "tie_stitch" | "tiestitch" | "trim" | "trim_stitch" | "trimstitch" |
-           "stop_running" | "stoprunning" =>
-        setStitchMode(name)
-      case _ =>
-        this
-    } match {
-      case same if same.eq(this) && name != "" =>
-        this.copy(turtleCommands = turtleCommands :+ turtleCommand)
-      case updated =>
-        updated.copy(turtleCommands = updated.turtleCommands :+ turtleCommand)
+  def handleCommand(command: TurtleCommand[T]): TurtlePathBuilder[T] = {
+    import TurtleCommand.*
+    val updated = command match {
+      case Forward(distance) => forward(distance)
+      case Backward(distance) => backward(distance)
+      case Left(degrees) => left(degrees)
+      case Right(degrees) => right(degrees)
+      case SetHeading(degrees) => setHeading(degrees)
+      case SetX(x) => setX(x)
+      case SetY(y) => setY(y)
+      case Dot(size) => dot(size)
+      case PenSize(size) => setPenSize(size)
+      case Goto(x, y) => goto(x, y)
+      case ArcLeft(radius, extent) => arcLeft(radius, extent)
+      case ArcRight(radius, extent) => arcRight(radius, extent)
+      case Circle(radius, extent, _) => circle(radius, extent.getOrElse(fromInt(360)))
+      case Color(color) => setPenColor(color)
+      case Stitch(mode, _, _) => setStitchMode(mode.name.universalInterpretation())
+      case PenUp() => penUp()
+      case PenDown() => penDown()
+      case ShowTurtle() => showTurtle()
+      case HideTurtle() => hideTurtle()
+      case Home() => home()
+      case Reset() => reset()
+      case Clear() => clear()
+      case Towards(_, _) | Speed(_) | Unsupported(_, _, _) => this
     }
+    updated.copy(turtleCommands = updated.turtleCommands :+ command)
   }
 
 }
@@ -253,33 +201,6 @@ case class TurtlePathBuilder[T : Fractional](
 object TurtlePathBuilder {
   given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[TurtlePathBuilder[T]] =
     upickle.default.readwriter[(Point[T], TurtleState[T], List[TurtleCommand[T]], SvgPathBuilderImmutable[T], List[TurtleStyledSegment[T]], SvgPathBuilderImmutable[T])].bimap(value => (value.startPoint, value.turtleState, value.turtleCommands, value.svgPathBuilder, value.styledSegments, value.currentSegmentPath), value => TurtlePathBuilder[T](value._1, value._2, value._3, value._4, value._5, value._6))
-
-
-  case class TurtleCommand[T : Fractional](name: String, args: Seq[T] = Nil, stringArgs: Seq[String] = Nil) {
-
-    val N = summon[Fractional[T]];
-    lazy val asDouble: TurtleCommand[Double] = TurtleCommand[Double](name, args.map(N.toDouble), stringArgs)
-
-  }
-
-  given [T: Fractional](using rw: ReadWriter[T]): ReadWriter[TurtleCommand[T]] =
-    readwriter[ujson.Value].bimap[TurtleCommand[T]](
-      cmd => {
-        val value = ujson.Arr(ujson.Str(cmd.name), writeJs(cmd.args))
-        if cmd.stringArgs.nonEmpty then value.arr += writeJs(cmd.stringArgs)
-        value
-      },
-      value => {
-        val fields = value.arr
-        require(fields.size == 2 || fields.size == 3, "Expected a turtle command with two or three fields")
-        TurtleCommand(
-          fields(0).str,
-          read[Seq[T]](fields(1)),
-          if fields.size == 3 then read[Seq[String]](fields(2)) else Nil
-        )
-      }
-    )
-
 
 
   case class TurtlePenStyle[T](color: String, size: T) derives upickle.default.ReadWriter
@@ -342,7 +263,7 @@ object TurtlePathBuilder {
       Nil,
       initialPath
     )
-    turtleCommands.foldLeft(initial) { case (builder, cmd) => builder.handleStringCommand(cmd) }
+    turtleCommands.foldLeft(initial) { case (builder, cmd) => builder.handleCommand(cmd) }
   }
 
   def apply[T: Fractional](): TurtlePathBuilder[T] = {

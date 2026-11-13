@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import it.evadid.core.datastructures.tree.nodeImpl.{NodeBasedTreeNode, NodeBasedTreePosition}
 import it.evadid.core.datastructures.vectorShapes.svg.*
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.distribution.commandTypes.MailCommands.SendMailRequest
 import it.evadid.util.parsing.Js
 import it.evadid.vm.BeProgram
@@ -86,12 +86,12 @@ class SystematicDerivedCodecSpec extends FunSuite {
     copies[SvgPathBuilder[Double]](builder).foreach(value => assert(value.isInstanceOf[SvgPathBuilderMutable[?]]))
   }
   test("turtle builder snapshots retain pen state, geometry and subsequent commands") {
-    val builder = TurtlePathBuilder(Point(0.0, 0.0), List(TurtleCommand("forward", List(10.0)), TurtleCommand("right", List(90.0))))
+    val builder = TurtlePathBuilder(Point(0.0, 0.0), List(TurtleCommand.Forward(10.0), TurtleCommand.Right(90.0)))
     copies(builder).foreach { decoded =>
       assertEquals(decoded.turtleState, builder.turtleState)
       assertEquals(decoded.svgPathBuilder.toSvgPathD, builder.svgPathBuilder.toSvgPathD)
-      val next = TurtleCommand("forward", List(5.0))
-      assertEquals(decoded.handleStringCommand(next), builder.handleStringCommand(next))
+      val next = TurtleCommand.Forward(5.0)
+      assertEquals(decoded.handleCommand(next), builder.handleCommand(next))
     }
   }
   test("typed SVG paths retain builders while the root retains rendered path data") {

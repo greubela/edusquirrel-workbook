@@ -28,7 +28,7 @@ import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
 import it.evadid.distribution.command.SerializedException
 import upickle.default.*
 import it.evadid.core.datastructures.state.State
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands
@@ -614,7 +614,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
         assertEquals(result.gradingStatus, GradingStatus.Incorrect())
         val actual = result.additionalData.flatMap(_.testInvocation).flatMap(_.commandComparison)
         assertEquals(actual, Option.when(publish)(ProgrammingTestCommandComparison(1, 1, 0,
-          Some(TurtleCommand[Double]("forward", List(8))), Some(TurtleCommand[Double]("forward", List(10))))))
+          Some(TurtleCommand.Forward[Double](8)), Some(TurtleCommand.Forward[Double](10)))))
         assertEquals(calls.now(), 1)
         assertEquals(read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](write(result)), result)
         assertEquals(readBinary[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](writeBinary(result)), result)
@@ -643,7 +643,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
   }
 
   test("comparison codecs preserve missing and extra commands and default old definitions to private") {
-    val forward = TurtleCommand[Double]("forward", List(8))
+    val forward = TurtleCommand.Forward[Double](8)
     List(ProgrammingTestCommandComparison(0, 1, 0, None, Some(forward)),
       ProgrammingTestCommandComparison(1, 0, 0, Some(forward), None)).foreach { comparison =>
       val invocation = ProgrammingTestInvocation(None, Vector.empty, Some(comparison))
@@ -703,7 +703,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
         assertEquals(observation.commandCount, count)
         assertEquals(observation.omittedCommands, count - math.min(32, count))
         assertEquals(observation.commands, (1 to math.min(32, count))
-          .map(value => TurtleCommand[Double]("forward", List(value.toDouble))).toList)
+          .map(value => TurtleCommand.Forward[Double](value.toDouble)).toList)
         assertEquals(info.humanReadableTestExecutionDescription.availableLanguages, Set.empty[HumanLanguage])
       }
     }.flatMap { _ =>
@@ -787,7 +787,7 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
         assertEquals(result.gradingStatus, GradingStatus.Incorrect())
         val info = result.additionalData.get
         assertEquals(info.programObservation.get.commandCount, 1)
-        assertEquals(info.programObservation.get.commands, List(TurtleCommand[Double]("forward", List(2.0))))
+        assertEquals(info.programObservation.get.commands, List(TurtleCommand.Forward[Double](2.0)))
         assertEquals(info.humanReadableTestExecutionDescription.tryGetInLanguage(German), expectedDescription)
         assertEquals(calls.now(), 1)
         assertEquals(resolutions.now(), 1)
@@ -797,12 +797,12 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
   }
 
   test("observation values enforce their bounds when constructed or restored") {
-    val prefix = (1 to 32).map(value => TurtleCommand[Double]("forward", List(value.toDouble))).toList
+    val prefix = (1 to 32).map(value => TurtleCommand.Forward[Double](value.toDouble)).toList
     val valid = ProgrammingTestProgramObservation(33, prefix)
     assertEquals(read[ProgrammingTestProgramObservation](write(valid)), valid)
     assertEquals(readBinary[ProgrammingTestProgramObservation](writeBinary(valid)), valid)
     List(9007199254740991d, -9007199254740991d).foreach { value =>
-      val edge = ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(value))))
+      val edge = ProgrammingTestProgramObservation(1, List(TurtleCommand.Forward[Double](value)))
       assertEquals(read[ProgrammingTestProgramObservation](write(edge)), edge)
       assertEquals(readBinary[ProgrammingTestProgramObservation](writeBinary(edge)), edge)
     }
@@ -812,13 +812,13 @@ class ProgrammingExerciseFactorySpec extends FunSuite {
       () => ProgrammingTestProgramObservation(0, prefix.take(1)),
       () => ProgrammingTestProgramObservation(33, prefix.dropRight(1)),
       () => ProgrammingTestProgramObservation(33, prefix :+ prefix.head),
-      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("fd", List(1.0)))),
-      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("receive_go"))),
-      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward"))),
-      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(Double.NaN)))),
-      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(Double.PositiveInfinity)))),
-      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(9007199254740992d)))),
-      () => ProgrammingTestProgramObservation(1, List(TurtleCommand[Double]("forward", List(1.0), List("private text")))))
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand.Unsupported[Double](it.evadid.vm.naming.BeEntityName.fromLiteral("fd"), Seq(1.0), Nil))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand.fromText[Double]("receive_go"))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand.fromText[Double]("forward"))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand.Forward[Double](Double.NaN))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand.Forward[Double](Double.PositiveInfinity))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand.Forward[Double](9007199254740992d))),
+      () => ProgrammingTestProgramObservation(1, List(TurtleCommand.fromText[Double]("forward", List(1.0), List("private text")))))
     invalid.foreach(make => intercept[IllegalArgumentException](make()))
     val encoded = writeJs(valid).obj.toMap
     val malformed = List(

@@ -47,4 +47,20 @@ class StateSpec extends FunSuite {
     assertEquals(text.now(), "2")
   }
 
+  test("composed states notify both views and keep the base unchanged after a reverse failure") {
+    val base = State(2)
+    val scaled = base.biMap[Int](_ * 10, _ / 10)
+    val text = scaled.biMap[String](_.toString, _.toInt)
+    val seen = ListBuffer.empty[String]
+    text.observable.addObserver((value: String) => seen += value)
+    scaled.set(30)
+    text.update(value => (value.toInt + 10).toString)
+    assertEquals(base.now(), 4)
+    assertEquals(scaled.now(), 40)
+    assertEquals(seen.toList, List("20", "30", "40"))
+    intercept[NumberFormatException](text.set("invalid"))
+    assertEquals(base.now(), 4)
+    assertEquals(text.observable.now(), Some("40"))
+  }
+
 }

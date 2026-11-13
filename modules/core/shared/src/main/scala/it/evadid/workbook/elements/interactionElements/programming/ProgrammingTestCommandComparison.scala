@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import scala.util.Try
 import upickle.default.ReadWriter
 
@@ -22,8 +22,8 @@ object ProgrammingTestCommandComparison {
   private[evadid] val MaxCommands = 128
 
   private def validCommand(command: TurtleCommand[Double]): Boolean =
-    command != null && command.args != null && command.stringArgs != null && command.stringArgs.isEmpty &&
-      ProgrammingTestProgramObservation.commandArity(command.name).contains(command.args.size) &&
+    command != null && command.args != null && command.stringArgs != null && !command.isInstanceOf[TurtleCommand.Unsupported[?]] && command.stringArgs.isEmpty &&
+      ProgrammingTestProgramObservation.commandArity(command.name.universalInterpretation()).contains(command.args.size) &&
       command.args.forall(value => value.isFinite && math.abs(value) <= ProgrammingTestProgramObservation.MaxMagnitude)
 
   private[evadid] def fromReport(value: ujson.Value): Option[ProgrammingTestCommandComparison] = Try {
@@ -38,7 +38,7 @@ object ProgrammingTestCommandComparison {
       case row =>
         val parts = row.arr
         require(parts.nonEmpty && parts.size <= 4)
-        Some(TurtleCommand[Double](parts.head.str, parts.tail.map(_.num).toList))
+        Some(TurtleCommand.fromText[Double](parts.head.str, parts.tail.map(_.num).toList))
     }
     ProgrammingTestCommandComparison(count("actualCount"), count("expectedCount"), count("commandIndex"),
       command("actual"), command("expected"))

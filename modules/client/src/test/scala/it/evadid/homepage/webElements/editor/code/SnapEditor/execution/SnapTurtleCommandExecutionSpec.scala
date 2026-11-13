@@ -5,7 +5,7 @@ import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonHelpers
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
 import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.facades
 import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPythonRequest, RunPythonResult}
@@ -121,13 +121,13 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       _ <- executor.started()
       _ = executor.complete()
       actual <- first
-      _ = assertEquals(actual, List(TurtleCommand[Double]("forward", List(10.0))))
+      _ = assertEquals(actual, List(TurtleCommand.Forward[Double](10.0)))
       second = runner.execute("forward(20)")
       _ <- executor.started(1)
       _ = executor.complete(1, pythonReport(20))
       again <- second
     yield
-      assertEquals(again, List(TurtleCommand[Double]("forward", List(20.0))))
+      assertEquals(again, List(TurtleCommand.Forward[Double](20.0)))
       assertEquals(allocations, 1)
       assertEquals(executor.readyCalls, 2)
       assert(executor.requests.forall(_._2.callbacks("turtle").contains("forward")))
@@ -171,7 +171,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       _ = executor.complete()
       commands <- first
     yield
-      assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+      assertEquals(commands, List(TurtleCommand.Forward[Double](10.0)))
       runner.close()
   }
 
@@ -195,7 +195,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       _ = fresh.complete()
       commands <- second
     yield
-      assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+      assertEquals(commands, List(TurtleCommand.Forward[Double](10.0)))
       assertEquals(allocations, 2)
       runner.close()
       assertEquals(fresh.closes, 1)
@@ -221,7 +221,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       _ = fresh.complete()
       commands <- second
     yield
-      assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+      assertEquals(commands, List(TurtleCommand.Forward[Double](10.0)))
       assertEquals(allocations, 2)
       runner.close()
   }
@@ -248,7 +248,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
           _ = fresh.complete()
           commands <- second
         yield
-          assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+          assertEquals(commands, List(TurtleCommand.Forward[Double](10.0)))
           assertEquals(allocations, 2)
           runner.close()
       }
@@ -283,7 +283,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
           _ = fresh.complete()
           commands <- second
         yield
-          assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+          assertEquals(commands, List(TurtleCommand.Forward[Double](10.0)))
           assertEquals(allocations, 2)
           runner.close()
       }
@@ -308,7 +308,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       _ = secondExecutor.complete(report = pythonReport(20))
       commands <- second
     yield
-      assertEquals(commands, List(TurtleCommand[Double]("forward", List(20.0))))
+      assertEquals(commands, List(TurtleCommand.Forward[Double](20.0)))
       secondRunner.close()
       assertEquals(firstExecutor.closes, 1)
       assertEquals(secondExecutor.closes, 1)
@@ -337,7 +337,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
           _ = fresh.complete()
           commands <- second
         yield
-          assertEquals(commands, List(TurtleCommand[Double]("forward", List(10.0))))
+          assertEquals(commands, List(TurtleCommand.Forward[Double](10.0)))
           runner.close()
       }
     }
@@ -405,7 +405,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
 
   test("derives Python from the supplied current Snap state and forwards execution results") {
     var executed = ""
-    val expected = List(TurtleCommand[Double]("forward", List(10.0)))
+    val expected = List(TurtleCommand.Forward[Double](10.0))
     val runner = new TurtleCommandRunner:
       override def execute(python: String): Future[List[TurtleCommand[Double]]] =
         executed = python
@@ -432,9 +432,9 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
     assertEquals(
       PyodideTurtleCommandRunner.commandsFrom(callbacks),
       List(
-        TurtleCommand[Double]("forward", List(12.5)),
-        TurtleCommand[Double]("color", stringArgs = List("#12abef")),
-        TurtleCommand[Double]("jump_stitch", stringArgs = List("true"))
+        TurtleCommand.Forward[Double](12.5),
+        TurtleCommand.Color[Double]("#12abef"),
+        TurtleCommand.fromText[Double]("jump_stitch", stringArgs = List("true"))
       )
     )
   }
@@ -468,9 +468,9 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
         assertEquals(
           commands,
           List(
-            TurtleCommand[Double]("forward", List(10.0)),
-            TurtleCommand[Double]("forward", List(20.0)),
-            TurtleCommand[Double]("forward", List(30.0))
+            TurtleCommand.Forward[Double](10.0),
+            TurtleCommand.Forward[Double](20.0),
+            TurtleCommand.Forward[Double](30.0)
           )
         )
       }
@@ -496,9 +496,9 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       List("forward" -> List(10.0), "right" -> List(90.0), "forward" -> List(30.0))
     ).map { commands =>
       assertEquals(commands, List(
-        TurtleCommand[Double]("forward", List(10.0)),
-        TurtleCommand[Double]("right", List(90.0)),
-        TurtleCommand[Double]("forward", List(30.0))
+        TurtleCommand.Forward[Double](10.0),
+        TurtleCommand.Right[Double](90.0),
+        TurtleCommand.Forward[Double](30.0)
       ))
     }
   }
@@ -518,9 +518,9 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       List("forward" -> List(15.0), "forward" -> List(10.0), "penup" -> Nil)
     ).map { commands =>
       assertEquals(commands, List(
-        TurtleCommand[Double]("forward", List(15.0)),
-        TurtleCommand[Double]("forward", List(10.0)),
-        TurtleCommand[Double]("penup")
+        TurtleCommand.Forward[Double](15.0),
+        TurtleCommand.Forward[Double](10.0),
+        TurtleCommand.PenUp[Double]()
       ))
     }
   }
@@ -561,9 +561,9 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
     val executed = oneSide ::: oneSide ::: oneSide
 
     executePythonWithRuntimeCalls(python, executed).map { commands =>
-      val expected = executed.map { case (name, args) => TurtleCommand[Double](name, args) }
+      val expected = executed.map { case (name, args) => TurtleCommand.fromText[Double](name, args) }
       assertEquals(commands, expected)
-      assertEquals(commands.count(_.name == "forward"), 48)
+      assertEquals(commands.count { case TurtleCommand.Forward(_) => true; case _ => false }, 48)
       assertEquals(commands.length, 96)
     }
   }

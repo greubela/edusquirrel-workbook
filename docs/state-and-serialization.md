@@ -107,6 +107,9 @@ stored representation; it is not a general semantic-equivalence test.
 currently compares cleaned XML and handles runtime-pose metadata. The adapter's
 subscriptions, polling and cleanup belong to its Laminar mount lifecycle.
 
+`State.biMap` provides a synchronous bidirectional view; mappings should be pure.
+Chained views compose their forward and reverse functions against the base state.
+
 Shared core `AsyncData` mappings and recoveries run sequentially in source order,
 including across failures. A pending computation delays later inputs; its late
 result cannot overwrite a newer result. The first-result future retains its first

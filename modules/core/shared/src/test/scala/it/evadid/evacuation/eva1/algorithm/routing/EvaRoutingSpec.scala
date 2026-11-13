@@ -175,4 +175,19 @@ class EvaRoutingSpec extends FunSuite {
     intercept[IllegalArgumentException](write[EvaGraphTypes.EvaGraph](custom))
   }
 
+  test("simulation lookup clamps boundaries and selects the last simultaneous state") {
+    val first = EvacuationFlowSimulation.getInitialState(graph)
+    val middle = first.copy(currenTimestamp = 10)
+    val last = first.copy(currenTimestamp = 10, persons = Set.empty)
+    val simulation = new EvacuationFlowSimulation(List(first, middle, last))
+    assert(simulation.getStateAt(-1) eq first)
+    assert(simulation.getStateAt(0) eq first)
+    assert(simulation.getStateAt(9) eq first)
+    assert(simulation.getStateAt(10) eq last)
+    assert(simulation.getStateAt(Long.MaxValue) eq last)
+    intercept[IllegalArgumentException](new EvacuationFlowSimulation(Nil))
+    intercept[IllegalArgumentException](new EvacuationFlowSimulation(List(middle, first)))
+    assertEquals(first.persons.map(_.seed), Set(0, 1))
+  }
+
 }

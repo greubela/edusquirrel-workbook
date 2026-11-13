@@ -6,7 +6,7 @@ import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.div
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleExecutionProvider
 import it.evadid.homepage.webElements.editor.code.JavaEditorSession
 import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution
@@ -67,11 +67,10 @@ final class JavaTurtleEditorExtension(
   private def commandsFrom(execution: JavaTurtleRuntime.Execution): List[TurtleCommand[Double]] = {
     JavaEditorSession.requireCompleted(execution)
     execution.commands.toList.map { command =>
-      val name = command.command match {
-        case JavaTurtleResolution.TurtleCommand.Forward => "forward"
-        case JavaTurtleResolution.TurtleCommand.TurnRight => "right"
+      command.command match {
+        case JavaTurtleResolution.TurtleCommand.Forward => TurtleCommand.Forward(command.value)
+        case JavaTurtleResolution.TurtleCommand.TurnRight => TurtleCommand.Right(command.value)
       }
-      TurtleCommand[Double](name, List(command.value))
     }
   }
 

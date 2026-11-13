@@ -4,7 +4,7 @@ import scala.collection.mutable
 
 class MultiHashMapSet[K, V] {
 
-  private var map: mutable.Map[K, mutable.HashSet[V]] = mutable.HashMap[K, mutable.HashSet[V]]()
+  private val map: mutable.Map[K, mutable.HashSet[V]] = mutable.HashMap[K, mutable.HashSet[V]]()
 
   def contains(k: K): Boolean = map.contains(k)
 
@@ -12,43 +12,28 @@ class MultiHashMapSet[K, V] {
 
   def clear(): Unit = map.clear()
 
-  def addAll(otherMap: MultiHashMapSet[K, V]): Unit = {
-    otherMap.keys().foreach(key => {
-      otherMap(key).foreach(value => {
-        this.addElement( (key, value) )
-      })
-    })
+  private def snapshot: List[(K, Set[V])] = this.synchronized {
+    map.iterator.map((key, values) => key -> values.toSet).toList
   }
+
+  def addAll(otherMap: MultiHashMapSet[K, V]): Unit =
+    otherMap.snapshot.foreach((key, values) => values.foreach(value => addElement(key -> value)))
 
   def getCopyWithReplacedValues[O](function: Seq[V] => Seq[O]): MultiHashMapSet[K, O] = {
-    val res = new MultiHashMapSet[K, O]()
-    keys().foreach(key => {
-      function(this(key).toSeq).foreach(resValue => {
-        res.addElement( (key, resValue) )
-      })
-    })
-    res
+    val result = new MultiHashMapSet[K, O]
+    snapshot.foreach((key, values) => function(values.toSeq).foreach(value => result.addElement(key -> value)))
+    result
   }
 
-  def getCopyWithApplied[O](function: V => O): MultiHashMapSet[K, O] = {
-    val res = new MultiHashMapSet[K, O]()
-    keys().foreach(key => {
-      this(key).foreach(value => {
-        res.addElement( (key, function(value)))
-      })
-    })
-    res
-  }
+  def getCopyWithApplied[O](function: V => O): MultiHashMapSet[K, O] =
+    getCopyWithReplacedValues(_.map(function))
 
   def +=(kv: (K, mutable.HashSet[V])): MultiHashMapSet.this.type = this.synchronized {
     map += kv
     this
   }
 
-  def apply(k: K): mutable.HashSet[V] = {
-    ensureKey(k)
-    map(k)
-  }
+  def apply(k: K): mutable.HashSet[V] = this.synchronized { bucket(k) }
 
   def getOrElse(k: K, v: mutable.HashSet[V]): mutable.HashSet[V] = {
     get(k).getOrElse(v)
@@ -68,14 +53,12 @@ class MultiHashMapSet[K, V] {
   }
 
   def addElement(kv: (K, V)): MultiHashMapSet.this.type = this.synchronized {
-    ensureKey(kv._1).get(kv._1).get += kv._2
+    bucket(kv._1) += kv._2
     this
   }
 
   def removeAllValues(useFilter: V => Boolean): MultiHashMapSet.this.type = this synchronized {
-    map.keys.foreach(key => {
-      map(key).filter(useFilter).toList.foreach(this.removeElement(key, _))
-    })
+    map.valuesIterator.foreach(_.filterInPlace(value => !useFilter(value)))
     this
   }
 
@@ -88,10 +71,7 @@ class MultiHashMapSet[K, V] {
     this.-=(kv)
   }
 
-  private def ensureKey(k: K): MultiHashMapSet.this.type = this.synchronized {
-    map.getOrElseUpdate(k, mutable.HashSet[V]())
-    this
-  }
+  private def bucket(key: K): mutable.HashSet[V] = map.getOrElseUpdate(key, mutable.HashSet.empty[V])
 
   def print(): Unit = {
     keys().foreach(key => {

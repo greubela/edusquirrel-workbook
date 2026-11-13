@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.content.wip
 
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.TurtleGraphicProgram
 
@@ -12,14 +12,14 @@ import scala.collection.mutable.ListBuffer
 object EmbroideryPreviewTargets {
   private class Drawing {
     val commands = ListBuffer.empty[TurtleCommand[Double]]
-    def forward(length: Double): Unit = commands += TurtleCommand("forward", List(length))
-    def turn(degrees: Double): Unit = commands += TurtleCommand("turnRight", List(degrees))
-    def up(): Unit = commands += TurtleCommand("penUp")
-    def down(): Unit = commands += TurtleCommand("penDown")
+    def forward(length: Double): Unit = commands += TurtleCommand.Forward(length)
+    def turn(degrees: Double): Unit = commands += TurtleCommand.Right(degrees)
+    def up(): Unit = commands += TurtleCommand.PenUp()
+    def down(): Unit = commands += TurtleCommand.PenDown()
     def move(x: Double, y: Double, heading: Double = 0): Unit = {
       up()
-      commands += TurtleCommand("goto", List(x, y))
-      commands += TurtleCommand("setHeading", List(heading))
+      commands += TurtleCommand.Goto(x, y)
+      commands += TurtleCommand.SetHeading(heading)
       down()
     }
     def polygon(sides: Int, length: Double): Unit =

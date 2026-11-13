@@ -1,6 +1,6 @@
 package todomove.`export`.modules
 
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.{SvgPathBuilderCommand, TurtlePathBuilder}
 import SvgPathBuilderCommand.*
@@ -46,7 +46,7 @@ object TurtleSingleton {
   }
 
   @JSExport def backward(distance: T): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("backward", List(distance)))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.Backward[T](distance))
   }
 
   @JSExport def left(rotationDeg: T): Unit = {
@@ -54,11 +54,11 @@ object TurtleSingleton {
   }
 
   @JSExport def right(rotationDeg: T): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("right", List(rotationDeg)))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.Right[T](rotationDeg))
   }
 
   @JSExport def goto(x: T, y: T): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("goto", List(x, y)))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.Goto[T](x, y))
   }
 
   @JSExport def setpos(x: T, y: T): Unit = goto(x, y)
@@ -66,51 +66,51 @@ object TurtleSingleton {
   @JSExport def setposition(x: T, y: T): Unit = goto(x, y)
 
   @JSExport def setx(x: T): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("setx", List(x)))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.SetX[T](x))
   }
 
   @JSExport def sety(y: T): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("sety", List(y)))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.SetY[T](y))
   }
 
   @JSExport def setheading(degrees: T): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("setheading", List(degrees)))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.SetHeading[T](degrees))
   }
 
   @JSExport def seth(degrees: T): Unit = setheading(degrees)
 
   @JSExport def penup(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("penup", List()))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.PenUp[T]())
   }
 
   @JSExport def pendown(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("pendown", List()))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.PenDown[T]())
   }
 
   @JSExport def home(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("home", List()))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.Home[T]())
   }
 
   @JSExport def clear(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("clear", List()))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.Clear[T]())
   }
 
   @JSExport def clearscreen(): Unit = clear()
 
   @JSExport def showturtle(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("showturtle", List()))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.ShowTurtle[T]())
   }
 
   @JSExport def hideturtle(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("hideturtle", List()))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.HideTurtle[T]())
   }
 
   @JSExport def dot(size: T): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("dot", List(size)))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.Dot[T](size))
   }
 
   @JSExport def circle(radius: T): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(TurtleCommand[T]("circle", List(radius)))
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.Circle[T](radius))
   }
 
   @JSExport def allowedCommands(): Set[String] = Set(
@@ -141,8 +141,8 @@ object TurtleSingleton {
 
 
   @JSExport def handleCommand(name: String, args: Vector[js.Any]): Unit = {
-    val cmd = TurtleCommand[T](name, args.flatMap(JsHelpers.doubleHelper.fromJsToScala).toList)
-    turtlePathBuilder = turtlePathBuilder.handleStringCommand(cmd)
+    val cmd = TurtleCommand.fromText[T](name, args.flatMap(JsHelpers.doubleHelper.fromJsToScala).toList)
+    turtlePathBuilder = turtlePathBuilder.handleCommand(cmd)
   }
 
   @JSExport def TurtleCommands(): List[TurtleCommand[T]] = {
@@ -155,7 +155,7 @@ object TurtleSingleton {
 
   @JSExport def executionSnapshot(): js.Object = {
     val turtleCommandsDto = turtlePathBuilder.turtleCommands.map(cmd => js.Dynamic.literal(
-      name = cmd.name,
+      name = cmd.name.universalInterpretation(),
       args = cmd.args.toJSArray
     ))
 

@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 
 import scala.collection.mutable.ListBuffer
 
@@ -149,15 +149,15 @@ object SvgToTurtleProgram {
     val result = ListBuffer.empty[TurtleCommand[Double]]
     var current = Point(0, 0); var heading = 0.0; var penDown = true
     destinations.foreach { (next, draw) =>
-      if draw != penDown then { result += TurtleCommand(if draw then "penDown" else "penUp"); penDown = draw }
+      if draw != penDown then { result += (if draw then TurtleCommand.PenDown() else TurtleCommand.PenUp()); penDown = draw }
       val dx = next.x - current.x; val dy = next.y - current.y
       val distance = math.hypot(dx, dy)
       if distance > 1e-12 then
         val target = math.toDegrees(math.atan2(-dy, dx))
         val delta = ((target - heading + 540) % 360) - 180
-        if delta > 1e-10 then result += TurtleCommand("turnLeft", List(delta))
-        else if delta < -1e-10 then result += TurtleCommand("turnRight", List(-delta))
-        result += TurtleCommand("forward", List(distance)); heading = target
+        if delta > 1e-10 then result += TurtleCommand.Left(delta)
+        else if delta < -1e-10 then result += TurtleCommand.Right(-delta)
+        result += TurtleCommand.Forward(distance); heading = target
       current = next
     }
     result.toList

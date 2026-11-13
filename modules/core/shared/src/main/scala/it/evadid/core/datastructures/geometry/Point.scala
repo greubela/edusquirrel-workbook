@@ -1,6 +1,6 @@
 package it.evadid.core.datastructures.geometry
 
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import upickle.default.*

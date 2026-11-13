@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitc
 import it.evadid.vm.conversion.ProgrammingStateConversions.*
 
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleDrawingPolicy, TurtleGraphic}
@@ -61,7 +61,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   test("preview conversion still derives supported turtle commands") {
     assertEquals(
       HtmlTurtleRecreateShapeRenderer.commandsForPreview(ProgrammingStatePythonString("forward(12)")).get,
-      List(TurtleCommand[Double]("forward", List(12.0)))
+      List(TurtleCommand.Forward[Double](12.0))
     )
   }
 
@@ -75,14 +75,14 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
 
   test("graphic rendering uses expected geometry and expected angles") {
     val actual = List(
-      TurtleCommand("forward", List(10.0)),
-      TurtleCommand("turnRight", List(30.0)),
-      TurtleCommand("forward", List(10.0))
+      TurtleCommand.Forward(10.0),
+      TurtleCommand.Right(30.0),
+      TurtleCommand.Forward(10.0)
     )
     val expected = TurtleGraphic.TurtleGraphicProgram(List(
-      TurtleCommand("forward", List(10.0)),
-      TurtleCommand("turnLeft", List(90.0)),
-      TurtleCommand("forward", List(10.0))
+      TurtleCommand.Forward(10.0),
+      TurtleCommand.Left(90.0),
+      TurtleCommand.Forward(10.0)
     ))
 
     val scene = TurtleJsxGraphRenderer.buildScene(actual, expected)
@@ -117,10 +117,10 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
 
   test("pen-up movements are dashed and pen-down goto movements are solid") {
     val program: List[TurtleCommand[Double]] = List(
-      TurtleCommand("penUp"),
-      TurtleCommand("forward", List(10.0)),
-      TurtleCommand("penDown"),
-      TurtleCommand("goto", List(20.0, 0.0))
+      TurtleCommand.PenUp(),
+      TurtleCommand.Forward(10.0),
+      TurtleCommand.PenDown(),
+      TurtleCommand.Goto(20.0, 0.0)
     )
 
     val scene = TurtleJsxGraphRenderer.buildScene(program, List.empty[TurtleJsxGraphRenderer.LineToRender[Double]])
@@ -136,7 +136,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     ))
     // The actual program misses both turns. Markers must still
     // follow the expected segments, including the two missing ones.
-    val actual = List(TurtleCommand("forward", List(100.0)), TurtleCommand("forward", List(100.0)))
+    val actual = List(TurtleCommand.Forward(100.0), TurtleCommand.Forward(100.0))
     val scene = TurtleJsxGraphRenderer.buildScene(actual, expected)
     val sectors = scene.angles.map(TurtleJsxGraphRenderer.angleSector(scene, _, 10.0))
 
@@ -149,9 +149,9 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
 
   test("non-right-angle sectors use the angle between the lines and retain SVG y conversion") {
     val program = List(
-      TurtleCommand("forward", List(10.0)),
-      TurtleCommand("turnLeft", List(60.0)),
-      TurtleCommand("forward", List(10.0))
+      TurtleCommand.Forward(10.0),
+      TurtleCommand.Left(60.0),
+      TurtleCommand.Forward(10.0)
     )
     val scene = TurtleJsxGraphRenderer.buildScene(program, List.empty[TurtleJsxGraphRenderer.LineToRender[Double]])
     val sector = TurtleJsxGraphRenderer.angleSector(scene, scene.angles.head, 2.0)
@@ -187,7 +187,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     assertEquals(scene.lines.map(_.jump), List(true))
   }
 
-  private def command(name: String, args: Double*): TurtleCommand[Double] = TurtleCommand(name, args.toList)
+  private def command(name: String, args: Double*): TurtleCommand[Double] = TurtleCommand.fromText(name, args.toList)
 
   private def graphic(commands: List[TurtleCommand[Double]]): TurtleGraphic =
     TurtleGraphic.TurtleGraphicProgram(commands)
@@ -221,7 +221,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
 
   test("task policies allow decoration but reject unsupported geometry and bounded-work overflow") {
     val commands = List(command("receive_go"), command("pensize", 2),
-      TurtleCommand[Double]("color", Nil, List("blue")), command("do_wait", 0), command("forward", 10))
+      TurtleCommand.fromText[Double]("color", Nil, List("blue")), command("do_wait", 0), command("forward", 10))
     val target = graphic(List(command("forward", 10)))
     TurtleDrawingPolicy.values.foreach { policy =>
       assert(TurtleDrawingGrading.assess(commands, target, policy).matches)
@@ -352,7 +352,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   test("coverage rejects invalid commands and nonfinite arguments before interpretation") {
     val invalid = List(command("forward"), command("forward", 1, 2), command("penup", 1),
       command("goto", 1), command("circle"), command("unknown"),
-      TurtleCommand("forward", List(1.0), List("extra"))) ++
+      TurtleCommand.fromText("forward", List(1.0), List("extra"))) ++
       List(Double.NaN, Double.PositiveInfinity, Double.NegativeInfinity).map(value => command("forward", value))
     invalid.foreach { cmd =>
       intercept[IllegalArgumentException](TurtleDrawingGrading.validateDrawing(List(cmd)))
@@ -387,28 +387,28 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   }
   test("recreate graphics allow different pen-up routes but require real strokes") {
     val expected = TurtleGraphic.TurtleGraphicProgram(List(
-      TurtleCommand("penUp"), TurtleCommand("goto", List(10.0, 0.0)),
-      TurtleCommand("penDown"), TurtleCommand("forward", List(10.0))))
+      TurtleCommand.PenUp(), TurtleCommand.Goto(10.0, 0.0),
+      TurtleCommand.PenDown(), TurtleCommand.Forward(10.0)))
     val alternative: List[TurtleCommand[Double]] = List(
-      TurtleCommand("penUp"), TurtleCommand("goto", List(0.0, 10.0)),
-      TurtleCommand("goto", List(10.0, 0.0)), TurtleCommand("penDown"),
-      TurtleCommand("forward", List(10.0)))
+      TurtleCommand.PenUp(), TurtleCommand.Goto(0.0, 10.0),
+      TurtleCommand.Goto(10.0, 0.0), TurtleCommand.PenDown(),
+      TurtleCommand.Forward(10.0))
     val scene = TurtleJsxGraphRenderer.buildScene(alternative, expected, 1e-7, gradeJumps = false)
     assert(scene.lines.forall(_.result == LineResult.Correct))
     assertEquals(scene.lines.count(!_.jump), 1)
     val noStitch = TurtleJsxGraphRenderer.buildScene(
-      alternative.filterNot(_.name == "penDown"), expected, 1e-7, gradeJumps = false)
+      alternative.filterNot { case TurtleCommand.PenDown() => true; case _ => false }, expected, 1e-7, gradeJumps = false)
     assertEquals(noStitch.lines.count(_.result == LineResult.Missing), 1)
   }
 
   test("renderer scene is a projection of shared core grading and geometry") {
     import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGradingLogic
     import TurtleGradingLogic.{TurtleGraphicComparison, TurtleLineStatus}
-    val commands: List[TurtleCommand[Double]] = List(TurtleCommand("penup"), TurtleCommand("goto", List(5.0, 0.0)),
-      TurtleCommand("pendown"), TurtleCommand("forward", List(10.0)))
+    val commands: List[TurtleCommand[Double]] = List(TurtleCommand.PenUp(), TurtleCommand.Goto(5.0, 0.0),
+      TurtleCommand.PenDown(), TurtleCommand.Forward(10.0))
     val actual = TurtleGraphic.TurtleGraphicProgram(commands)
-    val expected = TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand("forward", List(10.0)),
-      TurtleCommand("left", List(90.0)), TurtleCommand("forward", List(5.0))))
+    val expected = TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand.Forward(10.0),
+      TurtleCommand.Left(90.0), TurtleCommand.Forward(5.0)))
     for gradeJumps <- List(true, false) do {
       val comparison = TurtleGraphicComparison(actual, expected, gradeJumps = gradeJumps)
       val scene = TurtleJsxGraphRenderer.buildScene(commands, expected, 1e-7, gradeJumps)
@@ -429,15 +429,15 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   }
 
   test("strict pen-up travel cannot render as a correct target stroke") {
-    val scene = TurtleJsxGraphRenderer.buildScene(List(TurtleCommand[Double]("penup"), TurtleCommand("forward", List(10.0))),
-      TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand("forward", List(10.0)))))
+    val scene = TurtleJsxGraphRenderer.buildScene(List(TurtleCommand.PenUp[Double](), TurtleCommand.Forward(10.0)),
+      TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand.Forward(10.0))))
     assertEquals(scene.lines.map(_.result), List(LineResult.Unexpected, LineResult.Missing))
     assertEquals(scene.lines.map(_.jump), List(true, false))
   }
 
   test("scene JSON round-trip preserves coordinates, results and angle references") {
     import upickle.default.*
-    val commands = List(TurtleCommand("forward", List(10.0)), TurtleCommand("left", List(90.0)), TurtleCommand("forward", List(5.0)))
+    val commands = List(TurtleCommand.Forward(10.0), TurtleCommand.Left(90.0), TurtleCommand.Forward(5.0))
     val scene = TurtleJsxGraphRenderer.buildScene(commands, TurtleGraphic.TurtleGraphicProgram(commands))
     assertEquals(read[TurtleJsxGraphRenderer.Scene](write(scene)), scene)
   }

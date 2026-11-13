@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement.AppShapeComposition
 import it.evadid.core.datastructures.vectorShapes.atomar.AppShapeDrawingRoutineElement
 import it.evadid.core.datastructures.vectorShapes.renderer.VmToSvg
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.util.logging.Logger
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
@@ -33,7 +33,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
         |""".stripMargin
     )
     val commands = BeExpressionToTurtleCommands(program.fullProgram)
-    assertEquals(commands.map(_.name), List("forward", "forward"))
+    assertEquals(commands.map(_.name.universalInterpretation()), List("forward", "forward"))
     assertEquals(commands.map(_.args), List(List(10.0), List(10.0)))
   }
 
@@ -48,7 +48,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
     assertEquals(
       BeExpressionToTurtleCommands(program.fullProgram),
       List("#112233", "bird's blue", "say \"blue\"", "123")
-        .map(value => TurtleCommand[Double]("color", stringArgs = List(value)))
+        .map(value => TurtleCommand.Color[Double](value))
     )
   }
 
@@ -56,7 +56,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
     val program = PythonToExpression.program("forward(1e3)\nforward(2.5e2)")
     assertEquals(
       BeExpressionToTurtleCommands(program.fullProgram),
-      List(TurtleCommand[Double]("forward", List(1000.0)), TurtleCommand[Double]("forward", List(250.0)))
+      List(TurtleCommand.Forward[Double](1000.0), TurtleCommand.Forward[Double](250.0))
     )
   }
 
@@ -67,7 +67,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
       val literalCall = call.copy(parameterValueMap = call.parameterValueMap.map { (parameter, _) =>
         parameter -> BeUseValue(BeDataValueLiteral(text), None)
       })
-      assertEquals(BeExpressionToTurtleCommands(literalCall), List(TurtleCommand[Double]("color", stringArgs = List(text))))
+      assertEquals(BeExpressionToTurtleCommands(literalCall), List(TurtleCommand.Color[Double](text)))
     }
   }
 
@@ -76,9 +76,9 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
     assertEquals(
       BeExpressionToTurtleCommands(program.fullProgram),
       List(
-        TurtleCommand[Double]("jump_stitch", stringArgs = List("True")),
-        TurtleCommand[Double]("jump_stitch", stringArgs = List("False")),
-        TurtleCommand[Double]("cross_stitch", List(8.0, 13.0), List("False"))
+        TurtleCommand.fromText[Double]("jump_stitch", stringArgs = List("True")),
+        TurtleCommand.fromText[Double]("jump_stitch", stringArgs = List("False")),
+        TurtleCommand.fromText[Double]("cross_stitch", List(8.0, 13.0), List("False"))
       )
     )
   }
@@ -93,16 +93,16 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
         |""".stripMargin
     )
     val commands = BeExpressionToTurtleCommands(program.fullProgram)
-    assert(commands.exists(_.name == "running_stitch"), clue = commands.map(_.name))
-    assert(commands.exists(_.name == "color"), clue = commands.map(_.name))
-    assertEquals(commands.count(_.name == "forward"), 4)
+    assert(commands.exists(_.name.universalInterpretation() == "running_stitch"), clue = commands.map(_.name.universalInterpretation()))
+    assert(commands.exists(_.name.universalInterpretation() == "color"), clue = commands.map(_.name.universalInterpretation()))
+    assertEquals(commands.count(_.name.universalInterpretation() == "forward"), 4)
     val builder = BeExpressionToTurtleCommands.toPathBuilder(program.fullProgram)
     assert(builder.svgPathBuilder.toSvgPathD.nonEmpty)
     assertEquals(builder.turtleState.headingDeg, 90.0)
   }
 
   test("Snap preview heading starts at 90 degrees") {
-    val builder = TurtlePathBuilder[Double](Point(0.0, 0.0), List(TurtleCommand("forward", List(50.0))), 90)
+    val builder = TurtlePathBuilder[Double](Point(0.0, 0.0), List(TurtleCommand.Forward(50.0)), 90)
     assertEquals(builder.turtleState.x, 0.0)
     assertEquals(builder.turtleState.y, -50.0)
   }
@@ -145,7 +145,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
         |""".stripMargin
     )
     val commands = BeExpressionToTurtleCommands(program.fullProgram)
-    assertEquals(commands.map(_.name), List("forward", "right"))
+    assertEquals(commands.map(_.name.universalInterpretation()), List("forward", "right"))
     assertEquals(commands.head.args, List(20.0))
   }
   test("recursive calls restore their caller's parameters and local variables") {
@@ -160,7 +160,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
         |forward(7)
         |""".stripMargin)
     val commands = BeExpressionToTurtleCommands(program.fullProgram)
-    assertEquals(commands.filter(_.name == "forward").map(_.args),
+    assertEquals(commands.filter(_.name.universalInterpretation() == "forward").map(_.args),
       List(List(20.0), List(20.0), List(20.0), List(20.0), List(7.0)))
   }
   test("modulo drives alternating shapes and every-fourth branches") {

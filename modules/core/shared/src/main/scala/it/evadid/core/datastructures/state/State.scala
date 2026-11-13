@@ -1,6 +1,5 @@
 package it.evadid.core.datastructures.state
 
-import it.evadid.core.datastructures.state.ExecutionMethod.ExecuteLocalSync
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl, ObserverDerivationLogic}
 
 import scala.util.Success
@@ -15,7 +14,7 @@ trait State[T] {
 
   def update(func: T => T): State[T]
 
-  def biMap[O](mapForward: T => O, mapBackward: O => T, executionMethod: ExecutionMethod = ExecuteLocalSync()): State[O]
+  def biMap[O](mapForward: T => O, mapBackward: O => T): State[O]
 }
 
 object State {
@@ -40,9 +39,8 @@ object State {
       this
     }
 
-    def biMap[T](mapForward2: O => T, mapBackward2: T => O, executionMethod: ExecutionMethod = ExecuteLocalSync()): State[T] = baseState.observable.syncLock.synchronized {
-      val res: State[T] = DerivedState[O, T](this, mapForward2, mapBackward2)
-      res
+    def biMap[T](mapForward2: O => T, mapBackward2: T => O): State[T] = baseState.observable.syncLock.synchronized {
+      DerivedState[I, T](baseState, mapForward.andThen(mapForward2), mapBackward2.andThen(mapBackward))
     }
   }
 
@@ -69,7 +67,7 @@ object State {
       this
     }
 
-    override def biMap[O](mapForward: T => O, mapBackward: O => T, executionMethod: ExecutionMethod): State[O] = observable.syncLock.synchronized {
+    override def biMap[O](mapForward: T => O, mapBackward: O => T): State[O] = observable.syncLock.synchronized {
       DerivedState(this, mapForward, mapBackward)
     }
   }

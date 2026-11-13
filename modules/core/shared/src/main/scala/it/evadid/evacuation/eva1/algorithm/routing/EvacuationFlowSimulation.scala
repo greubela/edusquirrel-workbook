@@ -4,39 +4,24 @@ import it.evadid.evacuation.core.algorithm.routing.RoutingOptionsToDestinationCa
 import it.evadid.evacuation.core.algorithm.routing.model.RoutingOption
 import it.evadid.core.datastructures.graph.{PositionableEdge, WeightedNeighbourStructure}
 import it.evadid.evacuation.core.datastructures.maps.MultiHashMapList
-import it.evadid.evacuation.core.utility.Counter
 import it.evadid.evacuation.eva1.algorithm.events.eventtypes.PersonInsertedEvent
 import it.evadid.evacuation.eva1.algorithm.events.traits.PersonEvent
 import it.evadid.evacuation.eva1.algorithm.routing.FlowRoutingMap.FlowRoutingMap
 import it.evadid.evacuation.eva1.algorithm.strategy.ClosestGoalStrategy
 import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes.EvaGraph
-import it.evadid.evacuation.eva1.model.evagraph.ObservableEvaGraphModel.fillToQuickTest
-import it.evadid.evacuation.eva1.model.evagraph.{ConnectionInfo, EvaGraphModel, ObservableEvaGraphModel, EvaPerson, Router}
-
-import scala.collection.mutable
+import it.evadid.evacuation.eva1.model.evagraph.{ConnectionInfo, EvaGraphModel, EvaPerson, Router}
 
 
-class EvacuationFlowSimulation(graph: EvaGraph, flowStrategy: FlowStrategy, states: List[EvacuationState]) {
 
+class EvacuationFlowSimulation(states: List[EvacuationState]) {
+  require(states.nonEmpty, "An evacuation simulation must contain its initial state")
+  require(states.zip(states.drop(1)).forall((before, after) => before.currenTimestamp <= after.currenTimestamp),
+    "Evacuation states must be ordered by timestamp")
 
   def getStates(): List[EvacuationState] = states
 
-  def getStateAt(timeInMs: Long): EvacuationState = {
-
-    var lastState = states(0)
-    var remStates = states.tail
-
-    while (lastState.currenTimestamp <= timeInMs && remStates.nonEmpty) {
-      val nextState = remStates.head
-      remStates = remStates.tail
-
-      if (nextState.currenTimestamp <= timeInMs) {
-        lastState = nextState
-      }
-    }
-    lastState
-  }
-
+  def getStateAt(timeInMs: Long): EvacuationState =
+    states.tail.iterator.takeWhile(_.currenTimestamp <= timeInMs).foldLeft(states.head)((_, state) => state)
 }
 
 
@@ -57,20 +42,28 @@ object EvacuationFlowSimulation {
 
     val startTime = System.nanoTime()
 
-    val states = mutable.ListBuffer[EvacuationState]()
-    var lastState: Option[EvacuationState] = Some(getInitialState(graph))
-
-    while (lastState.isDefined && states.size < 10000) {
-      states += lastState.get
-      lastState = lastState.get.calculateNextState(flowStrategy)
-    }
+    val states = collectStates(getInitialState(graph), flowStrategy)
 
     val endTime = System.nanoTime()
     val diff = (endTime - startTime) / 1000000 / 100 / 10.0
 
     System.out.println("Finished evacuation in " + diff + "s")
 
-    new EvacuationFlowSimulation(graph, flowStrategy, states.toList)
+    new EvacuationFlowSimulation(states)
+  }
+
+  // Keep the existing bound, including its final recorded state, without computing an unused successor.
+  private val MaxStates = 10000
+
+  private def collectStates(initial: EvacuationState, strategy: FlowStrategy): List[EvacuationState] = {
+    @scala.annotation.tailrec
+    def collect(current: EvacuationState, remaining: Int, previous: List[EvacuationState]): List[EvacuationState] =
+      if remaining == 1 then (current :: previous).reverse
+      else current.calculateNextState(strategy) match {
+        case Some(next) => collect(next, remaining - 1, current :: previous)
+        case None => (current :: previous).reverse
+      }
+    collect(initial, MaxStates, Nil)
   }
 
   def getInitialState(graph: EvaGraph): EvacuationState = {
@@ -78,7 +71,7 @@ object EvacuationFlowSimulation {
     val routingsMap: FlowRoutingMap = getRoutingOptionsMap(graph)
 
     val insertionEvents = getInitialEvents(graph)
-    val state = EvacuationState(initialState, insertionEvents.map(_.person).toSet, routingsMap, 0, List(), insertionEvents.map(_.asInstanceOf[PersonEvent]).toSet)
+    val state = EvacuationState(initialState, insertionEvents.map(_.person).toSet, routingsMap, 0, List(), insertionEvents.map(event => event: PersonEvent))
     state
   }
 
@@ -99,18 +92,9 @@ object EvacuationFlowSimulation {
     resultMap
   }
 
-  private def getInitialEvents(graph: EvaGraph): mutable.HashSet[PersonInsertedEvent] = {
-    val counter = new Counter()
-    val res = new mutable.HashSet[PersonInsertedEvent]()
-    graph.nodes.foreach(node => {
-      val initPersonsAtNode = node.initCapacity
-      1.to(initPersonsAtNode).foreach(personNr => {
-        val person = EvaPerson(counter.getNext, List())
-        res += PersonInsertedEvent(person, node, graph, 0, -1)
-      })
-    })
-    res
-  }
-
+  private def getInitialEvents(graph: EvaGraph): Set[PersonInsertedEvent] =
+    graph.nodes.toList.flatMap(node => List.fill(node.initCapacity)(node)).zipWithIndex.map { (node, index) =>
+      PersonInsertedEvent(EvaPerson(index, Nil), node, graph, 0, -1)
+    }.toSet
 
 }

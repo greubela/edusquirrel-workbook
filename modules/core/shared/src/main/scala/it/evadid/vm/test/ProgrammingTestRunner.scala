@@ -3,7 +3,7 @@ package it.evadid.vm.test
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.WorkerCommands
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingTestInvocation, ProgrammingTestProgramObservation}
 import it.evadid.vm.conversion.unittest.ProgramForUnitTestExecution
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
@@ -85,7 +85,7 @@ private[evadid] object ProgrammingTestRunner {
         require(row.arr.nonEmpty)
         val name = row.arr.head.str
         require(ProgrammingTestProgramObservation.commandArity(name).contains(row.arr.size - 1))
-        TurtleCommand[Double](name, row.arr.tail.map(_.num).toList)
+        TurtleCommand.fromText[Double](name, row.arr.tail.map(_.num).toList)
       }
       ProgrammingTestProgramObservation(count.toInt, commands)
     }

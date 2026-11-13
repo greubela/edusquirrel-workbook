@@ -5,7 +5,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.vm.conversion.ProgrammingStateConversions.*
 
 import it.evadid.core.datastructures.language.AppLanguage.Java
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, ProgrammingConversionException, ProgrammingConversionLocation}
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.parsing.generic.abstractions.GenericAST

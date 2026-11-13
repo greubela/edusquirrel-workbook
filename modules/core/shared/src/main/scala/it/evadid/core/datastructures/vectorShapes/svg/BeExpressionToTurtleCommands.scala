@@ -5,7 +5,7 @@ import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.BeDefineFunction
@@ -110,7 +110,7 @@ object BeExpressionToTurtleCommands {
         case None =>
           val turtleName = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(python, python)
           val numeric = args.flatMap(arg => numericArg(arg, state))
-          state.copy(commands = state.commands :+ TurtleCommand(turtleName, numeric, args.flatMap(stringArg)))
+          state.copy(commands = state.commands :+ TurtleCommand.fromCall(it.evadid.vm.naming.BeEntityName.fromCodeString(turtleName), numeric, args.flatMap(stringArg)))
   }
 
   private def numericArg(expression: BeExpression, state: InterpState): Option[Double] =

@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitc
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import it.evadid.core.datastructures.geometry.Point
-import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtleCommand
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import munit.FunSuite
@@ -12,7 +12,7 @@ import scala.collection.mutable.ListBuffer
 import scala.scalajs.js
 
 class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
-  private def cmd(name: String, args: Double*): TurtleCommand[Double] = TurtleCommand(name, args.toList)
+  private def cmd(name: String, args: Double*): TurtleCommand[Double] = TurtleCommand.fromText(name, args.toList)
   private def point(actual: Point[Double], x: Double, y: Double): Unit =
     assertEqualsDouble(actual.x, x, 1e-7)
     assertEqualsDouble(actual.y, y, 1e-7)

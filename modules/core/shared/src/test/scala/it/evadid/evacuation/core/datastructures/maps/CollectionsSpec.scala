@@ -116,4 +116,28 @@ class CollectionsSpec extends FunSuite {
     assertEquals(pool.removed("abc"), Map.empty[String, Int])
     assertEquals(pool.iterator.toMap, Map("abc" -> 3))
   }
+  test("set-map transformations use snapshots when callbacks mutate the source") {
+    val map = new MultiHashMapSet[String, Int]
+    map.addElement("a" -> 1).addElement("a" -> 2)
+    val copied = map.getCopyWithApplied { value =>
+      map.addElement("a" -> 99)
+      value * 2
+    }
+    assertEquals(copied("a").toSet, Set(2, 4))
+    assertEquals(map("a").toSet, Set(1, 2, 99))
+    copied("a").clear()
+    assertEquals(map("a").toSet, Set(1, 2, 99))
+    map.addAll(map)
+    assertEquals(map("a").toSet, Set(1, 2, 99))
+  }
+
+  test("set-map removal preserves exposed bucket ownership") {
+    val map = new MultiHashMapSet[String, Int]
+    val bucket = HashSet(1, 2, 3)
+    map += ("a" -> bucket)
+    map.removeAllValues(_ % 2 == 1)
+    assert(map.get("a").exists(_ eq bucket))
+    assertEquals(bucket.toSet, Set(2))
+  }
+
 }
