@@ -37,16 +37,17 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   private[change] def updateInfoWithoutContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
+    // Navigation and display state must not wait for remote storage: an unreachable
+    // sync destination would otherwise freeze the workbook. Refresh in the background.
+    fullInfo.homepageInfoState.update(func)
     fullInfo.syncControl
       .ensureFetchAndLoad(interactions.map(_.interactionVariable))
       .recover { case err =>
         fullInfo.loggerSystemInfo.syncCacheLogger.logExceptionWarn(
-          "continuing display update despite fetchAndLoad failure",
+          "display update applied, but the following fetchAndLoad failed",
           err
         )
-        ()
       }
-      .map(_ => fullInfo.homepageInfoState.update(func))
   }
 
   def changeWorkbook(factory: WorkbookFactory): Unit = fullInfo.synchronized {
@@ -66,8 +67,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = fullInfo.synchronized {
     if (fullInfo.homepageInfoState.now().workbookInfo.nonEmpty) {
-      val newInfo: Option[AllWorkbookInfo] = fullInfo.homepageInfoState.now().workbookInfo.map(info => info.copy(config = func(info.config)))
-      updateInfoWithoutContextChange(curInfo => curInfo.copy(workbookInfo = newInfo))
+      updateInfoWithoutContextChange(curInfo => curInfo.copy(workbookInfo = curInfo.workbookInfo.map(info => info.copy(config = func(info.config)))))
       //cacheControl.fetchAndStore(interactions.map(_.interactionVariable))
     } else {
       logger.logWarn("[WARN] ignore updated workbook config because there is no workbook loaded!")
