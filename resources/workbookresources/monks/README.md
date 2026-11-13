@@ -31,31 +31,32 @@ The counting story uses three bricks: red above yellow above blue. Removing a
 brick, placing it aside, and drawing its tally each have a separate image. The
 last frame shows the empty tower position and three tally marks.
 
-The fifteen text responses keep their original task IDs (1b–1g and 2b–2j).
-A fourth section adds three independent `TurtleRecreateShapeInteraction`
-exercises, `monks-koch-0` through `monks-koch-2`: a straight line, one triangular
-bump, and the next Koch iteration. Each starts unsolved and supports the Python
-and block editors, including user-defined recursive functions. Targets contain
-1, 4 and 16 connected segments, with total horizontal extent 270.
+## Structure
 
-Model, recursion and serialization checks:
+`CreateMonksWorkbook` builds six sections with stable element IDs (`monks-a2`, `monks-e5`, ...):
 
-```
-sbt 'client/testOnly *MonksWorkbookSpec' 'coreJVM/testOnly *BeExpressionToTurtleCommandsSpec'
-node tools/dev/monks-workbook.test.mjs
-```
+| Section | Content |
+| --- | --- |
+| `monks-editor` (0) | Editor introduction and tasks E1–E3 |
+| `monks-story` (A) | Theater slideshow, recursion scheme, tasks A1–A8 |
+| `monks-phases` (B) | Outward/return path, tasks B1–B3 |
+| `monks-tower` (C) | Counting slideshow (existing frames only, text conclusion), tasks C1–C6 and E4–E6b |
+| `monks-bridge` (D) | Contract, multiple calls, tasks D1–D2, E7, E8 |
+| `monks-koch` (3) | Koch curve practice |
 
-After `buildClientDev`, the optional browser check navigates every story frame
-and solves all three Koch targets, checking that code survives reopening:
+Task types map to existing interactions: `ChoiceInteraction` (choice, multiple select and one
+row per assignment), `AnswerTableInteraction` (graded inputs; accepted spellings separated by `|`)
+and `ReorderMapIdInteraction`. Language-map keys derive from the task ID (`<id>-question`,
+`<id>-opt<i>`, `<id>-row<i>`); code blocks and category names that need no translation are in
+`map-universal.json`.
 
-```
-MONKS_BROWSER_TEST=1 node tools/dev/monks-workbook.test.mjs
-```
+## Open items
 
-It requires Chromium (`CHROMIUM_PATH`, default `/usr/bin/chromium`). The local
-routing fixture blocks external requests; `CODEMIRROR_TEST_BUNDLE` can point to
-a bundle of `homepage/js/CodeMirrorLoader.js` using its pinned CDN packages for
-an offline editor check.
+- E1–E8 are placeholders showing task text and Java starting code. The editors need
+  `Turtle.turnLeft`, `Turtle.penUp` and `Turtle.penDown` in the checked Java runner (currently only
+  `forward` and `turnRight`), then targets built from the sample solutions.
+- E6a relies on the Java runner's call-depth limit reporting an execution limit.
+- Unit-test tasks, recursion-versus-loop checks and further story images are not part of this edition.
 
 The homepage card uses the separate square promotional tablet mock-up at
 `resources/img/art/mockup/monks-workbook.png`; it is not part of the slideshow.

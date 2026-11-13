@@ -1,25 +1,30 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.file.CopyrightInfo
-import it.evadid.core.datastructures.file.CopyrightInfo.AiGenerated
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_TYPE
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.HintLabel
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
+import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.*
+import it.evadid.workbook.elements.interactionElements.table.{AnswerTableInteraction, EditableTableCell}
 import it.evadid.workbook.elements.structureElements.{ExerciseGroup, Workbook}
 
-/** First digital edition of "Rekursion mit den Mönchen von Mons Komputarius" (29.04.2025).
- * Stable exercise IDs keep responses attached to their original PDF task numbers.
+/** Recursion workbook "Die Mönche von Mons Komputarius".
+ *
+ * Parts: 0 (editor basics), A (monks), B (outward/return path), C (tower), D (bridge to the final task)
+ * and the Koch curve practice (section 3).
+ *
+ * Programming tasks of parts 0 and C/D are shown as placeholders until the Java turtle runner supports
+ * `Turtle.turnLeft`, `Turtle.penUp` and `Turtle.penDown`. Element IDs are stable per task (`monks-a2`, ...).
  */
 case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
@@ -30,6 +35,8 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   override def availableLanguages: List[AppLanguage.HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
 
   private def key(name: String): String = "monksworkbook/" + name
+
+  private def lm(name: String): LanguageMapContentId = LanguageMapContentId(key(name))
 
   private def panel(scene: Scene): WorkbookDisplayElement =
     ExerciseGroup("monks-panel-" + scene.id, List(
@@ -43,42 +50,110 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
       instructionLabeledPair(key("dialoguelabel"), key(scene.dialogueKey), HintLabel)
     ))
 
-  private def task(number: String): WorkbookElement =
-    container(key("task" + number + "title"), List(
-      instructionMarkdown(key("task" + number)),
-      TextInteraction("monks-answer-" + number)))
+  // ---- task builders: the task `id` determines the container title and all language-map keys
+
+  private def task(id: String, elements: List[WorkbookElement]): WorkbookElement =
+    container(key(id + "title"), elements)
+
+  private def text(name: String): WorkbookElement = instructionMarkdown(key(name))
+
+  private def prompt(id: String): WorkbookElement = text(id + "prompt")
+
+  /** Options are `<id>-opt0..n-1` unless explicit option keys are given. */
+  private def choice(id: String, expected: List[Int], optionCount: Int, multiple: Boolean = false,
+                     optionKeys: Option[List[String]] = None): ChoiceInteraction =
+    ChoiceInteraction("monks-" + id, lm(id + "-question"),
+      optionKeys.getOrElse(List.tabulate(optionCount)(i => s"$id-opt$i")).map(lm), multiple, Some(expected))
+
+  /** One single-choice row per statement; `answers` name the correct category for each `<id>-row<i>`. */
+  private def assign(id: String, categories: List[String], answers: List[String]): List[WorkbookElement] =
+    answers.zipWithIndex.map { (answer, i) =>
+      ChoiceInteraction(s"monks-$id-$i", lm(s"$id-row$i"), categories.map(c => lm("cat-" + c)),
+        expected = Some(List(categories.indexOf(answer))))
+    }
+
+  /** Free-input table. A cell lists accepted spellings separated by `|`; `columns` are full language-map keys. */
+  private def table(id: String, columns: List[String], answers: List[List[String]]): AnswerTableInteraction =
+    AnswerTableInteraction("monks-" + id, lm(id + "-caption"),
+      answers.indices.map(i => lm(s"$id-row$i")).toList, columns.map(lm),
+      answers.map(_.map(cell => EditableTableCell(expected = Some(cell.split('|').toList)))))
+
+  private def singleColumn(id: String, answers: List[String]): AnswerTableInteraction =
+    table(id, List("answercolumn"), answers.map(List(_)))
+
+  /** `items` are listed in their correct order; the interaction shuffles them. */
+  private def reorder(id: String, itemCount: Int): ReorderMapIdInteraction =
+    ReorderMapIdInteraction("monks-" + id, List.tabulate(itemCount)(i => lm(s"$id-item$i")), seed = id.hashCode.toLong)
+
+  /** Placeholder for an editor task: prompt, starting code and a note that the editor follows. */
+  private def editorTask(id: String, extra: List[WorkbookElement] = Nil): WorkbookElement =
+    task(id, List(prompt(id), text(id + "code"),
+      instructionLabeledPair(key("placeholderlabel"), key("placeholdertext"), HintLabel)) ++ extra)
 
   // Building once makes IDs and state references stable across createWorkbook/createEverything calls.
   override lazy val createWorkbook: Workbook = workbook(
     key("workbooktitle"),
     List(
-      // story
-      section("monks-story", key("storytitle"),
-        List(
-          container(key("task1atitle"), List(
-            instructionMarkdown(key("introduction")),
-            instructionMarkdown(key("task1a")),
-            Slideshow("monks-theater", theaterScenes.map(panel)))
-          ),
-          container(key("task1btitle"),
-            List(
-              instructionMarkdown(key("task1b")),
-              TextInteraction("monks-answer-1b"),
-              instructionMarkdown(key("recursionexplanation"))
-            ) ++ List(
-              "1c", "1d", "1e", "1f", "1g"
-            ).map(task),
-          ),
-        )),
-      section("monks-recursion", key("sortingtitle"), List(
-        container(key("task2atitle"),
-          List(
-            instructionMarkdown(key("task2a")),
-            Slideshow("monks-counting-story", countingScenes.map(panel))
-          ) ++
-            List("2b", "2c", "2d", "2e", "2f", "2g", "2h").map(task) ++
-            List(instructionMarkdown(key("functionalexplanation"))) ++ List("2i", "2j").map(task)
-        ))),
+      section("monks-editor", key("partzero"), List(
+        container(key("partzero"), List(text("zerointro"))),
+        editorTask("e1"), editorTask("e2"), editorTask("e3"))),
+
+      section("monks-story", key("parta"), List(
+        container(key("parta"), List(
+          text("introduction"),
+          Slideshow("monks-theater", theaterScenes.map(panel)),
+          text("schemaintro"), text("schemacode"))),
+        task("a1", List(prompt("a1"), reorder("a1", 8))),
+        task("a2", List(singleColumn("a2", List("3", "5", "5 4 2|5,4,2|5, 4, 2|5 , 4 , 2", "5")))),
+        task("a3", List(choice("a3", List(1), 4))),
+        task("a4", List(prompt("a4")) ++ assign("a4",
+          List("abort", "simplify", "call", "combine", "first", "none"),
+          List("simplify", "call", "abort", "combine", "first", "none"))),
+        task("a5", List(prompt("a5"), text("a5code")) ++ assign("a5",
+          List("abort", "simplify", "call", "combine"),
+          List("abort", "simplify", "simplify", "call", "combine"))),
+        task("a6", List(choice("a6", List(1, 3, 5), 6, multiple = true))),
+        task("a7", List(choice("a7", List(1, 3, 5), 6, multiple = true), text("a7note"))),
+        task("a8", List(text("a8intro"),
+          choice("a8a", List(1), 4),
+          singleColumn("a8b", List("6")),
+          choice("a8c", List(2), 4))))),
+
+      section("monks-phases", key("partb"), List(
+        task("b1", List(prompt("b1"), text("b1code"), reorder("b1", 8))),
+        task("b2", List(choice("b2", List(1, 3, 4, 5), 6, multiple = true))),
+        task("b3", List(prompt("b3"), text("b3code")) ++ assign("b3",
+          List("exception", "overflow", "ascending", "correct"),
+          List("exception", "overflow", "ascending", "correct"))))),
+
+      section("monks-tower", key("partc"), List(
+        container(key("partc"), List(
+          prompt("c0"),
+          Slideshow("monks-counting-story", countingScenes.map(panel)),
+          text("countingend"))),
+        task("c1", List(prompt("c1")) ++ assign("c1",
+          List("abort", "simplify", "call", "combine", "state"),
+          List("simplify", "state", "call", "abort", "combine"))),
+        task("c2", List(
+          table("c2", List("c2-col0", "c2-col1", "c2-col2"), List(List("2", "1", "1"), List("1", "2", "2"), List("0", "3", "3"))),
+          singleColumn("c2b", List("4")),
+          text("c2c-prompt"), reorder("c2c", 3))),
+        task("c3", List(prompt("c3"), text("c3code")) ++ assign("c3",
+          List("variant-a", "variant-b", "variant-c"), List("variant-a", "variant-b", "variant-c"))),
+        task("c4", List(singleColumn("c4", List("6", "3", "5", "3")))),
+        task("c5", List(text("functionalexplanation"), choice("c5", List(1, 3, 4, 5), 6, multiple = true))),
+        task("c6", List(choice("c6", List(2), 3, multiple = true,
+          optionKeys = Some(List("cat-variant-a", "cat-variant-b", "cat-variant-c"))))),
+        container(key("helperslabel"), List(instructionCollapsibleHint(key("helperslabel"), key("helperscode")))),
+        editorTask("e4"), editorTask("e5"), editorTask("e6a"), editorTask("e6b"))),
+
+      section("monks-bridge", key("partd"), List(
+        task("d1", List(choice("d1a", List(1), 4), choice("d1b", List(1, 3), 5, multiple = true), text("d1note"))),
+        task("d2", List(text("d2code"), table("d2", List("answercolumn"), List(List("15"), List("8"), List("9"))))),
+        editorTask("e7", List(singleColumn("e7b", List("15")))),
+        editorTask("e8", List(singleColumn("e8b", List("7")))))),
+
+      // Section 3 (Koch curve) is authored separately and intentionally unchanged.
       section("monks-koch", key("kochtitle"),
         List(container(key("kochintroductioncont"), List(
           instructionMarkdown(key("kochintroduction"))
