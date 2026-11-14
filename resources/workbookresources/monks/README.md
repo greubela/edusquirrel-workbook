@@ -41,7 +41,7 @@ and block editors, including user-defined recursive functions. Targets contain
 Model, recursion and serialization checks:
 
 ```
-sbt 'client/testOnly *MonksWorkbookSpec' 'coreJVM/testOnly *BeExpressionToTurtleCommandsSpec'
+sbt 'client/testOnly *MonksWorkbookSpec' 'coreJVM/testOnly *TurtleProgramAnalysisSpec'
 node tools/dev/monks-workbook.test.mjs
 ```
 

@@ -39,7 +39,7 @@ class ProgrammingStateSerializationSpec extends FunSuite {
     assert(restored.isInstanceOf[ProgrammingStateBeExpression])
     assertEquals(restored.toJava, java)
     assertEquals(restored.fingerprint(), expression.fingerprint())
-    assertEquals(restored.toBeExpression.deriveTurtleCommands, expression.deriveTurtleCommands)
+    assertEquals(restored.toBeExpression.turtleCommandExecutionInfo.completedCommands, expression.turtleCommandExecutionInfo.completedCommands)
     val binary = readBinary[ProgrammingState](writeBinary[ProgrammingState](expression))
     assertEquals(binary.toJava, java)
   }

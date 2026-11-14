@@ -212,7 +212,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("behavior is available after switching representations") {
     val commands = ProgrammingStatePythonString("forward(12)").toSnapXml
-      .toBeExpression.deriveTurtleCommands
+      .toBeExpression.turtleCommandExecutionInfo.completedCommands
     assertEquals(commands.map(_.name.universalInterpretation()), List("forward"))
     assertEquals(commands.flatMap(_.args), List(12.0))
   }
@@ -229,15 +229,15 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val original = ProgrammingStatePythonString(source)
     val snap = original.toSnapXml
     assert(snap.snapXml.contains("reportModulus"))
-    val expected = original.toBeExpression.deriveTurtleCommands
+    val expected = original.toBeExpression.turtleCommandExecutionInfo.completedCommands
     assertEquals(expected.flatMap(_.args), List(10.0, 20.0, 10.0, 20.0))
-    assertEquals(snap.toBeExpression.deriveTurtleCommands, expected)
+    assertEquals(snap.toBeExpression.turtleCommandExecutionInfo.completedCommands, expected)
   }
 
   test("negative turns and pen-up return distances retain their signs in Snap") {
     val original = ProgrammingStatePythonString("turn(-60)\npenup()\nlength = 30\nforward(-length)\npendown()\n")
-    assertEquals(original.toSnapXml.toBeExpression.deriveTurtleCommands,
-      original.toBeExpression.deriveTurtleCommands)
+    assertEquals(original.toSnapXml.toBeExpression.turtleCommandExecutionInfo.completedCommands,
+      original.toBeExpression.turtleCommandExecutionInfo.completedCommands)
   }
 
   test("BeExpression and Java round trip") {
@@ -301,9 +301,9 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val fingerprint = state.fingerprint()
     val expression = state.toBeExpression
     assert(SnapExpressionSupport.validateSubset(expression.expression).isRight, clue = source)
-    val commands = expression.deriveTurtleCommands
+    val commands = expression.turtleCommandExecutionInfo.completedCommands
     assertEquals(commands.flatMap(_.args), List(10.0, 20.0, 10.0))
-    assertEquals(state.toSnapXml.toBeExpression.deriveTurtleCommands, commands)
+    assertEquals(state.toSnapXml.toBeExpression.turtleCommandExecutionInfo.completedCommands, commands)
     assertEquals(state.toJava.code, source)
     assertEquals(state.fingerprint(), fingerprint)
   }
@@ -559,7 +559,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val program = ProgrammingStateJavaString(squareJava()).toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
 
     assertEquals(T.runVm(program).commands, squareCommands(25))
-    assertEquals(snap.toBeExpression.deriveTurtleCommands.flatMap(_.args), List(12.0))
+    assertEquals(snap.toBeExpression.turtleCommandExecutionInfo.completedCommands.flatMap(_.args), List(12.0))
     assert(snap.toPython.code.contains("forward(12)"), clue = snap.toPython.code)
     assert(snap.toJava.code.contains("forward(12)"), clue = snap.toJava.code)
     assertEquals(snap.toSnapXml.snapXml, xml)
@@ -576,9 +576,9 @@ class ProgrammingStateConversionSpec extends FunSuite {
     )
 
     states.foreach { state =>
-      assertEquals(state.toBeExpression.deriveTurtleCommands, Nil)
-      assertEquals(state.toPython.toBeExpression.deriveTurtleCommands, Nil)
-      assertEquals(state.toJava.toBeExpression.deriveTurtleCommands, Nil)
+      assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands, Nil)
+      assertEquals(state.toPython.toBeExpression.turtleCommandExecutionInfo.completedCommands, Nil)
+      assertEquals(state.toJava.toBeExpression.turtleCommandExecutionInfo.completedCommands, Nil)
       assertEquals(state.toSnapXml, state)
     }
   }

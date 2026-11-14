@@ -14,11 +14,12 @@ import it.evadid.vm.types.BeDataValueLiteral
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.workbook.elements.interactionElements.programming.state.snap
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.vm.simulation.turtle.TurtleProgramAnalysis
 import munit.FunSuite
 
-class BeExpressionToTurtleCommandsSpec extends FunSuite {
+class TurtleProgramAnalysisSpec extends FunSuite {
 
-  private val logger = Logger.withNameAndPrefixes(Some("BeExpressionToTurtleCommandsSpec"))
+  private val logger = Logger.withNameAndPrefixes(Some("TurtleProgramAnalysisSpec"))
 
   test("catalog aliases map to turtle commands") {
     assertEquals(SnapTurtleCatalog.snapSelectorByPythonName("right"), "turn")
@@ -32,7 +33,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
         |    forward(10)
         |""".stripMargin
     )
-    val commands = BeExpressionToTurtleCommands(program.fullProgram)
+    val commands = TurtleProgramAnalysis(program.fullProgram).completedCommands
     assertEquals(commands.map(_.name.universalInterpretation()), List("forward", "forward"))
     assertEquals(commands.map(_.args), List(List(10.0), List(10.0)))
   }
@@ -46,7 +47,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
         |""".stripMargin
     )
     assertEquals(
-      BeExpressionToTurtleCommands(program.fullProgram),
+      TurtleProgramAnalysis(program.fullProgram).completedCommands,
       List("#112233", "bird's blue", "say \"blue\"", "123")
         .map(value => TurtleCommand.Color[Double](value))
     )
@@ -55,7 +56,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
   test("scientific numeric literals produce only numeric arguments") {
     val program = PythonToExpression.program("forward(1e3)\nforward(2.5e2)")
     assertEquals(
-      BeExpressionToTurtleCommands(program.fullProgram),
+      TurtleProgramAnalysis(program.fullProgram).completedCommands,
       List(TurtleCommand.Forward[Double](1000.0), TurtleCommand.Forward[Double](250.0))
     )
   }
@@ -67,14 +68,14 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
       val literalCall = call.copy(parameterValueMap = call.parameterValueMap.map { (parameter, _) =>
         parameter -> BeUseValue(BeDataValueLiteral(text), None)
       })
-      assertEquals(BeExpressionToTurtleCommands(literalCall), List(TurtleCommand.Color[Double](text)))
+      assertEquals(TurtleProgramAnalysis(literalCall).completedCommands, List(TurtleCommand.Color[Double](text)))
     }
   }
 
   test("boolean stitch arguments stay separate from numeric arguments") {
     val program = PythonToExpression.program("jump_stitch(True)\njump_stitch(False)\ncross_stitch(8, 13, False)")
     assertEquals(
-      BeExpressionToTurtleCommands(program.fullProgram),
+      TurtleProgramAnalysis(program.fullProgram).completedCommands,
       List(
         TurtleCommand.fromText[Double]("jump_stitch", stringArgs = List("True")),
         TurtleCommand.fromText[Double]("jump_stitch", stringArgs = List("False")),
@@ -92,11 +93,11 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
         |    turn(90)
         |""".stripMargin
     )
-    val commands = BeExpressionToTurtleCommands(program.fullProgram)
+    val commands = TurtleProgramAnalysis(program.fullProgram).completedCommands
     assert(commands.exists(_.name.universalInterpretation() == "running_stitch"), clue = commands.map(_.name.universalInterpretation()))
     assert(commands.exists(_.name.universalInterpretation() == "color"), clue = commands.map(_.name.universalInterpretation()))
     assertEquals(commands.count(_.name.universalInterpretation() == "forward"), 4)
-    val builder = BeExpressionToTurtleCommands.toPathBuilder(program.fullProgram)
+    val builder = TurtleProgramAnalysis.toPathBuilder(program.fullProgram)
     assert(builder.svgPathBuilder.toSvgPathD.nonEmpty)
     assertEquals(builder.turtleState.headingDeg, 90.0)
   }
@@ -144,7 +145,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
         |square(20)
         |""".stripMargin
     )
-    val commands = BeExpressionToTurtleCommands(program.fullProgram)
+    val commands = TurtleProgramAnalysis(program.fullProgram).completedCommands
     assertEquals(commands.map(_.name.universalInterpretation()), List("forward", "right"))
     assertEquals(commands.head.args, List(20.0))
   }
@@ -159,7 +160,7 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
         |branch(80, 2)
         |forward(7)
         |""".stripMargin)
-    val commands = BeExpressionToTurtleCommands(program.fullProgram)
+    val commands = TurtleProgramAnalysis(program.fullProgram).completedCommands
     assertEquals(commands.filter(_.name.universalInterpretation() == "forward").map(_.args),
       List(List(20.0), List(20.0), List(20.0), List(20.0), List(7.0)))
   }
@@ -171,14 +172,14 @@ class BeExpressionToTurtleCommandsSpec extends FunSuite {
         |    else:
         |        forward(10)
         |""".stripMargin)
-      val commands = BeExpressionToTurtleCommands(program.fullProgram)
+      val commands = TurtleProgramAnalysis(program.fullProgram).completedCommands
       assertEquals(commands.map(_.args.head), (1 to 7).map(i => if i % period == 0 then 40.0 else 10.0).toList)
     }
   }
 
   test("remainder agrees with Python for signed integer and fractional operands") {
     val program = PythonToExpression.program("negative_divisor = -3\nforward(-5 % 3)\nforward(5 % negative_divisor)\nforward(5.5 % 2)\n")
-    assertEquals(BeExpressionToTurtleCommands(program.fullProgram).map(_.args),
+    assertEquals(TurtleProgramAnalysis(program.fullProgram).completedCommands.map(_.args),
       List(List(1.0), List(-1.0), List(1.5)))
   }
 

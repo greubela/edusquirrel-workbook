@@ -3,14 +3,11 @@ package it.evadid.workbook.elements.interactionElements.programming.state
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
 
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution
 
 import it.evadid.core.datastructures.language.AppLanguage.Java
-import it.evadid.core.datastructures.vectorShapes.svg.BeExpressionToTurtleCommands
-import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
+import it.evadid.vm.simulation.turtle.{TurtleProgramAnalysis, TurtleCommandExecutionInfo}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
-import it.evadid.vm.simulation.java.JavaTurtleRuntime
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapGeneratedImages
 import it.evadid.vm.conversion.ConversionResult
@@ -66,20 +63,7 @@ object ProgrammingState {
 }
 
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState {
-  def deriveTurtleCommands: List[TurtleCommand[Double]] = expression match {
-    case root: JavaTurtleVmPrograms.Root =>
-      val execution = JavaTurtleRuntime.runVm(JavaTurtleVmPrograms.fromRoot(root))
-      if execution.status != JavaTurtleRuntime.Status.Completed then
-        throw IllegalArgumentException(s"Java execution did not complete: ${execution.status}.")
-      execution.commands.toList.map { command =>
-        if !command.value.isFinite then throw IllegalArgumentException("A drawing command needs a finite number.")
-        command.command match {
-          case it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution.TurtleCommand.Forward => TurtleCommand.Forward(command.value)
-          case it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution.TurtleCommand.TurnRight => TurtleCommand.Right(command.value)
-        }
-      }
-    case _ => BeExpressionToTurtleCommands(expression)
-  }
+  def turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleProgramAnalysis(expression)
 
   override val toString: String = s"ProgrammingStateBeExpression(${expression.toString.take(300)})"
 

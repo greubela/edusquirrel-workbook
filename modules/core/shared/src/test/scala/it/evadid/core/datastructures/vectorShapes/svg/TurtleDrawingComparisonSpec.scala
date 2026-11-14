@@ -7,7 +7,7 @@ import munit.FunSuite
 class TurtleDrawingComparisonSpec extends FunSuite {
 
   private def build(commands: List[TurtleCommand[Double]]): TurtlePathBuilder[Double] =
-    TurtlePathBuilder(Point(0.0, 0.0), commands, BeExpressionToTurtleCommands.SnapHeadingDeg)
+    TurtlePathBuilder(Point(0.0, 0.0), commands, TurtlePathBuilder.SnapHeadingDeg)
 
   private def square(side: Double): List[TurtleCommand[Double]] =
     List.fill(4)(List(TurtleCommand.Forward(side), TurtleCommand.Left(90.0))).flatten

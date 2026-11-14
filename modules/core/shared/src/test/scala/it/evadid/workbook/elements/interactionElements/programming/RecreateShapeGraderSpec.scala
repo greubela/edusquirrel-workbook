@@ -15,7 +15,7 @@ class RecreateShapeGraderSpec extends FunSuite {
   test("the reported Python staircase grades correctly in every supported source representation") {
     val state = ProgrammingStatePythonString("forward(100)\nturn_right(90)\nforward(100)\nturn_right(270)\nforward(100)")
     val target = TurtleGraphic.TurtleGraphicSvgString("M 0 0 L 100 0 L 100 100 L 200 100")
-    val commands = state.toBeExpression.deriveTurtleCommands
+    val commands = state.toBeExpression.turtleCommandExecutionInfo.completedCommands
     assertEquals(commands.size, 5, clues(commands))
     Future.traverse(List(state, state.toSnapXml, state.toJava)) { source =>
       RecreateShapeGrader(target, GradingImportance.REQUIRED_TEST).gradeStateSafe(source, true, TestExecutionContext()).map { result =>

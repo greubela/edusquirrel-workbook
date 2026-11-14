@@ -32,7 +32,7 @@ final class TurtleProgramExecution(providers: List[TurtleExecutionProvider] = Ni
         case model: ProgrammingStateSnapScalaModel => snap.commandsFor(model.toSnapXml)
         case ProgrammingStatePythonString(code) => python.execute(code)
         case java: ProgrammingStateJavaString => Future(java.toLegacyTurtleCommands)
-        case _ => Future(source.toBeExpression.deriveTurtleCommands)
+        case _ => Future(source.toBeExpression.turtleCommandExecutionInfo.completedCommands)
       }
     }
   def cancel(): Unit = { revision.update(_ + 1); python.close(); providers.foreach(_.cancel()) }

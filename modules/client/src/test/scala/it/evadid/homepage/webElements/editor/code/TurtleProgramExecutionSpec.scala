@@ -151,7 +151,7 @@ class TurtleProgramExecutionSpec extends FunSuite {
   test("legacy Java snippets remain convertible without running a full Java class") {
     val source = ProgrammingStateJavaString("forward(12);")
     val editor = editorFor(source)
-    assertEquals(source.toBeExpression.deriveTurtleCommands, List(TurtleCommand.Forward[Double](12.0)))
+    assertEquals(source.toBeExpression.turtleCommandExecutionInfo.completedCommands, List(TurtleCommand.Forward[Double](12.0)))
     assertEquals(editor.currentState(), source)
   }
 

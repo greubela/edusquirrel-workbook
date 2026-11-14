@@ -77,7 +77,7 @@ final class JavaToExpression(code: String) {
 
   def toLegacyTurtleCommands: List[TurtleCommand[Double]] = {
     if isClassProgram then throw IllegalArgumentException("Full Java classes require the checked Java runner.")
-    convert.deriveTurtleCommands
+    convert.turtleCommandExecutionInfo.completedCommands
   }
 
   def toJavaVmProgram: Either[JavaTurtleSource.Diagnostic, JavaTurtleVmPrograms.Program] =
