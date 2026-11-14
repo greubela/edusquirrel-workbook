@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 import it.evadid.core.datastructures.language.AppLanguage.{English, Java, ProgrammingLanguage, Python}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.naming.CodeRepresentationConfig
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapPaletteCatalog, SnapTurtleCatalog}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette, SnapPaletteCatalog, SnapTurtleCatalog}
 
 /** A primitive in the Snap palette.
  *
@@ -100,25 +100,39 @@ object SnapCodeEditorConfig:
     libraryTabs = SnapCodeEditorConfig.StandardSnapCategories
   )
 
-  /** Explicit palette limited to blocks with full Snap ↔ BeExpression ↔ Python support. */
-  val PythonCompatibleSnapCategories: List[LibraryTab] =
-    SnapPaletteCatalog.TabOrder.map { tab =>
-      val selectors = SnapPaletteCatalog.selectorsForTab(tab)
+  /** Translate the shared exercise layout into the native editor's tab configuration. */
+  def forPalette(palette: ProgrammingEditorPalette): SnapCodeEditorConfig = {
+    val layout = palette.layout
+    val showCategories = layout match
+      case PaletteLayout.Mixed(_) => false
+      case _ => true
+    Testing.copy(
+      parts = Testing.parts.copy(libraryCategories = showCategories),
+      libraryTabs = tabsForLayout(layout)
+    )
+  }
+
+  private def tabsForLayout(layout: PaletteLayout): List[LibraryTab] = layout match
+    case PaletteLayout.NativeSnap => StandardSnapCategories
+    case PaletteLayout.CatalogTabs(tabs) => tabs.map { tab =>
       LibraryTab(
         id = tab.toString.toLowerCase,
         name = tab.toString,
-        selectableElements = selectors.map(block(_)),
+        selectableElements = SnapPaletteCatalog.selectorsForTab(tab).map(block(_)),
         color = paletteColor(tab),
         includeVariableControls = tab == SnapTurtleCatalog.PaletteTab.Variables,
         includeMakeBlockButton = tab == SnapTurtleCatalog.PaletteTab.Variables
       )
     }
+    case PaletteLayout.Mixed(selectors) =>
+      List(mixedTab("blocks", "Blocks", selectors.map(block(_))))
+
+  /** Explicit palette limited to blocks with full Snap ↔ BeExpression ↔ Python support. */
+  val PythonCompatibleSnapCategories: List[LibraryTab] =
+    tabsForLayout(ProgrammingEditorPalette.PythonCompatibleSnap.layout)
 
   /** Test-workbook editor config with a Python-safe Snap palette only. */
-  val PythonCompatibleTesting: SnapCodeEditorConfig = SnapCodeEditorConfig(
-    parts = Testing.parts,
-    libraryTabs = PythonCompatibleSnapCategories
-  )
+  val PythonCompatibleTesting: SnapCodeEditorConfig = forPalette(ProgrammingEditorPalette.PythonCompatibleSnap)
 
   /** One tab with blocks from any Snap categories (native block colors unchanged). */
   def mixedTab(
@@ -155,45 +169,12 @@ object SnapCodeEditorConfig:
       includeMakeBlockButton = tabs.exists(_.includeMakeBlockButton)
     )
 
-  /** Pedagogical order for the beginner turtle circle exercise. */
-  private val BeginnerTurtleBlockOrder: List[String] = List(
-    "receiveGo",
-    "doRepeat",
-    "forward",
-    "turn",
-    "gotoXY",
-    "setHeading",
-    "clear",
-    "up",
-    "down"
-  )
-
-  private val BeginnerTurtleSelectors: Set[String] = BeginnerTurtleBlockOrder.toSet
-
-  /** Single mixed tab with the beginner turtle allow-list. */
-  val BeginnerTurtleCategories: List[LibraryTab] = {
-    val byId = PythonCompatibleSnapCategories
-      .flatMap(_.selectableElements)
-      .filter(b => BeginnerTurtleSelectors.contains(b.id))
-      .map(b => b.id -> b)
-      .toMap
-    val blocks = BeginnerTurtleBlockOrder.flatMap(byId.get)
-    List(
-      mixedTab(
-        id = "blocks",
-        name = "Blocks",
-        blocks = blocks,
-        color = SnapCategoryColor.Other,
-        includeVariableControls = false
-      )
-    )
-  }
+  /** Single mixed tab with the beginner turtle allow-list from the shared layout. */
+  val BeginnerTurtleCategories: List[LibraryTab] =
+    tabsForLayout(ProgrammingEditorPalette.BeginnerTurtle.layout)
 
   /** Editor config for beginner turtle exercises (circle, etc.). */
-  val BeginnerTurtleTesting: SnapCodeEditorConfig = SnapCodeEditorConfig(
-    parts = Testing.parts.copy(libraryCategories = false),
-    libraryTabs = BeginnerTurtleCategories
-  )
+  val BeginnerTurtleTesting: SnapCodeEditorConfig = forPalette(ProgrammingEditorPalette.BeginnerTurtle)
 
   /** All Snap selectors exposed by [[PythonCompatibleSnapCategories]]. */
   def pythonCompatibleBlockSelectors: Set[String] =

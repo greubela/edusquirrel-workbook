@@ -25,7 +25,7 @@
 
 ## Presentation and execution
 
-- `ProgrammingEditorPalette` selects exercise libraries and available blocks.
+- `ProgrammingEditorPalette.layout` selects exercise libraries and available blocks. Both regular and turtle renderers use `SnapCodeEditorConfig.forPalette` to translate that shared layout into native tabs; Embroidery therefore exposes its declared Motion, Pen, Embroidery and Control categories. Mixed layouts use one tab with category buttons hidden.
 - Presentation belongs in `homepage/css/editors.css` and shared CSS.
 - Review bundled `gui.js` category/layout patches when upgrading Snap.
 - [Execution panels](snap-turtle-command-execution-overview.md) observe the central Var and own execution services; the editor owns no execution service.
