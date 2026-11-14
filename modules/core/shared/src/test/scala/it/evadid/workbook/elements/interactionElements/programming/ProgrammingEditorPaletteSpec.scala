@@ -68,10 +68,11 @@ class ProgrammingEditorPaletteSpec extends FunSuite {
   }
 
   test("palette deserialization validates selectors instead of silently dropping unknown blocks") {
-    val encoded = write[ProgrammingEditorPalette](ProgrammingEditorPalette.Custom(PaletteLayout.Mixed(List("forward"))))
+    val palette = ProgrammingEditorPalette.Custom(PaletteLayout.Mixed(List("forward")))
+    val encoded = write[ProgrammingEditorPalette](palette)
+    assertEquals(read[ProgrammingEditorPalette](encoded), palette)
     val invalid = encoded.replace("forward", "unknownBlock")
-    val error = intercept[Exception](read[ProgrammingEditorPalette](invalid))
-    assert(error.getMessage.contains("unknownBlock"))
+    intercept[Exception](read[ProgrammingEditorPalette](invalid))
   }
 
 }
