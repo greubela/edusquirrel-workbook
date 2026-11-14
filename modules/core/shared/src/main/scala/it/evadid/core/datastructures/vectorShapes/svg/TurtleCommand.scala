@@ -143,7 +143,7 @@ object TurtleCommand {
   case class Unsupported[+T](entityName: BeEntityName, numeric: Seq[T], text: Seq[String]) extends TurtleCommand[T] derives ReadWriter
 
 
-  private val canonicalNames: Map[String, String] = List(
+  private val canonicalNames: Map[String, BeEntityName] = List(
     List("forward", "fd") -> "forward",
     List("backward", "back", "bk") -> "backward",
     List("left", "lt", "turn_left", "turnleft") -> "left",
@@ -178,12 +178,14 @@ object TurtleCommand {
     List("tie_stitch", "tiestitch") -> "tie_stitch",
     List("trim_stitch", "trimstitch", "trim") -> "trim_stitch",
     List("stop_running", "stoprunning") -> "stop_running"
-  ).flatMap((aliases, canonical) => aliases.map(_ -> canonical)).toMap
+  ).flatMap { (aliases, canonical) =>
+    val name = BeEntityName.fromUniversalNameInParts(canonical)
+    aliases.map(_ -> name)
+  }.toMap
 
   /** The same alias normalization is used for source occurrences and execution. */
   def canonicalName(name: BeEntityName): BeEntityName =
-    canonicalNames.get(name.universalInterpretation().trim.toLowerCase.replace('-', '_'))
-      .map(BeEntityName.fromUniversalNameInParts).getOrElse(name)
+    canonicalNames.getOrElse(name.universalInterpretation().trim.toLowerCase.replace('-', '_'), name)
 
   def fromText[T: Fractional](name: String, args: Seq[T] = Nil, stringArgs: Seq[String] = Nil): TurtleCommand[T] =
     fromCall(BeEntityName.fromCodeString(name.trim.toLowerCase.replace('-', '_')), args, stringArgs)

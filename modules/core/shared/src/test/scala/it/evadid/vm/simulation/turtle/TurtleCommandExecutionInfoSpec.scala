@@ -3,7 +3,8 @@ package it.evadid.vm.simulation.turtle
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStatePythonString, ProgrammingStateJavaString}
-import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.naming.{BeEntityName, NamingStyle}
+import it.evadid.core.datastructures.language.AppLanguage.{English, German}
 import munit.FunSuite
 
 class TurtleCommandExecutionInfoSpec extends FunSuite {
@@ -80,6 +81,16 @@ class TurtleCommandExecutionInfoSpec extends FunSuite {
     assertEquals(result.nrOfCommandInCodeIgnoreParameter(arc), 1)
     assertEquals(result.nrOfCommandExecutedIgnoreParameter(BeEntityName.fromCodeString("arcright")), 1)
     assertEquals(result.nrOfCommandInCodeIgnoreParameter(BeEntityName.fromCodeString("arcright")), 1)
+  }
+
+  test("canonical alias values retain entity-name formatting and language-map transformations") {
+    val name = TurtleCommand.canonicalName(BeEntityName.fromLiteral(" PU "))
+    assertEquals(name, TurtleCommand.PenUp[Double]().name)
+    assertEquals(name.getNameIn(English, NamingStyle.CamelCase), "penUp")
+    assertEquals(name.getNameIn(German, NamingStyle.SnakeCase), "pen_up")
+    assertEquals(name.asLanguageMap(NamingStyle.CamelCase).getInLanguage(German), "penUp")
+    val unknown = BeEntityName.fromLiteral("custom-operation")
+    assertEquals(TurtleCommand.canonicalName(unknown), unknown)
   }
 
   test("textual parameters and stitch payloads retain exact matching") {
