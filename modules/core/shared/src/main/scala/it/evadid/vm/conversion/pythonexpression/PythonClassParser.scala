@@ -67,7 +67,7 @@ object PythonClassParser {
         if (line.indent < bodyIndent) {
           continue = false
         } else if (line.indent > bodyIndent) {
-          val isolatedContext = new ParseContext(context.snapshotStructures)
+          val isolatedContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
           val nested = api.parseBlock(lines, index, line.indent, isolatedContext)
           ignoredBodyExpressions ++= nested.expressions
           index = nested.nextIndex
@@ -94,24 +94,24 @@ object PythonClassParser {
                 recordAttribute(attributesBuffer, attributeName, None, Some(valueSource), context, api)
                 index += 1
               case WhilePattern(conditionSource) =>
-                val isolatedContext = new ParseContext(context.snapshotStructures)
+                val isolatedContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
                 val whileResult = api.parseWhile(lines, index, bodyIndent, conditionSource, isolatedContext)
                 ignoredBodyExpressions += whileResult.expression
                 index = whileResult.nextIndex
               case IfPattern(conditionSource) =>
-                val isolatedContext = new ParseContext(context.snapshotStructures)
+                val isolatedContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
                 val ifResult = api.parseIf(lines, index, bodyIndent, conditionSource, isolatedContext)
                 ignoredBodyExpressions += ifResult.expression
                 index = ifResult.nextIndex
               case _ if ParsingUtils.startsWithKeyword(trimmed, "return") =>
-                val isolatedContext = new ParseContext(context.snapshotStructures)
+                val isolatedContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
                 ignoredBodyExpressions += api.parseReturn(trimmed, isolatedContext)
                 index += 1
               case _ if trimmed == "pass" =>
                 ignoredBodyExpressions += BeExpression.pass
                 index += 1
               case _ =>
-                val isolatedContext = new ParseContext(context.snapshotStructures)
+                val isolatedContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
                 ignoredBodyExpressions += api.parseExpression(trimmed, isolatedContext)
                 index += 1
             }
@@ -150,7 +150,7 @@ object PythonClassParser {
                            context: ParseContext,
                            api: ClassParserApi
                          ): ParsedMethod = {
-    val methodContext = new ParseContext(context.snapshotStructures)
+    val methodContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
     methodContext.pushScope()
     val parameterDefinitions = api.parseParameters(paramsSource).map { case (paramName, typeHint) =>
       methodContext.defineVariable(paramName, api.mapType(typeHint))
@@ -222,7 +222,7 @@ object PythonClassParser {
     val normalizedExplicit = explicitType.map(_.trim).filter(_.nonEmpty)
     val dataType = normalizedExplicit.map(typeHint => api.mapType(Some(typeHint))).getOrElse {
       valueSource.map(_.trim).filter(_.nonEmpty).map { valueText =>
-        val isolated = new ParseContext(context.snapshotStructures)
+        val isolated = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
         api.inferType(api.parseExpression(valueText, isolated))
       }.getOrElse(AnyType)
     }

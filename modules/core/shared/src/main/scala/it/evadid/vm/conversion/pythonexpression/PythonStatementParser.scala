@@ -59,6 +59,15 @@ object PythonStatementParser {
                   context: ParseContext,
                   api: StatementApi
                 ): BlockParseResult = {
+    val declarations = lines.drop(startIndex).takeWhile(line => line.content.trim.isEmpty || line.indent >= indent)
+      .filter(_.indent == indent).flatMap { line =>
+        splitCodeAndComment(line.content)._1.trim match {
+          case FunctionPattern(name, _, _) => Some(name)
+          case ClassPattern(name, _) => Some(name)
+          case _ => None
+        }
+      }.toSet
+    context.reserveCallableNames(declarations)
     val expressions = mutable.ListBuffer[BeExpression]()
     var index = startIndex
 

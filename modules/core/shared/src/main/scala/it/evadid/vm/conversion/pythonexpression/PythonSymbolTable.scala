@@ -9,7 +9,8 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
-import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.naming.{BeEntityName, KnownBeEntityNames}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.types.{AssigningNotPossible, AssigningPossibleWithImplicitCast, AssigningPossibleWithSameType, BeDataType}
 
 object PythonSymbolTable {
@@ -77,7 +78,7 @@ object PythonSymbolTable {
       structures.foldLeft(empty)(_ + _)
   }
 
-  final class ParseContext(initialKnownStructures: CurrentlyKnownStructures) {
+  final class ParseContext(initialKnownStructures: CurrentlyKnownStructures, initialDeclaredNames: Set[String] = Set.empty) {
     private var currentlyKnownStructures: CurrentlyKnownStructures = initialKnownStructures
     private var scopes: List[mutable.LinkedHashMap[String, BeDefineVariable]] = {
       val baseScope = mutable.LinkedHashMap[String, BeDefineVariable]()
@@ -148,13 +149,39 @@ object PythonSymbolTable {
 
     def snapshotStructures: CurrentlyKnownStructures = currentlyKnownStructures
 
-    def resolveFunction(name: String, arity: Int): BeDefineFunction =
-      functionsByName.getOrElse(name, {
-        val params = (0 until arity).map(index => BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)).toList
-        val placeholder = BeDefineFunction(params, None, BeSequence.optionalBody(Nil), BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name)))
-        functionsByName.update(name, placeholder)
-        placeholder
-      })
+    private val declaredCallableNames = mutable.Set.from(initialDeclaredNames)
+
+    private[pythonexpression] def sourceCallableNames: Set[String] = declaredCallableNames.toSet
+
+    /** Reserve declarations before reading their bodies or any calls in the block. */
+    def reserveCallableNames(names: Set[String]): Unit = names.foreach { name =>
+      if declaredCallableNames.add(name) then functionsByName.remove(name)
+    }
+
+    private def hasSourceBinding(name: String): Boolean = {
+      val owner = name.takeWhile(_ != '.')
+      declaredCallableNames.contains(owner) || lookupVariable(owner).nonEmpty ||
+        currentlyKnownStructures.classes.contains(owner)
+    }
+
+    def resolveFunction(name: String, arity: Int): BeDefineFunction = {
+      def definition(): BeDefineFunction = {
+        val sourceBinding = hasSourceBinding(name)
+        val turtleMethod = if sourceBinding then None else TurtleCommand.resolveTurtleMethod(name)
+        turtleMethod.map { method =>
+          // Preserve the class signature while binding only the arguments supplied by this call.
+          if arity < method.inputs.size then method.copy(inputs = method.inputs.take(arity)) else method
+        }.getOrElse {
+          val canonical = if sourceBinding then None else KnownBeEntityNames.resolveCanonicalNames(name)
+          val params = (0 until arity).map(index => BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)).toList
+          BeDefineFunction(params, None, BeSequence.optionalBody(Nil),
+            BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))))
+        }
+      }
+      // A callable parameter/local shadows a cached builtin or turtle alias in this scope.
+      if lookupVariable(name.takeWhile(_ != '.')).nonEmpty then definition()
+      else functionsByName.getOrElseUpdate(name, definition())
+    }
 
     def ensureFunctionArity(name: String, function: BeDefineFunction, arity: Int): BeDefineFunction = {
       if (arity <= function.inputs.length) function

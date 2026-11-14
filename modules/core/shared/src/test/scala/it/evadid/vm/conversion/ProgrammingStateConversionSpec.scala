@@ -314,7 +314,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
     assertEquals(normalized(restoredJava), normalized(java))
     assert(restoredJava.code.contains("forward(10)"), clue = restoredJava.code)
-    assert(restoredJava.code.contains("turnRight(90)"), clue = restoredJava.code)
+    assert(restoredJava.code.contains("right(90)"), clue = restoredJava.code)
   }
 
   test("Java parser handles functions, loops, booleans, and string punctuation") {

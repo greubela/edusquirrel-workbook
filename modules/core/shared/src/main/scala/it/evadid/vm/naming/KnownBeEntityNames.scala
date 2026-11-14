@@ -1,5 +1,6 @@
 package it.evadid.vm.naming
 
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 
@@ -41,32 +42,8 @@ object KnownBeEntityNames {
     BeEntityName.fromUniversalNameInParts("isinstance")
   )
 
-  val methodNames: List[BeEntityName] = List(
-    BeEntityName.fromUniversalNameInParts("forward"),
-    BeEntityName.fromUniversalNameInParts("backward"),
-    BeEntityName.fromUniversalNameInParts("left"),
-    BeEntityName.fromUniversalNameInParts("right"),
-    BeEntityName.fromUniversalNameInParts("penUp"),
-    BeEntityName.fromUniversalNameInParts("penDown"),
-    BeEntityName.fromUniversalNameInParts("circle"),
-    BeEntityName.fromUniversalNameInParts("goto"),
-    BeEntityName.fromUniversalNameInParts("setheading"),
-    BeEntityName.fromUniversalNameInParts("speed"),
-    BeEntityName.fromUniversalNameInParts("color"),
-    BeEntityName.fromUniversalNameInParts("pensize"),
-    BeEntityName.fromUniversalNameInParts("home"),
-    BeEntityName.fromUniversalNameInParts("runningStitch"),
-    BeEntityName.fromUniversalNameInParts("crossStitch"),
-    BeEntityName.fromUniversalNameInParts("beanStitch"),
-    BeEntityName.fromUniversalNameInParts("zigzagStitch"),
-    BeEntityName.fromUniversalNameInParts("ZStitch"),
-    BeEntityName.fromUniversalNameInParts("satinStitch"),
-    BeEntityName.fromUniversalNameInParts("tatamiStitch"),
-    BeEntityName.fromUniversalNameInParts("jumpStitch"),
-    BeEntityName.fromUniversalNameInParts("tieStitch"),
-    BeEntityName.fromUniversalNameInParts("trimStitch"),
-    BeEntityName.fromUniversalNameInParts("stopRunning")
-  )
+  lazy val methodNames: List[BeEntityName] =
+    TurtleCommand.turtleClass.methods.map(_.functionTypeInfo.displayName)
 
   val operatorNames: List[BeEntityName] = List(
     "+", "-", "*", "/", "//", "%", "**", "@",
@@ -77,7 +54,7 @@ object KnownBeEntityNames {
 
   val variableNames: List[BeEntityName] = Nil
 
-  val allNames: List[BeEntityName] = classNames ++ functionNames ++ methodNames ++ operatorNames ++ variableNames
+  lazy val allNames: List[BeEntityName] = classNames ++ functionNames ++ methodNames ++ operatorNames ++ variableNames
 
   private val aliases: Map[String, String] = Map(
     "&&" -> "and",
@@ -89,42 +66,31 @@ object KnownBeEntityNames {
     "long" -> "integer",
     "short" -> "integer",
     "byte" -> "integer",
-    "char" -> "string",
-    "penup" -> "penUp",
-    "pendown" -> "penDown",
-    "pen_up" -> "penUp",
-    "pen_down" -> "penDown",
-    "fd" -> "forward",
-    "back" -> "backward",
-    "bk" -> "backward",
-    "rt" -> "right",
-    "turn" -> "right",
-    "turn_right" -> "right",
-    "lt" -> "left",
-    "turn_left" -> "left",
-    "goto_x_y" -> "goto",
-    "setpos" -> "goto",
-    "setposition" -> "goto",
-    "seth" -> "setheading",
-    "set_heading" -> "setheading",
-    "pu" -> "penUp",
-    "pd" -> "penDown",
-    "pencolor" -> "color"
+    "char" -> "string"
   )
 
   private val supportedStyles = List(NamingStyle.SnakeCase, NamingStyle.CamelCase)
-  private val canonicalLookup: Map[String, BeEntityName] = allNames.flatMap { name =>
+  private lazy val canonicalLookup: Map[String, BeEntityName] = allNames.flatMap { name =>
     AppLanguage.humanLanguages.flatMap { language =>
       supportedStyles.map(style => normalize(name.getNameIn(language, style)) -> name)
     }
   }.toMap
 
-  private val lookup: Map[String, BeEntityName] =
+  private lazy val lookup: Map[String, BeEntityName] =
     canonicalLookup ++ aliases.flatMap { case (alias, canonical) =>
       canonicalLookup.get(normalize(canonical)).map(alias -> _)
     }
 
-  def byName(name: String): Option[BeEntityName] = lookup.get(normalize(name))
+  /** Function-call names only; declarations and variables retain their source names. */
+  def resolveCanonicalNames(name: String): Option[BeEntityName] =
+    TurtleCommand.resolveCanonicalNames(name).orElse(resolveSystemMethods(name))
+
+  def resolveSystemMethods(name: String): Option[BeEntityName] =
+    Option.when(Set("print", "println", "system.out.println").contains(normalize(name)))(
+      functionNames.find(_.universalInterpretation() == "print").get)
+
+  def byName(name: String): Option[BeEntityName] =
+    resolveCanonicalNames(name).orElse(lookup.get(normalize(name)))
 
   private def normalize(name: String): String = name.trim.toLowerCase
 }

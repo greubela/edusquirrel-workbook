@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.naming.{BeEntityName, KnownBeEntityNames}
 import it.evadid.vm.types.BeDataType
 
 object DefaultDefinitions {
@@ -55,7 +55,8 @@ object DefaultDefinitions {
     val output = returnType.map(dataType =>
       BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), dataType)
     )
-    val functionInfo = BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name))
+    val functionInfo = BeDefineFunction.functionInfo(KnownBeEntityNames.resolveCanonicalNames(name)
+      .getOrElse(BeEntityName.fromUniversalNameInParts(name)))
     val function = BeDefineFunction(inputs, output, BeExpression.pass, functionInfo)
     name -> function
   }
