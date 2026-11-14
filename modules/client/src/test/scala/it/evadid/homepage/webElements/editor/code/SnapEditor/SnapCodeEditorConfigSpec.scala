@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{LibraryBlock, SnapCategoryColor, SnapCodeEditorConfig}
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapPaletteCatalog
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette, SnapPaletteCatalog}
 import munit.FunSuite
 
 class SnapCodeEditorConfigSpec extends FunSuite {
@@ -144,4 +144,29 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     assertEquals(config.parts, SnapCodeEditorConfig.Testing.parts.copy(libraryCategories = false))
     assert(!config.parts.libraryCategories)
   }
+  test("every exercise palette uses its shared layout") {
+    ProgrammingEditorPalette.values.foreach { palette =>
+      val config = SnapCodeEditorConfig.forPalette(palette)
+      palette.layout match {
+        case PaletteLayout.NativeSnap =>
+          assertEquals(config.libraryTabs, SnapCodeEditorConfig.StandardSnapCategories)
+          assert(config.libraryTabs.forall(_.useNativeCategory))
+        case PaletteLayout.CatalogTabs(tabs) =>
+          assertEquals(config.libraryTabs.map(_.name), tabs.map(_.toString))
+          assertEquals(config.libraryTabs.map(_.selectableElements.map(_.id)), tabs.map(SnapPaletteCatalog.selectorsForTab))
+          assert(config.parts.libraryCategories)
+        case PaletteLayout.Mixed(selectors) =>
+          assertEquals(config.libraryTabs.flatMap(_.selectableElements.map(_.id)), selectors)
+          assert(!config.parts.libraryCategories)
+      }
+    }
+  }
+
+  test("Embroidery uses only its four declared categories and their block lists") {
+    val config = SnapCodeEditorConfig.forPalette(ProgrammingEditorPalette.Embroidery)
+    assertEquals(config.libraryTabs.map(_.name), List("Motion", "Pen", "Embroidery", "Control"))
+    assert(config.libraryTabs.flatMap(_.selectableElements).exists(_.id == "runningStitch"))
+    assert(!config.libraryTabs.exists(_.includeVariableControls))
+  }
+
 }
