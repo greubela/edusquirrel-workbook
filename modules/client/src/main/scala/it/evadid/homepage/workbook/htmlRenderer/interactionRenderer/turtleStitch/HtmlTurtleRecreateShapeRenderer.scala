@@ -35,7 +35,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
   private[turtleStitch] def commandsForPreview(state: ProgrammingState): Try[List[TurtleCommand[Double]]] =
     Try(state match
       case java: ProgrammingStateJavaString => java.toLegacyTurtleCommands
-      case _ => state.toBeExpression.deriveTurtleCommands
+      case _ => state.toBeExpression.turtleCommandExecutionInfo.completedCommands
     )
 
   def createInteractivePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic,

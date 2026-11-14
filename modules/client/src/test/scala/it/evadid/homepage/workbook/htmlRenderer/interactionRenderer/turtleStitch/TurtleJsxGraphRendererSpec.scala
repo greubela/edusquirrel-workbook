@@ -26,7 +26,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
       val source = ProgrammingStatePythonString(code)
       val target = TurtleGraphic.TurtleGraphicSvgString(path)
       Future.traverse(TurtleDrawingPolicy.values.toList) { policy =>
-        val visual = TurtleDrawingGrading.assess(source.toBeExpression.deriveTurtleCommands, target, policy)
+        val visual = TurtleDrawingGrading.assess(source.toBeExpression.turtleCommandExecutionInfo.completedCommands, target, policy)
         RecreateShapeGrader(target, GradingImportance.REQUIRED_TEST, comparisonPolicy = policy)
           .gradeStateSafe(source, false, ExecutionContextInformation.default).map { saved =>
             assertEquals(visual.matches, saved.gradingStatus.isCorrect, clues(code, policy))

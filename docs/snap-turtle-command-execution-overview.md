@@ -35,7 +35,7 @@ with a dedicated worker and lazy Pyodide initialization. Startup and execution
 have deadlines; cancellation or timeout discards the worker so late results
 cannot affect a newer run. The consuming execution service owns the worker lifetime.
 
-The service does not mount an IDE or change saved XML. Current synchronous derivation on `ProgrammingStateBeExpression` is a separate operation; see [Eva programming state](eva-editor-programming-state.md).
+The service does not mount an IDE or change saved XML. Synchronous analysis on `ProgrammingStateBeExpression` is a separate operation: `turtleCommandExecutionInfo` exposes source call sites, executed commands and completion status. See [turtle program analysis](programming-conversions.md#turtle-source-occurrences-and-execution) and [Eva programming state](eva-editor-programming-state.md).
 
 ## Verification
 
