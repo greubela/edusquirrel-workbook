@@ -58,7 +58,7 @@ class ProgrammingEditorPaletteSpec extends FunSuite {
     layouts.foreach { layout =>
       val original = TurtleRecreateShapeInteraction("custom-shape", ProgrammingStatePythonString("forward(10)"),
         TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"),
-        availablePalette = ProgrammingEditorPalette.Custom(layout), limitTurtleCommandUsage = Map.empty)
+        availablePalette = ProgrammingEditorPalette.Custom(layout))
       val restored = List(
         WorkbookElementFactory.serializerRefBasedJson.deserialize(WorkbookElementFactory.serializerRefBasedJson.serialize(original)),
         WorkbookElementFactory.serializerConstructorLike.deserialize(original.toStringConstructorLike))

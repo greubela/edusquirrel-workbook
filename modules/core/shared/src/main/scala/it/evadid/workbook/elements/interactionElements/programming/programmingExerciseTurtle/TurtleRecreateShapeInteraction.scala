@@ -19,7 +19,7 @@ case class TurtleRecreateShapeInteraction
   initProgram: ProgrammingState,
   desiredResult: TurtleGraphic,
   availablePalette: ProgrammingEditorPalette = ProgrammingEditorPalette.BeginnerTurtle,
-  limitTurtleCommandUsage: Map[String, Integer],
+  maxCommandUsage: MaxCommandUsage = MaxCommandUsage(),
   comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes
 ) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit] derives ReadWriter {
 
@@ -29,20 +29,21 @@ case class TurtleRecreateShapeInteraction
   override val associatedFactory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = TurtleRecreateShapeInteraction.factory
 
   override val gradingElements: List[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]] =
-    List(RecreateShapeGrader(desiredResult, REQUIRED_TEST, elementId + "-grader", comparisonPolicy))
+    List(RecreateShapeGrader(desiredResult, REQUIRED_TEST, elementId + "-grader", comparisonPolicy)) ++
+      TurtleCommandUsageGrader.forLimits(elementId, maxCommandUsage)
   //val scaffoldingElement: Option[WorkbookInteractionScaffolder[ProgrammingState, ?]] = None
 }
 
 object TurtleRecreateShapeInteraction {
   val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
-    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "availablePalette", "limitTurtleCommandUsage", "comparisonPolicy")
+    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "availablePalette", "maxCommandUsage", "comparisonPolicy")
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, element: TurtleRecreateShapeInteraction): WorkbookElementSerializable = {
       val serialized = baseElement
         .withElementAddedAs("initProgram", element.initProgram)
         .withElementAddedAs("desiredResult", element.desiredResult)
         .withElementAddedAs("availablePalette", element.availablePalette)
-        .withElementAddedAs("limitTurtleCommandUsage", element.limitTurtleCommandUsage)
+        .withElementAddedAs("maxCommandUsage", element.maxCommandUsage)
       if element.comparisonPolicy == TurtleDrawingPolicy.Strokes then serialized
       else serialized.withElementAddedAs("comparisonPolicy", element.comparisonPolicy)
     }
@@ -53,7 +54,7 @@ object TurtleRecreateShapeInteraction {
         serialized.getElementAs[ProgrammingState]("initProgram"),
         serialized.getElementAs[TurtleGraphic]("desiredResult"),
         serialized.getElementAs[ProgrammingEditorPalette]("availablePalette"),
-        serialized.getElementAs[Map[String, Integer]]("limitTurtleCommandUsage"),
+        serialized.getElementAs[MaxCommandUsage]("maxCommandUsage"),
         serialized.getOptionalElementAs[TurtleDrawingPolicy]("comparisonPolicy", TurtleDrawingPolicy.Strokes)
       )
   }

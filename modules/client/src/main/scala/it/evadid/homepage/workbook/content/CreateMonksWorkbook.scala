@@ -89,8 +89,7 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
               "monks-koch-" + depth,
               ProgrammingStatePythonString(""),
               kochTarget(depth),
-              ProgrammingEditorPalette.PythonCompatibleSnap,
-              Map.empty[String, Integer])))
+              ProgrammingEditorPalette.PythonCompatibleSnap)))
         })
     ),
     User.AndreGreubel

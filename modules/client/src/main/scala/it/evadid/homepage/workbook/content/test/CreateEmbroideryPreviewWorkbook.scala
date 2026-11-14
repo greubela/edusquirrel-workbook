@@ -46,7 +46,7 @@ case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) exte
   private def recreate(id: String, target: TurtleGraphic,
                        initialCode: String = ""): TurtleRecreateShapeInteraction =
     TurtleRecreateShapeInteraction(id, ProgrammingStatePythonString(initialCode), target,
-      ProgrammingEditorPalette.Embroidery, Map.empty[String, Integer])
+      ProgrammingEditorPalette.Embroidery)
 
   private def createRecreateShapeInteraction(shape: String): WorkbookElement =
     recreate(nextId("embroidery-preview-" + shape), EmbroideryPreviewTargets.shape(shape))

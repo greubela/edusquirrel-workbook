@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.content.test
 
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.MaxCommandUsage
+
 import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 
@@ -102,7 +104,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
         exp1,
         ProgrammingEditorPalette.BeginnerTurtle,
-        Map("forward" -> 5)
+        MaxCommandUsage(occurrencesInCode = Map("forward" -> 5))
       ),
       // 2
       DisplayLangMapContent("instr-test-02",
@@ -113,7 +115,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
         exp2,
         ProgrammingEditorPalette.BeginnerTurtle,
-        Map("forward" -> 2)
+        MaxCommandUsage(occurrencesInCode = Map("forward" -> 2))
       )
     ))
     val cont2 = container("TestWorkbook/Sec1Cont1", List(
