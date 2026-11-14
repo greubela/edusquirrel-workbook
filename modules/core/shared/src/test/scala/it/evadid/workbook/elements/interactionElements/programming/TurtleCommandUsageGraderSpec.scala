@@ -111,6 +111,25 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
     }
   }
 
+  test("user-defined command names do not hide explicitly bound turtle methods") {
+    val userOnly = ProgrammingStatePythonString("def forward(n):\n    pass\nforward(1)")
+    val withNativeCall = ProgrammingStatePythonString(userOnly.code + "\nturtle.forward(2)")
+    val saved = ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(withNativeCall.toBeExpression))
+    Future.traverse(CommandUsageMeasure.values.toList) { measure =>
+      Future.traverse(List(withNativeCall, saved)) { state =>
+        for {
+          user <- grader("forward", 0, measure).gradeStateSafe(userOnly, false, TestExecutionContext())
+          forbidden <- grader("forward", 0, measure).gradeStateSafe(state, false, TestExecutionContext())
+          one <- grader("forward", 1, measure).gradeStateSafe(state, false, TestExecutionContext())
+        } yield {
+          assertEquals(user.gradingStatus, GradingStatus.Correct())
+          assertEquals(forbidden.gradingStatus, GradingStatus.Incorrect(), clues(measure))
+          assertEquals(one.gradingStatus, GradingStatus.Correct())
+        }
+      }
+    }
+  }
+
   test("constraint identities are deterministic and independent of map ordering or other limits") {
     val first = exercise(MaxCommandUsage(occurrencesInCode = Map("forward" -> 1, "right" -> 2),
       callsDuringExecution = Map("forward" -> 4)))

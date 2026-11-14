@@ -141,7 +141,7 @@ object TurtleProgramAnalysis {
     else {
       val python = SnapExpressionSupport.pythonName(call)
       val args = SnapControlFlow.orderedArgs(call)
-      state.defs.get(python) match {
+      state.defs.get(python).filterNot(_ => TurtleCommandSites.isBoundTurtleMethod(call)) match {
         case Some(definition) =>
           if state.callDepth >= limits.maxCallDepth then state.copy(status = TurtleExecutionStatus.LimitExceeded)
           else {
