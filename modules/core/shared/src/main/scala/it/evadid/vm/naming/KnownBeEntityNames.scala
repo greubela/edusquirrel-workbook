@@ -21,13 +21,16 @@ object KnownBeEntityNames {
     BeEntityName.fromUniversalNameInParts("object")
   )
 
+  private val printingName = BeEntityName.fromUniversalNameInParts("print")
+  private val printingAliases = Set("print", "println", "system.out.println")
+
   val functionNames: List[BeEntityName] = List(
     BeEntityName.fromUniversalNameInParts("str"),
     BeEntityName.fromUniversalNameInParts("int"),
     BeEntityName.fromUniversalNameInParts("float"),
     BeEntityName.fromUniversalNameInParts("bool"),
     BeEntityName.fromUniversalNameInParts("abs"),
-    BeEntityName.fromUniversalNameInParts("print"),
+    printingName,
     BeEntityName.fromUniversalNameInParts("input"),
     BeEntityName.fromUniversalNameInParts("len"),
     BeEntityName.fromUniversalNameInParts("range"),
@@ -86,8 +89,7 @@ object KnownBeEntityNames {
     TurtleCommand.resolveCanonicalNames(name).orElse(resolveSystemMethods(name))
 
   def resolveSystemMethods(name: String): Option[BeEntityName] =
-    Option.when(Set("print", "println", "system.out.println").contains(normalize(name)))(
-      functionNames.find(_.universalInterpretation() == "print").get)
+    Option.when(printingAliases.contains(normalize(name)))(printingName)
 
   def byName(name: String): Option[BeEntityName] =
     resolveCanonicalNames(name).orElse(lookup.get(normalize(name)))
