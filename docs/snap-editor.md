@@ -30,6 +30,42 @@
 - Review bundled `gui.js` category/layout patches when upgrading Snap.
 - [Execution panels](snap-turtle-command-execution-overview.md) observe the central Var and own execution services; the editor owns no execution service.
 
+## Exercise-specific palettes
+
+Use `ProgrammingEditorPalette.Custom` directly in an exercise's existing
+`availablePalette` field. For example, a recreate-shape exercise can offer only
+start, movement and repeat blocks:
+
+```scala
+TurtleRecreateShapeInteraction(
+  elementId = "draw-square",
+  initProgram = initialProgram,
+  desiredResult = targetShape,
+  availablePalette = ProgrammingEditorPalette.Custom(
+    PaletteLayout.Mixed(List("receiveGo", "forward", "turn", "doRepeat"))
+  ),
+  limitTurtleCommandUsage = Map.empty
+)
+```
+
+`PaletteLayout.CatalogTabs(List(PaletteTab.Motion, PaletteTab.Control))` selects
+whole shared-catalog categories. `NativeSnap` selects the native categories and
+is not Python-compatible. `Mixed(Nil)` is an explicit empty palette. Category
+lists must be nonempty and unique, avoiding Snap's empty-list fallback to its
+full native palette.
+
+Mixed entries use **Snap selectors** from `SnapPaletteCatalog`, not canonical
+method names: the right-turn block is `turn`, not `right`. Uncatalogued selectors
+are rejected when the custom palette is constructed or deserialized. Supporting
+additional native selectors requires adding them to the shared catalogue and
+reviewing their conversion support first. Python compatibility is derived from
+the selected layout, not supplied by the exercise author.
+
+Custom layouts use the same `SnapCodeEditorConfig.forPalette` mapping as presets;
+the exercise factory stores them in both JSON and constructor-style definitions.
+Palette selection controls offered blocks, not acceptance of submitted programs.
+Existing program blocks and separately defined grading constraints remain distinct.
+
 ## Verification
 
 ```sh
