@@ -32,7 +32,8 @@ private[turtle] object TurtleCommandSites {
     val all = nodes(root)
     val helpers = all.collect { case (_, definition: BeDefineFunction) => SnapExpressionSupport.pythonNameOf(definition) }.toSet
     all.flatMap {
-      case (path, call: BeFunctionCall) if !SnapControlFlow.isOperatorCall(call) && !helpers(SnapExpressionSupport.pythonName(call)) =>
+      case (path, call: BeFunctionCall) if !SnapControlFlow.isOperatorCall(call) &&
+          (isBoundTurtleMethod(call) || !helpers(SnapExpressionSupport.pythonName(call))) =>
         val python = SnapExpressionSupport.pythonName(call)
         val name = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(python, python)
         Some(site(path, BeEntityName.fromCodeString(name), SnapControlFlow.orderedArgs(call).toVector))
@@ -48,6 +49,10 @@ private[turtle] object TurtleCommandSites {
       case _ => None
     }
   }
+
+  /** Native binding wins over a user helper with the same displayed name. */
+  private[turtle] def isBoundTurtleMethod(call: BeFunctionCall): Boolean =
+    call.funcDef.functionTypeInfo.isMethodInClass.exists(_.name == TurtleCommand.turtleClass.name)
 
   private def site(path: Vector[Int], name: BeEntityName, arguments: Vector[BeExpression]): TurtleCommandSite[Double] = {
     val literals = arguments.map(literal)

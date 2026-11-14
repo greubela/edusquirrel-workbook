@@ -74,7 +74,7 @@ class SnapExpressionSupportSpec extends FunSuite {
 
     assert(!python.contains("receive_go"), clue = python)
     assert(python.contains("forward(10)"), clue = python)
-    assert(python.contains("turn_right(90)"), clue = python)
+    assert(python.contains("right(90)"), clue = python)
   }
 
   test("applyPython rejects unknown calls") {
@@ -257,14 +257,14 @@ class SnapExpressionSupportSpec extends FunSuite {
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("receive_go()"), clue = python)
     assert(python.contains("do_wait(1)"), clue = python)
-    assert(python.contains("down()"), clue = python)
+    assert(python.contains("pen_down()"), clue = python)
     assert(python.contains("steps: float = 10"), clue = python)
     assert(python.contains("for _ in range(4):"), clue = python)
     assert(python.contains("forward(50)"), clue = python)
-    assert(python.contains("turn(90)"), clue = python)
+    assert(python.contains("right(90)"), clue = python)
     assert(python.contains("if steps < 20:"), clue = python)
-    assert(python.contains("goto_x_y(10, 20)"), clue = python)
-    assert(python.contains("set_heading(90)"), clue = python)
+    assert(python.contains("goto(10, 20)"), clue = python)
+    assert(python.contains("setheading(90)"), clue = python)
     assert(python.contains("while not False:"), clue = python)
     assert(python.contains("up()"), clue = python)
     assert(python.contains("clear()"), clue = python)
@@ -412,7 +412,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(tooMany.swap.toOption.get.contains("forward"), clue = tooMany)
     val tooFew = PythonToSnap.applyPython("goto_x_y(1)")
     assert(tooFew.isLeft, clue = tooFew)
-    assert(tooFew.swap.toOption.get.contains("goto_x_y"), clue = tooFew)
+    assert(tooFew.swap.toOption.get.contains("goto"), clue = tooFew)
   }
 
   test("applyPython drops extra custom-call arguments to match the def") {

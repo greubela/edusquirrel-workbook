@@ -115,7 +115,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStatePythonString}
     val source: ProgrammingState = ProgrammingStatePythonString("forward(10)")
     val interaction = TurtleRecreateShapeInteraction("db-program", source,
-      TurtleGraphic.TurtleGraphicSvgString("M0 0 L10 0"), limitTurtleCommandUsage = Map.empty)
+      TurtleGraphic.TurtleGraphicSvgString("M0 0 L10 0"))
     val variable = interaction.interactionVariable
     val identity = context.toSyncContext(variable.keyForSerialization)
     val check = interaction.gradingElements.head

@@ -7,7 +7,7 @@ import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS
 import it.evadid.workbook.abstractions.grading.GradingStatus.*
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputLlmGrader
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleCommandUsageGrader}
 import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
@@ -56,6 +56,7 @@ object WorkbookInteractionGrader {
   private val knownGraderReadWrites: Map[String, Serializer[WorkbookInteractionGraderUntyped]] = Map(
     Serializer.serializerForSubclass(classOf[SlideshowGrader]),
     Serializer.serializerForSubclass(classOf[RecreateShapeGrader]),
+    Serializer.serializerForSubclass(classOf[TurtleCommandUsageGrader]),
     Serializer.serializerForSubclass(classOf[TextInputLlmGrader]),
     Serializer.serializerForSubclass(classOf[ProgrammingUnitTestGrader])
   )

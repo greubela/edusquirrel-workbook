@@ -2,6 +2,7 @@ package it.evadid.vm.code.defining
 
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.naming.{BeEntityName, KnownBeEntityNames}
 import it.evadid.vm.types.BeDataType
 import it.evadid.vm.types.BeDataType.{AnyType, Boolean as BooleanType, Int as IntType, Numeric as NumericType, String as StringType, Unit as UnitType}
@@ -34,35 +35,9 @@ object KnownBeDefineStructures {
     ("isinstance", List("value" -> AnyType, "classInfo" -> AnyType), Some(BooleanType))
   )
 
-  private val turtleMethodSignatures: List[FunctionSignature] = List(
-    ("forward", List("distance" -> NumericType), Some(UnitType)),
-    ("backward", List("distance" -> NumericType), Some(UnitType)),
-    ("left", List("angle" -> NumericType), Some(UnitType)),
-    ("right", List("angle" -> NumericType), Some(UnitType)),
-    ("penUp", Nil, Some(UnitType)),
-    ("penDown", Nil, Some(UnitType)),
-    ("circle", List("radius" -> NumericType), Some(UnitType)),
-    ("goto", List("x" -> NumericType, "y" -> NumericType), Some(UnitType)),
-    ("setheading", List("angle" -> NumericType), Some(UnitType)),
-    ("speed", List("value" -> NumericType), Some(UnitType)),
-    ("color", List("value" -> StringType), Some(UnitType)),
-    ("pensize", List("width" -> NumericType), Some(UnitType)),
-    ("home", Nil, Some(UnitType)),
-    ("runningStitch", List("steps" -> NumericType), Some(UnitType)),
-    ("crossStitch", List("width" -> NumericType, "height" -> NumericType, "center" -> BooleanType), Some(UnitType)),
-    ("beanStitch", List("length" -> NumericType), Some(UnitType)),
-    ("zigzagStitch", List("density" -> NumericType, "width" -> NumericType, "center" -> BooleanType), Some(UnitType)),
-    ("ZStitch", List("density" -> NumericType, "width" -> NumericType, "center" -> BooleanType), Some(UnitType)),
-    ("satinStitch", List("width" -> NumericType, "center" -> BooleanType), Some(UnitType)),
-    ("tatamiStitch", List("width" -> NumericType, "interval" -> NumericType, "center" -> BooleanType), Some(UnitType)),
-    ("jumpStitch", List("enabled" -> BooleanType), Some(UnitType)),
-    ("tieStitch", Nil, Some(UnitType)),
-    ("trimStitch", Nil, Some(UnitType)),
-    ("stopRunning", Nil, Some(UnitType))
-  )
 
   lazy val classes: List[BeDefineClass] = List(
-    turtleClass,
+    TurtleCommand.turtleClass,
     classDefinition("string"),
     classDefinition("integer"),
     classDefinition("number"),
@@ -143,19 +118,6 @@ object KnownBeDefineStructures {
 
   private def classDefinition(name: String): BeDefineClass =
     BeDefineClass(BeEntityName.fromUniversalNameInParts(name), Nil, Nil)
-
-  private lazy val turtleClass: BeDefineClass =
-    BeDefineClass.withMethods(
-      BeEntityName.fromUniversalNameInParts("turtle"),
-      Nil,
-      turtleMethodSignatures.map((name, inputs, output) =>
-        BeDefineClass.MethodSignature(
-          BeEntityName.fromUniversalNameInParts(name),
-          inputs.map((paramName, dataType) => variable(paramName, dataType)),
-          output.map(dataType => variable("result", dataType))
-        )
-      )
-    )
 
   private def variable(name: String, dataType: BeDataType): BeDefineVariable =
     BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)

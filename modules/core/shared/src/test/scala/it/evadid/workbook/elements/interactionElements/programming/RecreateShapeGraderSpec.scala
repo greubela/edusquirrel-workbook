@@ -33,7 +33,7 @@ class RecreateShapeGraderSpec extends FunSuite {
     Future.traverse(cases) { (program, path, grades) =>
       Future.traverse(TurtleDrawingPolicy.values.toList.zip(grades)) { (policy, expected) =>
         val interaction = TurtleRecreateShapeInteraction(s"policy-$policy", ProgrammingStatePythonString(program),
-          TurtleGraphic.TurtleGraphicSvgString(path), limitTurtleCommandUsage = Map.empty, comparisonPolicy = policy)
+          TurtleGraphic.TurtleGraphicSvgString(path), comparisonPolicy = policy)
         interaction.interactionVariable.control.getOrCalculateGrading(TestExecutionContext()).map { result =>
           assertEquals(result.testsWithResults.head.gradingStatus, expected, clues(policy, program))
         }
@@ -45,7 +45,7 @@ class RecreateShapeGraderSpec extends FunSuite {
     val target = TurtleGraphic.TurtleGraphicSvgString("M0 0 L100 0 L100 100 L200 100")
     val first = ProgrammingStatePythonString("forward(100)\nforward(100)")
     val corrected = ProgrammingStatePythonString("forward(100)\nturn_right(90)\nforward(100)\nturn_right(270)\nforward(100)")
-    val interaction = TurtleRecreateShapeInteraction("edited-staircase", first, target, limitTurtleCommandUsage = Map.empty)
+    val interaction = TurtleRecreateShapeInteraction("edited-staircase", first, target)
     val variable = interaction.interactionVariable
     variable.setStateFromUserInteraction(first, MAJOR, context = TestExecutionContext())
     variable.control.getOrCalculateGrading(TestExecutionContext()).flatMap { old =>
