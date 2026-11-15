@@ -8,12 +8,8 @@ import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapScalaModel, SnapTurtleCatalog}
 
-/** Small, shared Snap reader used by the state conversion boundary. It deliberately accepts the
- * canonical primitive subset emitted by [[SnapProjectXml]]; richer legacy projects remain the
- * responsibility of the legacy importer until that importer is moved into core.
- */
+/** Shared primitive decoding and the verified subset for Python unit-test execution. */
 object SnapStateConversion {
-  private val BlockTag = """<(?:block|custom-block)(?=[\s/>])""".r
 
   def expressionForExecution(xml: String): Either[String, BeExpression] = for {
     document <- SnapScalaXmlCodec.parse(xml)
@@ -76,17 +72,7 @@ object SnapStateConversion {
     case _ => false
   }
 
-  def expressionFromXml(xml: String): BeExpression = {
-    val definitions = SnapXmlParser.elements(xml, "block-definition").map(renderDefinition)
-    val scripts = SnapXmlParser.elements(xml, "scripts")
-      .flatMap(container => SnapXmlParser.children(container.inner).filter(_.tag == "script"))
-      .flatMap(script => statements(script.inner, 0))
-    if definitions.isEmpty && scripts.isEmpty && BlockTag.findFirstIn(xml).nonEmpty then
-      throw IllegalArgumentException("Snap project contains blocks outside the supported state-conversion subset")
-    PythonToExpression.program((definitions ++ scripts).mkString("\n\n")).fullProgram
-  }
-
-  private def statements(source: String, indentation: Int): List[String] =
+  private[conversion] def statements(source: String, indentation: Int): List[String] =
     SnapXmlParser.children(source).collect {
       case block if block.tag == "block" && block.attrOrEmpty("s") != "receiveGo" =>
         renderBlock(block, indentation)
@@ -136,7 +122,7 @@ object SnapStateConversion {
       case None => throw IllegalArgumentException(s"Unsupported Snap selector in state conversion: $selector")
   }
 
-  private def renderDefinition(definition: SnapXmlParser.Element): String = {
+  private[conversion] def renderDefinition(definition: SnapXmlParser.Element): String = {
     val spec = definition.attrOrEmpty("s")
     val name = SnapTurtleCatalog.pythonNameFromCustomSpec(spec)
     val params = SnapTurtleCatalog.inputNamesFromSpec(spec)

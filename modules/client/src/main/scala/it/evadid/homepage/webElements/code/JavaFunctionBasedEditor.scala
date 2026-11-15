@@ -33,7 +33,8 @@ final class JavaFunctionBasedEditor
   appearance: Option[EditorAppearance] = None,
   editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
   conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
-  loadingLabel: Signal[String] = Val("Loading editor…")
+  loadingLabel: Signal[String] = Val("Loading editor…"),
+  requirePublicMain: Boolean = true
 ) extends HtmlAppElement {
 
   import JavaFunctionBasedEditor.*
@@ -49,7 +50,7 @@ final class JavaFunctionBasedEditor
   }
   private val sourceAvailable = Var(initialSource.isDefined)
   private val classes = Var(discover(sourceCode))
-  private val initialSelection = initialFunction(sourceCode)
+  private val initialSelection = initialFunction(sourceCode, requirePublicMain)
   private val selectedFunction = Var(initialSelection)
   private val editingRange = Var(initialSelection.map(fn => FunctionRange(fn.start, fn.end)))
   private val functionDraft = Var(initialSelection.fold("")(fn => sourceCode.substring(fn.start, fn.end)))
@@ -546,17 +547,19 @@ object JavaFunctionBasedEditor {
   private[code] def parses(code: String): Boolean =
     JavaParser.parse(code).isRight && structurallyBalanced(code)
 
-  private[code] def initialFunction(source: String): Option[JavaFunction] = {
+  private[code] def initialFunction(source: String, requirePublicMain: Boolean = true): Option[JavaFunction] = {
     if !structurallyBalanced(source) then None
     else {
       val currentClasses = discover(source)
-      currentClasses.flatMap(_.functions).filter(_.name == "main") match
+      val entryClasses = if !requirePublicMain && currentClasses.exists(_.name == "Main") then
+        currentClasses.filter(_.name == "Main") else currentClasses
+      entryClasses.flatMap(_.functions).filter(_.name == "main") match
         case List(function) if function.returnType == "void" &&
           function.parameters.matches("(?:java\\.lang\\.)?String\\s*\\[\\s*\\]\\s+[A-Za-z_$][\\w$]*") &&
           findSelection(currentClasses, function).isDefined =>
           val modifiers = maskCommentsAndStrings(source.substring(function.start, function.end))
             .takeWhile(_ != '(').split("\\s+").toSet
-          Option.when(modifiers.contains("public") && modifiers.contains("static"))(function)
+          Option.when((!requirePublicMain || modifiers.contains("public")) && modifiers.contains("static"))(function)
         case _ => None
     }
   }
