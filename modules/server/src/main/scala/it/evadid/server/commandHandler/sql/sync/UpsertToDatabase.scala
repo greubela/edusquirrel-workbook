@@ -37,7 +37,7 @@ case class UpsertToDatabase(
     val timestamp = time(event("timestamp"))
     val value = event("value")
     val existing = query("SELECT id,serialized_data FROM answer_event WHERE sync_id=? AND timestamp=?", List(sync, timestamp)) { row =>
-      row.getLong(1) -> ujson.read(row.getString(2))
+      row.getLong(1) -> parseJson("answer_event.serialized_data", row.getString(2))
     }.headOption
     existing.filter(_._2 != value).foreach { (id, _) =>
       update("DELETE FROM grading_event WHERE sync_id=? AND answer_id=?", sync, id)
@@ -65,7 +65,7 @@ case class UpsertToDatabase(
       require(group("state") == state, "Grading state does not match its map key")
       HistoryJson.entries(group("graderResultMap")).foreach { (definition, incoming) =>
         require(incoming("gradedState") == state && incoming("grader") == definition, "Inconsistent grading result")
-        val grader = read[WorkbookInteractionGrader[ujson.Value, ujson.Value]](definition)
+        val grader = readJson[WorkbookInteractionGrader[ujson.Value, ujson.Value]]("WorkbookInteractionGrader", definition)
         require(grader.key.nonEmpty, "Grader identity must not be empty")
         val answer = answerFor(state)
         upsertGrading(sync, answer, state, grader, incoming)
@@ -86,34 +86,34 @@ case class UpsertToDatabase(
                             grader: WorkbookInteractionGrader[ujson.Value, ujson.Value], incoming: ujson.Value): Unit = {
     val previous = query("SELECT * FROM grading_event WHERE sync_id=? AND answer_id=? AND grader_key=?", List(sync, answer, grader.key)) { row =>
       safe("previous grading " + row.getLong("id")) {
-        writeJs(read[GradingResult[ujson.Value, ujson.Value]](gradeJson(row, state)))
+        writeJs(readJson[GradingResult[ujson.Value, ujson.Value]]("GradingResult", gradeJson(row, state)))
       }
     }.flatten.headOption
     val result = previous.map { previous =>
-      val old = read[GradingResult[ujson.Value, ujson.Value]](previous)
-      val current = read[GradingResult[ujson.Value, ujson.Value]](incoming)
+      val old = readJson[GradingResult[ujson.Value, ujson.Value]]("GradingResult", previous)
+      val current = readJson[GradingResult[ujson.Value, ujson.Value]]("GradingResult", incoming)
       writeJs(mergeGrade(old, current))
     }.getOrElse(incoming)
     val regular = ujson.Obj("gradingStatus" -> result("gradingStatus"),
       "feedbackInformation" -> result.obj.getOrElse("feedbackInformation", ujson.Null))
-    val storedGrader = read[WorkbookInteractionGrader[ujson.Value, ujson.Value]](result("grader"))
+    val storedGrader = readJson[WorkbookInteractionGrader[ujson.Value, ujson.Value]]("WorkbookInteractionGrader", result("grader"))
     update("INSERT INTO grading_event (sync_id,answer_id,grader_key,grader_definition,grading_entity,grading_status,timestamp,serialized_data,additional_data) VALUES (?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE grader_definition=VALUES(grader_definition),grading_entity=VALUES(grading_entity),grading_status=VALUES(grading_status),timestamp=VALUES(timestamp),serialized_data=VALUES(serialized_data),additional_data=VALUES(additional_data)",
       sync, answer, grader.key, result("grader").str, write(storedGrader.gradingEntity),
-      read[GradingStatus](result("gradingStatus")).getClass.getSimpleName, time(result("gradingTime")),
+      readJson[GradingStatus]("GradingStatus", result("gradingStatus")).getClass.getSimpleName, time(result("gradingTime")),
       ujson.write(regular), optionalData(result, "additionalData"))
   }
 
   private def upsertScaffolding(sync: Long, answer: Long, state: ujson.Value, incoming: ujson.Value): Unit = {
     val previous = query("SELECT * FROM scaffolding_event WHERE sync_id=? AND answer_id=?", List(sync, answer)) { row =>
       safe("previous scaffolding " + row.getLong("id")) {
-        writeJs(read[ScaffoldingResult[ujson.Value, ujson.Value]](scaffoldingJson(row, state)))
+        writeJs(readJson[ScaffoldingResult[ujson.Value, ujson.Value]]("ScaffoldingResult", scaffoldingJson(row, state)))
       }
     }.flatten.headOption
-    val result = previous.map { old => writeJs(read[ScaffoldingResult[ujson.Value, ujson.Value]](old)
-      .merge(read[ScaffoldingResult[ujson.Value, ujson.Value]](incoming))) }.getOrElse(incoming)
+    val result = previous.map { old => writeJs(readJson[ScaffoldingResult[ujson.Value, ujson.Value]]("ScaffoldingResult", old)
+      .merge(readJson[ScaffoldingResult[ujson.Value, ujson.Value]]("ScaffoldingResult", incoming))) }.getOrElse(incoming)
     update("INSERT INTO scaffolding_event (sync_id,answer_id,timestamp,scaffolding_entity,scaffolding_status,serialized_data,additional_data) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE timestamp=VALUES(timestamp),scaffolding_entity=VALUES(scaffolding_entity),scaffolding_status=VALUES(scaffolding_status),serialized_data=VALUES(serialized_data),additional_data=VALUES(additional_data)",
       sync, answer, time(result("scaffoldingTime")), ujson.write(result("scaffoldingEntity")),
-      read[ScaffoldingStatus](result("scaffoldingStatus")).getClass.getSimpleName,
+      readJson[ScaffoldingStatus]("ScaffoldingStatus", result("scaffoldingStatus")).getClass.getSimpleName,
       ujson.write(result("scaffoldingStatus")), optionalData(result, "additionalInformation"))
   }
 

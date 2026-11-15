@@ -58,9 +58,9 @@ class UpsertSnapshotSpec extends FunSuite {
     }
   }
 
-  test("snapshot write failures close the statement and preserve the SQL error") {
+  test("snapshot write failures close the statement and report SQL diagnostics") {
     val closes = new AtomicInteger()
-    val error = SQLException("write failed")
+    val error = SQLException("write failed", "23000", 17)
     val statement = jdbc(classOf[PreparedStatement]) { (name, _) => name match {
       case "setString" | "setTimestamp" => null
       case "executeUpdate" => throw error
@@ -72,7 +72,10 @@ class UpsertSnapshotSpec extends FunSuite {
       statement
     }
     val request = StoreToDbRequest(sync, write(history), config, DatabaseHistoryFormat.ClassicJsonWithKey)
-    assert(intercept[SQLException](UpsertToDatabase(connection, context, BasicLogger()).upsertIntoTableWithKeys(request)) eq error)
+    val reported = intercept[SQLException](UpsertToDatabase(connection, context, BasicLogger()).upsertIntoTableWithKeys(request))
+    assert(reported.getMessage.contains("executing database update"))
+    assertEquals(reported.getSQLState, error.getSQLState)
+    assertEquals(reported.getErrorCode, error.getErrorCode)
     assert(closes.get() > 0)
   }
 

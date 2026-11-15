@@ -1,6 +1,8 @@
 package it.evadid.server.commandHandler.sql
 
 import it.evadid.server.commandHandler.sql.sync.RichDatabaseEntry
+import it.evadid.server.database.SqlFailure
+import it.evadid.core.util.io.ParsingContext
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.UsageContext
 
@@ -12,20 +14,20 @@ import scala.util.control.NonFatal
 private[sql] case class GenericSqlFunctionality(logger: Logger) {
 
   private def execute[A](statement: PreparedStatement, description: String)(operation: => A): A =
-    try operation
+    try SqlFailure(description, logger)(operation)
     catch case NonFatal(error) =>
       Try(statement.close()).failed.toOption.filterNot(_ eq error).foreach(error.addSuppressed)
       logger.logError(s"Error $description database: ${error.getMessage}")
       throw error
 
-  def executeUpdate(statement: PreparedStatement): Int = execute(statement, "updating") {
+  def executeUpdate(statement: PreparedStatement): Int = execute(statement, "executing database update") {
     val result = statement.executeUpdate()
     statement.clearParameters()
     logger.logInfo(s"Executed Update statement: $statement")
     result
   }
 
-  def executeQuery(statement: PreparedStatement, fieldsToRead: List[String]): List[List[String]] = execute(statement, "fetching from") {
+  def executeQuery(statement: PreparedStatement, fieldsToRead: List[String]): List[List[String]] = execute(statement, s"reading database columns ${fieldsToRead.mkString(", ")}") {
     logger.logInfo("Executing query: " + statement)
     val rows = Using.resource(statement.executeQuery())(readAll(_, fieldsToRead))
     logger.logInfo(s"Query executed successfully, ${rows.size} results!")
@@ -37,7 +39,7 @@ private[sql] case class GenericSqlFunctionality(logger: Logger) {
 
   def executeSyncQuere(preparedStatement: PreparedStatement, fieldsToRead: List[String], usageContext: UsageContext): List[RichDatabaseEntry] = {
     val rows = executeQuery(preparedStatement, fieldsToRead)
-    val entries = rows.flatMap(row => readSafely("Could not parse element from list") {
+    val entries = rows.flatMap(row => readSafely(s"Could not parse interactionVariableHistory from database event ${row.headOption.getOrElse("unknown")}") {
       val entry = RichDatabaseEntry(usageContext, row)
       // Validate lazy fields inside the per-record boundary.
       entry.keyForSerialisation
@@ -49,7 +51,7 @@ private[sql] case class GenericSqlFunctionality(logger: Logger) {
   }
 
   private def readSafely[A](description: String)(read: => A): Option[A] = Try(read).fold(
-    error => { logger.logWarn(s"$description because of the following error: ${error.getMessage}"); None },
+    error => { logger.logWarn(s"$description because of the following error: ${ParsingContext.reason(error)}"); None },
     Some(_))
 
   private def readAll(resultSet: ResultSet, fields: List[String]): List[List[String]] = {

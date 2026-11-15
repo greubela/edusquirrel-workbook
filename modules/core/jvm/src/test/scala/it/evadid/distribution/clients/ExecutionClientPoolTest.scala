@@ -41,6 +41,19 @@ class ExecutionClientPoolTest extends FunSuite {
     }
   }
 
+  test("reports number of attempted handlers and retains the last failure as cause") {
+    val pool = ExecutionClientPool(List(
+      failingClient("sync", Exception("first failure")),
+      failingClient("sync", Exception("last failure", Exception("underlying reason")))))
+    pool.handleCommand[Map[String, String]](BasicLogger(), ExecutionCommand("sync", ujson.Obj())).failed.map { error =>
+      val serialized = error.asInstanceOf[SerializedException]
+      assert(serialized.msg.contains("2 handlers tried"))
+      assert(serialized.msg.contains("last handler failed because: last failure"))
+      assertEquals(serialized.cause.map(_.msg), Some("last failure"))
+      assertEquals(serialized.cause.flatMap(_.cause).map(_.msg), Some("underlying reason"))
+    }
+  }
+
   test("a later handler can still succeed after an earlier handler fails") {
     val successful = new LocalExecutionClient[ujson.Value, Map[String, String]] {
       override def canExecuteCommand(command: ExecutionCommand): Boolean = command.name == "sync-to-db-request"

@@ -1,6 +1,6 @@
 package it.evadid.workbook.interaction.variable
 
-import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.{Serializer, ParsingContext}
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
@@ -101,7 +101,7 @@ object InteractionVariableHistory {
   given [T: ReadWriter, GA: ReadWriter, SA: ReadWriter]: ReadWriter[InteractionVariableHistory[T, GA, SA]] =
     readwriter[ujson.Value].bimap(
       history => writeJs(Payload(history.historyStates, history.historyGrading, history.historyScaffolding)),
-      value => {
+      value => ParsingContext("interactionVariableHistory", value.toString) {
         val parsed = read[Payload[T, GA, SA]](value)
         InteractionVariableHistory(parsed.historyStates, parsed.historyGrading, parsed.historyScaffolding)
       })
