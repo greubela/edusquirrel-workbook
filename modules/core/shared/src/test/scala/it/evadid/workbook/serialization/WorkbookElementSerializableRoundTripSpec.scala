@@ -206,7 +206,11 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"))
     List[ujson.Value](ujson.Str("Other"), ujson.Null, ujson.Num(1), ujson.Bool(true), ujson.Obj()).foreach { policy =>
       val invalid = original.toSerialized.withMapAdded(Map("comparisonPolicy" -> policy))
-      intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(invalid))
+      val error = intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(invalid))
+      assert(error.msg.contains("turtle-invalid-policy"))
+      assert(error.msg.contains("comparisonPolicy"))
+      assert(error.msg.contains("because:"))
+      assert(error.cause.nonEmpty)
     }
   }
 
