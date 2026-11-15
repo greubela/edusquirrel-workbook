@@ -32,6 +32,11 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   private val logger = fullInfo.loggerSystemInfo.contentControlLogger
 
+  def doOnPeriodicPing(): Unit = {
+    println("periodic ping. fullInfo: "+ fullInfo)
+  }
+
+
   def changeDisplay(func: AllDisplayInfo => AllDisplayInfo): Unit = fullInfo.synchronized {
     updateInfoWithoutContextChange((curInfo: HomepageInfo) => curInfo.copy(displayInfo = func(curInfo.displayInfo)))
   }

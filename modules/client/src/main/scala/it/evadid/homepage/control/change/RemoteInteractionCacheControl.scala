@@ -61,7 +61,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
       val completion = Promise[Unit]()
       resetStateVar.set(SyncResetState.Running(completion.future))
       scala.util.Try(remoteCache.clearAllCaches { destination =>
-        destination.handler.clearAllUserData(destination.usageContext).map(_ => ())
+        destination.handler.clearValues(destination.usageContext).map(_ => ())
       }).fold(Future.failed, identity).onComplete { result =>
         resetStateVar.set(result.fold(SyncResetState.Failed(_), _ => SyncResetState.Completed))
         completion.complete(result)

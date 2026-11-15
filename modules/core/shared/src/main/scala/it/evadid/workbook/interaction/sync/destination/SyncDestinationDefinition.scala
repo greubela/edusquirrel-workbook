@@ -21,8 +21,7 @@ sealed trait SyncDestinationDefinition derives ReadWriter {
 
 object SyncDestinationDefinition {
 
-  case class SyncDestinationBasedOnHistoryDatabase(databaseConfig: DatabaseConfiguration, format: DatabaseHistoryFormat) extends SyncDestinationDefinition derives ReadWriter {
-
+  case class SyncDestinationBasedOnHistoryDatabase(databaseConfig: DatabaseConfiguration, format: DatabaseHistoryFormat, buffered: Boolean) extends SyncDestinationDefinition derives ReadWriter {
     override def toString: String =
       s"DatabaseDestination(${databaseConfig.host}->${databaseConfig.database}/${format.tables.mkString(",")})"
   }
@@ -39,13 +38,13 @@ object SyncDestinationDefinition {
     LocalIndexedDbSyncDefinition("EvaDidInteractionDB", "variableHistoryStore", 1)
 
   val defaultDatabaseWithKey: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.ClassicJsonWithKey)
+    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.ClassicJsonWithKey, true)
 
   val defaultDatabaseKeyless: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.ClassicKeylessJson)
+    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.ClassicKeylessJson, true)
 
   val defaultDatabaseV2: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalEvents)
+    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalEvents, true)
 
 }
 

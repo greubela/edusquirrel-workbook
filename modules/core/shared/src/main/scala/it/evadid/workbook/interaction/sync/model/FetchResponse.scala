@@ -1,11 +1,13 @@
 package it.evadid.workbook.interaction.sync.model
 
-import it.evadid.workbook.interaction.sync.model.DataEntryToSync.*
+
+import it.evadid.core.util.io.serializer.DefaultSerializer
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.interaction.sync.model.SyncDirection.SERVER_TO_CLIENT
 import upickle.default.*
 
 import java.time.LocalDateTime
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
+
 case class FetchResponse[K, D]
 (
   timestampFetchResponse: LocalDateTime,
@@ -19,6 +21,12 @@ case class FetchResponse[K, D]
       DataEntryToSync(curTup._1, curTup._2, timestampFetchResponse, SERVER_TO_CLIENT)
     }).toSet
   }
+
+  def combineWith(other: FetchResponse[K, D]): FetchResponse[K, D] = FetchResponse(
+    List(timestampFetchResponse, other.timestampFetchResponse).max,
+    fetchedValues ++ other.fetchedValues
+  )
+
 }
 
 object FetchResponse {

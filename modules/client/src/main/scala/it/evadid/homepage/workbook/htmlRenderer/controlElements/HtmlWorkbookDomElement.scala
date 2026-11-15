@@ -19,6 +19,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
   private lazy val workbookDomElement: ReactiveHtmlElement[HTMLDivElement] = {
     div(
+      EventStream.periodic(10000).map(_ => fullInfo.usageControl.doOnPeriodicPing()) --> Observer.empty,
       cls := "workbook-app-shell",
       dialogElement,
       mainTag(

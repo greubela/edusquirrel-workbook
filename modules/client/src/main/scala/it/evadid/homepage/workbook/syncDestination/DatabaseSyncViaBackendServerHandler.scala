@@ -36,10 +36,6 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
 
   override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = clearValues(context, None)
 
-  override def clearAllUserData(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
-    val request = SQLCommands.DeleteInDbRequest(context, None, databaseConfig, definition.format, allWorkbooks = true)
-    SQLCommands.resetUserHistoriesDbCommand.sendCommandTo(backend, request).map(_.result)
-  }
 
   override def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
     val dbRequest = StoreToDbRequest(syncContext, historyJson, databaseConfig, definition.format)

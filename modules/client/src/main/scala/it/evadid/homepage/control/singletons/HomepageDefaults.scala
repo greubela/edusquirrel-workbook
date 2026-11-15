@@ -15,7 +15,6 @@ case class HomepageDefaults(fullInfo: FullInfo) {
 
   private[control] lazy val defaultBackend: RemoteExecutionConfig = RemoteExecutionConfig("ypcgzj23.trafficplex.cloud", 443)
 
-
   /** Claim the Scala.js startup pool rather than starting a second worker. */
   lazy val workerExecuter: WebWorkerExecutionClient =
     WebWorkerExecutionClient.fromWorker(Workers.takeOrCreate(ClientRuntimeConfig.workerUrl))

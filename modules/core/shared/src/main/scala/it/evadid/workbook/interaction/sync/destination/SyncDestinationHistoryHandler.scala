@@ -3,8 +3,7 @@ package it.evadid.workbook.interaction.sync.destination
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.model.SyncDirection.SERVER_TO_CLIENT
-import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse}
+import it.evadid.workbook.interaction.sync.model.FetchResponse
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 import upickle.default.*
@@ -23,14 +22,13 @@ trait SyncDestinationHistoryHandler {
 
   def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess]
 
-  /** Clear this application's histories for the authenticated user across workbooks. */
-  def clearAllUserData(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess]
-
   def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess]
 
   def storeHistoriesJson(contextJsonMap: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = {
     Future.traverse(contextJsonMap.toList)(storeHistoryJson).map(_.fold(SyncSuccess.emptyNow())(_.combine(_)))
   }
+
+  def flush(forceFlush: Boolean): Unit = {}
 
   def readHistoryJson(syncContext: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
     readHistoriesJson(syncContext.toUsageContext).map(resp => {
@@ -41,7 +39,41 @@ trait SyncDestinationHistoryHandler {
 
   def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]]
 
-  private def readHistoryFrom[T, GA, SA](serializer: Serializer[InteractionVariableHistory[T, GA, SA]], syncContext: SyncContext, fetchResponse: FetchResponse[SyncContext, String]): Either[SerializedException, InteractionVariableHistory[T, GA, SA]] = {
+  def readHistory[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](syncContext: SyncContext)(implicit ec: ExecutionContext): Future[InteractionVariableHistory[T, GA, SA]] = {
+    readHistoryJson(syncContext).transformWith {
+      case Success(curResponse) => Future.fromTry(SyncDestinationHistoryHandler.readHistoryFrom(Serializer.fromUpickleJson(InteractionVariableHistory.given_ReadWriter_InteractionVariableHistory[T, GA, SA]), syncContext, curResponse).toTry)
+      case Failure(err) => Future.failed(SerializedException(s"Error while fetching data from sync destination (${definition}): ${err.getMessage}", err))
+    }
+  }
+
+  def readHistories(usageContext: UsageContext, variablesToResolveTypes: Seq[InteractionVariable[?, ?, ?]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[?, ?, ?]]] = {
+    readHistoriesJson(usageContext).map(fetchResponse => SyncDestinationHistoryHandler.readHistoriesFrom(variablesToResolveTypes, usageContext, fetchResponse))
+  }
+
+  lazy val toBuffered: BufferedSyncDestinationHandler = BufferedSyncDestinationHandler(this)
+
+}
+
+
+object SyncDestinationHistoryHandler {
+
+  private[sync] def readHistoriesFrom(
+                                       variablesToResolveTypes: Seq[InteractionVariable[?, ?, ?]],
+                                       usageContext: UsageContext,
+                                       fetchResponse: FetchResponse[SyncContext, String]
+                                     ): Map[SyncContext, InteractionVariableHistory[?, ?, ?]] = {
+    fetchResponse.fetchedValues.flatMap(curFetchedValue => {
+      variablesToResolveTypes
+        .find(_.keyForSerialization == curFetchedValue.dataKey.keyForSerialisation)
+        .flatMap(curVar => (SyncDestinationHistoryHandler.readHistoryFrom(curVar.serializerHistory, curFetchedValue.dataKey, fetchResponse).toOption.map(curHist => curFetchedValue.dataKey -> curHist))).toMap
+    }).toMap
+  }
+
+  private[sync] def readHistoryFrom[T, GA, SA](
+                                                serializer: Serializer[InteractionVariableHistory[T, GA, SA]],
+                                                syncContext: SyncContext,
+                                                fetchResponse: FetchResponse[SyncContext, String]
+                                              ): Either[SerializedException, InteractionVariableHistory[T, GA, SA]] = {
     fetchResponse.fetchedValues.find(_.dataKey.keyForSerialisation == syncContext.keyForSerialisation).map(_.dataValue).match {
       case Some(jsonHistory) => serializer.tryDeserialize(jsonHistory).match {
         case Left(err) => Left(SerializedException(s"readHistory::curResponse fetched ${fetchResponse.fetchedValues.size} and contained '${syncContext}' but value could not be parsed (${err.getMessage})", err))
@@ -50,27 +82,6 @@ trait SyncDestinationHistoryHandler {
       case None => Left(SerializedException(s"readHistory::curResponse fetched ${fetchResponse.fetchedValues.size} but did not contain ${syncContext}"))
     }
   }
-
-  def readHistory[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](syncContext: SyncContext)(implicit ec: ExecutionContext): Future[InteractionVariableHistory[T, GA, SA]] = {
-    readHistoryJson(syncContext).transformWith {
-      case Success(curResponse) => Future.fromTry(readHistoryFrom(Serializer.fromUpickleJson(InteractionVariableHistory.given_ReadWriter_InteractionVariableHistory[T, GA, SA]), syncContext, curResponse).toTry)
-      case Failure(err) => Future.failed(SerializedException(s"Error while fetching data from sync destination (${definition}): ${err.getMessage}", err))
-    }
-  }
-
-  def readHistories(usageContext: UsageContext, variablesToResolveTypes: Seq[InteractionVariable[?, ?, ?]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[?, ?, ?]]] = {
-    readHistoriesJson(usageContext).map(fetchResponse => fetchResponse.fetchedValues.flatMap(curFetchedValue => {
-      variablesToResolveTypes
-        .find(_.keyForSerialization == curFetchedValue.dataKey.keyForSerialisation)
-        .flatMap(curVar => (readHistoryFrom(curVar.serializerHistory, curFetchedValue.dataKey, fetchResponse).toOption.map(curHist => curFetchedValue.dataKey -> curHist))).toMap
-    }).toMap)
-  }
-
-
-}
-
-
-object SyncDestinationHistoryHandler {
 
   private def historyTimestamp(json: String): Option[LocalDateTime] =
     scala.util.Try(it.evadid.workbook.interaction.sync.model.HistoryJson.lastTimestamp(json)).toOption.flatten
@@ -82,9 +93,6 @@ object SyncDestinationHistoryHandler {
       override def syncLogger: SyncLogger = basic.syncLogger
 
       override def definition: SyncDestinationDefinition = basic.underlyingDefinition
-
-      override def clearAllUserData(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] =
-        basic.clearAll()
 
       override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = typed.clearValue(context)
 

@@ -17,7 +17,6 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
 
   lazy val handler: SyncDestinationHistoryHandler = resolveDefinition(syncInformation.syncDestination)
 
-
   def dataToStore[T, GA, SA](variable: InteractionVariable[T, GA, SA]): List[DataEntryToSync[SyncContext, String]] = {
     val historyToStore: InteractionVariableHistory[T, GA, SA] = variable.currentHistory.filterWithStrategy(syncInformation.syncStrategy)
     val syncContext: SyncContext = usageContext.toSyncContext(variable.keyForSerialization)
