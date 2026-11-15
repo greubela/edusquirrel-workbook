@@ -10,5 +10,6 @@
   "showExpected": "Beklenen çıktı",
   "uploadTitle": "Proje yükle",
   "uploadButton": "TurtleStitch projesi yükle (XML)",
-  "downloadButton": "Gösterilen projeyi indir"
+  "downloadButton": "Gösterilen projeyi indir",
+  "instructionRecreateShape": "Şekli bir programla yeniden oluştur!"
 }

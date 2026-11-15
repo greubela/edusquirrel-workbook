@@ -11,5 +11,6 @@
   "uploadTitle": "Upload projekt",
   "uploadButton": "Upload TurtleStitch-projekt (XML)",
   "downloadButton": "Download det viste projekt",
-  "redownloadProgram": "Download din afgift"
+  "redownloadProgram": "Download din afgift",
+  "instructionRecreateShape": "Genskab figuren med et program!"
 }

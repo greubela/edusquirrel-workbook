@@ -89,6 +89,24 @@ test('test workbook preserves edits across human languages, programming language
           blocks:window.snapLanguageEditor?.currentSprite?.scripts.allChildren().filter(m => m.selector).map(m => [m.selector,m.blockSpec])}))});
         throw error;
       });
+    const originalViewport = page.viewportSize();
+    for (const width of [1280, 760]) {
+      await page.setViewportSize({width, height: 900});
+      const panes = await page.locator('dialog[open] .editor-with-panel').evaluate(container => {
+        const editor = container.querySelector('.fullscreen-editor').getBoundingClientRect();
+        const sidebar = container.querySelector('.fullscreen-sidepanel').getBoundingClientRect();
+        return {editorRight: editor.right, sidebarLeft: sidebar.left,
+          overlap: Math.min(editor.bottom, sidebar.bottom) - Math.max(editor.top, sidebar.top)};
+      });
+      assert(panes.editorRight <= panes.sidebarLeft + 1 && panes.overlap > 0,
+        'editor and sidebar stay beside each other at desktop and narrow widths');
+    }
+    await page.setViewportSize(originalViewport);
+    // Request grading through the shared feedback line. It must produce public
+    // results without replacing the editor or rewriting its current draft.
+    await page.locator('dialog[open] .grading-info-line').getByRole('button', {name: 'Prüfen', exact: true}).click();
+    await page.waitForFunction(() => [...document.querySelectorAll('dialog[open] .feedback-date')]
+      .some(cell => /\d{4}-\d{2}-\d{2}/.test(cell.textContent)));
     await page.waitForTimeout(750); // include the periodic native snapshot in the baseline
     const historyBeforeLanguage = await page.evaluate(() => snapHistoryWrites.length);
     const source = await page.evaluate(() => {
