@@ -12,9 +12,10 @@ import it.evadid.workbook.elements.displayElements.WorkbookImageElement.Language
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.HintLabel
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette.PythonCompatibleSnap
 import it.evadid.workbook.elements.interactionElements.slideshow.*
 import it.evadid.workbook.elements.structureElements.{ExerciseGroup, Workbook}
 
@@ -89,7 +90,8 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
               "monks-koch-" + depth,
               ProgrammingStatePythonString(""),
               kochTarget(depth),
-              ProgrammingEditorPalette.PythonCompatibleSnap)))
+              TurtleDrawingPolicy.Strokes,
+              Some(RecreateTurtleDidacticConfig.defaultForPalette(PythonCompatibleSnap)))))
         })
     ),
     User.AndreGreubel

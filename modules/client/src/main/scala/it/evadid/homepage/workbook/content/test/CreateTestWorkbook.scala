@@ -1,11 +1,10 @@
 package it.evadid.homepage.workbook.content.test
 
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.MaxCommandUsage
-
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{MaxCommandUsage, RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleRecreateShapeInteraction}
 import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
-
 import it.evadid.core.datastructures.geometry.{Line, Point}
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
@@ -19,9 +18,8 @@ import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffold
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingEditorPalette}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.qr.{CreateQrCodeInteraction, QrCodeRequirements}
 import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, SqlDatabaseConfig}
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
@@ -103,8 +101,12 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         "turtle-recreate-1",
         ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
         exp1,
-        ProgrammingEditorPalette.BeginnerTurtle,
-        MaxCommandUsage(occurrencesInCode = Map("forward" -> 5))
+        TurtleDrawingPolicy.Strokes,
+        Some(RecreateTurtleDidacticConfig(
+          List(SnapLanguage, Python, Java),
+          ProgrammingEditorPalette.BeginnerTurtle,
+          MaxCommandUsage(occurrencesInCode = Map("forward" -> 5))
+        ))
       ),
       // 2
       DisplayLangMapContent("instr-test-02",
@@ -114,8 +116,12 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         "Turtle-Recreate-2",
         ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
         exp2,
-        ProgrammingEditorPalette.BeginnerTurtle,
-        MaxCommandUsage(occurrencesInCode = Map("forward" -> 2))
+        TurtleDrawingPolicy.Strokes,
+        Some(RecreateTurtleDidacticConfig(
+          List(SnapLanguage, Python, Java),
+          ProgrammingEditorPalette.BeginnerTurtle,
+          MaxCommandUsage(occurrencesInCode = Map("forward" -> 2))
+        ))
       )
     ))
     val cont2 = container("TestWorkbook/Sec1Cont1", List(

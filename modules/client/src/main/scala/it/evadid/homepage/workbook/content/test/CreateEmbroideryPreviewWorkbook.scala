@@ -9,7 +9,7 @@ import it.evadid.homepage.workbook.content.wip.EmbroideryPreviewTargets
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleGraphic, TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
@@ -46,7 +46,8 @@ case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) exte
   private def recreate(id: String, target: TurtleGraphic,
                        initialCode: String = ""): TurtleRecreateShapeInteraction =
     TurtleRecreateShapeInteraction(id, ProgrammingStatePythonString(initialCode), target,
-      ProgrammingEditorPalette.Embroidery)
+      TurtleDrawingPolicy.Strokes,
+      Some(RecreateTurtleDidacticConfig.defaultForPalette(ProgrammingEditorPalette.Embroidery)))
 
   private def createRecreateShapeInteraction(shape: String): WorkbookElement =
     recreate(nextId("embroidery-preview-" + shape), EmbroideryPreviewTargets.shape(shape))

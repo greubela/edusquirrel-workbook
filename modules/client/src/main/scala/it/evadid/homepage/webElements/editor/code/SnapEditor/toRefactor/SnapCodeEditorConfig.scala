@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{English, Java, Progra
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette, SnapPaletteCatalog, SnapTurtleCatalog}
+import upickle.default.*
 
 /** A primitive in the Snap palette.
  *
@@ -13,19 +14,19 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.{P
  * to the corresponding native input type, so `go to x: _ y: _` keeps the two
  * numeric input morphs belonging to `gotoXY`.
  */
-case class LibraryBlock(id: String, snap_description_line: String, associatedExpression: BeExpression) derives upickle.default.ReadWriter
+case class LibraryBlock(id: String, snap_description_line: String, associatedExpression: BeExpression) derives ReadWriter
 
 /** Named Snap palette color role; resolves via `SpriteMorph.prototype.blockColor`. */
-enum SnapCategoryColor(val snapKey: String) derives upickle.default.ReadWriter:
-  case Motion    extends SnapCategoryColor("motion")
-  case Looks     extends SnapCategoryColor("looks")
-  case Sound     extends SnapCategoryColor("sound")
-  case Pen       extends SnapCategoryColor("pen")
-  case Control   extends SnapCategoryColor("control")
-  case Sensing   extends SnapCategoryColor("sensing")
+enum SnapCategoryColor(val snapKey: String) derives ReadWriter:
+  case Motion extends SnapCategoryColor("motion")
+  case Looks extends SnapCategoryColor("looks")
+  case Sound extends SnapCategoryColor("sound")
+  case Pen extends SnapCategoryColor("pen")
+  case Control extends SnapCategoryColor("control")
+  case Sensing extends SnapCategoryColor("sensing")
   case Operators extends SnapCategoryColor("operators")
   case Variables extends SnapCategoryColor("variables")
-  case Other     extends SnapCategoryColor("other")
+  case Other extends SnapCategoryColor("other")
   case Embroidery extends SnapCategoryColor("embroidery")
 
 /** One named, ordered and allow-listed palette tab. An empty tab is valid.
@@ -35,14 +36,14 @@ enum SnapCategoryColor(val snapKey: String) derives upickle.default.ReadWriter:
  * color role instead of `selectableElements`.
  */
 case class LibraryTab(
-    id: String,
-    name: String,
-    selectableElements: List[LibraryBlock],
-    color: SnapCategoryColor = SnapCategoryColor.Other,
-    includeVariableControls: Boolean = false,
-    includeMakeBlockButton: Boolean = false,
-    useNativeCategory: Boolean = false
-) derives upickle.default.ReadWriter
+                       id: String,
+                       name: String,
+                       selectableElements: List[LibraryBlock],
+                       color: SnapCategoryColor = SnapCategoryColor.Other,
+                       includeVariableControls: Boolean = false,
+                       includeMakeBlockButton: Boolean = false,
+                       useNativeCategory: Boolean = false
+                     ) derives ReadWriter
 
 /** Visibility of the independently configurable parts of the embedded IDE.
  *
@@ -59,21 +60,20 @@ case class SnapEditorParts(
                             libraryCategories: Boolean = true, //
                             stage: Boolean = true, // executable area right
                             spriteControls: Boolean = true // scripts / costumes / sound headline
-                          ) derives upickle.default.ReadWriter
+                          ) derives ReadWriter
 
 /** Canvas bitmap dimensions are runtime geometry; presentation lives in CSS. */
 case class SnapEditorVisuals(
                               CanvasWidth: Int = 900,
                               CanvasHeight: Int = 520
-                            ) derives upickle.default.ReadWriter
+                            ) derives ReadWriter
 
 case class SnapCodeEditorConfig(
                                  parts: SnapEditorParts = SnapEditorParts(),
                                  libraryTabs: List[LibraryTab] = Nil,
                                  codeRepresentation: CodeRepresentationConfig = CodeRepresentationConfig(Python, English, skipUnparsable = false),
-                                 visuals: SnapEditorVisuals = SnapEditorVisuals(),
-                                 enabledLanguages: List[ProgrammingLanguage] = List(Python, Java)
-                               ) derives upickle.default.ReadWriter
+                                 visuals: SnapEditorVisuals = SnapEditorVisuals()
+                               ) derives ReadWriter
 
 object SnapCodeEditorConfig:
   /** Snap's default palette buttons (lists/other live inside Variables). */
@@ -136,13 +136,13 @@ object SnapCodeEditorConfig:
 
   /** One tab with blocks from any Snap categories (native block colors unchanged). */
   def mixedTab(
-      id: String,
-      name: String,
-      blocks: List[LibraryBlock],
-      color: SnapCategoryColor = SnapCategoryColor.Other,
-      includeVariableControls: Boolean = false,
-      includeMakeBlockButton: Boolean = false
-  ): LibraryTab =
+                id: String,
+                name: String,
+                blocks: List[LibraryBlock],
+                color: SnapCategoryColor = SnapCategoryColor.Other,
+                includeVariableControls: Boolean = false,
+                includeMakeBlockButton: Boolean = false
+              ): LibraryTab =
     LibraryTab(
       id = id,
       name = name,
@@ -155,11 +155,11 @@ object SnapCodeEditorConfig:
 
   /** Flatten several tabs into one mixed tab (block order preserved). */
   def flattenToMixedTab(
-      id: String,
-      name: String,
-      tabs: List[LibraryTab],
-      color: SnapCategoryColor = SnapCategoryColor.Other
-  ): LibraryTab =
+                         id: String,
+                         name: String,
+                         tabs: List[LibraryTab],
+                         color: SnapCategoryColor = SnapCategoryColor.Other
+                       ): LibraryTab =
     mixedTab(
       id = id,
       name = name,

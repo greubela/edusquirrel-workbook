@@ -56,7 +56,6 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
   }
 
-
   def createScaffoldingButtonSvg(): ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
       svg.cls := "button-show-scaffolder",

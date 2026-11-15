@@ -1,29 +1,31 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
 import it.evadid.vm.conversion.ProgrammingStateConversions.*
-
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
-import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.state.ExecutionMethod
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
-import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.JavaTurtleEditorExtension
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.{JavaTurtleEditorExtension, TurtleTaskEditorExtension}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.{DomElementList, DomElementSingle}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
+import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.EditorWithWorkbookPanel
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.meta.InteractionVariableGradingReporter
 import todomove.datastructures.web.file.FullImage
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -40,10 +42,30 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val javaExecution = new JavaTurtleEditorExtension(boundVar)
     val execution = new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleProgramExecution(List(javaExecution))
-    def editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, Nil, EvaEditorConfig(snapConfig = editorConfig), humanLanguage = fullInfo.signals.currentLanguage,
-      labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal(_)))
 
-    def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(InteractionInfoPanel.withEditor(workbookElement, editor))
+    val gradingReporter = InteractionVariableGradingReporter(workbookElement)
+
+    def editor = EvaEditor(
+      fullInfo.loggerSystemInfo.uiAndDomLogger,
+      boundVar,
+      Nil,
+      Var(EvaEditorConfig(snapConfig = editorConfig)),
+      humanLanguage = fullInfo.signals.currentLanguage,
+      labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal)
+    )
+
+    def buttonPressed(): Unit = {
+
+      val evaEditor = EvaEditor(
+        fullInfo.loggerSystemInfo.uiAndDomLogger,
+        boundVar,
+        List(),
+        Var(EvaEditorConfig(enabledLanguages = List(AppLanguage.Java))),
+        labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
+      EditorWithWorkbookPanel(workbookElement, gradingReporter, DomElementList(List()), evaEditor)
+
+      fullInfo.displayControl.setFullscreen(evaEditor)
+    }
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())

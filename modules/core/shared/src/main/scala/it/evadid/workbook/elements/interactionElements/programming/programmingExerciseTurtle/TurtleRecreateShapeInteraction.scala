@@ -1,12 +1,13 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.grading.GradingImportance.REQUIRED_TEST
 import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
-import it.evadid.workbook.abstractions.scaffolding.WorkbookInteractionScaffolder
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateTurtleDidacticConfig.defaultDidacticConfig
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
@@ -18,9 +19,8 @@ case class TurtleRecreateShapeInteraction
   override val elementId: String,
   initProgram: ProgrammingState,
   desiredResult: TurtleGraphic,
-  availablePalette: ProgrammingEditorPalette = ProgrammingEditorPalette.BeginnerTurtle,
-  maxCommandUsage: MaxCommandUsage = MaxCommandUsage(),
-  comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes
+  comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes,
+  customExerciseConfig: Option[RecreateTurtleDidacticConfig] = Some(defaultDidacticConfig)
 ) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit] derives ReadWriter {
 
   override val defaultValue: ProgrammingState = initProgram
@@ -28,13 +28,17 @@ case class TurtleRecreateShapeInteraction
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val associatedFactory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = TurtleRecreateShapeInteraction.factory
 
+  def exerciseConfig: RecreateTurtleDidacticConfig = customExerciseConfig.getOrElse(RecreateTurtleDidacticConfig.defaultDidacticConfig)
+
   override val gradingElements: List[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]] =
     List(RecreateShapeGrader(desiredResult, REQUIRED_TEST, elementId + "-grader", comparisonPolicy)) ++
-      TurtleCommandUsageGrader.forLimits(elementId, maxCommandUsage)
+      TurtleCommandUsageGrader.forLimits(elementId, exerciseConfig.maxCommandUsage)
   //val scaffoldingElement: Option[WorkbookInteractionScaffolder[ProgrammingState, ?]] = None
 }
 
 object TurtleRecreateShapeInteraction {
+
+
   val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
     override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "availablePalette", "maxCommandUsage", "comparisonPolicy")
 
@@ -42,8 +46,7 @@ object TurtleRecreateShapeInteraction {
       val serialized = baseElement
         .withElementAddedAs("initProgram", element.initProgram)
         .withElementAddedAs("desiredResult", element.desiredResult)
-        .withElementAddedAs("availablePalette", element.availablePalette)
-        .withElementAddedAs("maxCommandUsage", element.maxCommandUsage)
+        .withElementAddedAs("customExerciseConfig", element.customExerciseConfig)
       if element.comparisonPolicy == TurtleDrawingPolicy.Strokes then serialized
       else serialized.withElementAddedAs("comparisonPolicy", element.comparisonPolicy)
     }
@@ -53,9 +56,8 @@ object TurtleRecreateShapeInteraction {
         serialized.elementId,
         serialized.getElementAs[ProgrammingState]("initProgram"),
         serialized.getElementAs[TurtleGraphic]("desiredResult"),
-        serialized.getElementAs[ProgrammingEditorPalette]("availablePalette"),
-        serialized.getElementAs[MaxCommandUsage]("maxCommandUsage"),
-        serialized.getOptionalElementAs[TurtleDrawingPolicy]("comparisonPolicy", TurtleDrawingPolicy.Strokes)
+        serialized.getOptionalElementAs[TurtleDrawingPolicy]("comparisonPolicy", TurtleDrawingPolicy.Strokes),
+        serialized.getOptionalElementAs[Option[RecreateTurtleDidacticConfig]]("customExerciseConfig", None),
       )
   }
 }

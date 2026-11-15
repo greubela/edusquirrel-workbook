@@ -9,13 +9,13 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
 import it.evadid.workbook.interaction.sync.UpdateImportance.DEFAULT
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.meta.InteractionVariableGradingReporter
 import org.scalajs.dom.{HTMLDivElement, MouseEvent}
 
-case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionUntyped) extends HtmlAppElement {
+case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionUntyped, gradingReporter: InteractionVariableGradingReporter[?, ?, ?]) extends HtmlAppElement {
 
-  val iconGradingScaffolding = IconGradingAndScaffolding(fullInfo, laminarHelper, workbookInteractionElement)
+  val iconGradingScaffolding = IconGradingAndScaffolding(fullInfo, laminarHelper, workbookInteractionElement, gradingReporter)
   val iconSync = IconSync(fullInfo, laminarHelper, workbookInteractionElement)
-
 
   def historyToCss(curHistory: InteractionVariableHistory[?, ?, ?]): String =
     if (curHistory.historyStates.lastStateOption.exists(_.updateImportance != DEFAULT)) {
@@ -56,18 +56,6 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
 }
 
 object InteractionInfoPanel {
-
-  def withEditor(interaction: WorkbookInteractionUntyped, editor: HtmlAppElement): HtmlAppElement =
-    if interaction.scaffoldingElement.isEmpty && interaction.gradingElements.isEmpty then editor
-    else new HtmlAppElement {
-      override def dismissOnOutsideClick: Boolean = editor.dismissOnOutsideClick
-
-      override def getDomElement(): Element = div(cls := "interaction-editor",
-        InteractionInfoPanel(interaction).getDomElement(),
-        div(cls := "interaction-editor__content", editor.getDomElement()))
-    }
-
-  /* CSS info */
 
   protected val interactionInfoCssString: String = "interaction-element-info"
 

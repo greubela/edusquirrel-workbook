@@ -17,9 +17,6 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().workbookInfo
   }
 
-
-
-
   def currentHomepageContext: UsageContext = now().toContext
 
   /*def workbookUserData: Option[WorkbookUserDataAnalyzer] = fullInfo.synchronized {

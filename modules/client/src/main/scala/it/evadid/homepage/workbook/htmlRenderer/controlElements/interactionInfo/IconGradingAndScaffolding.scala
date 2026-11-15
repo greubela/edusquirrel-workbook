@@ -8,26 +8,30 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT_UNDERSCORE_REPLACABLE
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
 import it.evadid.workbook.abstractions.grading.GradedState
-import it.evadid.workbook.abstractions.grading.GradingStatus.{Correct, NotFinished, NotRequested}
+import it.evadid.workbook.abstractions.grading.GradingStatus.{NotFinished, NotRequested}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingRequestedButNotFinished
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
 
 
-case class IconGradingAndScaffolding(fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, workbookInteractionElement: WorkbookInteractionUntyped) {
+case class IconGradingAndScaffolding(
+                                      fullInfo: FullInfo,
+                                      laminarHelper: LaminarRenderHelper,
+                                      workbookInteractionElement: WorkbookInteractionUntyped,
+                                      gradingReporter: InteractionVariableGradingReporter[?, ?, ?]) {
 
-  val gradingReporter: InteractionVariableGradingReporter[?, ?, ?] = InteractionVariableGradingReporter(workbookInteractionElement.interactionVariable)
+
+  //val gradingReporter: InteractionVariableGradingReporter[?, ?, ?] = InteractionVariableGradingReporter(workbookInteractionElement.interactionVariable)
 
   val domElement: Element = div(cls := "interaction-grading",
     button(typ := "button", cls := "interaction-grading__request",
       onClick --> (_ => workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.workbookContextInformation, true)))
   )
 
-
   def deriveScaffoldingSymbol(curScaffolding: Option[ScaffoldingResult[?, ?]]): Element =
     if (workbookInteractionElement.scaffoldingElement.isEmpty) div()
     else if (curScaffolding.isEmpty) {
-      val curScaffLabel =laminarHelper.plaintextStringSignal("basic/requestScaffoldingHint")
+      val curScaffLabel = laminarHelper.plaintextStringSignal("basic/requestScaffoldingHint")
       InteractionInfoPanel.infoPanelIcon(
         "scaffolding-info",
         createScaffoldingNothing(),
