@@ -54,6 +54,15 @@ class ExecutionClientPoolTest extends FunSuite {
     }
   }
 
+  test("handler summaries retain SQL diagnostics after a long operation description") {
+    val detail = "SQL error while " + ("query context " * 20) + "column limits (SQLState=22001, errorCode=1406)"
+    ExecutionClientPool(List(failingClient("sync", Exception(detail))))
+      .handleCommand[Map[String, String]](BasicLogger(), ExecutionCommand("sync", ujson.Obj())).failed.map { error =>
+        assert(error.getMessage.contains("SQLState=22001"))
+        assert(error.getMessage.contains("errorCode=1406"))
+      }
+  }
+
   test("a later handler can still succeed after an earlier handler fails") {
     val successful = new LocalExecutionClient[ujson.Value, Map[String, String]] {
       override def canExecuteCommand(command: ExecutionCommand): Boolean = command.name == "sync-to-db-request"

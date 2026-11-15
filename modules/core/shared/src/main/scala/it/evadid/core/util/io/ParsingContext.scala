@@ -17,7 +17,7 @@ object ParsingContext {
         case serialized: SerializedException => serialized.cause
         case other => Option(other.getCause)
       }
-      preview(message, 240) :: (if remaining > 0 then cause.filterNot(_ eq current).toList.flatMap(messages(_, remaining - 1)) else Nil)
+      preview(message, 600) :: (if remaining > 0 then cause.filterNot(_ eq current).toList.flatMap(messages(_, remaining - 1)) else Nil)
     }
     messages(error, 4).distinct.mkString(": ")
   }
