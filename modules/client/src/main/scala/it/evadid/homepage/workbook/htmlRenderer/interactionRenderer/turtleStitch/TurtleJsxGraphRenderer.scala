@@ -108,7 +108,7 @@ object TurtleJsxGraphRenderer:
 
   final case class RenderedAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int, lineAfter: Int) derives ReadWriter
 
-  final case class Scene(lines: List[RenderedLine], angles: List[RenderedAngle]) derives ReadWriter
+  final case class Scene(lines: Seq[RenderedLine], angles: Seq[RenderedAngle]) derives ReadWriter
 
   private[turtleStitch] final case class AngleSector(first: Point[Double], last: Point[Double], degrees: Double) derives upickle.default.ReadWriter
 
@@ -293,7 +293,7 @@ object TurtleJsxGraphRenderer:
     val rounded = math.rint(value * 1000.0) / 1000.0
     if rounded == rounded.toLong then rounded.toLong.toString else rounded.toString
 
-  private def boundingBox(points: List[Point[Double]]): Array[Double] =
+  private def boundingBox(points: Seq[Point[Double]]): Array[Double] =
     if points.isEmpty then Array(-10.0, 10.0, 10.0, -10.0)
     else
       val xs = points.map(_.x);

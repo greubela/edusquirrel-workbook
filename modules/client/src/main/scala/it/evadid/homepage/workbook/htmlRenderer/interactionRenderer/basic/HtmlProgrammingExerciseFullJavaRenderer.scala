@@ -30,7 +30,7 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
                                        ):
   EditorWithWorkbookPanel[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding, EvaEditorConfig] = {
 
-    val draw = new TurtleTaskEditorExtension(boundVar, None, TurtleDrawingPolicy.Coverage)
+    val draw = new TurtleTaskEditorExtension(boundVar, None)
     val evaEditor = EvaEditor(
       fullInfo.loggerSystemInfo.uiAndDomLogger,
       boundVar,
@@ -38,7 +38,6 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
       Var(EvaEditorConfig(enabledLanguages = List(AppLanguage.Java))),
       labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
     EditorWithWorkbookPanel(element, gradingReporter, DomElementSingle(draw.getDomElement()), evaEditor)
-
   }
 
   override protected def createRendering(workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {
