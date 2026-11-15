@@ -245,7 +245,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
       case error: SerializedException =>
         assert(error.msg.contains("sourceLength"))
         assert(!error.toJson.contains("private"))
-        assertEquals(error.cause, None)
+        assert(error.cause.nonEmpty)
         assertEquals(write(malformed), before)
         assert(!logger.getOut().contains("private") && !logger.getErr().contains("private"))
       case other => fail("Unexpected parse failure: " + other.getClass.getName)
@@ -262,7 +262,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
         case error: SerializedException =>
           assert(error.msg.contains("promptLength"))
           assert(!error.toJson.contains("private"))
-          assertEquals(error.cause, None)
+          assert(error.cause.nonEmpty)
         case other => fail(s"Unexpected parse failure: ${other.getClass.getName}")
       }
       val denied = factory.toLocalExecutionClient((_, _) => Future.successful("unused"), (_, _) => false)

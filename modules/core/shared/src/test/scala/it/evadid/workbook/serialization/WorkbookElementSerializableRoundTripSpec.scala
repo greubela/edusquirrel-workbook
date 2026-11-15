@@ -91,7 +91,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       GptInteractionElement("gpt", input, content("exercise/text"), List(content("hint/text")), List(content("criterion/text"))),
       TurtleStitchExploreProjectElement("turtle-explore", special),
       TurtleStitchRecreateShapeInteractionLegacy("turtle-legacy", special),
-      TurtleRecreateShapeInteraction("turtle-shape", ProgrammingStatePythonString("forward(10)"), TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), ProgrammingEditorPalette.Embroidery, MaxCommandUsage(occurrencesInCode = Map("forward" -> 2))),
+      TurtleRecreateShapeInteraction("turtle-shape", ProgrammingStatePythonString("forward(10)"), TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultForPalette(ProgrammingEditorPalette.Embroidery).copy(maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2))))),
       ProgrammingExercise("programming", Some(SampleBeTest("assert True")), ProgrammingEditorPalette.Embroidery, Some(special)),
       ProgrammingExerciseFullJava("java", Some(SampleBeTest("assert False"))),
       MailEditor("mail-editor", inbox, special, allowCompose = false),
@@ -156,7 +156,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
   test("turtle definitions default to stroke grading without changing their saved source") {
     val source = ProgrammingStatePythonString(" \r\nforward(10)\n\t ")
     val original = TurtleRecreateShapeInteraction("turtle-default-policy", source,
-      TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2)))
+      TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultDidacticConfig.copy(maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2)))))
     val serialized = original.toSerialized
     val legacy = serialized.copy(allConstructorFields = serialized.allConstructorFields - "comparisonPolicy")
     assert(!legacy.allConstructorFields.contains("comparisonPolicy"))
@@ -165,7 +165,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     assertEquals(restored.elementId, original.elementId)
     assertEquals(restored.initProgram, source)
     assertEquals(restored.desiredResult, original.desiredResult)
-    assertEquals(restored.maxCommandUsage, original.maxCommandUsage)
+    assertEquals(restored.exerciseConfig.maxCommandUsage, original.exerciseConfig.maxCommandUsage)
     assertEquals(restored.serializerInteractionContent.serialize(source), original.serializerInteractionContent.serialize(source))
   }
 
@@ -179,7 +179,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       source <- sources
     } do {
       val original = TurtleRecreateShapeInteraction(s"turtle-policy-$policy", source,
-        TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2)),
+        TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultDidacticConfig.copy(maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2)))),
         comparisonPolicy = policy)
       val explicit = original.toSerialized.withElementAddedAs("comparisonPolicy", policy)
       val restoredDefinitions = List(
@@ -206,7 +206,11 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"))
     List[ujson.Value](ujson.Str("Other"), ujson.Null, ujson.Num(1), ujson.Bool(true), ujson.Obj()).foreach { policy =>
       val invalid = original.toSerialized.withMapAdded(Map("comparisonPolicy" -> policy))
-      intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(invalid))
+      val error = intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(invalid))
+      assert(error.msg.contains("turtle-invalid-policy"))
+      assert(error.msg.contains("comparisonPolicy"))
+      assert(error.msg.contains("because:"))
+      assert(error.cause.nonEmpty)
     }
   }
 

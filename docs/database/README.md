@@ -138,3 +138,17 @@ public entry point: it forwards its socket peer's address and Play trusts only
 Caddy and loopback. If another proxy or NAT hides the original address before
 Caddy, that address cannot be recovered without a trusted forwarding arrangement
 at that hop; do not accept arbitrary client-supplied `X-Forwarded-For` values.
+
+## Failure diagnostics
+
+Command pools report the number of attempted handlers and retain the last
+handler's cause chain. Parsing boundaries name the request/history/feedback
+entity, show a bounded input preview, and include the underlying parser reason.
+Malformed stored records are still discarded individually; these diagnostics do
+not enable legacy schema support.
+
+`SqlFailure` gives account and history failures an operation, an actionable
+SQLState explanation and the vendor error code. Original JDBC exceptions remain
+in server logs; they are deliberately excluded from transport cause chains
+because vendor messages can contain bound values or credentials. Request parsing
+uses each command's privacy filter for previews and nested error messages.

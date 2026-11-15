@@ -22,6 +22,18 @@ class LocalExecutionClientSpec extends FunSuite {
       }
   }
 
+  test("request decoding redacts private values from previews and nested parser causes") {
+    val secret = "private-login-token"
+    val request = ExecutionCommand("login-command", ujson.Obj(
+      "userMail" -> "test@example.invalid", "accessToken" -> secret))
+    client(_ => Future.successful(1)).executeResponse(BasicLogger(), request).failed.map { error =>
+      val serialized = error.asInstanceOf[SerializedException]
+      assert(serialized.msg.contains("login-command"))
+      assert(serialized.cause.nonEmpty)
+      assert(!serialized.toJson.contains(secret))
+    }
+  }
+
   test("synchronous and asynchronous failures use the same response envelope and preserve causes") {
     val error = SerializedException("calculation failed", IllegalStateException("root cause"))
     val clients = List(client(_ => throw error), client(_ => Future.failed(error)))

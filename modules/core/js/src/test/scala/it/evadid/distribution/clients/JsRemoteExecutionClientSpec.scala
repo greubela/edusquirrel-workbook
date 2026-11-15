@@ -67,6 +67,32 @@ class JsRemoteExecutionClientSpec extends FunSuite {
     }.andThen { case _ => js.Dynamic.global.CompressionStream = originalCompression }
   }
 
+  List("TimeoutError" -> "60 seconds", "AbortError" -> "canceled", "TypeError" -> "network access").foreach { (name, expected) =>
+    test(s"$name request failures identify the command and suggest an actionable next step") {
+      val originalFetch = js.Dynamic.global.fetch
+      js.Dynamic.global.fetch = ((_: String, _: dom.RequestInit) =>
+        js.Promise.reject(js.Dynamic.newInstance(js.Dynamic.global.DOMException)("private network details", name))): js.Function2[String, dom.RequestInit, js.Promise[Response]]
+      Future.unit.flatMap { _ =>
+        JsRemoteExecutionClient("localhost", 443, None).sendCommand(BasicLogger(),
+          it.evadid.distribution.command.ExecutionCommand("auth-mail-request", ujson.Obj()),
+          "https://localhost/executeCommand", "{}")
+      }.failed.map { error =>
+        assert(error.getMessage.contains("auth-mail-request"))
+        assert(error.getMessage.contains(expected))
+        assert(!error.getMessage.contains("private network details"))
+      }.andThen { case _ => js.Dynamic.global.fetch = originalFetch }
+    }
+  }
+
+  test("incompatible success responses explain the response contract without echoing credentials") {
+    val response = new dom.Response("private response credentials")
+    JsRemoteExecutionClient("localhost", 443, None).handleResponse(BasicLogger(), response).failed.map { error =>
+      assert(error.getMessage.contains("Could not decode backend execution response"))
+      assert(error.getMessage.contains("same version"))
+      assert(!error.getMessage.contains("private response credentials"))
+    }
+  }
+
   test("HTTP failures retain their status and server reason instead of decoding a success envelope") {
     val response = js.Dynamic.literal(ok = false, status = 503, statusText = "Unavailable",
       text = (() => js.Promise.resolve("""{"error":"SMTP unavailable"}""")): js.Function0[js.Promise[String]])

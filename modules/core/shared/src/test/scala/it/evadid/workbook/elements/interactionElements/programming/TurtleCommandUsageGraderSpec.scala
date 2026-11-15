@@ -20,7 +20,7 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
   private val loop = ProgrammingStatePythonString("for i in range(4):\n    forward(10)")
   private val target = TurtleGraphic(List.fill(4)(TurtleCommand.Forward(10.0)))
   private def exercise(limits: MaxCommandUsage): TurtleRecreateShapeInteraction =
-    TurtleRecreateShapeInteraction("limited-shape", loop, target, maxCommandUsage = limits)
+    TurtleRecreateShapeInteraction("limited-shape", loop, target, customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultDidacticConfig.copy(maxCommandUsage = limits)))
 
   test("each map entry gets its own required grader, independently of the shape and other limits") {
     val limits = MaxCommandUsage(occurrencesInCode = Map("forward" -> 1, "right" -> 0),

@@ -21,8 +21,7 @@ case class EditorWithWorkbookPanel[T, GA, SA, EC <: WebEditorConfig]
   lazy val sidePanel = InteractionSidePanelForEditor[T, GA, SA](interaction, gradingReporter)
 
   override def getDomElement(): L.Element = div(cls := "interaction-editor",
-    InteractionSidePanelForEditor(interaction, gradingReporter).getDomElement(),
-    //InteractionInfoPanel(interaction, gradingReporter).getDomElement(),
+    sidePanel.getDomElement(),
     div(cls := "interaction-editor__content", editor.getDomElement())
   )
 

@@ -1,6 +1,9 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.util.logging.Logger
+import it.evadid.server.database.SqlFailure
+import it.evadid.core.util.io.ParsingContext
+import upickle.default.{ReadWriter, read}
 import it.evadid.workbook.abstractions.grading.GradingResult
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import java.sql.{Connection, PreparedStatement, ResultSet, Types}
@@ -15,13 +18,15 @@ abstract class RelationalHistorySql(connection: Connection, logger: Logger) {
   protected def restoredTime(value: String): ujson.Value = ujson.Str(LocalDateTime.parse(value).toString)
 
   private def prepared[A](sql: String, values: Seq[Any])(run: PreparedStatement => A): A =
-    Using.resource(connection.prepareStatement(sql)) { statement =>
-      values.zipWithIndex.foreach { (value, index) => value match {
-        case null => statement.setNull(index + 1, Types.VARCHAR)
-        case number: Long => statement.setLong(index + 1, number)
-        case other => statement.setString(index + 1, other.toString)
-      }}
-      run(statement)
+    SqlFailure(s"executing relational history SQL ${ParsingContext.preview(sql)}", logger) {
+      Using.resource(connection.prepareStatement(sql)) { statement =>
+        values.zipWithIndex.foreach { (value, index) => value match {
+          case null => statement.setNull(index + 1, Types.VARCHAR)
+          case number: Long => statement.setLong(index + 1, number)
+          case other => statement.setString(index + 1, other.toString)
+        }}
+        run(statement)
+      }
     }
   protected def update(sql: String, values: Any*): Int = prepared(sql, values)(_.executeUpdate())
   protected def query[A](sql: String, values: Seq[Any])(read: ResultSet => A): List[A] =
@@ -48,8 +53,14 @@ abstract class RelationalHistorySql(connection: Connection, logger: Logger) {
       connection.setTransactionIsolation(isolation)
     }
   }
+  protected def readJson[A: ReadWriter](name: String, value: ujson.Value): A =
+    ParsingContext(name, value.toString) { read[A](value) }
+
+  protected def parseJson(name: String, value: String): ujson.Value =
+    ParsingContext(name, value) { ujson.read(value) }
+
   private def readOptional(value: String): ujson.Value =
-    Option(value).map(ujson.read(_)).getOrElse(ujson.Null)
+    Option(value).map(parseJson("feedback additional_data", _)).getOrElse(ujson.Null)
 
   protected def mergeGrade(previous: GradingResult[ujson.Value, ujson.Value], incoming: GradingResult[ujson.Value, ujson.Value]) = {
     require(previous.grader.key == incoming.grader.key)
@@ -58,22 +69,22 @@ abstract class RelationalHistorySql(connection: Connection, logger: Logger) {
   }
 
   protected def answerJson(row: ResultSet): ujson.Value =
-    ujson.Obj("value" -> ujson.read(row.getString("serialized_data")),
+    ujson.Obj("value" -> parseJson("history serialized_data", row.getString("serialized_data")),
       "timestamp" -> restoredTime(row.getString("timestamp")),
       "updateImportance" -> UpdateImportance.valueOf(row.getString("update_importance")).toString)
 
   protected def gradeJson(row: ResultSet, state: ujson.Value): ujson.Value = {
-    val regular = ujson.read(row.getString("serialized_data"))
+    val regular = parseJson("history serialized_data", row.getString("serialized_data"))
     ujson.Obj("grader" -> ujson.Str(row.getString("grader_definition")), "gradedState" -> state,
       "gradingStatus" -> regular("gradingStatus"), "feedbackInformation" -> regular.obj.getOrElse("feedbackInformation", ujson.Null),
       "additionalData" -> readOptional(row.getString("additional_data")), "gradingTime" -> restoredTime(row.getString("timestamp")))
   }
   protected def scaffoldingJson(row: ResultSet, state: ujson.Value): ujson.Value =
-    ujson.Obj("forState" -> state, "scaffoldingStatus" -> ujson.read(row.getString("serialized_data")),
-      "scaffoldingEntity" -> ujson.read(row.getString("scaffolding_entity")),
+    ujson.Obj("forState" -> state, "scaffoldingStatus" -> parseJson("history serialized_data", row.getString("serialized_data")),
+      "scaffoldingEntity" -> parseJson("scaffolding entity", row.getString("scaffolding_entity")),
       "additionalInformation" -> readOptional(row.getString("additional_data")), "scaffoldingTime" -> restoredTime(row.getString("timestamp")))
 
   protected def safe[A](description: String)(read: => A): Option[A] = Try(read).fold(
-    _ => { logger.logWarn("Discarded malformed relational history record: " + description); None }, Some(_))
+    error => { logger.logWarn(s"Discarded malformed relational history record $description: ${ParsingContext.reason(error)}"); None }, Some(_))
 
 }

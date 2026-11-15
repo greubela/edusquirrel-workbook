@@ -47,6 +47,12 @@ runs after database work has released its connection.
 
 ## Diagnosing failures
 
+SMTP failures distinguish rejected authentication/delivery, DNS, connection,
+TLS and socket timeouts without echoing message contents or login codes.
+Mail delivery uses 10-second connection and 15-second read/write timeouts.
+Browser request errors identify the command and distinguish the 60-second
+backend timeout from browser cancellation or a network failure.
+
 A command-pool error is a transport/handler summary; inspect its underlying server
 exception to diagnose an incident. Check submitted account identity, backend
 configuration and token expiry before changing client behavior. Token-row parsing

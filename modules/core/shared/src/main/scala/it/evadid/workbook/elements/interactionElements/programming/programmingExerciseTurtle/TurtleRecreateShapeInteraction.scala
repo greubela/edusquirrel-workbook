@@ -40,7 +40,7 @@ object TurtleRecreateShapeInteraction {
 
 
   val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
-    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "availablePalette", "maxCommandUsage", "comparisonPolicy")
+    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "comparisonPolicy", "customExerciseConfig")
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, element: TurtleRecreateShapeInteraction): WorkbookElementSerializable = {
       val serialized = baseElement

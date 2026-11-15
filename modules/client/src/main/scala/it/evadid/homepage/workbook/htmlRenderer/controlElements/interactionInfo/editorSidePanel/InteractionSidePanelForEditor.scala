@@ -3,6 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
 import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
 
@@ -14,5 +15,6 @@ case class InteractionSidePanelForEditor[T, GA, SA](
 
 
 
-  override def getDomElement(): L.Element = div(span("hai"))
+  override def getDomElement(): L.Element = div(cls := "interaction-editor__side-panel",
+    InteractionInfoPanel(underlyingInteraction, gradingReporter).getDomElement())
 }

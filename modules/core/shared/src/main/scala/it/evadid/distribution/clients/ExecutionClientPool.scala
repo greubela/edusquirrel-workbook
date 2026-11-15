@@ -1,6 +1,7 @@
 package it.evadid.distribution.clients
 
 import it.evadid.distribution.command.*
+import it.evadid.core.util.io.ParsingContext
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.logging.Logger
 import java.time.LocalDateTime
@@ -15,10 +16,10 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
   override private[clients] def handleCommandExecution(logger: Logger, command: ExecutionCommand): Future[ExecutionClientResponse] = {
     val received = LocalDateTime.now()
 
-    def attempt(handlers: List[ExecutionClient], failure: Option[SerializedException]): Future[ExecutionClientResponse] = handlers match {
+    def attempt(handlers: List[ExecutionClient], failure: Option[SerializedException], tried: Int): Future[ExecutionClientResponse] = handlers match {
       case Nil =>
         val message = failure.fold(s"ExecutionClientPool: no handler for command ${command.name} registered!") { error =>
-          s"ExecutionClientPool: all handlers for command ${command.name} failed! (reason: ${error.msg})"
+          s"ExecutionClientPool: all handlers for command ${command.name} failed! $tried handlers tried; last handler failed because: ${ParsingContext.reason(error)}"
         }
         logger.logError(message)
         Future.failed(SerializedException(message).copy(cause = failure))
@@ -33,12 +34,10 @@ case class ExecutionClientPool(clients: List[ExecutionClient]) extends Execution
               case serialized: SerializedException => serialized
               case other => SerializedException(other)
             }
-            val combined = failure.fold(current)(previous =>
-              SerializedException(current.msg + "; previous handler: " + previous.msg).copy(cause = Some(current)))
-            attempt(remaining, Some(combined))
+            attempt(remaining, Some(current), tried + 1)
           }
     }
 
-    attempt(clients.filter(_.canExecuteCommand(command)), None)
+    attempt(clients.filter(_.canExecuteCommand(command)), None, 0)
   }
 }

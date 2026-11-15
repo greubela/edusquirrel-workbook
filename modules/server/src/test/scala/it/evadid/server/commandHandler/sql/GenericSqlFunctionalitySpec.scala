@@ -37,8 +37,8 @@ class GenericSqlFunctionalitySpec extends FunSuite {
     assert(logger.getOut().contains("unreadable row") || logger.getErr().contains("unreadable row"))
   }
 
-  test("failed queries preserve the database exception even when statement cleanup fails") {
-    val original = SQLException("database offline")
+  test("failed queries report operation and SQL diagnostics even when statement cleanup fails") {
+    val original = SQLException("database offline with private bound value", "08001", 123)
     val cleanup = SQLException("close failed")
     val statement = jdbc(classOf[PreparedStatement]) { (name, _) => name match {
       case "executeQuery" => throw original
@@ -46,7 +46,9 @@ class GenericSqlFunctionalitySpec extends FunSuite {
       case other => throw AssertionError(other)
     }}
     val caught = intercept[SQLException](control(BasicLogger()).executeQuery(statement, List("value")))
-    assert(caught eq original)
+    assert(caught.getMessage.contains("reading database columns value"))
+    assert(caught.getMessage.contains("SQLState=08001, errorCode=123"))
+    assert(!caught.getMessage.contains("private bound value"))
     assertEquals(caught.getSuppressed.toList, List(cleanup))
   }
 

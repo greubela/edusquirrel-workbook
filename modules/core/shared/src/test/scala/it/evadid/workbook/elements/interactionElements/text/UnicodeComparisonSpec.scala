@@ -55,6 +55,6 @@ class UnicodeComparisonSpec extends FunSuite {
     assertEquals(UnicodeComparisonAnswer("x" * 256).first.length, 256)
     intercept[IllegalArgumentException](UnicodeComparisonAnswer("x" * 257))
     intercept[IllegalArgumentException](UnicodeComparisonAnswer(second = "x" * 257))
-    intercept[upickle.core.TraceVisitor.TraceException](e.serializerInteractionContent.deserialize(s"{\"first\":\"${"x" * 257}\",\"second\":\"\"}"))
+    intercept[IllegalArgumentException](e.serializerInteractionContent.deserialize(s"{\"first\":\"${"x" * 257}\",\"second\":\"\"}"))
   }
 }

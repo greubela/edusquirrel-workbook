@@ -136,8 +136,8 @@ class SqlUserCommands(
     else {
       val user = User(userColumns(1), userColumns(0), userColumns(2))
       val userConfig = scala.util.Try(read[UserConfig](userColumns(3))).recover {
-        case scala.util.control.NonFatal(_) =>
-          logger.logWarn("Discarded invalid account settings; using current defaults.")
+        case scala.util.control.NonFatal(error) =>
+          logger.logWarn(s"Discarded invalid UserConfig; using current defaults: ${it.evadid.core.util.io.ParsingContext.reason(error)}")
           UserConfig.onlineDefaults
       }.get
       Some(UserInDatabase(user, userConfig))

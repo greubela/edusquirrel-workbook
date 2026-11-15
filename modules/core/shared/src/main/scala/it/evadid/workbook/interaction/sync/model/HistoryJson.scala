@@ -1,10 +1,11 @@
 package it.evadid.workbook.interaction.sync.model
 
 import java.time.LocalDateTime
+import it.evadid.core.util.io.ParsingContext
 
 /** Inspect the current history schema without knowing answer or feedback types. */
 object HistoryJson {
-  def payload(json: String): ujson.Value = {
+  def payload(json: String): ujson.Value = ParsingContext("interactionVariableHistory JSON", json) {
     val value = ujson.read(json)
     val history = value.obj.getOrElse("fullHistory", value)
     history.obj
@@ -20,7 +21,7 @@ object HistoryJson {
   private def asMap(values: Iterable[(ujson.Value, ujson.Value)]): ujson.Value =
     ujson.Arr.from(values.map((key, item) => ujson.Arr(key, item)))
 
-  def lastTimestamp(json: String): Option[LocalDateTime] = {
+  def lastTimestamp(json: String): Option[LocalDateTime] = ParsingContext("interactionVariableHistory timestamps", json) {
     val value = payload(json)
     val edits = value("historyStates")("events").arr.toList
     val grades = entries(value("historyGrading")("gradingsMap")).flatMap((_, group) => entries(group("graderResultMap")).map(_._2))
@@ -32,7 +33,7 @@ object HistoryJson {
   def stored(key: String, history: String): String =
     ujson.write(ujson.Obj("keyForSerialisation" -> key, "fullHistory" -> payload(history)))
 
-  def merge(histories: List[String]): String = {
+  def merge(histories: List[String]): String = ParsingContext("interactionVariableHistory merge", histories.headOption.getOrElse("[]")) {
     val values = histories.map(payload)
     val events = values.flatMap(_("historyStates")("events").arr).distinct
     val feedback = List("historyGrading" -> "gradingsMap", "historyScaffolding" -> "scaffoldingMap").map { (section, field) =>

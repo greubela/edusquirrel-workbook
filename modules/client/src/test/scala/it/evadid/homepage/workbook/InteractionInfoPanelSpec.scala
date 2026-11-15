@@ -21,7 +21,8 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
 
   test("grading icons count statuses and never expose private grading details") {
     val interaction = exercise
-    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction)
+    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction,
+      it.evadid.workbook.meta.InteractionVariableGradingReporter(interaction))
     val cases = List(
       (List(GradingStatus.Correct(), GradingStatus.Correct()), "grading-icon-thumbs-up-path"),
       (List(GradingStatus.Correct(), GradingStatus.Incorrect()), "grading-icon-hand-path"),
@@ -42,7 +43,8 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
 
   test("grading icons show errors and explicitly unrequested checks") {
     val interaction = exercise
-    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction)
+    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction,
+      it.evadid.workbook.meta.InteractionVariableGradingReporter(interaction))
     val current: Map[WorkbookInteractionGrader[String, MessengerModel], GradingResult[String, MessengerModel]] =
       interaction.gradingElements.map(grader => grader -> GradingResult(grader, "", GradingStatus.Correct())).toMap
     val grader = interaction.gradingElements.head
@@ -61,7 +63,8 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
 
   test("completed scaffolding remains available when the display language changes") {
     val interaction = exercise
-    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction)
+    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction,
+      it.evadid.workbook.meta.InteractionVariableGradingReporter(interaction))
     val feedback = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Hinweis", English -> "Hint"))
     val saved = ScaffoldingResult[String, Any]("", ScaffoldingStatus.ScaffoldingFeedback(feedback), FeedbackEntity.TestEntity(), None)
     val element = icons.deriveScaffoldingSymbol(Some(saved))

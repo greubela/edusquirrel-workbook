@@ -94,11 +94,8 @@ object Serializer {
         }
 
       override def deserialize(str: String): TraitType = {
-        val res = try {
-          read(str)(using rw)
-        } catch case (err: Throwable) => {
-          throw SerializedException(s"Cannot parse value '${str}' with serializer ${exClass}'", err)
-        }
+        val res = try ParsingContext(exClass.getSimpleName, str) { read(str)(using rw) }
+        catch case NonFatal(error) => throw SerializedException(error)
         try {
           res.asInstanceOf[TraitType]
         } catch case (err: Throwable) => {
@@ -197,9 +194,13 @@ object Serializer {
 
 
   def fromUpickleJson[T](upickle: ReadWriter[T]): Serializer[T] = new Serializer[T] {
-    def serialize(in: T): String = write(in)(using upickle)
+    def serialize(in: T): String =
+      try write(in)(using upickle)
+      catch case NonFatal(error) =>
+        val name = Option(in).fold("null")(_.getClass.getSimpleName)
+        throw SerializedException(s"Error serializing $name because: ${ParsingContext.reason(error)}", error)
 
-    def deserialize(in: String): T = read(in)(using upickle)
+    def deserialize(in: String): T = ParsingContext("JSON value", in) { read(in)(using upickle) }
   }
 
 

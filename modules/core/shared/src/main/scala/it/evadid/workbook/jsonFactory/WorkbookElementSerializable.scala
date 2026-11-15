@@ -1,6 +1,8 @@
 package it.evadid.workbook.jsonFactory
 
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
+import it.evadid.core.util.io.ParsingContext
+import scala.util.control.NonFatal
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.regularSerializer
@@ -74,8 +76,8 @@ case class WorkbookElementSerializable(
       throw SerializedException(s"Key $elementKey not present in Element ${elementId}!")
     } else try {
       read(elementValue.get)
-    } catch case (err: Throwable) => {
-      throw SerializedException(s"Error at deserializing key $elementKey from Element ${elementId} (value ${elementValue.get})", Some(err))
+    } catch case NonFatal(err) => {
+      throw SerializedException(s"Error parsing workbook element '$elementId' field '$elementKey': could not parse '${ParsingContext.preview(elementValue.get.toString)}' because: ${ParsingContext.reason(err)}", err)
     }
   }
 
@@ -89,8 +91,8 @@ case class WorkbookElementSerializable(
       defaultValue
     } else try {
       read(elementValue.get)
-    } catch case (err: Throwable) => {
-      throw SerializedException(s"Error at deserializing key $elementKey from Element $elementId (value ${elementValue.get})", Some(err))
+    } catch case NonFatal(err) => {
+      throw SerializedException(s"Error parsing workbook element '$elementId' field '$elementKey': could not parse '${ParsingContext.preview(elementValue.get.toString)}' because: ${ParsingContext.reason(err)}", err)
     }
   }
 

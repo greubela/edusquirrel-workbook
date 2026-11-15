@@ -2,7 +2,8 @@ package it.evadid.workbook.elements.interactionElements.programming
 
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette, SnapPaletteCatalog}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{MaxCommandUsage, RecreateTurtleDidacticConfig, TurtleGraphic, TurtleRecreateShapeInteraction}
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.PaletteTab
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import upickle.default.*
@@ -58,12 +59,15 @@ class ProgrammingEditorPaletteSpec extends FunSuite {
     layouts.foreach { layout =>
       val original = TurtleRecreateShapeInteraction("custom-shape", ProgrammingStatePythonString("forward(10)"),
         TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"),
-        availablePalette = ProgrammingEditorPalette.Custom(layout))
+        customExerciseConfig = Some(RecreateTurtleDidacticConfig(
+          List(SnapLanguage, Python, Java),
+          ProgrammingEditorPalette.Custom(layout),
+          MaxCommandUsage.noBounds)))
       val restored = List(
         WorkbookElementFactory.serializerRefBasedJson.deserialize(WorkbookElementFactory.serializerRefBasedJson.serialize(original)),
         WorkbookElementFactory.serializerConstructorLike.deserialize(original.toStringConstructorLike))
       restored.foreach(element => assertEquals(element, original))
-      assertEquals(readBinary[ProgrammingEditorPalette](writeBinary(original.availablePalette)), original.availablePalette)
+      assertEquals(readBinary[ProgrammingEditorPalette](writeBinary(original.exerciseConfig.availablePalette)), original.exerciseConfig.availablePalette)
     }
   }
 
