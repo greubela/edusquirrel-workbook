@@ -15,7 +15,6 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.*
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementSingle
-import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.RenderingWorkbookElementLine
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElementFull}
@@ -71,7 +70,7 @@ class EvaEditorSpec extends EditorDomSuite {
         ))
       }
     }}
-    val editor = EvaEditor(logger, state, Nil, EvaEditorConfig(enabledLanguages = languages), Some(choices), labels = specLabels)
+    val editor = EvaEditor(logger, state, Nil, Var(EvaEditorConfig(enabledLanguages = languages)), Some(choices), labels = specLabels)
     val close = mount(editor.getDomElement())
   }
 
