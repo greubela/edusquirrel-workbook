@@ -117,5 +117,10 @@
   "gradingInfoTooltipUnfinished": "Venter på _ resultater (indtil videre _ / _ bestået)",
   "gradingInfoTooltipError": "Fejl under udførelse af _ tests (i alt _ / _ bestået)",
   "gradingInfoTooltipNrCorrect": "Aktuelt _ / _ tests bestået",
-  "requestScaffoldingHint": "Klik for at få et tip baseret på din aktuelle løsning"
+  "requestScaffoldingHint": "Klik for at få et tip baseret på din aktuelle løsning",
+  "resetAllData": "Nulstil alle gemte svar",
+  "resetAllDataRunning": "Sletter gemte svar…",
+  "resetAllDataRetry": "Prøv fuld nulstilling igen",
+  "resetAllDataConfirm": "Tøm alle konfigurerede lokale svarlagre og slet denne brugers svar og feedback i alle arbejdsbøger på alle konfigurerede servermål? Det kan ikke fortrydes.",
+  "resetAllDataError": "Ikke alle mål har bekræftet sletningen. Synkroniseringen er sat på pause, så slettede svar ikke gemmes igen. Prøv nulstillingen igen."
 }

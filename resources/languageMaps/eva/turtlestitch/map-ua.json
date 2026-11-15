@@ -1,6 +1,6 @@
 {
   "defaultReadExerciseInstruction": "Прочитайте команди в наведеній нижче програмі",
-  "defaultExerciseTitle": "Відтворіть фігуру!",
+  "instructionRecreateShape": "Відтворіть фігуру!",
   "providedProjectLabel": "Підготовлений проєкт",
   "defaultExecuteExerciseInstruction": "Перевірте своє припущення!",
   "defaultAnalyzeExerciseInstruction": "Опишіть фігуру, яка, на вашу думку, буде створена",

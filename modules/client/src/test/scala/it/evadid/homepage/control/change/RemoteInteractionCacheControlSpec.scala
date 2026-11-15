@@ -29,4 +29,36 @@ class RemoteInteractionCacheControlSpec extends FunSuite {
     val result: Future[Unit] = control.load(Nil)
     result.map(value => assertEquals(value, ()))
   }
+
+  test("display and language updates preserve sync destination identities") {
+    import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserCredentials}
+    import it.evadid.core.datastructures.language.AppLanguage.German
+    import it.evadid.workbook.interaction.sync.{SyncInformation, SyncStrategy}
+    import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition
+    val info = emptyInfo
+    val user = AllUserInfo(User("Test", "test-user", "test@example.test"), UserCredentials(),
+      UserConfig(List(SyncInformation(SyncDestinationDefinition.defaultBrowserHistory, SyncStrategy.SYNC_LAST)), false))
+    info.homepageInfoState.update(_.copy(userInfo = Some(user)))
+    val before = info.signals.currentSyncDestinations.now()
+    info.homepageInfoState.update(_.copy(currentLanguage = German))
+    assertEquals(info.signals.currentSyncDestinations.now(), before)
+    info.homepageInfoState.update(value => value.copy(displayInfo = value.displayInfo.copy(collapsedNavigation = !value.displayInfo.collapsedNavigation)))
+    assertEquals(info.signals.currentSyncDestinations.now(), before)
+  }
+
+
+  test("a load queued for the previous user cannot apply after the identity changes") {
+    val info = emptyInfo
+    val control = new RemoteInteractionCacheControl(info) {
+      override def createCurrentReport[T, GA, SA](variable: InteractionVariable[T, GA, SA]): InteractionVariableSyncReport[T, GA, SA] =
+        throw AssertionError("A stale load must not read the new user's report")
+    }
+    val variable = TextInteraction("answer").interactionVariable
+    val loading = control.load(List(variable))
+    info.homepageInfoState.update(_.copy(userInfo = Some(it.evadid.core.datastructures.user.AllUserInfo(
+      it.evadid.core.datastructures.user.User("Other", "other", "other@example.test"),
+      it.evadid.core.datastructures.user.UserCredentials(), it.evadid.core.datastructures.user.UserConfig(Nil, false)))))
+    loading.map(_ => assertEquals(variable.currentValue, ""))
+  }
+
 }

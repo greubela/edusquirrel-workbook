@@ -15,7 +15,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
 
   test("command log destinations come from registered definitions, with a default and sync override") {
     import it.evadid.sql.DatabaseTable
-    val syncNames = Set(SQLCommands.StoreToDbCommand.name, SQLCommands.fetchFromDbCommand.name, SQLCommands.clearValuesDbCommand.name)
+    val syncNames = Set(SQLCommands.StoreToDbCommand.name, SQLCommands.fetchFromDbCommand.name, SQLCommands.clearValuesDbCommand.name, SQLCommands.resetUserHistoriesDbCommand.name)
     val definitions = ExecutionCommandFactory.knownCommands
     assertEquals(definitions.map(_.name).distinct.size, definitions.size)
     definitions.foreach { definition =>
@@ -27,6 +27,16 @@ class CommandPayloadCodecsSpec extends FunSuite {
     val forged = read[ExecutionCommand](ujson.Obj("name" -> SQLCommands.StoreToDbCommand.name, "json" -> ujson.Obj(),
       "storeLogIntoTable" -> "another_table"))
     assertEquals(forged.storeLogIntoTable, Some(DatabaseTable.syncedLog))
+  }
+
+  test("full resets use an explicit current command and reject ambiguous scopes") {
+    import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
+    import it.evadid.workbook.interaction.sync.UsageContext
+    val request = SQLCommands.DeleteInDbRequest(UsageContext("program", "workbook", "user"), None,
+      DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalEvents, allWorkbooks = true)
+    assertEquals(read[SQLCommands.DeleteInDbRequest](write(request)), request)
+    assertEquals(ExecutionCommandFactory.forName("reset-user-histories-in-db-request"), Some(SQLCommands.resetUserHistoriesDbCommand))
+    intercept[IllegalArgumentException](request.copy(limitToKey = Some("one-variable")))
   }
 
   test("database table destinations serialize and reject SQL identifier injection") {

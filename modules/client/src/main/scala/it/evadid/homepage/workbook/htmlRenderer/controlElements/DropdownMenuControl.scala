@@ -12,12 +12,46 @@ import it.evadid.homepage.webElements.basic.{HtmlDropdownMenu, SessionCredential
 import it.evadid.homepage.workbook.syncDestination.LocalStorageSyncHandler
 import org.scalajs.dom.{File, HTMLInputElement}
 
-import scala.concurrent.ExecutionContext
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.util.{Failure, Success}
+import org.scalajs.dom
+import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
+import it.evadid.workbook.interaction.sync.SyncResetState
 
 case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Option[AllUserInfo]) extends HtmlAppElement {
 
   private val isOpen: Var[Boolean] = Var(false)
   private val credentialsOpen = Var(false)
+
+  private val resetState = fullInfo.syncControl.resetState.toEventStream()
+    .toSignal(fullInfo.syncControl.resetState.now().getOrElse(SyncResetState.Idle))
+
+  private val resetLabel: Signal[String] = resetState.flatMapSwitch { state =>
+    val id = state match {
+      case SyncResetState.Idle | SyncResetState.Completed => "basic/resetAllData"
+      case _: SyncResetState.Running => "basic/resetAllDataRunning"
+      case _: SyncResetState.Failed => "basic/resetAllDataRetry"
+    }
+    laminarHelper.plaintextStringSignal(id)
+  }
+
+  private def resetAllData(): Unit = {
+    val message = fullInfo.homepageInfoNow().languageMapStore.languageMaps
+      .get(LanguageMapContentId("basic/resetAllDataConfirm"))
+      .flatMap(_.tryGetInLanguage(fullInfo.signals.currentLanguage.now()))
+      .getOrElse("Clear all configured local answer stores and delete this user's saved answers and feedback from every configured server destination, across all workbooks? This cannot be undone.")
+    val running = fullInfo.syncControl.resetState.now().exists {
+      case SyncResetState.Running(_) => true
+      case _ => false
+    }
+    if !running && dom.window.confirm(message) then {
+      fullInfo.syncControl.resetAllData().onComplete {
+        case Success(_) => dom.window.location.reload()
+        case Failure(error) =>
+          logger.logExceptionWarn("Reset could not be confirmed by every sync destination", error)
+      }
+    }
+  }
 
   private val currentUserInitials: Signal[String] = fullInfo.signals.user.map(_.map(_.user.initials).getOrElse("[?]"))
 
@@ -61,15 +95,16 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
 
   private val uploadInput: ReactiveHtmlElement[HTMLInputElement] = laminarHelper.sessionFileUploadInput(logger, loadedFile => fullInfo.usageControl.tryContinueWithSessionFile(loadedFile))
 
-  private def createSessionMenu(): List[HtmlAppElement] = {
+  private def createSessionMenu(): List[HtmlAppElement] =
     List(
       HtmlDropdownMenu.menuLabel(userNameOrNobodySignal),
-      HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => downloadAll()),
+      HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => downloadAll())
+    ) ++ Option.when(curUser.nonEmpty)(HtmlDropdownMenu.menuItem(resetLabel, _ => resetAllData())).toList ++ List(
       HtmlDropdownMenu.menuItem("basic/buttonLocalUpload", _ => uploadInput.ref.click()),
       HtmlDropdownMenu.menuItem(Val("Session connections"), _ => { closeMenu(); credentialsOpen.set(true) }),
       HtmlDropdownMenu.menuItem("basic/logout", _ => logout())
     )
-  }
+
 
 
   /*private def createDemoMenu(): List[HtmlAppElement] = {
@@ -82,6 +117,8 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
   private val domElement: Element = div(
     cls := "workbook-user-menu",
     uploadInput,
+    child.maybe <-- resetState.map(state => Option.when(state.isInstanceOf[SyncResetState.Failed])(
+      p(role := "alert", child.text <-- laminarHelper.plaintextStringSignal("basic/resetAllDataError")))),
     div(
       cls := "workbook-user-menu-button",
       typ := "button",

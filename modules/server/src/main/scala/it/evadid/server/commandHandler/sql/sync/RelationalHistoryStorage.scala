@@ -52,9 +52,11 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends R
 
   def delete(request: DeleteInDbRequest): SyncSuccess = transaction {
     val context = request.usageContext
+    val scenario = if request.allWorkbooks then "" else " AND scenario_id=?"
     val limit = request.limitToKey.map(_ => " AND variable_id=?").getOrElse("")
-    val removed = update("DELETE FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=?" + limit,
-      (List(context.programId, context.scenarioId, context.userId) ++ request.limitToKey.toList)*)
+    val parameters = List(context.programId, context.userId) ++
+      Option.unless(request.allWorkbooks)(context.scenarioId).toList ++ request.limitToKey.toList
+    val removed = update("DELETE FROM sync_context_id WHERE program_id=? AND user_id=?" + scenario + limit, parameters*)
     SyncSuccess(0, 0, removed, LocalDateTime.now())
   }
 }
