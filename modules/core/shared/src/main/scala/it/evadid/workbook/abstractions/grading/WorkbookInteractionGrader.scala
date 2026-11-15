@@ -37,7 +37,6 @@ trait WorkbookInteractionGrader[T, A] {
       case any: Any => failWith(state, Left(s"Unknown grading error (${any.toString})"))
     }
 
-
   protected def handleGrading(state: T, contextInformation: ExecutionContextInformation): Future[GradingResult[T, A]]
 
   def importance: GradingImportance
