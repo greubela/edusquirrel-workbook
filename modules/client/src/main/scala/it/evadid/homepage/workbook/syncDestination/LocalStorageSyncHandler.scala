@@ -26,9 +26,9 @@ object LocalStorageSyncHandler {
   }
 
   def resetCompleteStorage(): SyncSuccess = {
-    println("[UGLY WARN IN LOCALSTORAGESYNC] clearing all local storage!")
+    val removed = dom.window.localStorage.length
     dom.window.localStorage.clear()
-    SyncSuccess(0, 0, dom.window.localStorage.length, LocalDateTime.now())
+    SyncSuccess(0, 0, removed, LocalDateTime.now())
   }
 
   def removeKey(key: String): SyncSuccess = {

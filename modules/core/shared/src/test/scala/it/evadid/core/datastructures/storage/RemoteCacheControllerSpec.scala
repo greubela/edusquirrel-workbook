@@ -150,4 +150,63 @@ class RemoteCacheControllerSpec extends FunSuite {
       }
     }
   }
+
+  test("reset attempts every destination, reports partial failures and permits a retry") {
+    val first = new Destination(() => Future.successful(response("first")))
+    val second = new Destination(() => Future.successful(response("second")))
+    val cache = controller(State(List(first, second)))
+    val attempted = State(Set.empty[Destination])
+    val failure = IllegalStateException("unavailable")
+    cache.ensureMaxAgeSafe(timestamp).flatMap { _ =>
+      cache.clearAllCaches { destination =>
+        attempted.update(_ + destination)
+        if destination eq first then throw failure else Future.failed(failure)
+      }.failed.flatMap { error =>
+        assertEquals(attempted.now(), Set(first, second))
+        assert(error.getMessage.contains("2 of 2"))
+        assert(cache.currentReport("program").cacheStatus.values.forall(_.lastKnownRemoteValue.isEmpty), "deletion attempts invalidate previous sync confirmations")
+        cache.clearAllCaches(_ => Future.unit).map { _ =>
+          assert(cache.currentReport("program").cacheStatus.values.forall(_.lastKnownRemoteValue.isEmpty))
+        }
+      }
+    }
+  }
+
+  test("reset waits for an old workbook's in-flight write before deleting current destinations") {
+    val writeStarted = Promise[Unit]()
+    val writeFinished = Promise[SyncSuccess]()
+    val old = new Destination(() => Future.successful(response("old"))) {
+      override val writer = new RemoteDataWriter[String, String] {
+        def writeAll(logger: SyncLogger, values: Map[String, String]): Future[SyncSuccess] = {
+          writeStarted.success(())
+          writeFinished.future
+        }
+        def writeForKey(logger: SyncLogger, key: String, value: String): Future[SyncSuccess] = writeAll(logger, Map(key -> value))
+      }
+    }
+    val current = new Destination(() => Future.successful(response("current")))
+    val keys = State(List(old))
+    val cache = controller(keys)
+    cache.ensureMaxAgeSafe(timestamp).flatMap { _ =>
+      val store = cache.requestStore(List(DataEntryToWriteToServer("program", "edited", timestamp.plusSeconds(1))))
+      writeStarted.future.flatMap { _ =>
+        keys.set(List(current))
+        val deleting = Promise[Unit]()
+        val reset = cache.clearAllCaches { destination =>
+          assert(destination eq current)
+          assert(store.isCompleted, "the old destination's write must finish first")
+          deleting.success(())
+          Future.unit
+        }
+        assert(!reset.isCompleted)
+        assert(!deleting.isCompleted)
+        writeFinished.success(SyncSuccess.emptyNow())
+        reset.map { _ =>
+          assert(deleting.isCompleted)
+          assert(cache.currentReport("program").cacheStatus(current).lastKnownRemoteValue.isEmpty)
+        }
+      }
+    }
+  }
+
 }

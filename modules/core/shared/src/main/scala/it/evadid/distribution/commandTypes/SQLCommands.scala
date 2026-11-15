@@ -47,8 +47,10 @@ object SQLCommands {
                                 usageContext: UsageContext,
                                 limitToKey: Option[String],
                                 databaseConfig: DatabaseConfiguration,
-                                databaseFormat: DatabaseHistoryFormat
+                                databaseFormat: DatabaseHistoryFormat,
+                                allWorkbooks: Boolean = false
                               ) extends DbRequest derives ReadWriter {
+    require(!allWorkbooks || limitToKey.isEmpty, "An all-workbook reset cannot be restricted to one variable.")
   }
 
   case class DbFetchResponse(fetchedElements: Map[SyncContext, String]) derives ReadWriter {
@@ -62,6 +64,12 @@ object SQLCommands {
 
   lazy val fetchFromDbCommand: ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse](
     "fetch-from-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
+  )
+
+  // A distinct command prevents an older server from acknowledging a reset
+  // while ignoring its all-workbook scope and deleting only the current workbook.
+  lazy val resetUserHistoriesDbCommand: ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess] = ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess](
+    "reset-user-histories-in-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
   )
 
   lazy val clearValuesDbCommand: ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess] = ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess](

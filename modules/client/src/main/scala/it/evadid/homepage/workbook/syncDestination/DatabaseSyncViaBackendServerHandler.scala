@@ -6,18 +6,16 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.ExecutionInfo.ExecutionSuccess
 import it.evadid.distribution.commandTypes.SQLCommands
 import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, StoreToDbRequest}
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
+import it.evadid.homepage.control.model.FullInfo
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.destination.*
 import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
 import it.evadid.workbook.interaction.sync.model.{FetchResponse, HistoryJson}
-import jdk.jpackage.internal.Arguments.CLIOptions.context
-import org.scalajs.dom.window.history
 
 import scala.concurrent.*
 
-case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definition: SyncDestinationBasedOnHistoryDatabase) extends SyncDestinationHistoryHandler {
+case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definition: SyncDestinationBasedOnHistoryDatabase, fullInfo: FullInfo) extends SyncDestinationHistoryHandler {
 
   private def backend: ExecutionClient = fullInfo.defaults.backendExecutor
   private given ec: ExecutionContext = ExecutionContext.global
@@ -37,6 +35,11 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
   }
 
   override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = clearValues(context, None)
+
+  override def clearAllUserData(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
+    val request = SQLCommands.DeleteInDbRequest(context, None, databaseConfig, definition.format, allWorkbooks = true)
+    SQLCommands.resetUserHistoriesDbCommand.sendCommandTo(backend, request).map(_.result)
+  }
 
   override def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
     val dbRequest = StoreToDbRequest(syncContext, historyJson, databaseConfig, definition.format)
