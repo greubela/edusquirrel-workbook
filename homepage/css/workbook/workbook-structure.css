@@ -247,7 +247,7 @@ dialog {
 /* FULLSCREEN EDITOR WITH PANEL */
 .editor-with-panel{
     display: grid;
-    grid-template-columns: minmax(0, 3fr) minmax(18rem, 1fr);
+    grid-template-columns: minmax(0, 1fr) clamp(12rem, 32vw, 26rem);
     height: 100%;
     min-height: 0;
     min-width: 0;
@@ -262,7 +262,8 @@ dialog {
     overflow: auto;
     padding: var(--space-sm);
     border-radius: var(--radius-md);
-    margin: var(--space-md);
+    margin: var(--space-sm);
+    margin-block-start: calc(var(--space-2xl) + var(--space-md));
     background: var(--color-background-workarea-display);
 }
 
@@ -328,7 +329,9 @@ details[open] > .feedback-summary::before { transform: rotate(90deg); }
 .feedback-status--incorrect, .feedback-status--error { border-inline-start-color: var(--color-accent-error); }
 .feedback-status--pending { border-inline-start-color: var(--color-accent-active); }
 .feedback-group-content { padding: 0 var(--space-sm) var(--space-sm); }
-.feedback-counts { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-sm); font-variant-numeric: tabular-nums; }
+.feedback-counts { display: flex; gap: var(--space-sm); font-variant-numeric: tabular-nums; }
+.feedback-count-item { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.feedback-visibility-icon { width: 1rem; height: 1rem; flex: none; }
 .feedback-muted { color: var(--color-text-muted-light); font-size: 0.8rem; }
 .feedback-test-description { display: block; font-weight: 600; }
 .feedback-text { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -343,11 +346,16 @@ details[open] > .feedback-summary::before { transform: rotate(90deg); }
 }
 .feedback-results-table th { background: var(--color-surface-muted); font-weight: 600; }
 .feedback-results-table tbody tr:last-child td { border-bottom: 0; }
-.feedback-results-table { min-width: 20rem; }
-.grading-info-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
-.feedback-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.feedback-results-table { table-layout: fixed; min-width: 22rem; }
+.feedback-results-table th:nth-child(2) { width: 6.5rem; }
+.grading-info-line { display: flex; align-items: center; gap: var(--space-xs); max-width: 100%; overflow-x: auto; }
+.feedback-actions { display: flex; flex: none; gap: var(--space-xs); }
 .feedback-action {
-    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    min-width: 36px;
     min-height: 36px;
     margin: 0;
     padding: var(--space-xs) var(--space-sm);
@@ -363,13 +371,17 @@ details[open] > .feedback-summary::before { transform: rotate(90deg); }
 .feedback-status-table { width: auto; font-size: 0.8rem; }
 .feedback-status-table th, .feedback-status-table td { padding: var(--space-xs); text-align: start; }
 .feedback-status-table th { color: var(--color-text-muted-light); font-weight: 400; }
-.feedback-status-table td .feedback-muted { display: block; }
+.feedback-action svg { width: 1.75rem; height: 1.75rem; flex: none; }
+.feedback-status-table td { white-space: nowrap; }
+.feedback-status-table td .feedback-muted { margin-inline-start: var(--space-xs); }
+.feedback-hint-status { display: inline-block; min-width: 1rem; font-size: 1rem; font-weight: 700; text-align: center; }
+.feedback-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.fullscreen-sidepanel .feedback-button-label { display: none; }
+.feedback-column-icon { display: none; }
 
-@media (max-width: 900px) {
-    .editor-with-panel { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 0.7fr); }
-    .fullscreen-editor { grid-column: 1; grid-row: 1; }
-    .fullscreen-sidepanel { grid-column: 1; grid-row: 2; }
-    .feedback-action { min-height: 44px; }
+@media (max-width: 1100px) {
+    .feedback-button-label, .feedback-column-label { display: none; }
+    .feedback-column-icon { display: inline; }
 }
 
 /* SPECIFIC STRUCTURE ELEMENTS */

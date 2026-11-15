@@ -58,6 +58,12 @@ Pending and completed computations are cached by answer, independently of displa
 language. A language change reuses them; result merges retain available feedback
 translations. Synchronization includes feedback updates even when the answer is unchanged.
 
+`InteractionInfoSidebar` and `GradingInfoLine` share the client-side
+`GradingSummary`: the score counts fully correct tests, including hidden tests;
+partial results belong to the incorrect group. Hidden results contribute counts
+but never detail rows. Public descriptions and localized feedback are rendered
+as text; internal test programs and LLM instructions are not displayed.
+
 `TextInputWithScaffoldingAndGrading` owns its description, string answer, hint IDs
 and grading-criterion IDs. Each LLM grader evaluates one criterion in the selected
 language and identifies itself as `FeedbackEntity.LlmEntity`. The final marker

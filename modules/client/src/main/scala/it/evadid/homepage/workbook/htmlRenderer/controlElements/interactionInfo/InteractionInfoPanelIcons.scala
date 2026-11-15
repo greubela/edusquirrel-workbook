@@ -49,6 +49,14 @@ object InteractionInfoPanelIcons {
 
   def pathDecoExclamationCircle: ReactiveSvgElement[SVGPathElement] = createSvgPath("path-deco-exclamation-circle", "m 7.4929037,11.285837 a 0.74845709,0.74845709 0 0 0 -0.5300304,0.215679 0.78587994,0.78587994 0 0 0 -0.2170824,0.53139 0.74845709,0.74845709 0 0 0 0.2170824,0.53139 0.86072565,0.86072565 0 0 0 0.2469909,0.157176 A 0.74845709,0.74845709 0 0 0 8.1828289,11.748507 0.74845709,0.74845709 0 0 0 8.0256529,11.501516 0.86072565,0.86072565 0 0 0 7.7786616,11.34434 0.74845709,0.74845709 0 0 0 7.4929037,11.28583 Z")
 
+  /** Visibility marker shared by grading count badges. */
+  def createVisibilityIcon(hidden: Boolean): ReactiveSvgElement[SVGSVGElement] = svg.svg(
+    svg.cls := "feedback-visibility-icon", aria.hidden := true,
+    svg.viewBox := "0 0 24 24", svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.7",
+    svg.path(svg.d := "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"),
+    svg.circle(svg.cx := "12", svg.cy := "12", svg.r := "3"),
+    Option.when(hidden)(svg.path(svg.d := "M3 3 21 21")))
+
   // Grading
   private def createGradingIcon(additionalCssStr: String, paths: List[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(

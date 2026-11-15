@@ -10,5 +10,6 @@
   "showExpected": "Очікуваний результат",
   "uploadTitle": "Завантажити проєкт",
   "uploadButton": "Завантажити проєкт TurtleStitch (XML)",
-  "downloadButton": "Завантажити показаний проєкт"
+  "downloadButton": "Завантажити показаний проєкт",
+  "instructionRecreateShape": "Відтвори фігуру за допомогою програми!"
 }

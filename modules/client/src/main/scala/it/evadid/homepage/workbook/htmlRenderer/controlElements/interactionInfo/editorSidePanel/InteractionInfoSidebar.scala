@@ -38,11 +38,14 @@ case class InteractionInfoSidebar[T, GA, SA](
       summaryTag(cls := "feedback-summary",
         strong(child.text <-- view.label(group.labelKey)),
         if group == Group.Correct || group == Group.Incorrect then
-          span(cls := "feedback-counts",
-            span(child.text <-- selected.combineWith(view.label("gradingVisibleCount")).map((entries, text) =>
-              text.replace("{count}", entries.count(!_.hidden).toString))),
-            span(cls := "feedback-muted", child.text <-- selected.combineWith(view.label("gradingHiddenCount")).map((entries, text) =>
-              text.replace("{count}", entries.count(_.hidden).toString))))
+          span(cls := "feedback-counts", List(false, true).map { hidden =>
+            val count = selected.map(_.count(_.hidden == hidden))
+            val description = count.combineWith(view.label(if hidden then "gradingHiddenCount" else "gradingVisibleCount"))
+              .map((number, text) => text.replace("{count}", number.toString))
+            span(cls := "feedback-count-item", title <-- description, aria.label <-- description,
+              it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.createVisibilityIcon(hidden),
+              span(aria.hidden := true, child.text <-- count.map(_.toString)))
+          })
         else span(cls := "feedback-count", child.text <-- selected.map(_.size.toString))
       ),
       div(cls := "feedback-group-content",
@@ -54,7 +57,10 @@ case class InteractionInfoSidebar[T, GA, SA](
           else div(cls := "feedback-table-scroll",
             table(cls := "feedback-results-table",
               thead(tr(th(child.text <-- view.label("gradingTestDescription")),
-                th(child.text <-- view.label("gradingExecutionDate")), th(child.text <-- view.label("gradingFeedback")))),
+                th(title <-- view.label("gradingExecutionDate"), aria.label <-- view.label("gradingExecutionDate"),
+                  span(cls := "feedback-column-label", child.text <-- view.label("gradingExecutionDate")), span(cls := "feedback-column-icon", aria.hidden := true, "◷")),
+                th(title <-- view.label("gradingFeedback"), aria.label <-- view.label("gradingFeedback"),
+                  span(cls := "feedback-column-label", child.text <-- view.label("gradingFeedback")), span(cls := "feedback-column-icon", aria.hidden := true, "↩")))),
               tbody(visible.map(resultRow))))
         })
     )
@@ -64,14 +70,16 @@ case class InteractionInfoSidebar[T, GA, SA](
     detailsTag(cls := "element-card feedback-section",
       summaryTag(cls := "collapsible-header feedback-summary",
         h3(cls := "element-card-label", child.text <-- view.label("SidepanelGradingTitle")),
-        span(cls := "feedback-score", aria.live := "polite", child.text <-- view.grading.combineWith(view.label("gradingScore")).map {
-          (state, text) => text.replace("{score}", state.score)
-        })),
+        span(cls := "feedback-score", aria.live := "polite",
+          title <-- view.grading.combineWith(view.label("gradingScore")).map((state, text) => text.replace("{score}", state.score)),
+          aria.label <-- view.grading.combineWith(view.label("gradingScore")).map((state, text) => text.replace("{score}", state.score)),
+          child.text <-- view.grading.map(state => s"Σ ${state.score}"))),
       div(cls := "feedback-section-content", Group.values.toList.map(groupSection)))
   }
 
   def createScaffoldingElement: Option[Element] = Option.when(gradingReporter.isScaffoldingSupported) {
     detailsTag(cls := "element-card feedback-section",
+      htmlProp("open", com.raquo.laminar.codecs.BooleanAsIsCodec) <-- view.scaffolding.map(_.nonEmpty).distinct,
       summaryTag(cls := "collapsible-header feedback-summary",
         h3(cls := "element-card-label", child.text <-- view.label("SidepanelScaffoldingTitle")),
         span(cls := "feedback-muted", child.text <-- view.scaffolding.flatMapSwitch(result => view.label(view.scaffoldingLabel(result))))),

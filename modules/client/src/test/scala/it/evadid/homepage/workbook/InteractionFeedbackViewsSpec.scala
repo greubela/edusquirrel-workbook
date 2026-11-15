@@ -28,7 +28,10 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       GradingStatus.TestError(it.evadid.distribution.command.SerializedException("private execution error")), GradingStatus.NotRequested())
     val state: ProgrammingState = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString("forward(10)")
     val results = graders.zip(statuses).map((g, status) => GradingResult(g, state, status))
-    val summary = GradingSummary(graders, GradedState(state, results.map(result => result.grader -> result).toMap))
+    val obsolete = GradingResult(grader("removed-grader"), state, GradingStatus.Correct())
+    val stale = GradingResult(graders.last,
+      it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString("forward(999)"), GradingStatus.Correct())
+    val summary = GradingSummary(graders, GradedState(state, (results ++ List(obsolete, stale)).map(result => result.grader -> result).toMap))
     assertEquals(summary.correct, 2)
     assertEquals(summary.total, 8)
     assertEquals(summary.in(Group.Incorrect).size, 2)
@@ -85,6 +88,30 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
         next, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, date.plusHours(1))), ExecutionContextInformation.default)
       assert(!sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
       assertEquals(sidebar.ref.querySelectorAll(".feedback-status--neutral tbody tr").length, 1)
+      assertEquals(sidebar.ref.querySelector(".feedback-status--neutral .feedback-date").textContent, "—")
     } finally close()
   }
+  test("available hints open automatically and disabled interactions cannot request feedback") {
+    import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
+    import TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+    import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
+    import it.evadid.workbook.abstractions.FeedbackEntity
+    import it.evadid.core.datastructures.chat.MessengerModel
+    val exercise = TextInputWithScaffoldingAndGrading("hint-sidebar", LanguageMapContentId("test/task"),
+      contentGrading = Nil, contentScaffolding = Some(ContentForLlmInteraction(LanguageMapContentId("test/hint"), Map.empty)))
+    val saved = ScaffoldingResult[String, MessengerModel]("", ScaffoldingStatus.ScaffoldingFeedback(
+      LanguageMap.universalMap[HumanLanguage]("PUBLIC-HINT")), FeedbackEntity.TestEntity(), None, date)
+    exercise.interactionVariable.updateHistory(_.addScaffolding(saved), ExecutionContextInformation.default)
+    val sidebar = InteractionInfoSidebar(exercise, None, InteractionVariableGradingReporter(exercise)).getDomElement()
+    val close = mount(sidebar)
+    try {
+      assert(sidebar.ref.querySelector(".feedback-section").hasAttribute("open"))
+      assert(sidebar.ref.querySelector(".feedback-text").textContent.contains("PUBLIC-HINT"))
+      val request = sidebar.ref.querySelector("button").asInstanceOf[org.scalajs.dom.HTMLButtonElement]
+      assert(!request.disabled)
+      exercise.isDisabledState.set(true)
+      assert(request.disabled)
+    } finally close()
+  }
+
 }

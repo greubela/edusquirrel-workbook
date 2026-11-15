@@ -42,7 +42,7 @@
   "gradingCompactScore": "{correct}/{total} doğru",
   "gradingCompactUnavailable": "({count} bekleyen / kullanılamayan)",
   "gradingNoTests": "Bu grupta test yok.",
-  "gradingTestDescription": "Test açıklaması",
+  "gradingTestDescription": "Test",
   "gradingExecutionDate": "Çalıştırılma zamanı",
   "gradingFeedback": "Geri bildirim",
   "gradingScore": "Toplam puan: {score}"

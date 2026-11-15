@@ -29,7 +29,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     val gradingReporter = InteractionVariableGradingReporter(workbookElement)
     val shapeGradingPreview = CompareShapePreview(boundVar, workbookElement.desiredResult)
 
-    val associatedInstruction = DisplayLangMapContent("tmp-001", LanguageMapContentId("turtle/instructionRecreateShape"), LangMapContentIdType(EXERCISE_DESCRIPTION, PLAINTEXT))
+    val associatedInstruction = DisplayLangMapContent(workbookElement.elementId + "-sidebar-instruction", LanguageMapContentId("turtlestitch/instructionRecreateShape"), LangMapContentIdType(EXERCISE_DESCRIPTION, PLAINTEXT))
 
     def createShapeGradingCard: ElementCard = {
       ElementCard(LanguageMapContentId("basic/turtleGradingPanel"), shapeGradingPreview.getDomElement())

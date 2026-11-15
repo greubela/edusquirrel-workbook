@@ -42,7 +42,7 @@
   "gradingCompactScore": "{correct}/{total} correctos",
   "gradingCompactUnavailable": "({count} pendientes / no disponibles)",
   "gradingNoTests": "No hay pruebas en este grupo.",
-  "gradingTestDescription": "Descripción de la prueba",
+  "gradingTestDescription": "Prueba",
   "gradingExecutionDate": "Ejecutado el",
   "gradingFeedback": "Comentarios",
   "gradingScore": "Puntuación total: {score}"

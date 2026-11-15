@@ -4,7 +4,7 @@ import it.evadid.workbook.abstractions.grading.*
 import GradingImportance.HIDDEN_TEST
 import GradingStatus.*
 
-/** Shared, UI-independent counts. Only authored graders for the current answer are displayed. */
+/** Shared counts for current-answer feedback; only authored graders are displayed. */
 private[homepage] object GradingSummary {
   enum Group(val labelKey: String, val tone: String) {
     case Correct extends Group("gradingGroupCorrect", "correct")
@@ -27,7 +27,7 @@ private[homepage] object GradingSummary {
   }
 
   def apply(graders: List[WorkbookInteractionGrader[?, ?]], state: GradedState[?, ?]): GradingSummary = {
-    val results = state.graderResultMap.values.map(result => result.grader.key -> result).toMap
+    val results = state.graderResultMap.values.filter(_.gradedState == state.state).map(result => result.grader.key -> result).toMap
     GradingSummary(graders.distinctBy(_.key).zipWithIndex.map { (grader, index) =>
       Entry(index + 1, grader, results.get(grader.key))
     })

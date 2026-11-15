@@ -137,7 +137,7 @@
   "gradingCompactScore": "{correct}/{total} korrekte",
   "gradingCompactUnavailable": "({count} afventer / utilgængelige)",
   "gradingNoTests": "Ingen tests i denne gruppe.",
-  "gradingTestDescription": "Testbeskrivelse",
+  "gradingTestDescription": "Test",
   "gradingExecutionDate": "Udført den",
   "gradingFeedback": "Feedback",
   "gradingScore": "Samlet resultat: {score}"

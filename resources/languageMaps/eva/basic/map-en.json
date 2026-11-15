@@ -138,7 +138,7 @@
   "gradingCompactScore": "{correct}/{total} correct",
   "gradingCompactUnavailable": "({count} pending / unavailable)",
   "gradingNoTests": "No tests in this group.",
-  "gradingTestDescription": "Test description",
+  "gradingTestDescription": "Test",
   "gradingExecutionDate": "Executed at",
   "gradingFeedback": "Feedback",
   "gradingScore": "Overall score: {score}"
