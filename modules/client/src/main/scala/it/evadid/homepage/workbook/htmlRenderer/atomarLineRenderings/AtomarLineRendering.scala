@@ -53,6 +53,7 @@ object AtomarLineRendering {
     case i: WorkbookInteractionElementFull[?, ?, ?] => RenderingInteractionLine(i, content, additionalCssString, showBottomGradingPanel)
   }
 
+
   def lineWithGrader[T, GA, SA](workbookInteractionUntyped: WorkbookInteractionElementFull[T, GA, SA], content: DomElementCollection, additionalCssString: String = ""): AtomarLineRendering = {
     basicLine(workbookInteractionUntyped, content, additionalCssString, Var(true).signal)
   }

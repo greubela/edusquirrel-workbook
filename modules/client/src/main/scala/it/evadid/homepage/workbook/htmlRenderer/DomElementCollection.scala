@@ -26,6 +26,14 @@ object DomElementCollection {
     override lazy val allElementsSignal: Signal[List[Element]] = elementsSignal
   }
 
+  implicit class DomEventStreamSingle(eventStream: EventStream[Element]) extends DomElementCollection {
+    override lazy val allElementsSignal: Signal[List[Element]] = eventStream.startWith(div()).map(cur => List(cur))
+  }
+
+  implicit class DomEventStreamList(eventStream: EventStream[List[Element]]) extends DomElementCollection {
+    override lazy val allElementsSignal: Signal[List[Element]] = eventStream.startWith(List())
+  }
+
 
 }
 

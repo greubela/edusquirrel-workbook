@@ -5,25 +5,28 @@ import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.abstractions.{SimpleWebEditor, WebEditorConfig}
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.ElementCard
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.editorSidePanel.InteractionSidePanelForEditor
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
 
 case class EditorWithWorkbookPanel[T, GA, SA, EC <: WebEditorConfig]
 (
   interaction: WorkbookInteractionElementFull[T, GA, SA],
+  associatedInstruction: Option[WorkbookDisplayElement],
   gradingReporter: InteractionVariableGradingReporter[T, GA, SA],
-  additionalModules: DomElementCollection,
+  additionalModules: List[ElementCard],
   editor: SimpleWebEditor[T, EC]
 ) extends HtmlAppElement {
 
-  lazy val sidePanel = InteractionSidePanelForEditor[T, GA, SA](interaction, gradingReporter)
+  lazy val sidePanel = InteractionSidePanelForEditor[T, GA, SA](interaction, associatedInstruction, gradingReporter, additionalModules)
 
-  override def getDomElement(): L.Element = div(cls := "interaction-editor",
-    sidePanel.getDomElement(),
-    div(cls := "interaction-editor__content", editor.getDomElement())
-  )
+  override def getDomElement(): L.Element =
+    div(cls := "editor-with-panel",
+      div(cls := "fullscreen-editor", editor.getDomElement()),
+      sidePanel.getDomElement(),
+    )
 
   override def dismissOnOutsideClick: Boolean = editor.dismissOnOutsideClick
 

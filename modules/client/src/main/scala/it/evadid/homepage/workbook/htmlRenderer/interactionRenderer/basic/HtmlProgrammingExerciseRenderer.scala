@@ -55,7 +55,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
 
     def buttonPressed(): Unit = {
-      val wrappedEditor = EditorWithWorkbookPanel(workbookElement, gradingReporter, DomElementList(Nil), editor)
+      val wrappedEditor = EditorWithWorkbookPanel(workbookElement, None, gradingReporter, List(), editor)
       fullInfo.displayControl.setFullscreen(wrappedEditor)
     }
 

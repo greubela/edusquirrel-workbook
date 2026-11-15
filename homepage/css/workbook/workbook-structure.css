@@ -244,7 +244,22 @@ dialog {
 .element-card-line .element-card-content {
 
 }
+/* FULLSCREEN EDITOR WITH PANEL */
+.editor-with-panel{
+    display: grid;
+    grid-auto-columns: 3fr 1fr;
+    gap: var(--space-md);
+}
 
+.fullscreen-sidepanel{
+    grid-column: 2;
+    margin: var(--space-md);
+    background: var(--color-background-workarea-display);
+}
+
+.fullscreen-editor{
+    grid-column: 1;
+}
 
 /* SPECIFIC STRUCTURE ELEMENTS */
 

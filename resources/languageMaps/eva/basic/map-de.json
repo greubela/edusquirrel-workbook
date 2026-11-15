@@ -75,7 +75,7 @@
   "TextEditorPlaceholder": "Text hier eingeben",
   "MessengerEditorSendMessageButton": "Absenden",
   "MessengerEditorInputPlaceholder": "Frage hier eingeben",
-  "turtleGradingPanel": "Vorschau (Turtle)",
+  "turtleGradingPanel": "Vorschau: Ist vs. Soll",
   "qrTitle": "QR-Code erstellen",
   "qrText": "Zu speichernder Text (UTF-8)",
   "qrErrorCorrection": "Fehlerkorrektur",

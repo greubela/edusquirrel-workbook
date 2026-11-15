@@ -2,17 +2,22 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.{child, div, *}
 import com.raquo.laminar.nodes.{ReactiveHtmlElement, ReactiveSvgElement}
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel.interactionInfoCssString
-import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookInteractionUntyped}
 import it.evadid.workbook.interaction.sync.UpdateImportance.DEFAULT
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
 import org.scalajs.dom.{HTMLDivElement, MouseEvent}
 
-case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionUntyped, gradingReporter: InteractionVariableGradingReporter[?, ?, ?]) extends HtmlAppElement {
+case class InteractionInfoPanel(
+                                 workbookInteractionElement: WorkbookInteractionUntyped,
+                                 gradingReporter: InteractionVariableGradingReporter[?, ?, ?])
+  extends HtmlAppElement {
 
   val iconGradingScaffolding = IconGradingAndScaffolding(fullInfo, laminarHelper, workbookInteractionElement, gradingReporter)
   val iconSync = IconSync(fullInfo, laminarHelper, workbookInteractionElement)
