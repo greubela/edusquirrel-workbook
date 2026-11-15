@@ -142,4 +142,9 @@
   "gradingExecutionDate": "Executed at",
   "gradingFeedback": "Feedback",
   "gradingScore": "Overall score: {score}"
+  "resetAllData": "Reset all saved answers",
+  "resetAllDataRunning": "Deleting saved answers…",
+  "resetAllDataRetry": "Retry full reset",
+  "resetAllDataConfirm": "Clear all configured local answer stores and delete this user's saved answers and feedback from every configured server destination, across all workbooks? This cannot be undone.",
+  "resetAllDataError": "Not every destination confirmed deletion. Synchronization is paused to prevent deleted answers from being saved again. Please retry the reset."
 }

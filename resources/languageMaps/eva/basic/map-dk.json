@@ -141,4 +141,9 @@
   "gradingExecutionDate": "Udført den",
   "gradingFeedback": "Feedback",
   "gradingScore": "Samlet resultat: {score}"
+  "resetAllData": "Nulstil alle gemte svar",
+  "resetAllDataRunning": "Sletter gemte svar…",
+  "resetAllDataRetry": "Prøv fuld nulstilling igen",
+  "resetAllDataConfirm": "Tøm alle konfigurerede lokale svarlagre og slet denne brugers svar og feedback i alle arbejdsbøger på alle konfigurerede servermål? Det kan ikke fortrydes.",
+  "resetAllDataError": "Ikke alle mål har bekræftet sletningen. Synkroniseringen er sat på pause, så slettede svar ikke gemmes igen. Prøv nulstillingen igen."
 }

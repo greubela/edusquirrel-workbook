@@ -46,4 +46,9 @@
   "gradingExecutionDate": "Exécuté le",
   "gradingFeedback": "Retour",
   "gradingScore": "Score total : {score}"
+  "resetAllData": "Réinitialiser toutes les réponses enregistrées",
+  "resetAllDataRunning": "Suppression des réponses…",
+  "resetAllDataRetry": "Réessayer la réinitialisation complète",
+  "resetAllDataConfirm": "Vider tous les stockages locaux de réponses configurés et supprimer les réponses et commentaires de cet utilisateur dans tous les cahiers et toutes les destinations serveur configurées ? Cette action est irréversible.",
+  "resetAllDataError": "Certaines destinations n’ont pas confirmé la suppression. La synchronisation est suspendue pour éviter de réenregistrer les réponses supprimées. Réessayez la réinitialisation."
 }

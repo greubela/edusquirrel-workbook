@@ -75,7 +75,9 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     await page.keyboard.insertText(draft);
     policy.hold = true;
     const received = new Promise(resolve => arrivals.push(resolve));
-    await page.locator('dialog[open] .scaffolding-info').click();
+    // Feedback is owned by the workbook renderer, independently of the editor.
+    await page.locator('.fullscreen-close-button').click();
+    await inlineHint.click();
     let requestDeadline;
     const pending = await Promise.race([received, new Promise((_, reject) => {
       requestDeadline = setTimeout(() => reject(new Error('Expected a hint request for the edited Java answer.')), 30000);
@@ -83,6 +85,7 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     assert.equal(requests.length, 2);
     assert.equal(requests.at(-1).source.code, draft);
     assert.equal(requests.at(-1).feedbackLanguage, 'German');
+    await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
     await page.locator('.fullscreen-close-button').click();
     await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
     await inlineHint.click();

@@ -2,6 +2,7 @@ package it.evadid.vm.conversion
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.conversion.ConversionResult.converted
+import it.evadid.vm.conversion.structured.StructuredProgramConversions
 import it.evadid.vm.conversion.javaexpression.JavaToExpression
 import it.evadid.vm.conversion.javaediting.JavaEditingMetadata
 import it.evadid.vm.conversion.javasnap.JavaToSnap
@@ -12,7 +13,6 @@ import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
 import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
-import it.evadid.vm.conversion.snapexpression.SnapStateConversion
 import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -27,7 +27,29 @@ object ProgrammingStateConversions {
       case _ => throw new UnsupportedOperationException(s"Programming language '$language' cannot be converted.")
     }
 
+    def toJavaStructured: ProgrammingStateJavaStructured = state match {
+      case value: ProgrammingStateJavaStructured => value
+      case ProgrammingStateJavaString(code) => ProgrammingStateJavaStructured(code)
+      case ProgrammingStateBeExpression(root: it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms.Root) =>
+        ProgrammingStateJavaStructured(root.bindings.source.source)
+      case other => StructuredProgramConversions.toJava(other.toPythonStructured)
+    }
+
+    def toPythonStructured: ProgrammingStatePythonStructured = state match {
+      case value: ProgrammingStatePythonStructured => value
+      case ProgrammingStatePythonString(code) => ProgrammingStatePythonStructured(code)
+      case value: ProgrammingStateJavaStructured => StructuredProgramConversions.toPython(value)
+      case ProgrammingStateJavaString(code) => StructuredProgramConversions.toPython(ProgrammingStateJavaStructured(code))
+      case ProgrammingStateSnapXml(xml) => StructuredProgramConversions.fromSnap(xml)
+      case value: ProgrammingStateSnapScalaModel => value.toSnapXml.toPythonStructured
+      case ProgrammingStateBeExpression(root: it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms.Root) =>
+        StructuredProgramConversions.toPython(ProgrammingStateJavaStructured(root.bindings.source.source))
+      case value: ProgrammingStateBeExpression => StructuredProgramConversions.fromExpression(value)
+    }
+
     def toBeExpression: ProgrammingStateBeExpression = state match {
+      case value: ProgrammingStatePythonStructured => StructuredProgramConversions.toExpression(value)
+      case value: ProgrammingStateJavaStructured => StructuredProgramConversions.toExpression(value.toPythonStructured)
       case value: ProgrammingStateBeExpression => value
       case ProgrammingStateJavaString(code) => JavaToExpression(code).convert
       case ProgrammingStatePythonString(code) =>
@@ -35,11 +57,13 @@ object ProgrammingStateConversions {
         else ProgrammingStateBeExpression(PythonToExpression.program(code).fullProgram)
       case ProgrammingStateSnapXml(xml) =>
         if JavaEditingMetadata.hasSnapMetadata(xml) then state.toJava.toBeExpression
-        else ProgrammingStateBeExpression(SnapStateConversion.expressionFromXml(xml))
+        else StructuredProgramConversions.toExpression(StructuredProgramConversions.fromSnap(xml))
       case value: ProgrammingStateSnapScalaModel => value.toSnapXml.toBeExpression
     }
 
     def toSnapXml: ProgrammingStateSnapXml = state match {
+      case value: ProgrammingStatePythonStructured => StructuredProgramConversions.toSnap(value)
+      case value: ProgrammingStateJavaStructured => StructuredProgramConversions.toSnap(value.toPythonStructured)
       case value: ProgrammingStateSnapXml => value
       case ProgrammingStateSnapScalaModel(model) => ProgrammingStateSnapXml(model.toXml)
       case ProgrammingStateBeExpression(expression) => ExpressionToSnap.convert(expression)
@@ -53,12 +77,16 @@ object ProgrammingStateConversions {
     }
 
     def toPython: ProgrammingStatePythonString = state match {
+      case value: ProgrammingStatePythonStructured => ProgrammingStatePythonString(value.toString)
+      case value: ProgrammingStateJavaStructured => ProgrammingStatePythonString(value.toPythonStructured.toString)
       case value: ProgrammingStatePythonString => value
       case ProgrammingStateBeExpression(expression) => ExpressionToPython.convert(expression)
       case _ => state.toBeExpression.toPython
     }
 
     def toJava: ProgrammingStateJavaString = state match {
+      case value: ProgrammingStateJavaStructured => ProgrammingStateJavaString(value.toString)
+      case value: ProgrammingStatePythonStructured => ProgrammingStateJavaString(value.toJavaStructured.toString)
       case value: ProgrammingStateJavaString => value
       case ProgrammingStateBeExpression(expression) => ExpressionToJava.convert(expression)
       case value: ProgrammingStateSnapXml if JavaEditingMetadata.hasSnapMetadata(value.snapXml) =>

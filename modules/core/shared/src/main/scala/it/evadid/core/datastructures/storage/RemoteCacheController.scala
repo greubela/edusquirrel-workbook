@@ -125,6 +125,30 @@ abstract class RemoteCacheController[K, D, CK <: CacheKey[K, D]](logger: SyncLog
     }
   }
 
+  /** A reset is ordered after every already queued context, including old workbooks.
+    * Callers pause new writes while this barrier and its deletions are running.
+    */
+  def clearAllCaches(clear: CK => Future[Unit]): Future[Unit] = syncLock.synchronized {
+    val context = currentContext
+    val pending = pendingDestinations.values.toList
+    val keys = context.collection.remoteCaches.keys.toList
+    enqueue(context) {
+      Future.sequence(pending).flatMap { _ =>
+        Future.traverse(keys) { key =>
+          Try(clear(key)).fold(Future.failed, identity).transform(result => Success(result))
+        }.flatMap { outcomes =>
+          val failures = outcomes.collect { case Failure(error) => error }
+          // A deletion attempt invalidates old confirmations even when its response
+          // fails: the destination may already have removed those records.
+          publish(context, RemoteCacheCollection.fromCacheKeys(logger, keys))
+          if failures.nonEmpty then Future.failed(new IllegalStateException(
+            s"Reset failed for ${failures.size} of ${keys.size} sync destinations.", failures.head))
+          else Future.unit
+        }
+      }
+    }
+  }
+
   def requestStore(writeRequested: List[DataEntryToSync[K, D]]): Future[?] = if (writeRequested.isEmpty) Future.successful(()) else syncLock.synchronized {
     requestCacheDependentStore(_ => writeRequested)
   }

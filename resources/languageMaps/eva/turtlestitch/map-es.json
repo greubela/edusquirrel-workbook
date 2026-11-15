@@ -1,6 +1,6 @@
 {
   "defaultReadExerciseInstruction": "Lee los comandos del siguiente programa",
-  "defaultExerciseTitle": "¡Recrea la figura!",
+  "instructionRecreateShape": "¡Recrea la figura!",
   "providedProjectLabel": "Proyecto proporcionado",
   "defaultExecuteExerciseInstruction": "¡Comprueba tu hipótesis!",
   "defaultAnalyzeExerciseInstruction": "Describe la figura que esperas que se cree",

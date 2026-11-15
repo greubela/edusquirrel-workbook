@@ -23,6 +23,7 @@ class SyncDestinationHandlerForTypeSpec extends FunSuite {
       stored.trySuccess(values)
       Future.successful(SyncSuccess.emptyNow())
     }
+    override def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
     override def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
   }
 

@@ -67,6 +67,15 @@ case class DeleteInDatabase(
     }
   }
 
+  def deleteAllWorkbooksOfUser(tableName: String): SyncSuccess = {
+    val sql = s"DELETE FROM `$tableName` WHERE `programid` = ? AND `userid` = ?"
+    scala.util.Using.resource(connection.prepareStatement(sql)) { statement =>
+      statement.setString(1, usageContext.programId)
+      statement.setString(2, usageContext.userId)
+      SyncSuccess(0, 0, generic.executeUpdate(statement), LocalDateTime.now())
+    }
+  }
+
   def deleteAllEventsOfUsage(tableName: String): SyncSuccess = {
     logger.logInfo(s"deleting all events for usage $usageContext from database")
     val sql: String =
@@ -95,7 +104,7 @@ object DeleteInDatabase {
         case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => new RelationalHistoryStorage(connection, logger).delete(request)
         case format: it.evadid.sql.DatabaseHistoryFormat.Snapshot =>
           val control = DeleteInDatabase(connection, request.usageContext, logger)
-          request.limitToKey match {
+          if request.allWorkbooks then control.deleteAllWorkbooksOfUser(format.table) else request.limitToKey match {
             case None => control.deleteAllEventsOfUsage(format.table)
             case Some(key) => if format.hasKeyTable then control.deleteByKeyInDatabaseWithKey(key)
               else control.deleteByKeyInDatabaseWithoutKey(key, format.table)

@@ -22,6 +22,10 @@ trait SyncControl {
 
   def requestStore(from: List[InteractionVariableUntyped]): Future[Unit]
 
+  def resetState: ObservableValue[SyncResetState]
+
+  def resetAllData(): Future[Unit]
+
   def syncLogger: SyncLogger
 
   def controlLogger: Logger

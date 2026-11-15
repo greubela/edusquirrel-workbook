@@ -268,6 +268,34 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
+  test("all-workbook reset deletes only the authenticated user's application histories in every format") {
+    val config = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
+    val second = context.copy(scenarioId = "second-workbook")
+    val otherUser = context.copy(userId = "another-user")
+    val otherProgram = context.copy(programId = "another-program")
+    withHttpCommands() { send =>
+      List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
+        List(context, second, otherUser, otherProgram).foreach { usage =>
+          UpsertToDatabase.handleRequest(StoreToDbRequest(usage.toSyncContext(key), write(history()), config, format), logger)
+        }
+        def readAt(usage: UsageContext) = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(usage, config, None, format), logger).fetchedElements
+        def erase(usage: UsageContext) = send(ExecutionCommand(resetUserHistoriesDbCommand.name,
+          writeJs(DeleteInDbRequest(usage, None, config, format, allWorkbooks = true))))
+        val missingScope = send(ExecutionCommand(resetUserHistoriesDbCommand.name,
+          writeJs(DeleteInDbRequest(context, None, config, format))))
+        assert(missingScope.result.isLeft, "the new reset command requires an explicit full scope")
+        assert(readAt(context).nonEmpty)
+        assert(erase(otherUser).result.isLeft, "a signed token cannot reset another account")
+        assert(erase(context).result.isRight)
+        assertEquals(readAt(context), Map.empty)
+        assertEquals(readAt(second), Map.empty)
+        assert(readAt(otherUser).nonEmpty)
+        assert(readAt(otherProgram).nonEmpty)
+        assert(erase(context).result.isRight, "reset retries are idempotent")
+      }
+    }
+  }
+
   test("HTTP command logs persist trusted client IPv4 and IPv6 and reject untrusted forwarded addresses") {
     val config = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
     def loggedAddress(table: String): (String, String) = MysqlTestDatabase.withConnection { connection =>

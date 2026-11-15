@@ -6,6 +6,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured}
 
 import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
@@ -33,6 +34,8 @@ private[evadid] object ProgramForUnitTestExecution {
 
   private def convertedFromState(state: ProgrammingState): Either[String, ProgramForUnitTestExecution] =
     try state match {
+      case value: ProgrammingStateJavaStructured => Right(ProgramForUnitTestExecution(value.toPythonStructured.toString))
+      case value: ProgrammingStatePythonStructured => Right(ProgramForUnitTestExecution(value.toString))
       case value: ProgrammingStateJavaString =>
         value.toJavaVmProgram.left.map(_.message).flatMap(program => fromExpression(program.root))
       case ProgrammingStatePythonString(code) =>
