@@ -55,16 +55,8 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
 
     def buttonPressed(): Unit = {
-
-      val evaEditor = EvaEditor(
-        fullInfo.loggerSystemInfo.uiAndDomLogger,
-        boundVar,
-        List(),
-        Var(EvaEditorConfig(enabledLanguages = List(AppLanguage.Java))),
-        labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
-      EditorWithWorkbookPanel(workbookElement, gradingReporter, DomElementList(List()), evaEditor)
-
-      fullInfo.displayControl.setFullscreen(evaEditor)
+      val wrappedEditor = EditorWithWorkbookPanel(workbookElement, gradingReporter, DomElementList(Nil), editor)
+      fullInfo.displayControl.setFullscreen(wrappedEditor)
     }
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())

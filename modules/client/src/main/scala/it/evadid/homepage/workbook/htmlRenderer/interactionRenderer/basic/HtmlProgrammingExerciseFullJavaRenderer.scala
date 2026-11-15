@@ -36,6 +36,7 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
       boundVar,
       List(draw),
       Var(EvaEditorConfig(enabledLanguages = List(AppLanguage.Java))),
+      humanLanguage = fullInfo.signals.currentLanguage,
       labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
     EditorWithWorkbookPanel(element, gradingReporter, DomElementSingle(draw.getDomElement()), evaEditor)
   }

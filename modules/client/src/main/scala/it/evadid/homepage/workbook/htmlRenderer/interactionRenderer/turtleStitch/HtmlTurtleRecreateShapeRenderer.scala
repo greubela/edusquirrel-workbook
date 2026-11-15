@@ -38,6 +38,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
         boundVar,
         List(draw),
         Var(EvaEditorConfig(enabledLanguages = workbookElement.exerciseConfig.allowedEditorLanguages, snapConfig = useConfig)),
+        humanLanguage = fullInfo.signals.currentLanguage,
         labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
       val editor = EditorWithWorkbookPanel(workbookElement, gradingReporter, DomElementSingle(shapeGradingPreview.getDomElement()), evaEditor)
 
