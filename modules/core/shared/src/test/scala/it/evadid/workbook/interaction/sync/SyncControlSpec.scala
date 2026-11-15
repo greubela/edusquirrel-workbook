@@ -19,6 +19,8 @@ class SyncControlSpec extends FunSuite {
     val loadFinished = Promise[Unit]()
     val storeStarted = Promise[Unit]()
     val storeFinished = Promise[Unit]()
+    override val resetState = it.evadid.core.datastructures.state.State[it.evadid.workbook.interaction.sync.SyncResetState](it.evadid.workbook.interaction.sync.SyncResetState.Idle).observable
+    override def resetAllData(): Future[Unit] = Future.failed(new UnsupportedOperationException("Reset is not used by this fixture"))
     override val controlLogger = Logger.withNameAndPrefixes(printMap = PrintToStdLogger.printNothing)
     override val syncLogger = SyncLogger(controlLogger)
     override def ensureCachesAreAtLeastThisRecent(time: LocalDateTime): Future[Unit] = Future.unit

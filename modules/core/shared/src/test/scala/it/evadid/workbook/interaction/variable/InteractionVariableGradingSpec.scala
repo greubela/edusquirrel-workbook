@@ -1804,6 +1804,7 @@ class InteractionVariableGradingSpec extends FunSuite {
         throw AssertionError("Restore must not write")
       override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] =
         throw AssertionError("Restore must not clear storage")
+      override def clearAllUserData(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
       override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] =
         throw AssertionError("Restore must not clear storage")
     }
@@ -1814,6 +1815,8 @@ class InteractionVariableGradingSpec extends FunSuite {
     val stores = State(0)
     override val controlLogger = Logger.withNameAndPrefixes(printMap = PrintToStdLogger.printNothing)
     override val syncLogger = SyncLogger(controlLogger)
+    override val resetState = it.evadid.core.datastructures.state.State[it.evadid.workbook.interaction.sync.SyncResetState](it.evadid.workbook.interaction.sync.SyncResetState.Idle).observable
+    override def resetAllData(): Future[Unit] = Future.failed(new UnsupportedOperationException("Reset is not used by this fixture"))
     override def createCurrentReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): InteractionVariableSyncReport[T, GA, SA] = {
       assert(forVariable eq value)
       val remote = histories.map { current =>

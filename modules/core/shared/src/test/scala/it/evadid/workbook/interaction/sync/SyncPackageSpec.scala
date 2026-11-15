@@ -64,6 +64,7 @@ class SyncPackageSpec extends FunSuite {
       writeResult
     }
     override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
+    override def clearAllUserData(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
     override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
   }
 

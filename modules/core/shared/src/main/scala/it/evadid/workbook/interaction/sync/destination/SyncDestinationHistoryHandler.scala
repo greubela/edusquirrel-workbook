@@ -23,6 +23,9 @@ trait SyncDestinationHistoryHandler {
 
   def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess]
 
+  /** Clear this application's histories for the authenticated user across workbooks. */
+  def clearAllUserData(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess]
+
   def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess]
 
   def storeHistoriesJson(contextJsonMap: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = {
@@ -69,6 +72,9 @@ trait SyncDestinationHistoryHandler {
 
 object SyncDestinationHistoryHandler {
 
+  private def historyTimestamp(json: String): Option[LocalDateTime] =
+    scala.util.Try(it.evadid.workbook.interaction.sync.model.HistoryJson.lastTimestamp(json)).toOption.flatten
+
   def fromBasic(basic: SyncDestinationHandlerBasic): SyncDestinationHistoryHandler = {
     val typed = basic.forSpecificType[SyncContext, String]
 
@@ -76,6 +82,9 @@ object SyncDestinationHistoryHandler {
       override def syncLogger: SyncLogger = basic.syncLogger
 
       override def definition: SyncDestinationDefinition = basic.underlyingDefinition
+
+      override def clearAllUserData(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] =
+        basic.clearAll()
 
       override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = typed.clearValue(context)
 
@@ -94,16 +103,14 @@ object SyncDestinationHistoryHandler {
 
       override def readHistoryJson(syncContext: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
         typed.readElementTyped(syncContext).map(curHistoryJson => {
-          FetchResponse(LocalDateTime.now(), Set(DataEntryToSync[SyncContext, String](syncContext, curHistoryJson, LocalDateTime.now(), SERVER_TO_CLIENT)))
+          FetchResponse.fromMap(LocalDateTime.now(), Map(syncContext -> curHistoryJson), historyTimestamp)
         })
       }
 
       override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
         typed.readFullStore.map(curMap => {
-          val data = curMap.toList
-            .filter(c => c._1.userId == usageContext.userId && c._1.scenarioId == usageContext.scenarioId & c._1.programId == usageContext.programId)
-            .map(c => DataEntryToSync(c._1, c._2, LocalDateTime.now(), SERVER_TO_CLIENT))
-          FetchResponse(LocalDateTime.now(), data.toSet)
+          val data = curMap.filter((context, _) => context.toUsageContext == usageContext)
+          FetchResponse.fromMap(LocalDateTime.now(), data, historyTimestamp)
         })
       }
     }

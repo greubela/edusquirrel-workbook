@@ -159,7 +159,13 @@ test('login validates accounts, restores cached credentials after reload and cle
     await connections.getByLabel('Use my LLM configuration').check();
     await connections.getByLabel('Chat completion URL').fill('https://fixture.invalid/chat');
     await connections.getByLabel('API key').fill('ephemeral-browser-key');
+    const customFetch = page.waitForRequest(request => {
+      if (new URL(request.url()).pathname !== '/executeCommand' || request.method() !== 'POST') return false;
+      const command = readCommandRequest(request);
+      return command.name === 'fetch-from-db-request' && command.json.databaseConfig.$type === 'DatabaseConfigWithCredentials';
+    });
     await connections.getByRole('button', {name:'Apply', exact:true}).click();
+    await customFetch;
     await connections.waitFor({state:'detached'});
     assert(requests.some(command => command.name === 'fetch-from-db-request' && command.json.databaseConfig.$type === 'DatabaseConfigWithCredentials'), 'custom database sync uses the explicit credential-bearing configuration');
     assert(!await page.evaluate(() => /ephemeral-browser-key|ephemeral-database-password/.test(JSON.stringify(localStorage))));

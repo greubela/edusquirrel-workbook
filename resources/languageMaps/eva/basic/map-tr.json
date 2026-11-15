@@ -22,5 +22,10 @@
   "editorUnavailable": "Bu taslak ayarlanan dillerde kullanılamıyor.",
   "editorLanguages": "Programlama dilleri",
   "editorSwitchFailed": "Dil değiştirilemedi",
-  "editorLoading": "Düzenleyici yükleniyor…"
+  "editorLoading": "Düzenleyici yükleniyor…",
+  "resetAllData": "Kaydedilmiş tüm yanıtları sıfırla",
+  "resetAllDataRunning": "Kaydedilmiş yanıtlar siliniyor…",
+  "resetAllDataRetry": "Tam sıfırlamayı yeniden dene",
+  "resetAllDataConfirm": "Yapılandırılmış tüm yerel yanıt depoları temizlensin ve bu kullanıcının tüm çalışma kitaplarındaki yanıtları ve geri bildirimleri yapılandırılmış tüm sunucu hedeflerinden silinsin mi? Bu işlem geri alınamaz.",
+  "resetAllDataError": "Tüm hedefler silmeyi onaylamadı. Silinen yanıtların yeniden kaydedilmesini önlemek için eşitleme duraklatıldı. Lütfen sıfırlamayı yeniden deneyin."
 }

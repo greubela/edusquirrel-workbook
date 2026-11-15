@@ -108,3 +108,36 @@ those obsolete records using browser developer tools under IndexedDB →
 `EvaDidInteractionDB` → `variableHistoryStore`. This is separate from the server
 database and from the language-triple cache. Such a warning alone does not show
 that an HTTP sync request failed.
+
+## Auto-login restoration and full answer reset
+
+Sync destination keys retain a stable resolver identity. Language, header and
+other display changes must not replace a cache for an unchanged user/workbook.
+Confirmed cache publications merge into the current workbook's interaction
+variables, so automatic login does not need another navigation or page reload.
+Unchanged histories do not trigger redundant store requests. Late loads for a
+previous user are ignored. Local history entries use their actual latest edit or
+feedback timestamp, independently of the cache request time.
+
+The user menu provides a confirmed full answer reset next to Download All.
+It waits for already queued writes across workbook contexts, pauses further
+restoration/storing, and attempts every configured destination even if one fails.
+Raw local destination stores are cleared without decoding records, including
+unsupported development records. On the server, all workbook histories for the
+current application (`programId`) and authenticated user are deleted in each
+configured format; other accounts and applications are preserved. V2 deletion
+cascades to answer/grading/scaffolding rows. This resets answer histories, not the
+server account or audit logs. The login cache and language cache remain unless
+explicitly configured as a destination themselves.
+
+The reset uses `reset-user-histories-in-db-request` with an explicit all-workbook
+scope. Deploy the matching backend JAR as well as the client. An older server
+rejects the new command rather than acknowledging a current-workbook-only delete.
+No old history schemas are read or migrated. The normal delete command retains
+its existing workbook/key scope.
+
+After every deletion attempt, previous cached sync confirmations are invalidated.
+A reload occurs only after all destinations confirm success. If any fails, the
+shared reset state displays a retry action and synchronization remains paused so
+mounted answers cannot recreate already deleted rows. Retrying is idempotent,
+and the state survives rebuilding the header/menu.

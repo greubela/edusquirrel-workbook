@@ -18,6 +18,8 @@ trait SyncDestinationHandlerBasic {
     Future.traverse(elementMap.toList)(storeElement).map(syncSuccesses => SyncSuccess(syncSuccesses.map(_.elementsAdded).sum, 0, 0, LocalDateTime.now()))
   }
 
+  def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess]
+
   def readElement(key: String)(implicit ec: ExecutionContext): Future[String]
 
   def readAll(implicit ec: ExecutionContext): Future[Map[String, String]]
@@ -77,6 +79,8 @@ object SyncDestinationHandlerBasic {
 
     // Raw
     def withReplacedSyncLogger(newLogger: SyncLogger): SyncDestinationHandlerBasic = SyncDestinationHandlerBasic(basicHandler, newLogger)
+
+    override def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess] = basicHandler.clearAll(syncLogger)
 
     override def underlyingDefinition: SyncDestinationDefinition = basicHandler.underlyingDefinition
 
