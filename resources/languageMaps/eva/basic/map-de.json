@@ -140,10 +140,11 @@
   "gradingTestDescription": "Test",
   "gradingExecutionDate": "Ausgeführt am",
   "gradingFeedback": "Rückmeldung",
-  "gradingScore": "Gesamt-Score: {score}"
+  "gradingScore": "Gesamt-Score: {score}",
   "resetAllData": "Alle gespeicherten Antworten zurücksetzen",
   "resetAllDataRunning": "Gespeicherte Antworten werden gelöscht…",
   "resetAllDataRetry": "Vollständigen Reset erneut versuchen",
   "resetAllDataConfirm": "Alle konfigurierten lokalen Antwortspeicher leeren und die Antworten und Rückmeldungen dieses Benutzers in allen Workbooks an allen konfigurierten Server-Zielen löschen? Dies kann nicht rückgängig gemacht werden.",
-  "resetAllDataError": "Nicht alle Ziele haben die Löschung bestätigt. Die Synchronisierung ist pausiert, damit gelöschte Antworten nicht erneut gespeichert werden. Bitte den Reset erneut versuchen."
+  "resetAllDataError": "Nicht alle Ziele haben die Löschung bestätigt. Die Synchronisierung ist pausiert, damit gelöschte Antworten nicht erneut gespeichert werden. Bitte den Reset erneut versuchen.",
+
 }

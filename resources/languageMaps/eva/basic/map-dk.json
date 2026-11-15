@@ -140,7 +140,7 @@
   "gradingTestDescription": "Test",
   "gradingExecutionDate": "Udført den",
   "gradingFeedback": "Feedback",
-  "gradingScore": "Samlet resultat: {score}"
+  "gradingScore": "Samlet resultat: {score}",
   "resetAllData": "Nulstil alle gemte svar",
   "resetAllDataRunning": "Sletter gemte svar…",
   "resetAllDataRetry": "Prøv fuld nulstilling igen",

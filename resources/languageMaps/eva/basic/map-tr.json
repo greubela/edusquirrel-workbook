@@ -45,7 +45,7 @@
   "gradingTestDescription": "Test",
   "gradingExecutionDate": "Çalıştırılma zamanı",
   "gradingFeedback": "Geri bildirim",
-  "gradingScore": "Toplam puan: {score}"
+  "gradingScore": "Toplam puan: {score}",
   "resetAllData": "Kaydedilmiş tüm yanıtları sıfırla",
   "resetAllDataRunning": "Kaydedilmiş yanıtlar siliniyor…",
   "resetAllDataRetry": "Tam sıfırlamayı yeniden dene",

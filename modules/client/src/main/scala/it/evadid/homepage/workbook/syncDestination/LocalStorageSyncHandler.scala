@@ -58,7 +58,7 @@ case class LocalStorageSyncHandler(localStorageSyncDefinition: LocalStorageSyncD
     LocalStorageSyncHandler.removeKey(key)
   }
 
-  override def readElementRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[String] = readDestinationRaw(logger)(ec).transformWith {
+  override def readElementRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[String] = readDestinationRaw(logger)(using ec).transformWith {
     case Success(map) =>
       if (map.contains(key)) Future.successful(map(key))
       else Future.failed(SerializedException(s"Read ${map.size} elements from local storage map, but key ${key.take(60)} is not present!"))

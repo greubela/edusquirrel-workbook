@@ -141,7 +141,7 @@
   "gradingTestDescription": "Test",
   "gradingExecutionDate": "Executed at",
   "gradingFeedback": "Feedback",
-  "gradingScore": "Overall score: {score}"
+  "gradingScore": "Overall score: {score}",
   "resetAllData": "Reset all saved answers",
   "resetAllDataRunning": "Deleting saved answers…",
   "resetAllDataRetry": "Retry full reset",

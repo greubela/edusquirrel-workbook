@@ -45,7 +45,7 @@
   "gradingTestDescription": "Prueba",
   "gradingExecutionDate": "Ejecutado el",
   "gradingFeedback": "Comentarios",
-  "gradingScore": "Puntuación total: {score}"
+  "gradingScore": "Puntuación total: {score}",
   "resetAllData": "Restablecer todas las respuestas guardadas",
   "resetAllDataRunning": "Eliminando respuestas guardadas…",
   "resetAllDataRetry": "Reintentar el restablecimiento completo",
