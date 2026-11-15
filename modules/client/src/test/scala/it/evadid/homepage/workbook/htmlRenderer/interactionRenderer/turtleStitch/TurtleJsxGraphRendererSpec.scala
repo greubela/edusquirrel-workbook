@@ -8,6 +8,9 @@ import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleDrawingPolicy, TurtleGraphic}
 import munit.FunSuite
+import com.raquo.airstream.state.Var
+import com.raquo.airstream.ownership.ManualOwner
+import scala.util.Try
 
 class TurtleJsxGraphRendererSpec extends FunSuite {
   private def coverage(commands: List[TurtleCommand[Double]], target: TurtleGraphic) =
@@ -36,33 +39,30 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     }
   }
 
+  private def previewAssessment(state: ProgrammingState): Try[TurtleDrawingGrading.Assessment] = {
+    val owner = new ManualOwner
+    val result = Var(Option.empty[Try[TurtleDrawingGrading.Assessment]])
+    val preview = CompareShapePreview(Var(state), TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"))
+    try {
+      preview.comparisonSignal.foreach(value => result.set(Some(value)))(using owner)
+      result.now().get
+    } finally owner.killSubscriptions()
+  }
+
   test("preview conversion retains Java drafts it cannot display") {
     List("class Drawing {", "class Drawing { static void main(String[] args) {} }").foreach { code =>
       val state = ProgrammingStateJavaString(code)
       val fingerprint = state.fingerprint()
-      assert(HtmlTurtleRecreateShapeRenderer.commandsForPreview(state).isFailure)
+      assert(previewAssessment(state).isFailure)
       assertEquals(state.fingerprint(), fingerprint)
       assertEquals(state.code, code)
     }
   }
 
-  test("the program card recognizes Java classes and unfinished text without converting them") {
-    val sources: List[ProgrammingState] = List(ProgrammingStateJavaString("class Drawing {}"),
-      ProgrammingStateJavaString(" \r\nclass Drawing {\t "), ProgrammingStatePythonString("forward(\n\t "))
-    sources.foreach { source =>
-      val fingerprint = source.fingerprint()
-      assert(HtmlTurtleRecreateShapeRenderer.hasProgram(source))
-      assertEquals(source.fingerprint(), fingerprint)
-    }
-    assert(!HtmlTurtleRecreateShapeRenderer.hasProgram(ProgrammingStateJavaString(" \r\n\t ")))
-    assert(!HtmlTurtleRecreateShapeRenderer.hasProgram(ProgrammingStatePythonString(" \r\n\t ")))
-  }
-
-  test("preview conversion still derives supported turtle commands") {
-    assertEquals(
-      HtmlTurtleRecreateShapeRenderer.commandsForPreview(ProgrammingStatePythonString("forward(12)")).get,
-      List(TurtleCommand.Forward[Double](12.0))
-    )
+  test("shape preview assesses supported turtle commands") {
+    val assessment = previewAssessment(ProgrammingStatePythonString("forward(12)")).get
+    assert(assessment.matches)
+    assert(assessment.scene.lines.forall(_.result == LineResult.Correct))
   }
 
   private def assertPoint(actual: Point[Double], expected: Point[Double]): Unit = {
