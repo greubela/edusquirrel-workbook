@@ -13,13 +13,15 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Sn
 import it.evadid.vm.conversion.ConversionResult
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 import upickle.default.*
+import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.conversion.structured.{SourceStructure, StructuredProgramConversions}
 
 /** The source representation currently edited by a programming exercise. */
 sealed trait ProgrammingState {
   def associatedLanguage: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage = this match {
     case _: ProgrammingStateSnapXml | _: ProgrammingStateSnapScalaModel => it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
-    case _: ProgrammingStateJavaString => Java
-    case _: ProgrammingStatePythonString => it.evadid.core.datastructures.language.AppLanguage.Python
+    case _: ProgrammingStateJavaString | _: ProgrammingStateJavaStructured => Java
+    case _: ProgrammingStatePythonString | _: ProgrammingStatePythonStructured => it.evadid.core.datastructures.language.AppLanguage.Python
     case _ => it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
   }
 
@@ -30,6 +32,8 @@ sealed trait ProgrammingState {
     case snap: ProgrammingStateSnapScalaModel => s"snap:${snap.model.toXml}"
     case ProgrammingStatePythonString(code) => s"python:$code"
     case ProgrammingStateJavaString(code) => s"java:$code"
+    case state: ProgrammingStateJavaStructured => s"java-structured:${write(state)}"
+    case state: ProgrammingStatePythonStructured => s"python-structured:${write(state)}"
 }
 
 object ProgrammingState {
@@ -40,6 +44,8 @@ object ProgrammingState {
     case SnapModel(value: ProgrammingStateSnapScalaModel)
     case PythonSource(value: ProgrammingStatePythonString)
     case JavaSource(value: ProgrammingStateJavaString)
+    case JavaStructured(value: ProgrammingStateJavaStructured)
+    case PythonStructured(value: ProgrammingStatePythonStructured)
     case Expression(value: ProgrammingStateBeExpression)
   }
   given ReadWriter[ProgrammingState] =
@@ -48,12 +54,16 @@ object ProgrammingState {
       case value: ProgrammingStateSnapScalaModel => Payload.SnapModel(value)
       case value: ProgrammingStatePythonString => Payload.PythonSource(value)
       case value: ProgrammingStateJavaString => Payload.JavaSource(value)
+      case value: ProgrammingStateJavaStructured => Payload.JavaStructured(value)
+      case value: ProgrammingStatePythonStructured => Payload.PythonStructured(value)
       case value: ProgrammingStateBeExpression => Payload.Expression(value)
     }, {
       case Payload.Xml(value) => value
       case Payload.SnapModel(value) => value
       case Payload.PythonSource(value) => value
       case Payload.JavaSource(value) => value
+      case Payload.JavaStructured(value) => value
+      case Payload.PythonStructured(value) => value
       case Payload.Expression(value) => value
     })
 
@@ -131,4 +141,27 @@ object ProgrammingStateSnapScalaModel {
   given ReadWriter[ProgrammingStateSnapScalaModel] = upickle.default.readwriter[Saved].bimap(
     state => Saved(state.model.withoutGeneratedImages),
     saved => ProgrammingStateSnapScalaModel(saved.model.withoutGeneratedImages))
+}
+
+/** Class values are full source declarations, including bodies that the VM cannot yet parse. */
+final case class ProgrammingStateJavaStructured(definedClasses: Map[BeEntityName, String]) extends ProgrammingState derives ReadWriter {
+  override def toString: String = definedClasses.values.mkString("\n\n")
+}
+object ProgrammingStateJavaStructured {
+  def apply(source: String): ProgrammingStateJavaStructured = {
+    val parts = SourceStructure.java(source)
+    if parts.remaining.isEmpty then new ProgrammingStateJavaStructured(parts.definedClasses)
+    else StructuredProgramConversions.javaWithLooseCode(parts.definedClasses, parts.remaining)
+  }
+}
+
+/** Classes precede module-level variables, functions and startup code when printed. */
+final case class ProgrammingStatePythonStructured(definedClasses: Map[BeEntityName, String], mainScript: String) extends ProgrammingState derives ReadWriter {
+  override def toString: String = (definedClasses.values.toList :+ mainScript).filter(_.nonEmpty).mkString("\n\n")
+}
+object ProgrammingStatePythonStructured {
+  def apply(source: String): ProgrammingStatePythonStructured = {
+    val parts = SourceStructure.python(source)
+    new ProgrammingStatePythonStructured(parts.definedClasses, parts.remaining)
+  }
 }

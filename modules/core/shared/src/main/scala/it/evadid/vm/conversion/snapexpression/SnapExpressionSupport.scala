@@ -8,7 +8,7 @@ import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.defining.BeDefineFunction
+import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.naming.NamingStyle
 
@@ -52,7 +52,7 @@ object SnapExpressionSupport {
 
   def isScriptStatement(expression: BeExpression): Boolean =
     expression match
-      case _: BeDefineFunction => false
+      case _: BeDefineFunction | _: BeDefineVariable => false
       // The green-flag hat is Snap execution metadata, not Python source.
       case call: BeFunctionCall => snapSelectorOf(call) != "receiveGo"
       case _ => true

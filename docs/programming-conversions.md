@@ -4,6 +4,12 @@ Language conversion belongs to [`it.evadid.vm.conversion`](../modules/core/share
 
 Import `it.evadid.vm.conversion.ProgrammingStateConversions.*` to use `state.toLanguage(language)`, `toBeExpression`, `toJava`, `toPython`, `toSnapXml` and `toSnapScalaModel`. These are VM extension methods, not methods implemented by individual state classes. Their dispatcher composes the converters below; there is no second set of converters in the workbook package.
 
+For class-structured editing use `toJavaStructured` / `toPythonStructured`. Their states retain class source in `definedClasses`, plus Python's module-level `mainScript`; `apply(source)` infers and hoists classes, keeping the first duplicate and warning. Bodies remain source text so unsupported syntax and unfinished edits can be stored without requiring a complete AST.
+
+`structured/` owns the scope convention: static members of Java `Main` correspond to Python module scope; instance members remain a class. Green-flag scripts become `main`, detached Snap scripts become `unusedCode`, and class declarations are omitted when exporting to Snap. Structured states lower to the ordinary `BeStartProgram` for Turtle analysis, using the same execution information as rendering and grading.
+
+`JavaStructuredFunctionBasedEditor` binds a typed Var to the existing method-editing UI and opens `Main.main` by default. Existing source-string editors retain their contracts; their `toJava` / `toPython` projections remain available during editor migration.
+
 | Transformation | Package under `vm.conversion` |
 | --- | --- |
 | Java source → expression / checked VM program | `javaexpression`, with checked lowering in `javaexpression.checked` |
@@ -20,6 +26,7 @@ Import `it.evadid.vm.conversion.ProgrammingStateConversions.*` to use `state.toL
 | Immutable Snap document → lossless XML | `snapmodelxml` |
 | TurtleStitch project / XML → expression and canvas layout | `turtlestitchexpression` |
 | State → executable unit-test Python | `unittest` |
+| Class-level source inference and static/module scope conversion | `structured` |
 
 `javaediting` shares the metadata and type rules needed by the four Java editing directions. `snapxml` supplies XML scanning and entity handling; `printing` supplies the shared Java-like printer. Shared helpers are implementation support, not alternative conversion routes. Native Java/Python lexical and AST parsers remain in `vm.parsing`; execution remains in `vm.simulation`.
 

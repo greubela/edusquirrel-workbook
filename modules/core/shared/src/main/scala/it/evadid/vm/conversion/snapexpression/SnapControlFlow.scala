@@ -168,6 +168,8 @@ object SnapControlFlow {
       case assign: BeAssignVariable =>
         if isSupportedAssignment(assign) then None
         else Some(s"${variableName(assign.target)} = ...")
+      case variable: BeDefineVariable =>
+        variable.initValue.flatMap(value => describeUnsupportedStatement(BeAssignVariable(variable, value), userFunctions))
       case ifElse: BeIfElse =>
         conditionProblems(ifElse.condition)
           .orElse(bodyProblems(ifElse.thenBody, userFunctions))
@@ -309,6 +311,10 @@ object SnapControlFlow {
       note(name)
       if name.nonEmpty && !literals.contains(name) then literals += name -> literal
     def walk(node: BeExpression): Unit = node match
+      case variable: BeDefineVariable =>
+        variable.initValue match
+          case Some(value) => walk(BeAssignVariable(variable, value))
+          case None => note(variableName(variable))
       case BeAssignVariable(target, value) =>
         val name = variableName(target)
         value match

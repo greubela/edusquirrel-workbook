@@ -186,6 +186,7 @@ object SnapProjectXml {
   private def renderStatement(expression: BeExpression)(using RenderContext): String = expression match {
     case call: BeFunctionCall => renderCall(call)
     case assign: BeAssignVariable => renderAssignment(assign)
+    case variable: BeDefineVariable => variable.initValue.map(value => renderAssignment(BeAssignVariable(variable, value))).getOrElse("")
     case ifElse: BeIfElse => renderIfElse(ifElse)
     case whileExpr: BeWhile => renderDoUntil(whileExpr)
     case repeat: BeRepeatNr => renderRepeat(repeat)

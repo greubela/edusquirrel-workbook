@@ -76,11 +76,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   private def normalized(state: ProgrammingState): String = state.toPython.code.trim
 
-  /**
-   * Exercise every representation boundary rather than only checking that one
-   * generated string looks plausible.  Python is the canonical comparison
-   * format because Snap adds project metadata and Java changes surface syntax.
-   */
+  /** Snap saves project variables as well as scripts, so compare execution across that boundary. */
   private def assertAllRoundTrips(source: String, includeJava: Boolean = true)(assertSnap: String => Unit = _ => ()): Unit = {
     val expression = ProgrammingStatePythonString(source).toBeExpression
     val expected = normalized(expression)
@@ -103,7 +99,10 @@ class ProgrammingStateConversionSpec extends FunSuite {
     } else Nil
 
     (baseConversions ++ javaConversions).foreach { (route, result) =>
-      assertEquals(normalized(result), expected, clue = route)
+      if route.contains("Snap") then
+        assertEquals(result.toBeExpression.turtleCommandExecutionInfo.completedCommands,
+          expression.turtleCommandExecutionInfo.completedCommands, clue = route)
+      else assertEquals(normalized(result), expected, clue = route)
     }
 
     val serializableStates = List[ProgrammingState](expression, expression.toPython, snap) ++
@@ -112,7 +111,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
       val restored = ProgrammingState.serializer.deserialize(
         ProgrammingState.serializer.serialize(state)
       )
-      assertEquals(normalized(restored), expected, clue = s"serialized ${state.getClass.getSimpleName}")
+      assertEquals(normalized(restored), normalized(state), clue = s"serialized ${state.getClass.getSimpleName}")
     }
   }
 
@@ -137,7 +136,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
         |forward(steps)
         |""".stripMargin
     ) { xml =>
-      assert(xml.contains("""s="doSetVar"""), clue = xml)
+      assert(xml.contains("""<variable name="steps"><l>10</l></variable>"""), clue = xml)
       assert(xml.contains("""s="doChangeVar"""), clue = xml)
       assert(xml.contains("""var="steps"""), clue = xml)
     }
@@ -552,7 +551,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   }
 
   test("compiling Java preserves a separate Snap state's ids during read-only conversions") {
-    val xml = """<project><scripts><script x="70" y="80"><block id="kept-forward" s="forward"><l>12</l></block></script></scripts></project>"""
+    val xml = """<project><scripts><script x="70" y="80"><block s="receiveGo"/><block id="kept-forward" s="forward"><l>12</l></block></script></scripts></project>"""
     val snap = ProgrammingStateSnapXml(xml)
     val fingerprint = snap.fingerprint()
     val stored = ProgrammingState.serializer.serialize(snap)
