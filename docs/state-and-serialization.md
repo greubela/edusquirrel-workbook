@@ -135,15 +135,14 @@ of immediate storage.
 | `MINOR` | Intermediate edit |
 | `MAJOR` | Significant edit |
 
-`SyncControl.requestStore` requests synchronization; it does not guarantee that
+`SyncControl.store` requests synchronization; it does not guarantee that
 an offline or unauthenticated server has committed the value. Each destination's
 `SyncStrategy` selects events. Current local defaults use IndexedDB with
 `SYNC_LAST_AND_MAJOR`; configured remote destinations use `SYNC_MAJOR`. Reports
 and the workbook's cloud indicator describe actual synchronization status.
-Sync caches select the newest timestamp for each key and reject conflicting
-entries at the same newest timestamp. Refreshing after a write failure retains the
-existing reconciliation behavior; successful refresh alone does not prove a write
-succeeded.
+Sync caches retain confirmed observations in request order; a delayed response
+cannot overwrite a newer confirmation. Successful refresh alone does not prove
+that a write succeeded.
 Importance does not by itself run every grader; see the current grading paths in
 [interaction architecture](workbook-interaction-architecture.md).
 
