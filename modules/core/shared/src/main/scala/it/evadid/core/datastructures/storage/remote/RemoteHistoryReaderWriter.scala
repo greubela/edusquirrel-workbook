@@ -10,11 +10,11 @@ import scala.concurrent.Future
 /** Readers query event ranges; writers must idempotently merge events instead of replacing histories. */
 trait RemoteHistoryReaderWriter[K, T, GA, SA] {
   def reader: RemoteHistoryDataReader[K, T, GA, SA]
-  def writer: RemoteDataWriter[K, InteractionVariableHistory[T, GA, SA]]
+  def writer: RemoteReaderWriter.RemoteDataWriter[K, InteractionVariableHistory[T, GA, SA]]
 }
 
 /** Data reader for event-based history. */
-trait RemoteHistoryDataReader[K, T, GA, SA] extends RemoteDataReader[K, List[InteractionEvent[T, GA, SA]]] {
+trait RemoteHistoryDataReader[K, T, GA, SA] extends RemoteReaderWriter.RemoteDataReader[K, List[InteractionEvent[T, GA, SA]]] {
   /** Both bounds are inclusive. Return the complete range, without pagination/truncation; missing keys mean empty ranges.
     * Apply the strategy to the stored history before applying the timestamp bounds.
     */
