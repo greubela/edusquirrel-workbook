@@ -5,6 +5,8 @@ import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 
 case class Slideshow(
                       override val elementId: String,
@@ -31,10 +33,13 @@ case class Slideshow(
   override val defaultValue = SlideshowState(panels.map(_.asRef), Set.empty)
 
   override val serializerInteractionContent: Serializer[SlideshowState] = defaultValue.serializer()
-  override def format: InteractionFormat[SlideshowState, Unit, Unit] = Slideshow.format
+  override def format: InteractionFormat[SlideshowState, Unit, Unit] = Slideshow
 }
 
 object Slideshow extends InteractionFormat[SlideshowState, Unit, Unit] {
+  override def stateSerializer: Serializer[SlideshowState] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[SlideshowState, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[SlideshowState, Unit, Unit]] = Serializer.fromImplicitRW
   val factory: WorkbookElementFactory[Slideshow] = new WorkbookElementFactory[Slideshow] {
     override lazy val elementMapAndOrderForConstructorLike = Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("panels", false)))
 
@@ -50,8 +55,4 @@ object Slideshow extends InteractionFormat[SlideshowState, Unit, Unit] {
       toFactoryBase(element)
         .withElementsAddedAs[WorkbookElementReference]("panels", element.panels.map(_.asRef))
   }
-
-  override def stateSerializer: Serializer[SlideshowState] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[SlideshowState, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[SlideshowState, Unit, Unit]] = Serializer.fromImplicitRW
 }

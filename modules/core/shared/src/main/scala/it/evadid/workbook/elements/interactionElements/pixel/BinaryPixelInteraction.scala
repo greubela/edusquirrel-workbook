@@ -7,6 +7,8 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.model.pixel.*
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.*
 
 /** Unit-weight threshold detector over explicitly selected pixels; no training is implied. */
@@ -34,6 +36,7 @@ case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId
   override val serializerInteractionContent: Serializer[BinaryPixelImage] =
     Serializer.fromUpickleJson(summon[ReadWriter[BinaryPixelImage]]).map(checked, checked)
   override val associatedFactory = BinaryPixelInteraction.factory
+  override def format: InteractionFormat[BinaryPixelImage, Unit, Unit] = BinaryPixelInteraction
   def toggle(image: BinaryPixelImage, position: PixelPosition): BinaryPixelImage = checked(image).toggle(position)
   def matchingPixels(image: BinaryPixelImage): Option[Int] = {
     val valid = checked(image)
@@ -47,9 +50,11 @@ case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId
     val valid = checked(image)
     probes.map(_.activates(valid))
   }
-  override def format: InteractionFormat[BinaryPixelImage, Unit, Unit] = BinaryPixelInteraction.format
 }
 object BinaryPixelInteraction extends InteractionFormat[BinaryPixelImage, Unit, Unit] {
+  override def stateSerializer: Serializer[BinaryPixelImage] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[BinaryPixelImage, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[BinaryPixelImage, Unit, Unit]] = Serializer.fromImplicitRW
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[BinaryPixelInteraction] {
     override protected val constructorFieldOrder = List("elementId", "title", "initial", "expected", "probes", "presets")
     override def finishSerialization(base: WorkbookElementSerializable, e: BinaryPixelInteraction): WorkbookElementSerializable =
@@ -60,8 +65,4 @@ object BinaryPixelInteraction extends InteractionFormat[BinaryPixelImage, Unit, 
         e.getElementAs[Option[BinaryPixelImage]]("expected"), e.getElementAs[List[PixelThresholdProbe]]("probes"),
         e.getElementAs[List[PixelPreset]]("presets"))
   }
-
-  override def stateSerializer: Serializer[BinaryPixelImage] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[BinaryPixelImage, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[BinaryPixelImage, Unit, Unit]] = Serializer.fromImplicitRW
 }

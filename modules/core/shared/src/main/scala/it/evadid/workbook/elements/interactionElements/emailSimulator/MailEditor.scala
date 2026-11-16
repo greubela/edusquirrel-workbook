@@ -5,6 +5,8 @@ import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.*
 
 case class MailEditor(elementId: String, initialInbox: InboxState = InboxState.empty,
@@ -16,9 +18,12 @@ case class MailEditor(elementId: String, initialInbox: InboxState = InboxState.e
   override val defaultValue = InboxStateScaffolding(initialInbox.normalized)
   override val serializerInteractionContent = MailEditor.mailEditorSer
   def isPassed: Boolean = interactionVariable.currentValue.inboxState.sortingResult.passed
-  override def format: InteractionFormat[InboxStateScaffolding, Unit, Unit] = MailEditor.format
+  override def format: InteractionFormat[InboxStateScaffolding, Unit, Unit] = MailEditor
 }
 object MailEditor extends InteractionFormat[InboxStateScaffolding, Unit, Unit] {
+  override def stateSerializer: Serializer[InboxStateScaffolding] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[InboxStateScaffolding, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[InboxStateScaffolding, Unit, Unit]] = Serializer.fromImplicitRW
   val mailEditorSer: Serializer[InboxStateScaffolding] = Serializer.fromUpickleJson(summon[ReadWriter[InboxStateScaffolding]])
   val factory: WorkbookElementFactory.SimpleWorkbookElementFactory[MailEditor] =
     new WorkbookElementFactory.SimpleWorkbookElementFactory[MailEditor] {
@@ -31,8 +36,4 @@ object MailEditor extends InteractionFormat[InboxStateScaffolding, Unit, Unit] {
           element.getOptionalElementAs[String]("account", "opa.jürgen@gmail.com"),
           element.getOptionalElementAs[Boolean]("allowCompose", true))
     }
-
-  override def stateSerializer: Serializer[InboxStateScaffolding] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[InboxStateScaffolding, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[InboxStateScaffolding, Unit, Unit]] = Serializer.fromImplicitRW
 }

@@ -2,7 +2,7 @@
 
 ## Overview
 
-`InteractionFormat` is a trait that provides a **type-level association** between an interaction type and its serializers. This enables backend-side serialization/deserialization of interaction histories without requiring runtime access to interaction instances.
+`InteractionFormat` is a **sealed trait** that provides a **type-level association** between an interaction type and its serializers. Each interaction type has exactly one format instance (implemented as a case object that extends the trait), which is naturally serializable because case objects are singletons.
 
 ## Problem Statement
 
@@ -21,7 +21,7 @@ This was problematic for:
 
 The `InteractionFormat` trait provides:
 ```scala
-trait InteractionFormat[T, GA, SA] {
+sealed trait InteractionFormat[T, GA, SA] derives ReadWriter {
   def stateSerializer: Serializer[T]
   def historySerializer: Serializer[InteractionVariableHistory[T, GA, SA]]
   def exerciseSerializer: Serializer[WorkbookInteractionElementFull[T, GA, SA]]
@@ -30,17 +30,18 @@ trait InteractionFormat[T, GA, SA] {
 
 ### Key Design Decisions
 
-1. **No Registry** - Formats are passed explicitly through method signatures
-2. **Serializable Object** - Format itself can be serialized and passed across server boundaries
-3. **Type-Safe** - Compiler enforces format consistency
-4. **Explicit in Signatures** - Method parameters declare their format requirements
+1. **Sealed Trait with Case Objects** - Each interaction type has a single format instance (case object)
+2. **Naturally Serializable** - Case objects are singletons and can be serialized/deserialized
+3. **No Registry** - Formats are passed explicitly through method signatures
+4. **Type-Safe** - Compiler enforces format consistency
+5. **Explicit in Signatures** - Method parameters declare their format requirements
 
 ## Usage
 
 ### 1. In Interaction Definitions
 
 ```scala
-// Define your interaction with format override
+// Define your interaction - interaction class does NOT extend InteractionFormat
 case class MyInteraction(
   override val elementId: String,
   config: String
@@ -49,11 +50,18 @@ case class MyInteraction(
   override def format: InteractionFormat[MyState, MyGrade, MyScaffold] = MyInteraction.format
 }
 
-// In the companion object, extend InteractionFormat
+// In the companion object, extend InteractionFormat (the format instance)
 object MyInteraction extends InteractionFormat[MyState, MyGrade, MyScaffold] {
-  // Implement serializers (typically using fromReadWriters)
+  // Implement the three required serializers
+  override def stateSerializer: Serializer[MyState] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[MyState, MyGrade, MyScaffold]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[MyState, MyGrade, MyScaffold]] = Serializer.fromImplicitRW
 }
 ```
+
+### Why Case Objects?
+
+Case objects are naturally serializable because they are singletons. When you serialize a case object, you're serializing the object reference (its name), not its contents. When deserialized, you get back the same singleton instance. This makes `InteractionFormat` instances safe to pass across server boundaries.
 
 ### 2. Using Format on the Backend
 
@@ -73,9 +81,18 @@ def handleSyncElement(format: InteractionFormat[State, Grade, Scaffold], element
 ### 3. Direct Format Creation
 
 ```scala
-// Create format directly with fromReadWriters
+// Create format directly with fromReadWriters (creates anonymous trait instance)
 val format = InteractionFormat.fromReadWriters[State, Grade, Scaffold]
+
+// Or create with explicit serializers
+val format = InteractionFormat(
+  stateSer = Serializer.fromImplicitRW[State],
+  historySer = Serializer.fromImplicitRW[InteractionVariableHistory[State, Grade, Scaffold]],
+  exerciseSer = Serializer.fromImplicitRW[WorkbookInteractionElementFull[State, Grade, Scaffold]]
+)
 ```
+
+**Note:** The `fromReadWriters` and `apply` methods create new anonymous instances. These are useful when you need a format but don't have a companion object. However, for production code, prefer defining the format as a case object (by having the companion extend `InteractionFormat`) because case objects are naturally serializable.
 
 ## Integration Points
 
@@ -88,8 +105,8 @@ def fetchHistory(format: InteractionFormat[State, Grade, Scaffold], elementId: S
   Future.successful(format.historySerializer.deserialize(json))
 }
 
-// Usage
-fetchHistory(TextInteraction.format, "text-interaction-123")
+// Usage - pass the companion object which IS the format instance
+fetchHistory(TextInteraction, "text-interaction-123")  // TextInteraction extends InteractionFormat
 ```
 
 ### Backend Server
@@ -109,6 +126,18 @@ case class StoreInteractionCommand[State, Grade, Scaffold](
 ```
 
 ## Implementation Details
+
+### Why Case Objects for Formats?
+
+Case objects are naturally serializable because they are **singletons**. When you serialize a case object:
+1. Only the object's name (fully qualified path) is serialized
+2. When deserialized, you get back the same singleton instance
+3. No instance data is serialized (except what's in the companion object itself)
+
+This makes `InteractionFormat` instances safe to pass across server boundaries without worrying about:
+- Serialization of non-serializable serializers (the case object itself is just a reference)
+- Deserialization creating new instances (the same singleton is reused)
+- State inconsistencies across servers
 
 ### Type Safety
 
@@ -146,21 +175,14 @@ The implementation is fully compatible with existing code:
 
 ### For Existing Interactions
 
-1. Remove `derives upickle.default.ReadWriter` from the case class
-2. Add `override def format` method to return the companion's format
-3. Make companion object extend `InteractionFormat`
+1. The interaction class should NOT extend `InteractionFormat`
+2. Add `override def format` method that returns the companion object (which IS the format)
+3. Make companion object extend `InteractionFormat[T, GA, SA]`
 4. Implement the three serializer methods (use `fromReadWriters`)
 
 Example:
 ```scala
-// Before
-case class TextInteraction(...) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter
-
-object TextInteraction {
-  // ...
-}
-
-// After
+// Before (with explicit format method returning companion.format)
 case class TextInteraction(...) extends WorkbookInteractionElement[String] {
   override def format: InteractionFormat[String, Unit, Unit] = TextInteraction.format
 }
@@ -195,10 +217,12 @@ class MyInteractionSpec extends FunSuite {
 
 ## Best Practices
 
-1. **Always override format**: Each interaction should override `format` to use the companion's format
-2. **Pass format explicitly**: Don't rely on registry lookups; pass format as method parameter
-3. **Use fromReadWriters**: Default to `fromReadWriters` unless custom serialization is needed
-4. **Document custom serializers**: If using custom serializers, explain why
+1. **Interaction class extends `WorkbookInteractionElementFull`** - NOT `InteractionFormat`
+2. **Companion object extends `InteractionFormat`** - The companion IS the format instance
+3. **`format` method returns companion** - Use `MyInteraction` not `MyInteraction.format`
+4. **Pass format explicitly** - Don't rely on registry lookups; pass format as method parameter
+5. **Use fromReadWriters** - Default to `fromReadWriters` unless custom serialization is needed
+6. **Document custom serializers** - If using custom serializers, explain why
 
 ## Examples in Codebase
 
@@ -212,11 +236,22 @@ See these interactions for working examples:
 | Aspect | Registry-Based | Explicit Format Passing (Implemented) |
 |--------|---------------|--------------------------------------|
 | Backend lookup | `InteractionFormat.forElementId("id")` | Pass format as method parameter |
-| Cross-server portability | ❌ Element ID might not exist | ✅ Format is serializable object |
+| Cross-server portability | ❌ Element ID might not exist | ✅ Format is serializable case object |
 | Type safety | Runtime check (Option) | Compile-time type check |
 | Method signatures | `def sync(elementId: String)` | `def sync(format: Format, elementId: String)` |
 | Testability | Needs registry setup | Pass format directly |
 | Server boundaries | ❌ Needs registry on each server | ✅ Format passed as data |
+| Format instance | Registry lookup | Companion object (case object singleton) |
+
+### Why Case Objects for Formats?
+
+The case object approach was chosen because:
+
+1. **Naturally Serializable** - Case objects are singletons and serialize as just their name
+2. **No Serialization Issues** - Serializers inside the object don't need to be serializable
+3. **Type-Safe** - Each interaction type has exactly one format instance
+4. **No Registry Needed** - Works on servers that don't know about all element types
+5. **Simple** - Just extend the trait, no additional boilerplate
 
 ### Why Explicit Format Passing?
 
@@ -246,3 +281,8 @@ The `InteractionFormat` trait provides:
 - **No registry dependency** - works without knowing all element types upfront
 
 This approach solves the core problem: **serialization without interaction instances or registry lookups**.
+
+## See Also
+
+- [`interaction-format-serialization.md`](interaction-format-serialization.md) - Detailed explanation of the case object design and why it's used for `InteractionFormat`
+- [`session-data-serialization.md`](session-data-serialization.md) - How SessionData uses InteractionHistoryJson for storing format with history

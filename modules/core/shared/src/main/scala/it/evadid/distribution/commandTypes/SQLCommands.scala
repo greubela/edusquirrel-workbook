@@ -6,6 +6,7 @@ import it.evadid.sql.DatabaseConfiguration
 import it.evadid.sql.DatabaseHistoryFormat
 import it.evadid.sql.DatabaseTable
 import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import upickle.default.*
 
 object SQLCommands {
@@ -26,7 +27,7 @@ object SQLCommands {
 
   case class StoreToDbRequest(
                                syncContext: SyncContext,
-                               historyJson: String,
+                               history: InteractionHistoryJson[?, ?, ?],
                                databaseConfig: DatabaseConfiguration,
                                databaseFormat: DatabaseHistoryFormat
                              ) extends DbRequest derives ReadWriter {

@@ -8,6 +8,7 @@ import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.scaffolding.AdditionalInfoLlmScaffolding

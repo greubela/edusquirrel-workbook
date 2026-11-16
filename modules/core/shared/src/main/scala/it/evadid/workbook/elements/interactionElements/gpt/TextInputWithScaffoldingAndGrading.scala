@@ -5,6 +5,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
 

@@ -6,6 +6,8 @@ import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.model.blockchain.*
 import upickle.default.*
 
@@ -32,7 +34,7 @@ case class SquareMiddleHashInteraction(elementId: String, title: LanguageMapCont
   override val defaultValue = initial
   override val serializerInteractionContent = Serializer.fromUpickleJson(summon[ReadWriter[SquareMiddleHashAnswer]])
   override val associatedFactory = SquareMiddleHashInteraction.factory
-  override def format: InteractionFormat[SquareMiddleHashAnswer, Unit, Unit] = SquareMiddleHashInteraction.format
+  override def format: InteractionFormat[SquareMiddleHashAnswer, Unit, Unit] = SquareMiddleHashInteraction
 
   def results(answer: SquareMiddleHashAnswer): List[Option[SquareMiddleHashResult]] = task match {
     case _: FindHashPreimage => List(SquareMiddleHash.parse(answer.first))
@@ -50,6 +52,9 @@ case class SquareMiddleHashInteraction(elementId: String, title: LanguageMapCont
 }
 
 object SquareMiddleHashInteraction extends InteractionFormat[SquareMiddleHashAnswer, Unit, Unit] {
+  override def stateSerializer: Serializer[SquareMiddleHashAnswer] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[SquareMiddleHashAnswer, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[SquareMiddleHashAnswer, Unit, Unit]] = Serializer.fromImplicitRW
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[SquareMiddleHashInteraction] {
     override protected val constructorFieldOrder = List("elementId", "title", "task", "initial")
 
@@ -60,8 +65,4 @@ object SquareMiddleHashInteraction extends InteractionFormat[SquareMiddleHashAns
       SquareMiddleHashInteraction(e.elementId, e.getElementAs[LanguageMapContentId]("title"),
         e.getElementAs[SquareMiddleHashTask]("task"), e.getElementAs[SquareMiddleHashAnswer]("initial"))
   }
-
-  override def stateSerializer: Serializer[SquareMiddleHashAnswer] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[SquareMiddleHashAnswer, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[SquareMiddleHashAnswer, Unit, Unit]] = Serializer.fromImplicitRW
 }

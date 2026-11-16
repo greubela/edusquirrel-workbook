@@ -103,7 +103,7 @@ trait WorkbookInteractionElementFull[T: ReadWriter, GA: ReadWriter, SA: ReadWrit
     * Override this in your interaction to provide type-level association
     * between the interaction and its format.
     */
-  def format: InteractionFormat[T, GA, SA] = InteractionFormat.fromReadWriters[T, GA, SA]
+  def format: InteractionFormat[T, GA, SA]
 }
 
 type WorkbookInteractionElement[T] = WorkbookInteractionElementFull[T, Unit, Unit]

@@ -8,6 +8,9 @@ import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import upickle.default.*
 
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
+
 case class ChoiceAnswer(selected: List[Int] = Nil) derives ReadWriter {
   require(selected.forall(_ >= 0) && selected.distinct == selected, "Selections must be unique nonnegative indices")
 }
@@ -32,9 +35,12 @@ case class ChoiceInteraction(elementId: String, prompt: LanguageMapContentId, op
   }
   def isAnswered(answer: ChoiceAnswer): Boolean = isValid(answer) && answer.selected.nonEmpty
   def isCorrect(answer: ChoiceAnswer): Option[Boolean] = expected.map(xs => isAnswered(answer) && xs.toSet == answer.selected.toSet)
-  override def format: InteractionFormat[ChoiceAnswer, Unit, Unit] = ChoiceInteraction.format
+  override def format: InteractionFormat[ChoiceAnswer, Unit, Unit] = ChoiceInteraction
 }
 object ChoiceInteraction extends InteractionFormat[ChoiceAnswer, Unit, Unit] {
+  override def stateSerializer: Serializer[ChoiceAnswer] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[ChoiceAnswer, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[ChoiceAnswer, Unit, Unit]] = Serializer.fromImplicitRW
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[ChoiceInteraction] {
     override protected val constructorFieldOrder = List("elementId", "prompt", "options", "allowMultiple", "expected")
     override def finishSerialization(base: WorkbookElementSerializable, e: ChoiceInteraction): WorkbookElementSerializable =
@@ -44,8 +50,4 @@ object ChoiceInteraction extends InteractionFormat[ChoiceAnswer, Unit, Unit] {
       ChoiceInteraction(e.elementId, e.getElementAs[LanguageMapContentId]("prompt"), e.getElementAs[List[LanguageMapContentId]]("options"),
         e.getOptionalElementAs[Boolean]("allowMultiple", false), e.getOptionalElementAs[Option[List[Int]]]("expected", None))
   }
-
-  override def stateSerializer: Serializer[ChoiceAnswer] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[ChoiceAnswer, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[ChoiceAnswer, Unit, Unit]] = Serializer.fromImplicitRW
 }

@@ -7,6 +7,8 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.*
 
 case class SketchDownloadInteraction(
@@ -24,10 +26,13 @@ case class SketchDownloadInteraction(
   override val serializerInteractionContent: Serializer[String] = Serializer.fromUpickleJson(summon[ReadWriter[String]])
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override def format: InteractionFormat[String, Unit, Unit] = SketchDownloadInteraction.format
+  override def format: InteractionFormat[String, Unit, Unit] = SketchDownloadInteraction
 }
 
 object SketchDownloadInteraction extends InteractionFormat[String, Unit, Unit] {
+  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
   val factory = new SimpleWorkbookElementFactory[SketchDownloadInteraction]() {
     override protected val constructorFieldOrder = List("elementId", "buttonLabel", "filename", "sketchContent", "unlockWhenReorderCorrect")
 
@@ -43,8 +48,4 @@ object SketchDownloadInteraction extends InteractionFormat[String, Unit, Unit] {
       SketchDownloadInteraction(f.elementId, f.getElementAs[LanguageMapContentId]("buttonLabel"), f.getElementAs("filename"), f.getElementAs("sketchContent"), f.getElementAs("unlockWhenReorderCorrect"))
     }
   }
-
-  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
 }

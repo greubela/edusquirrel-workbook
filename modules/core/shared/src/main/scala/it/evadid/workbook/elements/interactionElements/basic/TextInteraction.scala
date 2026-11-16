@@ -1,10 +1,12 @@
-package it.evadid.workbook.elements.interactionElements.basic
+﻿package it.evadid.workbook.elements.interactionElements.basic
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import UpdateImportance.{MAJOR, MINOR, TEMPORARY}
 import it.evadid.workbook.interaction.variable.InteractionVariableState.InteractionVariableStateChanged
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.{NoContentElementFactory, SimpleWorkbookElementFactory}
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
@@ -16,18 +18,17 @@ case class TextInteraction(override val elementId: String) extends WorkbookInter
   override val associatedFactory = TextInteraction.factory
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val defaultValue: String = ""
-  override def format: InteractionFormat[String, Unit, Unit] = TextInteraction.format
+  override def format: InteractionFormat[String, Unit, Unit] = TextInteraction
 }
 
 object TextInteraction extends InteractionFormat[String, Unit, Unit] {
+  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
 
   val factory: NoContentElementFactory[TextInteraction] = new NoContentElementFactory[TextInteraction]() {
     override def callConstructor(elementId: String): TextInteraction = TextInteraction(elementId)
   }
-
-  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
 
   def decideTextareaUpdateImportance(change: InteractionVariableStateChanged[String]): UpdateImportance =
     if (change.lastState.value == change.newState.value) TEMPORARY else {

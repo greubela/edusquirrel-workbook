@@ -5,6 +5,8 @@ import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.model.evacuation.EvacuationFloorPlan
 import upickle.default.*
 
@@ -25,9 +27,12 @@ case class EvacuationConstructFloorInteraction(elementId: String,
     Serializer.fromUpickleJson(summon[ReadWriter[EvacuationFloorPlan]])
   override val associatedFactory = EvacuationConstructFloorInteraction.factory
   def isPassed: Boolean = requirements.isSatisfiedBy(interactionVariable.currentValue)
-  override def format: InteractionFormat[EvacuationFloorPlan, Unit, Unit] = EvacuationConstructFloorInteraction.format
+  override def format: InteractionFormat[EvacuationFloorPlan, Unit, Unit] = EvacuationConstructFloorInteraction
 }
 object EvacuationConstructFloorInteraction extends InteractionFormat[EvacuationFloorPlan, Unit, Unit] {
+  override def stateSerializer: Serializer[EvacuationFloorPlan] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[EvacuationFloorPlan, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[EvacuationFloorPlan, Unit, Unit]] = Serializer.fromImplicitRW
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[EvacuationConstructFloorInteraction] {
     override protected val constructorFieldOrder = List("elementId", "initial", "requirements")
     override def finishSerialization(base: WorkbookElementSerializable, e: EvacuationConstructFloorInteraction): WorkbookElementSerializable =
@@ -36,8 +41,4 @@ object EvacuationConstructFloorInteraction extends InteractionFormat[EvacuationF
       EvacuationConstructFloorInteraction(e.elementId, e.getElementAs[EvacuationFloorPlan]("initial"),
         e.getElementAs[EvacuationFloorRequirements]("requirements"))
   }
-
-  override def stateSerializer: Serializer[EvacuationFloorPlan] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[EvacuationFloorPlan, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[EvacuationFloorPlan, Unit, Unit]] = Serializer.fromImplicitRW
 }

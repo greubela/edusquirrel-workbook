@@ -35,11 +35,12 @@ case class Workbook(
   override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = Workbook.factory
 
 
-  def loadDataNoUserCheck(logger: Logger, data: Map[SyncContext, String], executionContextInformation: ExecutionContextInformation): Unit = {
+  def loadDataNoUserCheck(logger: Logger, data: Map[SyncContext, InteractionHistoryJson[?, ?, ?]], executionContextInformation: ExecutionContextInformation): Unit = {
     allInteractionsInThisInstance.foreach(curInteraction => {
       data.keys.foreach(curSyncContext => {
         if (curInteraction.interactionVariable.keyForSerialization == curSyncContext.keyForSerialisation) {
-          curInteraction.interactionVariable.addSerializedHistory(logger, data(curSyncContext), executionContextInformation)
+          val historyJson = data(curSyncContext)
+          curInteraction.interactionVariable.addSerializedHistoryFromInteractionHistoryJson(logger, historyJson, executionContextInformation)
         }
       })
     })

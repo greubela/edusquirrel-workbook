@@ -10,10 +10,15 @@ import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookEleme
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.ReadWriter
 
 import upickle.default.*
 object LabeledNumberInteraction extends InteractionFormat[String, Unit, Unit] {
+  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
 
   /**
    * Describes the kind of numeric value a [[LabeledNumberInteraction]] edits.
@@ -48,11 +53,6 @@ object LabeledNumberInteraction extends InteractionFormat[String, Unit, Unit] {
       )
     }
   }
-
-  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
-
 }
 
 case class LabeledNumberInteraction(
@@ -67,6 +67,6 @@ case class LabeledNumberInteraction(
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val serializerInteractionContent: Serializer[String] = Serializer.fromUpickleJson(summon[ReadWriter[String]])
-  override def format: InteractionFormat[String, Unit, Unit] = LabeledNumberInteraction.format
+  override def format: InteractionFormat[String, Unit, Unit] = LabeledNumberInteraction
 
 }

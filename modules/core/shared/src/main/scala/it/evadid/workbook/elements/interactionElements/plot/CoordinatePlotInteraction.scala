@@ -7,6 +7,8 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.model.plot.*
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.*
 
 /** A learner-authored graph. Bounds validate the answer; they do not grade a hypothesis. */
@@ -17,6 +19,7 @@ case class CoordinatePlotInteraction(elementId: String, title: LanguageMapConten
   override val defaultValue = PlotAnswer()
   override lazy val childrenOfThisElement = Nil
   override val associatedFactory = CoordinatePlotInteraction.factory
+  override def format: InteractionFormat[PlotAnswer, Unit, Unit] = CoordinatePlotInteraction
   def checked(answer: PlotAnswer): PlotAnswer = {
     require(answer.points.forall(p => xAxis.contains(p.x) && yAxis.contains(p.y)), "Points must be within the plot axes")
     answer.copy(points = answer.points.sortBy(_.x))
@@ -24,9 +27,11 @@ case class CoordinatePlotInteraction(elementId: String, title: LanguageMapConten
   def put(answer: PlotAnswer, point: PlotPoint): PlotAnswer = checked(checked(answer).put(point))
   override val serializerInteractionContent: Serializer[PlotAnswer] =
     Serializer.fromUpickleJson(summon[ReadWriter[PlotAnswer]]).map(checked, checked)
-  override def format: InteractionFormat[PlotAnswer, Unit, Unit] = CoordinatePlotInteraction.format
 }
 object CoordinatePlotInteraction extends InteractionFormat[PlotAnswer, Unit, Unit] {
+  override def stateSerializer: Serializer[PlotAnswer] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[PlotAnswer, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[PlotAnswer, Unit, Unit]] = Serializer.fromImplicitRW
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[CoordinatePlotInteraction] {
     override protected val constructorFieldOrder = List("elementId", "title", "xLabel", "yLabel", "xAxis", "yAxis")
     override def finishSerialization(base: WorkbookElementSerializable, e: CoordinatePlotInteraction): WorkbookElementSerializable =
@@ -37,8 +42,4 @@ object CoordinatePlotInteraction extends InteractionFormat[PlotAnswer, Unit, Uni
         e.getElementAs[LanguageMapContentId]("xLabel"), e.getElementAs[LanguageMapContentId]("yLabel"),
         e.getElementAs[PlotAxis]("xAxis"), e.getElementAs[PlotAxis]("yAxis"))
   }
-
-  override def stateSerializer: Serializer[PlotAnswer] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[PlotAnswer, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[PlotAnswer, Unit, Unit]] = Serializer.fromImplicitRW
 }

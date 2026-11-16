@@ -10,6 +10,7 @@ import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, WorkbookInteractionScaffolder}
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 

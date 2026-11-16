@@ -4,6 +4,8 @@ package it.evadid.workbook.elements.interactionElements.todo
 /*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.model.abstractions.WorkbookElement
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 
 case class SingleChoiceInteraction(
                                     override val id: String,

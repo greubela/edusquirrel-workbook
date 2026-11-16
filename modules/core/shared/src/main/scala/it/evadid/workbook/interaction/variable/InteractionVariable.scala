@@ -89,6 +89,17 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
     updateHistory(_.mergeWith(deserialized), executionContextInformation)
   }
 
+  /** Add history from an InteractionHistoryJson, using the format's serializer. */
+  def addSerializedHistoryFromInteractionHistoryJson(logger: Logger, historyJson: InteractionHistoryJson[T, GA, SA], executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
+    val deserialized = try {
+      historyJson.toHistory
+    } catch case (err: Throwable) => {
+      logger.logExceptionWarn("Ignoring serialized history from InteractionHistoryJson as it was not parsable!", err)
+      InteractionVariableHistory.empty[T, GA, SA]
+    }
+    updateHistory(_.mergeWith(deserialized), executionContextInformation)
+  }
+
   def updateHistory(func: InteractionVariableHistory[T, GA, SA] => InteractionVariableHistory[T, GA, SA], executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
     innerState.update(oldVal => {
       val transformedHistory = func(oldVal)

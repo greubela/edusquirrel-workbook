@@ -6,6 +6,8 @@ import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.*
 
 case class NeuronParameters(weights: List[Double], threshold: Double) derives ReadWriter {
@@ -30,14 +32,17 @@ case class ThresholdNeuronInteraction(elementId: String, inputLabels: List[Langu
   override val defaultValue = initial
   override val serializerInteractionContent = Serializer.fromUpickleJson(summon[ReadWriter[NeuronParameters]])
   override val associatedFactory = ThresholdNeuronInteraction.factory
+  override def format: InteractionFormat[NeuronParameters, Unit, Unit] = ThresholdNeuronInteraction
   def matches(parameters: NeuronParameters): List[Boolean] = {
     require(parameters.weights.size == inputLabels.size, "Wrong number of weights")
     examples.map(e => parameters.activates(e.inputs) == e.expected)
   }
   def isPassed(parameters: NeuronParameters): Boolean = matches(parameters).forall(identity)
-  override def format: InteractionFormat[NeuronParameters, Unit, Unit] = ThresholdNeuronInteraction.format
 }
 object ThresholdNeuronInteraction extends InteractionFormat[NeuronParameters, Unit, Unit] {
+  override def stateSerializer: Serializer[NeuronParameters] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[NeuronParameters, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[NeuronParameters, Unit, Unit]] = Serializer.fromImplicitRW
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[ThresholdNeuronInteraction] {
     override protected val constructorFieldOrder = List("elementId", "inputLabels", "examples", "initial")
     override def finishSerialization(base: WorkbookElementSerializable, e: ThresholdNeuronInteraction): WorkbookElementSerializable =
@@ -46,8 +51,4 @@ object ThresholdNeuronInteraction extends InteractionFormat[NeuronParameters, Un
       ThresholdNeuronInteraction(e.elementId, e.getElementAs[List[LanguageMapContentId]]("inputLabels"),
         e.getElementAs[List[NeuronExample]]("examples"), e.getElementAs[NeuronParameters]("initial"))
   }
-
-  override def stateSerializer: Serializer[NeuronParameters] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[NeuronParameters, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[NeuronParameters, Unit, Unit]] = Serializer.fromImplicitRW
 }

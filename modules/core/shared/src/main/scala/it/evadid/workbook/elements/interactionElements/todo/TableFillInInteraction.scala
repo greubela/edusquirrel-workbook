@@ -5,6 +5,8 @@ package it.evadid.workbook.elements.interactionElements.todo
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.model.interaction.WorkbookInteraction
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 
 case class TableFillInInteraction(
                                    override val id: String,

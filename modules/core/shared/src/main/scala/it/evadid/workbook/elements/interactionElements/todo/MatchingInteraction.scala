@@ -6,6 +6,8 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.model.abstractions.WorkbookElement
 import it.evadid.workbook.model.interaction.WorkbookInteraction
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 
 case class MatchingInteraction(
                                 override val id: String,

@@ -6,6 +6,8 @@ import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.model.compression.CompressionExperiment
 import upickle.default.*
 
@@ -21,9 +23,12 @@ case class CompressionExperimentInteraction(elementId: String, title: LanguageMa
   override val serializerInteractionContent: Serializer[CompressionExperiment] =
     Serializer.fromUpickleJson(summon[ReadWriter[CompressionExperiment]]).map(checked, checked)
   override val associatedFactory = CompressionExperimentInteraction.factory
-  override def format: InteractionFormat[CompressionExperiment, Unit, Unit] = CompressionExperimentInteraction.format
+  override def format: InteractionFormat[CompressionExperiment, Unit, Unit] = CompressionExperimentInteraction
 }
 object CompressionExperimentInteraction extends InteractionFormat[CompressionExperiment, Unit, Unit] {
+  override def stateSerializer: Serializer[CompressionExperiment] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[CompressionExperiment, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[CompressionExperiment, Unit, Unit]] = Serializer.fromImplicitRW
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[CompressionExperimentInteraction] {
     override protected val constructorFieldOrder = List("elementId", "title", "initial")
     override def finishSerialization(base: WorkbookElementSerializable, e: CompressionExperimentInteraction): WorkbookElementSerializable =
@@ -31,8 +36,4 @@ object CompressionExperimentInteraction extends InteractionFormat[CompressionExp
     override def finishDeserialization(e: WorkbookElementSerializable): CompressionExperimentInteraction =
       CompressionExperimentInteraction(e.elementId, e.getElementAs[LanguageMapContentId]("title"), e.getElementAs[CompressionExperiment]("initial"))
   }
-
-  override def stateSerializer: Serializer[CompressionExperiment] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[CompressionExperiment, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[CompressionExperiment, Unit, Unit]] = Serializer.fromImplicitRW
 }

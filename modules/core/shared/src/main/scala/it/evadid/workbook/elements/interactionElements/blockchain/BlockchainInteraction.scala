@@ -6,6 +6,8 @@ import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.model.blockchain.TeachingChain
 import upickle.default.*
 
@@ -23,13 +25,16 @@ case class BlockchainInteraction(elementId: String, title: LanguageMapContentId,
 
   override val serializerInteractionContent = Serializer.fromUpickleJson(summon[ReadWriter[TeachingChain]]).map(validate, validate)
   override val associatedFactory = BlockchainInteraction.factory
-  override def format: InteractionFormat[TeachingChain, Unit, Unit] = BlockchainInteraction.format
+  override def format: InteractionFormat[TeachingChain, Unit, Unit] = BlockchainInteraction
 
   def isCorrect(value: TeachingChain): Boolean =
     value.blocks.size == initial.blocks.size && value.validPrefixLength(difficultyZeros) == value.blocks.size
 }
 
 object BlockchainInteraction extends InteractionFormat[TeachingChain, Unit, Unit] {
+  override def stateSerializer: Serializer[TeachingChain] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[TeachingChain, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[TeachingChain, Unit, Unit]] = Serializer.fromImplicitRW
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[BlockchainInteraction] {
     override protected val constructorFieldOrder = List("elementId", "title", "initial", "difficultyZeros")
 
@@ -40,8 +45,4 @@ object BlockchainInteraction extends InteractionFormat[TeachingChain, Unit, Unit
       BlockchainInteraction(e.elementId, e.getElementAs[LanguageMapContentId]("title"),
         e.getElementAs[TeachingChain]("initial"), e.getElementAs[Int]("difficultyZeros"))
   }
-
-  override def stateSerializer: Serializer[TeachingChain] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[TeachingChain, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[TeachingChain, Unit, Unit]] = Serializer.fromImplicitRW
 }

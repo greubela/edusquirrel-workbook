@@ -3,6 +3,8 @@ package it.evadid.workbook.elements.interactionElements.todo
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.model.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 
 case class CategorizationInteraction(
                                       override val id: String,

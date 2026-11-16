@@ -8,6 +8,7 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingEditorPalette}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
 import scala.util.Try

@@ -6,6 +6,8 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.*
 
 /** Requirements apply to payload bytes, not character count or padded codewords. */
@@ -37,9 +39,12 @@ case class CreateQrCodeInteraction(elementId: String, requirements: QrCodeRequir
   override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
   override val associatedFactory: WorkbookElementFactory[CreateQrCodeInteraction] = CreateQrCodeInteraction.factory
   def isPassed: Boolean = requirements.isSatisfiedBy(interactionVariable.currentValue)
-  override def format: InteractionFormat[QrCode, Unit, Unit] = CreateQrCodeInteraction.format
+  override def format: InteractionFormat[QrCode, Unit, Unit] = CreateQrCodeInteraction
 }
 object CreateQrCodeInteraction extends InteractionFormat[QrCode, Unit, Unit] {
+  override def stateSerializer: Serializer[QrCode] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[QrCode, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[QrCode, Unit, Unit]] = Serializer.fromImplicitRW
   val factory: WorkbookElementFactory.SimpleWorkbookElementFactory[CreateQrCodeInteraction] =
     new WorkbookElementFactory.SimpleWorkbookElementFactory[CreateQrCodeInteraction] {
       override protected val constructorFieldOrder = List("elementId", "requirements", "initialCode")
@@ -50,8 +55,4 @@ object CreateQrCodeInteraction extends InteractionFormat[QrCode, Unit, Unit] {
           element.getOptionalElementAs[QrCodeRequirements]("requirements", QrCodeRequirements()),
           element.getOptionalElementAs[QrCode]("initialCode", QrCode.fromText("")))
     }
-
-  override def stateSerializer: Serializer[QrCode] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[QrCode, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[QrCode, Unit, Unit]] = Serializer.fromImplicitRW
 }

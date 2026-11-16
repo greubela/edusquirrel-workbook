@@ -6,13 +6,14 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.homepage.control.model.{AllWorkbookInfo, FullInfo, HomepageInfo}
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
 import it.evadid.workbook.interaction.sync.SyncContext
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import upickle.default.*
 
 import java.time.LocalDateTime
 import it.evadid.homepage.control.model.FullInfo.*
 case class SessionData(
                         timestampStorage: LocalDateTime,
-                        knownUsageData: Map[SyncContext, String],
+                        knownUsageData: Map[SyncContext, InteractionHistoryJson[?, ?, ?]],
                         userInfo: User,
                         userConfig: Option[UserConfig],
                         workbookInfo: AllWorkbookInfo) derives ReadWriter
@@ -27,10 +28,15 @@ object SessionData {
       val allInteractions: List[WorkbookInteractionUntyped] = homepageInfo.workbookInfo.map(_.loadedWorkbook.allContainedInteractionsById.values.toList).getOrElse(List())
       val userInfo = homepageInfo.userInfo.get.withoutCredentials()
       val workbookInfo = homepageInfo.workbookInfo.get
-      val historyMap: Map[SyncContext, String] = allInteractions.map(interaction => {
+      
+      // Create InteractionHistoryJson instances for each interaction
+      val historyMap: Map[SyncContext, InteractionHistoryJson[?, ?, ?]] = allInteractions.map(interaction => {
         val syncContext = homepageInfo.toContext.toSyncContext(interaction.interactionVariable.keyForSerialization)
-        val historySerialized = interaction.interactionVariable.serializerHistory.serialize(interaction.interactionVariable.currentHistory)
-        syncContext -> historySerialized
+        val historyJson = InteractionHistoryJson.fromHistory(
+          interaction.interactionVariable.format,
+          interaction.interactionVariable.currentHistory
+        )
+        syncContext -> historyJson
       }).toMap
 
       val data = SessionData(LocalDateTime.now(), historyMap, userInfo.user, Some(userInfo.config), workbookInfo)

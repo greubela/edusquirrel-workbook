@@ -12,6 +12,7 @@ import it.evadid.workbook.elements.interactionElements.basic.MessagingInteractio
 import it.evadid.workbook.interaction.sync.SyncControl
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.meta.ExecutionContextInformation
 import it.evadid.workbook.meta.ExecutionContextInformation.default.syncControl
 

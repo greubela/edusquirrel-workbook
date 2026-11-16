@@ -13,6 +13,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Pr
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.core.util.io.serializer.InteractionFormat
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
 case class TurtleRecreateShapeInteraction
@@ -36,10 +37,13 @@ case class TurtleRecreateShapeInteraction
       TurtleCommandUsageGrader.forLimits(elementId, exerciseConfig.maxCommandUsage)
   //val scaffoldingElement: Option[WorkbookInteractionScaffolder[ProgrammingState, ?]] = None
 
-  override def format: InteractionFormat[ProgrammingState, AdditionalProgrammingTestInfo, Unit] = TurtleRecreateShapeInteraction.format
+  override def format: InteractionFormat[ProgrammingState, AdditionalProgrammingTestInfo, Unit] = TurtleRecreateShapeInteraction
 }
 
 object TurtleRecreateShapeInteraction extends InteractionFormat[ProgrammingState, AdditionalProgrammingTestInfo, Unit] {
+  override def stateSerializer: Serializer[ProgrammingState] = ProgrammingState.serializer
+  override def historySerializer: Serializer[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit]] = Serializer.fromImplicitRW
 
   val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
     override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "comparisonPolicy", "customExerciseConfig")
@@ -62,8 +66,4 @@ object TurtleRecreateShapeInteraction extends InteractionFormat[ProgrammingState
         serialized.getOptionalElementAs[Option[RecreateTurtleDidacticConfig]]("customExerciseConfig", None),
       )
   }
-
-  override def stateSerializer: Serializer[ProgrammingState] = ProgrammingState.serializer
-  override def historySerializer: Serializer[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit]] = Serializer.fromImplicitRW
 }

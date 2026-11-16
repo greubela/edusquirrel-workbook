@@ -6,6 +6,8 @@ import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.*
 
 sealed trait AnswerTableCell derives ReadWriter
@@ -49,7 +51,7 @@ case class AnswerTableInteraction(elementId: String, caption: LanguageMapContent
   override val serializerInteractionContent: Serializer[TableAnswer] =
     Serializer.fromUpickleJson(summon[ReadWriter[TableAnswer]]).map(checked, checked)
   override val associatedFactory = AnswerTableInteraction.factory
-  override def format: InteractionFormat[TableAnswer, Unit, Unit] = AnswerTableInteraction.format
+  override def format: InteractionFormat[TableAnswer, Unit, Unit] = AnswerTableInteraction
 
   def editableIndex(row: Int, column: Int): Option[Int] = {
     require(row >= 0 && row < rows.size && column >= 0 && column < columnLabels.size, "Cell is outside the table")
@@ -80,6 +82,9 @@ case class AnswerTableInteraction(elementId: String, caption: LanguageMapContent
 }
 
 object AnswerTableInteraction extends InteractionFormat[TableAnswer, Unit, Unit] {
+  override def stateSerializer: Serializer[TableAnswer] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[TableAnswer, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[TableAnswer, Unit, Unit]] = Serializer.fromImplicitRW
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[AnswerTableInteraction] {
     override protected val constructorFieldOrder = List("elementId", "caption", "rowLabels", "columnLabels", "rows")
 
@@ -92,8 +97,4 @@ object AnswerTableInteraction extends InteractionFormat[TableAnswer, Unit, Unit]
         e.getElementAs[List[LanguageMapContentId]]("rowLabels"), e.getElementAs[List[LanguageMapContentId]]("columnLabels"),
         e.getElementAs[List[List[AnswerTableCell]]]("rows"))
   }
-
-  override def stateSerializer: Serializer[TableAnswer] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[TableAnswer, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[TableAnswer, Unit, Unit]] = Serializer.fromImplicitRW
 }

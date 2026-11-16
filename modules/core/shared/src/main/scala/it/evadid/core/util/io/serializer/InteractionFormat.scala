@@ -7,13 +7,14 @@ import upickle.default.*
 
 /** Type-level association between an interaction type and its serializers.
   *
-  * Each interaction should have exactly one format that provides:
+  * Each interaction has exactly one format that provides:
   * - `stateSerializer`: For serializing the interaction state (T)
   * - `historySerializer`: For serializing the interaction history
   * - `exerciseSerializer`: For serializing the interaction element itself
   *
-  * Unlike registry-based approaches, InteractionFormat is a **serializable object**
-  * that can be passed explicitly through method signatures. This makes it:
+  * InteractionFormat is a sealed trait with case objects as implementations.
+  * Case objects are naturally serializable (they're singletons), making the format
+  * serializable. This allows formats to be passed explicitly through method signatures:
   * - Portable across server boundaries (no elementId lookup needed)
   * - Explicit in method signatures (type-safe)
   * - Easy to test (pass format as parameter)
@@ -23,8 +24,8 @@ import upickle.default.*
   * case class MyInteraction(...) extends WorkbookInteractionElementFull[State, Grade, Scaffold] {
   *   override def format: InteractionFormat[State, Grade, Scaffold] = MyInteraction.format
   * }
-  * object MyInteraction extends InteractionFormat {
-  *   // format is provided by the trait
+  * object MyInteraction extends InteractionFormat[State, Grade, Scaffold] {
+  *   // formatters derive serializers automatically
   * }
   * }}}
   *
@@ -35,7 +36,7 @@ import upickle.default.*
   *   format.historySerializer.deserialize(json)
   * }}}
   */
-trait InteractionFormat[T, GA, SA] {
+sealed trait InteractionFormat[T, GA, SA] derives ReadWriter {
 
   /** Serializer for the interaction state (T).
     *
@@ -61,7 +62,10 @@ trait InteractionFormat[T, GA, SA] {
 
 object InteractionFormat {
 
-  /** Creates an InteractionFormat from three individual serializers. */
+  /** Creates an InteractionFormat from three individual serializers.
+    *
+    * This is typically used in interaction companion objects that extend the trait.
+    */
   def apply[T, GA, SA](
       stateSer: Serializer[T],
       historySer: Serializer[InteractionVariableHistory[T, GA, SA]],

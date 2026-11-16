@@ -19,3 +19,36 @@ Client state rule: keep changing application, editor and lifecycle state in `val
 Editor architecture: create only the selected editor, bind it to the central answer Var, and release it on Laminar unmount. Observe Var signals instead of adding editor-listener callbacks; treat all changes alike, without edit/restoration channels or synchronization-baseline stores. Panels are downstream GUI components receiving the central Var and task configuration, not contexts bound or activated by Eva. Run long computations in Futures and use workers where supported. Do not introduce fullscreen lifecycle interfaces or retained hidden editors. Derive UI flags from authoritative state (for example, a native handle determines fallback visibility) instead of storing copies.
 
 Persisted-data policy: the project is in development and supports only current saved schemas. Do not add migration readers, old field/tag aliases, or backward-compatible payloads. Catch malformed/unsupported data at storage boundaries and discard the affected record without crashing or clearing unrelated data.
+
+## Serialization Architecture
+
+### InteractionFormat Design
+
+`InteractionFormat` is a **sealed trait** with case objects as implementations. Each interaction type has exactly one format instance implemented as a case object that extends the trait.
+
+**Design principle**: Format instances should be serializable case objects, NOT classes or traits with anonymous instances.
+
+**Usage pattern**:
+```scala
+// Interaction class - does NOT extend InteractionFormat
+case class MyInteraction(...) extends WorkbookInteractionElementFull[T, GA, SA] {
+  override def format: InteractionFormat[T, GA, SA] = MyInteraction  // Returns companion object
+}
+
+// Companion object - IS the format instance
+object MyInteraction extends InteractionFormat[T, GA, SA] {
+  override def stateSerializer: Serializer[T] = ...
+  override def historySerializer: Serializer[InteractionVariableHistory[T, GA, SA]] = ...
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[T, GA, SA]] = ...
+}
+```
+
+**Why case objects**:
+- Case objects are naturally serializable (they're singletons)
+- Only the object's name is serialized, not its contents
+- No serialization issues with non-serializable fields (like `Serializer`)
+- Can be safely passed across server boundaries
+
+See also:
+- [docs/interaction-format.md](docs/interaction-format.md) - Overview of the InteractionFormat API
+- [docs/interaction-format-serialization.md](docs/interaction-format-serialization.md) - Detailed explanation of the serialization design
