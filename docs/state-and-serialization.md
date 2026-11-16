@@ -246,6 +246,34 @@ the same timestamp survive. `Since` includes the boundary by default; a future
 delta cache should replay that boundary instead of assuming timestamps are unique.
 No existing-history conversion or database-schema changes are included here.
 
+## Event-history cache
+
+[RemoteHistoryCache](../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryCache.scala)
+is a separate cache for the event-based model. Configure it with a map from each
+`RemoteHistoryReaderWriter` destination to its `EventSyncStrategy`. `mergeLocal`
+adds local events; `requestStoreToAll` / `storeAll` send only selected events not yet
+confirmed by that destination. Older offline events are still sent if unconfirmed.
+History `mergeWith` supports one history or a sequence and performs idempotent set
+union without implicit cleanup.
+
+`fetchEventsBetween(keys, starting, until)` returns timestamp-ordered event lists
+with inclusive bounds, merging results from the configured destinations.
+`fetchAll(keys)` requests their complete strategy-selected histories.
+`ensureMaxAge` checks successful tail-read completion times and incrementally reads
+from the latest event timestamp previously fetched for each key/destination.
+Equal-time events are replayed and deduplicated. Explicit historical windows do not
+advance this cursor or claim that the unread portions are fresh. Write acknowledgements
+never advance the read cursor. Delayed responses merge additively rather than replacing
+newer events.
+
+The [reader/writer contract](../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryReaderWriter.scala)
+requires readers to apply the destination strategy before the time bounds and return
+the complete requested range. Writers must merge events idempotently, never replace a
+full history with a delta. Register buffered operations before flushing them.
+An event-timestamp cursor cannot discover a later upload with an older timestamp;
+use an explicit range read or `fetchAll` to retrieve such arrivals. This prototype
+has no database/HTTP adapter yet and does not replace existing application sync.
+
 ## Definitions, answers and snapshots
 
 The exercise definition, learner answer and live controller are different things:

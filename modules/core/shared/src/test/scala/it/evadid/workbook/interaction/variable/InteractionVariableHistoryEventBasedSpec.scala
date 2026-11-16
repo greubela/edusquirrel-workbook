@@ -197,6 +197,20 @@ class InteractionVariableHistoryEventBasedSpec extends FunSuite {
     assertEquals(merged.timestampLastChanged, Some(time.plusSeconds(1)))
   }
 
+  test("history mergeWith combines single or multiple histories without cleaning or changing the inputs") {
+    val first = history(answer("first", 1), started("first", 1))
+    val second = history(grade("first", 1), hint("first", 1))
+    val third = history(answer("third", 2))
+    val combined = first.mergeWith(Seq(second, third, second))
+    assertEquals(combined.events.values, first.events.values ++ second.events.values ++ third.events.values)
+    assertEquals(first.mergeWith(second), second.mergeWith(first))
+    assertEquals(first.mergeWith(second).mergeWith(third), first.mergeWith(second.mergeWith(third)))
+    assertEquals(combined.mergeWith(combined), combined)
+    assertEquals(first.mergeWith(Seq.empty), first)
+    assertEquals(first.events.values.size, 2)
+    assert(combined.events.values.exists(_.updateImportance == UpdateImportance.TEMPORARY))
+  }
+
   test("every event and family, full history and every strategy round-trip through JSON and MessagePack") {
     val stream = history(answer("Grüße", 0), started("Grüße", 1), grade("Grüße", 2),
       ScaffoldingStartedEvent("Grüße", time.plusSeconds(3), FeedbackEntity.LlmEntity()), hint("Grüße", 4))

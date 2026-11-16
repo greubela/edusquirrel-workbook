@@ -37,6 +37,12 @@ case class InteractionVariableHistoryEventBased[T, GA, SA](events: InteractionEv
     GradedState(state, results)
   }
 
+  def mergeWith(other: InteractionVariableHistoryEventBased[T, GA, SA]): InteractionVariableHistoryEventBased[T, GA, SA] =
+    copy(events = events.merge(other.events))
+
+  def mergeWith(others: Seq[InteractionVariableHistoryEventBased[T, GA, SA]]): InteractionVariableHistoryEventBased[T, GA, SA] =
+    others.foldLeft(this)(_.mergeWith(_))
+
   def cleanWithStrategy(syncStrategy: EventSyncStrategy): InteractionVariableHistoryEventBased[T, GA, SA] =
     copy(events = InteractionEvents(syncStrategy.selectEvents(events.values)))
 

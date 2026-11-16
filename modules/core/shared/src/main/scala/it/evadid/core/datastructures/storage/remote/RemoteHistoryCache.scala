@@ -1,0 +1,173 @@
+package it.evadid.core.datastructures.storage.remote
+
+import it.evadid.core.datastructures.state.State
+import it.evadid.core.datastructures.state.observable.ObservableValue
+import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.*
+import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.interaction.sync.EventSyncStrategy
+import it.evadid.workbook.interaction.variable.InteractionVariableHistoryEventBased
+import it.evadid.workbook.interaction.variable.events.{InteractionEvent, InteractionEvents}
+import java.time.LocalDateTime
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Try}
+
+/** Additive event-history cache. Existing snapshot caches and interaction controls do not use it yet. */
+case class RemoteHistoryCache[K, T, GA, SA, RW <: RemoteHistoryReaderWriter[K, T, GA, SA]](
+    syncLogger: SyncLogger, cacheStrategies: Map[RW, EventSyncStrategy]) {
+  private given ExecutionContext = ExecutionContext.global
+  private type History = InteractionVariableHistoryEventBased[T, GA, SA]
+  private val state = State(CacheState[K, T, GA, SA, RW](Map.empty, cacheStrategies.keys.map(_ -> Map.empty[K, RemoteHistoryValue[T, GA, SA]]).toMap))
+
+  val updateReport: ObservableValue[Map[K, History]] = state.observable.deriveValue(_.histories)
+  val reports: ObservableValue[Map[K, CacheReportForKey[K, T, GA, SA, RW]]] = state.observable.deriveValue { current =>
+    current.histories.map { (key, history) =>
+      val known = current.destinations.flatMap((cache, values) => values.get(key).map(cache -> _))
+      val pending = cacheStrategies.map { (cache, strategy) =>
+        cache -> missing(history, known.getOrElse(cache, RemoteHistoryValue.empty).history, strategy)
+      }
+      key -> CacheReportForKey(key, history, known, pending)
+    }
+  }
+
+  private def attempt[A](operation: => Future[A]): Future[A] = Try(operation).fold(Future.failed, identity)
+  private def empty: History = InteractionVariableHistoryEventBased(InteractionEvents.empty)
+  private def later(a: Option[LocalDateTime], b: Option[LocalDateTime]): Option[LocalDateTime] = (a.toList ++ b).maxOption
+  private def missing(local: History, known: History, strategy: EventSyncStrategy): History =
+    InteractionVariableHistoryEventBased(InteractionEvents(local.cleanWithStrategy(strategy).events.values -- known.events.values))
+
+  def mergeLocal(histories: Map[K, History]): Unit = state.update { current =>
+    current.copy(histories = histories.foldLeft(current.histories) { case (merged, (key, history)) =>
+      merged.updated(key, merged.getOrElse(key, empty).mergeWith(history))
+    })
+  }
+
+  /** Freshness is measured by successful tail-read completion, independently of event timestamps and write acknowledgements. */
+  def ensureMaxAge(keys: Set[K], maximumAcceptableAge: LocalDateTime = LocalDateTime.now(),
+      forceFlush: Boolean = false): Future[Unit] = attempt {
+    if forceFlush then flush(true)
+    val current = state.now()
+    val requests = cacheStrategies.keys.toList.flatMap { cache =>
+      val outdated = keys.filter(key => current.destinations(cache).get(key)
+        .flatMap(_.fetchCompleted).forall(_.isBefore(maximumAcceptableAge)))
+      outdated.groupBy(key => current.destinations(cache).get(key).flatMap(_.fetchedThrough))
+        .toList.map((cursor, selected) => (cache, selected, cursor))
+    }
+    Future.traverse(requests)((cache, selected, cursor) =>
+      fetch(cache, selected, cursor, LocalDateTime.MAX, forceFlush, trackProgress = true)).map(_ => ())
+  }
+
+  /** Query explicit windows without claiming the unread portions of a history have been refreshed. */
+  def fetchEventsBetween(keys: Seq[K], starting: LocalDateTime, until: LocalDateTime,
+      forceFlush: Boolean = false): Future[Map[K, List[InteractionEvent[T, GA, SA]]]] = attempt {
+    require(!until.isBefore(starting), "History range end must not precede its start")
+    if forceFlush then flush(true)
+    Future.traverse(cacheStrategies.keys)(cache =>
+      fetch(cache, keys.toSet, Some(starting), until, forceFlush, trackProgress = false)).map(combine)
+  }
+
+  def fetchAll(keys: Set[K], forceFlush: Boolean = false): Future[Map[K, List[InteractionEvent[T, GA, SA]]]] = attempt {
+    if forceFlush then flush(true)
+    Future.traverse(cacheStrategies.keys)(cache =>
+      fetch(cache, keys, None, LocalDateTime.MAX, forceFlush, trackProgress = true)).map(combine)
+  }
+
+  private def combine(responses: Iterable[Map[K, History]]): Map[K, List[InteractionEvent[T, GA, SA]]] =
+    responses.flatMap(_.toList).groupMapReduce(_._1)(_._2)(_.mergeWith(_))
+      .map((key, history) => key -> history.events.values.toList.sortBy(_.timestamp))
+
+  private def fetch(cache: RW, keys: Set[K], starting: Option[LocalDateTime], until: LocalDateTime,
+      forceFlush: Boolean, trackProgress: Boolean): Future[Map[K, History]] = attempt {
+    if keys.isEmpty then Future.successful(Map.empty) else {
+      val strategy = cacheStrategies(cache)
+      val pending = starting match {
+        case None => cache.reader.fetchAll(syncLogger, keys, strategy)
+        case Some(from) => cache.reader.fetchEventsBetween(syncLogger, keys.toSeq, from, until, strategy)
+      }
+      cache.reader.flush(syncLogger, forceFlush)
+      pending.map { response =>
+        val completed = LocalDateTime.now()
+        val received = keys.map { key =>
+          val bounded = response.getOrElse(key, Nil).filter(event =>
+            starting.forall(from => !event.timestamp.isBefore(from)) && !event.timestamp.isAfter(until))
+          key -> InteractionVariableHistoryEventBased(InteractionEvents(bounded.toSet)).cleanWithStrategy(strategy)
+        }.toMap
+        state.update { current =>
+          val remote = received.foldLeft(current.destinations(cache)) { case (values, (key, history)) =>
+            val previous = values.getOrElse(key, RemoteHistoryValue.empty)
+            values.updated(key, previous.copy(
+              history = previous.history.mergeWith(history),
+              fetchCompleted = if trackProgress then later(previous.fetchCompleted, Some(completed)) else previous.fetchCompleted,
+              fetchedThrough = if trackProgress then later(previous.fetchedThrough, history.events.timestampLastChanged) else previous.fetchedThrough))
+          }
+          val histories = received.foldLeft(current.histories) { case (histories, (key, history)) =>
+            histories.updated(key, histories.getOrElse(key, empty).mergeWith(history))
+          }
+          current.copy(histories = histories, destinations = current.destinations.updated(cache, remote))
+        }
+        received
+      }
+    }
+  }.andThen { case Failure(error) => syncLogger.logExceptionWarn(s"Could not fetch event histories for ${keys.size} keys", error) }
+
+  def requestStore(cache: RW, histories: Map[K, History], forceFlush: Boolean = false): Future[Unit] = attempt {
+    require(cacheStrategies.contains(cache), "Cannot store to an unconfigured history destination")
+    mergeLocal(histories)
+    if forceFlush then flush(true)
+    val current = state.now()
+    val deltas = histories.keys.flatMap { key =>
+      val known = current.destinations(cache).getOrElse(key, RemoteHistoryValue.empty).history
+      val delta = missing(current.histories(key), known, cacheStrategies(cache))
+      Option.when(delta.events.values.nonEmpty)(key -> delta)
+    }.toMap
+    if deltas.isEmpty then Future.unit else {
+      val pending = cache.writer.writeAll(syncLogger, deltas)
+      cache.writer.flush(syncLogger, forceFlush)
+      pending.map[Unit] { _ =>
+        state.update { latest =>
+          val remote = deltas.foldLeft(latest.destinations(cache)) { case (values, (key, delta)) =>
+            val previous = values.getOrElse(key, RemoteHistoryValue.empty)
+            // Acknowledging a write never advances the independent read cursor.
+            values.updated(key, previous.copy(history = previous.history.mergeWith(delta)))
+          }
+          latest.copy(destinations = latest.destinations.updated(cache, remote))
+        }
+      }
+    }
+  }.andThen { case Failure(error) => syncLogger.logExceptionWarn(s"Could not store event histories for ${histories.size} keys", error) }
+
+  def requestStoreToAll(histories: Map[K, History], forceFlush: Boolean = false): Future[Unit] = {
+    mergeLocal(histories)
+    Future.traverse(cacheStrategies.keys)(cache => requestStore(cache, histories, forceFlush)).map(_ => ())
+  }
+
+  def storeAll(forceFlush: Boolean = false): Future[Unit] = requestStoreToAll(state.now().histories, forceFlush)
+
+  def flush(forceFlush: Boolean = true): Unit = cacheStrategies.keys.foreach { cache =>
+    cache.writer.flush(syncLogger, forceFlush)
+    cache.reader.flush(syncLogger, forceFlush)
+  }
+}
+
+object RemoteHistoryCache {
+  case class RemoteHistoryValue[T, GA, SA](
+      history: InteractionVariableHistoryEventBased[T, GA, SA],
+      fetchCompleted: Option[LocalDateTime],
+      fetchedThrough: Option[LocalDateTime])
+
+  object RemoteHistoryValue {
+    def empty[T, GA, SA]: RemoteHistoryValue[T, GA, SA] =
+      RemoteHistoryValue(InteractionVariableHistoryEventBased(InteractionEvents.empty), None, None)
+  }
+
+  private case class CacheState[K, T, GA, SA, RW](
+      histories: Map[K, InteractionVariableHistoryEventBased[T, GA, SA]],
+      destinations: Map[RW, Map[K, RemoteHistoryValue[T, GA, SA]]])
+
+  case class CacheReportForKey[K, T, GA, SA, RW](
+      key: K,
+      localHistory: InteractionVariableHistoryEventBased[T, GA, SA],
+      lastKnownValues: Map[RW, RemoteHistoryValue[T, GA, SA]],
+      pendingWrites: Map[RW, InteractionVariableHistoryEventBased[T, GA, SA]]) {
+    lazy val syncedDestinations: Set[RW] = pendingWrites.collect { case (cache, delta) if delta.events.values.isEmpty => cache }.toSet
+  }
+}
