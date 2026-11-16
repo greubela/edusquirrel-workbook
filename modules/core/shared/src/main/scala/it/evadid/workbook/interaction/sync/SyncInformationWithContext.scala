@@ -24,24 +24,14 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
 
   /** Read the history for a specific context. */
   def readHistory[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](context: SyncContext)(implicit ec: ExecutionContext): Future[InteractionVariableHistory[T, GA, SA]] = {
-    handler.readHistoryJson(context).flatMap { response =>
-      SyncDestinationHistoryHandler.readHistoryFrom(
-        it.evadid.core.util.io.Serializer.fromUpickleJson(InteractionVariableHistory.derived$ReadWriter[T, GA, SA]),
-        context,
-        response
-      ).toEither match {
-        case Right(history) => Future.successful(history)
-        case Left(error) => Future.failed(new RuntimeException(error.getMessage, error.throwable.getOrElse(null)))
-      }
-    }
+    handler.readHistory[T, GA, SA](context)
   }
 
   /** Read all histories for the usage context. */
   def readHistories[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](variables: Seq[InteractionVariable[T, GA, SA]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[T, GA, SA]]] = {
-    handler.readHistoriesJson(usageContext).flatMap { response =>
-      val serializer = it.evadid.core.util.io.Serializer.fromUpickleJson(InteractionVariableHistory.derived$ReadWriter[T, GA, SA])
-      Future.successful(SyncDestinationHistoryHandler.readHistoriesFrom(variables, usageContext, response))
-    }
+    val handlerTyped = handler.asInstanceOf[SyncDestinationHistoryHandler]
+    handlerTyped.readHistories(usageContext, variables.asInstanceOf[Seq[InteractionVariable[?, ?, ?]]])
+      .map(_.asInstanceOf[Map[SyncContext, InteractionVariableHistory[T, GA, SA]]])
   }
 
   /** Write the history for a specific context. The history is serialized using the derived ReadWriter. */
