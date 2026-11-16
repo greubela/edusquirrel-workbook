@@ -2,12 +2,13 @@ package it.evadid.workbook.elements.interactionElements.blockchain
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.model.blockchain.*
 import upickle.default.*
 
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
 sealed trait SquareMiddleHashTask derives ReadWriter
 
 case class ExploreSquareMiddleHash() extends SquareMiddleHashTask derives ReadWriter
@@ -25,11 +26,13 @@ case class SquareMiddleHashAnswer(first: String = "", second: String = "") deriv
 
 case class SquareMiddleHashInteraction(elementId: String, title: LanguageMapContentId,
                                        task: SquareMiddleHashTask = ExploreSquareMiddleHash(), initial: SquareMiddleHashAnswer = SquareMiddleHashAnswer())
-  extends WorkbookInteractionElement[SquareMiddleHashAnswer] derives upickle.default.ReadWriter {
+  extends WorkbookInteractionElement[SquareMiddleHashAnswer] {
+
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = initial
   override val serializerInteractionContent = Serializer.fromUpickleJson(summon[ReadWriter[SquareMiddleHashAnswer]])
   override val associatedFactory = SquareMiddleHashInteraction.factory
+  override def format: InteractionFormat[SquareMiddleHashAnswer, Unit, Unit] = SquareMiddleHashInteraction.format
 
   def results(answer: SquareMiddleHashAnswer): List[Option[SquareMiddleHashResult]] = task match {
     case _: FindHashPreimage => List(SquareMiddleHash.parse(answer.first))
@@ -46,7 +49,7 @@ case class SquareMiddleHashInteraction(elementId: String, title: LanguageMapCont
   }
 }
 
-object SquareMiddleHashInteraction {
+object SquareMiddleHashInteraction extends InteractionFormat[SquareMiddleHashAnswer, Unit, Unit] {
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[SquareMiddleHashInteraction] {
     override protected val constructorFieldOrder = List("elementId", "title", "task", "initial")
 
@@ -57,4 +60,8 @@ object SquareMiddleHashInteraction {
       SquareMiddleHashInteraction(e.elementId, e.getElementAs[LanguageMapContentId]("title"),
         e.getElementAs[SquareMiddleHashTask]("task"), e.getElementAs[SquareMiddleHashAnswer]("initial"))
   }
+
+  override def stateSerializer: Serializer[SquareMiddleHashAnswer] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[SquareMiddleHashAnswer, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[SquareMiddleHashAnswer, Unit, Unit]] = Serializer.fromImplicitRW
 }

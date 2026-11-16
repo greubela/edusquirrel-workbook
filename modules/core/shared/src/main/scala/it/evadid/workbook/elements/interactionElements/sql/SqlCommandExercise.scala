@@ -1,6 +1,8 @@
 package it.evadid.workbook.elements.interactionElements.sql
 
 import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
@@ -10,24 +12,20 @@ import upickle.default.*
  */
 final case class SqlDatabaseConfig(databaseName: String)
 
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
-
-object SqlDatabaseConfig {
-  given ReadWriter[SqlDatabaseConfig] = macroRW
-}
-
 final case class SqlCommandExercise(
                                      override val elementId: String,
                                      databaseConfig: SqlDatabaseConfig,
                                      initialSql: String = "SELECT * FROM table_name;"
-                                   ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
+                                   ) extends WorkbookInteractionElement[String] {
+
   override val associatedFactory = SqlCommandExercise.factory
   override val defaultValue: String = initialSql
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
+  override def format: InteractionFormat[String, Unit, Unit] = SqlCommandExercise.format
 }
 
-object SqlCommandExercise {
+object SqlCommandExercise extends InteractionFormat[String, Unit, Unit] {
   val factory: WorkbookElementFactory[SqlCommandExercise] = new WorkbookElementFactory[SqlCommandExercise] {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
 
@@ -41,4 +39,8 @@ object SqlCommandExercise {
 
     override lazy val writerJsonRegularRefBased: Writer[SqlCommandExercise] = macroRW
   }
+
+  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
 }
