@@ -46,13 +46,8 @@ case class InteractionHistoryJson[T, GA, SA](
   /** Get the last timestamp from the history without full deserialization.
     *
     * Returns the timestamp as a string to preserve exact precision (nanoseconds).
-    * This ensures that re-serialization produces identical JSON, which is important
-    * because:
-    * - The database stores timestamps as VARCHAR(40) with full ISO format
-    * - MySQL may not preserve nanosecond precision if timestamps are stored as DATETIME
-    * - We need the same event to be recognized as identical after round-trip
-    * 
-    * For database operations, use lastTimestampString to avoid precision loss.
+    * While `LocalDateTime` supports nanosecond precision (9 fractional digits),
+    * using the exact string ensures events are identical after serialization round-trips.
     */
   def lastTimestampString: Option[String] = {
     val value = ujson.read(historyJson)
@@ -66,10 +61,10 @@ case class InteractionHistoryJson[T, GA, SA](
 
   /** Get the last timestamp from the history without full deserialization.
     *
-    * Note: This method parses the timestamp string to LocalDateTime, which may
-    * lose precision if the original timestamp had nanoseconds and the parsing
-    * truncates to microseconds or milliseconds. Use lastTimestampString instead
-    * when you need exact timestamp preservation for equality comparison.
+    * `LocalDateTime` supports nanosecond precision (9 fractional digits), which
+    * is sufficient for all use cases. This method parses the timestamp string,
+    * and precision is preserved since the format supports at least as much
+    * precision as `LocalDateTime`.
     */
   def lastTimestamp: Option[LocalDateTime] = lastTimestampString.map(LocalDateTime.parse)
 

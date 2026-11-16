@@ -164,6 +164,21 @@ This ensures:
 - Format is a case object, naturally serializable
 - History JSON is stored as a string for database compatibility
 
+## Timestamp Precision
+
+`LocalDateTime` in Scala supports nanosecond precision (9 fractional digits), which is more than sufficient for all use cases. The timestamp format used is:
+
+```
+yyyy-MM-ddTHH:mm:ss.nnnnnnnnn
+```
+
+This ensures:
+- All timestamps have at least nanosecond precision
+- `LocalDateTime` can represent any timestamp in this format without loss
+- Re-serialization produces identical JSON when using the same format
+
+The database stores timestamps as `VARCHAR(40)` with the full ISO format, preserving exact string representation. When fetched and re-serialized, events are recognized as identical because the same string format is used.
+
 ## Database Storage
 
 The database **does NOT store format information**. Instead:
@@ -175,13 +190,7 @@ The database **does NOT store format information**. Instead:
    - The interaction's companion object provides the format instance
    - `InteractionHistoryJson` wraps the format + JSON for client-server communication
 
-3. **Timestamp precision preservation**:
-   - Timestamps are stored as `VARCHAR(40)` with full ISO 8601 format
-   - Format: `yyyy-MM-ddTHH:mm:ss.nnnnnnnnn` (nanosecond precision)
-   - The string representation is preserved exactly - no parsing/serialization cycle
-   - This ensures the same event is recognized as identical after storage/retrieval
-
-4. **Why this design**:
+3. **Why this design**:
    - Database is a simple storage layer - only data, no metadata
    - Format is application metadata (which interaction type)
    - The client/server always has interaction definitions loaded
