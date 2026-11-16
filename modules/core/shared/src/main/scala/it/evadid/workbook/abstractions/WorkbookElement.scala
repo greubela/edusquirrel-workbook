@@ -5,18 +5,17 @@ import it.evadid.core.util.io.*
 import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
 import it.evadid.workbook.abstractions.scaffolding.WorkbookInteractionScaffolder
 import it.evadid.workbook.interaction.variable.InteractionVariable
-import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import it.evadid.workbook.jsonFactory.{SerializedWorkbookSnapshot, WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import it.evadid.core.util.io.serializer.InteractionFormat
 import upickle.default.*
 
 import scala.reflect.ClassTag.Nothing
 
 object WorkbookElement {
-  private case class Snapshot(rootId: String, elements: List[WorkbookElementSerializable]) derives upickle.default.ReadWriter
 
   // Keep the factory wire formats, but include the registry needed to resolve a
   // standalone container's references and section prerequisites.
-  given upickle.default.ReadWriter[WorkbookElement] = upickle.default.readwriter[Snapshot].bimap(
+  given upickle.default.ReadWriter[WorkbookElement] = upickle.default.readwriter[SerializedWorkbookSnapshot].bimap(
     element => {
       val collected = scala.collection.mutable.LinkedHashMap.empty[String, WorkbookElement]
       var pending = List(element)
@@ -35,7 +34,7 @@ object WorkbookElement {
             pending = current.childrenOfThisElement ++ prerequisites ++ pending
         }
       }
-      Snapshot(element.elementId, collected.valuesIterator.map(_.toSerialized).toList)
+      SerializedWorkbookSnapshot(element.elementId, collected.valuesIterator.map(_.toSerialized).toList)
     }, snapshot => WorkbookElementFactory.parseAllAsMap(snapshot.elements).getOrElse(snapshot.rootId,
       throw new IllegalArgumentException(s"Missing workbook root: ${snapshot.rootId}")))
 

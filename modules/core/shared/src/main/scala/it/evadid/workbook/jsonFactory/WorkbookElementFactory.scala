@@ -40,6 +40,11 @@ import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.S
 import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
 import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
 
+/** Snapshot of a serialized workbook for persistence/transport.
+  * Contains the root element reference and all serialized elements needed to reconstruct the workbook.
+  */
+case class SerializedWorkbookSnapshot(rootId: String, elements: List[WorkbookElementSerializable]) derives upickle.default.ReadWriter
+
 object WorkbookElementFactory {
 
   /** Compatibility base for leaf elements while keeping all serialization metadata in the factory. */
