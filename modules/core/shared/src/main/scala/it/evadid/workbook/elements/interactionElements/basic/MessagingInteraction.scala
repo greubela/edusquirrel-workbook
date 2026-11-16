@@ -6,11 +6,11 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.*
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.NoContentElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-import upickle.ReadWriter
-import upickle.default.macroRW
-import upickle.default.*
+import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-case class MessagingInteraction(override val elementId: String) extends WorkbookInteractionElement[MessengerModelScaffolding] derives upickle.default.ReadWriter {
+import upickle.ReadWriter
+case class MessagingInteraction(override val elementId: String) extends WorkbookInteractionElement[MessengerModelScaffolding] {
+
   override val associatedFactory: NoContentElementFactory[MessagingInteraction] = MessagingInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
@@ -18,21 +18,23 @@ case class MessagingInteraction(override val elementId: String) extends Workbook
   override val defaultValue: MessengerModelScaffolding = MessengerModelScaffolding(MessengerModel.empty)
 
   override val serializerInteractionContent: Serializer[MessengerModelScaffolding] = Serializer.fromUpickleJson(MessengerModelScaffolding.derived$ReadWriter)
+  override def format: InteractionFormat[MessengerModelScaffolding, Unit, Unit] = MessagingInteraction.format
 
 }
 
-object MessagingInteraction {
+object MessagingInteraction extends InteractionFormat[MessengerModelScaffolding, Unit, Unit] {
 
   val factory: NoContentElementFactory[MessagingInteraction] = new NoContentElementFactory[MessagingInteraction]() {
 
     override def callConstructor(elementId: String): MessagingInteraction = MessagingInteraction(elementId)
   }
 
-  case class MessengerModelScaffolding(messengerModel: MessengerModel) derives ReadWriter{
+  case class MessengerModelScaffolding(messengerModel: MessengerModel) derives ReadWriter {
 
   }
 
-
-
+  override def stateSerializer: Serializer[MessengerModelScaffolding] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[MessengerModelScaffolding, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[MessengerModelScaffolding, Unit, Unit]] = Serializer.fromImplicitRW
 
 }

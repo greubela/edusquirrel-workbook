@@ -6,11 +6,14 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SingleContentElementFactory
 
+import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class LabeledCheckboxInteraction(
                                        override val elementId: String,
                                        checkboxLabel: LanguageMapContentId
-                                     ) extends WorkbookInteractionElement[Boolean] derives upickle.default.ReadWriter {
+                                     ) extends WorkbookInteractionElement[Boolean] {
+
+  override def format: InteractionFormat[Boolean, Unit, Unit] = LabeledCheckboxInteraction.format
 
   override val associatedFactory: WorkbookElementFactory[LabeledCheckboxInteraction] = LabeledCheckboxInteraction.factory
 
@@ -21,12 +24,17 @@ case class LabeledCheckboxInteraction(
 
 }
 
-object LabeledCheckboxInteraction {
+object LabeledCheckboxInteraction extends InteractionFormat[Boolean, Unit, Unit] {
+
   val factory: SingleContentElementFactory[LabeledCheckboxInteraction] = new SingleContentElementFactory[LabeledCheckboxInteraction] {
 
     override def readContent(infoElement: LabeledCheckboxInteraction): LanguageMapContentId = infoElement.checkboxLabel
 
     override def finishDeserialization(elementId: String, content: LanguageMapContentId): LabeledCheckboxInteraction = LabeledCheckboxInteraction(elementId, content)
   }
+
+  override def stateSerializer: Serializer[Boolean] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[Boolean, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[Boolean, Unit, Unit]] = Serializer.fromImplicitRW
 
 }

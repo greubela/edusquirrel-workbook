@@ -4,16 +4,18 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import upickle.default.*
 
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class ChoiceAnswer(selected: List[Int] = Nil) derives ReadWriter {
   require(selected.forall(_ >= 0) && selected.distinct == selected, "Selections must be unique nonnegative indices")
 }
 
 /** expected=None is an opinion/reflection question, with no invented correct answer. */
 case class ChoiceInteraction(elementId: String, prompt: LanguageMapContentId, options: List[LanguageMapContentId],
-    allowMultiple: Boolean = false, expected: Option[List[Int]] = None) extends WorkbookInteractionElement[ChoiceAnswer] derives upickle.default.ReadWriter {
+    allowMultiple: Boolean = false, expected: Option[List[Int]] = None) extends WorkbookInteractionElement[ChoiceAnswer] {
+
   require(options.nonEmpty && options.distinct == options, "Provide distinct choices")
   require(expected.forall(xs => xs.nonEmpty && xs.distinct == xs && xs.forall(i => i >= 0 && i < options.size)
     && (allowMultiple || xs.size == 1)), "Invalid expected selection")
@@ -30,8 +32,9 @@ case class ChoiceInteraction(elementId: String, prompt: LanguageMapContentId, op
   }
   def isAnswered(answer: ChoiceAnswer): Boolean = isValid(answer) && answer.selected.nonEmpty
   def isCorrect(answer: ChoiceAnswer): Option[Boolean] = expected.map(xs => isAnswered(answer) && xs.toSet == answer.selected.toSet)
+  override def format: InteractionFormat[ChoiceAnswer, Unit, Unit] = ChoiceInteraction.format
 }
-object ChoiceInteraction {
+object ChoiceInteraction extends InteractionFormat[ChoiceAnswer, Unit, Unit] {
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[ChoiceInteraction] {
     override protected val constructorFieldOrder = List("elementId", "prompt", "options", "allowMultiple", "expected")
     override def finishSerialization(base: WorkbookElementSerializable, e: ChoiceInteraction): WorkbookElementSerializable =
@@ -41,4 +44,8 @@ object ChoiceInteraction {
       ChoiceInteraction(e.elementId, e.getElementAs[LanguageMapContentId]("prompt"), e.getElementAs[List[LanguageMapContentId]]("options"),
         e.getOptionalElementAs[Boolean]("allowMultiple", false), e.getOptionalElementAs[Option[List[Int]]]("expected", None))
   }
+
+  override def stateSerializer: Serializer[ChoiceAnswer] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[ChoiceAnswer, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[ChoiceAnswer, Unit, Unit]] = Serializer.fromImplicitRW
 }

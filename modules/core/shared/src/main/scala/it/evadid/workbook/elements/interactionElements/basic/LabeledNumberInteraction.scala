@@ -8,11 +8,12 @@ import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElem
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import upickle.default.ReadWriter
 
 import upickle.default.*
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
-object LabeledNumberInteraction {
+object LabeledNumberInteraction extends InteractionFormat[String, Unit, Unit] {
 
   /**
    * Describes the kind of numeric value a [[LabeledNumberInteraction]] edits.
@@ -48,6 +49,10 @@ object LabeledNumberInteraction {
     }
   }
 
+  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
+
 }
 
 case class LabeledNumberInteraction(
@@ -56,10 +61,12 @@ case class LabeledNumberInteraction(
                                      numberType: NumberType,
                                      override val defaultValue: String = "0",
                                      diff: BigDecimal = BigDecimal(1),
-                                   ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
+                                   ) extends WorkbookInteractionElement[String] {
+
   override val associatedFactory = LabeledNumberInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val serializerInteractionContent: Serializer[String] = Serializer.fromUpickleJson(summon[ReadWriter[String]])
+  override def format: InteractionFormat[String, Unit, Unit] = LabeledNumberInteraction.format
 
 }

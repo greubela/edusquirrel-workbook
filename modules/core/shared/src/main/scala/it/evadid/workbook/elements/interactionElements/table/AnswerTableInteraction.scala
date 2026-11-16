@@ -4,9 +4,10 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import upickle.default.*
 
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
 sealed trait AnswerTableCell derives ReadWriter
 
 case class FixedTableCell(content: LanguageMapContentId) extends AnswerTableCell derives ReadWriter
@@ -24,14 +25,15 @@ case class EditableTableCell(expected: Option[List[String]] = None, choices: Lis
 
 case class TableAnswer(values: List[String]) derives ReadWriter
 
-case class TableGrade(correct: Int, total: Int) derives upickle.default.ReadWriter {
+case class TableGrade(correct: Int, total: Int) derives ReadWriter {
   def passed: Boolean = total > 0 && correct == total
 }
 
 /** Learner values contain only editable cells, in row-major order. Fixed cells cannot be overwritten. */
 case class AnswerTableInteraction(elementId: String, caption: LanguageMapContentId,
                                   rowLabels: List[LanguageMapContentId], columnLabels: List[LanguageMapContentId], rows: List[List[AnswerTableCell]])
-  extends WorkbookInteractionElement[TableAnswer] derives upickle.default.ReadWriter {
+  extends WorkbookInteractionElement[TableAnswer] {
+
   require(rowLabels.nonEmpty && columnLabels.nonEmpty && rows.size == rowLabels.size && rows.forall(_.size == columnLabels.size),
     "Table labels and rectangular cells must have matching dimensions")
   val editableCells: List[EditableTableCell] = rows.flatten.collect { case c: EditableTableCell => c }
@@ -47,6 +49,7 @@ case class AnswerTableInteraction(elementId: String, caption: LanguageMapContent
   override val serializerInteractionContent: Serializer[TableAnswer] =
     Serializer.fromUpickleJson(summon[ReadWriter[TableAnswer]]).map(checked, checked)
   override val associatedFactory = AnswerTableInteraction.factory
+  override def format: InteractionFormat[TableAnswer, Unit, Unit] = AnswerTableInteraction.format
 
   def editableIndex(row: Int, column: Int): Option[Int] = {
     require(row >= 0 && row < rows.size && column >= 0 && column < columnLabels.size, "Cell is outside the table")
@@ -76,7 +79,7 @@ case class AnswerTableInteraction(elementId: String, caption: LanguageMapContent
   }
 }
 
-object AnswerTableInteraction {
+object AnswerTableInteraction extends InteractionFormat[TableAnswer, Unit, Unit] {
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[AnswerTableInteraction] {
     override protected val constructorFieldOrder = List("elementId", "caption", "rowLabels", "columnLabels", "rows")
 
@@ -89,4 +92,8 @@ object AnswerTableInteraction {
         e.getElementAs[List[LanguageMapContentId]]("rowLabels"), e.getElementAs[List[LanguageMapContentId]]("columnLabels"),
         e.getElementAs[List[List[AnswerTableCell]]]("rows"))
   }
+
+  override def stateSerializer: Serializer[TableAnswer] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[TableAnswer, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[TableAnswer, Unit, Unit]] = Serializer.fromImplicitRW
 }
