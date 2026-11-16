@@ -12,9 +12,10 @@ import upickle.default.*
   * - `historySerializer`: For serializing the interaction history
   * - `exerciseSerializer`: For serializing the interaction element itself
   *
-  * InteractionFormat is a sealed trait with case objects as implementations.
-  * Case objects are naturally serializable (they're singletons), making the format
-  * serializable. This allows formats to be passed explicitly through method signatures:
+  * InteractionFormat implementations are case objects (the companion objects
+  * of interaction classes). Case objects are naturally serializable (they're
+  * singletons), making the format serializable. This allows formats to be
+  * passed explicitly through method signatures:
   * - Portable across server boundaries (no elementId lookup needed)
   * - Explicit in method signatures (type-safe)
   * - Easy to test (pass format as parameter)
@@ -22,7 +23,7 @@ import upickle.default.*
   * Usage in interaction definitions:
   * {{{
   * case class MyInteraction(...) extends WorkbookInteractionElementFull[State, Grade, Scaffold] {
-  *   override def format: InteractionFormat[State, Grade, Scaffold] = MyInteraction.format
+  *   override def format: InteractionFormat[State, Grade, Scaffold] = MyInteraction
   * }
   * object MyInteraction extends InteractionFormat[State, Grade, Scaffold] {
   *   // formatters derive serializers automatically
@@ -36,7 +37,7 @@ import upickle.default.*
   *   format.historySerializer.deserialize(json)
   * }}}
   */
-sealed trait InteractionFormat[T, GA, SA] derives ReadWriter {
+trait InteractionFormat[T, GA, SA] {
 
   /** Serializer for the interaction state (T).
     *
@@ -89,4 +90,27 @@ object InteractionFormat {
       Serializer.fromImplicitRW[WorkbookInteractionElementFull[T, GA, SA]]
     )
 
+  /** ReadWriter for InteractionFormat.
+    *
+    * Format instances are case objects (singletons), so serialization only
+    * stores the fully qualified class name. Deserialization returns the
+    * singleton instance if the class is available.
+    */
+  given ReadWriter[InteractionFormat[?, ?, ?]] = ReadWriter.make[InteractionFormat[?, ?, ?]](
+    write = { format =>
+      val className = format.getClass.getName
+      ujson.Str(className)
+    },
+    read = { value =>
+      val className = value.str
+      try {
+        val clazz = Class.forName(className)
+        val field = clazz.getField("MODULE$")
+        field.get(null).asInstanceOf[InteractionFormat[?, ?, ?]]
+      } catch {
+        case e: Exception =>
+          throw upickle.default.ReadError(s"Failed to load InteractionFormat class $className: ${e.getMessage}", value)
+      }
+    }
+  )
 }

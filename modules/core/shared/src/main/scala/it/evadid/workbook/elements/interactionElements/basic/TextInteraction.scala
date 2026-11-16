@@ -18,7 +18,7 @@ case class TextInteraction(override val elementId: String) extends WorkbookInter
   override val associatedFactory = TextInteraction.factory
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val defaultValue: String = ""
-  override def format: InteractionFormat[String, Unit, Unit] = TextInteraction
+  override val format: InteractionFormat[String, Unit, Unit] = TextInteraction
 }
 
 object TextInteraction extends InteractionFormat[String, Unit, Unit] {
