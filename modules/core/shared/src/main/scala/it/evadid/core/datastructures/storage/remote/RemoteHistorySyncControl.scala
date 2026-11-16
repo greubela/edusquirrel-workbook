@@ -2,7 +2,7 @@ package it.evadid.core.datastructures.storage.remote
 
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncControl, SyncInformationWithContext}
-import it.evadid.workbook.interaction.variable.InteractionVariable
+import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 import it.evadid.workbook.interaction.variable.events.InteractionEvent
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
