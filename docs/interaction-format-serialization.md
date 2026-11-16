@@ -175,7 +175,13 @@ The database **does NOT store format information**. Instead:
    - The interaction's companion object provides the format instance
    - `InteractionHistoryJson` wraps the format + JSON for client-server communication
 
-3. **Why this design**:
+3. **Timestamp precision preservation**:
+   - Timestamps are stored as `VARCHAR(40)` with full ISO 8601 format
+   - Format: `yyyy-MM-ddTHH:mm:ss.nnnnnnnnn` (nanosecond precision)
+   - The string representation is preserved exactly - no parsing/serialization cycle
+   - This ensures the same event is recognized as identical after storage/retrieval
+
+4. **Why this design**:
    - Database is a simple storage layer - only data, no metadata
    - Format is application metadata (which interaction type)
    - The client/server always has interaction definitions loaded
