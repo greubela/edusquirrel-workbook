@@ -1,6 +1,7 @@
 package it.evadid.workbook.interaction.sync
 
 import it.evadid.core.datastructures.storage.remote.RemoteReaderWriter
+import it.evadid.core.datastructures.storage.remote.RemoteReaderWriter.{RemoteDataReader, RemoteDataWriter}
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
 import it.evadid.workbook.interaction.sync.model.SyncDirection.CLIENT_TO_SERVER
