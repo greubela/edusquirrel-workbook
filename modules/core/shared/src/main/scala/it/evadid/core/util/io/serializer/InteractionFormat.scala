@@ -28,9 +28,8 @@ import upickle.default.*
   * - Custom workbooks may use interaction formats not known to the server
   * - The format is needed on the server to deserialize the history JSON
   *
-  * The allowed format class names are stored in InteractionFormat.allowedFormats in the
-  * companion object. When deserializing, the class name is looked up in this set. If found,
-  * the format instance is loaded; if not found, a descriptive error is thrown.
+  * Since all formats are known at compile time, the client always has the format.
+  * If an unknown format is received, a descriptive formatNotKnown error is thrown.
   *
   * Usage in interaction definitions:
   * {{{
@@ -102,116 +101,24 @@ object InteractionFormat {
       Serializer.fromImplicitRW[WorkbookInteractionElementFull[T, GA, SA]]
     )
 
-  /** Set of allowed format class names for deserialization.
-    *
-    * This is the whitelist of formats that can be deserialized from received data.
-    * It ensures that only known interaction formats can be loaded, preventing
-    * arbitrary code execution from malicious payloads.
-    *
-    * All known interaction format class names are listed here. When a format is
-    * serialized, only its class name is stored. When deserializing, the class name
-    * is looked up in this set. If found, the format instance is loaded; if not found,
-    * a descriptive error is thrown.
-    */
-  val allowedFormats: Set[String] = Set(
-    // Basic interactions
-    "it.evadid.workbook.elements.interactionElements.basic.TextInteraction",
-    "it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction",
-    "it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction",
-    "it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction",
-    
-    // Choice interactions
-    "it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction",
-    
-    // SQL interactions
-    "it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise",
-    
-    // QR code interactions
-    "it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction",
-    
-    // Pixel interactions
-    "it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction",
-    
-    // Plot interactions
-    "it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction",
-    
-    // CodeTaskToggle interactions
-    "it.evadid.workbook.elements.interactionElements.codeTaskToggle.CodeTaskToggleInteraction",
-    "it.evadid.workbook.elements.interactionElements.codeTaskToggle.SketchDownloadInteraction",
-    
-    // EmailSimulator interactions
-    "it.evadid.workbook.elements.interactionElements.emailSimulator.MailInteraction",
-    "it.evadid.workbook.elements.interactionElements.emailSimulator.MailEditor",
-    
-    // Table interactions
-    "it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction",
-    
-    // Text interactions
-    "it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction",
-    
-    // Blockchain interactions
-    "it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction",
-    "it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction",
-    "it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHashInteraction",
-    
-    // Reorder interactions
-    "it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderCodeInteraction",
-    "it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderMapIdInteraction",
-    
-    // Sorting interactions
-    "it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.SortingInteraction",
-    "it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction",
-    
-    // Slideshow interactions
-    "it.evadid.workbook.elements.interactionElements.slideshow.Slideshow",
-    
-    // Neuron interactions
-    "it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction",
-    
-    // Evacuation interactions
-    "it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction",
-    "it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction",
-    
-    // Compression interactions
-    "it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction",
-    
-    // Programming interactions
-    "it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction",
-    
-    // Email interactions (Simulator)
-    "it.evadid.workbook.elements.interactionElements.emailSimulator.MailInteraction",
-    
-    // Evacuation interactions (Construct Floor)
-    "it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction",
-    
-    // Reorder interactions (MapId)
-    "it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderMapIdInteraction",
-    
-    // Sorting interactions (Reason)
-    "it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction"
-  )
-
   /** Read format by class name (for deserialization from stored class name).
     *
     * @param className The fully qualified class name of the format
     * @return The format instance (singleton case object)
-    * @throws RuntimeException if the format class is not in the allowedFormats set
+    * @throws RuntimeException if the format class is not known
     */
   def fromClassName(className: String): InteractionFormat[?, ?, ?] = {
-    if (!allowedFormats.contains(className)) {
-      throw new RuntimeException(
-        s"Format class '$className' is not allowed for deserialization. " +
-        s"This may indicate an unknown interaction type or potential security issue. " +
-        s"Allowed formats: ${allowedFormats.mkString(", ")}"
-      )
-    }
     try {
       val clazz = Class.forName(className)
       val field = clazz.getField("MODULE$")
       field.get(null).asInstanceOf[InteractionFormat[?, ?, ?]]
     } catch {
       case e: Exception =>
-        throw new RuntimeException(s"Failed to load InteractionFormat class $className: ${e.getMessage}", e)
+        throw new RuntimeException(
+          s"Format class '$className' is not known. " +
+          s"This may indicate an unknown interaction type. " +
+          s"Error: ${e.getMessage}"
+        )
     }
   }
 

@@ -12,18 +12,17 @@
 - No serialization issues with non-serializable fields (like `Serializer`)
 - Can be safely passed across server boundaries
 
-### 2. Format is Serializable
-**Critical Requirement**: `InteractionFormat` MUST be serializable because:
+### 2. Format is Serializable (Critical Requirement)
+`InteractionFormat` MUST be serializable because:
 - Format instances are passed from client to server as part of `InteractionHistoryJson`
 - Custom workbooks may use interaction formats not known to the server
 - The format is needed on the server to deserialize the history JSON
 
-### 3. Format Registration
-All allowed format class names are registered in `InteractionFormat.allowedFormats` via static initialization when the interaction companion objects are loaded. This happens automatically when the interaction definitions are imported/used.
-
-The registration happens in the companion object of each interaction, which extends `InteractionFormat`. When the object is loaded, it implicitly registers itself by calling `InteractionFormat.registerFormat`.
-
-**Alternative approach** (if static initialization doesn't work): Formats can be registered explicitly by importing the interaction companion objects, or by calling `InteractionFormat.registerFormat` for each known format.
+### 3. Compile-Time Known Formats
+All interaction formats are known at compile time:
+- The client has all interaction definitions loaded
+- Format is passed explicitly from client to server
+- If an unknown format is received, a descriptive error is thrown
 
 ### 4. Serialization Format
 Format is serialized as a string containing the fully qualified class name:
@@ -36,9 +35,8 @@ Format is serialized as a string containing the fully qualified class name:
 1. Client creates `InteractionHistoryJson(format, json)` with known format
 2. Client serializes and sends to server
 3. Server receives and deserializes format class name from JSON
-4. Server looks up format class name in `allowedFormats` set
-5. If found, server loads format via `InteractionFormat.fromClassName(className)`
-6. If not found, throws descriptive error
+4. Server loads format via `InteractionFormat.fromClassName(className)`
+5. If format class isn't available, throws `formatNotKnown` error
 
 ## Usage in Interaction Definitions
 
@@ -68,16 +66,15 @@ CREATE TABLE `single_blob_history` (
 
 ## Security Considerations
 
-The `allowedFormats` whitelist prevents arbitrary code execution:
-- Only registered formats can be deserialized
-- Unknown formats throw descriptive errors
-- No dynamic class loading from untrusted input
+If an unknown format class name is received:
+- Error message: "Format class '...' is not known. This may indicate an unknown interaction type."
+- No arbitrary code execution risk
+- Clear indication of missing interaction definitions
 
-## Registration
+## Summary
 
-Import `InteractionFormats` to register all known formats:
-```scala
-import it.evadid.core.util.io.serializer.InteractionFormats
-```
-
-This is done via static initialization when the object is loaded.
+- Format is a case object (singleton) - naturally serializable
+- Serialization stores only the class name string
+- All formats are compile-time known (client-side)
+- Unknown formats throw descriptive error on deserialization
+- Simple and secure approach without complex registration mechanisms
