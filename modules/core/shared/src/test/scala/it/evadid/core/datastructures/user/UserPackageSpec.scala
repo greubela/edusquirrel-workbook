@@ -69,13 +69,13 @@ class UserPackageSpec extends FunSuite {
     assert(info.toString.contains("logged in: false"))
   }
 
-  test("online defaults retain both classic destinations and include the relational V2 destination") {
+  test("online defaults include only the relational events destination") {
     import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
     val remote = UserConfig.onlineDefaults.syncDestinations.map(_.syncDestination).collect {
       case database: SyncDestinationBasedOnHistoryDatabase => database
     }
-    assertEquals(remote, List(defaultDatabaseWithKey, defaultDatabaseKeyless, defaultDatabaseV2))
-    assertEquals(remote.map(_.format).distinct.size, 3)
+    assertEquals(remote, List(defaultDatabase))
+    assertEquals(remote.map(_.format).distinct.size, 1)
   }
 
   test("saved preferences exclude all session secrets and public database information has no credentials") {

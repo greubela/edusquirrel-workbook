@@ -1,6 +1,6 @@
 package it.evadid.workbook.interaction.variable
 
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interaction.sync.{EventSyncStrategy, UpdateImportance}
 import it.evadid.workbook.interaction.sync.UpdateImportance.*
 import it.evadid.workbook.interaction.variable.events.*
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
@@ -12,10 +12,10 @@ class InteractionHistoryPackageSpec extends FunSuite {
   private val time = LocalDateTime.of(2025, 1, 1, 12, 0)
   
   private def answer(value: Int, importance: UpdateImportance): AnswerChangedEvent[Int, Int, Int] =
-    AnswerChangedEvent(value, time.plusSeconds(10), importance)
+    AnswerChangedEvent[Int, Int, Int](value, time.plusSeconds(10), importance)
   
   private def majorAnswer(value: Int): AnswerChangedEvent[Int, Int, Int] =
-    AnswerChangedEvent(value, time.plusSeconds(10), UpdateImportance.MAJOR)
+    AnswerChangedEvent[Int, Int, Int](value, time.plusSeconds(10), UpdateImportance.MAJOR)
   
   test("empty histories have no states and clean to empty") {
     val empty = InteractionVariableHistory.empty[Int, Int, Int]
@@ -24,8 +24,8 @@ class InteractionHistoryPackageSpec extends FunSuite {
   }
   
   test("adding events creates history and clean removes TEMPORARY events") {
-    val tempAnswer = AnswerChangedEvent(1, time.plusSeconds(5), UpdateImportance.TEMPORARY)
-    val majorAnswer = AnswerChangedEvent(2, time.plusSeconds(10), UpdateImportance.MAJOR)
+    val tempAnswer = AnswerChangedEvent[Int, Int, Int](1, time.plusSeconds(5), UpdateImportance.TEMPORARY)
+    val majorAnswer = AnswerChangedEvent[Int, Int, Int](2, time.plusSeconds(10), UpdateImportance.MAJOR)
     val history = InteractionVariableHistory.empty[Int, Int, Int]
       .addEvent(tempAnswer)
       .addEvent(majorAnswer)
@@ -62,9 +62,9 @@ class InteractionHistoryPackageSpec extends FunSuite {
   }
   
   test("cleanWithStrategy filters events based on importance") {
-    val temp = AnswerChangedEvent(1, time.plusSeconds(5), UpdateImportance.TEMPORARY)
-    val major = AnswerChangedEvent(2, time.plusSeconds(10), UpdateImportance.MAJOR)
-    val minor = AnswerChangedEvent(3, time.plusSeconds(15), UpdateImportance.MINOR)
+    val temp = AnswerChangedEvent[Int, Int, Int](1, time.plusSeconds(5), UpdateImportance.TEMPORARY)
+    val major = AnswerChangedEvent[Int, Int, Int](2, time.plusSeconds(10), UpdateImportance.MAJOR)
+    val minor = AnswerChangedEvent[Int, Int, Int](3, time.plusSeconds(15), UpdateImportance.MINOR)
     
     val history = InteractionVariableHistory.empty[Int, Int, Int]
       .addEvent(temp)
@@ -81,8 +81,8 @@ class InteractionHistoryPackageSpec extends FunSuite {
   }
   
   test("mergeWith applies strategy correctly when merging") {
-    val temp = AnswerChangedEvent(1, time.plusSeconds(5), UpdateImportance.TEMPORARY)
-    val major = AnswerChangedEvent(2, time.plusSeconds(10), UpdateImportance.MAJOR)
+    val temp = AnswerChangedEvent[Int, Int, Int](1, time.plusSeconds(5), UpdateImportance.TEMPORARY)
+    val major = AnswerChangedEvent[Int, Int, Int](2, time.plusSeconds(10), UpdateImportance.MAJOR)
     
     val history1 = InteractionVariableHistory.empty[Int, Int, Int].addEvent(temp).addEvent(major)
     val history2 = InteractionVariableHistory.empty[Int, Int, Int].addEvent(major)

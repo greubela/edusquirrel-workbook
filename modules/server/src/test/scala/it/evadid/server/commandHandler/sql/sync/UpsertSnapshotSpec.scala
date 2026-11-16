@@ -2,7 +2,7 @@ package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.distribution.commandTypes.SQLCommands.StoreToDbRequest
-import it.evadid.sql.DatabaseConfig
+import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
 import it.evadid.util.logging.BasicLogger
 import it.evadid.workbook.interaction.sync.{UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
@@ -18,7 +18,7 @@ class UpsertSnapshotSpec extends FunSuite {
   private val sync = context.toSyncContext("answer")
   private val time = LocalDateTime.parse("2026-11-12T12:00:00.123456789")
   private val config = DatabaseConfig("mysql", "unused", "3306", "unused")
-  private val history = InteractionVariableHistory[String, Unit, Unit](Set())
+  private val history = InteractionVariableHistory.empty[String, Unit, Unit]
 
   private def jdbc[A](api: Class[A])(call: (String, Array[Object]) => Object): A =
     Proxy.newProxyInstance(api.getClassLoader, Array(api), new InvocationHandler {

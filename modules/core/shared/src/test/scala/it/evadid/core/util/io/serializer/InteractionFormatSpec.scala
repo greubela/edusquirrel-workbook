@@ -22,9 +22,8 @@ class InteractionFormatSpec extends FunSuite {
   }
 
   test("InteractionFormat can be created from ReadWriters") {
-    implicit val rwString: ReadWriter[String] = macroRW
-    implicit val rwUnit: ReadWriter[Unit] = macroRW
-
+    // For Scala 3, use given instances for standard types that already have ReadWriter
+    import it.evadid.core.util.io.serializer.DefaultSerializer.given
     val format = InteractionFormat.fromReadWriters[String, Unit, Unit]
 
     // Verify the format can serialize and deserialize
@@ -50,37 +49,34 @@ class InteractionFormatSpec extends FunSuite {
   }
 
   test("Multiple formats can be registered and retrieved") {
-    // Register a custom format
+    // Register a format with types that derive ReadWriter
+    import it.evadid.core.util.io.serializer.DefaultSerializer.given
+    val format = InteractionFormat.fromReadWriters[String, String, String]
     InteractionFormat.registerWithSerializers(
-      elementIdPrefix = "TestInteraction",
-      stateSerializer = Serializer.fromImplicitRW,
-      historySerializer = Serializer.fromImplicitRW,
-      exerciseSerializer = Serializer.fromImplicitRW
+      "TestInteraction",
+      format.stateSerializer,
+      format.historySerializer,
+      format.exerciseSerializer
     )
     
     // Verify it was registered
-    val formatOpt = InteractionFormat.get[Int, String, Unit]("TestInteraction")
+    val formatOpt = InteractionFormat.get[String, String, String]("TestInteraction")
     assert(formatOpt.isDefined)
     
     // Clean up - remove the test format
-    registry.remove("TestInteraction")
+    InteractionFormat.clearRegistry()
   }
 
   test("Registered format can serialize and deserialize") {
     // Register a format with custom types
-    case class CustomState(value: String)
-    case class CustomGrade(score: Int)
-    case class CustomScaffold(hint: String)
-    
-    given ReadWriter[CustomState] = macroRW
-    given ReadWriter[CustomGrade] = macroRW
-    given ReadWriter[CustomScaffold] = macroRW
-    given ReadWriter[InteractionVariableHistory[CustomState, CustomGrade, CustomScaffold]] = macroRW
+    case class CustomState(value: String) derives ReadWriter
+    case class CustomGrade(score: Int) derives ReadWriter
+    case class CustomScaffold(hint: String) derives ReadWriter
     
     val format = InteractionFormat.fromReadWriters[CustomState, CustomGrade, CustomScaffold]
     
-    // Test with actual data
-    val state = CustomState("test")
+    // Test with actual data - use InteractionVariableState with proper imports
+    val state = it.evadid.workbook.interaction.variable.InteractionVariableState(CustomState("test"), it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, java.time.LocalDateTime.now())
     val history = InteractionVariableHistory.empty[CustomState, CustomGrade, CustomScaffold].addState(state)
     
     val serialized = format.historySerializer.serialize(history)
