@@ -12,33 +12,18 @@ import upickle.default.*
   * - `historySerializer`: For serializing the interaction history
   * - `exerciseSerializer`: For serializing the interaction element itself
   *
-  * '''InteractionFormat is a sealed trait with case objects as implementations.'''
-  * Case objects are naturally serializable (they're singletons), making the
-  * format serializable. This allows formats to be passed explicitly through
-  * method signatures:
+  * InteractionFormat implementations are case objects (the companion objects
+  * of interaction classes). Case objects are naturally serializable (they're
+  * singletons), making the format serializable. This allows formats to be
+  * passed explicitly through method signatures:
   * - Portable across server boundaries (no elementId lookup needed)
   * - Explicit in method signatures (type-safe)
   * - Easy to test (pass format as parameter)
   *
-  * ==Why Sealed Trait?==
-  *
-  * InteractionFormat is a sealed trait for strong typing and compile-time safety:
-  * - '''All implementations must be in the same file as the trait'''
-  * - Compiler ensures all cases are handled
-  * - `derives ReadWriter` works automatically for sealed traits with case objects
-  * - All known formats are stored in `InteractionFormat.knownFormats`
-  *
-  * ==Why Case Objects?==
-  *
-  * Case objects are used for format implementations because:
-  * - They are naturally serializable (singletons)
-  * - Only the class name is serialized, not the contents
-  * - No serialization issues with non-serializable fields (like Serializer)
-  * - Can be safely passed across server boundaries
-  *
   * ==Format Storage==
   *
-  * All known format implementations are stored in the companion object:
+  * All known format implementations are stored in the companion object's
+  * `knownFormats` set:
   * {{{val knownFormats: Set[InteractionFormat[?, ?, ?]] = Set(...)
   * }}}
   *
@@ -62,7 +47,7 @@ import upickle.default.*
   *   format.historySerializer.deserialize(json)
   * }}}
   */
-sealed trait InteractionFormat[T, GA, SA] derives ReadWriter {
+trait InteractionFormat[T, GA, SA] {
 
   /** Serializer for the interaction state (T).
     *
@@ -115,13 +100,37 @@ object InteractionFormat {
       Serializer.fromImplicitRW[WorkbookInteractionElementFull[T, GA, SA]]
     )
 
+  /** ReadWriter for InteractionFormat.
+    *
+    * Format instances are case objects (singletons). We serialize by storing
+    * the fully qualified class name and deserialize by loading the singleton.
+    */
+  given formatReadWriter[T, GA, SA]: ReadWriter[InteractionFormat[T, GA, SA]] =
+    upickle.default.readwriter[ujson.Value].bimap[
+      InteractionFormat[T, GA, SA]
+    ](
+      format => ujson.Str(format.getClass.getName),
+      value => {
+        val className = value.str
+        try {
+          val clazz = Class.forName(className)
+          val field = clazz.getField("MODULE$")
+          field.get(null).asInstanceOf[InteractionFormat[T, GA, SA]]
+        } catch {
+          case e: Exception =>
+            throw new RuntimeException(
+              s"Format class '$className' is not known. " +
+              s"This may indicate an unknown interaction type. " +
+              s"Error: ${e.getMessage}"
+            )
+        }
+      }
+    )
+
   /** Set of all known InteractionFormat implementations.
     *
     * This contains all format case objects that are known at compile time.
     * It's used for type-safe format lookup and validation.
-    *
-    * All interaction format implementations (companion objects) are stored here.
-    * When deserializing, the format is looked up from this set.
     */
   val knownFormats: Set[InteractionFormat[?, ?, ?]] = Set(
     // Basic interactions
