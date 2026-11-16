@@ -441,6 +441,51 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(T.runVm(state.toJavaVmProgram.toOption.get).commands, squareCommands(25))
   }
 
+  test("full Java classes draw with turnLeft and pen commands on every route") {
+    val source =
+      """public class Sketch {
+        |    static void hop(double distance) {
+        |        Turtle.penUp();
+        |        Turtle.forward(distance);
+        |        Turtle.penDown();
+        |    }
+        |    public static void main(String[] args) {
+        |        Turtle.forward(10);
+        |        Turtle.turnLeft(45);
+        |        hop(5);
+        |        Turtle.turnRight(45);
+        |    }
+        |}
+        |""".stripMargin
+    val expected = Vector(T.Command(R.TurtleCommand.Forward, 10), T.Command(R.TurtleCommand.TurnLeft, 45),
+      T.Command(R.TurtleCommand.PenUp, 0), T.Command(R.TurtleCommand.Forward, 5), T.Command(R.TurtleCommand.PenDown, 0),
+      T.Command(R.TurtleCommand.TurnRight, 45))
+    val program = checked(source)
+    assertEquals(T.runVm(program).commands, expected)
+    assertEquals(ProgrammingStateJavaString(source).toBeExpression.deriveTurtleCommands.map(_.name.universalInterpretation()),
+      List("forward", "left", "pen_up", "forward", "pen_down", "right"))
+
+    val python = bridgePython(program)
+    List("turtle.left(45)", "turtle.penup()", "turtle.pendown()").foreach(call => assert(python.code.contains(call), clue = python.code))
+    assertEquals(T.runVm(bridgeJava(PythonToJava.fromPython(python.code))).commands, expected)
+    val snap = bridgeSnap(program)
+    List("doJavaTurnLeft", "doJavaPenUp", "doJavaPenDown").foreach(selector => assert(snap.snapXml.contains(selector), clue = snap.snapXml))
+    assertEquals(T.runVm(bridgeJava(SnapToJava.fromSnap(snap))).commands, expected)
+
+    val exported = it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport.render(program).source
+    List("_command(\"left\", _value(lambda: 45))", "_command(\"penup\", 0)", "_command(\"pendown\", 0)").foreach(line => assert(exported.contains(line), clue = exported))
+    val report = ujson.Obj("status" -> "Completed", "problem" -> ujson.Null, "steps" -> 12,
+      "commands" -> ujson.Arr(ujson.Arr("left", 45), ujson.Arr("penup", 0), ujson.Arr("pendown", 0)))
+    assertEquals(it.evadid.vm.simulation.java.JavaTurtleExecutionReport.decode(report, T.Limits()).commands,
+      Vector(T.Command(R.TurtleCommand.TurnLeft, 45), T.Command(R.TurtleCommand.PenUp, 0), T.Command(R.TurtleCommand.PenDown, 0)))
+    val valuedPen = report.copy(); valuedPen("commands") = ujson.Arr(ujson.Arr("penup", 1))
+    intercept[IllegalArgumentException](it.evadid.vm.simulation.java.JavaTurtleExecutionReport.decode(valuedPen, T.Limits()))
+
+    assert(P.compile(source.replace("Turtle.penUp()", "Turtle.penUp(1)")).isLeft)
+    assert(P.compile(source.replace("Turtle.turnLeft(45)", "Turtle.turnLeft()")).isLeft)
+    assert(P.compile(source.replace("Turtle.turnLeft(45)", "Turtle.turnAround(45)")).isLeft)
+  }
+
   test("unfinished and unsupported Java cannot become an empty legacy turtle program") {
     List(
       "public class Main {",

@@ -45,8 +45,7 @@ object JavaToPython {
         case R.Call(target, args) =>
           val name = target match {
             case R.CallTarget.Helper(id) => program.bindings.source.methods.find(_.id == id).get.name
-            case R.CallTarget.Turtle(R.TurtleCommand.Forward) => "turtle.forward"
-            case R.CallTarget.Turtle(R.TurtleCommand.TurnRight) => "turtle.right"
+            case R.CallTarget.Turtle(command) => "turtle." + command.pythonName
           }
           Vector(prefix + s"$name(${args.map(expression).mkString(", ")})")
         case R.If(condition, positive, negative) =>

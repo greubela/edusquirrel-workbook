@@ -38,8 +38,28 @@ object JavaTurtleResolution {
     case Increment, Decrement
   }
 
-  enum TurtleCommand {
-    case Forward, TurnRight
+  /** Static methods of the `Turtle` class. `pythonName` is also the wire name in execution reports;
+   * `arity` is the number of numeric arguments (pen commands take none).
+   */
+  enum TurtleCommand(val javaName: String, val pythonName: String, val snapSelector: String, val arity: Int) {
+    case Forward extends TurtleCommand("forward", "forward", "doJavaForward", 1)
+    case TurnRight extends TurtleCommand("turnRight", "right", "doJavaTurnRight", 1)
+    case TurnLeft extends TurtleCommand("turnLeft", "left", "doJavaTurnLeft", 1)
+    case PenUp extends TurtleCommand("penUp", "penup", "doJavaPenUp", 0)
+    case PenDown extends TurtleCommand("penDown", "pendown", "doJavaPenDown", 0)
+  }
+
+  object TurtleCommand {
+    val byJavaName: Map[String, TurtleCommand] = values.map(command => command.javaName -> command).toMap
+    val byPythonName: Map[String, TurtleCommand] = values.map(command => command.pythonName -> command).toMap
+    val bySnapSelector: Map[String, TurtleCommand] = values.map(command => command.snapSelector -> command).toMap
+
+    /** Qualified Java call name, for example `Turtle.turnLeft`. */
+    def qualified(command: TurtleCommand): String = "Turtle." + command.javaName
+    val byQualifiedName: Map[String, TurtleCommand] = values.map(command => qualified(command) -> command).toMap
+
+    /** Readable list for diagnostics: `Turtle.forward, Turtle.turnRight, ...`. */
+    val qualifiedNames: String = values.map(qualified).mkString(", ")
   }
 
   enum CallTarget {
@@ -287,11 +307,7 @@ object JavaTurtleResolution {
         case JavaCallExpression(JavaAttributeAccess(JavaTarget(receiver, locations, None), name), arguments)
             if locations.isEmpty && !env.contains(receiver) =>
           if receiver == className then methodIds.get(name).map(id => CallTarget.Helper(id) -> arguments)
-          else if receiver == "Turtle" then name match {
-            case "forward" => Some(CallTarget.Turtle(TurtleCommand.Forward) -> arguments)
-            case "turnRight" => Some(CallTarget.Turtle(TurtleCommand.TurnRight) -> arguments)
-            case _ => None
-          }
+          else if receiver == "Turtle" then TurtleCommand.byJavaName.get(name).map(command => CallTarget.Turtle(command) -> arguments)
           else None
         case _ => None
       }
@@ -303,7 +319,9 @@ object JavaTurtleResolution {
             val expected = parameterTypes(id)
             if expected.size != arguments.size then Left(unsupported)
             else traverse(arguments.zip(expected)) { (value, kind) => widen(value, kind) }
-          case CallTarget.Turtle(_) => Right(arguments)
+          case CallTarget.Turtle(command) =>
+            if arguments.size != command.arity || !arguments.forall(value => isNumeric(value.valueType)) then Left(unsupported)
+            else Right(arguments)
         }
       } yield Call(call._1, converted)
     }

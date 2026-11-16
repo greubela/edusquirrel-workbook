@@ -4,27 +4,31 @@ import it.evadid.core.datastructures.file.CopyrightInfo
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.HintLabel
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaString, ProgrammingStatePythonString}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.*
 import it.evadid.workbook.elements.interactionElements.table.{AnswerTableInteraction, EditableTableCell}
 import it.evadid.workbook.elements.structureElements.{ExerciseGroup, Workbook}
 
+import scala.collection.mutable.ListBuffer
+
 /** Recursion workbook "Die Mönche von Mons Komputarius".
  *
  * Parts: 0 (editor basics), A (monks), B (outward/return path), C (tower), D (bridge to the final task)
  * and the Koch curve practice (section 3).
  *
- * Programming tasks of parts 0 and C/D are shown as placeholders until the Java turtle runner supports
- * `Turtle.turnLeft`, `Turtle.penUp` and `Turtle.penDown`. Element IDs are stable per task (`monks-a2`, ...).
+ * The programming tasks E1–E8 open the Eva editor with Java starting code; their targets are recorded
+ * from the sample solutions in [[CreateMonksWorkbook.editorTarget]]. Element IDs are stable per task
+ * (`monks-a2`, `monks-e5`, ...).
  */
 case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
@@ -85,10 +89,11 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   private def reorder(id: String, itemCount: Int): ReorderMapIdInteraction =
     ReorderMapIdInteraction("monks-" + id, List.tabulate(itemCount)(i => lm(s"$id-item$i")), seed = id.hashCode.toLong)
 
-  /** Placeholder for an editor task: prompt, starting code and a note that the editor follows. */
+  /** Editor task: prompt and a Java turtle editor whose drawing is compared with the sample solution. */
   private def editorTask(id: String, extra: List[WorkbookElement] = Nil): WorkbookElement =
-    task(id, List(prompt(id), text(id + "code"),
-      instructionLabeledPair(key("placeholderlabel"), key("placeholdertext"), HintLabel)) ++ extra)
+    task(id, List(prompt(id),
+      TurtleRecreateShapeInteraction("monks-" + id, ProgrammingStateJavaString(EditorCode(id)), editorTarget(id),
+        ProgrammingEditorPalette.PythonCompatibleSnap, Map.empty[String, Integer])) ++ extra)
 
   // Building once makes IDs and state references stable across createWorkbook/createEverything calls.
   override lazy val createWorkbook: Workbook = workbook(
@@ -272,6 +277,235 @@ object CreateMonksWorkbook {
     Scene("count-place-blue", "filebeatcountplaceblue", action = Some("count-place-blue")),
     Scene("count-tally-three", "filebeatcounttallythree", action = Some("count-tally-three")),
     Scene("count-empty", "filebeatcountempty"))
+
+  /** Java starting code of the editor tasks E1–E8. From E4 on, the helper methods are prefilled
+   * (the same code is shown in the collapsible "helpers" block of part C). Identifiers follow the
+   * German task texts; the class name is free, `Turtle` is reserved by the runner.
+   */
+  object EditorCode {
+    val helpers: String =
+      """    static void stein(double breite) {
+        |        Turtle.forward(breite);
+        |        Turtle.turnLeft(90);
+        |        Turtle.forward(20);
+        |        Turtle.turnLeft(90);
+        |        Turtle.forward(breite);
+        |        Turtle.turnLeft(90);
+        |        Turtle.forward(20);
+        |        Turtle.turnLeft(90);
+        |    }
+        |
+        |    static void linie(double laenge) {
+        |        Turtle.forward(laenge);
+        |        Turtle.penUp();
+        |        Turtle.forward(-laenge);
+        |        Turtle.penDown();
+        |    }
+        |
+        |    static void nachRechts(double a) {
+        |        Turtle.penUp();
+        |        Turtle.forward(a);
+        |        Turtle.penDown();
+        |    }
+        |
+        |    static void nachLinks(double a) {
+        |        Turtle.penUp();
+        |        Turtle.forward(-a);
+        |        Turtle.penDown();
+        |    }
+        |
+        |    static void nachOben(double a) {
+        |        Turtle.penUp();
+        |        Turtle.turnLeft(90);
+        |        Turtle.forward(a);
+        |        Turtle.turnRight(90);
+        |        Turtle.penDown();
+        |    }
+        |
+        |    static void nachUnten(double a) {
+        |        Turtle.penUp();
+        |        Turtle.turnRight(90);
+        |        Turtle.forward(a);
+        |        Turtle.turnLeft(90);
+        |        Turtle.penDown();
+        |    }
+        |""".stripMargin
+
+    private def program(body: String, withHelpers: Boolean = false): String =
+      "public class Zeichnung {\n" + (if withHelpers then helpers + "\n" else "") + body.stripMargin + "}\n"
+
+    private val pyramidMain: String =
+      """    public static void main(String[] args) {
+        |        zeichnePyramide(4);
+        |        nachRechts(100);
+        |        zeichnePyramide(3);
+        |    }
+        |"""
+
+    private val byTask: Map[String, String] = Map(
+      "e1" -> program(
+        """    public static void main(String[] args) {
+          |        Turtle.forward(60);
+          |        Turtle.turnLeft(90);
+          |        // TODO: zweite Haelfte des Rechtecks
+          |    }
+          |"""),
+      "e2" -> program(
+        """    static void stein(double breite) {
+          |        // TODO
+          |    }
+          |
+          |    static void hoch() {
+          |        // TODO
+          |    }
+          |
+          |    public static void main(String[] args) {
+          |        stein(80);
+          |        hoch();
+          |        // TODO
+          |    }
+          |"""),
+      "e3" -> program(
+        """    static void vieleck(int ecken, double laenge) {
+          |        // TODO
+          |    }
+          |
+          |    public static void main(String[] args) {
+          |        vieleck(4, 60);
+          |        // TODO: 100 nach rechts (ohne zu zeichnen), dann das Sechseck
+          |    }
+          |"""),
+      "e4" -> program(
+        """    static void zeichneTurm(int n) {
+          |        // TODO
+          |    }
+          |
+          |    public static void main(String[] args) {
+          |        zeichneTurm(5);
+          |    }
+          |""", withHelpers = true),
+      "e5" -> program(
+        """    static void zeichnePyramide(int n) {
+          |        // TODO
+          |    }
+          |
+          |""" + pyramidMain, withHelpers = true),
+      "e6a" -> program(
+        """    static void zeichnePyramide(int n) {
+          |        stein(n * 20);
+          |        nachOben(20);
+          |        nachRechts(10);
+          |        zeichnePyramide(n - 1);
+          |        nachLinks(10);
+          |        nachUnten(20);
+          |    }
+          |
+          |""" + pyramidMain, withHelpers = true),
+      "e6b" -> program(
+        """    static void zeichnePyramide(int n) {
+          |        if (n == 0) {
+          |            return;
+          |        }
+          |        stein(n * 20);
+          |        nachOben(20);
+          |        nachRechts(10);
+          |        zeichnePyramide(n - 1);
+          |    }
+          |
+          |""" + pyramidMain, withHelpers = true),
+      "e7" -> program(
+        """    static void cantor(double laenge, int n) {
+          |        // TODO
+          |    }
+          |
+          |    public static void main(String[] args) {
+          |        cantor(270, 3);
+          |    }
+          |""", withHelpers = true),
+      "e8" -> program(
+        """    static void baum(double laenge, int n) {
+          |        // TODO
+          |    }
+          |
+          |    public static void main(String[] args) {
+          |        Turtle.turnLeft(90); // die Turtle schaut nach oben
+          |        baum(80, 5);
+          |    }
+          |""", withHelpers = true))
+
+    def apply(id: String): String = byTask.getOrElse(id, throw IllegalArgumentException(s"No starting code for $id"))
+  }
+
+  /** Records a sample solution as turtle commands. The helper methods mirror [[EditorCode.helpers]],
+   * so the recorded strokes are exactly what the Java runner emits for the same solution.
+   */
+  private final class Sketch {
+    private val commands = ListBuffer.empty[TurtleCommand[Double]]
+
+    def forward(distance: Double): Unit = commands += TurtleCommand.Forward(distance)
+    def turnLeft(degrees: Double): Unit = commands += TurtleCommand.Left(degrees)
+    def turnRight(degrees: Double): Unit = commands += TurtleCommand.Right(degrees)
+    def penUp(): Unit = commands += TurtleCommand.PenUp()
+    def penDown(): Unit = commands += TurtleCommand.PenDown()
+
+    def stein(breite: Double): Unit = (0 until 2).foreach { _ =>
+      forward(breite); turnLeft(90); forward(20); turnLeft(90)
+    }
+    def linie(laenge: Double): Unit = { forward(laenge); penUp(); forward(-laenge); penDown() }
+    def nachRechts(a: Double): Unit = { penUp(); forward(a); penDown() }
+    def nachLinks(a: Double): Unit = { penUp(); forward(-a); penDown() }
+    def nachOben(a: Double): Unit = { penUp(); turnLeft(90); forward(a); turnRight(90); penDown() }
+    def nachUnten(a: Double): Unit = { penUp(); turnRight(90); forward(a); turnLeft(90); penDown() }
+
+    def vieleck(ecken: Int, laenge: Double): Unit = (0 until ecken).foreach { _ => forward(laenge); turnLeft(360.0 / ecken) }
+
+    def turm(n: Int): Unit = if n > 0 then { stein(40); nachOben(20); turm(n - 1) }
+
+    def pyramide(n: Int): Unit = if n > 0 then {
+      stein(n * 20); nachOben(20); nachRechts(10)
+      pyramide(n - 1)
+      nachLinks(10); nachUnten(20)
+    }
+
+    def cantor(laenge: Double, n: Int): Unit = {
+      linie(laenge)
+      if n > 0 then {
+        nachUnten(20)
+        cantor(laenge / 3, n - 1)
+        nachRechts(2 * laenge / 3)
+        cantor(laenge / 3, n - 1)
+        nachLinks(2 * laenge / 3); nachOben(20)
+      }
+    }
+
+    def baum(laenge: Double, n: Int): Unit = if n > 0 then {
+      forward(laenge)
+      turnLeft(30); baum(laenge * 0.6, n - 1)
+      turnRight(60); baum(laenge * 0.6, n - 1)
+      turnLeft(30)
+      penUp(); forward(-laenge); penDown()
+    }
+
+    def graphic: TurtleGraphic = TurtleGraphic(commands.toList)
+  }
+
+  /** Target drawing of an editor task, recorded from its sample solution. */
+  def editorTarget(id: String): TurtleGraphic = {
+    val sketch = new Sketch
+    id match {
+      case "e1" =>
+        sketch.forward(60); sketch.turnLeft(90); sketch.forward(20); sketch.turnLeft(90)
+        sketch.forward(60); sketch.turnLeft(90); sketch.forward(20)
+      case "e2" => sketch.stein(80); sketch.nachOben(20); sketch.stein(60); sketch.nachOben(20); sketch.stein(40)
+      case "e3" => sketch.vieleck(4, 60); sketch.nachRechts(100); sketch.vieleck(6, 40)
+      case "e4" => sketch.turm(5)
+      case "e5" | "e6a" | "e6b" => sketch.pyramide(4); sketch.nachRechts(100); sketch.pyramide(3)
+      case "e7" => sketch.cantor(270, 3)
+      case "e8" => sketch.turnLeft(90); sketch.baum(80, 5)
+      case other => throw IllegalArgumentException(s"No editor target for $other")
+    }
+    sketch.graphic
+  }
 
   /** Exact vector targets for the line and the first two Koch refinements.
    * Screen coordinates have y pointing down, so the triangular peak is above

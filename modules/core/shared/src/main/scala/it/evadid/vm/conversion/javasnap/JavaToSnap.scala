@@ -49,7 +49,7 @@ object JavaToSnap {
       case R.Assign(variable, operator, value) => block("doSetVar", literal(names(variable.id)) + stored(expression(assignment(variable, operator, value)), variable.valueType))
       case R.Evaluate(R.Update(variable, operator, _)) => block("doSetVar", literal(names(variable.id)) + stored(expression(R.Update(variable, operator, true)), variable.valueType))
       case R.Evaluate(_) => reject("This discarded expression cannot be represented as a Snap command.")
-      case R.Call(R.CallTarget.Turtle(command), args) => block(if command == R.TurtleCommand.Forward then "doJavaForward" else "doJavaTurnRight", args.map(expression).mkString)
+      case R.Call(R.CallTarget.Turtle(command), args) => block(command.snapSelector, args.map(expression).mkString)
       case R.Call(R.CallTarget.Helper(id), args) =>
         val method = meta.method(program.bindings.source.methods.find(_.id == id).get.name)
         s"<custom-block s=\"${SnapInputCodec.escapeXml(method.callSpec)}\">${args.zip(method.parameters).map((value, parameter) => stored(expression(value), parameter.kind)).mkString}</custom-block>"

@@ -314,8 +314,8 @@ ${invocationResult}
           target match {
             case P.CallTarget.Helper(method) => line(s"${methodName(method.id)}($values)")
             case P.CallTarget.Turtle(command) =>
-              val name = if command == R.TurtleCommand.Forward then "forward" else "right"
-              line(s"_command(\"$name\", $values)")
+              // Pen commands have no argument; the report still carries a numeric slot, so send 0.
+              line(s"_command(\"${command.pythonName}\", ${if command.arity == 0 then "0" else values})")
           }
         case P.Node.If(condition, positive, negative) =>
           line(s"if ${expression(condition.expression, child("condition"))}:")

@@ -47,6 +47,15 @@ object JavaTurtleSnapPrimitives {
     receiver(process).applyDynamic("turn")(angle)
   }
 
+  private[execution] def turnLeft(process: js.Dynamic, value: js.Any): Unit = {
+    val angle = finite(value)
+    receiver(process).applyDynamic("turnLeft")(angle)
+  }
+
+  private[execution] def penUp(process: js.Dynamic): Unit = receiver(process).applyDynamic("up")()
+
+  private[execution] def penDown(process: js.Dynamic): Unit = receiver(process).applyDynamic("down")()
+
   private[execution] def reset(process: js.Dynamic): Unit = {
     val target = receiver(process)
     target.applyDynamic("up")()
@@ -171,6 +180,12 @@ object JavaTurtleSnapPrimitives {
       `type` = "command", category = "motion", spec = "Java forward %n", defaults = js.Array[js.Any](10)))
     blocks.updateDynamic("doJavaTurnRight")(js.Dynamic.literal(
       `type` = "command", category = "motion", spec = "Java turn right %n", defaults = js.Array[js.Any](90)))
+    blocks.updateDynamic("doJavaTurnLeft")(js.Dynamic.literal(
+      `type` = "command", category = "motion", spec = "Java turn left %n", defaults = js.Array[js.Any](90)))
+    blocks.updateDynamic("doJavaPenUp")(js.Dynamic.literal(
+      `type` = "command", category = "pen", spec = "Java pen up"))
+    blocks.updateDynamic("doJavaPenDown")(js.Dynamic.literal(
+      `type` = "command", category = "pen", spec = "Java pen down"))
     blocks.updateDynamic("doJavaReset")(js.Dynamic.literal(
       `type` = "command", category = "motion", spec = "Java reset turtle"))
   }
@@ -194,6 +209,9 @@ object JavaTurtleSnapPrimitives {
     val readReporter: js.ThisFunction1[js.Dynamic, js.Any, Double] = (self: js.Dynamic, name: js.Any) => read(self, name)
     val forwardCommand: js.ThisFunction1[js.Dynamic, js.Any, Unit] = (self: js.Dynamic, value: js.Any) => forward(self, value)
     val turnCommand: js.ThisFunction1[js.Dynamic, js.Any, Unit] = (self: js.Dynamic, value: js.Any) => turnRight(self, value)
+    val turnLeftCommand: js.ThisFunction1[js.Dynamic, js.Any, Unit] = (self: js.Dynamic, value: js.Any) => turnLeft(self, value)
+    val penUpCommand: js.ThisFunction0[js.Dynamic, Unit] = (self: js.Dynamic) => penUp(self)
+    val penDownCommand: js.ThisFunction0[js.Dynamic, Unit] = (self: js.Dynamic) => penDown(self)
     val resetCommand: js.ThisFunction0[js.Dynamic, Unit] = (self: js.Dynamic) => reset(self)
     processPrototype.updateDynamic("reportJavaInt")(intReporter)
     processPrototype.updateDynamic("reportJavaDouble")(doubleReporter)
@@ -203,6 +221,9 @@ object JavaTurtleSnapPrimitives {
     processPrototype.updateDynamic("reportJavaRead")(readReporter)
     processPrototype.updateDynamic("doJavaForward")(forwardCommand)
     processPrototype.updateDynamic("doJavaTurnRight")(turnCommand)
+    processPrototype.updateDynamic("doJavaTurnLeft")(turnLeftCommand)
+    processPrototype.updateDynamic("doJavaPenUp")(penUpCommand)
+    processPrototype.updateDynamic("doJavaPenDown")(penDownCommand)
     processPrototype.updateDynamic("doJavaReset")(resetCommand)
     val stored = spritePrototype.selectDynamic(OriginalInitBlocks)
     val original = spritePrototype.selectDynamic("initBlocks")

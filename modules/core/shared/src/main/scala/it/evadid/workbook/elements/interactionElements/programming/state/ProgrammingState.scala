@@ -73,10 +73,7 @@ final case class ProgrammingStateBeExpression(expression: BeExpression) extends 
         throw IllegalArgumentException(s"Java execution did not complete: ${execution.status}.")
       execution.commands.toList.map { command =>
         if !command.value.isFinite then throw IllegalArgumentException("A drawing command needs a finite number.")
-        command.command match {
-          case it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution.TurtleCommand.Forward => TurtleCommand.Forward(command.value)
-          case it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution.TurtleCommand.TurnRight => TurtleCommand.Right(command.value)
-        }
+        command.toDrawingCommand
       }
     case _ => BeExpressionToTurtleCommands(expression)
   }

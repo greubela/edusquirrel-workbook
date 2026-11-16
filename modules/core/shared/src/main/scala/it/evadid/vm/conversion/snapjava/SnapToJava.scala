@@ -161,9 +161,10 @@ object SnapToJava {
               val args = children(element, 2); val variable = method.variable(text(args.head)); val value = stored(args(1), variable.kind, method)
               ensure(assignable(value.kind, variable.kind), "The assigned value has the wrong Java type.")
               Vector(prefix + s"${variable.name} = ${value.code};")
-            case "doJavaForward" | "doJavaTurnRight" =>
-              Vector(prefix + call(meta, if element.attrOrEmpty("s") == "doJavaForward" then "Turtle.forward" else "Turtle.turnRight",
-                children(element, 1).map(expression(_, method)).toVector))
+            case selector if R.TurtleCommand.bySnapSelector.contains(selector) =>
+              val command = R.TurtleCommand.bySnapSelector(selector)
+              Vector(prefix + call(meta, R.TurtleCommand.qualified(command),
+                children(element, command.arity).map(expression(_, method)).toVector))
             case "doStopThis" =>
               val input = children(element, 1).head
               ensure(input.tag == "l" && SnapXmlParser.child(input.inner, "option").exists(_.inner == "this block"), "Only 'stop this block' represents Java return.")

@@ -247,9 +247,11 @@ object JavaEditingMetadata {
     logical(ComparisonTokens(op), widenedLeft, Some(right))
   }
   private[conversion] def call(meta: Metadata, name: String, args: Vector[Value]): String = {
-    if name == "Turtle.forward" || name == "Turtle.turnRight" then {
-      ensure(args.size == 1 && numeric(args.head.kind), "A Turtle command needs one numeric argument.")
-    } else {
+    R.TurtleCommand.byQualifiedName.get(name) match {
+      case Some(command) =>
+        ensure(args.size == command.arity && args.forall(value => numeric(value.kind)),
+          if command.arity == 0 then s"$name takes no argument." else "A Turtle command needs one numeric argument.")
+      case None =>
       val method = meta.method(name)
       ensure(name != "main" && args.size == method.parameters.size && args.zip(method.parameters).forall((a, p) => assignable(a.kind, p.kind)), "The method arguments do not match its declaration.")
     }

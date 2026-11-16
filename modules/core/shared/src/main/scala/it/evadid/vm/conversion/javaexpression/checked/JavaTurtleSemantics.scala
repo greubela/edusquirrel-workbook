@@ -346,13 +346,18 @@ object JavaTurtleSemantics {
       case JavaCallExpression(JavaAttributeAccess(JavaTarget(receiver, locations, None), name), arguments) if locations.isEmpty =>
         if env.bindings.contains(receiver) then Left(problem(Problem.TypeMismatch, s"The variable $receiver is not a class receiver."))
         else if receiver == structure.classDef.name then helperCall(name, arguments, env)
-        else if receiver == "Turtle" && Set("forward", "turnRight").contains(name) then
-          if arguments.size != 1 then Left(problem(Problem.ArgumentMismatch, "The number of arguments does not match this method."))
-          else value(arguments.head, env).flatMap { actual =>
-            if numeric(actual.kind) then Right(())
-            else Left(problem(Problem.ArgumentMismatch, "A Turtle argument must be an int or double value."))
-          }
-        else Left(unsupported("Use an own static method, Turtle.forward or Turtle.turnRight."))
+        else if receiver == "Turtle" then JavaTurtleResolution.TurtleCommand.byJavaName.get(name) match {
+          case None => Left(unsupported(s"Use an own static method or one of ${JavaTurtleResolution.TurtleCommand.qualifiedNames}."))
+          case Some(command) =>
+            if arguments.size != command.arity then Left(problem(Problem.ArgumentMismatch, "The number of arguments does not match this method."))
+            else arguments.foldLeft[Result[Unit]](Right(())) { (result, argument) =>
+              result.flatMap(_ => value(argument, env)).flatMap { actual =>
+                if numeric(actual.kind) then Right(())
+                else Left(problem(Problem.ArgumentMismatch, "A Turtle argument must be an int or double value."))
+              }
+            }
+        }
+        else Left(unsupported(s"Use an own static method or one of ${JavaTurtleResolution.TurtleCommand.qualifiedNames}."))
       case _ => Left(unsupported("Call an own static method or a supported Turtle method directly."))
     }
 

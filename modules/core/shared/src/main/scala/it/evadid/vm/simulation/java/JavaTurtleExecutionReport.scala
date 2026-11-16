@@ -63,11 +63,12 @@ object JavaTurtleExecutionReport {
       case values: ujson.Arr if values.value.size <= T.Limits.MaxCommands => values.value.toVector.map {
         case pair: ujson.Arr if pair.value.size == 2 =>
           val command = pair.value(0) match {
-            case ujson.Str("forward") => R.TurtleCommand.Forward
-            case ujson.Str("right") => R.TurtleCommand.TurnRight
+            case ujson.Str(name) => R.TurtleCommand.byPythonName.getOrElse(name, invalid("unknown turtle command"))
             case _ => invalid("unknown turtle command")
           }
-          T.Command(command, finiteDouble(pair.value(1)))
+          val value = finiteDouble(pair.value(1))
+          if command.arity == 0 && value != 0.0 then invalid("a pen command carries no value")
+          T.Command(command, value)
         case _ => invalid("expected a command and its numeric argument")
       }
       case _ => invalid("expected bounded turtle commands")

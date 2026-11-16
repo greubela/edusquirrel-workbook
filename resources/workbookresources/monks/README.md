@@ -50,13 +50,19 @@ and `ReorderMapIdInteraction`. Language-map keys derive from the task ID (`<id>-
 `<id>-opt<i>`, `<id>-row<i>`); code blocks and category names that need no translation are in
 `map-universal.json`.
 
+The programming tasks E1–E8 are `TurtleRecreateShapeInteraction`s with Java starting code
+(`CreateMonksWorkbook.EditorCode`, prefilled helper methods from E4 on). Each target drawing is
+recorded from the sample solution (`CreateMonksWorkbook.editorTarget`) with the same helper
+methods, so the strokes match what the checked Java runner emits. The runner supports
+`Turtle.forward`, `Turtle.turnRight`, `Turtle.turnLeft`, `Turtle.penUp` and `Turtle.penDown`.
+Grading uses the default stroke policy: pen-up moves are ignored, duplicated strokes count as
+unexpected, so returning along a drawn line must happen with the pen lifted (E7, E8).
+
 ## Open items
 
-- E1–E8 are placeholders showing task text and Java starting code. The editors need
-  `Turtle.turnLeft`, `Turtle.penUp` and `Turtle.penDown` in the checked Java runner (currently only
-  `forward` and `turnRight`), then targets built from the sample solutions.
 - E6a relies on the Java runner's call-depth limit reporting an execution limit.
 - Unit-test tasks, recursion-versus-loop checks and further story images are not part of this edition.
+- The Danish texts were machine-translated and still need proofreading.
 
 The homepage card uses the separate square promotional tablet mock-up at
 `resources/img/art/mockup/monks-workbook.png`; it is not part of the slideshow.

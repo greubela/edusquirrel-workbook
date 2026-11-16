@@ -147,7 +147,11 @@ object PythonToJava {
         case node: PyExpression =>
           val (name, args) = pyCall(node)
           if name == "java_turtle.update" then Vector(prefix + expression(node, method).code.stripPrefix("(").stripSuffix(")") + ";")
-          else Vector(prefix + call(meta, name match { case "turtle.forward" => "Turtle.forward"; case "turtle.right" => "Turtle.turnRight"; case other => other }, args.map(expression(_, method))))
+          else Vector(prefix + call(meta, name.stripPrefix("turtle.") match {
+            case python if name.startsWith("turtle.") && R.TurtleCommand.byPythonName.contains(python) =>
+              R.TurtleCommand.qualified(R.TurtleCommand.byPythonName(python))
+            case _ => name
+          }, args.map(expression(_, method))))
         case _ => reject("This Python statement cannot be converted without changing its meaning.")
       }
     }
