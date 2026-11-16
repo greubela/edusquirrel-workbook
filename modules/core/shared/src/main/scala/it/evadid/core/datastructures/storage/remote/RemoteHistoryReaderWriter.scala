@@ -14,7 +14,7 @@ trait RemoteHistoryReaderWriter[K, T, GA, SA] {
 }
 
 object RemoteHistoryReaderWriter {
-  trait RemoteHistoryDataReader[K, T, GA, SA] {
+  trait RemoteHistoryDataReader[K, T, GA, SA] extends RemoteDataReader[K, List[InteractionEvent[T, GA, SA]]] {
     /** Both bounds are inclusive. Return the complete range, without pagination/truncation; missing keys mean empty ranges.
       * Apply the strategy to the stored history before applying the timestamp bounds.
       */
@@ -24,6 +24,6 @@ object RemoteHistoryReaderWriter {
     def fetchAll(logger: SyncLogger, keys: Set[K], strategy: EventSyncStrategy): Future[Map[K, List[InteractionEvent[T, GA, SA]]]] =
       fetchEventsBetween(logger, keys.toSeq, LocalDateTime.MIN, LocalDateTime.MAX, strategy)
 
-    def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()
+    override def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()
   }
 }

@@ -3,7 +3,7 @@ package it.evadid.workbook.meta
 import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache
 import it.evadid.core.datastructures.storage.remote.RemoteHistoryReaderWriter
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.interaction.sync.{SyncContext, SyncInformationWithContext}
+import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncInformationWithContext}
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
 import upickle.default.*
 
@@ -13,7 +13,6 @@ import java.time.LocalDateTime
   * Uses the event-based cache model for tracking local and remote histories. */
 case class InteractionVariableSyncReport[K, T, GA, SA, RW <: RemoteHistoryReaderWriter[K, T, GA, SA]]
 (
-  serializerHistory: Serializer[InteractionVariableHistory[T, GA, SA]],
   curLocalHistory: InteractionVariableHistory[T, GA, SA],
   cacheReport: RemoteHistoryCache.CacheReportForKey[K, T, GA, SA, RW],
   allSyncDestinations: Set[RW]
