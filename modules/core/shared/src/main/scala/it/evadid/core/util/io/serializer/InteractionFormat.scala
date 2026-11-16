@@ -96,21 +96,23 @@ object InteractionFormat {
     * stores the fully qualified class name. Deserialization returns the
     * singleton instance if the class is available.
     */
-  given ReadWriter[InteractionFormat[?, ?, ?]] = ReadWriter.make[InteractionFormat[?, ?, ?]](
-    write = { format =>
-      val className = format.getClass.getName
-      ujson.Str(className)
-    },
-    read = { value =>
-      val className = value.str
-      try {
-        val clazz = Class.forName(className)
-        val field = clazz.getField("MODULE$")
-        field.get(null).asInstanceOf[InteractionFormat[?, ?, ?]]
-      } catch {
-        case e: Exception =>
-          throw upickle.default.ReadError(s"Failed to load InteractionFormat class $className: ${e.getMessage}", value)
+  implicit def interactionFormatReadWriter[T, GA, SA]: ReadWriter[InteractionFormat[T, GA, SA]] = {
+    val rw = upickle.default.readwriter[ujson.Value].bimap[
+      InteractionFormat[T, GA, SA]
+    ](
+      format => ujson.Str(format.getClass.getName),
+      value => {
+        val className = value.str
+        try {
+          val clazz = Class.forName(className)
+          val field = clazz.getField("MODULE$")
+          field.get(null).asInstanceOf[InteractionFormat[T, GA, SA]]
+        } catch {
+          case e: Exception =>
+            throw upickle.default.ReadError(s"Failed to load InteractionFormat class $className: ${e.getMessage}", value)
+        }
       }
-    }
-  )
+    )
+    rw.asInstanceOf[ReadWriter[InteractionFormat[T, GA, SA]]]
+  }
 }
