@@ -39,9 +39,7 @@ case class TurtleRecreateShapeInteraction
   override def format: InteractionFormat[ProgrammingState, AdditionalProgrammingTestInfo, Unit] = TurtleRecreateShapeInteraction.format
 }
 
-object TurtleRecreateShapeInteraction extends InteractionFormat.Provider[ProgrammingState, AdditionalProgrammingTestInfo, Unit] {
-
-  override def elementIdPrefix: String = "TurtleRecreateShapeInteraction"
+object TurtleRecreateShapeInteraction extends InteractionFormat[ProgrammingState, AdditionalProgrammingTestInfo, Unit] {
 
   val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
     override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "comparisonPolicy", "customExerciseConfig")
@@ -64,4 +62,8 @@ object TurtleRecreateShapeInteraction extends InteractionFormat.Provider[Program
         serialized.getOptionalElementAs[Option[RecreateTurtleDidacticConfig]]("customExerciseConfig", None),
       )
   }
+
+  override def stateSerializer: Serializer[ProgrammingState] = ProgrammingState.serializer
+  override def historySerializer: Serializer[InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit]] = Serializer.fromImplicitRW
 }

@@ -10,7 +10,6 @@ import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 
 import java.time.Duration
 
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.core.util.io.serializer.InteractionFormat
 
 case class TextInteraction(override val elementId: String) extends WorkbookInteractionElement[String] {
@@ -20,12 +19,15 @@ case class TextInteraction(override val elementId: String) extends WorkbookInter
   override def format: InteractionFormat[String, Unit, Unit] = TextInteraction.format
 }
 
-object TextInteraction extends InteractionFormat.Provider[String, Unit, Unit] {
+object TextInteraction extends InteractionFormat[String, Unit, Unit] {
+
   val factory: NoContentElementFactory[TextInteraction] = new NoContentElementFactory[TextInteraction]() {
     override def callConstructor(elementId: String): TextInteraction = TextInteraction(elementId)
   }
 
-  override def elementIdPrefix: String = "TextInteraction"
+  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
 
   def decideTextareaUpdateImportance(change: InteractionVariableStateChanged[String]): UpdateImportance =
     if (change.lastState.value == change.newState.value) TEMPORARY else {
@@ -33,7 +35,7 @@ object TextInteraction extends InteractionFormat.Provider[String, Unit, Unit] {
       val lenDiff = lenNew - change.lastState.value.length
       val timeDiff = Duration.between(change.lastState.timestamp, change.newState.timestamp)
       if (timeDiff.abs().getSeconds > 10) MAJOR
-      else if (lenNew > 0 && lenDiff == 1) { val last = change.newState.value.last; if ("\n\t.!?".contains(last)) MAJOR else if (" ,:-+=;&/|".contains(last)) MINOR else TEMPORARY }
+      else if (lenNew > 0 && lenDiff == 1) { val last = change.newState.value.last; if ("\\n\\t.!?".contains(last)) MAJOR else if (" ,:-+=;&/|".contains(last)) MINOR else TEMPORARY }
       else MINOR
     }
 }

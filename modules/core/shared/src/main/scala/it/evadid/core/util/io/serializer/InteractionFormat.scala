@@ -12,18 +12,28 @@ import upickle.default.*
   * - `historySerializer`: For serializing the interaction history
   * - `exerciseSerializer`: For serializing the interaction element itself
   *
+  * Unlike registry-based approaches, InteractionFormat is a **serializable object**
+  * that can be passed explicitly through method signatures. This makes it:
+  * - Portable across server boundaries (no elementId lookup needed)
+  * - Explicit in method signatures (type-safe)
+  * - Easy to test (pass format as parameter)
+  *
   * Usage in interaction definitions:
   * {{{
   * case class MyInteraction(...) extends WorkbookInteractionElementFull[State, Grade, Scaffold] {
   *   override def format: InteractionFormat[State, Grade, Scaffold] = MyInteraction.format
   * }
-  * object MyInteraction extends InteractionFormat.Provider[State, Grade, Scaffold] {
-  *   override def elementIdPrefix: String = "MyInteraction"
+  * object MyInteraction extends InteractionFormat {
+  *   // format is provided by the trait
   * }
   * }}}
   *
-  * This enables type-safe serializer access without runtime interaction variable instances.
-  * On the backend, use InteractionFormat.forElementId to retrieve formats.
+  * Usage in backend methods:
+  * {{{
+  * // Format is passed explicitly, no registry lookup needed
+  * def processHistory(format: InteractionFormat[State, Grade, Scaffold], json: String): History =
+  *   format.historySerializer.deserialize(json)
+  * }}}
   */
 trait InteractionFormat[T, GA, SA] {
 
@@ -74,78 +84,5 @@ object InteractionFormat {
       Serializer.fromImplicitRW[InteractionVariableHistory[T, GA, SA]],
       Serializer.fromImplicitRW[WorkbookInteractionElementFull[T, GA, SA]]
     )
-
-  // ============================================================================
-  // Registry for central format lookup by element ID
-  // ============================================================================
-
-  private val registry = scala.collection.mutable.Map[String, InteractionFormat[?, ?, ?]]()
-
-  /** Registers an interaction format by its element ID.
-    * Called automatically when mixing in Provider.
-    */
-  def register[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](
-      elementId: String,
-      format: InteractionFormat[T, GA, SA]
-  ): Unit = {
-    registry.put(elementId, format.asInstanceOf[InteractionFormat[?, ?, ?]])
-  }
-
-  /** Retrieves a format by element ID.
-    *
-    * This enables backend-side serialization/deserialization without runtime
-    * access to interaction instances.
-    *
-    * Example:
-    * {{{
-    * val format = InteractionFormat.forElementId[State, Grade, Scaffold]("MyInteraction")
-    * format match {
-    *   case Some(f) => f.historySerializer.deserialize(json)
-    *   case None => // handle unknown interaction
-    * }
-    * }}}
-    */
-  def forElementId[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](elementId: String): Option[InteractionFormat[T, GA, SA]] = {
-    registry.get(elementId).map(_.asInstanceOf[InteractionFormat[T, GA, SA]])
-  }
-
-  /** Returns all registered element IDs.
-    */
-  def registeredIds: Set[String] = registry.keySet.toSet
-
-  // ============================================================================
-  // Provider trait for automatic registration
-  // ============================================================================
-
-  /** Trait that can be mixed into interaction companion objects.
-    *
-    * Provides the `format` method and automatic registration.
-    *
-    * Usage:
-    * {{{
-    * case class MyInteraction(...) extends WorkbookInteractionElementFull[State, Grade, Scaffold] {
-    *   override def format: InteractionFormat[State, Grade, Scaffold] = MyInteraction.format
-    * }
-    * object MyInteraction extends InteractionFormat.Provider[State, Grade, Scaffold] {
-    *   override def elementIdPrefix: String = "MyInteraction"
-    * }
-    * }}}
-    */
-  trait Provider[T: ReadWriter, GA: ReadWriter, SA: ReadWriter] {
-
-    /** The element ID prefix used for registration.
-      * Override this in your interaction object.
-      */
-    def elementIdPrefix: String
-
-    /** The format instance for this interaction type.
-      * Automatically registered when this trait is mixed in.
-      */
-    lazy val format: InteractionFormat[T, GA, SA] = {
-      val f = InteractionFormat.fromReadWriters[T, GA, SA]
-      InteractionFormat.register[T, GA, SA](elementIdPrefix, f)
-      f
-    }
-  }
 
 }

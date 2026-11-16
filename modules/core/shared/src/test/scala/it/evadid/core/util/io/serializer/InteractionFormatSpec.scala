@@ -18,10 +18,9 @@ class InteractionFormatSpec extends FunSuite {
     val format = InteractionFormat.fromReadWriters[String, Unit, Unit]
 
     // Verify all serializers are available
-    // Note: upickle writes strings with JSON quotes, so "test" becomes "\"test\""
     val serializedState = format.stateSerializer.serialize("test")
     assert(serializedState == "\"test\"")
-    
+
     val history = InteractionVariableHistory.empty[String, Unit, Unit]
     val serialized = format.historySerializer.serialize(history)
     assert(format.historySerializer.deserialize(serialized) == history)
@@ -40,49 +39,34 @@ class InteractionFormatSpec extends FunSuite {
   }
 
   // ============================================================================
-  // Provider pattern (automatic registration)
+  // TextInteraction format
   // ============================================================================
 
-  test("TextInteraction format is accessible and registered") {
+  test("TextInteraction format is accessible") {
     val format = TextInteraction.format
     assert(format != null)
+  }
 
-    // Verify format works
+  test("TextInteraction format can serialize/deserialize history") {
+    val format = TextInteraction.format
     val history = InteractionVariableHistory.empty[String, Unit, Unit]
     val serialized = format.historySerializer.serialize(history)
     assert(format.historySerializer.deserialize(serialized) == history)
   }
 
-  test("InteractionFormat.forElementId retrieves registered format") {
-    val formatOpt = InteractionFormat.forElementId[String, Unit, Unit]("TextInteraction")
-    assert(formatOpt.isDefined)
-
-    val format = formatOpt.get
-    val history = InteractionVariableHistory.empty[String, Unit, Unit]
-    val serialized = format.historySerializer.serialize(history)
-    assert(format.historySerializer.deserialize(serialized) == history)
-  }
-
-  test("InteractionFormat.registeredIds includes all registered formats") {
-    assert(InteractionFormat.registeredIds.contains("TextInteraction"))
-  }
-
-  test("InteractionFormat.forElementId returns None for unknown element ID") {
-    val format = InteractionFormat.forElementId[String, Unit, Unit]("NonExistent")
-    assert(format.isEmpty)
-  }
-
-  // ============================================================================
-  // State serialization
-  // ============================================================================
-
-  test("Format stateSerializer can serialize and deserialize state") {
-    val format = InteractionFormat.fromReadWriters[String, Unit, Unit]
-
+  test("TextInteraction format stateSerializer can serialize/deserialize") {
+    val format = TextInteraction.format
     val testValue = "hello world"
     val serialized = format.stateSerializer.serialize(testValue)
-    // upickle writes strings with JSON quotes
     assert(format.stateSerializer.deserialize(serialized) == testValue)
+  }
+
+  test("TextInteraction format exerciseSerializer can serialize interaction") {
+    val format = TextInteraction.format
+    val interaction = TextInteraction("test-id")
+    val serialized = format.exerciseSerializer.serialize(interaction)
+    val deserialized = format.exerciseSerializer.deserialize(serialized)
+    assert(deserialized.elementId == "test-id")
   }
 
   // ============================================================================
@@ -108,20 +92,6 @@ class InteractionFormatSpec extends FunSuite {
     val deserialized = format.historySerializer.deserialize(serialized)
 
     assert(deserialized.historyStates.lastStateOption.map(_.value) == Some("second"))
-  }
-
-  // ============================================================================
-  // Exercise serialization
-  // ============================================================================
-
-  test("Format exerciseSerializer can serialize TextInteraction") {
-    val format = InteractionFormat.fromReadWriters[String, Unit, Unit]
-
-    val interaction = TextInteraction("test-id")
-    val serialized = format.exerciseSerializer.serialize(interaction)
-    val deserialized = format.exerciseSerializer.deserialize(serialized)
-
-    assert(deserialized.elementId == "test-id")
   }
 
 }
