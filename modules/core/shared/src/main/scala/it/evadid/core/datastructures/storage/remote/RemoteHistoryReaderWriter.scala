@@ -1,7 +1,5 @@
 package it.evadid.core.datastructures.storage.remote
 
-import it.evadid.core.datastructures.storage.remote.RemoteHistoryReaderWriter.RemoteHistoryDataReader
-import it.evadid.core.datastructures.storage.remote.RemoteReaderWriter.RemoteDataWriter
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.EventSyncStrategy
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
