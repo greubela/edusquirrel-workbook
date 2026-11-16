@@ -15,7 +15,7 @@ case class RemoteHistorySyncControl[K, T, GA, SA, RW <: RemoteHistoryReaderWrite
 
   private given ec: ExecutionContext = ExecutionContext.global
   
-  private val cache = RemoteHistoryCache[K, T, GA, SA, RW](syncLogger, cacheStrategies)
+  val cache = RemoteHistoryCache[K, T, GA, SA, RW](syncLogger, cacheStrategies)
 
   override def storeAll(forceFlush: Boolean): Future[Unit] = cache.storeAll(forceFlush)
 

@@ -82,7 +82,7 @@ class UpsertSnapshotSpec extends FunSuite {
   test("empty snapshots do not prepare a statement") {
     val connection = jdbc(classOf[Connection])((name, _) => throw AssertionError("Unexpected database access: " + name))
     val control = UpsertToDatabase(connection, context, BasicLogger())
-    val request = StoreToDbRequest(sync, write(InteractionVariableHistory[String, Unit, Unit](Set.empty)), config, DatabaseHistoryFormat.ClassicJsonWithKey)
+    val request = StoreToDbRequest(sync, write(InteractionVariableHistory.empty[String, Unit, Unit]), config, DatabaseHistoryFormat.ClassicJsonWithKey)
     assertEquals(control.upsertIntoTableWithKeys(request).elementsChanged, 0)
     assertEquals(control.insertIntoTableWithoutKeys(request).elementsAdded, 0)
   }
