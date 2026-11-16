@@ -1,7 +1,9 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.sync.UpdateImportance.*
 import it.evadid.workbook.interaction.variable.events.*
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import java.time.LocalDateTime
 import munit.FunSuite
 import upickle.default.*
