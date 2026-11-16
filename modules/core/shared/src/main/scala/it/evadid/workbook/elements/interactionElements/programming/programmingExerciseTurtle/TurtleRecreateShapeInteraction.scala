@@ -41,7 +41,7 @@ object TurtleRecreateShapeInteraction {
 
   // Register the interaction format for backend serialization
   // The elementIdPrefix must match how this interaction is identified in the sync system
-  InteractionFormat.register[ProgrammingState, AdditionalProgrammingTestInfo, Unit](elementIdPrefix = "TurtleRecreateShapeInteraction")
+  InteractionFormat.register[ProgrammingState, AdditionalProgrammingTestInfo, Unit]("TurtleRecreateShapeInteraction")
 
 
 

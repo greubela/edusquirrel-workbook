@@ -44,6 +44,10 @@ trait InteractionFormat[T, GA, SA] {
 
 object InteractionFormat {
 
+  /** Internal test helper to clear the registry.
+    */
+  private[serializer] def clearRegistry(): Unit = registry.clear()
+
   /** Creates an InteractionFormat from three individual serializers.
     *
     * @param stateSerializer Serializer for the state type T
@@ -83,13 +87,13 @@ object InteractionFormat {
   /** Internal registry storing format metadata for type-erased lookup.
     * The format object itself is not stored - only metadata for reconstruction.
     */
-  private case class FormatMetadata[T, GA, SA](
+  private[serializer] case class FormatMetadata[T, GA, SA](
       stateSerializer: Serializer[T],
       historySerializer: Serializer[InteractionVariableHistory[T, GA, SA]],
       exerciseSerializer: Serializer[WorkbookInteractionElementFull[T, GA, SA]]
   )
 
-  private val registry = scala.collection.mutable.Map[String, FormatMetadata[?, ?, ?]]()
+  private[serializer] val registry = scala.collection.mutable.Map[String, FormatMetadata[_, _, _]]()
 
   /** Registers an interaction format by its element ID.
     *
@@ -110,7 +114,7 @@ object InteractionFormat {
       historySerializer = format.historySerializer,
       exerciseSerializer = format.exerciseSerializer
     )
-    registry.put(elementId, metadata.asInstanceOf[FormatMetadata[?, ?, ?]])
+    registry.put(elementId, metadata.asInstanceOf[FormatMetadata[_, _, _]])
   }
 
   /** Registers an interaction format with explicit serializer functions.
@@ -132,7 +136,7 @@ object InteractionFormat {
       exerciseSerializer: Serializer[WorkbookInteractionElementFull[T, GA, SA]]
   ): Unit = {
     val metadata = FormatMetadata(stateSerializer, historySerializer, exerciseSerializer)
-    registry.put(elementId, metadata.asInstanceOf[FormatMetadata[?, ?, ?]])
+    registry.put(elementId, metadata.asInstanceOf[FormatMetadata[_, _, _]])
   }
 
   /** Retrieves a format by element ID.
@@ -147,29 +151,9 @@ object InteractionFormat {
     }
   }
 
-  /** Retrieves a format by element ID without type parameters (returns heterogeneously typed format).
-    *
-    * Use this when you need to look up a format dynamically without knowing the types at compile time.
-    * Note: This returns a type-erased format that requires unsafe casting for type-safe usage.
-    *
-    * @param elementId The unique identifier of the interaction element
-    * @return Some(format) if registered, None otherwise
-    */
-  def getUntyped(elementId: String): Option[InteractionFormat[?, ?, ?]] = {
-    registry.get(elementId).map { metadata =>
-      new InteractionFormat[?, ?, ?] {
-        override def stateSerializer: Serializer[?] = metadata.asInstanceOf[FormatMetadata[?, ?, ?]].stateSerializer
-        override def historySerializer: Serializer[InteractionVariableHistory[?, ?, ?]] = 
-          metadata.asInstanceOf[FormatMetadata[?, ?, ?]].historySerializer
-        override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[?, ?, ?]] = 
-          metadata.asInstanceOf[FormatMetadata[?, ?, ?]].exerciseSerializer
-      }
-    }
-  }
-
   /** Returns all registered element IDs.
     */
-  def registeredIds: Set[String] = registry.keySet
+  def registeredIds: scala.collection.Set[String] = registry.keySet
 
   // ============================================================================
   // Helper for creating format instances in interaction definitions

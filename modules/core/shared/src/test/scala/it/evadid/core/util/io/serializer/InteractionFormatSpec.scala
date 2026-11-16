@@ -91,17 +91,17 @@ class InteractionFormatSpec extends FunSuite {
 
   test("InteractionFormat registeredIds includes registered formats") {
     // After registration, the ID should appear in registeredIds
-    InteractionFormat.register[String, Unit, Unit](elementIdPrefix = "TempInteraction")
+    InteractionFormat.register[String, Unit, Unit]("TempInteraction")
     
     assert(InteractionFormat.registeredIds.contains("TempInteraction"))
     
     // Clean up
-    registry.remove("TempInteraction")
+    InteractionFormat.clearRegistry()
   }
 
   test("FormatProvider provides type-safe format access") {
     // Register a format
-    InteractionFormat.register[String, Unit, Unit](elementIdPrefix = "ProviderTest")
+    InteractionFormat.register[String, Unit, Unit]("ProviderTest")
     
     // Use FormatProvider to get a type-safe format
     val provider = InteractionFormat.FormatProvider[String, Unit, Unit]
@@ -115,7 +115,7 @@ class InteractionFormatSpec extends FunSuite {
     assertEquals(deserialized, history)
     
     // Clean up
-    registry.remove("ProviderTest")
+    InteractionFormat.clearRegistry()
   }
   
   test("FormatProvider throws for unknown element ID") {
