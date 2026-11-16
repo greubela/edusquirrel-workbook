@@ -25,6 +25,11 @@ object HistoryJson {
   def merge(histories: List[String]): String = write(histories.foldLeft(InteractionVariableHistory.empty[ujson.Value, ujson.Value, ujson.Value])(
     (current, json) => current.mergeWith(decode(json))))
 
+  /** Iterate over the (ujson key, ujson value) pairs of a JSON object; the key is parsed as JSON so complex keys match. */
+  def entries(value: ujson.Value): Iterator[(ujson.Value, ujson.Value)] = value.obj.map { (k, v) =>
+    ujson.read(k) -> v
+  }.iterator
+
   def select(json: String, strategy: EventSyncStrategy, starting: LocalDateTime, until: LocalDateTime): String = {
     require(!until.isBefore(starting), "History range end must not precede its start")
     val history = decode(json).cleanWithStrategy(strategy)

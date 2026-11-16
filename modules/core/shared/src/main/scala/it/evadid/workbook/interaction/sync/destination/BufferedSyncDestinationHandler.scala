@@ -105,9 +105,16 @@ object BufferedSyncDestinationHandler {
 
   private def handleStores(stores: Seq[CachedStoreRequest], underlying: SyncDestinationHistoryHandler): Future[Unit] = {
     if stores.isEmpty then Future.unit else {
-      // Queue order also resolves equal browser timestamps deterministically.
-      val values = stores.foldLeft(Map.empty[SyncContext, String])((result, request) => result ++ request.toStore)
-      execute(underlying)(underlying.storeHistoriesJson(values)).transform { outcome =>
+      // Merge queued deltas per key so that idempotent events are not lost when multiple
+      // stores for the same key arrive before the buffer flushes.
+      val merged = stores.foldLeft(Map.empty[SyncContext, Vector[String]]) { (acc, request) =>
+        acc ++ request.toStore.map { (key, json) =>
+          key -> (acc.getOrElse(key, Vector.empty) :+ json)
+        }
+      }.view.map { (key, versions) =>
+        key -> it.evadid.workbook.interaction.sync.model.HistoryJson.merge(versions.toList)
+      }.toMap
+      execute(underlying)(underlying.storeHistoriesJson(merged)).transform { outcome =>
         stores.foreach(_.promise.tryComplete(outcome))
         Success(())
       }

@@ -13,7 +13,7 @@ import scala.util.{Try, Using}
 
 /** Shared JDBC resource handling and relational row decoding; contains no history writes. */
 abstract class RelationalHistorySql(connection: Connection, logger: Logger) {
-  private val timestampFormat = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSSSSS")
+  protected val timestampFormat = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSSSSS")
   protected def time(value: ujson.Value): String = LocalDateTime.parse(value.str).format(timestampFormat)
   protected def restoredTime(value: String): ujson.Value = ujson.Str(LocalDateTime.parse(value).toString)
 

@@ -42,6 +42,16 @@ object SQLCommands {
                                     databaseFormat: DatabaseHistoryFormat
                                   ) extends DbRequest derives ReadWriter
 
+  /** Range-read: return only events whose timestamp falls in [starting, until]. */
+  case class FetchEventsFromDbRequest(
+                                       usageContext: UsageContext,
+                                       keys: Seq[String],
+                                       starting: String,
+                                       until: String,
+                                       databaseConfig: DatabaseConfiguration,
+                                       databaseFormat: DatabaseHistoryFormat
+                                     ) extends DbRequest derives ReadWriter
+
 
   case class DeleteInDbRequest(
                                 usageContext: UsageContext,
@@ -64,6 +74,10 @@ object SQLCommands {
 
   lazy val fetchFromDbCommand: ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse](
     "fetch-from-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
+  )
+
+  lazy val fetchEventsFromDbCommand: ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse](
+    "fetch-events-from-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
   )
 
   // A distinct command prevents an older server from acknowledging a reset

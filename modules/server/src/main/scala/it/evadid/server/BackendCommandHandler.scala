@@ -65,8 +65,13 @@ object BackendCommandHandler {
         FetchFromDatabase.handleRequest(request, logger)
       },
       (request: FetchAllFromDbRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.usageContext.userId)
-    )
-    ,
+    ),
+    SQLCommands.fetchEventsFromDbCommand.toLocalExecutionClient(
+      (request: FetchEventsFromDbRequest, logger: Logger) => Future {
+        FetchFromDatabase.handleRangeRequest(request, logger)
+      },
+      (request: FetchEventsFromDbRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.usageContext.userId)
+    ),
     SQLCommands.resetUserHistoriesDbCommand.toLocalExecutionClient(
       (request: DeleteInDbRequest, logger: Logger) => Future {
         require(request.allWorkbooks, "A full reset requires the all-workbook scope.")

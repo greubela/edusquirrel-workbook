@@ -102,4 +102,14 @@ object InteractionVariableHistory {
   def fromResults[T, GA, SA](states: InteractionVariableStateHistory[T], gradings: InteractionVariableGradingHistory[T, GA],
       scaffoldings: InteractionVariableScaffoldingHistory[T, SA]): InteractionVariableHistory[T, GA, SA] =
     fromResults(states.events, gradings.gradingsFinished, scaffoldings.scaffoldingsFinished)
+
+  /** Backward-compatibility constructor for tests. Converts to event-based format. */
+  def apply[T, GA, SA](states: InteractionVariableStateHistory[T],
+      gradings: InteractionVariableGradingHistory[T, GA],
+      scaffoldings: InteractionVariableScaffoldingHistory[T, SA]): InteractionVariableHistory[T, GA, SA] =
+    fromResults(states, gradings, scaffoldings)
+
+  /** Backward-compatibility constructor for tests. Converts to event-based format. */
+  def apply[T, GA, SA](events: Set[InteractionVariableState[T]]): InteractionVariableHistory[T, GA, SA] =
+    fromResults(events, Set.empty, Set.empty)
 }

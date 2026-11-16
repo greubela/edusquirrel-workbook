@@ -1,7 +1,7 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.workbook.interaction.sync.model.HistoryJson
-import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, FetchAllFromDbRequest}
+import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, FetchAllFromDbRequest, FetchEventsFromDbRequest}
 import it.evadid.server.commandHandler.sql.{GenericSqlFunctionality, RichDatabaseConfig}
 import it.evadid.sql.DatabaseConfiguration
 import it.evadid.util.logging.Logger
@@ -104,6 +104,17 @@ object FetchFromDatabase {
               control.fetchForKeyInDbWithKey(key).map(entry => Map(entry.syncContext -> List(entry))).getOrElse(Map.empty)
             }
           DbFetchResponse(result.map((context, rows) => context -> union(rows.map(_.historyJson))))
+      }
+    }
+  }
+
+  def handleRangeRequest(request: FetchEventsFromDbRequest, logger: Logger): DbFetchResponse = {
+    it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
+      request.databaseFormat match {
+        case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => new RelationalHistoryStorage(connection, logger).fetchInRange(request)
+        case _: it.evadid.sql.DatabaseHistoryFormat.Snapshot =>
+          logger.logWarn("Range reads not supported for snapshot format; falling back to full fetch")
+          new RelationalHistoryStorage(connection, logger).fetchInRange(request)
       }
     }
   }
