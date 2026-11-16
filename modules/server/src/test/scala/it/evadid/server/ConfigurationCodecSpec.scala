@@ -18,7 +18,7 @@ class ConfigurationCodecSpec extends FunSuite {
     import it.evadid.sql.DatabaseConfig
     val json = ujson.read("""{"usageContext":{"programId":"edusquirrel","scenarioId":"workbookTest","userId":"student"},
       "databaseConfig":{"$type":"DatabaseConfig","dbFormat":"mysql","host":"herrgreubel.lima-db.de","port":"3306","database":"db_332371_12"},
-      "mayLimitToKey":null,"databaseFormat":"ClassicJsonWithKey"}""")
+      "mayLimitToKey":null,"databaseFormat":"RelationalEvents"}""")
     assertEquals(read[FetchAllFromDbRequest](json).databaseConfig, DatabaseConfig.defaultDb)
     val unsupported = ujson.read("""{"databaseOp":"db_332371_12","dbFormatOp":"mysql","hostOp":"herrgreubel.lima-db.de","portOp":"3306"}""")
     json("databaseConfig") = unsupported

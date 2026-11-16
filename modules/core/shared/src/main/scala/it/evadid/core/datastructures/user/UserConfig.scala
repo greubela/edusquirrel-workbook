@@ -16,9 +16,7 @@ object UserConfig {
   lazy val defaultSyncDestinations: List[SyncInformation] = {
     List(
       SyncInformation(defaultBrowserHistory, KEEP_LAST_AND_MAJOR),
-      SyncInformation(defaultDatabaseWithKey, KEEP_MAJOR),
-      SyncInformation(defaultDatabaseKeyless, KEEP_MAJOR),
-      SyncInformation(defaultDatabaseV2, KEEP_LAST_FIVE)
+      SyncInformation(defaultDatabase, KEEP_LAST_FIVE)
     )
   }
 

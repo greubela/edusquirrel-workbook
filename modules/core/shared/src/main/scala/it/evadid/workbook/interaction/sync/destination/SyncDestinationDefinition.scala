@@ -37,13 +37,7 @@ object SyncDestinationDefinition {
   val defaultBrowserHistory: LocalIndexedDbSyncDefinition =
     LocalIndexedDbSyncDefinition("EvaDidInteractionDB", "variableHistoryStore", 1)
 
-  val defaultDatabaseWithKey: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.ClassicJsonWithKey, true)
-
-  val defaultDatabaseKeyless: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.ClassicKeylessJson, true)
-
-  val defaultDatabaseV2: SyncDestinationBasedOnHistoryDatabase =
+  val defaultDatabase: SyncDestinationBasedOnHistoryDatabase =
     SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalEvents, true)
 
 }

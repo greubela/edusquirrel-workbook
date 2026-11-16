@@ -17,77 +17,7 @@ case class FetchFromDatabase(
 
   private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
 
-  def fetchAllInDbWithoutKeys(tableName: String = "events"): Map[SyncContext, List[RichDatabaseEntry]] = {
-    logger.logInfo("Fetching all events from database (without keys) for usage context: " + usageContext.toString)
-
-    val sql: String = {
-      s"""
-         |SELECT `eventid`, `serializeddata`
-         |FROM `$tableName`
-         |WHERE `programid` = ? AND `scenarioid` = ? AND `userid` = ?
-         |ORDER BY `timestamp` DESC
-         |""".stripMargin
-    }
-
-    val stmt = connection.prepareStatement(sql)
-    stmt.setString(1, usageContext.programId)
-    stmt.setString(2, usageContext.scenarioId)
-    stmt.setString(3, usageContext.userId)
-
-    val asList: List[RichDatabaseEntry] = generic.executeSyncQuere(stmt, List("eventid", "serializeddata"), usageContext)
-    asList.groupBy(_.syncContext).toMap
-  }
-
-  def fetchAllInDbWithKeys(): Map[SyncContext, List[RichDatabaseEntry]] = {
-    logger.logInfo("Fetching all events from database (with keys) for usage context: " + usageContext.toString)
-
-    val sql: String = {
-      """
-        |SELECT `eventid`, `eventkey`, `serializeddata`
-        |FROM `eventsWithKey`
-        |WHERE `programid` = ? AND `scenarioid` = ? AND `userid` = ?
-        |ORDER BY `timestamp` DESC
-        |""".stripMargin
-    }
-
-    val stmt = connection.prepareStatement(sql)
-    stmt.setString(1, usageContext.programId)
-    stmt.setString(2, usageContext.scenarioId)
-    stmt.setString(3, usageContext.userId)
-
-    val asList: List[RichDatabaseEntry] = generic.executeSyncQuere(stmt, List("eventid", "eventkey", "serializeddata"), usageContext)
-    asList.groupBy(_.syncContext).toMap
-  }
-
-  def fetchForKeyInDbWithKey(keyForSerialisation: String): Option[RichDatabaseEntry] = {
-    val syncContext = usageContext.toSyncContext(keyForSerialisation)
-    logger.logInfo("Fetching all events from database (with keys) for context: " + syncContext)
-
-    val sql: String =
-      """
-        |SELECT `eventid`, `eventkey`, `serializeddata`
-        |FROM `eventsWithKey`
-        |WHERE `programid` = ? AND `scenarioid` = ? AND `userid` = ? AND `eventkey` = ?
-        |ORDER BY `timestamp` DESC
-        |""".stripMargin
-
-    val stmt = connection.prepareStatement(sql)
-    stmt.setString(1, usageContext.programId)
-    stmt.setString(2, usageContext.scenarioId)
-    stmt.setString(3, usageContext.userId)
-    stmt.setString(4, keyForSerialisation)
-
-    val asList: List[RichDatabaseEntry] = generic.executeSyncQuere(stmt, List("eventid", "eventkey", "serializeddata"), usageContext)
-
-    if (asList.isEmpty) logger.logWarn("No events found for key: " + keyForSerialisation)
-    else if (asList.size > 1) logger.logWarn("Multiple events found for key: " + keyForSerialisation + ", discarded events " + asList.tail.map(_.eventId).mkString(", "))
-
-    asList.headOption
-  }
-
-
 }
-
 
 object FetchFromDatabase {
 
@@ -95,31 +25,14 @@ object FetchFromDatabase {
 
   def handleRequest(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
     it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
-      request.databaseFormat match {
-        case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => new RelationalHistoryStorage(connection, logger).fetch(request)
-        case format: it.evadid.sql.DatabaseHistoryFormat.Snapshot =>
-          val control = FetchFromDatabase(connection, request.usageContext, logger)
-          val result = if !format.hasKeyTable then control.fetchAllInDbWithoutKeys(format.table)
-            else request.mayLimitToKey.fold(control.fetchAllInDbWithKeys()) { key =>
-              control.fetchForKeyInDbWithKey(key).map(entry => Map(entry.syncContext -> List(entry))).getOrElse(Map.empty)
-            }
-          DbFetchResponse(result.map((context, rows) => context -> union(rows.map(_.historyJson))))
-      }
+      new RelationalHistoryStorage(connection, logger).fetch(request)
     }
   }
 
   def handleRangeRequest(request: FetchEventsFromDbRequest, logger: Logger): DbFetchResponse = {
     it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
-      request.databaseFormat match {
-        case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => new RelationalHistoryStorage(connection, logger).fetchInRange(request)
-        case _: it.evadid.sql.DatabaseHistoryFormat.Snapshot =>
-          logger.logWarn("Range reads not supported for snapshot format; falling back to full fetch")
-          new RelationalHistoryStorage(connection, logger).fetchInRange(request)
-      }
+      new RelationalHistoryStorage(connection, logger).fetchInRange(request)
     }
   }
 
 }
-
-
-

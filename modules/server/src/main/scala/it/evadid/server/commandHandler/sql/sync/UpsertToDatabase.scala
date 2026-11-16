@@ -160,12 +160,7 @@ object UpsertToDatabase {
     if (HistoryJson.lastTimestamp(request.historyJson).isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now()) else {
       it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
         val control = UpsertToDatabase(connection, request.usageContext, logger)
-        request.databaseFormat match {
-          case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents => control.upsertIntoRelationalTables(request)
-          case format: it.evadid.sql.DatabaseHistoryFormat.Snapshot =>
-            if format.hasKeyTable then control.upsertIntoTableWithKeys(request)
-            else control.upsertIntoTableWithoutKeys(request, format.table)
-        }
+        control.upsertIntoRelationalTables(request)
       }
     }
 }

@@ -51,7 +51,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
     import it.evadid.workbook.interaction.sync.UsageContext
     val request = SQLCommands.FetchAllFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"),
-      DatabaseConfig.defaultDb, None, DatabaseHistoryFormat.ClassicJsonWithKey)
+      DatabaseConfig.defaultDb, None, DatabaseHistoryFormat.RelationalEvents)
     val encoded = writeJs(request)
     val config = encoded("databaseConfig")
     assertEquals(config.obj.keySet.toSet, Set("$type", "dbFormat", "host", "port", "database"))
@@ -68,9 +68,9 @@ class CommandPayloadCodecsSpec extends FunSuite {
     val context = UsageContext("program", "scenario", "user")
     val supplied = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "private-owner", "private-password")
     List[DatabaseConfiguration](supplied.withoutCredentials, supplied).foreach { config =>
-      val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.ClassicJsonWithKey, buffered = false)
+      val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.RelationalEvents, buffered = false)
       assertEquals(read[SyncDestinationBasedOnHistoryDatabase](write(destination)), destination)
-      val request = SQLCommands.FetchAllFromDbRequest(context, config, None, DatabaseHistoryFormat.ClassicJsonWithKey)
+      val request = SQLCommands.FetchAllFromDbRequest(context, config, None, DatabaseHistoryFormat.RelationalEvents)
       assertEquals(read[SQLCommands.FetchAllFromDbRequest](write(request)), request)
       val command = ExecutionCommand(SQLCommands.fetchFromDbCommand.name, writeJs(request))
       val safe = command.stripPrivacySensitiveInformation()

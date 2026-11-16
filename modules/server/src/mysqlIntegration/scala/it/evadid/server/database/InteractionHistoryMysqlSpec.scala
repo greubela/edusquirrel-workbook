@@ -99,17 +99,15 @@ class InteractionHistoryMysqlSpec extends FunSuite {
 
   override def beforeEach(context: BeforeEach): Unit = MysqlTestDatabase.withConnection(MysqlTestDatabase.reset)
 
-  test("all three supported formats round-trip current answers, multiple graders and scaffolding") {
-    List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
-      val saved = history()
-      store(saved, format)
-      assertEquals(read[History](fetch(format)(sync)), saved)
-      DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, format), logger)
-      assertEquals(fetch(format), Map.empty)
-    }
+  test("relational events format round-trips current answers, multiple graders and scaffolding") {
+    val saved = history()
+    store(saved, DatabaseHistoryFormat.RelationalEvents)
+    assertEquals(read[History](fetch()(sync)), saved)
+    DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, DatabaseHistoryFormat.RelationalEvents), logger)
+    assertEquals(fetch(), Map.empty)
   }
 
-  test("programming answers and typed grading data restore through the interaction history codec in every format") {
+  test("programming answers and typed grading data restore through the interaction history codec") {
     import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
     import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction}
     import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStatePythonString}
@@ -124,11 +122,9 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       Some(AdditionalProgrammingTestInfo(LanguageMap.universalMap("Checked the drawing"))), time.plusSeconds(1))
     val saved = InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, Unit](
       Set(InteractionVariableState(source, UpdateImportance.MAJOR, time)), Set(GradedState(source, Map(check -> grade))), Set.empty[ScaffoldingResult[ProgrammingState, Unit]])
-    List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
-      UpsertToDatabase.handleRequest(StoreToDbRequest(identity, write(saved), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, format), logger)
-      val json = fetch(format)(identity)
-      assertEquals(variable.serializerHistory.deserialize(json), saved)
-    }
+    UpsertToDatabase.handleRequest(StoreToDbRequest(identity, write(saved), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, DatabaseHistoryFormat.RelationalEvents), logger)
+    val json = fetch()(identity)
+    assertEquals(variable.serializerHistory.deserialize(json), saved)
   }
 
   test("a corrupt relational answer timestamp is isolated on reads and does not block later writes") {
@@ -197,26 +193,16 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
-  test("malformed classic rows do not block valid histories or keyless replacements") {
-    List(ClassicKeylessJson, ClassicJsonWithKey).foreach { format =>
-      store(history(), format)
-      MysqlTestDatabase.withConnection { connection =>
-        val keyed = format == ClassicJsonWithKey
-        val table = format.tables.head
-        val columns = if keyed then ",eventkey" else ""
-        val value = if keyed then ",'broken-key'" else ""
-        Using.resource(connection.prepareStatement(s"INSERT INTO `$table` (programid,scenarioid,userid,timestamp,serializeddata$columns) VALUES (?,?,?,NOW(),?$value)")) { statement =>
-          statement.setString(1, context.programId)
-          statement.setString(2, context.scenarioId)
-          statement.setString(3, context.userId)
-          statement.setString(4, "{broken JSON")
-          statement.executeUpdate()
-        }
+  test("malformed relational events rows do not block valid histories") {
+    store(history())
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.prepareStatement("INSERT INTO answer_event (sync_id,timestamp,update_importance,serialized_data) VALUES (1,NOW(),'DEFAULT','{broken JSON')")) { statement =>
+        statement.executeUpdate()
       }
-      assertEquals(read[History](fetch(format)(sync)), history())
-      store(history("replacement"), format)
-      assertEquals(read[History](fetch(format)(sync)), history("replacement"))
     }
+    assertEquals(read[History](fetch()(sync)), history())
+    store(history("replacement"))
+    assertEquals(read[History](fetch()(sync)), history("replacement"))
   }
 
   test("nanosecond-distinct answers survive, retries retain IDs, and context IDs never enter payloads") {
