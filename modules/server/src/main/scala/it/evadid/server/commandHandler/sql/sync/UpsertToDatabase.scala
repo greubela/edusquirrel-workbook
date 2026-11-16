@@ -49,9 +49,9 @@ case class UpsertToDatabase(
 
   /** Stores V2 answers and feedback atomically, preserving IDs on retries. */
   def upsertIntoRelationalTables(request: StoreToDbRequest): SyncSuccess = transaction {
-    val history = request.history.toHistoryPayload
+    val history = HistoryJson.payload(request.historyJson)
     val sync = ensureContext(request.syncContext)
-    history.historyStates.events.values.toList.sortBy(_.timestamp).foreach(upsertAnswer(sync, _))
+    history("historyStates")("events").arr.toList.sortBy(event => LocalDateTime.parse(event("timestamp").str)).foreach(upsertAnswer(sync, _))
     val answers = query("SELECT id,timestamp,update_importance,serialized_data FROM answer_event WHERE sync_id=?", List(sync)) { row =>
       safe("answer " + row.getLong("id")) {
         val event = answerJson(row)
@@ -61,25 +61,25 @@ case class UpsertToDatabase(
     def answerFor(state: ujson.Value): Long = answers.filter(_._3 == state).maxByOption(_._2)
       .map(_._1).getOrElse(throw IllegalArgumentException("Feedback has no matching saved answer in this sync context"))
 
-    history.historyGrading.gradingsMap.foreach { case (state, group) =>
-      require(group.state == state, "Grading state does not match its map key")
-      group.graderResultMap.foreach { case (definition, incoming) =>
-        require(incoming.gradedState == state && incoming.grader == definition, "Inconsistent grading result")
-        val grader = incoming.grader
+    HistoryJson.entries(history("historyGrading")("gradingsMap")).foreach { (state, group) =>
+      require(group("state") == state, "Grading state does not match its map key")
+      HistoryJson.entries(group("graderResultMap")).foreach { (definition, incoming) =>
+        require(incoming("gradedState") == state && incoming("grader") == definition, "Inconsistent grading result")
+        val grader = readJson[WorkbookInteractionGrader[ujson.Value, ujson.Value]]("WorkbookInteractionGrader", definition)
         require(grader.key.nonEmpty, "Grader identity must not be empty")
         val answer = answerFor(state)
         upsertGrading(sync, answer, state, grader, incoming)
       }
     }
-    history.historyScaffolding.scaffoldingMap.foreach { case (state, incoming) =>
-      require(incoming.forState == state, "Scaffolding state does not match its map key")
+    HistoryJson.entries(history("historyScaffolding")("scaffoldingMap")).foreach { (state, incoming) =>
+      require(incoming("forState") == state, "Scaffolding state does not match its map key")
       val answer = answerFor(state)
       upsertScaffolding(sync, answer, state, incoming)
     }
-    val feedbackCount = history.historyGrading.gradingsMap.map { case (_, group) =>
-      group.graderResultMap.size
-    }.sum + history.historyScaffolding.scaffoldingMap.size
-    SyncSuccess(0, history.historyStates.events.values.size + feedbackCount, 0, LocalDateTime.now())
+    val feedbackCount = HistoryJson.entries(history("historyGrading")("gradingsMap"))
+      .map((_, group) => HistoryJson.entries(group("graderResultMap")).size).sum +
+      HistoryJson.entries(history("historyScaffolding")("scaffoldingMap")).size
+    SyncSuccess(0, history("historyStates")("events").arr.size + feedbackCount, 0, LocalDateTime.now())
   }
 
   private def upsertGrading(sync: Long, answer: Long, state: ujson.Value,
@@ -117,13 +117,13 @@ case class UpsertToDatabase(
       ujson.write(result("scaffoldingStatus")), optionalData(result, "additionalInformation"))
   }
 
-  def findMaxTimestamp(history: InteractionHistoryJson[?, ?, ?]): Option[LocalDateTime] = history.lastTimestamp
+  def findMaxTimestamp(history: String): Option[LocalDateTime] = HistoryJson.lastTimestamp(history)
 }
 
 object UpsertToDatabase {
 
   def handleRequest(request: StoreToDbRequest, logger: Logger): SyncSuccess =
-    if (request.history.lastTimestamp.isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now()) else {
+    if (HistoryJson.lastTimestamp(request.historyJson).isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now()) else {
       it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
         val control = UpsertToDatabase(connection, request.usageContext, logger)
         control.upsertIntoRelationalTables(request)

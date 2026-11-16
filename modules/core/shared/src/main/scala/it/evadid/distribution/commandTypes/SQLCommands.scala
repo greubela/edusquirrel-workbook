@@ -27,7 +27,7 @@ object SQLCommands {
 
   case class StoreToDbRequest(
                                syncContext: SyncContext,
-                               history: InteractionHistoryJson[?, ?, ?],
+                               historyJson: String,
                                databaseConfig: DatabaseConfiguration,
                                databaseFormat: DatabaseHistoryFormat
                              ) extends DbRequest derives ReadWriter {
