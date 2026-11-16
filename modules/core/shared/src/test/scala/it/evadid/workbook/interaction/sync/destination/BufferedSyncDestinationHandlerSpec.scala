@@ -100,4 +100,160 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     bound.writer.flush(bound.handler.syncLogger, true)
     writing.map(_ => assertEquals(destination.writes.now().head.size, 2))
   }
+  test("the request count threshold flushes automatically without an explicit flush") {
+    val destination = new Destination
+    val buffered = destination.toBuffered
+    val pending = (1 to 30).map(index => buffered.storeHistoryJson(key, index.toString))
+    Future.sequence(pending).map { _ =>
+      assertEquals(destination.writes.now(), List(Map(key -> "30")))
+      assertEquals(buffered.timestamps, Set.empty)
+    }
+  }
+
+  test("reads in a batch wait for its writes and observe the committed values") {
+    val committed = State(Map.empty[SyncContext, String])
+    val destination = new Destination {
+      override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext) =
+        super.storeHistoriesJson(values).map { success => committed.update(_ ++ values); success }
+      override def readHistoriesJson(ctx: UsageContext)(implicit ec: ExecutionContext) = {
+        reads.update(_ :+ ctx)
+        Future.successful(FetchResponse.fromMap(LocalDateTime.now(), committed.now()))
+      }
+    }
+    val started = Promise[Unit]()
+    val gate = Promise[SyncSuccess]()
+    destination.storeResult.set(() => { started.trySuccess(()); gate.future })
+    val buffered = destination.toBuffered
+    val writing = buffered.storeHistoryJson(key, "saved")
+    val reading = buffered.readHistoryJson(key)
+    buffered.flush(true)
+    started.future.flatMap { _ =>
+      assertEquals(destination.reads.now(), Nil)
+      assert(!reading.isCompleted)
+      gate.success(SyncSuccess.emptyNow())
+      writing.flatMap(_ => reading).map(result => assertEquals(result.asMap(key).value, "saved"))
+    }
+  }
+
+  test("synchronous handler exceptions fail their callers and do not block the next batch") {
+    val destination = new Destination
+    val buffered = destination.toBuffered
+    val error = IllegalStateException("synchronous failure")
+    destination.storeResult.set(() => throw error)
+    destination.readResult.set(_ => throw error)
+    val writing = buffered.storeHistoryJson(key, "first")
+    val reading = buffered.readHistoryJson(key)
+    buffered.flush(true)
+    for {
+      writeError <- writing.failed
+      readError <- reading.failed
+      _ = assert(writeError eq error)
+      _ = assert(readError eq error)
+      _ = destination.storeResult.set(() => Future.successful(SyncSuccess.emptyNow()))
+      retried = buffered.storeHistoryJson(key, "retry")
+      _ = buffered.flush(true)
+      _ <- retried
+    } yield assertEquals(destination.writes.now().last, Map(key -> "retry"))
+  }
+
+  test("a clear runs after pending writes and before writes submitted afterwards") {
+    val operations = State(List.empty[String])
+    val persisted = State(Map.empty[SyncContext, String])
+    val destination = new Destination {
+      override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext) = {
+        operations.update(_ :+ s"write:${values(key)}")
+        super.storeHistoriesJson(values).map { success => persisted.update(_ ++ values); success }
+      }
+      override def clearValues(ctx: UsageContext)(implicit ec: ExecutionContext) = {
+        operations.update(_ :+ "clear")
+        persisted.set(Map.empty)
+        Future.successful(SyncSuccess.emptyNow())
+      }
+    }
+    val started = Promise[Unit]()
+    val gate = Promise[SyncSuccess]()
+    destination.storeResult.set(() => { started.trySuccess(()); gate.future })
+    val buffered = destination.toBuffered
+    val old = buffered.storeHistoryJson(key, "old")
+    buffered.flush(true)
+    started.future.flatMap { _ =>
+      val clearing = buffered.clearValues(context)
+      destination.storeResult.set(() => Future.successful(SyncSuccess.emptyNow()))
+      val fresh = buffered.storeHistoryJson(key, "new")
+      buffered.flush(true)
+      assertEquals(operations.now(), List("write:old"))
+      gate.success(SyncSuccess.emptyNow())
+      for { _ <- old; _ <- clearing; _ <- fresh } yield {
+        assertEquals(operations.now(), List("write:old", "clear", "write:new"))
+        assertEquals(persisted.now(), Map(key -> "new"))
+      }
+    }
+  }
+
+  test("typed and raw reads share a fetch while a malformed typed record fails independently") {
+    import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+    val answer = TextInteraction("answer").interactionVariable
+    val validKey = context.toSyncContext(answer.keyForSerialization)
+    val history = InteractionVariableHistory[String, Unit, Unit](Set(
+      InteractionVariableState("saved", UpdateImportance.MAJOR, LocalDateTime.now())))
+    val json = answer.serializerHistory.serialize(history)
+    val destination = new Destination
+    destination.readResult.set(_ => Future.successful(FetchResponse.fromMap(LocalDateTime.now(),
+      Map(validKey -> json, key -> "invalid"))))
+    val buffered = destination.toBuffered
+    val single = buffered.readHistory[String, Unit, Unit](validKey)
+    val multiple = buffered.readHistories(context, Seq(answer))
+    val invalid = buffered.readHistory[String, Unit, Unit](key)
+    val raw = buffered.readHistoriesJson(context)
+    buffered.flush(true)
+    for {
+      restored <- single
+      all <- multiple
+      error <- invalid.failed
+      bytes <- raw
+    } yield {
+      assertEquals(restored, history)
+      assertEquals(all.get(validKey), Some(history))
+      assert(error.getMessage.contains("could not be parsed"))
+      assertEquals(bytes.asMap.keySet, Set(validKey, key))
+      assertEquals(destination.reads.now(), List(context))
+    }
+  }
+
+  test("a delegated buffer is flushed after requests have actually been registered") {
+    val destination = new Destination
+    val inner = destination.toBuffered
+    val buffered = BufferedSyncDestinationHandler(inner)
+    val writing = buffered.storeHistoryJson(key, "saved")
+    val reading = buffered.readHistoryJson(key)
+    buffered.flush(true)
+    writing.flatMap(_ => reading).map { response =>
+      assertEquals(destination.writes.now(), List(Map(key -> "saved")))
+      assertEquals(response.asMap.keySet, Set(key))
+      assertEquals(inner.timestamps, Set.empty)
+    }
+  }
+
+  test("a delegate flush failure reaches waiting callers and the next batch can retry") {
+    val failing = State(true)
+    val error = IllegalStateException("flush failed")
+    val destination = new Destination {
+      override def flush(forceFlush: Boolean): Unit = if failing.now() then throw error
+    }
+    val buffered = destination.toBuffered
+    val writing = buffered.storeHistoryJson(key, "first")
+    val reading = buffered.readHistoryJson(key)
+    buffered.flush(true)
+    for {
+      writeError <- writing.failed
+      readError <- reading.failed
+      _ = assert(writeError eq error)
+      _ = assert(readError eq error)
+      _ = failing.set(false)
+      retry = buffered.storeHistoryJson(key, "retry")
+      _ = buffered.flush(true)
+      _ <- retry
+    } yield assertEquals(destination.writes.now().last, Map(key -> "retry"))
+  }
 }

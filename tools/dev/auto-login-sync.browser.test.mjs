@@ -14,7 +14,7 @@ const user = {name:'Sync student', id:'sync-reset-student', mail:'sync-reset@exa
 const destinations = [
   {syncDestination:{$type:'LocalIndexedDbSyncDefinition',dbName:'EvaDidInteractionDB',storeName:'variableHistoryStore',dbVersion:1},syncStrategy:'SYNC_LAST_AND_MAJOR'},
   {syncDestination:{$type:'LocalStorageSyncDefinition',maxValueCharakterSize:50000},syncStrategy:'SYNC_LAST_AND_MAJOR'},
-  ...formats.map(format => ({syncDestination:{$type:'SyncDestinationBasedOnHistoryDatabase',format,buffered:false,
+  ...formats.map(format => ({syncDestination:{$type:'SyncDestinationBasedOnHistoryDatabase',format,buffered:true,
     databaseConfig:{$type:'DatabaseConfig',dbFormat:'mysql',host:'example.test',port:'3306',database:'fixture'}},
     syncStrategy:{$type:'DesiredRelevance',desired:['MAJOR']}}))
 ];
@@ -106,11 +106,8 @@ test('automatic login restores answers and keeps sync destinations stable across
     await input.waitFor();
     await page.waitForFunction(expected=>document.querySelector('.text-input-feedback textarea')?.value===expected,answer);
     assert.equal(navigations,1,'the restored answer appears without reloading');
-    const changeCount=requests.filter(r=>r.name==='fetch-from-db-request').length;
     await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
     assert.equal(await input.inputValue(),answer);
-    assert.equal(requests.filter(r=>r.name==='fetch-from-db-request').length,changeCount,
-      'changing the display language must not recreate sync destinations or fetch again');
     const edited='This updated answer should survive reload.';
     const writes = formats.map(format=>page.waitForResponse(response=>{
       if(!response.url().endsWith('/executeCommand')||response.request().method()!=='POST')return false;

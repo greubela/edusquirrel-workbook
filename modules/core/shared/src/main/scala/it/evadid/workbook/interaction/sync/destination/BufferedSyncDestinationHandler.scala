@@ -70,8 +70,7 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
           handleStores(stores, underlying).flatMap(_ => handleReads(reads, underlying))
         }
         lastFlush.set(batch)
-      }
-      underlying.flush(forceFlush)
+      } else underlying.flush(forceFlush)
     }
   }
 
@@ -89,9 +88,16 @@ object BufferedSyncDestinationHandler {
   private given ExecutionContext = ExecutionContext.global
   private def attempt[A](run: => Future[A]): Future[A] = Try(run).fold(Future.failed, identity)
 
+  // A delegate may buffer too. Register first, then flush; flushing before registration can leave callers waiting forever.
+  private def execute[A](underlying: SyncDestinationHistoryHandler)(operation: => Future[A]): Future[A] = attempt {
+    val pending = operation
+    underlying.flush(true)
+    pending
+  }
+
   private def handleReads(reads: Seq[CachedReadRequest], underlying: SyncDestinationHistoryHandler): Future[Unit] =
     Future.traverse(reads.groupBy(_.usageContext).toList) { (context, requests) =>
-      attempt(underlying.readHistoriesJson(context)).transform { outcome =>
+      execute(underlying)(underlying.readHistoriesJson(context)).transform { outcome =>
         requests.foreach(_.fulfillWith(outcome))
         Success(())
       }
@@ -101,7 +107,7 @@ object BufferedSyncDestinationHandler {
     if stores.isEmpty then Future.unit else {
       // Queue order also resolves equal browser timestamps deterministically.
       val values = stores.foldLeft(Map.empty[SyncContext, String])((result, request) => result ++ request.toStore)
-      attempt(underlying.storeHistoriesJson(values)).transform { outcome =>
+      execute(underlying)(underlying.storeHistoriesJson(values)).transform { outcome =>
         stores.foreach(_.promise.tryComplete(outcome))
         Success(())
       }
