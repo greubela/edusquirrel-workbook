@@ -20,16 +20,16 @@ import upickle.default.*
   * - Explicit in method signatures (type-safe)
   * - Easy to test (pass format as parameter)
   *
-  * ==Serialization==
+  * ==Strong Typing==
   *
-  * InteractionFormat is serialized as a string containing the fully qualified class name.
-  * This is necessary because:
-  * - Format instances are passed from client to server as part of InteractionHistoryJson
-  * - Custom workbooks may use interaction formats not known to the server
-  * - The format is needed on the server to deserialize the history JSON
+  * InteractionFormat is strongly typed with type parameters [T, GA, SA].
+  * Since it's a trait with case object implementations (companion objects),
+  * we use a custom ReadWriter that:
+  * - Serializes by storing the class name string
+  * - Deserializes by loading the class and getting the singleton
   *
-  * Since all formats are known at compile time, the client always has the format.
-  * If an unknown format is received, a descriptive formatNotKnown error is thrown.
+  * All interaction formats are compile-time known. The client always has the
+  * format. If an unknown format is received, a formatNotKnown error is thrown.
   *
   * Usage in interaction definitions:
   * {{{
@@ -101,25 +101,33 @@ object InteractionFormat {
       Serializer.fromImplicitRW[WorkbookInteractionElementFull[T, GA, SA]]
     )
 
-  /** Read format by class name (for deserialization from stored class name).
+  /** Custom ReadWriter for InteractionFormat.
     *
-    * @param className The fully qualified class name of the format
-    * @return The format instance (singleton case object)
-    * @throws RuntimeException if the format class is not known
+    * Format instances are case objects (singletons). We serialize by storing
+    * the fully qualified class name and deserialize by loading the singleton.
+    *
+    * @param T, GA, SA Type parameters for type safety
     */
-  def fromClassName(className: String): InteractionFormat[?, ?, ?] = {
-    try {
-      val clazz = Class.forName(className)
-      val field = clazz.getField("MODULE$")
-      field.get(null).asInstanceOf[InteractionFormat[?, ?, ?]]
-    } catch {
-      case e: Exception =>
-        throw new RuntimeException(
-          s"Format class '$className' is not known. " +
-          s"This may indicate an unknown interaction type. " +
-          s"Error: ${e.getMessage}"
-        )
-    }
-  }
+  given formatReadWriter[T, GA, SA]: ReadWriter[InteractionFormat[T, GA, SA]] =
+    upickle.default.readwriter[ujson.Value].bimap[
+      InteractionFormat[T, GA, SA]
+    ](
+      format => ujson.Str(format.getClass.getName),
+      value => {
+        val className = value.str
+        try {
+          val clazz = Class.forName(className)
+          val field = clazz.getField("MODULE$")
+          field.get(null).asInstanceOf[InteractionFormat[T, GA, SA]]
+        } catch {
+          case e: Exception =>
+            throw new RuntimeException(
+              s"Format class '$className' is not known. " +
+              s"This may indicate an unknown interaction type. " +
+              s"Error: ${e.getMessage}"
+            )
+        }
+      }
+    )
 
 }
