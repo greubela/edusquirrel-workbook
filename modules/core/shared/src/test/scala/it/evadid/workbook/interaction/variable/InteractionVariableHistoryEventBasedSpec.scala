@@ -78,6 +78,26 @@ class InteractionVariableHistoryEventBasedSpec extends FunSuite {
     assertEquals(stream.gradingForState(Seq(grader), "absent").totalEvaluation(), GradingStatus.NotRequested())
   }
 
+  test("grading is matched by its stable key rather than grader instance equality") {
+    val configured = new WorkbookInteractionGrader[String, MessengerModel] {
+      override val key = grader.key
+      override val importance = grader.importance
+      override val runningBehavior = grader.runningBehavior
+      override val gradingEntity = grader.gradingEntity
+      override protected def handleGrading(state: String, context: it.evadid.workbook.meta.ExecutionContextInformation)
+          : scala.concurrent.Future[GradingResult[String, MessengerModel]] =
+        throw AssertionError("Projecting history must not execute a grader")
+    }
+    assert(configured != grader)
+    val completed = grade("answer", 2)
+    val projected = history(completed).gradingForState(Seq(configured, grader), "answer")
+    assertEquals(projected.graderResultMap.size, 1)
+    val result = projected.graderResultMap(configured)
+    assert(result.grader eq configured)
+    assertEquals(result.gradingStatus, GradingStatus.Correct())
+    assertEquals(result.gradingTime, completed.timestamp)
+  }
+
   test("a newer start indicates an active retry; completion wins a start at the same timestamp") {
     val completed = grade("answer", 2)
     val retry = history(completed, started("answer", 3))
