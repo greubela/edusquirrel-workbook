@@ -42,7 +42,7 @@ test('login validates accounts, restores cached credentials after reload and cle
     const errors = [];
     const missingTranslations = [];
     const destinations = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalEvents'].map(format => ({
-      syncDestination: {$type:'SyncDestinationBasedOnHistoryDatabase', format,
+      syncDestination: {$type:'SyncDestinationBasedOnHistoryDatabase', format, buffered:false,
         databaseConfig: {$type:'DatabaseConfig', dbFormat:'mysql', host:'herrgreubel.lima-db.de', port:'3306', database:'db_332371_12'}},
       syncStrategy: {$type:'DesiredRelevance', desired:['MAJOR']}
     }));

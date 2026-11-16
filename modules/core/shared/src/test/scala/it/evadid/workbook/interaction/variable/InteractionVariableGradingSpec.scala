@@ -1493,7 +1493,7 @@ class InteractionVariableGradingSpec extends FunSuite {
   test("answer updates store state and explicit grading forwards the supplied clients unchanged") {
     val grader = new RecordingGrader
     val value = variable(grader)
-    val sync = new RestoreSync(value, Nil)
+    val sync = new CountingSync
     val client = ExecutionCommandFactory[String, String]("test-client").toLocalExecutionClient((input, _) => Future.successful(input))
     val clients = List(client, client)
     val time = LocalDateTime.now().plusSeconds(1)
@@ -1518,7 +1518,7 @@ class InteractionVariableGradingSpec extends FunSuite {
         pending.future.map(_.copy(gradedState = state))
     }
     val value = variable(grader)
-    val sync = new RestoreSync(value, Nil)
+    val sync = new CountingSync
     // Mark the captured value as a submitted answer so cleanup retains it.
     value.setStateFromUserInteraction("", MAJOR, context = TestExecutionContext(syncControl = Option(sync)))
     val completed = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
@@ -1545,7 +1545,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       }
     }
     val value = variable(grader)
-    val sync = new RestoreSync(value, Nil)
+    val sync = new CountingSync
     val events = value.currentHistory.historyStates.events
     val first = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
     val second = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
@@ -1579,7 +1579,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       }
     }
     val value = variable(grader)
-    val sync = new RestoreSync(value, Nil)
+    val sync = new CountingSync
     val first = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
     val joined = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)), forceGrading = true)
     pending.now().head.failure(IllegalStateException("failed safe adapter"))
@@ -1650,7 +1650,7 @@ class InteractionVariableGradingSpec extends FunSuite {
       }
     }
     val value = variable(grader)
-    val sync = new RestoreSync(value, Nil)
+    val sync = new CountingSync
     val retried = State(Option.empty[Future[GradedState[String, String]]])
     val first = value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync)))
     value.observableHistoryWithDefault.addNextChangeObserver { _ => retried.set(Some(value.control.getOrCalculateGrading(TestExecutionContext(syncControl = Option(sync))))) }
@@ -1769,7 +1769,7 @@ class InteractionVariableGradingSpec extends FunSuite {
   import it.evadid.workbook.interaction.sync.*
   import it.evadid.workbook.meta.InteractionVariableSyncReport
   import it.evadid.workbook.interaction.sync.destination.{SyncDestinationHandler, SyncDestinationHistoryHandler}
-  import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse, SyncDirection, SyncStatus}
+  import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse, SyncDirection}
 
   private def restoreVariable(graders: List[RecordingGrader]): InteractionVariable[String, String, String] = {
     val interaction = new WorkbookInteractionElementFull[String, String, String] {
@@ -1794,45 +1794,12 @@ class InteractionVariableGradingSpec extends FunSuite {
       hints: Map[String, ScaffoldingResult[String, String]] = Map.empty): History =
     InteractionVariableHistory(InteractionVariableStateHistory(events), InteractionVariableGradingHistory(grades), InteractionVariableScaffoldingHistory(hints))
 
-  private def restoreLocation(): SyncInformationWithContext = {
-    val destination = new SyncDestinationHistoryHandler {
-      override def syncLogger: SyncLogger = SyncLogger(Logger.withNameAndPrefixes(printMap = PrintToStdLogger.printNothing))
-      override def definition = it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.LocalStorageSyncDefinition(10000)
-      override def readHistoriesJson(context: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] =
-        throw AssertionError("Restore must use its existing report")
-      override def storeHistoryJson(context: SyncContext, payload: String)(implicit ec: ExecutionContext): Future[SyncSuccess] =
-        throw AssertionError("Restore must not write")
-      override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] =
-        throw AssertionError("Restore must not clear storage")
-      override def clearAllUserData(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
-      override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] =
-        throw AssertionError("Restore must not clear storage")
-    }
-    SyncInformation(it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.LocalStorageSyncDefinition(10000), SyncStrategy.SYNC_EVERYTHING).forContext(UsageContext("test", "workbook", "user"), _ => destination)
-  }
-
-  private class RestoreSync(value: InteractionVariable[String, String, String], histories: List[History]) extends SyncControl {
+  private class CountingSync extends SyncControl {
     val stores = State(0)
-    override val controlLogger = Logger.withNameAndPrefixes(printMap = PrintToStdLogger.printNothing)
-    override val syncLogger = SyncLogger(controlLogger)
-    override val resetState = it.evadid.core.datastructures.state.State[it.evadid.workbook.interaction.sync.SyncResetState](it.evadid.workbook.interaction.sync.SyncResetState.Idle).observable
-    override def resetAllData(): Future[Unit] = Future.failed(new UnsupportedOperationException("Reset is not used by this fixture"))
-    override def createCurrentReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): InteractionVariableSyncReport[T, GA, SA] = {
-      assert(forVariable eq value)
-      val remote = histories.map { current =>
-        val location = restoreLocation()
-        val key = location.usageContext.toSyncContext(value.keyForSerialization)
-        location -> SyncStatus(Some(restoreTime), key, Some(DataEntryToSync(key, current, restoreTime, SyncDirection.SERVER_TO_CLIENT)))
-      }.toMap
-      InteractionVariableSyncReport(value.currentHistory, remote, remote.keys.toList).asInstanceOf[InteractionVariableSyncReport[T, GA, SA]]
-    }
-    override def createObservableReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): ObservableValue[InteractionVariableSyncReport[T, GA, SA]] =
-      throw AssertionError("Restore must not subscribe")
-    override def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[Unit] = throw AssertionError("Restore must not fetch")
-    override def load(values: List[InteractionVariableUntyped]): Future[Unit] = throw AssertionError("Restore must not fetch")
-    override def ensureCachesContainLastElementsToWrite(values: List[InteractionVariableUntyped]): Future[Unit] =
-      throw AssertionError("Restore must not prepare writes")
-    override def requestStore(values: List[InteractionVariableUntyped]): Future[Unit] = { stores.update(_ + 1); Future.successful(()) }
+    override val syncLogger = SyncLogger(Logger.withNameAndPrefixes(printMap = PrintToStdLogger.printNothing))
+    override def fetchAll(forceFlush: Boolean): Future[Unit] = throw AssertionError("Restore must not fetch")
+    override def storeAll(forceFlush: Boolean): Future[Unit] = { stores.update(_ + 1); Future.unit }
+    override def store[T, GA, SA](variable: InteractionVariable[T, GA, SA], forceFlush: Boolean): Future[Unit] = storeAll(forceFlush)
   }
 
   test("history cleanup removes obsolete defaults and their feedback together") {
@@ -1931,17 +1898,17 @@ class InteractionVariableGradingSpec extends FunSuite {
     assertEquals(local.historyStates.events, Set(first))
   }
 
-  test("merging a typed cache report restores hints and grading results from the current typed cache report") {
+  test("merging a restored history retains hints and grading results without re-running graders") {
     val grader = new RecordingGrader
     val value = variable(grader)
     val result = grade(grader, "saved", 3, GradingStatus.Correct())
     val saved = history(Set(event("saved", 2)), Map("saved" -> GradedState("saved", Map(result.grader -> result))),
       Map("saved" -> hint("saved", "Saved hint")))
-    val sync = new RestoreSync(value, List(saved))
-    value.updateHistory(_.mergeWith(sync.createCurrentReport(value).curRemoteHistory.values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toSeq), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+    val sync = new CountingSync
+    value.updateHistory(_.mergeWith(List(saved)), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     assertEquals(value.currentHistory, saved)
     assertEquals(value.currentValue, "saved")
-    value.updateHistory(_.mergeWith(sync.createCurrentReport(value).curRemoteHistory.values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toSeq), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+    value.updateHistory(_.mergeWith(List(saved)), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     assertEquals(value.currentHistory, saved)
     assertEquals(sync.stores.now(), 0)
     assertEquals(grader.requests, Nil)
@@ -1955,8 +1922,8 @@ class InteractionVariableGradingSpec extends FunSuite {
     val sources = List(
       history(Set(event("older", 1)), hints = Map("current" -> hint("current", "Remote hint"), "older" -> hint("older", "First"))),
       history(Set(event("older", 1)), hints = Map("older" -> hint("older", "Second"))))
-    val sync = new RestoreSync(value, sources)
-    value.updateHistory(_.mergeWith(sync.createCurrentReport(value).curRemoteHistory.values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toSeq), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
+    val sync = new CountingSync
+    value.updateHistory(_.mergeWith(sources), TestExecutionContext(futureExecutionContext = ExecutionContext.parasitic))
     assertEquals(value.currentHistory.historyStates.events, local.historyStates.events ++ sources.flatMap(_.historyStates.events))
     assertEquals(value.currentHistory.historyScaffolding.scaffoldingMap, local.historyScaffolding.scaffoldingMap + ("older" -> hint("older", "First")))
     assertEquals(value.currentValue, "current")

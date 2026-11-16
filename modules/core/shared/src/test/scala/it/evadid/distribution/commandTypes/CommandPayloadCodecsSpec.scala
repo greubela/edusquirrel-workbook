@@ -68,7 +68,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
     val context = UsageContext("program", "scenario", "user")
     val supplied = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "private-owner", "private-password")
     List[DatabaseConfiguration](supplied.withoutCredentials, supplied).foreach { config =>
-      val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.ClassicJsonWithKey)
+      val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.ClassicJsonWithKey, buffered = false)
       assertEquals(read[SyncDestinationBasedOnHistoryDatabase](write(destination)), destination)
       val request = SQLCommands.FetchAllFromDbRequest(context, config, None, DatabaseHistoryFormat.ClassicJsonWithKey)
       assertEquals(read[SQLCommands.FetchAllFromDbRequest](write(request)), request)

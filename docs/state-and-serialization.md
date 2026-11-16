@@ -203,6 +203,24 @@ Owned domain types normally expose a default codec in their companion or through
 incompatibly. Live futures, callbacks, controllers, database/DOM handles and
 subscriptions need explicit snapshots, not constructor-only derived persistence.
 
+## Remote history synchronization
+
+[RemoteDataSynchronisation](../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteDataSynchronisation.scala)
+tracks confirmed values per destination. Reads include previously unseen requested keys;
+write acknowledgements update the cache, and late responses cannot replace newer
+confirmations. A failed read stops the fetch-then-store sequence instead of writing
+from an unknown remote state. Sync indicators compare the contents selected by each
+destination's strategy, including grading and scaffolding.
+
+[RemoteInteractionCacheControl](../modules/client/src/main/scala/it/evadid/homepage/control/change/RemoteInteractionCacheControl.scala)
+binds one controller to the workbook, user, destinations and session credentials.
+Language/display changes preserve that binding. Fetched histories merge into the
+current variable only while their originating controller is active; invalid records
+are ignored independently. Database handlers capture credentials for that binding.
+[BufferedSyncDestinationHandler](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/destination/BufferedSyncDestinationHandler.scala)
+registers requests immediately and serializes flushed batches. The periodic sync
+forces pending work to flush; callers awaiting buffered operations must also flush.
+
 ## Definitions, answers and snapshots
 
 The exercise definition, learner answer and live controller are different things:

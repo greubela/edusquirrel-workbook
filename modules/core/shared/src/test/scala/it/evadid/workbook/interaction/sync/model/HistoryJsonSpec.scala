@@ -65,31 +65,26 @@ class HistoryJsonSpec extends FunSuite {
     variable.updateHistory(_ => graded, ExecutionContextInformation.default)
     assertEquals(graded.timestampLastChanged, Some(grade.gradingTime))
     assertEquals(HistoryJson.lastTimestamp(write(graded)), Some(grade.gradingTime))
-    assertEquals(location.dataToStore(variable).head.timestamp, grade.gradingTime)
+    assertEquals(HistoryJson.lastTimestamp(location.serialize(variable)), Some(grade.gradingTime))
     val hint = ScaffoldingResult[String, MessengerModel](state, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[AppLanguage.HumanLanguage]("A hint")), FeedbackEntity.LlmEntity(), None, scaffoldingTime = time.plusSeconds(20))
     val withHint = graded.copy(historyScaffolding = InteractionVariableScaffoldingHistory(Map(state -> hint)))
     variable.updateHistory(_ => withHint, ExecutionContextInformation.default)
-    assertEquals(location.dataToStore(variable).head.timestamp, hint.scaffoldingTime)
+    assertEquals(HistoryJson.lastTimestamp(location.serialize(variable)), Some(hint.scaffoldingTime))
     assertEquals(HistoryJson.lastTimestamp(HistoryJson.stored("answer_history",write(withHint))), Some(hint.scaffoldingTime))
     assertEquals(variable.currentHistory.historyStates.events, Set(event), "feedback never creates a fake edit")
     type History = InteractionVariableHistory[String, MessengerModel, MessengerModel]
     val key = location.usageContext.toSyncContext(variable.keyForSerialization)
-    val stale = SyncStatus[it.evadid.workbook.interaction.sync.SyncContext, History](Some(grade.gradingTime), key, None)
-    val report = it.evadid.workbook.meta.InteractionVariableSyncReport(
-      withHint, Map(location -> stale), List(location))
-    assertEquals(report.latestSyncedAt(location), false)
-    val recentRead = stale.copy(lastCacheRequest = Some(hint.scaffoldingTime.plusDays(1)))
-    assertEquals(report.copy(curRemoteHistory = Map(location -> recentRead)).latestSyncedAt(location), false)
-    val gradeOnly = recentRead.copy(lastKnownRemoteValue = Some(DataEntryToSync(key, graded, grade.gradingTime, SyncDirection.SERVER_TO_CLIENT)))
-    assertEquals(report.copy(curRemoteHistory = Map(location -> gradeOnly)).latestSyncedAt(location), false, "missing hints are not synced")
+    import it.evadid.core.datastructures.storage.remote.RemoteDataSynchronisation.{CacheReportForKey, RemoteValue}
+    val serializer = variable.serializerHistory
+    def reportFor(remote: History) = it.evadid.workbook.meta.InteractionVariableSyncReport(
+      serializer, withHint, CacheReportForKey(key, Map(location -> RemoteValue[it.evadid.workbook.interaction.sync.SyncContext, String](serializer.serialize(remote), time.plusDays(1)))), Set(location))
+    assertEquals(reportFor(graded).destinationsWithSufficientWrites(), Set.empty)
     val answerOnly = graded.copy(historyGrading = InteractionVariableGradingHistory(Map.empty[String, GradedState[String, MessengerModel]]))
-    val missingGrade = recentRead.copy(lastKnownRemoteValue = Some(DataEntryToSync(key, answerOnly, time, SyncDirection.SERVER_TO_CLIENT)))
-    assertEquals(report.copy(curLocalHistory = graded, curRemoteHistory = Map(location -> missingGrade)).latestSyncedAt(location), false,
+    assertEquals(reportFor(answerOnly).copy(curLocalHistory = graded).destinationsWithSufficientWrites(), Set.empty,
       "an unchanged answer without its grading must remain unsynced")
-    val confirmed = recentRead.copy(lastKnownRemoteValue = Some(DataEntryToSync(key, read[History](write(withHint)), hint.scaffoldingTime, SyncDirection.SERVER_TO_CLIENT)))
-    assertEquals(report.copy(curRemoteHistory = Map(location -> confirmed)).latestSyncedAt(location), true)
-    val fetched = FetchResponse.fromMap(time.plusMinutes(1), Map("answer" -> write(withHint)), HistoryJson.lastTimestamp)
-    assertEquals(fetched.fetchedValues.head.timestamp, hint.scaffoldingTime)
+    assertEquals(reportFor(read[History](write(withHint))).destinationsWithSufficientWrites(), Set(location))
+    val fetched = FetchResponse.fromMap(time.plusMinutes(1), Map("answer" -> write(withHint)))
+    assertEquals(HistoryJson.lastTimestamp(fetched.fetchedValues.head.dataValue), Some(hint.scaffoldingTime))
     val structured = InteractionVariableHistory[List[String], Int, Int](InteractionVariableStateHistory[List[String]](Set(InteractionVariableState(List(state), UpdateImportance.MAJOR, time))), new InteractionVariableGradingHistory[List[String], Int](gradingsMap = Map.empty), InteractionVariableScaffoldingHistory[List[String], Int](Map(List(state) -> hint.copy(forState = List(state), additionalInformation = Some(1)))))
     assertEquals(HistoryJson.lastTimestamp(write(structured)), Some(hint.scaffoldingTime))
   }

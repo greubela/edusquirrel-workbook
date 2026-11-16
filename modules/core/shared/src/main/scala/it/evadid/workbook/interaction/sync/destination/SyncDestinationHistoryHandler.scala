@@ -76,7 +76,7 @@ object SyncDestinationHistoryHandler {
                                                 syncContext: SyncContext,
                                                 fetchResponse: FetchResponse[SyncContext, String]
                                               ): Either[SerializedException, InteractionVariableHistory[T, GA, SA]] = {
-    fetchResponse.fetchedValues.find(_.dataKey.keyForSerialisation == syncContext.keyForSerialisation).map(_.dataValue).match {
+    fetchResponse.fetchedValues.find(_.dataKey == syncContext).map(_.dataValue).match {
       case Some(jsonHistory) => serializer.tryDeserialize(jsonHistory).match {
         case Left(err) => Left(SerializedException(s"readHistory::curResponse fetched ${fetchResponse.fetchedValues.size} and contained '${syncContext}' but value could not be parsed (${err.getMessage})", err))
         case Right(history) => Right(history)
@@ -85,8 +85,10 @@ object SyncDestinationHistoryHandler {
     }
   }
 
-  private def historyTimestamp(json: String): Option[LocalDateTime] =
-    scala.util.Try(it.evadid.workbook.interaction.sync.model.HistoryJson.lastTimestamp(json)).toOption.flatten
+  private def validHistory(json: String, logger: SyncLogger): Boolean =
+    scala.util.Try(it.evadid.workbook.interaction.sync.model.HistoryJson.lastTimestamp(json)).fold(
+      error => { logger.logExceptionWarn("Ignoring invalid saved interaction history", error); false },
+      _ => true)
 
   def fromBasic(basic: SyncDestinationHandlerBasic): SyncDestinationHistoryHandler = {
     val typed = basic.forSpecificType[SyncContext, String]
@@ -113,13 +115,13 @@ object SyncDestinationHistoryHandler {
 
       override def readHistoryJson(syncContext: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
         typed.readElementTyped(syncContext).map(curHistoryJson => {
-          FetchResponse.fromMap(LocalDateTime.now(), Map(syncContext -> curHistoryJson))
+          FetchResponse.fromMap(LocalDateTime.now(), Map(syncContext -> curHistoryJson).filter((_, json) => validHistory(json, syncLogger)))
         })
       }
 
       override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
         typed.readFullStore.map(curMap => {
-          val data = curMap.filter((context, _) => context.toUsageContext == usageContext)
+          val data = curMap.filter((context, json) => context.toUsageContext == usageContext && validHistory(json, syncLogger))
           FetchResponse.fromMap(LocalDateTime.now(), data)
         })
       }

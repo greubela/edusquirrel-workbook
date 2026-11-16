@@ -11,29 +11,10 @@ import upickle.default.*
 
 class AdditionalDefaultCodecsSpec extends FunSuite {
   private def DataEntryReadFromServer[K, D](key: K, value: D, time: java.time.LocalDateTime): DataEntryToSync[K, D] =
-    DataEntryToSync(key, value, time, SyncDirection.SERVER_TO_CLIENT)
+    DataEntryToSync(key, value, SyncDirection.SERVER_TO_CLIENT)
   private def DataEntryToWriteToServer[K, D](key: K, value: D, time: java.time.LocalDateTime): DataEntryToSync[K, D] =
-    DataEntryToSync(key, value, time, SyncDirection.CLIENT_TO_SERVER)
+    DataEntryToSync(key, value, SyncDirection.CLIENT_TO_SERVER)
 
-  // A data-only destination identity. Reader/writer behavior is reconstructed, never serialized.
-  private case class ReadOnlyDestination(name: String)
-      extends it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey[String, Int] derives ReadWriter {
-    import it.evadid.core.datastructures.storage.remote.RemoteSyncDataCache.*
-    import it.evadid.workbook.interaction.sync.SyncSuccess
-    import it.evadid.util.logging.derived.SyncLogger
-    import scala.concurrent.Future
-    private val time = java.time.LocalDateTime.of(2025, 1, 1, 0, 0)
-    override def reader: RemoteDataReader[String, Int] = new RemoteDataReader[String, Int] {
-      override def fetchAll(logger: SyncLogger): Future[FetchResponse[String, Int]] =
-        Future.successful(FetchResponse.fromMap(time, Map.empty, _ => Some(time)))
-      override def fetchByKey(logger: SyncLogger, key: String): Future[FetchResponse[String, Int]] = fetchAll(logger)
-    }
-    override def writer: RemoteDataWriter[String, Int] = new RemoteDataWriter[String, Int] {
-      override def writeAll(logger: SyncLogger, values: Map[String, Int]): Future[SyncSuccess] =
-        Future.failed(new UnsupportedOperationException("Read-only destination"))
-      override def writeForKey(logger: SyncLogger, key: String, value: Int): Future[SyncSuccess] = writeAll(logger, Map(key -> value))
-    }
-  }
   private def restore[T: ReadWriter](value: T): T = {
     val restored = read[T](write(value))
     assertEquals(restored, value)
@@ -136,18 +117,13 @@ class AdditionalDefaultCodecsSpec extends FunSuite {
       restore(info)
     }
   }
-  test("sync records preserve nanosecond timestamps and every sealed variant") {
-    import it.evadid.core.datastructures.storage.remote.RemoteSyncDataCache.*
+  test("sync records preserve their keys, values and direction") {
     val time = java.time.LocalDateTime.of(2025, 3, 4, 5, 6, 7, 123456789)
     val fetched = DataEntryReadFromServer("key", List("ä", "😀"), time)
     val writing = DataEntryToWriteToServer("key", List("answer"), time.plusNanos(1))
     restore(fetched); restore(writing)
     List[DataEntryToSync[String, List[String]]](fetched, writing).foreach(restore(_))
-    val status = SyncStatus(Some(time), "key", Some(fetched))
-    val restored = restore(status)
-    assert(!restored.isSubmittedTimeNewerThanLastRequest(time))
-    assert(restored.isSubmittedTimeNewerThanLastChangedTimestamp(time.plusNanos(1)))
-    restore(SyncStatus[String, Int](None, "empty", None))
+
   }
   test("fetched workbook histories and response records have default codecs") {
     import it.evadid.workbook.interaction.sync.*
@@ -157,12 +133,5 @@ class AdditionalDefaultCodecsSpec extends FunSuite {
     val history = InteractionVariableHistory.empty[Int, Int, Int]
     restore(FetchResponse(time, Set(DataEntryReadFromServer(context, history, time))))
     restore(FetchResponse[SyncContext, String](time, Set.empty))
-  }
-  test("cache reports derive a codec when the concrete destination identity has one") {
-    import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheCollectionReport
-    import it.evadid.core.datastructures.storage.remote.RemoteSyncDataCache.*
-    val destination = ReadOnlyDestination("local")
-    val status = SyncStatus[String, Int](None, "answer", None)
-    restore(CacheCollectionReport("answer", Map(destination -> status), List(destination)))
   }
 }

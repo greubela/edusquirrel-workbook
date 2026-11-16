@@ -14,7 +14,7 @@ const user = {name:'Sync student', id:'sync-reset-student', mail:'sync-reset@exa
 const destinations = [
   {syncDestination:{$type:'LocalIndexedDbSyncDefinition',dbName:'EvaDidInteractionDB',storeName:'variableHistoryStore',dbVersion:1},syncStrategy:'SYNC_LAST_AND_MAJOR'},
   {syncDestination:{$type:'LocalStorageSyncDefinition',maxValueCharakterSize:50000},syncStrategy:'SYNC_LAST_AND_MAJOR'},
-  ...formats.map(format => ({syncDestination:{$type:'SyncDestinationBasedOnHistoryDatabase',format,
+  ...formats.map(format => ({syncDestination:{$type:'SyncDestinationBasedOnHistoryDatabase',format,buffered:false,
     databaseConfig:{$type:'DatabaseConfig',dbFormat:'mysql',host:'example.test',port:'3306',database:'fixture'}},
     syncStrategy:{$type:'DesiredRelevance',desired:['MAJOR']}}))
 ];
@@ -65,15 +65,14 @@ async function historyKeys(page) {
   }));
 }
 
-test('first automatic login restores rendered answers; full reset waits for every destination and reloads',async()=>{
+test('automatic login restores answers and keeps sync destinations stable across display changes and reloads',async()=>{
   const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||chromium.executablePath(),chromiumSandbox:true});
   try {
     const page=await browser.newPage();
     const requests=[], errors=[], histories=new Map(formats.map(format=>[format,JSON.stringify(savedHistory)]));
-    let failReset=true, confirmReset=false, navigations=0, deleteAttempts=0;
+    let navigations=0;
     page.on('pageerror',error=>errors.push(error.message));
     page.on('framenavigated',frame=>{if(frame===page.mainFrame()&&frame.url().includes('/homepage/'))navigations++;});
-    page.on('dialog',dialog=>confirmReset?dialog.accept():dialog.dismiss());
     await page.route('**/*',async route=>{
       const url=new URL(route.request().url());
       if(url.pathname==='/seed')return route.fulfill({contentType:'text/html',body:'<html></html>'});
@@ -90,16 +89,6 @@ test('first automatic login restores rendered answers; full reset waits for ever
         } else if(command.name==='sync-to-db-request'){
           histories.set(command.json.databaseFormat,command.json.historyJson);
           value={elementsAdded:0,elementsChanged:1,elementsRemoved:0,timestampCommitted:new Date().toISOString().slice(0,-1)};
-        } else if(command.name==='reset-user-histories-in-db-request'){
-          deleteAttempts++;
-          assert.equal(command.json.allWorkbooks,true);
-          assert.equal(command.json.usageContext.userId,user.id);
-          assert.equal(command.json.limitToKey,null);
-          // Other destinations must still be attempted even when one fails.
-          if(failReset&&command.json.databaseFormat==='ClassicJsonWithKey')return route.fulfill({status:503,headers,body:'fixture unavailable'});
-          await new Promise(resolve=>setTimeout(resolve,100));
-          histories.delete(command.json.databaseFormat);
-          value={elementsAdded:0,elementsChanged:0,elementsRemoved:1,timestampCommitted:new Date().toISOString().slice(0,-1)};
         } else throw new Error('Unexpected command '+command.name);
         return route.fulfill({headers,contentType:'application/json',body:envelope(command,value)});
       }
@@ -120,49 +109,23 @@ test('first automatic login restores rendered answers; full reset waits for ever
     const changeCount=requests.filter(r=>r.name==='fetch-from-db-request').length;
     await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
     assert.equal(await input.inputValue(),answer);
-    const keysBefore=await historyKeys(page);
-    assert(keysBefore.includes('unreadable-record-fixture'));
-    await page.locator('.workbook-user-menu-button').click();
-    const reset=page.getByRole('menuitem',{name:'Alle gespeicherten Antworten zurücksetzen',exact:true});
-    await reset.click();
-    assert.equal(deleteAttempts,0,'dismissing confirmation performs no deletion');
-    confirmReset=true;
-    await reset.click();
-    await page.getByRole('alert').filter({hasText:'Nicht alle Ziele'}).waitFor();
-    assert.equal(deleteAttempts,3,'every configured remote destination was attempted');
-    assert.equal(navigations,1,'a partial failure must not reload');
-    assert.deepEqual(await historyKeys(page),[],'the local destination clears unreadable records without decoding them');
-    assert.equal(await page.evaluate(()=>localStorage.getItem('obsolete-local-answer-fixture')),null);
-    const storesAfterFailure=requests.filter(r=>r.name==='sync-to-db-request').length;
-    await input.fill('Editing while the reset is incomplete must not recreate deleted rows.');
-    await page.waitForTimeout(150);
-    assert.equal(requests.filter(r=>r.name==='sync-to-db-request').length,storesAfterFailure);
-    // Rebuilding the header must retain the failed reset state and its retry action.
-    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
-    await page.getByRole('alert').filter({hasText:'Not every destination'}).waitFor();
-    await page.locator('.workbook-user-menu-button').click();
-    failReset=false;
-    await page.getByRole('menuitem',{name:'Retry full reset',exact:true}).click();
-    await page.waitForFunction(()=>performance.getEntriesByType('navigation')[0]?.type==='reload');
+    assert.equal(requests.filter(r=>r.name==='fetch-from-db-request').length,changeCount,
+      'changing the display language must not recreate sync destinations or fetch again');
+    const edited='This updated answer should survive reload.';
+    const writes = formats.map(format=>page.waitForResponse(response=>{
+      if(!response.url().endsWith('/executeCommand')||response.request().method()!=='POST')return false;
+      const command=readCommandRequest(response.request());
+      return command.name==='sync-to-db-request'&&command.json.databaseFormat===format&&command.json.historyJson.includes(edited);
+    }));
+    await input.fill(edited);
+    await Promise.all(writes);
+    assert(formats.every(format=>JSON.parse(histories.get(format)).historyStates.events.some(event=>event.value===edited)));
+    await page.reload();
     await page.locator('.section-block').last().click();
-    await page.locator('.text-input-feedback textarea').waitFor();
-    assert.equal(await page.locator('.text-input-feedback textarea').inputValue(),'');
-    assert.equal(navigations,2,'a successful reset reloads exactly once');
-    assert.equal(deleteAttempts,6);
-    assert.equal(histories.size,0);
-    assert.equal(await page.evaluate(()=>localStorage.getItem('obsolete-local-answer-fixture')),null);
-    assert.equal(await page.evaluate(()=>new Promise(resolve=>{
-      const open=indexedDB.open('EvaDidCacheDb',1);
-      open.onsuccess=()=>{
-        const db=open.result, transaction=db.transaction('cache','readonly');
-        const request=transaction.objectStore('cache').get('unrelated-cache-fixture');
-        request.onsuccess=()=>resolve(request.result?.value);
-        transaction.oncomplete=()=>db.close();
-      };
-    })),'keep this cache');
-    assert(!(await historyKeys(page)).includes('unreadable-record-fixture'));
-    assert.equal(await page.locator('.container-login').count(),0,'reset preserves cached authentication');
-    assert(requests.filter(r=>r.name==='fetch-from-db-request').length>=changeCount);
+    await page.waitForFunction(expected=>document.querySelector('.text-input-feedback textarea')?.value===expected,edited);
+    assert.equal(navigations,2);
+    assert.equal(await page.locator('.container-login').count(),0,'reload preserves cached authentication');
+    assert((await historyKeys(page)).includes('unreadable-record-fixture'),'one unreadable record must not erase the store');
     assert.deepEqual(errors,[]);
   } finally {await browser.close();}
 });

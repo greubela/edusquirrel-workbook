@@ -39,18 +39,20 @@ case class RemoteDataSynchronisation[K, V, RW <: RemoteReaderWriter[K, V]](
 
   def updateEverythingKnown(): Future[Unit] = ensureMaxAge(innerState.now().allKnownKeys, LocalDateTime.now(), true)
 
-  def ensureMaxAge(ofKeys: Set[K], maximumAcceptableAge: LocalDateTime = LocalDateTime.now(), forceFlush: Boolean = false): Future[Unit] = {
+  def ensureMaxAge(ofKeys: Set[K], maximumAcceptableAge: LocalDateTime = LocalDateTime.now(), forceFlush: Boolean = false): Future[Unit] = attempt {
     val outdated = innerState.now().getOutdatedKeysByCache(ofKeys, maximumAcceptableAge)
     // An empty request can still be the explicit flush of earlier buffered operations.
     if forceFlush then flush(true)
     Future.traverse(outdated.toList)((cache, keys) => executeFetch(cache, keys, forceFlush)).map(_ => ())
   }
 
-  def requestStore(cache: RW, dataToStore: Map[K, V], maximumAcceptableAge: LocalDateTime = LocalDateTime.now(), forceFlush: Boolean = false): Future[Unit] = {
+  def requestStore(cache: RW, dataToStore: Map[K, V], maximumAcceptableAge: LocalDateTime = LocalDateTime.now(), forceFlush: Boolean = false): Future[Unit] = attempt {
     require(readWriters(cache), "Cannot store to an unconfigured sync destination")
     if forceFlush then flush(true)
-    val known = innerState.now().cacheStateMap(cache).remoteValues
-    val changed = dataToStore.filter((key, value) => !known.get(key).exists(_.value == value))
+    val status = innerState.now().cacheStateMap(cache)
+    // A pending write may change a confirmed value: reverting to that value must still be sent.
+    val changed = dataToStore.filter((key, value) => !status.remoteValues.get(key).exists(entry =>
+      entry.value == value && !entry.timestampFetched.isBefore(status.timestampLastStoreRequested)))
     if changed.isEmpty then Future.unit else {
       val requested = begin(cache, fetching = false)
       val writing = attempt(cache.writer.writeAll(syncLogger, changed))

@@ -35,24 +35,20 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
     }
   }
 
-  test("local history entries retain their change timestamp rather than their fetch timestamp") {
+  test("local history reads discard malformed records and isolate their usage context") {
     val values = Map(SyncContext.serializer.serialize(key) -> write(history),
       SyncContext.serializer.serialize(context.toSyncContext("invalid_history")) -> write("not JSON"),
       SyncContext.serializer.serialize(key.copy(userId = "other")) -> write(history))
     val handler = new Destination(values).forHistory()
     handler.readHistoriesJson(context).flatMap { fetched =>
       assertEquals(fetched.fetchedValues.size, 1)
-      assertEquals(fetched.fetchedValues.head.timestamp, at)
+      assertEquals(it.evadid.workbook.interaction.sync.model.HistoryJson.lastTimestamp(fetched.fetchedValues.head.dataValue), Some(at))
       assert(fetched.timestampFetchResponse.isAfter(at))
       handler.readHistoryJson(key).map { single =>
-        assertEquals(single.fetchedValues.head.timestamp, at)
+        assertEquals(it.evadid.workbook.interaction.sync.model.HistoryJson.lastTimestamp(single.fetchedValues.head.dataValue), Some(at))
         assertEquals(single.fetchedValues.head.dataValue, history)
       }
     }
   }
 
-  test("a complete local reset clears the raw destination without reading obsolete records") {
-    val destination = new Destination(Map("unreadable key" -> "unreadable data"), prohibitReads = true)
-    destination.forHistory().clearAllUserData(context).map { _ => assert(destination.cleared.isCompleted) }
-  }
 }

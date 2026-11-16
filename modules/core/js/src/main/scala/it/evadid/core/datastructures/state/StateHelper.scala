@@ -41,48 +41,25 @@ object StateHelper {
 
     /** Safely exposes Option[T] since underlying.now() can be None. */
     def toOptionSignal(): Signal[Option[T]] = {
-      var subscription: Option[it.evadid.core.datastructures.state.Subscription[T]] = None
-
+      val subscription = Var(Option.empty[it.evadid.core.datastructures.state.Subscription[T]])
       Signal.fromCustomSource[Option[T]](
         initial = Success(underlying.now()),
         start = (setCurrentValue, _, _, _) => {
-          // Sync latest value in case it changed between signal creation and mounting
           setCurrentValue(Success(underlying.now()))
-
-          val sub = underlying.addObserver(
-            handleOnUpdate = newValue => setCurrentValue(Success(Some(newValue))),
-            handleOnError = err => setCurrentValue(Failure(err))
-          )
-          subscription = Some(sub)
+          subscription.set(Some(underlying.addObserver(
+            handleOnUpdate = value => setCurrentValue(Success(Some(value))),
+            handleOnError = error => setCurrentValue(Failure(error))
+          )))
         },
         stop = _ => {
-          subscription.foreach(_.cancel())
-          subscription = None
+          subscription.now().foreach(_.cancel())
+          subscription.set(None)
         }
       )
     }
 
-    /** Returns Signal[T] directly using a fallback if underlying.now() is initially None. */
-    def toSignal(default: => T): Signal[T] = {
-      var subscription: Option[it.evadid.core.datastructures.state.Subscription[T]] = None
-
-      Signal.fromCustomSource[T](
-        initial = Success(underlying.now().getOrElse(default)),
-        start = (setCurrentValue, _, _, _) => {
-          setCurrentValue(Success(underlying.now().getOrElse(default)))
-
-          val sub = underlying.addObserver(
-            handleOnUpdate = newValue => setCurrentValue(Success(newValue)),
-            handleOnError = err => setCurrentValue(Failure(err))
-          )
-          subscription = Some(sub)
-        },
-        stop = _ => {
-          subscription.foreach(_.cancel())
-          subscription = None
-        }
-      )
-    }
+    /** Seed again on mount so an inactive signal never restores an old cache snapshot. */
+    def toSignal(default: => T): Signal[T] = toOptionSignal().map(_.getOrElse(default))
 
     def toEventStream(): EventStream[T] = {
       // Explicitly reference your own package's Subscription to bypass Laminar's name collision
