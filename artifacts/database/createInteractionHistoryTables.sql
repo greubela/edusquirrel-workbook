@@ -49,14 +49,14 @@ CREATE TABLE `grading_event` (
   CONSTRAINT `grading_answer` FOREIGN KEY (`sync_id`, `answer_id`) REFERENCES `answer_event` (`sync_id`, `id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin;
 -- Single-blob format: entire history stored as JSON, merged on update.
--- Similar to the old ClassicWithKey approach but with merge semantics.
+-- Format is stored as serialized InteractionFormat (case object, naturally serializable).
 CREATE TABLE `single_blob_history` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `program_id` VARCHAR(128) NOT NULL,
   `scenario_id` VARCHAR(128) NOT NULL,
   `user_id` VARCHAR(128) NOT NULL,
   `variable_id` VARCHAR(255) NOT NULL,
-  `format_id` VARCHAR(255) NOT NULL,
+  `format` JSON NOT NULL,
   `history_json` JSON NOT NULL,
   `last_modified` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY `blob_identity` (`program_id`, `scenario_id`, `user_id`, `variable_id`)

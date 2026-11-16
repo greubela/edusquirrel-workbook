@@ -6,6 +6,7 @@ import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.abstractions.grading.GradingResult
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.interaction.variable.InteractionVariableGradingHistory
+import it.evadid.core.util.io.serializer.InteractionFormat
 import it.evadid.util.logging.Logger
 import java.sql.Connection
 import java.time.LocalDateTime
@@ -55,10 +56,8 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends R
       
       // Get format from first row, use default if not found
       val formatId = states.headOption.map(_._3).getOrElse("it.evadid.workbook.elements.interactionElements.basic.TextInteraction")
+      val format = readFormat(formatId)
       val historyJson = ujson.write(history)
-      
-      // Look up the format from the class name
-      val format = lookupFormatById(formatId)
       context.toSyncContext(key) -> InteractionHistoryJson(format, historyJson)
     }.toMap
     DbFetchResponse(histories.map { case (ctx, ihj) => ctx -> ihj.historyJson })
@@ -109,10 +108,8 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends R
       
       // Get format from first row, use default if not found
       val formatId = states.headOption.map(_._3).getOrElse("it.evadid.workbook.elements.interactionElements.basic.TextInteraction")
+      val format = readFormat(formatId)
       val historyJson = ujson.write(history)
-      
-      // Look up the format from the class name
-      val format = lookupFormatById(formatId)
       context.toSyncContext(key) -> InteractionHistoryJson(format, historyJson)
     }.toMap
     DbFetchResponse(histories.map { case (ctx, ihj) => ctx -> ihj.historyJson })
@@ -128,18 +125,15 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends R
     SyncSuccess(0, 0, removed, LocalDateTime.now())
   }
   
-  /** Look up the InteractionFormat from its class name. */
-  private def lookupFormatById(formatId: String): InteractionFormat[?, ?, ?] = {
+  /** Read format from fully qualified class name. */
+  private def readFormat(formatId: String): InteractionFormat[?, ?, ?] = {
     try {
-      // Try to load the class and get its companion object (singleton instance)
       val clazz = Class.forName(formatId)
-      // Get the singleton 'MODULE$' field for the companion object
       val field = clazz.getField("MODULE$")
       field.get(null).asInstanceOf[InteractionFormat[?, ?, ?]]
     } catch {
       case e: Exception =>
-        logger.warn(s"Failed to load format $formatId, using default: ${e.getMessage}")
-        // Return a placeholder - in practice this should never happen
+        logger.warn(s"Failed to load format $formatId: ${e.getMessage}")
         throw e
     }
   }

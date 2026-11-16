@@ -17,16 +17,16 @@ class SingleBlobHistoryStorage(connection: Connection, logger: Logger) {
     val context = request.usageContext
     val limit = request.mayLimitToKey.map(_ => " AND variable_id=?").getOrElse("")
     val parameters = List(context.programId, context.scenarioId, context.userId) ++ request.mayLimitToKey.toList
-    val rows = query("SELECT variable_id, format_id, history_json FROM single_blob_history WHERE program_id=? AND scenario_id=? AND user_id=?" + limit, parameters) { row =>
+    val rows = query("SELECT variable_id, format, history_json FROM single_blob_history WHERE program_id=? AND scenario_id=? AND user_id=?" + limit, parameters) { row =>
       val variableId = row.getString("variable_id")
-      val formatId = row.getString("format_id")
+      val formatJson = row.getString("format")
       val historyJson = row.getString("history_json")
-      variableId -> formatId -> historyJson
+      variableId -> formatJson -> historyJson
     }
     
-    val histories = rows.map { case (variableId, formatId, historyJson) =>
+    val histories = rows.map { case (variableId, formatJson, historyJson) =>
       val syncContext = context.toSyncContext(variableId)
-      val format = lookupFormatById(formatId)
+      val format = readFormat(formatJson)
       syncContext -> InteractionHistoryJson(format, historyJson)
     }.toMap
     DbFetchResponse(histories)
@@ -39,16 +39,16 @@ class SingleBlobHistoryStorage(connection: Connection, logger: Logger) {
     val until = LocalDateTime.parse(request.until)
     val keyFilter = if request.keys.isEmpty then "" else " AND variable_id IN (" + request.keys.map(_ => "?").mkString(",") + ")"
     val parameters = List(context.programId, context.scenarioId, context.userId) ++ request.keys.toList
-    val rows = query("SELECT variable_id, format_id, history_json FROM single_blob_history WHERE program_id=? AND scenario_id=? AND user_id=?"+keyFilter, parameters) { row =>
+    val rows = query("SELECT variable_id, format, history_json FROM single_blob_history WHERE program_id=? AND scenario_id=? AND user_id=?"+keyFilter, parameters) { row =>
       val variableId = row.getString("variable_id")
-      val formatId = row.getString("format_id")
+      val formatJson = row.getString("format")
       val historyJson = row.getString("history_json")
-      variableId -> formatId -> historyJson
+      variableId -> formatJson -> historyJson
     }
     
-    val histories = rows.map { case (variableId, formatId, historyJson) =>
+    val histories = rows.map { case (variableId, formatJson, historyJson) =>
       val syncContext = context.toSyncContext(variableId)
-      val format = lookupFormatById(formatId)
+      val format = readFormat(formatJson)
       syncContext -> InteractionHistoryJson(format, historyJson)
     }.toMap
     DbFetchResponse(histories)
@@ -64,18 +64,9 @@ class SingleBlobHistoryStorage(connection: Connection, logger: Logger) {
     SyncSuccess(0, 0, removed, LocalDateTime.now())
   }
   
-  /** Look up the InteractionFormat from its class name. */
-  private def lookupFormatById(formatId: String): InteractionFormat[?, ?, ?] = {
-    try {
-      val clazz = Class.forName(formatId)
-      val field = clazz.getField("MODULE$")
-      field.get(null).asInstanceOf[InteractionFormat[?, ?, ?]]
-    } catch {
-      case e: Exception =>
-        logger.warn(s"Failed to load format $formatId, using default: ${e.getMessage}")
-        // Return a placeholder - in practice this should never happen
-        throw e
-    }
+  /** Read format from JSON serialization. */
+  private def readFormat(formatJson: String): InteractionFormat[?, ?, ?] = {
+    read[InteractionFormat[?, ?, ?]](formatJson)
   }
   
   private def transaction[A](f: => A): A = {
@@ -100,6 +91,17 @@ class SingleBlobHistoryStorage(connection: Connection, logger: Logger) {
       }
       Using.resource(stmt.executeQuery()) { rs =>
         List.newBuilder[A].++=(() => rs).toList
+      }
+    }
+  }
+  
+  private def query[A, B](sql: String, params: List[String])(f: java.sql.ResultSet => (A, B)): List[(A, B)] = {
+    Using.resource(connection.prepareStatement(sql)) { stmt =>
+      params.zipWithIndex.foreach { case (param, idx) =>
+        stmt.setString(idx + 1, param)
+      }
+      Using.resource(stmt.executeQuery()) { rs =>
+        List.newBuilder[(A, B)].++=(() => rs).toList
       }
     }
   }

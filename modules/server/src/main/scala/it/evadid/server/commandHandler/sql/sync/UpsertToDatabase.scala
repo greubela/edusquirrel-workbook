@@ -1,18 +1,15 @@
 package it.evadid.server.commandHandler.sql.sync
 
+import it.evadid.distribution.commandTypes.SQLCommands.*
+import it.evadid.workbook.interaction.sync.SyncSuccess
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.sql.DatabaseHistoryFormat
-import it.evadid.distribution.commandTypes.SQLCommands.StoreToDbRequest
-import it.evadid.server.commandHandler.sql.GenericSqlFunctionality
+import it.evadid.workbook.abstractions.grading.GradingResult
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
+import it.evadid.workbook.interaction.variable.InteractionVariableGradingHistory
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.*
-
-import it.evadid.workbook.abstractions.grading.{GradingResult, GradingStatus, WorkbookInteractionGrader}
-import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
-import upickle.default.*
-
-import java.sql.{Connection, Timestamp}
+import java.sql.Connection
 import java.time.LocalDateTime
+import upickle.default.*
 
 /** Handles database upsert operations for interaction history.
   *
@@ -83,9 +80,18 @@ object UpsertToRelationalDatabase {
       val format = request.history.format
       val history = request.history
       val sync = ensureContext(request.syncContext)
-      history.entries("historyStates", "events").sortBy { case (event, _) => LocalDateTime.parse(event("timestamp").str) }.foreach { case (event, _) =>
-        upsertAnswer(sync, event, format.getClass.getName)
+      
+      // Convert to typed history for processing
+      val historyTyped = history.toTyped
+      
+      historyTyped.events.values.toList.sortBy(_.timestamp).foreach { event =>
+        upsertAnswer(sync, ujson.Obj(
+          "timestamp" -> ujson.Str(event.timestamp.toString),
+          "value" -> event.state,
+          "updateImportance" -> ujson.Str(event.updateImportance.toString)
+        ), format.getClass.getName)
       }
+      
       val answers = query("SELECT id,timestamp,update_importance,serialized_data FROM answer_event WHERE sync_id=?", List(sync)) { row =>
         safe("answer " + row.getLong("id")) {
           val event = answerJson(row)
@@ -95,25 +101,25 @@ object UpsertToRelationalDatabase {
       def answerFor(state: ujson.Value): Long = answers.filter(_._3 == state).maxByOption(_._2)
         .map(_._1).getOrElse(throw IllegalArgumentException("Feedback has no matching saved answer in this sync context"))
 
-      history.entries("historyGrading", "gradingsMap").foreach { (state, group) =>
-        require(group("state") == state, "Grading state does not match its map key")
-        history.entries(state, "graderResultMap").foreach { (definition, incoming) =>
-          require(incoming("gradedState") == state && incoming("grader") == definition, "Inconsistent grading result")
-          val grader = readJson[WorkbookInteractionGrader[ujson.Value, ujson.Value]]("WorkbookInteractionGrader", definition)
+      historyTyped.gradingHistory.gradingMap.foreach { case (state, group) =>
+        require(group.state == state, "Grading state does not match its map key")
+        group.graderResultMap.foreach { case (definition, incoming) =>
+          require(incoming.gradedState == state && incoming.grader == definition, "Inconsistent grading result")
+          val grader = incoming.grader
           require(grader.key.nonEmpty, "Grader identity must not be empty")
           val answer = answerFor(state)
           upsertGrading(sync, answer, state, grader, incoming)
         }
       }
-      history.entries("historyScaffolding", "scaffoldingMap").foreach { (state, incoming) =>
-        require(incoming("forState") == state, "Scaffolding state does not match its map key")
+      historyTyped.scaffoldingHistory.scaffoldingMap.foreach { case (state, incoming) =>
+        require(incoming.forState == state, "Scaffolding state does not match its map key")
         val answer = answerFor(state)
         upsertScaffolding(sync, answer, state, incoming)
       }
-      val feedbackCount = history.entries("historyGrading", "gradingsMap")
-        .map((_, group) => history.entries(group, "graderResultMap").size).sum +
-        history.entries("historyScaffolding", "scaffoldingMap").size
-      SyncSuccess(0, history.entries("historyStates", "events").size + feedbackCount, 0, LocalDateTime.now())
+      val feedbackCount = historyTyped.gradingHistory.gradingMap.map { case (_, group) =>
+        group.graderResultMap.size
+      }.sum + historyTyped.scaffoldingHistory.scaffoldingMap.size
+      SyncSuccess(0, historyTyped.events.values.size + feedbackCount, 0, LocalDateTime.now())
     }
 
     private def upsertGrading(sync: Long, answer: Long, state: ujson.Value,
@@ -172,44 +178,50 @@ object UpsertToSingleBlobDatabase {
     /** Stores single-blob history with merge semantics. */
     def upsertIntoSingleBlobTable(request: StoreToDbRequest): SyncSuccess = transaction {
       val format = request.history.format
-      val formatId = format.getClass.getName
-      val historyJson = request.history.historyJson
+      val historyTyped = request.history.toTyped
+      val formatJson = write(format)
       
       // Read existing history for this sync context
       val existing = query(
-        "SELECT history_json FROM single_blob_history WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=?",
+        "SELECT format, history_json FROM single_blob_history WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=?",
         List(request.syncContext.programId, request.syncContext.scenarioId, request.syncContext.userId, request.syncContext.keyForSerialisation)
-      )(_.getString(1)).headOption
+      ) { row =>
+        row.getString("format") -> row.getString("history_json")
+      }.headOption
       
-      val mergedHistoryJson = existing match {
-        case Some(existingJson) =>
+      val (finalFormatJson, mergedHistoryJson) = existing match {
+        case Some((existingFormatJson, existingJson)) =>
           // Merge existing history with new history using typed operations
-          val existingHistoryTyped = InteractionHistoryJson(format, existingJson).toTyped
-          val newHistoryTyped = request.history.toTyped
+          val existingFormat = readFormat(existingFormatJson)
+          val existingHistoryTyped = InteractionHistoryJson(existingFormat, existingJson).toTyped
           // Merge the typed histories
-          val mergedTyped = existingHistoryTyped.mergeWith(newHistoryTyped)
-          // Serialize the merged history
-          format.historySerializer.serialize(mergedTyped)
+          val mergedTyped = existingHistoryTyped.mergeWith(historyTyped)
+          // Serialize the merged history and format
+          (existingFormatJson, existingFormat.historySerializer.serialize(mergedTyped))
         case None =>
-          // No existing history, use the new history
-          historyJson
+          // No existing history, use the new history and format
+          (formatJson, format.historySerializer.serialize(historyTyped))
       }
       
       // Insert or update the single blob history
       update(
-        "INSERT INTO single_blob_history (program_id,scenario_id,user_id,variable_id,format_id,history_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE history_json=VALUES(history_json),format_id=VALUES(format_id)",
-        request.syncContext.programId, request.syncContext.scenarioId, request.syncContext.userId, request.syncContext.keyForSerialisation, formatId, mergedHistoryJson
+        "INSERT INTO single_blob_history (program_id,scenario_id,user_id,variable_id,format,history_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE history_json=VALUES(history_json),format=VALUES(format)",
+        request.syncContext.programId, request.syncContext.scenarioId, request.syncContext.userId, request.syncContext.keyForSerialisation, finalFormatJson, mergedHistoryJson
       )
       
       // Count events in the new history
-      val eventCount = request.history.entries("historyStates", "events").size
-      val feedbackCount = request.history.entries("historyGrading", "gradingsMap")
-        .map((_, group) => request.history.entries(group, "graderResultMap").size).sum +
-        request.history.entries("historyScaffolding", "scaffoldingMap").size
+      val eventCount = historyTyped.events.values.size
+      val feedbackCount = historyTyped.gradingHistory.gradingMap.map { case (_, group) =>
+        group.graderResultMap.size
+      }.sum + historyTyped.scaffoldingHistory.scaffoldingMap.size
       
       SyncSuccess(0, eventCount + feedbackCount, 0, LocalDateTime.now())
     }
 
+    private def readFormat(formatJson: String): InteractionFormat[?, ?, ?] = {
+      read[InteractionFormat[?, ?, ?]](formatJson)
+    }
+    
     private def transaction[A](f: => A): A = {
       connection.setAutoCommit(false)
       try {
@@ -232,6 +244,17 @@ object UpsertToSingleBlobDatabase {
         }
         Using.resource(stmt.executeQuery()) { rs =>
           List.newBuilder[A].++=(() => rs).toList
+        }
+      }
+    }
+
+    private def query[A](sql: String, params: List[String])(f: java.sql.ResultSet => (A, A)): List[(A, A)] = {
+      Using.resource(connection.prepareStatement(sql)) { stmt =>
+        params.zipWithIndex.foreach { case (param, idx) =>
+          stmt.setString(idx + 1, param)
+        }
+        Using.resource(stmt.executeQuery()) { rs =>
+          List.newBuilder[(A, A)].++=(() => rs).toList
         }
       }
     }
