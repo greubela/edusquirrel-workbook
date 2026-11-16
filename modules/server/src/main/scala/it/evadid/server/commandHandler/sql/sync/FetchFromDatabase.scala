@@ -12,7 +12,7 @@ import java.sql.*
 
 object FetchFromDatabase {
 
-  private def union(list: List[String]): String = InteractionHistoryJson.merge(list)
+  private def union(list: List[String]): String = InteractionHistoryJson.merge(InteractionFormat.fromReadWriters[Unit, Unit, Unit], list)
 
   def handleRequest(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
     it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>

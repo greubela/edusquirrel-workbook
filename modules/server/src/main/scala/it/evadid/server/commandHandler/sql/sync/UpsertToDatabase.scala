@@ -183,11 +183,13 @@ object UpsertToSingleBlobDatabase {
       
       val mergedHistoryJson = existing match {
         case Some(existingJson) =>
-          // Merge existing history with new history
-          val existingFormat = lookupFormatById(formatId)
-          val existingHistory = InteractionHistoryJson(existingFormat, existingJson)
-          // Use the merge method to combine histories
-          existingHistory.mergeWith(request.history)
+          // Merge existing history with new history using typed operations
+          val existingHistoryTyped = InteractionHistoryJson(format, existingJson).toTyped
+          val newHistoryTyped = request.history.toTyped
+          // Merge the typed histories
+          val mergedTyped = existingHistoryTyped.mergeWith(newHistoryTyped)
+          // Serialize the merged history
+          format.historySerializer.serialize(mergedTyped)
         case None =>
           // No existing history, use the new history
           historyJson
@@ -206,18 +208,6 @@ object UpsertToSingleBlobDatabase {
         request.history.entries("historyScaffolding", "scaffoldingMap").size
       
       SyncSuccess(0, eventCount + feedbackCount, 0, LocalDateTime.now())
-    }
-
-    private def lookupFormatById(formatId: String): InteractionFormat[?, ?, ?] = {
-      try {
-        val clazz = Class.forName(formatId)
-        val field = clazz.getField("MODULE$")
-        field.get(null).asInstanceOf[InteractionFormat[?, ?, ?]]
-      } catch {
-        case e: Exception =>
-          logger.warn(s"Failed to load format $formatId: ${e.getMessage}")
-          throw e
-      }
     }
 
     private def transaction[A](f: => A): A = {

@@ -112,7 +112,7 @@ object BufferedSyncDestinationHandler {
           key -> (acc.getOrElse(key, Vector.empty) :+ json)
         }
       }.view.map { (key, versions) =>
-        key -> InteractionHistoryJson.merge(versions.toList)
+        key -> InteractionHistoryJson.merge(InteractionFormat.fromReadWriters[Unit, Unit, Unit], versions.toList)
       }.toMap
       execute(underlying)(underlying.storeHistoriesJson(merged)).transform { outcome =>
         stores.foreach(_.promise.tryComplete(outcome))
