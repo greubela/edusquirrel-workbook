@@ -1,7 +1,7 @@
 package it.evadid.workbook.interaction.sync
 
-import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey
-import it.evadid.core.datastructures.storage.RemoteSyncDataCache.{RemoteDataReader, RemoteDataWriter}
+import it.evadid.core.datastructures.storage.remote.RemoteReaderWriter
+import it.evadid.core.datastructures.storage.remote.RemoteReaderWriter.{RemoteDataReader, RemoteDataWriter}
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
 import it.evadid.workbook.interaction.sync.model.SyncDirection.CLIENT_TO_SERVER
@@ -11,18 +11,17 @@ import it.evadid.workbook.interaction.variable.{InteractionVariable, Interaction
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
-case class SyncInformationWithContext(syncInformation: SyncInformation, usageContext: UsageContext, resolveDefinition: SyncDestinationDefinition => SyncDestinationHistoryHandler) extends CacheKey[SyncContext, String] {
+case class SyncInformationWithContext(syncInformation: SyncInformation, usageContext: UsageContext, resolveDefinition: SyncDestinationDefinition => SyncDestinationHistoryHandler)
+  extends RemoteReaderWriter[SyncContext, String] {
 
   private given ec: ExecutionContext = ExecutionContext.global
 
   lazy val handler: SyncDestinationHistoryHandler = resolveDefinition(syncInformation.syncDestination)
 
-  def dataToStore[T, GA, SA](variable: InteractionVariable[T, GA, SA]): List[DataEntryToSync[SyncContext, String]] = {
-    val historyToStore: InteractionVariableHistory[T, GA, SA] = variable.currentHistory.filterWithStrategy(syncInformation.syncStrategy)
-    val syncContext: SyncContext = usageContext.toSyncContext(variable.keyForSerialization)
 
-    if (historyToStore.size == 0) List()
-    else List(DataEntryToSync(syncContext, variable.serializerHistory.serialize(historyToStore), historyToStore.timestampLastChanged.get, CLIENT_TO_SERVER))
+  def serialize[T, GA, SA](interaction: InteractionVariable[T, GA, SA]): String = {
+    val filtered = interaction.currentHistory.filterWithStrategy(syncInformation.syncStrategy)
+    interaction.serializerHistory.serialize(filtered)
   }
 
   lazy val reader: RemoteDataReader[SyncContext, String] = new RemoteDataReader[SyncContext, String]() {
@@ -40,6 +39,9 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
       logger.logExceptionWarn(s"Error while calling SyncLogger::fetchAllFrom, ignoring data from ${syncInformation.syncDestination.toString}", e)
       Future.failed(e)
     }
+
+    override def flush(logger: SyncLogger, forceFlush: Boolean): Unit = handler.flush(forceFlush)
+
   }
 
   lazy val writer: RemoteDataWriter[SyncContext, String] = new RemoteDataWriter[SyncContext, String]() {
@@ -61,5 +63,7 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
       logger.logExceptionWarn(s"Could not create future, ignoring write to ${syncInformation.syncDestination.toString}", e)
       Future.failed(e)
     }
+
+    override def flush(logger: SyncLogger, forceFlush: Boolean): Unit = handler.flush(forceFlush)
   }
 }

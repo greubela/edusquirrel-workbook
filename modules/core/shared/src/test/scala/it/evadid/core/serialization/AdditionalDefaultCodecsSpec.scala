@@ -18,7 +18,7 @@ class AdditionalDefaultCodecsSpec extends FunSuite {
   // A data-only destination identity. Reader/writer behavior is reconstructed, never serialized.
   private case class ReadOnlyDestination(name: String)
       extends it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey[String, Int] derives ReadWriter {
-    import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
+    import it.evadid.core.datastructures.storage.remote.RemoteSyncDataCache.*
     import it.evadid.workbook.interaction.sync.SyncSuccess
     import it.evadid.util.logging.derived.SyncLogger
     import scala.concurrent.Future
@@ -137,7 +137,7 @@ class AdditionalDefaultCodecsSpec extends FunSuite {
     }
   }
   test("sync records preserve nanosecond timestamps and every sealed variant") {
-    import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
+    import it.evadid.core.datastructures.storage.remote.RemoteSyncDataCache.*
     val time = java.time.LocalDateTime.of(2025, 3, 4, 5, 6, 7, 123456789)
     val fetched = DataEntryReadFromServer("key", List("ä", "😀"), time)
     val writing = DataEntryToWriteToServer("key", List("answer"), time.plusNanos(1))
@@ -160,7 +160,7 @@ class AdditionalDefaultCodecsSpec extends FunSuite {
   }
   test("cache reports derive a codec when the concrete destination identity has one") {
     import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheCollectionReport
-    import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
+    import it.evadid.core.datastructures.storage.remote.RemoteSyncDataCache.*
     val destination = ReadOnlyDestination("local")
     val status = SyncStatus[String, Int](None, "answer", None)
     restore(CacheCollectionReport("answer", Map(destination -> status), List(destination)))

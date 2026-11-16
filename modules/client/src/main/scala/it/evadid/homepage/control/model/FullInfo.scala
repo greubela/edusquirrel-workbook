@@ -67,7 +67,7 @@ case class FullInfo(
 
   lazy val usageControl: HomepageUsageControl = HomepageUsageControl(this)
 
-  lazy val syncControl: SyncControl = RemoteInteractionCacheControl(this)
+  lazy val syncControl: RemoteInteractionCacheControl = RemoteInteractionCacheControl(this)
 
   lazy val displayControl: DisplayControl = DisplayControl(this)
 

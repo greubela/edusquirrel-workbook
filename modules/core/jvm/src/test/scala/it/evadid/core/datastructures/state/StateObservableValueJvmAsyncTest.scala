@@ -1,9 +1,9 @@
 package it.evadid.core.datastructures.state
 
 import it.evadid.core.datastructures.state.observable.{ObservableValueImpl, ObserverDerivationLogic}
-import it.evadid.core.datastructures.storage.RemoteCacheController
 import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey
-import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
+import it.evadid.core.datastructures.storage.remote.RemoteSyncDataCache.*
+import it.evadid.core.datastructures.storage.remote.RemoteCacheController
 import it.evadid.util.logging.{Logger, LoggingLevel}
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.SyncSuccess

@@ -4,7 +4,7 @@ import it.evadid.workbook.support.TestExecutionContext
 import it.evadid.workbook.meta.ExecutionContextInformation
 import it.evadid.workbook.interaction.variable.{InteractionVariableStateHistory, InteractionVariableGradingHistory, InteractionVariableScaffoldingHistory}
 
-import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
+import it.evadid.core.datastructures.storage.remote.RemoteSyncDataCache.*
 import it.evadid.workbook.interaction.sync.model.*
 import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
 import it.evadid.core.util.io.Serializer

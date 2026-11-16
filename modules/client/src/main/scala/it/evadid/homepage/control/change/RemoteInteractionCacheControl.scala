@@ -1,20 +1,87 @@
 package it.evadid.homepage.control.change
 
-import it.evadid.core.datastructures.state.StateHelper.RichSignal
-import it.evadid.core.datastructures.state.observable.ObservableValue
-import it.evadid.core.datastructures.storage.{RemoteCacheController, RemoteCacheCollection}
+import com.raquo.airstream.state.Var
+import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.state.StateHelper.*
+import it.evadid.core.datastructures.storage.remote.RemoteDataSyncControllable
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.model.SyncStatus
-import it.evadid.workbook.interaction.variable.InteractionVariable.InteractionVariableUntyped
-import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
+import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.meta.InteractionVariableSyncReport
 
-import java.time.LocalDateTime
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import com.raquo.airstream.state.Var
+import scala.concurrent.{ExecutionContext, Future}
 
+case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl {
+
+  private given ec: ExecutionContext = ExecutionContext.global
+
+  val innerState: Var[RemoteDataSyncControllable] = {
+    val res = Var(RemoteDataSyncControllable(fullInfo.loggerSystemInfo.syncControlLogger, fullInfo.signals.syncEnvironmentSignal.now()))
+
+    // update cache with new context
+    fullInfo.signals.syncEnvironmentSignal.foreach(newValue => fullInfo.synchronized {
+      innerState.update(_.changeDestinations(newValue))
+    })(using unsafeWindowOwner)
+
+    //update vars with new fetched info
+
+    val updateReportSignal = res.signal.flatMapSwitch(_.caches.updateReport.toSignal(Map()))
+    updateReportSignal.foreach(valueMap => fullInfo.synchronized {
+      valueMap.toList.foreach((curSyncContext, curJsonHistory) => {
+        val infoNow = fullInfo.homepageInfoNow()
+        if (curSyncContext.doesMatch(infoNow.toContext) && infoNow.workbookInfo.nonEmpty) {
+          val interactionOp = infoNow.workbookInfo.get.loadedWorkbook.allContainedInteractionsById.values.find(_.interactionVariable.keyForSerialization == curSyncContext.keyForSerialisation)
+          if (interactionOp.nonEmpty) {
+            interactionOp.get.interactionVariable.addSerializedHistory(syncLogger, curJsonHistory, fullInfo.workbookContextInformation)
+          }
+        }
+      })
+    })(using unsafeWindowOwner)
+
+
+    res
+  }
+
+  override def storeAll(forceFlush: Boolean): Future[Unit] = fullInfo.synchronized {
+    innerState.now().storeAll(forceFlush)
+  }
+
+  override def fetchAll(forceFlush: Boolean): Future[Unit] = fullInfo.synchronized {
+    innerState.now().fetchAll(forceFlush)
+  }
+
+  override def store[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA], forceFlush: Boolean): Future[Unit] = fullInfo.synchronized {
+    innerState.now().store(interactionVariable, forceFlush)
+  }
+
+  override def syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
+
+
+  def createReportFor[T, GA, SA](interaction: WorkbookInteractionElementFull[T, GA, SA]): Signal[Option[InteractionVariableSyncReport[?, ?, ?]]] = {
+    val reportSignal = innerState.signal.flatMapSwitch(_.caches.reports.toOptionSignal())
+    val historySignal = interaction.interactionVariable.historySignal
+    innerState.signal.combineWith(reportSignal).combineWith(historySignal).map((curState, curReportOp, curHistory) => {
+      if (curState.syncEnv.isEmpty || curReportOp.isEmpty) None else {
+        val syncContext = curState.syncEnv.get.usageContext.toSyncContext(interaction.interactionVariable.keyForSerialization)
+        val curReport = curReportOp.get
+        if (!curReport.contains(syncContext)) None else {
+          Some(InteractionVariableSyncReport[T, GA, SA](
+            interaction.interactionVariable.serializerHistory,
+            curHistory,
+            curReport(syncContext),
+            curState.caches.readWriters
+          ))
+        }
+      }
+    })
+
+  }
+}
+
+
+/*
 case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl {
 
   private given ExecutionContext = ExecutionContext.global
@@ -32,7 +99,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
   }
 
   private def mergeIfChanged[T, GA, SA](variable: InteractionVariable[T, GA, SA],
-      histories: Vector[InteractionVariableHistory[T, GA, SA]]): Unit =
+                                        histories: Vector[InteractionVariableHistory[T, GA, SA]]): Unit =
     if histories.nonEmpty && variable.currentHistory.mergeWith(histories) != variable.currentHistory then
       variable.updateHistory(_.mergeWith(histories), fullInfo.workbookContextInformation)
 
@@ -45,6 +112,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
           val histories = decodeStatuses(variable, report.cacheStatus).values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toVector
           mergeIfChanged(variable, histories)
         }
+
         restore(interaction.interactionVariable)
       }
     }
@@ -140,4 +208,4 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     Future.traverse(into)(curVar => load(curVar, context)).map(_ => ())
   }
 
-}
+}*/

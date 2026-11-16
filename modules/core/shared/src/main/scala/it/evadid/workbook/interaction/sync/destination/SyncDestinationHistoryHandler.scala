@@ -50,7 +50,9 @@ trait SyncDestinationHistoryHandler {
     readHistoriesJson(usageContext).map(fetchResponse => SyncDestinationHistoryHandler.readHistoriesFrom(variablesToResolveTypes, usageContext, fetchResponse))
   }
 
-  lazy val toBuffered: BufferedSyncDestinationHandler = BufferedSyncDestinationHandler(this)
+  lazy val toBuffered: BufferedSyncDestinationHandler = {
+    BufferedSyncDestinationHandler(this)
+  }
 
 }
 
@@ -111,14 +113,14 @@ object SyncDestinationHistoryHandler {
 
       override def readHistoryJson(syncContext: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
         typed.readElementTyped(syncContext).map(curHistoryJson => {
-          FetchResponse.fromMap(LocalDateTime.now(), Map(syncContext -> curHistoryJson), historyTimestamp)
+          FetchResponse.fromMap(LocalDateTime.now(), Map(syncContext -> curHistoryJson))
         })
       }
 
       override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
         typed.readFullStore.map(curMap => {
           val data = curMap.filter((context, _) => context.toUsageContext == usageContext)
-          FetchResponse.fromMap(LocalDateTime.now(), data, historyTimestamp)
+          FetchResponse.fromMap(LocalDateTime.now(), data)
         })
       }
     }

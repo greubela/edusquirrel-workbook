@@ -1,7 +1,8 @@
 package it.evadid.core.datastructures.storage
 
 import it.evadid.core.datastructures.storage.RemoteCacheCollection.CacheKey
-import it.evadid.core.datastructures.storage.RemoteSyncDataCache.*
+import it.evadid.core.datastructures.storage.remote.RemoteSyncDataCache
+import it.evadid.core.datastructures.storage.remote.RemoteSyncDataCache.*
 import it.evadid.workbook.interaction.sync.model.*
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}

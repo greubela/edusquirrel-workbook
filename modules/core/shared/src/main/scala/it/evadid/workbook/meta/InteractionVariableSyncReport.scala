@@ -1,38 +1,48 @@
 package it.evadid.workbook.meta
 
-import it.evadid.workbook.interaction.sync.model.SyncStatus
+import it.evadid.core.datastructures.storage.remote.RemoteDataSynchronisation.CacheReportForKey
+import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncInformationWithContext}
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
+import upickle.default.*
 
-case class InteractionVariableSyncReport[T, GA, SA](
-                                                     curLocalHistory: InteractionVariableHistory[T, GA, SA],
-                                                     curRemoteHistory: Map[SyncInformationWithContext, SyncStatus[SyncContext, InteractionVariableHistory[T, GA, SA]]],
-                                                     allSyncLocations: List[SyncInformationWithContext]
-                                                   ) {
 
-  lazy val lastRemoteStates: Map[SyncInformationWithContext, InteractionVariableState[T]] = {
-    def getOldestFrom(status: SyncStatus[SyncContext, InteractionVariableHistory[T, GA, SA]]): Option[InteractionVariableState[T]] =
-      status.lastKnownRemoteValue.flatMap(_.dataValue.historyStates.lastStateOption)
+case class InteractionVariableSyncReport[T, GA, SA]
+(
+  serializerHistory: Serializer[InteractionVariableHistory[T, GA, SA]],
+  curLocalHistory: InteractionVariableHistory[T, GA, SA],
+  // curRemoteHistory: Map[SyncInformationWithContext, RemoteValue[SyncContext, String]],
+  cacheReport: CacheReportForKey[SyncContext, String, SyncInformationWithContext],
+  allSyncLocations: Set[SyncInformationWithContext]
+) {
 
-    curRemoteHistory.keySet.flatMap(curKey => getOldestFrom(curRemoteHistory(curKey)).map(curVal => curKey -> curVal)).toMap
+  lazy val cacheHistoryMap: Map[SyncInformationWithContext, InteractionVariableHistory[T, GA, SA]] = {
+    {
+      cacheReport.lastKnownValues.toList.flatMap((curSyncInfo, curRemoteValue) => {
+        serializerHistory.tryDeserialize(curRemoteValue.value).match {
+          case Left(err) => None
+          case Right(value) => Some(curSyncInfo -> value)
+        }
+      }).toMap
+    }
   }
 
-  // A recent read is not a write acknowledgement. Check the data selected for each
-  // destination, including grading and scaffolding, against its confirmed history.
-  lazy val latestSyncedAt: Map[SyncInformationWithContext, Boolean] =
-    allSyncLocations.map { location =>
-      val expected = curLocalHistory.filterWithStrategy(location.syncInformation.syncStrategy)
-      val confirmed = curRemoteHistory.get(location).flatMap(_.lastKnownRemoteValue).map(_.dataValue)
-      location -> (expected.size == 0 || confirmed.exists(remote => remote.mergeWith(expected) == remote))
-    }.toMap
+  lazy val cacheLatestStateMap: Map[SyncInformationWithContext, InteractionVariableState[T]] = {
+    cacheHistoryMap.toList.flatMap((curSyncInfo, curHistory) => curHistory.historyStates.lastStateOption.match {
+    case Some(lastState) => Some(curSyncInfo -> lastState)
+    case None => None
+    }).toMap
+  }
 
-
-  lazy val latestStateIsSyncedTo: Set[SyncInformationWithContext] = latestSyncedAt.filter(_._2).keySet
-  lazy val latestStateIsNotSyncedTo: Set[SyncInformationWithContext] = allSyncLocations.filterNot(latestStateIsSyncedTo.contains).toSet
+  def destinationsWithSufficientWrites(): Set[SyncInformationWithContext] = {
+    cacheHistoryMap.toSet.filter((curSyncDest, curRemoteHistory) => {
+      !(curRemoteHistory.timestampLastChanged.isEmpty || curRemoteHistory.timestampLastChanged.get.isBefore(curLocalHistory.timestampLastChanged.get))
+    }).map(_._1)
+  }
 
   lazy val allInformationEverywhere: InteractionVariableHistory[T, GA, SA] = {
-    val remoteHistories: Iterable[InteractionVariableHistory[T, GA, SA]] = curRemoteHistory.values.flatMap(_.lastKnownRemoteValue).map(_.dataValue)
-    curLocalHistory.mergeWith(remoteHistories.toList)
+    val allHistories = cacheHistoryMap.values.toList
+    allHistories.fold(curLocalHistory)(_.mergeWith(_))
   }
 
 }

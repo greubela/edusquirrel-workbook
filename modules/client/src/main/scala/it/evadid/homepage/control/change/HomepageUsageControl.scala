@@ -1,14 +1,10 @@
 package it.evadid.homepage.control.change
 
-import it.evadid.core.datastructures.user.{UserCredentials, SavedUserPreferences}
-
 import it.evadid.core.datastructures.file.LoadedFile
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.core.datastructures.user.*
 import it.evadid.core.datastructures.user.User.SingleAccessToken
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
-import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
-import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.ExecutionInfo.ExecutionSuccess
 import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.commandTypes.UserCommands
@@ -16,12 +12,12 @@ import it.evadid.distribution.commandTypes.UserCommands.{CreateAccountRequest, L
 import it.evadid.homepage.control.info.{SessionData, WorkbookUserDataAnalyzer}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
-import it.evadid.homepage.workbook.syncDestination.{LocalStorageSyncHandler, LocalIndexedDbStorageSyncHandler}
+import it.evadid.homepage.workbook.syncDestination.{LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
 import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
 import upickle.default.*
 
+import java.time.LocalDateTime
 import scala.concurrent.*
-import scala.scalajs.js
 import scala.util.{Failure, Success}
 
 case class HomepageUsageControl(fullInfo: FullInfo) {
@@ -33,26 +29,20 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   private val logger = fullInfo.loggerSystemInfo.contentControlLogger
 
   def doOnPeriodicPing(): Unit = {
-    println("periodic ping. fullInfo: "+ fullInfo)
-  }
+    println(s"periodic ping @ ${LocalDateTime.now()}.")
 
+    fullInfo.syncControl.ensureSynced()
+  }
 
   def changeDisplay(func: AllDisplayInfo => AllDisplayInfo): Unit = fullInfo.synchronized {
     updateInfoWithoutContextChange((curInfo: HomepageInfo) => curInfo.copy(displayInfo = func(curInfo.displayInfo)))
   }
 
   private[change] def updateInfoWithoutContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
-    // Navigation and display state must not wait for remote storage: an unreachable
-    // sync destination would otherwise freeze the workbook. Refresh in the background.
+
+    fullInfo.syncControl.ensureSynced()
     fullInfo.homepageInfoState.update(func)
-    fullInfo.syncControl
-      .ensureFetchAndLoad(interactions.map(_.interactionVariable))
-      .recover { case err =>
-        fullInfo.loggerSystemInfo.syncCacheLogger.logExceptionWarn(
-          "display update applied, but the following fetchAndLoad failed",
-          err
-        )
-      }
+    Future.successful(())
   }
 
   def changeWorkbook(factory: WorkbookFactory): Unit = fullInfo.synchronized {
@@ -65,7 +55,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
       //updateInfoWithContextChange(_.copy(workbookInfo = newWorkbook))
       fullInfo.homepageInfoState.update(_.copy(workbookInfo = newWorkbook))
       if (newWorkbook.isEmpty) Future.successful(()) else {
-        fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable))
+        fullInfo.syncControl.ensureSynced()
       }
     }
   }
@@ -282,15 +272,13 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     if (newUserInfo == oldUser) Future.successful(()) else {
       val waitFor: Future[?] = if (oldUser.isEmpty) Future.successful(()) else {
         WorkbookUserDataAnalyzer().downloadAllData(fullInfo)
-        fullInfo.syncControl.storeAndReset(interactions.map(_.interactionVariable)).recover {
-          err => logger.logExceptionWarn("Ignore Store and Reset!", err)
-        }
+        fullInfo.syncControl.ensureSynced()
       }
       waitFor.flatMap(res => {
         actuallySetNewUser()
         saveSession(newUserInfo).flatMap { _ =>
           if (newUserInfo.isEmpty || fullInfo.current.workbookInfo.isEmpty) Future.successful(()) else {
-            fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable))
+            fullInfo.syncControl.ensureSynced()
           }
         }
       }).recover {
@@ -302,7 +290,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   def updateCredentials(credentials: UserCredentials): Future[?] = {
     require(fullInfo.current.userInfo.nonEmpty, "Create or log in to a profile first")
     fullInfo.homepageInfoState.update(info => info.copy(userInfo = info.userInfo.map(_.copy(credentials = credentials))))
-    saveSession(fullInfo.current.userInfo).flatMap(_ => fullInfo.syncControl.ensureFetchAndLoad(interactions.map(_.interactionVariable)))
+    saveSession(fullInfo.current.userInfo).flatMap(_ => fullInfo.syncControl.ensureSynced())
   }
 
   def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {

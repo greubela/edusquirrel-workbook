@@ -6,7 +6,9 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.{LanguageMapIdResolver, LanguageMapStorage}
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.observable.ObservableValue
+import it.evadid.core.datastructures.storage.remote.WorkbookSyncEnvironment
 import it.evadid.core.datastructures.user.AllUserInfo
+import it.evadid.homepage.control.change.RemoteInteractionCacheControl.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServerHandler, LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
 import it.evadid.workbook.elements.structureElements.WorkbookSection
@@ -19,6 +21,23 @@ import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition
 import scala.concurrent.*
 
 case class HomepageSignalInfo(fullInfo: FullInfo) {
+
+
+  //   case class SyncContext(usageContext: UsageContext, interactions: Set[WorkbookInteractionUntyped], syncDestinations: Set[SyncInformationWithContext])
+
+  lazy val syncEnvironmentSignal: StrictSignal[Option[WorkbookSyncEnvironment]] = {
+
+    fullInfo.homepageInfoState.signal.mapLazy(curHomepageInfo => {
+      if (curHomepageInfo.userInfo.isEmpty || curHomepageInfo.workbookInfo.isEmpty) None
+      else Some(WorkbookSyncEnvironment(
+        curHomepageInfo.toContext,
+        curHomepageInfo.workbookInfo.toSet.flatMap(_.loadedWorkbook.allContainedInteractionsById.values),
+        curHomepageInfo.syncDestinations.toSet
+      ))
+    })
+
+
+  }
 
   private lazy val baseSignal: StrictSignal[HomepageInfo] = {
     fullInfo.homepageInfoState.signal
@@ -37,17 +56,10 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     // Var(None).signal
   }
 
-  lazy val currentSyncDestinationObservable: ObservableValue[List[SyncInformationWithContext]] = {
-    currentSyncDestinations.toObservableValue
-  }
 
   lazy val currentUsageContext: StrictSignal[UsageContext] = baseSignal.mapLazy(_.toContext)
 
-  private val resolveSyncDefinition: SyncDestinationDefinition => SyncDestinationHistoryHandler = {
-    case db: SyncDestinationBasedOnHistoryDatabase => DatabaseSyncViaBackendServerHandler(fullInfo.syncControl.syncLogger, db, fullInfo).toBuffered
-    case li: LocalIndexedDbSyncDefinition => LocalIndexedDbStorageSyncHandler(li).withSyncLogger(fullInfo.syncControl.syncLogger).forHistory()
-    case ls: LocalStorageSyncDefinition => LocalStorageSyncHandler(ls).withSyncLogger(fullInfo.syncControl.syncLogger).forHistory()
-  }
+
 
   /*def currentSyncSources: List[SyncInformationWithContext] = fullInfo.synchronized {
     val curContext: UsageContext = fullInfo.homepageInfoState.now().toContext
@@ -56,11 +68,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     syncWithContext
   }*/
 
-  lazy val currentSyncDestinations: StrictSignal[List[SyncInformationWithContext]] = {
-    baseSignal.mapLazy(homepageInfo => {
-      homepageInfo.userInfo.map(curUserInfo => curUserInfo.config.syncDestinations.map(_.forContext(homepageInfo.toContext, resolveSyncDefinition))).getOrElse(List())
-    })
-  }
+
 
   lazy val user: StrictSignal[Option[AllUserInfo]] = {
     baseSignal.mapLazy(_.userInfo)

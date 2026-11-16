@@ -6,11 +6,11 @@ import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.sync.UpdateImportance.TEMPORARY
-import it.evadid.workbook.interaction.variable.InteractionVariable
+import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 import it.evadid.workbook.meta.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 object StateHelper {
 
@@ -26,8 +26,63 @@ object StateHelper {
     def toObservableValue: ObservableValue[T] = toState.observable
   }
 
+  implicit class RichInteractionVariable[T, GA, SA](underlying: InteractionVariable[T, GA, SA]) {
+
+    def historySignal: Signal[InteractionVariableHistory[T, GA, SA]] = {
+      val res: Signal[InteractionVariableHistory[T, GA, SA]] = underlying.observableHistoryWithDefault.toSignal(
+        underlying.observableHistoryWithDefault.now().get
+      )
+      res
+    }
+
+  }
 
   implicit class RichObservableValue[T](underlying: ObservableValue[T]) {
+
+    /** Safely exposes Option[T] since underlying.now() can be None. */
+    def toOptionSignal(): Signal[Option[T]] = {
+      var subscription: Option[it.evadid.core.datastructures.state.Subscription[T]] = None
+
+      Signal.fromCustomSource[Option[T]](
+        initial = Success(underlying.now()),
+        start = (setCurrentValue, _, _, _) => {
+          // Sync latest value in case it changed between signal creation and mounting
+          setCurrentValue(Success(underlying.now()))
+
+          val sub = underlying.addObserver(
+            handleOnUpdate = newValue => setCurrentValue(Success(Some(newValue))),
+            handleOnError = err => setCurrentValue(Failure(err))
+          )
+          subscription = Some(sub)
+        },
+        stop = _ => {
+          subscription.foreach(_.cancel())
+          subscription = None
+        }
+      )
+    }
+
+    /** Returns Signal[T] directly using a fallback if underlying.now() is initially None. */
+    def toSignal(default: => T): Signal[T] = {
+      var subscription: Option[it.evadid.core.datastructures.state.Subscription[T]] = None
+
+      Signal.fromCustomSource[T](
+        initial = Success(underlying.now().getOrElse(default)),
+        start = (setCurrentValue, _, _, _) => {
+          setCurrentValue(Success(underlying.now().getOrElse(default)))
+
+          val sub = underlying.addObserver(
+            handleOnUpdate = newValue => setCurrentValue(Success(newValue)),
+            handleOnError = err => setCurrentValue(Failure(err))
+          )
+          subscription = Some(sub)
+        },
+        stop = _ => {
+          subscription.foreach(_.cancel())
+          subscription = None
+        }
+      )
+    }
 
     def toEventStream(): EventStream[T] = {
       // Explicitly reference your own package's Subscription to bypass Laminar's name collision
@@ -50,7 +105,6 @@ object StateHelper {
       )
     }
   }
-
 
   implicit class RichSignal[T](underlying: Signal[T]) {
 

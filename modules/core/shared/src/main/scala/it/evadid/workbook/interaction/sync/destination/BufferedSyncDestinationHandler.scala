@@ -17,7 +17,6 @@ import scala.util.*
 
 case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHandler) extends SyncDestinationHistoryHandler {
 
-
   override def syncLogger: SyncLogger = underlying.syncLogger
 
   override def definition: SyncDestinationDefinition = underlying.definition
@@ -27,12 +26,12 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
 
   override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = underlying.clearValues(context)
 
-
   // read
   override def readHistory[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](syncContext: SyncContext)(implicit ec: ExecutionContext): Future[InteractionVariableHistory[T, GA, SA]] = {
     val promise = Promise[InteractionVariableHistory[T, GA, SA]]()
     cachedReads.update(_ ++ List(CachedReadRequestSingle(LocalDateTime.now(), syncContext, promise)))
     flush(false)
+    println(s"read: ${cachedReads.now().size}")
     promise.future
   }
 
@@ -40,6 +39,7 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
     val promise = Promise[Map[SyncContext, InteractionVariableHistory[?, ?, ?]]]()
     cachedReads.update(_ ++ List(CachedReadRequestMultiple(LocalDateTime.now(), usageContext, variablesToResolveTypes, promise)))
     flush(false)
+    println(s"read: ${cachedReads.now().size}")
     promise.future
   }
 
@@ -47,18 +47,20 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
     val promise = Promise[FetchResponse[SyncContext, String]]()
     cachedReads.update(_ ++ List(CachedReadRequestMultipleRaw(LocalDateTime.now(), usageContext, promise)))
     flush(false)
+    println(s"read: ${cachedReads.now().size}")
     promise.future
   }
 
   // store
 
-  val cachedStores: State[Seq[CachedStoreRequest]] = State(List())
-  val cachedReads: State[Seq[CachedReadRequest]] = State(List())
+  private val cachedStores: State[Seq[CachedStoreRequest]] = State(List())
+  private val cachedReads: State[Seq[CachedReadRequest]] = State(List())
 
   override def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = this.synchronized {
     val promise = Promise[SyncSuccess]()
     cachedStores.update(_ ++ List(CachedStoreRequest(LocalDateTime.now(), Map(syncContext -> historyJson), promise)))
     flush(false)
+    println(s"stored: ${cachedStores.now().size}")
     promise.future
   }
 
@@ -66,9 +68,9 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
     val promise = Promise[SyncSuccess]()
     cachedStores.update(_ ++ List(CachedStoreRequest(LocalDateTime.now(), contextJsonMap, promise)))
     flush(false)
+    println(s"stored: ${cachedStores.now().size}")
     promise.future
   }
-
 
   def timestamps: Set[LocalDateTime] = this.synchronized {
     (cachedReads.now().map(_.requestTimestamp) ++ cachedStores.now().map(_.requestTimestamp)).toSet
@@ -82,7 +84,9 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
   }
 
   override def flush(forceFlush: Boolean = true): Unit = this.synchronized {
+    println("flush called!")
     if (forceFlush || shouldFlush()) {
+      println(" #### flush executed!")
       BufferedSyncDestinationHandler.handleStores(cachedStores.now(), underlying)
       cachedStores.set(List())
 
@@ -99,21 +103,28 @@ object BufferedSyncDestinationHandler {
   private given ec: ExecutionContext = ExecutionContext.global
 
   private def handleReads(cachedReads: Seq[CachedReadRequest], underlying: SyncDestinationHistoryHandler): Unit = {
+    println(s"calling handleReads(${cachedReads.size})")
     if (cachedReads.nonEmpty) {
-      val fut = Future.traverse(cachedReads.map(_.usageContext).toSet)(curContext => underlying.readHistoriesJson(curContext))
+      Future.traverse(cachedReads.map(_.usageContext).toSet)(curContext => underlying.readHistoriesJson(curContext))
         .map(readResults => readResults.fold(readResults.head)(_.combineWith(_)))
-        .onComplete(curTry => cachedReads.foreach(_.fulfillWith(curTry))
-        )
+        .onComplete(curTry => {
+          println("!!! finished handleReads!")
+          cachedReads.foreach(_.fulfillWith(curTry))
+        })
     }
   }
 
   private def handleStores(cachedStores: Seq[CachedStoreRequest], underlying: SyncDestinationHistoryHandler): Unit = {
+    println(s"calling handleStores(${cachedStores.size})")
     if (cachedStores.nonEmpty) {
       val allSyncContexts: Set[SyncContext] = cachedStores.flatMap(_.toStore.keySet).toSet
       val toStoreMap: Map[SyncContext, String] = allSyncContexts.map(curKey => {
         curKey -> cachedStores.filter(_.toStore.contains(curKey)).maxBy(_.requestTimestamp).toStore(curKey)
       }).toMap
-      underlying.storeHistoriesJson(toStoreMap).onComplete(curTry => cachedStores.foreach(_.promise.tryComplete(curTry)))
+      underlying.storeHistoriesJson(toStoreMap).onComplete(curTry => {
+        println("??? finished handle stores")
+        cachedStores.foreach(_.promise.tryComplete(curTry))
+      })
 
     }
   }

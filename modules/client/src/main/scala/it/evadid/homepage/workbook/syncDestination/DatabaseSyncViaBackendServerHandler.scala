@@ -44,7 +44,7 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
   }
 
   private def toFetchResponse(executionInfoTyped: ExecutionSuccess[DbFetchResponse]): FetchResponse[SyncContext, String] = {
-    FetchResponse.fromMap[SyncContext, String](executionInfoTyped.history.timestampExecutionFinished, executionInfoTyped.result.fetchedElements, HistoryJson.lastTimestamp)
+    FetchResponse.fromMap[SyncContext, String](executionInfoTyped.history.timestampExecutionFinished, executionInfoTyped.result.fetchedElements)
   }
 
   override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {

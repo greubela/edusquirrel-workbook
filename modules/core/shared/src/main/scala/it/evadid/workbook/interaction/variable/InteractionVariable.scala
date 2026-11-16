@@ -98,7 +98,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
       withCurrentState.cleanedHistory()
     })
     if (executionContextInformation.syncControl.nonEmpty) {
-      executionContextInformation.syncControl.get.requestStore(this)
+      executionContextInformation.syncControl.get.store(this, false)
     }
     control.getOrCalculateGrading(executionContextInformation, false)
   }
