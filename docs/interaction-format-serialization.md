@@ -164,6 +164,25 @@ This ensures:
 - Format is a case object, naturally serializable
 - History JSON is stored as a string for database compatibility
 
+## Database Storage
+
+The database **does NOT store format information**. Instead:
+
+1. **Database stores raw JSON strings** in the `answer_event.serialized_data`, `grading_event.serialized_data`, and `scaffolding_event.serialized_data` columns
+
+2. **Format is looked up from the interaction definition** when needed:
+   - The `variable_id` in `sync_context_id` identifies the interaction
+   - The interaction's companion object provides the format instance
+   - `InteractionHistoryJson` wraps the format + JSON for client-server communication
+
+3. **Why this design**:
+   - Database is a simple storage layer - only data, no metadata
+   - Format is application metadata (which interaction type)
+   - The client/server always has interaction definitions loaded
+   - Separates concerns: storage (database) vs. type info (code)
+
+This is the correct separation of concerns for the edusquirrel-workbook architecture.
+
 ## Summary
 
 The case object approach to `InteractionFormat` provides:
