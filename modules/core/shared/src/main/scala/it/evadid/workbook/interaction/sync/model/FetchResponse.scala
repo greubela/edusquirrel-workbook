@@ -1,7 +1,5 @@
 package it.evadid.workbook.interaction.sync.model
 
-
-import it.evadid.core.datastructures.storage.remote.RemoteDataSynchronisation.RemoteValue
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.interaction.sync.model.SyncDirection.SERVER_TO_CLIENT
@@ -28,7 +26,7 @@ case class FetchResponse[K, D]
     fetchedValues ++ other.fetchedValues
   )
 
-  def asMap: Map[K, RemoteValue[K, D]] = fetchedValues.map(cur => cur.dataKey -> RemoteValue[K, D](cur.dataValue, timestampFetchResponse)).toMap
+  def asMap: Map[K, D] = fetchedValues.map(cur => cur.dataKey -> cur.dataValue).toMap
 
 }
 
