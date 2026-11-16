@@ -3,13 +3,31 @@ package it.evadid.core.util.io.serializer
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import upickle.default.*
 import munit.FunSuite
 
 class InteractionFormatSpec extends FunSuite {
 
-  test("InteractionFormat can be created from serializers") {
+  // ============================================================================
+  // Basic format creation
+  // ============================================================================
+
+  test("InteractionFormat.fromReadWriters creates format from ReadWriters") {
+    val format = InteractionFormat.fromReadWriters[String, Unit, Unit]
+
+    // Verify all serializers are available
+    // Note: upickle writes strings with JSON quotes, so "test" becomes "\"test\""
+    val serializedState = format.stateSerializer.serialize("test")
+    assert(serializedState == "\"test\"")
+    
+    val history = InteractionVariableHistory.empty[String, Unit, Unit]
+    val serialized = format.historySerializer.serialize(history)
+    assert(format.historySerializer.deserialize(serialized) == history)
+  }
+
+  test("InteractionFormat.apply creates format from individual serializers") {
     val stateSer: Serializer[String] = Serializer.fromImplicitRW
     val historySer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
     val exerciseSer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
@@ -21,105 +39,89 @@ class InteractionFormatSpec extends FunSuite {
     assert(format.exerciseSerializer eq exerciseSer)
   }
 
-  test("InteractionFormat can be created from ReadWriters") {
-    // For Scala 3, use given instances for standard types that already have ReadWriter
-    import it.evadid.core.util.io.serializer.DefaultSerializer.given
+  // ============================================================================
+  // Provider pattern (automatic registration)
+  // ============================================================================
+
+  test("TextInteraction format is accessible and registered") {
+    val format = TextInteraction.format
+    assert(format != null)
+
+    // Verify format works
+    val history = InteractionVariableHistory.empty[String, Unit, Unit]
+    val serialized = format.historySerializer.serialize(history)
+    assert(format.historySerializer.deserialize(serialized) == history)
+  }
+
+  test("InteractionFormat.forElementId retrieves registered format") {
+    val formatOpt = InteractionFormat.forElementId[String, Unit, Unit]("TextInteraction")
+    assert(formatOpt.isDefined)
+
+    val format = formatOpt.get
+    val history = InteractionVariableHistory.empty[String, Unit, Unit]
+    val serialized = format.historySerializer.serialize(history)
+    assert(format.historySerializer.deserialize(serialized) == history)
+  }
+
+  test("InteractionFormat.registeredIds includes all registered formats") {
+    assert(InteractionFormat.registeredIds.contains("TextInteraction"))
+  }
+
+  test("InteractionFormat.forElementId returns None for unknown element ID") {
+    val format = InteractionFormat.forElementId[String, Unit, Unit]("NonExistent")
+    assert(format.isEmpty)
+  }
+
+  // ============================================================================
+  // State serialization
+  // ============================================================================
+
+  test("Format stateSerializer can serialize and deserialize state") {
     val format = InteractionFormat.fromReadWriters[String, Unit, Unit]
 
-    // Verify the format can serialize and deserialize
+    val testValue = "hello world"
+    val serialized = format.stateSerializer.serialize(testValue)
+    // upickle writes strings with JSON quotes
+    assert(format.stateSerializer.deserialize(serialized) == testValue)
+  }
+
+  // ============================================================================
+  // History serialization
+  // ============================================================================
+
+  test("Format historySerializer handles empty history") {
+    val format = InteractionFormat.fromReadWriters[String, Unit, Unit]
     val history = InteractionVariableHistory.empty[String, Unit, Unit]
-    val serialized = format.historySerializer.serialize(history)
-    val deserialized = format.historySerializer.deserialize(serialized)
 
-    assertEquals(deserialized, history)
+    val serialized = format.historySerializer.serialize(history)
+    assert(format.historySerializer.deserialize(serialized) == history)
   }
 
-  test("TextInteraction format is registered") {
-    // TextInteraction registers "TextInteraction" as its element ID
-    val formatOpt = InteractionFormat.get[String, Unit, Unit]("TextInteraction")
-    assert(formatOpt.isDefined)
-    
-    val format = formatOpt.get
-    // Verify we can serialize/deserialize a history
+  test("Format historySerializer handles history with states") {
+    val format = InteractionFormat.fromReadWriters[String, Unit, Unit]
+
     val history = InteractionVariableHistory.empty[String, Unit, Unit]
+      .addState(InteractionVariableState("first", UpdateImportance.MAJOR, java.time.LocalDateTime.now()))
+      .addState(InteractionVariableState("second", UpdateImportance.MAJOR, java.time.LocalDateTime.now()))
+
     val serialized = format.historySerializer.serialize(history)
     val deserialized = format.historySerializer.deserialize(serialized)
-    
-    assertEquals(deserialized, history)
+
+    assert(deserialized.historyStates.lastStateOption.map(_.value) == Some("second"))
   }
 
-  test("Multiple formats can be registered and retrieved") {
-    // Register a format with types that derive ReadWriter
-    import it.evadid.core.util.io.serializer.DefaultSerializer.given
-    val format = InteractionFormat.fromReadWriters[String, String, String]
-    InteractionFormat.registerWithSerializers(
-      "TestInteraction",
-      format.stateSerializer,
-      format.historySerializer,
-      format.exerciseSerializer
-    )
-    
-    // Verify it was registered
-    val formatOpt = InteractionFormat.get[String, String, String]("TestInteraction")
-    assert(formatOpt.isDefined)
-    
-    // Clean up - remove the test format
-    InteractionFormat.clearRegistry()
-  }
+  // ============================================================================
+  // Exercise serialization
+  // ============================================================================
 
-  test("Registered format can serialize and deserialize") {
-    // Register a format with custom types
-    case class CustomState(value: String) derives ReadWriter
-    case class CustomGrade(score: Int) derives ReadWriter
-    case class CustomScaffold(hint: String) derives ReadWriter
-    
-    val format = InteractionFormat.fromReadWriters[CustomState, CustomGrade, CustomScaffold]
-    
-    // Test with actual data - use InteractionVariableState with proper imports
-    val state = it.evadid.workbook.interaction.variable.InteractionVariableState(CustomState("test"), it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, java.time.LocalDateTime.now())
-    val history = InteractionVariableHistory.empty[CustomState, CustomGrade, CustomScaffold].addState(state)
-    
-    val serialized = format.historySerializer.serialize(history)
-    val deserialized = format.historySerializer.deserialize(serialized)
-    
-    assertEquals(deserialized.historyStates.lastStateOption.map(_.value.value), Some("test"))
-  }
+  test("Format exerciseSerializer can serialize TextInteraction") {
+    val format = InteractionFormat.fromReadWriters[String, Unit, Unit]
 
-  test("InteractionFormat registeredIds includes registered formats") {
-    // After registration, the ID should appear in registeredIds
-    InteractionFormat.register[String, Unit, Unit]("TempInteraction")
-    
-    assert(InteractionFormat.registeredIds.contains("TempInteraction"))
-    
-    // Clean up
-    InteractionFormat.clearRegistry()
-  }
+    val interaction = TextInteraction("test-id")
+    val serialized = format.exerciseSerializer.serialize(interaction)
+    val deserialized = format.exerciseSerializer.deserialize(serialized)
 
-  test("FormatProvider provides type-safe format access") {
-    // Register a format
-    InteractionFormat.register[String, Unit, Unit]("ProviderTest")
-    
-    // Use FormatProvider to get a type-safe format
-    val provider = InteractionFormat.FormatProvider[String, Unit, Unit]
-    val format = provider.get("ProviderTest")
-    
-    // Verify it works
-    val history = InteractionVariableHistory.empty[String, Unit, Unit]
-    val serialized = format.historySerializer.serialize(history)
-    val deserialized = format.historySerializer.deserialize(serialized)
-    
-    assertEquals(deserialized, history)
-    
-    // Clean up
-    InteractionFormat.clearRegistry()
-  }
-  
-  test("FormatProvider throws for unknown element ID") {
-    val provider = InteractionFormat.FormatProvider[String, Unit, Unit]
-    
-    intercept[NoSuchElementException] {
-      provider.get("NonExistent")
-    }
+    assert(deserialized.elementId == "test-id")
   }
 
 }

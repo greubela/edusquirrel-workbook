@@ -22,7 +22,7 @@ case class TurtleRecreateShapeInteraction
   desiredResult: TurtleGraphic,
   comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes,
   customExerciseConfig: Option[RecreateTurtleDidacticConfig] = Some(defaultDidacticConfig)
-) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit] derives ReadWriter {
+) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit] {
 
   override val defaultValue: ProgrammingState = initProgram
   override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingState.serializer
@@ -35,15 +35,13 @@ case class TurtleRecreateShapeInteraction
     List(RecreateShapeGrader(desiredResult, REQUIRED_TEST, elementId + "-grader", comparisonPolicy)) ++
       TurtleCommandUsageGrader.forLimits(elementId, exerciseConfig.maxCommandUsage)
   //val scaffoldingElement: Option[WorkbookInteractionScaffolder[ProgrammingState, ?]] = None
+
+  override def format: InteractionFormat[ProgrammingState, AdditionalProgrammingTestInfo, Unit] = TurtleRecreateShapeInteraction.format
 }
 
-object TurtleRecreateShapeInteraction {
+object TurtleRecreateShapeInteraction extends InteractionFormat.Provider[ProgrammingState, AdditionalProgrammingTestInfo, Unit] {
 
-  // Register the interaction format for backend serialization
-  // The elementIdPrefix must match how this interaction is identified in the sync system
-  InteractionFormat.register[ProgrammingState, AdditionalProgrammingTestInfo, Unit]("TurtleRecreateShapeInteraction")
-
-
+  override def elementIdPrefix: String = "TurtleRecreateShapeInteraction"
 
   val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
     override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "comparisonPolicy", "customExerciseConfig")

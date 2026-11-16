@@ -6,6 +6,7 @@ import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
 import it.evadid.workbook.abstractions.scaffolding.WorkbookInteractionScaffolder
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import it.evadid.core.util.io.serializer.InteractionFormat
 import upickle.default.*
 
 import scala.reflect.ClassTag.Nothing
@@ -97,6 +98,13 @@ trait WorkbookInteractionElementFull[T: ReadWriter, GA: ReadWriter, SA: ReadWrit
   val gradingElements: List[WorkbookInteractionGrader[T, GA]] = List()
   val scaffoldingElement: Option[WorkbookInteractionScaffolder[T, SA]] = None
   val serializerInteractionContent: Serializer[T] = Serializer.fromImplicitRW
+  
+  /** The format providing serializers for this interaction type.
+    *
+    * Override this in your interaction to provide type-level association
+    * between the interaction and its format.
+    */
+  def format: InteractionFormat[T, GA, SA] = InteractionFormat.fromReadWriters[T, GA, SA]
 }
 
 type WorkbookInteractionElement[T] = WorkbookInteractionElementFull[T, Unit, Unit]

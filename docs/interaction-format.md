@@ -2,7 +2,7 @@
 
 ## Overview
 
-`InteractionFormat` is a trait that centralizes all serialization logic for a specific interaction type. It enables backend-side serialization/deserialization of interaction histories without requiring runtime access to `InteractionVariable` instances.
+`InteractionFormat` is a trait that provides a **type-level association** between an interaction type and its serializers. This enables backend-side serialization/deserialization of interaction histories without requiring runtime access to interaction instances.
 
 ## Problem Statement
 
@@ -30,103 +30,82 @@ trait InteractionFormat[T, GA, SA] {
 
 ## Usage
 
-### 1. Automatic Registration (Recommended)
-
-For interactions with `derives ReadWriter`, simply call `InteractionFormat.register` in the companion object:
+### 1. In Interaction Definitions
 
 ```scala
+// Define your interaction with format override
 case class MyInteraction(
   override val elementId: String,
   config: String
-) extends WorkbookInteractionElementFull[MyState, MyGrade, MyScaffold] derives ReadWriter
+) extends WorkbookInteractionElementFull[MyState, MyGrade, MyScaffold] {
+  
+  override def format: InteractionFormat[MyState, MyGrade, MyScaffold] = MyInteraction.format
+}
 
-object MyInteraction {
-  // Automatically register with type-safe serializers
-  InteractionFormat.register[MyState, MyGrade, MyScaffold](elementIdPrefix = "MyInteraction")
+// In the companion object, extend InteractionFormat.Provider
+object MyInteraction extends InteractionFormat.Provider[MyState, MyGrade, MyScaffold] {
+  
+  override def elementIdPrefix: String = "MyInteraction"
+  
+  // format is automatically provided by Provider trait
 }
 ```
 
-### 2. Custom Serializers
-
-For interactions requiring custom serialization logic:
+### 2. Using Format on the Backend
 
 ```scala
-object CustomInteraction {
-  val stateSer: Serializer[CustomState] = new Serializer[CustomState] {
-    override def serialize(obj: CustomState): String = /* custom logic */
-    override def deserialize(str: String): CustomState = /* custom logic */
-  }
-
-  InteractionFormat.registerWithSerializers(
-    elementIdPrefix = "CustomInteraction",
-    stateSerializer = stateSer,
-    historySerializer = Serializer.fromImplicitRW,
-    exerciseSerializer = Serializer.fromImplicitRW
-  )
-}
-```
-
-### 3. Retrieving Formats at Runtime
-
-```scala
-// Get format by element ID with type parameters
-InteractionFormat.get[MyState, MyGrade, MyScaffold]("MyInteraction") match {
+// Retrieve format by element ID
+InteractionFormat.forElementId[State, Grade, Scaffold]("MyInteraction") match {
   case Some(format) =>
     // Use format.historySerializer.deserialize(serializedHistory)
+    val history = format.historySerializer.deserialize(historyJson)
   case None =>
     // Handle unknown interaction type
 }
 
-// Get all registered interaction IDs
+// Get all registered element IDs
 val allIds = InteractionFormat.registeredIds
+```
 
-// Use FormatProvider for type-safe lookup
-val provider = InteractionFormat.FormatProvider[MyState, MyGrade, MyScaffold]
-val format = provider.get("MyInteraction") // throws NoSuchElementException if not found
+### 3. Direct Format Creation (No Registry)
+
+```scala
+// Create format directly without registry
+val format = InteractionFormat.fromReadWriters[State, Grade, Scaffold]
 ```
 
 ## Integration Points
 
-### Backend Sync Handler
+### Database Sync
 
 ```scala
-class CustomSyncHandler(...) extends SyncDestinationHistoryHandler {
-  override def storeHistoryJson(syncContext: SyncContext, historyJson: String): Future[SyncSuccess] = {
-    // Retrieve the appropriate format based on the element ID
-    val elementId = extractElementId(syncContext) // e.g., from syncContext.keyForSerialisation
-    InteractionFormat.get(elementId) match {
-      case Some(format) =>
-        // Use format.historySerializer for type-safe operations
-        val history = format.historySerializer.deserialize(historyJson)
-        // ... process history
-      case None =>
-        Future.failed(new IllegalArgumentException(s"Unknown interaction type: $elementId"))
-    }
+// In database sync handlers
+def fetchHistory(elementId: String, context: UsageContext): Future[InteractionVariableHistory[?, ?, ?]] = {
+  val json = db.query("SELECT history FROM sync_data WHERE element_id = ? AND ...", elementId)
+  InteractionFormat.forElementId[State, Grade, Scaffold](elementId) match {
+    case Some(format) =>
+      Future.successful(format.historySerializer.deserialize(json))
+    case None =>
+      Future.failed(new IllegalStateException(s"No format for $elementId"))
   }
 }
 ```
 
-### Database Storage
+### Backend Server
 
 ```scala
-// When storing to database, you can serialize with the appropriate format
-val format = InteractionFormat.get(interactionId).getOrElse(
-  throw new IllegalStateException(s"No format registered for $interactionId")
-)
-
-val serialized = format.historySerializer.serialize(history)
-db.insert("INSERT INTO history VALUES (?, ?)", interactionId, serialized)
-```
-
-### Database Retrieval
-
-```scala
-// When reading from database, deserialize with the appropriate format
-val format = InteractionFormat.get(interactionId).getOrElse(
-  throw new IllegalStateException(s"No format registered for $interactionId")
-)
-
-val history = format.historySerializer.deserialize(storedJson)
+// In command handlers
+case class StoreInteractionCommand(elementId: String, historyJson: String) {
+  def execute: Future[SyncSuccess] = {
+    InteractionFormat.forElementId[State, Grade, Scaffold](elementId) match {
+      case Some(format) =>
+        val history = format.historySerializer.deserialize(historyJson)
+        // Process and store
+      case None =>
+        Future.failed(new IllegalArgumentException(s"Unknown elementId: $elementId"))
+    }
+  }
+}
 ```
 
 ## Implementation Details
@@ -134,15 +113,22 @@ val history = format.historySerializer.deserialize(storedJson)
 ### Type Safety
 
 The implementation uses Scala's type system to ensure:
-- State, history, and exercise serializers are always consistent
+- All three serializers are always consistent
 - Type parameters are propagated correctly through the chain
-- No runtime type casting is needed in most cases
+- No unsafe casting is needed in most cases
+
+### Provider Pattern
+
+The `Provider` trait provides:
+- Automatic format creation with `fromReadWriters`
+- Automatic registration with the global registry
+- Type-safe `format` method on interaction instances
 
 ### Registry Pattern
 
 Formats are registered in a global registry keyed by element ID:
 ```scala
-private val registry = mutable.Map[String, (String, String, String, Serializer[_])]
+private val registry = mutable.Map[String, InteractionFormat[?, ?, ?]]
 ```
 
 This enables:
@@ -156,60 +142,108 @@ The implementation is fully compatible with existing code:
 - Uses existing `Serializer` and `InteractionVariableHistory` types
 - Works with `derives ReadWriter` via macro expansion
 - No breaking changes to existing APIs
+- `WorkbookInteractionElementFull` now has a `def format` method that defaults to `fromReadWriters`
 
 ## Migration Guide
 
 ### For Existing Interactions
 
-1. Add the import:
-   ```scala
-   import it.evadid.core.util.io.serializer.InteractionFormat
-   ```
+1. Remove `derives upickle.default.ReadWriter` from the case class
+2. Add `override def format` method to return the companion's format
+3. Make companion object extend `InteractionFormat.Provider`
+4. Implement `elementIdPrefix`
 
-2. Register the format in the companion object:
-   ```scala
-   InteractionFormat.register[T, GA, SA](elementIdPrefix = "ElementId")
-   ```
+Example:
+```scala
+// Before
+case class TextInteraction(...) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter
 
-3. Replace direct `InteractionVariable` usage with `InteractionFormat.get(elementId)` where appropriate
+object TextInteraction {
+  // ...
+}
+
+// After
+case class TextInteraction(...) extends WorkbookInteractionElement[String] {
+  override def format: InteractionFormat[String, Unit, Unit] = TextInteraction.format
+}
+
+object TextInteraction extends InteractionFormat.Provider[String, Unit, Unit] {
+  override def elementIdPrefix: String = "TextInteraction"
+  // ...
+}
+```
 
 ### Testing
 
-Test your format registration:
+Test your format:
 
 ```scala
-class InteractionFormatSpec extends FunSuite {
-  test("TextInteraction format is registered") {
-    assert(InteractionFormat.get("TextInteraction").isDefined)
+class MyInteractionSpec extends FunSuite {
+  test("MyInteraction format is registered") {
+    assert(InteractionFormat.forElementId[State, Grade, Scaffold]("MyInteraction").isDefined)
   }
   
-  test("TurtleRecreateShapeInteraction format is registered") {
-    assert(InteractionFormat.get("TurtleRecreateShapeInteraction").isDefined)
+  test("Format can serialize/deserialize history") {
+    val format = InteractionFormat.forElementId[State, Grade, Scaffold]("MyInteraction").get
+    val history = InteractionVariableHistory.empty[State, Grade, Scaffold].addState(testState)
+    val serialized = format.historySerializer.serialize(history)
+    val deserialized = format.historySerializer.deserialize(serialized)
+    assertEquals(deserialized, history)
   }
 }
 ```
 
 ## Best Practices
 
-1. **Register early**: Place registration in companion object initialization
-2. **Use elementId consistently**: The prefix should match the interaction's element ID
-3. **Prefer automatic derivation**: Use `InteractionFormat.register` over custom serializers unless needed
-4. **Handle missing formats gracefully**: Always check for `None` when retrieving formats
-5. **Document custom serializers**: Explain why custom logic is needed
+1. **Always override format**: Each interaction should override `format` to use the companion's format
+2. **Use elementIdPrefix consistently**: Should match the interaction's element ID used in sync
+3. **Prefer Provider trait**: Extending `Provider` handles registration automatically
+4. **Handle missing formats gracefully**: Always check for `None` when using `forElementId`
+5. **Document custom serializers**: If using custom serializers, explain why
 
 ## Examples in Codebase
 
 See these interactions for working examples:
 
-- `TextInteraction`: Simple string-based state
-- `TurtleRecreateShapeInteraction`: Complex programming state with grading
-- `ReorderInteraction`: Generic reorder interactions with different element types
+- `TextInteraction`: Simple string-based state (uses Provider)
+- `TurtleRecreateShapeInteraction`: Complex programming state with grading (uses Provider)
+
+## Comparison with Original Proposal
+
+| Aspect | Original Proposal | Implementation | Rationale |
+|--------|------------------|----------------|-----------|
+| Type parameter on interaction | Yes | No (uses `def format`) | Better backward compatibility |
+| Registry | Yes | Yes (`forElementId`) | Backend lookup without instances |
+| Provider trait | No | Yes | Automatic registration |
+| Sealed trait | Yes | No | Open-world design |
+
+### Why `def format` instead of `F <: InteractionFormat`?
+
+Using a method (`def format`) instead of a type parameter (`F <: InteractionFormat`) was chosen because:
+
+1. **Simpler migration** - No need to update all existing type signatures
+2. **Backward compatible** - Existing code continues to work
+3. **Less verbose** - No type parameter propagation through the codebase
+4. **Flexible** - Can still be type-safe with proper implementation
+
+### Why Registry?
+
+The registry (`InteractionFormat.forElementId`) enables:
+
+```scala
+// On backend, after reading from database
+val elementId = extractElementId(syncContext)
+val format = InteractionFormat.forElementId[State, Grade, Scaffold](elementId)
+val history = format.historySerializer.deserialize(historyJson)
+```
+
+This solves the core problem: **serialization without interaction instances**.
 
 ## Future Enhancements
 
 Potential improvements to consider:
 
-1. **Compile-time verification**: Use Scala 3 macros to verify format registration
+1. **Compile-time verification**: Use Scala 3 macros to verify format implementation
 2. **Format versioning**: Support schema evolution
 3. **Lazy loading**: Load formats on-demand rather than at startup
 4. **Format discovery**: Auto-discover formats via Scala 3 given instances
