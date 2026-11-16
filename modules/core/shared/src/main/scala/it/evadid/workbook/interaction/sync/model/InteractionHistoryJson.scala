@@ -8,14 +8,23 @@ import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import java.time.LocalDateTime
 import upickle.default.*
 
-/** Type-safe wrapper for interaction history JSON with its format.
+/** Strongly typed wrapper for interaction history JSON with its format.
   *
   * This provides a strongly-typed way to handle history serialization/deserialization
   * instead of passing raw JSON strings throughout the sync pipeline.
   *
-  * The case class derives ReadWriter for serialization. The format field is passed
-  * explicitly and is necessary for the receiving server to know how to deserialize
-  * the history JSON (e.g., for custom workbooks with unknown interaction formats).
+  * Type parameters:
+  * - T: The interaction state type (e.g., String, ProgrammingState)
+  * - GA: The grading result type (typically Unit for no grading)
+  * - SA: The scaffolding result type (typically Unit for no scaffolding)
+  *
+  * The format field contains the InteractionFormat case object which provides
+  * type-safe serializers for the interaction. Since InteractionFormat derives
+  * ReadWriter, it is automatically serializable (stores class name string).
+  *
+  * The format is passed explicitly and is necessary for the receiving server to
+  * know how to deserialize the history JSON (e.g., for custom workbooks with
+  * unknown interaction formats).
   */
 case class InteractionHistoryJson[T, GA, SA](
     format: InteractionFormat[T, GA, SA],
