@@ -123,7 +123,7 @@ object BufferedSyncDestinationHandler {
   case class CachedReadRequestSingle[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](requestTimestamp: LocalDateTime, syncContext: SyncContext, promise: Promise[InteractionVariableHistory[T, GA, SA]]) extends CachedReadRequest {
     override def usageContext: UsageContext = syncContext.toUsageContext
     override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data.flatMap { response =>
-      val serializer = Serializer.fromUpickleJson(InteractionVariableHistory.given_ReadWriter_InteractionVariableHistory[T, GA, SA])
+      val serializer = Serializer.fromUpickleJson(InteractionVariableHistory.derived$ReadWriter[T, GA, SA])
       SyncDestinationHistoryHandler.readHistoryFrom(serializer, syncContext, response).toTry
     })
   }

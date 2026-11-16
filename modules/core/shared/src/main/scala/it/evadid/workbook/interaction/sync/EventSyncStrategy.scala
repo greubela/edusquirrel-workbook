@@ -29,12 +29,32 @@ object EventSyncStrategy {
     }
   }
 
+  case class KeepLatestCount(count: Int) extends EventSyncStrategy derives ReadWriter {
+    require(count > 0, "Event count must be positive")
+    override def selectEvents[T, GA, SA](events: Set[InteractionEvent[T, GA, SA]]) = {
+      val boundary = events.toList.sortBy(_.timestamp).takeRight(count).headOption.map(_.timestamp)
+      events.filter(event => boundary.exists(time => !event.timestamp.isBefore(time)))
+    }
+  }
+
+  /** Preserve the latest event of each lifecycle kind as well as all events at the selected importance. */
+  case class KeepLatestAndImportance(importance: Set[UpdateImportance]) extends EventSyncStrategy derives ReadWriter {
+    override def selectEvents[T, GA, SA](events: Set[InteractionEvent[T, GA, SA]]) = {
+      val latest = events.groupBy(_.getClass.getName).values.flatMap(group => KeepLatest(UpdateImportance.values.toSet).selectEvents(group)).toSet
+      events.filter(event => importance(event.updateImportance)) ++ latest
+    }
+  }
+
   /** Inclusive by default so events sharing a synchronization boundary are not lost. */
   case class Since(timestamp: LocalDateTime, includeBoundary: Boolean = true) extends EventSyncStrategy derives ReadWriter {
     override def selectEvents[T, GA, SA](events: Set[InteractionEvent[T, GA, SA]]) =
       events.filter(event => event.timestamp.isAfter(timestamp) || (includeBoundary && event.timestamp == timestamp))
   }
 
+  val KEEP_MAJOR: EventSyncStrategy = KeepImportance(Set(UpdateImportance.MAJOR))
+  val KEEP_MINOR: EventSyncStrategy = KeepImportance(Set(UpdateImportance.MINOR, UpdateImportance.MAJOR))
+  val KEEP_LAST_FIVE: EventSyncStrategy = KeepLatestCount(5)
+  val KEEP_LAST_AND_MAJOR: EventSyncStrategy = KeepLatestAndImportance(Set(UpdateImportance.MAJOR))
   val KEEP_LAST: EventSyncStrategy = KeepLatest(UpdateImportance.values.toSet)
   val KEEP_LAST_MAJOR: EventSyncStrategy = KeepLatest(Set(UpdateImportance.MAJOR))
 }

@@ -1,45 +1,34 @@
 package it.evadid.workbook.interaction.sync.model
 
-import java.time.LocalDateTime
 import it.evadid.core.util.io.ParsingContext
+import it.evadid.workbook.interaction.sync.EventSyncStrategy
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import java.time.LocalDateTime
+import upickle.default.*
 
-/** Inspect the current history schema without knowing answer or feedback types. */
+/** Current event payload operations shared by browser storage and backend commands. No snapshot-format reader. */
 object HistoryJson {
   def payload(json: String): ujson.Value = ParsingContext("interactionVariableHistory JSON", json) {
     val value = ujson.read(json)
     val history = value.obj.getOrElse("fullHistory", value)
-    history.obj
+    require(history.obj.keySet.toSet == Set("events"), "Expected event-based interaction history")
     history
   }
+  def decode(json: String): InteractionVariableHistory[ujson.Value, ujson.Value, ujson.Value] =
+    ParsingContext("interactionVariableHistory", json) { read[InteractionVariableHistory[ujson.Value, ujson.Value, ujson.Value]](payload(json)) }
 
-  def entries(value: ujson.Value): List[(ujson.Value, ujson.Value)] = value match {
-    case obj: ujson.Obj => obj.value.toList.map((key, item) => ujson.Str(key) -> item)
-    case arr: ujson.Arr => arr.value.toList.map(pair => pair(0) -> pair(1))
-    case _ => throw IllegalArgumentException("Invalid history map.")
-  }
-
-  private def asMap(values: Iterable[(ujson.Value, ujson.Value)]): ujson.Value =
-    ujson.Arr.from(values.map((key, item) => ujson.Arr(key, item)))
-
-  def lastTimestamp(json: String): Option[LocalDateTime] = ParsingContext("interactionVariableHistory timestamps", json) {
-    val value = payload(json)
-    val edits = value("historyStates")("events").arr.toList
-    val grades = entries(value("historyGrading")("gradingsMap")).flatMap((_, group) => entries(group("graderResultMap")).map(_._2))
-    val hints = entries(value("historyScaffolding")("scaffoldingMap")).map(_._2)
-    (edits.map(_("timestamp")) ++ grades.map(_("gradingTime")) ++ hints.map(_("scaffoldingTime")))
-      .map(value => LocalDateTime.parse(value.str)).maxOption
-  }
+  def lastTimestamp(json: String): Option[LocalDateTime] = decode(json).timestampLastChanged
 
   def stored(key: String, history: String): String =
     ujson.write(ujson.Obj("keyForSerialisation" -> key, "fullHistory" -> payload(history)))
 
-  def merge(histories: List[String]): String = ParsingContext("interactionVariableHistory merge", histories.headOption.getOrElse("[]")) {
-    val values = histories.map(payload)
-    val events = values.flatMap(_("historyStates")("events").arr).distinct
-    val feedback = List("historyGrading" -> "gradingsMap", "historyScaffolding" -> "scaffoldingMap").map { (section, field) =>
-      val merged = values.flatMap(value => entries(value(section)(field))).groupBy(_._1).values.map(_.head).toList
-      section -> ujson.Obj(field -> asMap(merged))
-    }
-    ujson.write(ujson.Obj.from(("historyStates" -> ujson.Obj("events" -> ujson.Arr.from(events))) :: feedback))
+  def merge(histories: List[String]): String = write(histories.foldLeft(InteractionVariableHistory.empty[ujson.Value, ujson.Value, ujson.Value])(
+    (current, json) => current.mergeWith(decode(json))))
+
+  def select(json: String, strategy: EventSyncStrategy, starting: LocalDateTime, until: LocalDateTime): String = {
+    require(!until.isBefore(starting), "History range end must not precede its start")
+    val history = decode(json).cleanWithStrategy(strategy)
+    write(history.copy(events = history.events.copy(values = history.events.values.filter(event =>
+      !event.timestamp.isBefore(starting) && !event.timestamp.isAfter(until)))))
   }
 }

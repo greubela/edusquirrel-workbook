@@ -26,7 +26,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
 
   given ec: ExecutionContext = ExecutionContext.global
 
-  private val historySerializer: Serializer[InteractionVariableHistory[T, GA, SA]] = Serializer.fromUpickleJson(InteractionVariableHistory.given_ReadWriter_InteractionVariableHistory[T, GA, SA])
+  private val historySerializer: Serializer[InteractionVariableHistory[T, GA, SA]] = Serializer.fromUpickleJson(InteractionVariableHistory.derived$ReadWriter[T, GA, SA])
 
   def currentHistory: InteractionVariableHistory[T, GA, SA] = this.synchronized {
     innerState.now()
@@ -38,7 +38,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
 
 
   private val defaultState = InteractionVariableState[T](underlyingInteraction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now())
-  private val defaultHistory: InteractionVariableHistory[T, GA, SA] = InteractionVariableHistory[T, GA, SA](List(defaultState).toSet)
+  private val defaultHistory: InteractionVariableHistory[T, GA, SA] = InteractionVariableHistory.fromResults[T, GA, SA](List(defaultState).toSet)
 
   def safeLastState: InteractionVariableState[T] = innerState.now().historyStates.lastStateOption.getOrElse(defaultState)
 
@@ -47,7 +47,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
   val control: InteractionScaffoldingAndGradingControl[T, GA, SA] = InteractionScaffoldingAndGradingControl(this)
 
   val keyForSerialization: String = underlyingInteraction.elementId + "_history"
-  val serializerHistory: Serializer[InteractionVariableHistory[T, GA, SA]] = Serializer.fromUpickleJson(InteractionVariableHistory.given_ReadWriter_InteractionVariableHistory[T, GA, SA])
+  val serializerHistory: Serializer[InteractionVariableHistory[T, GA, SA]] = Serializer.fromUpickleJson(InteractionVariableHistory.derived$ReadWriter[T, GA, SA])
 
   lazy val observableHistoryWithDefault: ObservableValue[InteractionVariableHistory[T, GA, SA]] = innerState.observable.deriveValue(curHistory => {
     if (curHistory.historyStates.lastStateOption.nonEmpty) curHistory
@@ -95,7 +95,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
       val withCurrentState = if (transformedHistory.historyStates.lastStateOption.isEmpty)
         transformedHistory.addState(defaultState)
       else transformedHistory
-      withCurrentState.cleanedHistory()
+      withCurrentState.normalize()
     })
     if (executionContextInformation.syncControl.nonEmpty) {
       executionContextInformation.syncControl.get.store(this, false)
@@ -119,7 +119,7 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
       val lastKnown: InteractionVariableState[T] = safeLastState
       if (newValue != lastKnown.value || updateSize != lastKnown.updateImportance) {
         val newInteractionState = InteractionVariableState[T](newValue, updateSize, timestamp)
-        updateHistory(_.updateStates(_ + newInteractionState), context)
+        updateHistory(_.addState(newInteractionState), context)
       } else if (context.syncControl.nonEmpty) {
         context.syncControl.get.syncLogger.logInfo(s"InteractionVariable.updateStateFromUserInteraction was ignored because it was identical to the last known value!")
       }

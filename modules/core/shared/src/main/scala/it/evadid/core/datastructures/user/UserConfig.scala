@@ -1,7 +1,7 @@
 package it.evadid.core.datastructures.user
 
 import it.evadid.workbook.interaction.sync.SyncInformation
-import it.evadid.workbook.interaction.sync.SyncStrategy.*
+import it.evadid.workbook.interaction.sync.EventSyncStrategy.*
 import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
 import upickle.default.*
 
@@ -15,10 +15,10 @@ case class UserConfig(syncDestinations: List[SyncInformation], isOnlineAccount: 
 object UserConfig {
   lazy val defaultSyncDestinations: List[SyncInformation] = {
     List(
-      SyncInformation(defaultBrowserHistory, SYNC_LAST_AND_MAJOR),
-      SyncInformation(defaultDatabaseWithKey, SYNC_MAJOR),
-      SyncInformation(defaultDatabaseKeyless, SYNC_MAJOR),
-      SyncInformation(defaultDatabaseV2, SYNC_LAST_FIVE)
+      SyncInformation(defaultBrowserHistory, KEEP_LAST_AND_MAJOR),
+      SyncInformation(defaultDatabaseWithKey, KEEP_MAJOR),
+      SyncInformation(defaultDatabaseKeyless, KEEP_MAJOR),
+      SyncInformation(defaultDatabaseV2, KEEP_LAST_FIVE)
     )
   }
 

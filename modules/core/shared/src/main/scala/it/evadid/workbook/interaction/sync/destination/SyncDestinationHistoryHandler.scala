@@ -41,7 +41,7 @@ trait SyncDestinationHistoryHandler {
 
   def readHistory[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](syncContext: SyncContext)(implicit ec: ExecutionContext): Future[InteractionVariableHistory[T, GA, SA]] = {
     readHistoryJson(syncContext).transformWith {
-      case Success(curResponse) => Future.fromTry(SyncDestinationHistoryHandler.readHistoryFrom(Serializer.fromUpickleJson(InteractionVariableHistory.given_ReadWriter_InteractionVariableHistory[T, GA, SA]), syncContext, curResponse).toTry)
+      case Success(curResponse) => Future.fromTry(SyncDestinationHistoryHandler.readHistoryFrom(Serializer.fromUpickleJson(InteractionVariableHistory.derived$ReadWriter[T, GA, SA]), syncContext, curResponse).toTry)
       case Failure(err) => Future.failed(SerializedException(s"Error while fetching data from sync destination (${definition}): ${err.getMessage}", err))
     }
   }

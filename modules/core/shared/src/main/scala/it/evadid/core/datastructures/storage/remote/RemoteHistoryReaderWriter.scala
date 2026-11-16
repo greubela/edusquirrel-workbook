@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.storage.remote.RemoteHistoryReaderWriter.Re
 import it.evadid.core.datastructures.storage.remote.RemoteReaderWriter.RemoteDataWriter
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.EventSyncStrategy
-import it.evadid.workbook.interaction.variable.InteractionVariableHistoryEventBased
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.variable.events.InteractionEvent
 import java.time.LocalDateTime
 import scala.concurrent.Future
@@ -12,7 +12,7 @@ import scala.concurrent.Future
 /** Readers query event ranges; writers must idempotently merge events instead of replacing histories. */
 trait RemoteHistoryReaderWriter[K, T, GA, SA] {
   def reader: RemoteHistoryDataReader[K, T, GA, SA]
-  def writer: RemoteDataWriter[K, InteractionVariableHistoryEventBased[T, GA, SA]]
+  def writer: RemoteDataWriter[K, InteractionVariableHistory[T, GA, SA]]
 }
 
 object RemoteHistoryReaderWriter {

@@ -20,7 +20,7 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
 
 
   def serialize[T, GA, SA](interaction: InteractionVariable[T, GA, SA]): String = {
-    val filtered = interaction.currentHistory.filterWithStrategy(syncInformation.syncStrategy)
+    val filtered = interaction.currentHistory.cleanWithStrategy(syncInformation.syncStrategy)
     interaction.serializerHistory.serialize(filtered)
   }
 

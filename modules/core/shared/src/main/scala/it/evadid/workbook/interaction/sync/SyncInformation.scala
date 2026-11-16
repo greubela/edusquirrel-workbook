@@ -5,7 +5,7 @@ import upickle.default.*
 
 case class SyncInformation(
                             syncDestination: SyncDestinationDefinition,
-                            syncStrategy: SyncStrategy
+                            syncStrategy: EventSyncStrategy
                           ) derives ReadWriter {
 
   def withoutCredentials: SyncInformation = copy(syncDestination = syncDestination.withoutCredentials)

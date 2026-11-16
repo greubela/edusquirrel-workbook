@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.*
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.EventSyncStrategy
-import it.evadid.workbook.interaction.variable.InteractionVariableHistoryEventBased
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.variable.events.{InteractionEvent, InteractionEvents}
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
@@ -15,7 +15,7 @@ import scala.util.{Failure, Try}
 case class RemoteHistoryCache[K, T, GA, SA, RW <: RemoteHistoryReaderWriter[K, T, GA, SA]](
     syncLogger: SyncLogger, cacheStrategies: Map[RW, EventSyncStrategy]) {
   private given ExecutionContext = ExecutionContext.global
-  private type History = InteractionVariableHistoryEventBased[T, GA, SA]
+  private type History = InteractionVariableHistory[T, GA, SA]
   private val state = State(CacheState[K, T, GA, SA, RW](Map.empty, cacheStrategies.keys.map(_ -> Map.empty[K, RemoteHistoryValue[T, GA, SA]]).toMap))
 
   val updateReport: ObservableValue[Map[K, History]] = state.observable.deriveValue(_.histories)
@@ -30,10 +30,10 @@ case class RemoteHistoryCache[K, T, GA, SA, RW <: RemoteHistoryReaderWriter[K, T
   }
 
   private def attempt[A](operation: => Future[A]): Future[A] = Try(operation).fold(Future.failed, identity)
-  private def empty: History = InteractionVariableHistoryEventBased(InteractionEvents.empty)
+  private def empty: History = InteractionVariableHistory(InteractionEvents.empty)
   private def later(a: Option[LocalDateTime], b: Option[LocalDateTime]): Option[LocalDateTime] = (a.toList ++ b).maxOption
   private def missing(local: History, known: History, strategy: EventSyncStrategy): History =
-    InteractionVariableHistoryEventBased(InteractionEvents(local.cleanWithStrategy(strategy).events.values -- known.events.values))
+    InteractionVariableHistory(InteractionEvents(local.cleanWithStrategy(strategy).events.values -- known.events.values))
 
   def mergeLocal(histories: Map[K, History]): Unit = state.update { current =>
     current.copy(histories = histories.foldLeft(current.histories) { case (merged, (key, history)) =>
@@ -89,7 +89,7 @@ case class RemoteHistoryCache[K, T, GA, SA, RW <: RemoteHistoryReaderWriter[K, T
         val received = keys.map { key =>
           val bounded = response.getOrElse(key, Nil).filter(event =>
             starting.forall(from => !event.timestamp.isBefore(from)) && !event.timestamp.isAfter(until))
-          key -> InteractionVariableHistoryEventBased(InteractionEvents(bounded.toSet)).cleanWithStrategy(strategy)
+          key -> InteractionVariableHistory(InteractionEvents(bounded.toSet)).cleanWithStrategy(strategy)
         }.toMap
         state.update { current =>
           val remote = received.foldLeft(current.destinations(cache)) { case (values, (key, history)) =>
@@ -150,24 +150,24 @@ case class RemoteHistoryCache[K, T, GA, SA, RW <: RemoteHistoryReaderWriter[K, T
 
 object RemoteHistoryCache {
   case class RemoteHistoryValue[T, GA, SA](
-      history: InteractionVariableHistoryEventBased[T, GA, SA],
+      history: InteractionVariableHistory[T, GA, SA],
       fetchCompleted: Option[LocalDateTime],
       fetchedThrough: Option[LocalDateTime])
 
   object RemoteHistoryValue {
     def empty[T, GA, SA]: RemoteHistoryValue[T, GA, SA] =
-      RemoteHistoryValue(InteractionVariableHistoryEventBased(InteractionEvents.empty), None, None)
+      RemoteHistoryValue(InteractionVariableHistory(InteractionEvents.empty), None, None)
   }
 
   private case class CacheState[K, T, GA, SA, RW](
-      histories: Map[K, InteractionVariableHistoryEventBased[T, GA, SA]],
+      histories: Map[K, InteractionVariableHistory[T, GA, SA]],
       destinations: Map[RW, Map[K, RemoteHistoryValue[T, GA, SA]]])
 
   case class CacheReportForKey[K, T, GA, SA, RW](
       key: K,
-      localHistory: InteractionVariableHistoryEventBased[T, GA, SA],
+      localHistory: InteractionVariableHistory[T, GA, SA],
       lastKnownValues: Map[RW, RemoteHistoryValue[T, GA, SA]],
-      pendingWrites: Map[RW, InteractionVariableHistoryEventBased[T, GA, SA]]) {
+      pendingWrites: Map[RW, InteractionVariableHistory[T, GA, SA]]) {
     lazy val syncedDestinations: Set[RW] = pendingWrites.collect { case (cache, delta) if delta.events.values.isEmpty => cache }.toSet
   }
 }
