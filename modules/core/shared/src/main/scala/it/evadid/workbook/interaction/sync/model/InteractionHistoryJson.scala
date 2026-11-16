@@ -13,8 +13,9 @@ import upickle.default.*
   * This provides a strongly-typed way to handle history serialization/deserialization
   * instead of passing raw JSON strings throughout the sync pipeline.
   *
-  * The case class derives ReadWriter for serialization, making it safe to pass
-  * format instances across server boundaries (case objects are naturally serializable).
+  * The case class derives ReadWriter for serialization. The format field is passed
+  * explicitly and is necessary for the receiving server to know how to deserialize
+  * the history JSON (e.g., for custom workbooks with unknown interaction formats).
   */
 case class InteractionHistoryJson[T, GA, SA](
     format: InteractionFormat[T, GA, SA],
@@ -98,6 +99,23 @@ case class InteractionHistoryJson[T, GA, SA](
 }
 
 object InteractionHistoryJson {
+
+  /** ReadWriter for InteractionHistoryJson that stores format by class name. */
+  implicit def interactionHistoryJsonReadWriter[T, GA, SA]: ReadWriter[InteractionHistoryJson[T, GA, SA]] = {
+    import upickle.default.{ReadWriter => RW}
+    RW.readwriter[ujson.Value].bimap[InteractionHistoryJson[T, GA, SA]](
+      hist => ujson.Obj(
+        "formatClassName" -> ujson.Str(hist.format.getClass.getName),
+        "historyJson" -> ujson.Str(hist.historyJson)
+      ),
+      value => {
+        val formatClassName = value.obj("formatClassName").str
+        val historyJson = value.obj("historyJson").str
+        val format = InteractionFormat.fromClassName(formatClassName)
+        InteractionHistoryJson(format, historyJson)
+      }
+    )
+  }
 
   /** Create an InteractionHistoryJson from typed history using the provided format. */
   def fromHistory[T, GA, SA](format: InteractionFormat[T, GA, SA], history: InteractionVariableHistory[T, GA, SA]): InteractionHistoryJson[T, GA, SA] =

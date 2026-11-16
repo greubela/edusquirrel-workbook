@@ -90,29 +90,16 @@ object InteractionFormat {
       Serializer.fromImplicitRW[WorkbookInteractionElementFull[T, GA, SA]]
     )
 
-  /** ReadWriter for InteractionFormat.
-    *
-    * Format instances are case objects (singletons), so serialization only
-    * stores the fully qualified class name. Deserialization returns the
-    * singleton instance if the class is available.
-    */
-  implicit def interactionFormatReadWriter[T, GA, SA]: ReadWriter[InteractionFormat[T, GA, SA]] = {
-    val rw = upickle.default.readwriter[ujson.Value].bimap[
-      InteractionFormat[T, GA, SA]
-    ](
-      format => ujson.Str(format.getClass.getName),
-      value => {
-        val className = value.str
-        try {
-          val clazz = Class.forName(className)
-          val field = clazz.getField("MODULE$")
-          field.get(null).asInstanceOf[InteractionFormat[T, GA, SA]]
-        } catch {
-          case e: Exception =>
-            throw upickle.default.ReadError(s"Failed to load InteractionFormat class $className: ${e.getMessage}", value)
-        }
-      }
-    )
-    rw.asInstanceOf[ReadWriter[InteractionFormat[T, GA, SA]]]
+  /** Read format by class name (for deserialization from stored class name). */
+  def fromClassName(className: String): InteractionFormat[?, ?, ?] = {
+    try {
+      val clazz = Class.forName(className)
+      val field = clazz.getField("MODULE$")
+      field.get(null).asInstanceOf[InteractionFormat[?, ?, ?]]
+    } catch {
+      case e: Exception =>
+        throw new RuntimeException(s"Failed to load InteractionFormat class $className: ${e.getMessage}", e)
+    }
   }
+
 }

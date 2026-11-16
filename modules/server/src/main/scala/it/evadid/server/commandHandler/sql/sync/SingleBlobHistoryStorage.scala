@@ -6,10 +6,10 @@ import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.abstractions.grading.GradingResult
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.interaction.variable.InteractionVariableGradingHistory
+import it.evadid.core.util.io.serializer.InteractionFormat
 import it.evadid.util.logging.Logger
 import java.sql.Connection
 import java.time.LocalDateTime
-import upickle.default.*
 
 /** Reads and deletes single-blob history. All inserts and upserts live in UpsertToDatabase. */
 class SingleBlobHistoryStorage(connection: Connection, logger: Logger) {
@@ -64,9 +64,9 @@ class SingleBlobHistoryStorage(connection: Connection, logger: Logger) {
     SyncSuccess(0, 0, removed, LocalDateTime.now())
   }
   
-  /** Read format from JSON serialization. */
-  private def readFormat(formatJson: String): InteractionFormat[?, ?, ?] = {
-    read[InteractionFormat[?, ?, ?]](formatJson)
+  /** Read format from class name (using InteractionFormat.fromClassName). */
+  private def readFormat(formatClassName: String): InteractionFormat[?, ?, ?] = {
+    InteractionFormat.fromClassName(formatClassName)
   }
   
   private def transaction[A](f: => A): A = {

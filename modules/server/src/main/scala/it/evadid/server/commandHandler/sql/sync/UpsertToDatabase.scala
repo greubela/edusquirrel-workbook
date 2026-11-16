@@ -178,8 +178,8 @@ object UpsertToSingleBlobDatabase {
     /** Stores single-blob history with merge semantics. */
     def upsertIntoSingleBlobTable(request: StoreToDbRequest): SyncSuccess = transaction {
       val format = request.history.format
+      val formatClassName = format.getClass.getName
       val historyTyped = request.history.toTyped
-      val formatJson = write(format)
       
       // Read existing history for this sync context
       val existing = query(
@@ -189,24 +189,24 @@ object UpsertToSingleBlobDatabase {
         row.getString("format") -> row.getString("history_json")
       }.headOption
       
-      val (finalFormatJson, mergedHistoryJson) = existing match {
-        case Some((existingFormatJson, existingJson)) =>
+      val (finalFormat, mergedHistoryJson) = existing match {
+        case Some((existingFormat, existingJson)) =>
           // Merge existing history with new history using typed operations
-          val existingFormat = readFormat(existingFormatJson)
-          val existingHistoryTyped = InteractionHistoryJson(existingFormat, existingJson).toTyped
+          val existingFormatObj = InteractionFormat.fromClassName(existingFormat)
+          val existingHistoryTyped = InteractionHistoryJson(existingFormatObj, existingJson).toTyped
           // Merge the typed histories
           val mergedTyped = existingHistoryTyped.mergeWith(historyTyped)
-          // Serialize the merged history and format
-          (existingFormatJson, existingFormat.historySerializer.serialize(mergedTyped))
+          // Serialize the merged history
+          (existingFormat, existingFormatObj.historySerializer.serialize(mergedTyped))
         case None =>
-          // No existing history, use the new history and format
-          (formatJson, format.historySerializer.serialize(historyTyped))
+          // No existing history, use the new history
+          (formatClassName, format.historySerializer.serialize(historyTyped))
       }
       
-      // Insert or update the single blob history
+      // Insert or update the single blob history (store class name as string, not JSON)
       update(
         "INSERT INTO single_blob_history (program_id,scenario_id,user_id,variable_id,format,history_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE history_json=VALUES(history_json),format=VALUES(format)",
-        request.syncContext.programId, request.syncContext.scenarioId, request.syncContext.userId, request.syncContext.keyForSerialisation, finalFormatJson, mergedHistoryJson
+        request.syncContext.programId, request.syncContext.scenarioId, request.syncContext.userId, request.syncContext.keyForSerialisation, finalFormat, mergedHistoryJson
       )
       
       // Count events in the new history
@@ -218,8 +218,8 @@ object UpsertToSingleBlobDatabase {
       SyncSuccess(0, eventCount + feedbackCount, 0, LocalDateTime.now())
     }
 
-    private def readFormat(formatJson: String): InteractionFormat[?, ?, ?] = {
-      read[InteractionFormat[?, ?, ?]](formatJson)
+    private def readFormat(formatClassName: String): InteractionFormat[?, ?, ?] = {
+      InteractionFormat.fromClassName(formatClassName)
     }
     
     private def transaction[A](f: => A): A = {
