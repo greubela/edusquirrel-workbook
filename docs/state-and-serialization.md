@@ -220,6 +220,32 @@ are ignored independently. Database handlers capture credentials for that bindin
 registers requests immediately and serializes flushed batches. The periodic sync
 forces pending work to flush; callers awaiting buffered operations must also flush.
 
+## Additional event-based history model
+
+[InteractionVariableHistoryEventBased](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/variable/InteractionVariableHistoryEventBased.scala)
+is an additional shared-core model, not yet connected to the current interaction,
+cache or database paths. Its `InteractionEvents` collection contains answer changes,
+grading starts/completions and scaffolding starts/completions. Every event exposes
+an associated answer, timestamp and update importance. Completed events derive their
+answer and timestamp from the existing result; execution contexts are not stored.
+
+Starts default to `TEMPORARY`, completions to `MAJOR`; authors can override either.
+`clean()` removes temporary events only. `cleanWithStrategy` applies
+[EventSyncStrategy](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/EventSyncStrategy.scala)
+to every event kind, without implicitly cleaning related answers or feedback.
+`KEEP_LAST_MAJOR` retains all events tied for the latest major timestamp across the
+stream; `KeepImportance` and `Since` select by importance and time respectively.
+
+`gradingForState` projects only configured grader identities for that answer.
+Missing graders appear as `NotRequested` at `LocalDateTime.MIN`, without generating
+history events. A newer start represents a running retry; completion wins a tie.
+Completed results tied in time reuse the existing grading-result merge rules.
+
+Event merging uses set union: exact replays are idempotent and distinct events at
+the same timestamp survive. `Since` includes the boundary by default; a future
+delta cache should replay that boundary instead of assuming timestamps are unique.
+No existing-history conversion or database-schema changes are included here.
+
 ## Definitions, answers and snapshots
 
 The exercise definition, learner answer and live controller are different things:
