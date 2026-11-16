@@ -1,33 +1,25 @@
-﻿package it.evadid.workbook.elements.interactionElements.basic
+package it.evadid.workbook.elements.interactionElements.basic
 
-import it.evadid.core.util.io.Serializer
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.interaction.sync.UpdateImportance
-import UpdateImportance.{MAJOR, MINOR, TEMPORARY}
+import it.evadid.workbook.interaction.sync.UpdateImportance.{MAJOR, MINOR, TEMPORARY}
 import it.evadid.workbook.interaction.variable.InteractionVariableState.InteractionVariableStateChanged
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory.{NoContentElementFactory, SimpleWorkbookElementFactory}
-import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import it.evadid.workbook.jsonFactory.WorkbookElementFactory.NoContentElementFactory
 
 import java.time.Duration
 
-import it.evadid.core.util.io.serializer.InteractionFormat
-
-case class TextInteraction(override val elementId: String) extends WorkbookInteractionElement[String] {
+case class TextInteraction(override val elementId: String) extends WorkbookInteractionElement[TextInteractionFormat.type] {
   override val associatedFactory = TextInteraction.factory
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
   override val defaultValue: String = ""
-  override val format: InteractionFormat[String, Unit, Unit] = TextInteraction
 }
 
-object TextInteraction extends InteractionFormat[String, Unit, Unit] {
-  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
+object TextInteraction {
 
   val factory: NoContentElementFactory[TextInteraction] = new NoContentElementFactory[TextInteraction]() {
-    override def callConstructor(elementId: String): TextInteraction = TextInteraction(elementId)
+    override def callConstructor(elementId: String): TextInteraction= TextInteraction(elementId)
   }
 
   def decideTextareaUpdateImportance(change: InteractionVariableStateChanged[String]): UpdateImportance =
@@ -36,7 +28,9 @@ object TextInteraction extends InteractionFormat[String, Unit, Unit] {
       val lenDiff = lenNew - change.lastState.value.length
       val timeDiff = Duration.between(change.lastState.timestamp, change.newState.timestamp)
       if (timeDiff.abs().getSeconds > 10) MAJOR
-      else if (lenNew > 0 && lenDiff == 1) { val last = change.newState.value.last; if ("\\n\\t.!?".contains(last)) MAJOR else if (" ,:-+=;&/|".contains(last)) MINOR else TEMPORARY }
+      else if (lenNew > 0 && lenDiff == 1) {
+        val last = change.newState.value.last; if ("\\n\\t.!?".contains(last)) MAJOR else if (" ,:-+=;&/|".contains(last)) MINOR else TEMPORARY
+      }
       else MINOR
     }
 }

@@ -192,8 +192,8 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
 
   test("typed and raw reads share a fetch while a malformed typed record fails independently") {
     import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
-    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-    val answer = TextInteraction("answer").interactionVariable
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
+    val answer = TextInteraction2("answer").interactionVariable
     val validKey = context.toSyncContext(answer.keyForSerialization)
     val history = InteractionVariableHistory[String, Unit, Unit](Set(
       InteractionVariableState("saved", UpdateImportance.MAJOR, LocalDateTime.now())))

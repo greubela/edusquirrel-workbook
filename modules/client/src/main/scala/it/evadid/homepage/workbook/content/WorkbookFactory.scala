@@ -53,7 +53,7 @@ trait WorkbookFactory {
   Control
    */
   protected def createTextInput(id: String = nextId()): WorkbookInteractionElement[String] = {
-    TextInteraction(id)
+    TextInteraction2(id)
   }
 
   /*

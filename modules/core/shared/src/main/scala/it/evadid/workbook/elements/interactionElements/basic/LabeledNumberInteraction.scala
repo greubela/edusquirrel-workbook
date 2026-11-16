@@ -4,21 +4,18 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.distribution.commandTypes.SqlEditorCommands.{Request, Response}
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.{DefaultSerializer, InteractionFormat}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.ReadWriter
-
 import upickle.default.*
-object LabeledNumberInteraction extends InteractionFormat[String, Unit, Unit] {
-  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
+object LabeledNumberInteraction {
+
 
   /**
    * Describes the kind of numeric value a [[LabeledNumberInteraction]] edits.
@@ -61,12 +58,12 @@ case class LabeledNumberInteraction(
                                      numberType: NumberType,
                                      override val defaultValue: String = "0",
                                      diff: BigDecimal = BigDecimal(1),
-                                   ) extends WorkbookInteractionElement[String] {
+                                   ) extends WorkbookInteractionElement[TextInteractionFormat.type] {
 
   override val associatedFactory = LabeledNumberInteraction.factory
 
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override val serializerInteractionContent: Serializer[String] = Serializer.fromUpickleJson(summon[ReadWriter[String]])
+
   override def format: InteractionFormat[String, Unit, Unit] = LabeledNumberInteraction
 
 }

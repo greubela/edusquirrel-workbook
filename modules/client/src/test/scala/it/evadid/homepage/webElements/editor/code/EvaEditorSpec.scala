@@ -22,7 +22,7 @@ import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.scaffolding.{AdditionalInfoLlmScaffolding, ScaffoldingResult, ScaffoldingStatus, WorkbookInteractionScaffolder}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import it.evadid.workbook.interaction.variable.{InteractionVariableGradingHistory, InteractionVariableScaffoldingHistory}
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingHintScaffolder
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import org.scalajs.dom

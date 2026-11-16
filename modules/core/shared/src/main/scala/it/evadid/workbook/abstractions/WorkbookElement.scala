@@ -1,49 +1,10 @@
 package it.evadid.workbook.abstractions
-
-import it.evadid.core.datastructures.state.State
-import it.evadid.core.util.io.*
+import it.evadid.workbook.abstractions.InteractionFormat
+import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
 import it.evadid.workbook.abstractions.scaffolding.WorkbookInteractionScaffolder
 import it.evadid.workbook.interaction.variable.InteractionVariable
-import it.evadid.workbook.jsonFactory.{SerializedWorkbookSnapshot, WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
-import it.evadid.core.util.io.serializer.InteractionFormat
-import upickle.default.*
-
-import scala.reflect.ClassTag.Nothing
-
-object WorkbookElement {
-
-  // Keep the factory wire formats, but include the registry needed to resolve a
-  // standalone container's references and section prerequisites.
-  given upickle.default.ReadWriter[WorkbookElement] = upickle.default.readwriter[SerializedWorkbookSnapshot].bimap(
-    element => {
-      val collected = scala.collection.mutable.LinkedHashMap.empty[String, WorkbookElement]
-      var pending = List(element)
-      while (pending.nonEmpty) {
-        val current = pending.head
-        pending = pending.tail
-        collected.get(current.elementId) match {
-          case Some(previous) => require(previous == current, s"Conflicting workbook element id: ${current.elementId}")
-          case None =>
-            collected(current.elementId) = current
-            val prerequisites = current match {
-              case section: it.evadid.workbook.elements.structureElements.WorkbookSection =>
-                section.metadata.sectionsRequiredBefore ++ section.metadata.sectionsRecommendedBefore
-              case _ => Nil
-            }
-            pending = current.childrenOfThisElement ++ prerequisites ++ pending
-        }
-      }
-      SerializedWorkbookSnapshot(element.elementId, collected.valuesIterator.map(_.toSerialized).toList)
-    }, snapshot => WorkbookElementFactory.parseAllAsMap(snapshot.elements).getOrElse(snapshot.rootId,
-      throw new IllegalArgumentException(s"Missing workbook root: ${snapshot.rootId}")))
-
-  private[workbook] def subtypeCodec[T <: WorkbookElement: scala.reflect.ClassTag]: upickle.default.ReadWriter[T] =
-    upickle.default.readwriter[WorkbookElement].bimap(
-      element => element,
-      element => summon[scala.reflect.ClassTag[T]].unapply(element)
-        .getOrElse(throw new IllegalArgumentException(s"Unexpected workbook element: ${element.getClass.getSimpleName}")))
-}
+import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 sealed trait WorkbookElement {
   val elementId: String
@@ -51,7 +12,7 @@ sealed trait WorkbookElement {
   lazy val asRef = WorkbookElementReference(elementId, Option(this.getClass.getSimpleName))
 
   lazy val childrenOfThisElement: List[WorkbookElement]
-  lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] =
+  lazy val allInteractionsInThisInstance: List[WorkbookInteractionElement[InteractionFormat]] =
     childrenOfThisElement.flatMap(_.allInteractionsInThisInstance)
 
   lazy val allChildrenFullSubtree: List[WorkbookElement] = childrenOfThisElement ++ childrenOfThisElement.flatMap(_.allChildrenFullSubtree)
@@ -69,47 +30,35 @@ trait WorkbookDisplayElement extends WorkbookElement {
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
 }
 
-object WorkbookDisplayElement {
-  given ReadWriter[WorkbookDisplayElement] = WorkbookElement.subtypeCodec
-}
 
 trait WorkbookStructureElement[T <: WorkbookElement] extends WorkbookElement {
   lazy val structureType: WorkbookStructuringType
   override lazy val childrenOfThisElement: List[WorkbookElement] = groupElements
 
   def groupElements: List[T]
-
 }
 
-object WorkbookStructureElement {
-  given [T <: WorkbookElement]: ReadWriter[WorkbookStructureElement[T]] = WorkbookElement.subtypeCodec
-}
 
-trait WorkbookInteractionElementFull[T: ReadWriter, GA: ReadWriter, SA: ReadWriter] extends WorkbookElement {
-  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] =
-    List(this) ++ childrenOfThisElement.flatMap(_.allInteractionsInThisInstance)
-  lazy val isDisabledState: State[Boolean] = State(false)
+trait WorkbookInteractionElement[F <: InteractionFormat](using v: ValueOf[F]) extends WorkbookElement {
+
+  def interactionFormat: F = v.value
+
+  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionElement[InteractionFormat]] =
+    List(this.asInstanceOf[WorkbookInteractionElement[InteractionFormat]]) ++ childrenOfThisElement.collect { case x: WorkbookInteractionElement[InteractionFormat] => x }.flatMap(_.allInteractionsInThisInstance)
+  lazy val isDisabledState: Boolean = false
   // needs to be lazy or defaultValue (from subclass) might not be inited!
-  lazy val interactionVariable: InteractionVariable[T, GA, SA] = InteractionVariable[T, GA, SA](this)
+  lazy val interactionVariable: InteractionVariable[F] = InteractionVariable[F](this)
 
-  val defaultValue: T
+  val defaultValue: F#InteractionStateType
 
-  val gradingElements: List[WorkbookInteractionGrader[T, GA]] = List()
-  val scaffoldingElement: Option[WorkbookInteractionScaffolder[T, SA]] = None
-  val serializerInteractionContent: Serializer[T] = Serializer.fromImplicitRW
-  
+  val gradingElements: List[WorkbookInteractionGrader[F]] = List()
+  val scaffoldingElement: Option[WorkbookInteractionScaffolder[F]] = None
+  // Removed: serializerInteractionContent now uses InteractionFormat's serializers directly via format.stateSerializer
+
   /** The format providing serializers for this interaction type.
-    *
-    * Override this in your interaction to provide type-level association
-    * between the interaction and its format.
-    */
-  def format: InteractionFormat[T, GA, SA]
-}
-
-type WorkbookInteractionElement[T] = WorkbookInteractionElementFull[T, Unit, Unit]
-
-type WorkbookInteractionUntyped = WorkbookInteractionElementFull[?, ?, ?]
-
-object WorkbookInteractionElementFull {
-  given [T, GA, SA]: ReadWriter[WorkbookInteractionElementFull[T, GA, SA]] = WorkbookElement.subtypeCodec
+   *
+   * Override this in your interaction to provide type-level association
+   * between the interaction and its format.
+   */
+  def format: InteractionFormat = interactionFormat
 }

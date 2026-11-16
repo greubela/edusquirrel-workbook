@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus, WorkbookInteractionScaffolder}
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.abstractions.grading.*
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
 import it.evadid.workbook.support.TestExecutionContext
 import munit.FunSuite
 
@@ -39,7 +39,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
       override val elementId = "retry-tests"
       override val defaultValue = "answer"
       override lazy val childrenOfThisElement = List.empty[WorkbookElement]
-      override val associatedFactory = TextInteraction.factory
+      override val associatedFactory = TextInteraction2.factory
       override val gradingElements = graders
     }.interactionVariable
 
@@ -180,7 +180,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
       override val elementId = "hint-cache-tests"
       override val defaultValue = "answer"
       override lazy val childrenOfThisElement = List.empty[WorkbookElement]
-      override val associatedFactory = TextInteraction.factory
+      override val associatedFactory = TextInteraction2.factory
       override val scaffoldingElement = Some(scaffolder)
     }.interactionVariable
 

@@ -1,16 +1,18 @@
 package it.evadid.workbook.interaction.variable.events
 
+import it.evadid.workbook.abstractions.InteractionFormat
+
 import java.time.LocalDateTime
 import upickle.default.*
 
 /** Exact duplicates are idempotent; different events at the same timestamp are retained. */
-case class InteractionEvents[T, GA, SA](values: Set[InteractionEvent[T, GA, SA]]) derives ReadWriter {
+case class InteractionEvents[F <: InteractionFormat](values: Set[InteractionEvent[F]]) derives ReadWriter {
   lazy val timestampLastChanged: Option[LocalDateTime] = values.map(_.timestamp).maxOption
 
-  def merge(other: InteractionEvents[T, GA, SA]): InteractionEvents[T, GA, SA] =
+  def merge(other: InteractionEvents[F]): InteractionEvents[F] =
     copy(values = values ++ other.values)
 }
 
 object InteractionEvents {
-  def empty[T, GA, SA]: InteractionEvents[T, GA, SA] = InteractionEvents(Set.empty)
+  def empty[F <: InteractionFormat]: InteractionEvents[F] = InteractionEvents(Set.empty)
 }

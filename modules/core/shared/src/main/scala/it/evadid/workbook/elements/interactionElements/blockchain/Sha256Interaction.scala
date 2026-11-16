@@ -2,15 +2,16 @@ package it.evadid.workbook.elements.interactionElements.blockchain
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.{DefaultSerializer, InteractionFormat}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.core.util.crypto.Sha256
 import upickle.default.*
 
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 sealed trait Sha256Task derives ReadWriter
 
 case class CompareSha256() extends Sha256Task derives ReadWriter
@@ -26,13 +27,13 @@ case class Sha256Answer(first: String = "", second: String = "") derives ReadWri
 
 case class Sha256Interaction(elementId: String, title: LanguageMapContentId,
                              task: Sha256Task = CompareSha256(), initial: Sha256Answer = Sha256Answer())
-  extends WorkbookInteractionElement[Sha256Answer] {
+  extends WorkbookInteractionElement[Sha256InteractionFormat.type] {
 
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = initial
-  override val serializerInteractionContent = Serializer.fromUpickleJson(summon[ReadWriter[Sha256Answer]])
+
   override val associatedFactory = Sha256Interaction.factory
-  override def format: InteractionFormat[Sha256Answer, Unit, Unit] = Sha256Interaction
+
 
   def hashes(answer: Sha256Answer): List[String] = task match {
     case CompareSha256() => List(Sha256.text(answer.first), Sha256.text(answer.second))
@@ -45,10 +46,8 @@ case class Sha256Interaction(elementId: String, title: LanguageMapContentId,
   }
 }
 
-object Sha256Interaction extends InteractionFormat[Sha256Answer, Unit, Unit] {
-  override def stateSerializer: Serializer[Sha256Answer] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[Sha256Answer, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[Sha256Answer, Unit, Unit]] = Serializer.fromImplicitRW
+object Sha256Interaction  {
+
   val maxTextLength = 4096
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[Sha256Interaction] {
     override protected val constructorFieldOrder = List("elementId", "title", "task", "initial")

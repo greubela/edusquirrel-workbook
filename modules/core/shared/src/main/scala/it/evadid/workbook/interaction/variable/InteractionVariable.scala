@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic.De
 import it.evadid.core.datastructures.state.{ExecutionMethod, State}
 import it.evadid.core.util.io.Serializer
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
 import it.evadid.workbook.meta.ExecutionContextInformation
@@ -18,38 +18,37 @@ import scala.concurrent.ExecutionContext
 
 object InteractionVariable {
 
-  type InteractionVariableUntyped = InteractionVariable[?, ?, ?]
 
 }
 
-case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](underlyingInteraction: WorkbookInteractionElementFull[T, GA, SA], debug: Boolean = false) {
+case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: WorkbookInteractionElement[F], debug: Boolean = false) {
 
   given ec: ExecutionContext = ExecutionContext.global
 
-  private val historySerializer: Serializer[InteractionVariableHistory[T, GA, SA]] = Serializer.fromUpickleJson(InteractionVariableHistory.derived$ReadWriter[T, GA, SA])
+  private val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromUpickleJson(InteractionVariableHistory.derived$ReadWriter[F])
 
-  def currentHistory: InteractionVariableHistory[T, GA, SA] = this.synchronized {
+  def currentHistory: InteractionVariableHistory[F] = this.synchronized {
     innerState.now()
   }
 
-  def currentValue: T = this.synchronized {
+  def currentValue: F#InteractionStateType = this.synchronized {
     safeLastState.value
   }
 
 
-  private val defaultState = InteractionVariableState[T](underlyingInteraction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now())
-  private val defaultHistory: InteractionVariableHistory[T, GA, SA] = InteractionVariableHistory.fromResults[T, GA, SA](List(defaultState).toSet)
+  private val defaultState = InteractionVariableState[F#InteractionStateType](underlyingInteraction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now())
+  private val defaultHistory: InteractionVariableHistory[F] = InteractionVariableHistory.fromResults[F](List(defaultState).toSet)
 
-  def safeLastState: InteractionVariableState[T] = innerState.now().historyStates.lastStateOption.getOrElse(defaultState)
+  def safeLastState: InteractionVariableState[F#InteractionStateType] = innerState.now().historyStates.lastStateOption.getOrElse(defaultState)
 
-  private val innerState: State[InteractionVariableHistory[T, GA, SA]] = State(defaultHistory)
+  private val innerState: State[InteractionVariableHistory[F]] = State(defaultHistory)
 
-  val control: InteractionScaffoldingAndGradingControl[T, GA, SA] = InteractionScaffoldingAndGradingControl(this)
+  val control: InteractionScaffoldingAndGradingControl[F] = InteractionScaffoldingAndGradingControl(this)
 
   val keyForSerialization: String = underlyingInteraction.elementId + "_history"
-  val serializerHistory: Serializer[InteractionVariableHistory[T, GA, SA]] = Serializer.fromUpickleJson(InteractionVariableHistory.derived$ReadWriter[T, GA, SA])
+  val serializerHistory: Serializer[InteractionVariableHistory[F]] = Serializer.fromUpickleJson(InteractionVariableHistory.derived$ReadWriter[F])
 
-  lazy val observableHistoryWithDefault: ObservableValue[InteractionVariableHistory[T, GA, SA]] = innerState.observable.deriveValue(curHistory => {
+  lazy val observableHistoryWithDefault: ObservableValue[InteractionVariableHistory[F]] = innerState.observable.deriveValue(curHistory => {
     if (curHistory.historyStates.lastStateOption.nonEmpty) curHistory
     else defaultHistory.addState(defaultState)
   })
@@ -84,23 +83,23 @@ case class InteractionVariable[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](un
       historySerializer.deserialize(serializedHistory)
     } catch case (err: Throwable) => {
       logger.logExceptionWarn("Ignoring serialized history as it was not parsable!", err)
-      InteractionVariableHistory.empty[T, GA, SA]
+      InteractionVariableHistory.empty[F]
     }
     updateHistory(_.mergeWith(deserialized), executionContextInformation)
   }
 
   /** Add history from an InteractionHistoryJson, using the format's serializer. */
-  def addSerializedHistoryFromInteractionHistoryJson(logger: Logger, historyJson: InteractionHistoryJson[T, GA, SA], executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
+  def addSerializedHistoryFromInteractionHistoryJson(logger: Logger, historyJson: InteractionHistoryJson[F], executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
     val deserialized = try {
       historyJson.toHistory
     } catch case (err: Throwable) => {
       logger.logExceptionWarn("Ignoring serialized history from InteractionHistoryJson as it was not parsable!", err)
-      InteractionVariableHistory.empty[T, GA, SA]
+      InteractionVariableHistory.empty[F]
     }
     updateHistory(_.mergeWith(deserialized), executionContextInformation)
   }
 
-  def updateHistory(func: InteractionVariableHistory[T, GA, SA] => InteractionVariableHistory[T, GA, SA], executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
+  def updateHistory(func: InteractionVariableHistory[F] => InteractionVariableHistory[F], executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
     innerState.update(oldVal => {
       val transformedHistory = func(oldVal)
       val withCurrentState = if (transformedHistory.historyStates.lastStateOption.isEmpty)

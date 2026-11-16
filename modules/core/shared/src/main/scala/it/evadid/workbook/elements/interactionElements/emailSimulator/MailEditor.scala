@@ -1,29 +1,28 @@
 package it.evadid.workbook.elements.interactionElements.emailSimulator
 
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.*
 
 case class MailEditor(elementId: String, initialInbox: InboxState = InboxState.empty,
                         account: String = "opa.jürgen@gmail.com", allowCompose: Boolean = true)
-    extends WorkbookInteractionElement[InboxStateScaffolding] {
+    extends WorkbookInteractionElement[MailEditorFormat.type] {
 
   override val associatedFactory = MailEditor.factory
   override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
   override val defaultValue = InboxStateScaffolding(initialInbox.normalized)
-  override val serializerInteractionContent = MailEditor.mailEditorSer
+
   def isPassed: Boolean = interactionVariable.currentValue.inboxState.sortingResult.passed
-  override def format: InteractionFormat[InboxStateScaffolding, Unit, Unit] = MailEditor
+
 }
-object MailEditor extends InteractionFormat[InboxStateScaffolding, Unit, Unit] {
-  override def stateSerializer: Serializer[InboxStateScaffolding] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[InboxStateScaffolding, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[InboxStateScaffolding, Unit, Unit]] = Serializer.fromImplicitRW
+object MailEditor  {
+
   val mailEditorSer: Serializer[InboxStateScaffolding] = Serializer.fromUpickleJson(summon[ReadWriter[InboxStateScaffolding]])
   val factory: WorkbookElementFactory.SimpleWorkbookElementFactory[MailEditor] =
     new WorkbookElementFactory.SimpleWorkbookElementFactory[MailEditor] {

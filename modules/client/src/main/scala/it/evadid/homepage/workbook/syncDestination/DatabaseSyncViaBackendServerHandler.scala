@@ -51,11 +51,11 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
     // This is a placeholder - in practice you'd look up from the interaction registry
     import it.evadid.workbook.elements.interactionElements.basic._
     syncContext.keyForSerialisation match {
-      case "TextInteraction_history" => TextInteraction
+      case "TextInteraction_history" => TextInteraction2
       case "LabeledNumberInteraction_history" => LabeledNumberInteraction
       case "LabeledCheckboxInteraction_history" => LabeledCheckboxInteraction
       case "MessagingInteraction_history" => MessagingInteraction
-      case _ => TextInteraction  // default fallback
+      case _ => TextInteraction2  // default fallback
     }
   }
 

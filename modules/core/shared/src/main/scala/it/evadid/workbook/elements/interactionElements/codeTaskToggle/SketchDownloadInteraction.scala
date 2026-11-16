@@ -2,37 +2,33 @@ package it.evadid.workbook.elements.interactionElements.codeTaskToggle
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.{DefaultSerializer, InteractionFormat}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.*
-
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 case class SketchDownloadInteraction(
                                       override val elementId: String,
                                       buttonLabel: LanguageMapContentId,
                                       filenameRelativeToWorkbookResources: String,
                                       sketchContent: String,
                                       unlockWhenReorderCorrect: String
-                                    ) extends WorkbookInteractionElement[String] {
+                                    ) extends WorkbookInteractionElement[TextInteractionFormat.type] {
 
   override val associatedFactory = SketchDownloadInteraction.factory
 
   override val defaultValue: String = ""
 
-  override val serializerInteractionContent: Serializer[String] = Serializer.fromUpickleJson(summon[ReadWriter[String]])
-
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override def format: InteractionFormat[String, Unit, Unit] = SketchDownloadInteraction
+
 }
 
-object SketchDownloadInteraction extends InteractionFormat[String, Unit, Unit] {
-  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
+object SketchDownloadInteraction  {
+
   val factory = new SimpleWorkbookElementFactory[SketchDownloadInteraction]() {
     override protected val constructorFieldOrder = List("elementId", "buttonLabel", "filename", "sketchContent", "unlockWhenReorderCorrect")
 

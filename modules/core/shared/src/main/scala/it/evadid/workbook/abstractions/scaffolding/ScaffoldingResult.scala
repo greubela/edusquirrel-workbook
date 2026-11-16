@@ -2,7 +2,7 @@ package it.evadid.workbook.abstractions.scaffolding
 
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.SerializedException
-import it.evadid.workbook.abstractions.FeedbackEntity
+import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.*
 import upickle.default.*
 
@@ -10,14 +10,14 @@ import java.time.LocalDateTime
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingError
 
-case class ScaffoldingResult[T, A](
-                                    forState: T,
+case class ScaffoldingResult[F <: InteractionFormat](
+                                    forState: F#InteractionStateType,
                                     scaffoldingStatus: ScaffoldingStatus,
                                     scaffoldingEntity: FeedbackEntity,
-                                    additionalInformation: Option[A],
+                                    additionalInformation: Option[F#ScaffoldingInfoType],
                                     scaffoldingTime: LocalDateTime = LocalDateTime.MIN
                                   ) derives ReadWriter {
-  def merge(other: ScaffoldingResult[T, A]): ScaffoldingResult[T, A] = {
+  def merge(other: ScaffoldingResult[F]): ScaffoldingResult[F] = {
     require(forState == other.forState, "Only scaffolding for the same answer can be merged.")
     val preferred = (scaffoldingStatus, other.scaffoldingStatus) match {
       case (_: ScaffoldingFeedback, _: ScaffoldingFeedback) => if other.scaffoldingTime.isAfter(scaffoldingTime) then other else this

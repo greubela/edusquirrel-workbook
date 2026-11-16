@@ -4,7 +4,7 @@ import it.evadid.vm.parsing.java.clean.model.JavaType.{JAVA_ANY, JAVA_UNPARSABLE
 import it.evadid.vm.parsing.python.clean.model.PythonType.{PYTHON_ANY, PYTHON_UNPARSABLE_TYPE}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableScaffoldingHistory}
 import java.time.LocalDateTime
 import munit.FunSuite
@@ -29,7 +29,7 @@ class TypedPayloadCodecSpec extends FunSuite {
   }
 
   test("interactions without grading or scaffolding information use Unit payloads") {
-    val value: InteractionVariable[String, Unit, Unit] = InteractionVariable(TextInteraction("typed-answer"))
+    val value: InteractionVariable[String, Unit, Unit] = InteractionVariable(TextInteraction2("typed-answer"))
     val history = value.currentHistory
     assertEquals(read[InteractionVariableHistory[String, Unit, Unit]](write(history)), history)
     assertEquals(readBinary[InteractionVariableHistory[String, Unit, Unit]](writeBinary(history)), history)

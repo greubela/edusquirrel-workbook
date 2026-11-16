@@ -1,15 +1,16 @@
 package it.evadid.workbook.elements.interactionElements.qr
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.*
 
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 /** Requirements apply to payload bytes, not character count or padded codewords. */
 case class QrCodeRequirements(minBytes: Int = 1, maxBytes: Option[Int] = None,
                               requiredVersion: Option[Int] = None,
@@ -32,20 +33,18 @@ case class QrCodeRequirements(minBytes: Int = 1, maxBytes: Option[Int] = None,
 case class QrCodeRequirementResult(labelId: String, passed: Boolean, expected: String) derives ReadWriter
 
 case class CreateQrCodeInteraction(elementId: String, requirements: QrCodeRequirements = QrCodeRequirements(),
-                                   initialCode: QrCode = QrCode.fromText("")) extends WorkbookInteractionElement[QrCode] {
+                                   initialCode: QrCode = QrCode.fromText("")) extends WorkbookInteractionElement[QrCodeInteractionFormat.type] {
 
   override val defaultValue: QrCode = initialCode
-  override val serializerInteractionContent: Serializer[QrCode] = Serializer.fromUpickleJson(summon[ReadWriter[QrCode]])
+
   override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
   override val associatedFactory: WorkbookElementFactory[CreateQrCodeInteraction] = CreateQrCodeInteraction.factory
   def isPassed: Boolean = requirements.isSatisfiedBy(interactionVariable.currentValue)
-  override def format: InteractionFormat[QrCode, Unit, Unit] = CreateQrCodeInteraction
+
 }
-object CreateQrCodeInteraction extends InteractionFormat[QrCode, Unit, Unit] {
-  override def stateSerializer: Serializer[QrCode] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[QrCode, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[QrCode, Unit, Unit]] = Serializer.fromImplicitRW
-  val factory: WorkbookElementFactory.SimpleWorkbookElementFactory[CreateQrCodeInteraction] =
+object CreateQrCodeInteraction  {
+
+ val factory: WorkbookElementFactory.SimpleWorkbookElementFactory[CreateQrCodeInteraction] =
     new WorkbookElementFactory.SimpleWorkbookElementFactory[CreateQrCodeInteraction] {
       override protected val constructorFieldOrder = List("elementId", "requirements", "initialCode")
       override def finishSerialization(base: WorkbookElementSerializable, element: CreateQrCodeInteraction): WorkbookElementSerializable =

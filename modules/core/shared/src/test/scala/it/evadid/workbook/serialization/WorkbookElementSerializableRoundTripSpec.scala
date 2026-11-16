@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent}
-import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
+import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction2}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.{GptInteractionElement, TextInputWithScaffoldingAndGrading}
@@ -54,7 +54,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     val image = WorkbookImageElement.LanguageMapBasedWorkbookImageElement("image", content("image/source"),
       TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES, Some(content("image/description")),
       Some(it.evadid.core.datastructures.file.CopyrightInfo.fromAi))
-    val input = TextInteraction("gpt-input")
+    val input = TextInteraction2("gpt-input")
     val section = WorkbookSection("section", WorkbookSection.WorkbookSectionMetadata(content("section/title")), List(input))
     val workbook = Workbook("workbook", Workbook.WorkbookMetadata(Set.empty, Set.empty, content("workbook/title"), List(it.evadid.core.datastructures.language.AppLanguage.English)), List(section))
     val special = " Quotes: \"hello\"; backslash: \\; newline:\nGrüße )({} "
@@ -97,7 +97,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       MailEditor("mail-editor", inbox, special, allowCompose = false),
       MailInteraction("mail-interaction", inbox, special, allowCompose = false),
       CreateQrCodeInteraction("qr", QrCodeRequirements(minBytes = 2, maxBytes = Some(200), requiredMask = Some(3)), QrCode.fromText(special)),
-      TextInteraction("text-1"),
+      TextInteraction2("text-1"),
       it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading("text-feedback",
         content("text/task"), Some(content("text/solution")), Some(TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(content("text/hint"), Map.empty)), List(TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(content("text/criterion"), Map.empty))),
       MessagingInteraction("messaging-1"),
@@ -222,7 +222,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
 
   test("constructor format preserves element ids without unquoting or trimming") {
     for (id <- List("", " id ", "\"quoted\"", "line\nwith\ttabs", "Grüße )({} \\")) {
-      val element = TextInteraction(id)
+      val element = TextInteraction2(id)
       assertEquals(WorkbookElementFactory.serializerConstructorLike.deserialize(element.toStringConstructorLike), element)
       assertEquals(WorkbookElementFactory.serializerRefBasedJson.deserialize(WorkbookElementFactory.serializerRefBasedJson.serialize(element)), element)
     }
@@ -233,7 +233,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
   }
 
   test("GptInteractionElement resolves its underlying interaction reference") {
-    val input = TextInteraction("gpt-input")
+    val input = TextInteraction2("gpt-input")
     val gpt = GptInteractionElement("gpt", input, content("exercise/text"), List(content("hint/text")), List(content("criterion/text")))
 
     assertEquals(WorkbookElementFactory.parseAll(List(gpt.toSerialized, input.toSerialized)), List(gpt, input))

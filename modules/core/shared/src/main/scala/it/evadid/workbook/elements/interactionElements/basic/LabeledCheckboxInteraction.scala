@@ -2,19 +2,18 @@ package it.evadid.workbook.elements.interactionElements.basic
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SingleContentElementFactory
-
-import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.{DefaultSerializer, InteractionFormat}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.InteractionFormat.LabeledCheckboxInteractionFormat
 case class LabeledCheckboxInteraction(
                                        override val elementId: String,
                                        checkboxLabel: LanguageMapContentId
-                                     ) extends WorkbookInteractionElement[Boolean] {
+                                     ) extends WorkbookInteractionElement[LabeledCheckboxInteractionFormat.type ] {
 
-  override def format: InteractionFormat[Boolean, Unit, Unit] = LabeledCheckboxInteraction
 
   override val associatedFactory: WorkbookElementFactory[LabeledCheckboxInteraction] = LabeledCheckboxInteraction.factory
 
@@ -25,10 +24,7 @@ case class LabeledCheckboxInteraction(
 
 }
 
-object LabeledCheckboxInteraction extends InteractionFormat[Boolean, Unit, Unit] {
-  override def stateSerializer: Serializer[Boolean] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[Boolean, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[Boolean, Unit, Unit]] = Serializer.fromImplicitRW
+object LabeledCheckboxInteraction {
 
   val factory: SingleContentElementFactory[LabeledCheckboxInteraction] = new SingleContentElementFactory[LabeledCheckboxInteraction] {
 

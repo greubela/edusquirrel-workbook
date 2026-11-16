@@ -29,7 +29,7 @@ import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteractio
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.qr.CreateQrCodeInteractionRenderer
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.*
-import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
+import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction2}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
@@ -147,7 +147,7 @@ object HtmlRenderFactory {
       case m: MailInteraction => HtmlMailInteractionRenderer.renderWorkbookElement(m)
       case m: MailEditor => HtmlMailEditorRenderer.renderWorkbookElement(m)
       case q: CreateQrCodeInteraction => CreateQrCodeInteractionRenderer.renderWorkbookElement(q)
-      case i: TextInteraction => HtmlSimpleTextInteractionRenderer.renderWorkbookElement(i)
+      case i: TextInteraction2 => HtmlSimpleTextInteractionRenderer.renderWorkbookElement(i)
       case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.renderWorkbookElement(i)
       case i: LabeledNumberInteraction => HtmlBasicNumberRenderer.renderWorkbookElement(i)
       case s: SortingInteraction => HtmlSortingInteractionRenderer.renderWorkbookElement(s)

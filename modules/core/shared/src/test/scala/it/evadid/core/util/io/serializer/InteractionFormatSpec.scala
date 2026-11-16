@@ -2,7 +2,7 @@ package it.evadid.core.util.io.serializer
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
-import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
+import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction2}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleRecreateShapeInteraction, TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
@@ -91,18 +91,18 @@ class InteractionFormatSpec extends FunSuite {
   // ============================================================================
 
   test("TextInteraction format is accessible") {
-    val format = TextInteraction.format
+    val format = TextInteraction2.format
     assert(format != null)
   }
 
   test("TextInteraction format is the same on repeated calls") {
-    val format1 = TextInteraction.format
-    val format2 = TextInteraction.format
+    val format1 = TextInteraction2.format
+    val format2 = TextInteraction2.format
     assert(format1 eq format2)  // Same instance (lazy val)
   }
 
   test("TextInteraction format can serialize/deserialize history") {
-    val format = TextInteraction.format
+    val format = TextInteraction2.format
     val history = InteractionVariableHistory.empty[String, Unit, Unit]
       .addState(InteractionVariableState("code", UpdateImportance.MAJOR, java.time.LocalDateTime.now()))
 
@@ -112,7 +112,7 @@ class InteractionFormatSpec extends FunSuite {
   }
 
   test("TextInteraction format stateSerializer can serialize/deserialize") {
-    val format = TextInteraction.format
+    val format = TextInteraction2.format
     val testValue = "hello world"
     val serialized = format.stateSerializer.serialize(testValue)
     val deserialized = format.stateSerializer.deserialize(serialized)
@@ -120,8 +120,8 @@ class InteractionFormatSpec extends FunSuite {
   }
 
   test("TextInteraction format exerciseSerializer can serialize interaction") {
-    val format = TextInteraction.format
-    val interaction = TextInteraction("test-id")
+    val format = TextInteraction2.format
+    val interaction = TextInteraction2("test-id")
     val serialized = format.exerciseSerializer.serialize(interaction)
     val deserialized = format.exerciseSerializer.deserialize(serialized)
     assert(deserialized.elementId == "test-id")
@@ -137,7 +137,7 @@ class InteractionFormatSpec extends FunSuite {
       format.stateSerializer.serialize(history.historyStates.lastStateOption.map(_.value).getOrElse(""))
     }
 
-    val format = TextInteraction.format
+    val format = TextInteraction2.format
     val history = InteractionVariableHistory.empty[String, Unit, Unit]
       .addState(InteractionVariableState("test", UpdateImportance.MAJOR, java.time.LocalDateTime.now()))
     val json = format.historySerializer.serialize(history)
@@ -148,7 +148,7 @@ class InteractionFormatSpec extends FunSuite {
 
   test("Format works with different interaction types") {
     // Verify multiple formats can coexist without registry interference
-    val textFormat = TextInteraction.format
+    val textFormat = TextInteraction2.format
     val turtleFormat = TurtleRecreateShapeInteraction.format
 
     // Text format works
@@ -297,7 +297,7 @@ class InteractionFormatSpec extends FunSuite {
     assert(deserializedState == state)
 
     // Exercise serializer must work with WorkbookInteractionElementFull[String, Unit, Unit]
-    val interaction = TextInteraction("test")
+    val interaction = TextInteraction2("test")
     val serializedInteraction = format.exerciseSerializer.serialize(interaction)
     val deserializedInteraction: WorkbookInteractionElementFull[String, Unit, Unit] =
       format.exerciseSerializer.deserialize(serializedInteraction)

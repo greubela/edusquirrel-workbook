@@ -2,13 +2,13 @@ package it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExe
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.{DefaultSerializer, InteractionFormat}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.InteractionFormat.SortingReasonInteractionFormat
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.*
 
 case class SortingReasonInteraction(
@@ -16,7 +16,7 @@ case class SortingReasonInteraction(
                                      fields: List[LanguageMapContentId],
                                      items: List[SortingReasonItem],
                                      openButtonLabel: LanguageMapContentId = LanguageMapContentId("basic/startSortingReasonActivity")
-                                   ) extends WorkbookInteractionElement[SortingReasonInteractionState] {
+                                   ) extends WorkbookInteractionElement[SortingReasonInteractionFormat.type] {
 
   override val associatedFactory = SortingReasonInteraction.factory
 
@@ -24,7 +24,6 @@ case class SortingReasonInteraction(
     SortingReasonInteractionState.initial(items.size)
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override def format: InteractionFormat[SortingReasonInteractionState, Unit, Unit] = SortingReasonInteraction
 
 }
 
@@ -35,11 +34,9 @@ case class SortingReasonItem(
                               reasonPrompt: LanguageMapContentId
                             ) derives ReadWriter
 
-object SortingReasonInteraction extends InteractionFormat[SortingReasonInteractionState, Unit, Unit] {
-  override def stateSerializer: Serializer[SortingReasonInteractionState] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[SortingReasonInteractionState, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[SortingReasonInteractionState, Unit, Unit]] = Serializer.fromImplicitRW
-  val factory = new SimpleWorkbookElementFactory[SortingReasonInteraction]() {
+object SortingReasonInteraction  {
+
+   val factory = new SimpleWorkbookElementFactory[SortingReasonInteraction]() {
     override protected val constructorFieldOrder = List("elementId", "fields", "items", "openButtonLabel")
     override def finishSerialization(baseElement: WorkbookElementSerializable, e: SortingReasonInteraction): WorkbookElementSerializable = {
       baseElement

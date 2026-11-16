@@ -4,14 +4,16 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
 import upickle.default.{ReadWriter, readwriter}
 
-trait ProgrammingTestGrader extends WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo] {
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
+trait ProgrammingTestGrader extends WorkbookInteractionGrader[ProgrammingExerciseFormat.type] {
   def testId: String
   def publishProgramObservation: Boolean = false
 }
 
 object ProgrammingTestGrader {
   given ReadWriter[ProgrammingTestGrader] =
-    readwriter[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]].bimap(
+    readwriter[WorkbookInteractionGrader[ProgrammingExerciseFormat]].bimap(
       grader => grader,
       {
         case grader: ProgrammingTestGrader => grader

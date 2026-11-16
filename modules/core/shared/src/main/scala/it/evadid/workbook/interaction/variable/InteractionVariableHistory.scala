@@ -1,57 +1,59 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, UpdateImportance}
 import it.evadid.workbook.interaction.variable.events.*
+
 import java.time.LocalDateTime
 import upickle.default.*
 
 /** Canonical interaction history: all saved state and feedback live in timestamped events. */
-case class InteractionVariableHistory[T, GA, SA](events: InteractionEvents[T, GA, SA]) derives ReadWriter {
-  lazy val allStates: Set[AnswerChangedEvent[T, GA, SA]] = events.values.collect {
-    case event: AnswerChangedEvent[T, GA, SA] => event
+case class InteractionVariableHistory[F <: InteractionFormat](events: InteractionEvents[F]) derives ReadWriter {
+  lazy val allStates: Set[AnswerChangedEvent[F]] = events.values.collect {
+    case event: AnswerChangedEvent[F] => event
   }
-  lazy val gradingEvents: Set[GradingEvent[T, GA, SA]] = events.values.collect {
-    case event: GradingEvent[T, GA, SA] => event
+  lazy val gradingEvents: Set[GradingEvent[F]] = events.values.collect {
+    case event: GradingEvent[F] => event
   }
-  lazy val scaffoldingEvents: Set[ScaffoldingEvent[T, GA, SA]] = events.values.collect {
-    case event: ScaffoldingEvent[T, GA, SA] => event
+  lazy val scaffoldingEvents: Set[ScaffoldingEvent[F]] = events.values.collect {
+    case event: ScaffoldingEvent[F] => event
   }
 
-  lazy val historyStates: InteractionVariableStateHistory[T] = InteractionVariableStateHistory(
+  lazy val historyStates: InteractionVariableStateHistory[F] = InteractionVariableStateHistory(
     allStates.map(event => InteractionVariableState(event.newState, event.updateImportance, event.timestamp)))
-  lazy val historyGrading: InteractionVariableGradingHistory[T, GA] = InteractionVariableGradingHistory.fromResults(
-    gradingEvents.collect { case event: GradingCompletedEvent[T, GA, SA] => event.result })
-  lazy val historyScaffolding: InteractionVariableScaffoldingHistory[T, SA] = InteractionVariableScaffoldingHistory(
-    scaffoldingEvents.collect { case event: ScaffoldingCompletedEvent[T, GA, SA] => event.result })
+  lazy val historyGrading: InteractionVariableGradingHistory[F] = InteractionVariableGradingHistory.fromResults(
+    gradingEvents.collect { case event: GradingCompletedEvent[F] => event.result })
+  lazy val historyScaffolding: InteractionVariableScaffoldingHistory[F] = InteractionVariableScaffoldingHistory(
+    scaffoldingEvents.collect { case event: ScaffoldingCompletedEvent[F] => event.result })
   def timestampLastChanged: Option[LocalDateTime] = events.timestampLastChanged
   def size: Int = events.values.size
 
-  def addEvent(event: InteractionEvent[T, GA, SA]): InteractionVariableHistory[T, GA, SA] =
+  def addEvent(event: InteractionEvent[F]): InteractionVariableHistory[F] =
     copy(events = InteractionEvents(events.values + event))
-  def addState(state: InteractionVariableState[T]): InteractionVariableHistory[T, GA, SA] =
+  def addState(state: InteractionVariableState[F]): InteractionVariableHistory[F] =
     addEvent(AnswerChangedEvent(state.value, state.timestamp, state.updateImportance))
-  def addStates(states: Iterable[InteractionVariableState[T]]): InteractionVariableHistory[T, GA, SA] =
+  def addStates(states: Iterable[InteractionVariableState[F]]): InteractionVariableHistory[F] =
     states.foldLeft(this)(_.addState(_))
-  def addGrading(result: GradingResult[T, GA]): InteractionVariableHistory[T, GA, SA] = result.gradingStatus match {
+  def addGrading(result: GradingResult[F]): InteractionVariableHistory[F] = result.gradingStatus match {
     case _: GradingStatus.NotRequested | _: GradingStatus.NotFinished => this
     case _ => addEvent(GradingCompletedEvent(result))
   }
-  def addGrading(result: GradedState[T, GA]): InteractionVariableHistory[T, GA, SA] =
+  def addGrading(result: GradedState[F]): InteractionVariableHistory[F] =
     result.graderResultMap.values.foldLeft(this)(_.addGrading(_))
-  def addGradings(results: Iterable[GradingResult[T, GA]]): InteractionVariableHistory[T, GA, SA] =
+  def addGradings(results: Iterable[GradingResult[F]]): InteractionVariableHistory[F] =
     results.foldLeft(this)(_.addGrading(_))
-  def addScaffolding(result: ScaffoldingResult[T, SA]): InteractionVariableHistory[T, GA, SA] = result.scaffoldingStatus match {
+  def addScaffolding(result: ScaffoldingResult[F]): InteractionVariableHistory[F] = result.scaffoldingStatus match {
     case _: ScaffoldingStatus.ScaffoldingRequestedButNotFinished =>
       addEvent(ScaffoldingStartedEvent(result.forState, result.scaffoldingTime, result.scaffoldingEntity))
     case _ => addEvent(ScaffoldingCompletedEvent(result))
   }
-  def addScaffoldings(results: Iterable[ScaffoldingResult[T, SA]]): InteractionVariableHistory[T, GA, SA] =
+  def addScaffoldings(results: Iterable[ScaffoldingResult[F]]): InteractionVariableHistory[F] =
     results.foldLeft(this)(_.addScaffolding(_))
 
   /** Interactive normalization removes superseded default answers, without dropping independent delta feedback. */
-  def normalize(): InteractionVariableHistory[T, GA, SA] = {
+  def normalize(): InteractionVariableHistory[F] = {
     val states = historyStates.cleanedHistory().events
     val obsolete = allStates.filterNot(event => states(InteractionVariableState(event.newState, event.updateImportance, event.timestamp)))
     val obsoleteValues = obsolete.map(_.associatedState) -- states.map(_.value)
@@ -59,13 +61,13 @@ case class InteractionVariableHistory[T, GA, SA](events: InteractionEvents[T, GA
   }
 
   /** Project the latest lifecycle event per configured grader identity. Completion wins a timestamp tie. */
-  def gradingForState(knownGraders: Seq[WorkbookInteractionGrader[T, GA]], state: T): GradedState[T, GA] = {
+  def gradingForState(knownGraders: Seq[WorkbookInteractionGrader[F]], state: T): GradedState[F] = {
     val relevant = gradingEvents.filter(_.associatedState == state).groupBy(_.grader.key)
     val results = knownGraders.distinctBy(_.key).map { grader =>
       val candidates = relevant.getOrElse(grader.key, Set.empty)
       val latestTime = candidates.map(_.timestamp).maxOption
       val latest = candidates.filter(event => latestTime.contains(event.timestamp))
-      val completed = latest.collect { case event: GradingCompletedEvent[T, GA, SA] =>
+      val completed = latest.collect { case event: GradingCompletedEvent[F] =>
         event.result.copy(grader = grader)
       }
       val result = completed.reduceOption(_.merge(_)).getOrElse(GradingResult(
@@ -77,39 +79,39 @@ case class InteractionVariableHistory[T, GA, SA](events: InteractionEvents[T, GA
     GradedState(state, results)
   }
 
-  def mergeWith(other: InteractionVariableHistory[T, GA, SA]): InteractionVariableHistory[T, GA, SA] =
+  def mergeWith(other: InteractionVariableHistory[F]): InteractionVariableHistory[F] =
     copy(events = events.merge(other.events))
 
-  def mergeWith(others: Seq[InteractionVariableHistory[T, GA, SA]]): InteractionVariableHistory[T, GA, SA] =
+  def mergeWith(others: Seq[InteractionVariableHistory[F]]): InteractionVariableHistory[F] =
     others.foldLeft(this)(_.mergeWith(_))
 
-  def cleanWithStrategy(syncStrategy: EventSyncStrategy): InteractionVariableHistory[T, GA, SA] =
+  def cleanWithStrategy(syncStrategy: EventSyncStrategy): InteractionVariableHistory[F] =
     copy(events = InteractionEvents(syncStrategy.selectEvents(events.values)))
 
   /** Persistence cleanup only: no answer, grading or scaffolding events are synthesized. */
-  def clean(): InteractionVariableHistory[T, GA, SA] =
+  def clean(): InteractionVariableHistory[F] =
     copy(events = InteractionEvents(events.values.filter(_.updateImportance != UpdateImportance.TEMPORARY)))
 }
 
 object InteractionVariableHistory {
-  def empty[T, GA, SA]: InteractionVariableHistory[T, GA, SA] = InteractionVariableHistory(InteractionEvents.empty)
+  def empty[F <: InteractionFormat]: InteractionVariableHistory[F] = InteractionVariableHistory[F](InteractionEvents.empty)
 
   /** Build events from typed answers and completed results; this does not decode an older saved schema. */
-  def fromResults[T, GA, SA](states: Set[InteractionVariableState[T]],
-      gradings: Set[GradedState[T, GA]] = Set.empty[GradedState[T, GA]], scaffoldings: Set[ScaffoldingResult[T, SA]] = Set.empty[ScaffoldingResult[T, SA]]): InteractionVariableHistory[T, GA, SA] =
-    gradings.foldLeft(empty[T, GA, SA].addStates(states))(_.addGrading(_)).addScaffoldings(scaffoldings)
+  def fromResults[F](states: Set[InteractionVariableState[F]],
+      gradings: Set[GradedState[F]] = Set.empty[GradedState[F]], scaffoldings: Set[ScaffoldingResult[F]] = Set.empty[ScaffoldingResult[F]]): InteractionVariableHistory[F] =
+    gradings.foldLeft(empty[F].addStates(states))(_.addGrading(_)).addScaffoldings(scaffoldings)
 
-  def fromResults[T, GA, SA](states: InteractionVariableStateHistory[T], gradings: InteractionVariableGradingHistory[T, GA],
-      scaffoldings: InteractionVariableScaffoldingHistory[T, SA]): InteractionVariableHistory[T, GA, SA] =
+  def fromResults[F](states: InteractionVariableStateHistory[F], gradings: InteractionVariableGradingHistory[F],
+      scaffoldings: InteractionVariableScaffoldingHistory[F]): InteractionVariableHistory[F] =
     fromResults(states.events, gradings.gradingsFinished, scaffoldings.scaffoldingsFinished)
 
   /** Backward-compatibility constructor for tests. Converts to event-based format. */
-  def apply[T, GA, SA](states: InteractionVariableStateHistory[T],
-      gradings: InteractionVariableGradingHistory[T, GA],
-      scaffoldings: InteractionVariableScaffoldingHistory[T, SA]): InteractionVariableHistory[T, GA, SA] =
+  def apply[F](states: InteractionVariableStateHistory[F],
+      gradings: InteractionVariableGradingHistory[F],
+      scaffoldings: InteractionVariableScaffoldingHistory[F]): InteractionVariableHistory[F] =
     fromResults(states, gradings, scaffoldings)
 
   /** Backward-compatibility constructor for tests. Converts to event-based format. */
-  def apply[T, GA, SA](events: Set[InteractionVariableState[T]]): InteractionVariableHistory[T, GA, SA] =
+  def apply[F](events: Set[InteractionVariableState[F]]): InteractionVariableHistory[F] =
     fromResults(events, Set.empty, Set.empty)
 }

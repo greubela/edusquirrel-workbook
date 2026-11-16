@@ -2,14 +2,18 @@ package it.evadid.workbook.elements.interactionElements.pixel
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.WorkbookInteractionElement
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.model.pixel.*
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
+import it.evadid.workbook.abstractions.*
 import upickle.default.*
+
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
+
 
 /** Unit-weight threshold detector over explicitly selected pixels; no training is implied. */
 case class PixelThresholdProbe(label: LanguageMapContentId, cells: List[PixelPosition], threshold: Int) derives ReadWriter {
@@ -22,7 +26,7 @@ case class PixelPreset(label: LanguageMapContentId, image: BinaryPixelImage) der
 
 case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId, initial: BinaryPixelImage,
     expected: Option[BinaryPixelImage] = None, probes: List[PixelThresholdProbe] = Nil, presets: List[PixelPreset] = Nil)
-    extends WorkbookInteractionElement[BinaryPixelImage] {
+    extends WorkbookInteractionElement[BinaryPixelInteractionFormat.type] {
 
   require(expected.forall(initial.sameDimensions) && presets.forall(p => initial.sameDimensions(p.image)),
     "Targets and presets must match the canvas dimensions")
@@ -33,10 +37,9 @@ case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId
     require(initial.sameDimensions(image), "Stored pixel dimensions do not match the exercise")
     image
   }
-  override val serializerInteractionContent: Serializer[BinaryPixelImage] =
-    Serializer.fromUpickleJson(summon[ReadWriter[BinaryPixelImage]]).map(checked, checked)
+
   override val associatedFactory = BinaryPixelInteraction.factory
-  override def format: InteractionFormat[BinaryPixelImage, Unit, Unit] = BinaryPixelInteraction
+
   def toggle(image: BinaryPixelImage, position: PixelPosition): BinaryPixelImage = checked(image).toggle(position)
   def matchingPixels(image: BinaryPixelImage): Option[Int] = {
     val valid = checked(image)
@@ -51,10 +54,8 @@ case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId
     probes.map(_.activates(valid))
   }
 }
-object BinaryPixelInteraction extends InteractionFormat[BinaryPixelImage, Unit, Unit] {
-  override def stateSerializer: Serializer[BinaryPixelImage] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[BinaryPixelImage, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[BinaryPixelImage, Unit, Unit]] = Serializer.fromImplicitRW
+object BinaryPixelInteraction {
+
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[BinaryPixelInteraction] {
     override protected val constructorFieldOrder = List("elementId", "title", "initial", "expected", "probes", "presets")
     override def finishSerialization(base: WorkbookElementSerializable, e: BinaryPixelInteraction): WorkbookElementSerializable =

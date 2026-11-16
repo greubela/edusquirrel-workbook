@@ -35,10 +35,10 @@ class WorkbookSerializerSpec extends FunSuite {
   test("populated workbooks round-trip repeatedly with native metadata and registry JSON") {
     import it.evadid.workbook.elements.structureElements.WorkbookSection
     import WorkbookSection.WorkbookSectionMetadata
-    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
     import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
     import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-    val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("section/first")), List(TextInteraction("text")))
+    val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("section/first")), List(TextInteraction2("text")))
     val second = WorkbookSection("second", WorkbookSectionMetadata(LanguageMapContentId("section/second"), List(first), List(first)),
       List(ProgrammingExercise("programming", editorPalette = ProgrammingEditorPalette.Embroidery, referencePython = Some("print(\"hello\")\n"))))
     val populated = workbook.copy(sections = List(second, first))
@@ -59,8 +59,8 @@ class WorkbookSerializerSpec extends FunSuite {
   test("reference ids preserve slashes, quotes, newlines and significant whitespace") {
     import it.evadid.workbook.elements.structureElements.WorkbookSection
     import WorkbookSection.WorkbookSectionMetadata
-    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-    val text = TextInteraction(" text/\"quoted\"\n ")
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
+    val text = TextInteraction2(" text/\"quoted\"\n ")
     val section = WorkbookSection(" section/one ", WorkbookSectionMetadata(LanguageMapContentId("section/title")), List(text))
     val populated = workbook.copy(sections = List(section))
     for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)) {
@@ -72,8 +72,8 @@ class WorkbookSerializerSpec extends FunSuite {
   test("registry round trip resolves nonempty sections and prerequisites regardless of input order") {
     import it.evadid.workbook.elements.structureElements.WorkbookSection
     import WorkbookSection.WorkbookSectionMetadata
-    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-    val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("section/first")), List(TextInteraction("text")))
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
+    val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("section/first")), List(TextInteraction2("text")))
     val second = WorkbookSection("second", WorkbookSectionMetadata(LanguageMapContentId("section/second"), List(first), List(first)), Nil)
     val populated = workbook.copy(sections = List(second, first))
     val serialized = WorkbookElementFactory.serializerRegularJsonWorkbook.serialize(populated)
@@ -85,10 +85,10 @@ class WorkbookSerializerSpec extends FunSuite {
 
   test("embedded registries reject unresolved references instead of re-expanding forever") {
     import it.evadid.workbook.jsonFactory.{WorkbookElementSerializable, WorkbookElementReference}
-    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
     val root = workbook.toSerialized
       .withElementsAddedAs("sections", List(WorkbookElementReference("missing", Some("WorkbookSection"))))
-      .withElementsAddedAs("serializedElements", List(TextInteraction("unrelated").toSerialized))
+      .withElementsAddedAs("serializedElements", List(TextInteraction2("unrelated").toSerialized))
     val error = intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(root))
     assert(error.getMessage.contains("no progress"))
   }
@@ -100,8 +100,8 @@ class WorkbookSerializerSpec extends FunSuite {
     import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
     import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement
     import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, WorkbookLabel}
-    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-    val answer = TextInteraction("saved-answer")
+    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
+    val answer = TextInteraction2("saved-answer")
     val wrapped = LabeledWorkbookElement("label", answer, WorkbookLabel(LanguageMapContentId("serializer/goal"), GoalLabel))
     val container = ExerciseContainer("exercise", LanguageMapContentId("serializer/exercise"), List(wrapped))
     val section = WorkbookSection("section", WorkbookSectionMetadata(LanguageMapContentId("serializer/section")), List(container))

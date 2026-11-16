@@ -1,17 +1,19 @@
 package it.evadid.workbook.elements.interactionElements.basic
 
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionElementFull}
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.*
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.NoContentElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.{DefaultSerializer, InteractionFormat}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.InteractionFormat.MessagingInteractionFormat
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.ReadWriter
-case class MessagingInteraction(override val elementId: String) extends WorkbookInteractionElement[MessengerModelScaffolding] {
+case class MessagingInteraction(override val elementId: String) extends WorkbookInteractionElement[MessagingInteractionFormat.type] {
 
   override val associatedFactory: NoContentElementFactory[MessagingInteraction] = MessagingInteraction.factory
 
@@ -19,15 +21,10 @@ case class MessagingInteraction(override val elementId: String) extends Workbook
 
   override val defaultValue: MessengerModelScaffolding = MessengerModelScaffolding(MessengerModel.empty)
 
-  override val serializerInteractionContent: Serializer[MessengerModelScaffolding] = Serializer.fromUpickleJson(MessengerModelScaffolding.derived$ReadWriter)
-  override def format: InteractionFormat[MessengerModelScaffolding, Unit, Unit] = MessagingInteraction
-
 }
 
-object MessagingInteraction extends InteractionFormat[MessengerModelScaffolding, Unit, Unit] {
-  override def stateSerializer: Serializer[MessengerModelScaffolding] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[MessengerModelScaffolding, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[MessengerModelScaffolding, Unit, Unit]] = Serializer.fromImplicitRW
+object MessagingInteraction  {
+
 
   val factory: NoContentElementFactory[MessagingInteraction] = new NoContentElementFactory[MessagingInteraction]() {
 

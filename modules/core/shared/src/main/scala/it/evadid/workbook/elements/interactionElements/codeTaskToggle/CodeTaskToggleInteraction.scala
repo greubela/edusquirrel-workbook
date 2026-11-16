@@ -2,13 +2,13 @@ package it.evadid.workbook.elements.interactionElements.codeTaskToggle
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import upickle.default.{ReadWriter, macroRW}
 
 case class CodeTaskToggleInteraction(
@@ -18,7 +18,7 @@ case class CodeTaskToggleInteraction(
                                       advancedCodeTemplate: String,
                                       advancedRequirements: List[AdvancedCodeRequirement] = Nil,
                                       advancedSuccessMessage: LanguageMapContentId = LanguageMapContentId("basic/advancedCodeFeedbackSuccess")
-                                    ) extends WorkbookInteractionElement[CodeTaskToggleState] {
+                                    ) extends WorkbookInteractionElement[CodeTaskToggleStateFormat.type] {
 
   override val associatedFactory = CodeTaskToggleInteraction.factory
 
@@ -30,13 +30,9 @@ case class CodeTaskToggleInteraction(
   override lazy val childrenOfThisElement: List[WorkbookElement] = List(reorder)
 
   override lazy val allInteractionsInThisInstance: List[WorkbookInteractionElement[?]] = List(this, reorder)
-  override def format: InteractionFormat[CodeTaskToggleState, Unit, Unit] = CodeTaskToggleInteraction
 }
 
-object CodeTaskToggleInteraction extends InteractionFormat[CodeTaskToggleState, Unit, Unit] {
-  override def stateSerializer: Serializer[CodeTaskToggleState] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[CodeTaskToggleState, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[CodeTaskToggleState, Unit, Unit]] = Serializer.fromImplicitRW
+object CodeTaskToggleInteraction {
   private given requirementRW: ReadWriter[AdvancedCodeRequirement] = macroRW
 
   private[workbook] val requirementsSerializer = Serializer.fromUpickleJson(summon[ReadWriter[List[AdvancedCodeRequirement]]])
