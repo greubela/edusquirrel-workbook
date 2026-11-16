@@ -12,6 +12,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.core.util.io.serializer.InteractionFormat
 import upickle.default.*
 
 case class TurtleRecreateShapeInteraction
@@ -37,6 +38,11 @@ case class TurtleRecreateShapeInteraction
 }
 
 object TurtleRecreateShapeInteraction {
+
+  // Register the interaction format for backend serialization
+  // The elementIdPrefix must match how this interaction is identified in the sync system
+  InteractionFormat.register[ProgrammingState, AdditionalProgrammingTestInfo, Unit](elementIdPrefix = "TurtleRecreateShapeInteraction")
+
 
 
   val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {

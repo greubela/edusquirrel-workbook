@@ -118,40 +118,6 @@ case class UpsertToDatabase(
   }
 
   def findMaxTimestamp(history: String): Option[LocalDateTime] = HistoryJson.lastTimestamp(history)
-
-  def upsertIntoTableWithKeys(request: StoreToDbRequest): SyncSuccess =
-    storeSnapshot(request, "eventsWithKey", includeKey = true)
-
-  def upsertIntoTableWithoutKeys(request: StoreToDbRequest, tableName: String = "events"): SyncSuccess = transaction {
-    val key = request.syncContext.keyForSerialisation
-    delete.deleteByKeyInDatabaseWithoutKey(key, tableName)
-    insertIntoTableWithoutKeys(request, tableName)
-  }
-
-  def insertIntoTableWithoutKeys(request: StoreToDbRequest, tableName: String = "events"): SyncSuccess =
-    storeSnapshot(request, tableName, includeKey = false)
-
-  private def storeSnapshot(request: StoreToDbRequest, tableName: String, includeKey: Boolean): SyncSuccess =
-    HistoryJson.lastTimestamp(request.historyJson).fold(SyncSuccess.emptyNow()) { timestamp =>
-      val keyColumn = if includeKey then ", `eventkey`" else ""
-      val keyPlaceholder = if includeKey then ", ?" else ""
-      val sql = s"""INSERT INTO `$tableName` (`programid`, `scenarioid`, `userid`, `timestamp`, `serializeddata`$keyColumn)
-                   |VALUES (?, ?, ?, ?, ?$keyPlaceholder)
-                   |ON DUPLICATE KEY UPDATE `timestamp` = VALUES(`timestamp`), `serializeddata` = VALUES(`serializeddata`)
-                   |""".stripMargin
-      val affected = Using.resource(connection.prepareStatement(sql)) { statement =>
-        statement.setString(1, request.syncContext.programId)
-        statement.setString(2, request.syncContext.scenarioId)
-        statement.setString(3, request.syncContext.userId)
-        statement.setTimestamp(4, Timestamp.valueOf(timestamp))
-        statement.setString(5, HistoryJson.stored(request.syncContext.keyForSerialisation, request.historyJson))
-        if includeKey then statement.setString(6, request.syncContext.keyForSerialisation)
-        generic.executeUpdate(statement)
-      }
-      if includeKey then SyncSuccess(0, affected, 0, LocalDateTime.now())
-      else SyncSuccess(affected, 0, 0, LocalDateTime.now())
-    }
-
 }
 
 object UpsertToDatabase {

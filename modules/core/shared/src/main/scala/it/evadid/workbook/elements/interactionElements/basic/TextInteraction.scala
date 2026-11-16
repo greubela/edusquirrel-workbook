@@ -11,6 +11,7 @@ import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import java.time.Duration
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
+
 case class TextInteraction(override val elementId: String) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
   override val associatedFactory = TextInteraction.factory
   lazy val childrenOfThisElement: List[WorkbookElement] = List()
@@ -21,7 +22,9 @@ object TextInteraction {
     override def callConstructor(elementId: String): TextInteraction = TextInteraction(elementId)
   }
 
-
+  // Register the interaction format for backend serialization
+  // The elementIdPrefix matches how the interaction is identified in the sync system
+  InteractionFormat.register[String, Unit, Unit](elementIdPrefix = "TextInteraction")
 
   def decideTextareaUpdateImportance(change: InteractionVariableStateChanged[String]): UpdateImportance =
     if (change.lastState.value == change.newState.value) TEMPORARY else {
