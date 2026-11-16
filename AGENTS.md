@@ -26,11 +26,11 @@ Persisted-data policy: the project is in development and supports only current s
 
 `InteractionFormat` is a **sealed trait** with case objects as implementations. Each interaction type has exactly one format instance implemented as a case object that extends the trait.
 
-**Design principle**: Format instances should be serializable case objects, NOT classes or traits with anonymous instances.
+**Design principle**: Format instances are case objects (singletons), naturally serializable. All known format implementations are stored in `InteractionFormat.knownFormats`.
 
 **Usage pattern**:
 ```scala
-// Interaction class - does NOT extend InteractionFormat
+// Interaction class - references companion as format
 case class MyInteraction(...) extends WorkbookInteractionElementFull[T, GA, SA] {
   override def format: InteractionFormat[T, GA, SA] = MyInteraction  // Returns companion object
 }
@@ -43,11 +43,19 @@ object MyInteraction extends InteractionFormat[T, GA, SA] {
 }
 ```
 
-**Why case objects**:
-- Case objects are naturally serializable (they're singletons)
-- Only the object's name is serialized, not its contents
-- No serialization issues with non-serializable fields (like `Serializer`)
-- Can be safely passed across server boundaries
+**Why sealed trait + case objects**:
+- Sealed trait ensures all implementations are known at compile time
+- Case objects are naturally serializable (singletons)
+- `derives ReadWriter` works automatically for sealed traits
+- All known formats stored in `InteractionFormat.knownFormats` for type-safe access
+- Format is passed explicitly, enabling strongly typed values everywhere
+- No elementId lookup needed; type-safe throughout
+
+**Why this approach**:
+- **Strong typing**: `InteractionFormat[T, GA, SA]` with type parameters ensures compile-time safety
+- **Auto-serialization**: Case objects serialize by class name automatically
+- **All formats compile-time known**: Client has definitions, server validates against `knownFormats`
+- **Type-safe operations**: No unsafe casting, all operations use typed format
 
 See also:
 - [docs/interaction-format.md](docs/interaction-format.md) - Overview of the InteractionFormat API
