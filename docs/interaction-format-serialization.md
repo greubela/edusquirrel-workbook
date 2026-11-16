@@ -2,11 +2,32 @@
 
 ## Overview
 
-`InteractionFormat` is a **strongly typed** trait that provides type-level association between an interaction type and its serializers. Each interaction has exactly one format instance implemented as a case object (the companion object of the interaction class).
+`InteractionFormat` is a **sealed trait** with case objects as implementations, providing type-level association between an interaction type and its serializers.
 
 ## Design Principles
 
-### 1. Strong Typing
+### 1. Sealed Trait for Strong Typing
+**`InteractionFormat` is a sealed trait**, which is critical for the design:
+
+**Why sealed?**
+- All implementations must be known at compile time (in the same file as the trait)
+- Compiler ensures all cases are handled
+- `derives ReadWriter` can be used to automatically serialize/deserialize
+
+**Why case objects?**
+- Case objects are naturally serializable (they're singletons)
+- Only the object's name (class name) is serialized
+- No serialization issues with non-serializable fields
+- Can be safely passed across server boundaries
+
+**Where are implementations stored?**
+- All format implementations (case objects) are stored in `InteractionFormat.knownFormats`
+- The companion object contains all known format instances
+- Type-safe access to all formats via the set
+
+**Important**: Since `InteractionFormat` is sealed, all case object implementations must be in the same file as the trait. This is why all interaction format companions are stored directly in `InteractionFormat.scala`.
+
+### 2. Strong Typing
 `InteractionFormat` is strongly typed with type parameters `[T, GA, SA]`:
 - `T`: The interaction state type (e.g., `String`, `ProgrammingState`)
 - `GA`: The grading result type (typically `Unit` for no grading)

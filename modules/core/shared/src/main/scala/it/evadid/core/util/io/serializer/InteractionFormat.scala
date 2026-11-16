@@ -12,24 +12,38 @@ import upickle.default.*
   * - `historySerializer`: For serializing the interaction history
   * - `exerciseSerializer`: For serializing the interaction element itself
   *
-  * InteractionFormat implementations are case objects (the companion objects
-  * of interaction classes). Case objects are naturally serializable (they're
-  * singletons), making the format serializable. This allows formats to be
-  * passed explicitly through method signatures:
+  * '''InteractionFormat is a sealed trait with case objects as implementations.'''
+  * Case objects are naturally serializable (they're singletons), making the
+  * format serializable. This allows formats to be passed explicitly through
+  * method signatures:
   * - Portable across server boundaries (no elementId lookup needed)
   * - Explicit in method signatures (type-safe)
   * - Easy to test (pass format as parameter)
   *
-  * ==Strong Typing==
+  * ==Why Sealed Trait?==
   *
-  * InteractionFormat is strongly typed with type parameters [T, GA, SA].
-  * Since it's a trait with case object implementations (companion objects),
-  * we use a custom ReadWriter that:
-  * - Serializes by storing the class name string
-  * - Deserializes by loading the class and getting the singleton
+  * InteractionFormat is a sealed trait for strong typing and compile-time safety:
+  * - '''All implementations must be in the same file as the trait'''
+  * - Compiler ensures all cases are handled
+  * - `derives ReadWriter` works automatically for sealed traits with case objects
+  * - All known formats are stored in `InteractionFormat.knownFormats`
   *
-  * All interaction formats are compile-time known. The client always has the
-  * format. If an unknown format is received, a formatNotKnown error is thrown.
+  * ==Why Case Objects?==
+  *
+  * Case objects are used for format implementations because:
+  * - They are naturally serializable (singletons)
+  * - Only the class name is serialized, not the contents
+  * - No serialization issues with non-serializable fields (like Serializer)
+  * - Can be safely passed across server boundaries
+  *
+  * ==Format Storage==
+  *
+  * All known format implementations are stored in the companion object:
+  * {{{val knownFormats: Set[InteractionFormat[?, ?, ?]] = Set(...)
+  * }}}
+  *
+  * This provides type-safe access to all formats and ensures all known
+  * interaction types are registered at compile time.
   *
   * Usage in interaction definitions:
   * {{{
@@ -48,7 +62,7 @@ import upickle.default.*
   *   format.historySerializer.deserialize(json)
   * }}}
   */
-trait InteractionFormat[T, GA, SA] {
+sealed trait InteractionFormat[T, GA, SA] derives ReadWriter {
 
   /** Serializer for the interaction state (T).
     *
@@ -101,33 +115,95 @@ object InteractionFormat {
       Serializer.fromImplicitRW[WorkbookInteractionElementFull[T, GA, SA]]
     )
 
-  /** Custom ReadWriter for InteractionFormat.
+  /** Set of all known InteractionFormat implementations.
     *
-    * Format instances are case objects (singletons). We serialize by storing
-    * the fully qualified class name and deserialize by loading the singleton.
+    * This contains all format case objects that are known at compile time.
+    * It's used for type-safe format lookup and validation.
     *
-    * @param T, GA, SA Type parameters for type safety
+    * All interaction format implementations (companion objects) are stored here.
+    * When deserializing, the format is looked up from this set.
     */
-  given formatReadWriter[T, GA, SA]: ReadWriter[InteractionFormat[T, GA, SA]] =
-    upickle.default.readwriter[ujson.Value].bimap[
-      InteractionFormat[T, GA, SA]
-    ](
-      format => ujson.Str(format.getClass.getName),
-      value => {
-        val className = value.str
-        try {
-          val clazz = Class.forName(className)
-          val field = clazz.getField("MODULE$")
-          field.get(null).asInstanceOf[InteractionFormat[T, GA, SA]]
-        } catch {
-          case e: Exception =>
-            throw new RuntimeException(
-              s"Format class '$className' is not known. " +
-              s"This may indicate an unknown interaction type. " +
-              s"Error: ${e.getMessage}"
-            )
-        }
-      }
-    )
+  val knownFormats: Set[InteractionFormat[?, ?, ?]] = Set(
+    // Basic interactions
+    it.evadid.workbook.elements.interactionElements.basic.TextInteraction,
+    it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction,
+    it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction,
+    it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction,
+    
+    // Choice interactions
+    it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction,
+    
+    // SQL interactions
+    it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise,
+    
+    // QR code interactions
+    it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction,
+    
+    // Pixel interactions
+    it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction,
+    
+    // Plot interactions
+    it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction,
+    
+    // CodeTaskToggle interactions
+    it.evadid.workbook.elements.interactionElements.codeTaskToggle.CodeTaskToggleInteraction,
+    it.evadid.workbook.elements.interactionElements.codeTaskToggle.SketchDownloadInteraction,
+    
+    // EmailSimulator interactions
+    it.evadid.workbook.elements.interactionElements.emailSimulator.MailInteraction,
+    it.evadid.workbook.elements.interactionElements.emailSimulator.MailEditor,
+    
+    // Table interactions
+    it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction,
+    
+    // Text interactions
+    it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction,
+    
+    // Blockchain interactions
+    it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction,
+    it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction,
+    it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHashInteraction,
+    
+    // Reorder interactions
+    it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderCodeInteraction,
+    it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderMapIdInteraction,
+    
+    // Sorting interactions
+    it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.SortingInteraction,
+    it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction,
+    
+    // Slideshow interactions
+    it.evadid.workbook.elements.interactionElements.slideshow.Slideshow,
+    
+    // Neuron interactions
+    it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction,
+    
+    // Evacuation interactions
+    it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction,
+    it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction,
+    
+    // Compression interactions
+    it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction,
+    
+    // Programming interactions
+    it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
+  )
+
+  /** Read format by class name (for deserialization from stored class name).
+    *
+    * @param className The fully qualified class name of the format
+    * @return The format instance (singleton case object)
+    * @throws RuntimeException if the format class is not known
+    */
+  def fromClassName(className: String): InteractionFormat[?, ?, ?] = {
+    val format = knownFormats.find(_.getClass.getName == className)
+    format.getOrElse {
+      throw new RuntimeException(
+        s"Format class '$className' is not known. " +
+        s"This may indicate an unknown interaction type. " +
+        s"Known formats: ${knownFormats.map(_.getClass.getName).mkString(", ")}"
+      )
+    }
+  }
 
 }
