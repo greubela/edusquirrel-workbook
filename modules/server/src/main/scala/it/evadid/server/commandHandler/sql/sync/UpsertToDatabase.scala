@@ -1,6 +1,6 @@
 package it.evadid.server.commandHandler.sql.sync
 
-import it.evadid.workbook.interaction.sync.model.HistoryJson
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.distribution.commandTypes.SQLCommands.StoreToDbRequest
 import it.evadid.server.commandHandler.sql.GenericSqlFunctionality
 import it.evadid.util.logging.Logger
@@ -33,7 +33,7 @@ case class UpsertToDatabase(
   private def optionalData(result: ujson.Value, field: String): Any =
     result.obj.get(field).filter(_ != ujson.Null).map(ujson.write(_)).orNull
 
-  private def upsertAnswer(sync: Long, event: ujson.Value): Unit = {
+  private def upsertAnswer(sync: Long, event: ujson.Value, formatId: String): Unit = {
     val timestamp = time(event("timestamp"))
     val value = event("value")
     val existing = query("SELECT id,serialized_data FROM answer_event WHERE sync_id=? AND timestamp=?", List(sync, timestamp)) { row =>
@@ -43,15 +43,18 @@ case class UpsertToDatabase(
       update("DELETE FROM grading_event WHERE sync_id=? AND answer_id=?", sync, id)
       update("DELETE FROM scaffolding_event WHERE sync_id=? AND answer_id=?", sync, id)
     }
-    update("INSERT INTO answer_event (sync_id,timestamp,update_importance,serialized_data) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE update_importance=VALUES(update_importance),serialized_data=VALUES(serialized_data)",
-      sync, timestamp, event("updateImportance").str, ujson.write(value))
+    update("INSERT INTO answer_event (sync_id,timestamp,update_importance,serialized_data,format_id) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE update_importance=VALUES(update_importance),serialized_data=VALUES(serialized_data),format_id=VALUES(format_id)",
+      sync, timestamp, event("updateImportance").str, ujson.write(value), formatId)
   }
 
   /** Stores V2 answers and feedback atomically, preserving IDs on retries. */
   def upsertIntoRelationalTables(request: StoreToDbRequest): SyncSuccess = transaction {
-    val history = HistoryJson.payload(request.historyJson)
+    val format = request.history.format
+    val history = request.history
     val sync = ensureContext(request.syncContext)
-    history("historyStates")("events").arr.toList.sortBy(event => LocalDateTime.parse(event("timestamp").str)).foreach(upsertAnswer(sync, _))
+    history.entries("historyStates", "events").sortBy { case (event, _) => LocalDateTime.parse(event("timestamp").str) }.foreach { case (event, _) =>
+      upsertAnswer(sync, event, format.getClass.getName)
+    }
     val answers = query("SELECT id,timestamp,update_importance,serialized_data FROM answer_event WHERE sync_id=?", List(sync)) { row =>
       safe("answer " + row.getLong("id")) {
         val event = answerJson(row)
@@ -61,9 +64,9 @@ case class UpsertToDatabase(
     def answerFor(state: ujson.Value): Long = answers.filter(_._3 == state).maxByOption(_._2)
       .map(_._1).getOrElse(throw IllegalArgumentException("Feedback has no matching saved answer in this sync context"))
 
-    HistoryJson.entries(history("historyGrading")("gradingsMap")).foreach { (state, group) =>
+    history.entries("historyGrading", "gradingsMap").foreach { (state, group) =>
       require(group("state") == state, "Grading state does not match its map key")
-      HistoryJson.entries(group("graderResultMap")).foreach { (definition, incoming) =>
+      history.entries(state, "graderResultMap").foreach { (definition, incoming) =>
         require(incoming("gradedState") == state && incoming("grader") == definition, "Inconsistent grading result")
         val grader = readJson[WorkbookInteractionGrader[ujson.Value, ujson.Value]]("WorkbookInteractionGrader", definition)
         require(grader.key.nonEmpty, "Grader identity must not be empty")
@@ -71,15 +74,15 @@ case class UpsertToDatabase(
         upsertGrading(sync, answer, state, grader, incoming)
       }
     }
-    HistoryJson.entries(history("historyScaffolding")("scaffoldingMap")).foreach { (state, incoming) =>
+    history.entries("historyScaffolding", "scaffoldingMap").foreach { (state, incoming) =>
       require(incoming("forState") == state, "Scaffolding state does not match its map key")
       val answer = answerFor(state)
       upsertScaffolding(sync, answer, state, incoming)
     }
-    val feedbackCount = HistoryJson.entries(history("historyGrading")("gradingsMap"))
-      .map((_, group) => HistoryJson.entries(group("graderResultMap")).size).sum +
-      HistoryJson.entries(history("historyScaffolding")("scaffoldingMap")).size
-    SyncSuccess(0, history("historyStates")("events").arr.size + feedbackCount, 0, LocalDateTime.now())
+    val feedbackCount = history.entries("historyGrading", "gradingsMap")
+      .map((_, group) => history.entries(group, "graderResultMap").size).sum +
+      history.entries("historyScaffolding", "scaffoldingMap").size
+    SyncSuccess(0, history.entries("historyStates", "events").size + feedbackCount, 0, LocalDateTime.now())
   }
 
   private def upsertGrading(sync: Long, answer: Long, state: ujson.Value,
@@ -117,13 +120,13 @@ case class UpsertToDatabase(
       ujson.write(result("scaffoldingStatus")), optionalData(result, "additionalInformation"))
   }
 
-  def findMaxTimestamp(history: String): Option[LocalDateTime] = HistoryJson.lastTimestamp(history)
+  def findMaxTimestamp(history: InteractionHistoryJson[?, ?, ?]): Option[LocalDateTime] = history.lastTimestamp
 }
 
 object UpsertToDatabase {
 
   def handleRequest(request: StoreToDbRequest, logger: Logger): SyncSuccess =
-    if (HistoryJson.lastTimestamp(request.historyJson).isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now()) else {
+    if (request.history.lastTimestamp.isEmpty) SyncSuccess(0, 0, 0, LocalDateTime.now()) else {
       it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
         val control = UpsertToDatabase(connection, request.usageContext, logger)
         control.upsertIntoRelationalTables(request)

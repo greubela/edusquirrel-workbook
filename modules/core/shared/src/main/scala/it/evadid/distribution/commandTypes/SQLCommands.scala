@@ -27,7 +27,7 @@ object SQLCommands {
 
   case class StoreToDbRequest(
                                syncContext: SyncContext,
-                               historyJson: String,
+                               history: InteractionHistoryJson[?, ?, ?],
                                databaseConfig: DatabaseConfiguration,
                                databaseFormat: DatabaseHistoryFormat
                              ) extends DbRequest derives ReadWriter {
@@ -64,7 +64,7 @@ object SQLCommands {
     require(!allWorkbooks || limitToKey.isEmpty, "An all-workbook reset cannot be restricted to one variable.")
   }
 
-  case class DbFetchResponse(fetchedElements: Map[SyncContext, String]) derives ReadWriter {
+  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionHistoryJson[?, ?, ?]]) derives ReadWriter {
 
 
   }

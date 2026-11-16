@@ -1,7 +1,7 @@
 package it.evadid.core.util.io
 
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.sync.model.HistoryJson
+import it.evadid.workbook.interaction.sync.model.InteractionInteractionHistoryJson
 import munit.FunSuite
 import upickle.default.*
 
@@ -27,7 +27,7 @@ class ParsingContextSpec extends FunSuite {
   }
 
   test("history field errors include the parsing operation and preserve the cause") {
-    val error = intercept[IllegalArgumentException] { HistoryJson.lastTimestamp("{}") }
+    val error = intercept[IllegalArgumentException] { InteractionHistoryJson.lastTimestamp("{}") }
     assert(error.getMessage.contains("interactionVariableHistory timestamps"))
     assert(error.getMessage.contains("historyStates"))
     assert(error.getCause != null)

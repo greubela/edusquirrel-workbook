@@ -164,39 +164,78 @@ This ensures:
 - Format is a case object, naturally serializable
 - History JSON is stored as a string for database compatibility
 
-## Timestamp Precision
+## Database Storage with Format
 
-`LocalDateTime` in Scala supports nanosecond precision (9 fractional digits), which is more than sufficient for all use cases. The timestamp format used is:
+The backend server stores the **format alongside the JSON history** in the database:
 
+### Storage Design
+
+```scala
+// Database schema for interaction history
+CREATE TABLE `answer_event` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `sync_id` BIGINT UNSIGNED NOT NULL,
+  `timestamp` VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `update_importance` ENUM('DEFAULT','TEMPORARY','MINOR','MAJOR') NOT NULL,
+  `serialized_data` JSON,
+  `format_id` VARCHAR(255) NOT NULL  -- NEW: Format class name
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin;
 ```
-yyyy-MM-ddTHH:mm:ss.nnnnnnnnn
+
+### Why Store Format in Database?
+
+1. **Strong Typing on Server**: Backend can use typed `InteractionFormat` directly for:
+   - Filtering events by timestamp
+   - Grading based on history
+   - Complex data transformations
+
+2. **Validation**: The format can be used to verify the JSON is parseable:
+   ```scala
+   def validateWithFormat(format: InteractionFormat[?, ?, ?], json: String): Boolean = {
+     try {
+       format.historySerializer.deserialize(json)
+       true
+     } catch {
+       case _: Exception => false
+     }
+   }
+   ```
+
+3. **Type-Safe Server Operations**: No need to look up format from interaction definitions - it's stored with the data
+
+### Backend Usage Example
+
+```scala
+// Fetch with format from database
+def fetchHistory(syncContext: SyncContext): Option[InteractionHistoryJson[?, ?, ?]] = {
+  val row = query("SELECT format_id, serialized_data FROM answer_event WHERE sync_id=? LIMIT 1", List(syncContext))
+  for {
+    formatId <- row.getString("format_id")
+    format <- InteractionFormatRegistry.get(formatId)  // Or look up from interaction
+    json <- row.getString("serialized_data")
+  } yield InteractionHistoryJson(format, json)
+}
+
+// Process with strong typing
+def filterByTimestamp(
+  historyJson: InteractionHistoryJson[?, ?, ?],
+  start: LocalDateTime,
+  end: LocalDateTime
+): InteractionVariableHistory[?, ?, ?] = {
+  val history = historyJson.toHistory
+  history.copy(events = history.events.copy(values = 
+    history.events.values.filter(e => !e.timestamp.isBefore(start) && !e.timestamp.isAfter(end))
+  ))
+}
 ```
 
-This ensures:
-- All timestamps have at least nanosecond precision
-- `LocalDateTime` can represent any timestamp in this format without loss
-- Re-serialization produces identical JSON when using the same format
+### Migration Strategy
 
-The database stores timestamps as `VARCHAR(40)` with the full ISO format, preserving exact string representation. When fetched and re-serialized, events are recognized as identical because the same string format is used.
+To add format storage to existing database:
 
-## Database Storage
-
-The database **does NOT store format information**. Instead:
-
-1. **Database stores raw JSON strings** in the `answer_event.serialized_data`, `grading_event.serialized_data`, and `scaffolding_event.serialized_data` columns
-
-2. **Format is looked up from the interaction definition** when needed:
-   - The `variable_id` in `sync_context_id` identifies the interaction
-   - The interaction's companion object provides the format instance
-   - `InteractionHistoryJson` wraps the format + JSON for client-server communication
-
-3. **Why this design**:
-   - Database is a simple storage layer - only data, no metadata
-   - Format is application metadata (which interaction type)
-   - The client/server always has interaction definitions loaded
-   - Separates concerns: storage (database) vs. type info (code)
-
-This is the correct separation of concerns for the edusquirrel-workbook architecture.
+1. Add `format_id` column to `answer_event`, `grading_event`, `scaffolding_event` tables
+2. Backfill existing rows with format class names (can be looked up from `variable_id`)
+3. Update all inserts/updates to include `format_id`
 
 ## Summary
 

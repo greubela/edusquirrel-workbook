@@ -86,7 +86,7 @@ object SyncDestinationHistoryHandler {
   }
 
   private def validHistory(json: String, logger: SyncLogger): Boolean =
-    scala.util.Try(it.evadid.workbook.interaction.sync.model.HistoryJson.lastTimestamp(json)).fold(
+    scala.util.Try(InteractionHistoryJson.lastTimestamp(json)).fold(
       error => { logger.logExceptionWarn("Ignoring invalid saved interaction history", error); false },
       _ => true)
 

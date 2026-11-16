@@ -42,10 +42,10 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
     val handler = new Destination(values).forHistory()
     handler.readHistoriesJson(context).flatMap { fetched =>
       assertEquals(fetched.fetchedValues.size, 1)
-      assertEquals(it.evadid.workbook.interaction.sync.model.HistoryJson.lastTimestamp(fetched.fetchedValues.head.dataValue), Some(at))
+      assertEquals(InteractionHistoryJson.lastTimestamp(fetched.fetchedValues.head.dataValue), Some(at))
       assert(fetched.timestampFetchResponse.isAfter(at))
       handler.readHistoryJson(key).map { single =>
-        assertEquals(it.evadid.workbook.interaction.sync.model.HistoryJson.lastTimestamp(single.fetchedValues.head.dataValue), Some(at))
+        assertEquals(InteractionHistoryJson.lastTimestamp(single.fetchedValues.head.dataValue), Some(at))
         assertEquals(single.fetchedValues.head.dataValue, history)
       }
     }

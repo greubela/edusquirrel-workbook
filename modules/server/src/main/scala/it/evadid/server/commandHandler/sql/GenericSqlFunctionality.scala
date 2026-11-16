@@ -43,7 +43,7 @@ private[sql] case class GenericSqlFunctionality(logger: Logger) {
       val entry = RichDatabaseEntry(usageContext, row)
       // Validate lazy fields inside the per-record boundary.
       entry.keyForSerialisation
-      it.evadid.workbook.interaction.sync.model.HistoryJson.lastTimestamp(entry.historyJson)
+      InteractionHistoryJson.lastTimestamp(entry.historyJson)
       entry
     })
     logger.logInfo(s"parsed ${entries.size} events (could not parse ${rows.size - entries.size})")

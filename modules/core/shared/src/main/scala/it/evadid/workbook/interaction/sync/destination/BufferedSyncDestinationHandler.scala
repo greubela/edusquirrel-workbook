@@ -112,7 +112,7 @@ object BufferedSyncDestinationHandler {
           key -> (acc.getOrElse(key, Vector.empty) :+ json)
         }
       }.view.map { (key, versions) =>
-        key -> it.evadid.workbook.interaction.sync.model.HistoryJson.merge(versions.toList)
+        key -> InteractionHistoryJson.merge(versions.toList)
       }.toMap
       execute(underlying)(underlying.storeHistoriesJson(merged)).transform { outcome =>
         stores.foreach(_.promise.tryComplete(outcome))

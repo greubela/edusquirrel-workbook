@@ -85,6 +85,34 @@ case class InteractionHistoryJson[T, GA, SA](
     format.historySerializer.serialize(history.copy(events = history.events.copy(values = history.events.values.filter(event =>
       !event.timestamp.isBefore(starting) && !event.timestamp.isAfter(until)))))
   }
+
+  /** Get the payload JSON value without full deserialization. */
+  def payload: ujson.Value = {
+    val value = ujson.read(historyJson)
+    value.obj.getOrElse("fullHistory", value)
+  }
+
+  /** Get entries from a map in the history JSON without full deserialization. */
+  def entries(key: String): List[(ujson.Value, ujson.Value)] = {
+    val history = payload
+    history.obj.get(key).toList.flatMap { mapValue =>
+      mapValue.obj.map { fields =>
+        fields.toList.map { case (k, v) => (ujson.read(k), v) }
+      }
+    }.flatten
+  }
+
+  /** Get entries from a nested map in the history JSON without full deserialization. */
+  def entries(parentKey: String, childKey: String): List[(ujson.Value, ujson.Value)] = {
+    val history = payload
+    history.obj.get(parentKey).flatMap(_.obj).toList.flatMap { parent =>
+      parent.get(childKey).toList.flatMap { mapValue =>
+        mapValue.obj.map { fields =>
+          fields.toList.map { case (k, v) => (ujson.read(k), v) }
+        }
+      }
+    }.flatten
+  }
 }
 
 object InteractionHistoryJson {

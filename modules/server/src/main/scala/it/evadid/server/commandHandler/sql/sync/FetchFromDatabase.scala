@@ -1,6 +1,6 @@
 package it.evadid.server.commandHandler.sql.sync
 
-import it.evadid.workbook.interaction.sync.model.HistoryJson
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, FetchAllFromDbRequest, FetchEventsFromDbRequest}
 import it.evadid.server.commandHandler.sql.{GenericSqlFunctionality, RichDatabaseConfig}
 import it.evadid.sql.DatabaseConfiguration
@@ -21,7 +21,7 @@ case class FetchFromDatabase(
 
 object FetchFromDatabase {
 
-  private def union(list: List[String]): String = HistoryJson.merge(list)
+  private def union(list: List[String]): String = InteractionHistoryJson.merge(list)
 
   def handleRequest(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
     it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
