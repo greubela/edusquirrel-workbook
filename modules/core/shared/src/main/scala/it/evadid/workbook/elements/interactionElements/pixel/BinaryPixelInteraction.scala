@@ -1,8 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.pixel
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.{InteractionFormat, DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.model.pixel.*
@@ -19,7 +20,8 @@ case class PixelPreset(label: LanguageMapContentId, image: BinaryPixelImage) der
 
 case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId, initial: BinaryPixelImage,
     expected: Option[BinaryPixelImage] = None, probes: List[PixelThresholdProbe] = Nil, presets: List[PixelPreset] = Nil)
-    extends WorkbookInteractionElement[BinaryPixelImage] derives upickle.default.ReadWriter {
+    extends WorkbookInteractionElement[BinaryPixelImage] {
+
   require(expected.forall(initial.sameDimensions) && presets.forall(p => initial.sameDimensions(p.image)),
     "Targets and presets must match the canvas dimensions")
   probes.foreach(_.cells.foreach(initial.index))
@@ -45,8 +47,9 @@ case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId
     val valid = checked(image)
     probes.map(_.activates(valid))
   }
+  override def format: InteractionFormat[BinaryPixelImage, Unit, Unit] = BinaryPixelInteraction.format
 }
-object BinaryPixelInteraction {
+object BinaryPixelInteraction extends InteractionFormat[BinaryPixelImage, Unit, Unit] {
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[BinaryPixelInteraction] {
     override protected val constructorFieldOrder = List("elementId", "title", "initial", "expected", "probes", "presets")
     override def finishSerialization(base: WorkbookElementSerializable, e: BinaryPixelInteraction): WorkbookElementSerializable =
@@ -57,4 +60,8 @@ object BinaryPixelInteraction {
         e.getElementAs[Option[BinaryPixelImage]]("expected"), e.getElementAs[List[PixelThresholdProbe]]("probes"),
         e.getElementAs[List[PixelPreset]]("presets"))
   }
+
+  override def stateSerializer: Serializer[BinaryPixelImage] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[InteractionVariableHistory[BinaryPixelImage, Unit, Unit]] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[BinaryPixelImage, Unit, Unit]] = Serializer.fromImplicitRW
 }
