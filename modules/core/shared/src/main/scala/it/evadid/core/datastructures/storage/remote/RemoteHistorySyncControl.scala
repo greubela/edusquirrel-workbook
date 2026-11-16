@@ -19,12 +19,15 @@ case class RemoteHistorySyncControl[K, T, GA, SA, RW <: RemoteHistoryReaderWrite
 
   override def storeAll(forceFlush: Boolean): Future[Unit] = cache.storeAll(forceFlush)
 
-  override def fetchAll(forceFlush: Boolean): Future[Unit] = cache.ensureMaxAge(cache.updateReport.now().keys.toSet, LocalDateTime.now(), forceFlush)
+  override def fetchAll(forceFlush: Boolean): Future[Unit] = {
+    val keys = cache.updateReport.now().getOrElse(Map.empty).keys.toSet
+    cache.ensureMaxAge(keys, LocalDateTime.now(), forceFlush)
+  }
 
   override def store[T2, GA2, SA2](interactionVariable: InteractionVariable[T2, GA2, SA2], forceFlush: Boolean): Future[Unit] = {
     val key = interactionVariable.keyForSerialization
     val history = interactionVariable.currentHistory.cleanWithStrategy(EventSyncStrategy.KEEP_MAJOR)
-    cache.mergeLocal(Map(key -> history))
+    cache.mergeLocal(Map(key.asInstanceOf[K] -> history.asInstanceOf[InteractionVariableHistory[T, GA, SA]]))
     cache.storeAll(forceFlush)
   }
 
