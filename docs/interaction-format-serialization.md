@@ -2,249 +2,82 @@
 
 ## Overview
 
-This document explains the design decisions behind making `InteractionFormat` serializable in the edusquirrel-workbook project.
+`InteractionFormat` is a trait that provides type-level association between an interaction type and its serializers. Each interaction has exactly one format instance implemented as a case object (the companion object of the interaction class).
 
-## Why Case Objects for Formats?
+## Design Principles
 
-`InteractionFormat` is implemented as a **sealed trait** where each interaction type has a **case object** that extends it:
+### 1. Format as Case Object
+- Format instances are case objects (singletons), naturally serializable
+- Only the object's name (fully qualified class name) is serialized
+- No serialization issues with non-serializable fields (like `Serializer`)
+- Can be safely passed across server boundaries
 
+### 2. Format is Serializable
+**Critical Requirement**: `InteractionFormat` MUST be serializable because:
+- Format instances are passed from client to server as part of `InteractionHistoryJson`
+- Custom workbooks may use interaction formats not known to the server
+- The format is needed on the server to deserialize the history JSON
+
+### 3. Format Registration
+All allowed format class names are registered in `InteractionFormat.allowedFormats` via static initialization when the interaction companion objects are loaded. This happens automatically when the interaction definitions are imported/used.
+
+The registration happens in the companion object of each interaction, which extends `InteractionFormat`. When the object is loaded, it implicitly registers itself by calling `InteractionFormat.registerFormat`.
+
+**Alternative approach** (if static initialization doesn't work): Formats can be registered explicitly by importing the interaction companion objects, or by calling `InteractionFormat.registerFormat` for each known format.
+
+### 4. Serialization Format
+Format is serialized as a string containing the fully qualified class name:
 ```scala
-sealed trait InteractionFormat[T, GA, SA] derives ReadWriter {
-  def stateSerializer: Serializer[T]
-  def historySerializer: Serializer[InteractionVariableHistory[T, GA, SA]]
-  def exerciseSerializer: Serializer[WorkbookInteractionElementFull[T, GA, SA]]
-}
-
-object TextInteraction extends InteractionFormat[String, Unit, Unit] {
-  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
-}
+// Serialized format
+"it.evadid.workbook.elements.interactionElements.basic.TextInteraction"
 ```
 
-### Benefits of This Approach
+### 5. Deserialization Flow
+1. Client creates `InteractionHistoryJson(format, json)` with known format
+2. Client serializes and sends to server
+3. Server receives and deserializes format class name from JSON
+4. Server looks up format class name in `allowedFormats` set
+5. If found, server loads format via `InteractionFormat.fromClassName(className)`
+6. If not found, throws descriptive error
 
-1. **Naturally Serializable**: Case objects are singletons. When serialized, only the object's fully qualified name is stored. When deserialized, Scala returns the same singleton instance.
-
-2. **No Serialization Issues**: The `Serializer` fields inside the object don't need to be serializable because:
-   - The case object itself serializes as just a reference (its name)
-   - Serializers are lazily evaluated or recreated when needed
-   - No instance state is serialized
-
-3. **Type Safety**: Each interaction type has exactly one format instance, enforced by the compiler.
-
-4. **Cross-Server Portability**: Format instances can be passed as method parameters across server boundaries without complex registry mechanisms.
-
-5. **Simplicity**: Just extend the trait - no additional boilerplate or configuration needed.
-
-## How It Works
-
-### Serialization
-
-When you serialize a case object that extends `InteractionFormat`:
-
-1. The serializer stores only the fully qualified class name (e.g., `"it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction"`)
-2. No instance data is serialized (including the serializers)
-
-### Deserialization
-
-When you deserialize:
-
-1. Scala looks up the case object by its fully qualified name
-2. Returns the same singleton instance
-3. The instance has all the required serializer implementations
-
-### Example
+## Usage in Interaction Definitions
 
 ```scala
-// Create format instance
-val format: InteractionFormat[String, Unit, Unit] = TextInteraction
-
-// Serialize - only stores the class name
-val json = write(format)
-
-// Deserialize - returns the same TextInteraction object
-val restoredFormat: InteractionFormat[String, Unit, Unit] = read(json)
-assert(restoredFormat eq TextInteraction)  // True - same instance!
-```
-
-## Usage Pattern
-
-### In Interaction Definitions
-
-```scala
-// Interaction class - does NOT extend InteractionFormat
-case class TextInteraction(...) extends WorkbookInteractionElementFull[String, Unit, Unit] {
+case class TextInteraction(override val elementId: String) 
+  extends WorkbookInteractionElement[String] {
   override def format: InteractionFormat[String, Unit, Unit] = TextInteraction
 }
 
-// Companion object - IS the format instance
 object TextInteraction extends InteractionFormat[String, Unit, Unit] {
-  // Implement the three required serializers
   override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[InteractionVariableHistory[String, Unit, Unit]] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[String, Unit, Unit]] = Serializer.fromImplicitRW
+  override def historySerializer: Serializer[...] = Serializer.fromImplicitRW
+  override def exerciseSerializer: Serializer[...] = Serializer.fromImplicitRW
 }
 ```
 
-### In Backend Methods
+## Database Storage
 
-```scala
-// Format is passed explicitly
-def processHistory(format: InteractionFormat[State, Grade, Scaffold], json: String): History = {
-  format.historySerializer.deserialize(json)
-}
-
-// Usage - pass the companion object
-processHistory(TextInteraction, historyJson)
+The format class name is stored alongside the JSON history:
+```sql
+CREATE TABLE `single_blob_history` (
+  `format` VARCHAR(255) NOT NULL,  -- Fully qualified class name
+  `history_json` JSON NOT NULL,
+  ...
+)
 ```
 
-## Comparison with Alternatives
+## Security Considerations
 
-### Registry-Based Approach
+The `allowedFormats` whitelist prevents arbitrary code execution:
+- Only registered formats can be deserialized
+- Unknown formats throw descriptive errors
+- No dynamic class loading from untrusted input
 
+## Registration
+
+Import `InteractionFormats` to register all known formats:
 ```scala
-// OLD (registry-based)
-def getFormat(elementId: String): InteractionFormat[?, ?, ?] = {
-  val format = InteractionFormatRegistry.get(elementId)
-  // Runtime lookup, not type-safe
-}
+import it.evadid.core.util.io.serializer.InteractionFormats
 ```
 
-**Problems**:
-- Needs registry on every server
-- Runtime type inference
-- Cross-server portability issues
-
-### Anonymous Class Approach
-
-```scala
-// Create anonymous instance
-val format = InteractionFormat.fromReadWriters[String, Unit, Unit]
-```
-
-**Problems**:
-- New instance each time
-- Not naturally serializable (serializers inside need to be serializable)
-
-### Case Object Approach (Current)
-
-```scala
-// Companion object IS the format
-object TextInteraction extends InteractionFormat[String, Unit, Unit]
-```
-
-**Benefits**:
-- Single instance (natural singleton)
-- Naturally serializable
-- Type-safe
-- No registry needed
-
-## SessionData Integration
-
-`SessionData` uses `InteractionHistoryJson` to store format and history together:
-
-```scala
-case class SessionData(
-  timestampStorage: LocalDateTime,
-  knownUsageData: Map[SyncContext, InteractionHistoryJson[?, ?, ?]],
-  userInfo: User,
-  userConfig: Option[UserConfig],
-  workbookInfo: AllWorkbookInfo
-) derives ReadWriter
-
-case class InteractionHistoryJson[T, GA, SA](
-  format: InteractionFormat[T, GA, SA],  // The format instance (case object)
-  historyJson: String                     // The serialized history
-) derives ReadWriter
-```
-
-This ensures:
-- Format is stored alongside history for deserialization
-- Format is a case object, naturally serializable
-- History JSON is stored as a string for database compatibility
-
-## Database Storage with Format
-
-The backend server stores the **format alongside the JSON history** in the database:
-
-### Storage Design
-
-```scala
-// Database schema for interaction history
-CREATE TABLE `answer_event` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `sync_id` BIGINT UNSIGNED NOT NULL,
-  `timestamp` VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  `update_importance` ENUM('DEFAULT','TEMPORARY','MINOR','MAJOR') NOT NULL,
-  `serialized_data` JSON,
-  `format_id` VARCHAR(255) NOT NULL  -- NEW: Format class name
-) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin;
-```
-
-### Why Store Format in Database?
-
-1. **Strong Typing on Server**: Backend can use typed `InteractionFormat` directly for:
-   - Filtering events by timestamp
-   - Grading based on history
-   - Complex data transformations
-
-2. **Validation**: The format can be used to verify the JSON is parseable:
-   ```scala
-   def validateWithFormat(format: InteractionFormat[?, ?, ?], json: String): Boolean = {
-     try {
-       format.historySerializer.deserialize(json)
-       true
-     } catch {
-       case _: Exception => false
-     }
-   }
-   ```
-
-3. **Type-Safe Server Operations**: No need to look up format from interaction definitions - it's stored with the data
-
-### Backend Usage Example
-
-```scala
-// Fetch with format from database
-def fetchHistory(syncContext: SyncContext): Option[InteractionHistoryJson[?, ?, ?]] = {
-  val row = query("SELECT format_id, serialized_data FROM answer_event WHERE sync_id=? LIMIT 1", List(syncContext))
-  for {
-    formatId <- row.getString("format_id")
-    format <- InteractionFormatRegistry.get(formatId)  // Or look up from interaction
-    json <- row.getString("serialized_data")
-  } yield InteractionHistoryJson(format, json)
-}
-
-// Process with strong typing
-def filterByTimestamp(
-  historyJson: InteractionHistoryJson[?, ?, ?],
-  start: LocalDateTime,
-  end: LocalDateTime
-): InteractionVariableHistory[?, ?, ?] = {
-  val history = historyJson.toHistory
-  history.copy(events = history.events.copy(values = 
-    history.events.values.filter(e => !e.timestamp.isBefore(start) && !e.timestamp.isAfter(end))
-  ))
-}
-```
-
-### Migration Strategy
-
-To add format storage to existing database:
-
-1. Add `format_id` column to `answer_event`, `grading_event`, `scaffolding_event` tables
-2. Backfill existing rows with format class names (can be looked up from `variable_id`)
-3. Update all inserts/updates to include `format_id`
-
-## Summary
-
-The case object approach to `InteractionFormat` provides:
-
-1. **Naturally serializable** - No custom serialization needed
-2. **Type-safe** - Compiler enforces correct format usage
-3. **Simple** - Just extend the trait
-4. **Cross-server compatible** - Works without registry
-5. **Efficient** - Single instance per interaction type
-
-This design solves the core problem: **passing format information across server boundaries without serialization issues or registry dependencies**.
+This is done via static initialization when the object is loaded.
