@@ -35,9 +35,11 @@ case class InteractionVariableSyncReport[T, GA, SA]
   }
 
   def destinationsWithSufficientWrites(): Set[SyncInformationWithContext] = {
-    cacheHistoryMap.toSet.filter((curSyncDest, curRemoteHistory) => {
-      !(curRemoteHistory.timestampLastChanged.isEmpty || curRemoteHistory.timestampLastChanged.get.isBefore(curLocalHistory.timestampLastChanged.get))
-    }).map(_._1)
+    allSyncLocations.filter { destination =>
+      val required = curLocalHistory.filterWithStrategy(destination.syncInformation.syncStrategy)
+      val remote = cacheHistoryMap.getOrElse(destination, InteractionVariableHistory.empty[T, GA, SA])
+      remote.mergeWith(required) == remote
+    }
   }
 
   lazy val allInformationEverywhere: InteractionVariableHistory[T, GA, SA] = {

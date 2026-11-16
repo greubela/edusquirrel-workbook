@@ -45,7 +45,7 @@ case class RemoteDataSyncControllable(syncEnv: Option[WorkbookSyncEnvironment], 
   }
 
   def changeDestinations(syncContextOp: Option[WorkbookSyncEnvironment]): RemoteDataSyncControllable = this.synchronized {
-    ensureSynced()
+    scala.util.Try(caches.flush(true)).failed.foreach(error => syncLogger.logExceptionWarn("Could not flush previous sync destinations", error))
     RemoteDataSyncControllable(syncLogger, syncContextOp)
   }
 
@@ -61,7 +61,7 @@ case class RemoteDataSyncControllable(syncEnv: Option[WorkbookSyncEnvironment], 
     Future.traverse(storeMap.keySet)(curSyncContext => caches.requestStore(curSyncContext, List(storeMap(curSyncContext)).toMap, LocalDateTime.now(), forceFlush)).map(_ => ())
   }
 
-  override def syncLogger: SyncLogger = syncLogger
+  override def syncLogger: SyncLogger = caches.syncLogger
 
 
 }

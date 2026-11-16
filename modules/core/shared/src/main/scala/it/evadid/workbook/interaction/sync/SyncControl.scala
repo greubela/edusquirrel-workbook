@@ -18,11 +18,11 @@ trait SyncControl {
 
   def store[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA], forceFlush: Boolean = false): Future[Unit]
 
-  def fetchAndStore(forceFlush: Boolean = false): Future[Unit] = fetchAll(forceFlush).transformWith(_ => storeAll(forceFlush))
+  def fetchAndStore(forceFlush: Boolean = false): Future[Unit] = fetchAll(forceFlush).flatMap(_ => storeAll(forceFlush))
 
-  def storeAndFetch(forceFlush: Boolean = false): Future[Unit] = storeAll(forceFlush).transformWith(_ => fetchAll(forceFlush))
+  def storeAndFetch(forceFlush: Boolean = false): Future[Unit] = storeAll(forceFlush).flatMap(_ => fetchAll(forceFlush))
 
-  def ensureSynced(): Future[Unit] = fetchAll(true).transformWith(_ => storeAll(true)).transformWith(_ => fetchAll(true))
+  def ensureSynced(): Future[Unit] = fetchAndStore(true).flatMap(_ => fetchAll(true))
 
   def syncLogger: SyncLogger
 

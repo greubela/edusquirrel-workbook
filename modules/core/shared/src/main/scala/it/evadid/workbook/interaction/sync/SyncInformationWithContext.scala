@@ -16,7 +16,7 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
 
   private given ec: ExecutionContext = ExecutionContext.global
 
-  lazy val handler: SyncDestinationHistoryHandler = resolveDefinition(syncInformation.syncDestination)
+  val handler: SyncDestinationHistoryHandler = resolveDefinition(syncInformation.syncDestination)
 
 
   def serialize[T, GA, SA](interaction: InteractionVariable[T, GA, SA]): String = {
@@ -32,6 +32,10 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
       logger.logExceptionWarn(s"Error while calling SyncLogger::fetchByKey, ignoring data of ${key} from ${syncInformation.syncDestination.toString}", e)
       Future.failed(e)
     }
+
+    override def fetchByKeys(logger: SyncLogger, keys: Set[SyncContext]): Future[FetchResponse[SyncContext, String]] =
+      if keys.isEmpty then Future.successful(FetchResponse(LocalDateTime.now(), Set.empty))
+      else fetchAll(logger).map(response => response.copy(fetchedValues = response.fetchedValues.filter(entry => keys(entry.dataKey))))
 
     override def fetchAll(logger: SyncLogger): Future[FetchResponse[SyncContext, String]] = try {
       handler.readHistoriesJson(usageContext)
@@ -52,17 +56,8 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
       Future.failed(e)
     }
 
-    private def writeAllRec(logger: SyncLogger, seq: List[(SyncContext, String)]): Future[SyncSuccess] = {
-      if (seq.isEmpty) Future.successful(SyncSuccess(0, 0, 0, LocalDateTime.now()))
-      else writeForKey(logger, seq.head._1, seq.head._2).flatMap(headSuccess => writeAllRec(logger, seq.tail).map(headSuccess -> _)).map(tup => tup._1.combine(tup._2))
-    }
-
-    override def writeAll(logger: SyncLogger, map: Map[SyncContext, String]): Future[SyncSuccess] = try {
-      writeAllRec(logger, map.iterator.toList)
-    } catch case (e: Throwable) => {
-      logger.logExceptionWarn(s"Could not create future, ignoring write to ${syncInformation.syncDestination.toString}", e)
-      Future.failed(e)
-    }
+    override def writeAll(logger: SyncLogger, map: Map[SyncContext, String]): Future[SyncSuccess] =
+      scala.util.Try(handler.storeHistoriesJson(map)).fold(Future.failed, identity)
 
     override def flush(logger: SyncLogger, forceFlush: Boolean): Unit = handler.flush(forceFlush)
   }

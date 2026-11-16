@@ -27,14 +27,16 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
   lazy val syncEnvironmentSignal: StrictSignal[Option[WorkbookSyncEnvironment]] = {
 
-    fullInfo.homepageInfoState.signal.mapLazy(curHomepageInfo => {
+    fullInfo.homepageInfoState.signal.distinctBy(info =>
+      (info.toContext, info.workbookInfo.map(_.loadedWorkbook), info.userInfo.map(user => (user.config.syncDestinations, user.credentials)))
+    ).map(curHomepageInfo => {
       if (curHomepageInfo.userInfo.isEmpty || curHomepageInfo.workbookInfo.isEmpty) None
       else Some(WorkbookSyncEnvironment(
         curHomepageInfo.toContext,
         curHomepageInfo.workbookInfo.toSet.flatMap(_.loadedWorkbook.allContainedInteractionsById.values),
-        curHomepageInfo.syncDestinations.toSet
+        curHomepageInfo.syncDestinations(fullInfo).toSet
       ))
-    })
+    }).observe(using unsafeWindowOwner)
 
 
   }

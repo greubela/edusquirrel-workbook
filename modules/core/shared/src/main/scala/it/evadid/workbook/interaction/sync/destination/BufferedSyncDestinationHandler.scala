@@ -2,179 +2,130 @@ package it.evadid.workbook.interaction.sync.destination
 
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.io.Serializer
-import it.evadid.distribution.command.SerializedException
-import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.destination.BufferedSyncDestinationHandler.*
 import it.evadid.workbook.interaction.sync.model.FetchResponse
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.variable.*
+import it.evadid.util.logging.derived.SyncLogger
 import upickle.default.*
-
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.*
+import scala.util.{Success, Try}
 
 case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHandler) extends SyncDestinationHistoryHandler {
-
   override def syncLogger: SyncLogger = underlying.syncLogger
-
   override def definition: SyncDestinationDefinition = underlying.definition
+  private val cachedStores = State(Vector.empty[CachedStoreRequest])
+  private val cachedReads = State(Vector.empty[CachedReadRequest])
+  // Batches are queued only here, where all requests are already registered and can be flushed together.
+  private val lastFlush = State(Future.unit)
+  private given ExecutionContext = ExecutionContext.global
 
-  // clear
-  override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = underlying.clearValue(context)
-
-  override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = underlying.clearValues(context)
-
-  // read
-  override def readHistory[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](syncContext: SyncContext)(implicit ec: ExecutionContext): Future[InteractionVariableHistory[T, GA, SA]] = {
+  private def enqueue[A](request: CachedReadRequest, promise: Promise[A]): Future[A] = synchronized {
+    cachedReads.update(_ :+ request)
+    flush(false)
+    promise.future
+  }
+  override def readHistory[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](context: SyncContext)(implicit ec: ExecutionContext): Future[InteractionVariableHistory[T, GA, SA]] = {
     val promise = Promise[InteractionVariableHistory[T, GA, SA]]()
-    cachedReads.update(_ ++ List(CachedReadRequestSingle(LocalDateTime.now(), syncContext, promise)))
-    flush(false)
-    println(s"read: ${cachedReads.now().size}")
-    promise.future
+    enqueue(CachedReadRequestSingle(LocalDateTime.now(), context, promise), promise)
   }
-
-  override def readHistories(usageContext: UsageContext, variablesToResolveTypes: Seq[InteractionVariable[?, ?, ?]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[?, ?, ?]]] = {
+  override def readHistories(context: UsageContext, variables: Seq[InteractionVariable[?, ?, ?]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[?, ?, ?]]] = {
     val promise = Promise[Map[SyncContext, InteractionVariableHistory[?, ?, ?]]]()
-    cachedReads.update(_ ++ List(CachedReadRequestMultiple(LocalDateTime.now(), usageContext, variablesToResolveTypes, promise)))
-    flush(false)
-    println(s"read: ${cachedReads.now().size}")
-    promise.future
+    enqueue(CachedReadRequestMultiple(LocalDateTime.now(), context, variables, promise), promise)
   }
-
-  override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
+  override def readHistoriesJson(context: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
     val promise = Promise[FetchResponse[SyncContext, String]]()
-    cachedReads.update(_ ++ List(CachedReadRequestMultipleRaw(LocalDateTime.now(), usageContext, promise)))
-    flush(false)
-    println(s"read: ${cachedReads.now().size}")
-    promise.future
+    enqueue(CachedReadRequestMultipleRaw(LocalDateTime.now(), context, promise), promise)
   }
+  override def readHistoryJson(context: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] =
+    readHistoriesJson(context.toUsageContext).map(response => response.copy(fetchedValues = response.fetchedValues.filter(_.dataKey == context)))
 
-  // store
-
-  private val cachedStores: State[Seq[CachedStoreRequest]] = State(List())
-  private val cachedReads: State[Seq[CachedReadRequest]] = State(List())
-
-  override def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = this.synchronized {
-    val promise = Promise[SyncSuccess]()
-    cachedStores.update(_ ++ List(CachedStoreRequest(LocalDateTime.now(), Map(syncContext -> historyJson), promise)))
-    flush(false)
-    println(s"stored: ${cachedStores.now().size}")
-    promise.future
-  }
-
-  override def storeHistoriesJson(contextJsonMap: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = this.synchronized {
-    val promise = Promise[SyncSuccess]()
-    cachedStores.update(_ ++ List(CachedStoreRequest(LocalDateTime.now(), contextJsonMap, promise)))
-    flush(false)
-    println(s"stored: ${cachedStores.now().size}")
-    promise.future
-  }
-
-  def timestamps: Set[LocalDateTime] = this.synchronized {
-    (cachedReads.now().map(_.requestTimestamp) ++ cachedStores.now().map(_.requestTimestamp)).toSet
-  }
-
-  private def shouldFlush(): Boolean = this.synchronized {
-    if (timestamps.isEmpty) false
-    else if (cachedReads.now().size + cachedStores.now().size > 30) true
-    else if (ChronoUnit.SECONDS.between(timestamps.min, LocalDateTime.now()) > 30) true
-    else false
-  }
-
-  override def flush(forceFlush: Boolean = true): Unit = this.synchronized {
-    println("flush called!")
-    if (forceFlush || shouldFlush()) {
-      println(" #### flush executed!")
-      BufferedSyncDestinationHandler.handleStores(cachedStores.now(), underlying)
-      cachedStores.set(List())
-
-      BufferedSyncDestinationHandler.handleReads(cachedReads.now(), underlying)
-      cachedReads.set(List())
+  override def storeHistoryJson(context: SyncContext, json: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = storeHistoriesJson(Map(context -> json))
+  override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = synchronized {
+    if values.isEmpty then Future.successful(SyncSuccess.emptyNow()) else {
+      val promise = Promise[SyncSuccess]()
+      cachedStores.update(_ :+ CachedStoreRequest(LocalDateTime.now(), values, promise))
+      flush(false)
+      promise.future
     }
   }
 
+  def timestamps: Set[LocalDateTime] = synchronized {
+    (cachedReads.now().map(_.requestTimestamp) ++ cachedStores.now().map(_.requestTimestamp)).toSet
+  }
+  private def shouldFlush: Boolean = timestamps.minOption.exists(time =>
+    ChronoUnit.SECONDS.between(time, LocalDateTime.now()) >= 30) || cachedReads.now().size + cachedStores.now().size >= 30
 
+  override def flush(forceFlush: Boolean = true): Unit = synchronized {
+    if forceFlush || shouldFlush then {
+      val stores = cachedStores.now()
+      val reads = cachedReads.now()
+      // Detach before calling the handler: callbacks may register another request.
+      cachedStores.set(Vector.empty)
+      cachedReads.set(Vector.empty)
+      if stores.nonEmpty || reads.nonEmpty then {
+        val batch = lastFlush.now().transformWith { _ =>
+          handleStores(stores, underlying).flatMap(_ => handleReads(reads, underlying))
+        }
+        lastFlush.set(batch)
+      }
+      underlying.flush(forceFlush)
+    }
+  }
+
+  private def clear(operation: => Future[SyncSuccess]): Future[SyncSuccess] = synchronized {
+    flush(true)
+    val clearing = lastFlush.now().transformWith(_ => attempt(operation))
+    lastFlush.set(clearing.map(_ => ()))
+    clearing
+  }
+  override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = clear(underlying.clearValue(context))
+  override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = clear(underlying.clearValues(context))
 }
 
 object BufferedSyncDestinationHandler {
+  private given ExecutionContext = ExecutionContext.global
+  private def attempt[A](run: => Future[A]): Future[A] = Try(run).fold(Future.failed, identity)
 
-  private given ec: ExecutionContext = ExecutionContext.global
+  private def handleReads(reads: Seq[CachedReadRequest], underlying: SyncDestinationHistoryHandler): Future[Unit] =
+    Future.traverse(reads.groupBy(_.usageContext).toList) { (context, requests) =>
+      attempt(underlying.readHistoriesJson(context)).transform { outcome =>
+        requests.foreach(_.fulfillWith(outcome))
+        Success(())
+      }
+    }.map(_ => ())
 
-  private def handleReads(cachedReads: Seq[CachedReadRequest], underlying: SyncDestinationHistoryHandler): Unit = {
-    println(s"calling handleReads(${cachedReads.size})")
-    if (cachedReads.nonEmpty) {
-      Future.traverse(cachedReads.map(_.usageContext).toSet)(curContext => underlying.readHistoriesJson(curContext))
-        .map(readResults => readResults.fold(readResults.head)(_.combineWith(_)))
-        .onComplete(curTry => {
-          println("!!! finished handleReads!")
-          cachedReads.foreach(_.fulfillWith(curTry))
-        })
+  private def handleStores(stores: Seq[CachedStoreRequest], underlying: SyncDestinationHistoryHandler): Future[Unit] = {
+    if stores.isEmpty then Future.unit else {
+      // Queue order also resolves equal browser timestamps deterministically.
+      val values = stores.foldLeft(Map.empty[SyncContext, String])((result, request) => result ++ request.toStore)
+      attempt(underlying.storeHistoriesJson(values)).transform { outcome =>
+        stores.foreach(_.promise.tryComplete(outcome))
+        Success(())
+      }
     }
   }
 
-  private def handleStores(cachedStores: Seq[CachedStoreRequest], underlying: SyncDestinationHistoryHandler): Unit = {
-    println(s"calling handleStores(${cachedStores.size})")
-    if (cachedStores.nonEmpty) {
-      val allSyncContexts: Set[SyncContext] = cachedStores.flatMap(_.toStore.keySet).toSet
-      val toStoreMap: Map[SyncContext, String] = allSyncContexts.map(curKey => {
-        curKey -> cachedStores.filter(_.toStore.contains(curKey)).maxBy(_.requestTimestamp).toStore(curKey)
-      }).toMap
-      underlying.storeHistoriesJson(toStoreMap).onComplete(curTry => {
-        println("??? finished handle stores")
-        cachedStores.foreach(_.promise.tryComplete(curTry))
-      })
-
-    }
-  }
-
-  sealed trait CachedRequest {
-    def requestTimestamp: LocalDateTime
-  }
-
+  sealed trait CachedRequest { def requestTimestamp: LocalDateTime }
   case class CachedStoreRequest(requestTimestamp: LocalDateTime, toStore: Map[SyncContext, String], promise: Promise[SyncSuccess])
-
   sealed trait CachedReadRequest extends CachedRequest {
-    def fulfillWith(readData: Try[FetchResponse[SyncContext, String]]): Unit
-
+    def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit
     def usageContext: UsageContext
   }
-
   case class CachedReadRequestSingle[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](requestTimestamp: LocalDateTime, syncContext: SyncContext, promise: Promise[InteractionVariableHistory[T, GA, SA]]) extends CachedReadRequest {
-
-    override def fulfillWith(readData: Try[FetchResponse[SyncContext, String]]): Unit = readData.match {
-      case Success(data) => {
-        val serializer = Serializer.fromUpickleJson(InteractionVariableHistory.given_ReadWriter_InteractionVariableHistory[T, GA, SA])
-        val history: Either[SerializedException, InteractionVariableHistory[T, GA, SA]] = SyncDestinationHistoryHandler.readHistoryFrom(serializer, syncContext, data)
-        promise.tryComplete(history.toTry)
-      }
-      case Failure(err) => promise.tryFailure(err)
-    }
-
     override def usageContext: UsageContext = syncContext.toUsageContext
-
+    override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data.flatMap { response =>
+      val serializer = Serializer.fromUpickleJson(InteractionVariableHistory.given_ReadWriter_InteractionVariableHistory[T, GA, SA])
+      SyncDestinationHistoryHandler.readHistoryFrom(serializer, syncContext, response).toTry
+    })
   }
-
   case class CachedReadRequestMultiple(requestTimestamp: LocalDateTime, usageContext: UsageContext, resolveWithVars: Seq[InteractionVariable[?, ?, ?]], promise: Promise[Map[SyncContext, InteractionVariableHistory[?, ?, ?]]]) extends CachedReadRequest {
-
-    override def fulfillWith(readData: Try[FetchResponse[SyncContext, String]]): Unit = readData.match {
-      case Success(data) => {
-        val histories = SyncDestinationHistoryHandler.readHistoriesFrom(resolveWithVars, usageContext, data)
-        promise.trySuccess(histories)
-      }
-      case Failure(err) => promise.tryFailure(err)
-    }
-
+    override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit =
+      promise.tryComplete(data.map(response => SyncDestinationHistoryHandler.readHistoriesFrom(resolveWithVars, usageContext, response)))
   }
-
   case class CachedReadRequestMultipleRaw(requestTimestamp: LocalDateTime, usageContext: UsageContext, promise: Promise[FetchResponse[SyncContext, String]]) extends CachedReadRequest {
-
-    override def fulfillWith(readData: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(readData)
-
+    override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data)
   }
-
 }
-
-
-

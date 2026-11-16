@@ -40,7 +40,6 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   private[change] def updateInfoWithoutContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
 
-    fullInfo.syncControl.ensureSynced()
     fullInfo.homepageInfoState.update(func)
     Future.successful(())
   }
@@ -263,6 +262,9 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
       } catch case scala.util.control.NonFatal(error) =>
         logger.logExceptionWarn("Could not update saved user preferences", error)
       // Browser storage is optional. It must never prevent clearing session credentials.
+      if (fullInfo.current.userInfo.map(_.user.personId) != newUserInfo.map(_.user.personId)) {
+        interactions.foreach(_.interactionVariable.resetLocalHistory())
+      }
       fullInfo.homepageInfoState.update(_.copy(userInfo = newUserInfo))
     }
 
@@ -274,7 +276,9 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
         WorkbookUserDataAnalyzer().downloadAllData(fullInfo)
         fullInfo.syncControl.ensureSynced()
       }
-      waitFor.flatMap(res => {
+      waitFor.recover { case scala.util.control.NonFatal(error) =>
+        logger.logExceptionWarn("Could not finish synchronizing the previous user", error)
+      }.flatMap(_ => {
         actuallySetNewUser()
         saveSession(newUserInfo).flatMap { _ =>
           if (newUserInfo.isEmpty || fullInfo.current.workbookInfo.isEmpty) Future.successful(()) else {

@@ -17,9 +17,9 @@ import scala.concurrent.*
 
 case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definition: SyncDestinationBasedOnHistoryDatabase, fullInfo: FullInfo) extends SyncDestinationHistoryHandler {
 
-  private def backend: ExecutionClient = fullInfo.defaults.backendExecutor
+  private val backend: ExecutionClient = fullInfo.defaults.backendExecutor
   private given ec: ExecutionContext = ExecutionContext.global
-  private def databaseConfig: it.evadid.sql.DatabaseConfiguration =
+  private val databaseConfig: it.evadid.sql.DatabaseConfiguration =
     fullInfo.homepageInfoNow().userInfo.flatMap(_.credentials.databaseConfig).getOrElse(definition.databaseConfig)
 
   override def syncLogger: SyncLogger = pSyncLogger

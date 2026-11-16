@@ -20,7 +20,7 @@ object RemoteReaderWriter {
   trait RemoteDataReader[K, D] {
     def fetchByKey(logger: SyncLogger, key: K): Future[FetchResponse[K, D]]
 
-    def fetchByKeys(logger: SyncLogger, keys: Set[K]): Future[FetchResponse[K, D]] = Future.traverse(keys)(curKey => fetchByKey(logger, curKey)).map(responses => responses.fold(responses.head)(_.combineWith(_)))
+    def fetchByKeys(logger: SyncLogger, keys: Set[K]): Future[FetchResponse[K, D]] = Future.traverse(keys)(curKey => fetchByKey(logger, curKey)).map(responses => responses.foldLeft(FetchResponse[K, D](java.time.LocalDateTime.MIN, Set.empty))(_.combineWith(_)))
 
     def fetchAll(logger: SyncLogger): Future[FetchResponse[K, D]]
 
@@ -34,19 +34,5 @@ object RemoteReaderWriter {
 
     def flush(logger: SyncLogger, forceFlush: Boolean): Unit
   }
-  /*
-    trait RemoteCacheConfig[K, D] {
-      def reader: RemoteDataReader[K, D]
-
-      def writer: RemoteDataWriter[K, D]
-
-      def syncLogger: SyncLogger
-
-      def flush(forceFlush: Boolean)(using ec: ExecutionContext): Future[Unit] = Future {
-        reader.flush(syncLogger, forceFlush)
-        writer.flush(syncLogger, forceFlush)
-      }
-
-    }*/
 
 }
