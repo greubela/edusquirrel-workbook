@@ -2,12 +2,18 @@ package it.evadid.core.util.io.serializer
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleRecreateShapeInteraction, TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
+import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
+import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
+import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.SortingInteraction
+import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
 import upickle.default.*
 import munit.FunSuite
 
@@ -194,6 +200,55 @@ class InteractionFormatSpec extends FunSuite {
     
     assert(deserialized.elementId == "turtle-1")
     assert(deserialized.initProgram.code == "")
+  }
+
+  // ============================================================================
+  // Other interactions (verify format is accessible)
+  // ============================================================================
+
+  test("ChoiceInteraction format is accessible") {
+    val format = ChoiceInteraction.format
+    assert(format != null)
+  }
+
+  test("LabeledCheckboxInteraction format is accessible") {
+    val format = LabeledCheckboxInteraction.format
+    assert(format != null)
+  }
+
+  test("LabeledNumberInteraction format is accessible") {
+    val format = LabeledNumberInteraction.format
+    assert(format != null)
+  }
+
+  test("MessagingInteraction format is accessible") {
+    val format = MessagingInteraction.format
+    assert(format != null)
+  }
+
+  test("SortingInteraction format is accessible") {
+    val format = SortingInteraction.format
+    assert(format != null)
+  }
+
+  test("AnswerTableInteraction format is accessible") {
+    val format = AnswerTableInteraction.format
+    assert(format != null)
+  }
+
+  test("BlockchainInteraction format is accessible") {
+    val format = BlockchainInteraction.format
+    assert(format != null)
+  }
+
+  test("EvacuationSimulationInteraction format is accessible") {
+    val format = EvacuationSimulationInteraction.format
+    assert(format != null)
+  }
+
+  test("SqlCommandExercise format is accessible") {
+    val format = SqlCommandExercise.format
+    assert(format != null)
   }
 
   // ============================================================================
