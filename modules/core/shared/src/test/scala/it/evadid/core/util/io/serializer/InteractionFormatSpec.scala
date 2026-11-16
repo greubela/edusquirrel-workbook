@@ -3,7 +3,7 @@ package it.evadid.core.util.io.serializer
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleRecreateShapeInteraction, TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
@@ -179,17 +179,21 @@ class InteractionFormatSpec extends FunSuite {
     val format = TurtleRecreateShapeInteraction.format
 
     val initProgram = ProgrammingState("", Map.empty, Map.empty)
+    val graphic = TurtleGraphic.TurtleGraphicProgram(Seq.empty)
+    
     val interaction = TurtleRecreateShapeInteraction(
       elementId = "turtle-1",
       initProgram = initProgram,
-      desiredResult = null, // Using null for test, real usage would have proper TurtleGraphic
-      comparisonPolicy = null, // Using null for test
+      desiredResult = graphic,
+      comparisonPolicy = TurtleDrawingPolicy.Strokes,
       customExerciseConfig = None
     )
 
-    // This test may fail if TurtleGraphic doesn't have a ReadWriter
-    // It's here to verify the exerciseSerializer is accessible
-    assert(format.exerciseSerializer != null)
+    val serialized = format.exerciseSerializer.serialize(interaction)
+    val deserialized = format.exerciseSerializer.deserialize(serialized)
+    
+    assert(deserialized.elementId == "turtle-1")
+    assert(deserialized.initProgram.code == "")
   }
 
   // ============================================================================
