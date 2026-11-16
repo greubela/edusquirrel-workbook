@@ -95,7 +95,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   }
   test("the reader/writer adapter registers bulk requests before flushing") {
     val destination = new Destination
-    val bound = SyncInformation(destination.definition, SyncStrategy.SYNC_EVERYTHING).forContext(context, _ => destination.toBuffered)
+    val bound = SyncInformation(destination.definition, EventSyncStrategy.KEEP_ALL).forContext(context, _ => destination.toBuffered)
     val writing = bound.writer.writeAll(bound.handler.syncLogger, Map(key -> "one", context.toSyncContext("other") -> "two"))
     bound.writer.flush(bound.handler.syncLogger, true)
     writing.map(_ => assertEquals(destination.writes.now().head.size, 2))
@@ -131,7 +131,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
       assertEquals(destination.reads.now(), Nil)
       assert(!reading.isCompleted)
       gate.success(SyncSuccess.emptyNow())
-      writing.flatMap(_ => reading).map(result => assertEquals(result.asMap(key).value, "saved"))
+      writing.flatMap(_ => reading).map(result => assertEquals(result.asMap(key), "saved"))
     }
   }
 

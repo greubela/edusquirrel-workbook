@@ -1,14 +1,12 @@
 package it.evadid.core.datastructures.storage
 
 import it.evadid.core.datastructures.state.State
-import it.evadid.core.datastructures.storage.remote.{RemoteHistoryCache, RemoteHistoryReaderWriter}
-import it.evadid.core.datastructures.storage.remote.RemoteHistoryReaderWriter.RemoteHistoryDataReader
-import it.evadid.core.datastructures.storage.remote.RemoteReaderWriter.RemoteDataWriter
+import it.evadid.core.datastructures.storage.remote.{RemoteHistoryCache, RemoteHistoryDataReader, RemoteHistoryDataWriter, RemoteHistoryReaderWriter}
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UpdateImportance, UsageContext}
-import it.evadid.workbook.interaction.variable.InteractionVariableHistoryEventBased
 import it.evadid.workbook.interaction.variable.events.*
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import java.time.LocalDateTime
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -16,16 +14,16 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 class RemoteHistoryCacheSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private type Event = InteractionEvent[Int, Unit, Unit]
-  private type History = InteractionVariableHistoryEventBased[Int, Unit, Unit]
+  private type History = InteractionVariableHistory[Int, Unit, Unit]
   private type Cache = RemoteHistoryCache[SyncContext, Int, Unit, Unit, Destination]
   private val logger = SyncLogger(Logger.withNameAndPrefixes(printMap = PrintToStdLogger.printNothing))
   private val time = LocalDateTime.of(2026, 11, 16, 12, 0)
   private val key = UsageContext("program", "workbook", "user").toSyncContext("answer")
   private val otherKey = key.copy(keyForSerialisation = "other")
-  private val empty: History = InteractionVariableHistoryEventBased(InteractionEvents.empty)
+  private val empty: History = InteractionVariableHistory.empty[Int, Unit, Unit]
   private def event(value: Int, seconds: Long, importance: UpdateImportance = UpdateImportance.MAJOR): Event =
     AnswerChangedEvent(value, time.plusSeconds(seconds), importance)
-  private def history(events: Event*): History = InteractionVariableHistoryEventBased(InteractionEvents(events.toSet))
+  private def history(events: Event*): History = InteractionVariableHistory(InteractionEvents(events.toSet))
   private case class Read(keys: Seq[SyncContext], starting: LocalDateTime, until: LocalDateTime, strategy: EventSyncStrategy)
 
   private class Destination extends RemoteHistoryReaderWriter[SyncContext, Int, Unit, Unit] {
@@ -51,7 +49,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
         readOperation.now()(request)
       }
     }
-    val writer = new RemoteDataWriter[SyncContext, History] {
+    val writer = new RemoteHistoryDataWriter[SyncContext, Int, Unit, Unit] {
       def writeForKey(logger: SyncLogger, key: SyncContext, dataValue: History): Future[SyncSuccess] = writeAll(logger, Map(key -> dataValue))
       def writeAll(logger: SyncLogger, values: Map[SyncContext, History]): Future[SyncSuccess] = {
         writes.update(_ :+ values)
@@ -266,7 +264,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
   test("buffered writers receive their requests before the cache flushes them") {
     val queued = State(Option.empty[(Map[SyncContext, History], Promise[SyncSuccess])])
     val destination = new Destination {
-      override val writer = new RemoteDataWriter[SyncContext, History] {
+      override val writer = new RemoteHistoryDataWriter[SyncContext, Int, Unit, Unit] {
         def writeForKey(logger: SyncLogger, key: SyncContext, value: History) = writeAll(logger, Map(key -> value))
         def writeAll(logger: SyncLogger, values: Map[SyncContext, History]) = {
           val promise = Promise[SyncSuccess]()

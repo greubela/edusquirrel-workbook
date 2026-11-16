@@ -89,7 +89,7 @@ class UserPackageSpec extends FunSuite {
     val destination = it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
       credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalEvents, buffered = false)
     val config = UserConfig(List(it.evadid.workbook.interaction.sync.SyncInformation(destination,
-      it.evadid.workbook.interaction.sync.SyncStrategy.SYNC_MAJOR)), isOnlineAccount = false)
+      it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_LAST_MAJOR)), isOnlineAccount = false)
     val info = AllUserInfo(user, credentials, config)
     assertEquals(read[AllUserInfo](write(info)), info)
     val saved = write(SavedUserPreferences(info.user, info.config.withoutCredentials))
