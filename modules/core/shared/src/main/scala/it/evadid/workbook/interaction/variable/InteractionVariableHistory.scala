@@ -16,7 +16,11 @@ type InteractionVariableHistory3[F <: InteractionFormat] = InteractionVariableHi
   F#ScaffoldingInfoType
 ]
 
-/** Canonical interaction history: all saved state and feedback live in timestamped events. */
+/** Canonical interaction history: all saved state and feedback live in timestamped events.
+  * 
+  * NOTE: Does not derive ReadWriter because F is a path-dependent type.
+  * Use InteractionVariableHistory3[F] for serialization.
+  */
 case class InteractionVariableHistory[
   F <: InteractionFormat,
   S <: F#InteractionStateType,
@@ -27,7 +31,6 @@ case class InteractionVariableHistory[
   type GradingInfoType = G
   type ScaffoldingInfoType = A
   type Format = F
-  type History3 = InteractionVariableHistory3[F]
   type InteractionStateType = S
   type GradingInfoType = G
   type ScaffoldingInfoType = A
