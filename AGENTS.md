@@ -1,3 +1,7 @@
+# Active interaction refactor
+
+The full user requirements are retained in [tmp/interaction-refactor/USER_PROMPT.txt](tmp/interaction-refactor/USER_PROMPT.txt). Follow them throughout this branch; they supersede the obsolete three-type-parameter serialization design below.
+
 # Repository directory rules
 
 Read the repository layout and content-placement guide in [README.md](README.md) before choosing a location for new files.
