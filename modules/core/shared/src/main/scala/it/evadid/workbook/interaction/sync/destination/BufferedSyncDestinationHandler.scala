@@ -34,8 +34,8 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
   //   val promise = Promise[InteractionVariableHistory[F]]()
   //   enqueue(CachedReadRequestSingle(LocalDateTime.now(), context, promise), promise)
   // }
-  override def readHistories(context: UsageContext, variables: Seq[InteractionVariable[InteractionFormat]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory.InteractionVariableHistory3[_ <: InteractionFormat]]] = {
-    val promise = Promise[Map[SyncContext, InteractionVariableHistory.InteractionVariableHistory3[_ <: InteractionFormat]]]()
+  override def readHistories(context: UsageContext, variables: Seq[InteractionVariable[InteractionFormat]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[InteractionFormat]]] = {
+    val promise = Promise[Map[SyncContext, InteractionVariableHistory[InteractionFormat]]]()
     enqueue(CachedReadRequestMultiple(LocalDateTime.now(), context, variables, promise), promise)
   }
   override def readHistoriesJson(context: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
@@ -140,7 +140,7 @@ object BufferedSyncDestinationHandler {
     //   SyncDestinationHistoryHandler.readHistoryFrom[F](syncContext, response).toTry
     // })
   }
-  case class CachedReadRequestMultiple(requestTimestamp: LocalDateTime, usageContext: UsageContext, resolveWithVars: Seq[InteractionVariable[_ <: InteractionFormat]], promise: Promise[Map[SyncContext, InteractionVariableHistory.InteractionVariableHistory3[_ <: InteractionFormat]]]) extends CachedReadRequest {
+  case class CachedReadRequestMultiple(requestTimestamp: LocalDateTime, usageContext: UsageContext, resolveWithVars: Seq[InteractionVariable[_ <: InteractionFormat]], promise: Promise[Map[SyncContext, InteractionVariableHistory[_ <: InteractionFormat]]]) extends CachedReadRequest {
     override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit =
       promise.tryComplete(data.map(response => SyncDestinationHistoryHandler.readHistoriesFromTyped(resolveWithVars, response)))
   }
