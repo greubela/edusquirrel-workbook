@@ -76,29 +76,38 @@ object SyncDestinationHistoryHandler {
   }
 
   private[sync] def readHistoryFromTypedInternal(variable: InteractionVariable[_ <: InteractionFormat], jsonHistory: String): Either[SerializedException, InteractionVariableHistory[_]] = {
+    // We need to use the format's historySerializer to deserialize
+    // Since we don't have ValueOf[F] here, we'll use a runtime approach
     variable match {
-      case v: InteractionVariable[F] => readHistoryFromTypedConcrete(v, jsonHistory).map(_.asInstanceOf[InteractionVariableHistory[_]])
+      case v: InteractionVariable[F] forSome { type F <: InteractionFormat } =>
+        // Use the format from the variable to deserialize
+        val format = v.format
+        format.historySerializer.tryDeserialize(jsonHistory) match {
+          case Left(err) => Left(SerializedException(s"readHistoryFromTypedInternal: value could not be parsed (${err.getMessage})", err))
+          case Right(history) => Right(history.asInstanceOf[InteractionVariableHistory[_]])
+        }
     }
   }
 
   private[sync] def readHistoryFromTypedConcrete[F <: InteractionFormat](variable: InteractionVariable[F], jsonHistory: String)(using v: ValueOf[F]): Either[SerializedException, InteractionVariableHistory[F]] = {
     val serializer = v.value.historySerializer
-    serializer.tryDeserialize(jsonHistory).match {
+    serializer.tryDeserialize(jsonHistory) match {
       case Left(err) => Left(SerializedException(s"readHistoryFromTypedConcrete: value could not be parsed (${err.getMessage})", err))
       case Right(history) => Right(history)
     }
   }
 
   private[sync] def readHistoryFrom[F <: InteractionFormat](
-                                                               syncContext: SyncContext,
-                                                               fetchResponse: FetchResponse[SyncContext, String]
-                                                             )(using v: ValueOf[F]): Either[SerializedException, InteractionVariableHistory[F]] = {
+                                                                syncContext: SyncContext,
+                                                                fetchResponse: FetchResponse[SyncContext, String]
+                                                              )(using v: ValueOf[F]): Either[SerializedException, InteractionVariableHistory[F]] = {
     val serializer = v.value.historySerializer
-    fetchResponse.fetchedValues.find(_.dataKey == syncContext).map(_.dataValue).match {
-      case Some(jsonHistory) => serializer.tryDeserialize(jsonHistory).match {
-        case Left(err) => Left(SerializedException(s"readHistory::curResponse fetched ${fetchResponse.fetchedValues.size} and contained '${syncContext}' but value could not be parsed (${err.getMessage})", err))
-        case Right(history) => Right(history)
-      }
+    fetchResponse.fetchedValues.find(_.dataKey == syncContext).map(_.dataValue) match {
+      case Some(jsonHistory) => 
+        serializer.tryDeserialize(jsonHistory) match {
+          case Left(err) => Left(SerializedException(s"readHistory::curResponse fetched ${fetchResponse.fetchedValues.size} and contained '${syncContext}' but value could not be parsed (${err.getMessage})", err))
+          case Right(history) => Right(history)
+        }
       case None => Left(SerializedException(s"readHistory::curResponse fetched ${fetchResponse.fetchedValues.size} but did not contain ${syncContext}"))
     }
   }

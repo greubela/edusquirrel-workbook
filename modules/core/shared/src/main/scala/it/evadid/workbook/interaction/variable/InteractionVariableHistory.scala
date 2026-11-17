@@ -99,11 +99,11 @@ object InteractionVariableHistory {
   /** Build events from typed answers and completed results; this does not decode an older saved schema. */
   def fromResults[F <: InteractionFormat](states: Set[InteractionVariableState[F#InteractionStateType]],
       gradings: Set[GradedState[F#InteractionStateType, F#GradingInfoType]] = Set.empty[GradedState[F#InteractionStateType, F#GradingInfoType]], scaffoldings: Set[ScaffoldingResult[F#InteractionStateType, F#ScaffoldingInfoType]] = Set.empty[ScaffoldingResult[F#InteractionStateType, F#ScaffoldingInfoType]]): InteractionVariableHistory[F] =
-    empty[F].addStates(states).addGradings(gradings.map(_.graderResultMap).toSet).addScaffoldings(scaffoldings)
+    empty[F].addStates(states).addGradings(gradings.flatMap(_.graderResultMap.values)).addScaffoldings(scaffoldings)
 
   def fromResults[F <: InteractionFormat](states: InteractionVariableStateHistory[F#InteractionStateType], gradings: InteractionVariableGradingHistory[F#InteractionStateType, F#GradingInfoType],
       scaffoldings: InteractionVariableScaffoldingHistory[F#InteractionStateType, F#ScaffoldingInfoType]): InteractionVariableHistory[F] =
-    empty[F].addStates(states.events).addGradings(gradings.gradingsFinished.map(_.graderResultMap).toSet).addScaffoldings(scaffoldings.scaffoldingsFinished)
+    empty[F].addStates(states.events).addGradings(gradings.gradingsFinished.flatMap(_.graderResultMap.values)).addScaffoldings(scaffoldings.scaffoldingsFinished)
 
   // no backward compatible version!
 }

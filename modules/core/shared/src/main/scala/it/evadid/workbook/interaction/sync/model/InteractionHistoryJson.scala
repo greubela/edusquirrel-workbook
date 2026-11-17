@@ -55,4 +55,16 @@ object InteractionHistoryJson {
     InteractionHistoryJson(format, format.historySerializer.serialize(history.asInstanceOf[InteractionVariableHistory[v.value.F]]))
   }
 
+  /** Merge multiple histories into one. This is a legacy method for compatibility;
+    * in the new type system, merging requires knowing the format.
+    */
+  def merge(format: InteractionFormat, histories: List[String]): String = {
+    val initial = InteractionVariableHistory.empty[InteractionFormat]
+    val merged = histories.foldLeft(initial) { (current, json) =>
+      val decoded = format.historySerializer.deserialize(json).asInstanceOf[InteractionVariableHistory[InteractionFormat]]
+      current.mergeWith(decoded)
+    }
+    format.historySerializer.serialize(merged)
+  }
+
 }

@@ -52,12 +52,16 @@ sealed trait InteractionFormat {
   type ScaffoldingInfoType
 
   // The historySerializer is defined as a method that can be overridden by format objects
-  // to provide type-specific serialization. We use a type member that each format object
-  // sets to its own type.
+  // to provide type-specific serialization. We use the format object itself as the type
+  // and convert to/from InteractionVariableHistory[InteractionFormat] for serialization.
   type F <: InteractionFormat
-  // Use the upickle ReadWriter from InteractionVariableHistory instead of custom serializers
+  // Use the upickle ReadWriter from InteractionVariableHistory with the format's type
+  // We use a macro-like approach since F is a type member, not a type parameter
   def historySerializer: Serializer[InteractionVariableHistory[this.F]] = 
-    Serializer.fromImplicitRW
+    Serializer.fromCustom(
+      (value: InteractionVariableHistory[this.F]) => upickle.default.write(value.asInstanceOf[InteractionVariableHistory[InteractionFormat]]),
+      (input: ujson.Value) => upickle.default.read[InteractionVariableHistory[InteractionFormat]](input).asInstanceOf[InteractionVariableHistory[this.F]]
+    )
 
   type Format = this.type
 
@@ -132,7 +136,6 @@ object InteractionFormat {
     type InteractionStateType = String
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
-    type F = TextInteractionFormat
   }
 
 
