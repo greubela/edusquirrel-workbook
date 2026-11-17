@@ -221,14 +221,14 @@ jobs:
   # Preserve the required "tests" status as the gate for the whole test suite.
   tests:
     if: ${{ always() }}
-    needs: [scala-tests, browser-tests, mysql-accounts]
+    needs: [scala-tests, browser-tests, mysql-integration]
     runs-on: ubuntu-latest
     steps:
       - name: Require every test job to pass
         env:
           SCALA_RESULT: ${{ needs.scala-tests.result }}
           BROWSER_RESULT: ${{ needs.browser-tests.result }}
-          MYSQL_RESULT: ${{ needs.mysql-accounts.result }}
+          MYSQL_RESULT: ${{ needs.mysql-integration.result }}
         run: |
           test "$SCALA_RESULT" = success
           test "$BROWSER_RESULT" = success
