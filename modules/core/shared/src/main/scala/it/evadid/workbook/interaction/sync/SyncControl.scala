@@ -19,11 +19,14 @@ trait SyncControl {
 
   def store[F <: InteractionFormat](interactionVariable: InteractionVariable[F], forceFlush: Boolean = false): Future[Unit]
 
-  def fetchAndStore(forceFlush: Boolean = false): Future[Unit] = fetchAll(forceFlush).flatMap(_ => storeAll(forceFlush))
+  private def phases(first: => Future[Unit], second: => Future[Unit]): Future[Unit] = {
+    def attempt(operation: => Future[Unit]) = scala.util.Try(operation).fold(Future.failed, identity)
+    attempt(first).transformWith(before => attempt(second).transform(after => before.flatMap(_ => after)))
+  }
 
-  def storeAndFetch(forceFlush: Boolean = false): Future[Unit] = storeAll(forceFlush).flatMap(_ => fetchAll(forceFlush))
-
-  def ensureSynced(): Future[Unit] = fetchAndStore(true).flatMap(_ => fetchAll(true))
+  def fetchAndStore(forceFlush: Boolean = false): Future[Unit] = phases(fetchAll(forceFlush), storeAll(forceFlush))
+  def storeAndFetch(forceFlush: Boolean = false): Future[Unit] = phases(storeAll(forceFlush), fetchAll(forceFlush))
+  def ensureSynced(): Future[Unit] = fetchAndStore(true)
 
   def syncLogger: SyncLogger
 

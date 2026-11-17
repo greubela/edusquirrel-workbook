@@ -10,3 +10,11 @@ Additional user requirements (2026-11-17):
 9. Thoroughly test BufferedSyncDestinationHandler.
 10. Add bulk database storage with histories: Seq[InteractionHistoryJson]; buffered flush must use a single network request.
 Original prompt remains authoritative: current formats/operations only, no compatibility fallback; complete tests, deployAll, concise docs, mergeable PR; commit/push regularly.
+
+Post-review fixes authorized on 2026-11-18:
+- Isolate asynchronous feedback and caches by user session; ignore stale completions.
+- Resolve default database references from the receiving backend environment.
+- Restore full reset UI, typed deletion across all workbooks, retry and paused sync.
+- Attempt independent pending writes despite read failures.
+- Integrate incremental reads, periodic full recovery, and phase-level batching.
+- Remove stale refactor guidance and update session serialization documentation.

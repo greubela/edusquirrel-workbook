@@ -40,7 +40,35 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
 
   private val innerState: State[InteractionVariableHistory[F]] = State(defaultHistory)
 
-  val control: InteractionScaffoldingAndGradingControl[F] = InteractionScaffoldingAndGradingControl(this)
+  private val feedbackGeneration = State(0L)
+  private val feedbackOwner = State(Option.empty[AnyRef])
+  private val feedbackControl = State(new InteractionScaffoldingAndGradingControl(this))
+  def control: InteractionScaffoldingAndGradingControl[F] = feedbackControl.now()
+  private[variable] def currentFeedbackGeneration: Long = feedbackGeneration.now()
+
+  /** Bind reused workbook instances to the current user; their computation caches are session-owned. */
+  def bindFeedbackSession(owner: AnyRef): Unit = synchronized {
+    if !feedbackOwner.now().exists(_ eq owner) then {
+      if feedbackOwner.now().nonEmpty then resetForNewSession()
+      else invalidateFeedback()
+      feedbackOwner.set(Some(owner))
+    }
+  }
+
+  private def invalidateFeedback(): Unit = {
+    feedbackGeneration.update(_ + 1)
+    feedbackControl.set(new InteractionScaffoldingAndGradingControl(this))
+  }
+
+  def resetForNewSession(): Unit = synchronized {
+    invalidateFeedback()
+    innerState.set(defaultHistory)
+  }
+
+  private[variable] def publishFeedback(generation: Long, context: ExecutionContextInformation)
+      (update: InteractionVariableHistory[F] => InteractionVariableHistory[F]): Unit = synchronized {
+    if generation == currentFeedbackGeneration && context.isCurrent then updateHistory(update, context)
+  }
 
   val keyForSerialization: String = underlyingInteraction.elementId + "_history"
 

@@ -25,13 +25,21 @@ case class FullInfo(
 
   val defaults: HomepageDefaults = HomepageDefaults(this)
 
-  lazy val workbookContextInformation: ExecutionContextInformation = new ExecutionContextInformation() {
-    private val currentLanguageObservable = signals.currentLanguage.toObservableValue
+  private[homepage] val feedbackSession = Var[AnyRef](new Object)
+  private[homepage] def invalidateFeedbackSession(): Unit = feedbackSession.set(new Object)
 
-    override def llmConfiguration: Option[LlmConfiguration] =
+  private lazy val currentLanguageObservable = signals.currentLanguage.toObservableValue
+
+  def workbookContextInformation: ExecutionContextInformation = {
+    val owner = feedbackSession.now()
+    val backendToken = homepageInfoNow().userInfo.flatMap(_.credentials.signedBackendToken)
+    new ExecutionContextInformation() {
+    override def isCurrent: Boolean = feedbackSession.now() eq owner
+
+    override val llmConfiguration: Option[LlmConfiguration] =
       homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig)
 
-    override def availableExecutionClients: Seq[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutor)
+    override lazy val availableExecutionClients: Seq[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutorWithCredentials(backendToken))
 
     override def getCurrentLanguage: AppLanguage.HumanLanguage = currentLanguageObservable.now().getOrElse(English)
 
@@ -44,6 +52,7 @@ case class FullInfo(
     override def futureExecutionContext: ExecutionContext = ExecutionContext.global
 
     override def syncControl: Option[SyncControl] = Some(FullInfo.this.syncControl)
+  }
   }
 
 

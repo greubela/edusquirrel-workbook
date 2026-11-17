@@ -85,6 +85,7 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
     lastFlush.set(clearing.map(_ => ()))
     clearing
   }
+  override def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess] = clear(underlying.clearAllHistories(context))
   override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = clear(underlying.clearValue(context))
   override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = clear(underlying.clearValues(context))
 }
@@ -101,12 +102,16 @@ object BufferedSyncDestinationHandler {
   }
 
   private def handleReads(reads: Seq[CachedReadRequest], underlying: SyncDestinationHistoryHandler): Future[Unit] =
-    Future.traverse(reads.groupBy(request => request.usageContext -> request.range).toSeq) { case ((context, range), requests) =>
-      val reading = range match {
+    Future.traverse(reads.groupBy(request => request.usageContext -> request.range.map(_.strategy)).toSeq) { case ((context, strategy), requests) =>
+      val reading = strategy match {
         case None => execute(underlying)(underlying.readHistoriesJson(context))
-        case Some(window) =>
-          val keys = requests.collect { case request: CachedRangeRead => request.keys }.flatten.toSeq.distinct
-          execute(underlying)(underlying.readHistoriesInRange(context, keys, window.starting, window.until, window.strategy))
+        case Some(selection) =>
+          val ranges = requests.collect { case request: CachedRangeRead => request }
+          val keys = ranges.flatMap(_.keys).distinct
+          // Query the union once; every caller receives only its own inclusive window.
+          val starting = ranges.map(_.window.starting).min
+          val until = ranges.map(_.window.until).max
+          execute(underlying)(underlying.readHistoriesInRange(context, keys, starting, until, selection))
             .map(values => FetchResponse.fromMap(LocalDateTime.now(), values.map((key, value) => key -> value.serialized)))
       }
       reading.transform { outcome =>
@@ -151,7 +156,9 @@ object BufferedSyncDestinationHandler {
   private case class CachedRangeRead(requestTimestamp: LocalDateTime, usageContext: UsageContext,
       keys: Set[SyncContext], window: Range, promise: Promise[FetchResponse[SyncContext, String]]) extends CachedReadRequest {
     val range: Option[Range] = Some(window)
-    def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data)
+    def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data.map(response =>
+      response.copy(fetchedValues = response.fetchedValues.filter(entry => keys(entry.dataKey)).map(entry =>
+        entry.copy(dataValue = InteractionHistoryJson.deserialize(entry.dataValue).between(window.starting, window.until).serialized)))))
   }
 
 }

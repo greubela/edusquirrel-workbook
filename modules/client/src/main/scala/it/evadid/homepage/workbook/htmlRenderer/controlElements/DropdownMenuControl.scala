@@ -24,6 +24,31 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
   private val credentialsOpen = Var(false)
 
 
+  private val resetState = fullInfo.syncControl.resetState
+  private val resetLabel: Signal[String] = resetState.flatMapSwitch { state =>
+    val key = state match {
+      case SyncResetState.Idle | SyncResetState.Completed => "basic/resetAllData"
+      case _: SyncResetState.Running => "basic/resetAllDataRunning"
+      case _: SyncResetState.Failed => "basic/resetAllDataRetry"
+    }
+    laminarHelper.plaintextStringSignal(key)
+  }
+
+  private def resetAllData(): Unit = {
+    val message = fullInfo.homepageInfoNow().languageMapStore.languageMaps
+      .get(LanguageMapContentId("basic/resetAllDataConfirm"))
+      .flatMap(_.tryGetInLanguage(fullInfo.signals.currentLanguage.now()))
+      .getOrElse("Clear all configured local answer stores and delete your saved answers and feedback across all workbooks? This cannot be undone.")
+    if !resetState.now().isInstanceOf[SyncResetState.Running] && dom.window.confirm(message) then {
+      val owner = fullInfo.current.userInfo.map(_.user.personId)
+      fullInfo.syncControl.resetAllData().onComplete {
+        case Success(_) if fullInfo.current.userInfo.map(_.user.personId) == owner => dom.window.location.reload()
+        case Success(_) => ()
+        case Failure(error) => logger.logExceptionWarn("Reset was not confirmed by every destination", error)
+      }
+    }
+  }
+
   private val currentUserInitials: Signal[String] = fullInfo.signals.user.map(_.map(_.user.initials).getOrElse("[?]"))
 
   private val logger = fullInfo.loggerSystemInfo.uiAndDomLogger
@@ -70,7 +95,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
     List(
       HtmlDropdownMenu.menuLabel(userNameOrNobodySignal),
       HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => downloadAll())
-    ) ++ List(
+    ) ++ Option.when(curUser.nonEmpty)(HtmlDropdownMenu.menuItem(resetLabel, _ => resetAllData())).toSeq ++ List(
       HtmlDropdownMenu.menuItem("basic/buttonLocalUpload", _ => uploadInput.ref.click()),
       HtmlDropdownMenu.menuItem(Val("Session connections"), _ => { closeMenu(); credentialsOpen.set(true) }),
       HtmlDropdownMenu.menuItem("basic/logout", _ => logout())
@@ -88,6 +113,8 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
   private val domElement: Element = div(
     cls := "workbook-user-menu",
     uploadInput,
+    child.maybe <-- resetState.map(state => Option.when(state.isInstanceOf[SyncResetState.Failed])(
+      p(role := "alert", child.text <-- laminarHelper.plaintextStringSignal("basic/resetAllDataError")))),
     div(
       cls := "workbook-user-menu-button",
       typ := "button",

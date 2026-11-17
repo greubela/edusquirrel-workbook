@@ -76,4 +76,9 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
       handler.readHistory[textFormat.type](key).map(restored => assertEquals(restored.size, deltas.size))
     }
   }
+  test("full local reset clears corrupt records without decoding histories or keys") {
+    val destination = new Destination(Map("unreadable key" -> "invalid JSON"), prohibitReads = true)
+    destination.forHistory().clearAllHistories(context).map(_ => assert(destination.cleared.isCompleted))
+  }
+
 }

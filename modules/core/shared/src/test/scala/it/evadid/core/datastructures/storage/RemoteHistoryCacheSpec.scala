@@ -414,4 +414,24 @@ class RemoteHistoryCacheSpec extends FunSuite {
     }
   }
 
+  test("normal destination refreshes use inclusive cursors and scheduled full reads recover older offline events") {
+    val destination = new Destination
+    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val first = event(1, 10)
+    val late = event(2, 1)
+    destination.persisted.set(Map(key -> history(first)))
+    control.refreshFrom(destination, Set(key), LocalDateTime.MIN).flatMap { _ =>
+      assertEquals(destination.reads.now().last.starting, LocalDateTime.MIN)
+      destination.persisted.set(Map(key -> history(first, late)))
+      control.refreshFrom(destination, Set(key), LocalDateTime.MIN)
+    }.flatMap { _ =>
+      assertEquals(destination.reads.now().last.starting, first.timestamp)
+      assertEquals(local(control).events.values, Set(first))
+      control.refreshFrom(destination, Set(key), LocalDateTime.MAX)
+    }.map { _ =>
+      assertEquals(destination.reads.now().last.starting, LocalDateTime.MIN)
+      assertEquals(local(control).events.values, Set(first, late))
+    }
+  }
+
 }

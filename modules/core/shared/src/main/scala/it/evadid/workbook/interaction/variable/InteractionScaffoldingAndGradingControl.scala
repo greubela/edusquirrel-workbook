@@ -17,7 +17,9 @@ import it.evadid.workbook.meta.ExecutionContextInformation
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
-case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](interactionVariable: InteractionVariable[F]) {
+final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val interactionVariable: InteractionVariable[F]) {
+  private val generation = interactionVariable.currentFeedbackGeneration
+
   // Type members for convenience
   type InteractionStateType = InteractionFormat.State[F]
   type GradingInfoType = InteractionFormat.Grading[F]
@@ -58,7 +60,9 @@ case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](inter
 
   def getOrCalculateGrading(contextInformation: ExecutionContextInformation, forceGrading: Boolean, forState: InteractionStateType): Future[GradedState[InteractionStateType, GradingInfoType]] = interactionVariable.synchronized {
     val ec = contextInformation.futureExecutionContext
-    if (gradingCache.getCurrentElementStatus(forState) == STARTED()) {
+    if !contextInformation.isCurrent || generation != interactionVariable.currentFeedbackGeneration then
+      Future.failed(new java.util.concurrent.CancellationException("Feedback session ended"))
+    else if (gradingCache.getCurrentElementStatus(forState) == STARTED()) {
       gradingCache.loadAsFuture(forState)(using ec)
     } else if (interactionVariable.currentHistory.historyGrading.gradingsMap.contains(forState)) {
       val saved = interactionVariable.currentHistory.historyGrading.gradingsMap(forState)
@@ -87,7 +91,7 @@ case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](inter
       recordGradingStart(existing.shouldRetry, existing.state, contextInformation)
       val futureRes = existing.retryFailed(contextInformation, forceGrading)
       val published = futureRes.map { gradedState =>
-        interactionVariable.updateHistory(_.addGrading(gradedState), contextInformation)
+        interactionVariable.publishFeedback(generation, contextInformation)(_.addGrading(gradedState))
         gradedState
       }(using contextInformation.futureExecutionContext)
       gradingCache.informAboutExistingFuture(existing.state, published, true)
@@ -106,7 +110,7 @@ case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](inter
     val futureRes = GradedState.executeGradingSafe(selected, forState, forceGrading, contextInformation)
       .map(_.merge(GradedState(forState, existing)))(using contextInformation.futureExecutionContext)
     val published = futureRes.map { gradedState =>
-      interactionVariable.updateHistory(_.addGrading(gradedState), contextInformation)
+      interactionVariable.publishFeedback(generation, contextInformation)(_.addGrading(gradedState))
       gradedState
     }(using contextInformation.futureExecutionContext)
     gradingCache.informAboutExistingFuture(forState, published, true)
@@ -124,7 +128,9 @@ case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](inter
 
   def getOrCalculateScaffolding(contextInformation: ExecutionContextInformation, forState: InteractionStateType): Future[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = interactionVariable.synchronized {
     val ec = contextInformation.futureExecutionContext
-    if (interactionVariable.currentHistory.historyScaffolding.scaffoldingMap.contains(forState)) {
+    if !contextInformation.isCurrent || generation != interactionVariable.currentFeedbackGeneration then
+      Future.failed(new java.util.concurrent.CancellationException("Feedback session ended"))
+    else if (interactionVariable.currentHistory.historyScaffolding.scaffoldingMap.contains(forState)) {
       Future.successful(interactionVariable.currentHistory.historyScaffolding.scaffoldingMap(forState))
     } else if (scaffoldingCache.getCurrentElementStatus(forState) != UNKNOWN()) {
       scaffoldingCache.loadAsFuture(forState)(using ec)
@@ -142,7 +148,7 @@ case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](inter
       interactionVariable.updateHistory(_.addEvent(ScaffoldingStartedEvent[F](forState, LocalDateTime.now(), scaffolder.scaffoldingEntity)), contextInformation)
       val futureRes = scaffolder.generateFeedbackSafe(forState, contextInformation)
       val published = futureRes.map { scaffResult =>
-        interactionVariable.updateHistory(_.addScaffolding(scaffResult), contextInformation)
+        interactionVariable.publishFeedback(generation, contextInformation)(_.addScaffolding(scaffResult))
         scaffResult
       }(using ec)
       scaffoldingCache.informAboutExistingFuture(forState, published)

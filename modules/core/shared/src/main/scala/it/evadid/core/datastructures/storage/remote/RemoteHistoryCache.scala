@@ -76,6 +76,20 @@ case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRead
       .map(response => combine(List(response)))
   }
 
+  /** Normal polls replay the last event; periodic full reads also recover late uploads with older timestamps. */
+  def refreshFrom(destination: RW, keys: Set[K], fullRefreshBefore: LocalDateTime,
+      forceFlush: Boolean = false): Future[Map[K, Seq[InteractionEvent[F]]]] = attempt {
+    require(cacheStrategies.contains(destination), "Cannot read an unconfigured history destination")
+    val known = state.now().destinations(destination)
+    val windows = keys.groupBy { key =>
+      known.get(key).filter(_.fullFetchCompleted.exists(time => !time.isBefore(fullRefreshBefore)))
+        .flatMap(value => value.fetchedThrough.orElse(value.fetchCompleted))
+    }
+    Future.traverse(windows.toSeq) { (cursor, selected) =>
+      fetch(destination, selected, cursor, LocalDateTime.MAX, forceFlush, trackProgress = true)
+    }.map(combine)
+  }
+
   def fetchAll(keys: Set[K], forceFlush: Boolean = false): Future[Map[K, Seq[InteractionEvent[F]]]] = attempt {
     if forceFlush then flush(true)
     Future.traverse(cacheStrategies.keys)(cache =>
@@ -107,6 +121,7 @@ case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRead
             val previous = values.getOrElse(key, RemoteHistoryValue.empty)
             values.updated(key, previous.copy(
               history = previous.history.mergeWith(history),
+              fullFetchCompleted = if trackProgress && starting.isEmpty then later(previous.fullFetchCompleted, Some(completed)) else previous.fullFetchCompleted,
               fetchCompleted = if trackProgress then later(previous.fetchCompleted, Some(completed)) else previous.fetchCompleted,
               fetchedThrough = if trackProgress then later(previous.fetchedThrough, history.events.timestampLastChanged) else previous.fetchedThrough))
           }
@@ -163,11 +178,12 @@ object RemoteHistoryCache {
   case class RemoteHistoryValue[F <: InteractionFormat](
       history: InteractionVariableHistory[F],
       fetchCompleted: Option[LocalDateTime],
-      fetchedThrough: Option[LocalDateTime])
+      fetchedThrough: Option[LocalDateTime],
+      fullFetchCompleted: Option[LocalDateTime])
 
   object RemoteHistoryValue {
     def empty[F <: InteractionFormat]: RemoteHistoryValue[F] =
-      RemoteHistoryValue(InteractionVariableHistory(InteractionEvents.empty), None, None)
+      RemoteHistoryValue(InteractionVariableHistory(InteractionEvents.empty), None, None, None)
   }
 
   private case class CacheState[K, F <: InteractionFormat, RW](

@@ -326,4 +326,58 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     value.updateHistory(_.addEvent(ScaffoldingStartedEvent[F]("answer", timestamp.plusNanos(1), entity)), context)
     assertEquals(value.control.getCurrentStateOfScaffolding("answer").map(_.scaffoldingStatus), Some(ScaffoldingStatus.ScaffoldingRequestedButNotFinished()))
   }
+  test("grading started before a session reset cannot publish into the next user's history") {
+    val gate = Promise[Unit]()
+    val grader = new CountingGrader(gate = Some(gate))
+    val value = variable(List(grader))
+    val pending = value.control.getOrCalculateGrading(context, forceGrading = true)
+    value.resetForNewSession()
+    value.setStateFromUserInteraction("new user's answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = context)
+    gate.success(())
+    pending.map(_ => assert(!value.currentHistory.gradingEvents.exists(_.associatedState == "answer")))
+  }
+
+  test("a session reset invalidates pending hints and completed feedback caches") {
+    val gate = Promise[Unit]()
+    val calls = State(0)
+    val scaffolder = new WorkbookInteractionScaffolder[String, MessengerModel] {
+      val scaffoldingEntity = FeedbackEntity.TestEntity()
+      def handleFeedbackGeneration(state: String, ctx: it.evadid.workbook.meta.ExecutionContextInformation) = {
+        calls.update(_ + 1)
+        gate.future.map(_ => ScaffoldingResult[String, MessengerModel](state,
+          ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("private hint")), scaffoldingEntity, None))
+      }
+    }
+    val value = hintVariable(scaffolder)
+    val firstOwner = new Object
+    value.bindFeedbackSession(firstOwner)
+    val pending = value.control.getOrCalculateScaffolding(context)
+    value.resetForNewSession()
+    value.bindFeedbackSession(new Object)
+    gate.success(())
+    pending.flatMap { _ =>
+      assert(value.currentHistory.scaffoldingEvents.isEmpty)
+      assertEquals(value.control.getCurrentStateOfScaffolding("answer"), None)
+      value.control.getOrCalculateScaffolding(context)
+    }.map(_ => assertEquals(calls.now(), 2))
+  }
+
+  test("inactive captured contexts cannot publish feedback even before the variable is rebound") {
+    val gate = Promise[Unit]()
+    val active = State(true)
+    val scoped = new it.evadid.workbook.meta.ExecutionContextInformation {
+      override def isCurrent = active.now()
+      def syncControl = context.syncControl
+      def availableExecutionClients = context.availableExecutionClients
+      def getCurrentLanguage = context.getCurrentLanguage
+      def languageMapIdResolver = context.languageMapIdResolver
+      def futureExecutionContext = context.futureExecutionContext
+    }
+    val value = variable(List(new CountingGrader(gate = Some(gate))))
+    val pending = value.control.getOrCalculateGrading(scoped, forceGrading = true)
+    active.set(false)
+    gate.success(())
+    pending.map(_ => assert(value.currentHistory.historyGrading.gradingsMap.isEmpty))
+  }
+
 }

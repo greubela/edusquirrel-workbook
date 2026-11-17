@@ -63,7 +63,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
     import it.evadid.workbook.interaction.sync.UsageContext
     val request = SQLCommands.DeleteInDbRequest(UsageContext("program", "workbook", "user"), None,
-      DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalFormat, allWorkbooks = true)
+      it.evadid.sql.BackendDatabase, DatabaseHistoryFormat.RelationalFormat, allWorkbooks = true)
     assertEquals(read[SQLCommands.DeleteInDbRequest](write(request)), request)
     assertEquals(ExecutionCommandFactory.forName("reset-user-histories-in-db-request"), Some(SQLCommands.resetUserHistoriesDbCommand))
     intercept[IllegalArgumentException](request.copy(limitToKey = Some("one-variable")))
@@ -80,14 +80,10 @@ class CommandPayloadCodecsSpec extends FunSuite {
   test("default sync requests use the current explicit database wire fields on JVM and JavaScript") {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
     import it.evadid.workbook.interaction.sync.UsageContext
-    val request = SQLCommands.FetchEventsFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"), Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.SYNC_EVERYTHING)
+    val request = SQLCommands.FetchEventsFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"), Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, it.evadid.sql.BackendDatabase, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.SYNC_EVERYTHING)
     val encoded = writeJs(request)
-    val config = encoded("databaseConfig")
-    assertEquals(config.obj.keySet.toSet, Set("$type", "dbFormat", "host", "port", "database"))
-    assertEquals(config("database").str, "db_332371_12")
-    assertEquals(config("host").str, "herrgreubel.lima-db.de")
-    assertEquals(config("dbFormat").str, "mysql")
-    assertEquals(config("port").str, "3306")
+    assertEquals(encoded("databaseConfig"), ujson.Str("BackendDatabase"))
+    assert(!write(request).contains("herrgreubel"))
   }
 
   test("both explicit database configurations work in destinations and requests while logs exclude credentials") {

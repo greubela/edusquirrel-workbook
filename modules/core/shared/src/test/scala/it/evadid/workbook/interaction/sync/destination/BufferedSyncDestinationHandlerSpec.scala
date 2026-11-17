@@ -35,6 +35,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
       storeResult.now()()
     }
     def readHistoriesJson(ctx: UsageContext)(implicit ec: ExecutionContext) = { reads.update(_ :+ ctx); readResult.now()(ctx) }
+    def clearAllHistories(ctx: UsageContext)(using ExecutionContext) = clearValues(ctx)
     def clearValue(key: SyncContext)(implicit ec: ExecutionContext) = Future.successful(SyncSuccess.emptyNow())
     def clearValues(ctx: UsageContext)(implicit ec: ExecutionContext) = Future.successful(SyncSuccess.emptyNow())
   }
@@ -278,6 +279,36 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
       _ = buffered.flush(true)
       _ <- retry
     } yield assertEquals(destination.writes.now(), List(Map(key -> saved("retry"))))
+  }
+
+  test("different cursor windows share one query and each caller receives only its own events") {
+    val calls = State(Vector.empty[(LocalDateTime, LocalDateTime)])
+    val base = LocalDateTime.of(2026, 1, 1, 12, 0)
+    val other = context.toSyncContext("other")
+    val format = InteractionFormat.TextInteractionFormat
+    val events = (0 to 3).map(index => it.evadid.workbook.interaction.variable.events.AnswerChangedEvent[format.type](
+      index.toString, base.plusNanos(index), UpdateImportance.MAJOR)).toSet
+    val full = it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.fromHistory(format,
+      it.evadid.workbook.interaction.variable.InteractionVariableHistory(
+        it.evadid.workbook.interaction.variable.events.InteractionEvents(events.map(event => event: it.evadid.workbook.interaction.variable.events.InteractionEvent[format.type]))))
+    val destination = new Destination {
+      override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], from: LocalDateTime,
+          until: LocalDateTime, strategy: EventSyncStrategy)(using ExecutionContext) = {
+        calls.update(_ :+ (from -> until))
+        Future.successful(keys.map(_ -> full).toMap)
+      }
+    }
+    val buffer = destination.toBuffered
+    val first = buffer.readHistoriesInRange(context, Seq(key), base.plusNanos(1), base.plusNanos(1), EventSyncStrategy.SYNC_EVERYTHING)
+    val second = buffer.readHistoriesInRange(context, Seq(other), base.plusNanos(2), base.plusNanos(3), EventSyncStrategy.SYNC_EVERYTHING)
+    buffer.flush(true)
+    for { a <- first; b <- second } yield {
+      assertEquals(calls.now(), Vector(base.plusNanos(1) -> base.plusNanos(3)))
+      assertEquals(a.keySet, Set(key))
+      assertEquals(b.keySet, Set(other))
+      assertEquals(a(key).typedAs(format).allStates.map(_.newState), Set("1"))
+      assertEquals(b(other).typedAs(format).allStates.map(_.newState), Set("2", "3"))
+    }
   }
 
 }

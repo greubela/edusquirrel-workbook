@@ -10,6 +10,9 @@ import scala.concurrent.ExecutionContext
 
 trait ExecutionContextInformation {
 
+  /** Captured feedback contexts become inactive when their user session ends. */
+  def isCurrent: Boolean = true
+
   def syncControl: Option[SyncControl]
 
   def llmConfiguration: Option[LlmConfiguration] = None

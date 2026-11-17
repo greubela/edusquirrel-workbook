@@ -3,6 +3,15 @@ package it.evadid.sql
 import upickle.default.*
 
 sealed trait DatabaseConfiguration derives ReadWriter {
+  def withoutCredentials: DatabaseConfiguration
+}
+
+/** Resolve the database exclusively from the receiving backend's environment. */
+case object BackendDatabase extends DatabaseConfiguration {
+  def withoutCredentials: DatabaseConfiguration = this
+}
+
+sealed trait DatabaseConnection extends DatabaseConfiguration derives ReadWriter {
   def dbFormat: String
   def host: String
   def port: String
@@ -13,15 +22,11 @@ sealed trait DatabaseConfiguration derives ReadWriter {
 
 /** A complete public destination whose credentials are resolved only by the server. */
 case class DatabaseConfig(dbFormat: String, host: String, port: String, database: String)
-  extends DatabaseConfiguration derives ReadWriter
-
-object DatabaseConfig {
-  val defaultDb: DatabaseConfig = DatabaseConfig("mysql", "herrgreubel.lima-db.de", "3306", "db_332371_12")
-}
+  extends DatabaseConnection derives ReadWriter
 
 /** Transient user-supplied connection; never persist it or include it in logs. */
 case class DatabaseConfigWithCredentials(dbFormat: String, host: String, port: String, database: String,
-    user: String, password: String) extends DatabaseConfiguration derives ReadWriter {
+    user: String, password: String) extends DatabaseConnection derives ReadWriter {
   override def toString: String = s"DatabaseConfigWithCredentials($dbFormat,$host,$port,$database,credentials=redacted)"
 }
 

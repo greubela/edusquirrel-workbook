@@ -264,7 +264,8 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
         logger.logExceptionWarn("Could not update saved user preferences", error)
       // Browser storage is optional. It must never prevent clearing session credentials.
       if (fullInfo.current.userInfo.map(_.user.personId) != newUserInfo.map(_.user.personId)) {
-        interactions.foreach(_.interactionVariable.resetLocalHistory())
+        fullInfo.invalidateFeedbackSession()
+        interactions.foreach(_.interactionVariable.resetForNewSession())
       }
       fullInfo.homepageInfoState.update(_.copy(userInfo = newUserInfo))
     }

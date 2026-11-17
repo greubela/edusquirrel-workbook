@@ -22,6 +22,9 @@ trait SyncDestinationHistoryHandler {
 
   def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess]
 
+  /** Full user reset across workbooks; local answer stores are cleared completely. */
+  def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess]
+
   def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess]
 
   def storeHistoriesJson(contextJsonMap: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = {
@@ -78,6 +81,8 @@ object SyncDestinationHistoryHandler {
       override def syncLogger: SyncLogger = basic.syncLogger
 
       override def definition: SyncDestinationDefinition = basic.underlyingDefinition
+
+      override def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess] = basic.clearAll()
 
       override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = typed.clearValue(context)
 

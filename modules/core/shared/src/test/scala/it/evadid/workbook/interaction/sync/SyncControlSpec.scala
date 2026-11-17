@@ -34,25 +34,26 @@ class SyncControlSpec extends FunSuite {
     }
   }
 
-  test("a failed fetch is reported and does not overwrite unknown remote histories") {
+  test("a failed read still attempts pending writes and reports the read failure") {
     val sync = new ControlledSync
     val failure = IllegalStateException("offline")
     val result = sync.ensureSynced()
     sync.loadFinished.failure(failure)
-    result.failed.map { error =>
-      assert(error eq failure)
-      assert(!sync.storeStarted.isCompleted)
+    sync.storeStarted.future.flatMap { _ =>
+      assert(!result.isCompleted)
+      sync.storeFinished.success(())
+      result.failed.map(error => assert(error eq failure))
     }
   }
 
-  test("a failed store is reported instead of being hidden by a subsequent fetch") {
+  test("a failed store still fetches healthy destinations and preserves its failure") {
     val sync = new ControlledSync
     val failure = IllegalStateException("write failed")
     val result = sync.storeAndFetch(true)
     sync.storeFinished.failure(failure)
-    result.failed.map { error =>
-      assert(error eq failure)
-      assert(!sync.loadStarted.isCompleted)
+    sync.loadStarted.future.flatMap { _ =>
+      sync.loadFinished.success(())
+      result.failed.map(error => assert(error eq failure))
     }
   }
 }
