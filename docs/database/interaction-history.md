@@ -3,6 +3,10 @@
 Both `DatabaseHistoryFormat.BlobFormat` and `RelationalFormat` store the current
 format-based event history. Their authoritative schema is
 [setup.sql](../../artifacts/database/setup.sql).
+The single history-read command is `fetch-events-from-db-request`. Every read
+provides inclusive bounds and an event strategy; complete reads use
+`LocalDateTime.MIN` and `MAX`. Selection is applied before the timestamp window.
+
 Requests carry `InteractionHistoryJson(format, historyJson)`; the backend never
 needs a workbook definition or element-ID registry to decode them.
 
@@ -46,8 +50,11 @@ full reads recover late uploads with older event timestamps.
 
 `RemoteInteractionCacheControl` owns a typed cache for each interaction in the active
 workbook/user environment. `FormattedSyncDestination` encodes/decodes envelopes at the
-destination boundary. Outdated responses cannot change a newly selected workbook or
-user. Buffered batches register before delegates are flushed; merges or delegate
+destination boundary. Local writes merge deltas with the saved typed history;
+IndexedDB performs the read/merge/write in a single read-write transaction.
+Each successful destination read is applied independently, so an unavailable
+backend cannot block local restoration. Outdated responses cannot change a newly
+selected workbook or user. Buffered batches register before delegates are flushed; merges or delegate
 failures complete every waiting promise. The sync indicator reflects confirmed
 strategy-selected events, rather than request/fetch times.
 

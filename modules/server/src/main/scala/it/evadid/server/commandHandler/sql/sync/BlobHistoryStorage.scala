@@ -43,13 +43,9 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
     DbFetchResponse(entries.toMap)
   }
 
-  def fetch(request: FetchAllFromDbRequest): DbFetchResponse = transaction {
-    histories(request.usageContext, request.mayLimitToKey.toList)
-  }
-
-  def fetchInRange(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {
+  def fetch(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {
     val response = histories(request.usageContext, request.keys)
-    response.copy(fetchedElements = response.fetchedElements.map((key, value) => key -> value.between(request.starting, request.until)))
+    response.copy(fetchedElements = response.fetchedElements.map((key, value) => key -> value.cleanWithStrategy(request.strategy).between(request.starting, request.until)))
   }
 
   def delete(request: DeleteInDbRequest): SyncSuccess = transaction {

@@ -88,7 +88,7 @@ test('automatic login restores answers and keeps sync destinations stable across
         const command=readCommandRequest(route.request());requests.push(command);
         let value;
         if(command.name==='login-command')value={userKnown:true,tokenValid:true,allUserInfo:profile};
-        else if((command.name==='fetch-from-db-request'||command.name==='fetch-events-from-db-request')){
+        else if(command.name==='fetch-events-from-db-request'){
           const json=histories.get(command.json.databaseFormat);
           value={fetchedElements:json?[[context,json]]:[]};
         } else if(command.name==='sync-to-db-request'){

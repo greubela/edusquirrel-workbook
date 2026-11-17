@@ -20,6 +20,8 @@ trait SyncDestinationHandlerBasic {
 
   def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess]
 
+  def updateElement(key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess]
+
   def readElement(key: String)(implicit ec: ExecutionContext): Future[String]
 
   def readAll(implicit ec: ExecutionContext): Future[Map[String, String]]
@@ -63,6 +65,9 @@ object SyncDestinationHandlerBasic {
           Failure(err)
       }(using ec)
     }
+
+    def updateElement(key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] =
+      scala.util.Try(basicHandler.updateElementRaw(syncLogger, key, update)).fold(Future.failed, identity)
 
     def readElement(key: String)(implicit ec: ExecutionContext): Future[String] = {
       basicHandler.readElementRaw(syncLogger, key).transform {

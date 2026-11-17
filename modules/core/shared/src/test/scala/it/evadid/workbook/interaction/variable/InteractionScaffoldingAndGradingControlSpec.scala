@@ -310,4 +310,20 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
   test("an interaction with no graders has an empty completed result") {
     variable(Nil).control.getOrCalculateGrading(context, forceGrading = true).map(result => assertEquals(result.testsWithResults, Set.empty))
   }
+
+  test("received scaffolding lifecycle events expose pending and completed states without executing feedback") {
+    import it.evadid.workbook.interaction.variable.events.*
+    import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
+    type F = TextInputWithLlmGradingAndScaffoldingFormat.type
+    val value = variable(Nil)
+    val timestamp = java.time.LocalDateTime.of(2026, 11, 17, 12, 0)
+    val entity = FeedbackEntity.LlmEntity()
+    value.updateHistory(_.addEvent(ScaffoldingStartedEvent[F]("answer", timestamp, entity)), context)
+    assertEquals(value.control.getCurrentStateOfScaffolding("answer").map(_.scaffoldingStatus), Some(ScaffoldingStatus.ScaffoldingRequestedButNotFinished()))
+    val completed = ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("Hint")), entity, None, timestamp)
+    value.updateHistory(_.addEvent(ScaffoldingCompletedEvent[F](completed)), context)
+    assertEquals(value.control.getCurrentStateOfScaffolding("answer"), Some(completed))
+    value.updateHistory(_.addEvent(ScaffoldingStartedEvent[F]("answer", timestamp.plusNanos(1), entity)), context)
+    assertEquals(value.control.getCurrentStateOfScaffolding("answer").map(_.scaffoldingStatus), Some(ScaffoldingStatus.ScaffoldingRequestedButNotFinished()))
+  }
 }

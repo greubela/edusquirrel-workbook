@@ -352,4 +352,20 @@ class RemoteHistoryCacheSpec extends FunSuite {
       unknown <- control.requestStore(new Destination, Map(key -> empty)).failed
     } yield assert(unknown.isInstanceOf[IllegalArgumentException])
   }
+  test("destination reads restore successful events independently of an unavailable peer") {
+    val available = new Destination
+    val unavailable = new Destination
+    val saved = event(1, 1)
+    available.persisted.set(Map(key -> history(saved)))
+    unavailable.readOperation.set(_ => Future.failed(IllegalStateException("offline")))
+    val control = cache(available -> EventSyncStrategy.KEEP_ALL, unavailable -> EventSyncStrategy.KEEP_ALL)
+    val good = control.fetchAllFrom(available, Set(key))
+    val bad = control.fetchAllFrom(unavailable, Set(key))
+    good.zip(bad.failed).map { (received, error) =>
+      assertEquals(received(key).toSet, Set(saved))
+      assertEquals(local(control).events.values, Set(saved))
+      assertEquals(error.getMessage, "offline")
+      assert(!control.reports.now().get(key).lastKnownValues.contains(unavailable))
+    }
+  }
 }

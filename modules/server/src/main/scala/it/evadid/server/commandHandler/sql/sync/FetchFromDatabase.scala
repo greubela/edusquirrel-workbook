@@ -1,38 +1,16 @@
 package it.evadid.server.commandHandler.sql.sync
 
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, FetchEventsFromDbRequest}
+import it.evadid.server.database.DatabaseRequestConnection
 import it.evadid.sql.DatabaseHistoryFormat
-import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, FetchAllFromDbRequest, FetchEventsFromDbRequest}
-import it.evadid.server.commandHandler.sql.{GenericSqlFunctionality, RichDatabaseConfig}
-import it.evadid.sql.DatabaseConfiguration
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.{SyncContext, UsageContext}
-
-import java.sql.*
 
 object FetchFromDatabase {
-
-
-  def handleRequest(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
-    it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
+  def handleRequest(request: FetchEventsFromDbRequest, logger: Logger): DbFetchResponse =
+    DatabaseRequestConnection.use(request, logger) { connection =>
       request.databaseFormat match {
-        case DatabaseHistoryFormat.RelationalFormat =>
-          new RelationalHistoryStorage(connection, logger).fetch(request)
-        case DatabaseHistoryFormat.BlobFormat =>
-          new BlobHistoryStorage(connection, logger).fetch(request)
+        case DatabaseHistoryFormat.RelationalFormat => new RelationalHistoryStorage(connection, logger).fetch(request)
+        case DatabaseHistoryFormat.BlobFormat => new BlobHistoryStorage(connection, logger).fetch(request)
       }
     }
-  }
-
-  def handleRangeRequest(request: FetchEventsFromDbRequest, logger: Logger): DbFetchResponse = {
-    it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
-      request.databaseFormat match {
-        case DatabaseHistoryFormat.RelationalFormat =>
-          new RelationalHistoryStorage(connection, logger).fetchInRange(request)
-        case DatabaseHistoryFormat.BlobFormat =>
-          new BlobHistoryStorage(connection, logger).fetchInRange(request)
-      }
-    }
-  }
-
 }

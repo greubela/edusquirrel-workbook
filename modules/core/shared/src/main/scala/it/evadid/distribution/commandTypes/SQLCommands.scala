@@ -38,13 +38,6 @@ object SQLCommands {
 
   }
 
-  case class FetchAllFromDbRequest(
-                                    usageContext: UsageContext,
-                                    databaseConfig: DatabaseConfiguration,
-                                    mayLimitToKey: Option[String],
-                                    databaseFormat: DatabaseHistoryFormat
-                                  ) extends DbRequest derives ReadWriter
-
   /** Range-read: return only events whose timestamp falls in [starting, until]. */
   case class FetchEventsFromDbRequest(
                                        usageContext: UsageContext,
@@ -52,7 +45,8 @@ object SQLCommands {
                                        starting: LocalDateTime,
                                        until: LocalDateTime,
                                        databaseConfig: DatabaseConfiguration,
-                                       databaseFormat: DatabaseHistoryFormat
+                                       databaseFormat: DatabaseHistoryFormat,
+                                       strategy: EventSyncStrategy
                                      ) extends DbRequest derives ReadWriter {
     require(!until.isBefore(starting), "History range end must not precede its start")
   }
@@ -75,10 +69,6 @@ object SQLCommands {
 
   lazy val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory[StoreToDbRequest, SyncSuccess](
     "sync-to-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
-  )
-
-  lazy val fetchFromDbCommand: ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse](
-    "fetch-from-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
   )
 
   lazy val fetchEventsFromDbCommand: ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse](

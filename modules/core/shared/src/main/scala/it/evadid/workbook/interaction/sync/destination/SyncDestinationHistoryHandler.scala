@@ -86,12 +86,15 @@ object SyncDestinationHistoryHandler {
         Future.traverse(containedKeys)(clearValue).map(_ => SyncSuccess(0, 0, containedKeys.size, LocalDateTime.now()))
       })
 
-      override def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
-        typed.storeElementTyped(syncContext, historyJson)
-      }
-
-      override def storeHistoriesJson(contextJsonMap: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = {
-        typed.storeAll(contextJsonMap)
+      override def storeHistoryJson(context: SyncContext, json: String)(using ec: ExecutionContext): Future[SyncSuccess] = {
+        scala.util.Try(InteractionHistoryJson.deserialize(json)).fold(Future.failed, incoming =>
+          basic.updateElement(SyncContext.serializer.serialize(context), previous => {
+            val saved = previous.flatMap(value => scala.util.Try(InteractionHistoryJson.deserialize(value)).fold(error => {
+              syncLogger.logExceptionWarn("Discarding malformed stored interaction history", error)
+              None
+            }, Some(_)))
+            saved.fold(incoming)(_.merge(incoming)).serialized
+          }))
       }
 
       override def readHistoryJson(syncContext: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {

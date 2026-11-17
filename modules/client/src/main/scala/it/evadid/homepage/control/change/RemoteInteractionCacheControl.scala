@@ -38,12 +38,15 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
 
     def fetch(forceFlush: Boolean): Future[Unit] = {
       cache.mergeLocal(Map(key -> variable.currentHistory))
-      cache.fetchAll(Set(key), forceFlush).map { received =>
-        if active then {
-          val merged = variable.currentHistory.mergeWith(InteractionVariableHistory(InteractionEvents(received.getOrElse(key, Nil).toSet)))
-          if merged != variable.currentHistory then variable.updateHistory(_ => merged, fullInfo.workbookContextInformation)
+      Future.traverse(destinations) { destination =>
+        cache.fetchAllFrom(destination, Set(key), forceFlush).map { received =>
+          if active then {
+            val fetched = InteractionVariableHistory[F](InteractionEvents(received.getOrElse(key, Nil).toSet))
+            val merged = variable.currentHistory.mergeWith(fetched).normalize()
+            if merged != variable.currentHistory then variable.updateHistory(_ => merged, fullInfo.workbookContextInformation)
+          }
         }
-      }
+      }.map(_ => ())
     }
 
     val report: Signal[Option[InteractionVariableSyncReport[SyncInformationWithContext]]] =

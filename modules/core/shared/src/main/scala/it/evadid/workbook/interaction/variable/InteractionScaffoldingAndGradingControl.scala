@@ -39,20 +39,13 @@ case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](inter
   }
 
   def getCurrentStateOfScaffolding(forState: InteractionStateType): Option[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = interactionVariable.synchronized {
-    val scaffMap = interactionVariable.currentHistory.historyScaffolding.scaffoldingMap
-    val scaffInHistoryOp = interactionVariable.currentHistory.historyScaffolding.scaffoldingMap.get(forState)
-    if (scaffInHistoryOp.isDefined) scaffInHistoryOp else {
-      val scaffInCacheOp = scaffoldingCache.getSyncIfInCache(forState, false)
-      if (scaffInCacheOp.isDefined) scaffInCacheOp else {
-        scaffoldingCache.getCurrentElementStatus(forState).match {
-          case UNKNOWN() => None
-          case FAILED(err) => Some(ScaffoldingResult(forState, ScaffoldingError(err), SystemEntity(), None, LocalDateTime.now()))
-          case anyStatus => {
-            Some(ScaffoldingResult(forState, ScaffoldingRequestedButNotFinished(), SystemEntity(), None, LocalDateTime.now()))
-          }
-        }
-      }
-    }
+    interactionVariable.currentHistory.scaffoldingForState(forState)
+      .orElse(scaffoldingCache.getSyncIfInCache(forState, false))
+      .orElse(scaffoldingCache.getCurrentElementStatus(forState) match {
+        case UNKNOWN() => None
+        case FAILED(error) => Some(ScaffoldingResult(forState, ScaffoldingError(error), SystemEntity(), None, LocalDateTime.now()))
+        case _ => Some(ScaffoldingResult(forState, ScaffoldingRequestedButNotFinished(), SystemEntity(), None, LocalDateTime.now()))
+      })
   }
 
   // GRADING CALCULATION

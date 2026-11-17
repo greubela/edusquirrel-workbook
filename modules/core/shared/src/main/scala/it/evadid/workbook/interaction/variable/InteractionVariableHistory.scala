@@ -85,6 +85,16 @@ case class InteractionVariableHistory[F <: InteractionFormat](
     GradedState(state, results)
   }
 
+  def scaffoldingForState(state: InteractionFormat.State[F]): Option[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]] = {
+    val relevant = scaffoldingEvents.filter(_.associatedState == state)
+    val latestTime = relevant.map(_.timestamp).maxOption
+    val latest = relevant.filter(event => latestTime.contains(event.timestamp))
+    if latest.exists(_.isInstanceOf[ScaffoldingCompletedEvent[F]]) then historyScaffolding.scaffoldingMap.get(state)
+    else latest.collectFirst { case event: ScaffoldingStartedEvent[F] =>
+      ScaffoldingResult(state, ScaffoldingStatus.ScaffoldingRequestedButNotFinished(), event.scaffoldingEntity, None, event.timestamp)
+    }
+  }
+
   def mergeWith(other: InteractionVariableHistory[F]): InteractionVariableHistory[F] =
     copy(events = events.merge(other.events))
 

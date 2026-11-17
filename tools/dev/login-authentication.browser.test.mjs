@@ -69,7 +69,7 @@ test('login validates accounts, restores cached credentials after reload and cle
           value = {userKnown:true,tokenValid:validLogin,allUserInfo:validLogin ? {
             user,credentials:{signedBackendToken:token,singleAccessToken:null,llmApiConfig:null,databaseConfig:null},config:{syncDestinations:destinations,isOnlineAccount:true}} : null};
         }
-        else if ((command.name === 'fetch-from-db-request' || command.name === 'fetch-events-from-db-request')) value = {fetchedElements:[]};
+        else if (command.name === 'fetch-events-from-db-request') value = {fetchedElements:[]};
         else if (command.name === 'sync-to-db-request' || command.name === 'clear-values-in-db-request') value = {elementsAdded:1,elementsChanged:0,elementsRemoved:0,timestampCommitted:'2026-11-09T12:00:00'};
         else if (command.name === 'auth-mail-request') value = {associatedUser:null,sent:!unknownAccount};
         else throw new Error('Unexpected command ' + command.name);
@@ -133,7 +133,7 @@ test('login validates accounts, restores cached credentials after reload and cle
     const defaultFetches = ['BlobFormat', 'RelationalFormat'].map(format => page.waitForRequest(request => {
       if (request.method() !== 'POST' || !request.url().endsWith('/executeCommand')) return false;
       const payload = readCommandRequest(request);
-      return payload?.name === 'fetch-from-db-request' && payload.json.databaseFormat === format;
+      return payload?.name === 'fetch-events-from-db-request' && payload.json.databaseFormat === format;
     }));
     validLogin = true;
     await login.locator('button').last().click();
@@ -162,12 +162,12 @@ test('login validates accounts, restores cached credentials after reload and cle
     const customFetch = page.waitForRequest(request => {
       if (new URL(request.url()).pathname !== '/executeCommand' || request.method() !== 'POST') return false;
       const command = readCommandRequest(request);
-      return (command.name === 'fetch-from-db-request' || command.name === 'fetch-events-from-db-request') && command.json.databaseConfig.$type === 'DatabaseConfigWithCredentials';
+      return command.name === 'fetch-events-from-db-request' && command.json.databaseConfig.$type === 'DatabaseConfigWithCredentials';
     });
     await connections.getByRole('button', {name:'Apply', exact:true}).click();
     await customFetch;
     await connections.waitFor({state:'detached'});
-    assert(requests.some(command => (command.name === 'fetch-from-db-request' || command.name === 'fetch-events-from-db-request') && command.json.databaseConfig.$type === 'DatabaseConfigWithCredentials'), 'custom database sync uses the explicit credential-bearing configuration');
+    assert(requests.some(command => command.name === 'fetch-events-from-db-request' && command.json.databaseConfig.$type === 'DatabaseConfigWithCredentials'), 'custom database sync uses the explicit credential-bearing configuration');
     assert(!await page.evaluate(() => /ephemeral-browser-key|ephemeral-database-password/.test(JSON.stringify(localStorage))));
     const cached = await cachedSession(page);
     assert.equal(cached.credentials.signedBackendToken.tokenStringWithSignature, 'mock-token');

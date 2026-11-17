@@ -48,22 +48,19 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
     FetchResponse.fromMap(result.history.timestampExecutionFinished, result.result.fetchedElements.map((key, value) => key -> value.serialized))
 
   override def readHistoriesJson(usageContext: UsageContext)(using ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
-    val request = SQLCommands.FetchAllFromDbRequest(usageContext, databaseConfig, None, definition.format)
-    SQLCommands.fetchFromDbCommand.sendCommandTo(backend, request).map(toFetchResponse)
+    val request = SQLCommands.FetchEventsFromDbRequest(usageContext, Seq.empty, java.time.LocalDateTime.MIN,
+      java.time.LocalDateTime.MAX, databaseConfig, definition.format, EventSyncStrategy.KEEP_ALL)
+    SQLCommands.fetchEventsFromDbCommand.sendCommandTo(backend, request).map(toFetchResponse)
   }
 
   override def readHistoriesInRange(usageContext: UsageContext, keys: Seq[SyncContext], starting: java.time.LocalDateTime,
       until: java.time.LocalDateTime, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
     require(keys.forall(_.toUsageContext == usageContext), "Range keys must belong to the requested usage context")
     require(!until.isBefore(starting), "History range end must not precede its start")
-    if keys.isEmpty then Future.successful(Map.empty)
-    else strategy match {
-      case EventSyncStrategy.KEEP_ALL | _: EventSyncStrategy.KeepImportance =>
-        val request = SQLCommands.FetchEventsFromDbRequest(usageContext, keys.map(_.keyForSerialisation), starting, until, databaseConfig, definition.format)
-        SQLCommands.fetchEventsFromDbCommand.sendCommandTo(backend, request).map(_.result.fetchedElements.map { (key, history) =>
-          key -> history.cleanWithStrategy(strategy)
-        })
-      case _ => super.readHistoriesInRange(usageContext, keys, starting, until, strategy)
+    if keys.isEmpty then Future.successful(Map.empty) else {
+      val request = SQLCommands.FetchEventsFromDbRequest(usageContext, keys.map(_.keyForSerialisation), starting, until,
+        databaseConfig, definition.format, strategy)
+      SQLCommands.fetchEventsFromDbCommand.sendCommandTo(backend, request).map(_.result.fetchedElements)
     }
   }
 }

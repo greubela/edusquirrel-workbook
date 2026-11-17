@@ -17,6 +17,8 @@ class SyncDestinationHandlerForTypeSpec extends FunSuite {
     override val syncLogger = SyncLogger(logger)
     override val underlyingDefinition = SyncDestinationDefinition.LocalStorageSyncDefinition(10000)
     override def readAll(implicit ec: ExecutionContext): Future[Map[String, String]] = Future.successful(records)
+    override def updateElement(key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] =
+      storeElement(key, update(records.get(key)))
     override def readElement(key: String)(implicit ec: ExecutionContext): Future[String] = Future.fromTry(scala.util.Try(records(key)))
     override def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = storeBulk(Map(key -> value))
     override def storeBulk(values: Map[String, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = {

@@ -61,7 +61,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   private def store(history: History, storage: DatabaseHistoryFormat = RelationalFormat): Unit =
     UpsertToDatabase.handleRequest(StoreToDbRequest(sync, encoded(history), config, storage), logger)
   private def fetch(storage: DatabaseHistoryFormat = RelationalFormat): Map[it.evadid.workbook.interaction.sync.SyncContext, String] =
-    FetchFromDatabase.handleRequest(FetchAllFromDbRequest(context, config, None, storage), logger).fetchedElements.map((key, value) => key -> value.historyJson)
+    FetchFromDatabase.handleRequest(FetchEventsFromDbRequest(context, Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, config, storage, it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_ALL), logger).fetchedElements.map((key, value) => key -> value.historyJson)
   private def scalar(sql: String): Long = MysqlTestDatabase.withConnection { connection =>
     Using.resource(connection.createStatement())(statement => Using.resource(statement.executeQuery(sql))(rows => { rows.next(); rows.getLong(1) }))
   }
@@ -137,8 +137,8 @@ class InteractionHistoryMysqlSpec extends FunSuite {
           assert(response.result.isRight, response.result.left.toOption.map(_.msg).getOrElse(""))
         }
         def load(): Map[it.evadid.workbook.interaction.sync.SyncContext, String] = {
-          val request = FetchAllFromDbRequest(context, config, Some(key), format)
-          send(ExecutionCommand(fetchFromDbCommand.name, writeJs(request))).throwIfContainsError.result.toOption.get.getAs[DbFetchResponse].fetchedElements.map((key, value) => key -> value.historyJson)
+          val request = FetchEventsFromDbRequest(context, Seq(key), java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, config, format, it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_ALL)
+          send(ExecutionCommand(fetchEventsFromDbCommand.name, writeJs(request))).throwIfContainsError.result.toOption.get.getAs[DbFetchResponse].fetchedElements.map((key, value) => key -> value.historyJson)
         }
         save(answerOnly)
         assertEquals(read[History](load()(sync)), answerOnly)
@@ -150,6 +150,14 @@ class InteractionHistoryMysqlSpec extends FunSuite {
           assertEquals(scalar("SELECT COUNT(*) FROM grading_event"), 2L)
           assertEquals(scalar("SELECT COUNT(*) FROM scaffolding_event"), 1L)
         }
+        val rangeRequest = FetchEventsFromDbRequest(context, Seq(key), time.plusSeconds(1), time.plusSeconds(1), config, format,
+          it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_ALL)
+        val ranged = send(ExecutionCommand(fetchEventsFromDbCommand.name, writeJs(rangeRequest))).throwIfContainsError
+          .result.toOption.get.getAs[DbFetchResponse].fetchedElements(sync).typedAs(InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat)
+        assertEquals(ranged.size, 2)
+        assert(ranged.allStates.isEmpty)
+        assert(send(ExecutionCommand(fetchEventsFromDbCommand.name,
+          writeJs(rangeRequest.copy(usageContext = context.copy(userId = "another-user"))))).result.isLeft)
         val deleted = send(ExecutionCommand(clearValuesDbCommand.name, writeJs(DeleteInDbRequest(context, Some(key), config, format))))
         assert(deleted.result.isRight)
         assertEquals(load(), Map.empty)
@@ -167,7 +175,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
         List(context, second, otherUser, otherProgram).foreach { usage =>
           UpsertToDatabase.handleRequest(StoreToDbRequest(usage.toSyncContext(key), encoded(history()), config, format), logger)
         }
-        def readAt(usage: UsageContext) = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(usage, config, None, format), logger).fetchedElements
+        def readAt(usage: UsageContext) = FetchFromDatabase.handleRequest(FetchEventsFromDbRequest(usage, Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, config, format, it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_ALL), logger).fetchedElements
         def erase(usage: UsageContext) = send(ExecutionCommand(resetUserHistoriesDbCommand.name,
           writeJs(DeleteInDbRequest(usage, None, config, format, allWorkbooks = true))))
         val missingScope = send(ExecutionCommand(resetUserHistoriesDbCommand.name,
@@ -201,7 +209,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       ("192.0.2.1", "198.51.100.99", "127.0.0.1")
     ).foreach { (trusted, forwarded, expected) =>
       withHttpCommands(Some(forwarded), trusted) { send =>
-        val fetch = ExecutionCommand(fetchFromDbCommand.name, writeJs(FetchAllFromDbRequest(context, config, None, RelationalFormat)))
+        val fetch = ExecutionCommand(fetchEventsFromDbCommand.name, writeJs(FetchEventsFromDbRequest(context, Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, config, RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_ALL)))
         assert(send(fetch).result.isRight)
         assertEquals(loggedAddress("syncedLog"), expected -> expected)
         // Unsupported commands still go through the ordinary command log and error envelope.
@@ -340,7 +348,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
     assertEquals(scalar("SELECT COUNT(*) FROM sync_context_id"), 3L)
     variants.foreach { usage =>
-      val response = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(usage, it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, None, RelationalFormat), logger)
+      val response = FetchFromDatabase.handleRequest(FetchEventsFromDbRequest(usage, Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_ALL), logger)
       assertEquals(response.fetchedElements.keySet, Set(usage.toSyncContext(key)))
     }
   }
@@ -359,8 +367,8 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val first = history()
       store(first, storage)
       store(history("second", time.plusNanos(1)), storage)
-      def range(from: LocalDateTime, until: LocalDateTime) = FetchFromDatabase.handleRangeRequest(
-        FetchEventsFromDbRequest(context, Seq(key), from, until, config, storage), logger).fetchedElements(sync).typedAs(format)
+      def range(from: LocalDateTime, until: LocalDateTime) = FetchFromDatabase.handleRequest(
+        FetchEventsFromDbRequest(context, Seq(key), from, until, config, storage, it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_ALL), logger).fetchedElements(sync).typedAs(format)
       assertEquals(range(time, time).events.values, first.allStates.map(event => event: InteractionEvent[format.type]))
       val feedbackTime = time.plusSeconds(1)
       val feedback = range(feedbackTime, feedbackTime)
@@ -384,8 +392,8 @@ class InteractionHistoryMysqlSpec extends FunSuite {
         .addEvent(AnswerChangedEvent[format.type]("minimum", LocalDateTime.MIN, UpdateImportance.MAJOR))
         .addEvent(AnswerChangedEvent[format.type]("maximum", LocalDateTime.MAX, UpdateImportance.MAJOR))
       store(extremes, storage)
-      val request = FetchEventsFromDbRequest(context, Seq(key), LocalDateTime.MIN, LocalDateTime.MAX, config, storage)
-      assertEquals(FetchFromDatabase.handleRangeRequest(request, logger).fetchedElements(sync).typedAs(format), extremes)
+      val request = FetchEventsFromDbRequest(context, Seq(key), LocalDateTime.MIN, LocalDateTime.MAX, config, storage, it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_ALL)
+      assertEquals(FetchFromDatabase.handleRequest(request, logger).fetchedElements(sync).typedAs(format), extremes)
     }
   }
 
@@ -430,4 +438,17 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assert(error.getMessage.contains("Unknown interaction format"))
   }
 
+
+  for storage <- List(BlobFormat, RelationalFormat) do
+    test(s"$storage applies latest-event strategies before timestamp ranges") {
+      store(history(), storage)
+      store(history("newest", time.plusDays(1)), storage)
+      val request = FetchEventsFromDbRequest(context, Seq(key), time, time.plusSeconds(2), config, storage,
+        it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_LAST)
+      assertEquals(FetchFromDatabase.handleRequest(request, logger).fetchedElements(sync).typedAs(format).size, 0)
+      val complete = request.copy(starting = LocalDateTime.MIN, until = LocalDateTime.MAX)
+      val selected = FetchFromDatabase.handleRequest(complete, logger).fetchedElements(sync).typedAs(format)
+      assertEquals(selected.size, 1)
+      assertEquals(selected.events.values.head.associatedState, "newest")
+    }
 }

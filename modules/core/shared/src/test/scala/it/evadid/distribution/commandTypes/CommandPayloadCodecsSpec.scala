@@ -15,7 +15,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
 
   test("command log destinations come from registered definitions, with a default and sync override") {
     import it.evadid.sql.DatabaseTable
-    val syncNames = Set(SQLCommands.StoreToDbCommand.name, SQLCommands.fetchFromDbCommand.name, SQLCommands.fetchEventsFromDbCommand.name, SQLCommands.clearValuesDbCommand.name, SQLCommands.resetUserHistoriesDbCommand.name)
+    val syncNames = Set(SQLCommands.StoreToDbCommand.name, SQLCommands.fetchEventsFromDbCommand.name, SQLCommands.clearValuesDbCommand.name, SQLCommands.resetUserHistoriesDbCommand.name)
     val definitions = ExecutionCommandFactory.knownCommands
     assertEquals(definitions.map(_.name).distinct.size, definitions.size)
     definitions.foreach { definition =>
@@ -50,8 +50,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
   test("default sync requests use the current explicit database wire fields on JVM and JavaScript") {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
     import it.evadid.workbook.interaction.sync.UsageContext
-    val request = SQLCommands.FetchAllFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"),
-      DatabaseConfig.defaultDb, None, DatabaseHistoryFormat.RelationalFormat)
+    val request = SQLCommands.FetchEventsFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"), Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_ALL)
     val encoded = writeJs(request)
     val config = encoded("databaseConfig")
     assertEquals(config.obj.keySet.toSet, Set("$type", "dbFormat", "host", "port", "database"))
@@ -70,9 +69,9 @@ class CommandPayloadCodecsSpec extends FunSuite {
     List[DatabaseConfiguration](supplied.withoutCredentials, supplied).foreach { config =>
       val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.RelationalFormat, buffered = false)
       assertEquals(read[SyncDestinationBasedOnHistoryDatabase](write(destination)), destination)
-      val request = SQLCommands.FetchAllFromDbRequest(context, config, None, DatabaseHistoryFormat.RelationalFormat)
-      assertEquals(read[SQLCommands.FetchAllFromDbRequest](write(request)), request)
-      val command = ExecutionCommand(SQLCommands.fetchFromDbCommand.name, writeJs(request))
+      val request = SQLCommands.FetchEventsFromDbRequest(context, Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, config, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_ALL)
+      assertEquals(read[SQLCommands.FetchEventsFromDbRequest](write(request)), request)
+      val command = ExecutionCommand(SQLCommands.fetchEventsFromDbCommand.name, writeJs(request))
       val safe = command.stripPrivacySensitiveInformation()
       assert(!safe.toJson.contains("private-"))
       assertEquals(read[DatabaseConfiguration](safe.json("databaseConfig")), config.withoutCredentials)

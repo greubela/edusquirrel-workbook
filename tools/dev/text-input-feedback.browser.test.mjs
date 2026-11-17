@@ -115,6 +115,7 @@ test('text feedback preserves cached and in-flight grading across display langua
     await page.reload();
     await page.locator('.section-block').last().click();
     await input.waitFor();
+    await page.waitForFunction(expected => document.querySelector('.text-input-feedback textarea')?.value === expected, answer);
     assert.equal(await input.inputValue(), answer);
     await content.getByText('Deine Begründung passt.', {exact: true}).waitFor();
     assert.equal(requests.length, 3, 'restoring saved feedback does not call the LLM');

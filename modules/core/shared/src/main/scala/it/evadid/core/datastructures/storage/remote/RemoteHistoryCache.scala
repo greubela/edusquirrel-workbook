@@ -66,6 +66,13 @@ case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRead
       fetch(cache, keys.toSet, Some(starting), until, forceFlush, trackProgress = false)).map(combine)
   }
 
+  /** A successful destination can restore its events independently of unavailable peers. */
+  def fetchAllFrom(destination: RW, keys: Set[K], forceFlush: Boolean = false): Future[Map[K, List[InteractionEvent[F]]]] = attempt {
+    require(cacheStrategies.contains(destination), "Cannot read an unconfigured history destination")
+    fetch(destination, keys, None, LocalDateTime.MAX, forceFlush, trackProgress = true)
+      .map(response => combine(List(response)))
+  }
+
   def fetchAll(keys: Set[K], forceFlush: Boolean = false): Future[Map[K, List[InteractionEvent[F]]]] = attempt {
     if forceFlush then flush(true)
     Future.traverse(cacheStrategies.keys)(cache =>

@@ -4,7 +4,7 @@ import it.evadid.core.util.crypto.ContentIdentity
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.{SyncSuccess, UsageContext}
+import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.variable.events.*
@@ -76,12 +76,15 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     InteractionHistoryJson.fromHistory(format, InteractionVariableHistory(InteractionEvents(events)))
   }
 
-  def fetch(request: FetchAllFromDbRequest): DbFetchResponse = transaction {
-    histories(request.usageContext, request.mayLimitToKey.toList, None)
-  }
-
-  def fetchInRange(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {
-    histories(request.usageContext, request.keys, Some(request.starting -> request.until))
+  def fetch(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {
+    val range = request.strategy match {
+      case EventSyncStrategy.KEEP_ALL | _: EventSyncStrategy.KeepImportance => Some(request.starting -> request.until)
+      case _ => None
+    }
+    val response = histories(request.usageContext, request.keys, range)
+    response.copy(fetchedElements = response.fetchedElements.map { (key, history) =>
+      key -> history.cleanWithStrategy(request.strategy).between(request.starting, request.until)
+    })
   }
 
   def delete(request: DeleteInDbRequest): SyncSuccess = transaction {

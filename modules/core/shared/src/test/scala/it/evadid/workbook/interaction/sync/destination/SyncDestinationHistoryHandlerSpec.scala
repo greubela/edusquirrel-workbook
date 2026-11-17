@@ -22,16 +22,21 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
   private val history = InteractionHistoryJson.fromHistory(textFormat,
     InteractionVariableHistory.empty[textFormat.type].addState(InteractionVariableState("saved", UpdateImportance.MAJOR, at))).serialized
 
-  private class Destination(values: Map[String, String], prohibitReads: Boolean = false) extends SyncDestinationHandlerBasic {
+  private class Destination(initial: Map[String, String], prohibitReads: Boolean = false) extends SyncDestinationHandlerBasic {
+    val values = it.evadid.core.datastructures.state.State(initial)
     val cleared = Promise[Unit]()
     val syncLogger = SyncLogger(BasicLogger())
     val underlyingDefinition = SyncDestinationDefinition.defaultBrowserHistory
     def readAll(implicit ec: ExecutionContext): Future[Map[String, String]] = {
       assert(!prohibitReads, "reset must not decode saved records")
-      Future.successful(values)
+      Future.successful(values.now())
     }
-    def readElement(key: String)(implicit ec: ExecutionContext): Future[String] = Future.successful(values(key))
+    def readElement(key: String)(implicit ec: ExecutionContext): Future[String] = Future.successful(values.now()(key))
     def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
+    def updateElement(key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] = Future {
+      values.update(current => current.updated(key, update(current.get(key))))
+      SyncSuccess.emptyNow()
+    }
     def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
     def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess] = {
       cleared.success(())
@@ -59,4 +64,16 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
     }
   }
 
+
+  test("separate and concurrent local deltas merge instead of overwriting saved answer events") {
+    import it.evadid.workbook.interaction.variable.events.*
+    val destination = new Destination(Map.empty)
+    val handler = destination.forHistory()
+    def delta(value: String, offset: Long): String = InteractionHistoryJson.fromHistory(textFormat,
+      InteractionVariableHistory.empty[textFormat.type].addEvent(AnswerChangedEvent[textFormat.type](value, at.plusNanos(offset), UpdateImportance.MAJOR))).serialized
+    val deltas = (1 to 8).map(index => delta(index.toString, index))
+    Future.traverse(deltas)(json => handler.storeHistoryJson(key, json)).flatMap { _ =>
+      handler.readHistory[textFormat.type](key).map(restored => assertEquals(restored.size, deltas.size))
+    }
+  }
 }
