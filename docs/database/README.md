@@ -59,7 +59,9 @@ script in a disposable database; there is no separate test schema. See the
 
 `DatabaseHistoryFormat` selects `BlobFormat` or `RelationalFormat` and lists its
 required tables. Configure it in `SyncDestinationBasedOnHistoryDatabase`;
-`defaultDatabase` selects relational storage. Both use the same typed event history
+`defaultDatabase` selects relational storage and `defaultBlobDatabase` selects blob
+storage. Both are enabled by default with `SYNC_EVERYTHING`, alongside browser
+IndexedDB with `SYNC_MAJOR`. Both layouts use the same typed event history
 and reject format changes for an existing sync context. Configuring a destination
 does not migrate data from another layout.
 
