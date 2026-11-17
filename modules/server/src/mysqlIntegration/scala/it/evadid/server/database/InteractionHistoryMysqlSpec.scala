@@ -1,6 +1,7 @@
 package it.evadid.server.database
 
-import it.evadid.workbook.abstractions.InteractionFormat.{TextInputWithLlmGradingAndScaffoldingFormat}
+import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
+import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
 
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
