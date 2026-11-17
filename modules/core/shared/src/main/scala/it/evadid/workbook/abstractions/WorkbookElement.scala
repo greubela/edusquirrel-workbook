@@ -49,11 +49,10 @@ trait WorkbookInteractionElement[F <: InteractionFormat](using v: ValueOf[F]) ex
   // needs to be lazy or defaultValue (from subclass) might not be inited!
   lazy val interactionVariable: InteractionVariable[F] = InteractionVariable[F](this)
 
-  // Abstract type members that will be refined in implementations
-  // Using Nothing as placeholder since F#InteractionStateType requires F to be concrete
-  type InteractionStateType <: Nothing
-  type GradingInfoType <: Nothing
-  type ScaffoldingInfoType <: Nothing
+  // Type members that use the format's type members
+  type InteractionStateType = interactionFormat.InteractionStateType
+  type GradingInfoType = interactionFormat.GradingInfoType
+  type ScaffoldingInfoType = interactionFormat.ScaffoldingInfoType
 
   val defaultValue: InteractionStateType
 
