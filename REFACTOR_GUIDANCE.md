@@ -79,11 +79,26 @@ object TextInteractionFormat extends InteractionFormat {
 
 ## Known Issues (as of this session)
 
-1. `InteractionHistoryJson` - type mismatch: `format.F` vs type parameter `F`
-2. `SyncInformationWithContext.serialize` - needs `ValueOf[F]`
-3. `BufferedSyncDestinationHandler` - needs `ValueOf[F]` for `CachedReadRequestSingle`
-4. `HistoryJson` - needs `InteractionEvents` import, and `ujson.Value` type issues
-5. `WorkbookElementFactory` - missing `TextInteraction2` and `ProgrammingExercise` types
+1. `InteractionHistoryJson` - type mismatch: `format.F` vs type parameter `F` - **FIXED**: Use `asInstanceOf` since `format.F` is the type member and `F` is the type parameter
+2. `SyncInformationWithContext.serialize` - needs `ValueOf[F]` - **FIXED**: Added `using v: ValueOf[F]` parameter and used `v.value.F`
+3. `BufferedSyncDestinationHandler` - needs `ValueOf[F]` for `CachedReadRequestSingle` - **FIXED**: Commented out unused methods
+4. `HistoryJson` - needs `InteractionEvents` import, and `ujson.Value` type issues - **FIXED**: Added import
+5. `WorkbookElementFactory` - missing `TextInteraction2` and `ProgrammingExercise` types - **TODO**
+6. `InteractionVariableHistory.fromResults` - type mismatch with `Iterable` vs `Set` - **FIXED**: Changed `.values` to `.toSet`
+7. `InteractionFormat.historySerializer` - now uses `Serializer.fromImplicitRW` from `InteractionVariableHistory`'s `derives ReadWriter`
+
+## Recent Work (Session)
+
+- Fixed `InteractionFormat` to use `type F <: InteractionFormat` in each format object
+- Changed `InteractionFormat.historySerializer` to use `Serializer.fromImplicitRW` from `InteractionVariableHistory`'s `derives ReadWriter`
+- Updated `InteractionHistoryJson.toTyped` and `fromHistory` with `asInstanceOf` for type conversion
+- Added `ValueOf[F]` context to `SyncInformationWithContext.serialize`
+- Added `ValueOf[F]` to `InteractionHistoryJson.fromHistory`
+- Commented out unused `BufferedSyncDestinationHandler.readHistory` and `CachedReadRequestSingle`
+- Fixed `HistoryJson` imports and `InteractionEvents` usage
+- Fixed `InteractionVariableHistory.fromResults` to use `.toSet` instead of `.values`
+- Updated tests to use new types
+- Committed and pushed to branch `variable-refactor-night-action`
 
 ## Commit Strategy
 
