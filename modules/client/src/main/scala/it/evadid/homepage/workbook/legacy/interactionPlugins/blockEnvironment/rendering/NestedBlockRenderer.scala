@@ -12,24 +12,24 @@ import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowShape
 
 import scala.collection.mutable
 
-case class LineForRendering(lineNr: Int, segment: NestedBlockSegment, line: NestedBlockLine, controlFlowStack: List[ControlFlowShape]) {
+case class LineForRendering(lineNr: Int, segment: NestedBlockSegment, line: NestedBlockLine, controlFlowStack: Seq[ControlFlowShape]) {
   /*lazy val lineExprBox: BeShape = {
     val boxContent = line.expressionShape.map(List(_)).getOrElse(List())
     VBoxSameWidth(boxContent, false, Left, Center)
   }*/
 
-  lazy val lineAllShapes: List[BeShape] = controlFlowStack ++ List(line.controlFlowShape) ++ line.expressionShape
+  lazy val lineAllShapes: Seq[BeShape] = controlFlowStack ++ List(line.controlFlowShape) ++ line.expressionShape
 
   def lineHeight(renderingConfig: BeRenderingConfig) = lineAllShapes.map(_.displaySize(renderingConfig).height).max
 
-  def lastControlFlowShapeCenterX(renderingConfig: BeRenderingConfig, controlFlowColumnWidths: List[Double]): Double = {
+  def lastControlFlowShapeCenterX(renderingConfig: BeRenderingConfig, controlFlowColumnWidths: Seq[Double]): Double = {
     val curStackSize = controlFlowStack.size
     val curStackWidth = controlFlowColumnWidths.slice(0, curStackSize).sum
 
     curStackWidth + line.controlFlowShape.displaySize(renderingConfig).width / 2
   }
 
-  def expressionShapeRelativeOffsetX(renderingConfig: BeRenderingConfig, controlFlowColumnWidths: List[Double]): Double = {
+  def expressionShapeRelativeOffsetX(renderingConfig: BeRenderingConfig, controlFlowColumnWidths: Seq[Double]): Double = {
     val curStackSize = controlFlowStack.size
     val curStackWidth = controlFlowColumnWidths.slice(0, curStackSize).sum
 
@@ -40,20 +40,20 @@ case class LineForRendering(lineNr: Int, segment: NestedBlockSegment, line: Nest
 }
 
 case class NestedBlockRenderer(
-                                segments: List[NestedBlockSegment]
+                                segments: Seq[NestedBlockSegment]
                               ) {
 
   lazy val lastSegment: Option[NestedBlockSegment] = segments.lastOption
 
   lazy val lastLine: Option[NestedBlockLine] = lastSegment.flatMap(_.lines.lastOption)
 
-  lazy val allLines: List[NestedBlockLine] = segments.flatMap(_.lines)
+  lazy val allLines: Seq[NestedBlockLine] = segments.flatMap(_.lines)
 
-  lazy val allExpressionShapes: List[BeShape] = allLines.flatMap(_.expressionShape)
+  lazy val allExpressionShapes: Seq[BeShape] = allLines.flatMap(_.expressionShape)
 
   def firstExpressionShapeOrHBox(usePadding: Boolean = false): BeShape =
     if (allExpressionShapes.size == 1) allExpressionShapes.head
-    else HBoxSameHeight(allExpressionShapes, usePadding)
+    else HBoxSameHeight(allExpressionShapes.toList, usePadding)
 
   def withAppendedSegment(segment: NestedBlockSegment): NestedBlockRenderer = {
     NestedBlockRenderer(segments ++ List(segment))
@@ -71,7 +71,7 @@ case class NestedBlockRenderer(
     }
   }
 
-  lazy val linesToRender: List[LineForRendering] = {
+  lazy val linesToRender: Seq[LineForRendering] = {
 
     val res = mutable.ListBuffer[LineForRendering]()
     val curStack: mutable.Stack[ControlFlowShape] = mutable.Stack()
@@ -93,7 +93,7 @@ case class NestedBlockRenderer(
     res.toList
   }
 
-  private def getControlFlowStackColumnWidths(config: BeRenderingConfig): List[Double] = {
+  private def getControlFlowStackColumnWidths(config: BeRenderingConfig): Seq[Double] = {
     val maxStackSize = linesToRender.map(_.controlFlowStack.size).max
 
     0.until(maxStackSize).map(curColumnNr => {
@@ -102,15 +102,15 @@ case class NestedBlockRenderer(
   }
 
   def expressionShapeWithoutIntendation: BeShape = {
-    VBoxSameWidth(allExpressionShapes, false, HorizontalAlignment.Left, VerticalAlignment.Center)
+    VBoxSameWidth(allExpressionShapes.toList, false, HorizontalAlignment.Left, VerticalAlignment.Center)
   }
 
 
   def expressionShapeWithIntendation: BeShape = new BoxManualPositioning {
 
-    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement] = {
+    override def calcOffsetsAndDimensions(config: BeRenderingConfig): Seq[ManualPositionElement] = {
 
-      val controlFlowColumnWidth: List[Double] = getControlFlowStackColumnWidths(config)
+      val controlFlowColumnWidth: Seq[Double] = getControlFlowStackColumnWidths(config)
       var offsetY: Double = 0
 
       val res = mutable.ListBuffer[ManualPositionElement]()
@@ -135,7 +135,7 @@ case class NestedBlockRenderer(
   
   def controlFlowBasicBackgroundShape: BeShape = new BoxManualPositioning {
 
-    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement] = {
+    override def calcOffsetsAndDimensions(config: BeRenderingConfig): Seq[ManualPositionElement] = {
       val controlFlowColumnWidths = getControlFlowStackColumnWidths(config)
       val res = mutable.ListBuffer[ManualPositionElement]()
 
@@ -174,13 +174,13 @@ case class NestedBlockRenderer(
   /** Flow-only layout uses the same paths and decorations as the block renderer.
     * Callers supply row heights so expression geometry does not affect code lines.
     */
-  def controlFlowOnly(config: BeRenderingConfig, heights: List[Double]): BeShape =
+  def controlFlowOnly(config: BeRenderingConfig, heights: Seq[Double]): BeShape =
     getControlFlowBuilder(config, heights).renderControlFlow()
 
   private def getControlFlowBuilder(renderingInfo: RenderingInformation): ControlFlowOverlayBuilder =
     getControlFlowBuilder(renderingInfo.renderingConfig, linesToRender.map(_.lineHeight(renderingInfo.renderingConfig)))
 
-  private def getControlFlowBuilder(config: BeRenderingConfig, heights: List[Double]): ControlFlowOverlayBuilder = {
+  private def getControlFlowBuilder(config: BeRenderingConfig, heights: Seq[Double]): ControlFlowOverlayBuilder = {
     require(heights.size == linesToRender.size, "Every flow row needs a height")
     val widths = getControlFlowStackColumnWidths(config)
     val centers = widths.scanLeft(0.0)(_ + _).zip(widths).map((offset, width) => offset + width / 2)
@@ -209,7 +209,7 @@ case class NestedBlockRenderer(
 
 object NestedBlockRenderer {
 
-  def singleExpressionLineShapeWithInfo(allLines: List[NestedBlockLine], newControlFlowShape: ControlFlowShape, newExprShape: BeShape): NestedBlockRenderer = {
+  def singleExpressionLineShapeWithInfo(allLines: Seq[NestedBlockLine], newControlFlowShape: ControlFlowShape, newExprShape: BeShape): NestedBlockRenderer = {
     val navShapes = allLines.flatMap(_.navShapes)
     val infoShapes = allLines.flatMap(_.infoShapes)
     val sideEffectShapes = allLines.flatMap(_.sideEffectShapes)
@@ -232,11 +232,11 @@ object NestedBlockRenderer {
 
     def expressionShape: Option[BeShape]
 
-    def infoShapes: List[BeShape]
+    def infoShapes: Seq[BeShape]
 
-    def navShapes: List[BeShape]
+    def navShapes: Seq[BeShape]
 
-    def sideEffectShapes: List[BeShape]
+    def sideEffectShapes: Seq[BeShape]
   }
 
   case class ControlFlowLine(controlFlowShape: ControlFlowShape, expressionShape: Option[BeShape] = None) extends NestedBlockLine {
@@ -245,11 +245,11 @@ object NestedBlockRenderer {
 
     override def addToStackAfterwards: Option[ControlFlowShape] = None
 
-    override def infoShapes: List[BeShape] = List()
+    override def infoShapes: Seq[BeShape] = List()
 
-    override def navShapes: List[BeShape] = List()
+    override def navShapes: Seq[BeShape] = List()
 
-    override def sideEffectShapes: List[BeShape] = List()
+    override def sideEffectShapes: Seq[BeShape] = List()
   }
 
   case class ControlFlowReplaceLine(controlFlowShape: ControlFlowShape, expressionShape: Option[BeShape], addToStack: ControlFlowShape) extends NestedBlockLine {
@@ -258,11 +258,11 @@ object NestedBlockRenderer {
 
     override def addToStackAfterwards: Option[ControlFlowShape] = Some(addToStack)
 
-    override def infoShapes: List[BeShape] = List()
+    override def infoShapes: Seq[BeShape] = List()
 
-    override def navShapes: List[BeShape] = List()
+    override def navShapes: Seq[BeShape] = List()
 
-    override def sideEffectShapes: List[BeShape] = List()
+    override def sideEffectShapes: Seq[BeShape] = List()
   }
 
   case class ControlFlowIncreaseLine(controlFlowShape: ControlFlowShape, expressionShape: Option[BeShape] = None, addToStack: ControlFlowShape) extends NestedBlockLine {
@@ -270,11 +270,11 @@ object NestedBlockRenderer {
     val addToStackAfterwards: Option[ControlFlowShape] = Some(addToStack)
     val popStackBefore: Boolean = false
 
-    def infoShapes: List[BeShape] = List()
+    def infoShapes: Seq[BeShape] = List()
 
-    def navShapes: List[BeShape] = List()
+    def navShapes: Seq[BeShape] = List()
 
-    def sideEffectShapes: List[BeShape] = List()
+    def sideEffectShapes: Seq[BeShape] = List()
   }
 
   case class ControlFlowDecreaseLine(controlFlowShape: ControlFlowShape, expressionShape: Option[BeShape] = None) extends NestedBlockLine {
@@ -282,19 +282,19 @@ object NestedBlockRenderer {
     val addToStackAfterwards: Option[ControlFlowShape] = None
     val popStackBefore: Boolean = true
 
-    def infoShapes: List[BeShape] = List()
+    def infoShapes: Seq[BeShape] = List()
 
-    def navShapes: List[BeShape] = List()
+    def navShapes: Seq[BeShape] = List()
 
-    def sideEffectShapes: List[BeShape] = List()
+    def sideEffectShapes: Seq[BeShape] = List()
   }
 
   case class ExpressionLine(
                              controlFlowShape: ControlFlowShape,
                              exprShape: BeShape,
-                             infoShapes: List[BeShape],
-                             navShapes: List[BeShape],
-                             sideEffectShapes: List[BeShape]
+                             infoShapes: Seq[BeShape],
+                             navShapes: Seq[BeShape],
+                             sideEffectShapes: Seq[BeShape]
                            ) extends NestedBlockLine {
 
     val addToStackAfterwards: Option[ControlFlowShape] = None
@@ -305,7 +305,7 @@ object NestedBlockRenderer {
   }
 
   case class NestedBlockSegment(
-                                 lines: List[NestedBlockLine]
+                                 lines: Seq[NestedBlockLine]
                                ) {
 
     def getSegmentWidth(renderingConfig: BeRenderingConfig): Double = {

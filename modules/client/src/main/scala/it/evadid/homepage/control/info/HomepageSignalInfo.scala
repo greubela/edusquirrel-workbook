@@ -62,10 +62,10 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
 
 
 
-  /*def currentSyncSources: List[SyncInformationWithContext] = fullInfo.synchronized {
+  /*def currentSyncSources: Seq[SyncInformationWithContext] = fullInfo.synchronized {
     val curContext: UsageContext = fullInfo.homepageInfoState.now().toContext
-    val syncInformation: List[SyncInformation] = userInfo.map(_.config.syncDestinations.toList).toList.flatten
-    val syncWithContext: List[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext, resolveSyncDefinition))
+    val syncInformation: Seq[SyncInformation] = userInfo.map(_.config.syncDestinations.toList).toList.flatten
+    val syncWithContext: Seq[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext, resolveSyncDefinition))
     syncWithContext
   }*/
 
@@ -75,7 +75,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     baseSignal.mapLazy(_.userInfo)
   }
 
-  lazy val availableLanguages: StrictSignal[List[HumanLanguage]] = {
+  lazy val availableLanguages: StrictSignal[Seq[HumanLanguage]] = {
     baseSignal.mapLazy(_.workbookInfo.map(_.loadedWorkbook.metadata.availableLanguages).getOrElse(fullInfo.defaults.defaultLanguagesAvailable))
   }
 

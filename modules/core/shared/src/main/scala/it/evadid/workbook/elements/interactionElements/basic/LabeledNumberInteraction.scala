@@ -62,7 +62,7 @@ case class LabeledNumberInteraction(
 
   override val associatedFactory = LabeledNumberInteraction.factory
 
-  lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
 
 }

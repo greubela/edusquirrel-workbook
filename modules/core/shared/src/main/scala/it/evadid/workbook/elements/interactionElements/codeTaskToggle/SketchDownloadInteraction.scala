@@ -23,7 +23,7 @@ case class SketchDownloadInteraction(
 
   override val defaultValue: String = ""
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
 }
 

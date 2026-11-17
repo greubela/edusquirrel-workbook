@@ -32,6 +32,6 @@ case class TurtleStitchRecreateShapeInteractionLegacy(
 
   override val defaultValue: TurtleStitchProjectState = TurtleStitchProjectState.empty()
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
 }

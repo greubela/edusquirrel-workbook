@@ -12,7 +12,7 @@ import java.time.Duration
 
 case class TextInteraction(override val elementId: String) extends WorkbookInteractionElement[TextInteractionFormat.type] {
   override val associatedFactory = TextInteraction.factory
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
   override val defaultValue: String = ""
 }
 

@@ -26,7 +26,7 @@ private[evadid] object ProgrammingTestRunner {
   })
 
   def execute(program: ProgramForUnitTestExecution, tests: String,
-      clients: List[ExecutionClient], observeProgram: Boolean = false, observeInvocation: Boolean = false,
+      clients: Seq[ExecutionClient], observeProgram: Boolean = false, observeInvocation: Boolean = false,
       observeComparison: Boolean = false): Future[Result] = {
     val source = program.pythonSource
     val sourceLimit = if program.commandEntryPoint.isDefined then 131072 else 32768

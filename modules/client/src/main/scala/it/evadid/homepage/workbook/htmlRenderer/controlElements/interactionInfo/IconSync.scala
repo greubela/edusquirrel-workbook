@@ -28,9 +28,9 @@ case class IconSync[F <: InteractionFormat](fullInfo: FullInfo, laminarHelper: L
 
       val svgSyncTooltip: Signal[String] =
         if (report.allSyncDestinations.isEmpty) laminarHelper.contentIdStringSignal("basic/syncInfoTooltipDisabled", PLAINTEXT, List())
-        else if (report.destinationsWithSufficientWrites.isEmpty) laminarHelper.contentIdStringSignal("basic/syncInfoTooltipWarning", PLAINTEXT_UNDERSCORE_REPLACABLE, List[String](report.allSyncDestinations.size.toString))
-        else if (report.destinationsWithSufficientWrites.size == report.allSyncDestinations.size) laminarHelper.contentIdStringSignal("basic/syncInfoTooltipFull", PLAINTEXT_UNDERSCORE_REPLACABLE, List[String](report.allSyncDestinations.size.toString))
-        else laminarHelper.contentIdStringSignal("basic/syncInfoTooltipPartial", PLAINTEXT_UNDERSCORE_REPLACABLE, List[String](report.destinationsWithSufficientWrites.size.toString, report.allSyncDestinations.size.toString))
+        else if (report.destinationsWithSufficientWrites.isEmpty) laminarHelper.contentIdStringSignal("basic/syncInfoTooltipWarning", PLAINTEXT_UNDERSCORE_REPLACABLE, Seq[String](report.allSyncDestinations.size.toString))
+        else if (report.destinationsWithSufficientWrites.size == report.allSyncDestinations.size) laminarHelper.contentIdStringSignal("basic/syncInfoTooltipFull", PLAINTEXT_UNDERSCORE_REPLACABLE, Seq[String](report.allSyncDestinations.size.toString))
+        else laminarHelper.contentIdStringSignal("basic/syncInfoTooltipPartial", PLAINTEXT_UNDERSCORE_REPLACABLE, Seq[String](report.destinationsWithSufficientWrites.size.toString, report.allSyncDestinations.size.toString))
 
       InteractionInfoPanel.infoPanelIcon("sync-info", svgSyncIcon, svgSyncTooltip, None).amend(
         role := "img", tabIndex := 0, aria.label <-- svgSyncTooltip,

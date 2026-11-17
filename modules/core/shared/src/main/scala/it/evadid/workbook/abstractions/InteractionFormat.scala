@@ -140,7 +140,7 @@ object InteractionFormat {
   case object ProgrammingExerciseFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit](programmingGraders)
   case object EvacuationExperimentFormat extends Typed[EvacuationExperiment, Unit, Unit]
 
-  lazy val knownFormats: List[InteractionFormat] = List(
+  lazy val knownFormats: Seq[InteractionFormat] = List(
     TextInteractionFormat,
     LabeledCheckboxInteractionFormat,
     MessagingInteractionFormat,

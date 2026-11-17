@@ -81,4 +81,16 @@ class StateObservableValueJvmAsyncTest extends FunSuite {
     }
   }
 
+  test("concurrent State updates and bidirectional view updates do not lose increments") {
+    given ExecutionContext = ExecutionContext.global
+    val count = State(0)
+    val view = count.biMap(_.toString, _.toInt)
+    Future.traverse(1 to 8) { worker => Future {
+      (1 to 1000).foreach { _ =>
+        if worker % 2 == 0 then count.update(_ + 1)
+        else view.update(value => (value.toInt + 1).toString)
+      }
+    }}.map(_ => assertEquals(count.now(), 8000))
+  }
+
 }

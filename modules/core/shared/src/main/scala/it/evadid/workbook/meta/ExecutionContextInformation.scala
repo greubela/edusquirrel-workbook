@@ -14,7 +14,7 @@ trait ExecutionContextInformation {
 
   def llmConfiguration: Option[LlmConfiguration] = None
 
-  def availableExecutionClients: List[ExecutionClient]
+  def availableExecutionClients: Seq[ExecutionClient]
 
   def getCurrentLanguage: HumanLanguage
 
@@ -29,7 +29,7 @@ object ExecutionContextInformation {
   val default: ExecutionContextInformation = new ExecutionContextInformation() {
 
 
-    override def availableExecutionClients: List[ExecutionClient] = List()
+    override def availableExecutionClients: Seq[ExecutionClient] = List()
 
     override def getCurrentLanguage: HumanLanguage = English
 

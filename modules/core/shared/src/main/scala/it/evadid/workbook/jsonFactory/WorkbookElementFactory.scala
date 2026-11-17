@@ -40,18 +40,13 @@ import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.S
 import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
 import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
 
-/** Snapshot of a serialized workbook for persistence/transport.
-  * Contains the root element reference and all serialized elements needed to reconstruct the workbook.
-  */
-case class SerializedWorkbookSnapshot(rootId: String, elements: List[WorkbookElementSerializable]) derives upickle.default.ReadWriter
-
 object WorkbookElementFactory {
 
   /** Compatibility base for leaf elements while keeping all serialization metadata in the factory. */
   trait SimpleWorkbookElementFactory[T <: WorkbookElement] extends NoRefsElementFactory[T] {
-    protected def constructorFieldOrder: List[String]
+    protected def constructorFieldOrder: Seq[String]
 
-    override lazy val elementMapAndOrderForConstructorLike: Map[Int, List[VariableDisplayConfig]] =
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[VariableDisplayConfig]] =
       constructorFieldOrder.zipWithIndex.map { case (field, index) =>
         index -> List(VariableDisplayConfig(field, index == 0))
       }.toMap
@@ -71,7 +66,7 @@ object WorkbookElementFactory {
   }
 
   trait NoContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
-    override protected val constructorFieldOrder: List[String] = List("elementId")
+    override protected val constructorFieldOrder: Seq[String] = List("elementId")
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: T): WorkbookElementSerializable = baseElement
 
@@ -81,7 +76,7 @@ object WorkbookElementFactory {
   }
 
   trait SingleContentElementFactory[T <: WorkbookElement] extends SimpleWorkbookElementFactory[T] {
-    override protected val constructorFieldOrder: List[String] = List("elementId", "content")
+    override protected val constructorFieldOrder: Seq[String] = List("elementId", "content")
 
     def readContent(infoElement: T): it.evadid.core.datastructures.language.LanguageMapContentId
 
@@ -139,7 +134,7 @@ object WorkbookElementFactory {
 
     override def toSerializableElement(element: T): WorkbookElementSerializable = unsupported("serialization")
 
-    override lazy val elementMapAndOrderForConstructorLike: Map[Int, List[VariableDisplayConfig]] = ???
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[VariableDisplayConfig]] = ???
     override lazy val writerJsonRegularRefBased: default.Writer[T] = ???
 
 
@@ -206,22 +201,22 @@ object WorkbookElementFactory {
     parseAll(List(element), knownElements).head
   }
 
-  def parseAll(elementsInOrder: List[WorkbookElementSerializable], knownElements: Map[String, WorkbookElement] = Map()): List[WorkbookElement] = {
+  def parseAll(elementsInOrder: Seq[WorkbookElementSerializable], knownElements: Map[String, WorkbookElement] = Map()): Seq[WorkbookElement] = {
     parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap, Set.empty[String])._1
   }
 
-  def parseAllAsMap(elementsInOrder: List[WorkbookElementSerializable], knownElements: Map[String, WorkbookElement] = Map()): Map[String, WorkbookElement] = {
+  def parseAllAsMap(elementsInOrder: Seq[WorkbookElementSerializable], knownElements: Map[String, WorkbookElement] = Map()): Map[String, WorkbookElement] = {
     parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap, Set.empty[String])._2
   }
 
   @tailrec
   private def parseAll(
-                        elementsInOrder: List[WorkbookElementSerializable],
-                        open: List[WorkbookElementSerializable],
+                        elementsInOrder: Seq[WorkbookElementSerializable],
+                        open: Seq[WorkbookElementSerializable],
                         alreadyParsed: Map[String, WorkbookElement],
                         knownFactories: Map[String, WorkbookElementFactory[? <: WorkbookElement]],
                         expandedRegistryIds: Set[String]
-                      ): (List[WorkbookElement], Map[String, WorkbookElement]) = {
+                      ): (Seq[WorkbookElement], Map[String, WorkbookElement]) = {
     if (open.isEmpty) {
       val notYetParsed = elementsInOrder.filter(el => !alreadyParsed.contains(el.elementId))
       if (notYetParsed.nonEmpty) throw SerializedException(s"Open is empty but ${notYetParsed} elements were not parsed yet (${notYetParsed.map(_.elementId)}")
@@ -266,7 +261,7 @@ object WorkbookElementFactory {
 
 trait WorkbookElementFactory[T <: WorkbookElement] {
 
-  lazy val elementMapAndOrderForConstructorLike: Map[Int, List[VariableDisplayConfig]] =
+  lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[VariableDisplayConfig]] =
     Map(0 -> List(VariableDisplayConfig("elementId", true)))
 
   lazy val writerJsonRegularRefBased: Writer[T] = writer[ujson.Value].comap { element =>

@@ -15,7 +15,7 @@ object InteractionInfoPanelIcons {
   }
 
   // Sync  Big
-  private def createCloudSyncSvg(additionalCssStr: String, paths: List[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
+  private def createCloudSyncSvg(additionalCssStr: String, paths: Seq[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
       svg.cls := s"info-svg sync-info-svg $additionalCssStr",
       aria.hidden := true,
@@ -58,7 +58,7 @@ object InteractionInfoPanelIcons {
     Option.when(hidden)(svg.path(svg.d := "M3 3 21 21")))
 
   // Grading
-  private def createGradingIcon(additionalCssStr: String, paths: List[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
+  private def createGradingIcon(additionalCssStr: String, paths: Seq[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
       svg.cls := s"info-svg grading-info-svg $additionalCssStr",
       aria.hidden := true,
@@ -113,7 +113,7 @@ object InteractionInfoPanelIcons {
 
   // Scaffolding
 
-  private def createScaffoldingIcon(additionalCssStr: String, paths: List[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
+  private def createScaffoldingIcon(additionalCssStr: String, paths: Seq[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
       svg.cls := s"info-svg scaffolding-info-svg $additionalCssStr",
       aria.hidden := true,

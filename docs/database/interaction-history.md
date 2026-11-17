@@ -56,7 +56,22 @@ Each successful destination read is applied independently, so an unavailable
 backend cannot block local restoration. Outdated responses cannot change a newly
 selected workbook or user. Buffered batches register before delegates are flushed; merges or delegate
 failures complete every waiting promise. The sync indicator reflects confirmed
-strategy-selected events, rather than request/fetch times.
+the latest answer and all its associated grading/scaffolding events, including running feedback.
+Older unsent history does not prevent confirmation.
+
+Defaults send all events to both backend layouts and `SYNC_MAJOR` events to local
+IndexedDB. Strategies select transmissions; stores union events and never prune
+previously stored data. Confirmed events are excluded from subsequent write deltas.
+
+`sync-histories-to-db-request` carries `syncContexts: Seq[SyncContext]` and
+`histories: Seq[InteractionHistoryJson]` in matching order. A buffered flush merges
+queued deltas per key into one network request. The backend authorizes every context
+before processing and commits the whole batch in one transaction; malformed entries
+roll back all changes. Range reads with the same context, bounds and strategy share
+one request without widening the requested window.
+
+`DatabaseHistoryFormat.tables` exposes `DatabaseTable` declarations with typed
+`DatabaseColumn`/`MySqlType` metadata; tests check these against the setup SQL.
 
 `/executeCommand` accepts JSON and gzip bodies. Native browser compression is used
 for larger requests; decoded bodies are limited to 16 MiB. The proxy must allow

@@ -26,7 +26,7 @@ object SessionData {
     if (homepageInfo.workbookInfo.isEmpty || homepageInfo.userInfo.isEmpty) {
       None
     } else {
-      val allInteractions: List[WorkbookInteractionElement[? <: InteractionFormat]] = homepageInfo.workbookInfo.map(_.loadedWorkbook.allContainedInteractionsById.values.toList).getOrElse(List())
+      val allInteractions: Seq[WorkbookInteractionElement[? <: InteractionFormat]] = homepageInfo.workbookInfo.map(_.loadedWorkbook.allContainedInteractionsById.values.toList).getOrElse(List())
       val userInfo = homepageInfo.userInfo.get.withoutCredentials()
       val workbookInfo = homepageInfo.workbookInfo.get
       

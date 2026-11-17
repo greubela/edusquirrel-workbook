@@ -17,7 +17,7 @@ import todomove.webElementsOld.webElements.svg.shapes.datatypes.RectangleShape
 
 import scala.collection.mutable
 case class HtmlBlockLibraryTab(
-                                elements: List[(BeProgram, Element)]
+                                elements: Seq[(BeProgram, Element)]
                               ) extends HtmlAppElement {
 
   private lazy val domElement = div(
@@ -32,11 +32,11 @@ case class HtmlBlockLibraryTab(
 object HtmlBlockLibraryTab {
 
 
-  def apply(editorState: EditorState, programs: List[BeProgram]): HtmlBlockLibraryTab = {
+  def apply(editorState: EditorState, programs: Seq[BeProgram]): HtmlBlockLibraryTab = {
     HtmlBlockLibraryTab(programs.map(curProgram => (curProgram, progToElement(curProgram, editorState))))
   }
 
-  def apply(editorState: EditorState, allPrograms: List[BeProgram], existingRenderings: Map[BeProgram, Element]): HtmlBlockLibraryTab = {
+  def apply(editorState: EditorState, allPrograms: Seq[BeProgram], existingRenderings: Map[BeProgram, Element]): HtmlBlockLibraryTab = {
     // println("allPrograms: " + allPrograms.map(_.fullProgram.expressionIO.getInLanguage(Python, English)).mkString("\n"))
     // println("fakedsize: " + existingRenderings.size + " / " + allPrograms.size + " = " + existingRenderings.size.toDouble / allPrograms.size.toDouble * 100 + "%")
     HtmlBlockLibraryTab(allPrograms.map(curProgram => (curProgram, existingRenderings.getOrElse(curProgram, progToElement(curProgram, editorState)))))
@@ -76,11 +76,11 @@ object HtmlBlockLibraryTab {
       .amend(editorState.libaryTreeControllerConfig.now().getMouseAmendsForDiv(programToDisplay, resDiv)))
   }
 
-  private def fakeLibraryTabElementsWithUniversalMap(editorState: EditorState, toFake: List[(String, BeProgram)]): Map[BeProgram, Element] = {
+  private def fakeLibraryTabElementsWithUniversalMap(editorState: EditorState, toFake: Seq[(String, BeProgram)]): Map[BeProgram, Element] = {
     fakeLibraryTabElements(editorState, toFake.map(tup => (LanguageMap.universalMap(tup._1), tup._2)))
   }
 
-  private def fakeLibraryTabElements(editorState: EditorState, toFake: List[(LanguageMap[HumanLanguage], BeProgram)]): Map[BeProgram, Element] = {
+  private def fakeLibraryTabElements(editorState: EditorState, toFake: Seq[(LanguageMap[HumanLanguage], BeProgram)]): Map[BeProgram, Element] = {
     val resMap = mutable.HashMap[BeProgram, Element]()
     toFake.map(tup => fakeElement(editorState, tup._2, tup._1)).foreach(tup => resMap.put(tup._1, tup._2))
     resMap.toMap
@@ -116,7 +116,7 @@ object HtmlBlockLibraryTab {
 
   }
 
-  def getDefaultLibraryPrograms(): List[BeProgram] = {
+  def getDefaultLibraryPrograms(): Seq[BeProgram] = {
 
     val forwardName: LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
       AppLanguage.English -> "forward",

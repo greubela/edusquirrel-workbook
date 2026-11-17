@@ -13,8 +13,8 @@ import upickle.default.*
 
 case class SortingReasonInteraction(
                                      override val elementId: String,
-                                     fields: List[LanguageMapContentId],
-                                     items: List[SortingReasonItem],
+                                     fields: Seq[LanguageMapContentId],
+                                     items: Seq[SortingReasonItem],
                                      openButtonLabel: LanguageMapContentId = LanguageMapContentId("basic/startSortingReasonActivity")
                                    ) extends WorkbookInteractionElement[SortingReasonInteractionFormat.type] {
 
@@ -23,7 +23,7 @@ case class SortingReasonInteraction(
   override val defaultValue: SortingReasonInteractionState =
     SortingReasonInteractionState.initial(items.size)
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
 }
 

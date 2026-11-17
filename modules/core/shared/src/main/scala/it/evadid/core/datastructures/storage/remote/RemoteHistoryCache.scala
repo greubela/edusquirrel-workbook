@@ -12,7 +12,7 @@ import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Try}
 
-/** Additive event-history cache. Existing snapshot caches and interaction controls do not use it yet. */
+/** Typed additive cache used by workbook synchronization; each destination tracks confirmed event deltas. */
 case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryReaderWriter[K, F]](
     syncLogger: SyncLogger, cacheStrategies: Map[RW, EventSyncStrategy]) {
   private given ExecutionContext = ExecutionContext.global
@@ -26,7 +26,10 @@ case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRead
       val pending = cacheStrategies.map { (cache, strategy) =>
         cache -> missing(history, known.getOrElse(cache, RemoteHistoryValue.empty).history, strategy)
       }
-      key -> CacheReportForKey(key, history, known, pending)
+      val required = history.latestAnswerEvents
+      val synced = cacheStrategies.keySet.filter(cache =>
+        required.subsetOf(known.getOrElse(cache, RemoteHistoryValue.empty).history.events.values))
+      key -> CacheReportForKey(key, history, known, pending, synced)
     }
   }
 
@@ -59,7 +62,7 @@ case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRead
 
   /** Query explicit windows without claiming the unread portions of a history have been refreshed. */
   def fetchEventsBetween(keys: Seq[K], starting: LocalDateTime, until: LocalDateTime,
-      forceFlush: Boolean = false): Future[Map[K, List[InteractionEvent[F]]]] = attempt {
+      forceFlush: Boolean = false): Future[Map[K, Seq[InteractionEvent[F]]]] = attempt {
     require(!until.isBefore(starting), "History range end must not precede its start")
     if forceFlush then flush(true)
     Future.traverse(cacheStrategies.keys)(cache =>
@@ -67,19 +70,19 @@ case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRead
   }
 
   /** A successful destination can restore its events independently of unavailable peers. */
-  def fetchAllFrom(destination: RW, keys: Set[K], forceFlush: Boolean = false): Future[Map[K, List[InteractionEvent[F]]]] = attempt {
+  def fetchAllFrom(destination: RW, keys: Set[K], forceFlush: Boolean = false): Future[Map[K, Seq[InteractionEvent[F]]]] = attempt {
     require(cacheStrategies.contains(destination), "Cannot read an unconfigured history destination")
     fetch(destination, keys, None, LocalDateTime.MAX, forceFlush, trackProgress = true)
       .map(response => combine(List(response)))
   }
 
-  def fetchAll(keys: Set[K], forceFlush: Boolean = false): Future[Map[K, List[InteractionEvent[F]]]] = attempt {
+  def fetchAll(keys: Set[K], forceFlush: Boolean = false): Future[Map[K, Seq[InteractionEvent[F]]]] = attempt {
     if forceFlush then flush(true)
     Future.traverse(cacheStrategies.keys)(cache =>
       fetch(cache, keys, None, LocalDateTime.MAX, forceFlush, trackProgress = true)).map(combine)
   }
 
-  private def combine(responses: Iterable[Map[K, History]]): Map[K, List[InteractionEvent[F]]] =
+  private def combine(responses: Iterable[Map[K, History]]): Map[K, Seq[InteractionEvent[F]]] =
     responses.flatMap(_.toList).groupMapReduce(_._1)(_._2)(_.mergeWith(_))
       .map((key, history) => key -> history.events.values.toList.sortBy(_.timestamp))
 
@@ -97,7 +100,7 @@ case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRead
         val received = keys.map { key =>
           val bounded = response.getOrElse(key, Nil).filter(event =>
             starting.forall(from => !event.timestamp.isBefore(from)) && !event.timestamp.isAfter(until))
-          key -> InteractionVariableHistory(InteractionEvents(bounded.toSet)).cleanWithStrategy(strategy)
+          key -> InteractionVariableHistory(InteractionEvents(bounded.toSet))
         }.toMap
         state.update { current =>
           val remote = received.foldLeft(current.destinations(cache)) { case (values, (key, history)) =>
@@ -175,7 +178,6 @@ object RemoteHistoryCache {
       key: K,
       localHistory: InteractionVariableHistory[F],
       lastKnownValues: Map[RW, RemoteHistoryValue[F]],
-      pendingWrites: Map[RW, InteractionVariableHistory[F]]) {
-    lazy val syncedDestinations: Set[RW] = pendingWrites.collect { case (cache, delta) if delta.events.values.isEmpty => cache }.toSet
-  }
+      pendingWrites: Map[RW, InteractionVariableHistory[F]],
+      syncedDestinations: Set[RW])
 }

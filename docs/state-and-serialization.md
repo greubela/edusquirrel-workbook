@@ -133,11 +133,13 @@ is not a debounce interval or a guarantee of immediate persistence:
 | `MINOR` | Intermediate edit |
 | `MAJOR` | Significant edit or completed feedback |
 
-`EventSyncStrategy` applies uniformly to every event kind. `KEEP_ALL` retains all
-selected events; importance strategies filter by importance. Latest/count
-strategies retain timestamp ties. `Since` includes its boundary by default.
-`clean()` removes temporary events; `cleanWithStrategy` applies the requested
-strategy without implicitly removing related feedback.
+`EventSyncStrategy` selects events to transmit and never prunes persisted history.
+`SYNC_EVERYTHING` sends all missing events. `SYNC_MAJOR` selects major events plus
+the current answer and all feedback associated with selected answers, including
+pending lifecycle events. Other importance strategies filter individual events;
+latest/count strategies retain timestamp ties. `Since` includes its boundary.
+`clean()` removes temporary events only when explicitly called; synchronization
+uses the destination strategy.
 
 Grading and scaffolding run through `interactionVariable.control`. Pending requests
 are shared; explicit retries rerun execution errors and unexecuted tests while

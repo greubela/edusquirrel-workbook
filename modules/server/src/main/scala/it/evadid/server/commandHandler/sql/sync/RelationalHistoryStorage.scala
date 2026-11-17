@@ -78,7 +78,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
 
   def fetch(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {
     val range = request.strategy match {
-      case EventSyncStrategy.KEEP_ALL | _: EventSyncStrategy.KeepImportance => Some(request.starting -> request.until)
+      case EventSyncStrategy.SYNC_EVERYTHING | _: EventSyncStrategy.KeepImportance => Some(request.starting -> request.until)
       case _ => None
     }
     val response = histories(request.usageContext, request.keys, range)

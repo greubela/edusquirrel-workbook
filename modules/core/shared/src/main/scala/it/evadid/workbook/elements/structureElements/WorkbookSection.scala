@@ -13,12 +13,12 @@ case class WorkbookSection
 (
   elementId: String,
   metadata: WorkbookSectionMetadata,
-  sectionContent: List[WorkbookElement],
+  sectionContent: Seq[WorkbookElement],
 ) extends WorkbookStructureElement[WorkbookElement] {
 
   override val associatedFactory = WorkbookSection.factory
 
-  override val groupElements: List[WorkbookElement] = sectionContent
+  override val groupElements: Seq[WorkbookElement] = sectionContent
 
   override lazy val structureType: WorkbookStructuringType = SECTION
 
@@ -70,8 +70,8 @@ object WorkbookSection {
     ),
     value => {
       val json = value
-      val required = read[List[WorkbookElementReference]](json("requiredBefore"))
-      val recommended = read[List[WorkbookElementReference]](json("recommendedBefore"))
+      val required = read[Seq[WorkbookElementReference]](json("requiredBefore"))
+      val recommended = read[Seq[WorkbookElementReference]](json("recommendedBefore"))
       require(required.isEmpty && recommended.isEmpty,
         "Section dependencies require WorkbookElementFactory's element registry")
       WorkbookSectionMetadata(read[LanguageMapContentId](json("sectionTitle")))
@@ -81,8 +81,8 @@ object WorkbookSection {
   case class WorkbookSectionMetadata
   (
     sectionTitle: LanguageMapContentId,
-    sectionsRequiredBefore: List[WorkbookSection] = List(),
-    sectionsRecommendedBefore: List[WorkbookSection] = List()
+    sectionsRequiredBefore: Seq[WorkbookSection] = List(),
+    sectionsRecommendedBefore: Seq[WorkbookSection] = List()
   ) // todo: sections as ref
 
 }

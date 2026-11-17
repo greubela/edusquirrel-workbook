@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import upickle.default.ReadWriter
 
-case class ProgrammingTestProgramObservation(commandCount: Int, commands: List[TurtleCommand[Double]]) derives ReadWriter {
+case class ProgrammingTestProgramObservation(commandCount: Int, commands: Seq[TurtleCommand[Double]]) derives ReadWriter {
   import ProgrammingTestProgramObservation.*
 
   require(commandCount >= 0 && commandCount <= MaxCommands, "Invalid observed command count.")

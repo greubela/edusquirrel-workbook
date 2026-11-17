@@ -53,7 +53,7 @@ case class GradedState[T, GA]
     }
   }
 
-  def fillMapForUnavailable(gradingElements: List[WorkbookInteractionGrader[T, GA]], gradingStatusOfUnavailable: GradingStatus): GradedState[T, GA] = {
+  def fillMapForUnavailable(gradingElements: Seq[WorkbookInteractionGrader[T, GA]], gradingStatusOfUnavailable: GradingStatus): GradedState[T, GA] = {
     def ifUnavailable(grader: WorkbookInteractionGrader[T, GA]): GradingResult[T, GA] = GradingResult(grader, state, gradingStatusOfUnavailable, None, None, LocalDateTime.now())
 
     val fullMap = gradingElements.map(curGradingElement => {

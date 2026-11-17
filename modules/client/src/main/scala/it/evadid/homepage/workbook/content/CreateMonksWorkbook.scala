@@ -28,7 +28,7 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
 
   override val workbookId: String = "MonksWorkbook"
 
-  override def availableLanguages: List[AppLanguage.HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
+  override def availableLanguages: Seq[AppLanguage.HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
 
   private def key(name: String): String = "monksworkbook/" + name
 
@@ -109,7 +109,7 @@ object CreateMonksWorkbook {
     require(speaker.nonEmpty || dialogueKey == "silence", "Silent frames use only an ellipsis")
   }
 
-  val theaterScenes: List[Scene] = List(
+  val theaterScenes: Seq[Scene] = List(
     Scene("arrival", "fileimage1", action = Some("travel")),
     Scene("entrance", "fileimage2", dialogueKey = "entrancedialogue", speaker = Some("R")),
     Scene("master-wait", "filebeattemplepause"),
@@ -180,7 +180,7 @@ object CreateMonksWorkbook {
     Scene("farewell", "filebeatfarewellspeaking", dialogueKey = "farewelldialogue", speaker = Some("M")),
     Scene("farewell-walk", "fileimage13", action = Some("walk-away")))
 
-  val countingScenes: List[Scene] = List(
+  val countingScenes: Seq[Scene] = List(
     Scene("family", "filebeatfamilychildintro", dialogueKey = "familydialogue", speaker = Some("K")),
     Scene("family-father-reply", "filebeatfamilyfatherreply", dialogueKey = "family-father-replydialogue", speaker = Some("R")),
     Scene("family-child-question", "filebeatfamilychildquestion", dialogueKey = "family-child-questiondialogue", speaker = Some("K")),
@@ -206,7 +206,7 @@ object CreateMonksWorkbook {
   def kochTarget(depth: Int): TurtleLineBasedProgram = {
     require(depth >= 0 && depth <= 2, "This practice uses Koch depths 0, 1 and 2")
 
-    def segments(start: Point[Double], end: Point[Double], remaining: Int): List[Line[Double]] = {
+    def segments(start: Point[Double], end: Point[Double], remaining: Int): Seq[Line[Double]] = {
       if (remaining == 0) List(Line(start, end))
       else {
         val dx = (end.x - start.x) / 3

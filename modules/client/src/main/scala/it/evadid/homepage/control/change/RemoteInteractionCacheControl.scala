@@ -54,7 +54,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
         InteractionVariableSyncReport(destinations.map(_.information), current.syncedDestinations.map(_.information))))
   }
 
-  private val bindings: StrictSignal[List[Binding]] = fullInfo.signals.syncEnvironmentSignal.map { environment =>
+  private val bindings: StrictSignal[Seq[Binding]] = fullInfo.signals.syncEnvironmentSignal.map { environment =>
     environment.toList.flatMap(current => current.interactions.toList.map(interaction => new TypedBinding(interaction, current)))
   }.observe(using unsafeWindowOwner)
 

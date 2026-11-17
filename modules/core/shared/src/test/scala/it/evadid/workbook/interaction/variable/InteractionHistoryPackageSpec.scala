@@ -74,7 +74,7 @@ class InteractionHistoryPackageSpec extends FunSuite {
       .addEvent(minor)
     
     // Keep all - should have all 3
-    val keepAll = history.cleanWithStrategy(EventSyncStrategy.KEEP_ALL)
+    val keepAll = history.cleanWithStrategy(EventSyncStrategy.SYNC_EVERYTHING)
     assertEquals(keepAll.events.values.size, 3)
     
     // Keep the latest major event; newer minor events are outside this strategy.

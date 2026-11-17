@@ -12,13 +12,13 @@ import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
 case class SortingInteraction(
-                               override val elementId: String, fields: List[LanguageMapContentId], items: List[SortingItem],
+                               override val elementId: String, fields: Seq[LanguageMapContentId], items: Seq[SortingItem],
                                openButtonLabel: LanguageMapContentId = LanguageMapContentId("basic/startSortingActivity")
                              ) extends WorkbookInteractionElement[SortingInteractionFormat.type] {
 
   override val associatedFactory = SortingInteraction.factory
   override val defaultValue = SortingInteractionState.initial(items.size);
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
 }
 

@@ -15,7 +15,7 @@ case class MailEditor(elementId: String, initialInbox: InboxState = InboxState.e
     extends WorkbookInteractionElement[MailEditorFormat.type] {
 
   override val associatedFactory = MailEditor.factory
-  override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = Nil
   override val defaultValue = InboxStateScaffolding(initialInbox.normalized)
 
   def isPassed: Boolean = interactionVariable.currentValue.inboxState.sortingResult.passed

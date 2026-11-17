@@ -46,7 +46,8 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     try {
       // Use the correct event-based API - addGrading creates a GradingCompletedEvent
       exercise.interactionVariable.updateHistory(_.addGrading(wrongAnswer), fullInfo.workbookContextInformation)
-      assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 0)
+      assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 1)
+      assert(!element.ref.textContent.contains("Wrong answer feedback"))
       exercise.interactionVariable.updateHistory(_.addGrading(wrongLanguage), fullInfo.workbookContextInformation)
       assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 1)
       assert(element.ref.textContent.contains("Wrong language feedback"))

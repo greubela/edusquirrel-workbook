@@ -5,7 +5,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Sn
 /** Editor templates and comparison buttons, separate from shared SQL clause handling. */
 object SqlEditorPalette {
   // Reuse the established comparison selector order, with SQL-specific spelling.
-  val comparisonOperators: List[String] = SnapPaletteCatalog.OperatorSelectors.flatMap {
+  val comparisonOperators: Seq[String] = SnapPaletteCatalog.OperatorSelectors.flatMap {
     case "reportVariadicLessThan" => Some("<")
     case "reportVariadicGreaterThan" => Some(">")
     case "reportVariadicEquals" => Some("=")
@@ -14,7 +14,7 @@ object SqlEditorPalette {
     case "reportVariadicNotEquals" => Some("<>")
     case _ => None
   }
-  val palette: List[(String, String)] = List(
+  val palette: Seq[(String, String)] = List(
     "SELECT" -> "SELECT *", "FROM" -> "FROM table_name", "WHERE" -> "WHERE column_name = 1",
     "SELECT AVG" -> "SELECT AVG(column_name) AS average_value",
     "SELECT COUNT" -> "SELECT COUNT(column_name) AS value_count",

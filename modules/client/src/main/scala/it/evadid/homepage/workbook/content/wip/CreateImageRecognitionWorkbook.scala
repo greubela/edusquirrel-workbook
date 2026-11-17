@@ -76,7 +76,7 @@ object CreateImageRecognitionWorkbook {
     ), NeuronParameters(List(1, 1, 1, 1), 4))
 
   // Transcribed from Workbook_Teil2.pdf, physical page 2 (chapter 3).
-  val digitImages: List[BinaryPixelImage] = List(
+  val digitImages: Seq[BinaryPixelImage] = List(
     List("111", "101", "101", "101", "111"),
     List("010", "010", "010", "010", "010"),
     List("111", "001", "111", "100", "111"),
@@ -103,7 +103,7 @@ object CreateImageRecognitionWorkbook {
     probes = List(PixelThresholdProbe(id("onePixelProbe"), List(PixelPosition(1, 1)), 1)),
     presets = List(PixelPreset(id("originalOne"), digitImages(1)), PixelPreset(id("missingPixelOne"), oneWithoutFeature),
       PixelPreset(id("invertedOne"), invertedOne)) ++ digitImages.zipWithIndex.map((image, digit) => PixelPreset(id(s"pixelDigit$digit"), image)))
-  private def reflectionTable(elementId: String, title: String, rows: List[String], columns: List[String]) =
+  private def reflectionTable(elementId: String, title: String, rows: Seq[String], columns: Seq[String]) =
     AnswerTableInteraction(elementId, id(title), rows.map(id), columns.map(id), rows.map(_ => columns.map(_ => EditableTableCell())))
   val robustnessObservations = reflectionTable("image-robustness-observations", "robustnessTable",
     List("originalOne", "missingPixelOne", "invertedOne"), List("humanInterpretation", "detectorOutput", "robustnessReason"))

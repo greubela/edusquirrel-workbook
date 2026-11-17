@@ -23,11 +23,11 @@ case class BeBlockWhile(whileExpr: BeWhile) extends BeBlock derives upickle.defa
                              renderingInfo: RenderingInformation
                            ): ControlFlowAndExpressionShape = {
 
-    val resultList: List[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
+    val resultList: Seq[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
 
     val conditionChildOp = resultList.find(_._1._1.childInfo.myRoleInParent == ConditionInControlStructure)
     val condition: BeShape = conditionChildOp.get._2.expressionShapeOrEverything
-    val bodyShapes: List[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(0)).map(_._2)
+    val bodyShapes: Seq[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(0)).map(_._2)
 
     new NestedControlStructureShape {
 
@@ -35,16 +35,16 @@ case class BeBlockWhile(whileExpr: BeWhile) extends BeBlock derives upickle.defa
 
       override def totalControlFlowWidth(config: BeRenderingConfig): Double = config.controlSegmentSize * 12
 
-      override def getControlFlowChangeElements: List[ControlFlowShape] = List(RepetitionSplit(), RepetitionUnion())
+      override def getControlFlowChangeElements: Seq[ControlFlowShape] = List(RepetitionSplit(), RepetitionUnion())
 
-      override def getControlFlowExpressionElements: List[Option[BeShape]] = List(Some(condition), None)
+      override def getControlFlowExpressionElements: Seq[Option[BeShape]] = List(Some(condition), None)
 
-      override def getBodiesBetweenControlFlowChanges: List[List[BeShape]] = List(bodyShapes)
+      override def getBodiesBetweenControlFlowChanges: Seq[Seq[BeShape]] = List(bodyShapes)
     }
 
   }
 
-  override def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
+  override def render(renderedChildren: Seq[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
 
 
     val condExpr = renderedChildren.find(_._1.childInfo.myRoleInParent == ConditionInControlStructure)

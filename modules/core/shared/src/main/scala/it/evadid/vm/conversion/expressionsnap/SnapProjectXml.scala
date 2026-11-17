@@ -87,7 +87,7 @@ object SnapProjectXml {
     else if layout.isEmpty || !layoutMatches(layout, statements.size) then
       List(ScriptOut(156, 66, createReceiveGoCall() :: statements))
     else
-      splitByLayout(statements, layout.scripts)
+      splitByLayout(statements, layout.scripts.toList)
   }
 
   private def layoutMatches(layout: SnapCanvasLayout, totalStatements: Int): Boolean =

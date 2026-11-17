@@ -38,7 +38,7 @@ enum SnapCategoryColor(val snapKey: String) derives ReadWriter:
 case class LibraryTab(
                        id: String,
                        name: String,
-                       selectableElements: List[LibraryBlock],
+                       selectableElements: Seq[LibraryBlock],
                        color: SnapCategoryColor = SnapCategoryColor.Other,
                        includeVariableControls: Boolean = false,
                        includeMakeBlockButton: Boolean = false,
@@ -70,14 +70,14 @@ case class SnapEditorVisuals(
 
 case class SnapCodeEditorConfig(
                                  parts: SnapEditorParts = SnapEditorParts(),
-                                 libraryTabs: List[LibraryTab] = Nil,
+                                 libraryTabs: Seq[LibraryTab] = Nil,
                                  codeRepresentation: CodeRepresentationConfig = CodeRepresentationConfig(Python, English, skipUnparsable = false),
                                  visuals: SnapEditorVisuals = SnapEditorVisuals()
                                ) derives ReadWriter
 
 object SnapCodeEditorConfig:
   /** Snap's default palette buttons (lists/other live inside Variables). */
-  val StandardSnapCategories: List[LibraryTab] = List(
+  val StandardSnapCategories: Seq[LibraryTab] = List(
     nativeTab("motion", "Motion", SnapCategoryColor.Motion),
     nativeTab("looks", "Looks", SnapCategoryColor.Looks),
     nativeTab("sound", "Sound", SnapCategoryColor.Sound),
@@ -112,7 +112,7 @@ object SnapCodeEditorConfig:
     )
   }
 
-  private def tabsForLayout(layout: PaletteLayout): List[LibraryTab] = layout match
+  private def tabsForLayout(layout: PaletteLayout): Seq[LibraryTab] = layout match
     case PaletteLayout.NativeSnap => StandardSnapCategories
     case PaletteLayout.CatalogTabs(tabs) => tabs.map { tab =>
       LibraryTab(
@@ -128,7 +128,7 @@ object SnapCodeEditorConfig:
       List(mixedTab("blocks", "Blocks", selectors.map(block(_))))
 
   /** Explicit palette limited to blocks with full Snap ↔ BeExpression ↔ Python support. */
-  val PythonCompatibleSnapCategories: List[LibraryTab] =
+  val PythonCompatibleSnapCategories: Seq[LibraryTab] =
     tabsForLayout(ProgrammingEditorPalette.PythonCompatibleSnap.layout)
 
   /** Test-workbook editor config with a Python-safe Snap palette only. */
@@ -138,7 +138,7 @@ object SnapCodeEditorConfig:
   def mixedTab(
                 id: String,
                 name: String,
-                blocks: List[LibraryBlock],
+                blocks: Seq[LibraryBlock],
                 color: SnapCategoryColor = SnapCategoryColor.Other,
                 includeVariableControls: Boolean = false,
                 includeMakeBlockButton: Boolean = false
@@ -157,7 +157,7 @@ object SnapCodeEditorConfig:
   def flattenToMixedTab(
                          id: String,
                          name: String,
-                         tabs: List[LibraryTab],
+                         tabs: Seq[LibraryTab],
                          color: SnapCategoryColor = SnapCategoryColor.Other
                        ): LibraryTab =
     mixedTab(
@@ -170,7 +170,7 @@ object SnapCodeEditorConfig:
     )
 
   /** Single mixed tab with the beginner turtle allow-list from the shared layout. */
-  val BeginnerTurtleCategories: List[LibraryTab] =
+  val BeginnerTurtleCategories: Seq[LibraryTab] =
     tabsForLayout(ProgrammingEditorPalette.BeginnerTurtle.layout)
 
   /** Editor config for beginner turtle exercises (circle, etc.). */

@@ -40,7 +40,7 @@ trait BeBlock {
 
 
   def renderOld(structure: BeBlockRenderingContext, renderingInfo: RenderingInformation): NestedBlockRenderer = {
-    val renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)] = {
+    val renderedChildren: Seq[(BeExpressionNode, BeBlock, NestedBlockRenderer)] = {
       structure
         .traversalInfoForChildren
         .zip(structure.accessChildrenResults)
@@ -57,7 +57,7 @@ trait BeBlock {
 
   def render(structure: TreeStructureContext[NodeBasedTreePosition, (BeExpressionNode, BeBlock)], childResults: Map[(BeExpressionNode, BeBlock), NestedBlockRenderer], renderingInfo: RenderingInformation): NestedBlockRenderer = {
 
-    val renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)] = childResults.keys.map(tup => (tup._1, tup._2, childResults(tup))).toList
+    val renderedChildren: Seq[(BeExpressionNode, BeBlock, NestedBlockRenderer)] = childResults.keys.map(tup => (tup._1, tup._2, childResults(tup))).toList
 
     /*val 
 
@@ -66,7 +66,7 @@ trait BeBlock {
     render(renderedChildren, renderingInfo)
   }
 
-  def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer
+  def render(renderedChildren: Seq[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer
 
 }
 
@@ -78,18 +78,18 @@ abstract class BeBlockSingleShape() extends BeBlock {
                              renderingInfo: RenderingInformation
                            ): ControlFlowAndExpressionShape = {
 
-    val childrenShapes: List[(BeExpressionNode, BeShape)] = childResults.toList.map(tup => (tup._1._1, tup._2.expressionShapeOrEverything))
+    val childrenShapes: Seq[(BeExpressionNode, BeShape)] = childResults.toList.map(tup => (tup._1._1, tup._2.expressionShapeOrEverything))
     val (cfShape, exprShape) = renderShape(childrenShapes, renderingInfo)
     ShapeWithControlFlow(cfShape, exprShape)
   }
 
-  override def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
+  override def render(renderedChildren: Seq[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
 
-    val childrenShapes: List[(BeExpressionNode, BeShape)] = renderedChildren.toList.map(tup => (tup._1, tup._3.expressionShapeWithoutIntendation))
+    val childrenShapes: Seq[(BeExpressionNode, BeShape)] = renderedChildren.toList.map(tup => (tup._1, tup._3.expressionShapeWithoutIntendation))
     val (cfShape, exprShape) = renderShape(childrenShapes, renderingInfo)
     NestedBlockRenderer.singleExpressionLineShapeWithInfo(renderedChildren.map(_._3).flatMap(_.allLines), cfShape, exprShape)
   }
 
-  def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape)
+  def renderShape(childrenShapes: Seq[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape)
 
 }

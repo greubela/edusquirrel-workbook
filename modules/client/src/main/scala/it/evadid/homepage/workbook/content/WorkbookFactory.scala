@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.workbook.abstractions.InteractionFormat.{LabeledCheckboxInteractionFormat, TextInteractionFormat}
+
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
@@ -22,7 +24,7 @@ import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSec
 
 trait WorkbookFactory {
 
-  def availableLanguages: List[HumanLanguage] = List(English, German) // todo remove default value
+  def availableLanguages: Seq[HumanLanguage] = List(English, German) // todo remove default value
 
   def defaultSectionActiveNr: Int = 0
 
@@ -52,14 +54,14 @@ trait WorkbookFactory {
   /*
   Control
    */
-  protected def createTextInput(id: String = nextId()): WorkbookInteractionElement[it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat.type] = {
+  protected def createTextInput(id: String = nextId()): WorkbookInteractionElement[TextInteractionFormat.type] = {
     TextInteraction(id)
   }
 
   /*
   Structure
    */
-  protected def workbook(langIdWorkbookTitle: String, sections: List[WorkbookSection], user: User): Workbook = {
+  protected def workbook(langIdWorkbookTitle: String, sections: Seq[WorkbookSection], user: User): Workbook = {
     Workbook(
       workbookId,
       WorkbookMetadata(
@@ -70,12 +72,12 @@ trait WorkbookFactory {
       sections)
   }
 
-  protected def section(sectionId: String, langIdSectionTitle: String, sectionContent: List[WorkbookElement]): WorkbookSection = {
+  protected def section(sectionId: String, langIdSectionTitle: String, sectionContent: Seq[WorkbookElement]): WorkbookSection = {
     //val sectionTitleElement = LangMapContentIdType(titleMapId, WorkbookIdBasedContent(TypeOfTextDisplay.PLAINTEXT, RoleInWorkbook.SECTION_TITLE))
     WorkbookSection(sectionId, WorkbookSectionMetadata(LanguageMapContentId(langIdSectionTitle)), sectionContent)
   }
 
-  protected def container(langIdContainerLabel: String, elements: List[WorkbookElement]): WorkbookStructureElement[WorkbookElement] = {
+  protected def container(langIdContainerLabel: String, elements: Seq[WorkbookElement]): WorkbookStructureElement[WorkbookElement] = {
     //val containerTitle = LangMapContentBasedElement(LanguageMapContentId(langIdContainerLabel), LangMapContentIdType(TypeOfTextDisplay.PLAINTEXT, RoleInWorkbook.CONTAINER_TITLE))
     //WorkbookElementGroup(List(containerTitle) ++ elements, Some(WorkbookGroupType.EXERCISE_CONTAINER))
     ExerciseContainer(nextId("container"), LanguageMapContentId(langIdContainerLabel), elements)
@@ -112,7 +114,7 @@ trait WorkbookFactory {
     CollapsibleInstructionElement(nextId(), LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), initiallyCollapsed)
 
 
-  protected def checklist(langIdCheckboxLabel: String, elementId: String = nextId()): WorkbookInteractionElement[it.evadid.workbook.abstractions.InteractionFormat.LabeledCheckboxInteractionFormat.type] = {
+  protected def checklist(langIdCheckboxLabel: String, elementId: String = nextId()): WorkbookInteractionElement[LabeledCheckboxInteractionFormat.type] = {
     LabeledCheckboxInteraction(elementId, LanguageMapContentId(langIdCheckboxLabel))
   }
 
@@ -122,7 +124,7 @@ trait WorkbookFactory {
                              defaultValue: String = "0",
                              diff: BigDecimal = BigDecimal(1),
                              elementId: String = nextId()
-                           ): WorkbookInteractionElement[it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat.type] = {
+                           ): WorkbookInteractionElement[TextInteractionFormat.type] = {
     LabeledNumberInteraction(elementId, LanguageMapContentId(langIdNumberLabel), numberType, defaultValue, diff)
   }
 
@@ -132,22 +134,22 @@ trait WorkbookFactory {
 
   protected def codeReorder(
                              baseId: String,
-                             snippets: List[String],
+                             snippets: Seq[String],
                              programmingLanguage: ProgrammingLanguage,
-                             hints: List[LanguageMapContentId] = List.empty,
-                             orderConstraints: List[(Int, Int)] = Nil
+                             hints: Seq[LanguageMapContentId] = List.empty,
+                             orderConstraints: Seq[(Int, Int)] = Nil
                            ): ReorderInteraction.ReorderCodeInteraction = {
     ReorderInteraction.ReorderCodeInteraction(baseId, snippets, programmingLanguage, hints = hints, orderConstraints = orderConstraints)
   }
 
   protected def codeTaskToggle(
                                 reorderId: String,
-                                snippets: List[String],
+                                snippets: Seq[String],
                                 codeEditorTitle: String,
                                 advancedCodeTemplate: String,
-                                hints: List[LanguageMapContentId] = List.empty,
-                                orderConstraints: List[(Int, Int)] = Nil,
-                                advancedRequirements: List[AdvancedCodeRequirement] = Nil,
+                                hints: Seq[LanguageMapContentId] = List.empty,
+                                orderConstraints: Seq[(Int, Int)] = Nil,
+                                advancedRequirements: Seq[AdvancedCodeRequirement] = Nil,
                                 advancedSuccessMessage: String = "basic/advancedCodeFeedbackSuccess"
                               ): CodeTaskToggleInteraction = {
     CodeTaskToggleInteraction(
@@ -178,8 +180,8 @@ trait WorkbookFactory {
 
   protected def sortingExercise(
                                  id: String,
-                                 fieldKeys: List[String],
-                                 items: List[(String, Int, String)]
+                                 fieldKeys: Seq[String],
+                                 items: Seq[(String, Int, String)]
                                ): SortingInteraction = {
     SortingInteraction(
       elementId = id,
@@ -192,8 +194,8 @@ trait WorkbookFactory {
 
   protected def sortingReasonExercise(
                                        id: String,
-                                       fieldKeys: List[String],
-                                       items: List[(String, Int, String, String)]
+                                       fieldKeys: Seq[String],
+                                       items: Seq[(String, Int, String, String)]
                                      ): SortingReasonInteraction = {
     SortingReasonInteraction(
       elementId = id,

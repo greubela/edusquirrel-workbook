@@ -90,9 +90,9 @@ case class HtmlLoginElement() extends HtmlAppElement {
   }
 
 
-  private val onlineStartBody: List[Element] = {
+  private val onlineStartBody: Seq[Element] = {
     val action = new LoginActionState
-    List[Element](
+    Seq[Element](
       ul(
         li(text <-- laminarHelper.plaintextStringSignal("login/onlineBenefit1")),
         li(text <-- laminarHelper.plaintextStringSignal("login/onlineBenefit2")),
@@ -111,7 +111,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
 
   // Start and Continue together (Insert Mail --> Insert Name or Token)
 
-  private val localStartBody: List[Element] = {
+  private val localStartBody: Seq[Element] = {
     List(
       ul(
         li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit1")),
@@ -122,7 +122,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
     )
   }
 
-  private val localContinueBody: List[Element] = {
+  private val localContinueBody: Seq[Element] = {
 
     val uploadInput: ReactiveHtmlElement[HTMLInputElement] = laminarHelper.sessionFileUploadInput(logger, loadedFile => fullInfo.usageControl.tryContinueWithSessionFile(loadedFile))
 
@@ -168,7 +168,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
   }
 
 
-  private val onlineContinueBody: List[Element] = {
+  private val onlineContinueBody: Seq[Element] = {
 
     val tokenVar = Var[String]("")
     val tokenInput = createTextInput(tokenVar, "login/insertTokenPlaceholder", tokenVar.set)

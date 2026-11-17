@@ -97,7 +97,7 @@ object CreateBlockchainWorkbook {
     List("anonymous", "fast", "decentralized").map(key =>
       List(FixedTableCell(id(key)), EditableTableCell(), EditableTableCell())) ++
       List.fill(2)(List.fill(3)(EditableTableCell())))
-  val sourceInputs: List[Int] = List(42, 99, 13)
+  val sourceInputs: Seq[Int] = List(42, 99, 13)
   val hashSpaceTable = AnswerTableInteraction("blockchain-sha-space", id("shaSpaceTitle"),
     List(id("sha256Bits")), List(id("shaPossibleOutputs")),
     List(List(EditableTableCell(Some(List("2^256", "2**256", "2²⁵⁶", BigInt(2).pow(256).toString))))))
@@ -106,7 +106,7 @@ object CreateBlockchainWorkbook {
     LedgerTransfer("Anna", "Lukas", 4), LedgerTransfer("Lukas", "Sara", 6), LedgerTransfer("Sara", "Tom", 2),
     LedgerTransfer("Anna", "Tom", 5), LedgerTransfer("Anna", "Sara", 1), LedgerTransfer("Tom", "Lukas", 12))
   private val pseudonyms = Map("Anna" -> "Krümelmonster", "Lukas" -> "Elmo", "Sara" -> "Oskar", "Tom" -> "Bert")
-  val sourceRecords: List[String] = "00: Krümelmonster, Elmo, Oskar und Bert erhalten je 10 HP." ::
+  val sourceRecords: Seq[String] = "00: Krümelmonster, Elmo, Oskar und Bert erhalten je 10 HP." ::
     sourceTransfers.zipWithIndex.map((transfer, index) =>
       s"0${index + 1}: ${pseudonyms(transfer.sender)} → ${pseudonyms(transfer.recipient)}: ${transfer.amount} HP")
   val sourceChain = TeachingChain(sourceRecords.grouped(2).map(records => TeachingBlock(records.mkString("\n"))).toList)
@@ -140,7 +140,7 @@ object CreateBlockchainWorkbook {
   val balanceTable = AnswerTableInteraction("blockchain-ledger-balances", id("balanceTitle"),
     participants.map(name => id(s"person$name")), List(id("balance")),
     participants.map(name => List(EditableTableCell(Some(List(sourceBalances(name).toString))))))
-  private def reflectionTable(elementId: String, caption: String, rows: List[String], columns: List[String]) =
+  private def reflectionTable(elementId: String, caption: String, rows: Seq[String], columns: Seq[String]) =
     AnswerTableInteraction(elementId, id(caption), rows.map(id), columns.map(id),
       rows.map(_ => columns.map(_ => EditableTableCell())))
   val paymentComparison = reflectionTable("blockchain-payment-comparison", "paymentComparisonTitle",

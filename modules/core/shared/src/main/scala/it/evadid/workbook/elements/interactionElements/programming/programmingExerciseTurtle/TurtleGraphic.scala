@@ -37,7 +37,7 @@ object TurtleGraphic {
   case class Angle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int, lineAfter: Int) derives ReadWriter
   private case class PendingAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int) derives upickle.default.ReadWriter
 
-  private def trace(program: Seq[TurtleCommand[Double]]): (List[Movement], List[Angle]) = {
+  private def trace(program: Seq[TurtleCommand[Double]]): (Seq[Movement], Seq[Angle]) = {
     var position = Point(0.0, 0.0)
     var heading = 0.0
     var penDown = true
@@ -157,7 +157,7 @@ object TurtleGraphic {
    * Lines are drawn with the pen down; jumps between lines (pen up/down) are automatically calculated
    * following the same rules as SVG to turtle conversion (no rotation > 180°).
    */
-  case class TurtleLineBasedProgram(lines: List[Line[Double]]) extends TurtleGraphic derives upickle.default.ReadWriter {
+  case class TurtleLineBasedProgram(lines: Seq[Line[Double]]) extends TurtleGraphic derives upickle.default.ReadWriter {
     lazy val toTurtleProgram: Seq[TurtleCommand[Double]] =
       TurtleLineBasedProgram.toTurtleProgram(lines)
 
@@ -187,7 +187,7 @@ object TurtleGraphic {
   }
 
   object TurtleLineBasedProgram {
-    private def toTurtleProgram(lines: List[Line[Double]]): Seq[TurtleCommand[Double]] = {
+    private def toTurtleProgram(lines: Seq[Line[Double]]): Seq[TurtleCommand[Double]] = {
       val result = ListBuffer.empty[TurtleCommand[Double]]
       var current = Point(0.0, 0.0)
       var heading = 0.0

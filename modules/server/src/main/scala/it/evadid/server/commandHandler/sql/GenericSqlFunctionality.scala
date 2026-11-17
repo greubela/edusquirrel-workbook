@@ -26,7 +26,7 @@ private[sql] case class GenericSqlFunctionality(logger: Logger) {
     result
   }
 
-  def executeQuery(statement: PreparedStatement, fieldsToRead: List[String]): List[List[String]] = execute(statement, s"reading database columns ${fieldsToRead.mkString(", ")}") {
+  def executeQuery(statement: PreparedStatement, fieldsToRead: Seq[String]): Seq[Seq[String]] = execute(statement, s"reading database columns ${fieldsToRead.mkString(", ")}") {
     logger.logInfo("Executing query: " + statement)
     val rows = Using.resource(statement.executeQuery())(readAll(_, fieldsToRead))
     logger.logInfo(s"Query executed successfully, ${rows.size} results!")
@@ -40,7 +40,7 @@ private[sql] case class GenericSqlFunctionality(logger: Logger) {
     error => { logger.logWarn(s"$description because of the following error: ${ParsingContext.reason(error)}"); None },
     Some(_))
 
-  private def readAll(resultSet: ResultSet, fields: List[String]): List[List[String]] = {
+  private def readAll(resultSet: ResultSet, fields: Seq[String]): Seq[Seq[String]] = {
     val res = Iterator.continually(resultSet.next()).takeWhile(identity)
       .flatMap(_ => readSafely("Could not parse element from result set")(fields.map(resultSet.getString))).toList
     logger.logInfo(s"read ${res.size} rows from database with the following ${fields.size} fields: ${fields.mkString(",")}")

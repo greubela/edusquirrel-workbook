@@ -17,7 +17,7 @@ case class LabeledCheckboxInteraction(
 
   override val associatedFactory: WorkbookElementFactory[LabeledCheckboxInteraction] = LabeledCheckboxInteraction.factory
 
-  lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
   override val defaultValue: Boolean = false
 

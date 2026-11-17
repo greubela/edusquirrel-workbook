@@ -10,18 +10,18 @@ import upickle.default.*
 /** DOM-independent jobs supported by the workbook worker. */
 object WorkerCommands {
   case class HealthRequest() derives ReadWriter
-  case class HealthResult(service: String, commands: List[String]) derives ReadWriter
+  case class HealthResult(service: String, commands: Seq[String]) derives ReadWriter
   case class ParseSnapXmlRequest(xml: String, tag: String) derives ReadWriter
   case class PythonFlowchartRequest(source: String) derives ReadWriter
   case class CalculateQrCodeRequest(text: String, errorCorrection: QrErrorCorrection = QrErrorCorrection.M,
                                     version: Option[Int] = None, mask: Option[Int] = None) derives ReadWriter
   case class CalculateQrCodeResult(code: QrCode, modules: Vector[Vector[Boolean]]) derives ReadWriter
   case class RunPythonRequest(code: String, context: Map[String, ujson.Value] = Map.empty,
-      callbacks: Map[String, List[String]] = Map.empty, packages: List[String] = Nil,
+      callbacks: Map[String, Seq[String]] = Map.empty, packages: Seq[String] = Nil,
       resetGlobals: Boolean = true, captureStdout: Boolean = true, captureStderr: Boolean = true) derives ReadWriter
-  case class PythonCallback(module: String, method: String, args: List[ujson.Value]) derives ReadWriter
+  case class PythonCallback(module: String, method: String, args: Seq[ujson.Value]) derives ReadWriter
   case class RunPythonResult(value: ujson.Value, stdout: String, stderr: String,
-      callbackOps: List[PythonCallback]) derives ReadWriter
+      callbackOps: Seq[PythonCallback]) derives ReadWriter
   case class JavaExecutionEvidenceRequest(source: String, method: Option[String] = None,
       arguments: Vector[JavaTurtleExecutionEvidence.Scalar] = Vector.empty,
       limits: JavaTurtleRuntime.Limits = JavaTurtleRuntime.Limits(),
@@ -56,7 +56,7 @@ object WorkerCommands {
   }
 
   lazy val health = ExecutionCommandFactory[HealthRequest, HealthResult]("worker.health")
-  lazy val parseSnapXml = ExecutionCommandFactory[ParseSnapXmlRequest, List[SnapXmlParser.Element]]("worker.parseSnapXml")
+  lazy val parseSnapXml = ExecutionCommandFactory[ParseSnapXmlRequest, Seq[SnapXmlParser.Element]]("worker.parseSnapXml")
   lazy val pythonFlowchart = ExecutionCommandFactory[PythonFlowchartRequest, PythonFlowchartGutter.Chart]("worker.pythonFlowchart")
   lazy val calculateQrCode = ExecutionCommandFactory[CalculateQrCodeRequest, CalculateQrCodeResult]("worker.calculateQrCode")
   lazy val runPython = ExecutionCommandFactory[RunPythonRequest, RunPythonResult]("worker.runPython",

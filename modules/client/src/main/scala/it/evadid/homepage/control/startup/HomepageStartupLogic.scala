@@ -32,8 +32,8 @@ object HomepageStartupLogic {
     }
   }
 
-  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing", "workbookImageRecognition", "workbookBlockchain", "workbookEvacuation")
-  private val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
+  private val tryToLoad: Seq[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing", "workbookImageRecognition", "workbookBlockchain", "workbookEvacuation")
+  private val canLoad: Seq[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
 
   def renderElementIntoApp(logger: Logger, domElement: Element): Unit = {
     if (canLoad.isEmpty) {

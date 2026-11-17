@@ -8,9 +8,9 @@ enum PaletteLayout derives ReadWriter:
   /** Snap's native categories (all blocks per category). */
   case NativeSnap
   /** An ordered subset of [[SnapPaletteCatalog]] tabs. */
-  case CatalogTabs(tabs: List[PaletteTab])
+  case CatalogTabs(tabs: Seq[PaletteTab])
   /** One mixed tab, blocks in the given Snap selector order. */
-  case Mixed(selectors: List[String])
+  case Mixed(selectors: Seq[String])
 
   def pythonCompatible: Boolean = {
     val supported = SnapPaletteCatalog.pythonCompatibleSelectorSet

@@ -12,13 +12,13 @@ import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.InteractionFormat.*
 
-case class ChoiceAnswer(selected: List[Int] = Nil) derives ReadWriter {
+case class ChoiceAnswer(selected: Seq[Int] = Nil) derives ReadWriter {
   require(selected.forall(_ >= 0) && selected.distinct == selected, "Selections must be unique nonnegative indices")
 }
 
 /** expected=None is an opinion/reflection question, with no invented correct answer. */
-case class ChoiceInteraction(elementId: String, prompt: LanguageMapContentId, options: List[LanguageMapContentId],
-    allowMultiple: Boolean = false, expected: Option[List[Int]] = None) extends WorkbookInteractionElement[ChoiceInteractionFormat.type] {
+case class ChoiceInteraction(elementId: String, prompt: LanguageMapContentId, options: Seq[LanguageMapContentId],
+    allowMultiple: Boolean = false, expected: Option[Seq[Int]] = None) extends WorkbookInteractionElement[ChoiceInteractionFormat.type] {
 
   require(options.nonEmpty && options.distinct == options, "Provide distinct choices")
   require(expected.forall(xs => xs.nonEmpty && xs.distinct == xs && xs.forall(i => i >= 0 && i < options.size)
@@ -46,7 +46,7 @@ object ChoiceInteraction  {
       base.withElementAddedAs("prompt", e.prompt).withElementAddedAs("options", e.options)
         .withElementAddedAs("allowMultiple", e.allowMultiple).withElementAddedAs("expected", e.expected)
     override def finishDeserialization(e: WorkbookElementSerializable): ChoiceInteraction =
-      ChoiceInteraction(e.elementId, e.getElementAs[LanguageMapContentId]("prompt"), e.getElementAs[List[LanguageMapContentId]]("options"),
-        e.getOptionalElementAs[Boolean]("allowMultiple", false), e.getOptionalElementAs[Option[List[Int]]]("expected", None))
+      ChoiceInteraction(e.elementId, e.getElementAs[LanguageMapContentId]("prompt"), e.getElementAs[Seq[LanguageMapContentId]]("options"),
+        e.getOptionalElementAs[Boolean]("allowMultiple", false), e.getOptionalElementAs[Option[Seq[Int]]]("expected", None))
   }
 }

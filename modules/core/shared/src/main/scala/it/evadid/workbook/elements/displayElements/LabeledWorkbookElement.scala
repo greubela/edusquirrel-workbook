@@ -9,7 +9,7 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementRe
 import upickle.default.*
 
 case class LabeledWorkbookElement[T <: WorkbookElement](override val elementId: String, baseElement: T, label: WorkbookLabel) extends WorkbookDisplayElement derives upickle.default.ReadWriter {
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List(baseElement)
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List(baseElement)
 
   override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = LabeledWorkbookElement.factory
 }

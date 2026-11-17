@@ -10,9 +10,9 @@ object AdvancedCodeCheckResult {
 
   case object Success extends AdvancedCodeCheckResult
 
-  case class Incomplete(missingHints: List[LanguageMapContentId]) extends AdvancedCodeCheckResult derives ReadWriter
+  case class Incomplete(missingHints: Seq[LanguageMapContentId]) extends AdvancedCodeCheckResult derives ReadWriter
 
-  def evaluate(code: String, requirements: List[AdvancedCodeRequirement]): AdvancedCodeCheckResult = {
+  def evaluate(code: String, requirements: Seq[AdvancedCodeRequirement]): AdvancedCodeCheckResult = {
     val missing = requirements.collect {
       case req if !req.mustContain.forall(fragment => code.contains(fragment)) => req.missingHint
     }

@@ -23,7 +23,7 @@ object SyncDestinationDefinition {
 
   case class SyncDestinationBasedOnHistoryDatabase(databaseConfig: DatabaseConfiguration, format: DatabaseHistoryFormat, buffered: Boolean) extends SyncDestinationDefinition derives ReadWriter {
     override def toString: String =
-      s"DatabaseDestination(${databaseConfig.host}->${databaseConfig.database}/${format.tables.mkString(",")})"
+      s"DatabaseDestination(${databaseConfig.host}->${databaseConfig.database}/${format.tables.map(_.name).mkString(",")})"
   }
 
   case class LocalIndexedDbSyncDefinition(dbName: String, storeName: String, dbVersion: Int) extends SyncDestinationDefinition derives ReadWriter {
@@ -39,6 +39,9 @@ object SyncDestinationDefinition {
 
   val defaultDatabase: SyncDestinationBasedOnHistoryDatabase =
     SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalFormat, true)
+
+  val defaultBlobDatabase: SyncDestinationBasedOnHistoryDatabase =
+    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.BlobFormat, true)
 
 }
 

@@ -28,7 +28,7 @@ case class ProgrammingExercise(
   override val defaultValue: ProgrammingState = ProgrammingStateSnapXml.mini
   override val gradingElements = testSuite.toList.flatMap(_.graders)
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
 }
 

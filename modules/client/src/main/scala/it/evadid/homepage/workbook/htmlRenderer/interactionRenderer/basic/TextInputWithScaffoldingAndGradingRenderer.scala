@@ -17,11 +17,11 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
     val variable = element.interactionVariable
     val answer = variable.createBoundStateWithUpdateLogic( TextInteraction.decideTextareaUpdateImportance, fullInfo.workbookContextInformation).toAirstreamVar
     def label(key: String) = laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
-    val feedback: Signal[List[Element]] = {
+    val feedback: Signal[Seq[Element]] = {
       val history = variable.observableHistoryWithDefault.toEventStream().toSignal(variable.currentHistory)
       history.combineWith(answer.signal, fullInfo.signals.currentLanguage).map { (saved, source, language) =>
         element.gradingElements.flatMap { grader =>
-          saved.historyGrading.gradingsMap.get(source).filter(_.state == source).flatMap(_.graderResultMap.get(grader))
+          saved.gradingForState(element.gradingElements, source).graderResultMap.get(grader)
             .filter(result => result.gradedState == source && result.grader == grader).toList.map { result =>
               val key = result.gradingStatus match {
                 case GradingStatus.Correct() => "textGradingCorrect"

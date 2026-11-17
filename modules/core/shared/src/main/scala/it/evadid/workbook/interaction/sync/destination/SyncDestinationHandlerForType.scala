@@ -48,7 +48,7 @@ object SyncDestinationHandlerForType {
     override def readElementTyped(key: K)(implicit ec: ExecutionContext): Future[V] = {
       keySerializer.trySerialize(key).match {
         case Left(err) => Future.failed(SerializedException(s"${basic.underlyingDefinition}:Could not read element because key serialisation failed: ${err.getLocalizedMessage}", err))
-        case Right(key) => basic.readElement(key)(ec).flatMap(valueStr => {
+        case Right(key) => basic.readElement(key)(using ec).flatMap(valueStr => {
           valueSerializer.tryDeserialize(valueStr).match {
             case Left(err) => Future.failed(SerializedException(s"${basic.underlyingDefinition}:Could not deserialize successfully read value (for key '${key.take(60)}'): ${err.getMessage}'", err))
             case Right(value) => Future.successful(value)
@@ -60,7 +60,7 @@ object SyncDestinationHandlerForType {
     override def clearValue(key: K)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
       keySerializer.trySerialize(key).match {
         case Left(err) => Future.failed(SerializedException(s"${basic.underlyingDefinition}:Could not remove element because key serialisation failed: ${err.getLocalizedMessage}", err))
-        case Right(key) => basic.clearValue(key)(ec)
+        case Right(key) => basic.clearValue(key)(using ec)
       }
     }
 

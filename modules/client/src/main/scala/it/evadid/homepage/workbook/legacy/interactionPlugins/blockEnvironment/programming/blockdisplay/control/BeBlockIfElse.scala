@@ -23,12 +23,12 @@ case class BeBlockIfElse(expr: BeIfElse) extends BeBlock derives upickle.default
                              renderingInfo: RenderingInformation
                            ): ControlFlowAndExpressionShape = {
 
-    val resultList: List[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
+    val resultList: Seq[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
 
     val conditionChildOp = resultList.find(_._1._1.childInfo.myRoleInParent == ConditionInControlStructure)
     val condition: BeShape = conditionChildOp.get._2.expressionShapeOrEverything
-    val thenShapes: List[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(0)).map(_._2)
-    val elseShapes: List[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(1)).map(_._2)
+    val thenShapes: Seq[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(0)).map(_._2)
+    val elseShapes: Seq[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(1)).map(_._2)
 
     new NestedControlStructureShape {
 
@@ -36,16 +36,16 @@ case class BeBlockIfElse(expr: BeIfElse) extends BeBlock derives upickle.default
 
       override def totalControlFlowWidth(config: BeRenderingConfig): Double = config.controlSegmentSize * 12
 
-      override def getControlFlowChangeElements: List[ControlFlowShape] = List(IfElseSplit(), ControlFlowCross(), IfElseUnion())
+      override def getControlFlowChangeElements: Seq[ControlFlowShape] = List(IfElseSplit(), ControlFlowCross(), IfElseUnion())
 
-      override def getControlFlowExpressionElements: List[Option[BeShape]] = List(Some(condition), None, None)
+      override def getControlFlowExpressionElements: Seq[Option[BeShape]] = List(Some(condition), None, None)
 
-      override def getBodiesBetweenControlFlowChanges: List[List[BeShape]] = List(thenShapes, elseShapes)
+      override def getBodiesBetweenControlFlowChanges: Seq[Seq[BeShape]] = List(thenShapes, elseShapes)
     }
 
   }
 
-  override def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
+  override def render(renderedChildren: Seq[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
 
     var res = NestedBlockRenderer.empty()
 

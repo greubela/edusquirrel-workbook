@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.blockchain
 
+import it.evadid.workbook.abstractions.InteractionFormat.{SquareMiddleHashInteractionFormat}
+
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.{DefaultSerializer}
@@ -27,7 +29,7 @@ case class SquareMiddleHashAnswer(first: String = "", second: String = "") deriv
 
 case class SquareMiddleHashInteraction(elementId: String, title: LanguageMapContentId,
                                        task: SquareMiddleHashTask = ExploreSquareMiddleHash(), initial: SquareMiddleHashAnswer = SquareMiddleHashAnswer())
-  extends WorkbookInteractionElement[InteractionFormat.SquareMiddleHashInteractionFormat.type] {
+  extends WorkbookInteractionElement[SquareMiddleHashInteractionFormat.type] {
 
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = initial
@@ -35,7 +37,7 @@ case class SquareMiddleHashInteraction(elementId: String, title: LanguageMapCont
   override val associatedFactory = SquareMiddleHashInteraction.factory
 
 
-  def results(answer: SquareMiddleHashAnswer): List[Option[SquareMiddleHashResult]] = task match {
+  def results(answer: SquareMiddleHashAnswer): Seq[Option[SquareMiddleHashResult]] = task match {
     case _: FindHashPreimage => List(SquareMiddleHash.parse(answer.first))
     case _ => List(SquareMiddleHash.parse(answer.first), SquareMiddleHash.parse(answer.second))
   }

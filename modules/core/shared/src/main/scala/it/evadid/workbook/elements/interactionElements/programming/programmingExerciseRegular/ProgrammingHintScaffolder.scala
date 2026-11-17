@@ -135,21 +135,21 @@ object ProgrammingHintScaffolder {
   }
 
   private case class Check(id: String, grader: WorkbookInteractionGrader[ProgrammingState, programming.AdditionalProgrammingTestInfo], required: Boolean,
-                           latest: List[(String, Map[HumanLanguage, String], Option[ProgrammingTestProgramObservation])]) {
+                           latest: Seq[(String, Map[HumanLanguage, String], Option[ProgrammingTestProgramObservation])]) {
     def localized(language: HumanLanguage): PublicCheck = {
       val values = latest.map { (status, descriptions, observation) =>
         (status, descriptions.get(language).orElse(descriptions.get(English)), observation)
       }.distinct
       values match {
-        case List((status, description, observation)) => PublicCheck(id, required, status, description, observation)
+        case Seq((status, description, observation)) => PublicCheck(id, required, status, description, observation)
         case _ => PublicCheck(id, required, "unavailable", None)
       }
     }
   }
 
   private case class Context(sourceLanguage: String, source: String, sourceLines: Vector[(String, String)],
-                             checks: List[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
-    def localizedChecks(language: HumanLanguage): List[PublicCheck] = checks.map(_.localized(language))
+                             checks: Seq[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
+    def localizedChecks(language: HumanLanguage): Seq[PublicCheck] = checks.map(_.localized(language))
 
     def evidenceIds(language: HumanLanguage): Set[String] = sourceLines.map(_._1).toSet ++ localizedChecks(language).flatMap {
       case check if evidenceStatuses.contains(check.status) => List(check.id) ++ check.programObservation.map(_ => check.outputId)

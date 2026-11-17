@@ -74,7 +74,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
   }
 
-  private def createDomElement(bodyDom: Element): List[Element] = List(
+  private def createDomElement(bodyDom: Element): Seq[Element] = List(
     div(
       cls := "workbook-header",
       children <-- headerChildren
@@ -90,15 +90,15 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   )
 
 
-  lazy val headerChildren: Signal[List[Element]] = {
+  lazy val headerChildren: Signal[Seq[Element]] = {
     fullInfo.signals.workbook.combineWith(fullInfo.signals.user, collapsedSignal).map(
       (workbook, user, collapsed) => {
         val always = List(
           createTitleLine(workbook, user),
           DropdownMenuControl(workbook, user).getDomElement(),
         )
-        val section: List[Element] = if (collapsed || workbook.isEmpty || user.isEmpty) List() else List(SectionSelectionLine(workbook.get).getDomElement())
-        val language: List[Element] = if (collapsed) List() else List(LanguageSelectionLine().getDomElement())
+        val section: Seq[Element] = if (collapsed || workbook.isEmpty || user.isEmpty) List() else List(SectionSelectionLine(workbook.get).getDomElement())
+        val language: Seq[Element] = if (collapsed) List() else List(LanguageSelectionLine().getDomElement())
         always ++ language ++ section ++ List(createDomToggleButton())
       })
 

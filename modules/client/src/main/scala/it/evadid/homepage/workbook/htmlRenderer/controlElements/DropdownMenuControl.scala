@@ -56,7 +56,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
     createDefaultMenu() ++ createSessionMenu() //++ createDemoMenu()
   )
 
-  private def createDefaultMenu(): List[HtmlAppElement] = List(
+  private def createDefaultMenu(): Seq[HtmlAppElement] = List(
     HtmlDropdownMenu.menuItem("workbookSelection/backToCatalogue", _ => {
       fullInfo.usageControl.changeWorkbook(None)
       closeMenu()
@@ -66,7 +66,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
 
   private val uploadInput: ReactiveHtmlElement[HTMLInputElement] = laminarHelper.sessionFileUploadInput(logger, loadedFile => fullInfo.usageControl.tryContinueWithSessionFile(loadedFile))
 
-  private def createSessionMenu(): List[HtmlAppElement] =
+  private def createSessionMenu(): Seq[HtmlAppElement] =
     List(
       HtmlDropdownMenu.menuLabel(userNameOrNobodySignal),
       HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => downloadAll())
@@ -78,7 +78,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
 
 
 
-  /*private def createDemoMenu(): List[HtmlAppElement] = {
+  /*private def createDemoMenu(): Seq[HtmlAppElement] = {
     List(
       HtmlDropdownMenu.menuLabel(laminarHelper.plaintextStringSignal("basic/switchUser"))
     ) ++

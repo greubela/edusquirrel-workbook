@@ -17,14 +17,14 @@ import it.evadid.workbook.abstractions.InteractionFormat.*
 
 object ReorderInteraction {
 
-  case class ReorderCodeInteraction(override val elementId: String, lines: List[String], programmingLanguage: ProgrammingLanguage, seed: Long = 0, hints: List[LanguageMapContentId] = List.empty, orderConstraints: List[(Int, Int)] = Nil)
+  case class ReorderCodeInteraction(override val elementId: String, lines: Seq[String], programmingLanguage: ProgrammingLanguage, seed: Long = 0, hints: Seq[LanguageMapContentId] = List.empty, orderConstraints: Seq[(Int, Int)] = Nil)
     extends WorkbookInteractionElement[ReorderCodeInteractionFormat.type] {
 
     override val associatedFactory = ReorderCodeInteraction.factory
 
     override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(lines, seed, ReorderType.CODELINES(programmingLanguage))
 
-    override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+    override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
    }
 
@@ -50,19 +50,19 @@ object ReorderInteraction {
           element.getElementAs[AppLanguage]("programmingLanguage").asInstanceOf[ProgrammingLanguage],
           element.getOptionalElementAs("seed", "0").toLongOption.getOrElse(0),
           element.getElementsAs[LanguageMapContentId]("hints"),
-          element.getOptionalElementAs[List[(Int, Int)]]("orderConstraints", Nil)
+          element.getOptionalElementAs[Seq[(Int, Int)]]("orderConstraints", Nil)
         )
       }
     }
   }
 
-  case class ReorderMapIdInteraction(override val elementId: String, ids: List[LanguageMapContentId], seed: Long = 0) extends WorkbookInteractionElement[ReorderMapIdInteractionFormat.type] {
+  case class ReorderMapIdInteraction(override val elementId: String, ids: Seq[LanguageMapContentId], seed: Long = 0) extends WorkbookInteractionElement[ReorderMapIdInteractionFormat.type] {
 
     override val associatedFactory = ReorderMapIdInteraction.factory
 
     override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(ids, seed,ReorderType.LANGUAGE_MAP_IDS)
 
-    override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+    override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
   }
 

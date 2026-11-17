@@ -69,7 +69,7 @@ object TurtleDrawingGrading {
         RenderedAngle(angle.vertex, angle.fromHeading, angle.degrees, angle.lineBefore, angle.lineAfter)).toList)
   }
 
-  def drawingScene(commands: List[TurtleCommand[Double]]): Scene = drawingScene(checkedDrawing(commands))
+  def drawingScene(commands: Seq[TurtleCommand[Double]]): Scene = drawingScene(checkedDrawing(commands))
 
   private def drawingScene(drawing: Drawing): Scene = {
     val angles = drawing.graphic.renderAngles.flatMap { angle =>

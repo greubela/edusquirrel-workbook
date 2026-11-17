@@ -23,20 +23,20 @@ import scala.util.control.NonFatal
  */
 object TurtleJsxGraphRenderer:
 
-  def render[T: Fractional](program: Signal[List[TurtleCommand[T]]], graphic: TurtleGraphic): DomElementCollection = {
+  def render[T: Fractional](program: Signal[Seq[TurtleCommand[T]]], graphic: TurtleGraphic): DomElementCollection = {
     program.signal.map(curList => {
       render(curList, graphic)
     })
   }
 
   /** Stitch reproduction accepts any pen-up route between the drawn segments. */
-  def renderStrokes[T: Fractional](program: Signal[List[TurtleCommand[T]]], expected: TurtleGraphic): DomElementCollection =
+  def renderStrokes[T: Fractional](program: Signal[Seq[TurtleCommand[T]]], expected: TurtleGraphic): DomElementCollection =
     program.map(commands => render(buildScene(commands, expected, 1e-7, gradeJumps = false), "Turtle drawing"))
 
-  def render[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Element =
+  def render[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic): Element =
     render(buildScene(program, expected), "Turtle drawing")
 
-  def render[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): Element =
+  def render[T: Fractional](program: Seq[TurtleCommand[T]], expected: Seq[LineToRender[T]]): Element =
     render(buildScene(program, expected), "Turtle drawing")
 
   def render(scene: Scene, title: String): Element = {
@@ -138,13 +138,13 @@ object TurtleJsxGraphRenderer:
     if sweep <= math.Pi then AngleSector(incoming, outgoing, math.toDegrees(sweep))
     else AngleSector(outgoing, incoming, math.toDegrees(fullTurn - sweep))
 
-  private def graphic[T: Fractional](program: List[TurtleCommand[T]]): TurtleGraphic = {
+  private def graphic[T: Fractional](program: Seq[TurtleCommand[T]]): TurtleGraphic = {
     val numeric = summon[Fractional[T]]
     TurtleGraphic.TurtleGraphicProgram(program.map(command =>
       command.mapNumbers(numeric.toDouble)))
   }
 
-  private def renderedLines(lines: List[GradingLine]): List[RenderedLine] = lines.map { graded =>
+  private def renderedLines(lines: Seq[GradingLine]): Seq[RenderedLine] = lines.map { graded =>
     val result = graded.status match
       case TurtleLineStatus.CORRECT => LineResult.Correct
       case TurtleLineStatus.EXPECTED_BUT_MISSING => LineResult.Missing
@@ -152,25 +152,25 @@ object TurtleJsxGraphRenderer:
     RenderedLine(graded.line.start, graded.line.end, result, graded.jump)
   }
 
-  private def renderedAngles(angles: Seq[TurtleGraphic.Angle]): List[RenderedAngle] = angles.map { angle =>
+  private def renderedAngles(angles: Seq[TurtleGraphic.Angle]): Seq[RenderedAngle] = angles.map { angle =>
     RenderedAngle(angle.vertex, angle.fromHeading, angle.degrees, angle.lineBefore, angle.lineAfter)
   }.toList
 
   /** JSXGraph projects the shared-core geometry and grading result into display objects. */
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]], tolerance: Double = 1e-7, gradeJumps: Boolean = true): Scene = {
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: Seq[LineToRender[T]], tolerance: Double = 1e-7, gradeJumps: Boolean = true): Scene = {
     val actual = graphic(program)
     val targets = expected.map(line => TurtleGraphic.Movement(line.start.toDouble, line.end.toDouble, line.jump))
     Scene(renderedLines(TurtleGradingLogic.compareLines(actual.renderMovements, targets, tolerance, gradeJumps)),
       renderedAngles(actual.renderAngles))
   }
 
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Scene =
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic): Scene =
     buildScene(program, expected, 1e-7)
 
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double): Scene =
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double): Scene =
     buildScene(program, expected, tolerance, gradeJumps = true)
 
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene =
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene =
     buildScene(graphic(program), expected, tolerance, gradeJumps)
 
   private[turtleStitch] def buildScene(comparison: TurtleGraphicComparison): Scene =
@@ -182,11 +182,11 @@ object TurtleJsxGraphRenderer:
   }
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */
-  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): JSXGraph.Board =
+  def render[T: Fractional](container: dom.html.Div, program: Seq[TurtleCommand[T]], expected: Seq[LineToRender[T]]): JSXGraph.Board =
     render(container, buildScene(program, expected), "Turtle drawing")
 
   /** Creates the JSXGraph board using the expected graphic for both comparison and angle overlays. */
-  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: TurtleGraphic): JSXGraph.Board =
+  def render[T: Fractional](container: dom.html.Div, program: Seq[TurtleCommand[T]], expected: TurtleGraphic): JSXGraph.Board =
     render(container, buildScene(program, expected), "Turtle drawing")
 
   def render(container: dom.html.Div, scene: Scene, title: String): JSXGraph.Board =

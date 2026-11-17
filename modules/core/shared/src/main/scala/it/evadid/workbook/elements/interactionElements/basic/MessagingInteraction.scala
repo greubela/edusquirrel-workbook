@@ -17,7 +17,7 @@ case class MessagingInteraction(override val elementId: String) extends Workbook
 
   override val associatedFactory: NoContentElementFactory[MessagingInteraction] = MessagingInteraction.factory
 
-  lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
   override val defaultValue: MessengerModelScaffolding = MessengerModelScaffolding(MessengerModel.empty)
 

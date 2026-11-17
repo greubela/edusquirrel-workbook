@@ -70,7 +70,7 @@ object SendMailCommand {
   private[server] def withDeliveryContext[A](send: => A): A =
     try send
     catch case error: MessagingException =>
-      def causes(current: Throwable, remaining: Int): List[Throwable] =
+      def causes(current: Throwable, remaining: Int): Seq[Throwable] =
         current :: (if remaining == 0 then Nil else {
           val next = current match {
             case mail: MessagingException => Option(mail.getNextException).orElse(Option(mail.getCause))

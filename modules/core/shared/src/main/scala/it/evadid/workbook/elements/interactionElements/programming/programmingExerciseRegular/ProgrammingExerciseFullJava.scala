@@ -20,7 +20,7 @@ case class ProgrammingExerciseFullJava(
   override val gradingElements = testSuite.toList.flatMap(_.graders)
   override val scaffoldingElement = hintTask.map(task => new ProgrammingHintScaffolder(this, task))
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 }
 
 object ProgrammingExerciseFullJava {

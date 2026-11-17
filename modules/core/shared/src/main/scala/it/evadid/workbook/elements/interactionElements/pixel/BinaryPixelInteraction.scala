@@ -16,7 +16,7 @@ import it.evadid.workbook.abstractions.InteractionFormat.*
 
 
 /** Unit-weight threshold detector over explicitly selected pixels; no training is implied. */
-case class PixelThresholdProbe(label: LanguageMapContentId, cells: List[PixelPosition], threshold: Int) derives ReadWriter {
+case class PixelThresholdProbe(label: LanguageMapContentId, cells: Seq[PixelPosition], threshold: Int) derives ReadWriter {
   require(cells.nonEmpty && cells.distinct == cells, "Probe pixels must be nonempty and distinct")
   require(threshold >= 0 && threshold <= cells.size, "Probe threshold must be between zero and the number of pixels")
   def activeCount(image: BinaryPixelImage): Int = cells.count(image.at)
@@ -25,7 +25,7 @@ case class PixelThresholdProbe(label: LanguageMapContentId, cells: List[PixelPos
 case class PixelPreset(label: LanguageMapContentId, image: BinaryPixelImage) derives ReadWriter
 
 case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId, initial: BinaryPixelImage,
-    expected: Option[BinaryPixelImage] = None, probes: List[PixelThresholdProbe] = Nil, presets: List[PixelPreset] = Nil)
+    expected: Option[BinaryPixelImage] = None, probes: Seq[PixelThresholdProbe] = Nil, presets: Seq[PixelPreset] = Nil)
     extends WorkbookInteractionElement[BinaryPixelInteractionFormat.type] {
 
   require(expected.forall(initial.sameDimensions) && presets.forall(p => initial.sameDimensions(p.image)),
@@ -51,7 +51,7 @@ case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId
     checked(image)
     expected.map(_ == image)
   }
-  def outputs(image: BinaryPixelImage): List[Boolean] = {
+  def outputs(image: BinaryPixelImage): Seq[Boolean] = {
     val valid = checked(image)
     probes.map(_.activates(valid))
   }
@@ -65,7 +65,7 @@ object BinaryPixelInteraction {
         .withElementAddedAs("expected", e.expected).withElementAddedAs("probes", e.probes).withElementAddedAs("presets", e.presets)
     override def finishDeserialization(e: WorkbookElementSerializable): BinaryPixelInteraction =
       BinaryPixelInteraction(e.elementId, e.getElementAs[LanguageMapContentId]("title"), e.getElementAs[BinaryPixelImage]("initial"),
-        e.getElementAs[Option[BinaryPixelImage]]("expected"), e.getElementAs[List[PixelThresholdProbe]]("probes"),
-        e.getElementAs[List[PixelPreset]]("presets"))
+        e.getElementAs[Option[BinaryPixelImage]]("expected"), e.getElementAs[Seq[PixelThresholdProbe]]("probes"),
+        e.getElementAs[Seq[PixelPreset]]("presets"))
   }
 }

@@ -32,7 +32,7 @@ object AtomarLineRendering {
     RenderingAsContainerTitle(LaminarRenderHelper.singleton.plaintextStringSignal(content), 1)
   }
 
-  def cardLineContent(workbookElement: WorkbookElement, cards: List[ElementCard]): Element = {
+  def cardLineContent(workbookElement: WorkbookElement, cards: Seq[ElementCard]): Element = {
     div(
       cls := "element-cards",
       div(cls := "element-card-line label-line",
@@ -42,7 +42,7 @@ object AtomarLineRendering {
     )
   }
 
-  def cardLine(workbookElement: WorkbookElement, cards: List[ElementCard], showBottomGradingPanel: Signal[Boolean] = Var(false).signal): AtomarLineRendering = {
+  def cardLine(workbookElement: WorkbookElement, cards: Seq[ElementCard], showBottomGradingPanel: Signal[Boolean] = Var(false).signal): AtomarLineRendering = {
     val cardBasedContent = cardLineContent(workbookElement, cards)
     basicLine(workbookElement, cardBasedContent, "element-card-grid", showBottomGradingPanel)
   }

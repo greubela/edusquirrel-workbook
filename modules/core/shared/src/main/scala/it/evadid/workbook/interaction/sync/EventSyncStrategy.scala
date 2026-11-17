@@ -2,7 +2,7 @@ package it.evadid.workbook.interaction.sync
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.variable.events.InteractionEvent
+import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, InteractionEvent}
 
 import java.time.LocalDateTime
 import upickle.default.*
@@ -13,7 +13,7 @@ sealed trait EventSyncStrategy derives ReadWriter {
 }
 
 object EventSyncStrategy {
-  case object KEEP_ALL extends EventSyncStrategy {
+  case object SYNC_EVERYTHING extends EventSyncStrategy {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]) = events
   }
 
@@ -53,7 +53,16 @@ object EventSyncStrategy {
       events.filter(event => event.timestamp.isAfter(timestamp) || (includeBoundary && event.timestamp == timestamp))
   }
 
-  val KEEP_MAJOR: EventSyncStrategy = KeepImportance(Set(UpdateImportance.MAJOR))
+  /** Send major answers and the current answer, together with all their feedback lifecycle events. */
+  case object SYNC_MAJOR extends EventSyncStrategy {
+    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]): Set[InteractionEvent[F]] = {
+      val answers = events.collect { case event: AnswerChangedEvent[F] => event }
+      val latest = answers.map(_.timestamp).maxOption
+      val selected = answers.filter(event => event.updateImportance == UpdateImportance.MAJOR || latest.contains(event.timestamp))
+      val states = selected.map(_.associatedState)
+      events.filter(event => event.updateImportance == UpdateImportance.MAJOR || states(event.associatedState))
+    }
+  }
   val KEEP_MINOR: EventSyncStrategy = KeepImportance(Set(UpdateImportance.MINOR, UpdateImportance.MAJOR))
   val KEEP_LAST_FIVE: EventSyncStrategy = KeepLatestCount(5)
   val KEEP_LAST_AND_MAJOR: EventSyncStrategy = KeepLatestAndImportance(Set(UpdateImportance.MAJOR))

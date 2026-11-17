@@ -14,12 +14,12 @@ object DatabaseSqlScripts {
   private lazy val sql = Using.resource(Source.fromResource(name))(_.mkString)
 
   /** Backend initialization uses its existing configured connection, without CREATE DATABASE or USE. */
-  lazy val statements: List[Statement] = {
+  lazy val statements: Seq[Statement] = {
     val marker = sql.indexOf(tableMarker)
     require(marker >= 0, s"Missing application-table marker in $name")
     CCJSqlParserUtil.parseStatements(sql.substring(marker + tableMarker.length)).asScala.toList
   }
-  lazy val tables: List[CreateTable] = {
+  lazy val tables: Seq[CreateTable] = {
     val definitions = statements.collect { case table: CreateTable => table }
     val identifiers = definitions.map(table => identifier(table.getTable.getName))
     require(identifiers.distinct.size == identifiers.size, "Duplicate table definitions in database scripts")

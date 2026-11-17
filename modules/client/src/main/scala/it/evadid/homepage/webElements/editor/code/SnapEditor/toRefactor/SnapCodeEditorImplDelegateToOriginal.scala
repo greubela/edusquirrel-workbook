@@ -369,7 +369,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     * SpriteMorph.prototype.blockTemplates globally. Multiple editors can therefore use different
     * exercise libraries on the same page.
     */
-  private def installLibraries(libraries: List[LibraryTab], ide: IDEMorph): Unit =
+  private def installLibraries(libraries: Seq[LibraryTab], ide: IDEMorph): Unit =
     require(libraries.map(_.name).distinct.size == libraries.size, "Snap library tab names must be unique")
     require(libraries.forall(_.name.nonEmpty), "Snap library tab names must not be empty")
     val sprite = ide.currentSprite
@@ -855,7 +855,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     spriteMorphPrototype.selectDynamic("customCategories")
 
   /** Register exercise tabs on Snap's customCategories Map (name → Color). */
-  private def registerCustomCategoryTabs(libraries: List[LibraryTab]): Unit =
+  private def registerCustomCategoryTabs(libraries: Seq[LibraryTab]): Unit =
     val customCategories = spriteMorphCustomCategories
     val blockColor = spriteMorphPrototype.selectDynamic("blockColor")
     libraries.foreach { tab =>

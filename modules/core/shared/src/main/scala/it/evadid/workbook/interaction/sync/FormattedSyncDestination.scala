@@ -18,7 +18,7 @@ case class FormattedSyncDestination[F <: InteractionFormat](information: SyncInf
 
   val reader: RemoteHistoryDataReader[SyncContext, F] = new RemoteHistoryDataReader[SyncContext, F] {
     def fetchEventsBetween(logger: SyncLogger, keys: Seq[SyncContext], starting: LocalDateTime, until: LocalDateTime,
-        selection: EventSyncStrategy): Future[Map[SyncContext, List[InteractionEvent[F]]]] =
+        selection: EventSyncStrategy): Future[Map[SyncContext, Seq[InteractionEvent[F]]]] =
       handler.readHistoriesInRange(information.usageContext, keys, starting, until, selection).map(_.map { (key, history) =>
         key -> history.typedAs(format).events.values.toList
       })

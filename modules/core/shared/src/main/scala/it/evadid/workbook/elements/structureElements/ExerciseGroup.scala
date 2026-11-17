@@ -5,8 +5,8 @@ import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDispl
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 /** An untitled vertical group of workbook elements, suitable for a slideshow panel. */
-case class ExerciseGroup(override val elementId: String, elements: List[WorkbookElement]) extends WorkbookDisplayElement derives upickle.default.ReadWriter {
-  override lazy val childrenOfThisElement: List[WorkbookElement] = elements
+case class ExerciseGroup(override val elementId: String, elements: Seq[WorkbookElement]) extends WorkbookDisplayElement derives upickle.default.ReadWriter {
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = elements
   override val associatedFactory = ExerciseGroup.factory
 }
 

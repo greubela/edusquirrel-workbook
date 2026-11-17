@@ -37,11 +37,15 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
   override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = clearValues(context, None)
 
 
-  override def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
-    val history = InteractionHistoryJson.deserialize(historyJson)
-    val dbRequest = StoreToDbRequest(syncContext, history, databaseConfig, definition.format)
-    val exInfo: Future[ExecutionSuccess[SyncSuccess]] = SQLCommands.StoreToDbCommand.sendCommandTo(backend, dbRequest)
-    exInfo.map(exInfo => exInfo.result)(using ec)
+  override def storeHistoryJson(context: SyncContext, json: String)(using ExecutionContext): Future[SyncSuccess] =
+    storeHistoriesJson(Map(context -> json))
+
+  override def storeHistoriesJson(values: Map[SyncContext, String])(using ExecutionContext): Future[SyncSuccess] = {
+    if values.isEmpty then Future.successful(SyncSuccess.emptyNow()) else {
+      val entries = values.toSeq.map((context, json) => context -> InteractionHistoryJson.deserialize(json))
+      val request = SQLCommands.BulkStoreToDbRequest(entries.map(_._1), entries.map(_._2), databaseConfig, definition.format)
+      SQLCommands.bulkStoreToDbCommand.sendCommandTo(backend, request).map(_.result)
+    }
   }
 
   private def toFetchResponse(result: ExecutionSuccess[DbFetchResponse]): FetchResponse[SyncContext, String] =
@@ -49,7 +53,7 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
 
   override def readHistoriesJson(usageContext: UsageContext)(using ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
     val request = SQLCommands.FetchEventsFromDbRequest(usageContext, Seq.empty, java.time.LocalDateTime.MIN,
-      java.time.LocalDateTime.MAX, databaseConfig, definition.format, EventSyncStrategy.KEEP_ALL)
+      java.time.LocalDateTime.MAX, databaseConfig, definition.format, EventSyncStrategy.SYNC_EVERYTHING)
     SQLCommands.fetchEventsFromDbCommand.sendCommandTo(backend, request).map(toFetchResponse)
   }
 

@@ -103,7 +103,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   }
   test("the reader/writer adapter registers bulk requests before flushing") {
     val destination = new Destination
-    val bound = SyncInformation(destination.definition, EventSyncStrategy.KEEP_ALL).forContext(context, _ => destination.toBuffered)
+    val bound = SyncInformation(destination.definition, EventSyncStrategy.SYNC_EVERYTHING).forContext(context, _ => destination.toBuffered)
     val format = InteractionFormat.TextInteractionFormat
     val typed = FormattedSyncDestination(bound, format)
     def history(value: String) = it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.deserialize(saved(value)).typedAs(format)
@@ -236,4 +236,48 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
       _ <- retry
     } yield assertEquals(destination.writes.now().last, Map(key -> saved("retry")))
   }
+  test("range requests batch matching windows and preserve keys, strategy and nanosecond bounds") {
+    val calls = State(Vector.empty[(Seq[SyncContext], LocalDateTime, LocalDateTime, EventSyncStrategy)])
+    val from = LocalDateTime.of(2026, 1, 1, 12, 0).plusNanos(1)
+    val until = from.plusNanos(2)
+    val other = context.toSyncContext("other")
+    val destination = new Destination {
+      override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], start: LocalDateTime,
+          end: LocalDateTime, strategy: EventSyncStrategy)(using ExecutionContext) = {
+        calls.update(_ :+ (keys, start, end, strategy))
+        Future.successful(keys.map(key => key -> it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.deserialize(saved(key.keyForSerialisation))).toMap)
+      }
+    }
+    val buffered = destination.toBuffered
+    val first = buffered.readHistoriesInRange(context, Vector(key), from, until, EventSyncStrategy.SYNC_MAJOR)
+    val second = buffered.readHistoriesInRange(context, Vector(other), from, until, EventSyncStrategy.SYNC_MAJOR)
+    buffered.flush(true)
+    for { a <- first; b <- second } yield {
+      assertEquals(a.keySet, Set(key))
+      assertEquals(b.keySet, Set(other))
+      assertEquals(calls.now().size, 1)
+      assertEquals(calls.now().head._1.toSet, Set(key, other))
+      assertEquals(calls.now().head._2, from)
+      assertEquals(calls.now().head._3, until)
+      assertEquals(calls.now().head._4, EventSyncStrategy.SYNC_MAJOR)
+      assertEquals(destination.reads.now(), Nil)
+    }
+  }
+
+  test("malformed queued histories fail every batch caller without storing partial data and can retry") {
+    val destination = new Destination
+    val buffered = destination.toBuffered
+    val valid = buffered.storeHistoryJson(key, saved("valid"))
+    val invalid = buffered.storeHistoryJson(context.toSyncContext("invalid"), "malformed")
+    buffered.flush(true)
+    for {
+      _ <- valid.failed
+      _ <- invalid.failed
+      _ = assertEquals(destination.writes.now(), Nil)
+      retry = buffered.storeHistoryJson(key, saved("retry"))
+      _ = buffered.flush(true)
+      _ <- retry
+    } yield assertEquals(destination.writes.now(), List(Map(key -> saved("retry"))))
+  }
+
 }

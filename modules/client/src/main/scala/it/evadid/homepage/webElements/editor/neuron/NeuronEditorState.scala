@@ -4,7 +4,7 @@ import com.raquo.airstream.state.Var
 import it.evadid.workbook.elements.interactionElements.neuron.*
 
 /** Invalid drafts remain local; only parameters safe for every example enter persistent state. */
-final class NeuronEditorState(val state: Var[NeuronParameters], examples: List[NeuronExample]) {
+final class NeuronEditorState(val state: Var[NeuronParameters], examples: Seq[NeuronExample]) {
   val weights = Var(state.now().weights.map(_.toString))
   val threshold = Var(state.now().threshold.toString)
   val invalid = Var(false)

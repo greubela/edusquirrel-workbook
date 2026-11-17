@@ -34,7 +34,7 @@ object SqlEditorExecution {
     * @param firstIsRows true if the first result is a ResultSet
     * @return List of Result objects containing columns, rows, and metadata
     */
-  private[sql] def collectResults(statement: Statement, firstIsRows: Boolean): List[Result] = {
+  private[sql] def collectResults(statement: Statement, firstIsRows: Boolean): Seq[Result] = {
     val results = List.newBuilder[Result]
     var isRows = firstIsRows
     var finished = false
@@ -43,7 +43,7 @@ object SqlEditorExecution {
         val metadata = rs.getMetaData
         val count = metadata.getColumnCount
         val columns = (1 to count).map(metadata.getColumnLabel).toList
-        val rows = List.newBuilder[List[Option[String]]]
+        val rows = List.newBuilder[Seq[Option[String]]]
         var read = 0
         while read < RowLimit && rs.next() do {
           rows += (1 to count).map(i => Option(rs.getString(i))).toList
@@ -72,7 +72,7 @@ object SqlEditorExecution {
     * @param connection Active database connection
     * @return List of Table objects representing the schema
     */
-  private[sql] def readSchema(connection: Connection): List[Table] = {
+  private[sql] def readSchema(connection: Connection): Seq[Table] = {
     val metadata = connection.getMetaData
     val catalog = connection.getCatalog
     val names = Using.resource(metadata.getTables(catalog, null, "%", Array("TABLE", "VIEW"))) { rs =>
@@ -132,7 +132,7 @@ object SqlEditorExecution {
     connected.fold(
       _ => Response(Status.Unreachable, "Database is unreachable with the configured connection."),
       connection => Using.resource(connection) { conn =>
-        var results = List.empty[Result]
+        var results: Seq[Result] = Seq.empty
         var status = Status.Ready
         var message = "Database connected."
         

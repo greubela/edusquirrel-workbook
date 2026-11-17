@@ -35,7 +35,7 @@ case class Sha256Interaction(elementId: String, title: LanguageMapContentId,
   override val associatedFactory = Sha256Interaction.factory
 
 
-  def hashes(answer: Sha256Answer): List[String] = task match {
+  def hashes(answer: Sha256Answer): Seq[String] = task match {
     case CompareSha256() => List(Sha256.text(answer.first), Sha256.text(answer.second))
     case _: FindSha256Prefix => List(Sha256.text(answer.first))
   }

@@ -10,8 +10,8 @@ class HistoryFormatSpec extends FunSuite {
     List(DatabaseHistoryFormat.BlobFormat, DatabaseHistoryFormat.RelationalFormat).foreach { format =>
       assertEquals(read[DatabaseHistoryFormat](write[DatabaseHistoryFormat](format)), format)
     }
-    assertEquals(DatabaseHistoryFormat.BlobFormat.tables, List("blob_history"))
-    assertEquals(DatabaseHistoryFormat.RelationalFormat.tables.toSet, Set("sync_context_id", "answer_event", "grading_event", "scaffolding_event"))
+    assertEquals(DatabaseHistoryFormat.BlobFormat.tables.map(_.name), Seq("blob_history"))
+    assertEquals(DatabaseHistoryFormat.RelationalFormat.tables.map(_.name).toSet, Set("sync_context_id", "answer_event", "grading_event", "scaffolding_event"))
     assertEquals(SyncDestinationDefinition.defaultDatabase.format, DatabaseHistoryFormat.RelationalFormat)
     intercept[Exception](read[DatabaseHistoryFormat]("{\"$type\":\"DatabaseFormatV2\"}"))
   }

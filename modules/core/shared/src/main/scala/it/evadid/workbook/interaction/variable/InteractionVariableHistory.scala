@@ -33,6 +33,15 @@ case class InteractionVariableHistory[F <: InteractionFormat](
     gradingEvents.collect { case event: GradingCompletedEvent[F] => event.result })
   lazy val historyScaffolding: InteractionVariableScaffoldingHistory[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]] = InteractionVariableScaffoldingHistory(
     scaffoldingEvents.collect { case event: ScaffoldingCompletedEvent[F] => event.result })
+  /** Confirmation requires the latest answer (including ties) and every feedback event for it. */
+  def latestAnswerEvents: Set[InteractionEvent[F]] = {
+    val latest = allStates.map(_.timestamp).maxOption
+    val answers = allStates.filter(event => latest.contains(event.timestamp))
+    val states = answers.map(_.associatedState)
+    answers.map(event => event: InteractionEvent[F]) ++
+      (gradingEvents ++ scaffoldingEvents).filter(event => states(event.associatedState))
+  }
+
   def timestampLastChanged: Option[LocalDateTime] = events.timestampLastChanged
   def size: Int = events.values.size
 

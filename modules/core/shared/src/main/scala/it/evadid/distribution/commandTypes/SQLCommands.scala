@@ -22,8 +22,6 @@ object SQLCommands {
   trait DbRequest {
     def databaseConfig: DatabaseConfiguration
 
-    def usageContext: UsageContext
-
     def databaseFormat: DatabaseHistoryFormat
   }
 
@@ -36,6 +34,17 @@ object SQLCommands {
 
     lazy val usageContext: UsageContext = syncContext.toUsageContext
 
+  }
+
+  /** Parallel contexts and envelopes preserve each key while sending one request per flush. */
+  case class BulkStoreToDbRequest(
+      syncContexts: Seq[SyncContext], histories: Seq[InteractionHistoryJson],
+      databaseConfig: DatabaseConfiguration, databaseFormat: DatabaseHistoryFormat
+  ) extends DbRequest derives ReadWriter {
+    require(syncContexts.size == histories.size, "Every history requires exactly one sync context")
+    require(syncContexts.distinct.size == syncContexts.size, "Bulk histories must have distinct sync contexts")
+    def entries: Seq[StoreToDbRequest] = syncContexts.zip(histories).map((context, history) =>
+      StoreToDbRequest(context, history, databaseConfig, databaseFormat))
   }
 
   /** Range-read: return only events whose timestamp falls in [starting, until]. */
@@ -70,6 +79,10 @@ object SQLCommands {
   lazy val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory[StoreToDbRequest, SyncSuccess](
     "sync-to-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
   )
+
+  lazy val bulkStoreToDbCommand: ExecutionCommandFactory[BulkStoreToDbRequest, SyncSuccess] =
+    ExecutionCommandFactory[BulkStoreToDbRequest, SyncSuccess]("sync-histories-to-db-request",
+      storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials))
 
   lazy val fetchEventsFromDbCommand: ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse](
     "fetch-events-from-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)

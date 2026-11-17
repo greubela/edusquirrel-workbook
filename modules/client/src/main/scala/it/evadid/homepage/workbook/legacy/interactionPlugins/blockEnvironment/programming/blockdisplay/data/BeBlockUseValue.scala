@@ -16,10 +16,10 @@ import todomove.webElementsOld.webElements.svg.shapes.datatypes.LiteralShape
 
 case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlockSingleShape derives upickle.default.ReadWriter {
   
-  override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
+  override def renderShape(childrenShapes: Seq[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
     val textShape = TextShape(LanguageMap.universalMap(valueUsage.structureInfo.toStringInLanguage(BlockDisplay, English)))
 
-    val (outerShape, amends): (BeShapeContainerable, Seq[L.Modifier[L.SvgElement]]) = valueUsage.value match {
+    val shapeAndAmends: (BeShapeContainerable, Seq[L.Modifier[L.SvgElement]]) = valueUsage.value match {
       case BeDataValueLiteral(literalStr) => {
         (LiteralShape, BeShapeAmendFactory(renderingInformation.renderingConfig).literalColorsAmend)
       }
@@ -28,6 +28,7 @@ case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlockSingleShape de
       }
     }
     
+    val (outerShape, amends) = shapeAndAmends
     val resShape = ShapeAroundShape(outerShape, textShape)
       .addAmends(amends)
 

@@ -21,9 +21,9 @@ case class EditorState(
   val libaryTreeControllerConfig: Var[BeTreeControllerConfig] = Var(BeTreeControllerConfig.libraryTreeConfig(this))
   val editTreeControllerConfig: Var[BeTreeControllerConfig] = Var(BeTreeControllerConfig.editTreeConfig(this))
 
-  private val mainTreeSignal: Signal[(L.HtmlElement, List[BeTreeDropTarget])] = HtmlBeTreeDisplay.forMainTree(this).treeRenderingSignal
+  private val mainTreeSignal: Signal[(L.HtmlElement, Seq[BeTreeDropTarget])] = HtmlBeTreeDisplay.forMainTree(this).treeRenderingSignal
 
-  val legalDropTargetsInDistanceOrder: Signal[List[BeTreeDropTarget]] = {
+  val legalDropTargetsInDistanceOrder: Signal[Seq[BeTreeDropTarget]] = {
     mainTreeSignal.map(_._2).combineWith(controllerStateVar).map((existingDropTargets, controllerState) => {
       if (controllerState.mouseDragOverProgram.isEmpty || controllerState.draggingEvent.isEmpty) {
         List()

@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.workbook.abstractions.InteractionFormat.{MessagingInteractionFormat}
+
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.chat.{Message, MessengerModel, ChatParticipant}
@@ -25,7 +27,7 @@ import scala.util.{Failure, Success}
 
 object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[GptInteractionElement] {
 
-  private val langPreferences: List[HumanLanguage] = List(English, German, Danish)
+  private val langPreferences: Seq[HumanLanguage] = List(English, German, Danish)
 
   private val systemPromptId: LanguageMapContentId = LanguageMapContentId("prompts/scaffolding-system-prompt")
 
@@ -80,7 +82,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
     val elements: mutable.ListBuffer[Element] = mutable.ListBuffer()
 
-    val interactionVariable: InteractionVariable[it.evadid.workbook.abstractions.InteractionFormat.MessagingInteractionFormat.type] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
+    val interactionVariable: InteractionVariable[MessagingInteractionFormat.type] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
     if (workbookElement.scaffoldingInteractionOp.nonEmpty) {
       val boundState = interactionVariable
         .createBoundStateWithUpdateImportance( MAJOR, fullInfo.workbookContextInformation)
@@ -99,7 +101,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
       elements += openChatButton.getDomElement()
     }
 
-    val elementsFinished: List[Element] = elements.toList
+    val elementsFinished: Seq[Element] = elements.toList
     AtomarLineRendering.basicLine(workbookElement, elementsFinished, "button-line")
   }
 

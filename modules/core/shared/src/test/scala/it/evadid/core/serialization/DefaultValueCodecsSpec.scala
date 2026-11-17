@@ -35,7 +35,7 @@ class DefaultValueCodecsSpec extends FunSuite {
     roundTrip(decimal)
   }
   test("all built-in event sync strategy variants have default codecs") {
-    List[EventSyncStrategy](EventSyncStrategy.KEEP_ALL, EventSyncStrategy.KEEP_LAST_MAJOR, EventSyncStrategy.KeepImportance(Set(UpdateImportance.MAJOR))).foreach(roundTrip(_))
+    List[EventSyncStrategy](EventSyncStrategy.SYNC_EVERYTHING, EventSyncStrategy.KEEP_LAST_MAJOR, EventSyncStrategy.KeepImportance(Set(UpdateImportance.MAJOR))).foreach(roundTrip(_))
   }
   test("sync contexts and caches expose default codecs without private imports") {
     val usage = UsageContext("program", "scenario", "user")

@@ -12,8 +12,8 @@ const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.js
 const formats = ['BlobFormat', 'RelationalFormat'];
 const user = {name:'Sync student', id:'sync-reset-student', mail:'sync-reset@example.test'};
 const destinations = [
-  {syncDestination:{$type:'LocalIndexedDbSyncDefinition',dbName:'EvaDidInteractionDB',storeName:'variableHistoryStore',dbVersion:1},syncStrategy:'KEEP_ALL'},
-  {syncDestination:{$type:'LocalStorageSyncDefinition',maxValueCharakterSize:50000},syncStrategy:'KEEP_ALL'},
+  {syncDestination:{$type:'LocalIndexedDbSyncDefinition',dbName:'EvaDidInteractionDB',storeName:'variableHistoryStore',dbVersion:1},syncStrategy:'SYNC_EVERYTHING'},
+  {syncDestination:{$type:'LocalStorageSyncDefinition',maxValueCharakterSize:50000},syncStrategy:'SYNC_EVERYTHING'},
   ...formats.map(format => ({syncDestination:{$type:'SyncDestinationBasedOnHistoryDatabase',format,buffered:true,
     databaseConfig:{$type:'DatabaseConfig',dbFormat:'mysql',host:'example.test',port:'3306',database:'fixture'}},
     syncStrategy:{$type:'KeepImportance',importance:['MAJOR']}}))
@@ -91,8 +91,11 @@ test('automatic login restores answers and keeps sync destinations stable across
         else if(command.name==='fetch-events-from-db-request'){
           const json=histories.get(command.json.databaseFormat);
           value={fetchedElements:json?[[context,json]]:[]};
-        } else if(command.name==='sync-to-db-request'){
-          histories.set(command.json.databaseFormat,mergeHistory(histories.get(command.json.databaseFormat),command.json.history));
+        } else if(command.name==='sync-histories-to-db-request'){
+          for (const history of command.json.histories) {
+            if (JSON.parse(history.historyJson).events.values.some(event => event.newState === answer || event.newState === 'This updated answer should survive reload.'))
+              histories.set(command.json.databaseFormat,mergeHistory(histories.get(command.json.databaseFormat),history));
+          }
           value={elementsAdded:0,elementsChanged:1,elementsRemoved:0,timestampCommitted:new Date().toISOString().slice(0,-1)};
         } else throw new Error('Unexpected command '+command.name);
         return route.fulfill({headers,contentType:'application/json',body:envelope(command,value)});
@@ -117,7 +120,7 @@ test('automatic login restores answers and keeps sync destinations stable across
     const writes = formats.map(format=>page.waitForResponse(response=>{
       if(!response.url().endsWith('/executeCommand')||response.request().method()!=='POST')return false;
       const command=readCommandRequest(response.request());
-      return command.name==='sync-to-db-request'&&command.json.databaseFormat===format&&command.json.history.historyJson.includes(edited);
+      return command.name==='sync-histories-to-db-request'&&command.json.databaseFormat===format&&command.json.histories.some(history=>history.historyJson.includes(edited));
     }));
     await input.fill(edited);
     await Promise.all(writes);

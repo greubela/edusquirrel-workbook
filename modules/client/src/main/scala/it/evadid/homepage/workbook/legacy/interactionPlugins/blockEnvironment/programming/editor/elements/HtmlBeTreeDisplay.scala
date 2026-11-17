@@ -16,7 +16,7 @@ case class HtmlBeTreeDisplay(
                               controllerConfig: Signal[BeTreeControllerConfig],
                             ) {
 
-  def treeRenderingSignal: Signal[(L.HtmlElement, List[BeTreeDropTarget])] = {
+  def treeRenderingSignal: Signal[(L.HtmlElement, Seq[BeTreeDropTarget])] = {
     treeToDisplay
       .combineWith(renderingConfig)
       .combineWith(controllerConfig)
@@ -87,11 +87,11 @@ object HtmlBeTreeDisplay {
     )
 
 
-  def render(programToDisplay: BeProgram, displayConfig: BeTreeDisplayConfig, rendererConfig: BeRenderingConfig, controllerConfig: BeTreeControllerConfig, editorState: EditorState): (L.HtmlElement, List[BeTreeDropTarget]) = ???
+  def render(programToDisplay: BeProgram, displayConfig: BeTreeDisplayConfig, rendererConfig: BeRenderingConfig, controllerConfig: BeTreeControllerConfig, editorState: EditorState): (L.HtmlElement, Seq[BeTreeDropTarget]) = ???
 
 
   /*
-  def render(programToDisplay: BeProgram, displayConfig: BeTreeDisplayConfig, rendererConfig: BeRenderingConfig, controllerConfig: BeTreeControllerConfig, editorState: EditorState): (L.HtmlElement, List[BeTreeDropTarget]) = {
+  def render(programToDisplay: BeProgram, displayConfig: BeTreeDisplayConfig, rendererConfig: BeRenderingConfig, controllerConfig: BeTreeControllerConfig, editorState: EditorState): (L.HtmlElement, Seq[BeTreeDropTarget]) = {
     val tree: BeBlockRenderingTree = programToDisplay.blockRenderingTree(displayConfig)
     val posToDraw = tree.rootPosition.forChild(0)
 

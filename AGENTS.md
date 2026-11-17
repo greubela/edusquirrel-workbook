@@ -1,6 +1,6 @@
 # Active interaction refactor
 
-The full user requirements are retained in [tmp/interaction-refactor/USER_PROMPT.txt](tmp/interaction-refactor/USER_PROMPT.txt). Follow them throughout this branch.
+The full user requirements are retained in [tmp/interaction-refactor/USER_PROMPT.txt](tmp/interaction-refactor/USER_PROMPT.txt). Follow them throughout this branch. Additional requirements are retained in [tmp/interaction-refactor/ADDITIONAL_REQUIREMENTS.txt](tmp/interaction-refactor/ADDITIONAL_REQUIREMENTS.txt).
 
 # Repository directory rules
 

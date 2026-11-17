@@ -1,0 +1,12 @@
+Additional user requirements (2026-11-17):
+1. Shorten fully qualified InteractionFormat singleton types using imports.
+2. Preserve good State coverage, including JVM async behavior.
+3. Ensure production synchronization uses RemoteHistoryCache.
+4. Default destinations: backend BlobFormat and RelationalFormat, both SYNC_EVERYTHING; local IndexedDB SYNC_MAJOR. Strategies control transmission, never prune stored events. Sync icon confirms latest answer and all associated grading/scaffolding events.
+5. Prefer Seq over List/Array in public constructors and return types where appropriate.
+6. DatabaseHistoryFormat.tables must be typed DatabaseTable definitions, with DatabaseColumn(columnName,mySqlType) and enum MySqlType.
+7. Assess JsonGrammar against uPickle; remove unnecessary custom JSON parsing.
+8. Move WorkbookElement.Snapshot into serialization as SerializedWorkbook.
+9. Thoroughly test BufferedSyncDestinationHandler.
+10. Add bulk database storage with histories: Seq[InteractionHistoryJson]; buffered flush must use a single network request.
+Original prompt remains authoritative: current formats/operations only, no compatibility fallback; complete tests, deployAll, concise docs, mergeable PR; commit/push regularly.

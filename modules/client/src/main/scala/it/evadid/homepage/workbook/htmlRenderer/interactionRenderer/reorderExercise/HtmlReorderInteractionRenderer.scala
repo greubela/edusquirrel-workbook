@@ -59,13 +59,13 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
     val draggingId: Var[Option[Int]] = Var(None)
     val hoverIndex: Var[Option[Int]] = Var(None)
 
-    def sanitizeOrder(order: List[Int], state: ReorderInteractionState[T]): List[Int] = {
+    def sanitizeOrder(order: Seq[Int], state: ReorderInteractionState[T]): Seq[Int] = {
       val validIndices = state.elements.indices.toSet
       if (order.length == state.elements.length && order.toSet == validIndices) order
       else state.correctOrder
     }
 
-    def moveItem(current: List[Int], draggedId: Int, insertIndex: Int): List[Int] = {
+    def moveItem(current: Seq[Int], draggedId: Int, insertIndex: Int): Seq[Int] = {
       val fromIndex = current.indexOf(draggedId)
       if (fromIndex < 0) return current
       val clean = current.filterNot(_ == draggedId)
@@ -107,7 +107,7 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
       )
     }
 
-    def updateOrder(rawOrder: List[Int]): Unit = {
+    def updateOrder(rawOrder: Seq[Int]): Unit = {
       stateVar.update { state =>
         val sanitized = sanitizeOrder(rawOrder, state)
         if sanitized != state.currentOrder then state.copy(currentOrder = sanitized) else state

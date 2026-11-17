@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 
 /** Serializes concurrent merges by locking the context row inside the transaction. */
 class BlobHistoryStorage(connection: Connection, logger: Logger) extends HistorySql(connection, logger) {
-  private def identity(context: UsageContext, key: String): List[String] =
+  private def identity(context: UsageContext, key: String): Seq[String] =
     List(context.programId, context.scenarioId, context.userId, key)
 
   def store(request: StoreToDbRequest): SyncSuccess = transaction {

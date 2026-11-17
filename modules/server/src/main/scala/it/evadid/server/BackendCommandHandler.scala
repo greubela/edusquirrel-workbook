@@ -60,6 +60,14 @@ object BackendCommandHandler {
 
     ),
 
+    SQLCommands.bulkStoreToDbCommand.toLocalExecutionClient(
+      (request: BulkStoreToDbRequest, logger: Logger) => Future {
+        UpsertToDatabase.handleBulkRequest(request, logger)
+      },
+      (request: BulkStoreToDbRequest, logger: Logger) => request.syncContexts.forall(context =>
+        AuthHandling.mayAccessIdBased(userToken.info.user.id, context.userId))
+    ),
+
     SQLCommands.fetchEventsFromDbCommand.toLocalExecutionClient(
       (request: FetchEventsFromDbRequest, logger: Logger) => Future {
         FetchFromDatabase.handleRequest(request, logger)

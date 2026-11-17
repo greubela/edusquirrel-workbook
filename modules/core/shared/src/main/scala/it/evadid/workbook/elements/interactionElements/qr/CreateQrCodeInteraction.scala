@@ -37,7 +37,7 @@ case class CreateQrCodeInteraction(elementId: String, requirements: QrCodeRequir
 
   override val defaultValue: QrCode = initialCode
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = Nil
   override val associatedFactory: WorkbookElementFactory[CreateQrCodeInteraction] = CreateQrCodeInteraction.factory
   def isPassed: Boolean = requirements.isSatisfiedBy(interactionVariable.currentValue)
 

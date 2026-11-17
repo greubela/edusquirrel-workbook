@@ -14,9 +14,9 @@ import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 object ExecutionCommandFactory {
-  lazy val knownCommands: List[ExecutionCommandFactory[?, ?]] = List(
+  lazy val knownCommands: Seq[ExecutionCommandFactory[?, ?]] = List(
     UserCommands.loginCommand, UserCommands.updateAccountCommand, UserCommands.createAccountCommand, UserCommands.authMailCommand,
-    SQLCommands.StoreToDbCommand, SQLCommands.fetchEventsFromDbCommand, SQLCommands.clearValuesDbCommand, SQLCommands.resetUserHistoriesDbCommand,
+    SQLCommands.StoreToDbCommand, SQLCommands.bulkStoreToDbCommand, SQLCommands.fetchEventsFromDbCommand, SQLCommands.clearValuesDbCommand, SQLCommands.resetUserHistoriesDbCommand,
     MailCommands.sendMailCommand, LLMCommands.completeLLMCommandFactory, LLMCommands.feedbackLlmCommandFactory,
     SqlEditorCommands.execute, WorkerCommands.health, WorkerCommands.parseSnapXml, WorkerCommands.pythonFlowchart,
     WorkerCommands.calculateQrCode, WorkerCommands.runPython, WorkerCommands.javaExecutionEvidence)

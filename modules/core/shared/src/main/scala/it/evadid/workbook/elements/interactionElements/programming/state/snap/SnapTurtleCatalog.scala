@@ -21,7 +21,7 @@ object SnapTurtleCatalog {
   final case class ExtraBlockSpec(
       spec: String,
       category: String,
-      defaults: List[ujson.Value] = Nil
+      defaults: Seq[ujson.Value] = Nil
   ) derives upickle.default.ReadWriter {
     require(defaults.forall {
       case ujson.Num(value) => value.isFinite
@@ -37,32 +37,32 @@ object SnapTurtleCatalog {
   final case class Primitive(
       snapSelector: String,
       pythonName: String,
-      aliases: List[String] = Nil,
+      aliases: Seq[String] = Nil,
       turtleCommand: String,
       example: String,
       tab: PaletteTab,
       extraPrimitive: Boolean = false,
       extraSpec: Option[ExtraBlockSpec] = None,
-      inputKinds: List[SnapInputKind] = Nil
+      inputKinds: Seq[SnapInputKind] = Nil
   ) derives upickle.default.ReadWriter {
-    def allPythonNames: List[String] = pythonName :: aliases
+    def allPythonNames: Seq[String] = pythonName +: aliases
     def arity: Int = inputKinds.size
   }
 
-  private def extra(spec: String, category: String, defaults: List[ujson.Value] = Nil): ExtraBlockSpec =
+  private def extra(spec: String, category: String, defaults: Seq[ujson.Value] = Nil): ExtraBlockSpec =
     ExtraBlockSpec(spec, category, defaults)
 
   import SnapInputKind.{Bool, Color, Numeric}
 
-  private val none: List[SnapInputKind] = Nil
-  private val n: List[SnapInputKind] = List(Numeric)
-  private val nn: List[SnapInputKind] = List(Numeric, Numeric)
-  private val nnb: List[SnapInputKind] = List(Numeric, Numeric, Bool)
-  private val nb: List[SnapInputKind] = List(Numeric, Bool)
-  private val b: List[SnapInputKind] = List(Bool)
-  private val c: List[SnapInputKind] = List(Color)
+  private val none: Seq[SnapInputKind] = Nil
+  private val n: Seq[SnapInputKind] = List(Numeric)
+  private val nn: Seq[SnapInputKind] = List(Numeric, Numeric)
+  private val nnb: Seq[SnapInputKind] = List(Numeric, Numeric, Bool)
+  private val nb: Seq[SnapInputKind] = List(Numeric, Bool)
+  private val b: Seq[SnapInputKind] = List(Bool)
+  private val c: Seq[SnapInputKind] = List(Color)
 
-  val Primitives: List[Primitive] = List(
+  val Primitives: Seq[Primitive] = List(
     Primitive("receiveGo", "receive_go", Nil, "receive_go", "receive_go()", PaletteTab.Control, inputKinds = none),
     Primitive("doWait", "do_wait", Nil, "do_wait", "do_wait(seconds)", PaletteTab.Control, inputKinds = n),
     Primitive("forward", "forward", List("fd"), "forward", "forward(steps)", PaletteTab.Motion, inputKinds = n),
@@ -233,7 +233,7 @@ object SnapTurtleCatalog {
     )
   )
 
-  val ExtraPrimitives: List[Primitive] = Primitives.filter(_.extraPrimitive)
+  val ExtraPrimitives: Seq[Primitive] = Primitives.filter(_.extraPrimitive)
 
   val AllowedPythonNames: Set[String] =
     Primitives.flatMap(_.allPythonNames).toSet
@@ -271,10 +271,10 @@ object SnapTurtleCatalog {
   val expectedArityBySnapSelector: Map[String, Int] =
     primitiveBySnapSelector.map((selector, primitive) => selector -> primitive.arity)
 
-  def primitivesForTab(tab: PaletteTab): List[Primitive] =
+  def primitivesForTab(tab: PaletteTab): Seq[Primitive] =
     Primitives.filter(_.tab == tab)
 
-  def inputKindsForSelector(selector: String): List[SnapInputKind] =
+  def inputKindsForSelector(selector: String): Seq[SnapInputKind] =
     primitiveBySnapSelector.get(selector).map(_.inputKinds).getOrElse(Nil)
 
   def canonicalPythonName(snapSelectorOrSpec: String): String =
@@ -309,10 +309,10 @@ object SnapTurtleCatalog {
    * `%inputName` per parameter. Snap stores parameter *names* in the definition
    * spec and their declared types only in `<inputs>`.
    */
-  def customBlockSemanticSpec(pythonName: String, inputNames: List[String]): String =
+  def customBlockSemanticSpec(pythonName: String, inputNames: Seq[String]): String =
     pythonName + uniqueSlotNames(inputNames).map(name => s" %$name").mkString
 
-  def inputNamesFromSpec(spec: String): List[String] =
+  def inputNamesFromSpec(spec: String): Seq[String] =
     SnapCustomBlockRules.slotNames(spec)
 
   def slotNameFromPython(name: String): String = {
@@ -321,7 +321,7 @@ object SnapTurtleCatalog {
     else "n"
   }
 
-  def uniqueSlotNames(names: List[String]): List[String] = {
+  def uniqueSlotNames(names: Seq[String]): Seq[String] = {
     val used = scala.collection.mutable.LinkedHashSet.empty[String]
     names.map { raw =>
       val base = slotNameFromPython(raw)

@@ -5,7 +5,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.interactionElements.neuron.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 
-case class ThresholdNeuronEditor(state: Var[NeuronParameters], labels: List[LanguageMapContentId], examples: List[NeuronExample], initial: NeuronParameters)
+case class ThresholdNeuronEditor(state: Var[NeuronParameters], labels: Seq[LanguageMapContentId], examples: Seq[NeuronExample], initial: NeuronParameters)
     extends HtmlAppElement {
   private val draft = new NeuronEditorState(state, examples)
   private def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")

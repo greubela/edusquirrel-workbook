@@ -13,9 +13,9 @@ trait RemoteHistoryDataReader[K, F <: InteractionFormat] {
     * Apply the strategy to the stored history before applying the timestamp bounds.
     */
   def fetchEventsBetween(logger: SyncLogger, keys: Seq[K], starting: LocalDateTime, until: LocalDateTime,
-      strategy: it.evadid.workbook.interaction.sync.EventSyncStrategy): Future[Map[K, List[InteractionEvent[F]]]]
+      strategy: it.evadid.workbook.interaction.sync.EventSyncStrategy): Future[Map[K, Seq[InteractionEvent[F]]]]
 
-  def fetchAll(logger: SyncLogger, keys: Set[K], strategy: it.evadid.workbook.interaction.sync.EventSyncStrategy): Future[Map[K, List[InteractionEvent[F]]]] =
+  def fetchAll(logger: SyncLogger, keys: Set[K], strategy: it.evadid.workbook.interaction.sync.EventSyncStrategy): Future[Map[K, Seq[InteractionEvent[F]]]] =
     fetchEventsBetween(logger, keys.toSeq, LocalDateTime.MIN, LocalDateTime.MAX, strategy)
 
   def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()

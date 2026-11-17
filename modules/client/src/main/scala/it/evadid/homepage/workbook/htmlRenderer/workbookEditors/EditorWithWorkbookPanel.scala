@@ -16,7 +16,7 @@ case class EditorWithWorkbookPanel[F <: InteractionFormat, EC <: WebEditorConfig
   interaction: WorkbookInteractionElement[F],
   associatedInstruction: Option[WorkbookDisplayElement],
   gradingReporter: InteractionVariableGradingReporter[F],
-  additionalModules: List[ElementCard],
+  additionalModules: Seq[ElementCard],
   editor: SimpleWebEditor[InteractionFormat.State[F], EC]
 ) extends HtmlAppElement {
 

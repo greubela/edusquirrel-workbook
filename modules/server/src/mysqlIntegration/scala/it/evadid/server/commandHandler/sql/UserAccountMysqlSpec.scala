@@ -83,7 +83,7 @@ class UserAccountMysqlSpec extends FunSuite {
     val destination = it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
       credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalFormat, buffered = false)
     val settings = UserConfig(List(it.evadid.workbook.interaction.sync.SyncInformation(destination,
-      it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_MAJOR)), isOnlineAccount = true)
+      it.evadid.workbook.interaction.sync.EventSyncStrategy.SYNC_MAJOR)), isOnlineAccount = true)
     val info = AllUserInfo(alice, credentials, settings)
     assert(Await.result(SqlUserCommands.handleCreateAccountCommand(CreateAccountRequest(info), logger), 10.seconds).accountCreated)
     Await.result(SqlUserCommands.handleUpdateAccountCommand(UpdateAccountRequest(info), logger), 10.seconds)

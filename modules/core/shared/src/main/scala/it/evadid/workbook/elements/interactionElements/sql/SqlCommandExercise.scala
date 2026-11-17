@@ -25,7 +25,7 @@ final case class SqlCommandExercise(
   override val associatedFactory = SqlCommandExercise.factory
   override val defaultValue: String = initialSql
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = Nil
 
 }
 

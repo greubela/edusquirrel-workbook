@@ -22,12 +22,12 @@ import upickle.default.*
 case class Workbook(
                      elementId: String,
                      metadata: WorkbookMetadata,
-                     sections: List[WorkbookSection],
+                     sections: Seq[WorkbookSection],
                    ) extends WorkbookStructureElement[WorkbookSection] {
 
   val workbookId: String = elementId
 
-  override val groupElements: List[WorkbookSection] = sections
+  override val groupElements: Seq[WorkbookSection] = sections
 
   override lazy val structureType: WorkbookStructuringType = WORKBOOK
 
@@ -58,7 +58,7 @@ object Workbook {
                                author: Set[User],
                                contributors: Set[User],
                                workbookTitle: LanguageMapContentId,
-                               availableLanguages: List[HumanLanguage]
+                               availableLanguages: Seq[HumanLanguage]
                              ) derives ReadWriter {
 
   }
@@ -82,7 +82,7 @@ object Workbook {
       )
     }
 
-    override lazy val elementMapAndOrderForConstructorLike: Map[Int, List[ConstructorLikeSerializer.VariableDisplayConfig]] = {
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[ConstructorLikeSerializer.VariableDisplayConfig]] = {
       Map(
         0 -> List(VariableDisplayConfig("elementId", true)),
         1 -> List(VariableDisplayConfig("metadata", true)),

@@ -13,20 +13,20 @@ import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.InteractionFormat.*
-case class NeuronParameters(weights: List[Double], threshold: Double) derives ReadWriter {
+case class NeuronParameters(weights: Seq[Double], threshold: Double) derives ReadWriter {
   require(weights.nonEmpty && weights.forall(_.isFinite) && threshold.isFinite, "Neuron parameters must be finite")
-  def weightedSum(inputs: List[Double]): Double = {
+  def weightedSum(inputs: Seq[Double]): Double = {
     require(inputs.size == weights.size && inputs.forall(_.isFinite), "Inputs must be finite and match the weights")
     val sum = inputs.zip(weights).map((x, w) => x * w).sum
     require(sum.isFinite, "Weighted sum overflow")
     sum
   }
-  def activates(inputs: List[Double]): Boolean = weightedSum(inputs) >= threshold
+  def activates(inputs: Seq[Double]): Boolean = weightedSum(inputs) >= threshold
 }
-case class NeuronExample(label: LanguageMapContentId, inputs: List[Double], expected: Boolean) derives ReadWriter {
+case class NeuronExample(label: LanguageMapContentId, inputs: Seq[Double], expected: Boolean) derives ReadWriter {
   require(inputs.nonEmpty && inputs.forall(x => x == 0 || x == 1), "Worksheet inputs must be binary")
 }
-case class ThresholdNeuronInteraction(elementId: String, inputLabels: List[LanguageMapContentId], examples: List[NeuronExample],
+case class ThresholdNeuronInteraction(elementId: String, inputLabels: Seq[LanguageMapContentId], examples: Seq[NeuronExample],
     initial: NeuronParameters) extends WorkbookInteractionElement[ThresholdNeuronInteractionFormat.type] {
 
   require(inputLabels.nonEmpty && inputLabels.size == initial.weights.size, "Labels must match weights")
@@ -36,7 +36,7 @@ case class ThresholdNeuronInteraction(elementId: String, inputLabels: List[Langu
 
   override val associatedFactory = ThresholdNeuronInteraction.factory
 
-  def matches(parameters: NeuronParameters): List[Boolean] = {
+  def matches(parameters: NeuronParameters): Seq[Boolean] = {
     require(parameters.weights.size == inputLabels.size, "Wrong number of weights")
     examples.map(e => parameters.activates(e.inputs) == e.expected)
   }
@@ -49,7 +49,7 @@ object ThresholdNeuronInteraction  {
     override def finishSerialization(base: WorkbookElementSerializable, e: ThresholdNeuronInteraction): WorkbookElementSerializable =
       base.withElementAddedAs("inputLabels", e.inputLabels).withElementAddedAs("examples", e.examples).withElementAddedAs("initial", e.initial)
     override def finishDeserialization(e: WorkbookElementSerializable): ThresholdNeuronInteraction =
-      ThresholdNeuronInteraction(e.elementId, e.getElementAs[List[LanguageMapContentId]]("inputLabels"),
-        e.getElementAs[List[NeuronExample]]("examples"), e.getElementAs[NeuronParameters]("initial"))
+      ThresholdNeuronInteraction(e.elementId, e.getElementAs[Seq[LanguageMapContentId]]("inputLabels"),
+        e.getElementAs[Seq[NeuronExample]]("examples"), e.getElementAs[NeuronParameters]("initial"))
   }
 }

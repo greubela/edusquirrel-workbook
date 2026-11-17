@@ -1,6 +1,6 @@
 package it.evadid.server.commandHandler.sql.sync
 
-import it.evadid.distribution.commandTypes.SQLCommands.StoreToDbRequest
+import it.evadid.distribution.commandTypes.SQLCommands.{BulkStoreToDbRequest, StoreToDbRequest}
 import it.evadid.server.database.DatabaseRequestConnection
 import it.evadid.sql.DatabaseHistoryFormat
 import it.evadid.util.logging.Logger
@@ -14,4 +14,12 @@ object UpsertToDatabase {
         case DatabaseHistoryFormat.BlobFormat => new BlobHistoryStorage(connection, logger).store(request)
       }
     }
+  def handleBulkRequest(request: BulkStoreToDbRequest, logger: Logger): SyncSuccess =
+    DatabaseRequestConnection.use(request, logger) { connection =>
+      request.databaseFormat match {
+        case DatabaseHistoryFormat.RelationalFormat => new RelationalHistoryStorage(connection, logger).storeAll(request)
+        case DatabaseHistoryFormat.BlobFormat => new BlobHistoryStorage(connection, logger).storeAll(request)
+      }
+    }
+
 }

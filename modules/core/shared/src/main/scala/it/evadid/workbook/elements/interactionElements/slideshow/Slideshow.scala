@@ -10,7 +10,7 @@ import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 
 case class Slideshow(
                       override val elementId: String,
-                      private val panels: List[WorkbookDisplayElement]
+                      private val panels: Seq[WorkbookDisplayElement]
                     ) extends WorkbookInteractionElement[SlideshowFormat.type] {
 
   val panelSize: Int = panels.length
@@ -28,7 +28,7 @@ case class Slideshow(
 
   override val associatedFactory = Slideshow.factory
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = panels
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = panels
 
   override val defaultValue = SlideshowState(panels.map(_.asRef), Set.empty)
 

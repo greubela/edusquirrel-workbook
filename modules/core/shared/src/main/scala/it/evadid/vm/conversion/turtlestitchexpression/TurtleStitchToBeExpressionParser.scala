@@ -127,7 +127,7 @@ object TurtleStitchToBeExpressionParser {
     val scriptBody = definitionBodyScript(body)
     val statements = commandStatements(topLevelBlocks(scriptBody).flatMap(blockToStatement))
     BeDefineFunction(
-      params,
+      params.toList,
       None,
       BeSequence.optionalBody(statements),
       BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(SnapTurtleCatalog.pythonNameFromCustomSpec(spec)))
@@ -238,7 +238,7 @@ object TurtleStitchToBeExpressionParser {
           BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.operatorInfo(name, if arity <= 1 then 0 else 1))
         else
           BeDefineFunction(
-            params,
+            params.toList,
             None,
             BeExpression.pass,
             BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(SnapTurtleCatalog.canonicalPythonName(name)))
@@ -376,7 +376,7 @@ object TurtleStitchToBeExpressionParser {
       BeDefineVariable(BeEntityName.fromCodeString(s"arg$idx"), BeDataType.AnyType)
     }
     val define = BeDefineFunction(
-      params,
+      params.toList,
       None,
       BeExpression.pass,
       BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(selector))
@@ -632,7 +632,7 @@ object TurtleStitchToBeExpressionParser {
           else stub.inputs
         val body = defn.body.headOption.map(parseScriptBody(_, phaseOneStubs)).getOrElse(BeSequence.optionalBody(Nil))
         val named = BeDefineFunction(
-          params,
+          params.toList,
           stub.outputs,
           body,
           BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(SnapTurtleCatalog.pythonNameFromCustomSpec(defn.spec)))

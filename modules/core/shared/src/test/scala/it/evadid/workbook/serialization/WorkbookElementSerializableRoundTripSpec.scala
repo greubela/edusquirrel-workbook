@@ -130,7 +130,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
           case _ => Nil
         }
         val dependencies = (element.allChildrenFullSubtree ++ references).map(_.toSerialized)
-        val roundTripped = WorkbookElementFactory.parseAll(restored :: dependencies).head
+        val roundTripped = WorkbookElementFactory.parseAll(restored +: dependencies).head
         assertEquals(roundTripped, element)
       }
     }

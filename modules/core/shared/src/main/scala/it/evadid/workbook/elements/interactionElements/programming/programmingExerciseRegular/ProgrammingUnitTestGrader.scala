@@ -43,7 +43,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
 
   }
 
-  def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
+  def gradeState(state: ProgrammingState, clients: Seq[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
     val evaluation = Future(ProgramForUnitTestExecution.fromState(state)).flatMap {
       case Right(program) => ProgrammingTestRunner.execute(program, pythonTestCode, clients,
         observeProgram = publishProgramObservation && importance != GradingImportance.HIDDEN_TEST,
@@ -64,7 +64,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
     }
   }
 
-  def gradeState(state: ProgrammingState, clients: List[ExecutionClient], resolver: LanguageMapIdResolver):
+  def gradeState(state: ProgrammingState, clients: Seq[ExecutionClient], resolver: LanguageMapIdResolver):
   Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] =
     gradeState(state, clients).flatMap { result =>
       val described = publicDescription.filter(_ => importance != GradingImportance.HIDDEN_TEST &&

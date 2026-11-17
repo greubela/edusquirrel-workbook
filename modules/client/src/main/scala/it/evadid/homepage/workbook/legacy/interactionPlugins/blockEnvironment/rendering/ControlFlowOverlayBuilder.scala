@@ -10,24 +10,24 @@ import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeDecoratio
 
 import scala.collection.mutable
 
-case class ControlFlowOverlayBuilder(paths: List[ControlFlowPath], overlaysWithCenter: List[(BeShapeDecoration, Point[Double])], relativeOffsetInParent: Point[Double] = Point(0, 0)) {
+case class ControlFlowOverlayBuilder(paths: Seq[ControlFlowPath], overlaysWithCenter: Seq[(BeShapeDecoration, Point[Double])], relativeOffsetInParent: Point[Double] = Point(0, 0)) {
 
   def firstOpenPath: ControlFlowPath = firstOpen._1
 
   def secondOpenPath: ControlFlowPath = secondOpen._1
 
-  lazy val allOpenPaths: List[(ControlFlowPath, Int)] = paths.zipWithIndex.filter(_._1.curStatus == PathStatus.OPEN)
+  lazy val allOpenPaths: Seq[(ControlFlowPath, Int)] = paths.zipWithIndex.filter(_._1.curStatus == PathStatus.OPEN)
   private lazy val firstOpen: (ControlFlowPath, Int) = allOpenPaths(0)
   private lazy val secondOpen: (ControlFlowPath, Int) = allOpenPaths(1)
 
-  private lazy val beforeFirst: List[ControlFlowPath] = paths.slice(0, firstOpen._2)
-  private lazy val afterFirst: List[ControlFlowPath] = paths.slice(firstOpen._2 + 1, paths.size)
-  private lazy val betweenFirstAndSecond: List[ControlFlowPath] = paths.slice(firstOpen._2 + 1, secondOpen._2)
-  private lazy val afterSecond: List[ControlFlowPath] = paths.slice(secondOpen._2 + 1, paths.size)
+  private lazy val beforeFirst: Seq[ControlFlowPath] = paths.slice(0, firstOpen._2)
+  private lazy val afterFirst: Seq[ControlFlowPath] = paths.slice(firstOpen._2 + 1, paths.size)
+  private lazy val betweenFirstAndSecond: Seq[ControlFlowPath] = paths.slice(firstOpen._2 + 1, secondOpen._2)
+  private lazy val afterSecond: Seq[ControlFlowPath] = paths.slice(secondOpen._2 + 1, paths.size)
 
   private lazy val lastPaused: (ControlFlowPath, Int) = paths.zipWithIndex.findLast(_._1.curStatus == PathStatus.PAUSED).get
-  private lazy val beforeLastPaused: List[ControlFlowPath] = paths.slice(0, lastPaused._2)
-  private lazy val afterLastPaused: List[ControlFlowPath] = paths.slice(lastPaused._2 + 1, paths.size)
+  private lazy val beforeLastPaused: Seq[ControlFlowPath] = paths.slice(0, lastPaused._2)
+  private lazy val afterLastPaused: Seq[ControlFlowPath] = paths.slice(lastPaused._2 + 1, paths.size)
 
   def startNewPathAtOrigin(isActive: Boolean, pathAmends: Seq[L.Modifier[L.SvgElement]]): ControlFlowOverlayBuilder = {
     val path = SvgPathBuilder[Double](relativeOffsetInParent) // todo correct start point!!
@@ -72,7 +72,7 @@ case class ControlFlowOverlayBuilder(paths: List[ControlFlowPath], overlaysWithC
     this.copy(overlaysWithCenter = overlaysWithCenter :+ (decoration, centeredAt))
   }
 
-  private def calcOffsetAndDimensionsForLines(config: BeRenderingConfig): List[ManualPositionElement] = {
+  private def calcOffsetAndDimensionsForLines(config: BeRenderingConfig): Seq[ManualPositionElement] = {
     val allPathShapes = mutable.ListBuffer[BeShape]()
     for (curPath <- paths) {
       for (curSegment <- curPath.segments) {
@@ -82,7 +82,7 @@ case class ControlFlowOverlayBuilder(paths: List[ControlFlowPath], overlaysWithC
     allPathShapes.toList.map(curPath => ManualPositionElement(curPath, Point[Double](0, 0), curPath.displaySize(config)))
   }
 
-  private def calcOffsetAndDimensionsForOverlays(config: BeRenderingConfig): List[ManualPositionElement] = {
+  private def calcOffsetAndDimensionsForOverlays(config: BeRenderingConfig): Seq[ManualPositionElement] = {
 
     overlaysWithCenter.map((curOverlay, curCenter) => {
       val shapeDim = curOverlay.displaySize(config)
@@ -93,7 +93,7 @@ case class ControlFlowOverlayBuilder(paths: List[ControlFlowPath], overlaysWithC
 
 
   def renderControlFlow(): BeShape = new BoxManualPositioning() {
-    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement] = {
+    override def calcOffsetsAndDimensions(config: BeRenderingConfig): Seq[ManualPositionElement] = {
       calcOffsetAndDimensionsForLines(config) ++ calcOffsetAndDimensionsForOverlays(config)
     }
   }
@@ -107,9 +107,9 @@ object ControlFlowOverlayBuilder {
     case PAUSED, FINISHED, OPEN, HANDLED
   }
 
-  case class PathSegment(curPath: SvgPathBuilder[Double], decorations: List[BeShapeDecoration], isActive: Boolean, pathAmends: Seq[L.Modifier[L.SvgElement]])
+  case class PathSegment(curPath: SvgPathBuilder[Double], decorations: Seq[BeShapeDecoration], isActive: Boolean, pathAmends: Seq[L.Modifier[L.SvgElement]])
 
-  case class ControlFlowPath(curStatus: PathStatus, segments: List[PathSegment]) {
+  case class ControlFlowPath(curStatus: PathStatus, segments: Seq[PathSegment]) {
     lazy val firstSegment: PathSegment = segments.head
     lazy val lastSegment: PathSegment = segments.last
 

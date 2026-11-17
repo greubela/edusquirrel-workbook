@@ -29,12 +29,12 @@ case class TurtleRecreateShapeInteraction
 
   override val defaultValue: ProgrammingState = initProgram
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
   override val associatedFactory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = TurtleRecreateShapeInteraction.factory
 
   def exerciseConfig: RecreateTurtleDidacticConfig = customExerciseConfig.getOrElse(RecreateTurtleDidacticConfig.defaultDidacticConfig)
 
-  override val gradingElements: List[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]] =
+  override val gradingElements: Seq[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]] =
     List(RecreateShapeGrader(desiredResult, REQUIRED_TEST, elementId + "-grader", comparisonPolicy)) ++
       TurtleCommandUsageGrader.forLimits(elementId, exerciseConfig.maxCommandUsage)
   //val scaffoldingElement: Option[WorkbookInteractionScaffolder[ProgrammingState, ?]] = None

@@ -21,9 +21,9 @@ case class BeBlockCallSingleReturnFunction(
                                           ) extends BeBlockSingleShape derives upickle.default.ReadWriter {
 
 
-  override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
+  override def renderShape(childrenShapes: Seq[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
 
-    val parameterChildrenInOrder: List[BeShape] = childrenShapes
+    val parameterChildrenInOrder: Seq[BeShape] = childrenShapes
       .filter(_._1.childInfo.myRoleInParent.isInstanceOf[FunctionParameter])
       .sortBy(_._1.childInfo.myRoleInParent.asInstanceOf[FunctionParameter].nr)
       .map(_._2)
@@ -31,8 +31,8 @@ case class BeBlockCallSingleReturnFunction(
     val nameShape = TextShape(function.funcDef.functionTypeInfo.displayName.asLanguageMap(NamingStyle.SnakeCase))
     val namePos = function.funcDef.functionTypeInfo.displayNamePosition
 
-    val childrenWithName: List[BeShape] = parameterChildrenInOrder.slice(0, namePos) ++ List(nameShape) ++ parameterChildrenInOrder.slice(namePos, parameterChildrenInOrder.size)
-    val childBox = HBoxSameHeight(childrenWithName, true)
+    val childrenWithName: Seq[BeShape] = parameterChildrenInOrder.slice(0, namePos) ++ List(nameShape) ++ parameterChildrenInOrder.slice(namePos, parameterChildrenInOrder.size)
+    val childBox = HBoxSameHeight(childrenWithName.toList, true)
 
     val factory = BeShapeAmendFactory(renderingInformation.renderingConfig)
     val signalAmends = factory.muteOnTreeDragged(renderingInformation.inProgram, renderingInformation.editorState.controllerStateVar.signal, factory.defaultFunctionColorsAmend)

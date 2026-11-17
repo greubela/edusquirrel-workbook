@@ -14,7 +14,7 @@ class SvgToTurtleProgramSpec extends FunSuite {
 
   test("converts absolute, relative, horizontal, vertical and close commands") {
     val commands = converter.transform("M 10 10 h 20 v 15 l -20 0 z")
-    val path = TurtlePathBuilder(Point(0.0, 0.0), commands)
+    val path = TurtlePathBuilder(Point(0.0, 0.0), commands.toList)
     assertEqualsDouble(path.turtleState.x, 10.0, 1e-8)
     assertEqualsDouble(path.turtleState.y, 10.0, 1e-8)
     assertEquals(commands.map(_.name.universalInterpretation()).toSet -- Set("forward", "left", "right", "pen_up", "pen_down"), Set.empty)
@@ -31,7 +31,7 @@ class SvgToTurtleProgramSpec extends FunSuite {
     val commands = converter("M0,0 C10,0 10,10 20,10 Q30,10 30,20 T40,30")
     val forwards = commands.filter(_.name.universalInterpretation() == "forward")
     assertEquals(forwards.size, 7)
-    val path = TurtlePathBuilder(Point(0.0, 0.0), commands)
+    val path = TurtlePathBuilder(Point(0.0, 0.0), commands.toList)
     assertEqualsDouble(path.turtleState.x, 40.0, 1e-8)
     assertEqualsDouble(path.turtleState.y, 30.0, 1e-8)
   }
@@ -39,7 +39,7 @@ class SvgToTurtleProgramSpec extends FunSuite {
   test("approximates elliptical arcs with intermediate line segments") {
     val commands = converter("M0 0 A10 10 0 0 1 20 0")
     assert(commands.count(_.name.universalInterpretation() == "forward") > 2)
-    val path = TurtlePathBuilder(Point(0.0, 0.0), commands)
+    val path = TurtlePathBuilder(Point(0.0, 0.0), commands.toList)
     assertEqualsDouble(path.turtleState.x, 20.0, 1e-7)
     assertEqualsDouble(path.turtleState.y, 0.0, 1e-7)
   }
@@ -48,7 +48,7 @@ class SvgToTurtleProgramSpec extends FunSuite {
     val commands = converter("m1e1-5 5 0 0 5m10,10l5,0")
     assertEquals(commands.count(_.name.universalInterpretation() == "pen_up"), 2)
     assertEquals(commands.count(_.name.universalInterpretation() == "pen_down"), 2)
-    val path = TurtlePathBuilder(Point(0.0, 0.0), commands)
+    val path = TurtlePathBuilder(Point(0.0, 0.0), commands.toList)
     assertEqualsDouble(path.turtleState.x, 30.0, 1e-8)
     assertEqualsDouble(path.turtleState.y, 10.0, 1e-8)
   }

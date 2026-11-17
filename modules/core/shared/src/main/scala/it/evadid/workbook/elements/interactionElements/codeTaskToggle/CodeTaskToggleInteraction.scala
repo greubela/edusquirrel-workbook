@@ -19,7 +19,7 @@ case class CodeTaskToggleInteraction(
                                       reorder: ReorderInteraction.ReorderCodeInteraction,
                                       codeEditorTitle: LanguageMapContentId,
                                       advancedCodeTemplate: String,
-                                      advancedRequirements: List[AdvancedCodeRequirement] = Nil,
+                                      advancedRequirements: Seq[AdvancedCodeRequirement] = Nil,
                                       advancedSuccessMessage: LanguageMapContentId = LanguageMapContentId("basic/advancedCodeFeedbackSuccess")
                                     ) extends WorkbookInteractionElement[CodeTaskToggleInteractionFormat.type] {
 
@@ -30,15 +30,15 @@ case class CodeTaskToggleInteraction(
     advancedCode = advancedCodeTemplate
   )
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List(reorder)
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List(reorder)
 
-  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionElement[? <: InteractionFormat]] = List(this.asInstanceOf[WorkbookInteractionElement[? <: InteractionFormat]], reorder.asInstanceOf[WorkbookInteractionElement[? <: InteractionFormat]])
+  override lazy val allInteractionsInThisInstance: Seq[WorkbookInteractionElement[? <: InteractionFormat]] = List(this.asInstanceOf[WorkbookInteractionElement[? <: InteractionFormat]], reorder.asInstanceOf[WorkbookInteractionElement[? <: InteractionFormat]])
 }
 
 object CodeTaskToggleInteraction {
   private given requirementRW: ReadWriter[AdvancedCodeRequirement] = macroRW
 
-  private[workbook] val requirementsSerializer = Serializer.fromUpickleJson(summon[ReadWriter[List[AdvancedCodeRequirement]]])
+  private[workbook] val requirementsSerializer = Serializer.fromUpickleJson(summon[ReadWriter[Seq[AdvancedCodeRequirement]]])
   val factory: WorkbookElementFactory[CodeTaskToggleInteraction] = new WorkbookElementFactory[CodeTaskToggleInteraction] {
     override lazy val elementMapAndOrderForConstructorLike = Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("reorder", false)), 2 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("codeEditorTitle", false)), 3 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("advancedCodeTemplate", false)), 4 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("advancedRequirements", false)), 5 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("advancedSuccessMessage", false)))
 

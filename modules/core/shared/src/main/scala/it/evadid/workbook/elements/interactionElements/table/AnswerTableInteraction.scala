@@ -14,7 +14,7 @@ sealed trait AnswerTableCell derives ReadWriter
 
 case class FixedTableCell(content: LanguageMapContentId) extends AnswerTableCell derives ReadWriter
 
-case class EditableTableCell(expected: Option[List[String]] = None, choices: List[String] = Nil)
+case class EditableTableCell(expected: Option[Seq[String]] = None, choices: Seq[String] = Nil)
   extends AnswerTableCell derives ReadWriter {
   require(choices.forall(s => s.nonEmpty && s == s.trim) && choices.distinct == choices, "Choices must be distinct nonempty values")
   require(expected.forall(xs => xs.nonEmpty && xs.forall(s => s.trim.nonEmpty && (choices.isEmpty || choices.contains(s.trim)))),
@@ -25,7 +25,7 @@ case class EditableTableCell(expected: Option[List[String]] = None, choices: Lis
   def isCorrect(value: String): Option[Boolean] = expected.map(_.exists(_.trim == value.trim))
 }
 
-case class TableAnswer(values: List[String]) derives ReadWriter
+case class TableAnswer(values: Seq[String]) derives ReadWriter
 
 case class TableGrade(correct: Int, total: Int) derives ReadWriter {
   def passed: Boolean = total > 0 && correct == total
@@ -33,12 +33,12 @@ case class TableGrade(correct: Int, total: Int) derives ReadWriter {
 
 /** Learner values contain only editable cells, in row-major order. Fixed cells cannot be overwritten. */
 case class AnswerTableInteraction(elementId: String, caption: LanguageMapContentId,
-                                  rowLabels: List[LanguageMapContentId], columnLabels: List[LanguageMapContentId], rows: List[List[AnswerTableCell]])
+                                  rowLabels: Seq[LanguageMapContentId], columnLabels: Seq[LanguageMapContentId], rows: Seq[Seq[AnswerTableCell]])
   extends WorkbookInteractionElement[AnswerTableInteractionFormat.type] {
 
   require(rowLabels.nonEmpty && columnLabels.nonEmpty && rows.size == rowLabels.size && rows.forall(_.size == columnLabels.size),
     "Table labels and rectangular cells must have matching dimensions")
-  val editableCells: List[EditableTableCell] = rows.flatten.collect { case c: EditableTableCell => c }
+  val editableCells: Seq[EditableTableCell] = rows.flatten.collect { case c: EditableTableCell => c }
   require(editableCells.nonEmpty, "An answer table requires an editable cell")
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = TableAnswer(List.fill(editableCells.size)(""))
@@ -93,7 +93,7 @@ object AnswerTableInteraction  {
 
     override def finishDeserialization(e: WorkbookElementSerializable): AnswerTableInteraction =
       AnswerTableInteraction(e.elementId, e.getElementAs[LanguageMapContentId]("caption"),
-        e.getElementAs[List[LanguageMapContentId]]("rowLabels"), e.getElementAs[List[LanguageMapContentId]]("columnLabels"),
-        e.getElementAs[List[List[AnswerTableCell]]]("rows"))
+        e.getElementAs[Seq[LanguageMapContentId]]("rowLabels"), e.getElementAs[Seq[LanguageMapContentId]]("columnLabels"),
+        e.getElementAs[Seq[Seq[AnswerTableCell]]]("rows"))
   }
 }

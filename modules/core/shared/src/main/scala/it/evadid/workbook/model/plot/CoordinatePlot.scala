@@ -11,12 +11,12 @@ case class PlotAxis(min: Double, max: Double, tick: Double) derives ReadWriter {
     require(contains(value), "Coordinate is outside the axis")
     (value - min) / (max - min)
   }
-  def ticks: List[Double] = (0 to math.floor((max - min) / tick).toInt).map(i => min + i * tick).filter(_ <= max).toList
+  def ticks: Seq[Double] = (0 to math.floor((max - min) / tick).toInt).map(i => min + i * tick).filter(_ <= max).toList
 }
 case class PlotPoint(x: Double, y: Double) derives ReadWriter {
   require(x.isFinite && y.isFinite, "Point coordinates must be finite")
 }
-case class PlotAnswer(points: List[PlotPoint] = Nil, connected: Boolean = true) derives ReadWriter {
+case class PlotAnswer(points: Seq[PlotPoint] = Nil, connected: Boolean = true) derives ReadWriter {
   require(points.size <= PlotAnswer.maxPoints && points.map(_.x).distinct.size == points.size,
     "Store at most 100 points, with one point per x coordinate")
   def put(point: PlotPoint): PlotAnswer = copy(points = (points.filterNot(_.x == point.x) :+ point).sortBy(_.x))

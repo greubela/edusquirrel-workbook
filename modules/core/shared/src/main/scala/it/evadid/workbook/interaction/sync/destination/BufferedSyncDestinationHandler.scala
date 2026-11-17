@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.interaction.sync.destination.BufferedSyncDestinationHandler.*
 import it.evadid.workbook.interaction.sync.model.{FetchResponse, InteractionHistoryJson}
-import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
+import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.variable.*
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
@@ -35,6 +35,17 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
   }
   override def readHistoryJson(context: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] =
     readHistoriesJson(context.toUsageContext).map(response => response.copy(fetchedValues = response.fetchedValues.filter(_.dataKey == context)))
+
+  override def readHistoriesInRange(context: UsageContext, keys: Seq[SyncContext], starting: LocalDateTime,
+      until: LocalDateTime, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
+    require(!until.isBefore(starting), "History range end must not precede its start")
+    require(keys.forall(_.toUsageContext == context), "Range keys must belong to the requested usage context")
+    if keys.isEmpty then Future.successful(Map.empty) else {
+      val promise = Promise[FetchResponse[SyncContext, String]]()
+      enqueue(CachedRangeRead(LocalDateTime.now(), context, keys.toSet, Range(starting, until, strategy), promise), promise)
+        .map(_.asMap.filter((key, _) => keys.contains(key)).map((key, json) => key -> InteractionHistoryJson.deserialize(json)))
+    }
+  }
 
   override def storeHistoryJson(context: SyncContext, json: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = storeHistoriesJson(Map(context -> json))
   override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = synchronized {
@@ -90,8 +101,15 @@ object BufferedSyncDestinationHandler {
   }
 
   private def handleReads(reads: Seq[CachedReadRequest], underlying: SyncDestinationHistoryHandler): Future[Unit] =
-    Future.traverse(reads.groupBy(_.usageContext).toList) { (context, requests) =>
-      execute(underlying)(underlying.readHistoriesJson(context)).transform { outcome =>
+    Future.traverse(reads.groupBy(request => request.usageContext -> request.range).toSeq) { case ((context, range), requests) =>
+      val reading = range match {
+        case None => execute(underlying)(underlying.readHistoriesJson(context))
+        case Some(window) =>
+          val keys = requests.collect { case request: CachedRangeRead => request.keys }.flatten.toSeq.distinct
+          execute(underlying)(underlying.readHistoriesInRange(context, keys, window.starting, window.until, window.strategy))
+            .map(values => FetchResponse.fromMap(LocalDateTime.now(), values.map((key, value) => key -> value.serialized)))
+      }
+      reading.transform { outcome =>
         requests.foreach(_.fulfillWith(outcome))
         Success(())
       }
@@ -102,14 +120,14 @@ object BufferedSyncDestinationHandler {
       // Merge queued deltas per key so that idempotent events are not lost when multiple
       // stores for the same key arrive before the buffer flushes.
       val storing = attempt {
-      val merged = stores.foldLeft(Map.empty[SyncContext, Vector[String]]) { (acc, request) =>
-        acc ++ request.toStore.map { (key, json) =>
-          key -> (acc.getOrElse(key, Vector.empty) :+ json)
-        }
-      }.view.map { (key, versions) =>
-        key -> InteractionHistoryJson.mergeSerialized(versions)
-      }.toMap
-      execute(underlying)(underlying.storeHistoriesJson(merged))
+        val merged = stores.foldLeft(Map.empty[SyncContext, Vector[String]]) { (acc, request) =>
+          acc ++ request.toStore.map { (key, json) =>
+            key -> (acc.getOrElse(key, Vector.empty) :+ json)
+          }
+        }.view.map { (key, versions) =>
+          key -> InteractionHistoryJson.mergeSerialized(versions)
+        }.toMap
+        execute(underlying)(underlying.storeHistoriesJson(merged))
       }
       storing.transform { outcome =>
         stores.foreach(_.promise.tryComplete(outcome))
@@ -118,13 +136,22 @@ object BufferedSyncDestinationHandler {
     }
   }
 
-  sealed trait CachedRequest { def requestTimestamp: LocalDateTime }
-  case class CachedStoreRequest(requestTimestamp: LocalDateTime, toStore: Map[SyncContext, String], promise: Promise[SyncSuccess])
-  sealed trait CachedReadRequest extends CachedRequest {
+  private case class Range(starting: LocalDateTime, until: LocalDateTime, strategy: EventSyncStrategy)
+  private sealed trait CachedRequest { def requestTimestamp: LocalDateTime }
+  private case class CachedStoreRequest(requestTimestamp: LocalDateTime, toStore: Map[SyncContext, String], promise: Promise[SyncSuccess])
+  private sealed trait CachedReadRequest extends CachedRequest {
     def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit
     def usageContext: UsageContext
+    def range: Option[Range]
   }
-  case class CachedReadRequestMultipleRaw(requestTimestamp: LocalDateTime, usageContext: UsageContext, promise: Promise[FetchResponse[SyncContext, String]]) extends CachedReadRequest {
+  private case class CachedReadRequestMultipleRaw(requestTimestamp: LocalDateTime, usageContext: UsageContext, promise: Promise[FetchResponse[SyncContext, String]]) extends CachedReadRequest {
+    val range: Option[Range] = None
     override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data)
   }
+  private case class CachedRangeRead(requestTimestamp: LocalDateTime, usageContext: UsageContext,
+      keys: Set[SyncContext], window: Range, promise: Promise[FetchResponse[SyncContext, String]]) extends CachedReadRequest {
+    val range: Option[Range] = Some(window)
+    def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data)
+  }
+
 }

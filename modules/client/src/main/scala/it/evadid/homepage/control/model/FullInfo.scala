@@ -31,7 +31,7 @@ case class FullInfo(
     override def llmConfiguration: Option[LlmConfiguration] =
       homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig)
 
-    override def availableExecutionClients: List[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutor)
+    override def availableExecutionClients: Seq[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutor)
 
     override def getCurrentLanguage: AppLanguage.HumanLanguage = currentLanguageObservable.now().getOrElse(English)
 
@@ -53,7 +53,7 @@ case class FullInfo(
 
   /* INFO */
 
-  //lazy val executorForParallelism: List[ExecutionClient] = List(backendExecutor)
+  //lazy val executorForParallelism: Seq[ExecutionClient] = List(backendExecutor)
   //ExecuteOnRemoteServer("http://localhost", 9000),
   //ExecuteOnWebWorker(FileFactory.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath),:
 

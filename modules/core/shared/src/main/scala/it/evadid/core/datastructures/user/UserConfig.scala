@@ -5,7 +5,7 @@ import it.evadid.workbook.interaction.sync.EventSyncStrategy.*
 import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
 import upickle.default.*
 
-case class UserConfig(syncDestinations: List[SyncInformation], isOnlineAccount: Boolean) derives ReadWriter {
+case class UserConfig(syncDestinations: Seq[SyncInformation], isOnlineAccount: Boolean) derives ReadWriter {
   def withoutCredentials: UserConfig = copy(syncDestinations = syncDestinations.map(_.withoutCredentials))
 
   lazy val toJson: String = write(this)(using UserConfig.derived$ReadWriter)
@@ -13,10 +13,11 @@ case class UserConfig(syncDestinations: List[SyncInformation], isOnlineAccount: 
 
 
 object UserConfig {
-  lazy val defaultSyncDestinations: List[SyncInformation] = {
+  lazy val defaultSyncDestinations: Seq[SyncInformation] = {
     List(
-      SyncInformation(defaultBrowserHistory, KEEP_LAST_AND_MAJOR),
-      SyncInformation(defaultDatabase, KEEP_LAST_FIVE)
+      SyncInformation(defaultBrowserHistory, SYNC_MAJOR),
+      SyncInformation(defaultDatabase, SYNC_EVERYTHING),
+      SyncInformation(defaultBlobDatabase, SYNC_EVERYTHING)
     )
   }
 

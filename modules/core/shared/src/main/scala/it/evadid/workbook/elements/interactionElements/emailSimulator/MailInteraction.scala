@@ -11,7 +11,7 @@ case class MailInteraction(elementId: String, initialInbox: InboxState = InboxSt
   extends WorkbookInteractionElement[MailInteractionFormat.type] {
 
   override val associatedFactory = MailInteraction.factory
-  override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = Nil
   override val defaultValue = InboxStateScaffolding(initialInbox.normalized)
 
 

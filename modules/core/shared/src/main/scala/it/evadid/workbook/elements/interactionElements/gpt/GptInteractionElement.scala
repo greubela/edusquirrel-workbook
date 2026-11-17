@@ -52,8 +52,8 @@ case class GptInteractionElement(
                                   override val elementId: String,
                                   underlyingTextInteraction: WorkbookInteractionElement[TextInteractionFormat.type],
                                   exerciseText: LanguageMapContentId,
-                                  scaffoldingHints: List[LanguageMapContentId],
-                                  gradingCriteria: List[LanguageMapContentId]
+                                  scaffoldingHints: Seq[LanguageMapContentId],
+                                  gradingCriteria: Seq[LanguageMapContentId]
                                 ) extends WorkbookDisplayElement derives upickle.default.ReadWriter {
   override val associatedFactory = GptInteractionElement.factory
   println("[WARN] creating messaging interaction for id '" + elementId + "' with no grading!")
@@ -61,7 +61,7 @@ case class GptInteractionElement(
   private val allContentIds: Set[LanguageMapContentId] = scaffoldingHints.toSet ++ gradingCriteria.toSet ++ List(exerciseText)
   private val scaffoldingInteraction: MessagingInteraction = MessagingInteraction(elementId + "_scaffoldingMessenger")
   lazy val scaffoldingInteractionOp: Option[MessagingInteraction] = if (scaffoldingHints.nonEmpty) Some(scaffoldingInteraction) else None
-  override lazy val childrenOfThisElement: List[WorkbookElement] = scaffoldingInteractionOp.toList
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = scaffoldingInteractionOp.toList
 
   //  lazy val serialized: SerializedGptInteractionElement = SerializedGptInteractionElement.fromElement(this)
 
@@ -86,7 +86,7 @@ case class GptInteractionElement(
       //logger.logInfo("GptInteractionElement has resolved the following ids: " + resolvedIds.keys.mkString(", "))
 
       val exText: String = resolvedIds.getOrElse(exerciseText, "[unresolved: " + exerciseText.fullId + "]")
-      val scaffHints: List[String] = scaffoldingHints.map(id => resolvedIds.getOrElse(id, s"[unresolved: $id]"))
+      val scaffHints: Seq[String] = scaffoldingHints.map(id => resolvedIds.getOrElse(id, s"[unresolved: $id]"))
       val curInput: String = underlyingTextInteraction.interactionVariable.currentValue
       val msg: MessengerModel = MessengerModel.getScaffoldingInitMessage(curUser, exText, curInput, scaffHints, resolvedLanguage)
       val msgSc: MessengerModelScaffolding = MessengerModelScaffolding(msg)

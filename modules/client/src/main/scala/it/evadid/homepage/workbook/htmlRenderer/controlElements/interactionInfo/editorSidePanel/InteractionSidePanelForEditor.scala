@@ -11,7 +11,7 @@ case class InteractionSidePanelForEditor[F <: InteractionFormat](
                                                                       underlyingInteraction: WorkbookInteractionElement[F],
                                                                       associatedInstruction: Option[WorkbookDisplayElement],
                                                                       gradingReporter: InteractionVariableGradingReporter[F],
-                                                                      additionalModules: List[ElementCard]
+                                                                      additionalModules: Seq[ElementCard]
                                                                     ) extends HtmlAppElement {
 
   override def getDomElement(): L.Element = {

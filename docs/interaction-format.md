@@ -19,7 +19,10 @@ format association at call sites; its single internal narrowing bridges Scala's
 invariant codecs and singleton-dependent types. Exercise-specific constraints,
 such as table dimensions or graph axes, belong in `validateState` and are checked
 when applying history. They cannot be inferred by a server without that exercise.
-Element definitions continue to use `WorkbookElementFactory`.
+Element definitions use `WorkbookElementFactory`. `SerializedWorkbook` in
+`workbook.jsonFactory` carries a root ID and its complete serialized element graph.
+Constructor-style syntax frames argument groups only; uJSON validates and decodes
+their JSON values.
 
 ## Current wire format
 
@@ -53,12 +56,12 @@ Every event has its associated answer, `LocalDateTime` and importance. Completed
 feedback derives its answer and timestamp from the typed result.
 
 Merging is set union: retries are idempotent and distinct same-time events survive.
-Serialized exceptions use immutable stack-trace lists so error events also retain
+Serialized exceptions use immutable stack-trace sequences so error events also retain
 value equality after decoding. State/feedback history views are derived projections,
 not separate persisted stores. A newer grading start represents a retry in progress;
 completion wins a timestamp tie. Graders are matched by their canonical content key.
 
-Starts default to `TEMPORARY`, completions to `MAJOR`. Destination strategies apply
-to every event kind. `clean()` removes temporary events; `cleanWithStrategy` selects
+Starts default to `TEMPORARY`, completions to `MAJOR`. Destination strategies select transmitted events across every event kind;
+`SYNC_MAJOR` keeps associated feedback with its selected answers. `clean()` removes temporary events; `cleanWithStrategy` selects
 according to the destination. See [state and synchronization](state-and-serialization.md)
 and [database storage](database/interaction-history.md).
