@@ -8,19 +8,19 @@ import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.ElementCard
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.editorSidePanel.InteractionSidePanelForEditor
-import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookDisplayElement, WorkbookInteractionElement}
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
 
-case class EditorWithWorkbookPanel[T, GA, SA, EC <: WebEditorConfig]
+case class EditorWithWorkbookPanel[F <: InteractionFormat, EC <: WebEditorConfig]
 (
-  interaction: WorkbookInteractionElementFull[T, GA, SA],
+  interaction: WorkbookInteractionElement[F],
   associatedInstruction: Option[WorkbookDisplayElement],
-  gradingReporter: InteractionVariableGradingReporter[T, GA, SA],
+  gradingReporter: InteractionVariableGradingReporter[F],
   additionalModules: List[ElementCard],
-  editor: SimpleWebEditor[T, EC]
+  editor: SimpleWebEditor[F#InteractionStateType, EC]
 ) extends HtmlAppElement {
 
-  lazy val sidePanel = InteractionSidePanelForEditor[T, GA, SA](interaction, associatedInstruction, gradingReporter, additionalModules)
+  lazy val sidePanel = InteractionSidePanelForEditor(interaction, associatedInstruction, gradingReporter, additionalModules)
 
   override def getDomElement(): L.Element =
     div(cls := "editor-with-panel",

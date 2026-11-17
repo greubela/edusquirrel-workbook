@@ -16,7 +16,7 @@ trait SyncControl {
 
   def fetchAll(forceFlush: Boolean = false): Future[Unit]
 
-  def store[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA], forceFlush: Boolean = false): Future[Unit]
+  def store[F <: InteractionFormat](interactionVariable: InteractionVariable[F], forceFlush: Boolean = false): Future[Unit]
 
   def fetchAndStore(forceFlush: Boolean = false): Future[Unit] = fetchAll(forceFlush).flatMap(_ => storeAll(forceFlush))
 

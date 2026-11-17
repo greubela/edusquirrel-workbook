@@ -40,8 +40,7 @@ case class InteractionHistoryJson[F <: InteractionFormat](
     */
   def toTyped: InteractionVariableHistory[F] =
     ParsingContext("interactionVariableHistory", historyJson) {
-     // format.historySerializer.deserialize(historyJson)
-      ???
+      format.historySerializer.deserialize(historyJson)
     }
 
 }

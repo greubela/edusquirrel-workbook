@@ -8,13 +8,14 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.ElementCard
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.{GradingSummary, InteractionFeedbackView}
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.GradingSummary.Group
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.linePanelBottom.GradingInfoLine
-import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookDisplayElement, WorkbookInteractionElement}
+import it.evadid.workbook.meta.InteractionVariableGradingReporter
 import java.time.format.DateTimeFormatter
 
-case class InteractionInfoSidebar[T, GA, SA](
-    underlyingInteraction: WorkbookInteractionElementFull[T, GA, SA],
+case class InteractionInfoSidebar[F <: InteractionFormat](
+    underlyingInteraction: WorkbookInteractionElement[F],
     associatedInstruction: Option[WorkbookDisplayElement],
-    gradingReporter: it.evadid.workbook.meta.InteractionVariableGradingReporter[T, GA, SA]
+    gradingReporter: InteractionVariableGradingReporter[F]
 ) extends HtmlAppElement {
   private lazy val view = new InteractionFeedbackView(underlyingInteraction, gradingReporter, fullInfo, laminarHelper)
   private val dateFormat = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss")
@@ -58,11 +59,10 @@ case class InteractionInfoSidebar[T, GA, SA](
             table(cls := "feedback-results-table",
               thead(tr(th(child.text <-- view.label("gradingTestDescription")),
                 th(title <-- view.label("gradingExecutionDate"), aria.label <-- view.label("gradingExecutionDate"),
-                  span(cls := "feedback-column-label", child.text <-- view.label("gradingExecutionDate")), span(cls := "feedback-column-icon", aria.hidden := true, "◷")),
+                  span(cls := "feedback-column-label", child.text <-- view.label("gradingExecutionDate")), span(cls := "feedback-column-icon", aria.hidden := true, "◷"))),
                 th(title <-- view.label("gradingFeedback"), aria.label <-- view.label("gradingFeedback"),
                   span(cls := "feedback-column-label", child.text <-- view.label("gradingFeedback")), span(cls := "feedback-column-icon", aria.hidden := true, "↩")))),
-              tbody(visible.map(resultRow))))
-        })
+              tbody(visible.map(resultRow))))))
     )
   }
 

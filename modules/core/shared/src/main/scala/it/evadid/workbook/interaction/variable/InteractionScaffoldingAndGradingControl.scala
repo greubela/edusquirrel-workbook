@@ -113,14 +113,14 @@ case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](inter
 
   // SCAFFOLDING CALCULATION
 
-  def getOrCalculateScaffolding(contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[F]] = interactionVariable.synchronized {
+  def getOrCalculateScaffolding(contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[F#InteractionStateType, F#ScaffoldingInfoType]] = interactionVariable.synchronized {
     val curValOp = interactionVariable.currentHistory.historyStates.lastStateOption
     if (curValOp.isEmpty) Future.failed(SerializedException("Cannot start scaffolding on an InteractionVariable with no current state")) else {
       getOrCalculateScaffolding(contextInformation, curValOp.get.value)
     }
   }
 
-  def getOrCalculateScaffolding(contextInformation: ExecutionContextInformation, forState: F#InteractionStateType): Future[ScaffoldingResult[F]] = interactionVariable.synchronized {
+  def getOrCalculateScaffolding(contextInformation: ExecutionContextInformation, forState: F#InteractionStateType): Future[ScaffoldingResult[F#InteractionStateType, F#ScaffoldingInfoType]] = interactionVariable.synchronized {
     val ec = contextInformation.futureExecutionContext
     if (interactionVariable.currentHistory.historyScaffolding.scaffoldingMap.contains(forState)) {
       Future.successful(interactionVariable.currentHistory.historyScaffolding.scaffoldingMap(forState))
@@ -131,7 +131,7 @@ case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](inter
     }
   }
 
-  private def startScaffolding(contextInformation: ExecutionContextInformation, forState: F#InteractionStateType): Future[ScaffoldingResult[F]] = interactionVariable.synchronized {
+  private def startScaffolding(contextInformation: ExecutionContextInformation, forState: F#InteractionStateType): Future[ScaffoldingResult[F#InteractionStateType, F#ScaffoldingInfoType]] = interactionVariable.synchronized {
     val ec = contextInformation.futureExecutionContext
     val scaffolderOp = interactionVariable.underlyingInteraction.scaffoldingElement
 

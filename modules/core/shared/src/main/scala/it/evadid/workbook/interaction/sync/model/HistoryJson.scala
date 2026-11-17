@@ -14,15 +14,15 @@ object HistoryJson {
     require(history.obj.keySet.toSet == Set("events"), "Expected event-based interaction history")
     history
   }
-  def decode(json: String): InteractionVariableHistory[ujson.Value, ujson.Value, ujson.Value] =
-    ParsingContext("interactionVariableHistory", json) { read[InteractionVariableHistory[ujson.Value, ujson.Value, ujson.Value]](payload(json)) }
+  def decode(json: String): InteractionVariableHistory[ujson.Value] =
+    ParsingContext("interactionVariableHistory", json) { read[InteractionVariableHistory[ujson.Value]](payload(json)) }
 
   def lastTimestamp(json: String): Option[LocalDateTime] = decode(json).timestampLastChanged
 
   def stored(key: String, history: String): String =
     ujson.write(ujson.Obj("keyForSerialisation" -> key, "fullHistory" -> payload(history)))
 
-  def merge(histories: List[String]): String = write(histories.foldLeft(InteractionVariableHistory.empty[ujson.Value, ujson.Value, ujson.Value])(
+  def merge(histories: List[String]): String = write(histories.foldLeft(InteractionVariableHistory.empty[ujson.Value])(
     (current, json) => current.mergeWith(decode(json))))
 
   /** Iterate over the (ujson key, ujson value) pairs of a JSON object; the key is parsed as JSON so complex keys match. */

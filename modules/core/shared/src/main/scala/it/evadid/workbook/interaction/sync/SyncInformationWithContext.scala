@@ -20,7 +20,7 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
 
   val handler: SyncDestinationHistoryHandler = resolveDefinition(syncInformation.syncDestination)
 
-  def serialize[T: ReadWriter, GA: ReadWriter, SA: ReadWriter](interaction: InteractionVariable[T, GA, SA]): String = {
+  def serialize[F <: InteractionFormat](interaction: InteractionVariable[F]): String = {
     val history = interaction.currentHistory.cleanWithStrategy(syncInformation.syncStrategy)
     write(history)
   }

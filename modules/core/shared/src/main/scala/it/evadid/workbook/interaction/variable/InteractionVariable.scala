@@ -34,7 +34,7 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
 
 
   private val defaultState = InteractionVariableState[F#InteractionStateType](underlyingInteraction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now())
-  private val defaultHistory: InteractionVariableHistory[F] = InteractionVariableHistory.fromResults[F](List(defaultState).toSet)
+  private val defaultHistory: InteractionVariableHistory[F] = InteractionVariableHistory.empty[F].addState(defaultState)
 
   def safeLastState: InteractionVariableState[F#InteractionStateType] = innerState.now().historyStates.lastStateOption.getOrElse(defaultState)
 
@@ -71,7 +71,7 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
     outerState
   }
 
-  def createBoundStateWithUpdateImportance(importance: UpdateImportance, context: ExecutionContextInformation): State[T] = this.synchronized {
+  def createBoundStateWithUpdateImportance(importance: UpdateImportance, context: ExecutionContextInformation): State[F#InteractionStateType] = this.synchronized {
     createBoundStateWithUpdateLogic(_ => importance, context)
   }
 

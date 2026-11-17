@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl}
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.sync.UpdateImportance.TEMPORARY
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
@@ -26,10 +27,10 @@ object StateHelper {
     def toObservableValue: ObservableValue[T] = toState.observable
   }
 
-  implicit class RichInteractionVariable[T, GA, SA](underlying: InteractionVariable[T, GA, SA]) {
+  implicit class RichInteractionVariable[F <: InteractionFormat](underlying: InteractionVariable[F]) {
 
-    def historySignal: Signal[InteractionVariableHistory[T, GA, SA]] = {
-      val res: Signal[InteractionVariableHistory[T, GA, SA]] = underlying.observableHistoryWithDefault.toSignal(
+    def historySignal: Signal[InteractionVariableHistory[F]] = {
+      val res: Signal[InteractionVariableHistory[F]] = underlying.observableHistoryWithDefault.toSignal(
         underlying.observableHistoryWithDefault.now().get
       )
       res
@@ -139,15 +140,15 @@ object StateHelper {
 
   }
 
-  implicit class InteractionVariableOnJS[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA]) {
+  implicit class InteractionVariableOnJS[F <: InteractionFormat](interactionVariable: InteractionVariable[F]) {
 
-    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[T] = {
+    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[F#InteractionStateType] = {
 
       val state = interactionVariable.createBoundStateWithUpdateImportance(updateImportance, context)
       fromStateToAirstreamVar(state)
     }
 
-    def createInteractionSignal(context: ExecutionContextInformation): StrictSignal[T] = {
+    def createInteractionSignal(context: ExecutionContextInformation): StrictSignal[F#InteractionStateType] = {
       // val res = Var[T](interactionVariable.currentValue)
       //interactionVariable.observableValue.addObserver(newValue => res.set(newValue))
       //res.signal
