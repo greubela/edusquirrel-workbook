@@ -70,12 +70,13 @@ async function historyKeys(page) {
   }));
 }
 
-test('automatic login restores answers and keeps sync destinations stable across display changes and reloads',async()=>{
+test('automatic login restores answers; full reset clears every destination, pauses failed resets and retries',async()=>{
   const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||chromium.executablePath(),chromiumSandbox:true});
   try {
     const page=await browser.newPage();
     const requests=[], errors=[], histories=new Map(formats.map(format=>[format,savedHistory]));
-    let navigations=0;
+    let navigations=0, failReset=true, confirmReset=false, deleteAttempts=0;
+    page.on('dialog',dialog=>confirmReset?dialog.accept():dialog.dismiss());
     page.on('pageerror',error=>errors.push(error.message));
     page.on('framenavigated',frame=>{if(frame===page.mainFrame()&&frame.url().includes('/homepage/'))navigations++;});
     await page.route('**/*',async route=>{
@@ -97,6 +98,15 @@ test('automatic login restores answers and keeps sync destinations stable across
               histories.set(command.json.databaseFormat,mergeHistory(histories.get(command.json.databaseFormat),history));
           }
           value={elementsAdded:0,elementsChanged:1,elementsRemoved:0,timestampCommitted:new Date().toISOString().slice(0,-1)};
+        } else if(command.name==='reset-user-histories-in-db-request'){
+          deleteAttempts++;
+          assert.equal(command.json.allWorkbooks,true);
+          assert.equal(command.json.usageContext.userId,user.id);
+          assert.equal(command.json.limitToKey,null);
+          if(failReset&&command.json.databaseFormat==='BlobFormat')
+            return route.fulfill({status:503,headers,body:'fixture unavailable'});
+          histories.delete(command.json.databaseFormat);
+          value={elementsAdded:0,elementsChanged:0,elementsRemoved:1,timestampCommitted:new Date().toISOString().slice(0,-1)};
         } else throw new Error('Unexpected command '+command.name);
         return route.fulfill({headers,contentType:'application/json',body:envelope(command,value)});
       }
@@ -131,6 +141,44 @@ test('automatic login restores answers and keeps sync destinations stable across
     assert.equal(navigations,2);
     assert.equal(await page.locator('.container-login').count(),0,'reload preserves cached authentication');
     assert((await historyKeys(page)).includes('unreadable-record-fixture'),'one unreadable record must not erase the store');
+    await page.locator('.workbook-user-menu-button').click();
+    const reset=page.getByRole('menuitem',{name:'Alle gespeicherten Antworten zurücksetzen',exact:true});
+    await reset.click();
+    assert.equal(deleteAttempts,0,'dismissing confirmation performs no deletion');
+    confirmReset=true;
+    await reset.click();
+    await page.getByRole('alert').filter({hasText:'Nicht alle Ziele'}).waitFor();
+    assert.equal(deleteAttempts,2,'both backend layouts were attempted despite one failure');
+    assert.equal(navigations,2,'partial failure must not reload');
+    assert.deepEqual(await historyKeys(page),[],'full local reset clears malformed records without parsing');
+    assert.equal(await page.evaluate(()=>localStorage.getItem('obsolete-local-answer-fixture')),null);
+    const storesAfterFailure=requests.filter(r=>r.name==='sync-histories-to-db-request').length;
+    await input.fill('Editing during a failed reset must not recreate deleted rows.');
+    await page.waitForTimeout(150);
+    assert.equal(requests.filter(r=>r.name==='sync-histories-to-db-request').length,storesAfterFailure);
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
+    await page.getByRole('alert').filter({hasText:'Not every destination'}).waitFor();
+    await page.locator('.workbook-user-menu-button').click();
+    failReset=false;
+    await page.getByRole('menuitem',{name:'Retry full reset',exact:true}).click();
+    await page.waitForFunction(()=>performance.getEntriesByType('navigation')[0]?.type==='reload');
+    await page.locator('.section-block').last().click();
+    await page.locator('.text-input-feedback textarea').waitFor();
+    assert.equal(await page.locator('.text-input-feedback textarea').inputValue(),'');
+    assert.equal(navigations,3,'successful reset reloads exactly once');
+    assert.equal(deleteAttempts,4);
+    assert.equal(histories.size,0);
+    assert(!(await historyKeys(page)).includes('unreadable-record-fixture'));
+    assert.equal(await page.evaluate(()=>new Promise(resolve=>{
+      const open=indexedDB.open('EvaDidCacheDb',1);
+      open.onsuccess=()=>{
+        const db=open.result, transaction=db.transaction('cache','readonly');
+        const request=transaction.objectStore('cache').get('unrelated-cache-fixture');
+        request.onsuccess=()=>resolve(request.result?.value);
+        transaction.oncomplete=()=>db.close();
+      };
+    })),'keep this cache');
+    assert.equal(await page.locator('.container-login').count(),0,'reset preserves cached authentication');
     assert.deepEqual(errors,[]);
   } finally {await browser.close();}
 });

@@ -46,7 +46,8 @@ there are no classic formats, migrations or compatibility aliases.
 separately. Writes send only the destination strategy's missing events. A successful
 write acknowledges exactly that delta and does not advance the read cursor. Failed
 writes remain pending. Read cursors replay the last event timestamp inclusively;
-full reads recover late uploads with older event timestamps.
+normal polls replay the last event inclusively. A full refresh every five minutes
+recovers late uploads with older event timestamps.
 
 `RemoteInteractionCacheControl` owns a typed cache for each interaction in the active
 workbook/user environment. `FormattedSyncDestination` encodes/decodes envelopes at the
@@ -55,7 +56,9 @@ IndexedDB performs the read/merge/write in a single read-write transaction.
 Each successful destination read is applied independently, so an unavailable
 backend cannot block local restoration. Outdated responses cannot change a newly
 selected workbook or user. Buffered batches register before delegates are flushed; merges or delegate
-failures complete every waiting promise. The sync indicator reflects confirmed
+failures complete every waiting promise. A sync phase registers all interactions
+before flushing shared handlers. Read failures are reported after pending writes
+have also been attempted; one unavailable destination cannot suppress healthy writes. The sync indicator reflects confirmed
 the latest answer and all its associated grading/scaffolding events, including running feedback.
 Older unsent history does not prevent confirmation.
 
@@ -68,10 +71,18 @@ previously stored data. Confirmed events are excluded from subsequent write delt
 queued deltas per key into one network request. The backend authorizes every context
 before processing and commits the whole batch in one transaction; malformed entries
 roll back all changes. Range reads with the same context, bounds and strategy share
-one request without widening the requested window.
+one request over their combined bounds, clipped back to each caller’s exact window.
 
 `DatabaseHistoryFormat.tables` exposes `DatabaseTable` declarations with typed
 `DatabaseColumn`/`MySqlType` metadata; tests check these against the setup SQL.
+
+Full reset drains registered operations, deletes the current user’s histories across
+all workbooks from every backend destination, and clears each configured local
+answer store without decoding records. Synchronization remains paused after partial
+failure until retry or an environment change; successful reset reloads the workbook.
+Authentication and unrelated IndexedDB caches are preserved. User changes and full
+resets invalidate pending feedback and computation caches; stale completions cannot
+publish into a replacement session.
 
 `/executeCommand` accepts JSON and gzip bodies. Native browser compression is used
 for larger requests; decoded bodies are limited to 16 MiB. The proxy must allow

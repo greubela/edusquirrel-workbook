@@ -184,3 +184,9 @@ requires that registry. Format-based history exchange does not.
 Test JSON and MessagePack roundtrips on both core platforms, malformed inputs,
 state transitions and behavior after restoration. Keep current schemas strict;
 do not add migration readers or aliases for old fields and names.
+
+User changes and full resets rotate the feedback session. Interaction controls and
+computation caches are replaced; completion callbacks check both their generation
+and captured context before publishing. A same-user `resetLocalHistory` alone keeps
+completed computations reusable. Captured browser contexts retain the initiating
+user’s backend token and LLM settings.

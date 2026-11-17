@@ -125,7 +125,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
 
   test("bulk HTTP storage authorizes every context before storing any histories") {
     withHttpCommands() { send =>
-      val publicConfig = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
+      val publicConfig = it.evadid.sql.BackendDatabase
       Seq(BlobFormat, RelationalFormat).foreach { storage =>
         val legitimate = BulkStoreToDbRequest(Seq(sync, context.toSyncContext("other")),
           Seq(encoded(history()), encoded(history("other"))), publicConfig, storage)

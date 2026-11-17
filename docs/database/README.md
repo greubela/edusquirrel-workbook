@@ -108,14 +108,16 @@ backend-token validation. Logout removes the cached credentials. localStorage
 preferences use `SavedUserPreferences(user, config)`; exported sessions and
 account rows contain no credentials.
 
-Database connections have two explicit types under `DatabaseConfiguration`:
+Database configuration has an explicit `BackendDatabase` reference and two
+address-based connection types under `DatabaseConnection`:
 `DatabaseConfig` contains format, host, port and database; `DatabaseConfigWithCredentials`
 also contains username and password. Both are accepted by sync destinations and
 by the required `databaseConfig` field of every database request. There is no
 parallel credential field or per-field merging. Public default presets live in
 `SyncDestinationDefinition`; both current database formats are supported.
 
-For `DatabaseConfig`, the backend uses credentials from `SQL_*` only if its target
+`BackendDatabase` uses the receiving server’s `SQL_*` configuration. For an
+explicit `DatabaseConfig`, the backend uses those credentials only if its target
 matches the configured server database. `DatabaseConfigWithCredentials` is used
 as-is without consulting server defaults. The session form provides the latter
 for user-owned databases. Request construction selects session configuration
