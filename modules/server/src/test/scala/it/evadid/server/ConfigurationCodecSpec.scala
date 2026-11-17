@@ -18,7 +18,7 @@ class ConfigurationCodecSpec extends FunSuite {
     import it.evadid.sql.DatabaseConfig
     val json = ujson.read("""{"usageContext":{"programId":"edusquirrel","scenarioId":"workbookTest","userId":"student"},
       "databaseConfig":{"$type":"DatabaseConfig","dbFormat":"mysql","host":"herrgreubel.lima-db.de","port":"3306","database":"db_332371_12"},
-      "mayLimitToKey":null,"databaseFormat":"RelationalEvents"}""")
+      "mayLimitToKey":null,"databaseFormat":"RelationalFormat"}""")
     assertEquals(read[FetchAllFromDbRequest](json).databaseConfig, DatabaseConfig.defaultDb)
     val unsupported = ujson.read("""{"databaseOp":"db_332371_12","dbFormatOp":"mysql","hostOp":"herrgreubel.lima-db.de","portOp":"3306"}""")
     json("databaseConfig") = unsupported
@@ -55,19 +55,4 @@ class ConfigurationCodecSpec extends FunSuite {
     assertEquals(readBinary[SendMailCommand.MailConfig](writeBinary(value)), value)
   }
 
-  test("database entry sums preserve history JSON and both key variants") {
-    import it.evadid.server.commandHandler.sql.sync.RichDatabaseEntry
-    import it.evadid.workbook.interaction.sync.UsageContext
-    val context = UsageContext("program", "scenario", "fixture")
-    val history = """{"keyForSerialisation":"original-key","value":"学校"}"""
-    val values = List(RichDatabaseEntry.withoutKey(context, List("event", history)),
-      RichDatabaseEntry.withKey(context, List("event", "explicit-key", history)))
-    values.foreach { value =>
-      for (decoded <- List(read[RichDatabaseEntry](write(value)), readBinary[RichDatabaseEntry](writeBinary(value)))) {
-        assertEquals(decoded, value)
-        assertEquals(decoded.syncContext, value.syncContext)
-        assertEquals(decoded.historyJson, history)
-      }
-    }
-  }
 }

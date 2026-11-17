@@ -77,9 +77,9 @@ class InteractionHistoryPackageSpec extends FunSuite {
     val keepAll = history.cleanWithStrategy(EventSyncStrategy.KEEP_ALL)
     assertEquals(keepAll.events.values.size, 3)
     
-    // Keep last major - should have 2 (major and minor)
+    // Keep the latest major event; newer minor events are outside this strategy.
     val keepLastMajor = history.cleanWithStrategy(EventSyncStrategy.KEEP_LAST_MAJOR)
-    assertEquals(keepLastMajor.events.values.size, 2)
+    assertEquals(keepLastMajor.events.values, Set[InteractionEvent[TextInteractionFormat.type]](major))
   }
   
   test("mergeWith applies strategy correctly when merging") {

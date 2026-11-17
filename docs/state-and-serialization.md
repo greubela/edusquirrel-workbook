@@ -115,188 +115,70 @@ including across failures. A pending computation delays later inputs; its late
 result cannot overwrite a newer result. The first-result future retains its first
 finished state while the observable continues to update.
 
-## History, importance and destinations
+## Typed event histories
 
-`InteractionVariable[T, GA, SA]` stores `InteractionVariableHistory[T, GA, SA]`:
-answer events with timestamps/importance, grading results keyed by answer, and
-scaffolding results keyed by answer. `currentValue` is derived from history;
-`defaultValue` initializes it. Update the bound state instead of writing directly
-to IndexedDB or the remote database.
+`InteractionVariable[F]` owns an immutable `InteractionVariableHistory[F]` in core
+`State`. Its current answer, grading and scaffolding views are projections of
+answer/start/completion events. The format singleton provides all associated
+codecs; see [interaction formats](interaction-format.md) for the types and wire
+contract. Update a bound state instead of writing directly to storage.
 
-Use `createBoundStateWithUpdateLogic` when relevance depends on the edit, such as
-a text renderer distinguishing intermediate typing from a completed sentence.
-Importance expresses history significance, not a debounce interval or a guarantee
-of immediate storage.
+`createBoundStateWithUpdateLogic` chooses significance from each edit. Importance
+is not a debounce interval or a guarantee of immediate persistence:
 
-| Importance | History role |
+| Importance | Meaning |
 | --- | --- |
-| `DEFAULT` | Initial value |
-| `TEMPORARY` | Transient edit, retained according to the destination strategy |
+| `DEFAULT` | Initial answer |
+| `TEMPORARY` | Transient edit or in-progress feedback |
 | `MINOR` | Intermediate edit |
-| `MAJOR` | Significant edit |
+| `MAJOR` | Significant edit or completed feedback |
 
-`SyncControl.store` requests synchronization; it does not guarantee that
-an offline or unauthenticated server has committed the value. Each destination's
-`SyncStrategy` selects events. Current local defaults use IndexedDB with
-`SYNC_LAST_AND_MAJOR`; configured remote destinations use `SYNC_MAJOR`. Reports
-and the workbook's cloud indicator describe actual synchronization status.
-Sync caches retain confirmed observations in request order; a delayed response
-cannot overwrite a newer confirmation. Successful refresh alone does not prove
-that a write succeeded.
-Importance does not by itself run every grader; see the current grading paths in
-[interaction architecture](workbook-interaction-architecture.md).
+`EventSyncStrategy` applies uniformly to every event kind. `KEEP_ALL` retains all
+selected events; importance strategies filter by importance. Latest/count
+strategies retain timestamp ties. `Since` includes its boundary by default.
+`clean()` removes temporary events; `cleanWithStrategy` applies the requested
+strategy without implicitly removing related feedback.
 
-Grading and scaffolding run through `interactionVariable.control` with an
-`ExecutionContextInformation`. Its two `AsyncDataCache`s share pending requests
-and completed results. Explicit grading requests may retry execution errors and
-unexecuted tests; completed assessments (including `Incorrect`) are reused.
-Changing display language never invalidates or repeats a computation. Feedback
-translations merge into the existing `LanguageMap`; renderers use an available
-translation as fallback. Results stay associated with their captured answer.
-Histories separate
-`historyStates`, `historyGrading` and `historyScaffolding`. Accept only the current
-saved schema. At storage boundaries, catch invalid data and discard the affected
-record instead of migrating older formats or interrupting startup.
+Grading and scaffolding run through `interactionVariable.control`. Pending requests
+are shared; explicit retries rerun execution errors and unexecuted tests while
+reusing completed assessments. Feedback stays associated with its captured answer.
+Grading starts/completions are projected by configured grader identity; a newer
+start represents a running retry and a completion wins a timestamp tie. Language
+changes do not repeat computations; multilingual feedback merges into `LanguageMap`.
 
-## Default uPickle codecs
+## Event synchronization
 
-Do not provide a `ReadWriter[Any]` or serialize arbitrary values through `toString`.
-Use concrete payload models with derived codecs; use `ujson.Value` for genuinely
-dynamic JSON data. Interactions with no grading/scaffolding payload use `Unit`.
-Unknown language literals retain opaque source text through a `Serializer[String]`,
-which does not imply a codec for arbitrary runtime objects.
+`RemoteHistoryCache` unions typed event sets and calculates missing deltas for each
+destination's strategy. It tracks write acknowledgements separately from read
+freshness and event cursors. Successful tail reads advance the inclusive cursor;
+write acknowledgements do not. Empty successful reads become fresh too. Explicit
+window reads do not claim that unread parts of the history were refreshed.
+Timestamp cursors cannot discover a later upload with an older timestamp, so use a
+full read when complete reconciliation is required.
 
-Use uPickle rather than browser-only JSON/XML APIs for shared values:
+The browser binds typed caches to the active workbook, user, destinations and
+session credentials. Fetched events are applied only while their originating
+environment remains active. Local storage stores current self-describing envelopes
+and excludes malformed records individually. The backend rejects malformed requests
+and unsupported formats. See [database and transport](database/interaction-history.md).
 
-```scala
-import upickle.default.*
+Buffered operations return futures for the actual write/read result. Register
+requests before flushing a delegate and force a flush when awaiting a buffered
+batch. Failed writes remain pending; a fetch timestamp alone is never evidence
+that a write committed.
 
-sealed trait Animal derives ReadWriter
-case class Dog(name: String) extends Animal derives ReadWriter
-case class Cat(name: String) extends Animal derives ReadWriter
-case class Snapshot[A](value: A) derives ReadWriter
+## Codecs and element definitions
 
-val original: Animal = Dog("Ada")
-val restored = read[Animal](write(original))
-val snapshot = read[Snapshot[Int]](write(Snapshot(42)))
-```
+Use concrete models and derived uPickle codecs; do not add `ReadWriter[Any]` or
+serialize arbitrary values with `toString`. A genuinely dynamic payload may use
+`ujson.Value`, but history logic operates on typed events, not JSON fields.
+Formats without additional grading/scaffolding data use `Unit`.
 
-Derivation requires codecs for the fields/type arguments. If a constructor needs
-runtime evidence, reconstruct that evidence when decoding rather than serializing
-it. [Point.scala](../modules/core/shared/src/main/scala/it/evadid/core/datastructures/geometry/Point.scala)
-provides `given [T: Fractional](using ReadWriter[T]): ReadWriter[Point[T]]` and keeps
-its established wire format. Do not replace such codecs blindly with derivation.
+`WorkbookElementFactory` remains responsible for element definitions. The default
+`ReadWriter[WorkbookElement]` includes the registry needed to resolve children and
+section prerequisites and rejects conflicting IDs. A reference-only definition
+requires that registry. Format-based history exchange does not.
 
-Keep canonical codecs for library types in
-[DefaultSerializer](../modules/core/shared/src/main/scala/it/evadid/core/util/io/serializer/DefaultSerializer.scala)
-and import its givens where required:
-
-```scala
-import java.time.LocalDateTime
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
-case class DatedAnswer(text: String, at: LocalDateTime) derives ReadWriter
-```
-
-Owned domain types normally expose a default codec in their companion or through
-`derives ReadWriter`. Avoid per-call-site codecs that encode the same type
-incompatibly. Live futures, callbacks, controllers, database/DOM handles and
-subscriptions need explicit snapshots, not constructor-only derived persistence.
-
-## Remote history synchronization
-
-[RemoteDataSynchronisation](../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteDataSynchronisation.scala)
-tracks confirmed values per destination. Reads include previously unseen requested keys;
-write acknowledgements update the cache, and late responses cannot replace newer
-confirmations. A failed read stops the fetch-then-store sequence instead of writing
-from an unknown remote state. Sync indicators compare the contents selected by each
-destination's strategy, including grading and scaffolding.
-
-[RemoteInteractionCacheControl](../modules/client/src/main/scala/it/evadid/homepage/control/change/RemoteInteractionCacheControl.scala)
-binds one controller to the workbook, user, destinations and session credentials.
-Language/display changes preserve that binding. Fetched histories merge into the
-current variable only while their originating controller is active; invalid records
-are ignored independently. Database handlers capture credentials for that binding.
-[BufferedSyncDestinationHandler](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/destination/BufferedSyncDestinationHandler.scala)
-registers requests immediately and serializes flushed batches. The periodic sync
-forces pending work to flush; callers awaiting buffered operations must also flush.
-
-## Additional event-based history model
-
-[InteractionVariableHistoryEventBased](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/variable/InteractionVariableHistoryEventBased.scala)
-is an additional shared-core model, not yet connected to the current interaction,
-cache or database paths. Its `InteractionEvents` collection contains answer changes,
-grading starts/completions and scaffolding starts/completions. Every event exposes
-an associated answer, timestamp and update importance. Completed events derive their
-answer and timestamp from the existing result; execution contexts are not stored.
-
-Starts default to `TEMPORARY`, completions to `MAJOR`; authors can override either.
-`clean()` removes temporary events only. `cleanWithStrategy` applies
-[EventSyncStrategy](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/EventSyncStrategy.scala)
-to every event kind, without implicitly cleaning related answers or feedback.
-`KEEP_LAST_MAJOR` retains all events tied for the latest major timestamp across the
-stream; `KeepImportance` and `Since` select by importance and time respectively.
-
-`gradingForState` projects only configured grader identities for that answer.
-Missing graders appear as `NotRequested` at `LocalDateTime.MIN`, without generating
-history events. A newer start represents a running retry; completion wins a tie.
-Completed results tied in time reuse the existing grading-result merge rules.
-
-Event merging uses set union: exact replays are idempotent and distinct events at
-the same timestamp survive. `Since` includes the boundary by default; a future
-delta cache should replay that boundary instead of assuming timestamps are unique.
-No existing-history conversion or database-schema changes are included here.
-
-## Event-history cache
-
-[RemoteHistoryCache](../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryCache.scala)
-is a separate cache for the event-based model. Configure it with a map from each
-`RemoteHistoryReaderWriter` destination to its `EventSyncStrategy`. `mergeLocal`
-adds local events; `requestStoreToAll` / `storeAll` send only selected events not yet
-confirmed by that destination. Older offline events are still sent if unconfirmed.
-History `mergeWith` supports one history or a sequence and performs idempotent set
-union without implicit cleanup.
-
-`fetchEventsBetween(keys, starting, until)` returns timestamp-ordered event lists
-with inclusive bounds, merging results from the configured destinations.
-`fetchAll(keys)` requests their complete strategy-selected histories.
-`ensureMaxAge` checks successful tail-read completion times and incrementally reads
-from the latest event timestamp previously fetched for each key/destination.
-Equal-time events are replayed and deduplicated. Explicit historical windows do not
-advance this cursor or claim that the unread portions are fresh. Write acknowledgements
-never advance the read cursor. Delayed responses merge additively rather than replacing
-newer events.
-
-The [reader/writer contract](../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryReaderWriter.scala)
-requires readers to apply the destination strategy before the time bounds and return
-the complete requested range. Writers must merge events idempotently, never replace a
-full history with a delta. Register buffered operations before flushing them.
-An event-timestamp cursor cannot discover a later upload with an older timestamp;
-use an explicit range read or `fetchAll` to retrieve such arrivals. This prototype
-has no database/HTTP adapter yet and does not replace existing application sync.
-
-## Definitions, answers and snapshots
-
-The exercise definition, learner answer and live controller are different things:
-
-- `associatedFactory` serializes the authored definition and element references.
-  Register a new element in `WorkbookElementFactory` as well as `HtmlRenderFactory`.
-- `serializerInteractionContent` handles the learner value. History travels as
-  typed history JSON with answer events and grading/scaffolding maps. Cleanup removes
-  obsolete default events and feedback without a retained answer. If an update
-  leaves no answer events, restore the default before cleaning and preserve feedback
-  matching that default. Explicit history resets still start from a fresh default
-  history.
-- The default `ReadWriter[WorkbookElement]` stores a self-contained element registry,
-  including children and section prerequisites. It resolves references through the
-  factories and rejects conflicting IDs. A reference-only element JSON needs its
-  registry; it is not automatically a self-contained workbook snapshot.
-
-Open hierarchies need a deliberate codec/registry for supported implementations.
-`WorkbookElementFactory` and `WorkbookInteractionGrader.universalSerializer` are
-existing examples. Adding a type to a hierarchy without registering its codec can
-compile but fail during decoding on another execution backend.
-
-Test JSON and MessagePack round trips on both core platforms, defaults and malformed
-payloads, and behavior after restoring mutable snapshots. The maintained
-[serialization audit](testing-and-serialization-audit.md) explains the inventory and
-explicit exceptions.
+Test JSON and MessagePack roundtrips on both core platforms, malformed inputs,
+state transitions and behavior after restoration. Keep current schemas strict;
+do not add migration readers or aliases for old fields and names.

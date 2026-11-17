@@ -98,6 +98,7 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
   }
 
   def updateHistory(func: InteractionVariableHistory[F] => InteractionVariableHistory[F], executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
+    val previousValue = safeLastState.value
     innerState.update(oldVal => {
       val transformedHistory = func(oldVal)
       transformedHistory.events.values.foreach(event => underlyingInteraction.validateState(event.associatedState))
@@ -109,7 +110,7 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
     if (executionContextInformation.syncControl.nonEmpty) {
       executionContextInformation.syncControl.get.store(this, false)
     }
-    control.getOrCalculateGrading(executionContextInformation, false)
+    if safeLastState.value != previousValue then control.getOrCalculateGrading(executionContextInformation, false)
   }
 
   def resetLocalHistory(): Unit = this.synchronized {

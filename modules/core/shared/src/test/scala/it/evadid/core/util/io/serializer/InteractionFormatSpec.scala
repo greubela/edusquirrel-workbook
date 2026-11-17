@@ -79,4 +79,13 @@ class InteractionFormatSpec extends FunSuite {
     intercept[Exception](envelope.copy(historyJson = "invalid").toTyped)
     intercept[IllegalArgumentException](envelope.between(time.plusNanos(1), time))
   }
+  test("history codecs reject incompatible graders") {
+    val grader = TextInputLlmGrader(LanguageMapContentId("custom/task"), None,
+      TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(LanguageMapContentId("custom/criterion"), Map.empty))
+    val valid = InteractionVariableHistory.empty[TextInputWithLlmGradingAndScaffoldingFormat.type]
+      .addEvent(GradingStartedEvent[TextInputWithLlmGradingAndScaffoldingFormat.type]("answer", time, grader))
+    val encoded = InteractionHistoryJson.fromHistory(TextInputWithLlmGradingAndScaffoldingFormat, valid)
+    intercept[Exception](encoded.copy(format = TextInteractionFormat).toTyped)
+  }
+
 }

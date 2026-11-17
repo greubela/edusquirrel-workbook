@@ -90,14 +90,7 @@ trait WorkbookInteractionElement[F <: InteractionFormat](using v: ValueOf[F]) ex
 
   val gradingElements: List[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]] = List()
   val scaffoldingElement: Option[WorkbookInteractionScaffolder[InteractionStateType, ScaffoldingInfoType]] = None
-  // Removed: serializerInteractionContent now uses InteractionFormat's serializers directly via format.stateSerializer
 
-  /** The format providing serializers for this interaction type.
-   *
-   * Override this in your interaction to provide type-level association
-   * between the interaction and its format.
-   */
-  def format: F = interactionFormat
 }
 
 object WorkbookInteractionElement {

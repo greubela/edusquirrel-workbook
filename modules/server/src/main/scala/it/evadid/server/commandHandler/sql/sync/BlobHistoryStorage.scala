@@ -15,17 +15,21 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
 
   def store(request: StoreToDbRequest): SyncSuccess = transaction {
     val incoming = request.history
-    incoming.toTyped
+    val format = incoming.format
+    val newHistory = incoming.typedAs[format.type](format)
+    val codec = InteractionFormat.codecsFor[format.type](format).historySerializer
+    val emptyJson = codec.serialize(it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[format.type])
     val keys = identity(request.usageContext, request.syncContext.keyForSerialisation)
-    val inserted = update("INSERT INTO blob_history (program_id,scenario_id,user_id,variable_id,format,history_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
-      (keys ++ List(incoming.format.name, incoming.historyJson))*)
+    update("INSERT INTO blob_history (program_id,scenario_id,user_id,variable_id,format,history_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
+      (keys ++ List(format.name, emptyJson))*)
     val existing = query("SELECT format,history_json FROM blob_history WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", keys) { row =>
       InteractionHistoryJson(InteractionFormat.fromName(row.getString(1)), row.getString(2))
     }.head
-    val merged = existing.merge(incoming)
+    val previous = existing.typedAs[format.type](format)
+    val merged = previous.mergeWith(newHistory)
     update("UPDATE blob_history SET history_json=? WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=?",
-      (List(merged.historyJson) ++ keys)*)
-    SyncSuccess(0, if inserted == 1 then incoming.toTyped.size else merged.toTyped.size - existing.toTyped.size, 0, LocalDateTime.now())
+      (List(codec.serialize(merged)) ++ keys)*)
+    SyncSuccess(0, merged.size - previous.size, 0, LocalDateTime.now())
   }
 
   private def histories(context: UsageContext, keys: Seq[String]): DbFetchResponse = {

@@ -43,7 +43,6 @@ class DefaultValueCodecsSpec extends FunSuite {
     roundTrip(usage)
     roundTrip(sync)
     val history = write(it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[TextInteractionFormat.type])
-    roundTrip(SyncCache(java.time.LocalDateTime.of(2025, 1, 1, 12, 0), usage, Map(sync -> history)))
   }
   test("registry descriptors have a default codec") {
     val descriptor = it.evadid.workbook.jsonFactory.WorkbookElementSerializable("id", "TextInteraction", Map("value" -> ujson.Str("x")))

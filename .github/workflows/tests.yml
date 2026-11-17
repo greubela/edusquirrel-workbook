@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  mysql-accounts:
+  mysql-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -64,7 +64,7 @@ jobs:
           key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-
-      - name: Test account queries against MySQL
+      - name: Test accounts and both typed history layouts against MySQL
         env:
           SQL_PORT: ${{ job.services.mysql.ports['3306'] }}
         run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'server / MysqlIntegration / test'

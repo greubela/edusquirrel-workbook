@@ -9,22 +9,27 @@ import {chromium} from 'playwright';
 const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
-const formats = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalFormat'];
+const formats = ['BlobFormat', 'RelationalFormat'];
 const user = {name:'Sync student', id:'sync-reset-student', mail:'sync-reset@example.test'};
 const destinations = [
-  {syncDestination:{$type:'LocalIndexedDbSyncDefinition',dbName:'EvaDidInteractionDB',storeName:'variableHistoryStore',dbVersion:1},syncStrategy:'SYNC_LAST_AND_MAJOR'},
-  {syncDestination:{$type:'LocalStorageSyncDefinition',maxValueCharakterSize:50000},syncStrategy:'SYNC_LAST_AND_MAJOR'},
+  {syncDestination:{$type:'LocalIndexedDbSyncDefinition',dbName:'EvaDidInteractionDB',storeName:'variableHistoryStore',dbVersion:1},syncStrategy:'KEEP_ALL'},
+  {syncDestination:{$type:'LocalStorageSyncDefinition',maxValueCharakterSize:50000},syncStrategy:'KEEP_ALL'},
   ...formats.map(format => ({syncDestination:{$type:'SyncDestinationBasedOnHistoryDatabase',format,buffered:true,
     databaseConfig:{$type:'DatabaseConfig',dbFormat:'mysql',host:'example.test',port:'3306',database:'fixture'}},
-    syncStrategy:{$type:'DesiredRelevance',desired:['MAJOR']}}))
+    syncStrategy:{$type:'KeepImportance',importance:['MAJOR']}}))
 ];
 const token = {info:{user,createdAt:'2026-01-01T00:00:00',expiresAt:'2099-01-01T00:00:00'},tokenStringWithSignature:'fixture-token'};
 const profile = {user,credentials:{signedBackendToken:token,singleAccessToken:null,llmApiConfig:null,databaseConfig:null},
   config:{syncDestinations:destinations,isOnlineAccount:true}};
 const context = {programId:'edusquirrel',scenarioId:'workbookTest',userId:user.id,keyForSerialisation:'demo-feedback-1_history'};
 const answer = 'This answer was restored during the first automatic login.';
-const savedHistory = {historyStates:{events:[{value:answer,updateImportance:'MAJOR',timestamp:'2026-01-01T12:00:00'}]},
-  historyGrading:{gradingsMap:{}},historyScaffolding:{scaffoldingMap:{}}};
+const savedHistory = {format:'TextInputWithLlmGradingAndScaffoldingFormat', historyJson:JSON.stringify({events:{values:[
+  {$type:'AnswerChangedEvent',newState:answer,updateImportance:'MAJOR',timestamp:'2026-01-01T12:00:00'}]}})};
+function mergeHistory(previous,incoming) {
+  assert.equal(previous.format,incoming.format);
+  const events=[...JSON.parse(previous.historyJson).events.values,...JSON.parse(incoming.historyJson).events.values];
+  return {...incoming,historyJson:JSON.stringify({events:{values:[...new Map(events.map(event=>[JSON.stringify(event),event])).values()]}})};
+}
 function envelope(command,value) {
   const now = new Date().toISOString().slice(0,-1);
   return JSON.stringify({timestamps:{timestampReceived:now,timestampStarted:now,timestampFinished:now},
@@ -69,7 +74,7 @@ test('automatic login restores answers and keeps sync destinations stable across
   const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||chromium.executablePath(),chromiumSandbox:true});
   try {
     const page=await browser.newPage();
-    const requests=[], errors=[], histories=new Map(formats.map(format=>[format,JSON.stringify(savedHistory)]));
+    const requests=[], errors=[], histories=new Map(formats.map(format=>[format,savedHistory]));
     let navigations=0;
     page.on('pageerror',error=>errors.push(error.message));
     page.on('framenavigated',frame=>{if(frame===page.mainFrame()&&frame.url().includes('/homepage/'))navigations++;});
@@ -83,11 +88,11 @@ test('automatic login restores answers and keeps sync destinations stable across
         const command=readCommandRequest(route.request());requests.push(command);
         let value;
         if(command.name==='login-command')value={userKnown:true,tokenValid:true,allUserInfo:profile};
-        else if(command.name==='fetch-from-db-request'){
+        else if((command.name==='fetch-from-db-request'||command.name==='fetch-events-from-db-request')){
           const json=histories.get(command.json.databaseFormat);
           value={fetchedElements:json?[[context,json]]:[]};
         } else if(command.name==='sync-to-db-request'){
-          histories.set(command.json.databaseFormat,command.json.historyJson);
+          histories.set(command.json.databaseFormat,mergeHistory(histories.get(command.json.databaseFormat),command.json.history));
           value={elementsAdded:0,elementsChanged:1,elementsRemoved:0,timestampCommitted:new Date().toISOString().slice(0,-1)};
         } else throw new Error('Unexpected command '+command.name);
         return route.fulfill({headers,contentType:'application/json',body:envelope(command,value)});
@@ -112,11 +117,11 @@ test('automatic login restores answers and keeps sync destinations stable across
     const writes = formats.map(format=>page.waitForResponse(response=>{
       if(!response.url().endsWith('/executeCommand')||response.request().method()!=='POST')return false;
       const command=readCommandRequest(response.request());
-      return command.name==='sync-to-db-request'&&command.json.databaseFormat===format&&command.json.historyJson.includes(edited);
+      return command.name==='sync-to-db-request'&&command.json.databaseFormat===format&&command.json.history.historyJson.includes(edited);
     }));
     await input.fill(edited);
     await Promise.all(writes);
-    assert(formats.every(format=>JSON.parse(histories.get(format)).historyStates.events.some(event=>event.value===edited)));
+    assert(formats.every(format=>JSON.parse(histories.get(format).historyJson).events.values.some(event=>event.newState===edited)));
     await page.reload();
     await page.locator('.section-block').last().click();
     await page.waitForFunction(expected=>document.querySelector('.text-input-feedback textarea')?.value===expected,edited);

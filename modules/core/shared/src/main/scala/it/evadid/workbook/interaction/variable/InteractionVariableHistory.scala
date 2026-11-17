@@ -73,7 +73,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
       val candidates = relevant.getOrElse(grader.key, Set.empty)
       val latestTime = candidates.map(_.timestamp).maxOption
       val latest = candidates.filter(event => latestTime.contains(event.timestamp))
-      val completed = latest.collect { case event: GradingCompletedEvent[F] =>
+      val completed = candidates.collect { case event: GradingCompletedEvent[F] if latest.exists(_.isInstanceOf[GradingCompletedEvent[F]]) =>
         event.result.copy(grader = grader)
       }
       val result = completed.reduceOption(_.merge(_)).getOrElse(GradingResult(

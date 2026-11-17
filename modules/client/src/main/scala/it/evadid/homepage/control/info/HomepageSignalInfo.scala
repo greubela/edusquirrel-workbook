@@ -23,7 +23,6 @@ import scala.concurrent.*
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 
 
-  //   case class SyncContext(usageContext: UsageContext, interactions: Set[WorkbookInteractionUntyped], syncDestinations: Set[SyncInformationWithContext])
 
   lazy val syncEnvironmentSignal: StrictSignal[Option[WorkbookSyncEnvironment]] = {
 

@@ -66,7 +66,7 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
     val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction,
       it.evadid.workbook.meta.InteractionVariableGradingReporter(interaction))
     val feedback = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Hinweis", English -> "Hint"))
-    val saved = ScaffoldingResult[String, Any]("", ScaffoldingStatus.ScaffoldingFeedback(feedback), FeedbackEntity.TestEntity(), None)
+    val saved = ScaffoldingResult[String, it.evadid.core.datastructures.chat.MessengerModel]("", ScaffoldingStatus.ScaffoldingFeedback(feedback), FeedbackEntity.TestEntity(), None)
     val element = icons.deriveScaffoldingSymbol(Some(saved))
     val originalLanguage = fullInfo.signals.currentLanguage.now()
     val close = mount(element)

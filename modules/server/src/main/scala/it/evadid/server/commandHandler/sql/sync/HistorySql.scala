@@ -3,18 +3,13 @@ package it.evadid.server.commandHandler.sql.sync
 import it.evadid.util.logging.Logger
 import it.evadid.server.database.SqlFailure
 import it.evadid.core.util.io.ParsingContext
-import upickle.default.{ReadWriter, read}
-import it.evadid.workbook.abstractions.grading.GradingResult
-import it.evadid.workbook.interaction.sync.UpdateImportance
 import java.sql.{Connection, PreparedStatement, ResultSet, Types}
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import scala.util.{Try, Using}
+import scala.util.Using
 
-/** Shared JDBC resource handling and relational row decoding; contains no history writes. */
+/** Shared JDBC resource handling and transaction ownership for both history layouts. */
 abstract class HistorySql(connection: Connection, logger: Logger) {
   private def prepared[A](sql: String, values: Seq[Any])(run: PreparedStatement => A): A =
-    SqlFailure(s"executing relational history SQL ${ParsingContext.preview(sql)}", logger) {
+    SqlFailure(s"executing history SQL ${ParsingContext.preview(sql)}", logger) {
       Using.resource(connection.prepareStatement(sql)) { statement =>
         values.zipWithIndex.foreach { (value, index) => value match {
           case null => statement.setNull(index + 1, Types.VARCHAR)

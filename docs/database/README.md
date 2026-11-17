@@ -1,25 +1,41 @@
 # Database setup and storage
 
-The authoritative schemas are the executable SQL files under
-[`artifacts/database`](../../artifacts/database/). Column definitions, types,
-indexes and dependencies are documented there rather than duplicated here.
+The authoritative schema is [setup.sql](../../artifacts/database/setup.sql).
+It contains the column definitions, indexes, dependencies and initial account row.
 
-Run the scripts only against an empty MySQL 8.4 database, in this order:
+Run [setup.sql](../../artifacts/database/setup.sql) once for a new MySQL 8.4
+installation. It creates the database, account/login-token tables, command/sync
+logs, relational event tables and blob-history table, and seeds the anonymous
+logging identity. There is one maintained schema source.
 
-1. [createUserTables.sql](../../artifacts/database/createUserTables.sql)
-2. [createLogTables.sql](../../artifacts/database/createLogTables.sql)
-3. [createClassicHistoryTables.sql](../../artifacts/database/createClassicHistoryTables.sql)
-4. [createInteractionHistoryTables.sql](../../artifacts/database/createInteractionHistoryTables.sql)
+```sh
+mysql --host=localhost --user=YOUR_USER --password < artifacts/database/setup.sql
+```
 
-The interaction-history script is also usable on its own in an empty, separate
-history database. Its user identifiers are logical references, not foreign keys
-to the account database. The log script requires the user script first. The user
-script creates the anonymous logging identity `user-unknown`.
+The script checks for any existing table or view before creating application
+tables. A nonempty database fails the `setup_requires_empty_database` assertion;
+no existing tables are altered or dropped. Run as a normal batch without
+`--force` or an importer setting that continues after errors.
+
+The default database is `edusquirrel`. To choose another name, edit the
+`CREATE DATABASE` and `USE` statements at the top. MySQL does not support `USE`
+through its prepared-statement protocol, so a SQL variable cannot select it
+portably. Hosted accounts can omit those two statements and run:
+
+```sh
+mysql --host=HOST --user=USER --password --database=YOUR_EMPTY_DATABASE < artifacts/database/setup.sql
+```
+
+The backend's empty-database initializer reads the same script after its
+`BEGIN APPLICATION TABLES` marker. It uses the configured connection's database,
+without requiring database-creation privileges or changing databases. History
+user identifiers are logical references; only account log/token tables have
+foreign keys to `user`.
 
 ## Inspection and initialization
 
 `EnsureDatabaseProperlySetup` reads MySQL/JDBC schema metadata and compares it
-with the packaged SQL definitions. Inspection does not read application rows,
+with the packaged setup script. Inspection does not read application rows,
 run migrations or modify data. Automatic startup inspection and initialization
 remain disabled; deployment does not automatically change existing databases.
 Explicit setup initializes only a completely empty database. Any existing table or view prevents automatic creation, including a
@@ -29,33 +45,29 @@ existing databases are never repaired automatically.
 An advisory lock coordinates concurrent backend initializers; setup rechecks
 emptiness while holding that lock and requires a dedicated auto-commit connection.
 
-All scripts are parsed before the first creation statement. MySQL DDL is not
+All table definitions are parsed before the first creation statement. MySQL DDL is not
 transactional across tables: a permissions, connection or disk failure during
 initial creation can leave a partial schema, which subsequent runs will report
 and leave untouched.
 
 The backend reads `SQL_HOST`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, `SQL_PW`
-and optional `DB_FORMAT` (MySQL by default). Tests execute the very same packaged
-scripts in a disposable database; there is no separate test schema. See the
+and optional `DB_FORMAT` (MySQL by default). Tests execute the same packaged
+script in a disposable database; there is no separate test schema. See the
 [account test instructions](../authentication.md#mysql-account-queries).
 
 ## History formats and identity
 
-`DatabaseHistoryFormat` describes a list of required tables. Both
-`ClassicKeylessJson` and `ClassicJsonWithKey` remain supported. The third option,
-`RelationalEvents`, stores answers and feedback independently. Choose the format
-in `SyncDestinationBasedOnHistoryDatabase`; configuring it does not convert data
-from another format. Its companion defines `defaultDatabaseWithKey`,
-`defaultDatabaseKeyless` and `defaultDatabaseV2`; account preferences select these
-presets rather than constructing their own defaults. Online accounts synchronize to all three presets: both classic formats and V2.
+`DatabaseHistoryFormat` selects `BlobFormat` or `RelationalFormat` and lists its
+required tables. Configure it in `SyncDestinationBasedOnHistoryDatabase`;
+`defaultDatabase` selects relational storage. Both use the same typed event history
+and reject format changes for an existing sync context. Configuring a destination
+does not migrate data from another layout.
 
-Numeric database IDs are implementation details and never enter client payloads
-or determine answer equality. Graders expose a lazy string `key`: SHA-256 of
-canonical constructor content, including grader type. Map/set order and grader
-list position do not affect it. Equal configurations share an identity; changed
-criteria receive a different identity. Non-product custom graders must override
-`identityContent` with stable JSON. Ordinary feedback and entity-specific additional data are
-stored separately. See the [storage behavior](interaction-history.md).
+Format names describe state and feedback codecs independently of workbook IDs.
+Numeric database IDs remain internal. Graders use a SHA-256 key derived from their
+canonical constructor content: equivalent configurations share an identity and
+changed criteria receive a new one. See [storage behavior](interaction-history.md)
+and [interaction formats](../interaction-format.md).
 
 ## Command logging and proxy addresses
 
@@ -96,7 +108,7 @@ Database connections have two explicit types under `DatabaseConfiguration`:
 also contains username and password. Both are accepted by sync destinations and
 by the required `databaseConfig` field of every database request. There is no
 parallel credential field or per-field merging. Public default presets live in
-`SyncDestinationDefinition`; all three database formats remain active.
+`SyncDestinationDefinition`; both current database formats are supported.
 
 For `DatabaseConfig`, the backend uses credentials from `SQL_*` only if its target
 matches the configured server database. `DatabaseConfigWithCredentials` is used
@@ -106,16 +118,13 @@ or the destination definition directly; it does not rewrite account preferences.
 User-supplied credentials are removed from account persistence, localStorage preferences,
 exports and command logs, including credentials attached directly to a destination.
 
-Relational history requests validate their required tables before querying. Classic
-snapshot requests execute their existing queries directly: working classic tables
-need not match the creation scripts' exact column types, nullability or collations.
-Malformed snapshot records are skipped individually without accepting old payload
-schemas or modifying stored data. Create custom databases with the corresponding
-SQL scripts first. Startup inspection remains disabled; databases are never
-repaired automatically.
+History requests validate their selected layout's required tables against the
+packaged schema. Malformed requests and unsupported formats fail explicitly.
+Create custom databases with the current SQL scripts; existing schemas are never
+repaired automatically. Local browser storage excludes malformed records individually.
 
 If `syncedLog` is missing in an existing deployment, execute its `CREATE TABLE`
-statement from [createLogTables.sql](../../artifacts/database/createLogTables.sql)
+statement from [setup.sql](../../artifacts/database/setup.sql)
 manually, after ensuring the referenced user table exists. Do not rerun the full
 script over existing tables. Logging failures are warnings and do not prevent
 history requests from executing.

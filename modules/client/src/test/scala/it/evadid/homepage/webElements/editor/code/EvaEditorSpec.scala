@@ -17,7 +17,7 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.*
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementSingle
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
-import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement}
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.scaffolding.{AdditionalInfoLlmScaffolding, ScaffoldingResult, ScaffoldingStatus, WorkbookInteractionScaffolder}
 import it.evadid.workbook.meta.ExecutionContextInformation

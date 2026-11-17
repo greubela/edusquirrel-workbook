@@ -21,8 +21,9 @@ second persistence store. Small inline interactions need no separate editor.
 
 [WorkbookElement.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala)
 separates display elements, structural containers and interactions.
-`InteractionVariable[T, GA, SA]` owns the answer and its history; `GA` and `SA`
-are concrete serializable grading/scaffolding payloads. `defaultValue` initializes
+`WorkbookInteractionElement[F <: InteractionFormat]` declares its saved format.
+`InteractionVariable[F]` owns its answer and event history; the format supplies
+the state and feedback codecs. `defaultValue` initializes
 the answer; it is not another live state. See [state and serialization](state-and-serialization.md).
 
 ## Renderer and editor boundary

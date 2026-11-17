@@ -44,12 +44,7 @@ class SystematicClientCodecSpec extends FunSuite {
     val user = User("Fixture", "fixture", "fixture@example.com")
     val workbook = Workbook("fixture", WorkbookMetadata(Set(user), Set.empty, LanguageMapContentId("fixture/title"), List(English)), Nil)
     
-    // Create an empty InteractionHistoryJson for the type parameter
-    import it.evadid.core.util.io.Serializer
-    val dummyFormat = it.evadid.core.util.io.serializer.InteractionFormat.fromReadWriters[Unit, Unit, Unit]
-    val dummyHistory = InteractionHistoryJson(dummyFormat, "{}")
-    
-    val value = SessionData(java.time.LocalDateTime.of(2026, 11, 7, 0, 0), Map.empty[SyncContext, InteractionHistoryJson[?, ?, ?]], user, Some(UserConfig(Nil, isOnlineAccount = false)),
+    val value = SessionData(java.time.LocalDateTime.of(2026, 11, 7, 0, 0), Map.empty[SyncContext, InteractionHistoryJson], user, Some(UserConfig(Nil, isOnlineAccount = false)),
       it.evadid.homepage.control.model.AllWorkbookInfo(workbook, it.evadid.homepage.control.model.WorkbookConfig(None), Map.empty))
     roundTrip(value)
     assertEquals(read[SessionData](write(value)).timestampStorage, value.timestampStorage)

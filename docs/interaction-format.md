@@ -1,130 +1,64 @@
-# InteractionFormat: Type-Safe Serialization for Backend Interactions
+# Interaction formats and histories
 
-## Overview
+`InteractionFormat` is a sealed family of singleton values in
+[`InteractionFormat.scala`](../modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/InteractionFormat.scala).
+A format describes saved state, grading information and scaffolding information.
+It has no workbook, exercise ID or element-factory dependency. Several exercises
+can share a format.
 
-`InteractionFormat` is a **sealed trait** providing type-level association between an interaction type and its serializers. Each interaction has exactly one format instance (a case object that extends the trait), naturally serializable as a singleton.
+Consumers carry one parameter, `[F <: InteractionFormat]`. Scala match types
+`InteractionFormat.State[F]`, `Grading[F]` and `Scaffolding[F]` recover its value
+types. `Typed[S, G, A]` is the implementation base for format declarations;
+it is not a second history API. Generic abstract projections such as
+`F#InteractionStateType` are not legal Scala 3.
 
-## Design
+A `WorkbookInteractionElement[F]` obtains its singleton with `ValueOf[F]` and
+exposes it as `interactionFormat`. The format owns state, additional feedback,
+event and complete-history codecs. `codecsFor(format)` preserves the generic
+format association at call sites; its single internal narrowing bridges Scala's
+invariant codecs and singleton-dependent types. Exercise-specific constraints,
+such as table dimensions or graph axes, belong in `validateState` and are checked
+when applying history. They cannot be inferred by a server without that exercise.
+Element definitions continue to use `WorkbookElementFactory`.
 
-```scala
-sealed trait InteractionFormat[T, GA, SA] derives ReadWriter {
-  def stateSerializer: Serializer[T]
-  def historySerializer: Serializer[InteractionVariableHistory[T, GA, SA]]
-  def exerciseSerializer: Serializer[WorkbookInteractionElementFull[T, GA, SA]]
-}
-```
+## Current wire format
 
-### Key Design Decisions
-
-1. **Sealed trait** - All implementations known at compile time
-2. **Case objects** - Naturally serializable singletons
-3. **No registry** - Formats passed explicitly through method signatures
-4. **Type-safe** - Compiler enforces format consistency
-5. **Strong typing** - `T, GA, SA` type parameters for state, grading, scaffolding
-
-## Usage
-
-### In Interaction Definitions
-
-```scala
-case class TextInteraction(elementId: String) 
-  extends WorkbookInteractionElementFull[String, Unit, Unit] {
-  
-  override def format: InteractionFormat[String, Unit, Unit] = TextInteraction
-}
-
-object TextInteraction extends InteractionFormat[String, Unit, Unit] {
-  override def stateSerializer: Serializer[String] = Serializer.fromImplicitRW
-  override def historySerializer: Serializer[...] = Serializer.fromImplicitRW
-  override def exerciseSerializer: Serializer[...] = Serializer.fromImplicitRW
-}
-```
-
-### Using Format on the Backend
+Formats serialize by their case-object name. The finite `knownFormats` registry
+resolves those names and rejects unknown values; reflection and element-ID lookup
+are not involved.
 
 ```scala
-def processHistory(format: InteractionFormat[State, Grade, Scaffold], json: String): History = {
-  format.historySerializer.deserialize(json)
-}
+import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 
-// Pass the companion object (which IS the format)
-processHistory(TextInteraction, json)
+val history = InteractionVariableHistory.empty[TextInteractionFormat.type]
+val transport = InteractionHistoryJson.fromHistory(TextInteractionFormat, history)
+val decoded = InteractionHistoryJson.deserialize(transport.serialized)
+val restored = decoded.typedAs(TextInteractionFormat)
 ```
 
-## Why This Approach
+`InteractionHistoryJson(format, historyJson)` is the transport/storage boundary.
+`toTyped` uses its own format; `typedAs(expected)` additionally checks the expected
+format before decoding. Merging different formats fails immediately. There are
+no older-schema readers, fallback formats or workbook-dependent type resolution.
+Malformed local storage records are logged and excluded individually. Invalid
+backend requests or stored database events fail with a contextual exception.
 
-| Benefit | Explanation |
-|---------|-------------|
-| **Strong typing** | Compile-time type safety via `[T, GA, SA]` type parameters |
-| **Auto-serialization** | Case objects serialize by class name automatically |
-| **No registry** | Format passed explicitly, no lookup needed |
-| **Portable** | Works across server boundaries |
-| **Type-safe operations** | No unsafe casting; all operations use typed format |
+## Event contract
 
-## Integration
+`InteractionVariableHistory[F]` stores one `InteractionEvents[F]` set. Its events
+are answer changes, grading starts/completions and scaffolding starts/completions.
+Every event has its associated answer, `LocalDateTime` and importance. Completed
+feedback derives its answer and timestamp from the typed result.
 
-### Database Sync
+Merging is set union: retries are idempotent and distinct same-time events survive.
+Serialized exceptions use immutable stack-trace lists so error events also retain
+value equality after decoding. State/feedback history views are derived projections,
+not separate persisted stores. A newer grading start represents a retry in progress;
+completion wins a timestamp tie. Graders are matched by their canonical content key.
 
-```scala
-def fetchHistory(format: InteractionFormat[State, Grade, Scaffold], elementId: String): History = {
-  val json = db.query("SELECT history FROM sync_data WHERE element_id = ?", elementId)
-  format.historySerializer.deserialize(json)
-}
-```
-
-### Backend Server
-
-```scala
-case class StoreCommand[State, Grade, Scaffold](
-  format: InteractionFormat[State, Grade, Scaffold],
-  elementId: String,
-  historyJson: String
-) {
-  def execute: SyncSuccess = {
-    val history = format.historySerializer.deserialize(historyJson)
-    // Process and store
-  }
-}
-```
-
-## Format Storage
-
-All known formats are stored in `InteractionFormat.knownFormats`:
-
-```scala
-val knownFormats: Set[InteractionFormat[?, ?, ?]] = Set(
-  TextInteraction,
-  ChoiceInteraction,
-  // ... all other known formats
-)
-```
-
-This enables:
-- Type-safe format lookup
-- Compile-time verification of known formats
-- Clear error messages for unknown formats
-
-## Serialization
-
-- Format is serialized as the fully qualified class name string
-- Deserialization loads the singleton case object
-- All formats must be compile-time known (in `InteractionFormat.knownFormats`)
-- Unknown formats throw descriptive error
-
-## Examples in Codebase
-
-- `TextInteraction`: Simple string-based state
-- `ChoiceInteraction`: Choice selection state
-- `TurtleRecreateShapeInteraction`: Complex programming state with grading
-
-## Migration
-
-1. Interaction class extends `WorkbookInteractionElementFull[T, GA, SA]` (NOT `InteractionFormat`)
-2. Add `override def format: InteractionFormat[T, GA, SA] = CompanionObject`
-3. Companion object extends `InteractionFormat[T, GA, SA]`
-4. Implement three serializer methods (use `Serializer.fromImplicitRW`)
-
-## See Also
-
-- [`interaction-format-serialization.md`](interaction-format-serialization.md) - Detailed explanation of the sealed trait + case object design
-- [`session-data-serialization.md`](session-data-serialization.md) - How SessionData uses InteractionHistoryJson for storing format with history
+Starts default to `TEMPORARY`, completions to `MAJOR`. Destination strategies apply
+to every event kind. `clean()` removes temporary events; `cleanWithStrategy` selects
+according to the destination. See [state and synchronization](state-and-serialization.md)
+and [database storage](database/interaction-history.md).

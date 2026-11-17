@@ -15,7 +15,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
 
   test("command log destinations come from registered definitions, with a default and sync override") {
     import it.evadid.sql.DatabaseTable
-    val syncNames = Set(SQLCommands.StoreToDbCommand.name, SQLCommands.fetchFromDbCommand.name, SQLCommands.clearValuesDbCommand.name, SQLCommands.resetUserHistoriesDbCommand.name)
+    val syncNames = Set(SQLCommands.StoreToDbCommand.name, SQLCommands.fetchFromDbCommand.name, SQLCommands.fetchEventsFromDbCommand.name, SQLCommands.clearValuesDbCommand.name, SQLCommands.resetUserHistoriesDbCommand.name)
     val definitions = ExecutionCommandFactory.knownCommands
     assertEquals(definitions.map(_.name).distinct.size, definitions.size)
     definitions.foreach { definition =>

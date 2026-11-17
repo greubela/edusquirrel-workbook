@@ -1,6 +1,5 @@
 package it.evadid.server.commandHandler.sql
 
-import it.evadid.server.commandHandler.sql.sync.RichDatabaseEntry
 import it.evadid.server.database.SqlFailure
 import it.evadid.core.util.io.ParsingContext
 import it.evadid.util.logging.Logger
@@ -36,18 +35,6 @@ private[sql] case class GenericSqlFunctionality(logger: Logger) {
 
   def parseDatabaseTimestamp(databaseTimestampString: String): LocalDateTime =
     Timestamp.valueOf(databaseTimestampString).toLocalDateTime
-
-  def executeSyncQuere(preparedStatement: PreparedStatement, fieldsToRead: List[String], usageContext: UsageContext): List[RichDatabaseEntry] = {
-    val rows = executeQuery(preparedStatement, fieldsToRead)
-    val entries = rows.flatMap(row => readSafely(s"Could not parse interactionVariableHistory from database event ${row.headOption.getOrElse("unknown")}") {
-      val entry = RichDatabaseEntry(usageContext, row)
-      // Validate lazy fields inside the per-record boundary.
-      entry.keyForSerialisation
-      entry
-    })
-    logger.logInfo(s"parsed ${entries.size} events (could not parse ${rows.size - entries.size})")
-    entries
-  }
 
   private def readSafely[A](description: String)(read: => A): Option[A] = Try(read).fold(
     error => { logger.logWarn(s"$description because of the following error: ${ParsingContext.reason(error)}"); None },

@@ -289,14 +289,14 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
-  test("the interaction-history script alone creates its complete format in an empty database") {
+  test("the single setup script creates every required table in an empty database") {
     MysqlTestDatabase.withConnection { connection =>
       MysqlTestDatabase.clearSchema(connection)
       Using.resource(connection.createStatement()) { statement =>
-        DatabaseSqlScripts.statementsFor("createInteractionHistoryTables.sql").foreach(sql => statement.executeUpdate(sql.toString))
+        DatabaseSqlScripts.statements.foreach(sql => statement.executeUpdate(sql.toString))
       }
       val report = EnsureDatabaseProperlySetup.inspect(connection)
-      assertEquals(report.existingTables, (RelationalFormat.tables ++ BlobFormat.tables).toSet)
+      assertEquals(report.existingTables, (RelationalFormat.tables ++ BlobFormat.tables).toSet ++ Set("user", "loginTokens", "commandLog", "syncedLog"))
       assertEquals(report.conflicts, Nil)
       assert(!EnsureDatabaseProperlySetup.setupIfEmpty(connection).created)
     }

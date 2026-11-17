@@ -36,10 +36,11 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     }
     val serialized = InteractionFormat.codecsFor(format).eventSerializer.serialize(event)
     val eventId = ContentIdentity.key(ujson.read(serialized))
-    update(s"INSERT INTO $table (sync_id,event_id,event_day,event_nano,timestamp,serialized_data) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE event_id=event_id",
-      sync, eventId, event.timestamp.toLocalDate.toEpochDay, event.timestamp.toLocalTime.toNanoOfDay, event.timestamp.toString, serialized) match {
-      case 1 => 1
-      case _ => 0
+    val exists = query(s"SELECT id FROM $table WHERE sync_id=? AND event_id=?", List(sync, eventId))(_.getLong(1)).nonEmpty
+    if exists then 0 else {
+      update(s"INSERT INTO $table (sync_id,event_id,event_day,event_nano,timestamp,serialized_data) VALUES (?,?,?,?,?,?)",
+        sync, eventId, event.timestamp.toLocalDate.toEpochDay, event.timestamp.toLocalTime.toNanoOfDay, event.timestamp.toString, serialized)
+      1
     }
   }
 

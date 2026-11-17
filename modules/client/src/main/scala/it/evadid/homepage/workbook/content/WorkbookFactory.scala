@@ -26,7 +26,7 @@ trait WorkbookFactory {
 
   def defaultSectionActiveNr: Int = 0
 
-  def estimatedDurations: Map[WorkbookInteractionElement[?], Double] = Map() // todo remove default value
+  def estimatedDurations: Map[String, Double] = Map() // todo remove default value
 
   def createEverything: AllWorkbookInfo = {
     val workbook = createWorkbook

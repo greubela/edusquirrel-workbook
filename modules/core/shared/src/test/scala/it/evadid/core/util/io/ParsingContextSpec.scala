@@ -10,10 +10,10 @@ import it.evadid.workbook.abstractions.InteractionFormat.*
 class ParsingContextSpec extends FunSuite {
   test("typed history failures identify the entity, trimmed input, and underlying reason") {
     val input = ujson.Obj()
-    val error = intercept[Exception] { read[InteractionVariableHistory[TextInteractionFormat.type]](input) }
+    val error = intercept[Exception] { InteractionHistoryJson(TextInteractionFormat, input.toString).toTyped }
     val reason = ParsingContext.reason(error)
-    assert(reason.contains("interactionVariableHistory"))
-    assert(reason.contains("historyStates"), reason)
+    assert(reason.contains("interaction history"))
+    assert(reason.contains("events"), reason)
     assertEquals(ParsingContext.preview("x" * 1000), "x" * 180 + "…")
   }
 

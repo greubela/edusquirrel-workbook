@@ -20,6 +20,8 @@ case class CoordinatePlotInteraction(elementId: String, title: LanguageMapConten
   override lazy val childrenOfThisElement = Nil
   override val associatedFactory = CoordinatePlotInteraction.factory
 
+  override def validateState(value: PlotAnswer): Unit = { checked(value); () }
+
   def checked(answer: PlotAnswer): PlotAnswer = {
     require(answer.points.forall(p => xAxis.contains(p.x) && yAxis.contains(p.y)), "Points must be within the plot axes")
     answer.copy(points = answer.points.sortBy(_.x))

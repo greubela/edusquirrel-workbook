@@ -29,10 +29,6 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
     flush(false)
     promise.future
   }
-  override def readHistories(context: UsageContext, variables: Seq[InteractionVariable[? <: InteractionFormat]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[_ <: InteractionFormat]]] = {
-    val promise = Promise[Map[SyncContext, InteractionVariableHistory[_ <: InteractionFormat]]]()
-    enqueue(CachedReadRequestMultiple(LocalDateTime.now(), context, variables, promise), promise)
-  }
   override def readHistoriesJson(context: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
     val promise = Promise[FetchResponse[SyncContext, String]]()
     enqueue(CachedReadRequestMultipleRaw(LocalDateTime.now(), context, promise), promise)
@@ -127,10 +123,6 @@ object BufferedSyncDestinationHandler {
   sealed trait CachedReadRequest extends CachedRequest {
     def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit
     def usageContext: UsageContext
-  }
-  case class CachedReadRequestMultiple(requestTimestamp: LocalDateTime, usageContext: UsageContext, resolveWithVars: Seq[InteractionVariable[_ <: InteractionFormat]], promise: Promise[Map[SyncContext, InteractionVariableHistory[_ <: InteractionFormat]]]) extends CachedReadRequest {
-    override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit =
-      promise.tryComplete(data.map(response => SyncDestinationHistoryHandler.readHistoriesFromTyped(resolveWithVars, response)))
   }
   case class CachedReadRequestMultipleRaw(requestTimestamp: LocalDateTime, usageContext: UsageContext, promise: Promise[FetchResponse[SyncContext, String]]) extends CachedReadRequest {
     override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data)

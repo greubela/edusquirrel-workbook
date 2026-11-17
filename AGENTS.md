@@ -1,6 +1,6 @@
 # Active interaction refactor
 
-The full user requirements are retained in [tmp/interaction-refactor/USER_PROMPT.txt](tmp/interaction-refactor/USER_PROMPT.txt). Follow them throughout this branch; they supersede the obsolete three-type-parameter serialization design below.
+The full user requirements are retained in [tmp/interaction-refactor/USER_PROMPT.txt](tmp/interaction-refactor/USER_PROMPT.txt). Follow them throughout this branch.
 
 # Repository directory rules
 
@@ -24,43 +24,16 @@ Editor architecture: create only the selected editor, bind it to the central ans
 
 Persisted-data policy: the project is in development and supports only current saved schemas. Do not add migration readers, old field/tag aliases, or backward-compatible payloads. Catch malformed/unsupported data at storage boundaries and discard the affected record without crashing or clearing unrelated data.
 
-## Serialization Architecture
+## Serialization architecture
 
-### InteractionFormat Design
+History APIs carry `[F <: InteractionFormat]`. Formats are sealed singleton values,
+serializable by a stable name independently of workbook definitions and element IDs.
+`InteractionFormat.State[F]`, `Grading[F]` and `Scaffolding[F]` recover their types;
+do not use illegal generic projections such as `F#InteractionStateType`.
+The format owns state, feedback, event and history codecs. Exercise-specific
+constraints belong in `WorkbookInteractionElement.validateState`, not its codec.
 
-`InteractionFormat` is a **sealed trait** with case objects as implementations. Each interaction type has exactly one format instance implemented as a case object that extends the trait.
-
-**Design principle**: Format instances are case objects (singletons), naturally serializable. All known format implementations are stored in `InteractionFormat.knownFormats`.
-
-**Usage pattern**:
-```scala
-// Interaction class - references companion as format
-case class MyInteraction(...) extends WorkbookInteractionElementFull[T, GA, SA] {
-  override def format: InteractionFormat[T, GA, SA] = MyInteraction  // Returns companion object
-}
-
-// Companion object - IS the format instance
-object MyInteraction extends InteractionFormat[T, GA, SA] {
-  override def stateSerializer: Serializer[T] = ...
-  override def historySerializer: Serializer[InteractionVariableHistory[T, GA, SA]] = ...
-  override def exerciseSerializer: Serializer[WorkbookInteractionElementFull[T, GA, SA]] = ...
-}
-```
-
-**Why sealed trait + case objects**:
-- Sealed trait ensures all implementations are known at compile time
-- Case objects are naturally serializable (singletons)
-- `derives ReadWriter` works automatically for sealed traits
-- All known formats stored in `InteractionFormat.knownFormats` for type-safe access
-- Format is passed explicitly, enabling strongly typed values everywhere
-- No elementId lookup needed; type-safe throughout
-
-**Why this approach**:
-- **Strong typing**: `InteractionFormat[T, GA, SA]` with type parameters ensures compile-time safety
-- **Auto-serialization**: Case objects serialize by class name automatically
-- **All formats compile-time known**: Client has definitions, server validates against `knownFormats`
-- **Type-safe operations**: No unsafe casting, all operations use typed format
-
-See also:
-- [docs/interaction-format.md](docs/interaction-format.md) - Overview of the InteractionFormat API
-- [docs/interaction-format-serialization.md](docs/interaction-format-serialization.md) - Detailed explanation of the serialization design
+Transport and persisted histories use `InteractionHistoryJson(format, historyJson)`.
+Do not infer a format from an element ID, reconstruct histories with raw JSON, or
+add compatibility readers. See [docs/interaction-format.md](docs/interaction-format.md)
+and [docs/database/interaction-history.md](docs/database/interaction-history.md).

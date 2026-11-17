@@ -29,6 +29,11 @@ import it.evadid.workbook.model.evacuation.{EvacuationExperiment, EvacuationFloo
 import it.evadid.workbook.model.pixel.BinaryPixelImage
 import it.evadid.workbook.model.plot.PlotAnswer
 import it.evadid.workbook.model.qr.QrCode
+import it.evadid.workbook.abstractions.grading.{GradingResult, WorkbookInteractionGrader}
+import it.evadid.workbook.elements.interactionElements.gpt.TextInputLlmGrader
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleCommandUsageGrader}
+import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
 import upickle.default.*
 
 /** A workbook-independent, finite association of saved state, feedback and their codecs. */
@@ -51,11 +56,12 @@ object InteractionFormat {
   type Scaffolding[F <: InteractionFormat] = F match { case Typed[s, g, a] => a }
 
   /** Only format definitions use three parameters; consumers carry the format singleton. */
-  sealed abstract class Typed[S: ReadWriter, G: ReadWriter, A: ReadWriter] extends InteractionFormat {
+  sealed abstract class Typed[S: ReadWriter, G: ReadWriter, A: ReadWriter](
+      graderCodec: ReadWriter[WorkbookInteractionGrader[S, G]] = gradersFor[S, G]()) extends InteractionFormat {
     final type InteractionStateType = S
     final type GradingInfoType = G
     final type ScaffoldingInfoType = A
-    final lazy val codecs: Codecs[this.type] = new Codecs[this.type](summon[ReadWriter[S]], summon[ReadWriter[G]], summon[ReadWriter[A]])
+    final lazy val codecs: Codecs[this.type] = new Codecs[this.type](summon[ReadWriter[S]], summon[ReadWriter[G]], summon[ReadWriter[A]], graderCodec)
   }
 
   /** The singleton value determines F. Scala does not preserve that equality when widening
@@ -67,10 +73,12 @@ object InteractionFormat {
   inline def instance[F <: InteractionFormat](using value: ValueOf[F]): F = value.value
 
   final class Codecs[F <: InteractionFormat](
-      givenState: ReadWriter[State[F]], givenGrading: ReadWriter[Grading[F]], givenScaffolding: ReadWriter[Scaffolding[F]]) {
+      givenState: ReadWriter[State[F]], givenGrading: ReadWriter[Grading[F]], givenScaffolding: ReadWriter[Scaffolding[F]], givenGrader: ReadWriter[WorkbookInteractionGrader[State[F], Grading[F]]]) {
     private given stateRW: ReadWriter[State[F]] = givenState
     private given gradingRW: ReadWriter[Grading[F]] = givenGrading
     private given scaffoldingRW: ReadWriter[Scaffolding[F]] = givenScaffolding
+    private given graderRW: ReadWriter[WorkbookInteractionGrader[State[F], Grading[F]]] = givenGrader
+    private given gradingResultRW: ReadWriter[GradingResult[State[F], Grading[F]]] = macroRW
     private given answerRW: ReadWriter[AnswerChangedEvent[F]] = macroRW
     private given gradingStartedRW: ReadWriter[GradingStartedEvent[F]] = macroRW
     private given gradingCompletedRW: ReadWriter[GradingCompletedEvent[F]] = macroRW
@@ -88,12 +96,24 @@ object InteractionFormat {
     val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
+  private def gradersFor[T, G](entries: (String, Serializer[WorkbookInteractionGrader[T, G]])*): ReadWriter[WorkbookInteractionGrader[T, G]] =
+    Serializer.universalTraitSerializer(entries.toMap).uPickleReadWrite
+
+  private lazy val programmingGraders = gradersFor[ProgrammingState, AdditionalProgrammingTestInfo](
+    Serializer.serializerForSubclass[RecreateShapeGrader, WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](classOf[RecreateShapeGrader]),
+    Serializer.serializerForSubclass[TurtleCommandUsageGrader, WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](classOf[TurtleCommandUsageGrader]),
+    Serializer.serializerForSubclass[ProgrammingUnitTestGrader, WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](classOf[ProgrammingUnitTestGrader]))
+  private lazy val textGraders = gradersFor[String, MessengerModel](
+    Serializer.serializerForSubclass[TextInputLlmGrader, WorkbookInteractionGrader[String, MessengerModel]](classOf[TextInputLlmGrader]))
+  private lazy val slideshowGraders = gradersFor[SlideshowState, Unit](
+    Serializer.serializerForSubclass[SlideshowGrader, WorkbookInteractionGrader[SlideshowState, Unit]](classOf[SlideshowGrader]))
+
   case object TextInteractionFormat extends Typed[String, Unit, Unit]
   case object LabeledCheckboxInteractionFormat extends Typed[Boolean, Unit, Unit]
   case object MessagingInteractionFormat extends Typed[MessengerModelScaffolding, Unit, Unit]
-  case object TextInputWithLlmGradingAndScaffoldingFormat extends Typed[String, MessengerModel, MessengerModel]
+  case object TextInputWithLlmGradingAndScaffoldingFormat extends Typed[String, MessengerModel, MessengerModel](textGraders)
   case object ChoiceInteractionFormat extends Typed[ChoiceAnswer, Unit, Unit]
-  case object ProgrammingExerciseWithLlmScaffoldingAndGrading extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding]
+  case object ProgrammingExerciseWithLlmScaffoldingAndGrading extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding](programmingGraders)
   case object SqlCommandExerciseFormat extends Typed[String, Unit, Unit]
   case object QrCodeInteractionFormat extends Typed[QrCode, Unit, Unit]
   case object BinaryPixelInteractionFormat extends Typed[BinaryPixelImage, Unit, Unit]
@@ -112,21 +132,15 @@ object InteractionFormat {
   case object ReorderMapIdInteractionFormat extends Typed[ReorderInteractionState[LanguageMapContentId], Unit, Unit]
   case object SortingInteractionFormat extends Typed[SortingInteractionState, Unit, Unit]
   case object SortingReasonInteractionFormat extends Typed[SortingReasonInteractionState, Unit, Unit]
-  case object SlideshowFormat extends Typed[SlideshowState, Unit, Unit]
+  case object SlideshowFormat extends Typed[SlideshowState, Unit, Unit](slideshowGraders)
   case object EvacuationConstructFloorInteractionFormat extends Typed[EvacuationFloorPlan, Unit, Unit]
   case object ThresholdNeuronInteractionFormat extends Typed[NeuronParameters, Unit, Unit]
   case object CompressionExperimentInteractionFormat extends Typed[CompressionExperiment, Unit, Unit]
-  case object TurtleRecreateShapeInteractionFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit]
-  case object ProgrammingExerciseFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit]
-  case object CategorizationInteractionFormat extends Typed[String, Unit, Unit]
-  case object ChoiceSelectionInteractionFormat extends Typed[ChoiceSelectionState, Unit, Unit]
-  case object MatchingInteractionFormat extends Typed[MatchingInteractionState, Unit, Unit]
-  case object FillInBlanksInteractionFormat extends Typed[FillInBlanksState, Unit, Unit]
-  case object TableFillInInteractionFormat extends Typed[TableFillInState, Unit, Unit]
-  case object DropdownBlanksInteractionFormat extends Typed[DropdownBlanksState, Unit, Unit]
+  case object TurtleRecreateShapeInteractionFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit](programmingGraders)
+  case object ProgrammingExerciseFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit](programmingGraders)
   case object EvacuationExperimentFormat extends Typed[EvacuationExperiment, Unit, Unit]
 
-  val knownFormats: List[InteractionFormat] = List(
+  lazy val knownFormats: List[InteractionFormat] = List(
     TextInteractionFormat,
     LabeledCheckboxInteractionFormat,
     MessagingInteractionFormat,
@@ -157,12 +171,6 @@ object InteractionFormat {
     CompressionExperimentInteractionFormat,
     TurtleRecreateShapeInteractionFormat,
     ProgrammingExerciseFormat,
-    CategorizationInteractionFormat,
-    ChoiceSelectionInteractionFormat,
-    MatchingInteractionFormat,
-    FillInBlanksInteractionFormat,
-    TableFillInInteractionFormat,
-    DropdownBlanksInteractionFormat,
     EvacuationExperimentFormat
   )
 
