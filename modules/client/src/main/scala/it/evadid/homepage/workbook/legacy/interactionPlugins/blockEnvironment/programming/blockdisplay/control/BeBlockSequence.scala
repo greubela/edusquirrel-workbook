@@ -32,11 +32,11 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock derives upickle
 
     val onlyControlFlow = bodyChildrenInOrder.map(_._2).flatMap(curShape => curShape.onlyControlFlowShape)
     val onlyExpressions = bodyChildrenInOrder.map(_._2).flatMap(curShape => curShape.onlyExpressionShape)
-    val fullTable = TableShape(List(onlyControlFlow.toList, onlyExpressions))
+    val fullTable = TableShape(List(onlyControlFlow.toList, onlyExpressions.toList))
 
     val nested: BoxManualPositioning = new BoxManualPositioning() {
       def calcOffsetsAndDimensions(config: BeRenderingConfig): Seq[ManualPositionElement] = {
-        val columns = List(onlyControlFlow.toList, onlyExpressions)
+        val columns = List(onlyControlFlow.toList, onlyExpressions.toList)
         val maxColumnWidths = columns.map(_.map(_.displaySize(config).width).maxOption.getOrElse(0.0))
 
         val res = mutable.ListBuffer[ManualPositionElement]()

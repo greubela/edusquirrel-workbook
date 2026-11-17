@@ -8,7 +8,7 @@ import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlockSingleShape, RenderingInformation}
 import it.evadid.vm.code.tree.BeExpressionNode
 import it.evadid.vm.code.usage.BeUseValue
-import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
+import it.evadid.vm.types.{BeDataValueLiteral, BeDataValueUnit, BeUseValueReference}
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowShape, TextShape}
 import todomove.webElementsOld.webElements.svg.shapes.composite.ShapeAroundShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowEmpty
@@ -20,7 +20,7 @@ case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlockSingleShape de
     val textShape = TextShape(LanguageMap.universalMap(valueUsage.structureInfo.toStringInLanguage(BlockDisplay, English)))
 
     val shapeAndAmends: (BeShapeContainerable, Seq[L.Modifier[L.SvgElement]]) = valueUsage.value match {
-      case BeDataValueLiteral(literalStr) => {
+      case BeDataValueLiteral(_) | BeDataValueUnit() => {
         (LiteralShape, BeShapeAmendFactory(renderingInformation.renderingConfig).literalColorsAmend)
       }
       case BeUseValueReference(reference) => {

@@ -488,4 +488,16 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       assertEquals(selected.size, 1)
       assertEquals(selected.events.values.head.associatedState, "newest")
     }
+  Seq(BlobFormat, RelationalFormat).foreach { storage =>
+    test(s"$storage SYNC_MAJOR preserves pending feedback outside the answer window and ignores newer defaults") {
+      val pending = ScaffoldingStartedEvent[format.type]("first", time.plusSeconds(3), LlmEntity())
+      val saved = history().addEvent(pending).addEvent(AnswerChangedEvent[format.type]("", time.plusDays(1), UpdateImportance.DEFAULT))
+      store(saved, storage)
+      val request = FetchEventsFromDbRequest(context, Seq(key), pending.timestamp, pending.timestamp, config, storage,
+        it.evadid.workbook.interaction.sync.EventSyncStrategy.SYNC_MAJOR)
+      val received = FetchFromDatabase.handleRequest(request, logger).fetchedElements(sync).typedAs(format)
+      assertEquals(received.events.values, Set(pending: InteractionEvent[format.type]))
+    }
+  }
+
 }

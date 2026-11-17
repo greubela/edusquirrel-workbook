@@ -390,4 +390,28 @@ class RemoteHistoryCacheSpec extends FunSuite {
     }.map(_ => assertEquals(destination.writes.now().size, 2))
   }
 
+  test("a newer page default never replaces the restored answer for selection or sync confirmation") {
+    val destination = new Destination
+    val control = cache(destination -> EventSyncStrategy.SYNC_MAJOR)
+    val restored = event(1, 1)
+    val pageDefault = event(0, 10, UpdateImportance.DEFAULT)
+    control.requestStoreToAll(Map(key -> history(restored, pageDefault))).map { _ =>
+      assertEquals(destination.persisted.now()(key).events.values, Set(restored))
+      assertEquals(control.reports.now().get(key).syncedDestinations, Set(destination))
+    }
+  }
+
+  test("range reads retain selected pending feedback even when its answer lies outside the window") {
+    import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
+    val destination = new Destination
+    val control = cache(destination -> EventSyncStrategy.SYNC_MAJOR)
+    val answer = event(1, 1)
+    val pending: Event = ScaffoldingStartedEvent[TextInteractionFormat.type]("1", time.plusSeconds(2), LlmEntity())
+    destination.persisted.set(Map(key -> history(answer, pending)))
+    control.fetchEventsBetween(Seq(key), time.plusSeconds(2), time.plusSeconds(2)).map { received =>
+      assertEquals(received(key).toSet, Set(pending))
+      assertEquals(local(control).events.values, Set(pending))
+    }
+  }
+
 }

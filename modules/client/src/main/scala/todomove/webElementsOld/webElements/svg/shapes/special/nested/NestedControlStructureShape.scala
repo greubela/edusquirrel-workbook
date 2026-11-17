@@ -19,19 +19,19 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
 
   def totalControlFlowWidth(config: BeRenderingConfig): Double
 
-  def getControlFlowChangeElements: List[ControlFlowShape]
+  def getControlFlowChangeElements: Seq[ControlFlowShape]
 
-  def getControlFlowExpressionElements: List[Option[BeShape]]
+  def getControlFlowExpressionElements: Seq[Option[BeShape]]
 
-  def getBodiesBetweenControlFlowChanges: List[List[BeShape]]
+  def getBodiesBetweenControlFlowChanges: Seq[Seq[BeShape]]
 
   private def rightControlFlowWith(config: BeRenderingConfig): Double = totalControlFlowWidth(config) - leftColumnWidth(config)
 
-  private def getBodyHeights(rendererConfig: BeRenderingConfig): List[Double] = {
+  private def getBodyHeights(rendererConfig: BeRenderingConfig): Seq[Double] = {
     getBodiesBetweenControlFlowChanges.map(curBody => curBody.map(_.displaySize(rendererConfig).height).sum)
   }
 
-  private def controlFlowHeights(rendererConfig: BeRenderingConfig): List[Double] = {
+  private def controlFlowHeights(rendererConfig: BeRenderingConfig): Seq[Double] = {
     getControlFlowChangeElements.zip(getControlFlowExpressionElements).map((controlFlow, expression) => {
 
       val cf: Double = controlFlow.displaySize(rendererConfig).height
@@ -40,12 +40,12 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
     })
   }
 
-  def getPositionedControlFlowExpressionShapes(rendererConfig: BeRenderingConfig): List[ManualPositionElement] = {
+  def getPositionedControlFlowExpressionShapes(rendererConfig: BeRenderingConfig): Seq[ManualPositionElement] = {
     var curOffsetY: Double = 0
-    val bodyHeights: List[Double] = getBodyHeights(rendererConfig)
+    val bodyHeights: Seq[Double] = getBodyHeights(rendererConfig)
     val res = mutable.ListBuffer[ManualPositionElement]()
     for (trip <- getControlFlowExpressionElements.zip(controlFlowHeights(rendererConfig).zip(bodyHeights))) {
-      val (controlFlowExpressionOp, curControlFlowHeight, followingBodyHeight): (Option[BeShape], Double, Double) = (trip._1, trip._2._1, trip._2._2)
+      val (controlFlowExpressionOp, curControlFlowHeight, followingBodyHeight) = (trip._1, trip._2._1, trip._2._2)
       if (controlFlowExpressionOp.nonEmpty) {
         val curExpressionDim = controlFlowExpressionOp.get.displaySize(rendererConfig)
         val extraHeight = curControlFlowHeight - curExpressionDim.height
@@ -57,12 +57,12 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
     res.toList
   }
 
-  def getPositionedExpressionShapes(rendererConfig: BeRenderingConfig): List[ManualPositionElement] = {
+  def getPositionedExpressionShapes(rendererConfig: BeRenderingConfig): Seq[ManualPositionElement] = {
 
     val res = mutable.ListBuffer[ManualPositionElement]()
 
-    val cfHeights: List[Double] = controlFlowHeights(rendererConfig)
-    val bodyHeights: List[Double] = getBodyHeights(rendererConfig)
+    val cfHeights: Seq[Double] = controlFlowHeights(rendererConfig)
+    val bodyHeights: Seq[Double] = getBodyHeights(rendererConfig)
     val seg: Double = rendererConfig.controlSegmentSize
 
     var curOffsetY: Double = 0
@@ -82,8 +82,8 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
   }
 
   def drawBackground(rendererConfig: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = {
-    val cfHeights: List[Double] = controlFlowHeights(rendererConfig)
-    val bodyHeights: List[Double] = getBodyHeights(rendererConfig)
+    val cfHeights: Seq[Double] = controlFlowHeights(rendererConfig)
+    val bodyHeights: Seq[Double] = getBodyHeights(rendererConfig)
 
     val seg: Double = rendererConfig.controlSegmentSize
     val extraWidth = bounds.width - totalControlFlowWidth(rendererConfig)
@@ -116,17 +116,17 @@ trait NestedControlStructureShape extends BeShapeComposite with ControlFlowAndEx
   }
 
 
-  private def positionedChildren(rendererConfig: BeRenderingConfig): List[ManualPositionElement] = {
+  private def positionedChildren(rendererConfig: BeRenderingConfig): Seq[ManualPositionElement] = {
     getPositionedExpressionShapes(rendererConfig) ++ getPositionedControlFlowExpressionShapes(rendererConfig)
   }
 
   private def createChildrenBox(rendererConfig: BeRenderingConfig): BoxManualPositioning = new BoxManualPositioning {
-    override def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement] = positionedChildren(rendererConfig)
+    override def calcOffsetsAndDimensions(config: BeRenderingConfig): Seq[ManualPositionElement] = positionedChildren(rendererConfig)
   }
 
   def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = {
-    val cfHeights: List[Double] = controlFlowHeights(rendererConfig)
-    val bodyHeights: List[Double] = getBodyHeights(rendererConfig)
+    val cfHeights: Seq[Double] = controlFlowHeights(rendererConfig)
+    val bodyHeights: Seq[Double] = getBodyHeights(rendererConfig)
     val totalHeight = cfHeights.sum + bodyHeights.sum
 
     createChildrenBox(rendererConfig).displaySize(rendererConfig).ensureWidth(totalControlFlowWidth(rendererConfig) * 2).ensureHeight(totalHeight)

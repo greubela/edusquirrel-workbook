@@ -57,8 +57,10 @@ object EventSyncStrategy {
   case object SYNC_MAJOR extends EventSyncStrategy {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]): Set[InteractionEvent[F]] = {
       val answers = events.collect { case event: AnswerChangedEvent[F] => event }
-      val latest = answers.map(_.timestamp).maxOption
-      val selected = answers.filter(event => event.updateImportance == UpdateImportance.MAJOR || latest.contains(event.timestamp))
+      val nonDefault = answers.filter(_.updateImportance != UpdateImportance.DEFAULT)
+      val candidates = if nonDefault.nonEmpty then nonDefault else answers
+      val latest = candidates.map(_.timestamp).maxOption
+      val selected = candidates.filter(event => event.updateImportance == UpdateImportance.MAJOR || latest.contains(event.timestamp))
       val states = selected.map(_.associatedState)
       events.filter(event => event.updateImportance == UpdateImportance.MAJOR || states(event.associatedState))
     }
