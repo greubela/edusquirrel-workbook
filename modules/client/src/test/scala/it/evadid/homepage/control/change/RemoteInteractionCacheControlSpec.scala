@@ -23,7 +23,7 @@ import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.variable.events.AnswerChangedEvent
 import it.evadid.workbook.meta.ExecutionContextInformation
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 import upickle.default.*
 import java.time.LocalDateTime
@@ -37,6 +37,8 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
   private class Fixture {
     val requests = Var(Vector.empty[ExecutionCommand])
     val failBlobReads = Var(false)
+    val failBlobReset = Var(false)
+    val afterStore = Var[() => Unit](() => ())
     val elements = Seq(TextInteraction("first"), TextInteraction("second"))
     val user = AllUserInfo.createNewUser("Student", "fixture@example.invalid", UserConfig(Seq(
       SyncInformation(defaultDatabase, EventSyncStrategy.SYNC_EVERYTHING),
@@ -80,6 +82,16 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           request.entries.foreach(entry => saved.update { previous =>
             val key = request.databaseFormat -> entry.syncContext
             previous.updated(key, previous.get(key).fold(entry.history)(_.merge(entry.history)))
+          })
+          afterStore.now()()
+          ExecutionClientResponse.forValue(times, SyncSuccess.emptyNow(), command)
+        case name if name == resetUserHistoriesDbCommand.name =>
+          val request = read[DeleteInDbRequest](command.json)
+          assert(request.allWorkbooks)
+          if failBlobReset.now() && request.databaseFormat == BlobFormat then
+            return ExecutionClientResponse.forError(times, SerializedException("reset destination offline"), command)
+          saved.update(_.filterNot { case ((format, key), _) =>
+            format == request.databaseFormat && key.programId == request.usageContext.programId && key.userId == request.usageContext.userId
           })
           ExecutionClientResponse.forValue(times, SyncSuccess.emptyNow(), command)
         case other => throw IllegalArgumentException(s"Unexpected request: $other")
@@ -162,6 +174,59 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           assert(writes.flatMap(_.syncContexts).forall(_.userId == other.user.personId))
           assert(writes.flatMap(_.histories).forall(_.typedAs(TextInteractionFormat).allStates.forall(_.newState.isEmpty)))
         }
+      }
+    }
+  }
+
+  test("full reset resolves configured destinations even when the workbook catalogue is open") {
+    val fixture = new Fixture
+    fixture.info.homepageInfoState.update(_.copy(workbookInfo = None))
+    fixture.withHttp {
+      fixture.info.syncControl.resetAllData().map { _ =>
+        val resets = fixture.requests.now().filter(_.name == resetUserHistoriesDbCommand.name)
+          .map(command => read[DeleteInDbRequest](command.json))
+        assertEquals(resets.size, 2)
+        assert(resets.forall(request => request.allWorkbooks && request.usageContext.userId == fixture.user.user.personId))
+        assertEquals(fixture.info.syncControl.resetState.now(), SyncResetState.Completed)
+      }
+    }
+  }
+
+  test("leaving a workbook flushes its queued writes instead of abandoning the old handlers") {
+    val fixture = new Fixture
+    fixture.withHttp {
+      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+        fixture.requests.set(Vector.empty)
+        val remaining = Var(2)
+        val finished = Promise[Unit]()
+        fixture.afterStore.set(() => {
+          remaining.update(_ - 1)
+          if remaining.now() == 0 then finished.trySuccess(())
+        })
+        fixture.elements.foreach(element => element.interactionVariable.setStateFromUserInteraction(
+          "last edit before navigation", UpdateImportance.MAJOR, context = fixture.info.workbookContextInformation))
+        assert(!finished.isCompleted)
+        fixture.info.homepageInfoState.update(_.copy(workbookInfo = None))
+        finished.future.map { _ =>
+          val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
+          assertEquals(writes.size, 2)
+          assert(writes.forall(command => read[BulkStoreToDbRequest](command.json).histories.size == 2))
+        }
+      }
+    }
+  }
+
+  test("a failed catalogue reset does not leave the next user paused") {
+    val fixture = new Fixture
+    fixture.info.homepageInfoState.update(_.copy(workbookInfo = None))
+    fixture.failBlobReset.set(true)
+    fixture.withHttp {
+      fixture.info.syncControl.resetAllData().failed.map { _ =>
+        assert(fixture.info.syncControl.resetState.now().isInstanceOf[SyncResetState.Failed])
+        fixture.info.invalidateFeedbackSession()
+        val other = AllUserInfo.createNewUser("Next user", "next@example.invalid", fixture.user.config)
+        fixture.info.homepageInfoState.update(_.copy(userInfo = Some(other)))
+        assertEquals(fixture.info.syncControl.resetState.now(), SyncResetState.Idle)
       }
     }
   }

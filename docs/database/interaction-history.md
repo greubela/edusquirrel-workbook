@@ -80,7 +80,9 @@ Full reset drains registered operations, deletes the current user’s histories 
 all workbooks from every backend destination, and clears each configured local
 answer store without decoding records. Synchronization remains paused after partial
 failure until retry or an environment change; successful reset reloads the workbook.
-Authentication and unrelated IndexedDB caches are preserved. User changes and full
+Reset also works from the catalogue without a loaded workbook. Navigation flushes
+the previous workbook’s queued writes before releasing its handlers. Authentication
+and unrelated IndexedDB caches are preserved. User changes and full
 resets invalidate pending feedback and computation caches; stale completions cannot
 publish into a replacement session.
 

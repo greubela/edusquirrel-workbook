@@ -21,6 +21,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
   private val resetting = Var[SyncResetState](SyncResetState.Idle)
   val resetState: StrictSignal[SyncResetState] = resetting.signal
   private val pending = Var(Set.empty[Future[Unit]])
+  private val boundEnvironment = Var(Option.empty[WorkbookSyncEnvironment])
   private def enabled: Boolean = resetting.now() == SyncResetState.Idle
   private def environment = fullInfo.signals.syncEnvironmentSignal.now()
 
@@ -63,7 +64,11 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
         InteractionVariableSyncReport(destinations.map(_.information), current.syncedDestinations.map(_.information))))
   }
 
-  private val bindings: StrictSignal[Seq[Binding]] = fullInfo.signals.syncEnvironmentSignal.map { current =>
+  private val bindings: StrictSignal[Seq[Binding]] = fullInfo.signals.syncEnvironmentSignal
+      .combineWith(fullInfo.signals.currentUsageContext.distinct).map { (current, _) =>
+    boundEnvironment.now().foreach(previous => previous.syncDestinations.foreach(destination =>
+      Try(destination.handler.flush(true)).failed.foreach(error => syncLogger.logExceptionWarn("Could not flush the previous workbook", error))))
+    boundEnvironment.set(current)
     resetting.set(SyncResetState.Idle)
     current.toSeq.flatMap(owner => owner.interactions.toSeq.map(interaction => new TypedBinding(interaction, owner)))
   }.observe(using unsafeWindowOwner)
@@ -105,15 +110,17 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     case SyncResetState.Running(completion) => completion
     case _ =>
       val owner = environment
+      val destinations = owner.map(_.syncDestinations.toSeq)
+        .getOrElse(fullInfo.homepageInfoNow().syncDestinations(fullInfo))
       val completion = Promise[Unit]()
       resetting.set(SyncResetState.Running(completion.future))
       fullInfo.invalidateFeedbackSession()
       owner.foreach(_.interactions.foreach(_.interactionVariable.resetForNewSession()))
       val draining = pending.now().toSeq.map(_.recover { case scala.util.control.NonFatal(_) => () })
       val reset = attempt {
-        flush(owner)
+        destinations.foreach(_.handler.flush(true))
         Future.sequence(draining).flatMap { _ =>
-          val deletions = owner.toSeq.flatMap(_.syncDestinations.toSeq).map(destination =>
+          val deletions = destinations.map(destination =>
             attempt(destination.handler.clearAllHistories(destination.usageContext)).map(_ => ()))
           Future.sequence(deletions.map(_.transform(result => scala.util.Success(result)))).flatMap(results =>
             results.collectFirst { case scala.util.Failure(error) => error }.fold(Future.unit)(Future.failed))

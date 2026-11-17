@@ -34,15 +34,17 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
     laminarHelper.plaintextStringSignal(key)
   }
 
+  private def resetOwner = fullInfo.homepageInfoNow().toContext -> fullInfo.signals.syncEnvironmentSignal.now()
+
   private def resetAllData(): Unit = {
     val message = fullInfo.homepageInfoNow().languageMapStore.languageMaps
       .get(LanguageMapContentId("basic/resetAllDataConfirm"))
       .flatMap(_.tryGetInLanguage(fullInfo.signals.currentLanguage.now()))
       .getOrElse("Clear all configured local answer stores and delete your saved answers and feedback across all workbooks? This cannot be undone.")
     if !resetState.now().isInstanceOf[SyncResetState.Running] && dom.window.confirm(message) then {
-      val owner = fullInfo.current.userInfo.map(_.user.personId)
+      val owner = resetOwner
       fullInfo.syncControl.resetAllData().onComplete {
-        case Success(_) if fullInfo.current.userInfo.map(_.user.personId) == owner => dom.window.location.reload()
+        case Success(_) if resetOwner == owner => dom.window.location.reload()
         case Success(_) => ()
         case Failure(error) => logger.logExceptionWarn("Reset was not confirmed by every destination", error)
       }
