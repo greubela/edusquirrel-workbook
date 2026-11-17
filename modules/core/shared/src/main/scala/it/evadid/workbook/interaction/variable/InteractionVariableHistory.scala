@@ -27,6 +27,11 @@ case class InteractionVariableHistory[
   type GradingInfoType = G
   type ScaffoldingInfoType = A
   type Format = F
+  type History3 = InteractionVariableHistory3[F]
+  type InteractionStateType = S
+  type GradingInfoType = G
+  type ScaffoldingInfoType = A
+  type Format = F
   lazy val allStates: Set[AnswerChangedEvent[F]] = events.values.collect {
     case event: AnswerChangedEvent[F] => event
   }
