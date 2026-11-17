@@ -21,12 +21,14 @@ type InteractionVariableHistory3[F <: InteractionFormat] = InteractionVariableHi
   * 
   * NOTE: Does not derive ReadWriter because F is a path-dependent type.
   * Use InteractionVariableHistory3[F] for serialization.
+  * 
+  * TODO: Fix default type parameters - path-dependent types can't be used as defaults
   */
 case class InteractionVariableHistory[
   F <: InteractionFormat,
-  S <: F#InteractionStateType = F#InteractionStateType,
-  G <: F#GradingInfoType = F#GradingInfoType,
-  A <: F#ScaffoldingInfoType = F#ScaffoldingInfoType
+  S <: F#InteractionStateType = Nothing,
+  G <: F#GradingInfoType = Nothing,
+  A <: F#ScaffoldingInfoType = Nothing
 ](events: InteractionEvents[F]) {
   type Format = F
   lazy val allStates: Set[AnswerChangedEvent[F]] = events.values.collect {
