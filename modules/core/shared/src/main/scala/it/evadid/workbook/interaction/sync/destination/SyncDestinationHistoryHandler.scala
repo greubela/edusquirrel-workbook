@@ -89,7 +89,7 @@ object SyncDestinationHistoryHandler {
     val serializer = v.value.historySerializer
     serializer.tryDeserialize(jsonHistory) match {
       case Left(err) => Left(SerializedException(s"readHistoryFromTypedConcrete: value could not be parsed (${err.getMessage})", err))
-      case Right(history) => Right(history)
+      case Right(history) => Right(history.asInstanceOf[InteractionVariableHistory[F]])
     }
   }
 
@@ -102,7 +102,7 @@ object SyncDestinationHistoryHandler {
       case Some(jsonHistory) => 
         serializer.tryDeserialize(jsonHistory) match {
           case Left(err) => Left(SerializedException(s"readHistory::curResponse fetched ${fetchResponse.fetchedValues.size} and contained '${syncContext}' but value could not be parsed (${err.getMessage})", err))
-          case Right(history) => Right(history)
+          case Right(history) => Right(history.asInstanceOf[InteractionVariableHistory[F]])
         }
       case None => Left(SerializedException(s"readHistory::curResponse fetched ${fetchResponse.fetchedValues.size} but did not contain ${syncContext}"))
     }
