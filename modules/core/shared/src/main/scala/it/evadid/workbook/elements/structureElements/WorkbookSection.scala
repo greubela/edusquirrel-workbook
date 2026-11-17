@@ -28,8 +28,6 @@ case class WorkbookSection
 
 object WorkbookSection {
 
-  given ReadWriter[WorkbookSection] = WorkbookElement.subtypeCodec
-
   val factory: WorkbookElementFactory[WorkbookSection] = new WorkbookElementFactory[WorkbookSection] {
     override lazy val elementMapAndOrderForConstructorLike =
       Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("metadata", false)), 2 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("requiredBefore", false)), 3 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("recommendedBefore", false)), 4 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("content", false)))

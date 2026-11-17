@@ -8,7 +8,7 @@ import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.storage.remote.RemoteReaderWriter
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncControl, SyncInformationWithContext}
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.meta.InteractionVariableSyncReport
@@ -39,7 +39,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     }).map(_ => ())
   }
 
-  override def store[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA], forceFlush: Boolean): Future[Unit] = fullInfo.synchronized {
+  override def store[F <: InteractionFormat](interactionVariable: InteractionVariable[F], forceFlush: Boolean): Future[Unit] = fullInfo.synchronized {
     val key = interactionVariable.keyForSerialization
     val history = interactionVariable.currentHistory.cleanWithStrategy(EventSyncStrategy.KEEP_MAJOR)
     
@@ -53,7 +53,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
 
   override def syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
 
-  def createReportFor[T, GA, SA](interaction: WorkbookInteractionElementFull[T, GA, SA]): Signal[Option[InteractionVariableSyncReport[SyncContext, T, GA, SA, _]]] = {
+  def createReportFor[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): Signal[Option[InteractionVariableSyncReport[SyncContext, F, _]]] = {
     Signal.fromValue(None)
   }
 }

@@ -6,18 +6,17 @@ import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.*
-import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
-import it.evadid.workbook.abstractions.{WorkbookInteractionElementFull, WorkbookInteractionUntyped}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.interaction.sync.SyncContext
 import it.evadid.workbook.meta.InteractionVariableSyncReport
 import it.evadid.workbook.interaction.sync.SyncInformationWithContext
 
-case class IconSync[T, GA, SA](fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, workbookInteractionElement: WorkbookInteractionElementFull[T, GA, SA]) {
+case class IconSync[F <: InteractionFormat](fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, workbookInteractionElement: WorkbookInteractionElement[F]) {
 
-  lazy val syncReport: Signal[Option[InteractionVariableSyncReport[SyncContext, T, GA, SA, _]]] =
+  lazy val syncReport: Signal[Option[InteractionVariableSyncReport[SyncContext, F, _]]] =
     fullInfo.syncControl.createReportFor(workbookInteractionElement)
 
-  def deriveSyncSymbol(reportOp: Option[InteractionVariableSyncReport[SyncContext, T, GA, SA, _]]): Element = {
+  def deriveSyncSymbol(reportOp: Option[InteractionVariableSyncReport[SyncContext, F, _]]): Element = {
     if (reportOp.isEmpty) createCloudDisabledSvg() else {
       val report = reportOp.get
       val svgSyncIcon: ReactiveSvgElement[org.scalajs.dom.SVGSVGElement] =
@@ -37,8 +36,9 @@ case class IconSync[T, GA, SA](fullInfo: FullInfo, laminarHelper: LaminarRenderH
         span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/syncInfoLabel")))
     }
   }
-}
 
+
+}
 
 object IconSync {
   /* Cloud Sync Elements */

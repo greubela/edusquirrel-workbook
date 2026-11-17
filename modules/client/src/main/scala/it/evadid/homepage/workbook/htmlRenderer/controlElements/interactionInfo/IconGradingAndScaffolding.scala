@@ -5,8 +5,7 @@ import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.*
-import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT_UNDERSCORE_REPLACABLE
-import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.abstractions.grading.GradedState
 import it.evadid.workbook.abstractions.grading.GradingStatus.{NotFinished, NotRequested}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
@@ -17,18 +16,18 @@ import it.evadid.workbook.meta.InteractionVariableGradingReporter
 case class IconGradingAndScaffolding(
                                       fullInfo: FullInfo,
                                       laminarHelper: LaminarRenderHelper,
-                                      workbookInteractionElement: WorkbookInteractionUntyped,
-                                      gradingReporter: InteractionVariableGradingReporter[?, ?, ?]) {
+                                      workbookInteractionElement: WorkbookInteractionElement[InteractionFormat],
+                                      gradingReporter: InteractionVariableGradingReporter[InteractionFormat]) {
 
 
-  //val gradingReporter: InteractionVariableGradingReporter[?, ?, ?] = InteractionVariableGradingReporter(workbookInteractionElement.interactionVariable)
+  //val gradingReporter: InteractionVariableGradingReporter[InteractionFormat] = InteractionVariableGradingReporter(workbookInteractionElement.interactionVariable)
 
   val domElement: Element = div(cls := "interaction-grading",
     button(typ := "button", cls := "interaction-grading__request",
       onClick --> (_ => workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.workbookContextInformation, true)))
   )
 
-  def deriveScaffoldingSymbol(curScaffolding: Option[ScaffoldingResult[?, ?]]): Element =
+  def deriveScaffoldingSymbol(curScaffolding: Option[ScaffoldingResult[workbookInteractionElement.F#InteractionStateType, workbookInteractionElement.F#ScaffoldingInfoType]]): Element =
     if (workbookInteractionElement.scaffoldingElement.isEmpty) div()
     else if (curScaffolding.isEmpty) {
       val curScaffLabel = laminarHelper.plaintextStringSignal("basic/requestScaffoldingHint")
@@ -69,7 +68,7 @@ case class IconGradingAndScaffolding(
       )
     }
 
-  def deriveGradingSymbol(gradedState: GradedState[?, ?]): Element = if (workbookInteractionElement.gradingElements.isEmpty) div() else {
+  def deriveGradingSymbol(gradedState: GradedState[workbookInteractionElement.F#InteractionStateType, workbookInteractionElement.F#GradingInfoType]): Element = if (workbookInteractionElement.gradingElements.isEmpty) div() else {
     val gradingResults = gradedState.graderResultMap.values
 
     val availableGraders = workbookInteractionElement.gradingElements.size

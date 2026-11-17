@@ -46,8 +46,8 @@ trait SyncDestinationHistoryHandler {
     }
   }
 
-  def readHistories(usageContext: UsageContext, variablesToResolveTypes: Seq[InteractionVariable[InteractionFormat]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[InteractionFormat]]] = {
-    readHistoriesJson(usageContext).map(fetchResponse => SyncDestinationHistoryHandler.readHistoriesFrom(variablesToResolveTypes, usageContext, fetchResponse))
+  def readHistories(usageContext: UsageContext, variablesToResolveTypes: Seq[InteractionVariable[_ <: InteractionFormat]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[_]]] = {
+    readHistoriesJson(usageContext).map(fetchResponse => SyncDestinationHistoryHandler.readHistoriesFromTyped(variablesToResolveTypes, fetchResponse))
   }
 
   lazy val toBuffered: BufferedSyncDestinationHandler = {
@@ -59,22 +59,37 @@ trait SyncDestinationHistoryHandler {
 
 object SyncDestinationHistoryHandler {
 
-  private[sync] def readHistoriesFrom(
-                                       variablesToResolveTypes: Seq[InteractionVariable[InteractionFormat]],
-                                       usageContext: UsageContext,
+  private[sync] def readHistoriesFromTyped(
+                                       variablesToResolveTypes: Seq[InteractionVariable[_ <: InteractionFormat]],
                                        fetchResponse: FetchResponse[SyncContext, String]
-                                     ): Map[SyncContext, InteractionVariableHistory[InteractionFormat]] = {
-    fetchResponse.fetchedValues.flatMap(curFetchedValue => {
+                                     ): Map[SyncContext, InteractionVariableHistory[_]] = {
+    fetchResponse.fetchedValues.flatMap { curFetchedValue =>
       variablesToResolveTypes
         .find(_.keyForSerialization == curFetchedValue.dataKey.keyForSerialisation)
-        .flatMap(curVar => (SyncDestinationHistoryHandler.readHistoryFrom(curFetchedValue.dataKey, fetchResponse).toOption.map(curHist => curFetchedValue.dataKey -> curHist))).toMap
-    }).toMap
+        .flatMap { curVar =>
+          readHistoryFromTypedInternal(curVar, curFetchedValue.dataValue).toOption.map(curHist => curFetchedValue.dataKey -> curHist)
+        }
+    }.toMap
+  }
+
+  private[sync] def readHistoryFromTypedInternal(variable: InteractionVariable[_ <: InteractionFormat], jsonHistory: String): Either[SerializedException, InteractionVariableHistory[_]] = {
+    variable match {
+      case v: InteractionVariable[F] => readHistoryFromTypedConcrete(v, jsonHistory).map(_.asInstanceOf[InteractionVariableHistory[_]])
+    }
+  }
+
+  private[sync] def readHistoryFromTypedConcrete[F <: InteractionFormat](variable: InteractionVariable[F], jsonHistory: String)(using v: ValueOf[F]): Either[SerializedException, InteractionVariableHistory[F]] = {
+    val serializer = v.value.historySerializer
+    serializer.tryDeserialize(jsonHistory).match {
+      case Left(err) => Left(SerializedException(s"readHistoryFromTypedConcrete: value could not be parsed (${err.getMessage})", err))
+      case Right(history) => Right(history)
+    }
   }
 
   private[sync] def readHistoryFrom[F <: InteractionFormat](
-                                                             syncContext: SyncContext,
-                                                             fetchResponse: FetchResponse[SyncContext, String]
-                                                           )(using v: ValueOf[F]): Either[SerializedException, InteractionVariableHistory[F]] = {
+                                                               syncContext: SyncContext,
+                                                               fetchResponse: FetchResponse[SyncContext, String]
+                                                             )(using v: ValueOf[F]): Either[SerializedException, InteractionVariableHistory[F]] = {
     val serializer = v.value.historySerializer
     fetchResponse.fetchedValues.find(_.dataKey == syncContext).map(_.dataValue).match {
       case Some(jsonHistory) => serializer.tryDeserialize(jsonHistory).match {

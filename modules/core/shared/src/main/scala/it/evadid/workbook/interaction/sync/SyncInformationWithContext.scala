@@ -3,6 +3,7 @@ package it.evadid.workbook.interaction.sync
 import it.evadid.core.datastructures.storage.remote.RemoteReaderWriter
 import it.evadid.core.datastructures.storage.remote.RemoteReaderWriter.{RemoteDataReader, RemoteDataWriter}
 import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
 import it.evadid.workbook.interaction.sync.model.SyncDirection.CLIENT_TO_SERVER
 import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse}
@@ -22,7 +23,7 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
 
   def serialize[F <: InteractionFormat](interaction: InteractionVariable[F]): String = {
     val history = interaction.currentHistory.cleanWithStrategy(syncInformation.syncStrategy)
-    write(history)
+    interaction.underlyingInteraction.format.historySerializer.serialize(history)
   }
 
   lazy val reader: RemoteDataReader[SyncContext, String] = new RemoteDataReader[SyncContext, String]() {

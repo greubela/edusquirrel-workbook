@@ -8,21 +8,21 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel.interactionInfoCssString
-import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookInteractionUntyped}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookDisplayElement, WorkbookInteractionElement}
 import it.evadid.workbook.interaction.sync.UpdateImportance.DEFAULT
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
 import org.scalajs.dom.{HTMLDivElement, MouseEvent}
 
 case class InteractionInfoPanel(
-                                 workbookInteractionElement: WorkbookInteractionUntyped,
-                                 gradingReporter: InteractionVariableGradingReporter[?, ?, ?])
+                                 workbookInteractionElement: WorkbookInteractionElement[InteractionFormat],
+                                 gradingReporter: InteractionVariableGradingReporter[InteractionFormat])
   extends HtmlAppElement {
 
   val iconGradingScaffolding = IconGradingAndScaffolding(fullInfo, laminarHelper, workbookInteractionElement, gradingReporter)
   val iconSync = IconSync(fullInfo, laminarHelper, workbookInteractionElement)
 
-  def historyToCss(curHistory: InteractionVariableHistory[?, ?, ?]): String =
+  def historyToCss(curHistory: InteractionVariableHistory[InteractionFormat]): String =
     if (curHistory.historyStates.lastStateOption.exists(_.updateImportance != DEFAULT)) {
       interactionInfoCssString + " status-interacted"
     } else {

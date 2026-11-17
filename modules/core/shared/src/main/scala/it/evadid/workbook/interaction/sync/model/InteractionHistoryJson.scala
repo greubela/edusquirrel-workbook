@@ -15,11 +15,6 @@ import upickle.default.*
   * This provides a strongly-typed way to handle history serialization/deserialization
   * instead of passing raw JSON strings throughout the sync pipeline.
   *
-  * Type parameters:
-  * - T: The interaction state type (e.g., String, ProgrammingState)
-  * - GA: The grading result type (typically Unit for no grading)
-  * - SA: The scaffolding result type (typically Unit for no scaffolding)
-  *
   * The format field contains the InteractionFormat case object which provides
   * type-safe serializers for the interaction. Since InteractionFormat derives
   * ReadWriter, it is automatically serializable (stores class name string).
@@ -47,5 +42,14 @@ case class InteractionHistoryJson[F <: InteractionFormat](
 
 object InteractionHistoryJson {
 
+  /** Create an InteractionHistoryJson from an interaction's format and history.
+    *
+    * @param format The InteractionFormat for the interaction
+    * @param history The InteractionVariableHistory to serialize
+    * @return An InteractionHistoryJson with the serialized history
+    */
+  def fromHistory[F <: InteractionFormat](format: F, history: InteractionVariableHistory[F]): InteractionHistoryJson[F] = {
+    InteractionHistoryJson(format, format.historySerializer.serialize(history))
+  }
 
 }

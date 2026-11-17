@@ -13,7 +13,8 @@ import it.evadid.homepage.control.info.{SessionData, WorkbookUserDataAnalyzer}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.homepage.workbook.syncDestination.{LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
-import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
+import it.evadid.workbook.abstractions.InteractionFormat
+import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import upickle.default.*
 
 import java.time.LocalDateTime
@@ -24,7 +25,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   private given ExecutionContext = ExecutionContext.global
 
-  private def interactions: List[WorkbookInteractionUntyped] = fullInfo.current.allAvailableInteractions
+  private def interactions: List[WorkbookInteractionElement[InteractionFormat]] = fullInfo.current.allAvailableInteractions
 
   private val logger = fullInfo.loggerSystemInfo.contentControlLogger
 

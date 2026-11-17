@@ -1,8 +1,10 @@
 package it.evadid.workbook.elements.interactionElements.reorderExercise
 
+import it.evadid.workbook.abstractions.InteractionFormat
+
 object ReorderCorrectness {
 
-  def isOrderCorrect[T](reorder: ReorderInteraction[T], state: ReorderInteractionState[T]): Boolean = {
+  def isOrderCorrect(reorder: ReorderInteraction.ReorderCodeInteraction, state: ReorderInteractionState[String]): Boolean = {
     val current = state.sanitizedCurrentOrder
     reorder match {
       case codeInteraction: ReorderInteraction.ReorderCodeInteraction if codeInteraction.orderConstraints.nonEmpty =>

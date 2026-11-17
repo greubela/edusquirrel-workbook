@@ -3,6 +3,7 @@ package it.evadid.workbook.interaction.sync
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.meta.InteractionVariableSyncReport
 
