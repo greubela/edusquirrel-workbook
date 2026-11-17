@@ -52,7 +52,13 @@ Fetch the branch feature/event-history-sync and try to continue making everythin
    - Merging, timestamps etc. are available only on the typed access
    - No `lastTimestamp` method on `InteractionHistoryJson` itself
 
-5. **If stuck on typing, focus on another area first**:
+5. **Use upickle's ReadWriter as the central serialization framework**:
+   - `InteractionVariableHistory` derives `ReadWriter` - use this as the source of truth
+   - `InteractionFormat`'s `historySerializer` should use `Serializer.fromImplicitRW` which reads from `ReadWriter`
+   - The format (case object like `TextInteractionFormat`) should be the central class for all serialization
+   - All type-specific serializers should derive from the format's `ReadWriter`
+
+6. **If stuck on typing, focus on another area first**:
    - Don't spend too long on one type issue
    - Work on other files and come back to typing issues
    - Commit what you have, even if it's WIP
@@ -98,7 +104,20 @@ object TextInteractionFormat extends InteractionFormat {
 - Fixed `HistoryJson` imports and `InteractionEvents` usage
 - Fixed `InteractionVariableHistory.fromResults` to use `.toSet` instead of `.values`
 - Updated tests to use new types
+- Replaced `TextInteraction2` with `TextInteraction` in code and tests (the former didn't exist)
+- Updated `DatabaseSyncViaBackendServerHandler` to use `InteractionFormat` format objects instead of legacy interaction classes
+- Updated `InteractionHistoryJson` type parameter from `[?, ?, ?]` to `[_ <: InteractionFormat]`
 - Committed and pushed to branch `variable-refactor-night-action`
+
+## ReadWriter Centralization
+
+- **upickle's `ReadWriter` is the source of truth for serialization**
+- `InteractionVariableHistory[F]` derives `ReadWriter` - use this as the primary serialization mechanism
+- `InteractionFormat.historySerializer` uses `Serializer.fromImplicitRW` which reads from `ReadWriter`
+- The format (case object like `TextInteractionFormat`) is the central class for all serialization
+- All type-specific serializers should derive from the format's `ReadWriter` via `Serializer.fromImplicitRW`
+- Use `format.historySerializer.serialize/deserialize` for serialization/deserialization
+- The format is passed explicitly through the type parameter `F <: InteractionFormat`
 
 ## Commit Strategy
 

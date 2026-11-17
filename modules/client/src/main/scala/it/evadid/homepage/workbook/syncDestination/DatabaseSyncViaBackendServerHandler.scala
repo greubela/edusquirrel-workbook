@@ -49,21 +49,21 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
   private def lookupFormatFromSyncContext(syncContext: SyncContext): InteractionFormat[?, ?, ?] = {
     // Look up the format from the interaction definition using syncContext.keyForSerialisation
     // This is a placeholder - in practice you'd look up from the interaction registry
-    import it.evadid.workbook.elements.interactionElements.basic._
+    import it.evadid.workbook.abstractions.InteractionFormat
     syncContext.keyForSerialisation match {
-      case "TextInteraction_history" => TextInteraction2
-      case "LabeledNumberInteraction_history" => LabeledNumberInteraction
-      case "LabeledCheckboxInteraction_history" => LabeledCheckboxInteraction
-      case "MessagingInteraction_history" => MessagingInteraction
-      case _ => TextInteraction2  // default fallback
+      case "TextInteraction_history" => TextInteractionFormat
+      case "LabeledNumberInteraction_history" => LabeledNumberInteractionFormat
+      case "LabeledCheckboxInteraction_history" => LabeledCheckboxInteractionFormat
+      case "MessagingInteraction_history" => MessagingInteractionFormat
+      case _ => TextInteractionFormat  // default fallback
     }
   }
 
-  private def toFetchResponse(executionInfoTyped: ExecutionSuccess[DbFetchResponse]): FetchResponse[SyncContext, InteractionHistoryJson[?, ?, ?]] = {
-    FetchResponse.fromMap[SyncContext, InteractionHistoryJson[?, ?, ?]](executionInfoTyped.history.timestampExecutionFinished, executionInfoTyped.result.fetchedElements)
+  private def toFetchResponse(executionInfoTyped: ExecutionSuccess[DbFetchResponse]): FetchResponse[SyncContext, InteractionHistoryJson[_ <: InteractionFormat]] = {
+    FetchResponse.fromMap[SyncContext, InteractionHistoryJson[_ <: InteractionFormat]](executionInfoTyped.history.timestampExecutionFinished, executionInfoTyped.result.fetchedElements)
   }
 
-  override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, InteractionHistoryJson[?, ?, ?]]] = {
+  override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, InteractionHistoryJson[_ <: InteractionFormat]]] = {
     val request = SQLCommands.FetchAllFromDbRequest(usageContext, databaseConfig, None, definition.format)
     val exInfoFut: Future[ExecutionSuccess[DbFetchResponse]] = SQLCommands.fetchFromDbCommand.sendCommandTo(backend, request)
     exInfoFut.map(toFetchResponse)
