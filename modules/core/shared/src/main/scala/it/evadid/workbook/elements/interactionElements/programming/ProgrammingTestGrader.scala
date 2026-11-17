@@ -12,5 +12,11 @@ trait ProgrammingTestGrader extends WorkbookInteractionGrader[ProgrammingState, 
 }
 
 object ProgrammingTestGrader {
-
+  given ReadWriter[ProgrammingTestGrader] =
+    readwriter[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]].bimap(
+      grader => grader,
+      {
+        case grader: ProgrammingTestGrader => grader
+        case _ => throw IllegalArgumentException("This grader is not a programming test.")
+      })
 }

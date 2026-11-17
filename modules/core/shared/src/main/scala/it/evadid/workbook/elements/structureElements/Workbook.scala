@@ -23,7 +23,7 @@ case class Workbook(
                      elementId: String,
                      metadata: WorkbookMetadata,
                      sections: List[WorkbookSection],
-                   ) extends WorkbookStructureElement[WorkbookSection] derives upickle.default.ReadWriter {
+                   ) extends WorkbookStructureElement[WorkbookSection] {
 
   val workbookId: String = elementId
 
@@ -31,13 +31,13 @@ case class Workbook(
 
   override lazy val structureType: WorkbookStructuringType = WORKBOOK
 
-  lazy val allContainedInteractionsById: Map[String, WorkbookInteractionElement[InteractionFormat]] =
+  lazy val allContainedInteractionsById: Map[String, WorkbookInteractionElement[? <: InteractionFormat]] =
     allInteractionsInThisInstance.map(interaction => interaction.elementId -> interaction).toMap
 
   override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = Workbook.factory
 
 
-  def loadDataNoUserCheck(logger: Logger, data: Map[SyncContext, InteractionHistoryJson[InteractionFormat]], executionContextInformation: ExecutionContextInformation): Unit = {
+  def loadDataNoUserCheck(logger: Logger, data: Map[SyncContext, InteractionHistoryJson], executionContextInformation: ExecutionContextInformation): Unit = {
     allInteractionsInThisInstance.foreach(curInteraction => {
       data.keys.foreach(curSyncContext => {
         if (curInteraction.interactionVariable.keyForSerialization == curSyncContext.keyForSerialisation) {
@@ -51,6 +51,8 @@ case class Workbook(
 
 
 object Workbook {
+  given ReadWriter[Workbook] = WorkbookElement.subtypeCodec
+
 
   case class WorkbookMetadata(
                                author: Set[User],

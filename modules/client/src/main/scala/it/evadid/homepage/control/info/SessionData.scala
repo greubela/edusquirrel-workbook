@@ -14,7 +14,7 @@ import java.time.LocalDateTime
 import it.evadid.homepage.control.model.FullInfo.*
 case class SessionData(
                         timestampStorage: LocalDateTime,
-                        knownUsageData: Map[SyncContext, InteractionHistoryJson[_ <: InteractionFormat]],
+                        knownUsageData: Map[SyncContext, InteractionHistoryJson],
                         userInfo: User,
                         userConfig: Option[UserConfig],
                         workbookInfo: AllWorkbookInfo) derives ReadWriter
@@ -26,15 +26,15 @@ object SessionData {
     if (homepageInfo.workbookInfo.isEmpty || homepageInfo.userInfo.isEmpty) {
       None
     } else {
-      val allInteractions: List[WorkbookInteractionElement[InteractionFormat]] = homepageInfo.workbookInfo.map(_.loadedWorkbook.allContainedInteractionsById.values.toList).getOrElse(List())
+      val allInteractions: List[WorkbookInteractionElement[? <: InteractionFormat]] = homepageInfo.workbookInfo.map(_.loadedWorkbook.allContainedInteractionsById.values.toList).getOrElse(List())
       val userInfo = homepageInfo.userInfo.get.withoutCredentials()
       val workbookInfo = homepageInfo.workbookInfo.get
       
       // Create InteractionHistoryJson instances for each interaction
-      val historyMap: Map[SyncContext, InteractionHistoryJson[_ <: InteractionFormat]] = allInteractions.map(interaction => {
+      val historyMap: Map[SyncContext, InteractionHistoryJson] = allInteractions.map(interaction => {
         val syncContext = homepageInfo.toContext.toSyncContext(interaction.interactionVariable.keyForSerialization)
         val historyJson = InteractionHistoryJson.fromHistory(
-          interaction.interactionVariable.format,
+          interaction.interactionFormat,
           interaction.interactionVariable.currentHistory
         )
         syncContext -> historyJson

@@ -18,6 +18,8 @@ case class CompressionExperimentInteraction(elementId: String, title: LanguageMa
 
   override val defaultValue = initial
   override lazy val childrenOfThisElement = Nil
+  override def validateState(value: CompressionExperiment): Unit = { checked(value); () }
+
   private def checked(value: CompressionExperiment): CompressionExperiment = {
     require(value.getClass == initial.getClass, "Stored compression experiment must match the exercise type")
     value

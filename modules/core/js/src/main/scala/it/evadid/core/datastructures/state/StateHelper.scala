@@ -64,7 +64,7 @@ object StateHelper {
 
     def toEventStream(): EventStream[T] = {
       // Explicitly reference your own package's Subscription to bypass Laminar's name collision
-      var subscription: Option[it.evadid.core.datastructures.state.Subscription[T]] = None
+      val subscription = Var(Option.empty[it.evadid.core.datastructures.state.Subscription[T]])
 
       EventStream.fromCustomSource(
         shouldStart = _ => true,
@@ -74,11 +74,11 @@ object StateHelper {
             handleOnUpdate = v => fireValue(v),
             handleOnError = e => fireError(e)
           )
-          subscription = Some(sub)
+          subscription.set(Some(sub))
         },
         stop = _ => {
-          subscription.foreach(_.cancel())
-          subscription = None
+          subscription.now().foreach(_.cancel())
+          subscription.set(None)
         }
       )
     }
@@ -142,10 +142,12 @@ object StateHelper {
 
   implicit class InteractionVariableOnJS[F <: InteractionFormat](interactionVariable: InteractionVariable[F]) {
 
-    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[Nothing] = ???
+    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[InteractionFormat.State[F]] =
+      interactionVariable.createBoundStateWithUpdateImportance(updateImportance, context).toAirstreamVar
 
 
-    def createInteractionSignal(context: ExecutionContextInformation): StrictSignal[Nothing] = ???
+    def createInteractionSignal(context: ExecutionContextInformation): StrictSignal[InteractionFormat.State[F]] =
+      interactionVariable.observableValue.toSignal(interactionVariable.currentValue).observe(using unsafeWindowOwner)
 
   }
 

@@ -2,13 +2,13 @@ package it.evadid.workbook.serialization
 
 import it.evadid.workbook.elements.displayElements.TwoColumnPanel
 import it.evadid.workbook.elements.structureElements.ExerciseGroup
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
+import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import munit.FunSuite
 
 class WorkbookDisplayCompositionSpec extends FunSuite {
   test("nested display compositions preserve child order and discover interactions") {
-    val left = TextInteraction2("left")
-    val right = TextInteraction2("right")
+    val left = TextInteraction("left")
+    val right = TextInteraction("right")
     val panel = TwoColumnPanel("columns", left, right)
     val group = ExerciseGroup("group", List(panel))
     assertEquals(panel.childrenOfThisElement, List(left, right))

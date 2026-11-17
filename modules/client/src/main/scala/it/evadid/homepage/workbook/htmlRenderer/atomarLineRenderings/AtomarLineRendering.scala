@@ -21,7 +21,7 @@ trait AtomarLineRendering extends HtmlAppElement {
 
   protected def getCssString(workbookElement: WorkbookElement): String = workbookElement match {
     case d: WorkbookDisplayElement => displayCssString
-    case i: WorkbookInteractionElement[InteractionFormat] => interactionCssString
+    case i: WorkbookInteractionElement[? <: InteractionFormat] => interactionCssString
     case s: WorkbookStructureElement[?] => structureCssString
   }
 }
@@ -50,7 +50,7 @@ object AtomarLineRendering {
   def basicLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssString: String = "", showBottomGradingPanel: Signal[Boolean] = Var(false).signal): AtomarLineRendering = workbookElement match {
     case d: WorkbookDisplayElement => RenderingDisplayLine(d, content, additionalCssString)
     case s: WorkbookStructureElement[?] => RenderingStructureLine(s, content, additionalCssString)
-    case i: WorkbookInteractionElement[InteractionFormat] => RenderingInteractionLine(i, content, additionalCssString, showBottomGradingPanel)
+    case i: WorkbookInteractionElement[? <: InteractionFormat] => RenderingInteractionLine(i, content, additionalCssString, showBottomGradingPanel)
   }
 
 

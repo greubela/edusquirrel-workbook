@@ -93,8 +93,7 @@ object ProgrammingUnitTestGrader {
                              publishInvocationArguments: Boolean = false,
                              publishCommandComparison: Boolean = false) derives ReadWriter
 
-  /*
-  given ReadWriter[ProgrammingUnitTestGrader[F]] = readwriter[ujson.Value].bimap(
+  given ReadWriter[ProgrammingUnitTestGrader] = readwriter[ujson.Value].bimap(
     grader => writeJs(Payload(grader.testId, grader.pythonTestCode, grader.importance, grader.publicDescription,
       grader.publishProgramObservation, grader.publishInvocationArguments, grader.publishCommandComparison)),
     value => {
@@ -115,5 +114,5 @@ object ProgrammingUnitTestGrader {
       }
       ProgrammingUnitTestGrader(payload.testId, payload.pythonTestCode, payload.importance, payload.publicDescription,
         payload.publishProgramObservation, payload.publishInvocationArguments, payload.publishCommandComparison)
-    })*/
+    })
 }

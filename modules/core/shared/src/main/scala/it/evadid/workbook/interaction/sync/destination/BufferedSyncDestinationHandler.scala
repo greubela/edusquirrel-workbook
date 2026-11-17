@@ -29,12 +29,7 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
     flush(false)
     promise.future
   }
-  // NOTE: readHistory is commented out because it requires ValueOf[F] which isn't available here
-  // override def readHistory[F <: InteractionFormat](context: SyncContext)(implicit ec: ExecutionContext, v: ValueOf[F]): Future[InteractionVariableHistory[F]] = {
-  //   val promise = Promise[InteractionVariableHistory[F]]()
-  //   enqueue(CachedReadRequestSingle(LocalDateTime.now(), context, promise), promise)
-  // }
-  override def readHistories(context: UsageContext, variables: Seq[InteractionVariable[InteractionFormat]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[_ <: InteractionFormat]]] = {
+  override def readHistories(context: UsageContext, variables: Seq[InteractionVariable[? <: InteractionFormat]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[_ <: InteractionFormat]]] = {
     val promise = Promise[Map[SyncContext, InteractionVariableHistory[_ <: InteractionFormat]]]()
     enqueue(CachedReadRequestMultiple(LocalDateTime.now(), context, variables, promise), promise)
   }
@@ -110,14 +105,17 @@ object BufferedSyncDestinationHandler {
     if stores.isEmpty then Future.unit else {
       // Merge queued deltas per key so that idempotent events are not lost when multiple
       // stores for the same key arrive before the buffer flushes.
+      val storing = attempt {
       val merged = stores.foldLeft(Map.empty[SyncContext, Vector[String]]) { (acc, request) =>
         acc ++ request.toStore.map { (key, json) =>
           key -> (acc.getOrElse(key, Vector.empty) :+ json)
         }
       }.view.map { (key, versions) =>
-        key -> ???// todo InteractionHistoryJson.merge(InteractionFormat.fromReadWriters[Unit, Unit, Unit], versions.toList)
+        key -> InteractionHistoryJson.mergeSerialized(versions)
       }.toMap
-      execute(underlying)(underlying.storeHistoriesJson(merged)).transform { outcome =>
+      execute(underlying)(underlying.storeHistoriesJson(merged))
+      }
+      storing.transform { outcome =>
         stores.foreach(_.promise.tryComplete(outcome))
         Success(())
       }
@@ -129,16 +127,6 @@ object BufferedSyncDestinationHandler {
   sealed trait CachedReadRequest extends CachedRequest {
     def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit
     def usageContext: UsageContext
-  }
-  case class CachedReadRequestSingle[F <: InteractionFormat](requestTimestamp: LocalDateTime, syncContext: SyncContext, promise: Promise[InteractionVariableHistory[F]]) extends CachedReadRequest {
-    //private given  v: ValueOf[F]
-    override def usageContext: UsageContext = syncContext.toUsageContext
-    // NOTE: This is commented out because we can't get ValueOf[F] implicitly here
-    // The readHistory method is also commented out for the same reason
-    // override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data.flatMap { response =>
-    //   implicitly[ValueOf[F]]
-    //   SyncDestinationHistoryHandler.readHistoryFrom[F](syncContext, response).toTry
-    // })
   }
   case class CachedReadRequestMultiple(requestTimestamp: LocalDateTime, usageContext: UsageContext, resolveWithVars: Seq[InteractionVariable[_ <: InteractionFormat]], promise: Promise[Map[SyncContext, InteractionVariableHistory[_ <: InteractionFormat]]]) extends CachedReadRequest {
     override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit =

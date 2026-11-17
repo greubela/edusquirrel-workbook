@@ -29,7 +29,7 @@ import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteractio
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.qr.CreateQrCodeInteractionRenderer
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.*
-import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction2}
+import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
@@ -147,12 +147,13 @@ object HtmlRenderFactory {
       case m: MailInteraction => HtmlMailInteractionRenderer.renderWorkbookElement(m)
       case m: MailEditor => HtmlMailEditorRenderer.renderWorkbookElement(m)
       case q: CreateQrCodeInteraction => CreateQrCodeInteractionRenderer.renderWorkbookElement(q)
-      case i: TextInteraction2 => HtmlSimpleTextInteractionRenderer.renderWorkbookElement(i)
+      case i: TextInteraction => HtmlSimpleTextInteractionRenderer.renderWorkbookElement(i)
       case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.renderWorkbookElement(i)
       case i: LabeledNumberInteraction => HtmlBasicNumberRenderer.renderWorkbookElement(i)
       case s: SortingInteraction => HtmlSortingInteractionRenderer.renderWorkbookElement(s)
       case s: SortingReasonInteraction => HtmlSortingReasonInteractionRenderer.renderWorkbookElement(s)
-      case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
+      case r: ReorderInteraction.ReorderCodeInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
+      case r: ReorderInteraction.ReorderMapIdInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
       case c: CodeTaskToggleInteraction => HtmlCodeTaskToggleRenderer.renderWorkbookElement(c)
       case d: SketchDownloadInteraction => HtmlSketchDownloadRenderer.renderWorkbookElement(d)
       /*case i: ChoiceSelectionInteraction => HtmlChoiceSelectionRenderer.renderWorkbookElement(i)
@@ -161,7 +162,7 @@ object HtmlRenderFactory {
       case i: FillInBlanksInteraction => HtmlFillInBlanksRenderer.renderWorkbookElement(i)
       case i: DropdownBlanksInteraction => HtmlDropdownBlanksRenderer.renderWorkbookElement(i)
       case i: TableFillInInteraction => HtmlTableFillInRenderer.renderWorkbookElement(i)
-      case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.renderWorkbookElement(r)*/
+      case r: ReorderInteraction.ReorderCodeInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(r)*/
       // plugins -- turtle
       case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.renderWorkbookElement(t)
       case t: TurtleRecreateShapeInteraction => HtmlTurtleRecreateShapeRenderer.renderWorkbookElement(t)

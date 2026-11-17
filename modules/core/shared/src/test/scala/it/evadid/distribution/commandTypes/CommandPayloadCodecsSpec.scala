@@ -33,7 +33,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
     import it.evadid.workbook.interaction.sync.UsageContext
     val request = SQLCommands.DeleteInDbRequest(UsageContext("program", "workbook", "user"), None,
-      DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalEvents, allWorkbooks = true)
+      DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalFormat, allWorkbooks = true)
     assertEquals(read[SQLCommands.DeleteInDbRequest](write(request)), request)
     assertEquals(ExecutionCommandFactory.forName("reset-user-histories-in-db-request"), Some(SQLCommands.resetUserHistoriesDbCommand))
     intercept[IllegalArgumentException](request.copy(limitToKey = Some("one-variable")))
@@ -51,7 +51,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
     import it.evadid.workbook.interaction.sync.UsageContext
     val request = SQLCommands.FetchAllFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"),
-      DatabaseConfig.defaultDb, None, DatabaseHistoryFormat.RelationalEvents)
+      DatabaseConfig.defaultDb, None, DatabaseHistoryFormat.RelationalFormat)
     val encoded = writeJs(request)
     val config = encoded("databaseConfig")
     assertEquals(config.obj.keySet.toSet, Set("$type", "dbFormat", "host", "port", "database"))
@@ -68,9 +68,9 @@ class CommandPayloadCodecsSpec extends FunSuite {
     val context = UsageContext("program", "scenario", "user")
     val supplied = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "private-owner", "private-password")
     List[DatabaseConfiguration](supplied.withoutCredentials, supplied).foreach { config =>
-      val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.RelationalEvents, buffered = false)
+      val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.RelationalFormat, buffered = false)
       assertEquals(read[SyncDestinationBasedOnHistoryDatabase](write(destination)), destination)
-      val request = SQLCommands.FetchAllFromDbRequest(context, config, None, DatabaseHistoryFormat.RelationalEvents)
+      val request = SQLCommands.FetchAllFromDbRequest(context, config, None, DatabaseHistoryFormat.RelationalFormat)
       assertEquals(read[SQLCommands.FetchAllFromDbRequest](write(request)), request)
       val command = ExecutionCommand(SQLCommands.fetchFromDbCommand.name, writeJs(request))
       val safe = command.stripPrivacySensitiveInformation()

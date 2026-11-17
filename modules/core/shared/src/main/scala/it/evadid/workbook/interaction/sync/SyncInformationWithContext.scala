@@ -21,9 +21,9 @@ case class SyncInformationWithContext(syncInformation: SyncInformation, usageCon
 
   val handler: SyncDestinationHistoryHandler = resolveDefinition(syncInformation.syncDestination)
 
-  def serialize[F <: InteractionFormat](interaction: InteractionVariable[F])(using v: ValueOf[F]): String = {
+  def serialize[F <: InteractionFormat](interaction: InteractionVariable[F]): String = {
     val history = interaction.currentHistory.cleanWithStrategy(syncInformation.syncStrategy)
-    v.value.historySerializer.serialize(history.asInstanceOf[InteractionVariableHistory[v.value.F]])
+    it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.fromHistory(interaction.underlyingInteraction.interactionFormat, history).serialized
   }
 
   lazy val reader: RemoteDataReader[SyncContext, String] = new RemoteDataReader[SyncContext, String]() {

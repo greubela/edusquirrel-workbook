@@ -33,7 +33,7 @@ case class FetchResponse[K, D]
 object FetchResponse {
 
 
-  def fromMap[K: ReadWriter, D: ReadWriter](timestamp: LocalDateTime, map: Map[K, D]): FetchResponse[K, D] = {
+  def fromMap[K, D](timestamp: LocalDateTime, map: Map[K, D]): FetchResponse[K, D] = {
     FetchResponse[K, D](timestamp, map.toSet.map( (curKey, curVal) => DataEntryToSync[K, D](curKey, curVal, SERVER_TO_CLIENT)))
   }
 }

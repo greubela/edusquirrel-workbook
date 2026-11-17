@@ -66,8 +66,8 @@ class AnswerTableInteractionSpec extends FunSuite {
     intercept[IllegalArgumentException](table.update(invalid, 0, 1, "1"))
     intercept[IllegalArgumentException](table.grade(invalid))
     intercept[IllegalArgumentException](table.isAnswered(invalid))
-    intercept[SerializedException](table.serializerInteractionContent.serialize(invalid))
-    intercept[SerializedException](table.serializerInteractionContent.deserialize(write(invalid)))
+    intercept[IllegalArgumentException](table.validateState(invalid))
+    intercept[IllegalArgumentException](table.validateState(table.interactionFormat.stateSerializer.deserialize(write(invalid))))
   }
   test("both definition formats preserve fixed cells, choices and alternative answers") {
     for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike))
@@ -75,7 +75,7 @@ class AnswerTableInteractionSpec extends FunSuite {
   }
   test("learner values round-trip without changing whitespace or special characters") {
     val answer = TableAnswer(List("1", " hi ", "Quotes: \"Grüße\"\n\\"))
-    assertEquals(table.serializerInteractionContent.deserialize(table.serializerInteractionContent.serialize(answer)), answer)
-    assertEquals(table.serializerInteractionContent.deserialize(table.serializerInteractionContent.serialize(table.defaultValue)), table.defaultValue)
+    assertEquals(table.interactionFormat.stateSerializer.deserialize(table.interactionFormat.stateSerializer.serialize(answer)), answer)
+    assertEquals(table.interactionFormat.stateSerializer.deserialize(table.interactionFormat.stateSerializer.serialize(table.defaultValue)), table.defaultValue)
   }
 }

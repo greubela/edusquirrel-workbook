@@ -7,14 +7,14 @@ import it.evadid.homepage.webElements.editor.config.TextEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.HtmlBasicCheckboxRenderer.fullInfo
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
+import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 
-object HtmlSimpleTextInteractionRenderer extends LineBasedRenderingFactory[TextInteraction2] {
+object HtmlSimpleTextInteractionRenderer extends LineBasedRenderingFactory[TextInteraction] {
 
   private val initConfig: TextEditorConfig = TextEditorConfig.defaultConfig
 
-  override protected def createRendering(workbookElement: TextInteraction2): AtomarLineRendering = {
-    val varBoundToEditor: Var[String] = workbookElement.interactionVariable.createBoundStateWithUpdateLogic(TextInteraction2.decideTextareaUpdateImportance, fullInfo.workbookContextInformation).toAirstreamVar
+  override protected def createRendering(workbookElement: TextInteraction): AtomarLineRendering = {
+    val varBoundToEditor: Var[String] = workbookElement.interactionVariable.createBoundStateWithUpdateLogic(TextInteraction.decideTextareaUpdateImportance, fullInfo.workbookContextInformation).toAirstreamVar
     val curConfig: Var[TextEditorConfig] = Var(initConfig)
     val editor: SimpleTextEditor = SimpleTextEditor(varBoundToEditor, curConfig)
 

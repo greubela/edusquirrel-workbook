@@ -17,7 +17,7 @@ case class EditorWithWorkbookPanel[F <: InteractionFormat, EC <: WebEditorConfig
   associatedInstruction: Option[WorkbookDisplayElement],
   gradingReporter: InteractionVariableGradingReporter[F],
   additionalModules: List[ElementCard],
-  editor: SimpleWebEditor[F#InteractionStateType, EC]
+  editor: SimpleWebEditor[InteractionFormat.State[F], EC]
 ) extends HtmlAppElement {
 
   lazy val sidePanel = InteractionSidePanelForEditor(interaction, associatedInstruction, gradingReporter, additionalModules)

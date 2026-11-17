@@ -49,8 +49,10 @@ trait WorkbookInteractionGrader[T, GA] {
 
 
 object WorkbookInteractionGrader {
-/*
-  private val knownGraderReadWrites: Map[String, Serializer[WorkbookInteractionGrader[InteractionFormat]]] = Map(
+
+  type WorkbookInteractionGraderUntyped = WorkbookInteractionGrader[?, ?]
+
+  private val knownGraderReadWrites: Map[String, Serializer[WorkbookInteractionGraderUntyped]] = Map(
     Serializer.serializerForSubclass(classOf[SlideshowGrader]),
     Serializer.serializerForSubclass(classOf[RecreateShapeGrader]),
     Serializer.serializerForSubclass(classOf[TurtleCommandUsageGrader]),
@@ -58,9 +60,9 @@ object WorkbookInteractionGrader {
     Serializer.serializerForSubclass(classOf[ProgrammingUnitTestGrader])
   )
 
-  val universalSerializer: Serializer[WorkbookInteractionGrader[InteractionFormat]] = Serializer.universalTraitSerializer(knownGraderReadWrites)
+  val universalSerializer: Serializer[WorkbookInteractionGraderUntyped] = Serializer.universalTraitSerializer(knownGraderReadWrites)
 
-  given [F <: InteractionFormat]: ReadWriter[WorkbookInteractionGrader[F]] = WorkbookInteractionGrader.universalSerializer.deriveForSubclass[WorkbookInteractionGrader[F]].uPickleReadWrite
-*/
+  given [T: ReadWriter, A: ReadWriter]: ReadWriter[WorkbookInteractionGrader[T, A]] = WorkbookInteractionGrader.universalSerializer.deriveForSubclass[WorkbookInteractionGrader[T, A]].uPickleReadWrite
+
 
 }

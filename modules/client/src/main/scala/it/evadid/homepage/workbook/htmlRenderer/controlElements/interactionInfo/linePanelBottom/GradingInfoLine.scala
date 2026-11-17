@@ -7,13 +7,13 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionEl
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingRequestedButNotFinished
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
 
-case class GradingInfoLine(interaction: WorkbookInteractionElement[InteractionFormat], gradingReporter: InteractionVariableGradingReporter[InteractionFormat]) extends HtmlAppElement {
+case class GradingInfoLine[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], gradingReporter: InteractionVariableGradingReporter[F]) extends HtmlAppElement {
   override def getDomElement(): Element =
     GradingInfoLine.render(new InteractionFeedbackView(interaction, gradingReporter, fullInfo, laminarHelper))
 }
 
 object GradingInfoLine {
-  private[interactionInfo] def render(view: InteractionFeedbackView): Element = {
+  private[interactionInfo] def render[F <: InteractionFormat](view: InteractionFeedbackView[F]): Element = {
     import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.*
     val canGrade = view.interaction.gradingElements.nonEmpty
     val canHint = view.interaction.scaffoldingElement.nonEmpty

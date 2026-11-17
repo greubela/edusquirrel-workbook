@@ -25,7 +25,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
 
   private given ExecutionContext = ExecutionContext.global
 
-  private def interactions: List[WorkbookInteractionElement[InteractionFormat]] = fullInfo.current.allAvailableInteractions
+  private def interactions: List[WorkbookInteractionElement[? <: InteractionFormat]] = fullInfo.current.allAvailableInteractions
 
   private val logger = fullInfo.loggerSystemInfo.contentControlLogger
 

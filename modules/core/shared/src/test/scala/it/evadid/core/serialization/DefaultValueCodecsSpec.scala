@@ -8,6 +8,8 @@ import it.evadid.workbook.interaction.sync.*
 import munit.FunSuite
 import upickle.default.*
 
+import it.evadid.workbook.abstractions.InteractionFormat.*
+
 class DefaultValueCodecsSpec extends FunSuite {
   private def roundTrip[T: ReadWriter](value: T): Unit = assertEquals(read[T](write(value)), value)
   test("all matrix value classes have default codecs") {
@@ -40,7 +42,7 @@ class DefaultValueCodecsSpec extends FunSuite {
     val sync = usage.toSyncContext("variable")
     roundTrip(usage)
     roundTrip(sync)
-    val history = write(it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[Int, Int, Int])
+    val history = write(it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[TextInteractionFormat.type])
     roundTrip(SyncCache(java.time.LocalDateTime.of(2025, 1, 1, 12, 0), usage, Map(sync -> history)))
   }
   test("registry descriptors have a default codec") {

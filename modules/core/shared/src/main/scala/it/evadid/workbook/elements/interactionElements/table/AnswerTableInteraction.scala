@@ -43,6 +43,8 @@ case class AnswerTableInteraction(elementId: String, caption: LanguageMapContent
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = TableAnswer(List.fill(editableCells.size)(""))
 
+  override def validateState(value: TableAnswer): Unit = { checked(value); () }
+
   private def checked(answer: TableAnswer): TableAnswer = {
     require(answer.values.size == editableCells.size, "Stored table dimensions do not match the exercise")
     answer

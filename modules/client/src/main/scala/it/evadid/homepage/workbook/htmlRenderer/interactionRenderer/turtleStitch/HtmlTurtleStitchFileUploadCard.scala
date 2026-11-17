@@ -18,7 +18,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 
-private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState], label: LanguageMapContentId) extends HtmlAppElement {
+private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteraction: WorkbookInteractionElement[it.evadid.workbook.abstractions.InteractionFormat.TurtleProjectFormat.type], label: LanguageMapContentId) extends HtmlAppElement {
 
   private val acceptedTypes: List[String] = List("text/turtle", "text/xml")
 

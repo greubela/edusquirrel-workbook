@@ -14,15 +14,15 @@ import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
 import org.scalajs.dom.{HTMLDivElement, MouseEvent}
 
-case class InteractionInfoPanel(
-                                 workbookInteractionElement: WorkbookInteractionElement[InteractionFormat],
-                                 gradingReporter: InteractionVariableGradingReporter[InteractionFormat])
+case class InteractionInfoPanel[F <: InteractionFormat](
+                                 workbookInteractionElement: WorkbookInteractionElement[F],
+                                 gradingReporter: InteractionVariableGradingReporter[F])
   extends HtmlAppElement {
 
   val iconGradingScaffolding = IconGradingAndScaffolding(fullInfo, laminarHelper, workbookInteractionElement, gradingReporter)
   val iconSync = IconSync(fullInfo, laminarHelper, workbookInteractionElement)
 
-  def historyToCss(curHistory: InteractionVariableHistory[InteractionFormat]): String =
+  def historyToCss(curHistory: InteractionVariableHistory[F]): String =
     if (curHistory.historyStates.lastStateOption.exists(_.updateImportance != DEFAULT)) {
       interactionInfoCssString + " status-interacted"
     } else {

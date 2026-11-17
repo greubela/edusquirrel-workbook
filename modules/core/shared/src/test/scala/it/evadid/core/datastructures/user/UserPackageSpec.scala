@@ -87,7 +87,7 @@ class UserPackageSpec extends FunSuite {
       llmApiConfig = Some(LlmConfiguration("https://example.com/chat", "model", Some("llm-secret"))),
       databaseConfig = Some(DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "owner", "db-secret")))
     val destination = it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
-      credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalEvents, buffered = false)
+      credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalFormat, buffered = false)
     val config = UserConfig(List(it.evadid.workbook.interaction.sync.SyncInformation(destination,
       it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_LAST_MAJOR)), isOnlineAccount = false)
     val info = AllUserInfo(user, credentials, config)

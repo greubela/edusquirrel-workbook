@@ -13,7 +13,7 @@ import it.evadid.vm.parsing.python.clean.model.{PyAST, PythonType}
 import it.evadid.vm.simulation.BeSimulatorState
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.displayElements.TwoColumnPanel
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
+import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import munit.FunSuite
 import upickle.default.*
 
@@ -149,29 +149,29 @@ class SystematicDerivedCodecSpec extends FunSuite {
     roundTrip(SendMailRequest("a@example.com", "学校", "body\nline two"))
   }
   test("derived workbook containers resolve nested registered element interfaces") {
-    val panel = TwoColumnPanel("panel", TextInteraction2("left"), TextInteraction2("right"))
+    val panel = TwoColumnPanel("panel", TextInteraction("left"), TextInteraction("right"))
     roundTrip(panel)
     copies[WorkbookElement](panel).foreach(decoded => assertEquals(decoded, panel))
   }
   test("workbook interface readers reject incompatible element kinds") {
-    val panel: WorkbookElement = TwoColumnPanel("panel", TextInteraction2("left"), TextInteraction2("right"))
-    intercept[Exception](read[WorkbookInteractionElement[String]](write(panel)))
+    val panel: WorkbookElement = TwoColumnPanel("panel", TextInteraction("left"), TextInteraction("right"))
+    intercept[Exception](read[WorkbookInteractionElement[it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat.type]](write(panel)))
   }
 
   test("standalone section snapshots include prerequisites outside their child list") {
     import it.evadid.core.datastructures.language.LanguageMapContentId
     import it.evadid.workbook.elements.structureElements.WorkbookSection
     import WorkbookSection.WorkbookSectionMetadata
-    val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("first/title")), List(TextInteraction2("one")))
+    val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("first/title")), List(TextInteraction("one")))
     val second = WorkbookSection("second", WorkbookSectionMetadata(LanguageMapContentId("second/title"), List(first), List(first)),
-      List(TwoColumnPanel("panel", TextInteraction2("left"), TextInteraction2("right"))))
+      List(TwoColumnPanel("panel", TextInteraction("left"), TextInteraction("right"))))
     roundTrip(second)
     copies[WorkbookElement](second).foreach(value => assertEquals(value, second))
   }
 
   test("workbook snapshots reject conflicting definitions with the same id") {
-    val value: WorkbookElement = TwoColumnPanel("root", TextInteraction2("same"),
-      TwoColumnPanel("same", TextInteraction2("left"), TextInteraction2("right")))
+    val value: WorkbookElement = TwoColumnPanel("root", TextInteraction("same"),
+      TwoColumnPanel("same", TextInteraction("left"), TextInteraction("right")))
     intercept[IllegalArgumentException](write(value))
   }
 

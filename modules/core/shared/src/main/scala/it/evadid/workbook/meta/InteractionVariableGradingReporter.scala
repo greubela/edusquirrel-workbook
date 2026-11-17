@@ -14,17 +14,17 @@ case class InteractionVariableGradingReporter[F <: InteractionFormat](
   protected def interactionVariable: InteractionVariable[F] = interaction.interactionVariable
 
   lazy val isScaffoldingSupported: Boolean = interactionVariable.underlyingInteraction.scaffoldingElement.isDefined
-  lazy val currentScaffoldingSignal: ObservableValue[Option[ScaffoldingResult[F#InteractionStateType, F#ScaffoldingInfoType]]] = interactionVariable.observableHistoryWithDefault.deriveValue(curHistory => {
-    val lastValue: F#InteractionStateType = curHistory.historyStates.lastStateOption.get.value
+  lazy val currentScaffoldingSignal: ObservableValue[Option[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]]] = interactionVariable.observableHistoryWithDefault.deriveValue(curHistory => {
+    val lastValue: InteractionFormat.State[F] = curHistory.historyStates.lastStateOption.get.value
     interactionVariable.control.getCurrentStateOfScaffolding(lastValue)
   })
 
   lazy val isGradingSupported: Boolean = interactionVariable.underlyingInteraction.gradingElements.nonEmpty
 
   lazy val currentHistorySignal: ObservableValue[InteractionVariableHistory[F]] = interactionVariable.observableHistoryWithDefault
-  lazy val currentStateSignal: ObservableValue[F#InteractionStateType] = interactionVariable.observableValue
-  lazy val currentGradingSignal: ObservableValue[GradedState[F#InteractionStateType, F#GradingInfoType]] = currentHistorySignal.deriveValue(curHistory => {
-    val lastValue: F#InteractionStateType = curHistory.historyStates.lastStateOption.get.value
+  lazy val currentStateSignal: ObservableValue[InteractionFormat.State[F]] = interactionVariable.observableValue
+  lazy val currentGradingSignal: ObservableValue[GradedState[InteractionFormat.State[F], InteractionFormat.Grading[F]]] = currentHistorySignal.deriveValue(curHistory => {
+    val lastValue: InteractionFormat.State[F] = curHistory.historyStates.lastStateOption.get.value
     interactionVariable.control.getCurrentStateOfGrading(lastValue)
   })
 

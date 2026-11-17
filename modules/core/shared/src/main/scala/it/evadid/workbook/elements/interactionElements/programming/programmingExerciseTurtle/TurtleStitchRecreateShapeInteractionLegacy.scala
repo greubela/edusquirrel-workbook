@@ -27,7 +27,7 @@ object TurtleStitchRecreateShapeInteractionLegacy {
 case class TurtleStitchRecreateShapeInteractionLegacy(
                                                  override val elementId: String,
                                                  val filenameRelToResources: String
-                                               ) extends WorkbookInteractionElement[LegacyTurtleFormat.type] derives upickle.default.ReadWriter {
+                                               ) extends WorkbookInteractionElement[TurtleProjectFormat.type] derives upickle.default.ReadWriter {
   override val associatedFactory = TurtleStitchRecreateShapeInteractionLegacy.factory
 
   override val defaultValue: TurtleStitchProjectState = TurtleStitchProjectState.empty()

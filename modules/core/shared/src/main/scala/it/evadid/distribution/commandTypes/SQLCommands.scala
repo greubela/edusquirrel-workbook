@@ -1,6 +1,7 @@
 package it.evadid.distribution.commandTypes
 
-import it.evadid.core.util.io.serializer.DefaultSerializer
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import java.time.LocalDateTime
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.sql.DatabaseConfiguration
 import it.evadid.sql.DatabaseHistoryFormat
@@ -28,7 +29,7 @@ object SQLCommands {
 
   case class StoreToDbRequest(
                                syncContext: SyncContext,
-                               history: InteractionHistoryJson[InteractionFormat],
+                               history: InteractionHistoryJson,
                                databaseConfig: DatabaseConfiguration,
                                databaseFormat: DatabaseHistoryFormat
                              ) extends DbRequest derives ReadWriter {
@@ -48,11 +49,13 @@ object SQLCommands {
   case class FetchEventsFromDbRequest(
                                        usageContext: UsageContext,
                                        keys: Seq[String],
-                                       starting: String,
-                                       until: String,
+                                       starting: LocalDateTime,
+                                       until: LocalDateTime,
                                        databaseConfig: DatabaseConfiguration,
                                        databaseFormat: DatabaseHistoryFormat
-                                     ) extends DbRequest derives ReadWriter
+                                     ) extends DbRequest derives ReadWriter {
+    require(!until.isBefore(starting), "History range end must not precede its start")
+  }
 
 
   case class DeleteInDbRequest(
@@ -65,7 +68,7 @@ object SQLCommands {
     require(!allWorkbooks || limitToKey.isEmpty, "An all-workbook reset cannot be restricted to one variable.")
   }
 
-  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionHistoryJson[InteractionFormat]]) derives ReadWriter {
+  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionHistoryJson]) derives ReadWriter {
 
 
   }

@@ -79,10 +79,10 @@ class TeachingChainSpec extends FunSuite {
     val e = BlockchainInteraction("chain", LanguageMapContentId("test/chain"), mined)
     assert(e.isCorrect(mined))
     assert(!e.isCorrect(TeachingChain(List(mined.blocks.head))))
-    intercept[SerializedException](e.serializerInteractionContent.deserialize(write(TeachingChain(List(mined.blocks.head)))))
-    intercept[SerializedException](e.serializerInteractionContent.serialize(TeachingChain(List(mined.blocks.head))))
+    intercept[SerializedException](e.interactionFormat.stateSerializer.deserialize(write(TeachingChain(List(mined.blocks.head)))))
+    intercept[SerializedException](e.interactionFormat.stateSerializer.serialize(TeachingChain(List(mined.blocks.head))))
     val edited = mined.update(0, TeachingBlock("draft text\n🌍", 42))
-    assertEquals(e.serializerInteractionContent.deserialize(e.serializerInteractionContent.serialize(edited)), edited)
+    assertEquals(e.interactionFormat.stateSerializer.deserialize(e.interactionFormat.stateSerializer.serialize(edited)), edited)
     for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike))
       assertEquals(serializer.deserialize(serializer.serialize(e)), e)
   }

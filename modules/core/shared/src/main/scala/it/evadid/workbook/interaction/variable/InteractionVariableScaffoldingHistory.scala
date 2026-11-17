@@ -28,7 +28,7 @@ case class InteractionVariableScaffoldingHistory[T, SA]
 
 object InteractionVariableScaffoldingHistory {
 
-  given [T, SA]: ReadWriter[InteractionVariableScaffoldingHistory[T, SA]] = macroRW
+  given [T: ReadWriter, SA: ReadWriter]: ReadWriter[InteractionVariableScaffoldingHistory[T, SA]] = macroRW
 
   def apply[T, SA](scaffoldingsFinished: Set[ScaffoldingResult[T, SA]]): InteractionVariableScaffoldingHistory[T, SA] = {
     val resMap = scaffoldingsFinished.groupBy(_.forState).view.mapValues(_.reduce(_.merge(_))).toMap

@@ -4,9 +4,9 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat,LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent}
-import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction2}
+import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.{GptInteractionElement, TextInputWithScaffoldingAndGrading}
@@ -54,7 +54,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     val image = WorkbookImageElement.LanguageMapBasedWorkbookImageElement("image", content("image/source"),
       TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES, Some(content("image/description")),
       Some(it.evadid.core.datastructures.file.CopyrightInfo.fromAi))
-    val input = TextInteraction2("gpt-input")
+    val input = TextInteraction("gpt-input")
     val section = WorkbookSection("section", WorkbookSection.WorkbookSectionMetadata(content("section/title")), List(input))
     val workbook = Workbook("workbook", Workbook.WorkbookMetadata(Set.empty, Set.empty, content("workbook/title"), List(it.evadid.core.datastructures.language.AppLanguage.English)), List(section))
     val special = " Quotes: \"hello\"; backslash: \\; newline:\nGrüße )({} "
@@ -97,7 +97,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       MailEditor("mail-editor", inbox, special, allowCompose = false),
       MailInteraction("mail-interaction", inbox, special, allowCompose = false),
       CreateQrCodeInteraction("qr", QrCodeRequirements(minBytes = 2, maxBytes = Some(200), requiredMask = Some(3)), QrCode.fromText(special)),
-      TextInteraction2("text-1"),
+      TextInteraction("text-1"),
       it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading("text-feedback",
         content("text/task"), Some(content("text/solution")), Some(TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(content("text/hint"), Map.empty)), List(TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(content("text/criterion"), Map.empty))),
       MessagingInteraction("messaging-1"),
@@ -136,12 +136,12 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     }
   }
 
-  private def assertStateRoundTrip[T, GA, SA](element: WorkbookInteractionElementFull[T, GA, SA]): Unit = {
-    val serializer = element.serializerInteractionContent
+  private def assertStateRoundTrip[F <: InteractionFormat](element: WorkbookInteractionElement[F]): Unit = {
+    val serializer = InteractionFormat.codecsFor(element.interactionFormat).stateSerializer
     assertEquals(serializer.deserialize(serializer.serialize(element.defaultValue)), element.defaultValue)
   }
 
-  elements.collect { case element: WorkbookInteractionElementFull[?, ?, ?] => element }.foreach { element =>
+  elements.collect { case element: WorkbookInteractionElement[? <: InteractionFormat] => element }.foreach { element =>
     test(s"${element.getClass.getSimpleName} interaction state round-trips") {
       assertStateRoundTrip(element)
     }
@@ -166,7 +166,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     assertEquals(restored.initProgram, source)
     assertEquals(restored.desiredResult, original.desiredResult)
     assertEquals(restored.exerciseConfig.maxCommandUsage, original.exerciseConfig.maxCommandUsage)
-    assertEquals(restored.serializerInteractionContent.serialize(source), original.serializerInteractionContent.serialize(source))
+    assertEquals(restored.interactionFormat.stateSerializer.serialize(source), original.interactionFormat.stateSerializer.serialize(source))
   }
 
   test("turtle comparison policies roundtrip through both definition formats without rewriting drafts") {
@@ -192,10 +192,10 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
         assertEquals(restored.elementId, original.elementId)
         assertEquals(restored.comparisonPolicy, policy)
         assertEquals(restored.defaultValue, source)
-        val saved = original.serializerInteractionContent.serialize(source)
-        assertEquals(restored.serializerInteractionContent.serialize(source), saved)
-        assertEquals(restored.serializerInteractionContent.deserialize(saved), source)
-        assertEquals(restored.serializerInteractionContent.deserialize(saved).fingerprint(),
+        val saved = original.interactionFormat.stateSerializer.serialize(source)
+        assertEquals(restored.interactionFormat.stateSerializer.serialize(source), saved)
+        assertEquals(restored.interactionFormat.stateSerializer.deserialize(saved), source)
+        assertEquals(restored.interactionFormat.stateSerializer.deserialize(saved).fingerprint(),
           source.fingerprint())
       }
     }
@@ -222,7 +222,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
 
   test("constructor format preserves element ids without unquoting or trimming") {
     for (id <- List("", " id ", "\"quoted\"", "line\nwith\ttabs", "Grüße )({} \\")) {
-      val element = TextInteraction2(id)
+      val element = TextInteraction(id)
       assertEquals(WorkbookElementFactory.serializerConstructorLike.deserialize(element.toStringConstructorLike), element)
       assertEquals(WorkbookElementFactory.serializerRefBasedJson.deserialize(WorkbookElementFactory.serializerRefBasedJson.serialize(element)), element)
     }
@@ -233,7 +233,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
   }
 
   test("GptInteractionElement resolves its underlying interaction reference") {
-    val input = TextInteraction2("gpt-input")
+    val input = TextInteraction("gpt-input")
     val gpt = GptInteractionElement("gpt", input, content("exercise/text"), List(content("hint/text")), List(content("criterion/text")))
 
     assertEquals(WorkbookElementFactory.parseAll(List(gpt.toSerialized, input.toSerialized)), List(gpt, input))

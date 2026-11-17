@@ -9,6 +9,8 @@ import it.evadid.workbook.interaction.sync.model.*
 import munit.FunSuite
 import upickle.default.*
 
+import it.evadid.workbook.abstractions.InteractionFormat.*
+
 class AdditionalDefaultCodecsSpec extends FunSuite {
   private def DataEntryReadFromServer[K, D](key: K, value: D, time: java.time.LocalDateTime): DataEntryToSync[K, D] =
     DataEntryToSync(key, value, SyncDirection.SERVER_TO_CLIENT)
@@ -130,7 +132,7 @@ class AdditionalDefaultCodecsSpec extends FunSuite {
     import it.evadid.workbook.interaction.variable.*
     val time = java.time.LocalDateTime.of(2025, 1, 1, 0, 0)
     val context = UsageContext("program", "scenario", "user").toSyncContext("answer")
-    val history = InteractionVariableHistory.empty[Int, Int, Int]
+    val history = InteractionVariableHistory.empty[TextInteractionFormat.type]
     restore(FetchResponse(time, Set(DataEntryReadFromServer(context, history, time))))
     restore(FetchResponse[SyncContext, String](time, Set.empty))
   }

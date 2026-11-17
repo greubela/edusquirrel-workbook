@@ -41,7 +41,7 @@ test('login validates accounts, restores cached credentials after reload and cle
     const requestHeaders = [];
     const errors = [];
     const missingTranslations = [];
-    const destinations = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalEvents'].map(format => ({
+    const destinations = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalFormat'].map(format => ({
       syncDestination: {$type:'SyncDestinationBasedOnHistoryDatabase', format, buffered:false,
         databaseConfig: {$type:'DatabaseConfig', dbFormat:'mysql', host:'herrgreubel.lima-db.de', port:'3306', database:'db_332371_12'}},
       syncStrategy: {$type:'DesiredRelevance', desired:['MAJOR']}
@@ -130,7 +130,7 @@ test('login validates accounts, restores cached credentials after reload and cle
     await login.locator('button').first().click();
     await page.waitForFunction(() => /No account|kein Konto/i.test(document.querySelector('.section-continue [role="status"]').textContent));
     unknownAccount = false;
-    const defaultFetches = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalEvents'].map(format => page.waitForRequest(request => {
+    const defaultFetches = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalFormat'].map(format => page.waitForRequest(request => {
       if (request.method() !== 'POST' || !request.url().endsWith('/executeCommand')) return false;
       const payload = readCommandRequest(request);
       return payload?.name === 'fetch-from-db-request' && payload.json.databaseFormat === format;

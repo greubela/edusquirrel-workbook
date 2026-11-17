@@ -80,12 +80,12 @@ object JsonGrammar{
     P( space ~ "\"" ~/ (strChars | escape).rep.! ~ "\"").map(Js.Str.apply)
 
   def array[$: P] =
-    P( "[" ~/ jsonExpr.rep(sep=","./) ~ space ~ "]").map(Js.Arr(_:_*))
+    P( "[" ~/ jsonExpr.rep(sep=","./) ~ space ~ "]").map(items => Js.Arr(items*))
 
   def pair[$: P] = P( string.map(_.value) ~/ ":" ~/ jsonExpr )
 
   def obj[$: P] =
-    P( "{" ~/ pair.rep(sep=","./) ~ space ~ "}").map(Js.Obj(_:_*))
+    P( "{" ~/ pair.rep(sep=","./) ~ space ~ "}").map(items => Js.Obj(items*))
 
   def jsonExpr[$: P]: P[Js.Val] = P(
     space ~ (obj | array | string | `true` | `false` | `null` | number) ~ space

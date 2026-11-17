@@ -46,7 +46,7 @@ class CoordinatePlotSpec extends FunSuite {
       assertEquals(PlotAnswer.parseNumber(draft), None)
   }
   test("answer serialization preserves connection choice and checks bounds in both directions") {
-    val serializer = plot.serializerInteractionContent
+    val serializer = plot.interactionFormat.stateSerializer
     val answer = PlotAnswer(List(PlotPoint(2, 20), PlotPoint(0.5, 30)), connected = false)
     assertEquals(serializer.deserialize(serializer.serialize(answer)), answer.copy(points = answer.points.sortBy(_.x)))
     intercept[it.evadid.distribution.command.SerializedException](serializer.serialize(PlotAnswer(List(PlotPoint(3.5, 20)))))

@@ -12,15 +12,14 @@ import java.sql.*
 
 object FetchFromDatabase {
 
-  private def union(list: List[String]): String = InteractionHistoryJson.merge(InteractionFormat.fromReadWriters[Unit, Unit, Unit], list)
 
   def handleRequest(request: FetchAllFromDbRequest, logger: Logger): DbFetchResponse = {
     it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
       request.databaseFormat match {
-        case DatabaseHistoryFormat.RelationalEvents =>
+        case DatabaseHistoryFormat.RelationalFormat =>
           new RelationalHistoryStorage(connection, logger).fetch(request)
-        case DatabaseHistoryFormat.SingleBlob =>
-          new SingleBlobHistoryStorage(connection, logger).fetch(request)
+        case DatabaseHistoryFormat.BlobFormat =>
+          new BlobHistoryStorage(connection, logger).fetch(request)
       }
     }
   }
@@ -28,10 +27,10 @@ object FetchFromDatabase {
   def handleRangeRequest(request: FetchEventsFromDbRequest, logger: Logger): DbFetchResponse = {
     it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
       request.databaseFormat match {
-        case DatabaseHistoryFormat.RelationalEvents =>
+        case DatabaseHistoryFormat.RelationalFormat =>
           new RelationalHistoryStorage(connection, logger).fetchInRange(request)
-        case DatabaseHistoryFormat.SingleBlob =>
-          new SingleBlobHistoryStorage(connection, logger).fetchInRange(request)
+        case DatabaseHistoryFormat.BlobFormat =>
+          new BlobHistoryStorage(connection, logger).fetchInRange(request)
       }
     }
   }

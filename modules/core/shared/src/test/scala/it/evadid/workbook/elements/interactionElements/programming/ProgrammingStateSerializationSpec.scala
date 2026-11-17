@@ -19,7 +19,7 @@ class ProgrammingStateSerializationSpec extends FunSuite {
     states.foreach { state =>
       assertEquals(read[ProgrammingState](write(state)), state)
       assertEquals(readBinary[ProgrammingState](writeBinary(state)), state)
-      val restored = interaction.serializerInteractionContent.deserialize(interaction.serializerInteractionContent.serialize(state))
+      val restored = interaction.interactionFormat.stateSerializer.deserialize(interaction.interactionFormat.stateSerializer.serialize(state))
       assertEquals(restored, state)
       assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(state)), state)
       assertEquals(restored.fingerprint(), state.fingerprint())
@@ -45,8 +45,8 @@ class ProgrammingStateSerializationSpec extends FunSuite {
   }
   test("both programming interactions use the current implicit state codec") {
     val state = ProgrammingStateJavaString("\nclass Drawing {\r\n")
-    List(ProgrammingExercise("regular").serializerInteractionContent,
-      ProgrammingExerciseFullJava("java").serializerInteractionContent).foreach { serializer =>
+    List(ProgrammingExercise("regular").interactionFormat.stateSerializer,
+      ProgrammingExerciseFullJava("java").interactionFormat.stateSerializer).foreach { serializer =>
       assertEquals(serializer.serialize(state), write[ProgrammingState](state))
       assertEquals(serializer.deserialize(serializer.serialize(state)), state)
     }

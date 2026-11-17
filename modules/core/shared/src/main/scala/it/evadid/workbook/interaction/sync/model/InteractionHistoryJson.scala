@@ -1,70 +1,49 @@
 package it.evadid.workbook.interaction.sync.model
 
 import it.evadid.core.util.io.ParsingContext
-import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.*
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.EventSyncStrategy
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-
 import java.time.LocalDateTime
 import upickle.default.*
 
-/** Strongly typed wrapper for interaction history JSON with its format.
-  *
-  * This provides a strongly-typed way to handle history serialization/deserialization
-  * instead of passing raw JSON strings throughout the sync pipeline.
-  *
-  * The format field contains the InteractionFormat case object which provides
-  * type-safe serializers for the interaction. Since InteractionFormat derives
-  * ReadWriter, it is automatically serializable (stores class name string).
-  *
-  * The format is passed explicitly and is necessary for the receiving server to
-  * know how to deserialize the history JSON (e.g., for custom workbooks with
-  * unknown interaction formats).
-  *
-  * All operations on history should be done through toTyped() which gives
-  * access to InteractionVariableHistory with all its methods (merge, timestampLastChanged, etc.)
-  */
-case class InteractionHistoryJson[F <: InteractionFormat](
-    format: F,
-    historyJson: String
-) derives ReadWriter {
+/** Self-describing transport and storage boundary; decoding never needs a workbook registry. */
+case class InteractionHistoryJson(format: InteractionFormat, historyJson: String) derives ReadWriter {
+  def toTyped: InteractionVariableHistory[format.type] = typedAs(format)
 
-  /** Deserialize the history using the provided format's serializer.
-    *
-    * @return The typed InteractionVariableHistory
-    * @throws ParsingException if the JSON doesn't match the expected format
-    */
-  def toTyped: InteractionVariableHistory[F] =
-    ParsingContext("interactionVariableHistory", historyJson) {
-      format.historySerializer.deserialize(historyJson).asInstanceOf[InteractionVariableHistory[F]]
+  def typedAs[F <: InteractionFormat](expected: F): InteractionVariableHistory[F] = {
+    require(format == expected, s"History format ${format.name} does not match ${expected.name}")
+    ParsingContext(s"interaction history (${format.name})", historyJson) {
+      InteractionFormat.codecsFor(expected).historySerializer.deserialize(historyJson)
     }
+  }
 
+  def merge(other: InteractionHistoryJson): InteractionHistoryJson =
+    InteractionHistoryJson.fromHistory(format, toTyped.mergeWith(other.typedAs(format)))
+
+  def cleanWithStrategy(strategy: EventSyncStrategy): InteractionHistoryJson =
+    InteractionHistoryJson.fromHistory(format, toTyped.cleanWithStrategy(strategy))
+
+  def between(starting: LocalDateTime, until: LocalDateTime): InteractionHistoryJson = {
+    require(!until.isBefore(starting), "History range end must not precede its start")
+    val history = toTyped
+    InteractionHistoryJson.fromHistory(format, history.copy(events = history.events.copy(values =
+      history.events.values.filter(event => !event.timestamp.isBefore(starting) && !event.timestamp.isAfter(until)))))
+  }
+
+  def serialized: String = write(this)
 }
 
 object InteractionHistoryJson {
+  def fromHistory[F <: InteractionFormat](format: F, history: InteractionVariableHistory[F]): InteractionHistoryJson =
+    InteractionHistoryJson(format, InteractionFormat.codecsFor(format).historySerializer.serialize(history))
 
-  /** Create an InteractionHistoryJson from an interaction's format and history.
-    *
-    * @param format The InteractionFormat for the interaction
-    * @param history The InteractionVariableHistory to serialize
-    * @return An InteractionHistoryJson with the serialized history
-    */
-  def fromHistory[F <: InteractionFormat](format: F, history: InteractionVariableHistory[F])(using v: ValueOf[F]): InteractionHistoryJson[F] = {
-    InteractionHistoryJson(format, format.historySerializer.serialize(history.asInstanceOf[InteractionVariableHistory[format.F]]))
+  def deserialize(value: String): InteractionHistoryJson = ParsingContext("interaction history envelope", value) {
+    val decoded = read[InteractionHistoryJson](value)
+    decoded.toTyped // Validate at the storage boundary, including events and feedback.
+    decoded
   }
 
-  /** Merge multiple histories into one. This is a legacy method for compatibility;
-    * in the new type system, merging requires knowing the format.
-    */
-  def merge(format: InteractionFormat, histories: List[String]): String = {
-    val initial = InteractionVariableHistory.empty[InteractionFormat]
-    val merged = histories.foldLeft(initial) { (current, json) =>
-      val decoded = format.historySerializer.deserialize(json).asInstanceOf[InteractionVariableHistory[InteractionFormat]]
-      current.mergeWith(decoded)
-    }
-    format.historySerializer.serialize(merged.asInstanceOf[InteractionVariableHistory[format.F]])
-  }
-
+  def mergeSerialized(histories: Iterable[String]): String =
+    histories.iterator.map(deserialize).reduce(_.merge(_)).serialized
 }

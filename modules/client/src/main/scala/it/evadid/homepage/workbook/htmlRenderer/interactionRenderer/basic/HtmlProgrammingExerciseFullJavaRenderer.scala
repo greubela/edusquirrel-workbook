@@ -26,9 +26,9 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
   private[homepage] def createNewEditor(
                                          element: ProgrammingExerciseFullJava,
                                          boundVar: Var[ProgrammingState],
-                                         gradingReporter: InteractionVariableGradingReporter[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding]
+                                         gradingReporter: InteractionVariableGradingReporter[it.evadid.workbook.abstractions.InteractionFormat.ProgrammingExerciseWithLlmScaffoldingAndGrading.type]
                                        ):
-  EditorWithWorkbookPanel[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding, EvaEditorConfig] = {
+  EditorWithWorkbookPanel[it.evadid.workbook.abstractions.InteractionFormat.ProgrammingExerciseWithLlmScaffoldingAndGrading.type, EvaEditorConfig] = {
 
     val draw = new TurtleTaskEditorExtension(boundVar, None)
     val drawCard = ElementCard(LanguageMapContentId("basic/DrawTitle"), draw.getDomElement())

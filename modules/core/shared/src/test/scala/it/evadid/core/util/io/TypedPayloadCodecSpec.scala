@@ -4,11 +4,13 @@ import it.evadid.vm.parsing.java.clean.model.JavaType.{JAVA_ANY, JAVA_UNPARSABLE
 import it.evadid.vm.parsing.python.clean.model.PythonType.{PYTHON_ANY, PYTHON_UNPARSABLE_TYPE}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
+import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory, InteractionVariableScaffoldingHistory}
 import java.time.LocalDateTime
 import munit.FunSuite
 import upickle.default.*
+
+import it.evadid.workbook.abstractions.InteractionFormat.*
 
 class TypedPayloadCodecSpec extends FunSuite {
   test("the default codec imports do not provide a catch-all ReadWriter[Any]") {
@@ -29,10 +31,10 @@ class TypedPayloadCodecSpec extends FunSuite {
   }
 
   test("interactions without grading or scaffolding information use Unit payloads") {
-    val value: InteractionVariable[String, Unit, Unit] = InteractionVariable(TextInteraction2("typed-answer"))
+    val value: InteractionVariable[TextInteractionFormat.type] = InteractionVariable(TextInteraction("typed-answer"))
     val history = value.currentHistory
-    assertEquals(read[InteractionVariableHistory[String, Unit, Unit]](write(history)), history)
-    assertEquals(readBinary[InteractionVariableHistory[String, Unit, Unit]](writeBinary(history)), history)
+    assertEquals(read[InteractionVariableHistory[TextInteractionFormat.type]](write(history)), history)
+    assertEquals(readBinary[InteractionVariableHistory[TextInteractionFormat.type]](writeBinary(history)), history)
   }
 
   test("unknown language literals preserve opaque source text with a String codec") {

@@ -1,140 +1,94 @@
 package it.evadid.server.commandHandler.sql.sync
 
+import it.evadid.core.util.crypto.ContentIdentity
 import it.evadid.distribution.commandTypes.SQLCommands.*
-import it.evadid.workbook.interaction.sync.SyncSuccess
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.abstractions.grading.GradingResult
-import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
-import it.evadid.workbook.interaction.variable.InteractionVariableGradingHistory
-import it.evadid.core.util.io.serializer.InteractionFormat
 import it.evadid.util.logging.Logger
+import it.evadid.workbook.abstractions.InteractionFormat
+import it.evadid.workbook.interaction.sync.{SyncSuccess, UsageContext}
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.interaction.variable.events.*
 import java.sql.Connection
 import java.time.LocalDateTime
-import upickle.default.*
 
-/** Reads and deletes relational history. All inserts and upserts live in UpsertToDatabase. */
-class RelationalHistoryStorage(connection: Connection, logger: Logger) extends RelationalHistorySql(connection, logger) {
-  def fetch(request: FetchAllFromDbRequest): DbFetchResponse = transaction {
-    val context = request.usageContext
-    val limit = request.mayLimitToKey.map(_ => " AND variable_id=?").getOrElse("")
-    val parameters = List(context.programId, context.scenarioId, context.userId) ++ request.mayLimitToKey.toList
-    val contexts = query("SELECT id,variable_id FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=?" + limit, parameters)(row => row.getLong(1) -> row.getString(2))
-    val histories = contexts.map { (sync, key) =>
-      val states = query("SELECT id,timestamp,update_importance,serialized_data,format_id FROM answer_event WHERE sync_id=?", List(sync)) { row =>
-        safe("answer " + row.getLong(1)) {
-          row.getLong(1) -> answerJson(row) -> row.getString("format_id")
-        }
-      }.flatten.toMap
-      
-      val keyedGrades = query("SELECT * FROM grading_event WHERE sync_id=?", List(sync)).flatMap { row =>
-        states.get(row.getLong("answer_id")).flatMap { case (_, event, formatId) =>
-          safe("grading " + row.getLong("id")) {
-            val result = readJson[GradingResult[ujson.Value, ujson.Value]]("GradingResult", gradeJson(row, event("value")))
-            require(result.grader.key == row.getString("grader_key"), "Stored grader key mismatch")
-            Some((result, LocalDateTime.parse(event("timestamp").str), formatId))
-          }
-        }
-      }.groupBy(_._1.grader.key).values.map { results =>
-        results.sortBy(_._2).map(_._1).reduce(mergeGrade)
-      }
-      val gradingHistory = writeJs(InteractionVariableGradingHistory.fromResults(keyedGrades))
-      
-      val scaffoldingHistory = query("SELECT * FROM scaffolding_event WHERE sync_id=?", List(sync)).flatMap { row =>
-        states.get(row.getLong("answer_id")).flatMap { case (_, event, formatId) =>
-          safe("scaffolding " + row.getLong("id")) {
-            val result = readJson[ScaffoldingResult[ujson.Value, ujson.Value]]("ScaffoldingResult", scaffoldingJson(row, event("value")))
-            Some((result, formatId))
-          }
-        }
-      }.groupBy(_._1.forState).map { (state, results) =>
-        state -> writeJs(results.map(_._1).reduce(_.merge(_)))
-      }
-      
-      val history = ujson.Obj("historyStates" -> ujson.Obj("events" -> ujson.Arr.from(states.values.map(_._2))),
-        "historyGrading" -> gradingHistory,
-        "historyScaffolding" -> ujson.Obj("scaffoldingMap" -> ujson.Arr.from(scaffoldingHistory.map((state, value) => ujson.Arr(state, value)))))
-      
-      // Get format from first row, use default if not found
-      val formatId = states.headOption.map(_._3).getOrElse("it.evadid.workbook.elements.interactionElements.basic.TextInteraction")
-      val format = readFormat(formatId)
-      val historyJson = ujson.write(history)
-      context.toSyncContext(key) -> InteractionHistoryJson(format, historyJson)
-    }.toMap
-    DbFetchResponse(histories.map { case (ctx, ihj) => ctx -> ihj.historyJson })
+/** Each event is independent: feedback ranges do not require the answer to fall in the same range. */
+class RelationalHistoryStorage(connection: Connection, logger: Logger) extends HistorySql(connection, logger) {
+  private val tables = List("answer_event", "grading_event", "scaffolding_event")
+
+  def store(request: StoreToDbRequest): SyncSuccess = transaction {
+    val context = request.syncContext
+    val format = request.history.format
+    val history = request.history.typedAs(format)
+    val identity = List(context.programId, context.scenarioId, context.userId, context.keyForSerialisation)
+    update("INSERT INTO sync_context_id (program_id,scenario_id,user_id,variable_id,format) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
+      (identity :+ format.name)*)
+    val (sync, savedFormat) = query("SELECT id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", identity)(row => row.getLong(1) -> row.getString(2)).head
+    require(InteractionFormat.fromName(savedFormat) == format, s"History format cannot change for ${context.keyForSerialisation}")
+    val written = history.events.values.toList.map(event => storeEvent(sync, format)(event)).sum
+    SyncSuccess(0, written, 0, LocalDateTime.now())
   }
 
-  /** Return event-based histories filtered to [starting, until]. */
+  private def storeEvent[F <: InteractionFormat](sync: Long, format: F)(event: InteractionEvent[F]): Int = {
+    val table = event match {
+      case _: AnswerChangedEvent[F] => "answer_event"
+      case _: GradingEvent[F] => "grading_event"
+      case _: ScaffoldingEvent[F] => "scaffolding_event"
+    }
+    val serialized = InteractionFormat.codecsFor(format).eventSerializer.serialize(event)
+    val eventId = ContentIdentity.key(ujson.read(serialized))
+    update(s"INSERT INTO $table (sync_id,event_id,event_day,event_nano,timestamp,serialized_data) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE event_id=event_id",
+      sync, eventId, event.timestamp.toLocalDate.toEpochDay, event.timestamp.toLocalTime.toNanoOfDay, event.timestamp.toString, serialized) match {
+      case 1 => 1
+      case _ => 0
+    }
+  }
+
+  private def histories(context: UsageContext, keys: Seq[String], range: Option[(LocalDateTime, LocalDateTime)]): DbFetchResponse = {
+    val keyFilter = if keys.isEmpty then "" else " AND variable_id IN (" + keys.map(_ => "?").mkString(",") + ")"
+    val contexts = query("SELECT id,variable_id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=?" + keyFilter,
+      List(context.programId, context.scenarioId, context.userId) ++ keys)(row => (row.getLong(1), row.getString(2), InteractionFormat.fromName(row.getString(3))))
+    DbFetchResponse(contexts.map { (sync, key, format) =>
+      context.toSyncContext(key) -> readHistory(sync, format, range)
+    }.toMap)
+  }
+
+  private def readHistory[F <: InteractionFormat](sync: Long, format: F, range: Option[(LocalDateTime, LocalDateTime)]): InteractionHistoryJson = {
+    val (filter, parameters) = range.fold("" -> List.empty[Long]) { (starting, until) =>
+      val fromDay = starting.toLocalDate.toEpochDay
+      val untilDay = until.toLocalDate.toEpochDay
+      " AND (event_day>? OR (event_day=? AND event_nano>=?)) AND (event_day<? OR (event_day=? AND event_nano<=?))" ->
+        List(fromDay, fromDay, starting.toLocalTime.toNanoOfDay, untilDay, untilDay, until.toLocalTime.toNanoOfDay)
+    }
+    val events = tables.flatMap { table =>
+      query(s"SELECT timestamp,serialized_data,event_day,event_nano FROM $table WHERE sync_id=?" + filter, List(sync) ++ parameters) { row =>
+        val event = InteractionFormat.codecsFor(format).eventSerializer.deserialize(row.getString(2))
+        require(event.timestamp == LocalDateTime.parse(row.getString(1)) &&
+          event.timestamp.toLocalDate.toEpochDay == row.getLong(3) && event.timestamp.toLocalTime.toNanoOfDay == row.getLong(4), "Event timestamp columns disagree")
+        require(table == (event match {
+          case _: AnswerChangedEvent[F] => "answer_event"
+          case _: GradingEvent[F] => "grading_event"
+          case _: ScaffoldingEvent[F] => "scaffolding_event"
+        }), "Event stored in the wrong table")
+        event
+      }
+    }.toSet
+    InteractionHistoryJson.fromHistory(format, InteractionVariableHistory(InteractionEvents(events)))
+  }
+
+  def fetch(request: FetchAllFromDbRequest): DbFetchResponse = transaction {
+    histories(request.usageContext, request.mayLimitToKey.toList, None)
+  }
+
   def fetchInRange(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {
-    val context = request.usageContext
-    val starting = LocalDateTime.parse(request.starting)
-    val until = LocalDateTime.parse(request.until)
-    val keyFilter = if request.keys.isEmpty then "" else " AND variable_id IN (" + request.keys.map(_ => "?").mkString(",") + ")"
-    val parameters = List(context.programId, context.scenarioId, context.userId) ++ request.keys.toList
-    val contexts = query("SELECT id,variable_id FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=?"+keyFilter, parameters)(row => row.getLong(1) -> row.getString(2))
-    val histories = contexts.map { (sync, key) =>
-      val states = query("SELECT id,timestamp,update_importance,serialized_data,format_id FROM answer_event WHERE sync_id=? AND timestamp>=? AND timestamp<=?", List(sync, starting.format(timestampFormat), until.format(timestampFormat))) { row =>
-        safe("answer " + row.getLong(1)) {
-          row.getLong(1) -> answerJson(row) -> row.getString("format_id")
-        }
-      }.flatten.toMap
-      
-      val keyedGrades = query("SELECT * FROM grading_event WHERE sync_id=? AND timestamp>=? AND timestamp<=?", List(sync, starting.format(timestampFormat), until.format(timestampFormat))).flatMap { row =>
-        states.get(row.getLong("answer_id")).flatMap { case (_, event, formatId) =>
-          safe("grading " + row.getLong("id")) {
-            val result = readJson[GradingResult[ujson.Value, ujson.Value]]("GradingResult", gradeJson(row, event("value")))
-            require(result.grader.key == row.getString("grader_key"), "Stored grader key mismatch")
-            Some((result, LocalDateTime.parse(event("timestamp").str), formatId))
-          }
-        }
-      }.groupBy(_._1.grader.key).values.map { results =>
-        results.sortBy(_._2).map(_._1).reduce(mergeGrade)
-      }
-      val gradingHistory = writeJs(InteractionVariableGradingHistory.fromResults(keyedGrades))
-      
-      val scaffoldingHistory = query("SELECT * FROM scaffolding_event WHERE sync_id=? AND timestamp>=? AND timestamp<=?", List(sync, starting.format(timestampFormat), until.format(timestampFormat))).flatMap { row =>
-        states.get(row.getLong("answer_id")).flatMap { case (_, event, formatId) =>
-          safe("scaffolding " + row.getLong("id")) {
-            val result = readJson[ScaffoldingResult[ujson.Value, ujson.Value]]("ScaffoldingResult", scaffoldingJson(row, event("value")))
-            Some((result, formatId))
-          }
-        }
-      }.groupBy(_._1.forState).map { (state, results) =>
-        state -> writeJs(results.map(_._1).reduce(_.merge(_)))
-      }
-      
-      val history = ujson.Obj("historyStates" -> ujson.Obj("events" -> ujson.Arr.from(states.values.map(_._2))),
-        "historyGrading" -> gradingHistory,
-        "historyScaffolding" -> ujson.Obj("scaffoldingMap" -> ujson.Arr.from(scaffoldingHistory.map((state, value) => ujson.Arr(state, value)))))
-      
-      // Get format from first row, use default if not found
-      val formatId = states.headOption.map(_._3).getOrElse("it.evadid.workbook.elements.interactionElements.basic.TextInteraction")
-      val format = readFormat(formatId)
-      val historyJson = ujson.write(history)
-      context.toSyncContext(key) -> InteractionHistoryJson(format, historyJson)
-    }.toMap
-    DbFetchResponse(histories.map { case (ctx, ihj) => ctx -> ihj.historyJson })
+    histories(request.usageContext, request.keys, Some(request.starting -> request.until))
   }
 
   def delete(request: DeleteInDbRequest): SyncSuccess = transaction {
     val context = request.usageContext
     val scenario = if request.allWorkbooks then "" else " AND scenario_id=?"
     val limit = request.limitToKey.map(_ => " AND variable_id=?").getOrElse("")
-    val parameters = List(context.programId, context.userId) ++
-      Option.unless(request.allWorkbooks)(context.scenarioId).toList ++ request.limitToKey.toList
+    val parameters = List(context.programId, context.userId) ++ Option.unless(request.allWorkbooks)(context.scenarioId).toList ++ request.limitToKey.toList
     val removed = update("DELETE FROM sync_context_id WHERE program_id=? AND user_id=?" + scenario + limit, parameters*)
     SyncSuccess(0, 0, removed, LocalDateTime.now())
-  }
-  
-  /** Read format from fully qualified class name. */
-  private def readFormat(formatId: String): InteractionFormat[?, ?, ?] = {
-    try {
-      val clazz = Class.forName(formatId)
-      val field = clazz.getField("MODULE$")
-      field.get(null).asInstanceOf[InteractionFormat[?, ?, ?]]
-    } catch {
-      case e: Exception =>
-        logger.warn(s"Failed to load format $formatId: ${e.getMessage}")
-        throw e
-    }
   }
 }

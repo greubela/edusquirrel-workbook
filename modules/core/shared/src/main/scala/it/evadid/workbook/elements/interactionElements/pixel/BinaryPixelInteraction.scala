@@ -33,6 +33,8 @@ case class BinaryPixelInteraction(elementId: String, title: LanguageMapContentId
   probes.foreach(_.cells.foreach(initial.index))
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = initial
+  override def validateState(value: BinaryPixelImage): Unit = { checked(value); () }
+
   private def checked(image: BinaryPixelImage): BinaryPixelImage = {
     require(initial.sameDimensions(image), "Stored pixel dimensions do not match the exercise")
     image

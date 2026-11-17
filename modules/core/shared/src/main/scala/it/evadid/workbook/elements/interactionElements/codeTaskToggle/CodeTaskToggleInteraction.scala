@@ -32,7 +32,7 @@ case class CodeTaskToggleInteraction(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List(reorder)
 
-  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionElement[InteractionFormat]] = List(this.asInstanceOf[WorkbookInteractionElement[InteractionFormat]], reorder.asInstanceOf[WorkbookInteractionElement[InteractionFormat]])
+  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionElement[? <: InteractionFormat]] = List(this.asInstanceOf[WorkbookInteractionElement[? <: InteractionFormat]], reorder.asInstanceOf[WorkbookInteractionElement[? <: InteractionFormat]])
 }
 
 object CodeTaskToggleInteraction {

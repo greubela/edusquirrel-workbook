@@ -3,8 +3,8 @@ package it.evadid.workbook.interaction.sync.destination
 import it.evadid.distribution.command.SerializedException
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.model.FetchResponse
-import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
+import it.evadid.workbook.interaction.sync.model.{FetchResponse, InteractionHistoryJson}
+import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 import upickle.default.*
 
@@ -39,17 +39,19 @@ trait SyncDestinationHistoryHandler {
 
   def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]]
 
-  def readHistory[F <: InteractionFormat](syncContext: SyncContext)(implicit ec: ExecutionContext): Future[InteractionVariableHistory[F]] = {
-    // NOTE: This requires ValueOf[F] which we don't have, so we use the raw JSON and leave type conversion to caller
-    readHistoryJson(syncContext).transformWith {
-      case Success(curResponse) => 
-        // For now, return an untyped history and let the caller handle type conversion
-        Future.failed(SerializedException("readHistory requires ValueOf[F] for type-safe deserialization"))
-      case Failure(err) => Future.failed(SerializedException(s"Error while fetching data from sync destination (${definition}): ${err.getMessage}", err))
-    }
+  def readHistoriesInRange(usageContext: UsageContext, keys: Seq[SyncContext], starting: LocalDateTime,
+      until: LocalDateTime, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
+    require(!until.isBefore(starting), "History range end must not precede its start")
+    val selected = keys.toSet
+    readHistoriesJson(usageContext).map(response => response.fetchedValues.filter(entry => selected(entry.dataKey)).map { entry =>
+      entry.dataKey -> InteractionHistoryJson.deserialize(entry.dataValue).cleanWithStrategy(strategy).between(starting, until)
+    }.toMap)
   }
 
-  def readHistories(usageContext: UsageContext, variablesToResolveTypes: Seq[InteractionVariable[_ <: InteractionFormat]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[_]]] = {
+  def readHistory[F <: InteractionFormat](syncContext: SyncContext)(using ec: ExecutionContext, format: ValueOf[F]): Future[InteractionVariableHistory[F]] =
+    readHistoryJson(syncContext).flatMap(response => SyncDestinationHistoryHandler.readHistoryFrom[F](syncContext, response).fold(Future.failed, Future.successful))
+
+  def readHistories(usageContext: UsageContext, variablesToResolveTypes: Seq[InteractionVariable[? <: InteractionFormat]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[? <: InteractionFormat]]] = {
     readHistoriesJson(usageContext).map(fetchResponse => SyncDestinationHistoryHandler.readHistoriesFromTyped(variablesToResolveTypes, fetchResponse))
   }
 
@@ -63,9 +65,9 @@ trait SyncDestinationHistoryHandler {
 object SyncDestinationHistoryHandler {
 
   private[sync] def readHistoriesFromTyped(
-                                       variablesToResolveTypes: Seq[InteractionVariable[_ <: InteractionFormat]],
+                                       variablesToResolveTypes: Seq[InteractionVariable[? <: InteractionFormat]],
                                        fetchResponse: FetchResponse[SyncContext, String]
-                                     ): Map[SyncContext, InteractionVariableHistory[_ <: InteractionFormat]] = {
+                                     ): Map[SyncContext, InteractionVariableHistory[? <: InteractionFormat]] = {
     fetchResponse.fetchedValues.flatMap { curFetchedValue =>
       variablesToResolveTypes
         .find(_.keyForSerialization == curFetchedValue.dataKey.keyForSerialisation)
@@ -75,40 +77,23 @@ object SyncDestinationHistoryHandler {
     }.toMap
   }
 
-  private[sync] def readHistoryFromTypedInternal(variable: InteractionVariable[_ <: InteractionFormat], jsonHistory: String): Either[SerializedException, InteractionVariableHistory[_ <: InteractionFormat]] = {
-    // Since we're working with existential types, we deserialize using the format's serializer
-    // and cast to the existential type
-    val format = variable.underlyingInteraction.format
-    format.historySerializer.tryDeserialize(jsonHistory) match {
-      case Left(err) => Left(SerializedException(s"readHistoryFromTypedInternal: value could not be parsed (${err.getMessage})", err))
-      case Right(history) => Right(history.asInstanceOf[InteractionVariableHistory[_ <: InteractionFormat]])
-    }
+  private[sync] def readHistoryFromTypedInternal(variable: InteractionVariable[? <: InteractionFormat], jsonHistory: String): Either[SerializedException, InteractionVariableHistory[? <: InteractionFormat]] = {
+    scala.util.Try(InteractionHistoryJson.deserialize(jsonHistory).typedAs(variable.underlyingInteraction.interactionFormat)).toEither.left.map(SerializedException(_))
   }
 
-  private[sync] def readHistoryFromTypedConcrete[F <: InteractionFormat](variable: InteractionVariable[F], jsonHistory: String)(using v: ValueOf[F]): Either[SerializedException, InteractionVariableHistory[F]] = {
-    val serializer = v.value.historySerializer
-    serializer.tryDeserialize(jsonHistory) match {
-      case Left(err) => Left(SerializedException(s"readHistoryFromTypedConcrete: value could not be parsed (${err.getMessage})", err))
-      case Right(history) => Right(history.asInstanceOf[InteractionVariableHistory[F]])
-    }
-  }
+  private[sync] def readHistoryFromTypedConcrete[F <: InteractionFormat](variable: InteractionVariable[F], jsonHistory: String): Either[SerializedException, InteractionVariableHistory[F]] =
+    scala.util.Try(InteractionHistoryJson.deserialize(jsonHistory).typedAs(variable.underlyingInteraction.interactionFormat)).toEither.left.map(SerializedException(_))
 
-  private[sync] def readHistoryFrom[F <: InteractionFormat](
-                                                                syncContext: SyncContext,
-                                                                fetchResponse: FetchResponse[SyncContext, String]
-                                                              )(using v: ValueOf[F]): Either[SerializedException, InteractionVariableHistory[F]] = {
-    val serializer = v.value.historySerializer
-    fetchResponse.fetchedValues.find(_.dataKey == syncContext).map(_.dataValue) match {
-      case Some(jsonHistory) => 
-        serializer.tryDeserialize(jsonHistory) match {
-          case Left(err) => Left(SerializedException(s"readHistory::curResponse fetched ${fetchResponse.fetchedValues.size} and contained '${syncContext}' but value could not be parsed (${err.getMessage})", err))
-          case Right(history) => Right(history.asInstanceOf[InteractionVariableHistory[F]])
-        }
-      case None => Left(SerializedException(s"readHistory::curResponse fetched ${fetchResponse.fetchedValues.size} but did not contain ${syncContext}"))
-    }
-  }
+  private[sync] def readHistoryFrom[F <: InteractionFormat](syncContext: SyncContext,
+      response: FetchResponse[SyncContext, String])(using format: ValueOf[F]): Either[SerializedException, InteractionVariableHistory[F]] =
+    response.fetchedValues.find(_.dataKey == syncContext).toRight(SerializedException(s"No history for $syncContext"))
+      .flatMap(entry => scala.util.Try(InteractionHistoryJson.deserialize(entry.dataValue).typedAs(format.value)).toEither.left.map(SerializedException(_)))
 
-  private def validHistory(json: String, logger: SyncLogger): Boolean = ???
+  private def validHistory(json: String, logger: SyncLogger): Boolean =
+    scala.util.Try(InteractionHistoryJson.deserialize(json)).fold(error => {
+      logger.logExceptionWarn("Discarding malformed interaction history", error)
+      false
+    }, _ => true)
 
   def fromBasic(basic: SyncDestinationHandlerBasic): SyncDestinationHistoryHandler = {
     val typed = basic.forSpecificType[SyncContext, String]

@@ -11,13 +11,14 @@ import it.evadid.workbook.interaction.sync.UpdateImportance.MINOR
 
 import java.time.LocalDateTime
 
-object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderInteraction[?]] {
+object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderInteraction.ReorderCodeInteraction | ReorderInteraction.ReorderMapIdInteraction] {
 
-  override protected def createRendering(reorder: ReorderInteraction[?]): AtomarLineRendering = {
+  override protected def createRendering(reorder: ReorderInteraction.ReorderCodeInteraction | ReorderInteraction.ReorderMapIdInteraction): AtomarLineRendering = {
     val dom: Element = reorder match {
       case codeInteraction: ReorderInteraction.ReorderCodeInteraction =>
         renderReorder(
-          codeInteraction,
+          codeInteraction.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.workbookContextInformation),
+          state => ReorderCorrectness.isOrderCorrect(codeInteraction, state),
           (state, itemId: Int) => {
             val contentElement: Element = pre(code(state.elements(itemId)))
             val hintOpt = codeInteraction.hints.lift(itemId)
@@ -39,7 +40,8 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
         )
       case mapIds: ReorderInteraction.ReorderMapIdInteraction =>
         renderReorder(
-          mapIds,
+          mapIds.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.workbookContextInformation),
+          state => state.sanitizedCurrentOrder == state.correctOrder,
           (state, itemId) => span(text <-- laminarHelper.plaintextStringSignal(state.elements(itemId))),
           itemCssClass = ""
         )
@@ -49,11 +51,11 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
   }
 
   private def renderReorder[T](
-                                reorder: ReorderInteraction[T],
+                                stateVar: Var[ReorderInteractionState[T]],
+                                isCorrect: ReorderInteractionState[T] => Boolean,
                                 renderElementContent: (ReorderInteractionState[T], Int) => Element,
                                 itemCssClass: String
                               ): Element = {
-    val stateVar = reorder.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.workbookContextInformation)
     val draggingId: Var[Option[Int]] = Var(None)
     val hoverIndex: Var[Option[Int]] = Var(None)
 
@@ -106,16 +108,10 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
     }
 
     def updateOrder(rawOrder: List[Int]): Unit = {
-      reorder.interactionVariable.updateStateFromUserInteraction(
-        state => {
-          val sanitized = sanitizeOrder(rawOrder, state)
-          if (sanitized != state.currentOrder) state.copy(currentOrder = sanitized)
-          else state
-        },
-        UpdateImportance.MINOR,
-        LocalDateTime.now(),
-        fullInfo.workbookContextInformation
-      )
+      stateVar.update { state =>
+        val sanitized = sanitizeOrder(rawOrder, state)
+        if sanitized != state.currentOrder then state.copy(currentOrder = sanitized) else state
+      }
     }
 
     val feedbackVar: Var[Option[LanguageMapContentId]] = Var(None)
@@ -123,7 +119,7 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
     def checkSolution(): Unit = {
       val state = stateVar.now()
 
-      if (ReorderCorrectness.isOrderCorrect(reorder, state)) {
+      if (isCorrect(state)) {
         feedbackVar.set(Some(LanguageMapContentId("basic/reorderFeedbackSuccess")))
       } else {
         feedbackVar.set(Some(LanguageMapContentId("basic/reorderFeedbackWrongOrder")))

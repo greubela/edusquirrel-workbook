@@ -81,7 +81,7 @@ class UserAccountMysqlSpec extends FunSuite {
       llmApiConfig = Some(it.evadid.llm.LlmConfiguration("https://fixture.invalid/chat", "model", Some("ephemeral-llm-secret"))),
       databaseConfig = Some(DatabaseConfigWithCredentials("mysql", "fixture.invalid", "3306", "history", "owner", "ephemeral-db-secret")))
     val destination = it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
-      credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalEvents)
+      credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalFormat)
     val settings = UserConfig(List(it.evadid.workbook.interaction.sync.SyncInformation(destination,
       it.evadid.workbook.interaction.sync.SyncStrategy.SYNC_MAJOR)), isOnlineAccount = true)
     val info = AllUserInfo(alice, credentials, settings)

@@ -27,17 +27,8 @@ object DatabaseRequestConnection {
   def use[A](request: DbRequest, logger: Logger)(run: Connection => A): A = SqlFailure(s"executing ${request.databaseFormat} history request", logger) {
     val configured = resolve(request.databaseConfig, DatabaseConfigWithCredentials.readFromEnv())
     Using.resource(configured.newConnection()) { connection =>
-      // Classic snapshot queries support the existing tables without imposing the
-      // exact DDL of the new creation scripts (collation, nullability, precision).
-      request.databaseFormat match {
-        case it.evadid.sql.DatabaseHistoryFormat.RelationalEvents =>
-          val report = EnsureDatabaseProperlySetup.inspect(connection, request.databaseFormat.tables.toSet)
-          require(report.valid, s"History database schema is incompatible: missing=${report.missingTables.mkString(",")}; conflicts=${report.conflicts.mkString("; ")}")
-        case it.evadid.sql.DatabaseHistoryFormat.SingleBlob =>
-          // SingleBlob format requires only the single_blob_history table
-          val report = EnsureDatabaseProperlySetup.inspect(connection, Set("single_blob_history"))
-          require(report.valid, s"Single-blob history database schema is incompatible: missing=${report.missingTables.mkString(",")}; conflicts=${report.conflicts.mkString("; ")}")
-      }
+      val report = EnsureDatabaseProperlySetup.inspect(connection, request.databaseFormat.tables.toSet)
+      require(report.valid, s"History database schema is incompatible: missing=${report.missingTables.mkString(",")}; conflicts=${report.conflicts.mkString("; ")}")
       run(connection)
     }
   }

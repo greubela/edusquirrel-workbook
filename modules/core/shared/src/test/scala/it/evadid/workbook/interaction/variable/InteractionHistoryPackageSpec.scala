@@ -8,44 +8,46 @@ import java.time.LocalDateTime
 import munit.FunSuite
 import upickle.default.*
 
+import it.evadid.workbook.abstractions.InteractionFormat.*
+
 class InteractionHistoryPackageSpec extends FunSuite {
   private val time = LocalDateTime.of(2025, 1, 1, 12, 0)
   
-  private def answer(value: Int, importance: UpdateImportance): AnswerChangedEvent[Int, Int, Int] =
-    AnswerChangedEvent[Int, Int, Int](value, time.plusSeconds(10), importance)
+  private def answer(value: Int, importance: UpdateImportance): AnswerChangedEvent[TextInteractionFormat.type] =
+    AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(10), importance)
   
-  private def majorAnswer(value: Int): AnswerChangedEvent[Int, Int, Int] =
-    AnswerChangedEvent[Int, Int, Int](value, time.plusSeconds(10), UpdateImportance.MAJOR)
+  private def majorAnswer(value: Int): AnswerChangedEvent[TextInteractionFormat.type] =
+    AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(10), UpdateImportance.MAJOR)
   
   test("empty histories have no states and clean to empty") {
-    val empty = InteractionVariableHistory.empty[Int, Int, Int]
+    val empty = InteractionVariableHistory.empty[TextInteractionFormat.type]
     assertEquals(empty.allStates.size, 0)
     assertEquals(empty.clean().events.values.size, 0)
   }
   
   test("adding events creates history and clean removes TEMPORARY events") {
-    val tempAnswer = AnswerChangedEvent[Int, Int, Int](1, time.plusSeconds(5), UpdateImportance.TEMPORARY)
-    val majorAnswer = AnswerChangedEvent[Int, Int, Int](2, time.plusSeconds(10), UpdateImportance.MAJOR)
-    val history = InteractionVariableHistory.empty[Int, Int, Int]
+    val tempAnswer = AnswerChangedEvent[TextInteractionFormat.type]("1", time.plusSeconds(5), UpdateImportance.TEMPORARY)
+    val majorAnswer = AnswerChangedEvent[TextInteractionFormat.type]("2", time.plusSeconds(10), UpdateImportance.MAJOR)
+    val history = InteractionVariableHistory.empty[TextInteractionFormat.type]
       .addEvent(tempAnswer)
       .addEvent(majorAnswer)
     
     assertEquals(history.events.values.size, 2)
     assertEquals(history.allStates.size, 2)
     assertEquals(history.clean().events.values.size, 1)
-    assertEquals(history.clean().events.values.head.asInstanceOf[AnswerChangedEvent[Int, Int, Int]].newState, 2)
+    assertEquals(history.clean().events.values.head.asInstanceOf[AnswerChangedEvent[TextInteractionFormat.type]].newState, "2")
   }
   
   test("canonical history codecs preserve roundtrip") {
     val original = majorAnswer(42)
-    val history = InteractionVariableHistory.empty[Int, Int, Int].addEvent(original)
+    val history = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(original)
     
     val written = write(history)
-    val readBack = read[InteractionVariableHistory[Int, Int, Int]](written)
+    val readBack = read[InteractionVariableHistory[TextInteractionFormat.type]](written)
     assertEquals(readBack.events.values.size, 1)
     
     val binaryWritten = writeBinary(history)
-    val binaryReadBack = readBinary[InteractionVariableHistory[Int, Int, Int]](binaryWritten)
+    val binaryReadBack = readBinary[InteractionVariableHistory[TextInteractionFormat.type]](binaryWritten)
     assertEquals(binaryReadBack.events.values.size, 1)
   }
   
@@ -54,19 +56,19 @@ class InteractionHistoryPackageSpec extends FunSuite {
     val event2 = majorAnswer(2)
     val event3 = majorAnswer(3)
     
-    val history1 = InteractionVariableHistory.empty[Int, Int, Int].addEvent(event1).addEvent(event2)
-    val history2 = InteractionVariableHistory.empty[Int, Int, Int].addEvent(event2).addEvent(event3)
+    val history1 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(event1).addEvent(event2)
+    val history2 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(event2).addEvent(event3)
     
     val merged = history1.mergeWith(history2)
     assertEquals(merged.events.values.size, 3)
   }
   
   test("cleanWithStrategy filters events based on importance") {
-    val temp = AnswerChangedEvent[Int, Int, Int](1, time.plusSeconds(5), UpdateImportance.TEMPORARY)
-    val major = AnswerChangedEvent[Int, Int, Int](2, time.plusSeconds(10), UpdateImportance.MAJOR)
-    val minor = AnswerChangedEvent[Int, Int, Int](3, time.plusSeconds(15), UpdateImportance.MINOR)
+    val temp = AnswerChangedEvent[TextInteractionFormat.type]("1", time.plusSeconds(5), UpdateImportance.TEMPORARY)
+    val major = AnswerChangedEvent[TextInteractionFormat.type]("2", time.plusSeconds(10), UpdateImportance.MAJOR)
+    val minor = AnswerChangedEvent[TextInteractionFormat.type]("3", time.plusSeconds(15), UpdateImportance.MINOR)
     
-    val history = InteractionVariableHistory.empty[Int, Int, Int]
+    val history = InteractionVariableHistory.empty[TextInteractionFormat.type]
       .addEvent(temp)
       .addEvent(major)
       .addEvent(minor)
@@ -81,11 +83,11 @@ class InteractionHistoryPackageSpec extends FunSuite {
   }
   
   test("mergeWith applies strategy correctly when merging") {
-    val temp = AnswerChangedEvent[Int, Int, Int](1, time.plusSeconds(5), UpdateImportance.TEMPORARY)
-    val major = AnswerChangedEvent[Int, Int, Int](2, time.plusSeconds(10), UpdateImportance.MAJOR)
+    val temp = AnswerChangedEvent[TextInteractionFormat.type]("1", time.plusSeconds(5), UpdateImportance.TEMPORARY)
+    val major = AnswerChangedEvent[TextInteractionFormat.type]("2", time.plusSeconds(10), UpdateImportance.MAJOR)
     
-    val history1 = InteractionVariableHistory.empty[Int, Int, Int].addEvent(temp).addEvent(major)
-    val history2 = InteractionVariableHistory.empty[Int, Int, Int].addEvent(major)
+    val history1 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(temp).addEvent(major)
+    val history2 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(major)
     
     val merged = history1.mergeWith(history2)
     assertEquals(merged.events.values.size, 2)

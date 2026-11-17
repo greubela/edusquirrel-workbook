@@ -1,5 +1,4 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
-/*
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
@@ -57,4 +56,3 @@ object ProgrammingExercise {
   }
 
 }
-*/

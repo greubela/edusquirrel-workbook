@@ -19,6 +19,8 @@ case class BlockchainInteraction(elementId: String, title: LanguageMapContentId,
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = initial
 
+  override def validateState(value: TeachingChain): Unit = { validate(value); () }
+
   private def validate(value: TeachingChain): TeachingChain = {
     require(value.blocks.size == initial.blocks.size, "Stored chain must preserve the exercise's block count")
     value

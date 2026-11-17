@@ -52,8 +52,8 @@ trait WorkbookFactory {
   /*
   Control
    */
-  protected def createTextInput(id: String = nextId()): WorkbookInteractionElement[String] = {
-    TextInteraction2(id)
+  protected def createTextInput(id: String = nextId()): WorkbookInteractionElement[it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat.type] = {
+    TextInteraction(id)
   }
 
   /*
@@ -112,7 +112,7 @@ trait WorkbookFactory {
     CollapsibleInstructionElement(nextId(), LanguageMapContentId(titleMapId), LanguageMapContentId(bodyMapId), initiallyCollapsed)
 
 
-  protected def checklist(langIdCheckboxLabel: String, elementId: String = nextId()): WorkbookInteractionElement[Boolean] = {
+  protected def checklist(langIdCheckboxLabel: String, elementId: String = nextId()): WorkbookInteractionElement[it.evadid.workbook.abstractions.InteractionFormat.LabeledCheckboxInteractionFormat.type] = {
     LabeledCheckboxInteraction(elementId, LanguageMapContentId(langIdCheckboxLabel))
   }
 
@@ -122,7 +122,7 @@ trait WorkbookFactory {
                              defaultValue: String = "0",
                              diff: BigDecimal = BigDecimal(1),
                              elementId: String = nextId()
-                           ): WorkbookInteractionElement[String] = {
+                           ): WorkbookInteractionElement[it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat.type] = {
     LabeledNumberInteraction(elementId, LanguageMapContentId(langIdNumberLabel), numberType, defaultValue, diff)
   }
 

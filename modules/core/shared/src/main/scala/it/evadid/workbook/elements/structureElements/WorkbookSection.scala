@@ -27,6 +27,8 @@ case class WorkbookSection
 }
 
 object WorkbookSection {
+  given ReadWriter[WorkbookSection] = WorkbookElement.subtypeCodec
+
 
   val factory: WorkbookElementFactory[WorkbookSection] = new WorkbookElementFactory[WorkbookSection] {
     override lazy val elementMapAndOrderForConstructorLike =

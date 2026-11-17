@@ -3,7 +3,7 @@ package it.evadid.server.commandHandler.sql
 import it.evadid.distribution.commandTypes.SqlEditorCommands.*
 import it.evadid.sql.DatabaseConfigWithCredentials
 
-import java.sql.DriverManager
+import java.sql.{Connection, DriverManager, Statement, SQLException}
 import scala.util.{Try, Using}
 
 /** Executes only on explicitly configured teaching databases, with dedicated credentials.

@@ -10,7 +10,7 @@ import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_TYPE
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.HintLabel
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
+import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
@@ -47,7 +47,7 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   private def task(number: String): WorkbookElement =
     container(key("task" + number + "title"), List(
       instructionMarkdown(key("task" + number)),
-      TextInteraction2("monks-answer-" + number)))
+      TextInteraction("monks-answer-" + number)))
 
   // Building once makes IDs and state references stable across createWorkbook/createEverything calls.
   override lazy val createWorkbook: Workbook = workbook(
@@ -64,7 +64,7 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
           container(key("task1btitle"),
             List(
               instructionMarkdown(key("task1b")),
-              TextInteraction2("monks-answer-1b"),
+              TextInteraction("monks-answer-1b"),
               instructionMarkdown(key("recursionexplanation"))
             ) ++ List(
               "1c", "1d", "1e", "1f", "1g"

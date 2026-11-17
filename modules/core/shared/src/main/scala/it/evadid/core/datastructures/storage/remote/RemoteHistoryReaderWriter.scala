@@ -8,7 +8,7 @@ import java.time.LocalDateTime
 import scala.concurrent.Future
 
 /** Data reader for event-based history. */
-trait RemoteHistoryDataReader[K, F <: InteractionFormat] extends RemoteReaderWriter.RemoteDataReader[K, List[InteractionEvent[F]]] {
+trait RemoteHistoryDataReader[K, F <: InteractionFormat] {
   /** Both bounds are inclusive. Return the complete range, without pagination/truncation; missing keys mean empty ranges.
     * Apply the strategy to the stored history before applying the timestamp bounds.
     */
@@ -18,7 +18,7 @@ trait RemoteHistoryDataReader[K, F <: InteractionFormat] extends RemoteReaderWri
   def fetchAll(logger: SyncLogger, keys: Set[K], strategy: it.evadid.workbook.interaction.sync.EventSyncStrategy): Future[Map[K, List[InteractionEvent[F]]]] =
     fetchEventsBetween(logger, keys.toSeq, LocalDateTime.MIN, LocalDateTime.MAX, strategy)
 
-  override def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()
+  def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()
 }
 
 /** Data writer for event-based history. */

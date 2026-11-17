@@ -60,7 +60,7 @@ class WorkbookSerializerSpec extends FunSuite {
     import it.evadid.workbook.elements.structureElements.WorkbookSection
     import WorkbookSection.WorkbookSectionMetadata
     import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-    val text = TextInteraction2(" text/\"quoted\"\n ")
+    val text = TextInteraction(" text/\"quoted\"\n ")
     val section = WorkbookSection(" section/one ", WorkbookSectionMetadata(LanguageMapContentId("section/title")), List(text))
     val populated = workbook.copy(sections = List(section))
     for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)) {

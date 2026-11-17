@@ -11,7 +11,7 @@ import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.destination.*
 import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import it.evadid.workbook.interaction.sync.model.{FetchResponse, InteractionHistoryJson}
 
 import scala.concurrent.*
 
@@ -38,34 +38,32 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
 
 
   override def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
-    // Look up format from the interaction definition using syncContext
-    val format = lookupFormatFromSyncContext(syncContext)
-    val history = InteractionHistoryJson(format, historyJson)
+    val history = InteractionHistoryJson.deserialize(historyJson)
     val dbRequest = StoreToDbRequest(syncContext, history, databaseConfig, definition.format)
     val exInfo: Future[ExecutionSuccess[SyncSuccess]] = SQLCommands.StoreToDbCommand.sendCommandTo(backend, dbRequest)
     exInfo.map(exInfo => exInfo.result)(using ec)
   }
 
-  private def lookupFormatFromSyncContext(syncContext: SyncContext): InteractionFormat[?, ?, ?] = {
-    // Look up the format from the interaction definition using syncContext.keyForSerialisation
-    // This is a placeholder - in practice you'd look up from the interaction registry
-    import it.evadid.workbook.abstractions.InteractionFormat
-    syncContext.keyForSerialisation match {
-      case "TextInteraction_history" => TextInteractionFormat
-      case "LabeledNumberInteraction_history" => LabeledNumberInteractionFormat
-      case "LabeledCheckboxInteraction_history" => LabeledCheckboxInteractionFormat
-      case "MessagingInteraction_history" => MessagingInteractionFormat
-      case _ => TextInteractionFormat  // default fallback
-    }
-  }
+  private def toFetchResponse(result: ExecutionSuccess[DbFetchResponse]): FetchResponse[SyncContext, String] =
+    FetchResponse.fromMap(result.history.timestampExecutionFinished, result.result.fetchedElements.map((key, value) => key -> value.serialized))
 
-  private def toFetchResponse(executionInfoTyped: ExecutionSuccess[DbFetchResponse]): FetchResponse[SyncContext, InteractionHistoryJson[_ <: InteractionFormat]] = {
-    FetchResponse.fromMap[SyncContext, InteractionHistoryJson[_ <: InteractionFormat]](executionInfoTyped.history.timestampExecutionFinished, executionInfoTyped.result.fetchedElements)
-  }
-
-  override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, InteractionHistoryJson[_ <: InteractionFormat]]] = {
+  override def readHistoriesJson(usageContext: UsageContext)(using ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
     val request = SQLCommands.FetchAllFromDbRequest(usageContext, databaseConfig, None, definition.format)
-    val exInfoFut: Future[ExecutionSuccess[DbFetchResponse]] = SQLCommands.fetchFromDbCommand.sendCommandTo(backend, request)
-    exInfoFut.map(toFetchResponse)
+    SQLCommands.fetchFromDbCommand.sendCommandTo(backend, request).map(toFetchResponse)
+  }
+
+  override def readHistoriesInRange(usageContext: UsageContext, keys: Seq[SyncContext], starting: java.time.LocalDateTime,
+      until: java.time.LocalDateTime, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
+    require(keys.forall(_.toUsageContext == usageContext), "Range keys must belong to the requested usage context")
+    require(!until.isBefore(starting), "History range end must not precede its start")
+    if keys.isEmpty then Future.successful(Map.empty)
+    else strategy match {
+      case EventSyncStrategy.KEEP_ALL | _: EventSyncStrategy.KeepImportance =>
+        val request = SQLCommands.FetchEventsFromDbRequest(usageContext, keys.map(_.keyForSerialisation), starting, until, databaseConfig, definition.format)
+        SQLCommands.fetchEventsFromDbCommand.sendCommandTo(backend, request).map(_.result.fetchedElements.map { (key, history) =>
+          key -> history.cleanWithStrategy(strategy)
+        })
+      case _ => super.readHistoriesInRange(usageContext, keys, starting, until, strategy)
+    }
   }
 }

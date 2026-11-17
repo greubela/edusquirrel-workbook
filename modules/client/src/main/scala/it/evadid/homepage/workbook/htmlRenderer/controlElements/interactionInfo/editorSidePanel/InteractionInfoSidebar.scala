@@ -33,38 +33,41 @@ case class InteractionInfoSidebar[F <: InteractionFormat](
     td(cls := "feedback-text", child.text <-- view.feedback(entry))
   )
 
-  private def groupSection(group: Group): Element = {
+  private def groupCount(group: Group): Element = {
     val selected = view.grading.map(_.in(group))
-    detailsTag(cls := s"feedback-group feedback-status--${group.tone}",
-      summaryTag(cls := "feedback-summary",
-        strong(child.text <-- view.label(group.labelKey)),
-        if group == Group.Correct || group == Group.Incorrect then
-          span(cls := "feedback-counts", List(false, true).map { hidden =>
-            val count = selected.map(_.count(_.hidden == hidden))
-            val description = count.combineWith(view.label(if hidden then "gradingHiddenCount" else "gradingVisibleCount"))
-              .map((number, text) => text.replace("{count}", number.toString))
-            span(cls := "feedback-count-item", title <-- description, aria.label <-- description,
-              it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.createVisibilityIcon(hidden),
-              span(aria.hidden := true, child.text <-- count.map(_.toString)))
-          })
-        else span(cls := "feedback-count", child.text <-- selected.map(_.size.toString))
-      ),
-      div(cls := "feedback-group-content",
-        // Filter before constructing any description, feedback or timestamp nodes.
-        child <-- view.grading.map { state =>
-          val visible = state.visibleIn(group)
-          if visible.isEmpty then p(cls := "feedback-muted", child.text <-- view.label(
-            if state.in(group).nonEmpty then "gradingPrivate" else "gradingNoTests"))
-          else div(cls := "feedback-table-scroll",
-            table(cls := "feedback-results-table",
-              thead(tr(th(child.text <-- view.label("gradingTestDescription")),
-                th(title <-- view.label("gradingExecutionDate"), aria.label <-- view.label("gradingExecutionDate"),
-                  span(cls := "feedback-column-label", child.text <-- view.label("gradingExecutionDate")), span(cls := "feedback-column-icon", aria.hidden := true, "◷"))),
-                th(title <-- view.label("gradingFeedback"), aria.label <-- view.label("gradingFeedback"),
-                  span(cls := "feedback-column-label", child.text <-- view.label("gradingFeedback")), span(cls := "feedback-column-icon", aria.hidden := true, "↩")))),
-              tbody(visible.map(resultRow))))))
-    )
+    if group != Group.Correct && group != Group.Incorrect then
+      span(cls := "feedback-count", child.text <-- selected.map(_.size.toString))
+    else span(cls := "feedback-counts", List(false, true).map { hidden =>
+      val count = selected.map(_.count(_.hidden == hidden))
+      val description = count.combineWith(view.label(if hidden then "gradingHiddenCount" else "gradingVisibleCount"))
+        .map((number, text) => text.replace("{count}", number.toString))
+      span(cls := "feedback-count-item", title <-- description, aria.label <-- description,
+        it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.createVisibilityIcon(hidden),
+        span(aria.hidden := true, child.text <-- count.map(_.toString)))
+    })
   }
+
+  private def resultHeader(label: String, icon: String): Element =
+    th(title <-- view.label(label), aria.label <-- view.label(label),
+      span(cls := "feedback-column-label", child.text <-- view.label(label)),
+      span(cls := "feedback-column-icon", aria.hidden := true, icon))
+
+  private def resultTable(entries: Seq[GradingSummary.Entry]): Element =
+    div(cls := "feedback-table-scroll",
+      table(cls := "feedback-results-table",
+        thead(tr(th(child.text <-- view.label("gradingTestDescription")),
+          resultHeader("gradingExecutionDate", "◷"), resultHeader("gradingFeedback", "↩"))),
+        tbody(entries.map(resultRow))))
+
+  private def groupSection(group: Group): Element =
+    detailsTag(cls := s"feedback-group feedback-status--${group.tone}",
+      summaryTag(cls := "feedback-summary", strong(child.text <-- view.label(group.labelKey)), groupCount(group)),
+      div(cls := "feedback-group-content", child <-- view.grading.map { state =>
+        val visible = state.visibleIn(group)
+        if visible.nonEmpty then resultTable(visible)
+        else p(cls := "feedback-muted", child.text <-- view.label(
+          if state.in(group).nonEmpty then "gradingPrivate" else "gradingNoTests"))
+      }))
 
   def createGradingElement: Option[Element] = Option.when(gradingReporter.isGradingSupported) {
     detailsTag(cls := "element-card feedback-section",

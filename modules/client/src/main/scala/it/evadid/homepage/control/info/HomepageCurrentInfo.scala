@@ -29,7 +29,7 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().userInfo
   }
 
-  def allAvailableInteractions: List[WorkbookInteractionElement[InteractionFormat]] = fullInfo.synchronized {
+  def allAvailableInteractions: List[WorkbookInteractionElement[? <: InteractionFormat]] = fullInfo.synchronized {
     val default = List()
     now().workbookInfo.map(_.loadedWorkbook.allInteractionsInThisInstance).getOrElse(default)
   }

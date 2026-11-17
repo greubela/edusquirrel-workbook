@@ -18,10 +18,9 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
   private val key = context.toSyncContext("answer_history")
   private val at = LocalDateTime.of(2026, 1, 1, 12, 0)
   
-  // Create a history for TextInteractionFormat
-  private val textFormat = TextInteractionFormat
-  private val history = write(InteractionVariableHistory[TextInteractionFormat.type](Set(
-    InteractionVariableState[TextInteractionFormat#InteractionStateType]("saved", UpdateImportance.MAJOR, at))))
+  private val textFormat = InteractionFormat.TextInteractionFormat
+  private val history = InteractionHistoryJson.fromHistory(textFormat,
+    InteractionVariableHistory.empty[textFormat.type].addState(InteractionVariableState("saved", UpdateImportance.MAJOR, at))).serialized
 
   private class Destination(values: Map[String, String], prohibitReads: Boolean = false) extends SyncDestinationHandlerBasic {
     val cleared = Promise[Unit]()
@@ -48,12 +47,12 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
     handler.readHistoriesJson(context).flatMap { fetched =>
       assertEquals(fetched.fetchedValues.size, 1)
       val historyJson = fetched.fetchedValues.head.dataValue
-      val typedHistory = InteractionHistoryJson(textFormat, historyJson).toTyped
+      val typedHistory = InteractionHistoryJson.deserialize(historyJson).toTyped
       assertEquals(typedHistory.timestampLastChanged, Some(at))
       assert(fetched.timestampFetchResponse.isAfter(at))
       handler.readHistoryJson(key).map { single =>
         val singleHistoryJson = single.fetchedValues.head.dataValue
-        val singleTyped = InteractionHistoryJson(textFormat, singleHistoryJson).toTyped
+        val singleTyped = InteractionHistoryJson.deserialize(singleHistoryJson).toTyped
         assertEquals(singleTyped.timestampLastChanged, Some(at))
         assertEquals(singleHistoryJson, history)
       }

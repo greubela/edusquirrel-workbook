@@ -9,7 +9,7 @@ import {chromium} from 'playwright';
 const root = path.resolve(import.meta.dirname, '../..');
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
-const formats = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalEvents'];
+const formats = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalFormat'];
 const user = {name:'Sync student', id:'sync-reset-student', mail:'sync-reset@example.test'};
 const destinations = [
   {syncDestination:{$type:'LocalIndexedDbSyncDefinition',dbName:'EvaDidInteractionDB',storeName:'variableHistoryStore',dbVersion:1},syncStrategy:'SYNC_LAST_AND_MAJOR'},
