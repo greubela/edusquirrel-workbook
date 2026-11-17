@@ -9,8 +9,25 @@ import it.evadid.workbook.interaction.variable.events.*
 import java.time.LocalDateTime
 import upickle.default.*
 
+/** Type alias for compatibility - use 3 concrete types for serialization */
+type InteractionVariableHistory3[F <: InteractionFormat] = InteractionVariableHistory[
+  F, 
+  F#InteractionStateType, 
+  F#GradingInfoType, 
+  F#ScaffoldingInfoType
+]
+
 /** Canonical interaction history: all saved state and feedback live in timestamped events. */
-case class InteractionVariableHistory[F <: InteractionFormat](events: InteractionEvents[F]) derives ReadWriter {
+case class InteractionVariableHistory[
+  F <: InteractionFormat,
+  S <: F#InteractionStateType,
+  G <: F#GradingInfoType,
+  A <: F#ScaffoldingInfoType
+](events: InteractionEvents[F]) {
+  type InteractionStateType = S
+  type GradingInfoType = G
+  type ScaffoldingInfoType = A
+  type Format = F
   lazy val allStates: Set[AnswerChangedEvent[F]] = events.values.collect {
     case event: AnswerChangedEvent[F] => event
   }
