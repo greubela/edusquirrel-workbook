@@ -1,5 +1,6 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, UpdateImportance}
@@ -27,9 +28,6 @@ case class InteractionVariableHistory[
   G <: F#GradingInfoType,
   A <: F#ScaffoldingInfoType
 ](events: InteractionEvents[F]) {
-  type InteractionStateType = S
-  type GradingInfoType = G
-  type ScaffoldingInfoType = A
   type Format = F
   type InteractionStateType = S
   type GradingInfoType = G
