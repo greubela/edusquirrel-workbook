@@ -25,12 +25,12 @@ case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](inter
   def getCurrentStateOfGrading(forState: InteractionStateType): GradedState[InteractionStateType, GradingInfoType] = interactionVariable.synchronized {
     val gradeMap = interactionVariable.currentHistory.historyGrading.gradingsMap
     val gradeInHistoryOp = interactionVariable.currentHistory.historyGrading.gradingsMap.get(forState)
-    if (gradeInHistoryOp.isDefined) gradeInHistoryOp.get.fillMapForUnavailable(interactionVariable.underlyingInteraction.gradingElements, NotRequested()) else {
+    if (gradeInHistoryOp.isDefined) gradeInHistoryOp.get.fillMapForUnavailable(interactionVariable.underlyingInteraction.gradingElements.asInstanceOf[List[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]]], NotRequested()) else {
       val gradeInCacheOp = gradingCache.getSyncIfInCache(forState, false)
       if (gradeInCacheOp.isDefined) gradeInCacheOp.get else {
         gradingCache.getCurrentElementStatus(forState).match {
-          case UNKNOWN() => GradedState(forState).fillMapForUnavailable(interactionVariable.underlyingInteraction.gradingElements, NotRequested())
-          case _ => GradedState(forState).fillMapForUnavailable(interactionVariable.underlyingInteraction.gradingElements, NotFinished())
+          case UNKNOWN() => GradedState(forState).fillMapForUnavailable(interactionVariable.underlyingInteraction.gradingElements.asInstanceOf[List[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]]], NotRequested())
+          case _ => GradedState(forState).fillMapForUnavailable(interactionVariable.underlyingInteraction.gradingElements.asInstanceOf[List[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]]], NotFinished())
         }
       }
     }
