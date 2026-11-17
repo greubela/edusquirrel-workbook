@@ -103,6 +103,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
     copy(events = InteractionEvents(events.values.filter(_.updateImportance != UpdateImportance.TEMPORARY)))
 }
 
+object InteractionVariableHistory {
   def empty[F <: InteractionFormat]: InteractionVariableHistory[F] = InteractionVariableHistory[F](InteractionEvents.empty)
 
   /** Build events from typed answers and completed results; this does not decode an older saved schema. */
