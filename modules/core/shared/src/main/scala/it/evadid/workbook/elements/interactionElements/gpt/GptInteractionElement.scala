@@ -5,16 +5,13 @@ import it.evadid.core.datastructures.chat.{ChatParticipant, MessengerModel}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
-import it.evadid.core.util.io.serializer.DefaultSerializer
+import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.MessengerModelScaffolding
-import it.evadid.workbook.interaction.sync.SyncControl
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.meta.ExecutionContextInformation
-import it.evadid.workbook.meta.ExecutionContextInformation.default.syncControl
 
 import java.time.LocalDateTime
 import scala.concurrent.*
@@ -42,7 +39,7 @@ object GptInteractionElement {
 
     override def fromSerializedElement(f: WorkbookElementSerializable, parsed: Map[String, WorkbookElement]) = {
       GptInteractionElement(f.elementId,
-        f.getAndResolveWorkbookElement[WorkbookInteractionElement[String]]("underlyingTextInteraction", parsed),
+        f.getAndResolveWorkbookElement[WorkbookInteractionElement[TextInteractionFormat.type]]("underlyingTextInteraction", parsed),
         f.getElementAs[LanguageMapContentId]("exerciseText"),
         f.getElementsAs[LanguageMapContentId]("scaffoldingHints"),
         f.getElementsAs[LanguageMapContentId]("gradingCriteria"))
@@ -53,7 +50,7 @@ object GptInteractionElement {
 
 case class GptInteractionElement(
                                   override val elementId: String,
-                                  underlyingTextInteraction: WorkbookInteractionElement[String],
+                                  underlyingTextInteraction: WorkbookInteractionElement[TextInteractionFormat.type],
                                   exerciseText: LanguageMapContentId,
                                   scaffoldingHints: List[LanguageMapContentId],
                                   gradingCriteria: List[LanguageMapContentId]
@@ -76,10 +73,10 @@ case class GptInteractionElement(
     val res = Promise[Unit]()
     resolver.resolveAll(allContentIds.toSeq).transform {
       case Success((map, lang)) =>
-       // if (map.keySet.size != allContentIds.size) syncControl.syncLogger.logWarn("Could not resolve all content ids. Resolved: " + map.keySet.mkString(", ") + " not: " + allContentIds.filter(!map.contains(_)).mkString(", "))
+        // if (map.keySet.size != allContentIds.size) syncControl.syncLogger.logWarn("Could not resolve all content ids. Resolved: " + map.keySet.mkString(", ") + " not: " + allContentIds.filter(!map.contains(_)).mkString(", "))
         Success(initScaffoldingIfEmpty(context, curUser, map, lang))
       case Failure(err) =>
-      //  syncControl.syncLogger.logExceptionWarn(s"GptInteractionElement: failure while resolving language map strings for $elementId, init will be ignored now!", err)
+        //  syncControl.syncLogger.logExceptionWarn(s"GptInteractionElement: failure while resolving language map strings for $elementId, init will be ignored now!", err)
         Success(false)
     }
   }
@@ -90,11 +87,11 @@ case class GptInteractionElement(
 
       val exText: String = resolvedIds.getOrElse(exerciseText, "[unresolved: " + exerciseText.fullId + "]")
       val scaffHints: List[String] = scaffoldingHints.map(id => resolvedIds.getOrElse(id, s"[unresolved: $id]"))
-      val curInput = underlyingTextInteraction.interactionVariable.currentValue
+      val curInput: String = underlyingTextInteraction.interactionVariable.currentValue
       val msg: MessengerModel = MessengerModel.getScaffoldingInitMessage(curUser, exText, curInput, scaffHints, resolvedLanguage)
       val msgSc: MessengerModelScaffolding = MessengerModelScaffolding(msg)
-     // syncControl.syncLogger.logInfo(s"GptInteractionElement: setting scaffolding messenger for $elementId to init state (was empty before, now ${msgSc.messengerModel.messages.size} messages)")
-      scaffoldingInteraction.interactionVariable.setStateFromUserInteraction( msgSc, MAJOR, LocalDateTime.now(), context)
+      // syncControl.syncLogger.logInfo(s"GptInteractionElement: setting scaffolding messenger for $elementId to init state (was empty before, now ${msgSc.messengerModel.messages.size} messages)")
+      scaffoldingInteraction.interactionVariable.setStateFromUserInteraction(msgSc, MAJOR, LocalDateTime.now(), context)
       msg.messages.exists(_.author.role == USER)
     }
 

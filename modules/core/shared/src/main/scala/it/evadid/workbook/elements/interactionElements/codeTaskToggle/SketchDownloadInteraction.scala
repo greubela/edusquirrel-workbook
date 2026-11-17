@@ -2,9 +2,9 @@ package it.evadid.workbook.elements.interactionElements.codeTaskToggle
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{DefaultSerializer, InteractionFormat}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory

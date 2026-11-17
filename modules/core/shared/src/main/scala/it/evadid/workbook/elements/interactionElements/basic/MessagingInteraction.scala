@@ -1,14 +1,14 @@
 package it.evadid.workbook.elements.interactionElements.basic
 
-import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.{InteractionFormat, *}
 import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.*
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.NoContentElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-import it.evadid.core.util.io.serializer.{DefaultSerializer, InteractionFormat}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.InteractionFormat.MessagingInteractionFormat
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory

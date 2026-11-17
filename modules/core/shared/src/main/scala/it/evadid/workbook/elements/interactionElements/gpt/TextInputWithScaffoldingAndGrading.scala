@@ -2,7 +2,8 @@ package it.evadid.workbook.elements.interactionElements.gpt
 
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
@@ -16,7 +17,7 @@ case class TextInputWithScaffoldingAndGrading(
                                                sampleSolution: Option[LanguageMapContentId] = None,
                                                contentScaffolding: Option[ContentForLlmInteraction] = None,
                                                contentGrading: List[ContentForLlmInteraction] = List(),
-                                             ) extends WorkbookInteractionElementFull[String, MessengerModel, MessengerModel] derives ReadWriter {
+                                             ) extends WorkbookInteractionElement[TextInputWithLlmGradingAndScaffoldingFormat.type] derives ReadWriter {
   override val associatedFactory: WorkbookElementFactory.SimpleWorkbookElementFactory[TextInputWithScaffoldingAndGrading] = TextInputWithScaffoldingAndGrading.factory
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List()

@@ -10,14 +10,14 @@ import java.time.LocalDateTime
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingError
 
-case class ScaffoldingResult[F <: InteractionFormat](
-                                    forState: F#InteractionStateType,
+case class ScaffoldingResult[T, SA](
+                                    forState: T,
                                     scaffoldingStatus: ScaffoldingStatus,
                                     scaffoldingEntity: FeedbackEntity,
-                                    additionalInformation: Option[F#ScaffoldingInfoType],
+                                    additionalInformation: Option[SA],
                                     scaffoldingTime: LocalDateTime = LocalDateTime.MIN
                                   ) derives ReadWriter {
-  def merge(other: ScaffoldingResult[F]): ScaffoldingResult[F] = {
+  def merge(other: ScaffoldingResult[T, SA]): ScaffoldingResult[T, SA] = {
     require(forState == other.forState, "Only scaffolding for the same answer can be merged.")
     val preferred = (scaffoldingStatus, other.scaffoldingStatus) match {
       case (_: ScaffoldingFeedback, _: ScaffoldingFeedback) => if other.scaffoldingTime.isAfter(scaffoldingTime) then other else this
@@ -41,12 +41,12 @@ case class ScaffoldingResult[F <: InteractionFormat](
 object ScaffoldingResult {
 
   DefaultSerializer
-  def apply[T, A](forState: T,
+  def apply[T, SA](forState: T,
                   scaffoldingStatus: ScaffoldingStatus,
                   scaffoldingEntity: FeedbackEntity,
-                  additionalInformation: Option[A]): ScaffoldingResult[T, A] = ScaffoldingResult[T, A](forState, scaffoldingStatus, scaffoldingEntity, additionalInformation, LocalDateTime.now())
+                  additionalInformation: Option[SA]): ScaffoldingResult[T, SA] = ScaffoldingResult[T, SA](forState, scaffoldingStatus, scaffoldingEntity, additionalInformation, LocalDateTime.now())
 
-  def forError[T, A](state: T, errEither: Either[String, Throwable], entity: FeedbackEntity): ScaffoldingResult[T, A] = {
+  def forError[T, SA](state: T, errEither: Either[String, Throwable], entity: FeedbackEntity): ScaffoldingResult[T, SA] = {
     val err = errEither.match {
       case Left(str) => SerializedException(str)
       case Right(err) => SerializedException(err)

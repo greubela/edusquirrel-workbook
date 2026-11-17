@@ -3,7 +3,7 @@ package it.evadid.workbook.abstractions.grading
 import it.evadid.distribution.command.SerializedException
 import it.evadid.util.MapUtils
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
-import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, *}
 import it.evadid.workbook.abstractions.grading.GradingStatus.*
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
@@ -11,16 +11,16 @@ import upickle.default.*
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
-case class GradedState[F <: InteractionFormat]
+case class GradedState[T, GA]
 (
-  state: F#InteractionStateType,
-  graderResultMap: Map[WorkbookInteractionGrader[F], GradingResult[F]]
+  state: T,
+  graderResultMap: Map[WorkbookInteractionGrader[T, GA], GradingResult[T, GA]]
 ) derives ReadWriter {
 
-  lazy val testsWithResults: Set[GradingResult[F]] = graderResultMap.values.toSet
+  lazy val testsWithResults: Set[GradingResult[T, GA]] = graderResultMap.values.toSet
   val timestampLatestTest: LocalDateTime = testsWithResults.map(_.gradingTime).maxOption.getOrElse(LocalDateTime.MIN)
 
-  lazy val shouldRetry: Seq[WorkbookInteractionGrader[F]] = graderResultMap.toList.filter(_._2.gradingStatus.shouldRetryExecution).map(_._1)
+  lazy val shouldRetry: Seq[WorkbookInteractionGrader[T, GA]] = graderResultMap.toList.filter(_._2.gradingStatus.shouldRetryExecution).map(_._1)
 
   def doesEvaluationRelyOnLlm(): Boolean = {
     graderResultMap.values.exists(_.grader.gradingEntity == LlmEntity())
@@ -44,7 +44,7 @@ case class GradedState[F <: InteractionFormat]
 
   }
 
-  def retryFailed(contextInformation: ExecutionContextInformation, forceGrading: Boolean): Future[GradedState[F]] = {
+  def retryFailed(contextInformation: ExecutionContextInformation, forceGrading: Boolean): Future[GradedState[T, GA]] = {
     if (!forceGrading || shouldRetry.isEmpty) Future.successful(this)
     else {
       GradedState
@@ -53,17 +53,17 @@ case class GradedState[F <: InteractionFormat]
     }
   }
 
-  def fillMapForUnavailable(interaction: WorkbookInteractionElementFull[T, A, ?], gradingStatusOfUnavailable: GradingStatus): GradedState[F] = {
-    def ifUnavailable(grader: WorkbookInteractionGrader[F]): GradingResult[F] = GradingResult(grader, state, gradingStatusOfUnavailable, None, None, LocalDateTime.now())
+  def fillMapForUnavailable(gradingElements: List[WorkbookInteractionGrader[T, GA]], gradingStatusOfUnavailable: GradingStatus): GradedState[T, GA] = {
+    def ifUnavailable(grader: WorkbookInteractionGrader[T, GA]): GradingResult[T, GA] = GradingResult(grader, state, gradingStatusOfUnavailable, None, None, LocalDateTime.now())
 
-    val fullMap = interaction.gradingElements.map(curGradingElement => {
+    val fullMap = gradingElements.map(curGradingElement => {
       curGradingElement -> graderResultMap.getOrElse(curGradingElement, ifUnavailable(curGradingElement))
     }).toMap
-    GradedState[F](state, fullMap)
+    GradedState[T, GA](state, fullMap)
   }
 
-  def merge(other: GradedState[F]): GradedState[F] = {
-    val merged = MapUtils.mergeMaps[WorkbookInteractionGrader[F], GradingResult[F]](graderResultMap, other.graderResultMap, (k, v1, v2) => v1.merge(v2))
+  def merge(other: GradedState[T, GA]): GradedState[T, GA] = {
+    val merged = MapUtils.mergeMaps[WorkbookInteractionGrader[T, GA], GradingResult[T, GA]](graderResultMap, other.graderResultMap, (k, v1, v2) => v1.merge(v2))
     GradedState(state, merged)
   }
 
@@ -71,12 +71,12 @@ case class GradedState[F <: InteractionFormat]
 
 object GradedState {
 
-  def apply[F](state: T) = new GradedState[F](state, Map())
+  def apply[T, GA](state:T) = new GradedState[T, GA](state, Map())
 
-  def executeGradingSafe[F](graders: IterableOnce[WorkbookInteractionGrader[F]], state: T, forceGrading: Boolean, context: ExecutionContextInformation): Future[GradedState[F]] = {
+  def executeGradingSafe[T, GA](graders: IterableOnce[WorkbookInteractionGrader[T, GA]], state:T, forceGrading: Boolean, context: ExecutionContextInformation): Future[GradedState[T, GA]] = {
     given ExecutionContext = context.futureExecutionContext
 
-    val graderRes: Future[Seq[GradingResult[F]]] = Future.traverse(graders.iterator.toList.distinctBy(_.key))(curGrader => curGrader.gradeStateSafe(state, forceGrading, context))
+    val graderRes: Future[Seq[GradingResult[T, GA]]] = Future.traverse(graders.iterator.toList.distinctBy(_.key))(curGrader => curGrader.gradeStateSafe(state, forceGrading, context))
     graderRes.map(graderResults => {
       GradedState(state, graderResults.map(curRes => curRes.grader -> curRes).toMap)
     })(using context.futureExecutionContext)

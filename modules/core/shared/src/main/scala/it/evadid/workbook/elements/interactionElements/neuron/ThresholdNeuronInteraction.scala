@@ -2,13 +2,15 @@ package it.evadid.workbook.elements.interactionElements.neuron
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{DefaultSerializer, InteractionFormat}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement, *}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.InteractionFormat.*
 case class NeuronParameters(weights: List[Double], threshold: Double) derives ReadWriter {
@@ -25,7 +27,7 @@ case class NeuronExample(label: LanguageMapContentId, inputs: List[Double], expe
   require(inputs.nonEmpty && inputs.forall(x => x == 0 || x == 1), "Worksheet inputs must be binary")
 }
 case class ThresholdNeuronInteraction(elementId: String, inputLabels: List[LanguageMapContentId], examples: List[NeuronExample],
-    initial: NeuronParameters) extends WorkbookInteractionElement[ThresholdNeuronInteraction.type] {
+    initial: NeuronParameters) extends WorkbookInteractionElement[ThresholdNeuronInteractionFormat.type] {
 
   require(inputLabels.nonEmpty && inputLabels.size == initial.weights.size, "Labels must match weights")
   require(examples.nonEmpty && examples.forall(_.inputs.size == inputLabels.size), "Examples must match inputs")

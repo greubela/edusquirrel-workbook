@@ -6,17 +6,11 @@ import upickle.default.{ReadWriter, readwriter}
 
 import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.InteractionFormat.*
-trait ProgrammingTestGrader extends WorkbookInteractionGrader[ProgrammingExerciseFormat.type] {
+trait ProgrammingTestGrader extends WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo] {
   def testId: String
   def publishProgramObservation: Boolean = false
 }
 
 object ProgrammingTestGrader {
-  given ReadWriter[ProgrammingTestGrader] =
-    readwriter[WorkbookInteractionGrader[ProgrammingExerciseFormat]].bimap(
-      grader => grader,
-      {
-        case grader: ProgrammingTestGrader => grader
-        case _ => throw IllegalArgumentException("This grader is not a programming test.")
-      })
+
 }

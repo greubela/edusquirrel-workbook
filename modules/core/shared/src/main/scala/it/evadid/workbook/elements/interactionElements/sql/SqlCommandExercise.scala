@@ -1,10 +1,10 @@
 package it.evadid.workbook.elements.interactionElements.sql
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{DefaultSerializer, InteractionFormat}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
-import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
@@ -14,7 +14,7 @@ import it.evadid.workbook.abstractions.InteractionFormat.*
 /** A database name resolved against the backend's exercise database configuration.
  * Connection credentials deliberately never travel in workbook JSON.
  */
-final case class SqlDatabaseConfig(databaseName: String)
+final case class SqlDatabaseConfig(databaseName: String) derives ReadWriter
 
 final case class SqlCommandExercise(
                                      override val elementId: String,

@@ -1,7 +1,9 @@
 package it.evadid.workbook.abstractions
 
+import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
+import it.evadid.workbook.abstractions.scaffolding.AdditionalInfoLlmScaffolding
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.MessengerModelScaffolding
 import it.evadid.workbook.elements.interactionElements.blockchain.{Sha256Answer, SquareMiddleHashAnswer}
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceAnswer
@@ -49,9 +51,16 @@ sealed trait InteractionFormat {
   type GradingInfoType
   type ScaffoldingInfoType
 
-  def historySerializer: Serializer[InteractionVariableHistory[this.type]] = Serializer.fromImplicitRW
+  def historySerializer: Serializer[InteractionVariableHistory[this.type]] = ??? //Serializer.fromImplicitRW
 
   type Format = this.type
+
+
+}
+
+sealed trait GradingType{
+  type InteractionStateType
+  type GradingInfoType
 }
 
 object InteractionFormat {
@@ -93,10 +102,9 @@ object InteractionFormat {
   }
 
   object TextInputWithLlmGradingAndScaffoldingFormat extends InteractionFormat {
-
     type InteractionStateType = String
-    type GradingInfoType = Unit
-    type ScaffoldingInfoType = Unit
+    type GradingInfoType = MessengerModel
+    type ScaffoldingInfoType = MessengerModel
   }
 
 
@@ -106,6 +114,12 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
 
+  }
+
+  object ProgrammingExerciseWithLlmScaffoldingAndGrading extends InteractionFormat{
+    type InteractionStateType = ProgrammingState
+    type GradingInfoType = AdditionalProgrammingTestInfo
+    type ScaffoldingInfoType = AdditionalInfoLlmScaffolding
   }
 
   // SQL interactions
@@ -132,6 +146,13 @@ object InteractionFormat {
 
   }
 
+
+  // remove as soon as possible
+  object LegacyTurtleFormat extends InteractionFormat {
+    type IneractionStateType = TurtleStitchProjectState
+    type GradingInfoType = Unit
+    type ScaffoldingInfoType = Unit
+  }
 
   // Plot interactions
   object CoordinatePlotInteractionFormat extends InteractionFormat {
@@ -165,7 +186,7 @@ object InteractionFormat {
   }
 
   object MailEditorFormat extends InteractionFormat {
-    type InteractionStateType = InboxState
+    type InteractionStateType = InboxStateScaffolding
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
 
@@ -261,7 +282,7 @@ object InteractionFormat {
 
   }
 
-  object ThresholdNeuronInteraction extends InteractionFormat {
+  object ThresholdNeuronInteractionFormat extends InteractionFormat {
     type InteractionStateType = NeuronParameters
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
@@ -271,7 +292,9 @@ object InteractionFormat {
   object CompressionExperimentInteractionFormat extends InteractionFormat {
 
 
-
+    type InteractionStateType = CompressionExperiment
+    type GradingInfoType = Unit
+    type ScaffoldingInfoType = Unit
   }
 
   // Programming interactions
@@ -308,7 +331,7 @@ object InteractionFormat {
 
   // Todo interactions
   object CategorizationInteractionFormat extends InteractionFormat {
-    type InteractionStateType = CategorizationInteractionState
+    type InteractionStateType = String
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
 

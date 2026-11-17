@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLang
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.grading.GradingImportance.REQUIRED_TEST
 import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
-import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, *}
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateTurtleDidacticConfig.defaultDidacticConfig
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction.*
@@ -12,7 +12,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
-import it.evadid.core.util.io.serializer.InteractionFormat
+import it.evadid.core.util.io.serializer.*
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
@@ -34,7 +34,7 @@ case class TurtleRecreateShapeInteraction
 
   def exerciseConfig: RecreateTurtleDidacticConfig = customExerciseConfig.getOrElse(RecreateTurtleDidacticConfig.defaultDidacticConfig)
 
-  override val gradingElements: List[WorkbookInteractionGrader[TurtleRecreateShapeInteraction.type]] =
+  override val gradingElements: List[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]] =
     List(RecreateShapeGrader(desiredResult, REQUIRED_TEST, elementId + "-grader", comparisonPolicy)) ++
       TurtleCommandUsageGrader.forLimits(elementId, exerciseConfig.maxCommandUsage)
   //val scaffoldingElement: Option[WorkbookInteractionScaffolder[ProgrammingState, ?]] = None

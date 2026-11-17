@@ -9,6 +9,9 @@ import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 import upickle.default.{ReadWriter, macroRW}
 
 case class CodeTaskToggleInteraction(
@@ -18,7 +21,7 @@ case class CodeTaskToggleInteraction(
                                       advancedCodeTemplate: String,
                                       advancedRequirements: List[AdvancedCodeRequirement] = Nil,
                                       advancedSuccessMessage: LanguageMapContentId = LanguageMapContentId("basic/advancedCodeFeedbackSuccess")
-                                    ) extends WorkbookInteractionElement[CodeTaskToggleStateFormat.type] {
+                                    ) extends WorkbookInteractionElement[CodeTaskToggleInteractionFormat.type] {
 
   override val associatedFactory = CodeTaskToggleInteraction.factory
 
@@ -29,7 +32,7 @@ case class CodeTaskToggleInteraction(
 
   override lazy val childrenOfThisElement: List[WorkbookElement] = List(reorder)
 
-  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionElement[?]] = List(this, reorder)
+  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionElement[InteractionFormat]] = List(this.asInstanceOf[WorkbookInteractionElement[InteractionFormat]], reorder.asInstanceOf[WorkbookInteractionElement[InteractionFormat]])
 }
 
 object CodeTaskToggleInteraction {

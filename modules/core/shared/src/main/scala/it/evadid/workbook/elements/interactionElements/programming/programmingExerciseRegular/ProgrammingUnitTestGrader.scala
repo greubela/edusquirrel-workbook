@@ -1,16 +1,16 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
 import it.evadid.vm.conversion.unittest.ProgramForUnitTestExecution
-
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.SerializedException
 import it.evadid.vm.test.{BeTestResult, ProgrammingTestRunner}
-import it.evadid.workbook.abstractions.FeedbackEntity
+import it.evadid.workbook.abstractions.InteractionFormat.ProgrammingExerciseWithLlmScaffoldingAndGrading
+import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.abstractions.grading.*
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
@@ -93,7 +93,8 @@ object ProgrammingUnitTestGrader {
                              publishInvocationArguments: Boolean = false,
                              publishCommandComparison: Boolean = false) derives ReadWriter
 
-  given ReadWriter[ProgrammingUnitTestGrader] = readwriter[ujson.Value].bimap(
+  /*
+  given ReadWriter[ProgrammingUnitTestGrader[F]] = readwriter[ujson.Value].bimap(
     grader => writeJs(Payload(grader.testId, grader.pythonTestCode, grader.importance, grader.publicDescription,
       grader.publishProgramObservation, grader.publishInvocationArguments, grader.publishCommandComparison)),
     value => {
@@ -114,5 +115,5 @@ object ProgrammingUnitTestGrader {
       }
       ProgrammingUnitTestGrader(payload.testId, payload.pythonTestCode, payload.importance, payload.publicDescription,
         payload.publishProgramObservation, payload.publishInvocationArguments, payload.publishCommandComparison)
-    })
+    })*/
 }

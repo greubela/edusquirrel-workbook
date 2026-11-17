@@ -1,6 +1,7 @@
 package it.evadid.workbook.interaction.variable
 
 import it.evadid.util.MapUtils
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, WorkbookInteractionGrader}
 import upickle.default.*
 
@@ -26,7 +27,7 @@ case class InteractionVariableGradingHistory[T, GA]
 
 object InteractionVariableGradingHistory {
 
-  given [T: ReadWriter, GA: ReadWriter]: ReadWriter[InteractionVariableGradingHistory[T, GA]] = macroRW
+  given [T, GA]: ReadWriter[InteractionVariableGradingHistory[T, GA]] = macroRW
 
   def apply[T, GA](gradingsFinished: Set[GradedState[T, GA]]): InteractionVariableGradingHistory[T, GA] =
     new InteractionVariableGradingHistory(gradingsFinished.groupBy(_.state).view.mapValues(_.reduce(_.merge(_))).toMap)

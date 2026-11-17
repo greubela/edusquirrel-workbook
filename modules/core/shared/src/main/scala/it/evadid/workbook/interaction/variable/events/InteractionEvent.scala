@@ -24,26 +24,26 @@ case class AnswerChangedEvent[F <: InteractionFormat](
 }
 
 sealed trait GradingEvent[F <: InteractionFormat] extends InteractionEvent[F] derives ReadWriter {
-  def grader: WorkbookInteractionGrader[F]
+  def grader: WorkbookInteractionGrader[F#InteractionStateType, F#GradingInfoType]
 }
 
 case class GradingStartedEvent[F <: InteractionFormat](
     associatedState: F#InteractionStateType,
     timestamp: LocalDateTime,
-    grader: WorkbookInteractionGrader[F],
+    grader: WorkbookInteractionGrader[F#InteractionStateType, F#GradingInfoType],
     updateImportance: UpdateImportance = UpdateImportance.TEMPORARY
 ) extends GradingEvent[F] derives ReadWriter
 
 /** The result is the single source of truth for the answer, grader and completion time. */
 case class GradingCompletedEvent[F <: InteractionFormat](
-    result: GradingResult[F],
+    result: GradingResult[F#InteractionStateType, F#GradingInfoType],
     updateImportance: UpdateImportance = UpdateImportance.MAJOR
 ) extends GradingEvent[F] derives ReadWriter {
   require(result.gradingStatus != GradingStatus.NotRequested() && result.gradingStatus != GradingStatus.NotFinished(),
     "A completed grading event requires a completed assessment or execution error")
   override def associatedState: F#InteractionStateType = result.gradedState
   override def timestamp: LocalDateTime = result.gradingTime
-  override def grader: WorkbookInteractionGrader[F] = result.grader
+  override def grader: WorkbookInteractionGrader[F#InteractionStateType, F#GradingInfoType] = result.grader
 }
 
 sealed trait ScaffoldingEvent[F <: InteractionFormat] extends InteractionEvent[F] derives ReadWriter {
@@ -58,7 +58,7 @@ case class ScaffoldingStartedEvent[F <: InteractionFormat](
 ) extends ScaffoldingEvent[F] derives ReadWriter
 
 case class ScaffoldingCompletedEvent[F <: InteractionFormat](
-    result: ScaffoldingResult[F],
+    result: ScaffoldingResult[F#InteractionStateType, F#ScaffoldingInfoType],
     updateImportance: UpdateImportance = UpdateImportance.MAJOR
 ) extends ScaffoldingEvent[F] derives ReadWriter {
   require(result.scaffoldingStatus != ScaffoldingStatus.ScaffoldingRequestedButNotFinished(),

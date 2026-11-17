@@ -5,6 +5,7 @@ import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.sql.DatabaseConfiguration
 import it.evadid.sql.DatabaseHistoryFormat
 import it.evadid.sql.DatabaseTable
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import upickle.default.*
@@ -27,7 +28,7 @@ object SQLCommands {
 
   case class StoreToDbRequest(
                                syncContext: SyncContext,
-                               history: InteractionHistoryJson[?, ?, ?],
+                               history: InteractionHistoryJson[InteractionFormat],
                                databaseConfig: DatabaseConfiguration,
                                databaseFormat: DatabaseHistoryFormat
                              ) extends DbRequest derives ReadWriter {
@@ -64,7 +65,7 @@ object SQLCommands {
     require(!allWorkbooks || limitToKey.isEmpty, "An all-workbook reset cannot be restricted to one variable.")
   }
 
-  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionHistoryJson[?, ?, ?]]) derives ReadWriter {
+  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionHistoryJson[InteractionFormat]]) derives ReadWriter {
 
 
   }

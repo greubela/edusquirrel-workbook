@@ -10,17 +10,17 @@ import upickle.default.*
 
 import java.time.LocalDateTime
 
-case class GradingResult[F <: InteractionFormat]
+case class GradingResult[T, GA]
 (
-  grader: WorkbookInteractionGrader[F],
-  gradedState: F#InteractionStateType,
+  grader: WorkbookInteractionGrader[T, GA],
+  gradedState: T,
   gradingStatus: GradingStatus,
   feedbackInformation: Option[LanguageMap[HumanLanguage]],
-  additionalData: Option[F#GradingInfoType],
+  additionalData: Option[GA],
   gradingTime: LocalDateTime
 ) derives ReadWriter {
 
-  def merge(other: GradingResult[F]): GradingResult[F] = {
+  def merge(other: GradingResult[T, GA]): GradingResult[T, GA] = {
     require(grader == other.grader && gradedState == other.gradedState, "Only results for the same grader and state can be merged.")
     val preferred =
       if (gradingStatus == NotRequested() || gradingStatus == NotFinished()) && !other.gradingStatus.shouldRetryExecution then other
@@ -46,12 +46,12 @@ case class GradingResult[F <: InteractionFormat]
 object GradingResult {
 
 
-  def apply[F <: InteractionFormat](grader: WorkbookInteractionGrader[F],
-               gradedState: F#InteractionStateType,
+  def apply[T, GA](grader: WorkbookInteractionGrader[T, GA],
+               gradedState: T,
                gradingStatus: GradingStatus,
                feedbackInformation: Option[LanguageMap[HumanLanguage]] = None,
-               additionalData: Option[F#GradingInfoType] = None,
-                 ): GradingResult[F] = GradingResult(grader, gradedState, gradingStatus, feedbackInformation, additionalData, LocalDateTime.now())
+               additionalData: Option[GA] = None,
+                 ): GradingResult[T, GA] = GradingResult(grader, gradedState, gradingStatus, feedbackInformation, additionalData, LocalDateTime.now())
 
   private def statusPriority(status: GradingStatus): Int = status match {
     case TestError(_) => 1

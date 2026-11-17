@@ -1,10 +1,10 @@
 package it.evadid.workbook.elements.interactionElements.slideshow
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{DefaultSerializer, InteractionFormat}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.InteractionFormat.SlideshowFormat
-import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 

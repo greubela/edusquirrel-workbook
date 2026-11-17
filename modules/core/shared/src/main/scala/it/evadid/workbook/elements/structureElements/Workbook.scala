@@ -8,9 +8,11 @@ import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookStructuringType.WORKBOOK
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionUntyped, WorkbookStructureElement, WorkbookStructuringType}
+import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structureElements.*
 import it.evadid.workbook.interaction.sync.SyncContext
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import ujson.Value
@@ -29,13 +31,13 @@ case class Workbook(
 
   override lazy val structureType: WorkbookStructuringType = WORKBOOK
 
-  lazy val allContainedInteractionsById: Map[String, WorkbookInteractionUntyped] =
+  lazy val allContainedInteractionsById: Map[String, WorkbookInteractionElement[InteractionFormat]] =
     allInteractionsInThisInstance.map(interaction => interaction.elementId -> interaction).toMap
 
   override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = Workbook.factory
 
 
-  def loadDataNoUserCheck(logger: Logger, data: Map[SyncContext, InteractionHistoryJson[?, ?, ?]], executionContextInformation: ExecutionContextInformation): Unit = {
+  def loadDataNoUserCheck(logger: Logger, data: Map[SyncContext, InteractionHistoryJson[InteractionFormat]], executionContextInformation: ExecutionContextInformation): Unit = {
     allInteractionsInThisInstance.foreach(curInteraction => {
       data.keys.foreach(curSyncContext => {
         if (curInteraction.interactionVariable.keyForSerialization == curSyncContext.keyForSerialisation) {

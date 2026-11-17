@@ -8,11 +8,11 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.InteractionFormat.*
-trait WorkbookInteractionScaffolder[F <: InteractionFormat] {
+trait WorkbookInteractionScaffolder[T, SA] {
 
-  private def failWith(state: F#InteractionStateType, err: Either[String, Throwable]): Future[ScaffoldingResult[F]] = Future.successful(ScaffoldingResult.forError(state, err, scaffoldingEntity))
+  private def failWith(state: T, err: Either[String, Throwable]): Future[ScaffoldingResult[T, SA]] = Future.successful(ScaffoldingResult.forError(state, err, scaffoldingEntity))
 
-  def generateFeedbackSafe(state: F#InteractionStateType, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[F]] =
+  def generateFeedbackSafe(state: T, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[T, SA]] =
     try {
       handleFeedbackGeneration(state, contextInformation).recoverWith {
         case err: Throwable => failWith(state, Right(err))
@@ -25,7 +25,7 @@ trait WorkbookInteractionScaffolder[F <: InteractionFormat] {
 
   def scaffoldingEntity: FeedbackEntity
 
-  def handleFeedbackGeneration(currentState: F#InteractionStateType, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[F]]
+  def handleFeedbackGeneration(currentState: T, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[T, SA]]
 
 
 }
