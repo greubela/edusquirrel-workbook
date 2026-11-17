@@ -26,7 +26,7 @@ class DatabaseSqlScriptsSpec extends FunSuite {
           case other => fail(s"Unexpected history column type: $other")
         }
         val specs = Option(sql.getColumnSpecs).toSeq.flatMap(_.asScala).map(_.toUpperCase)
-        val actual = sql.getColDataType.toString.toUpperCase +
+        val actual = sql.getColDataType.toString.toUpperCase.replaceFirst(" CHARACTER SET .*$", "") +
           (if specs.contains("UNSIGNED") && !sql.getColDataType.toString.toUpperCase.contains("UNSIGNED") then " UNSIGNED" else "")
         assertEquals(actual, expected, s"${table.name}.${column.columnName}")
       }
