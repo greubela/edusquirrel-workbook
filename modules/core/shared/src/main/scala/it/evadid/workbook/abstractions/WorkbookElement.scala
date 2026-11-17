@@ -49,10 +49,16 @@ trait WorkbookInteractionElement[F <: InteractionFormat](using v: ValueOf[F]) ex
   // needs to be lazy or defaultValue (from subclass) might not be inited!
   lazy val interactionVariable: InteractionVariable[F] = InteractionVariable[F](this)
 
-  val defaultValue: v.value.InteractionStateType
+  // Abstract type members that will be refined in implementations
+  // Using Nothing as placeholder since F#InteractionStateType requires F to be concrete
+  type InteractionStateType <: Nothing
+  type GradingInfoType <: Nothing
+  type ScaffoldingInfoType <: Nothing
 
-  val gradingElements: List[WorkbookInteractionGrader[v.value.InteractionStateType, v.value.GradingInfoType]] = List()
-  val scaffoldingElement: Option[WorkbookInteractionScaffolder[v.value.InteractionStateType, v.value.ScaffoldingInfoType]] = None
+  val defaultValue: InteractionStateType
+
+  val gradingElements: List[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]] = List()
+  val scaffoldingElement: Option[WorkbookInteractionScaffolder[InteractionStateType, ScaffoldingInfoType]] = None
   // Removed: serializerInteractionContent now uses InteractionFormat's serializers directly via format.stateSerializer
 
   /** The format providing serializers for this interaction type.
