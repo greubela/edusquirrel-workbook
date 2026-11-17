@@ -142,6 +142,30 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     }
   }
 
+  test("reopening a reused workbook for another user clears its answers and feedback ownership") {
+    val fixture = new Fixture
+    fixture.withHttp {
+      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+        val previousContext = fixture.info.workbookContextInformation
+        val workbook = fixture.info.homepageInfoNow().workbookInfo
+        fixture.info.homepageInfoState.update(_.copy(workbookInfo = None))
+        val other = AllUserInfo.createNewUser("Other student", "other@example.invalid", fixture.user.config)
+        fixture.info.invalidateFeedbackSession()
+        fixture.info.homepageInfoState.update(_.copy(userInfo = Some(other)))
+        fixture.info.homepageInfoState.update(_.copy(workbookInfo = workbook))
+        assert(!previousContext.isCurrent)
+        assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("", ""))
+        fixture.requests.set(Vector.empty)
+        fixture.info.syncControl.storeAll(true).map { _ =>
+          val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name).map(command => read[BulkStoreToDbRequest](command.json))
+          assert(writes.nonEmpty)
+          assert(writes.flatMap(_.syncContexts).forall(_.userId == other.user.personId))
+          assert(writes.flatMap(_.histories).forall(_.typedAs(TextInteractionFormat).allStates.forall(_.newState.isEmpty)))
+        }
+      }
+    }
+  }
+
   test("captured execution contexts expire when the user session is invalidated") {
     val fixture = new Fixture
     val captured = fixture.info.workbookContextInformation
