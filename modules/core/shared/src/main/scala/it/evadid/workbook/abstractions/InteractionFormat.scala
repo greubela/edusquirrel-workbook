@@ -51,17 +51,10 @@ sealed trait InteractionFormat {
   type GradingInfoType
   type ScaffoldingInfoType
 
-  // The historySerializer is defined as a method that can be overridden by format objects
-  // to provide type-specific serialization. We use the format object itself as the type
-  // and convert to/from InteractionVariableHistory[InteractionFormat] for serialization.
+  // The historySerializer is defined as a method that must be implemented by each format object.
+  // Each format object sets its own type F and provides the correct serializer for InteractionVariableHistory[F].
   type F <: InteractionFormat
-  // Use the upickle ReadWriter from InteractionVariableHistory with the format's type
-  // We use a macro-like approach since F is a type member, not a type parameter
-  def historySerializer: Serializer[InteractionVariableHistory[this.F]] = 
-    Serializer.fromCustom(
-      (value: InteractionVariableHistory[this.F]) => upickle.default.write(value.asInstanceOf[InteractionVariableHistory[InteractionFormat]]),
-      (input: ujson.Value) => upickle.default.read[InteractionVariableHistory[InteractionFormat]](input).asInstanceOf[InteractionVariableHistory[this.F]]
-    )
+  def historySerializer: Serializer[InteractionVariableHistory[F]]
 
   type Format = this.type
 
@@ -136,6 +129,8 @@ object InteractionFormat {
     type InteractionStateType = String
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = TextInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
 
@@ -144,6 +139,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = LabeledNumberInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -152,6 +148,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = LabeledCheckboxInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -160,6 +157,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = MessagingInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -168,6 +166,7 @@ object InteractionFormat {
     type GradingInfoType = MessengerModel
     type ScaffoldingInfoType = MessengerModel
     type F = TextInputWithLlmGradingAndScaffoldingFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
 
@@ -177,6 +176,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = ChoiceInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -185,6 +185,7 @@ object InteractionFormat {
     type GradingInfoType = AdditionalProgrammingTestInfo
     type ScaffoldingInfoType = AdditionalInfoLlmScaffolding
     type F = ProgrammingExerciseWithLlmScaffoldingAndGrading.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
   // SQL interactions
@@ -193,6 +194,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = SqlCommandExerciseFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -202,6 +204,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = QrCodeInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -211,6 +214,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = BinaryPixelInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -221,6 +225,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = LegacyTurtleFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
   // Plot interactions
@@ -229,6 +234,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = CoordinatePlotInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -238,6 +244,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = CodeTaskToggleInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -246,6 +253,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = SketchDownloadInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -255,6 +263,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = MailInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -263,6 +272,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = MailEditorFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -272,6 +282,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = AnswerTableInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -284,6 +295,7 @@ object InteractionFormat {
 
     val maxTextLength = 256
     type F = UnicodeComparisonInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
   // Blockchain interactions
@@ -292,6 +304,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = BlockchainInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
   object Sha256InteractionFormat extends InteractionFormat {
@@ -302,6 +315,7 @@ object InteractionFormat {
 
     val maxTextLength = 4096
     type F = Sha256InteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
   object SquareMiddleHashInteractionFormat extends InteractionFormat {
@@ -309,6 +323,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = SquareMiddleHashInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
   // Reorder interactions
@@ -317,6 +332,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = ReorderCodeInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -325,6 +341,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = ReorderMapIdInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -336,6 +353,9 @@ object InteractionFormat {
 
 
     type F = SortingInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
+
+
   }
 
   object SortingReasonInteractionFormat extends InteractionFormat {
@@ -345,6 +365,9 @@ object InteractionFormat {
 
 
     type F = SortingReasonInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
+
+
   }
 
   // Slideshow interactions
@@ -355,6 +378,9 @@ object InteractionFormat {
 
 
     type F = SlideshowFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
+
+
   }
 
   // Evacuation interactions
@@ -365,6 +391,9 @@ object InteractionFormat {
 
 
     type F = EvacuationConstructFloorInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
+
+
   }
 
   object ThresholdNeuronInteractionFormat extends InteractionFormat {
@@ -372,6 +401,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = ThresholdNeuronInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
   // Compression interactions
@@ -382,6 +412,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = CompressionExperimentInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
   // Programming interactions
@@ -390,6 +421,9 @@ object InteractionFormat {
     type GradingInfoType = AdditionalProgrammingTestInfo
     type ScaffoldingInfoType = Unit
     type F = TurtleRecreateShapeInteractionFormat.type
+
+
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
 
   }
@@ -401,6 +435,9 @@ object InteractionFormat {
     type F = TurtleStitchRecreateShapeInteractionLegacyFormat.type
 
 
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
+
+
   }
 
   object TextInputWithScaffoldingAndGradingFormat extends InteractionFormat {
@@ -410,6 +447,9 @@ object InteractionFormat {
     type F = TextInputWithScaffoldingAndGradingFormat.type
 
 
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
+
+
   }
 
   object ProgrammingExerciseFormat extends InteractionFormat {
@@ -417,6 +457,7 @@ object InteractionFormat {
     type GradingInfoType = AdditionalProgrammingTestInfo
     type ScaffoldingInfoType = Unit
     type F = ProgrammingExerciseFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
 
@@ -428,6 +469,9 @@ object InteractionFormat {
     type F = CategorizationInteractionFormat.type
 
 
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
+
+
   }
 
   object ChoiceSelectionInteractionFormat extends InteractionFormat {
@@ -435,6 +479,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = ChoiceSelectionInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -443,6 +488,8 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = MatchingInteractionFormat.type
+
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
 
   }
 
@@ -453,6 +500,9 @@ object InteractionFormat {
     type F = FillInBlanksInteractionFormat.type
 
 
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
+
+
   }
 
   object TableFillInInteractionFormat extends InteractionFormat {
@@ -460,6 +510,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = TableFillInInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
   object DropdownBlanksInteractionFormat extends InteractionFormat {
@@ -467,6 +518,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = DropdownBlanksInteractionFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
 
@@ -475,6 +527,7 @@ object InteractionFormat {
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
     type F = EvacuationExperimentFormat.type
+    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
 }

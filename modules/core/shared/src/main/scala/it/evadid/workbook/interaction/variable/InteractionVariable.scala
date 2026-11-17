@@ -77,7 +77,8 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
 
   def addSerializedHistory(logger: Logger, serializedHistory: String, executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
     val deserialized = try {
-      InteractionHistoryJson(underlyingInteraction.format, serializedHistory).toTyped
+      // Use the format's serializer directly since we know the type F
+      underlyingInteraction.format.historySerializer.deserialize(serializedHistory).asInstanceOf[InteractionVariableHistory[F]]
     } catch case (err: Throwable) => {
       logger.logExceptionWarn("Ignoring serialized history as it was not parsable!", err)
       InteractionVariableHistory.empty[F]

@@ -76,16 +76,12 @@ object SyncDestinationHistoryHandler {
   }
 
   private[sync] def readHistoryFromTypedInternal(variable: InteractionVariable[_ <: InteractionFormat], jsonHistory: String): Either[SerializedException, InteractionVariableHistory[_]] = {
-    // We need to use the format's historySerializer to deserialize
-    // Since we don't have ValueOf[F] here, we'll use a runtime approach
-    variable match {
-      case v: InteractionVariable[F] forSome { type F <: InteractionFormat } =>
-        // Use the format from the variable to deserialize
-        val format = v.format
-        format.historySerializer.tryDeserialize(jsonHistory) match {
-          case Left(err) => Left(SerializedException(s"readHistoryFromTypedInternal: value could not be parsed (${err.getMessage})", err))
-          case Right(history) => Right(history.asInstanceOf[InteractionVariableHistory[_]])
-        }
+    // Since we're working with existential types, we deserialize using the format's serializer
+    // and cast to the existential type
+    val format = variable.underlyingInteraction.format
+    format.historySerializer.tryDeserialize(jsonHistory) match {
+      case Left(err) => Left(SerializedException(s"readHistoryFromTypedInternal: value could not be parsed (${err.getMessage})", err))
+      case Right(history) => Right(history.asInstanceOf[InteractionVariableHistory[_]])
     }
   }
 
