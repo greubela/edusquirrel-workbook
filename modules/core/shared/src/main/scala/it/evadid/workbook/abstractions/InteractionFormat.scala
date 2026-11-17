@@ -20,7 +20,6 @@ import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExer
 import it.evadid.workbook.elements.interactionElements.table.TableAnswer
 import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonAnswer
 import it.evadid.workbook.elements.interactionElements.todo.*
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.model.blockchain.TeachingChain
 import it.evadid.workbook.model.compression.CompressionExperiment
 import it.evadid.workbook.model.evacuation.{EvacuationExperiment, EvacuationFloorPlan}
