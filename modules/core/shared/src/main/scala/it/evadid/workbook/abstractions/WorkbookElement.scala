@@ -41,7 +41,7 @@ trait WorkbookStructureElement[T <: WorkbookElement] extends WorkbookElement {
 
 trait WorkbookInteractionElement[F <: InteractionFormat](using v: ValueOf[F]) extends WorkbookElement {
 
-  def interactionFormat: F = v.value
+  val interactionFormat: F = v.value
 
   override lazy val allInteractionsInThisInstance: List[WorkbookInteractionElement[InteractionFormat]] =
     List(this.asInstanceOf[WorkbookInteractionElement[InteractionFormat]]) ++ childrenOfThisElement.collect { case x: WorkbookInteractionElement[InteractionFormat] => x }.flatMap(_.allInteractionsInThisInstance)
