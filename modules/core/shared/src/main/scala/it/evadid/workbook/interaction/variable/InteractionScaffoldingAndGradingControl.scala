@@ -17,7 +17,7 @@ import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](interactionVariable: InteractionVariable[F]) {
-  // Type members for convenience - use the format's type members
+  // Type members for convenience - use the interactionVariable's type members
   type InteractionStateType = interactionVariable.underlyingInteraction.InteractionStateType
   type GradingInfoType = interactionVariable.underlyingInteraction.GradingInfoType
   type ScaffoldingInfoType = interactionVariable.underlyingInteraction.ScaffoldingInfoType
