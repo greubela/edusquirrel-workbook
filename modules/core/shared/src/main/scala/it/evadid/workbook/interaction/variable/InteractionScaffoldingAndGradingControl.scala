@@ -16,12 +16,11 @@ import it.evadid.workbook.meta.ExecutionContextInformation
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
-// Type aliases for the interaction types - using InteractionFormat# type members
-type InteractionStateType = InteractionFormat#InteractionStateType
-type GradingInfoType = InteractionFormat#GradingInfoType
-type ScaffoldingInfoType = InteractionFormat#ScaffoldingInfoType
-
 case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](interactionVariable: InteractionVariable[F]) {
+  // Type members for convenience
+  type InteractionStateType = interactionVariable.underlyingInteraction.InteractionStateType
+  type GradingInfoType = interactionVariable.underlyingInteraction.GradingInfoType
+  type ScaffoldingInfoType = interactionVariable.underlyingInteraction.ScaffoldingInfoType
 
   def getCurrentStateOfGrading(forState: InteractionStateType): GradedState[InteractionStateType, GradingInfoType] = interactionVariable.synchronized {
     val gradeMap = interactionVariable.currentHistory.historyGrading.gradingsMap
