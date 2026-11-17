@@ -16,11 +16,30 @@ import it.evadid.workbook.meta.ExecutionContextInformation
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
+package it.evadid.workbook.interaction.variable
+
+import it.evadid.core.datastructures.storage.AsyncDataCache
+import it.evadid.core.datastructures.storage.CacheElementStatus.*
+import it.evadid.distribution.command.SerializedException
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
+import it.evadid.workbook.abstractions.FeedbackEntity.SystemEntity
+import it.evadid.workbook.abstractions.InteractionFormat
+import it.evadid.workbook.abstractions.grading.GradingStatus.{NotFinished, NotRequested}
+import it.evadid.workbook.abstractions.grading.{GradedState, WorkbookInteractionGrader}
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.{ScaffoldingError, ScaffoldingRequestedButNotFinished}
+import it.evadid.workbook.meta.ExecutionContextInformation
+
+import java.time.LocalDateTime
+import scala.concurrent.{ExecutionContext, Future}
+
+// Type aliases for the interaction types - using InteractionFormat# type members
+type InteractionStateType = InteractionFormat#InteractionStateType
+type GradingInfoType = InteractionFormat#GradingInfoType
+type ScaffoldingInfoType = InteractionFormat#ScaffoldingInfoType
+
 case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](interactionVariable: InteractionVariable[F]) {
-  // Type members for convenience - use the interactionVariable's type members
-  type InteractionStateType = interactionVariable.underlyingInteraction.InteractionStateType
-  type GradingInfoType = interactionVariable.underlyingInteraction.GradingInfoType
-  type ScaffoldingInfoType = interactionVariable.underlyingInteraction.ScaffoldingInfoType
 
   def getCurrentStateOfGrading(forState: InteractionStateType): GradedState[InteractionStateType, GradingInfoType] = interactionVariable.synchronized {
     val gradeMap = interactionVariable.currentHistory.historyGrading.gradingsMap
@@ -72,7 +91,7 @@ case class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](inter
         (forceGrading || grader.runningBehavior == it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS)) then
         startGrading(contextInformation, forceGrading, forState)
       else retryGradingIfNecessary(contextInformation, forceGrading,
-        saved.fillMapForUnavailable(interactionVariable.underlyingInteraction.gradingElements, NotRequested()))
+        saved.fillMapForUnavailable(interactionVariable.underlyingInteraction.gradingElements.asInstanceOf[List[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]]], NotRequested()))
     } else {
       gradingCache.getSyncIfInCache(forState, false).match {
         case Some(gradedState) =>
