@@ -9,29 +9,18 @@ import it.evadid.workbook.interaction.variable.events.*
 import java.time.LocalDateTime
 import upickle.default.*
 
-object InteractionVariableHistory {
-  type InteractionVariableHistory3[F <: InteractionFormat] = InteractionVariableHistory[
-    F, 
-    F#InteractionStateType, 
-    F#GradingInfoType, 
-    F#ScaffoldingInfoType
-  ]
-}
-
 /** Canonical interaction history: all saved state and feedback live in timestamped events.
   * 
   * NOTE: Does not derive ReadWriter because F is a path-dependent type.
   * Use InteractionVariableHistory3[F] for serialization.
-  * 
-  * TODO: Fix default type parameters - path-dependent types can't be used as defaults
   */
-case class InteractionVariableHistory[
-  F <: InteractionFormat,
-  S <: F#InteractionStateType = Nothing,
-  G <: F#GradingInfoType = Nothing,
-  A <: F#ScaffoldingInfoType = Nothing
-](events: InteractionEvents[F]) {
+case class InteractionVariableHistory[F <: InteractionFormat](
+  events: InteractionEvents[F]
+) {
   type Format = F
+  type InteractionStateType = F#InteractionStateType
+  type GradingInfoType = F#GradingInfoType
+  type ScaffoldingInfoType = F#ScaffoldingInfoType
   lazy val allStates: Set[AnswerChangedEvent[F]] = events.values.collect {
     case event: AnswerChangedEvent[F] => event
   }
@@ -115,6 +104,8 @@ case class InteractionVariableHistory[
 }
 
 object InteractionVariableHistory {
+  type InteractionVariableHistory3[F <: InteractionFormat] = InteractionVariableHistory[F]
+  
   def empty[F <: InteractionFormat]: InteractionVariableHistory[F] = InteractionVariableHistory[F](InteractionEvents.empty)
 
   /** Build events from typed answers and completed results; this does not decode an older saved schema. */
