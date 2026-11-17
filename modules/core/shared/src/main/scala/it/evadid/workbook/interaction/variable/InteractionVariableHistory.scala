@@ -1,6 +1,5 @@
 package it.evadid.workbook.interaction.variable
 
-import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, UpdateImportance}
