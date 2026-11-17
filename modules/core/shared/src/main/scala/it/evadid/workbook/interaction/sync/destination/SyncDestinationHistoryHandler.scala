@@ -65,7 +65,7 @@ object SyncDestinationHistoryHandler {
   private[sync] def readHistoriesFromTyped(
                                        variablesToResolveTypes: Seq[InteractionVariable[_ <: InteractionFormat]],
                                        fetchResponse: FetchResponse[SyncContext, String]
-                                     ): Map[SyncContext, InteractionVariableHistory[_]] = {
+                                     ): Map[SyncContext, InteractionVariableHistory.InteractionVariableHistory3[_ <: InteractionFormat]] = {
     fetchResponse.fetchedValues.flatMap { curFetchedValue =>
       variablesToResolveTypes
         .find(_.keyForSerialization == curFetchedValue.dataKey.keyForSerialisation)
@@ -75,13 +75,13 @@ object SyncDestinationHistoryHandler {
     }.toMap
   }
 
-  private[sync] def readHistoryFromTypedInternal(variable: InteractionVariable[_ <: InteractionFormat], jsonHistory: String): Either[SerializedException, InteractionVariableHistory[_]] = {
+  private[sync] def readHistoryFromTypedInternal(variable: InteractionVariable[_ <: InteractionFormat], jsonHistory: String): Either[SerializedException, InteractionVariableHistory.InteractionVariableHistory3[_ <: InteractionFormat]] = {
     // Since we're working with existential types, we deserialize using the format's serializer
     // and cast to the existential type
     val format = variable.underlyingInteraction.format
     format.historySerializer.tryDeserialize(jsonHistory) match {
       case Left(err) => Left(SerializedException(s"readHistoryFromTypedInternal: value could not be parsed (${err.getMessage})", err))
-      case Right(history) => Right(history.asInstanceOf[InteractionVariableHistory[_]])
+      case Right(history) => Right(history.asInstanceOf[InteractionVariableHistory.InteractionVariableHistory3[_ <: InteractionFormat]])
     }
   }
 
