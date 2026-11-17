@@ -22,6 +22,9 @@ import upickle.default.*
   * The format is passed explicitly and is necessary for the receiving server to
   * know how to deserialize the history JSON (e.g., for custom workbooks with
   * unknown interaction formats).
+  *
+  * All operations on history should be done through toTyped() which gives
+  * access to InteractionVariableHistory with all its methods (merge, timestampLastChanged, etc.)
   */
 case class InteractionHistoryJson[F <: InteractionFormat](
     format: F,
@@ -35,7 +38,7 @@ case class InteractionHistoryJson[F <: InteractionFormat](
     */
   def toTyped: InteractionVariableHistory[F] =
     ParsingContext("interactionVariableHistory", historyJson) {
-      format.historySerializer.deserialize(historyJson)
+      format.historySerializer.deserialize(historyJson).asInstanceOf[InteractionVariableHistory[F]]
     }
 
 }
@@ -48,8 +51,8 @@ object InteractionHistoryJson {
     * @param history The InteractionVariableHistory to serialize
     * @return An InteractionHistoryJson with the serialized history
     */
-  def fromHistory[F <: InteractionFormat](format: F, history: InteractionVariableHistory[F]): InteractionHistoryJson[F] = {
-    InteractionHistoryJson(format, format.historySerializer.serialize(history))
+  def fromHistory[F <: InteractionFormat](format: F, history: InteractionVariableHistory[F])(using v: ValueOf[F]): InteractionHistoryJson[F] = {
+    InteractionHistoryJson(format, format.historySerializer.serialize(history.asInstanceOf[InteractionVariableHistory[v.value.F]]))
   }
 
 }

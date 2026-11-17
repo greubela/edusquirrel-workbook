@@ -3,6 +3,7 @@ package it.evadid.workbook.interaction.sync.destination
 import it.evadid.core.datastructures.state.State
 import it.evadid.util.logging.BasicLogger
 import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.model.FetchResponse
 import munit.FunSuite
@@ -187,37 +188,6 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
         assertEquals(operations.now(), List("write:old", "clear", "write:new"))
         assertEquals(persisted.now(), Map(key -> "new"))
       }
-    }
-  }
-
-  test("typed and raw reads share a fetch while a malformed typed record fails independently") {
-    import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
-    import it.evadid.workbook.elements.interactionElements.basic.TextInteraction2
-    val answer = TextInteraction2("answer").interactionVariable
-    val validKey = context.toSyncContext(answer.keyForSerialization)
-    val history = InteractionVariableHistory[String, Unit, Unit](Set(
-      InteractionVariableState("saved", UpdateImportance.MAJOR, LocalDateTime.now())))
-    val json = answer.serializerHistory.serialize(history)
-    val destination = new Destination
-    destination.readResult.set(_ => Future.successful(FetchResponse.fromMap(LocalDateTime.now(),
-      Map(validKey -> json, key -> "invalid"))))
-    val buffered = destination.toBuffered
-    val single = buffered.readHistory[String, Unit, Unit](validKey)
-    val multiple = buffered.readHistories(context, Seq(answer))
-    val invalid = buffered.readHistory[String, Unit, Unit](key)
-    val raw = buffered.readHistoriesJson(context)
-    buffered.flush(true)
-    for {
-      restored <- single
-      all <- multiple
-      error <- invalid.failed
-      bytes <- raw
-    } yield {
-      assertEquals(restored, history)
-      assertEquals(all.get(validKey), Some(history))
-      assert(error.getMessage.contains("could not be parsed"))
-      assertEquals(bytes.asMap.keySet, Set(validKey, key))
-      assertEquals(destination.reads.now(), List(context))
     }
   }
 

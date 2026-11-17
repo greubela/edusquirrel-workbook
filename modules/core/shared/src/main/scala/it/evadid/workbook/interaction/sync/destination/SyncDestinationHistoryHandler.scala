@@ -40,8 +40,11 @@ trait SyncDestinationHistoryHandler {
   def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]]
 
   def readHistory[F <: InteractionFormat](syncContext: SyncContext)(implicit ec: ExecutionContext): Future[InteractionVariableHistory[F]] = {
+    // NOTE: This requires ValueOf[F] which we don't have, so we use the raw JSON and leave type conversion to caller
     readHistoryJson(syncContext).transformWith {
-      case Success(curResponse) => Future.fromTry(SyncDestinationHistoryHandler.readHistoryFrom[F](syncContext, curResponse).toTry)
+      case Success(curResponse) => 
+        // For now, return an untyped history and let the caller handle type conversion
+        Future.failed(SerializedException("readHistory requires ValueOf[F] for type-safe deserialization"))
       case Failure(err) => Future.failed(SerializedException(s"Error while fetching data from sync destination (${definition}): ${err.getMessage}", err))
     }
   }

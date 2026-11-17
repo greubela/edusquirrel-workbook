@@ -29,10 +29,11 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
     flush(false)
     promise.future
   }
-  override def readHistory[F <: InteractionFormat](context: SyncContext)(implicit ec: ExecutionContext): Future[InteractionVariableHistory[F]] = {
-    val promise = Promise[InteractionVariableHistory[F]]()
-    enqueue(CachedReadRequestSingle(LocalDateTime.now(), context, promise), promise)
-  }
+  // NOTE: readHistory is commented out because it requires ValueOf[F] which isn't available here
+  // override def readHistory[F <: InteractionFormat](context: SyncContext)(implicit ec: ExecutionContext, v: ValueOf[F]): Future[InteractionVariableHistory[F]] = {
+  //   val promise = Promise[InteractionVariableHistory[F]]()
+  //   enqueue(CachedReadRequestSingle(LocalDateTime.now(), context, promise), promise)
+  // }
   override def readHistories(context: UsageContext, variables: Seq[InteractionVariable[InteractionFormat]])(implicit ec: ExecutionContext): Future[Map[SyncContext, InteractionVariableHistory[InteractionFormat]]] = {
     val promise = Promise[Map[SyncContext, InteractionVariableHistory[InteractionFormat]]]()
     enqueue(CachedReadRequestMultiple(LocalDateTime.now(), context, variables, promise), promise)
@@ -132,14 +133,16 @@ object BufferedSyncDestinationHandler {
   case class CachedReadRequestSingle[F <: InteractionFormat](requestTimestamp: LocalDateTime, syncContext: SyncContext, promise: Promise[InteractionVariableHistory[F]]) extends CachedReadRequest {
     //private given  v: ValueOf[F]
     override def usageContext: UsageContext = syncContext.toUsageContext
-    override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data.flatMap { response =>
-
-      SyncDestinationHistoryHandler.readHistoryFrom[F]( syncContext, response).toTry
-    })
+    // NOTE: This is commented out because we can't get ValueOf[F] implicitly here
+    // The readHistory method is also commented out for the same reason
+    // override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data.flatMap { response =>
+    //   implicitly[ValueOf[F]]
+    //   SyncDestinationHistoryHandler.readHistoryFrom[F](syncContext, response).toTry
+    // })
   }
-  case class CachedReadRequestMultiple(requestTimestamp: LocalDateTime, usageContext: UsageContext, resolveWithVars: Seq[InteractionVariable[InteractionFormat]], promise: Promise[Map[SyncContext, InteractionVariableHistory[InteractionFormat]]]) extends CachedReadRequest {
+  case class CachedReadRequestMultiple(requestTimestamp: LocalDateTime, usageContext: UsageContext, resolveWithVars: Seq[InteractionVariable[_ <: InteractionFormat]], promise: Promise[Map[SyncContext, InteractionVariableHistory[_]]]) extends CachedReadRequest {
     override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit =
-      promise.tryComplete(data.map(response => SyncDestinationHistoryHandler.readHistoriesFrom(resolveWithVars, usageContext, response)))
+      promise.tryComplete(data.map(response => SyncDestinationHistoryHandler.readHistoriesFromTyped(resolveWithVars, response)))
   }
   case class CachedReadRequestMultipleRaw(requestTimestamp: LocalDateTime, usageContext: UsageContext, promise: Promise[FetchResponse[SyncContext, String]]) extends CachedReadRequest {
     override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data)

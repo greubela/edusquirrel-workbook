@@ -51,7 +51,13 @@ sealed trait InteractionFormat {
   type GradingInfoType
   type ScaffoldingInfoType
 
-  def historySerializer: Serializer[InteractionVariableHistory[this.type]] = ??? //Serializer.fromImplicitRW
+  // The historySerializer is defined as a method that can be overridden by format objects
+  // to provide type-specific serialization. We use a type member that each format object
+  // sets to its own type.
+  type F <: InteractionFormat
+  // Use the upickle ReadWriter from InteractionVariableHistory instead of custom serializers
+  def historySerializer: Serializer[InteractionVariableHistory[this.F]] = 
+    Serializer.fromImplicitRW
 
   type Format = this.type
 
@@ -67,6 +73,55 @@ object InteractionFormat {
 
   inline def instance[F <: InteractionFormat](using v: ValueOf[F]): F = v.value
 
+  /** Get the format object from its class name. Returns None if the class is not a known format. */
+  def fromClassName(className: String): Option[InteractionFormat] = {
+    knownFormats.find(_.getClass.getName == className)
+  }
+
+  // All known format implementations (for runtime type resolution)
+  val knownFormats: List[InteractionFormat] = List(
+    TextInteractionFormat,
+    LabeledNumberInteractionFormat,
+    LabeledCheckboxInteractionFormat,
+    MessagingInteractionFormat,
+    TextInputWithLlmGradingAndScaffoldingFormat,
+    ChoiceInteractionFormat,
+    ProgrammingExerciseWithLlmScaffoldingAndGrading,
+    SqlCommandExerciseFormat,
+    QrCodeInteractionFormat,
+    BinaryPixelInteractionFormat,
+    LegacyTurtleFormat,
+    CoordinatePlotInteractionFormat,
+    CodeTaskToggleInteractionFormat,
+    SketchDownloadInteractionFormat,
+    MailInteractionFormat,
+    MailEditorFormat,
+    AnswerTableInteractionFormat,
+    UnicodeComparisonInteractionFormat,
+    BlockchainInteractionFormat,
+    Sha256InteractionFormat,
+    SquareMiddleHashInteractionFormat,
+    ReorderCodeInteractionFormat,
+    ReorderMapIdInteractionFormat,
+    SortingInteractionFormat,
+    SortingReasonInteractionFormat,
+    SlideshowFormat,
+    EvacuationConstructFloorInteractionFormat,
+    ThresholdNeuronInteractionFormat,
+    CompressionExperimentInteractionFormat,
+    TurtleRecreateShapeInteractionFormat,
+    TurtleStitchRecreateShapeInteractionLegacyFormat,
+    TextInputWithScaffoldingAndGradingFormat,
+    ProgrammingExerciseFormat,
+    CategorizationInteractionFormat,
+    ChoiceSelectionInteractionFormat,
+    MatchingInteractionFormat,
+    FillInBlanksInteractionFormat,
+    TableFillInInteractionFormat,
+    DropdownBlanksInteractionFormat,
+    EvacuationExperimentFormat
+  )
+
   // ============================================================================
   // All format implementations (case objects) for interactions
   // Format objects end with "Format" to distinguish from interaction elements
@@ -77,6 +132,7 @@ object InteractionFormat {
     type InteractionStateType = String
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = TextInteractionFormat
   }
 
 
@@ -84,6 +140,7 @@ object InteractionFormat {
     type InteractionStateType = String
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = LabeledNumberInteractionFormat.type
 
   }
 
@@ -91,6 +148,7 @@ object InteractionFormat {
     type InteractionStateType = Boolean
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = LabeledCheckboxInteractionFormat.type
 
   }
 
@@ -98,6 +156,7 @@ object InteractionFormat {
     type InteractionStateType = MessengerModelScaffolding
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = MessagingInteractionFormat.type
 
   }
 
@@ -105,6 +164,7 @@ object InteractionFormat {
     type InteractionStateType = String
     type GradingInfoType = MessengerModel
     type ScaffoldingInfoType = MessengerModel
+    type F = TextInputWithLlmGradingAndScaffoldingFormat.type
   }
 
 
@@ -113,6 +173,7 @@ object InteractionFormat {
     type InteractionStateType = ChoiceAnswer
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = ChoiceInteractionFormat.type
 
   }
 
@@ -120,6 +181,7 @@ object InteractionFormat {
     type InteractionStateType = ProgrammingState
     type GradingInfoType = AdditionalProgrammingTestInfo
     type ScaffoldingInfoType = AdditionalInfoLlmScaffolding
+    type F = ProgrammingExerciseWithLlmScaffoldingAndGrading.type
   }
 
   // SQL interactions
@@ -127,6 +189,7 @@ object InteractionFormat {
     type InteractionStateType = String
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = SqlCommandExerciseFormat.type
 
   }
 
@@ -135,6 +198,7 @@ object InteractionFormat {
     type InteractionStateType = QrCode
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = QrCodeInteractionFormat.type
 
   }
 
@@ -143,6 +207,7 @@ object InteractionFormat {
     type InteractionStateType = BinaryPixelImage
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = BinaryPixelInteractionFormat.type
 
   }
 
@@ -152,6 +217,7 @@ object InteractionFormat {
     type IneractionStateType = TurtleStitchProjectState
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = LegacyTurtleFormat.type
   }
 
   // Plot interactions
@@ -159,6 +225,7 @@ object InteractionFormat {
     type InteractionStateType = PlotAnswer
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = CoordinatePlotInteractionFormat.type
 
   }
 
@@ -167,6 +234,7 @@ object InteractionFormat {
     type InteractionStateType = CodeTaskToggleState
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = CodeTaskToggleInteractionFormat.type
 
   }
 
@@ -174,6 +242,7 @@ object InteractionFormat {
     type InteractionStateType = String
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = SketchDownloadInteractionFormat.type
 
   }
 
@@ -182,6 +251,7 @@ object InteractionFormat {
     type InteractionStateType = InboxStateScaffolding
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = MailInteractionFormat.type
 
   }
 
@@ -189,6 +259,7 @@ object InteractionFormat {
     type InteractionStateType = InboxStateScaffolding
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = MailEditorFormat.type
 
   }
 
@@ -197,6 +268,7 @@ object InteractionFormat {
     type InteractionStateType = TableAnswer
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = AnswerTableInteractionFormat.type
 
   }
 
@@ -208,6 +280,7 @@ object InteractionFormat {
 
 
     val maxTextLength = 256
+    type F = UnicodeComparisonInteractionFormat.type
   }
 
   // Blockchain interactions
@@ -215,6 +288,7 @@ object InteractionFormat {
     type InteractionStateType = TeachingChain
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = BlockchainInteractionFormat.type
   }
 
   object Sha256InteractionFormat extends InteractionFormat {
@@ -224,12 +298,14 @@ object InteractionFormat {
 
 
     val maxTextLength = 4096
+    type F = Sha256InteractionFormat.type
   }
 
   object SquareMiddleHashInteractionFormat extends InteractionFormat {
     type InteractionStateType = SquareMiddleHashAnswer
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = SquareMiddleHashInteractionFormat.type
   }
 
   // Reorder interactions
@@ -237,6 +313,7 @@ object InteractionFormat {
     type InteractionStateType = ReorderInteractionState[String]
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = ReorderCodeInteractionFormat.type
 
   }
 
@@ -244,6 +321,7 @@ object InteractionFormat {
     type InteractionStateType = ReorderInteractionState[LanguageMapContentId]
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = ReorderMapIdInteractionFormat.type
 
   }
 
@@ -254,6 +332,7 @@ object InteractionFormat {
     type ScaffoldingInfoType = Unit
 
 
+    type F = SortingInteractionFormat.type
   }
 
   object SortingReasonInteractionFormat extends InteractionFormat {
@@ -262,6 +341,7 @@ object InteractionFormat {
     type ScaffoldingInfoType = Unit
 
 
+    type F = SortingReasonInteractionFormat.type
   }
 
   // Slideshow interactions
@@ -271,6 +351,7 @@ object InteractionFormat {
     type ScaffoldingInfoType = Unit
 
 
+    type F = SlideshowFormat.type
   }
 
   // Evacuation interactions
@@ -280,12 +361,14 @@ object InteractionFormat {
     type ScaffoldingInfoType = Unit
 
 
+    type F = EvacuationConstructFloorInteractionFormat.type
   }
 
   object ThresholdNeuronInteractionFormat extends InteractionFormat {
     type InteractionStateType = NeuronParameters
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = ThresholdNeuronInteractionFormat.type
   }
 
   // Compression interactions
@@ -295,6 +378,7 @@ object InteractionFormat {
     type InteractionStateType = CompressionExperiment
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = CompressionExperimentInteractionFormat.type
   }
 
   // Programming interactions
@@ -302,6 +386,7 @@ object InteractionFormat {
     type InteractionStateType = ProgrammingState
     type GradingInfoType = AdditionalProgrammingTestInfo
     type ScaffoldingInfoType = Unit
+    type F = TurtleRecreateShapeInteractionFormat.type
 
 
   }
@@ -310,6 +395,7 @@ object InteractionFormat {
     type InteractionStateType = TurtleStitchProjectState
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = TurtleStitchRecreateShapeInteractionLegacyFormat.type
 
 
   }
@@ -318,6 +404,7 @@ object InteractionFormat {
     type InteractionStateType = String
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = TextInputWithScaffoldingAndGradingFormat.type
 
 
   }
@@ -326,6 +413,7 @@ object InteractionFormat {
     type InteractionStateType = ProgrammingState
     type GradingInfoType = AdditionalProgrammingTestInfo
     type ScaffoldingInfoType = Unit
+    type F = ProgrammingExerciseFormat.type
   }
 
 
@@ -334,6 +422,7 @@ object InteractionFormat {
     type InteractionStateType = String
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = CategorizationInteractionFormat.type
 
 
   }
@@ -342,6 +431,7 @@ object InteractionFormat {
     type InteractionStateType = ChoiceSelectionState
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = ChoiceSelectionInteractionFormat.type
 
   }
 
@@ -349,6 +439,7 @@ object InteractionFormat {
     type InteractionStateType = MatchingInteractionState
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = MatchingInteractionFormat.type
 
   }
 
@@ -356,6 +447,7 @@ object InteractionFormat {
     type InteractionStateType = FillInBlanksState
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = FillInBlanksInteractionFormat.type
 
 
   }
@@ -364,12 +456,14 @@ object InteractionFormat {
     type InteractionStateType = TableFillInState
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = TableFillInInteractionFormat.type
   }
 
   object DropdownBlanksInteractionFormat extends InteractionFormat {
     type InteractionStateType = DropdownBlanksState
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = DropdownBlanksInteractionFormat.type
   }
 
 
@@ -377,6 +471,7 @@ object InteractionFormat {
     type InteractionStateType = EvacuationExperiment
     type GradingInfoType = Unit
     type ScaffoldingInfoType = Unit
+    type F = EvacuationExperimentFormat.type
   }
 
 }

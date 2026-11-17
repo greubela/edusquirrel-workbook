@@ -2,6 +2,7 @@ package it.evadid.workbook.interaction.sync
 
 import it.evadid.util.logging.BasicLogger
 import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -16,7 +17,7 @@ class SyncControlSpec extends FunSuite {
     val syncLogger = SyncLogger(BasicLogger())
     def fetchAll(forceFlush: Boolean): Future[Unit] = { loadStarted.trySuccess(()); loadFinished.future }
     def storeAll(forceFlush: Boolean): Future[Unit] = { storeStarted.trySuccess(()); storeFinished.future }
-    def store[T, GA, SA](value: InteractionVariable[T, GA, SA], forceFlush: Boolean): Future[Unit] = storeAll(forceFlush)
+    def store[F <: InteractionFormat](value: InteractionVariable[F], forceFlush: Boolean): Future[Unit] = storeAll(forceFlush)
   }
 
   test("fetch and store waits for the read before submitting writes") {
