@@ -1,5 +1,6 @@
 package it.evadid.distribution.commandTypes
 
+import it.evadid.sql.BackendDatabase
 import it.evadid.distribution.clients.LocalExecutionClient
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory, SerializedException}
 import it.evadid.util.logging.{BasicLogger, Logger}
@@ -63,7 +64,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
     import it.evadid.workbook.interaction.sync.UsageContext
     val request = SQLCommands.DeleteInDbRequest(UsageContext("program", "workbook", "user"), None,
-      it.evadid.sql.BackendDatabase, DatabaseHistoryFormat.RelationalFormat, allWorkbooks = true)
+      BackendDatabase, DatabaseHistoryFormat.RelationalFormat, allWorkbooks = true)
     assertEquals(read[SQLCommands.DeleteInDbRequest](write(request)), request)
     assertEquals(ExecutionCommandFactory.forName("reset-user-histories-in-db-request"), Some(SQLCommands.resetUserHistoriesDbCommand))
     intercept[IllegalArgumentException](request.copy(limitToKey = Some("one-variable")))
@@ -80,7 +81,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
   test("default sync requests use the current explicit database wire fields on JVM and JavaScript") {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
     import it.evadid.workbook.interaction.sync.UsageContext
-    val request = SQLCommands.FetchEventsFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"), Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, it.evadid.sql.BackendDatabase, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.SYNC_EVERYTHING)
+    val request = SQLCommands.FetchEventsFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"), Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, BackendDatabase, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.SYNC_EVERYTHING)
     val encoded = writeJs(request)
     assertEquals(encoded("databaseConfig"), ujson.Str("BackendDatabase"))
     assert(!write(request).contains("herrgreubel"))

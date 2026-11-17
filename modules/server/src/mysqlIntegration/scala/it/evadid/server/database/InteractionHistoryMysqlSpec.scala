@@ -1,5 +1,6 @@
 package it.evadid.server.database
 
+import it.evadid.sql.BackendDatabase
 import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
 
@@ -125,7 +126,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
 
   test("bulk HTTP storage authorizes every context before storing any histories") {
     withHttpCommands() { send =>
-      val publicConfig = it.evadid.sql.BackendDatabase
+      val publicConfig = BackendDatabase
       Seq(BlobFormat, RelationalFormat).foreach { storage =>
         val legitimate = BulkStoreToDbRequest(Seq(sync, context.toSyncContext("other")),
           Seq(encoded(history()), encoded(history("other"))), publicConfig, storage)

@@ -1,5 +1,6 @@
 package it.evadid.workbook.interaction.sync.destination
 
+import it.evadid.sql.BackendDatabase
 import it.evadid.sql.{DatabaseConfiguration, DatabaseHistoryFormat}
 import upickle.default.*
 
@@ -38,10 +39,10 @@ object SyncDestinationDefinition {
     LocalIndexedDbSyncDefinition("EvaDidInteractionDB", "variableHistoryStore", 1)
 
   val defaultDatabase: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.BackendDatabase, DatabaseHistoryFormat.RelationalFormat, true)
+    SyncDestinationBasedOnHistoryDatabase(BackendDatabase, DatabaseHistoryFormat.RelationalFormat, true)
 
   val defaultBlobDatabase: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.BackendDatabase, DatabaseHistoryFormat.BlobFormat, true)
+    SyncDestinationBasedOnHistoryDatabase(BackendDatabase, DatabaseHistoryFormat.BlobFormat, true)
 
 }
 

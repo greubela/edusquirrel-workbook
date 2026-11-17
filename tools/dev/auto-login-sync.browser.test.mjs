@@ -16,7 +16,7 @@ const destinations = [
   {syncDestination:{$type:'LocalStorageSyncDefinition',maxValueCharakterSize:50000},syncStrategy:'SYNC_EVERYTHING'},
   ...formats.map(format => ({syncDestination:{$type:'SyncDestinationBasedOnHistoryDatabase',format,buffered:true,
     databaseConfig:{$type:'DatabaseConfig',dbFormat:'mysql',host:'example.test',port:'3306',database:'fixture'}},
-    syncStrategy:{$type:'KeepImportance',importance:['MAJOR']}}))
+    syncStrategy:'SYNC_EVERYTHING'}))
 ];
 const token = {info:{user,createdAt:'2026-01-01T00:00:00',expiresAt:'2099-01-01T00:00:00'},tokenStringWithSignature:'fixture-token'};
 const profile = {user,credentials:{signedBackendToken:token,singleAccessToken:null,llmApiConfig:null,databaseConfig:null},
@@ -141,6 +141,7 @@ test('automatic login restores answers; full reset clears every destination, pau
     assert.equal(navigations,2);
     assert.equal(await page.locator('.container-login').count(),0,'reload preserves cached authentication');
     assert((await historyKeys(page)).includes('unreadable-record-fixture'),'one unreadable record must not erase the store');
+    await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
     await page.locator('.workbook-user-menu-button').click();
     const reset=page.getByRole('menuitem',{name:'Alle gespeicherten Antworten zurücksetzen',exact:true});
     await reset.click();

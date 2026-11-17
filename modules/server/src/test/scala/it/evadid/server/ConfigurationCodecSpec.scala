@@ -1,5 +1,6 @@
 package it.evadid.server
 
+import it.evadid.sql.BackendDatabase
 import it.evadid.sql.{DatabaseConfiguration, DatabaseConfigWithCredentials}
 import munit.FunSuite
 import upickle.default.*
@@ -22,14 +23,13 @@ class ConfigurationCodecSpec extends FunSuite {
     val json = ujson.read("""{"usageContext":{"programId":"edusquirrel","scenarioId":"workbookTest","userId":"student"},
       "databaseConfig":"BackendDatabase",
       "keys":[],"starting":"2026-01-01T00:00","until":"2026-12-31T00:00","databaseFormat":"RelationalFormat","strategy":"SYNC_EVERYTHING"}""")
-    assertEquals(read[FetchEventsFromDbRequest](json).databaseConfig, it.evadid.sql.BackendDatabase)
+    assertEquals(read[FetchEventsFromDbRequest](json).databaseConfig, BackendDatabase)
     val unsupported = ujson.read("""{"databaseOp":"db_332371_12","dbFormatOp":"mysql","hostOp":"herrgreubel.lima-db.de","portOp":"3306"}""")
     json("databaseConfig") = unsupported
     assert(scala.util.Try(read[FetchEventsFromDbRequest](json)).isFailure)
   }
 
   test("backend database references resolve the receiving server's environment without exposing its address") {
-    import it.evadid.sql.BackendDatabase
     import it.evadid.server.database.DatabaseRequestConnection
     val configured = DatabaseConfigWithCredentials("mysql", "127.0.0.1", "3306", "edusquirrel", "local-user", "private-password")
     assertEquals(DatabaseRequestConnection.resolve(BackendDatabase, configured), configured)
