@@ -52,7 +52,7 @@ object InteractionHistoryJson {
     * @return An InteractionHistoryJson with the serialized history
     */
   def fromHistory[F <: InteractionFormat](format: F, history: InteractionVariableHistory[F])(using v: ValueOf[F]): InteractionHistoryJson[F] = {
-    InteractionHistoryJson(format, format.historySerializer.serialize(history))
+    InteractionHistoryJson(format, format.historySerializer.serialize(history.asInstanceOf[InteractionVariableHistory[format.F]]))
   }
 
   /** Merge multiple histories into one. This is a legacy method for compatibility;
@@ -64,7 +64,7 @@ object InteractionHistoryJson {
       val decoded = format.historySerializer.deserialize(json).asInstanceOf[InteractionVariableHistory[InteractionFormat]]
       current.mergeWith(decoded)
     }
-    format.historySerializer.serialize(merged)
+    format.historySerializer.serialize(merged.asInstanceOf[InteractionVariableHistory[format.F]])
   }
 
 }
