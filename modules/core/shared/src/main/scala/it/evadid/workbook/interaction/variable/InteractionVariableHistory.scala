@@ -9,13 +9,14 @@ import it.evadid.workbook.interaction.variable.events.*
 import java.time.LocalDateTime
 import upickle.default.*
 
-/** Type alias for compatibility - use 3 concrete types for serialization */
-type InteractionVariableHistory3[F <: InteractionFormat] = InteractionVariableHistory[
-  F, 
-  F#InteractionStateType, 
-  F#GradingInfoType, 
-  F#ScaffoldingInfoType
-]
+object InteractionVariableHistory {
+  type InteractionVariableHistory3[F <: InteractionFormat] = InteractionVariableHistory[
+    F, 
+    F#InteractionStateType, 
+    F#GradingInfoType, 
+    F#ScaffoldingInfoType
+  ]
+}
 
 /** Canonical interaction history: all saved state and feedback live in timestamped events.
   * 
