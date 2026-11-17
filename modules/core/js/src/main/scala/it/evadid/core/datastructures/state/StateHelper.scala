@@ -142,19 +142,10 @@ object StateHelper {
 
   implicit class InteractionVariableOnJS[F <: InteractionFormat](interactionVariable: InteractionVariable[F]) {
 
-    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[interactionVariable.currentValue.type] = {
+    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[Nothing] = ???
 
-      val state = interactionVariable.createBoundStateWithUpdateImportance(updateImportance, context)
-      fromStateToAirstreamVar(state)
-    }
 
-    def createInteractionSignal(context: ExecutionContextInformation): StrictSignal[F#InteractionStateType] = {
-      // val res = Var[T](interactionVariable.currentValue)
-      //interactionVariable.observableValue.addObserver(newValue => res.set(newValue))
-      //res.signal
-
-      createBoundVarWithUpdateImportance(TEMPORARY, context).signal
-    }
+    def createInteractionSignal(context: ExecutionContextInformation): StrictSignal[Nothing] = ???
 
   }
 
