@@ -140,7 +140,7 @@ object BufferedSyncDestinationHandler {
     //   SyncDestinationHistoryHandler.readHistoryFrom[F](syncContext, response).toTry
     // })
   }
-  case class CachedReadRequestMultiple(requestTimestamp: LocalDateTime, usageContext: UsageContext, resolveWithVars: Seq[InteractionVariable[_ <: InteractionFormat]], promise: Promise[Map[SyncContext, InteractionVariableHistory[_]]]) extends CachedReadRequest {
+  case class CachedReadRequestMultiple(requestTimestamp: LocalDateTime, usageContext: UsageContext, resolveWithVars: Seq[InteractionVariable[_ <: InteractionFormat]], promise: Promise[Map[SyncContext, InteractionVariableHistory.InteractionVariableHistory3[InteractionFormat]]]) extends CachedReadRequest {
     override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit =
       promise.tryComplete(data.map(response => SyncDestinationHistoryHandler.readHistoriesFromTyped(resolveWithVars, response)))
   }
