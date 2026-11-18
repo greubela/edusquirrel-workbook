@@ -15,8 +15,7 @@ object DatabaseHistoryFormat {
     DatabaseColumn("user_id", VarChar(128)), DatabaseColumn("variable_id", VarChar(255)),
     DatabaseColumn("format", VarChar(128)))
   private val eventColumns = Seq(id, DatabaseColumn("sync_id", BigInt(unsigned = true)),
-    DatabaseColumn("event_id", VarChar(71)), DatabaseColumn("event_day", BigInt()),
-    DatabaseColumn("event_nano", BigInt()),
+    DatabaseColumn("event_id", VarChar(71)), DatabaseColumn("timestamp_nano", VarChar(40)),
     DatabaseColumn("serialized_data", Json))
 
   case object RelationalFormat extends DatabaseHistoryFormat {

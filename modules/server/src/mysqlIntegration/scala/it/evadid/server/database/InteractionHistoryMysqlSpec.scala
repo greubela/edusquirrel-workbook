@@ -518,15 +518,58 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
   }
 
-  for column <- Seq("event_day", "event_nano") do
-    test(s"corrupt indexed $column is rejected against the serialized event timestamp") {
+  for stored <- Seq("not-an-ISO-timestamp", "2026-11-09T12:13:14.123456790", "2026-11-09T12:13:14.1234567890") do
+    test(s"invalid, mismatched or noncanonical timestamp_nano is rejected: $stored") {
       store(history())
       MysqlTestDatabase.withConnection { connection =>
-        Using.resource(connection.createStatement())(_.executeUpdate(s"UPDATE answer_event SET $column=$column+1"))
+        Using.resource(connection.prepareStatement("UPDATE answer_event SET timestamp_nano=?")) { statement =>
+          statement.setString(1, stored)
+          statement.executeUpdate()
+        }
       }
       val error = intercept[IllegalArgumentException](fetch())
-      assert(error.getMessage.contains("Event timestamp columns disagree with the serialized event"))
+      assert(error.getMessage.contains("timestamp_nano must match the serialized event"))
     }
+
+  test("relational timestamps use indexed ISO 8601 text with nine fractional digits") {
+    val exactSecond = time.withNano(0)
+    val oneNano = exactSecond.plusNanos(1)
+    val sample = InteractionVariableHistory.empty[format.type]
+      .addEvent(AnswerChangedEvent[format.type]("second", exactSecond, UpdateImportance.MAJOR))
+      .addEvent(AnswerChangedEvent[format.type]("one nanosecond", oneNano, UpdateImportance.MAJOR))
+    store(sample)
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement()) { statement =>
+        Using.resource(statement.executeQuery("SELECT timestamp_nano FROM answer_event ORDER BY timestamp_nano")) { rows =>
+          assert(rows.next())
+          assertEquals(rows.getString(1), "2026-11-09T12:13:14.000000000")
+          assert(rows.next())
+          assertEquals(rows.getString(1), "2026-11-09T12:13:14.000000001")
+          assert(!rows.next())
+        }
+      }
+    }
+    val request = FetchEventsFromDbRequest(context, Seq(key), oneNano, oneNano, config, RelationalFormat, EventSyncStrategy.SYNC_EVERYTHING)
+    assertEquals(FetchFromDatabase.handleRequest(request, logger).fetchedElements(sync).typedAs(format).allStates.map(_.timestamp), Set(oneNano))
+  }
+
+  test("ISO signed and expanded years preserve chronological range semantics") {
+    val timestamps = Seq(LocalDateTime.MIN, LocalDateTime.of(-1, 1, 1, 0, 0), LocalDateTime.of(0, 1, 1, 0, 0),
+      time, LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999999999), LocalDateTime.of(10000, 1, 1, 0, 0), LocalDateTime.MAX)
+    val sample = timestamps.foldLeft(InteractionVariableHistory.empty[format.type]) { (history, timestamp) =>
+      history.addEvent(AnswerChangedEvent[format.type](timestamp.toString, timestamp, UpdateImportance.MAJOR))
+    }
+    store(sample)
+    val ranges = Seq(time -> LocalDateTime.MAX, LocalDateTime.MIN -> time,
+      LocalDateTime.of(0, 1, 1, 0, 0) -> LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999999999),
+      LocalDateTime.of(10000, 1, 1, 0, 0) -> LocalDateTime.MAX,
+      LocalDateTime.MIN -> LocalDateTime.of(-1, 12, 31, 23, 59), LocalDateTime.MIN -> LocalDateTime.MAX)
+    ranges.foreach { (starting, until) =>
+      val request = FetchEventsFromDbRequest(context, Seq(key), starting, until, config, RelationalFormat, EventSyncStrategy.SYNC_EVERYTHING)
+      assertEquals(FetchFromDatabase.handleRequest(request, logger).fetchedElements(sync).typedAs(format).allStates.map(_.timestamp),
+        timestamps.filter(value => !value.isBefore(starting) && !value.isAfter(until)).toSet)
+    }
+  }
 
   test("unknown stored format names fail with a clear exception") {
     store(history())

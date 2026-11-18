@@ -10,9 +10,19 @@ import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.variable.events.*
 import java.sql.Connection
 import java.time.LocalDateTime
+import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
+import java.time.temporal.ChronoField
+import java.util.Locale
 
 /** Each event is independent: feedback ranges do not require the answer to fall in the same range. */
 class RelationalHistoryStorage(connection: Connection, logger: Logger) extends HistorySql(connection, logger) {
+  // ISO 8601 with a fixed nine-digit fraction keeps ordinary dates lexicographically sortable.
+  private val timestampFormat = new DateTimeFormatterBuilder()
+    .append(DateTimeFormatter.ISO_LOCAL_DATE).appendLiteral('T').appendPattern("HH:mm:ss")
+    .appendFraction(ChronoField.NANO_OF_SECOND, 9, 9, true).toFormatter(Locale.ROOT)
+  private def timestampText(value: LocalDateTime): String = timestampFormat.format(value)
+  private def fourDigitYear(value: LocalDateTime): Boolean = value.getYear >= 0 && value.getYear <= 9999
+
   private val tables = List("answer_event", "grading_event", "scaffolding_event")
 
   def store(request: StoreToDbRequest): SyncSuccess = transaction {
@@ -38,8 +48,8 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     val eventId = ContentIdentity.key(ujson.read(serialized))
     val exists = query(s"SELECT id FROM $table WHERE sync_id=? AND event_id=?", List(sync, eventId))(_.getLong(1)).nonEmpty
     if exists then 0 else {
-      update(s"INSERT INTO $table (sync_id,event_id,event_day,event_nano,serialized_data) VALUES (?,?,?,?,?)",
-        sync, eventId, event.timestamp.toLocalDate.toEpochDay, event.timestamp.toLocalTime.toNanoOfDay, serialized)
+      update(s"INSERT INTO $table (sync_id,event_id,timestamp_nano,serialized_data) VALUES (?,?,?,?)",
+        sync, eventId, timestampText(event.timestamp), serialized)
       1
     }
   }
@@ -54,17 +64,22 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
   }
 
   private def readHistory[F <: InteractionFormat](sync: Long, format: F, range: Option[(LocalDateTime, LocalDateTime)]): InteractionHistoryJson = {
-    val (filter, parameters) = range.fold("" -> List.empty[Long]) { (starting, until) =>
-      val fromDay = starting.toLocalDate.toEpochDay
-      val untilDay = until.toLocalDate.toEpochDay
-      " AND (event_day>? OR (event_day=? AND event_nano>=?)) AND (event_day<? OR (event_day=? AND event_nano<=?))" ->
-        List(fromDay, fromDay, starting.toLocalTime.toNanoOfDay, untilDay, untilDay, until.toLocalTime.toNanoOfDay)
+    // ISO expanded positive years begin with '+', which sorts before four-digit years.
+    // Include them in lower-bound candidates; precise typed filtering below handles all years.
+    // Bounds outside 0000..9999 are left to that filter rather than using an incorrect text order.
+    val bounds = range.toList.flatMap { (starting, until) =>
+      Seq(
+        Option.when(fourDigitYear(starting))("(timestamp_nano>=? OR timestamp_nano LIKE '+%')" -> timestampText(starting)),
+        Option.when(fourDigitYear(until))("(timestamp_nano<=? AND timestamp_nano NOT LIKE '+%')" -> timestampText(until))
+      ).flatten
     }
+    val filter = bounds.map((sql, _) => " AND " + sql).mkString
+    val parameters = bounds.map(_._2)
     val events = tables.flatMap { table =>
-      query(s"SELECT serialized_data,event_day,event_nano FROM $table WHERE sync_id=?" + filter, List(sync) ++ parameters) { row =>
+      query(s"SELECT serialized_data,timestamp_nano FROM $table WHERE sync_id=?" + filter, List(sync) ++ parameters) { row =>
         val event = InteractionFormat.codecsFor(format).eventSerializer.deserialize(row.getString("serialized_data"))
-        require(event.timestamp.toLocalDate.toEpochDay == row.getLong("event_day") &&
-          event.timestamp.toLocalTime.toNanoOfDay == row.getLong("event_nano"), "Event timestamp columns disagree with the serialized event")
+        require(row.getString("timestamp_nano") == timestampText(event.timestamp),
+          "timestamp_nano must match the serialized event as canonical ISO 8601 with nanosecond precision")
         require(table == (event match {
           case _: AnswerChangedEvent[F] => "answer_event"
           case _: GradingEvent[F] => "grading_event"
