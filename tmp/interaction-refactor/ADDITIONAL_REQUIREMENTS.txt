@@ -28,3 +28,9 @@ Binding architecture requested on 2026-11-18:
 Further verification requirements (2026-11-18):
 - Binding-switch tests must prove consistency; a retired request may fail after switching away and back.
 - Audit server history and command code for strong types and correct InteractionFormat ownership of codecs; test heterogeneous histories and reject mismatched format metadata.
+
+Follow-up after merging into main (2026-11-18):
+- Start from the newest main and add dedicated InteractionHistoryJson round-trip tests.
+- Make setup.sql create tables in an existing selected database; do not create or switch databases.
+- Fix the deployAll Scala.js cyclic ReadWriter derivation error in DataEntryToSync.
+- Document the Play server's Java selection, the effect of java4shell, and exact JAR/runtime rebuild and deployment commands.

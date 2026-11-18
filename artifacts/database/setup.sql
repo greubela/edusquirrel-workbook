@@ -1,9 +1,7 @@
--- EduSquirrel setup for MySQL 8.4. Run once against a new/empty database.
--- Choose the database name in the two statements below.
--- On hosted MySQL without CREATE DATABASE privileges, omit those statements and
--- select your existing empty database with: mysql --database=NAME < setup.sql
-CREATE DATABASE IF NOT EXISTS `edusquirrel` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin;
-USE `edusquirrel`;
+-- EduSquirrel table setup for MySQL 8.4, inside an existing empty database.
+-- Select the target in your SQL client, or run:
+-- mysql --host=HOST --user=USER --password --database=NAME < setup.sql
+-- This script never creates or switches databases.
 
 -- Refuse every existing table or view before creating application tables.
 -- Run as a normal batch without --force (which intentionally ignores SQL errors).

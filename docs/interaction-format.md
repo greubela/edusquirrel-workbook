@@ -47,8 +47,11 @@ val restored = decoded.typedAs(TextInteractionFormat)
 
 `InteractionHistoryJson(format, historyJson)` is the transport/storage boundary.
 `toTyped` uses its own format; `typedAs(expected)` additionally checks the expected
-format before decoding. Merging different formats fails immediately. There are
-no older-schema readers, fallback formats or workbook-dependent type resolution.
+format before decoding. `deserialize(json)` validates the inner history immediately;
+a plain uPickle `read[InteractionHistoryJson]` reconstructs the envelope, with payload
+validation deferred until `toTyped` or `typedAs`. Merging different formats fails
+immediately. There are no older-schema readers, fallback formats or workbook-dependent
+type resolution.
 Malformed local storage records are logged and excluded individually. Invalid
 backend requests or stored database events fail with a contextual exception.
 
@@ -69,3 +72,13 @@ Starts default to `TEMPORARY`, completions to `MAJOR`. `clean()` removes tempora
 events only when explicitly requested. `cleanWithStrategy` selects transmissions;
 `SYNC_MAJOR` includes feedback associated with its selected answers. See [state and synchronization](state-and-serialization.md)
 and [database storage](database/interaction-history.md).
+
+## Verification
+
+[`InteractionHistoryJsonSpec`](../modules/core/shared/src/test/scala/it/evadid/workbook/interaction/sync/model/InteractionHistoryJsonSpec.scala)
+checks JSON/MessagePack envelope round trips for every format, populated answer and
+feedback histories, heterogeneous sequences, timestamp precision and malformed inputs.
+
+```sh
+sbt 'coreJVM/testOnly *InteractionHistoryJsonSpec' 'coreJS/testOnly *InteractionHistoryJsonSpec'
+```
