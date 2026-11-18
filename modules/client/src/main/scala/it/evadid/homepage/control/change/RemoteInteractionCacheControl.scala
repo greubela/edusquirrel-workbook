@@ -60,8 +60,10 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     }
 
     val report: Signal[Option[InteractionVariableSyncReport[SyncInformationWithContext]]] =
-      cache.reports.toSignal(Map.empty).map(_.get(key).map(current =>
-        InteractionVariableSyncReport(destinations.map(_.information), current.syncedDestinations.map(_.information))))
+      cache.reports.toSignal(Map.empty).combineWith(resetting.signal).map { (reports, reset) =>
+        reports.get(key).map(current => InteractionVariableSyncReport(destinations.map(_.information),
+          if reset == SyncResetState.Idle then current.syncedDestinations.map(_.information) else Set.empty))
+      }
   }
 
   private val bindings: StrictSignal[Seq[Binding]] = fullInfo.signals.syncEnvironmentSignal

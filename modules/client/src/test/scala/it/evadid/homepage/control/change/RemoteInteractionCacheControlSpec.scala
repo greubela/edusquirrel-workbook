@@ -231,6 +231,20 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     }
   }
 
+  test("partial reset invalidates pre-reset synchronization confirmations") {
+    val fixture = new Fixture
+    fixture.withHttp {
+      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+        val report = fixture.info.syncControl.createReportFor(fixture.elements.head).observe(using unsafeWindowOwner)
+        assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)
+        fixture.failBlobReset.set(true)
+        fixture.info.syncControl.resetAllData().failed.map { _ =>
+          assertEquals(report.now().get.destinationsWithSufficientWrites.size, 0)
+        }
+      }
+    }
+  }
+
   test("captured execution contexts expire when the user session is invalidated") {
     val fixture = new Fixture
     val captured = fixture.info.workbookContextInformation
