@@ -7,30 +7,22 @@ one database. See [history storage](interaction-history.md) for their architectu
 the [timestamp decision](interaction-history.md#timestamp-representation) for exact
 ISO 8601 storage and range-query behavior.
 
-## Create an empty database
+## Set up an existing empty database
 
-Set the `CREATE DATABASE` and `USE` statements at the top of the script to your
-chosen database name (default: `edusquirrel`), then run:
-
-```sh
-mysql --host=localhost --user=YOUR_USER --password < artifacts/database/setup.sql
-```
-
-For hosted accounts without database-creation privileges, omit those two header
-statements and select an existing empty database:
+Select an existing database in your SQL client before executing the script, or use:
 
 ```sh
 mysql --host=HOST --user=USER --password --database=YOUR_EMPTY_DATABASE < artifacts/database/setup.sql
 ```
 
-The header's `USE` determines the target when present; `--database` does not override
-it. Database selection is explicit because MySQL's prepared-statement protocol does
-not support a configurable `USE` statement.
+The script **does not create or switch databases**. The target must already exist;
+it needs table and temporary-table creation privileges, not `CREATE DATABASE`.
 
 | Target state | Setup behavior |
 | --- | --- |
-| No database / empty database | Creates the database if permitted, then all application tables and the seed row |
+| Selected database is empty | Creates all application tables and the seed row in that database |
 | Any table or view exists | Fails `setup_requires_empty_database` before application DDL, regardless of names, structure or existing rows |
+| No database selected / database missing | Fails; it does not choose or create a target |
 | Partial schema from an interrupted run | Refuses to continue; it does not repair or complete existing schemas |
 
 Run as a normal batch **without `--force` or an importer option that continues
@@ -39,17 +31,18 @@ stops on its error. The script never alters, drops or migrates existing tables.
 MySQL DDL is not transactional across tables: a permissions, connection or disk
 failure during initial creation can leave a partial schema.
 
-For disposable development data, use a new database name or remove the dedicated
-database first. Deleting rows is insufficient. For example, this permanently
-removes a development database and all its data:
+For disposable development data, remove all tables/views or recreate the dedicated
+database separately, then select it and rerun setup. Deleting rows is insufficient.
+For example, the following permanently removes and recreates a development database;
+these administrative commands are separate from `setup.sql`:
 
 ```sql
 DROP DATABASE IF EXISTS edusquirrel_dev;
+CREATE DATABASE edusquirrel_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin;
 ```
 
-Then set **both** header statements in `setup.sql` to `edusquirrel_dev` and rerun
-the import. On a live database, keep the guard and stop-on-error behavior; any
-schema change requires a separately reviewed operation, not this setup script.
+Then import with `--database=edusquirrel_dev`. On a live database, keep the guard
+and stop-on-error behavior; schema changes require a separately reviewed operation.
 
 ## Inspection and initialization
 

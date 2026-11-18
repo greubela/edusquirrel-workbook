@@ -19,7 +19,7 @@ services:
         ipv4_address: 172.30.0.2
 
   edusquirrel:
-    image: eclipse-temurin:21-jre-alpine
+    image: azul-zulu:21.54-21.0.13.1-jre-headless-alpine3.23
     restart: unless-stopped
     working_dir: /app
     command: [

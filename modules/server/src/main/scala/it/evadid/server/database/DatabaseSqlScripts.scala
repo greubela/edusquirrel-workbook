@@ -13,7 +13,7 @@ object DatabaseSqlScripts {
   private val tableMarker = "-- BEGIN APPLICATION TABLES"
   private lazy val sql = Using.resource(Source.fromResource(name))(_.mkString)
 
-  /** Backend initialization uses its existing configured connection, without CREATE DATABASE or USE. */
+  /** The backend runs application DDL only; its initializer enforces emptiness before this section. */
   lazy val statements: Seq[Statement] = {
     val marker = sql.indexOf(tableMarker)
     require(marker >= 0, s"Missing application-table marker in $name")

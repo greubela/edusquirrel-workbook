@@ -11,6 +11,15 @@ class DatabaseSqlScriptsSpec extends FunSuite {
     assertEquals(DatabaseSqlScripts.name, "setup.sql")
     assertEquals(tables, historyTables ++ Set("user", "loginTokens", "commandLog", "syncedLog"))
   }
+  test("the standalone script creates tables only inside the selected database") {
+    val sql = scala.util.Using.resource(scala.io.Source.fromResource(DatabaseSqlScripts.name))(_.mkString)
+    val executable = sql.linesIterator.filterNot(_.trim.startsWith("--")).mkString("\n")
+    assert(!"(?im)^\\s*CREATE\\s+DATABASE\\b".r.findFirstIn(executable).nonEmpty)
+    assert(!"(?im)^\\s*USE\\b".r.findFirstIn(executable).nonEmpty)
+    // Parse the complete script, including the temporary guard, as the standalone client would execute it.
+    assert(net.sf.jsqlparser.parser.CCJSqlParserUtil.parseStatements(sql).size() > DatabaseSqlScripts.statements.size)
+  }
+
   test("typed history table columns agree with the authoritative SQL setup") {
     import it.evadid.sql.MySqlType.*
     import scala.jdk.CollectionConverters.*
