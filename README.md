@@ -155,6 +155,10 @@ The [test workflow](.github/workflows/tests.yml) runs these checks and every Sca
 module on pull requests and, through the Pages workflow, before publication from main. Individual test files can still be run
 with `node --test`.
 
+CI resolves sbt, plugins and Scala dependencies through the Maven Central endpoint
+in [project/repositories](project/repositories). Dependency and compiler cache keys
+include that configuration so repository changes invalidate cached resolution paths.
+
 ## Deployment
 
 [scala.yml](.github/workflows/scala.yml) builds optimized client/worker artifacts and MathWorld on pushes to main. It runs [assemble-pages.mjs](tools/dev/assemble-pages.mjs), which publishes the homepage directory, resources, newest worker/client artifacts and root-level page redirects. It requires the MathWorld `dist/index.html` build too:

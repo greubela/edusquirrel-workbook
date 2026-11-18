@@ -36,3 +36,4 @@ Follow-up after merging into main (2026-11-18):
 - Explain the Play server's Java selection and runtime update commands in chat; do not retain the deployment guide in the repository.
 - Keep the PR mergeable with updated main and use the patched Azul Java 21 JRE in deployment/server/docker-compose.yml.
 - After updating from main, run sbt clean and deployAll, inspect detailed diagnostics, and fix all straightforward console warnings without suppressing them.
+- Repair the Pages build's Maven Central HTTP 403 dependency failures and verify resolution without a warm dependency cache.
