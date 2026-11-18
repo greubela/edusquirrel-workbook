@@ -2,8 +2,10 @@
 
 [setup.sql](../../artifacts/database/setup.sql) is the single schema source for
 MySQL 8.4: account/login-token tables, command/sync logs, relational event tables,
-blob histories and the anonymous logging identity. Both history layouts use one
-database. See [history storage](interaction-history.md) for their architecture.
+blob histories and the anonymous logging identity. Both history layouts can share
+one database. See [history storage](interaction-history.md) for their architecture and
+the [timestamp decision](interaction-history.md#timestamp-representation) for exact
+ISO 8601 storage and range-query behavior.
 
 ## Set up an existing empty database
 

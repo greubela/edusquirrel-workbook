@@ -67,13 +67,22 @@ row IDs stay on the server. Distinct same-time events survive, and replaying an
 exact event is idempotent. Append-only storage preserves history at the cost of
 growth; transmission strategies do not provide deletion or retention policies.
 
-Relational rows store an ISO timestamp plus epoch day and nanosecond-of-day.
-This intentionally duplicates metadata to support exact indexed queries across
-the full `LocalDateTime` range, beyond MySQL's microsecond datetime precision.
-Decoding verifies that all timestamp fields agree. Both layouts decode through
-the declared format; JDBC bindings accept only `String | Long`.
-`DatabaseHistoryFormat.tables` exposes typed `DatabaseTable`, `DatabaseColumn`
-and `MySqlType` declarations checked against [setup.sql](../../artifacts/database/setup.sql).
+### Timestamp representation
+
+`timestamp_nano` stores ISO 8601 local date/time text with exactly nine fractional
+digits, e.g. `2026-11-18T12:00:00.123456789`. MySQL `DATETIME` supports only six.
+The binary text index serves range queries, so a duplicate `timestamp_millies`
+column is unnecessary. No epoch-day or nanosecond-of-day encoding is stored.
+Four-digit years sort chronologically; signed/expanded ISO years use safe SQL
+candidate bounds followed by typed filtering to preserve the full `LocalDateTime`
+range. Reads verify the canonical text against the serialized event.
+
+Both layouts decode through the declared format; JDBC bindings accept only
+`String | Long`. `DatabaseHistoryFormat.tables` exposes typed `DatabaseTable`,
+`DatabaseColumn` and `MySqlType` declarations checked against
+[setup.sql](../../artifacts/database/setup.sql).
+Existing event schemas require an explicit update to `timestamp_nano`; setup
+initializes empty databases only and never alters existing tables.
 
 ## Bulk writes and range reads
 
@@ -140,7 +149,8 @@ with controlled responses: workbook/user/credential/destination switches,
 A → B → A, delayed successes/failures, confirmation isolation and reset ownership.
 `RemoteHistoryCacheSpec` and `BufferedSyncDestinationHandlerSpec` cover cache and
 batch contracts. MySQL tests cover both layouts, mixed-format HTTP batches,
-format rejection, precision, rollback and authorization.
+format rejection, exact ISO timestamp storage, signed/expanded years, nanosecond
+range boundaries, corruption rejection, rollback and authorization.
 
 ```sh
 sbt 'client/testOnly *RemoteInteractionCacheControlSpec'
