@@ -1,6 +1,5 @@
 package it.evadid.server.commandHandler.sql.sync
 
-import it.evadid.core.util.crypto.ContentIdentity
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
@@ -45,10 +44,10 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
       case _: ScaffoldingEvent[F] => "scaffolding_event"
     }
     val serialized = InteractionFormat.codecsFor(format).eventSerializer.serialize(event)
-    val eventId = ContentIdentity.key(ujson.read(serialized))
-    val exists = query(s"SELECT id FROM $table WHERE sync_id=? AND event_id=?", List(sync, eventId))(_.getLong(1)).nonEmpty
-    if exists then 0 else {
-      update(s"INSERT INTO $table (sync_id,event_id,timestamp_nano,serialized_data) VALUES (?,?,?,?)",
+    val eventId = event.eventId
+    val existing = query(s"SELECT serialized_data FROM $table WHERE sync_id=? AND event_id=?", List(sync, eventId))(_.getString(1)).headOption
+    if existing.exists(saved => ujson.read(saved) == ujson.read(serialized)) then 0 else {
+      update(s"INSERT INTO $table (sync_id,event_id,timestamp_nano,serialized_data) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE timestamp_nano=VALUES(timestamp_nano),serialized_data=VALUES(serialized_data)",
         sync, eventId, timestampText(event.timestamp), serialized)
       1
     }
@@ -76,8 +75,9 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     val filter = bounds.map((sql, _) => " AND " + sql).mkString
     val parameters = bounds.map(_._2)
     val events = tables.flatMap { table =>
-      query(s"SELECT serialized_data,timestamp_nano FROM $table WHERE sync_id=?" + filter, List(sync) ++ parameters) { row =>
+      query(s"SELECT event_id,serialized_data,timestamp_nano FROM $table WHERE sync_id=?" + filter, List(sync) ++ parameters) { row =>
         val event = InteractionFormat.codecsFor(format).eventSerializer.deserialize(row.getString("serialized_data"))
+        require(row.getString("event_id") == event.eventId, "Stored event_id must match the serialized client eventId")
         require(row.getString("timestamp_nano") == timestampText(event.timestamp),
           "timestamp_nano must match the serialized event as canonical ISO 8601 with nanosecond precision")
         require(table == (event match {

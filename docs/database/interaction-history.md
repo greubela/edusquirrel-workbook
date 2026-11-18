@@ -63,9 +63,12 @@ feedback events, including pending feedback; older unsent events do not block it
 Identity is `(programId, scenarioId, userId, keyForSerialisation)`. The format is
 metadata, not part of the unique key. Changing it is rejected even if the two
 formats share a JSON schema. Case and trailing spaces are significant; numeric
-row IDs stay on the server. Distinct same-time events survive, and replaying an
-exact event is idempotent. Append-only storage preserves history at the cost of
-growth; transmission strategies do not provide deletion or retention policies.
+row IDs stay on the server. Each event receives a client-generated UUID once;
+serialization, copies and retries preserve it. Both layouts merge by this ID.
+Relational writes upsert `(sync_id, event_id)`, preserving the internal row ID.
+Timestamps are never adjusted to manufacture uniqueness: distinct same-time events
+survive, while replaying an event cannot create another row. Saved events without
+an ID are unsupported. History storage grows as new events are recorded; transmission strategies do not provide deletion or retention policies.
 
 ### Timestamp representation
 

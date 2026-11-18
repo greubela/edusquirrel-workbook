@@ -17,7 +17,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   private def saved(value: String): String = {
     val format = InteractionFormat.TextInteractionFormat
     val history = it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[format.type]
-      .addEvent(it.evadid.workbook.interaction.variable.events.AnswerChangedEvent[format.type](value, LocalDateTime.of(2026, 1, 1, 12, 0), UpdateImportance.MAJOR))
+      .addEvent(it.evadid.workbook.interaction.variable.events.AnswerChangedEvent[format.type](value, LocalDateTime.of(2026, 1, 1, 12, 0), UpdateImportance.MAJOR, java.util.UUID.nameUUIDFromBytes(value.getBytes("UTF-8")).toString))
     it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.fromHistory(format, history).serialized
   }
   private def merged(values: String*): String = it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.mergeSerialized(values.map(saved))

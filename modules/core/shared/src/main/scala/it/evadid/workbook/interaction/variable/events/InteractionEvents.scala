@@ -5,12 +5,17 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import java.time.LocalDateTime
 import upickle.default.*
 
-/** Exact duplicates are idempotent; different events at the same timestamp are retained. */
+/** Client identities survive serialization and retries; timestamps never determine identity. */
 case class InteractionEvents[F <: InteractionFormat](values: Set[InteractionEvent[F]]) {
+  require(values.map(_.eventId).size == values.size, "History contains conflicting events with the same eventId")
+
+  def updated(event: InteractionEvent[F]): InteractionEvents[F] =
+    copy(values = values.filterNot(_.eventId == event.eventId) + event)
+
   lazy val timestampLastChanged: Option[LocalDateTime] = values.map(_.timestamp).maxOption
 
   def merge(other: InteractionEvents[F]): InteractionEvents[F] =
-    copy(values = values ++ other.values)
+    other.values.foldLeft(this)(_.updated(_))
 }
 
 object InteractionEvents {

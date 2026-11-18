@@ -69,7 +69,7 @@ CREATE TABLE `sync_context_id` (
 CREATE TABLE `answer_event` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `sync_id` BIGINT UNSIGNED NOT NULL,
-  `event_id` VARCHAR(71) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `event_id` VARCHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `timestamp_nano` VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `serialized_data` JSON NOT NULL,
   UNIQUE KEY `answer_identity` (`sync_id`, `event_id`),
@@ -79,7 +79,7 @@ CREATE TABLE `answer_event` (
 CREATE TABLE `grading_event` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `sync_id` BIGINT UNSIGNED NOT NULL,
-  `event_id` VARCHAR(71) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `event_id` VARCHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `timestamp_nano` VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `serialized_data` JSON NOT NULL,
   UNIQUE KEY `grading_identity` (`sync_id`, `event_id`),
@@ -89,7 +89,7 @@ CREATE TABLE `grading_event` (
 CREATE TABLE `scaffolding_event` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `sync_id` BIGINT UNSIGNED NOT NULL,
-  `event_id` VARCHAR(71) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `event_id` VARCHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `timestamp_nano` VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `serialized_data` JSON NOT NULL,
   UNIQUE KEY `scaffolding_identity` (`sync_id`, `event_id`),

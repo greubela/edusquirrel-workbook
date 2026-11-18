@@ -122,10 +122,11 @@ class InteractionHistoryJsonSpec extends FunSuite {
   }
 
   test("format identity survives round trips even when two formats have identical payload schemas") {
+    val eventId = java.util.UUID.randomUUID().toString
     val text = InteractionVariableHistory.empty[TextInteractionFormat.type]
-      .addEvent(AnswerChangedEvent[TextInteractionFormat.type](answer, time, UpdateImportance.MAJOR))
+      .addEvent(AnswerChangedEvent[TextInteractionFormat.type](answer, time, UpdateImportance.MAJOR, eventId))
     val sql = InteractionVariableHistory.empty[SqlCommandExerciseFormat.type]
-      .addEvent(AnswerChangedEvent[SqlCommandExerciseFormat.type](answer, time, UpdateImportance.MAJOR))
+      .addEvent(AnswerChangedEvent[SqlCommandExerciseFormat.type](answer, time, UpdateImportance.MAJOR, eventId))
     val textEnvelope = InteractionHistoryJson.fromHistory(TextInteractionFormat, text)
     val sqlEnvelope = InteractionHistoryJson.fromHistory(SqlCommandExerciseFormat, sql)
     assertEquals(textEnvelope.historyJson, sqlEnvelope.historyJson)

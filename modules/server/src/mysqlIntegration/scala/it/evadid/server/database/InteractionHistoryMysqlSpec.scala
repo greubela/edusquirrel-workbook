@@ -59,9 +59,17 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
     val scaffolding = ScaffoldingResult(value, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("regular scaffolding feedback")),
       FeedbackEntity.LlmEntity(), Some(transcript), at.plusSeconds(2))
-    InteractionVariableHistory.empty[format.type].addState(InteractionVariableState(value, UpdateImportance.MAJOR, at))
+    val result = InteractionVariableHistory.empty[format.type].addState(InteractionVariableState(value, UpdateImportance.MAJOR, at))
       .addGradings(grades).addScaffolding(scaffolding)
+    // A fixture describes the same logical events each time it is requested.
+    result.copy(events = InteractionEvents(result.events.values.map {
+      case event: AnswerChangedEvent[format.type] => event.copy[format.type](eventId = fixtureId(s"answer/$value/$at"))
+      case event: GradingCompletedEvent[format.type] => event.copy[format.type](eventId = fixtureId(s"grading/$value/$at/${event.grader.key}"))
+      case event: ScaffoldingCompletedEvent[format.type] => event.copy[format.type](eventId = fixtureId(s"scaffolding/$value/$at"))
+      case event => event
+    }))
   }
+  private def fixtureId(value: String): String = java.util.UUID.nameUUIDFromBytes(value.getBytes(UTF_8)).toString
   private def encoded(history: History): InteractionHistoryJson = InteractionHistoryJson.fromHistory(format, history)
   private def store(history: History, storage: DatabaseHistoryFormat = RelationalFormat): Unit =
     UpsertToDatabase.handleRequest(StoreToDbRequest(sync, encoded(history), config, storage), logger)
@@ -200,6 +208,30 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assertEquals(read[History](fetch()(sync)), saved)
     DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, DatabaseHistoryFormat.RelationalFormat), logger)
     assertEquals(fetch(), Map.empty)
+  }
+
+  test("replayed and revised client event IDs upsert in both storage layouts") {
+    List(BlobFormat, RelationalFormat).foreach { storage =>
+      val original = history()
+      store(original, storage)
+      val restored = read[History](fetch(storage)(sync))
+      store(restored, storage)
+      assertEquals(read[History](fetch(storage)(sync)), original)
+      val answer = original.allStates.head
+      val revised = answer.copy[format.type](newState = "revised", timestamp = answer.timestamp.plusNanos(1))
+      val delta = InteractionVariableHistory(InteractionEvents(Set[InteractionEvent[format.type]](revised)))
+      val rowId = if storage == RelationalFormat then Some(scalar("SELECT id FROM answer_event")) else None
+      store(delta, storage)
+      store(delta, storage)
+      val fetched = read[History](fetch(storage)(sync))
+      assertEquals(fetched.allStates, Set(revised))
+      assertEquals(fetched.size, original.size)
+      rowId.foreach { id =>
+        assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
+        assertEquals(scalar("SELECT id FROM answer_event"), id)
+      }
+      DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), config, storage), logger)
+    }
   }
 
   test("nanosecond-distinct answers survive, retries retain IDs, and context IDs never enter payloads") {

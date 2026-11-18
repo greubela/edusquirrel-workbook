@@ -47,13 +47,18 @@ case class InteractionVariableHistory[F <: InteractionFormat](
   def size: Int = events.values.size
 
   def addEvent(event: InteractionEvent[F]): InteractionVariableHistory[F] =
-    copy(events = InteractionEvents(events.values + event))
+    copy(events = events.updated(event))
   def addState(state: InteractionVariableState[InteractionFormat.State[F]]): InteractionVariableHistory[F] =
-    addEvent(AnswerChangedEvent(state.value, state.timestamp, state.updateImportance))
+    if allStates.exists(event => event.newState == state.value && event.timestamp == state.timestamp && event.updateImportance == state.updateImportance) then this
+    else addEvent(AnswerChangedEvent(state.value, state.timestamp, state.updateImportance))
   def addStates(states: Iterable[InteractionVariableState[InteractionFormat.State[F]]]): InteractionVariableHistory[F] =
     states.foldLeft(this)(_.addState(_))
   def addGrading(result: GradingResult[InteractionFormat.State[F], InteractionFormat.Grading[F]]): InteractionVariableHistory[F] = result.gradingStatus match {
     case _: GradingStatus.NotRequested | _: GradingStatus.NotFinished => this
+    case _ if gradingEvents.exists {
+      case event: GradingCompletedEvent[F] => event.result == result
+      case _ => false
+    } => this
     case _ => addEvent(GradingCompletedEvent(result))
   }
   def addGrading(result: GradedState[InteractionFormat.State[F], InteractionFormat.Grading[F]]): InteractionVariableHistory[F] =
@@ -61,8 +66,16 @@ case class InteractionVariableHistory[F <: InteractionFormat](
   def addGradings(results: Iterable[GradingResult[InteractionFormat.State[F], InteractionFormat.Grading[F]]]): InteractionVariableHistory[F] =
     results.foldLeft(this)(_.addGrading(_))
   def addScaffolding(result: ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]): InteractionVariableHistory[F] = result.scaffoldingStatus match {
+    case _: ScaffoldingStatus.ScaffoldingRequestedButNotFinished if scaffoldingEvents.exists {
+      case event: ScaffoldingStartedEvent[F] => event.associatedState == result.forState && event.timestamp == result.scaffoldingTime && event.scaffoldingEntity == result.scaffoldingEntity
+      case _ => false
+    } => this
     case _: ScaffoldingStatus.ScaffoldingRequestedButNotFinished =>
       addEvent(ScaffoldingStartedEvent(result.forState, result.scaffoldingTime, result.scaffoldingEntity))
+    case _ if scaffoldingEvents.exists {
+      case event: ScaffoldingCompletedEvent[F] => event.result == result
+      case _ => false
+    } => this
     case _ => addEvent(ScaffoldingCompletedEvent(result))
   }
   def addScaffoldings(results: Iterable[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]]): InteractionVariableHistory[F] =

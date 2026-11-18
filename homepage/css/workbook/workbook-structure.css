@@ -237,17 +237,37 @@ dialog {
     place-items: center;
 }
 
-.element-card-line .element-card-label {
-
+/* Cards are shared by instructions, previews and feedback panels. */
+.element-card {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-base);
 }
 
-.element-card-line .element-card-content {
-
+.element-card-label {
+    margin: 0;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-surface-muted);
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
 }
-/* FULLSCREEN EDITOR WITH PANEL */
-.editor-with-panel{
+
+.element-card-content {
+    min-width: 0;
+    padding: var(--space-md);
+    overflow: auto;
+    overflow-wrap: anywhere;
+}
+
+/* FULLSCREEN EDITOR WITH PANEL: preserve the left/right split at every width. */
+.editor-with-panel {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) clamp(12rem, 32vw, 26rem);
+    grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    flex: 1;
+    width: 100%;
     height: 100%;
     min-height: 0;
     min-width: 0;
@@ -255,20 +275,26 @@ dialog {
     gap: var(--space-md);
 }
 
-.fullscreen-sidepanel{
+.fullscreen-sidepanel {
     grid-column: 2;
+    grid-row: 1;
     min-width: 0;
     min-height: 0;
     overflow: auto;
     padding: var(--space-sm);
     border-radius: var(--radius-md);
-    margin: var(--space-sm);
-    margin-block-start: calc(var(--space-2xl) + var(--space-md));
     background: var(--color-background-workarea-display);
 }
 
-.fullscreen-editor{
+.side-panel-modules {
+    display: grid;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.fullscreen-editor {
     grid-column: 1;
+    grid-row: 1;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
