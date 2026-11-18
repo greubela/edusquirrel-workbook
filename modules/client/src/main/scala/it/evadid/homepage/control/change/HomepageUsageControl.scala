@@ -51,13 +51,10 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def changeWorkbook(newWorkbook: Option[AllWorkbookInfo]): Unit = fullInfo.synchronized {
-    //saveAndResetAllInfo()
     if (fullInfo.homepageInfoNow().workbookInfo != newWorkbook) {
-      //updateInfoWithContextChange(_.copy(workbookInfo = newWorkbook))
       fullInfo.homepageInfoState.update(_.copy(workbookInfo = newWorkbook))
-      if (newWorkbook.isEmpty) Future.successful(()) else {
-        fullInfo.syncControl.ensureSynced()
-      }
+      // Var updates inside a UI observer run in a child transaction. Select the binding after that update.
+      if (newWorkbook.nonEmpty) Future.unit.flatMap(_ => fullInfo.syncControl.ensureSynced())
     }
   }
 

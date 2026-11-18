@@ -18,13 +18,13 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
   def store(request: StoreToDbRequest): SyncSuccess = transaction {
     val context = request.syncContext
     val format = request.history.format
-    val history = request.history.typedAs(format)
+    val history = request.history.typedAs[format.type](format)
     val identity = List(context.programId, context.scenarioId, context.userId, context.keyForSerialisation)
     update("INSERT INTO sync_context_id (program_id,scenario_id,user_id,variable_id,format) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
       (identity :+ format.name)*)
     val (sync, savedFormat) = query("SELECT id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", identity)(row => row.getLong(1) -> row.getString(2)).head
     require(InteractionFormat.fromName(savedFormat) == format, s"History format cannot change for ${context.keyForSerialisation}")
-    val written = history.events.values.toList.map(event => storeEvent(sync, format)(event)).sum
+    val written = history.events.values.toList.map(event => storeEvent[format.type](sync, format)(event)).sum
     SyncSuccess(0, written, 0, LocalDateTime.now())
   }
 
@@ -49,7 +49,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     val contexts = query("SELECT id,variable_id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=?" + keyFilter,
       List(context.programId, context.scenarioId, context.userId) ++ keys)(row => (row.getLong(1), row.getString(2), InteractionFormat.fromName(row.getString(3))))
     DbFetchResponse(contexts.map { (sync, key, format) =>
-      context.toSyncContext(key) -> readHistory(sync, format, range)
+      context.toSyncContext(key) -> readHistory[format.type](sync, format, range)
     }.toMap)
   }
 

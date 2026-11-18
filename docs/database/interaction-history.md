@@ -35,7 +35,7 @@ history snapshot or collapses feedback lifecycle events during persistence.
 
 [`UpsertToDatabase`](../../modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/UpsertToDatabase.scala)
 dispatches writes to `BlobHistoryStorage` or `RelationalHistoryStorage`; those classes
-also own reads and scoped deletes. `HistorySql` owns JDBC resource handling and
+also own reads and scoped deletes. `HistorySql` accepts only typed string/long SQL parameters and owns resource handling and
 transactions. Failed requests roll back. Unknown formats, invalid event payloads
 and inconsistent stored metadata fail explicitly. Only current schemas are supported;
 there are no classic formats, migrations or compatibility aliases.
@@ -100,6 +100,15 @@ for larger requests; decoded bodies are limited to 16 MiB. The proxy must allow
 `Content-Encoding`, `Authorization` and `Content-Type`. Failed HTTP commands retain
 their error envelope; database errors expose a useful reason, SQLState and vendor
 code without placing credentials or full answer contents in the client response.
+
+Binding-switch regressions in
+[`RemoteInteractionCacheControlSpec`](../../modules/client/src/test/scala/it/evadid/homepage/control/change/RemoteInteractionCacheControlSpec.scala)
+exercise the production controller, shared buffers and HTTP adapter with gated responses.
+They cover colliding IDs across workbooks, A → B → A with successful/failed retired reads,
+destination changes, credential rotation, delayed and
+failed acknowledgements, reset ownership, and selection inside an Airstream observer.
+Language/display changes preserve the existing cursor and confirmations. Run them with
+`sbt 'client/testOnly *RemoteInteractionCacheControlSpec'`.
 
 See [database setup](README.md) for schema inspection and credentials. The MySQL
 integration suite covers both layouts, concurrent blob writes, same-time events,

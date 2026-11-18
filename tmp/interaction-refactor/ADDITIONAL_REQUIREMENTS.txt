@@ -24,3 +24,7 @@ Binding architecture requested on 2026-11-18:
 - Replace workbook bindings from the environment signal (including user and credentials), without active/closing lifecycle flags.
 - Detached bindings retain their own histories and credentials and can finish flushing while the replacement syncs.
 - Scope full-reset progress to the user across navigation and credential changes; a partial reset must not resume writes.
+
+Further verification requirements (2026-11-18):
+- Binding-switch tests must prove consistency; a retired request may fail after switching away and back.
+- Audit server history and command code for strong types and correct InteractionFormat ownership of codecs; test heterogeneous histories and reject mismatched format metadata.

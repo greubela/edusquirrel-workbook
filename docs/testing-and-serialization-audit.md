@@ -40,7 +40,7 @@ type into the client module.
 | Numeric geometry and SVG builders | Reconstruct numeric evidence; mutable builders resume from current geometry, not the constructor seed |
 | Workbook elements | Factories keep their definition formats; self-contained root codecs include the reference registry and prerequisites |
 | Programming/AST types | Preserve the active representation and literal/type descriptors; reject unsupported tags instead of reconstructing executable serializer callbacks |
-| Interaction history | Typed events, grading and scaffolding maps are history JSON; use `InteractionVariable.serializeHistory`/`deserializeHistory` |
+| Interaction history | `InteractionFormat` owns typed event/history codecs; transport uses `InteractionHistoryJson` |
 | Execution transport | Typed `ExecutionInfo[T]` success/failure and `ExecutionClientResponse`; requests/results must decode on the selected backend |
 | Snap primitive defaults | Supported tagged primitives retain integer/double distinctions and special floating values; arbitrary executable objects are rejected |
 | Evacuation graphs/simulations | Preserve graph weights and routing/event state; decoded simulations can continue without serializing a weight function |

@@ -5,6 +5,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.{SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import java.sql.Connection
 import java.time.LocalDateTime
 
@@ -18,7 +19,7 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
     val format = incoming.format
     val newHistory = incoming.typedAs[format.type](format)
     val codec = InteractionFormat.codecsFor[format.type](format).historySerializer
-    val emptyJson = codec.serialize(it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[format.type])
+    val emptyJson = codec.serialize(InteractionVariableHistory.empty[format.type])
     val keys = identity(request.usageContext, request.syncContext.keyForSerialisation)
     update("INSERT INTO blob_history (program_id,scenario_id,user_id,variable_id,format,history_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
       (keys ++ List(format.name, emptyJson))*)

@@ -5,7 +5,7 @@ import it.evadid.distribution.commandTypes.SQLCommands.{BulkStoreToDbRequest, St
 import it.evadid.workbook.interaction.sync.SyncSuccess
 import it.evadid.server.database.SqlFailure
 import it.evadid.core.util.io.ParsingContext
-import java.sql.{Connection, PreparedStatement, ResultSet, Types}
+import java.sql.{Connection, PreparedStatement, ResultSet}
 import scala.util.Using
 
 /** Shared JDBC resource handling and transaction ownership for both history layouts. */
@@ -19,19 +19,19 @@ abstract class HistorySql(connection: Connection, logger: Logger) {
       .foldLeft(SyncSuccess.emptyNow())((result, entry) => result.combine(store(entry)))
   }
 
-  private def prepared[A](sql: String, values: Seq[Any])(run: PreparedStatement => A): A =
+  private def prepared[A](sql: String, values: Seq[String | Long])(run: PreparedStatement => A): A =
     SqlFailure(s"executing history SQL ${ParsingContext.preview(sql)}", logger) {
+      require(values.forall(_ != null), "History SQL parameters must not be null")
       Using.resource(connection.prepareStatement(sql)) { statement =>
         values.zipWithIndex.foreach { (value, index) => value match {
-          case null => statement.setNull(index + 1, Types.VARCHAR)
           case number: Long => statement.setLong(index + 1, number)
-          case other => statement.setString(index + 1, other.toString)
+          case text: String => statement.setString(index + 1, text)
         }}
         run(statement)
       }
     }
-  protected def update(sql: String, values: Any*): Int = prepared(sql, values)(_.executeUpdate())
-  protected def query[A](sql: String, values: Seq[Any])(read: ResultSet => A): Seq[A] =
+  protected def update(sql: String, values: (String | Long)*): Int = prepared(sql, values)(_.executeUpdate())
+  protected def query[A](sql: String, values: Seq[String | Long])(read: ResultSet => A): Seq[A] =
     prepared(sql, values) { statement =>
       Using.resource(statement.executeQuery())(rows => Iterator.continually(rows.next()).takeWhile(identity).map(_ => read(rows)).toList)
     }
