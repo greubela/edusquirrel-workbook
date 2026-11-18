@@ -33,4 +33,4 @@ Follow-up after merging into main (2026-11-18):
 - Start from the newest main and add dedicated InteractionHistoryJson round-trip tests.
 - Make setup.sql create tables in an existing selected database; do not create or switch databases.
 - Fix the deployAll Scala.js cyclic ReadWriter derivation error in DataEntryToSync.
-- Document the Play server's Java selection, the effect of java4shell, and exact JAR/runtime rebuild and deployment commands.
+- Explain the Play server's Java selection and runtime update commands in chat; do not retain the deployment guide in the repository.

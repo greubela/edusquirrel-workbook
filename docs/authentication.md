@@ -61,8 +61,7 @@ client fixes require deployment of their respective artifacts; pushing source
 alone does not update a running installation. After copying the rebuilt
 `artifacts/newest/server.jar` to the server's configured bind-mount path, recreate
 the backend container (`docker compose up -d --force-recreate edusquirrel`).
-See [server deployment](server-deployment.md) for the build/runtime Java versions,
-JAR upload and runtime-image update commands. The Pages workflow deploys the browser separately.
+The Pages workflow deploys the browser separately.
 
 ## Verification
 

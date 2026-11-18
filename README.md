@@ -157,10 +157,6 @@ with `node --test`.
 
 ## Deployment
 
-For the Play server, Java selection, JAR updates and runtime image refreshes, see
-[server deployment](docs/server-deployment.md). `deployAll` builds artifacts locally;
-it does not upload them or restart containers.
-
 [scala.yml](.github/workflows/scala.yml) builds optimized client/worker artifacts and MathWorld on pushes to main. It runs [assemble-pages.mjs](tools/dev/assemble-pages.mjs), which publishes the homepage directory, resources, newest worker/client artifacts and root-level page redirects. It requires the MathWorld `dist/index.html` build too:
 
 ```sh
