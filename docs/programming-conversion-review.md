@@ -1,6 +1,8 @@
-# Programming conversion: reducing transformations without hiding semantic differences
+# Programming conversion semantics and trade-offs
 
-This is a design review of the current conversion paths, not an implementation plan already approved for execution. The Java/Python/Snap bridge, workbook graph serialization, Java editor navigation and Snap editor lifecycle are unchanged by this review. The preference is to reduce transformations; the consistency guarantees affected by each alternative must remain explicit.
+The conversion layer preserves one authoritative program while supporting editing
+and execution across Java, Python and Snap. Reducing conversions is useful only
+when the required language semantics and authored data remain explicit.
 
 ## Current paths
 
@@ -19,25 +21,23 @@ The central answer is one `Var[ProgrammingState]`. Changing languages converts t
 | Unit tests on bridge Python/Snap | Bridge representation → Java source → checked program → `JavaTurtlePythonExport` → Pyodide worker | Test execution uses a different Python export from the editable Python form. |
 | Unit tests on native Snap | Typed project validation → restricted execution expression → Python → Pyodide worker | The accepted subset is narrower than the drawing importer's subset. |
 
-These paths are implemented in the shared [VM conversion packages](programming-conversions.md) and [SnapTurtleCommandExecution](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/execution/SnapTurtleCommandExecution.scala). The former monolithic Java editing bridge is split by conversion direction, with shared semantic metadata. Both worker backends are implemented; they are not future prerequisites for this review.
+Shared converters live in [VM conversion packages](programming-conversions.md).
+[SnapTurtleCommandExecution](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/execution/SnapTurtleCommandExecution.scala)
+coordinates the client execution paths.
 
-## Potential problems
+## Constraints and trade-offs
 
-1. **Learner-editable content determines the semantic mode.** Python's `__java_turtle_metadata` declaration and Snap's `EduSquirrel Java Turtle 1` notes select special conversion and execution paths. Removing a marker can change routing; malformed recognized markers are deliberately rejected rather than silently treated as native programs. Moving metadata into a typed mode field would remove this inference, but exported files would still need an explicit way to retain their mode. A filename or a second magic comment would merely relocate the problem.
+| Concern | Current contract and cost |
+| --- | --- |
+| Semantic mode | Python's `__java_turtle_metadata` and Snap's `EduSquirrel Java Turtle 1` notes select Java-semantic paths. Malformed recognized markers are rejected; removing markers changes routing. |
+| Portability | Generated Python/Snap needs Java helpers/custom primitives. The displayed language alone does not imply native semantics or standalone portability. |
+| Drawing versus tests | Separate lowering paths share semantic support. The [Snap test boundary](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/snapexpression/SnapStateConversion.scala) additionally rejects saved variables, custom blocks and multiple scenes/sprites. Acceptance for drawing does not guarantee acceptance for testing. |
+| Source regeneration | Reconstructing/reparsing Java adds work and failure locations, but also supplies type/scope/control-flow validation. Fewer transformations must retain those checks. |
+| Supported subset | A full Snap document can be saved even when translation fails. Unsupported edits stay editable; conversion reports errors rather than discarding unknown blocks or assets. |
+| Round trips | Executable equivalence, authored-data preservation and exact text/layout preservation are separate contracts. Execution checks alone do not establish all three. |
+| Availability checks | Conversion is attempted as source changes and again on a switch. Sharing derived analysis could reduce duplicate work, but an approximate checker must not disagree with the converter or create another authoritative answer. |
 
-2. **The displayed language does not fully describe execution semantics.** Generated Python uses `java_turtle` operations and mutable cells; generated Snap uses corresponding custom primitives. A learner can reasonably expect ordinary Python or Snap behavior from the tab label. Importing helpers also makes the generated source less portable to an ordinary interpreter unless those helpers are supplied. This is an existing contract with an explanation cost, not evidence that the helpers can simply be deleted.
-
-3. **Drawing and unit testing use different conversion paths.** The bridge creates editable Python, while unit tests regenerate Python from a checked Java program using another exporter. They share semantic support, but still have separate lowering paths. Native Snap also has two readers: the drawing importer and the stricter [unit-test conversion boundary](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/SnapStateConversion.scala). The latter rejects saved variables, custom blocks and multiple scenes/sprites, among other constraints. A project accepted for drawing is therefore not automatically accepted for testing. A future fix to evaluation order, variable handling or numeric conversion must be verified across the relevant paths; matching drawings alone does not establish equivalent function-call or test-result behavior.
-
-4. **Source generation is used as an intermediate validation step.** Reconstructing Java, reparsing it and then exporting Python adds work, generated identifiers and additional failure locations. However, the Java compiler also performs validation. Removing this step safely means retaining equivalent scope, typing and control-flow checks through an existing checked AST/program entry point; directly constructing unchecked runtime nodes would trade fewer transformations for weaker guarantees.
-
-5. **Conversion intentionally accepts only a subset of the native languages.** Bridge Python has requirements on imports, metadata and method definitions; bridge Snap has requirements on block specifications, scope, scripts and metadata. Valid native Python/Snap edits can therefore become non-convertible. A full Snap document can still be persisted even when it cannot be translated. Unsupported edits should remain saved and editable, with a precise conversion error; supporting more conversions must not discard unknown blocks or authored assets.
-
-6. **Round trips can normalize source, names and layout-related representations.** Executable equivalence, preservation of authored project data, and preservation of exact source text are different contracts. Whitespace need not be preserved perfectly, but comments, meaningful names and authored assets need an explicit policy. A successful execution comparison is not sufficient evidence that a conversion preserved all of them.
-
-7. **Availability checks also perform conversions.** Eva evaluates conversion availability as source changes and performs conversion again for an actual switch. This can build representations that are never used. It is a potential cost, not a measured startup or typing regression. Possible simplifications are attempting conversion only when requested, or sharing one derived source analysis. An independent approximate checker risks disagreeing with the real converter; a cache of separate editable answers would violate the central-state design.
-
-## Consistency that cannot be removed accidentally
+## Required semantic behavior
 
 Ordinary translations are not enough to retain Java behavior:
 
@@ -54,14 +54,14 @@ Prefix/postfix updates, short-circuit evaluation, mutable method parameters, rec
 
 | Direction | Transformations | Consistency and cost |
 | --- | --- | --- |
-| **Native execution, explicit conversion** | Keep native source canonical; translate only for an explicitly requested language switch or necessary projection. | Small conceptual surface. Native language differences must be accepted or the convertible subset restricted. Existing Python-authored tests on Java still need an execution strategy. |
-| **Explicit Java semantic mode, reuse checked analysis** | Keep one central answer with a typed mode. Reuse the checked program for execution; print target source only for an actual editing/export operation. | Best candidate for reducing repeated source generation while retaining Java behavior. Requires an explicit import/export policy and equivalent validation before any textual round trip is removed. Java helpers may remain necessary. |
-| **One canonical cross-language intermediate model** | Editors project from a common model and runtimes lower it. | Stronger uniformity for a deliberately limited language. A model covering all native Python and Snap features would be large; preserving opaque native projects alongside it creates synchronization problems. This is not the lean near-term choice. |
+| Native execution with explicit conversion | Translate only on language switches or required projections | Smaller surface; accept native differences or restrict the convertible subset, and define how cross-language tests execute |
+| Explicit Java mode with shared checked analysis | Execute checked programs; generate source for editing/export | Retains Java semantics with less regeneration, but needs explicit mode/import policy and equivalent validation |
+| Canonical cross-language model | Editors project from one model and runtimes lower it | Uniformity for a limited language; supporting full native features and opaque projects adds substantial model/synchronization cost |
 
-Moving metadata outside learner code alone does not eliminate the transformations or semantic helpers. Conversely, removing the helpers alone does not preserve consistency. The design decision is whether a Python/Snap view of Java remains a Java-semantic editing view or becomes an independent native-language program.
+## Open design question
 
-## Suggested next investigation, after a separate decision
-
-Start with **explicit semantic mode and reuse of checked analysis**, while keeping native execution where it already exists. Identify which source-generation/reparse steps can be replaced by validated structured inputs without changing the learner contract. Keep derived analysis transient and tied to the current answer; do not store multiple authoritative programs or introduce a general conversion framework.
-
-Before implementation, agree on the semantic contract after a language switch, how exported/imported files identify their mode, what authored data a conversion must preserve, and whether failed conversions leave only the current representation available. Validate any later change with the existing numeric/control-flow conformance cases plus comparison of direct Java execution, editable Python execution, test-export execution and repeated Snap/Python edits. No bridge or runtime changes are made in this report.
+The alternatives above are not implemented policies. A change must define whether
+Python/Snap views of Java retain Java semantics or become independent native programs,
+how imports identify that mode, and which authored data conversion preserves.
+Derived analysis should remain transient and tied to the current answer. Validate
+changes with direct execution, test-export execution and repeated editing round trips.

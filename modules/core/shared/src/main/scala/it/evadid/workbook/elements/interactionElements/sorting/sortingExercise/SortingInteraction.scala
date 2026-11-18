@@ -2,26 +2,34 @@ package it.evadid.workbook.elements.interactionElements.sorting.sortingExercise
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.DefaultSerializer
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.InteractionFormat.SortingInteractionFormat
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
-case class SortingInteraction(override val elementId: String, fields: List[LanguageMapContentId], items: List[SortingItem], openButtonLabel: LanguageMapContentId = LanguageMapContentId("basic/startSortingActivity")) extends WorkbookInteractionElement[SortingInteractionState] derives ReadWriter {
+case class SortingInteraction(
+                               override val elementId: String, fields: Seq[LanguageMapContentId], items: Seq[SortingItem],
+                               openButtonLabel: LanguageMapContentId = LanguageMapContentId("basic/startSortingActivity")
+                             ) extends WorkbookInteractionElement[SortingInteractionFormat.type] {
+
   override val associatedFactory = SortingInteraction.factory
   override val defaultValue = SortingInteractionState.initial(items.size);
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override val serializerInteractionContent: Serializer[SortingInteractionState] = Serializer.fromUpickleJson(SortingInteractionState.derived$ReadWriter)
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
+
 }
 
 case class SortingItem(label: LanguageMapContentId, correctFieldIndex: Int, wrongFeedback: LanguageMapContentId) derives ReadWriter
 
 object SortingInteraction {
 
+
   val factory = new SimpleWorkbookElementFactory[SortingInteraction]() {
     override protected val constructorFieldOrder = List("elementId", "fields", "items", "openButtonLabel")
+
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: SortingInteraction): WorkbookElementSerializable = {
       baseElement
         .withElementsAddedAs[LanguageMapContentId]("fields", infoElement.fields)
@@ -38,5 +46,4 @@ object SortingInteraction {
 
     }
   }
-
 }

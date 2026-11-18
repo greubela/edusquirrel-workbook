@@ -19,8 +19,8 @@ object TurtleDrawingComparison {
 
   final case class TurtleComparisonResult(
       matches: Boolean,
-      missing: List[Segment],
-      extra: List[Segment],
+      missing: Seq[Segment],
+      extra: Seq[Segment],
       maxDeviation: Double,
       tolerance: Double
   ) derives upickle.default.ReadWriter
@@ -42,10 +42,10 @@ object TurtleDrawingComparison {
     compareSegments(targetSegs, actualSegs, effective)
   }
 
-  def extractSegments(builder: TurtlePathBuilder[Double]): List[Segment] =
+  def extractSegments(builder: TurtlePathBuilder[Double]): Seq[Segment] =
     builder.completedStyledSegments.flatMap(segment => extractFromPath(segment.pathBuilder))
 
-  private def extractFromPath(path: SvgPathBuilderImmutable[Double]): List[Segment] = {
+  private def extractFromPath(path: SvgPathBuilderImmutable[Double]): Seq[Segment] = {
     var current = path.absStartPoint
     val out = scala.collection.mutable.ListBuffer.empty[Segment]
     path.furtherCommands.foreach {
@@ -67,10 +67,10 @@ object TurtleDrawingComparison {
     out.toList
   }
 
-  def defaultTolerance(segments: List[Segment]): Double =
+  def defaultTolerance(segments: Seq[Segment]): Double =
     math.max(MinTolerance, RelativeTolerance * diagonal(segments))
 
-  private def diagonal(segments: List[Segment]): Double = {
+  private def diagonal(segments: Seq[Segment]): Double = {
     val points = segments.flatMap(seg => List(seg.from, seg.to))
     if points.isEmpty then 0.0
     else
@@ -82,8 +82,8 @@ object TurtleDrawingComparison {
   }
 
   def compareSegments(
-      target: List[Segment],
-      actual: List[Segment],
+      target: Seq[Segment],
+      actual: Seq[Segment],
       tolerance: Double
   ): TurtleComparisonResult = {
     if target.isEmpty && actual.isEmpty then
@@ -103,10 +103,10 @@ object TurtleDrawingComparison {
 
   /** Segments that have at least one sample farther than `tolerance` from `against`. */
   private def uncovered(
-      segments: List[Segment],
-      against: List[Segment],
+      segments: Seq[Segment],
+      against: Seq[Segment],
       tolerance: Double
-  ): (List[Segment], Double) = {
+  ): (Seq[Segment], Double) = {
     val step = math.max(tolerance / 2.0, 1e-6)
     var maxDeviation = 0.0
     val bad = segments.filter { segment =>
@@ -117,7 +117,7 @@ object TurtleDrawingComparison {
     (bad, maxDeviation)
   }
 
-  private def sample(segment: Segment, step: Double): List[Point[Double]] = {
+  private def sample(segment: Segment, step: Double): Seq[Point[Double]] = {
     val length = segment.length
     val pieces = math.max(1, math.ceil(length / step).toInt)
     (0 to pieces).map { index =>
@@ -129,7 +129,7 @@ object TurtleDrawingComparison {
     }.toList
   }
 
-  private def minDistance(point: Point[Double], segments: List[Segment]): Double =
+  private def minDistance(point: Point[Double], segments: Seq[Segment]): Double =
     if segments.isEmpty then Double.PositiveInfinity
     else segments.map(segment => pointToSegment(point, segment)).min
 

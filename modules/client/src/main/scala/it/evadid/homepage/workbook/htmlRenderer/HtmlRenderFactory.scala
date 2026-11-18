@@ -152,7 +152,8 @@ object HtmlRenderFactory {
       case i: LabeledNumberInteraction => HtmlBasicNumberRenderer.renderWorkbookElement(i)
       case s: SortingInteraction => HtmlSortingInteractionRenderer.renderWorkbookElement(s)
       case s: SortingReasonInteraction => HtmlSortingReasonInteractionRenderer.renderWorkbookElement(s)
-      case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
+      case r: ReorderInteraction.ReorderCodeInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
+      case r: ReorderInteraction.ReorderMapIdInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
       case c: CodeTaskToggleInteraction => HtmlCodeTaskToggleRenderer.renderWorkbookElement(c)
       case d: SketchDownloadInteraction => HtmlSketchDownloadRenderer.renderWorkbookElement(d)
       /*case i: ChoiceSelectionInteraction => HtmlChoiceSelectionRenderer.renderWorkbookElement(i)
@@ -161,7 +162,7 @@ object HtmlRenderFactory {
       case i: FillInBlanksInteraction => HtmlFillInBlanksRenderer.renderWorkbookElement(i)
       case i: DropdownBlanksInteraction => HtmlDropdownBlanksRenderer.renderWorkbookElement(i)
       case i: TableFillInInteraction => HtmlTableFillInRenderer.renderWorkbookElement(i)
-      case r: ReorderInteraction[?] => HtmlReorderInteractionRenderer.renderWorkbookElement(r)*/
+      case r: ReorderInteraction.ReorderCodeInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(r)*/
       // plugins -- turtle
       case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.renderWorkbookElement(t)
       case t: TurtleRecreateShapeInteraction => HtmlTurtleRecreateShapeRenderer.renderWorkbookElement(t)

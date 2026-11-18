@@ -77,7 +77,7 @@ case class TurtleCommandUsageGrader(
 }
 
 object TurtleCommandUsageGrader {
-  def forLimits(elementId: String, limits: MaxCommandUsage): List[TurtleCommandUsageGrader] =
+  def forLimits(elementId: String, limits: MaxCommandUsage): Seq[TurtleCommandUsageGrader] =
     List(CommandUsageMeasure.OccurrencesInCode -> limits.occurrencesInCode,
       CommandUsageMeasure.CallsDuringExecution -> limits.callsDuringExecution).flatMap { (measure, entries) =>
       entries.toList.sortBy(_._1).map { (name, maximum) =>

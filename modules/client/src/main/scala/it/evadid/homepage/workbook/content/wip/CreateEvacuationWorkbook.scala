@@ -102,6 +102,6 @@ object CreateEvacuationWorkbook {
   val diagonalRoom = room(7, 7, Set((5, 5)), Set.empty, Set((1, 1)))
 
   // Stable selection IDs; the translated labels contain the quotation's costs (PDF p. 16).
-  val budgetMeasures: List[String] = List("Training", "MoveAssembly", "AddAssembly", "WidenDoor",
+  val budgetMeasures: Seq[String] = List("Training", "MoveAssembly", "AddAssembly", "WidenDoor",
     "RemoveObstacles", "HalfPeople", "AddObstacles", "Custom")
 }

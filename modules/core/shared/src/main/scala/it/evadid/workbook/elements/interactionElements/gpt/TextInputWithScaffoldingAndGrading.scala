@@ -2,9 +2,11 @@ package it.evadid.workbook.elements.interactionElements.gpt
 
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
+import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
 
@@ -14,13 +16,13 @@ case class TextInputWithScaffoldingAndGrading(
                                                instructionText: LanguageMapContentId,
                                                sampleSolution: Option[LanguageMapContentId] = None,
                                                contentScaffolding: Option[ContentForLlmInteraction] = None,
-                                               contentGrading: List[ContentForLlmInteraction] = List(),
-                                             ) extends WorkbookInteractionElementFull[String, MessengerModel, MessengerModel] derives ReadWriter {
+                                               contentGrading: Seq[ContentForLlmInteraction] = List(),
+                                             ) extends WorkbookInteractionElement[TextInputWithLlmGradingAndScaffoldingFormat.type] derives ReadWriter {
   override val associatedFactory: WorkbookElementFactory.SimpleWorkbookElementFactory[TextInputWithScaffoldingAndGrading] = TextInputWithScaffoldingAndGrading.factory
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
-  override val gradingElements: List[TextInputLlmGrader] = contentGrading.map(gradeData => TextInputLlmGrader(instructionText, sampleSolution, gradeData))
+  override val gradingElements: Seq[TextInputLlmGrader] = contentGrading.map(gradeData => TextInputLlmGrader(instructionText, sampleSolution, gradeData))
   override val scaffoldingElement: Option[TextInputLlmScaffolder] = contentScaffolding.map(scaffData => TextInputLlmScaffolder(instructionText, sampleSolution, scaffData))
 
   override val defaultValue: String = ""
@@ -42,7 +44,7 @@ object TextInputWithScaffoldingAndGrading {
         element.getElementAs[LanguageMapContentId]("instructionText"),
         element.getOptionalElementAs[Option[LanguageMapContentId]]("sampleSolution", None),
         element.getOptionalElementAs[Option[ContentForLlmInteraction]]("contentScaffolding", None),
-        element.getOptionalElementAs[List[ContentForLlmInteraction]]("contentGrading", List())
+        element.getOptionalElementAs[Seq[ContentForLlmInteraction]]("contentGrading", List())
       )
   }
 

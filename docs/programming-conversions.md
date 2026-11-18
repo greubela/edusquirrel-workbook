@@ -32,15 +32,15 @@ For class-structured editing use `toJavaStructured` / `toPythonStructured`. Thei
 
 For full projects, `SnapScalaXmlCodec.parse(xml)` produces a `SnapScalaModel.Document`; import `vm.conversion.snapmodelxml.SnapModelToXml.*` to emit its original XML. This path preserves unknown nodes, authored assets and lexical details independently of the executable Snap subset. `ProgrammingStateSnapXml(xml).toSnapScalaModel` wraps that document as a programming state.
 
-Java editing conversions retain their checked numeric, scope and evaluation-order semantics. This refactor changes ownership and imports, not supported language subsets or persisted state formats. See the [semantic design review](programming-conversion-review.md) for the remaining design tradeoffs.
+Java editing conversions retain their checked numeric, scope and evaluation-order semantics. See the [semantics and trade-offs](programming-conversion-review.md) for the remaining design tradeoffs.
 
 The older TurtleStitch editor uses the same shared conversion layer. Its project adapter has no browser DOM dependency; every parse owns its variable-binding context. Browser mount, Snap runtime and drawing components remain in the client.
 
 ## Turtle source occurrences and execution
 
 [`TurtleProgramAnalysis`](../modules/core/shared/src/main/scala/it/evadid/vm/simulation/turtle/TurtleProgramAnalysis.scala)
-replaces the command-only expression interpreter. Both ordinary expressions and
-checked Java roots produce `TurtleCommandExecutionInfo[Double]`:
+analyzes ordinary expressions and
+checked Java roots as `TurtleCommandExecutionInfo[Double]`:
 
 ```scala
 import it.evadid.vm.conversion.ProgrammingStateConversions.*

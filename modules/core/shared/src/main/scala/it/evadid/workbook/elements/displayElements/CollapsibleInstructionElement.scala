@@ -16,7 +16,7 @@ case class CollapsibleInstructionElement(override val elementId: String, titleLa
 object CollapsibleInstructionElement {
   val factory: NoRefsElementFactory[CollapsibleInstructionElement] = new NoRefsElementFactory[CollapsibleInstructionElement]() {
 
-    override lazy val elementMapAndOrderForConstructorLike: Map[Int, List[ConstructorLikeSerializer.VariableDisplayConfig]] =
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[ConstructorLikeSerializer.VariableDisplayConfig]] =
       Map(
         0 -> List(
           VariableDisplayConfig("elementId", true)),

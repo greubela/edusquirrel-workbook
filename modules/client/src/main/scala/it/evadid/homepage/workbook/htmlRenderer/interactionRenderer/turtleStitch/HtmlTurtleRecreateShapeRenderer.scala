@@ -61,7 +61,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
       fullInfo.displayControl.setFullscreen(createEditor())
     }
 
-    def createCards(): List[ElementCard] = {
+    def createCards(): Seq[ElementCard] = {
       val buttonContent = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => openEditorButtonPressed())
       List(
         ElementCard(LanguageMapContentId("basic/openEditor"), buttonContent.getDomElement()),

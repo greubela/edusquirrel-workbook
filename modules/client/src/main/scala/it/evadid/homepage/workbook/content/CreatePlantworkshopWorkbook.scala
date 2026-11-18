@@ -22,7 +22,7 @@ case class CreatePlantworkshopWorkbook(
 
   override val workbookId: String = "PlantWorkshop" // todo: Lang map should automatically prefix this
 
-  private def checklist(keys: List[String], prefix: String): List[WorkbookElement] =
+  private def checklist(keys: Seq[String], prefix: String): Seq[WorkbookElement] =
     keys.map { key =>
       LabeledCheckboxInteraction(
         nextId(prefix),

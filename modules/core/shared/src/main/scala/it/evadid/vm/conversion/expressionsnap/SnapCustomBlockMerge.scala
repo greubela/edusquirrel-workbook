@@ -123,7 +123,7 @@ object SnapCustomBlockMerge {
         case Some(existing) if existing.arity == parameters.size && existing.slotNames == pythonSlots =>
           preservedPlan(pythonName, parameters, existing)
         case Some(existing) if existing.arity == parameters.size =>
-          renamedSlotsPlan(pythonName, parameters, pythonSlots, existing)
+          renamedSlotsPlan(pythonName, parameters, pythonSlots.toList, existing)
         case Some(existing) => reshapedPlan(pythonName, parameters, existing)
         case None => freshPlan(pythonName, parameters, newBlockCategory)
     }
@@ -140,7 +140,7 @@ object SnapCustomBlockMerge {
     CustomBlockPlan(
       pythonName = pythonName,
       spec = existing.spec,
-      slotNames = slotNames,
+      slotNames = slotNames.toList,
       slotTypes = slotNames.map(existing.typeOf),
       blockType = existing.blockType,
       category = existing.rawCategory,
@@ -169,7 +169,7 @@ object SnapCustomBlockMerge {
     CustomBlockPlan(
       pythonName = pythonName,
       spec = SnapCustomBlockRules.rewriteSpecSlots(existing.spec, slotNames),
-      slotNames = slotNames,
+      slotNames = slotNames.toList,
       slotTypes = slotTypes,
       blockType = existing.blockType,
       category = existing.rawCategory,
@@ -201,7 +201,7 @@ object SnapCustomBlockMerge {
     CustomBlockPlan(
       pythonName = pythonName,
       spec = label + slotNames.map(name => s" %$name").mkString,
-      slotNames = slotNames,
+      slotNames = slotNames.toList,
       slotTypes = slotTypes,
       blockType = existing.blockType,
       category = existing.rawCategory,
@@ -225,7 +225,7 @@ object SnapCustomBlockMerge {
     CustomBlockPlan(
       pythonName = pythonName,
       spec = SnapTurtleCatalog.customBlockSemanticSpec(pythonName, parameters),
-      slotNames = slotNames,
+      slotNames = slotNames.toList,
       slotTypes = slotTypes,
       blockType = "command",
       category = category,

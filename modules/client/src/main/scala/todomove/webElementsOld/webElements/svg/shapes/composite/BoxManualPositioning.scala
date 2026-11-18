@@ -13,11 +13,11 @@ case class ManualPositionElement(resultShape: BeShape, relativeOffset: Point[Dou
 
 abstract class BoxManualPositioning() extends BeShapeComposite {
 
-  private val cache: mutable.HashMap[BeRenderingConfig, List[ManualPositionElement]] = mutable.HashMap()
+  private val cache: mutable.HashMap[BeRenderingConfig, Seq[ManualPositionElement]] = mutable.HashMap()
 
-  def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement]
+  def calcOffsetsAndDimensions(config: BeRenderingConfig): Seq[ManualPositionElement]
 
-  def getOffsetAndDimension(config: BeRenderingConfig): List[ManualPositionElement] = {
+  def getOffsetAndDimension(config: BeRenderingConfig): Seq[ManualPositionElement] = {
     if (cache.contains(config)) {
       cache(config)
     } else {
@@ -32,7 +32,7 @@ abstract class BoxManualPositioning() extends BeShapeComposite {
       val curShapeBounds = bounds.startPoint.moveWithDimension(element.relativeOffset.asDimension).withDimension(element.shapeDimension)
       element.resultShape.render(rendererConfig, curShapeBounds)
     })
-    AppGroupSvgElement(renderedChildren)
+    AppGroupSvgElement(renderedChildren.toList)
   }
 
   override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = {

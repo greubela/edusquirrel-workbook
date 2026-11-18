@@ -1,15 +1,17 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
-
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{WorkbookElement, *}
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{ProgrammingEditorPalette}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 import scala.util.Try
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
@@ -20,13 +22,13 @@ case class ProgrammingExercise(
 
                                 /** Optional Python turtle program whose drawing is the target for geometric matching. */
                                 referencePython: Option[String] = None
-                              ) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit] derives upickle.default.ReadWriter {
+                              ) extends WorkbookInteractionElement[ProgrammingExerciseFormat.type] derives upickle.default.ReadWriter {
   override val associatedFactory = ProgrammingExercise.factory
 
   override val defaultValue: ProgrammingState = ProgrammingStateSnapXml.mini
   override val gradingElements = testSuite.toList.flatMap(_.graders)
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
 }
 

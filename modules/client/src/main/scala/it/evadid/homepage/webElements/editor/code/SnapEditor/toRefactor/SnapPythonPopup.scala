@@ -41,13 +41,13 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.{S
 object SnapPythonPopup {
 
   /** Example signatures for the turtle allow-list (Python snake_case). */
-  val OverviewExamples: List[String] =
+  val OverviewExamples: Seq[String] =
     SnapTurtleCatalog.Primitives.map(_.example) ++
       SnapExpressionSupport.ControlFlowExamples ++
       SnapExpressionSupport.VariableExamples ++
       SnapExpressionSupport.UserFunctionExamples
 
-  private val SupportedFunctionExamples: List[String] = OverviewExamples
+  private val SupportedFunctionExamples: Seq[String] = OverviewExamples
 
   private val OverviewKeywords: Set[String] = Set(
     "if", "else", "elif", "for", "while", "not", "and", "or", "in",
@@ -107,7 +107,7 @@ object SnapPythonPopup {
     val textDirty: Var[Boolean] = Var(false)
     val warningVar: Var[Option[String]] = Var(None)
     val applyAllowed: Var[Boolean] = Var(true)
-    val scriptHints: Var[List[ScriptView]] = Var(Nil)
+    val scriptHints: Var[Seq[ScriptView]] = Var(Nil)
     val stepMsVar: Var[String] = Var("20")
 
     def loadFromState(): Unit =

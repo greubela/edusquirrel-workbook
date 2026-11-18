@@ -1,46 +1,19 @@
 package it.evadid.workbook.abstractions
-
-import it.evadid.core.datastructures.state.State
-import it.evadid.core.util.io.*
+import it.evadid.workbook.abstractions.InteractionFormat
+import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
 import it.evadid.workbook.abstractions.scaffolding.WorkbookInteractionScaffolder
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
-import upickle.default.*
 
-import scala.reflect.ClassTag.Nothing
+import it.evadid.workbook.jsonFactory.SerializedWorkbook
 
 object WorkbookElement {
-  private case class Snapshot(rootId: String, elements: List[WorkbookElementSerializable]) derives upickle.default.ReadWriter
-
-  // Keep the factory wire formats, but include the registry needed to resolve a
-  // standalone container's references and section prerequisites.
-  given upickle.default.ReadWriter[WorkbookElement] = upickle.default.readwriter[Snapshot].bimap(
-    element => {
-      val collected = scala.collection.mutable.LinkedHashMap.empty[String, WorkbookElement]
-      var pending = List(element)
-      while (pending.nonEmpty) {
-        val current = pending.head
-        pending = pending.tail
-        collected.get(current.elementId) match {
-          case Some(previous) => require(previous == current, s"Conflicting workbook element id: ${current.elementId}")
-          case None =>
-            collected(current.elementId) = current
-            val prerequisites = current match {
-              case section: it.evadid.workbook.elements.structureElements.WorkbookSection =>
-                section.metadata.sectionsRequiredBefore ++ section.metadata.sectionsRecommendedBefore
-              case _ => Nil
-            }
-            pending = current.childrenOfThisElement ++ prerequisites ++ pending
-        }
-      }
-      Snapshot(element.elementId, collected.valuesIterator.map(_.toSerialized).toList)
-    }, snapshot => WorkbookElementFactory.parseAllAsMap(snapshot.elements).getOrElse(snapshot.rootId,
-      throw new IllegalArgumentException(s"Missing workbook root: ${snapshot.rootId}")))
+  given upickle.default.ReadWriter[WorkbookElement] =
+    upickle.default.readwriter[SerializedWorkbook].bimap(SerializedWorkbook.fromElement, _.toElement)
 
   private[workbook] def subtypeCodec[T <: WorkbookElement: scala.reflect.ClassTag]: upickle.default.ReadWriter[T] =
-    upickle.default.readwriter[WorkbookElement].bimap(
-      element => element,
+    upickle.default.readwriter[WorkbookElement].bimap(element => element,
       element => summon[scala.reflect.ClassTag[T]].unapply(element)
         .getOrElse(throw new IllegalArgumentException(s"Unexpected workbook element: ${element.getClass.getSimpleName}")))
 }
@@ -50,11 +23,11 @@ sealed trait WorkbookElement {
   //  assert(elementId.matches("[a-zA-Z0-9.-]+"))
   lazy val asRef = WorkbookElementReference(elementId, Option(this.getClass.getSimpleName))
 
-  lazy val childrenOfThisElement: List[WorkbookElement]
-  lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] =
+  lazy val childrenOfThisElement: Seq[WorkbookElement]
+  lazy val allInteractionsInThisInstance: Seq[WorkbookInteractionElement[? <: InteractionFormat]] =
     childrenOfThisElement.flatMap(_.allInteractionsInThisInstance)
 
-  lazy val allChildrenFullSubtree: List[WorkbookElement] = childrenOfThisElement ++ childrenOfThisElement.flatMap(_.allChildrenFullSubtree)
+  lazy val allChildrenFullSubtree: Seq[WorkbookElement] = childrenOfThisElement ++ childrenOfThisElement.flatMap(_.allChildrenFullSubtree)
 
   val associatedFactory: WorkbookElementFactory[? <: WorkbookElement]
 
@@ -66,43 +39,54 @@ sealed trait WorkbookElement {
 }
 
 trait WorkbookDisplayElement extends WorkbookElement {
-  lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 }
 
-object WorkbookDisplayElement {
-  given ReadWriter[WorkbookDisplayElement] = WorkbookElement.subtypeCodec
-}
 
 trait WorkbookStructureElement[T <: WorkbookElement] extends WorkbookElement {
   lazy val structureType: WorkbookStructuringType
-  override lazy val childrenOfThisElement: List[WorkbookElement] = groupElements
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = groupElements
 
-  def groupElements: List[T]
-
+  def groupElements: Seq[T]
 }
 
-object WorkbookStructureElement {
-  given [T <: WorkbookElement]: ReadWriter[WorkbookStructureElement[T]] = WorkbookElement.subtypeCodec
-}
 
-trait WorkbookInteractionElementFull[T: ReadWriter, GA: ReadWriter, SA: ReadWriter] extends WorkbookElement {
-  override lazy val allInteractionsInThisInstance: List[WorkbookInteractionUntyped] =
-    List(this) ++ childrenOfThisElement.flatMap(_.allInteractionsInThisInstance)
-  lazy val isDisabledState: State[Boolean] = State(false)
+trait WorkbookInteractionElement[F <: InteractionFormat](using v: ValueOf[F]) extends WorkbookElement {
+
+  val interactionFormat: F = v.value
+
+  override lazy val allInteractionsInThisInstance: Seq[WorkbookInteractionElement[? <: InteractionFormat]] =
+    List(this) ++ childrenOfThisElement.collect { case x: WorkbookInteractionElement[? <: InteractionFormat] => x }.flatMap(_.allInteractionsInThisInstance)
+  lazy val isDisabledState: it.evadid.core.datastructures.state.State[Boolean] = it.evadid.core.datastructures.state.State(false)
   // needs to be lazy or defaultValue (from subclass) might not be inited!
-  lazy val interactionVariable: InteractionVariable[T, GA, SA] = InteractionVariable[T, GA, SA](this)
+  lazy val interactionVariable: InteractionVariable[F] = InteractionVariable[F](this)
 
-  val defaultValue: T
+  // Type members that use the format's type members
+  type InteractionStateType = InteractionFormat.State[F]
+  type GradingInfoType = InteractionFormat.Grading[F]
+  type ScaffoldingInfoType = InteractionFormat.Scaffolding[F]
 
-  val gradingElements: List[WorkbookInteractionGrader[T, GA]] = List()
-  val scaffoldingElement: Option[WorkbookInteractionScaffolder[T, SA]] = None
-  val serializerInteractionContent: Serializer[T] = Serializer.fromImplicitRW
+  def validateState(value: InteractionStateType): Unit = ()
+
+  val defaultValue: InteractionStateType
+
+  val gradingElements: Seq[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]] = List()
+  val scaffoldingElement: Option[WorkbookInteractionScaffolder[InteractionStateType, ScaffoldingInfoType]] = None
+
 }
 
-type WorkbookInteractionElement[T] = WorkbookInteractionElementFull[T, Unit, Unit]
+object WorkbookInteractionElement {
+  given [F <: InteractionFormat](using value: ValueOf[F]): upickle.default.ReadWriter[WorkbookInteractionElement[F]] =
+    upickle.default.readwriter[WorkbookElement].bimap(element => element, {
+      case element: WorkbookInteractionElement[?] if element.interactionFormat == value.value =>
+        element.asInstanceOf[WorkbookInteractionElement[F]]
+      case element => throw new IllegalArgumentException(s"Expected interaction format ${value.value.name}, got ${element.getClass.getSimpleName}")
+    })
+}
 
-type WorkbookInteractionUntyped = WorkbookInteractionElementFull[?, ?, ?]
-
-object WorkbookInteractionElementFull {
-  given [T, GA, SA]: ReadWriter[WorkbookInteractionElementFull[T, GA, SA]] = WorkbookElement.subtypeCodec
+object WorkbookDisplayElement {
+  given upickle.default.ReadWriter[WorkbookDisplayElement] = WorkbookElement.subtypeCodec
+}
+object WorkbookStructureElement {
+  given [T <: WorkbookElement]: upickle.default.ReadWriter[WorkbookStructureElement[T]] = WorkbookElement.subtypeCodec
 }

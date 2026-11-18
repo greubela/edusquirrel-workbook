@@ -10,6 +10,8 @@ import java.time.LocalDateTime
 import munit.FunSuite
 import upickle.default.*
 
+import it.evadid.workbook.abstractions.InteractionFormat.*
+
 class TypedPayloadCodecSpec extends FunSuite {
   test("the default codec imports do not provide a catch-all ReadWriter[Any]") {
     assert(compileErrors("""
@@ -29,10 +31,10 @@ class TypedPayloadCodecSpec extends FunSuite {
   }
 
   test("interactions without grading or scaffolding information use Unit payloads") {
-    val value: InteractionVariable[String, Unit, Unit] = InteractionVariable(TextInteraction("typed-answer"))
+    val value: InteractionVariable[TextInteractionFormat.type] = InteractionVariable(TextInteraction("typed-answer"))
     val history = value.currentHistory
-    assertEquals(read[InteractionVariableHistory[String, Unit, Unit]](write(history)), history)
-    assertEquals(readBinary[InteractionVariableHistory[String, Unit, Unit]](writeBinary(history)), history)
+    assertEquals(read[InteractionVariableHistory[TextInteractionFormat.type]](write(history)), history)
+    assertEquals(readBinary[InteractionVariableHistory[TextInteractionFormat.type]](writeBinary(history)), history)
   }
 
   test("unknown language literals preserve opaque source text with a String codec") {

@@ -26,8 +26,13 @@ Immediate and full-load strategies retain their separate semantics.
 
 ## Verification
 
-Catalogue browser tests cover navigation, saved answers, stalled refresh, corrupt
-storage and translation replacement. Run the [standard checks](core-package-unit-tests.md)
-and `npm run test:workbooks -- workbook-catalog`. The startup guarantee is usability
-while refresh is pending, rather than a fixed timing threshold. `CATALOG_SCREENSHOT`
-optionally saves a review capture.
+`LanguageCacheStartupSpec` and `WorkbookContentStorageSpec` cover cached startup,
+failed refreshes and serialization. The `startup-loading` browser suite verifies
+that stalled translations do not block rendering; `saved-user-startup` covers
+restored preferences and corrupt cached logins. Run the
+[standard checks](core-package-unit-tests.md) or:
+
+```sh
+sbt 'client/testOnly *LanguageCacheStartupSpec *WorkbookContentStorageSpec'
+npm run test:workbooks -- startup-loading saved-user-startup
+```

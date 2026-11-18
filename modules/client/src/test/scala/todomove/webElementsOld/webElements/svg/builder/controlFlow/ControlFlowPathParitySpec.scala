@@ -14,7 +14,7 @@ import munit.FunSuite
 
 class ControlFlowPathParitySpec extends FunSuite {
 
-  private def legacyPaths(shapes: List[ControlFlowShape], renderingConfig: BeRenderingConfig): List[String] = {
+  private def legacyPaths(shapes: Seq[ControlFlowShape], renderingConfig: BeRenderingConfig): Seq[String] = {
     val renderingInfo = RenderingInformation(null, null, renderingConfig, null, null, _ => ())
     val centerPoint = Point[Double](0, 0)
     var overlay = ControlFlowOverlayBuilder(List(), List(), Point(0, 0))
@@ -26,7 +26,7 @@ class ControlFlowPathParitySpec extends FunSuite {
     overlay.paths.flatMap(_.segments.map(_.curPath.toSvgPathD)).sorted
   }
 
-  private def newPaths(types: List[ControlFlowType], renderingConfig: BeRenderingConfig): List[String] = {
+  private def newPaths(types: Seq[ControlFlowType], renderingConfig: BeRenderingConfig): Seq[String] = {
     var overlay = ControlFlowPathOverlay(List(), List())
     types.foreach { controlFlowType =>
       overlay = controlFlowType.renderPaths(renderingConfig, overlay)
@@ -37,7 +37,7 @@ class ControlFlowPathParitySpec extends FunSuite {
 
   test("new control-flow types produce the same paths as legacy control-flow shapes") {
     val renderingConfig = BeRenderingConfig.default()
-    val legacySequence = List[ControlFlowShape](
+    val legacySequence = Seq[ControlFlowShape](
       ControlFlowProgramStarter(),
       ControlFlowDirected(goesDown = true),
       IfElseSplit(),
@@ -47,7 +47,7 @@ class ControlFlowPathParitySpec extends FunSuite {
       ControlFlowProgramStopper()
     )
 
-    val newSequence = List[ControlFlowType](
+    val newSequence = Seq[ControlFlowType](
       ControlFlowProgramStarterType(),
       ControlFlowDirectedType(goesDown = true),
       IfElseSplitType(),

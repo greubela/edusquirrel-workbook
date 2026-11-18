@@ -10,7 +10,7 @@ final case class SnapCanvasScript(x: Int, y: Int, callCount: Int, hasReceiveGo: 
  * Positions live natively in Snap XML; this type is kept for XML→AST derivation
  * and Python-apply writeback.
  */
-final case class SnapCanvasLayout(scripts: List[SnapCanvasScript] = Nil) derives ReadWriter {
+final case class SnapCanvasLayout(scripts: Seq[SnapCanvasScript] = Nil) derives ReadWriter {
   def isEmpty: Boolean = scripts.isEmpty
 }
 
@@ -39,7 +39,7 @@ object SnapCanvasLayout {
    * predecessor. Explicit positions are kept. Scripts with `callCount <= 0`
    * are dropped. Overlap with an explicit script further down is accepted.
    */
-  def placed(scripts: List[(Option[(Int, Int)], Int, Int)]): SnapCanvasLayout = {
+  def placed(scripts: Seq[(Option[(Int, Int)], Int, Int)]): SnapCanvasLayout = {
     val placedScripts = List.newBuilder[SnapCanvasScript]
     var previous: Option[(Int, Int, Int)] = None
     scripts.foreach { case (position, callCount, lineCount) =>

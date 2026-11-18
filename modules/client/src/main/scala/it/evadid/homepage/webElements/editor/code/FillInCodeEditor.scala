@@ -19,7 +19,7 @@ object FillInCodeEditor {
 
     case class Success(messageId: LanguageMapContentId) extends FeedbackState derives ReadWriter
 
-    case class Incomplete(introId: LanguageMapContentId, hintIds: List[LanguageMapContentId]) extends FeedbackState derives ReadWriter
+    case class Incomplete(introId: LanguageMapContentId, hintIds: Seq[LanguageMapContentId]) extends FeedbackState derives ReadWriter
   }
 
   def apply(
@@ -35,7 +35,7 @@ object FillInCodeEditor {
              resetConfirmNo: Signal[String],
              incompleteIntroId: LanguageMapContentId,
              successMessageId: LanguageMapContentId,
-             requirements: List[AdvancedCodeRequirement],
+             requirements: Seq[AdvancedCodeRequirement],
              resolveText: LanguageMapContentId => Signal[String],
              language: ProgrammingLanguage = AppLanguage.C
            ): HtmlElement = {

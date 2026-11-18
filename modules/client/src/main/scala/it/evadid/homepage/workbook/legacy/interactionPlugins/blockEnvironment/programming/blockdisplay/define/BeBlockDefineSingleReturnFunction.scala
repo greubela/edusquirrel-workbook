@@ -16,7 +16,7 @@ case class BeBlockDefineSingleReturnFunction(
                                             ) extends BeBlockSingleShape derives upickle.default.ReadWriter {
 
 
-  override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
+  override def renderShape(childrenShapes: Seq[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
 
     val text = LanguageMap.universalMap[HumanLanguage](beDefineFunction.structureInfo.toStringInLanguage(Python, English).replaceAll("\n", ""))
     val textShape = TextShape(text).addAmends(renderingInformation.factory.defaultTextAmends)

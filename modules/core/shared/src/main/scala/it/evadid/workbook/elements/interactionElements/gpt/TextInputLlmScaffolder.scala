@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
 import cats.mtl.syntax.state
+import it.evadid.core.datastructures.chat
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
@@ -8,8 +9,10 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.LLMCommands.FeedbackLlmRequest
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
+import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, WorkbookInteractionScaffolder}
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
@@ -45,7 +48,7 @@ case class TextInputLlmScaffolder(
           .getOrElse(throw IllegalArgumentException("LLM returned an empty hint."))
         val conversation = MessengerModel(List(Message(system, MessengerModel.pWorkbook),
           Message(prompt, MessengerModel.pFallbackStudent), Message(text, MessengerModel.pAgent)))
-        ScaffoldingResult(state,
+        ScaffoldingResult[String, chat.MessengerModel](state,
           it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap(Map(language -> text))),
           scaffoldingEntity, Some(conversation))
       }

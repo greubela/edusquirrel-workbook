@@ -1,5 +1,6 @@
 package it.evadid.workbook.interaction.sync.destination
 
+import it.evadid.sql.BackendDatabase
 import it.evadid.sql.{DatabaseConfiguration, DatabaseHistoryFormat}
 import upickle.default.*
 
@@ -23,7 +24,7 @@ object SyncDestinationDefinition {
 
   case class SyncDestinationBasedOnHistoryDatabase(databaseConfig: DatabaseConfiguration, format: DatabaseHistoryFormat, buffered: Boolean) extends SyncDestinationDefinition derives ReadWriter {
     override def toString: String =
-      s"DatabaseDestination(${databaseConfig.host}->${databaseConfig.database}/${format.tables.mkString(",")})"
+      s"DatabaseDestination(${databaseConfig}/${format.tables.map(_.name).mkString(",")})"
   }
 
   case class LocalIndexedDbSyncDefinition(dbName: String, storeName: String, dbVersion: Int) extends SyncDestinationDefinition derives ReadWriter {
@@ -37,14 +38,11 @@ object SyncDestinationDefinition {
   val defaultBrowserHistory: LocalIndexedDbSyncDefinition =
     LocalIndexedDbSyncDefinition("EvaDidInteractionDB", "variableHistoryStore", 1)
 
-  val defaultDatabaseWithKey: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.ClassicJsonWithKey, true)
+  val defaultDatabase: SyncDestinationBasedOnHistoryDatabase =
+    SyncDestinationBasedOnHistoryDatabase(BackendDatabase, DatabaseHistoryFormat.RelationalFormat, true)
 
-  val defaultDatabaseKeyless: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.ClassicKeylessJson, true)
-
-  val defaultDatabaseV2: SyncDestinationBasedOnHistoryDatabase =
-    SyncDestinationBasedOnHistoryDatabase(it.evadid.sql.DatabaseConfig.defaultDb, DatabaseHistoryFormat.RelationalEvents, true)
+  val defaultBlobDatabase: SyncDestinationBasedOnHistoryDatabase =
+    SyncDestinationBasedOnHistoryDatabase(BackendDatabase, DatabaseHistoryFormat.BlobFormat, true)
 
 }
 

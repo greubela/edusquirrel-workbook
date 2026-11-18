@@ -52,11 +52,11 @@ case class WorkbookElementSerializable(
 
   // Multiple Objects
   def withElementsAdded(key: String, value: Seq[String]): WorkbookElementSerializable = {
-    withMapAdded(Map(key -> writeJs[List[String]](value.toList)))
+    withMapAdded(Map(key -> writeJs[Seq[String]](value.toList)))
   }
 
   def withElementsAddedAs[T](key: String, elements: Seq[T])(implicit rw: Writer[T]): WorkbookElementSerializable = {
-    withMapAdded(Map(key -> writeJs[List[T]](elements.toList)))
+    withMapAdded(Map(key -> writeJs[Seq[T]](elements.toList)))
   }
 
   // Map
@@ -97,18 +97,18 @@ case class WorkbookElementSerializable(
   }
 
   // Get Multiple
-  def getElements(elementKey: String): List[String] = {
-    read[List[String]](allConstructorFields(elementKey))
+  def getElements(elementKey: String): Seq[String] = {
+    read[Seq[String]](allConstructorFields(elementKey))
   }
 
-  def getElementsAs[T](elementKey: String)(implicit rw: Reader[T]): List[T] = {
-    read[List[T]](allConstructorFields(elementKey))
+  def getElementsAs[T](elementKey: String)(implicit rw: Reader[T]): Seq[T] = {
+    read[Seq[T]](allConstructorFields(elementKey))
   }
 
 
   // Other
 
-  def getElementsAsSerializableElement(elementKey: String): List[WorkbookElementSerializable] = {
+  def getElementsAsSerializableElement(elementKey: String): Seq[WorkbookElementSerializable] = {
     getElementsAs(elementKey)(using regularSerializer)
   }
 
@@ -123,8 +123,8 @@ case class WorkbookElementSerializable(
     resolveReference(getElementAs[WorkbookElementReference](elementKey), parsedElements)
   }
 
-  def getAndResolveWorkbookElements[T <: WorkbookElement](elementKey: String, parsedElements: Map[String, WorkbookElement]): List[T] = {
-    val refs: List[WorkbookElementReference] = getElementsAs[WorkbookElementReference](elementKey)
+  def getAndResolveWorkbookElements[T <: WorkbookElement](elementKey: String, parsedElements: Map[String, WorkbookElement]): Seq[T] = {
+    val refs: Seq[WorkbookElementReference] = getElementsAs[WorkbookElementReference](elementKey)
     refs.map(curRef => resolveReference[T](curRef, parsedElements))
   }
 

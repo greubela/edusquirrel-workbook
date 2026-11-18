@@ -7,10 +7,10 @@ case class MailSortingResult(total: Int, sorted: Int, correct: Int) derives upic
   def passed: Boolean = completed && correct == total
 }
 
-case class InboxState(mailList: List[Mail],
-                      mailFolders: Map[String, List[String]] = MailFolder.emptyIndex) derives ReadWriter {
+case class InboxState(mailList: Seq[Mail],
+                      mailFolders: Map[String, Seq[String]] = MailFolder.emptyIndex) derives ReadWriter {
   // Placement on each message is authoritative; stale indexes cannot duplicate messages.
-  def getMailsInFolder(folder: String): List[Mail] = mailList.filter(_.realFolder == folder)
+  def getMailsInFolder(folder: String): Seq[Mail] = mailList.filter(_.realFolder == folder)
   def getMailById(id: String): Option[Mail] = mailList.find(_.id == id)
   def normalized: InboxState = InboxState.withMails(mailList)
 
@@ -46,7 +46,7 @@ case class InboxState(mailList: List[Mail],
 }
 object InboxState {
   def empty: InboxState = InboxState(Nil)
-  def withMails(mails: List[Mail]): InboxState = {
+  def withMails(mails: Seq[Mail]): InboxState = {
     require(mails.map(_.id).distinct.size == mails.size, "Mail IDs must be unique")
     require(mails.forall(m => MailFolder.all.contains(m.realFolder)), "Unknown mail folder")
     require(mails.forall(_.expectedFolder.forall(f => List(MailFolder.Marked, MailFolder.Archive, MailFolder.Trash).contains(f))),

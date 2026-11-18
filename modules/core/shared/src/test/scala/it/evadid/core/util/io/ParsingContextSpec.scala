@@ -1,17 +1,19 @@
 package it.evadid.core.util.io
 
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.sync.model.HistoryJson
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import munit.FunSuite
 import upickle.default.*
+
+import it.evadid.workbook.abstractions.InteractionFormat.*
 
 class ParsingContextSpec extends FunSuite {
   test("typed history failures identify the entity, trimmed input, and underlying reason") {
     val input = ujson.Obj()
-    val error = intercept[Exception] { read[InteractionVariableHistory[String, Unit, Unit]](input) }
+    val error = intercept[Exception] { InteractionHistoryJson(TextInteractionFormat, input.toString).toTyped }
     val reason = ParsingContext.reason(error)
-    assert(reason.contains("interactionVariableHistory"))
-    assert(reason.contains("historyStates"), reason)
+    assert(reason.contains("interaction history"))
+    assert(reason.contains("events"), reason)
     assertEquals(ParsingContext.preview("x" * 1000), "x" * 180 + "…")
   }
 
@@ -26,12 +28,7 @@ class ParsingContextSpec extends FunSuite {
     assertEquals(error.cause.map(_.msg), Some(failure.getMessage))
   }
 
-  test("history field errors include the parsing operation and preserve the cause") {
-    val error = intercept[IllegalArgumentException] { HistoryJson.lastTimestamp("{}") }
-    assert(error.getMessage.contains("interactionVariableHistory timestamps"))
-    assert(error.getMessage.contains("historyStates"))
-    assert(error.getCause != null)
-  }
+
 
   test("path-only parser errors include the useful underlying cause") {
     val cause = IllegalArgumentException("Missing required field historyStates")

@@ -21,8 +21,9 @@ second persistence store. Small inline interactions need no separate editor.
 
 [WorkbookElement.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala)
 separates display elements, structural containers and interactions.
-`InteractionVariable[T, GA, SA]` owns the answer and its history; `GA` and `SA`
-are concrete serializable grading/scaffolding payloads. `defaultValue` initializes
+`WorkbookInteractionElement[F <: InteractionFormat]` declares its saved format.
+`InteractionVariable[F]` owns its answer and event history; the format supplies
+the state and feedback codecs. `defaultValue` initializes
 the answer; it is not another live state. See [state and serialization](state-and-serialization.md).
 
 ## Renderer and editor boundary
@@ -33,11 +34,23 @@ For example, the [QR renderer](../modules/client/src/main/scala/it/evadid/homepa
 shares one value between preview and fullscreen editor:
 
 ```scala
-val state = element.interactionVariable
-  .createBoundStateWithUpdateImportance(fullInfo.syncControl, UpdateImportance.MAJOR)
-  .toAirstreamVar
-val editor = QrCodeEditor(state, element.requirements)
-val preview = QrCodeView.preview(state.signal, element.requirements)
+import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
+import it.evadid.homepage.control.model.FullInfo
+import it.evadid.homepage.webElements.editor.qr.{QrCodeEditor, QrCodeView}
+import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
+def qrControls(element: CreateQrCodeInteraction, fullInfo: FullInfo): Element = {
+  val answer = element.interactionVariable
+    .createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation)
+    .toAirstreamVar
+  div(
+    QrCodeView.preview(answer.signal, element.requirements),
+    button("Edit", onClick --> (_ =>
+      fullInfo.displayControl.setFullscreen(QrCodeEditor(answer, element.requirements))))
+  )
+}
 ```
 
 Create only the selected editor. Closing fullscreen unmounts it; native handles
@@ -92,8 +105,9 @@ an integration gap. The text-feedback example is in the test workbook's
   tokens. Laminar supplies semantic classes and changing state.
 - Keep native dependency readiness and typed handles in core JS's
   `it.evadid.facades`. Optional preloading must not block the initial page render.
-- Register new interaction factories and renderers, plus grader codecs in
-  `WorkbookInteractionGrader.universalSerializer`.
+- Register the element factory and `HtmlRenderFactory` renderer. Add grader codecs
+  to the formats that allow them in `InteractionFormat`; element-definition codecs
+  also use `WorkbookInteractionGrader.universalSerializer`.
 - Test shared behavior/codecs on JVM and Scala.js, and browser workflows involving
   persistence, language changes and editor lifetimes.
 

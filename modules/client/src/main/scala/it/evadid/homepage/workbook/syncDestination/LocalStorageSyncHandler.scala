@@ -48,6 +48,11 @@ case class LocalStorageSyncHandler(localStorageSyncDefinition: LocalStorageSyncD
     SyncSuccess(1, 0, 0, LocalDateTime.now())
   }
 
+  override def updateElementRaw(logger: SyncLogger, key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] = Future {
+    storage.setItem(key, update(Option(storage.getItem(key))))
+    SyncSuccess(0, 1, 0, LocalDateTime.now())
+  }
+
   override def underlyingDefinition: SyncDestinationDefinition = localStorageSyncDefinition
 
   override def clearAll(logger: SyncLogger)(using ec: ExecutionContext): Future[SyncSuccess] = Future {

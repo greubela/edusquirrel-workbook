@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguag
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
-import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestGrader
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
@@ -15,9 +15,9 @@ import it.evadid.workbook.meta.InteractionVariableGradingReporter
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Presentation shared by the sidebar and compact line; requests still belong to the existing control. */
-private[interactionInfo] final class InteractionFeedbackView(
-    val interaction: WorkbookInteractionUntyped,
-    reporter: InteractionVariableGradingReporter[?, ?, ?],
+private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFormat](
+    val interaction: WorkbookInteractionElement[F],
+    reporter: InteractionVariableGradingReporter[F],
     fullInfo: FullInfo,
     helper: LaminarRenderHelper
 ) {
@@ -28,12 +28,12 @@ private[interactionInfo] final class InteractionFeedbackView(
 
   private def summaryNow: GradingSummary =
     GradingSummary(interaction.gradingElements, variable.control.getCurrentStateOfGrading(variable.currentValue))
-  private def scaffoldingNow: Option[ScaffoldingResult[?, ?]] =
+  private def scaffoldingNow: Option[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]] =
     variable.control.getCurrentStateOfScaffolding(variable.currentValue)
 
   val disabled: Signal[Boolean] = interaction.isDisabledState.observable.toEventStream().toSignal(interaction.isDisabledState.now())
   val grading: Signal[GradingSummary] = changes.map(_ => summaryNow).toSignal(summaryNow)
-  val scaffolding: Signal[Option[ScaffoldingResult[?, ?]]] = changes.map(_ => scaffoldingNow).toSignal(scaffoldingNow)
+  val scaffolding: Signal[Option[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]]] = changes.map(_ => scaffoldingNow).toSignal(scaffoldingNow)
 
   def label(key: String): Signal[String] = helper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
   def localized(content: LanguageMap[HumanLanguage]): Signal[String] = fullInfo.signals.currentLanguage.map { language =>
@@ -56,14 +56,14 @@ private[interactionInfo] final class InteractionFeedbackView(
   def feedback(entry: GradingSummary.Entry): Signal[String] = entry.result.flatMap(_.feedbackInformation)
     .filter(_.availableLanguages.nonEmpty).map(localized).getOrElse(label("gradingNoFeedback"))
 
-  def scaffoldingLabel(result: Option[ScaffoldingResult[?, ?]]): String = result.map(_.scaffoldingStatus) match {
+  def scaffoldingLabel(result: Option[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]]): String = result.map(_.scaffoldingStatus) match {
     case None => "gradingGroupNotRequested"
     case Some(_: ScaffoldingStatus.ScaffoldingRequestedButNotFinished) => "gradingGroupPending"
     case Some(status) if status.isError => "gradingGroupError"
     case _ => "scaffoldingReady"
   }
 
-  def scaffoldingText(result: Option[ScaffoldingResult[?, ?]]): Signal[String] = result.map(_.scaffoldingStatus) match {
+  def scaffoldingText(result: Option[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]]): Signal[String] = result.map(_.scaffoldingStatus) match {
     case Some(ScaffoldingStatus.ScaffoldingFeedback(content)) => localized(content)
     case _ => label(scaffoldingLabel(result))
   }

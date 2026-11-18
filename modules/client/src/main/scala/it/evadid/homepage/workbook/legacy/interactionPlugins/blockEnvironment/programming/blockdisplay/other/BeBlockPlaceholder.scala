@@ -14,7 +14,7 @@ import todomove.webElementsOld.webElements.svg.shapes.{BeShape, ControlFlowShape
 case class BeBlockPlaceholder(extensionPoint: BeExtensionPoint, myPositionInTree: NodeBasedTreePosition) extends BeBlockSingleShape derives upickle.default.ReadWriter {
 
 
-  override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
+  override def renderShape(childrenShapes: Seq[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
 
     val baseColorAmends = if (extensionPoint.isRequired) renderingInformation.factory.errorColorsAmend else renderingInformation.factory.defaultControlColors
 

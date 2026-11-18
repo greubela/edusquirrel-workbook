@@ -1,11 +1,14 @@
 package it.evadid.distribution.commandTypes
 
-import it.evadid.core.util.io.serializer.DefaultSerializer
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import java.time.LocalDateTime
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.sql.DatabaseConfiguration
 import it.evadid.sql.DatabaseHistoryFormat
 import it.evadid.sql.DatabaseTable
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import upickle.default.*
 
 object SQLCommands {
@@ -19,14 +22,12 @@ object SQLCommands {
   trait DbRequest {
     def databaseConfig: DatabaseConfiguration
 
-    def usageContext: UsageContext
-
     def databaseFormat: DatabaseHistoryFormat
   }
 
   case class StoreToDbRequest(
                                syncContext: SyncContext,
-                               historyJson: String,
+                               history: InteractionHistoryJson,
                                databaseConfig: DatabaseConfiguration,
                                databaseFormat: DatabaseHistoryFormat
                              ) extends DbRequest derives ReadWriter {
@@ -35,12 +36,29 @@ object SQLCommands {
 
   }
 
-  case class FetchAllFromDbRequest(
-                                    usageContext: UsageContext,
-                                    databaseConfig: DatabaseConfiguration,
-                                    mayLimitToKey: Option[String],
-                                    databaseFormat: DatabaseHistoryFormat
-                                  ) extends DbRequest derives ReadWriter
+  /** Parallel contexts and envelopes preserve each key while sending one request per flush. */
+  case class BulkStoreToDbRequest(
+      syncContexts: Seq[SyncContext], histories: Seq[InteractionHistoryJson],
+      databaseConfig: DatabaseConfiguration, databaseFormat: DatabaseHistoryFormat
+  ) extends DbRequest derives ReadWriter {
+    require(syncContexts.size == histories.size, "Every history requires exactly one sync context")
+    require(syncContexts.distinct.size == syncContexts.size, "Bulk histories must have distinct sync contexts")
+    def entries: Seq[StoreToDbRequest] = syncContexts.zip(histories).map((context, history) =>
+      StoreToDbRequest(context, history, databaseConfig, databaseFormat))
+  }
+
+  /** Range-read: return only events whose timestamp falls in [starting, until]. */
+  case class FetchEventsFromDbRequest(
+                                       usageContext: UsageContext,
+                                       keys: Seq[String],
+                                       starting: LocalDateTime,
+                                       until: LocalDateTime,
+                                       databaseConfig: DatabaseConfiguration,
+                                       databaseFormat: DatabaseHistoryFormat,
+                                       strategy: EventSyncStrategy
+                                     ) extends DbRequest derives ReadWriter {
+    require(!until.isBefore(starting), "History range end must not precede its start")
+  }
 
 
   case class DeleteInDbRequest(
@@ -53,7 +71,7 @@ object SQLCommands {
     require(!allWorkbooks || limitToKey.isEmpty, "An all-workbook reset cannot be restricted to one variable.")
   }
 
-  case class DbFetchResponse(fetchedElements: Map[SyncContext, String]) derives ReadWriter {
+  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionHistoryJson]) derives ReadWriter {
 
 
   }
@@ -62,8 +80,12 @@ object SQLCommands {
     "sync-to-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
   )
 
-  lazy val fetchFromDbCommand: ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchAllFromDbRequest, DbFetchResponse](
-    "fetch-from-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
+  lazy val bulkStoreToDbCommand: ExecutionCommandFactory[BulkStoreToDbRequest, SyncSuccess] =
+    ExecutionCommandFactory[BulkStoreToDbRequest, SyncSuccess]("sync-histories-to-db-request",
+      storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials))
+
+  lazy val fetchEventsFromDbCommand: ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse](
+    "fetch-events-from-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
   )
 
   // A distinct command prevents an older server from acknowledging a reset

@@ -14,7 +14,7 @@ case class BeBlockDefineVariable(
                                   varDef: BeDefineVariable,
                                 ) extends BeBlockSingleShape derives upickle.default.ReadWriter {
 
-  override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
+  override def renderShape(childrenShapes: Seq[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
     val outerShape = BeDataTypeShapeAdapter.containerShapeFor(varDef.variableType).get
     val textShape = TextShape(varDef.name.asLanguageMap(NamingStyle.SnakeCase), renderingInformation.factory.invertedTextAmends)
     val res = ShapeAroundShape(outerShape, textShape)

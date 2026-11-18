@@ -8,7 +8,7 @@ import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.programming.blockdisplay.{BeBlockSingleShape, RenderingInformation}
 import it.evadid.vm.code.tree.BeExpressionNode
 import it.evadid.vm.code.usage.BeUseValue
-import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
+import it.evadid.vm.types.{BeDataValueLiteral, BeDataValueUnit, BeUseValueReference}
 import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeAmendFactory, ControlFlowShape, TextShape}
 import todomove.webElementsOld.webElements.svg.shapes.composite.ShapeAroundShape
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.singleWidth.ControlFlowEmpty
@@ -16,11 +16,11 @@ import todomove.webElementsOld.webElements.svg.shapes.datatypes.LiteralShape
 
 case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlockSingleShape derives upickle.default.ReadWriter {
   
-  override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
+  override def renderShape(childrenShapes: Seq[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
     val textShape = TextShape(LanguageMap.universalMap(valueUsage.structureInfo.toStringInLanguage(BlockDisplay, English)))
 
-    val (outerShape, amends): (BeShapeContainerable, Seq[L.Modifier[L.SvgElement]]) = valueUsage.value match {
-      case BeDataValueLiteral(literalStr) => {
+    val shapeAndAmends: (BeShapeContainerable, Seq[L.Modifier[L.SvgElement]]) = valueUsage.value match {
+      case BeDataValueLiteral(_) | BeDataValueUnit() => {
         (LiteralShape, BeShapeAmendFactory(renderingInformation.renderingConfig).literalColorsAmend)
       }
       case BeUseValueReference(reference) => {
@@ -28,6 +28,7 @@ case class BeBlockUseValue(valueUsage: BeUseValue) extends BeBlockSingleShape de
       }
     }
     
+    val (outerShape, amends) = shapeAndAmends
     val resShape = ShapeAroundShape(outerShape, textShape)
       .addAmends(amends)
 

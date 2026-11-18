@@ -19,9 +19,9 @@ trait AtomarLineRendering extends HtmlAppElement {
   protected val interactionContentCssString: String = "interaction-element-content"
   protected val structureCssString: String = "structure-element"
 
-  protected def getCssString(workbookElement: WorkbookElement): String = workbookElement.match {
+  protected def getCssString(workbookElement: WorkbookElement): String = workbookElement match {
     case d: WorkbookDisplayElement => displayCssString
-    case i: WorkbookInteractionUntyped => interactionCssString
+    case i: WorkbookInteractionElement[? <: InteractionFormat] => interactionCssString
     case s: WorkbookStructureElement[?] => structureCssString
   }
 }
@@ -32,7 +32,7 @@ object AtomarLineRendering {
     RenderingAsContainerTitle(LaminarRenderHelper.singleton.plaintextStringSignal(content), 1)
   }
 
-  def cardLineContent(workbookElement: WorkbookElement, cards: List[ElementCard]): Element = {
+  def cardLineContent(workbookElement: WorkbookElement, cards: Seq[ElementCard]): Element = {
     div(
       cls := "element-cards",
       div(cls := "element-card-line label-line",
@@ -42,21 +42,20 @@ object AtomarLineRendering {
     )
   }
 
-  def cardLine(workbookElement: WorkbookElement, cards: List[ElementCard], showBottomGradingPanel: Signal[Boolean] = Var(false).signal): AtomarLineRendering = {
+  def cardLine(workbookElement: WorkbookElement, cards: Seq[ElementCard], showBottomGradingPanel: Signal[Boolean] = Var(false).signal): AtomarLineRendering = {
     val cardBasedContent = cardLineContent(workbookElement, cards)
     basicLine(workbookElement, cardBasedContent, "element-card-grid", showBottomGradingPanel)
   }
 
-  def basicLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssString: String = "", showBottomGradingPanel: Signal[Boolean] = Var(false).signal): AtomarLineRendering = workbookElement.match {
+  def basicLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssString: String = "", showBottomGradingPanel: Signal[Boolean] = Var(false).signal): AtomarLineRendering = workbookElement match {
     case d: WorkbookDisplayElement => RenderingDisplayLine(d, content, additionalCssString)
     case s: WorkbookStructureElement[?] => RenderingStructureLine(s, content, additionalCssString)
-    case i: WorkbookInteractionElementFull[?, ?, ?] => RenderingInteractionLine(i, content, additionalCssString, showBottomGradingPanel)
+    case i: WorkbookInteractionElement[? <: InteractionFormat] => RenderingInteractionLine(i, content, additionalCssString, showBottomGradingPanel)
   }
 
 
-  def lineWithGrader[T, GA, SA](workbookInteractionUntyped: WorkbookInteractionElementFull[T, GA, SA], content: DomElementCollection, additionalCssString: String = ""): AtomarLineRendering = {
-    basicLine(workbookInteractionUntyped, content, additionalCssString, Var(true).signal)
+  def lineWithGrader[F <: InteractionFormat](workbookInteractionElement: WorkbookInteractionElement[F], content: DomElementCollection, additionalCssString: String = ""): AtomarLineRendering = {
+    basicLine(workbookInteractionElement, content, additionalCssString, Var(true).signal)
   }
-
 
 }

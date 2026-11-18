@@ -6,7 +6,9 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.{LanguageMapIdResolver, LanguageMapStorage}
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.observable.ObservableValue
+import it.evadid.core.datastructures.storage.remote.WorkbookSyncEnvironment
 import it.evadid.core.datastructures.user.AllUserInfo
+import it.evadid.homepage.control.change.RemoteInteractionCacheControl.*
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServerHandler, LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
 import it.evadid.workbook.elements.structureElements.WorkbookSection
@@ -19,6 +21,24 @@ import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition
 import scala.concurrent.*
 
 case class HomepageSignalInfo(fullInfo: FullInfo) {
+
+
+
+  lazy val syncEnvironmentSignal: StrictSignal[Option[WorkbookSyncEnvironment]] = {
+
+    fullInfo.homepageInfoState.signal.distinctBy(info =>
+      (info.toContext, info.workbookInfo.map(_.loadedWorkbook), info.userInfo.map(user => (user.config.syncDestinations, user.credentials)))
+    ).map(curHomepageInfo => {
+      if (curHomepageInfo.userInfo.isEmpty || curHomepageInfo.workbookInfo.isEmpty) None
+      else Some(WorkbookSyncEnvironment(
+        curHomepageInfo.toContext,
+        curHomepageInfo.workbookInfo.toSet.flatMap(_.loadedWorkbook.allContainedInteractionsById.values),
+        curHomepageInfo.syncDestinations(fullInfo).toSet
+      ))
+    }).observe(using unsafeWindowOwner)
+
+
+  }
 
   private lazy val baseSignal: StrictSignal[HomepageInfo] = {
     fullInfo.homepageInfoState.signal
@@ -37,36 +57,25 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     // Var(None).signal
   }
 
-  lazy val currentSyncDestinationObservable: ObservableValue[List[SyncInformationWithContext]] = {
-    currentSyncDestinations.toObservableValue
-  }
 
   lazy val currentUsageContext: StrictSignal[UsageContext] = baseSignal.mapLazy(_.toContext)
 
-  private val resolveSyncDefinition: SyncDestinationDefinition => SyncDestinationHistoryHandler = {
-    case db: SyncDestinationBasedOnHistoryDatabase => DatabaseSyncViaBackendServerHandler(fullInfo.syncControl.syncLogger, db, fullInfo).toBuffered
-    case li: LocalIndexedDbSyncDefinition => LocalIndexedDbStorageSyncHandler(li).withSyncLogger(fullInfo.syncControl.syncLogger).forHistory()
-    case ls: LocalStorageSyncDefinition => LocalStorageSyncHandler(ls).withSyncLogger(fullInfo.syncControl.syncLogger).forHistory()
-  }
 
-  /*def currentSyncSources: List[SyncInformationWithContext] = fullInfo.synchronized {
+
+  /*def currentSyncSources: Seq[SyncInformationWithContext] = fullInfo.synchronized {
     val curContext: UsageContext = fullInfo.homepageInfoState.now().toContext
-    val syncInformation: List[SyncInformation] = userInfo.map(_.config.syncDestinations.toList).toList.flatten
-    val syncWithContext: List[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext, resolveSyncDefinition))
+    val syncInformation: Seq[SyncInformation] = userInfo.map(_.config.syncDestinations.toList).toList.flatten
+    val syncWithContext: Seq[SyncInformationWithContext] = syncInformation.map(_.forContext(fullInfo.current.currentHomepageContext, resolveSyncDefinition))
     syncWithContext
   }*/
 
-  lazy val currentSyncDestinations: StrictSignal[List[SyncInformationWithContext]] = {
-    baseSignal.mapLazy(homepageInfo => {
-      homepageInfo.userInfo.map(curUserInfo => curUserInfo.config.syncDestinations.map(_.forContext(homepageInfo.toContext, resolveSyncDefinition))).getOrElse(List())
-    })
-  }
+
 
   lazy val user: StrictSignal[Option[AllUserInfo]] = {
     baseSignal.mapLazy(_.userInfo)
   }
 
-  lazy val availableLanguages: StrictSignal[List[HumanLanguage]] = {
+  lazy val availableLanguages: StrictSignal[Seq[HumanLanguage]] = {
     baseSignal.mapLazy(_.workbookInfo.map(_.loadedWorkbook.metadata.availableLanguages).getOrElse(fullInfo.defaults.defaultLanguagesAvailable))
   }
 

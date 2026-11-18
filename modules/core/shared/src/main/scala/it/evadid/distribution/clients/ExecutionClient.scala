@@ -36,7 +36,7 @@ trait ExecutionClient {
 
   def makeSynchronized(ec: ExecutionContext): ExecutionClient = SynchronizedExecutionClient(this, ec)
 
-  def allUnderlyingClients: List[ExecutionClient] = List(this)
+  def allUnderlyingClients: Seq[ExecutionClient] = List(this)
 
   def pooledWith(other: ExecutionClient): ExecutionClient = ExecutionClientPool(allUnderlyingClients ++ other.allUnderlyingClients)
 
@@ -45,7 +45,7 @@ trait ExecutionClient {
 object ExecutionClient {
 
 
-  def apply(clients: List[ExecutionClient]): ExecutionClient = ExecutionClientPool(clients)
+  def apply(clients: Seq[ExecutionClient]): ExecutionClient = ExecutionClientPool(clients)
 
 
 }

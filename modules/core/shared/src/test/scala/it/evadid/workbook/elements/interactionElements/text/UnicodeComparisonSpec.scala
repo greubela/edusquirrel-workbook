@@ -46,7 +46,7 @@ class UnicodeComparisonSpec extends FunSuite {
     val initial = UnicodeComparisonAnswer(" Nein heißt Нет 🌍 ", "e\u0301\n")
     val e = UnicodeComparisonInteraction("unicode-test", LanguageMapContentId("test/title"), initial)
     assertEquals(e.defaultValue, initial)
-    assertEquals(e.serializerInteractionContent.deserialize(e.serializerInteractionContent.serialize(initial)), initial)
+    assertEquals(e.interactionFormat.stateSerializer.deserialize(e.interactionFormat.stateSerializer.serialize(initial)), initial)
     for serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike) do
       assertEquals(serializer.deserialize(serializer.serialize(e)), e)
   }
@@ -55,6 +55,6 @@ class UnicodeComparisonSpec extends FunSuite {
     assertEquals(UnicodeComparisonAnswer("x" * 256).first.length, 256)
     intercept[IllegalArgumentException](UnicodeComparisonAnswer("x" * 257))
     intercept[IllegalArgumentException](UnicodeComparisonAnswer(second = "x" * 257))
-    intercept[IllegalArgumentException](e.serializerInteractionContent.deserialize(s"{\"first\":\"${"x" * 257}\",\"second\":\"\"}"))
+    intercept[IllegalArgumentException](e.interactionFormat.stateSerializer.deserialize(s"{\"first\":\"${"x" * 257}\",\"second\":\"\"}"))
   }
 }

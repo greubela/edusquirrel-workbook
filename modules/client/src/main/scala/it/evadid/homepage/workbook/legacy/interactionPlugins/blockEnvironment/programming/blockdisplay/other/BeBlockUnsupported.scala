@@ -12,7 +12,7 @@ import todomove.webElementsOld.webElements.svg.shapes.datatypes.RectangleShape
 
 case class BeBlockUnsupported(beExpressionUnsupported: BeExpressionUnsupported) extends BeBlockSingleShape derives upickle.default.ReadWriter {
 
-  override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
+  override def renderShape(childrenShapes: Seq[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
 
     val container = RectangleShape
     val text = TextShape(LanguageMap.universalMap(beExpressionUnsupported.originalSource)).addAmends(renderingInformation.factory.defaultTextAmends)

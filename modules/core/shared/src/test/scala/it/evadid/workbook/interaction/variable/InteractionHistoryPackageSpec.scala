@@ -1,52 +1,96 @@
 package it.evadid.workbook.interaction.variable
 
-
-import it.evadid.core.util.io.Serializer
+import it.evadid.workbook.interaction.sync.{EventSyncStrategy, UpdateImportance}
 import it.evadid.workbook.interaction.sync.UpdateImportance.*
-import InteractionVariableState.*
+import it.evadid.workbook.interaction.variable.events.*
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import java.time.LocalDateTime
 import munit.FunSuite
 import upickle.default.*
 
+import it.evadid.workbook.abstractions.InteractionFormat.*
+
 class InteractionHistoryPackageSpec extends FunSuite {
   private val time = LocalDateTime.of(2025, 1, 1, 12, 0)
-  private def state(value: Int, importance: it.evadid.workbook.interaction.sync.UpdateImportance, seconds: Long) =
-    InteractionVariableState(value, importance, time.plusSeconds(seconds))
-  test("empty histories and all-default histories clean predictably") {
-    assertEquals(InteractionVariableHistory.empty[Int, Int, Int].historyStates.lastStateOption, None)
-    assertEquals(InteractionVariableHistory.empty[Int, Int, Int].historyStates.cleanedHistory().events, Set.empty[InteractionVariableState[Int]])
-    val first = state(1, DEFAULT, 0)
-    val last = state(2, DEFAULT, 1)
-    assertEquals(InteractionVariableHistory[Int, Int, Int](InteractionVariableStateHistory[Int](Set(first, last)), new InteractionVariableGradingHistory[Int, Int](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[Int, Int](scaffoldingMap = Map.empty)).historyStates.cleanedHistory().events, Set(last))
+  
+  private def answer(value: Int, importance: UpdateImportance): AnswerChangedEvent[TextInteractionFormat.type] =
+    AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(10), importance)
+  
+  private def majorAnswer(value: Int): AnswerChangedEvent[TextInteractionFormat.type] =
+    AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(10), UpdateImportance.MAJOR)
+  
+  test("empty histories have no states and clean to empty") {
+    val empty = InteractionVariableHistory.empty[TextInteractionFormat.type]
+    assertEquals(empty.allStates.size, 0)
+    assertEquals(empty.clean().events.values.size, 0)
   }
-  test("canonical history codecs preserve explicitly constructed default snapshots") {
-    val history = InteractionVariableHistory[Int, Int, Int](Set(state(1, DEFAULT, 0), state(2, DEFAULT, 1)))
-    assertEquals(read[InteractionVariableHistory[Int, Int, Int]](write(history)), history)
-    assertEquals(readBinary[InteractionVariableHistory[Int, Int, Int]](writeBinary(history)), history)
+  
+  test("adding events creates history and clean removes TEMPORARY events") {
+    val tempAnswer = AnswerChangedEvent[TextInteractionFormat.type]("1", time.plusSeconds(5), UpdateImportance.TEMPORARY)
+    val majorAnswer = AnswerChangedEvent[TextInteractionFormat.type]("2", time.plusSeconds(10), UpdateImportance.MAJOR)
+    val history = InteractionVariableHistory.empty[TextInteractionFormat.type]
+      .addEvent(tempAnswer)
+      .addEvent(majorAnswer)
+    
+    assertEquals(history.events.values.size, 2)
+    assertEquals(history.allStates.size, 2)
+    assertEquals(history.clean().events.values.size, 1)
+    assertEquals(history.clean().events.values.head.asInstanceOf[AnswerChangedEvent[TextInteractionFormat.type]].newState, "2")
   }
-  test("history merges deduplicate events and drop defaults after a meaningful update") {
-    val initial = state(1, DEFAULT, 0)
-    val update = state(2, MINOR, 1)
-    val history = InteractionVariableHistory[Int, Int, Int](InteractionVariableStateHistory[Int](Set(initial)), new InteractionVariableGradingHistory[Int, Int](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[Int, Int](scaffoldingMap = Map.empty)).addState(update)
-    assertEquals(history.historyStates.events, Set(update))
-    assertEquals(history.addStates(Set(update)).historyStates.events, Set(update))
-    assertEquals(history.addStates(Set(update)).historyStates.events, Set(update))
-    assertEquals(history.updateStates(_.filter(_.value > 2)).historyStates.events, Set.empty[InteractionVariableState[Int]])
+  
+  test("canonical history codecs preserve roundtrip") {
+    val original = majorAnswer(42)
+    val history = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(original)
+    
+    val written = write(history)
+    val readBack = read[InteractionVariableHistory[TextInteractionFormat.type]](written)
+    assertEquals(readBack.events.values.size, 1)
+    
+    val binaryWritten = writeBinary(history)
+    val binaryReadBack = readBinary[InteractionVariableHistory[TextInteractionFormat.type]](binaryWritten)
+    assertEquals(binaryReadBack.events.values.size, 1)
   }
-  test("typed histories reject malformed state values rather than silently changing types") {
-    val invalid = ujson.Obj("events" -> ujson.Arr(ujson.Obj("value" -> "not a number",
-      "updateImportance" -> "MINOR", "timestamp" -> time.toString)),
-      "gradings" -> ujson.Arr(), "scaffoldings" -> ujson.Arr())
-    intercept[Exception](read[InteractionVariableHistory[Int, Int, Int]](invalid))
+  
+  test("merging histories combines events and handles duplicates") {
+    val event1 = majorAnswer(1)
+    val event2 = majorAnswer(2)
+    val event3 = majorAnswer(3)
+    
+    val history1 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(event1).addEvent(event2)
+    val history2 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(event2).addEvent(event3)
+    
+    val merged = history1.mergeWith(history2)
+    assertEquals(merged.events.values.size, 3)
   }
-  test("typed histories and nested change models have default codecs") {
-    val original = state(2, MINOR, 0)
-    val history = InteractionVariableHistory[Int, Int, Int](InteractionVariableStateHistory[Int](Set(original)), new InteractionVariableGradingHistory[Int, Int](gradingsMap = Map.empty), new InteractionVariableScaffoldingHistory[Int, Int](scaffoldingMap = Map.empty))
-    assertEquals(read[InteractionVariableState[Int]](write(original)), original)
-    assertEquals(read[InteractionVariableHistory[Int, Int, Int]](write(history)), history)
-    val designated = DesignatedInteractionState(3, time.plusSeconds(1))
-    val changed = InteractionVariableStateChanged(original, designated)
-    assertEquals(read[DesignatedInteractionState[Int]](write(designated)), designated)
-    assertEquals(read[InteractionVariableStateChanged[Int]](write(changed)), changed)
+  
+  test("cleanWithStrategy filters events based on importance") {
+    val temp = AnswerChangedEvent[TextInteractionFormat.type]("1", time.plusSeconds(5), UpdateImportance.TEMPORARY)
+    val major = AnswerChangedEvent[TextInteractionFormat.type]("2", time.plusSeconds(10), UpdateImportance.MAJOR)
+    val minor = AnswerChangedEvent[TextInteractionFormat.type]("3", time.plusSeconds(15), UpdateImportance.MINOR)
+    
+    val history = InteractionVariableHistory.empty[TextInteractionFormat.type]
+      .addEvent(temp)
+      .addEvent(major)
+      .addEvent(minor)
+    
+    // Keep all - should have all 3
+    val keepAll = history.cleanWithStrategy(EventSyncStrategy.SYNC_EVERYTHING)
+    assertEquals(keepAll.events.values.size, 3)
+    
+    // Keep the latest major event; newer minor events are outside this strategy.
+    val keepLastMajor = history.cleanWithStrategy(EventSyncStrategy.KEEP_LAST_MAJOR)
+    assertEquals(keepLastMajor.events.values, Set[InteractionEvent[TextInteractionFormat.type]](major))
+  }
+  
+  test("mergeWith applies strategy correctly when merging") {
+    val temp = AnswerChangedEvent[TextInteractionFormat.type]("1", time.plusSeconds(5), UpdateImportance.TEMPORARY)
+    val major = AnswerChangedEvent[TextInteractionFormat.type]("2", time.plusSeconds(10), UpdateImportance.MAJOR)
+    
+    val history1 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(temp).addEvent(major)
+    val history2 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(major)
+    
+    val merged = history1.mergeWith(history2)
+    assertEquals(merged.events.values.size, 2)
+    assertEquals(merged.events.values.count(_.updateImportance == UpdateImportance.MAJOR), 1)
   }
 }

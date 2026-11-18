@@ -161,7 +161,7 @@ case class HtmlSortingReasonExerciseFullscreenElement(
     )
   }
 
-  private def fieldItemIndices(state: SortingReasonInteractionState, fieldIndex: Int): List[Int] = {
+  private def fieldItemIndices(state: SortingReasonInteractionState, fieldIndex: Int): Seq[Int] = {
     val placedItems = state.placedFieldIndexByItem.zipWithIndex.collect {
       case (Some(placedField), itemIndex) if placedField == fieldIndex => itemIndex
     }

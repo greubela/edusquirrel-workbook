@@ -49,11 +49,11 @@ case class LaminarRenderHelper() derives upickle.default.ReadWriter {
 
   def plaintextStringSignal(contentId: LanguageMapContentId): Signal[String] = contentIdStringSignal(contentId, PLAINTEXT, List())
 
-  def contentIdStringSignal(contentIdAsString: String, typeOfTextDisplay: TypeOfTextDisplay, additionalInfo: List[String]): Signal[String] = {
+  def contentIdStringSignal(contentIdAsString: String, typeOfTextDisplay: TypeOfTextDisplay, additionalInfo: Seq[String]): Signal[String] = {
     contentIdStringSignal(LanguageMapContentId.apply(contentIdAsString), typeOfTextDisplay, additionalInfo)
   }
 
-  def contentIdStringSignal(contentId: LanguageMapContentId, typeOfTextDisplay: TypeOfTextDisplay, additionalInfo: List[String] = List()): Signal[String] = {
+  def contentIdStringSignal(contentId: LanguageMapContentId, typeOfTextDisplay: TypeOfTextDisplay, additionalInfo: Seq[String] = List()): Signal[String] = {
     val plaintext = HtmlFullWorkbookApp.fullInfo.signals.stringFromLanguageMapId(contentId)
     typeOfTextDisplay.match {
       case PLAINTEXT_UNDERSCORE_REPLACABLE => plaintext.map(str => replaceUnderscores(str, additionalInfo, Some(contentId)))
@@ -67,7 +67,7 @@ case class LaminarRenderHelper() derives upickle.default.ReadWriter {
 
   /* Helper */
 
-  private def replaceUnderscores(plaintextUnderscoreReplaceable: String, additionalInfo: List[String], contentId: Option[LanguageMapContentId] = None): String = {
+  private def replaceUnderscores(plaintextUnderscoreReplaceable: String, additionalInfo: Seq[String], contentId: Option[LanguageMapContentId] = None): String = {
     val singleUnderscores = plaintextUnderscoreReplaceable.replaceAll("_+", "_")
     val parts = singleUnderscores.split("_")
     val toInsert = parts.size - 1

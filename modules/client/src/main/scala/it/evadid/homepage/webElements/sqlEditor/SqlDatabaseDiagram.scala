@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.distribution.commandTypes.SqlEditorCommands.Table
 
 object SqlDatabaseDiagram {
-  def render(tables: List[Table]): Element = {
+  def render(tables: Seq[Table]): Element = {
     val cardWidth = 300
     val gap = 100
     val top = 30

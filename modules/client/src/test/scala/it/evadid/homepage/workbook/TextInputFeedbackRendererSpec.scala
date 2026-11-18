@@ -9,7 +9,7 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.TextIn
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus}
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
-import it.evadid.workbook.interaction.variable.InteractionVariableGradingHistory
+
 
 class TextInputFeedbackRendererSpec extends EditorDomSuite {
   test("each criterion renders its own saved feedback instead of repeating the first result") {
@@ -44,11 +44,11 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
     val close = mount(element)
     try {
-      exercise.interactionVariable.updateHistory(_.copy(historyGrading = new InteractionVariableGradingHistory(
-        Map("" -> GradedState("", Map(grader -> wrongAnswer))))), fullInfo.workbookContextInformation)
-      assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 0)
-      exercise.interactionVariable.updateHistory(_.copy(historyGrading = new InteractionVariableGradingHistory(
-        Map("" -> GradedState("", Map(grader -> wrongLanguage))))), fullInfo.workbookContextInformation)
+      // Use the correct event-based API - addGrading creates a GradingCompletedEvent
+      exercise.interactionVariable.updateHistory(_.addGrading(wrongAnswer), fullInfo.workbookContextInformation)
+      assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 1)
+      assert(!element.ref.textContent.contains("Wrong answer feedback"))
+      exercise.interactionVariable.updateHistory(_.addGrading(wrongLanguage), fullInfo.workbookContextInformation)
       assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 1)
       assert(element.ref.textContent.contains("Wrong language feedback"))
     } finally close()

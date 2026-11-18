@@ -131,7 +131,7 @@ class SqlUserCommands(
   private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
 
 
-  private def parseUser(userColumns: List[String]): Option[UserInDatabase] = {
+  private def parseUser(userColumns: Seq[String]): Option[UserInDatabase] = {
     if (userColumns.isEmpty || userColumns.size < 4) None
     else {
       val user = User(userColumns(1), userColumns(0), userColumns(2))
@@ -155,7 +155,7 @@ class SqlUserCommands(
     val stmt = connection.prepareStatement(sql)
     stmt.setString(1, userId)
 
-    val result: List[List[String]] = generic.executeQuery(stmt, List("userId", "token", "tokenExpires"))
+    val result: Seq[Seq[String]] = generic.executeQuery(stmt, List("userId", "token", "tokenExpires"))
     result.headOption.flatMap { columns =>
       scala.util.Try {
         require(Option(columns(1)).exists(_.trim.nonEmpty), "Empty login code")
@@ -168,7 +168,7 @@ class SqlUserCommands(
   }
 
 
-  def findUserWithMail(mail: String): List[UserInDatabase] = {
+  def findUserWithMail(mail: String): Seq[UserInDatabase] = {
     val sql =
       s"""
          |SELECT `id`, `name`, `mail`, `config`
@@ -178,7 +178,7 @@ class SqlUserCommands(
 
     val stmt = connection.prepareStatement(sql)
     stmt.setString(1, mail.toLowerCase)
-    val result: List[List[String]] = generic.executeQuery(stmt, List("id", "name", "mail", "config"))
+    val result: Seq[Seq[String]] = generic.executeQuery(stmt, List("id", "name", "mail", "config"))
     result.flatMap(parseUser)
   }
 
@@ -192,7 +192,7 @@ class SqlUserCommands(
 
     val stmt = connection.prepareStatement(sql)
     stmt.setString(1, userId)
-    val result: List[List[String]] = generic.executeQuery(stmt, List("id", "name", "mail", "config"))
+    val result: Seq[Seq[String]] = generic.executeQuery(stmt, List("id", "name", "mail", "config"))
     result.flatMap(parseUser).headOption
   }
 

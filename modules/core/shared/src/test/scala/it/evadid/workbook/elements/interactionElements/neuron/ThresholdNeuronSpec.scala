@@ -48,7 +48,7 @@ class ThresholdNeuronSpec extends FunSuite {
   }
   test("persisted parameters round-trip and malformed numbers are rejected") {
     val p = NeuronParameters(List(1.25, -2), 0.5)
-    assertEquals(exercise.serializerInteractionContent.deserialize(exercise.serializerInteractionContent.serialize(p)), p)
+    assertEquals(exercise.interactionFormat.stateSerializer.deserialize(exercise.interactionFormat.stateSerializer.serialize(p)), p)
     intercept[Exception](read[NeuronParameters]("""{"weights":[],"threshold":0}"""))
   }
 }

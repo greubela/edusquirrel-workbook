@@ -6,18 +6,18 @@ import it.evadid.homepage.workbook.content.wip.CreateImageRecognitionWorkbook.bi
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.linePanelBottom.GradingInfoLine
-import it.evadid.workbook.abstractions.WorkbookInteractionElementFull
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
 
-case class RenderingInteractionLine[T, GA, SA](
-                                             interactionElement: WorkbookInteractionElementFull[T, GA, SA],
+case class RenderingInteractionLine[F <: InteractionFormat](
+                                             interactionElement: WorkbookInteractionElement[F],
                                              content: DomElementCollection,
                                              additionalCssStr: String,
                                              showGradingLine: Signal[Boolean] = Var(false).signal
                                            ) extends AtomarLineRendering {
 
-  lazy val  gradingReporter: InteractionVariableGradingReporter[T, GA, SA] = InteractionVariableGradingReporter(interactionElement)
-  lazy val interactionInfoPanel: InteractionInfoPanel = InteractionInfoPanel(interactionElement, gradingReporter)
+  lazy val  gradingReporter: InteractionVariableGradingReporter[F] = InteractionVariableGradingReporter(interactionElement)
+  lazy val interactionInfoPanel: InteractionInfoPanel[F] = InteractionInfoPanel(interactionElement, gradingReporter)
 
   protected val lineCssStr: String = getCssString(interactionElement)
 

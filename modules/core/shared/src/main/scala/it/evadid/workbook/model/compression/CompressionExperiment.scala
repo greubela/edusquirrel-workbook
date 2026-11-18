@@ -14,9 +14,9 @@ case class VideoBudget(bitrateMbps: Double = 5, durationSeconds: Int = 300, copi
   def megabytes: Double = bitrateMbps * durationSeconds * copies / 8
   def fits: Boolean = megabytes <= capacityMB
 }
-case class RunLengthText(text: String = "AAABBBCCDDDDDA", achieved: List[Int] = Nil) extends CompressionExperiment derives ReadWriter {
+case class RunLengthText(text: String = "AAABBBCCDDDDDA", achieved: Seq[Int] = Nil) extends CompressionExperiment derives ReadWriter {
   require(text.length <= 2000 && achieved.distinct == achieved && achieved.forall(i => i >= 0 && i < 3))
-  def challenges: List[Boolean] = {
+  def challenges: Seq[Boolean] = {
     val r = CompressionAlgorithms.runs(text); val original = CompressionAlgorithms.utf8Bytes(text); val encoded = CompressionAlgorithms.runBytes(r)
     List(text.length >= 5 && encoded <= original * 0.5, text.length >= 5 && encoded > original, r.exists(_.count >= 10))
   }
@@ -29,7 +29,7 @@ case class TextBits(original: String = "Passwort!", flippedBit: Option[Int] = No
     extends CompressionExperiment derives ReadWriter {
   require(original.nonEmpty && original.length <= 32 && original.forall(c => c >= ' ' && c <= '~'))
   require(flippedBit.forall(i => i >= 0 && i < original.length * 8))
-  def bytes: List[Int] = original.zipWithIndex.map { (c, index) =>
+  def bytes: Seq[Int] = original.zipWithIndex.map { (c, index) =>
     c.toInt ^ flippedBit.filter(_ / 8 == index).map(i => 1 << (7 - i % 8)).getOrElse(0)
   }.toList
   def changed: String = bytes.map(_.toChar).mkString
@@ -42,7 +42,7 @@ case class ImageBlocks(imageResource: String, luminanceBlock: Int = 1, chromaBlo
   def samples(block: Int): Int = ((imageWidth + block - 1) / block) * ((imageHeight + block - 1) / block)
   def sampleBytes: Int = samples(luminanceBlock) + 2 * samples(chromaBlock)
   def estimatePercent: Int = math.round(100.0 * 16 / (luminanceBlock * chromaBlock + 15)).toInt
-  def challenges: List[Boolean] = List(estimatePercent <= 20, luminanceBlock <= 4, chromaBlock <= 32)
+  def challenges: Seq[Boolean] = List(estimatePercent <= 20, luminanceBlock <= 4, chromaBlock <= 32)
 }
 case class ImageFileComparison(textBytes: Int, imageBytes: Int, note: Option[LanguageMapContentId] = None) derives ReadWriter {
   require(textBytes >= 0 && imageBytes > 0)
@@ -61,11 +61,11 @@ case class ArchiveBudget(fileCount: Int = 10, bytesPerFile: Int = 1024, archiveO
 case class StorageFile(name: String, megabytes: Int, information: LanguageMapContentId) derives ReadWriter {
   require(name.nonEmpty && megabytes >= 1)
 }
-case class StoragePackage(label: LanguageMapContentId, files: List[StorageFile]) derives ReadWriter {
+case class StoragePackage(label: LanguageMapContentId, files: Seq[StorageFile]) derives ReadWriter {
   require(files.nonEmpty && files.size <= 100)
   def megabytes: Long = files.map(_.megabytes.toLong).sum
 }
-case class StorageStudy(packages: List[StoragePackage], selected: Int = 0, capacityMB: Int = 32000)
+case class StorageStudy(packages: Seq[StoragePackage], selected: Int = 0, capacityMB: Int = 32000)
     extends CompressionExperiment derives ReadWriter {
   require(packages.nonEmpty && packages.size <= 10 && selected >= 0 && selected < packages.size && capacityMB > 0)
   def current: StoragePackage = packages(selected)
@@ -73,7 +73,7 @@ case class StorageStudy(packages: List[StoragePackage], selected: Int = 0, capac
 
 case class CharacterRun(symbol: String, count: Int) derives upickle.default.ReadWriter
 case class DictionaryToken(literal: Option[String], reference: Option[Int]) derives upickle.default.ReadWriter
-case class DictionaryResult(dictionary: List[String], encoded: List[DictionaryToken]) derives upickle.default.ReadWriter {
+case class DictionaryResult(dictionary: Seq[String], encoded: Seq[DictionaryToken]) derives upickle.default.ReadWriter {
   def decoded: String = encoded.map(t => t.literal.getOrElse(dictionary(t.reference.get - 1))).mkString
   def display: String = encoded.map(t => t.literal.getOrElse(s"W${t.reference.get}")).mkString
   // Explicit teaching representation: UTF-8 words + NUL separators, bracketed decimal references.
@@ -81,18 +81,18 @@ case class DictionaryResult(dictionary: List[String], encoded: List[DictionaryTo
     encoded.map(t => t.literal.map(CompressionAlgorithms.utf8Bytes).getOrElse(t.reference.get.toString.length + 1)).sum
 }
 object CompressionAlgorithms {
-  val blockSizes: List[Int] = List(1, 2, 4, 8, 16, 32, 64, 128)
+  val blockSizes: Seq[Int] = List(1, 2, 4, 8, 16, 32, 64, 128)
   def utf8Bytes(text: String): Int = text.getBytes("UTF-8").length
-  def runs(text: String): List[CharacterRun] = UnicodeText.characters(text).foldLeft(List.empty[CharacterRun]) { (reversed, c) =>
+  def runs(text: String): Seq[CharacterRun] = UnicodeText.characters(text).foldLeft(List.empty[CharacterRun]) { (reversed, c) =>
     reversed match {
       case head :: tail if head.symbol == c.glyph => head.copy(count = head.count + 1) :: tail
       case _ => CharacterRun(c.glyph, 1) :: reversed
     }
   }.reverse
-  def decodeRuns(runs: List[CharacterRun]): String = runs.map(r => r.symbol * r.count).mkString
+  def decodeRuns(runs: Seq[CharacterRun]): String = runs.map(r => r.symbol * r.count).mkString
   // A symbol's UTF-8 bytes plus decimal count; punctuation in the displayed tuples is not counted.
-  def runBytes(runs: List[CharacterRun]): Int = runs.map(r => utf8Bytes(r.symbol) + r.count.toString.length).sum
-  def tokens(text: String): List[String] = "\\S+|\\s+".r.findAllIn(text).toList
+  def runBytes(runs: Seq[CharacterRun]): Int = runs.map(r => utf8Bytes(r.symbol) + r.count.toString.length).sum
+  def tokens(text: String): Seq[String] = "\\S+|\\s+".r.findAllIn(text).toList
   def wordCount(text: String): Int = tokens(text).count(!_.forall(_.isWhitespace))
   def dictionary(text: String, steps: Int): DictionaryResult = {
     require(steps >= 0 && steps <= wordCount(text))
@@ -155,24 +155,24 @@ case class BitComparison(password: TextBits = TextBits("M3inGeh3im!"), imageBit:
     passwordFlips: Int = 0, imageFlips: Int = 0) extends CompressionExperiment derives ReadWriter {
   require(imageBit.forall(i => i >= 0 && i < 128 * 128) && passwordFlips >= 0 && imageFlips >= 0)
 }
-case class FileInspection(text: String, docxModelBytes: Int = 13460, expanded: List[String] = Nil, formattedContent: Option[LanguageMapContentId] = None) extends CompressionExperiment derives ReadWriter {
+case class FileInspection(text: String, docxModelBytes: Int = 13460, expanded: Seq[String] = Nil, formattedContent: Option[LanguageMapContentId] = None) extends CompressionExperiment derives ReadWriter {
   require(docxModelBytes > 0)
 }
-case class TransferSimulation(files: List[(String, String)], step: Int = 0) extends CompressionExperiment derives ReadWriter {
+case class TransferSimulation(files: Seq[(String, String)], step: Int = 0) extends CompressionExperiment derives ReadWriter {
   require(files.nonEmpty && files.size <= 100 && step >= 0 && step <= files.size * 4)
   def payload: Int = files.map(f => CompressionAlgorithms.utf8Bytes(f._2)).sum
 }
-case class FileOverview(scenarios: List[FileSimulation], selected: Int = 0) extends CompressionExperiment derives ReadWriter {
+case class FileOverview(scenarios: Seq[FileSimulation], selected: Int = 0) extends CompressionExperiment derives ReadWriter {
   require(scenarios.nonEmpty && selected >= 0 && selected < scenarios.size)
 }
-case class SimulationFile(name: String, bytes: Long, kind: String, metadata: List[String] = Nil, count: Int = 1,
-    applied: List[String] = Nil) derives ReadWriter {
+case class SimulationFile(name: String, bytes: Long, kind: String, metadata: Seq[String] = Nil, count: Int = 1,
+    applied: Seq[String] = Nil) derives ReadWriter {
   require(name.nonEmpty && bytes >= 1 && count >= 1 && applied.distinct == applied)
   def extension: String = name.split('.').last.toLowerCase
   def problematic: Boolean = metadata.exists(CompressionSimulation.problematic)
 }
-case class FileSimulation(scenario: String, files: List[SimulationFile], tutorial: Boolean = false,
-    tool: String = "", selected: List[Int] = Nil, steps: Int = 0, hovered: Boolean = false,
+case class FileSimulation(scenario: String, files: Seq[SimulationFile], tutorial: Boolean = false,
+    tool: String = "", selected: Seq[Int] = Nil, steps: Int = 0, hovered: Boolean = false,
     chosenTool: Boolean = false, clickedFile: Boolean = false, error: Boolean = false) extends CompressionExperiment derives ReadWriter {
   require(files.nonEmpty && files.size <= 100 && steps >= 0)
   require(("" :: CompressionSimulation.tools).contains(tool))

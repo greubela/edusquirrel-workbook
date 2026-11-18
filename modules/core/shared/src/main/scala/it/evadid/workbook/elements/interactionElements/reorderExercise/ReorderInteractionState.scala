@@ -13,8 +13,8 @@ import scala.util.Random
 
 case class ReorderInteractionState[T](
                                        elements: Seq[T],
-                                       currentOrder: List[Int],
-                                       correctOrder: List[Int],
+                                       currentOrder: Seq[Int],
+                                       correctOrder: Seq[Int],
                                        elementType: ReorderType
                                      ) {
 
@@ -27,13 +27,13 @@ case class ReorderInteractionState[T](
    * Returns the canonical list of valid element indices for this reorder interaction.
    * This is the fallback order when deserialized or externally supplied state contains missing, duplicate, or unknown indices.
    */
-  lazy val validElementOrder: List[Int] = elements.indices.toList
+  lazy val validElementOrder: Seq[Int] = elements.indices.toList
 
   /**
    * Validates an order against this state's elements and falls back to the canonical order when needed.
    * Keeping this in core ensures every renderer and future evaluator shares the same definition of a valid order.
    */
-  def sanitizeOrder(order: List[Int]): List[Int] = {
+  def sanitizeOrder(order: Seq[Int]): Seq[Int] = {
     if (order.length == elements.length && order.toSet == validElementOrder.toSet) order else validElementOrder
   }
 
@@ -41,7 +41,7 @@ case class ReorderInteractionState[T](
    * Returns the currently displayed order after applying the shared validation rules.
    * Renderers should prefer this method over reading `currentOrder` directly when producing UI from persisted state.
    */
-  lazy val sanitizedCurrentOrder: List[Int] = sanitizeOrder(currentOrder)
+  lazy val sanitizedCurrentOrder: Seq[Int] = sanitizeOrder(currentOrder)
 
   /**
    * Moves an element index to a new insertion point and returns an updated state.
@@ -65,17 +65,17 @@ object ReorderInteractionState {
 
   given [T: ReadWriter]: ReadWriter[ReorderInteractionState[T]] = macroRW
 
-  def initStateFromElementsAndSeed[T: ReadWriter](elementsInCorrectOrder: List[T], seed: Long, reorderType: ReorderType): ReorderInteractionState[T] = {
-    val shuffled: List[Int] = Random(seed).shuffle(elementsInCorrectOrder.indices.toList)
+  def initStateFromElementsAndSeed[T: ReadWriter](elementsInCorrectOrder: Seq[T], seed: Long, reorderType: ReorderType): ReorderInteractionState[T] = {
+    val shuffled: Seq[Int] = Random(seed).shuffle(elementsInCorrectOrder.indices.toList)
     ReorderInteractionState[T](elementsInCorrectOrder, shuffled, elementsInCorrectOrder.indices.toList, reorderType)
   }
 
 
-  def forCode(lines: List[String], currentOrder: List[Int], correctOrder: List[Int], codelineType: CODELINES): ReorderInteractionState[String] = {
+  def forCode(lines: Seq[String], currentOrder: Seq[Int], correctOrder: Seq[Int], codelineType: CODELINES): ReorderInteractionState[String] = {
     ReorderInteractionState[String](lines, currentOrder, correctOrder, codelineType)
   }
 
-  def forIds(ids: List[LanguageMapContentId], currentOrder: List[Int], correctOrder: List[Int]): ReorderInteractionState[LanguageMapContentId] = {
+  def forIds(ids: Seq[LanguageMapContentId], currentOrder: Seq[Int], correctOrder: Seq[Int]): ReorderInteractionState[LanguageMapContentId] = {
     //val ids = ids.map(LanguageMapContentId.apply)
     ReorderInteractionState[LanguageMapContentId](ids, currentOrder, correctOrder, ReorderType.LANGUAGE_MAP_IDS)
   }

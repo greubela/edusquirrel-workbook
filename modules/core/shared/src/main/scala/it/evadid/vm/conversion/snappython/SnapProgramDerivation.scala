@@ -62,7 +62,7 @@ object SnapProgramDerivation {
             !SnapExpressionSupport.layoutMatches(derived.canvasLayout, statements.size) then
           List((156, 66, statements))
         else
-          splitByLayout(statements, derived.canvasLayout.scripts)
+          splitByLayout(statements, derived.canvasLayout.scripts.toList)
       chunks.zipWithIndex.map { case ((x, y, chunk), idx) =>
         ScriptView(idx + 1, x, y, renderStatements(chunk))
       }

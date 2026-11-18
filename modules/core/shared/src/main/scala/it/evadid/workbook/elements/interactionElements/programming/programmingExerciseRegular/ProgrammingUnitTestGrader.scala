@@ -1,16 +1,16 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
 import it.evadid.vm.conversion.unittest.ProgramForUnitTestExecution
-
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.SerializedException
 import it.evadid.vm.test.{BeTestResult, ProgrammingTestRunner}
-import it.evadid.workbook.abstractions.FeedbackEntity
+import it.evadid.workbook.abstractions.InteractionFormat.ProgrammingExerciseWithLlmScaffoldingAndGrading
+import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.abstractions.grading.*
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
@@ -43,7 +43,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
 
   }
 
-  def gradeState(state: ProgrammingState, clients: List[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
+  def gradeState(state: ProgrammingState, clients: Seq[ExecutionClient]): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
     val evaluation = Future(ProgramForUnitTestExecution.fromState(state)).flatMap {
       case Right(program) => ProgrammingTestRunner.execute(program, pythonTestCode, clients,
         observeProgram = publishProgramObservation && importance != GradingImportance.HIDDEN_TEST,
@@ -64,7 +64,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
     }
   }
 
-  def gradeState(state: ProgrammingState, clients: List[ExecutionClient], resolver: LanguageMapIdResolver):
+  def gradeState(state: ProgrammingState, clients: Seq[ExecutionClient], resolver: LanguageMapIdResolver):
   Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] =
     gradeState(state, clients).flatMap { result =>
       val described = publicDescription.filter(_ => importance != GradingImportance.HIDDEN_TEST &&

@@ -12,7 +12,7 @@ import todomove.webElementsOld.webElements.svg.shapes.special.{CommandShape, Com
 
 case class BeBlockComment(comment: BeSingleLineComment) extends BeBlockSingleShape derives upickle.default.ReadWriter {
 
-  override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
+  override def renderShape(childrenShapes: Seq[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
     val container = CommentShape()
     val text = TextShape(comment.commentStr).addAmends(renderingInformation.factory.defaultTextAmends)
 

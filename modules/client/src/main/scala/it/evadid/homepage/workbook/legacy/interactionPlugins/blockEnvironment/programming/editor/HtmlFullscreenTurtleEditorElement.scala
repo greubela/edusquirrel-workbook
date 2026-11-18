@@ -69,7 +69,7 @@ case class HtmlFullscreenTurtleEditorElement(editorState: EditorState) extends H
 
 
 
-//  private val testShapes: List[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), ControlArrowUpDown(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
+//  private val testShapes: Seq[BeShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper(), BeDataArrow(), ControlArrowUpDown(), IfElseSplit(), ControlFlowCross(), IfElseUnion(), ControlFlowConnectorBackground(List((true, true)))) ++ BeShape.allAtomicShapes
 //  private val testDims = testShapes.map(_.displaySize(editorState.rendererConfigVar.now()))
 
   private val showExpectedOutputVar: Var[Boolean] = Var(false)

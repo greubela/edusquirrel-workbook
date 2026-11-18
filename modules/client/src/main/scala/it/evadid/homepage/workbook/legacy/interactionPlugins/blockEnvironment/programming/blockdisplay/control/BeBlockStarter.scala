@@ -24,13 +24,13 @@ case class BeBlockStarter(
                              renderingInfo: RenderingInformation
                            ): ControlFlowAndExpressionShape = {
 
-    val resultList: List[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
-    val bodyShapes: List[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(0)).map(_._2)
+    val resultList: Seq[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
+    val bodyShapes: Seq[BeShape] = resultList.filter(_._1._1.childInfo.myRoleInParent == BodySequence(0)).map(_._2)
 
     
     val starter = ControlFlowProgramStarter()
     val stopper = ControlFlowProgramStopper()
-    val bodyShape = VBoxSameWidth(bodyShapes, false, HorizontalAlignment.Left, VerticalAlignment.Center)
+    val bodyShape = VBoxSameWidth(bodyShapes.toList, false, HorizontalAlignment.Left, VerticalAlignment.Center)
 
     val children = List(starter, bodyShape, stopper)
     val box = PlainVBox(children)
@@ -49,7 +49,7 @@ case class BeBlockStarter(
 
   }
 
-  def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
+  def render(renderedChildren: Seq[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
     val factory = BeShapeAmendFactory(renderingInfo.renderingConfig)
     val signalAmends = factory.muteOnTreeDragged(renderingInfo.inProgram, renderingInfo.editorState.controllerStateVar.signal, factory.defaultControlColors)
 

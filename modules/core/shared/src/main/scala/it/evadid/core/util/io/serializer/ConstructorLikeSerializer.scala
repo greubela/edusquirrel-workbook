@@ -11,11 +11,11 @@ object ConstructorLikeSerializer {
   def getAutoFieldsMap[T](obj: T)(implicit regularSerializer: Writer[T]): Map[String, Value] =
     writeJs(obj)(using regularSerializer).obj.toMap
 
-  def serialize[T](elementMapAndOrder: Map[Int, List[VariableDisplayConfig]], obj: T, writer: Writer[T], constructorName: String): String =
+  def serialize[T](elementMapAndOrder: Map[Int, Seq[VariableDisplayConfig]], obj: T, writer: Writer[T], constructorName: String): String =
     serializeFields(elementMapAndOrder, getAutoFieldsMap(obj)(using writer), constructorName)
 
   /** Keep JSON values intact; fields without a display configuration remain named fields. */
-  def serializeFields(order: Map[Int, List[VariableDisplayConfig]], fields: Map[String, Value], constructorName: String): String = {
+  def serializeFields(order: Map[Int, Seq[VariableDisplayConfig]], fields: Map[String, Value], constructorName: String): String = {
     require(order.keys.forall(_ >= 0), "Constructor positions must be non-negative")
     val configured = order.values.flatten.map(_.varId).toList
     require(configured.distinct.size == configured.size, "Constructor fields must be configured only once")
@@ -38,7 +38,7 @@ object ConstructorLikeSerializer {
   def deserialize[T](str: String, reader: Reader[T]): T =
     read[T](ujson.Obj.from(deserialize(str).values))(using reader)
 
-  def deserialize[T](str: String, reader: Reader[T], order: Map[Int, List[VariableDisplayConfig]], constructorName: String): T = {
+  def deserialize[T](str: String, reader: Reader[T], order: Map[Int, Seq[VariableDisplayConfig]], constructorName: String): T = {
     val raw = deserialize(str)
     require(raw.elementType == constructorName, s"Expected $constructorName, found ${raw.elementType}")
     read[T](ujson.Obj.from(raw.valuesWithOrder(order)))(using reader)
@@ -57,5 +57,5 @@ trait ConstructorLikeSerializer[T] extends Serializer[T] {
 
   implicit val regularSerializer: Serializer[T]
   val constructorName: String
-  val elementMapAndOrder: Map[Int, List[ConstructorLikeSerializer.VariableDisplayConfig]]
+  val elementMapAndOrder: Map[Int, Seq[ConstructorLikeSerializer.VariableDisplayConfig]]
 }

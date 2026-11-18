@@ -31,7 +31,7 @@ class EvacuationFloorPlanSpec extends FunSuite {
   test("saved answers round-trip and malformed persisted data is rejected") {
     val floor = EvacuationFloorPlan(2, 2, List(EvacuationTile.Floor, EvacuationTile.Wall, EvacuationTile.Exit, EvacuationTile.Floor), Set(0, 2))
     val interaction = EvacuationConstructFloorInteraction("floor", floor)
-    assertEquals(interaction.serializerInteractionContent.deserialize(interaction.serializerInteractionContent.serialize(floor)), floor)
+    assertEquals(interaction.interactionFormat.stateSerializer.deserialize(interaction.interactionFormat.stateSerializer.serialize(floor)), floor)
     assert(interaction.isPassed)
     val bad = writeJs(floor)
     bad("people") = ujson.Arr(1)

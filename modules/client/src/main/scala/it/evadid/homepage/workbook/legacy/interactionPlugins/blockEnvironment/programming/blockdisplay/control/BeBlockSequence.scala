@@ -24,7 +24,7 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock derives upickle
                              renderingInfo: RenderingInformation
                            ): ControlFlowAndExpressionShape = {
 
-    val resultList: List[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
+    val resultList: Seq[((BeExpressionNode, BeBlock), ControlFlowAndExpressionShape)] = childResults.toList
 
     val bodyChildrenInOrder = resultList
       .filter(_._1._1.childInfo.myRoleInParent.isInstanceOf[ExpressionInSequence])
@@ -32,11 +32,11 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock derives upickle
 
     val onlyControlFlow = bodyChildrenInOrder.map(_._2).flatMap(curShape => curShape.onlyControlFlowShape)
     val onlyExpressions = bodyChildrenInOrder.map(_._2).flatMap(curShape => curShape.onlyExpressionShape)
-    val fullTable = TableShape(List(onlyControlFlow, onlyExpressions))
+    val fullTable = TableShape(List(onlyControlFlow.toList, onlyExpressions.toList))
 
     val nested: BoxManualPositioning = new BoxManualPositioning() {
-      def calcOffsetsAndDimensions(config: BeRenderingConfig): List[ManualPositionElement] = {
-        val columns = List(onlyControlFlow, onlyExpressions)
+      def calcOffsetsAndDimensions(config: BeRenderingConfig): Seq[ManualPositionElement] = {
+        val columns = List(onlyControlFlow.toList, onlyExpressions.toList)
         val maxColumnWidths = columns.map(_.map(_.displaySize(config).width).maxOption.getOrElse(0.0))
 
         val res = mutable.ListBuffer[ManualPositionElement]()
@@ -67,9 +67,9 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock derives upickle
 
     new ControlFlowAndExpressionShape {
 
-      override def onlyControlFlowShape: Option[BeShape] = Some(VBoxSameWidth(onlyControlFlow, false, HorizontalAlignment.Left, VerticalAlignment.Top))
+      override def onlyControlFlowShape: Option[BeShape] = Some(VBoxSameWidth(onlyControlFlow.toList, false, HorizontalAlignment.Left, VerticalAlignment.Top))
 
-      override def onlyExpressionShape: Option[BeShape] = Some(VBoxSameWidth(onlyExpressions, false, HorizontalAlignment.Left, VerticalAlignment.Top))
+      override def onlyExpressionShape: Option[BeShape] = Some(VBoxSameWidth(onlyExpressions.toList, false, HorizontalAlignment.Left, VerticalAlignment.Top))
 
       override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = nested.displaySize(rendererConfig)
 
@@ -78,20 +78,20 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock derives upickle
 
 
     /*
-        val bodyShapes: List[BeShape] = resultList.filter(_._1._1.childPosition.roleInParent == BodySequence(0)).map(_._2)
+        val bodyShapes: Seq[BeShape] = resultList.filter(_._1._1.childPosition.roleInParent == BodySequence(0)).map(_._2)
 
          ControlFlowAndExpressionShape {
-          override def getControlFlowChangeElements: List[ControlFlowShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper())
+          override def getControlFlowChangeElements: Seq[ControlFlowShape] = List(ControlFlowProgramStarter(), ControlFlowProgramStopper())
 
-          override def getControlFlowExpressionElements: List[Option[BeShape]] = List(None, None)
+          override def getControlFlowExpressionElements: Seq[Option[BeShape]] = List(None, None)
 
-          override def getBodiesBetweenControlFlowChanges: List[List[BeShape]] = List(bodyShapes)
+          override def getBodiesBetweenControlFlowChanges: Seq[Seq[BeShape]] = List(bodyShapes)
         }*/
 
   }
 
 
-  def render(renderedChildren: List[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
+  def render(renderedChildren: Seq[(BeExpressionNode, BeBlock, NestedBlockRenderer)], renderingInfo: RenderingInformation): NestedBlockRenderer = {
 
     val bodyChildrenInOrder = renderedChildren
       .filter(_._1.childInfo.myRoleInParent.isInstanceOf[ExpressionInSequence])
@@ -104,7 +104,7 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock derives upickle
     res
   }
   /*
-  def renderMain(children: List[(BeExpressionNode, BeShape)], renderingInfo: RenderingInformation): BeShape = {
+  def renderMain(children: Seq[(BeExpressionNode, BeShape)], renderingInfo: RenderingInformation): BeShape = {
 
     val bodySeq = children
       .filter(_._1.childPosition.roleInParent.isInstanceOf[ExpressionInSequence])
@@ -112,7 +112,7 @@ case class BeBlockSequence(sequence: BeSequence) extends BeBlock derives upickle
 
     TableShape(bodySeq.map(_._2), List(HorizontalAlignment.Left, HorizontalAlignment.Left), List(), false)
 
-    //override def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], rendererConfig: BeRenderingConfig, renderedDisplayChildren: List[(BeBlockReference, BeShape)]): BeShape = {
+    //override def render(inProgram: BeProgram, controllerStateVar: Var[BeControllerState], rendererConfig: BeRenderingConfig, renderedDisplayChildren: Seq[(BeBlockReference, BeShape)]): BeShape = {
     val factory = BeShapeAmendFactory(renderingInfo.rendererConfig)
     val signalAmends = factory.muteOnTreeDragged(inProgram, controllerStateVar.signal, factory.defaultControlFlowBackgroundAmend)
 

@@ -142,7 +142,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         startingProgramJava, hintTask = Some(javaSquareInstructions))
     ))
 
-    section("sec1Id", "TestWorkbook/Sec1", List[WorkbookElement](
+    section("sec1Id", "TestWorkbook/Sec1", Seq[WorkbookElement](
       cont1, cont2
     ))
 

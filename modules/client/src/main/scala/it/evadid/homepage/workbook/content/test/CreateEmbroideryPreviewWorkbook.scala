@@ -17,7 +17,7 @@ import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 /** Separate digital edition: preserves the original workbook and its saved responses. */
 case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
-  override val availableLanguages: List[HumanLanguage] = List(German, English)
+  override val availableLanguages: Seq[HumanLanguage] = List(German, English)
 
   override val workbookId: String = "EmbroideryPreviewWorkbook"
 

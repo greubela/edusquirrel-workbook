@@ -1,143 +1,188 @@
 package it.evadid.homepage.control.change
 
-import it.evadid.core.datastructures.state.StateHelper.RichSignal
-import it.evadid.core.datastructures.state.observable.ObservableValue
-import it.evadid.core.datastructures.storage.{RemoteCacheController, RemoteCacheCollection}
+import com.raquo.laminar.api.L.*
+import com.raquo.airstream.ownership.ManualOwner
+import it.evadid.core.datastructures.state.StateHelper.*
+import it.evadid.core.datastructures.storage.remote.{RemoteHistoryCache, WorkbookSyncEnvironment}
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.model.SyncStatus
-import it.evadid.workbook.interaction.variable.InteractionVariable.InteractionVariableUntyped
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
-import it.evadid.workbook.meta.InteractionVariableSyncReport
-
+import it.evadid.workbook.meta.{ExecutionContextInformation, InteractionVariableSyncReport}
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import com.raquo.airstream.state.Var
+import scala.util.{Success, Try}
 
+/** Signals replace environment bindings; departing bindings retain their own caches and IO. */
 case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl {
-
   private given ExecutionContext = ExecutionContext.global
-
-  private lazy val remoteCache: RemoteCacheController[SyncContext, String, SyncInformationWithContext] = {
-    val controller = new RemoteCacheController[SyncContext, String, SyncInformationWithContext](
-      SyncLogger(fullInfo.loggerSystemInfo.syncCacheLogger), fullInfo.signals.currentSyncDestinationObservable
-    ) {
-      override def onCacheKeyChange(newKeys: List[SyncInformationWithContext], knownKeys: Set[SyncContext]): Future[?] = Future.unit
-    }
-    // Restoration follows confirmed cache publications, including the automatic
-    // fetch after login. It must not depend on a later navigation or reload.
-    controller.observableCache.addObserver(restoreSnapshot)
-    controller
-  }
-
-  private def mergeIfChanged[T, GA, SA](variable: InteractionVariable[T, GA, SA],
-      histories: Vector[InteractionVariableHistory[T, GA, SA]]): Unit =
-    if histories.nonEmpty && variable.currentHistory.mergeWith(histories) != variable.currentHistory then
-      variable.updateHistory(_.mergeWith(histories), fullInfo.workbookContextInformation)
-
-  private def restoreSnapshot(snapshot: RemoteCacheCollection[SyncContext, String, SyncInformationWithContext]): Unit = {
-    val context = fullInfo.current.currentHomepageContext
-    if resetStateVar.now() == SyncResetState.Idle && snapshot.remoteCaches.keys.forall(_.usageContext == context) then {
-      fullInfo.current.allAvailableInteractions.foreach { interaction =>
-        def restore[T, GA, SA](variable: InteractionVariable[T, GA, SA]): Unit = {
-          val report = snapshot.createReportFor(context.toSyncContext(variable.keyForSerialization))
-          val histories = decodeStatuses(variable, report.cacheStatus).values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toVector
-          mergeIfChanged(variable, histories)
-        }
-        restore(interaction.interactionVariable)
-      }
-    }
-  }
-
-  // Keep synchronization paused after a partial reset as well: automatically
-  // writing the still-mounted answers would recreate records already deleted.
-  private val resetStateVar = Var[SyncResetState](SyncResetState.Idle)
-  override lazy val resetState: ObservableValue[SyncResetState] = resetStateVar.signal.toObservableValue
-
-  override def resetAllData(): Future[Unit] = resetStateVar.now() match {
-    case SyncResetState.Running(completion) => completion
-    case _ =>
-      val completion = Promise[Unit]()
-      resetStateVar.set(SyncResetState.Running(completion.future))
-      scala.util.Try(remoteCache.clearAllCaches { destination =>
-        destination.handler.clearValues(destination.usageContext).map(_ => ())
-      }).fold(Future.failed, identity).onComplete { result =>
-        resetStateVar.set(result.fold(SyncResetState.Failed(_), _ => SyncResetState.Completed))
-        completion.complete(result)
-      }
-      completion.future
-  }
-
-  private def decodeStatuses[T, GA, SA](variable: InteractionVariable[T, GA, SA],
-                                        statuses: Map[SyncInformationWithContext, SyncStatus[SyncContext, String]]) = {
-    import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, SyncStatus}
-    statuses.map { (location, status) =>
-      val decoded = status.lastKnownRemoteValue.flatMap { entry =>
-        scala.util.Try(variable.serializerHistory.deserialize(entry.dataValue)).fold(
-          error => {
-            controlLogger.logExceptionWarn("Ignoring invalid history for " + entry.dataKey, error);
-            None
-          },
-          history => Some(DataEntryToSync(entry.dataKey, history, entry.timestamp, entry.direction)))
-      }
-      location -> SyncStatus(status.lastCacheRequest, status.associatedKey, decoded)
-    }
-  }
-
-  override def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[Unit] = remoteCache.syncLock.synchronized {
-    if resetStateVar.now() != SyncResetState.Idle then Future.unit else remoteCache.ensureMaxAgeSafe(maxAge).map(_ => ())
-  }
-
-  override def createCurrentReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): InteractionVariableSyncReport[T, GA, SA] = remoteCache.syncLock.synchronized {
-    val syncContext = fullInfo.current.currentHomepageContext.toSyncContext(forVariable.keyForSerialization)
-    val res = remoteCache.currentReport(syncContext)
-    InteractionVariableSyncReport(forVariable.currentHistory, decodeStatuses(forVariable, res.cacheStatus), res.allAvailableCacheKeys)
-  }
-
-  override def createObservableReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): ObservableValue[InteractionVariableSyncReport[T, GA, SA]] = remoteCache.syncLock.synchronized {
-    val observableContext: ObservableValue[UsageContext] = fullInfo.signals.currentUsageContext.toObservableValue
-    val observableHistory: ObservableValue[InteractionVariableHistory[T, GA, SA]] = forVariable.observableHistoryWithDefault
-    val observableCache = remoteCache.observableCache
-
-    observableCache.combineWith(observableContext, observableHistory).deriveValue(tup => {
-      val report = tup._1.createReportFor(tup._2.toSyncContext(forVariable.keyForSerialization))
-      InteractionVariableSyncReport(tup._3, decodeStatuses(forVariable, report.cacheStatus), report.allAvailableCacheKeys)
-    })
-  }
-
-  override def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariableUntyped]): Future[Unit] = remoteCache.syncLock.synchronized {
-
-    def shouldSyncUntil(syncInfo: SyncInformationWithContext): LocalDateTime = variables.flatMap(curVar => {
-      val history = curVar.currentHistory.filterWithStrategy(syncInfo.syncInformation.syncStrategy)
-      history.timestampLastChanged
-    }).maxOption.getOrElse(LocalDateTime.now())
-
-    if resetStateVar.now() != SyncResetState.Idle then Future.unit else remoteCache.requestCacheDependentUpdate(shouldSyncUntil).map(_ => ())
-  }
-
-  override def requestStore(from: List[InteractionVariableUntyped]): Future[Unit] = remoteCache.syncLock.synchronized {
-    if resetStateVar.now() != SyncResetState.Idle then Future.unit else remoteCache.requestCacheDependentStore(curSyncInfo => {
-      from.flatMap(curVariable => {
-        curSyncInfo.dataToStore(curVariable)
-      })
-    }).map(_ => ())
-  }
-
-  override def controlLogger: it.evadid.util.logging.Logger = fullInfo.loggerSystemInfo.syncControlLogger
-
   override def syncLogger: SyncLogger = fullInfo.loggerSystemInfo.syncControlLogger
 
-  private def load[T, GA, SA](intoVar: InteractionVariable[T, GA, SA], context: UsageContext): Future[Unit] = Future {
-    if resetStateVar.now() == SyncResetState.Idle && fullInfo.current.currentHomepageContext == context then {
-      val histories = createCurrentReport(intoVar).curRemoteHistory.values.flatMap(_.lastKnownRemoteValue.map(_.dataValue)).toVector
-      mergeIfChanged(intoVar, histories)
+  private def attempt[A](operation: => Future[A]): Future[A] = Try(operation).fold(Future.failed, identity)
+  private def settled(operations: Seq[Future[Unit]]): Future[Unit] =
+    Future.sequence(operations.map(_.transform(result => Success(result)))).flatMap(results =>
+      results.collectFirst { case scala.util.Failure(error) => error }.fold(Future.unit)(Future.failed))
+
+  private case class UserSyncState(reset: SyncResetState = SyncResetState.Idle, pending: Set[Future[Unit]] = Set.empty)
+
+  /** Reset spans workbooks, but never follows an operation into another user's binding. */
+  private class UserBinding {
+    val state = Var(UserSyncState())
+    def enabled: Boolean = state.now().reset == SyncResetState.Idle
+    def track(operation: Future[Unit]): Future[Unit] = {
+      state.update(current => current.copy(pending = current.pending + operation))
+      operation.onComplete(_ => state.update(current => current.copy(pending = current.pending - operation)))
+      operation
     }
   }
 
-  override def load(into: List[InteractionVariableUntyped]): Future[Unit] = {
-    val context = fullInfo.current.currentHomepageContext
-    Future.traverse(into)(curVar => load(curVar, context)).map(_ => ())
+  private val userBinding: StrictSignal[UserBinding] = fullInfo.signals.user
+    .map(_.map(_.user.personId)).distinct.map(_ => new UserBinding).observe(using unsafeWindowOwner)
+  val resetState: StrictSignal[SyncResetState] = userBinding.flatMapSwitch(_.state.signal.map(_.reset)).observe(using unsafeWindowOwner)
+
+  private trait Restoration {
+    def publish(context: ExecutionContextInformation): Unit
+  }
+  private case class TypedRestoration[F <: InteractionFormat](variable: InteractionVariable[F], history: InteractionVariableHistory[F]) extends Restoration {
+    def publish(context: ExecutionContextInformation): Unit = {
+      val merged = variable.currentHistory.mergeWith(history).normalize()
+      if merged != variable.currentHistory then variable.updateHistory(_ => merged, context)
+    }
   }
 
+  private trait InteractionSnapshot {
+    def store(): Future[Unit]
+    def fetch(): Future[Unit]
+  }
+  private trait InteractionBinding {
+    def variable: InteractionVariable[? <: InteractionFormat]
+    def snapshot: InteractionSnapshot
+    def restoration: Signal[Option[Restoration]]
+    def report: Signal[Option[InteractionVariableSyncReport[SyncInformationWithContext]]]
+  }
+
+  private class TypedBinding[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], environment: WorkbookSyncEnvironment,
+      subscriptions: ManualOwner) extends InteractionBinding {
+    val variable: InteractionVariable[F] = interaction.interactionVariable
+    variable.bindFeedbackSession(fullInfo.feedbackSession.now())
+    private val key = environment.usageContext.toSyncContext(variable.keyForSerialization)
+    private val destinations = environment.syncDestinations.map(information => FormattedSyncDestination(information, interaction.interactionFormat))
+    // One immutable snapshot holds the local history and location -> confirmed cache state.
+    private val cacheState = Var(RemoteHistoryCache.CacheState.empty[SyncContext, F, FormattedSyncDestination[F]](destinations))
+    private val cache = new RemoteHistoryCache(syncLogger,
+      destinations.map(destination => destination -> destination.information.syncInformation.syncStrategy).toMap,
+      fromAirstreamVarToState(cacheState, subscriptions))
+
+    def snapshot: InteractionSnapshot = {
+      val local = Map(key -> variable.currentHistory)
+      new InteractionSnapshot {
+        def store(): Future[Unit] = cache.requestStoreToAll(local)
+        def fetch(): Future[Unit] = {
+          cache.mergeLocal(local)
+          settled(destinations.toSeq.map(destination =>
+            cache.refreshFrom(destination, Set(key), LocalDateTime.now().minusMinutes(5)).map(_ => ())))
+        }
+      }
+    }
+    val restoration: Signal[Option[Restoration]] = cacheState.signal.map(_.histories.get(key).map(TypedRestoration(variable, _)))
+    val report: Signal[Option[InteractionVariableSyncReport[SyncInformationWithContext]]] =
+      cache.reports.toSignal(Map.empty).map(_.get(key).map(current =>
+        InteractionVariableSyncReport(destinations.map(_.information), current.syncedDestinations.map(_.information))))
+  }
+
+  /** No active/closing flags: the outer signal selects whose publications reach the workbook. */
+  private class WorkbookBinding(val environment: Option[WorkbookSyncEnvironment], val user: UserBinding) {
+    private val subscriptions = new ManualOwner
+    val context: ExecutionContextInformation = fullInfo.workbookContextInformation
+    val interactions: Seq[InteractionBinding] = environment.toSeq.flatMap(owner =>
+      owner.interactions.toSeq.map(interaction => new TypedBinding(interaction, owner, subscriptions)))
+    val restorations: Signal[Seq[Restoration]] = Signal.combineSeq(interactions.map(_.restoration)).map(_.flatten)
+
+    def flush(): Unit = environment.foreach(_.syncDestinations.foreach(_.handler.flush(true)))
+    def detach(): Unit = {
+      // Detaching observers does not cancel requests. Their captured handlers still flush normally.
+      subscriptions.killSubscriptions()
+      Try(flush()).failed.foreach(error => syncLogger.logExceptionWarn("Could not flush the previous workbook", error))
+    }
+    def batch[A](selected: Seq[A], forceFlush: Boolean)(operation: A => Future[Unit]): Future[Unit] =
+      if !user.enabled then Future.unit else {
+        val operations = selected.map(binding => attempt(operation(binding)))
+        val flushing = if forceFlush then attempt { flush(); Future.unit } else Future.unit
+        user.track(settled(operations :+ flushing))
+      }
+    def phases(forceFlush: Boolean)(first: InteractionSnapshot => Future[Unit], second: InteractionSnapshot => Future[Unit]): Future[Unit] = {
+      val captured = if user.enabled then interactions.map(_.snapshot) else Seq.empty
+      batch(captured, forceFlush)(first).transformWith(before =>
+        batch(captured, forceFlush)(second).transform(after => before.flatMap(_ => after)))
+    }
+  }
+
+  private val environments = fullInfo.signals.syncEnvironmentSignal.combineWith(userBinding).observe(using unsafeWindowOwner)
+  private val binding: StrictSignal[WorkbookBinding] = environments.changes
+    .scanLeft(new WorkbookBinding(environments.now()._1, environments.now()._2)) { (previous, next) =>
+      val replacement = new WorkbookBinding(next._1, next._2)
+      previous.detach()
+      replacement
+    }.observe(using unsafeWindowOwner)
+
+  // Switching subscriptions prevents old reads from publishing into a replacement workbook.
+  binding.flatMapSwitch(current => current.restorations.map(updates => (current, updates)))
+    .foreach { (current, updates) =>
+      if current.user.enabled then updates.foreach(_.publish(current.context))
+    }(using unsafeWindowOwner)
+
+  override def storeAll(forceFlush: Boolean): Future[Unit] = {
+    val current = binding.now()
+    current.batch(current.interactions.map(_.snapshot), forceFlush)(_.store())
+  }
+  override def fetchAll(forceFlush: Boolean): Future[Unit] = {
+    val current = binding.now()
+    current.batch(current.interactions.map(_.snapshot), forceFlush)(_.fetch())
+  }
+  override def store[F <: InteractionFormat](variable: InteractionVariable[F], forceFlush: Boolean): Future[Unit] = {
+    val current = binding.now()
+    current.batch(current.interactions.filter(_.variable eq variable).map(_.snapshot), forceFlush)(_.store())
+  }
+
+  // A phase chain must retain its original binding even if the selected user/workbook changes between phases.
+  override def fetchAndStore(forceFlush: Boolean): Future[Unit] = binding.now().phases(forceFlush)(_.fetch(), _.store())
+  override def storeAndFetch(forceFlush: Boolean): Future[Unit] = binding.now().phases(forceFlush)(_.store(), _.fetch())
+  override def ensureSynced(): Future[Unit] = resetState.now() match {
+    case SyncResetState.Running(completion) => completion
+    case SyncResetState.Idle => fetchAndStore(true)
+    case _ => Future.unit
+  }
+
+  def resetAllData(): Future[Unit] = {
+    val current = binding.now()
+    val user = current.user
+    user.state.now().reset match {
+      case SyncResetState.Running(completion) => completion
+      case _ =>
+        val destinations = current.environment.map(_.syncDestinations.toSeq)
+          .getOrElse(fullInfo.homepageInfoNow().syncDestinations(fullInfo))
+        val completion = Promise[Unit]()
+        user.state.update(_.copy(reset = SyncResetState.Running(completion.future)))
+        fullInfo.invalidateFeedbackSession()
+        current.interactions.foreach(_.variable.resetForNewSession())
+        val draining = user.state.now().pending.toSeq.map(_.recover { case scala.util.control.NonFatal(_) => () })
+        val reset = attempt {
+          destinations.foreach(_.handler.flush(true))
+          Future.sequence(draining).flatMap(_ => settled(destinations.map(destination =>
+            attempt(destination.handler.clearAllHistories(destination.usageContext)).map(_ => ()))))
+        }
+        reset.onComplete { result =>
+          user.state.update(_.copy(reset = result.fold(SyncResetState.Failed(_), _ => SyncResetState.Completed)))
+          completion.tryComplete(result)
+        }
+        completion.future
+    }
+  }
+
+  def createReportFor[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): Signal[Option[InteractionVariableSyncReport[SyncInformationWithContext]]] =
+    binding.flatMapSwitch(current => current.interactions.find(_.variable eq interaction.interactionVariable)
+      .fold(Signal.fromValue(Option.empty[InteractionVariableSyncReport[SyncInformationWithContext]]))(_.report))
+      .combineWith(resetState).map((report, reset) => report.map(current =>
+        if reset == SyncResetState.Idle then current else current.copy(destinationsWithSufficientWrites = Set.empty)))
 }

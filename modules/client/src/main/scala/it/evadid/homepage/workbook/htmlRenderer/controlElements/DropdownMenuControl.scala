@@ -23,32 +23,30 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
   private val isOpen: Var[Boolean] = Var(false)
   private val credentialsOpen = Var(false)
 
-  private val resetState = fullInfo.syncControl.resetState.toEventStream()
-    .toSignal(fullInfo.syncControl.resetState.now().getOrElse(SyncResetState.Idle))
 
+  private val resetState = fullInfo.syncControl.resetState
   private val resetLabel: Signal[String] = resetState.flatMapSwitch { state =>
-    val id = state match {
+    val key = state match {
       case SyncResetState.Idle | SyncResetState.Completed => "basic/resetAllData"
       case _: SyncResetState.Running => "basic/resetAllDataRunning"
       case _: SyncResetState.Failed => "basic/resetAllDataRetry"
     }
-    laminarHelper.plaintextStringSignal(id)
+    laminarHelper.plaintextStringSignal(key)
   }
+
+  private def resetOwner = fullInfo.signals.user.now().map(_.user.personId)
 
   private def resetAllData(): Unit = {
     val message = fullInfo.homepageInfoNow().languageMapStore.languageMaps
       .get(LanguageMapContentId("basic/resetAllDataConfirm"))
       .flatMap(_.tryGetInLanguage(fullInfo.signals.currentLanguage.now()))
-      .getOrElse("Clear all configured local answer stores and delete this user's saved answers and feedback from every configured server destination, across all workbooks? This cannot be undone.")
-    val running = fullInfo.syncControl.resetState.now().exists {
-      case SyncResetState.Running(_) => true
-      case _ => false
-    }
-    if !running && dom.window.confirm(message) then {
+      .getOrElse("Clear all configured local answer stores and delete your saved answers and feedback across all workbooks? This cannot be undone.")
+    if !resetState.now().isInstanceOf[SyncResetState.Running] && dom.window.confirm(message) then {
+      val owner = resetOwner
       fullInfo.syncControl.resetAllData().onComplete {
-        case Success(_) => dom.window.location.reload()
-        case Failure(error) =>
-          logger.logExceptionWarn("Reset could not be confirmed by every sync destination", error)
+        case Success(_) if resetOwner == owner => dom.window.location.reload()
+        case Success(_) => ()
+        case Failure(error) => logger.logExceptionWarn("Reset was not confirmed by every destination", error)
       }
     }
   }
@@ -85,7 +83,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
     createDefaultMenu() ++ createSessionMenu() //++ createDemoMenu()
   )
 
-  private def createDefaultMenu(): List[HtmlAppElement] = List(
+  private def createDefaultMenu(): Seq[HtmlAppElement] = List(
     HtmlDropdownMenu.menuItem("workbookSelection/backToCatalogue", _ => {
       fullInfo.usageControl.changeWorkbook(None)
       closeMenu()
@@ -95,11 +93,11 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
 
   private val uploadInput: ReactiveHtmlElement[HTMLInputElement] = laminarHelper.sessionFileUploadInput(logger, loadedFile => fullInfo.usageControl.tryContinueWithSessionFile(loadedFile))
 
-  private def createSessionMenu(): List[HtmlAppElement] =
+  private def createSessionMenu(): Seq[HtmlAppElement] =
     List(
       HtmlDropdownMenu.menuLabel(userNameOrNobodySignal),
       HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => downloadAll())
-    ) ++ Option.when(curUser.nonEmpty)(HtmlDropdownMenu.menuItem(resetLabel, _ => resetAllData())).toList ++ List(
+    ) ++ Option.when(curUser.nonEmpty)(HtmlDropdownMenu.menuItem(resetLabel, _ => resetAllData())).toSeq ++ List(
       HtmlDropdownMenu.menuItem("basic/buttonLocalUpload", _ => uploadInput.ref.click()),
       HtmlDropdownMenu.menuItem(Val("Session connections"), _ => { closeMenu(); credentialsOpen.set(true) }),
       HtmlDropdownMenu.menuItem("basic/logout", _ => logout())
@@ -107,7 +105,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
 
 
 
-  /*private def createDemoMenu(): List[HtmlAppElement] = {
+  /*private def createDemoMenu(): Seq[HtmlAppElement] = {
     List(
       HtmlDropdownMenu.menuLabel(laminarHelper.plaintextStringSignal("basic/switchUser"))
     ) ++

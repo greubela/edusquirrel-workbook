@@ -51,7 +51,7 @@ class EvacuationExperimentSpec extends FunSuite {
     val run = EvacuationMeasurement("Two exits", floor, settings, 2, 0, EvacuationOutcome.Evacuated)
     val answer = EvacuationExperiment(floor, settings).record(run)
     val interaction = EvacuationSimulationInteraction("experiment", answer)
-    assertEquals(interaction.serializerInteractionContent.deserialize(interaction.serializerInteractionContent.serialize(answer)), answer)
+    assertEquals(interaction.interactionFormat.stateSerializer.deserialize(interaction.interactionFormat.stateSerializer.serialize(answer)), answer)
     val malformed = writeJs(answer)
     malformed("settings")("speedMetresPerSecond") = 0
     assert(scala.util.Try(read[EvacuationExperiment](malformed)).isFailure)

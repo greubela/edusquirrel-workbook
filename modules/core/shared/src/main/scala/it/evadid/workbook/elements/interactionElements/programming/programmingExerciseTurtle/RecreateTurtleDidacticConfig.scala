@@ -17,7 +17,7 @@ object RecreateTurtleDidacticConfig {
 }
 
 case class RecreateTurtleDidacticConfig(
-                                         private val restrictEditorToLanguages: List[ProgrammingLanguage] = List(),
+                                         private val restrictEditorToLanguages: Seq[ProgrammingLanguage] = List(),
                                          availablePalette: ProgrammingEditorPalette,
                                          maxCommandUsage: MaxCommandUsage
                                        ) derives ReadWriter {

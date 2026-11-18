@@ -13,7 +13,7 @@ sealed trait LanguageMap[T <: AppLanguage]() derives ReadWriter {
 
   def availableLanguages: Set[T]
 
-  def getWithLanguagePreference(possibleLanguages: List[T]): String = {
+  def getWithLanguagePreference(possibleLanguages: Seq[T]): String = {
     val preferredLanguage = possibleLanguages.find(availableLanguages.contains)
     getInLanguage(preferredLanguage.getOrElse(availableLanguages.head))
   }
@@ -87,7 +87,7 @@ object LanguageMap {
 
   def mapBasedLanguageMap[T <: AppLanguage](pMap: Map[T, String]): LanguageMap[T] = LanguageMapMapBased(pMap)
 
-  def mkLanguageMap[T <: AppLanguage](start: String, sep: String, end: String, maps: List[LanguageMap[T]])(using classTag: ClassTag[T]): LanguageMap[T] = {
+  def mkLanguageMap[T <: AppLanguage](start: String, sep: String, end: String, maps: Seq[LanguageMap[T]])(using classTag: ClassTag[T]): LanguageMap[T] = {
     val separator = universalMap[T](sep)
     def appendWithSeparator(current: LanguageMap[T], next: LanguageMap[T]): LanguageMap[T] =
       concatLanguageMaps(concatLanguageMaps(current, next), separator)

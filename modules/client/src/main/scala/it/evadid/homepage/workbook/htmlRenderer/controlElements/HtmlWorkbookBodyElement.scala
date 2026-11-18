@@ -23,15 +23,15 @@ case class HtmlWorkbookBodyElement(workbook: AllWorkbookInfo, user: AllUserInfo)
 
   override def getDomElement(): L.Element = domElement
 
-  private def createDomSectionContent(workbookSection: WorkbookSection): List[Element] =
+  private def createDomSectionContent(workbookSection: WorkbookSection): Seq[Element] =
     workbookSection.sectionContent.map(HtmlRenderFactory.render).map(_.getDomElement())
 
-  private def sectionContainer(workbook: Workbook, currentlyActiveSection: Option[WorkbookSection]): List[Element] = currentlyActiveSection.match {
+  private def sectionContainer(workbook: Workbook, currentlyActiveSection: Option[WorkbookSection]): Seq[Element] = currentlyActiveSection.match {
     case Some(s) => createDomSectionContent(s) ++ createDomSectionNavigation(workbook, s)
     case None => List(span(text <-- laminarHelper.plaintextStringSignal("basic/noSectionSelected")))
   }
 
-  private def createDomSectionNavigation(workbook: Workbook, currentSection: WorkbookSection): List[Element] = {
+  private def createDomSectionNavigation(workbook: Workbook, currentSection: WorkbookSection): Seq[Element] = {
     val sectionIndex: Int = workbook.sections.indexOf(currentSection)
     if (sectionIndex < 0) return List()
 

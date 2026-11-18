@@ -8,22 +8,22 @@ import java.time.LocalDateTime
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
-case class ExecutionClientPool(clients: List[ExecutionClient]) extends ExecutionClient {
+case class ExecutionClientPool(clients: Seq[ExecutionClient]) extends ExecutionClient {
   def canExecuteCommand(command: ExecutionCommand): Boolean = clients.exists(_.canExecuteCommand(command))
 
-  override def allUnderlyingClients: List[ExecutionClient] = clients
+  override def allUnderlyingClients: Seq[ExecutionClient] = clients
 
   override private[clients] def handleCommandExecution(logger: Logger, command: ExecutionCommand): Future[ExecutionClientResponse] = {
     val received = LocalDateTime.now()
 
-    def attempt(handlers: List[ExecutionClient], failure: Option[SerializedException], tried: Int): Future[ExecutionClientResponse] = handlers match {
-      case Nil =>
+    def attempt(handlers: Seq[ExecutionClient], failure: Option[SerializedException], tried: Int): Future[ExecutionClientResponse] = handlers match {
+      case Seq() =>
         val message = failure.fold(s"ExecutionClientPool: no handler for command ${command.name} registered!") { error =>
           s"ExecutionClientPool: all handlers for command ${command.name} failed! $tried handlers tried; last handler failed because: ${ParsingContext.reason(error)}"
         }
         logger.logError(message)
         Future.failed(SerializedException(message).copy(cause = failure))
-      case handler :: remaining =>
+      case handler +: remaining =>
         logger.logInfo(s"Tried execution with handler $handler at ${LocalDateTime.now()} (prior failures: ${failure.map(_.msg).getOrElse("none")})")
         // Capture handlers that throw before returning their Future as well as asynchronous failures.
         Future.unit.flatMap(_ => handler.handleCommandExecution(logger, command))

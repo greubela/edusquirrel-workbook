@@ -26,7 +26,7 @@ private[homepage] object GradingSummary {
     def executed: Boolean = group != Group.Pending && group != Group.NotRequested
   }
 
-  def apply(graders: List[WorkbookInteractionGrader[?, ?]], state: GradedState[?, ?]): GradingSummary = {
+  def apply(graders: Seq[WorkbookInteractionGrader[?, ?]], state: GradedState[?, ?]): GradingSummary = {
     val results = state.graderResultMap.values.filter(_.gradedState == state.state).map(result => result.grader.key -> result).toMap
     GradingSummary(graders.distinctBy(_.key).zipWithIndex.map { (grader, index) =>
       Entry(index + 1, grader, results.get(grader.key))
@@ -34,10 +34,10 @@ private[homepage] object GradingSummary {
   }
 }
 
-private[homepage] final case class GradingSummary(entries: List[GradingSummary.Entry]) {
+private[homepage] final case class GradingSummary(entries: Seq[GradingSummary.Entry]) {
   import GradingSummary.Group
-  def in(group: Group): List[GradingSummary.Entry] = entries.filter(_.group == group)
-  def visibleIn(group: Group): List[GradingSummary.Entry] = in(group).filterNot(_.hidden)
+  def in(group: Group): Seq[GradingSummary.Entry] = entries.filter(_.group == group)
+  def visibleIn(group: Group): Seq[GradingSummary.Entry] = in(group).filterNot(_.hidden)
   def correct: Int = in(Group.Correct).size
   def total: Int = entries.size
   def unavailable: Int = entries.count(entry => Set(Group.Pending, Group.Error, Group.NotRequested)(entry.group))

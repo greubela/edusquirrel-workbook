@@ -11,7 +11,7 @@ class MailEditorState(val state: Var[InboxStateScaffolding], val allowCompose: B
   val notice = Var("")
   val hoverUrl = Var("")
   val showFeedback = Var(false)
-  val mails: Signal[List[Mail]] = state.signal.combineWith(folder.signal).map((s, f) => s.inboxState.getMailsInFolder(f))
+  val mails: Signal[Seq[Mail]] = state.signal.combineWith(folder.signal).map((s, f) => s.inboxState.getMailsInFolder(f))
   val selected: Signal[Option[Mail]] = mails.combineWith(selection.signal).map((ms, id) => ms.find(m => id.contains(m.id)))
   def selectedNow: Option[Mail] = state.now().inboxState.getMailsInFolder(folder.now()).find(m => selection.now().contains(m.id))
   def selectFolder(value: String): Unit = if (MailFolder.all.contains(value)) {

@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.interactionElements.todo
 import it.evadid.core.util.io.Serializer
 import upickle.default.{ReadWriter, macroRW}
 
-case class FillInBlanksState(blankValues: List[String]) derives upickle.default.ReadWriter {
+case class FillInBlanksState(blankValues: Seq[String]) derives upickle.default.ReadWriter {
   def sanitized(blankCount: Int): FillInBlanksState = FillInBlanksState(blankValues.take(blankCount).padTo(blankCount, ""))
 
   def blankValue(blankIndex: Int, blankCount: Int): String = sanitized(blankCount).blankValues.lift(blankIndex).getOrElse("")

@@ -1,5 +1,6 @@
 package it.evadid.server
 
+import it.evadid.sql.BackendDatabase
 import it.evadid.sql.{DatabaseConfiguration, DatabaseConfigWithCredentials}
 import munit.FunSuite
 import upickle.default.*
@@ -9,20 +10,32 @@ class ConfigurationCodecSpec extends FunSuite {
     val value: DatabaseConfiguration = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "fixture", "fixture-user", "fixture-password")
     for (decoded <- List(read[DatabaseConfiguration](write(value)), readBinary[DatabaseConfiguration](writeBinary(value)))) {
       assertEquals(decoded, value)
-      assertEquals(decoded.jdbcUrl, "jdbc:mysql://localhost:3306/fixture")
+      decoded match {
+        case connection: it.evadid.sql.DatabaseConnection => assertEquals(connection.jdbcUrl, "jdbc:mysql://localhost:3306/fixture")
+        case _ => fail("Expected a physical database connection")
+      }
     }
   }
 
   test("backend accepts the current browser sync wire format and rejects the removed partial format") {
-    import it.evadid.distribution.commandTypes.SQLCommands.FetchAllFromDbRequest
+    import it.evadid.distribution.commandTypes.SQLCommands.FetchEventsFromDbRequest
     import it.evadid.sql.DatabaseConfig
     val json = ujson.read("""{"usageContext":{"programId":"edusquirrel","scenarioId":"workbookTest","userId":"student"},
-      "databaseConfig":{"$type":"DatabaseConfig","dbFormat":"mysql","host":"herrgreubel.lima-db.de","port":"3306","database":"db_332371_12"},
-      "mayLimitToKey":null,"databaseFormat":"ClassicJsonWithKey"}""")
-    assertEquals(read[FetchAllFromDbRequest](json).databaseConfig, DatabaseConfig.defaultDb)
+      "databaseConfig":"BackendDatabase",
+      "keys":[],"starting":"2026-01-01T00:00","until":"2026-12-31T00:00","databaseFormat":"RelationalFormat","strategy":"SYNC_EVERYTHING"}""")
+    assertEquals(read[FetchEventsFromDbRequest](json).databaseConfig, BackendDatabase)
     val unsupported = ujson.read("""{"databaseOp":"db_332371_12","dbFormatOp":"mysql","hostOp":"herrgreubel.lima-db.de","portOp":"3306"}""")
     json("databaseConfig") = unsupported
-    assert(scala.util.Try(read[FetchAllFromDbRequest](json)).isFailure)
+    assert(scala.util.Try(read[FetchEventsFromDbRequest](json)).isFailure)
+  }
+
+  test("backend database references resolve the receiving server's environment without exposing its address") {
+    import it.evadid.server.database.DatabaseRequestConnection
+    val configured = DatabaseConfigWithCredentials("mysql", "127.0.0.1", "3306", "edusquirrel", "local-user", "private-password")
+    assertEquals(DatabaseRequestConnection.resolve(BackendDatabase, configured), configured)
+    assertEquals(read[DatabaseConfiguration](write[DatabaseConfiguration](BackendDatabase)), BackendDatabase)
+    assertEquals(BackendDatabase.withoutCredentials, BackendDatabase)
+    assert(!write[DatabaseConfiguration](BackendDatabase).contains("private-password"))
   }
 
   test("public targets resolve server credentials; supplied credentials bypass server defaults") {
@@ -55,19 +68,4 @@ class ConfigurationCodecSpec extends FunSuite {
     assertEquals(readBinary[SendMailCommand.MailConfig](writeBinary(value)), value)
   }
 
-  test("database entry sums preserve history JSON and both key variants") {
-    import it.evadid.server.commandHandler.sql.sync.RichDatabaseEntry
-    import it.evadid.workbook.interaction.sync.UsageContext
-    val context = UsageContext("program", "scenario", "fixture")
-    val history = """{"keyForSerialisation":"original-key","value":"学校"}"""
-    val values = List(RichDatabaseEntry.withoutKey(context, List("event", history)),
-      RichDatabaseEntry.withKey(context, List("event", "explicit-key", history)))
-    values.foreach { value =>
-      for (decoded <- List(read[RichDatabaseEntry](write(value)), readBinary[RichDatabaseEntry](writeBinary(value)))) {
-        assertEquals(decoded, value)
-        assertEquals(decoded.syncContext, value.syncContext)
-        assertEquals(decoded.historyJson, history)
-      }
-    }
-  }
 }

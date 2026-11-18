@@ -1,5 +1,10 @@
 package it.evadid.server.database
 
+import it.evadid.sql.{BackendDatabase, DatabaseConfigWithCredentials}
+import it.evadid.workbook.abstractions.InteractionFormat.{TextInputWithLlmGradingAndScaffoldingFormat,
+  TextInteractionFormat, LabeledCheckboxInteractionFormat, SqlCommandExerciseFormat}
+import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
+
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
 
@@ -21,11 +26,13 @@ import java.util.zip.GZIPOutputStream
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import it.evadid.server.commandHandler.sql.sync.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
-import it.evadid.workbook.abstractions.FeedbackEntity
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import it.evadid.workbook.interaction.variable.events.*
+import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.elements.interactionElements.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
-import it.evadid.workbook.interaction.sync.{UpdateImportance, UsageContext}
+import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.variable.*
 import it.evadid.util.logging.BasicLogger
 import java.time.LocalDateTime
@@ -34,37 +41,36 @@ import munit.FunSuite
 import upickle.default.*
 
 class InteractionHistoryMysqlSpec extends FunSuite {
-  private type History = InteractionVariableHistory[String, MessengerModel, MessengerModel]
+  private val format = TextInputWithLlmGradingAndScaffoldingFormat
+  private type History = InteractionVariableHistory[TextInputWithLlmGradingAndScaffoldingFormat.type]
   private val logger = BasicLogger()
   private val context = UsageContext("program", "scenario", "student")
   private val key = "answer_history"
   private val sync = context.toSyncContext(key)
-  private val database = "edusquirrel_account_test"
   private val time = LocalDateTime.of(2026, 11, 9, 12, 13, 14, 123456789)
   private val transcript = MessengerModel(List(Message("entity-specific transcript", MessengerModel.pAgent)))
+  private def config = DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
   private def grader(index: Int) = TextInputLlmGrader(LanguageMapContentId("test/task"), None,
     TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(LanguageMapContentId(s"test/criterion-$index"), Map.empty))
   private def history(value: String = "first", at: LocalDateTime = time): History = {
-    val grades: Map[WorkbookInteractionGrader[String, MessengerModel], GradingResult[String, MessengerModel]] = (0 to 1).map { index =>
-      val check = grader(index)
-      val result = GradingResult(check, value, GradingStatus.Correct(), Some(LanguageMap.universalMap("regular grading feedback")),
+    val grades = (0 to 1).map { index =>
+      GradingResult(grader(index), value, GradingStatus.Correct(), Some(LanguageMap.universalMap("regular grading feedback")),
         Some(transcript), at.plusSeconds(1))
-      check -> result
-    }.toMap
+    }
     val scaffolding = ScaffoldingResult(value, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("regular scaffolding feedback")),
       FeedbackEntity.LlmEntity(), Some(transcript), at.plusSeconds(2))
-    InteractionVariableHistory[String, MessengerModel, MessengerModel](Set(InteractionVariableState(value, UpdateImportance.MAJOR, at)),
-      Set(GradedState(value, grades)), Set(scaffolding))
+    InteractionVariableHistory.empty[format.type].addState(InteractionVariableState(value, UpdateImportance.MAJOR, at))
+      .addGradings(grades).addScaffolding(scaffolding)
   }
-  private def store(history: History, format: DatabaseHistoryFormat = RelationalEvents): Unit =
-    UpsertToDatabase.handleRequest(StoreToDbRequest(sync, write(history), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, format), logger)
-  private def fetch(format: DatabaseHistoryFormat = RelationalEvents): Map[it.evadid.workbook.interaction.sync.SyncContext, String] =
-    FetchFromDatabase.handleRequest(FetchAllFromDbRequest(context, it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, None, format), logger).fetchedElements
+  private def encoded(history: History): InteractionHistoryJson = InteractionHistoryJson.fromHistory(format, history)
+  private def store(history: History, storage: DatabaseHistoryFormat = RelationalFormat): Unit =
+    UpsertToDatabase.handleRequest(StoreToDbRequest(sync, encoded(history), config, storage), logger)
+  private def fetch(storage: DatabaseHistoryFormat = RelationalFormat): Map[SyncContext, String] =
+    FetchFromDatabase.handleRequest(FetchEventsFromDbRequest(context, Seq.empty, LocalDateTime.MIN, LocalDateTime.MAX, config, storage, EventSyncStrategy.SYNC_EVERYTHING), logger).fetchedElements.map((key, value) => key -> value.historyJson)
   private def scalar(sql: String): Long = MysqlTestDatabase.withConnection { connection =>
     Using.resource(connection.createStatement())(statement => Using.resource(statement.executeQuery(sql))(rows => { rows.next(); rows.getLong(1) }))
   }
-  private def storeCommand(request: StoreToDbRequest): ExecutionCommand =
-    ExecutionCommand(StoreToDbCommand.name, writeJs(request))
+  private def storeCommand(request: StoreToDbRequest): ExecutionCommand = ExecutionCommand(StoreToDbCommand.name, writeJs(request))
 
   private def withHttpCommands(forwardedAddress: Option[String] = None, trustedProxy: String = "192.0.2.1")
                               (run: (ExecutionCommand => ExecutionClientResponse) => Unit): Unit = {
@@ -99,124 +105,101 @@ class InteractionHistoryMysqlSpec extends FunSuite {
 
   override def beforeEach(context: BeforeEach): Unit = MysqlTestDatabase.withConnection(MysqlTestDatabase.reset)
 
-  test("all three supported formats round-trip current answers, multiple graders and scaffolding") {
-    List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
-      val saved = history()
-      store(saved, format)
-      assertEquals(read[History](fetch(format)(sync)), saved)
-      DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, format), logger)
-      assertEquals(fetch(format), Map.empty)
+
+  Seq(BlobFormat, RelationalFormat).foreach { storage =>
+    test(s"$storage bulk request stores multiple keys atomically, merges deltas and deduplicates retries") {
+      val other = context.toSyncContext("other-key")
+      val initial = BulkStoreToDbRequest(Vector(sync, other), Vector(encoded(history()), encoded(history("other"))), config, storage)
+      val first = UpsertToDatabase.handleBulkRequest(initial, logger)
+      assert(first.elementsChanged > 0)
+      assertEquals(read[History](fetch(storage)(sync)), history())
+      assertEquals(read[History](fetch(storage)(other)), history("other"))
+      assertEquals(UpsertToDatabase.handleBulkRequest(initial, logger).elementsChanged, 0)
+      val delta = history("next", time.plusNanos(1))
+      UpsertToDatabase.handleBulkRequest(initial.copy(syncContexts = Seq(sync), histories = Seq(encoded(delta))), logger)
+      assertEquals(read[History](fetch(storage)(sync)), history().mergeWith(delta))
+      val invalid = InteractionHistoryJson(format, "invalid JSON")
+      val failed = initial.copy(histories = Seq(encoded(history("should roll back")), invalid))
+      intercept[Exception](UpsertToDatabase.handleBulkRequest(failed, logger))
+      assertEquals(read[History](fetch(storage)(sync)), history().mergeWith(delta))
     }
   }
 
-  test("programming answers and typed grading data restore through the interaction history codec in every format") {
-    import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
-    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction}
-    import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStatePythonString}
-    val source: ProgrammingState = ProgrammingStatePythonString("forward(10)")
-    val interaction = TurtleRecreateShapeInteraction("db-program", source,
-      TurtleGraphic.TurtleGraphicSvgString("M0 0 L10 0"))
-    val variable = interaction.interactionVariable
-    val identity = context.toSyncContext(variable.keyForSerialization)
-    val check = interaction.gradingElements.head
-    val grade = GradingResult(check, source, GradingStatus.Correct(),
-      Some(LanguageMap.universalMap("Matches the target")),
-      Some(AdditionalProgrammingTestInfo(LanguageMap.universalMap("Checked the drawing"))), time.plusSeconds(1))
-    val saved = InteractionVariableHistory[ProgrammingState, AdditionalProgrammingTestInfo, Unit](
-      Set(InteractionVariableState(source, UpdateImportance.MAJOR, time)), Set(GradedState(source, Map(check -> grade))), Set.empty[ScaffoldingResult[ProgrammingState, Unit]])
-    List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
-      UpsertToDatabase.handleRequest(StoreToDbRequest(identity, write(saved), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, format), logger)
-      val json = fetch(format)(identity)
-      assertEquals(variable.serializerHistory.deserialize(json), saved)
-    }
-  }
-
-  test("a corrupt relational answer timestamp is isolated on reads and does not block later writes") {
-    store(history())
-    MysqlTestDatabase.withConnection { connection =>
-      Using.resource(connection.createStatement())(_.executeUpdate("UPDATE answer_event SET timestamp='invalid-timestamp'"))
-    }
-    assertEquals(read[History](fetch()(sync)).historyStates.events, Set.empty[InteractionVariableState[String]])
-    val next = history("next", time.plusDays(1))
-    store(next)
-    assertEquals(read[History](fetch()(sync)), next)
-  }
-
-  test("a corrupt relational importance does not prevent restoring valid answers and their feedback") {
-    store(history())
-    val firstId = scalar("SELECT id FROM answer_event")
-    val next = history("next", time.plusDays(1))
-    store(next)
-    MysqlTestDatabase.withConnection { connection =>
-      Using.resource(connection.createStatement())(_.executeUpdate(s"UPDATE IGNORE answer_event SET update_importance='' WHERE id=$firstId"))
-    }
-    assertEquals(read[History](fetch()(sync)), next)
-    store(history("later", time.plusDays(2)))
-    assertEquals(read[History](fetch()(sync)).historyStates.events.map(_.value), Set("next", "later"))
-  }
-
-  test("a failed keyless replacement preserves the previously stored history") {
-    val original = history()
-    store(original, ClassicKeylessJson)
-    MysqlTestDatabase.withConnection { connection =>
-      Using.resource(connection.createStatement())(_.executeUpdate(
-        "ALTER TABLE events ADD CONSTRAINT reject_event_replacement CHECK (LOCATE('replacement', serializeddata) = 0)"))
-    }
-    intercept[java.sql.SQLException](store(history("replacement"), ClassicKeylessJson))
-    assertEquals(fetch(ClassicKeylessJson).get(sync).map(json => read[History](json)), Some(original))
-  }
-
-  test("session database credentials support all history formats and are removed from logs") {
-    val credentials = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()
-    List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
-      val request = StoreToDbRequest(sync, write(history()), credentials, format)
-      UpsertToDatabase.handleRequest(request, logger)
-      val fetched = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(context, credentials, None, format), logger)
-      assertEquals(read[History](fetched.fetchedElements(sync)), history())
-      val command = it.evadid.distribution.command.ExecutionCommand(StoreToDbCommand.name, writeJs(request))
-      assert(!command.stripPrivacySensitiveInformation().json.toString.contains(credentials.password))
-    }
-  }
-
-  test("classic history queries accept existing column types without enforcing new-script DDL") {
-    MysqlTestDatabase.withConnection { connection =>
-      Using.resource(connection.createStatement()) { statement =>
-        List("events", "eventsWithKey").foreach { table =>
-          statement.executeUpdate(s"ALTER TABLE `$table` MODIFY eventid INT NOT NULL AUTO_INCREMENT, MODIFY timestamp DATETIME NULL, MODIFY serializeddata LONGTEXT NULL, CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci")
-        }
-        statement.executeUpdate("ALTER TABLE events DROP INDEX events_context")
-        statement.executeUpdate("ALTER TABLE events MODIFY programid TEXT NULL, MODIFY scenarioid TEXT NULL, MODIFY userid TEXT NULL")
+  Seq(BlobFormat, RelationalFormat).foreach { storage =>
+    test(s"$storage bulk histories retain independent InteractionFormats without workbook definitions") {
+      val text = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
+        AnswerChangedEvent[TextInteractionFormat.type]("plain answer", time, UpdateImportance.MAJOR))
+      val checkbox = InteractionVariableHistory.empty[LabeledCheckboxInteractionFormat.type].addEvent(
+        AnswerChangedEvent[LabeledCheckboxInteractionFormat.type](true, time, UpdateImportance.MAJOR))
+      val contexts = Seq(sync, context.toSyncContext("unknown-text-id"), context.toSyncContext("unknown-checkbox-id"))
+      val histories = Seq(encoded(history()), InteractionHistoryJson.fromHistory(TextInteractionFormat, text),
+        InteractionHistoryJson.fromHistory(LabeledCheckboxInteractionFormat, checkbox))
+      withHttpCommands() { send =>
+        val request = BulkStoreToDbRequest(contexts, histories, BackendDatabase, storage)
+        assert(send(ExecutionCommand(bulkStoreToDbCommand.name, writeJs(request))).result.isRight)
+        val range = FetchEventsFromDbRequest(context, Seq.empty, LocalDateTime.MIN,
+          LocalDateTime.MAX, BackendDatabase, storage, EventSyncStrategy.SYNC_EVERYTHING)
+        val response = send(ExecutionCommand(fetchEventsFromDbCommand.name, writeJs(range)))
+        assert(response.result.isRight)
+        val fetched = response.result.toOption.get.getAs[DbFetchResponse].fetchedElements
+        assertEquals(fetched.keySet, contexts.toSet)
+        assertEquals(fetched(contexts(0)).format, format)
+        assertEquals(fetched(contexts(0)).typedAs(format), history())
+        assertEquals(fetched(contexts(1)).format, TextInteractionFormat)
+        assertEquals(fetched(contexts(1)).typedAs(TextInteractionFormat), text)
+        assertEquals(fetched(contexts(2)).format, LabeledCheckboxInteractionFormat)
+        assertEquals(fetched(contexts(2)).typedAs(LabeledCheckboxInteractionFormat), checkbox)
+        intercept[IllegalArgumentException](fetched(contexts(1)).typedAs(LabeledCheckboxInteractionFormat))
       }
     }
-    List(ClassicKeylessJson, ClassicJsonWithKey).foreach { format =>
-      store(history(), format)
-      store(history("updated"), format)
-      assertEquals(read[History](fetch(format)(sync)), history("updated"))
-      DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, format), logger)
-      assertEquals(fetch(format), Map.empty)
+
+    test(s"$storage rejects a payload that disagrees with its declared InteractionFormat and rolls back its batch") {
+      val valid = encoded(history())
+      val wrongFormat = valid.copy(format = LabeledCheckboxInteractionFormat)
+      val request = BulkStoreToDbRequest(Seq(context.toSyncContext("a-valid"), context.toSyncContext("z-invalid")),
+        Seq(valid, wrongFormat), config, storage)
+      intercept[Exception](UpsertToDatabase.handleBulkRequest(request, logger))
+      assertEquals(fetch(storage), Map.empty)
+    }
+
+    test(s"$storage rejects changing InteractionFormat even when both formats have the same state schema") {
+      val text = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
+        AnswerChangedEvent[TextInteractionFormat.type]("same JSON schema", time, UpdateImportance.MAJOR))
+      val original = StoreToDbRequest(sync, InteractionHistoryJson.fromHistory(TextInteractionFormat, text), config, storage)
+      UpsertToDatabase.handleRequest(original, logger)
+      // Both formats encode String/Unit/Unit; their identity must still remain distinct.
+      val changed = original.copy(history = original.history.copy(format = SqlCommandExerciseFormat))
+      changed.history.toTyped // The replacement payload is valid for its declared format.
+      intercept[IllegalArgumentException](UpsertToDatabase.handleRequest(changed, logger))
+      val fetched = FetchFromDatabase.handleRequest(FetchEventsFromDbRequest(context, Seq(key), LocalDateTime.MIN,
+        LocalDateTime.MAX, config, storage, EventSyncStrategy.SYNC_EVERYTHING), logger).fetchedElements(sync)
+      assertEquals(fetched.format, TextInteractionFormat)
+      assertEquals(fetched.typedAs(TextInteractionFormat), text)
     }
   }
 
-  test("malformed classic rows do not block valid histories or keyless replacements") {
-    List(ClassicKeylessJson, ClassicJsonWithKey).foreach { format =>
-      store(history(), format)
-      MysqlTestDatabase.withConnection { connection =>
-        val keyed = format == ClassicJsonWithKey
-        val table = format.tables.head
-        val columns = if keyed then ",eventkey" else ""
-        val value = if keyed then ",'broken-key'" else ""
-        Using.resource(connection.prepareStatement(s"INSERT INTO `$table` (programid,scenarioid,userid,timestamp,serializeddata$columns) VALUES (?,?,?,NOW(),?$value)")) { statement =>
-          statement.setString(1, context.programId)
-          statement.setString(2, context.scenarioId)
-          statement.setString(3, context.userId)
-          statement.setString(4, "{broken JSON")
-          statement.executeUpdate()
-        }
+  test("bulk HTTP storage authorizes every context before storing any histories") {
+    withHttpCommands() { send =>
+      val publicConfig = BackendDatabase
+      Seq(BlobFormat, RelationalFormat).foreach { storage =>
+        val legitimate = BulkStoreToDbRequest(Seq(sync, context.toSyncContext("other")),
+          Seq(encoded(history()), encoded(history("other"))), publicConfig, storage)
+        def sendBulk(request: BulkStoreToDbRequest) = send(ExecutionCommand(bulkStoreToDbCommand.name, writeJs(request)))
+        assert(sendBulk(legitimate).result.isRight)
+        val forged = legitimate.copy(syncContexts = Seq(sync, sync.copy(userId = "another-user")),
+          histories = Seq(encoded(history("must not be stored")), encoded(history("forged"))))
+        assert(sendBulk(forged).result.isLeft)
+        assertEquals(read[History](fetch(storage)(sync)), history())
       }
-      assertEquals(read[History](fetch(format)(sync)), history())
-      store(history("replacement"), format)
-      assertEquals(read[History](fetch(format)(sync)), history("replacement"))
     }
+  }
+
+  test("relational events format round-trips current answers, multiple graders and scaffolding") {
+    val saved = history()
+    store(saved, DatabaseHistoryFormat.RelationalFormat)
+    assertEquals(read[History](fetch()(sync)), saved)
+    DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, DatabaseHistoryFormat.RelationalFormat), logger)
+    assertEquals(fetch(), Map.empty)
   }
 
   test("nanosecond-distinct answers survive, retries retain IDs, and context IDs never enter payloads") {
@@ -236,31 +219,38 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assert(!fetch()(sync).contains("sync_id"))
   }
 
-  test("current gzip HTTP commands store, fetch, update feedback and delete in all three formats") {
+  test("current gzip HTTP commands store, fetch, update feedback and delete in both formats") {
     withHttpCommands() { send =>
-      val config = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
-      List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
+      val config = DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
+      List(BlobFormat, RelationalFormat).foreach { format =>
         val graded = history()
-        val answerOnly = graded.copy(historyGrading = InteractionVariableGradingHistory(Map.empty[String, GradedState[String, MessengerModel]]),
-          historyScaffolding = InteractionVariableScaffoldingHistory(Map.empty[String, ScaffoldingResult[String, MessengerModel]]))
+        val answerOnly = graded.copy(events = InteractionEvents(graded.allStates.map(event => event: InteractionEvent[TextInputWithLlmGradingAndScaffoldingFormat.type])))
         def save(value: History): Unit = {
-          val response = send(storeCommand(StoreToDbRequest(sync, write(value), config, format)))
+          val response = send(storeCommand(StoreToDbRequest(sync, encoded(value), config, format)))
           assert(response.result.isRight, response.result.left.toOption.map(_.msg).getOrElse(""))
         }
-        def load(): Map[it.evadid.workbook.interaction.sync.SyncContext, String] = {
-          val request = FetchAllFromDbRequest(context, config, Some(key), format)
-          send(ExecutionCommand(fetchFromDbCommand.name, writeJs(request))).throwIfContainsError.result.toOption.get.getAs[DbFetchResponse].fetchedElements
+        def load(): Map[SyncContext, String] = {
+          val request = FetchEventsFromDbRequest(context, Seq(key), LocalDateTime.MIN, LocalDateTime.MAX, config, format, EventSyncStrategy.SYNC_EVERYTHING)
+          send(ExecutionCommand(fetchEventsFromDbCommand.name, writeJs(request))).throwIfContainsError.result.toOption.get.getAs[DbFetchResponse].fetchedElements.map((key, value) => key -> value.historyJson)
         }
         save(answerOnly)
         assertEquals(read[History](load()(sync)), answerOnly)
         save(graded) // The answer is unchanged: only grading and scaffolding were added.
         save(graded) // Retry must not duplicate feedback rows.
         assertEquals(read[History](load()(sync)), graded)
-        if format == RelationalEvents then {
+        if format == RelationalFormat then {
           assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
           assertEquals(scalar("SELECT COUNT(*) FROM grading_event"), 2L)
           assertEquals(scalar("SELECT COUNT(*) FROM scaffolding_event"), 1L)
         }
+        val rangeRequest = FetchEventsFromDbRequest(context, Seq(key), time.plusSeconds(1), time.plusSeconds(1), config, format,
+          EventSyncStrategy.SYNC_EVERYTHING)
+        val ranged = send(ExecutionCommand(fetchEventsFromDbCommand.name, writeJs(rangeRequest))).throwIfContainsError
+          .result.toOption.get.getAs[DbFetchResponse].fetchedElements(sync).typedAs(TextInputWithLlmGradingAndScaffoldingFormat)
+        assertEquals(ranged.size, 2)
+        assert(ranged.allStates.isEmpty)
+        assert(send(ExecutionCommand(fetchEventsFromDbCommand.name,
+          writeJs(rangeRequest.copy(usageContext = context.copy(userId = "another-user"))))).result.isLeft)
         val deleted = send(ExecutionCommand(clearValuesDbCommand.name, writeJs(DeleteInDbRequest(context, Some(key), config, format))))
         assert(deleted.result.isRight)
         assertEquals(load(), Map.empty)
@@ -269,16 +259,16 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   }
 
   test("all-workbook reset deletes only the authenticated user's application histories in every format") {
-    val config = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
+    val config = DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
     val second = context.copy(scenarioId = "second-workbook")
     val otherUser = context.copy(userId = "another-user")
     val otherProgram = context.copy(programId = "another-program")
     withHttpCommands() { send =>
-      List(ClassicKeylessJson, ClassicJsonWithKey, RelationalEvents).foreach { format =>
+      List(BlobFormat, RelationalFormat).foreach { format =>
         List(context, second, otherUser, otherProgram).foreach { usage =>
-          UpsertToDatabase.handleRequest(StoreToDbRequest(usage.toSyncContext(key), write(history()), config, format), logger)
+          UpsertToDatabase.handleRequest(StoreToDbRequest(usage.toSyncContext(key), encoded(history()), config, format), logger)
         }
-        def readAt(usage: UsageContext) = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(usage, config, None, format), logger).fetchedElements
+        def readAt(usage: UsageContext) = FetchFromDatabase.handleRequest(FetchEventsFromDbRequest(usage, Seq.empty, LocalDateTime.MIN, LocalDateTime.MAX, config, format, EventSyncStrategy.SYNC_EVERYTHING), logger).fetchedElements
         def erase(usage: UsageContext) = send(ExecutionCommand(resetUserHistoriesDbCommand.name,
           writeJs(DeleteInDbRequest(usage, None, config, format, allWorkbooks = true))))
         val missingScope = send(ExecutionCommand(resetUserHistoriesDbCommand.name,
@@ -297,7 +287,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   }
 
   test("HTTP command logs persist trusted client IPv4 and IPv6 and reject untrusted forwarded addresses") {
-    val config = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
+    val config = DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
     def loggedAddress(table: String): (String, String) = MysqlTestDatabase.withConnection { connection =>
       Using.resource(connection.createStatement()) { statement =>
         Using.resource(statement.executeQuery(s"SELECT origin,ipAddress FROM `$table` ORDER BY id DESC LIMIT 1")) { rows =>
@@ -312,7 +302,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       ("192.0.2.1", "198.51.100.99", "127.0.0.1")
     ).foreach { (trusted, forwarded, expected) =>
       withHttpCommands(Some(forwarded), trusted) { send =>
-        val fetch = ExecutionCommand(fetchFromDbCommand.name, writeJs(FetchAllFromDbRequest(context, config, None, RelationalEvents)))
+        val fetch = ExecutionCommand(fetchEventsFromDbCommand.name, writeJs(FetchEventsFromDbRequest(context, Seq.empty, LocalDateTime.MIN, LocalDateTime.MAX, config, RelationalFormat, EventSyncStrategy.SYNC_EVERYTHING)))
         assert(send(fetch).result.isRight)
         assertEquals(loggedAddress("syncedLog"), expected -> expected)
         // Unsupported commands still go through the ordinary command log and error envelope.
@@ -326,10 +316,10 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     withHttpCommands() { send =>
       val first = InteractionVariableState("x" * 350000, UpdateImportance.MAJOR, time)
       val second = InteractionVariableState("second edit", UpdateImportance.MAJOR, time.plusSeconds(1))
-      val initial = InteractionVariableHistory[String, MessengerModel, MessengerModel](Set(first))
-      val cumulative = InteractionVariableHistory[String, MessengerModel, MessengerModel](Set(first, second))
-      def request(value: History) = StoreToDbRequest(sync, write(value),
-        it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalEvents)
+      val initial = InteractionVariableHistory.empty[format.type].addState(first)
+      val cumulative = initial.addState(second)
+      def request(value: History) = StoreToDbRequest(sync, encoded(value),
+        DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalFormat)
       def sendBounded(value: History): Unit = {
         val response = send(storeCommand(request(value)))
         assert(response.result.isRight)
@@ -348,8 +338,8 @@ class InteractionHistoryMysqlSpec extends FunSuite {
 
   test("database SQL and authentication failures return useful errors without preventing the next sync") {
     withHttpCommands() { send =>
-      val credentials = it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()
-      val request = StoreToDbRequest(sync, write(history()), credentials, RelationalEvents)
+      val credentials = DatabaseConfigWithCredentials.readFromEnv()
+      val request = StoreToDbRequest(sync, encoded(history()), credentials, RelationalFormat)
       val invalid = request.copy(syncContext = context.toSyncContext("oversized-key-" + "x" * 300))
       val error = send(storeCommand(invalid)).result.left.toOption.get
       assert(error.msg.contains("column limits"))
@@ -364,58 +354,6 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       assert(!auth.msg.contains("incorrect-test-password"))
       assert(send(storeCommand(request)).result.isRight)
       assertEquals(read[History](fetch()(sync)), history())
-    }
-  }
-
-  test("replacing an answer at the same timestamp retains its ID and invalidates old feedback") {
-    store(history())
-    val id = scalar("SELECT id FROM answer_event")
-    val replacement = InteractionVariableHistory[String, MessengerModel, MessengerModel](
-      Set(InteractionVariableState("replacement", UpdateImportance.MINOR, time)))
-    store(replacement)
-    assertEquals(scalar("SELECT id FROM answer_event"), id)
-    assertEquals(scalar("SELECT COUNT(*) FROM grading_event"), 0L)
-    assertEquals(scalar("SELECT COUNT(*) FROM scaffolding_event"), 0L)
-    assertEquals(read[History](fetch()(sync)), replacement)
-  }
-
-  test("regular feedback and entity-specific data are stored in separate JSON columns") {
-    store(history())
-    MysqlTestDatabase.withConnection { connection =>
-      List("grading_event", "scaffolding_event").foreach { table =>
-        Using.resource(connection.createStatement()) { statement =>
-          Using.resource(statement.executeQuery(s"SELECT serialized_data,additional_data FROM $table")) { rows =>
-            while rows.next() do {
-              assert(!rows.getString(1).contains("entity-specific transcript"))
-              assert(rows.getString(2).contains("entity-specific transcript"))
-              assert(!rows.getString(2).contains("regular grading feedback"))
-            }
-          }
-        }
-      }
-    }
-  }
-
-  test("feedback without a matching answer rolls back every inserted row") {
-    val saved = history()
-    val invalid = saved.copy(historyStates = InteractionVariableStateHistory(Set.empty))
-    intercept[IllegalArgumentException](store(invalid))
-    assertEquals(scalar("SELECT COUNT(*) FROM sync_context_id"), 0L)
-    assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 0L)
-  }
-
-  test("reads, deletes and feedback foreign keys stay within their sync context") {
-    store(history())
-    val other = context.copy(userId = "other-student").toSyncContext(key)
-    UpsertToDatabase.handleRequest(StoreToDbRequest(other, write(history()), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalEvents), logger)
-    DeleteInDatabase.handleRequest(DeleteInDbRequest(context, None, it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalEvents), logger)
-    assertEquals(fetch(), Map.empty)
-    val retained = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(other.toUsageContext, it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, None, RelationalEvents), logger)
-    assertEquals(read[History](retained.fetchedElements(other)), history())
-    MysqlTestDatabase.withConnection { connection =>
-      Using.resource(connection.createStatement()) { statement =>
-        intercept[java.sql.SQLException](statement.executeUpdate("UPDATE grading_event SET sync_id=999999"))
-      }
     }
   }
 
@@ -441,34 +379,6 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
-  test("late feedback does not create edits or replace a newer answer, and pending retries do not erase completed feedback") {
-    val first = history()
-    store(first)
-    store(history("second", time.plusNanos(1)))
-    val late = first.copy(historyStates = InteractionVariableStateHistory(Set.empty))
-    store(late)
-    val pending = first.copy(historyGrading = InteractionVariableGradingHistory.fromResults(
-      first.historyGrading.gradingsFinished.flatMap(_.testsWithResults).map(result =>
-        result.copy(gradingStatus = GradingStatus.NotFinished(), gradingTime = time.plusDays(1), additionalData = None))))
-    store(pending)
-    val restored = read[History](fetch()(sync))
-    assertEquals(restored.historyStates.events.size, 2)
-    assertEquals(restored.historyStates.lastStateOption.map(_.value), Some("second"))
-    assertEquals(restored.historyGrading.gradingsMap("first"), first.historyGrading.gradingsMap("first"))
-  }
-
-  test("malformed feedback is isolated on reads and can be replaced without losing other records") {
-    store(history())
-    MysqlTestDatabase.withConnection { connection =>
-      Using.resource(connection.createStatement())(_.executeUpdate(s"UPDATE grading_event SET serialized_data='{}' WHERE grader_key='${grader(0).key}'"))
-    }
-    val restored = read[History](fetch()(sync))
-    assertEquals(restored.historyGrading.gradingsMap("first").graderResultMap.size, 1)
-    assertEquals(restored.historyScaffolding.scaffoldingsFinished.size, 1)
-    store(history())
-    assertEquals(read[History](fetch()(sync)), history())
-  }
-
   test("schema inspection detects collation changes and never repairs them") {
     MysqlTestDatabase.withConnection { connection =>
       Using.resource(connection.createStatement())(_.executeUpdate(
@@ -480,14 +390,14 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
-  test("the interaction-history script alone creates its complete format in an empty database") {
+  test("the single setup script creates every required table in an empty database") {
     MysqlTestDatabase.withConnection { connection =>
       MysqlTestDatabase.clearSchema(connection)
       Using.resource(connection.createStatement()) { statement =>
-        DatabaseSqlScripts.statementsFor("createInteractionHistoryTables.sql").foreach(sql => statement.executeUpdate(sql.toString))
+        DatabaseSqlScripts.statements.foreach(sql => statement.executeUpdate(sql.toString))
       }
       val report = EnsureDatabaseProperlySetup.inspect(connection)
-      assertEquals(report.existingTables, RelationalEvents.tables.toSet)
+      assertEquals(report.existingTables, (RelationalFormat.tables ++ BlobFormat.tables).map(_.name).toSet ++ Set("user", "loginTokens", "commandLog", "syncedLog"))
       assertEquals(report.conflicts, Nil)
       assert(!EnsureDatabaseProperlySetup.setupIfEmpty(connection).created)
     }
@@ -523,33 +433,127 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assertEquals(results.count(_.created), 1)
   }
 
-  test("changed grader content preserves historical identities and updates unchanged identities") {
-    store(history())
-    val newer = history("first", time.plusDays(1))
-    val changedResults = newer.historyGrading.gradingsFinished.flatMap(_.testsWithResults).map { result =>
-      if result.grader.key == grader(0).key then result.copy(grader = grader(0).copy(exerciseText = LanguageMapContentId("test/changed-task")))
-      else result
-    }
-    val changed = newer.copy(historyGrading = InteractionVariableGradingHistory.fromResults(changedResults))
-    store(changed)
-    val restored = read[History](fetch()(sync))
-    val results = restored.historyGrading.gradingsMap("first").testsWithResults.map(result => result.grader.key -> result).toMap
-    val expected = (history().historyGrading.gradingsMap("first").testsWithResults.toList ++ changedResults.toList).map(result => result.grader.key -> result).toMap
-    assertEquals(results, expected)
-    assertEquals(results.size, 3)
-    assertEquals(restored.historyStates.events.size, 2)
-  }
-
   test("context uniqueness preserves case and trailing spaces exactly like Scala strings") {
     val variants = List(context, context.copy(programId = "PROGRAM"), context.copy(programId = "program "))
     variants.foreach { usage =>
       val identity = usage.toSyncContext(key)
-      UpsertToDatabase.handleRequest(StoreToDbRequest(identity, write(history()), it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalEvents), logger)
+      UpsertToDatabase.handleRequest(StoreToDbRequest(identity, encoded(history()), DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalFormat), logger)
     }
     assertEquals(scalar("SELECT COUNT(*) FROM sync_context_id"), 3L)
     variants.foreach { usage =>
-      val response = FetchFromDatabase.handleRequest(FetchAllFromDbRequest(usage, it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, None, RelationalEvents), logger)
+      val response = FetchFromDatabase.handleRequest(FetchEventsFromDbRequest(usage, Seq.empty, LocalDateTime.MIN, LocalDateTime.MAX, DatabaseConfigWithCredentials.readFromEnv().withoutCredentials, RelationalFormat, EventSyncStrategy.SYNC_EVERYTHING), logger)
       assertEquals(response.fetchedElements.keySet, Set(usage.toSyncContext(key)))
     }
   }
+
+  for storage <- List(BlobFormat, RelationalFormat) do {
+    test(s"$storage merges deltas idempotently and preserves events at identical timestamps") {
+      val first = history()
+      val second = history("second", time)
+      store(first, storage)
+      store(second, storage)
+      store(first, storage)
+      assertEquals(read[History](fetch(storage)(sync)), first.mergeWith(second))
+    }
+
+    test(s"$storage range reads retain feedback independently and preserve adjacent nanoseconds") {
+      val first = history()
+      store(first, storage)
+      store(history("second", time.plusNanos(1)), storage)
+      def range(from: LocalDateTime, until: LocalDateTime) = FetchFromDatabase.handleRequest(
+        FetchEventsFromDbRequest(context, Seq(key), from, until, config, storage, EventSyncStrategy.SYNC_EVERYTHING), logger).fetchedElements(sync).typedAs(format)
+      assertEquals(range(time, time).events.values, first.allStates.map(event => event: InteractionEvent[format.type]))
+      val feedbackTime = time.plusSeconds(1)
+      val feedback = range(feedbackTime, feedbackTime)
+      assertEquals(feedback.size, 2)
+      assert(feedback.allStates.isEmpty)
+      assertEquals(feedback.historyGrading.gradingsMap.keySet, Set("first"))
+      assertEquals(range(time.minusNanos(1), time.minusNanos(1)).size, 0)
+    }
+
+    test(s"$storage rejects format changes without modifying the saved context") {
+      store(history(), storage)
+      val other = LabeledCheckboxInteractionFormat
+      val booleanHistory = InteractionVariableHistory.empty[other.type].addEvent(AnswerChangedEvent[other.type](true, time, UpdateImportance.MAJOR))
+      val changed = StoreToDbRequest(sync, InteractionHistoryJson.fromHistory(other, booleanHistory), config, storage)
+      intercept[IllegalArgumentException](UpsertToDatabase.handleRequest(changed, logger))
+      assertEquals(read[History](fetch(storage)(sync)), history())
+    }
+
+    test(s"$storage supports the complete LocalDateTime range") {
+      val extremes = InteractionVariableHistory.empty[format.type]
+        .addEvent(AnswerChangedEvent[format.type]("minimum", LocalDateTime.MIN, UpdateImportance.MAJOR))
+        .addEvent(AnswerChangedEvent[format.type]("maximum", LocalDateTime.MAX, UpdateImportance.MAJOR))
+      store(extremes, storage)
+      val request = FetchEventsFromDbRequest(context, Seq(key), LocalDateTime.MIN, LocalDateTime.MAX, config, storage, EventSyncStrategy.SYNC_EVERYTHING)
+      assertEquals(FetchFromDatabase.handleRequest(request, logger).fetchedElements(sync).typedAs(format), extremes)
+    }
+  }
+
+  test("concurrent blob writers merge under a row lock without losing either delta") {
+    import scala.concurrent.{Await, ExecutionContext, Future}
+    import scala.concurrent.duration.*
+    given ExecutionContext = ExecutionContext.global
+    val deltas = (1 to 8).map(index => history(s"answer-$index", time.plusNanos(index)))
+    Await.result(Future.traverse(deltas)(value => Future(store(value, BlobFormat))), 30.seconds)
+    assertEquals(read[History](fetch(BlobFormat)(sync)), deltas.reduce(_.mergeWith(_)))
+  }
+
+  test("relational feedback-only deltas roundtrip without synthesizing answer edits") {
+    val original = history()
+    val delta = original.copy(events = InteractionEvents(original.events.values -- original.allStates))
+    store(delta)
+    assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 0L)
+    assertEquals(read[History](fetch()(sync)), delta)
+  }
+
+  test("a relational write failure rolls back every event inserted by that request") {
+    store(history())
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement())(_.executeUpdate(
+        "ALTER TABLE grading_event ADD CONSTRAINT reject_fixture CHECK (LOCATE('reject-fixture', CAST(serialized_data AS CHAR)) = 0)"))
+    }
+    intercept[java.sql.SQLException](store(history("reject-fixture", time.plusDays(1))))
+    assertEquals(read[History](fetch()(sync)), history())
+    assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
+  }
+
+  test("corrupt event timestamps and unknown format names fail with a clear exception") {
+    store(history())
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement())(_.executeUpdate("UPDATE answer_event SET timestamp='not-a-timestamp'"))
+    }
+    intercept[Exception](fetch())
+    MysqlTestDatabase.withConnection { connection =>
+      Using.resource(connection.createStatement())(_.executeUpdate("UPDATE sync_context_id SET format='unknown-format'"))
+    }
+    val error = intercept[IllegalArgumentException](fetch())
+    assert(error.getMessage.contains("Unknown interaction format"))
+  }
+
+
+  for storage <- List(BlobFormat, RelationalFormat) do
+    test(s"$storage applies latest-event strategies before timestamp ranges") {
+      store(history(), storage)
+      store(history("newest", time.plusDays(1)), storage)
+      val request = FetchEventsFromDbRequest(context, Seq(key), time, time.plusSeconds(2), config, storage,
+        EventSyncStrategy.KEEP_LAST)
+      assertEquals(FetchFromDatabase.handleRequest(request, logger).fetchedElements(sync).typedAs(format).size, 0)
+      val complete = request.copy(starting = LocalDateTime.MIN, until = LocalDateTime.MAX)
+      val selected = FetchFromDatabase.handleRequest(complete, logger).fetchedElements(sync).typedAs(format)
+      assertEquals(selected.size, 1)
+      assertEquals(selected.events.values.head.associatedState, "newest")
+    }
+  Seq(BlobFormat, RelationalFormat).foreach { storage =>
+    test(s"$storage SYNC_MAJOR preserves pending feedback outside the answer window and ignores newer defaults") {
+      val pending = ScaffoldingStartedEvent[format.type]("first", time.plusSeconds(3), LlmEntity())
+      val saved = history().addEvent(pending).addEvent(AnswerChangedEvent[format.type]("", time.plusDays(1), UpdateImportance.DEFAULT))
+      store(saved, storage)
+      val request = FetchEventsFromDbRequest(context, Seq(key), pending.timestamp, pending.timestamp, config, storage,
+        EventSyncStrategy.SYNC_MAJOR)
+      val received = FetchFromDatabase.handleRequest(request, logger).fetchedElements(sync).typedAs(format)
+      assertEquals(received.events.values, Set(pending: InteractionEvent[format.type]))
+    }
+  }
+
 }

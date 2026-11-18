@@ -3,7 +3,7 @@ package it.evadid.sql
 import upickle.default.*
 
 case class DatabaseTable(name: String, inDatabase: Option[DatabaseConfiguration] = None,
-                         hasColumns: Seq[DatabaseTableColumn] = Seq.empty) derives ReadWriter {
+                         columns: Seq[DatabaseColumn] = Seq.empty) derives ReadWriter {
   require(name.matches("[A-Za-z_][A-Za-z0-9_]{0,63}"), "Invalid database table identifier")
 }
 

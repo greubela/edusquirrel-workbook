@@ -23,5 +23,5 @@ object WorkbookElementReference {
 }
 
 case class WorkbookElementReference(referencedId: String, referencedType: Option[String]) {
-  def resolveWith(elements: List[WorkbookElement]): Option[WorkbookElement] = elements.find(_.elementId == referencedId)
+  def resolveWith(elements: Seq[WorkbookElement]): Option[WorkbookElement] = elements.find(_.elementId == referencedId)
 }

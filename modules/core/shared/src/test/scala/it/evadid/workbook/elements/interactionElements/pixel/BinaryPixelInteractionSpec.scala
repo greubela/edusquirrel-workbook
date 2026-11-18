@@ -85,8 +85,8 @@ class BinaryPixelInteractionSpec extends FunSuite {
       intercept[IllegalArgumentException](e.isCorrect(wrong))
       intercept[IllegalArgumentException](e.matchingPixels(wrong))
       intercept[IllegalArgumentException](e.outputs(wrong))
-      intercept[SerializedException](e.serializerInteractionContent.serialize(wrong))
-      intercept[SerializedException](e.serializerInteractionContent.deserialize(write(wrong)))
+      intercept[IllegalArgumentException](e.validateState(wrong))
+      intercept[IllegalArgumentException](e.validateState(e.interactionFormat.stateSerializer.deserialize(write(wrong))))
     }
   }
   test("both definition formats preserve targets, probes and source presets") {
@@ -95,7 +95,7 @@ class BinaryPixelInteractionSpec extends FunSuite {
   }
   test("saved binary images round-trip independently from target and preset content") {
     val edited = exercise.toggle(seven, PixelPosition(1, 0))
-    assertEquals(exercise.serializerInteractionContent.deserialize(exercise.serializerInteractionContent.serialize(edited)), edited)
+    assertEquals(exercise.interactionFormat.stateSerializer.deserialize(exercise.interactionFormat.stateSerializer.serialize(edited)), edited)
     assertEquals(exercise.defaultValue, BinaryPixelImage.blank(5, 3))
     assertEquals(exercise.expected, Some(seven))
     assertEquals(exercise.presets.head.image, seven)

@@ -46,7 +46,7 @@ case class CreatePhishingWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
 }
 object CreatePhishingWorkbook {
   private def id(key: String) = LanguageMapContentId(s"digitalWorkbooks/$key")
-  private def reflectionTable(elementId: String, title: String, rows: List[String], columns: List[String]) =
+  private def reflectionTable(elementId: String, title: String, rows: Seq[String], columns: Seq[String]) =
     AnswerTableInteraction(elementId, id(title), rows.map(id), columns.map(id), rows.map(_ => columns.map(_ => EditableTableCell())))
   val warningEvidence = reflectionTable("phishing-warning-evidence", "phishingWarningTable",
     List("phishingAppearance", "phishingDisplayName", "phishingLink", "phishingDomain"),

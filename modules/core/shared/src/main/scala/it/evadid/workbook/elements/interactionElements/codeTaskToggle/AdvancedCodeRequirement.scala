@@ -5,7 +5,7 @@ import upickle.default.*
 
 /** A checklist item for advanced-mode free-text code: all `mustContain` fragments must appear. */
 case class AdvancedCodeRequirement(
-  mustContain: List[String],
+  mustContain: Seq[String],
   missingHint: LanguageMapContentId
 ) derives ReadWriter
 

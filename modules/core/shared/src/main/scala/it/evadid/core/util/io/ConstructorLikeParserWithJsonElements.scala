@@ -1,10 +1,7 @@
 package it.evadid.core.util.io
 
-import fastparse.*
-import fastparse.MultiLineWhitespace.*
 import it.evadid.distribution.command.SerializedException
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
-import it.evadid.util.parsing.{Js, JsonGrammar}
 import upickle.default.*
 
 import scala.util.{Success, Try}
@@ -14,7 +11,7 @@ object ConstructorLikeParserWithJsonElements {
   case class ConstructorLikeReadResult(elementType: String, jsonPayloads: Seq[String]) derives ReadWriter {
     
     /** Positional arguments need the same field layout used by the writer. */
-    def valuesWithOrder(order: Map[Int, List[VariableDisplayConfig]]): Map[String, ujson.Value] =
+    def valuesWithOrder(order: Map[Int, Seq[VariableDisplayConfig]]): Map[String, ujson.Value] =
       jsonPayloads.zipWithIndex.iterator.flatMap { (payload, position) =>
         fieldsInGroup(payload, position, order.getOrElse(position, Nil))
       }.foldLeft(Map.empty[String, ujson.Value]) { case (fields, (key, value)) =>
@@ -22,7 +19,7 @@ object ConstructorLikeParserWithJsonElements {
         fields.updated(key, value)
       }
 
-    private def fieldsInGroup(payload: String, position: Int, layout: List[VariableDisplayConfig]): List[(String, ujson.Value)] = {
+    private def fieldsInGroup(payload: String, position: Int, layout: Seq[VariableDisplayConfig]): Seq[(String, ujson.Value)] = {
       val arguments = ujson.read("[" + payload + "]").arr.toList
       val positional = layout.filter(_.suppressKey)
       require(arguments.size >= positional.size, s"Missing positional arguments in constructor group $position")
@@ -41,27 +38,37 @@ object ConstructorLikeParserWithJsonElements {
     }
   }
 
-  private def jsonPayload(using P[?]): P[Js.Val] = JsonGrammar.jsonExpr
+  /** Only frame constructor groups here; uJSON owns JSON syntax, escaping and numeric validation. */
+  def parseString(input: String): Try[ConstructorLikeReadResult] = Try {
+    val name = input.takeWhile(c => c.isLetterOrDigit || "_$/\\.-".contains(c))
+    require(name.nonEmpty, "Missing constructor name")
 
-  private val allowedCharsInIdentifier: List[Char] = List('_', '$', '/', '\\', '.', '-')
+    @scala.annotation.tailrec
+    def endOfGroup(index: Int, quoted: Boolean = false, escaped: Boolean = false): Int = {
+      require(index < input.length, "Unclosed constructor argument group")
+      val char = input(index)
+      if quoted then
+        if escaped then endOfGroup(index + 1, true, false)
+        else if char == '\\' then endOfGroup(index + 1, true, true)
+        else endOfGroup(index + 1, char != '"', false)
+      else if char == ')' then index
+      else endOfGroup(index + 1, char == '"', false)
+    }
 
-  private def identifier(using P[?]): P[Unit] =
-    P(CharPred(c => c.isLetterOrDigit || allowedCharsInIdentifier.contains(c)).rep(1))
-
-  private def getParser()(using P[?]): P[(String, Seq[String])] = {
-    P(identifier.! ~ ("(" ~ jsonPayload.rep(sep = ",").! ~ ")").rep(1) ~ End)
-  }
-
-
-  def parseString(input: String): Try[ConstructorLikeReadResult] = {
-    parse(input, ctx => getParser()(using ctx)) match {
-      case Parsed.Success(resultTuple, index) => {
-        val (constructorName: String, jsonPayloads: Seq[String]) = resultTuple
-        Success(ConstructorLikeReadResult(constructorName, jsonPayloads))
-      }
-      case f: Parsed.Failure => {
-        scala.util.Failure(SerializedException(s"Error at ConstructorLikeParserWithJsonElements: ${f.msg} (${f.trace().longMsg})"))
+    @scala.annotation.tailrec
+    def groups(index: Int, collected: Vector[String]): Seq[String] = {
+      val start = input.indexWhere(!_.isWhitespace, index)
+      if start == -1 then collected
+      else {
+        require(input(start) == '(', s"Expected constructor argument group at $start")
+        val end = endOfGroup(start + 1)
+        val payload = input.substring(start + 1, end)
+        ujson.read("[" + payload + "]")
+        groups(end + 1, collected :+ payload)
       }
     }
+    val payloads = groups(name.length, Vector.empty)
+    require(payloads.nonEmpty, "Missing constructor argument group")
+    ConstructorLikeReadResult(name, payloads)
   }
 }

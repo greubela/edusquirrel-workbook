@@ -23,7 +23,7 @@ import org.scalajs.dom.MouseEvent
  * )
  * }}}
  */
-case class HtmlDropdownMenu(isOpen: Var[Boolean], content: List[HtmlAppElement]) extends HtmlAppElement {
+case class HtmlDropdownMenu(isOpen: Var[Boolean], content: Seq[HtmlAppElement]) extends HtmlAppElement {
 
   private val domElement: Element = div(
     cls := "dropdown-menu",

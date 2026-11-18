@@ -41,7 +41,12 @@ handles in `Var`s and releases them through the owning lifecycle.
 `State[T]` and `ObservableValue[T]` are shared abstractions. Airstream/Laminar
 `Var[T]`, `Signal[T]` and DOM bindings belong to JavaScript. Their bridge lives in
 [StateHelper.scala](../modules/core/js/src/main/scala/it/evadid/core/datastructures/state/StateHelper.scala),
-not shared core. A renderer obtains a bound state from the interaction:
+not shared core. `fromAirstreamVarToState(var, owner)` adapts the original store,
+without mirroring its value. Functional updates, including updates through `biMap`,
+compose in the Var's transaction queue. Releasing the owner detaches observations;
+a pending operation can still read and update its original store.
+
+A renderer obtains a bound state from the interaction:
 
 ```scala
 import com.raquo.laminar.api.L.*
@@ -52,7 +57,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 def answerInput(element: TextInteraction, fullInfo: FullInfo): Element = {
   val answer = element.interactionVariable
-    .createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation)
+    .createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation)
     .toAirstreamVar
   div(
     textArea(value <-- answer.signal, onInput.mapToValue --> answer.writer),
@@ -82,6 +87,7 @@ configuration and required services instead of reaching into that global context
 Use `bimap` when the two conversions express a valid view of the same value:
 
 ```scala
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
 
@@ -107,125 +113,83 @@ stored representation; it is not a general semantic-equivalence test.
 currently compares cleaned XML and handles runtime-pose metadata. The adapter's
 subscriptions, polling and cleanup belong to its Laminar mount lifecycle.
 
-`State.biMap` provides a synchronous bidirectional view; mappings should be pure.
-Chained views compose their forward and reverse functions against the base state.
+`State.biMap` composes pure forward/reverse functions against its backing store.
+Core `State` transitions are synchronous; a Var-backed view follows Airstream's
+transaction ordering.
 
 Shared core `AsyncData` mappings and recoveries run sequentially in source order,
 including across failures. A pending computation delays later inputs; its late
 result cannot overwrite a newer result. The first-result future retains its first
 finished state while the observable continues to update.
 
-## History, importance and destinations
+## Typed event histories
 
-`InteractionVariable[T, GA, SA]` stores `InteractionVariableHistory[T, GA, SA]`:
-answer events with timestamps/importance, grading results keyed by answer, and
-scaffolding results keyed by answer. `currentValue` is derived from history;
-`defaultValue` initializes it. Update the bound state instead of writing directly
-to IndexedDB or the remote database.
+`InteractionVariable[F]` owns an immutable `InteractionVariableHistory[F]` in core
+`State`. Its current answer, grading and scaffolding views are projections of
+answer/start/completion events. The format singleton provides all associated
+codecs; see [interaction formats](interaction-format.md) for the types and wire
+contract. Update a bound state instead of writing directly to storage.
 
-Use `createBoundStateWithUpdateLogic` when relevance depends on the edit, such as
-a text renderer distinguishing intermediate typing from a completed sentence.
-Importance expresses history significance, not a debounce interval or a guarantee
-of immediate storage.
+`createBoundStateWithUpdateLogic` chooses significance from each edit. Importance
+is not a debounce interval or a guarantee of immediate persistence:
 
-| Importance | History role |
+| Importance | Meaning |
 | --- | --- |
-| `DEFAULT` | Initial value |
-| `TEMPORARY` | Transient edit, retained according to the destination strategy |
+| `DEFAULT` | Initial answer |
+| `TEMPORARY` | Transient edit or in-progress feedback |
 | `MINOR` | Intermediate edit |
-| `MAJOR` | Significant edit |
+| `MAJOR` | Significant edit or completed feedback |
 
-`SyncControl.requestStore` requests synchronization; it does not guarantee that
-an offline or unauthenticated server has committed the value. Each destination's
-`SyncStrategy` selects events. Current local defaults use IndexedDB with
-`SYNC_LAST_AND_MAJOR`; configured remote destinations use `SYNC_MAJOR`. Reports
-and the workbook's cloud indicator describe actual synchronization status.
-Sync caches select the newest timestamp for each key and reject conflicting
-entries at the same newest timestamp. Refreshing after a write failure retains the
-existing reconciliation behavior; successful refresh alone does not prove a write
-succeeded.
-Importance does not by itself run every grader; see the current grading paths in
-[interaction architecture](workbook-interaction-architecture.md).
+`EventSyncStrategy` selects events to transmit and never prunes persisted history.
+`SYNC_EVERYTHING` sends all missing events. `SYNC_MAJOR` selects major events plus
+the current answer and all feedback associated with selected answers, including
+pending lifecycle events. Other importance strategies filter individual events;
+latest/count strategies retain timestamp ties. `Since` includes its boundary.
+`clean()` removes temporary events only when explicitly called; synchronization
+uses the destination strategy.
 
-Grading and scaffolding run through `interactionVariable.control` with an
-`ExecutionContextInformation`. Its two `AsyncDataCache`s share pending requests
-and completed results. Explicit grading requests may retry execution errors and
-unexecuted tests; completed assessments (including `Incorrect`) are reused.
-Changing display language never invalidates or repeats a computation. Feedback
-translations merge into the existing `LanguageMap`; renderers use an available
-translation as fallback. Results stay associated with their captured answer.
-Histories separate
-`historyStates`, `historyGrading` and `historyScaffolding`. Accept only the current
-saved schema. At storage boundaries, catch invalid data and discard the affected
-record instead of migrating older formats or interrupting startup.
+Grading and scaffolding run through `interactionVariable.control`. Pending requests
+are shared; explicit retries rerun execution errors and unexecuted tests while
+reusing completed assessments. Feedback stays associated with its captured answer.
+Grading starts/completions are projected by configured grader identity; a newer
+start represents a running retry and a completion wins a timestamp tie. Language
+changes do not repeat computations; multilingual feedback merges into `LanguageMap`.
 
-## Default uPickle codecs
+User changes and full resets rotate the feedback session and replace computation
+caches. Completion callbacks check their generation and captured context before
+publishing. A same-user `resetLocalHistory` keeps completed computations reusable.
+Captured contexts retain the initiating user's backend token and LLM settings.
 
-Do not provide a `ReadWriter[Any]` or serialize arbitrary values through `toString`.
-Use concrete payload models with derived codecs; use `ujson.Value` for genuinely
-dynamic JSON data. Interactions with no grading/scaffolding payload use `Unit`.
-Unknown language literals retain opaque source text through a `Serializer[String]`,
-which does not imply a codec for arbitrary runtime objects.
+## Synchronization boundary
 
-Use uPickle rather than browser-only JSON/XML APIs for shared values:
+Renderers update their bound value; `InteractionVariable.updateHistory` registers
+writes through the captured `ExecutionContextInformation.syncControl`. To await
+all configured destinations from client code:
 
 ```scala
-import upickle.default.*
+import scala.concurrent.Future
 
-sealed trait Animal derives ReadWriter
-case class Dog(name: String) extends Animal derives ReadWriter
-case class Cat(name: String) extends Animal derives ReadWriter
-case class Snapshot[A](value: A) derives ReadWriter
-
-val original: Animal = Dog("Ada")
-val restored = read[Animal](write(original))
-val snapshot = read[Snapshot[Int]](write(Snapshot(42)))
+def syncWorkbook(fullInfo: FullInfo): Future[Unit] =
+  fullInfo.syncControl.ensureSynced()
 ```
 
-Derivation requires codecs for the fields/type arguments. If a constructor needs
-runtime evidence, reconstruct that evidence when decoding rather than serializing
-it. [Point.scala](../modules/core/shared/src/main/scala/it/evadid/core/datastructures/geometry/Point.scala)
-provides `given [T: Fractional](using ReadWriter[T]): ReadWriter[Point[T]]` and keeps
-its established wire format. Do not replace such codecs blindly with derivation.
+`ensureSynced` fetches and stores with forced buffer flushes. Read failures still
+allow pending writes to be attempted, then fail the returned future. Production
+bindings, event cursors, bulk requests and reset behavior are documented in
+[history storage and synchronization](database/interaction-history.md).
 
-Keep canonical codecs for library types in
-[DefaultSerializer](../modules/core/shared/src/main/scala/it/evadid/core/util/io/serializer/DefaultSerializer.scala)
-and import its givens where required:
+## Codecs and element definitions
 
-```scala
-import java.time.LocalDateTime
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
-case class DatedAnswer(text: String, at: LocalDateTime) derives ReadWriter
-```
+Use concrete models and derived uPickle codecs; do not add `ReadWriter[Any]` or
+serialize arbitrary values with `toString`. A genuinely dynamic payload may use
+`ujson.Value`, but history logic operates on typed events, not JSON fields.
+Formats without additional grading/scaffolding data use `Unit`.
 
-Owned domain types normally expose a default codec in their companion or through
-`derives ReadWriter`. Avoid per-call-site codecs that encode the same type
-incompatibly. Live futures, callbacks, controllers, database/DOM handles and
-subscriptions need explicit snapshots, not constructor-only derived persistence.
+`WorkbookElementFactory` remains responsible for element definitions. The default
+`ReadWriter[WorkbookElement]` includes the registry needed to resolve children and
+section prerequisites and rejects conflicting IDs. A reference-only definition
+requires that registry. Format-based history exchange does not.
 
-## Definitions, answers and snapshots
-
-The exercise definition, learner answer and live controller are different things:
-
-- `associatedFactory` serializes the authored definition and element references.
-  Register a new element in `WorkbookElementFactory` as well as `HtmlRenderFactory`.
-- `serializerInteractionContent` handles the learner value. History travels as
-  typed history JSON with answer events and grading/scaffolding maps. Cleanup removes
-  obsolete default events and feedback without a retained answer. If an update
-  leaves no answer events, restore the default before cleaning and preserve feedback
-  matching that default. Explicit history resets still start from a fresh default
-  history.
-- The default `ReadWriter[WorkbookElement]` stores a self-contained element registry,
-  including children and section prerequisites. It resolves references through the
-  factories and rejects conflicting IDs. A reference-only element JSON needs its
-  registry; it is not automatically a self-contained workbook snapshot.
-
-Open hierarchies need a deliberate codec/registry for supported implementations.
-`WorkbookElementFactory` and `WorkbookInteractionGrader.universalSerializer` are
-existing examples. Adding a type to a hierarchy without registering its codec can
-compile but fail during decoding on another execution backend.
-
-Test JSON and MessagePack round trips on both core platforms, defaults and malformed
-payloads, and behavior after restoring mutable snapshots. The maintained
-[serialization audit](testing-and-serialization-audit.md) explains the inventory and
-explicit exceptions.
+Test JSON and MessagePack roundtrips on both core platforms, malformed inputs,
+state transitions and behavior after restoration. Keep current schemas strict;
+do not add migration readers or aliases for old fields and names.

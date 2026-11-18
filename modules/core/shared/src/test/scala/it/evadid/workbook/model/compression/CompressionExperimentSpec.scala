@@ -122,10 +122,10 @@ class CompressionExperimentSpec extends munit.FunSuite {
       val exercise = CompressionExperimentInteraction("experiment", LanguageMapContentId("CompressionWorkbook/title"), value)
       for (serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike))
         assertEquals(serializer.deserialize(serializer.serialize(exercise)), exercise)
-      val saved = exercise.serializerInteractionContent
+      val saved = exercise.interactionFormat.stateSerializer
       assertEquals(saved.deserialize(saved.serialize(value)), value)
     }
     val rle = CompressionExperimentInteraction("rle", LanguageMapContentId("CompressionWorkbook/title"), RunLengthText())
-    intercept[it.evadid.distribution.command.SerializedException](rle.serializerInteractionContent.deserialize(write[CompressionExperiment](VideoBudget())))
+    intercept[IllegalArgumentException](rle.validateState(rle.interactionFormat.stateSerializer.deserialize(write[CompressionExperiment](VideoBudget()))))
   }
 }

@@ -27,7 +27,7 @@ object BeBlockAssignValue {
 
   private case class BeBlockAssignValueFromExpression(variable: BeDefineVariable, value: BeExpression) extends BeBlockSingleShape derives upickle.default.ReadWriter {
 
-    override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
+    override def renderShape(childrenShapes: Seq[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
       val valueShape: BeShape = childrenShapes.find(_._1.childInfo.myRoleInParent == ValueInAssignment).get._2
       val assignShape: BeShape = BeBlockAssignValue.BeBlockAssignValueFromShape(variable, valueShape).renderShape(List(), renderingInformation)._2
 
@@ -40,7 +40,7 @@ object BeBlockAssignValue {
   }
 
   private case class BeBlockAssignValueFromShape(variable: BeDefineVariable, valueShape: BeShape) extends BeBlockSingleShape {
-    override def renderShape(childrenShapes: List[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
+    override def renderShape(childrenShapes: Seq[(BeExpressionNode, BeShape)], renderingInformation: RenderingInformation): (ControlFlowShape, BeShape) = {
 
       val dataArrowLeft = BeDataArrow(true)
       val variableRendered: BeShape = BeBlockDefineVariable(variable).renderShape(List(), renderingInformation)._2

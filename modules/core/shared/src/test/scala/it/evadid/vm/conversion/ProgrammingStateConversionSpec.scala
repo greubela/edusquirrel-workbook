@@ -540,14 +540,14 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("the full Java exercise default compiles without replacing its source or id") {
     val exercise = ProgrammingExerciseFullJava("kept-java-exercise")
     val source = exercise.defaultValue.toJava
-    val stored = exercise.serializerInteractionContent.serialize(source)
+    val stored = exercise.interactionFormat.stateSerializer.serialize(source)
     val program = source.toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
     val result = T.runVm(program)
     assertEquals(result.status, T.Status.Completed)
     assertEquals(result.commands, Vector.empty[T.Command])
     assertEquals(exercise.elementId, "kept-java-exercise")
     assertEquals(exercise.defaultValue, source)
-    assertEquals(exercise.serializerInteractionContent.serialize(source), stored)
+    assertEquals(exercise.interactionFormat.stateSerializer.serialize(source), stored)
   }
 
   test("compiling Java preserves a separate Snap state's ids during read-only conversions") {

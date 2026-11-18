@@ -1,6 +1,7 @@
 package it.evadid.workbook.interaction.variable
 
 import it.evadid.util.MapUtils
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, WorkbookInteractionGrader}
 import upickle.default.*
 

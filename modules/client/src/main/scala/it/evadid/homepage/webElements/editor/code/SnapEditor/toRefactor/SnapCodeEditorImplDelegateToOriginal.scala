@@ -54,7 +54,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   private val projectXmlSync = new SnapProjectXmlSync
   private var lastProjectXmlCheckAt = 0.0
   private var originalBlockTemplates: Option[js.Any] = None
-  private var installedCustomCategoryNames: List[String] = Nil
+  private var installedCustomCategoryNames: Seq[String] = Nil
 
   private val ProjectXmlCheckIntervalMs = 500.0
   private val FitDebounceMs = 32.0
@@ -369,7 +369,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     * SpriteMorph.prototype.blockTemplates globally. Multiple editors can therefore use different
     * exercise libraries on the same page.
     */
-  private def installLibraries(libraries: List[LibraryTab], ide: IDEMorph): Unit =
+  private def installLibraries(libraries: Seq[LibraryTab], ide: IDEMorph): Unit =
     require(libraries.map(_.name).distinct.size == libraries.size, "Snap library tab names must be unique")
     require(libraries.forall(_.name.nonEmpty), "Snap library tab names must not be empty")
     val sprite = ide.currentSprite
@@ -577,7 +577,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   }
 
   /** Native create/delete flushes the built-in `variables` cache; also flush exercise tab names. */
-  private def wrapFlushBlocksCacheForVariableTabs(ide: IDEMorph, tabNames: List[String]): Unit =
+  private def wrapFlushBlocksCacheForVariableTabs(ide: IDEMorph, tabNames: Seq[String]): Unit =
     if tabNames.isEmpty then return
     val dyn = ide.asInstanceOf[js.Dynamic]
     val stored = dyn.selectDynamic("__eduOriginalFlushBlocksCache")
@@ -762,7 +762,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
   /** If configured selectors are missing from the live primitives table (e.g. after
     * a scene replaced SpriteMorph.prototype.blocks), restore the full table.
     */
-  private def ensurePrimitiveSelectors(ids: List[String]): Unit =
+  private def ensurePrimitiveSelectors(ids: Seq[String]): Unit =
     val proto = spriteMorphPrototype
     val blocks = proto.selectDynamic("blocks")
     val missing = ids.filter { id =>
@@ -855,7 +855,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     spriteMorphPrototype.selectDynamic("customCategories")
 
   /** Register exercise tabs on Snap's customCategories Map (name → Color). */
-  private def registerCustomCategoryTabs(libraries: List[LibraryTab]): Unit =
+  private def registerCustomCategoryTabs(libraries: Seq[LibraryTab]): Unit =
     val customCategories = spriteMorphCustomCategories
     val blockColor = spriteMorphPrototype.selectDynamic("blockColor")
     libraries.foreach { tab =>

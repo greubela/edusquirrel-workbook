@@ -6,7 +6,7 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.SerializedException.SimpleStackTraceElement
 
-case class SerializedException(msg: String, stackTrace: Array[SimpleStackTraceElement], cause: Option[SerializedException]) extends Throwable(msg) derives ReadWriter {
+case class SerializedException(msg: String, stackTrace: Seq[SimpleStackTraceElement], cause: Option[SerializedException]) extends Throwable(msg) derives ReadWriter {
 
   def asCauseOf(e: Throwable): SerializedException = SerializedException(e, this)
 
@@ -26,9 +26,9 @@ object SerializedException {
 
   private def toSimple(el: StackTraceElement): SimpleStackTraceElement = SimpleStackTraceElement(el.getClassName, el.getMethodName, el.getFileName, el.getLineNumber)
 
-  private def serializedStackTrace(error: Throwable): Array[SimpleStackTraceElement] = error match {
+  private def serializedStackTrace(error: Throwable): Seq[SimpleStackTraceElement] = error match {
     case serialized: SerializedException => serialized.stackTrace
-    case other => other.getStackTrace.map(toSimple)
+    case other => other.getStackTrace.toList.map(toSimple)
   }
 
   def apply(err: Throwable, cause: Throwable): SerializedException =

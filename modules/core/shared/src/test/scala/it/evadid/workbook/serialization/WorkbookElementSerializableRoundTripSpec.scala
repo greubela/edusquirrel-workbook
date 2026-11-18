@@ -4,7 +4,7 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat,LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
@@ -130,18 +130,18 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
           case _ => Nil
         }
         val dependencies = (element.allChildrenFullSubtree ++ references).map(_.toSerialized)
-        val roundTripped = WorkbookElementFactory.parseAll(restored :: dependencies).head
+        val roundTripped = WorkbookElementFactory.parseAll(restored +: dependencies).head
         assertEquals(roundTripped, element)
       }
     }
   }
 
-  private def assertStateRoundTrip[T, GA, SA](element: WorkbookInteractionElementFull[T, GA, SA]): Unit = {
-    val serializer = element.serializerInteractionContent
+  private def assertStateRoundTrip[F <: InteractionFormat](element: WorkbookInteractionElement[F]): Unit = {
+    val serializer = InteractionFormat.codecsFor(element.interactionFormat).stateSerializer
     assertEquals(serializer.deserialize(serializer.serialize(element.defaultValue)), element.defaultValue)
   }
 
-  elements.collect { case element: WorkbookInteractionElementFull[?, ?, ?] => element }.foreach { element =>
+  elements.collect { case element: WorkbookInteractionElement[? <: InteractionFormat] => element }.foreach { element =>
     test(s"${element.getClass.getSimpleName} interaction state round-trips") {
       assertStateRoundTrip(element)
     }
@@ -166,7 +166,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     assertEquals(restored.initProgram, source)
     assertEquals(restored.desiredResult, original.desiredResult)
     assertEquals(restored.exerciseConfig.maxCommandUsage, original.exerciseConfig.maxCommandUsage)
-    assertEquals(restored.serializerInteractionContent.serialize(source), original.serializerInteractionContent.serialize(source))
+    assertEquals(restored.interactionFormat.stateSerializer.serialize(source), original.interactionFormat.stateSerializer.serialize(source))
   }
 
   test("turtle comparison policies roundtrip through both definition formats without rewriting drafts") {
@@ -192,10 +192,10 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
         assertEquals(restored.elementId, original.elementId)
         assertEquals(restored.comparisonPolicy, policy)
         assertEquals(restored.defaultValue, source)
-        val saved = original.serializerInteractionContent.serialize(source)
-        assertEquals(restored.serializerInteractionContent.serialize(source), saved)
-        assertEquals(restored.serializerInteractionContent.deserialize(saved), source)
-        assertEquals(restored.serializerInteractionContent.deserialize(saved).fingerprint(),
+        val saved = original.interactionFormat.stateSerializer.serialize(source)
+        assertEquals(restored.interactionFormat.stateSerializer.serialize(source), saved)
+        assertEquals(restored.interactionFormat.stateSerializer.deserialize(saved), source)
+        assertEquals(restored.interactionFormat.stateSerializer.deserialize(saved).fingerprint(),
           source.fingerprint())
       }
     }

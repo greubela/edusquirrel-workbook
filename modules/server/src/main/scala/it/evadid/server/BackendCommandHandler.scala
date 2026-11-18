@@ -60,13 +60,20 @@ object BackendCommandHandler {
 
     ),
 
-    SQLCommands.fetchFromDbCommand.toLocalExecutionClient(
-      (request: FetchAllFromDbRequest, logger: Logger) => Future {
+    SQLCommands.bulkStoreToDbCommand.toLocalExecutionClient(
+      (request: BulkStoreToDbRequest, logger: Logger) => Future {
+        UpsertToDatabase.handleBulkRequest(request, logger)
+      },
+      (request: BulkStoreToDbRequest, logger: Logger) => request.syncContexts.forall(context =>
+        AuthHandling.mayAccessIdBased(userToken.info.user.id, context.userId))
+    ),
+
+    SQLCommands.fetchEventsFromDbCommand.toLocalExecutionClient(
+      (request: FetchEventsFromDbRequest, logger: Logger) => Future {
         FetchFromDatabase.handleRequest(request, logger)
       },
-      (request: FetchAllFromDbRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.usageContext.userId)
-    )
-    ,
+      (request: FetchEventsFromDbRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.usageContext.userId)
+    ),
     SQLCommands.resetUserHistoriesDbCommand.toLocalExecutionClient(
       (request: DeleteInDbRequest, logger: Logger) => Future {
         require(request.allWorkbooks, "A full reset requires the all-workbook scope.")

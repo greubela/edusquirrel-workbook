@@ -6,7 +6,7 @@ import upickle.default.*
 case class Mail(id: String, sender: String, senderName: String, subject: String,
                 body: String, realFolder: String, attachment: Option[String], timestamp: String,
                 read: Boolean = false, expectedFolder: Option[String] = None,
-                bodyHtml: Boolean = false, recipients: List[String] = Nil) derives ReadWriter
+                bodyHtml: Boolean = false, recipients: Seq[String] = Nil) derives ReadWriter
 
 object MailFolder {
   val Inbox = "Posteingang"
@@ -14,6 +14,6 @@ object MailFolder {
   val Marked = "Markiert"
   val Archive = "Archiv"
   val Trash = "Papierkorb"
-  val all: List[String] = List(Inbox, Sent, Marked, Archive, Trash)
-  def emptyIndex: Map[String, List[String]] = all.map(_ -> List.empty[String]).toMap
+  val all: Seq[String] = List(Inbox, Sent, Marked, Archive, Trash)
+  def emptyIndex: Map[String, Seq[String]] = all.map(_ -> List.empty[String]).toMap
 }

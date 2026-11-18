@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.workbook.abstractions.InteractionFormat.{ProgrammingExerciseWithLlmScaffoldingAndGrading}
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -26,9 +28,9 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
   private[homepage] def createNewEditor(
                                          element: ProgrammingExerciseFullJava,
                                          boundVar: Var[ProgrammingState],
-                                         gradingReporter: InteractionVariableGradingReporter[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding]
+                                         gradingReporter: InteractionVariableGradingReporter[ProgrammingExerciseWithLlmScaffoldingAndGrading.type]
                                        ):
-  EditorWithWorkbookPanel[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding, EvaEditorConfig] = {
+  EditorWithWorkbookPanel[ProgrammingExerciseWithLlmScaffoldingAndGrading.type, EvaEditorConfig] = {
 
     val draw = new TurtleTaskEditorExtension(boundVar, None)
     val drawCard = ElementCard(LanguageMapContentId("basic/DrawTitle"), draw.getDomElement())

@@ -3,18 +3,18 @@ package it.evadid.server.database
 import it.evadid.sql.DatabaseConfigWithCredentials
 import it.evadid.util.logging.Logger
 import java.sql.{Connection, DatabaseMetaData, DriverManager}
-import net.sf.jsqlparser.statement.create.table.ForeignKeyIndex
+import net.sf.jsqlparser.statement.create.table.{CreateTable, ForeignKeyIndex}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Try, Using}
 
 /** Schema inspection reads only metadata. Setup refuses every nonempty database. */
 object EnsureDatabaseProperlySetup {
-  case class Report(reachable: Boolean, existingTables: Set[String], missingTables: Set[String], conflicts: List[String],
+  case class Report(reachable: Boolean, existingTables: Set[String], missingTables: Set[String], conflicts: Seq[String],
                     created: Boolean = false, existingRoutines: Set[String] = Set.empty) {
     def valid: Boolean = reachable && missingTables.isEmpty && conflicts.isEmpty
   }
 
-  private def rows[A](result: java.sql.ResultSet)(read: java.sql.ResultSet => A): List[A] =
+  private def rows[A](result: java.sql.ResultSet)(read: java.sql.ResultSet => A): Seq[A] =
     Using.resource(result)(rs => Iterator.continually(rs.next()).takeWhile(identity).map(_ => read(rs)).toList)
 
   def inspect(connection: Connection, requiredTables: Set[String] = Set.empty): Report = {
@@ -70,8 +70,10 @@ object EnsureDatabaseProperlySetup {
                 columnCollation.exists(expected => !details(columnName)._2.contains(expected)))(s"$name.$columnName collation differs"),
               Option.when(Set("DATETIME", "TIMESTAMP").contains(expectedType) && details(columnName)._3 != precision.toInt)(s"$name.$columnName timestamp precision differs"),
               Option.when(expectedType == "ENUM" && {
-                val parsed = net.sf.jsqlparser.parser.CCJSqlParserUtil.parse(s"CREATE TABLE enum_type_check (value ${details(columnName)._1})")
-                  .asInstanceOf[net.sf.jsqlparser.statement.create.table.CreateTable].getColumnDefinitions.get(0).getColDataType.toString
+                val parsed = net.sf.jsqlparser.parser.CCJSqlParserUtil.parse(s"CREATE TABLE enum_type_check (value ${details(columnName)._1})") match {
+                  case table: CreateTable => table.getColumnDefinitions.get(0).getColDataType.toString
+                  case _ => throw IllegalArgumentException("Expected a table definition while inspecting an ENUM column")
+                }
                 parsed.replaceFirst("(?i)^enum", "ENUM") != column.getColDataType.toString.replaceFirst("(?i)^enum", "ENUM")
               })(s"$name.$columnName enum values differ")
             ).flatten
@@ -101,7 +103,7 @@ object EnsureDatabaseProperlySetup {
         def normalize(rule: Int): Int = if rule == DatabaseMetaData.importedKeyNoAction then DatabaseMetaData.importedKeyRestrict else rule
         (ordered.map(_._3), ordered.head._4, ordered.map(_._5), normalize(ordered.head._6), normalize(ordered.head._7))
       }.toSet
-      val expectedForeign = indexes.collect { case key: ForeignKeyIndex => key }.map { key =>
+      val expectedForeign: Set[(Seq[String], String, Seq[String], Int, Int)] = indexes.collect { case key: ForeignKeyIndex => key }.map { key =>
         def rule(value: String): Int = Option(value).map(_.toUpperCase).getOrElse("RESTRICT") match {
           case "CASCADE" => DatabaseMetaData.importedKeyCascade
           case "SET NULL" => DatabaseMetaData.importedKeySetNull

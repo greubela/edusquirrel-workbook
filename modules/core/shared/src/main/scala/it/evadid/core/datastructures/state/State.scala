@@ -21,6 +21,20 @@ object State {
 
   def apply[T](initVal: T): State[T] = StateImpl(initVal)
 
+  /** Adapt an existing state store without keeping a second copy of its value.
+    * The supplied observable must publish writes to that store.
+    */
+  def fromStorage[T](read: () => T, write: T => Unit, modify: (T => T) => Unit, changes: ObservableValue[T]): State[T] = new State[T] {
+    val observable: ObservableValue[T] = changes
+    def now(): T = observable.syncLock.synchronized(read())
+    def set(value: T): Unit = observable.syncLock.synchronized(write(value))
+    def update(transform: T => T): State[T] = observable.syncLock.synchronized {
+      modify(transform)
+      this
+    }
+    def biMap[O](forward: T => O, backward: O => T): State[O] = DerivedState(this, forward, backward)
+  }
+
   private[state] case class DerivedState[I, O](baseState: State[I], mapForward: I => O, mapBackward: O => I) extends State[O] {
 
     lazy val observable: ObservableValue[O] = baseState.observable.deriveValue(mapForward, ExecutionMethod.executeSync, ObserverDerivationLogic.DeriveAllValues)
@@ -34,8 +48,7 @@ object State {
     }
 
     def update(func: O => O): State[O] = baseState.observable.syncLock.synchronized {
-      val res = func(now())
-      set(res)
+      baseState.update(value => mapBackward(func(mapForward(value))))
       this
     }
 

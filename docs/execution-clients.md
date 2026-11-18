@@ -12,7 +12,7 @@ request correlation, typed decoding, pooling and failure cleanup.
 | --- | --- | --- |
 | `LocalExecutionClient` | Calling process/event loop | Small shared calculations; handlers already running on the JVM server |
 | `RemoteExecutionClient` via `fullInfo.defaults.backendExecutor` | HTTP/JVM backend | Database, accounts and other server-only services |
-| `WebWorkerExecutionClient` via `fullInfo.defaults.workerBackendExecutor` | Dedicated browser worker | Registered DOM-independent CPU jobs without occupying the GUI event loop |
+| `WebWorkerExecutionClient` via `fullInfo.defaults.workerExecuter` | Dedicated browser worker | Registered DOM-independent CPU jobs without occupying the GUI event loop |
 | `ExecutionClientPool` | Delegates to its member clients | Combining supported command handlers or executors |
 
 A Scala.js `Future` on the main execution context is asynchronous scheduling, not
@@ -21,8 +21,10 @@ locally. A worker has a separate event loop and cannot access the document, Lami
 or client UI services. A JVM backend can access only the services installed there.
 Choosing an executor does not automatically make an arbitrary command supported.
 
-The HTTP executor uses the current signed token, including the restored login
-when available; credentials are not transferred to the generic worker. Do not
+`backendExecutor` captures the current signed token when the client is created.
+Use `backendExecutorWithCredentials(token)` to bind a specific session; outstanding
+requests keep that token after a user switch. Credentials are not transferred to
+the generic worker. Do not
 substitute worker/local execution for commands requiring server authorization.
 
 ## Define a typed command
@@ -51,7 +53,8 @@ which can be `ExecutionSuccess` or `ExecutionFailure`. The wire response is
 `ExecutionClientResponse`, with serialized result/exception, timestamps and logs.
 Keep request and response codecs available on both sides of the transport.
 
-For HTTP execution, register the handler in the appropriate authenticated or
+Register transport factories in `ExecutionCommandFactory.knownCommands`. For HTTP
+execution, register the handler in the appropriate authenticated or
 public server command pool. For generic worker execution, register it in
 `WorkerCommandHandler` and advertise the name in `WorkerCommands.supportedCommands`.
 Declaring a factory alone does not register a remote handler.
@@ -68,7 +71,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 def workerHealth(fullInfo: FullInfo): Future[WorkerCommands.HealthResult] =
   WorkerCommands.health
-    .sendCommandTo(fullInfo.defaults.workerBackendExecutor, WorkerCommands.HealthRequest())
+    .sendCommandTo(fullInfo.defaults.workerExecuter, WorkerCommands.HealthRequest())
     .map(_.result)
 ```
 
