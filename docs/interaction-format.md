@@ -8,9 +8,9 @@ can share a format.
 
 Consumers carry one parameter, `[F <: InteractionFormat]`. Scala match types
 `InteractionFormat.State[F]`, `Grading[F]` and `Scaffolding[F]` recover its value
-types. `Typed[S, G, A]` is the implementation base for format declarations;
-it is not a second history API. Generic abstract projections such as
-`F#InteractionStateType` are not legal Scala 3.
+types. Only format declarations use the `Typed[S, G, A]` implementation base.
+The closed registry makes wire names explicit and decodable on every platform;
+adding a format requires deploying its codec wherever that history is exchanged.
 
 A `WorkbookInteractionElement[F]` obtains its singleton with `ValueOf[F]` and
 exposes it as `interactionFormat`. The format owns state, additional feedback,
@@ -27,15 +27,19 @@ their JSON values.
 ## Current wire format
 
 Formats serialize by their case-object name. The finite `knownFormats` registry
-resolves those names and rejects unknown values; reflection and element-ID lookup
-are not involved.
+resolves those names and rejects unknown values, without dynamic class loading
+or element-ID lookup.
 
 ```scala
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interaction.variable.events.AnswerChangedEvent
+import java.time.LocalDateTime
 
-val history = InteractionVariableHistory.empty[TextInteractionFormat.type]
+val history = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
+  AnswerChangedEvent[TextInteractionFormat.type]("My answer", LocalDateTime.now(), UpdateImportance.MAJOR))
 val transport = InteractionHistoryJson.fromHistory(TextInteractionFormat, history)
 val decoded = InteractionHistoryJson.deserialize(transport.serialized)
 val restored = decoded.typedAs(TextInteractionFormat)
@@ -61,7 +65,7 @@ value equality after decoding. State/feedback history views are derived projecti
 not separate persisted stores. A newer grading start represents a retry in progress;
 completion wins a timestamp tie. Graders are matched by their canonical content key.
 
-Starts default to `TEMPORARY`, completions to `MAJOR`. Destination strategies select transmitted events across every event kind;
-`SYNC_MAJOR` keeps associated feedback with its selected answers. `clean()` removes temporary events; `cleanWithStrategy` selects
-according to the destination. See [state and synchronization](state-and-serialization.md)
+Starts default to `TEMPORARY`, completions to `MAJOR`. `clean()` removes temporary
+events only when explicitly requested. `cleanWithStrategy` selects transmissions;
+`SYNC_MAJOR` includes feedback associated with its selected answers. See [state and synchronization](state-and-serialization.md)
 and [database storage](database/interaction-history.md).

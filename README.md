@@ -67,8 +67,9 @@ Start with [MainApp.scala](modules/client/src/main/scala/MainApp.scala) and [Hom
 Shared workbook abstractions live in
 [WorkbookElement.scala](modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala).
 Their implementations are under `modules/core/shared/src/main/scala/it/evadid/workbook/elements/`.
-Interactions own typed saved state, codecs and grading/scaffolding definitions;
-structure elements compose them into workbooks. See the
+Interactions declare their `InteractionFormat` and grading/scaffolding definitions;
+the format owns saved-state and feedback codecs. Structure elements compose them
+into workbooks. See the
 [interaction architecture](docs/workbook-interaction-architecture.md) for the contracts.
 
 [HtmlRenderFactory.scala](modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/HtmlRenderFactory.scala) maps shared elements to browser renderers. [CreateTestWorkbook.scala](modules/client/src/main/scala/it/evadid/homepage/workbook/content/test/CreateTestWorkbook.scala) provides small authoring examples, including QR and email interactions. Factories are organized under `content/`, `content/test/` and `content/wip/`; a package name alone does not establish which components are implemented. Runtime context and language/storage controls live under `modules/client/src/main/scala/it/evadid/homepage/control/`.
@@ -89,7 +90,7 @@ structure elements compose them into workbooks. See the
 | [blockchainWorkbook](homepage/blockchainWorkbook/index.html) | Blockchain learner activities, mining simulator and energy/final assessment; equivalence review pending |
 | [imageRecognitionWorkbook](homepage/imageRecognitionWorkbook/index.html) | Partial image-recognition workbook with neuron/pixel experiments, robustness and school-chatbot assessment |
 | [phishingWorkbook](homepage/phishingWorkbook/index.html) | Mail simulator, warning/domain/Unicode analysis, attachment risks and checklist; partial adaptation |
-| [plantWorkshop](homepage/plantWorkshop/index.html) | Retained legacy entry page; the former standalone Scala application was removed |
+| [plantWorkshop](homepage/plantWorkshop/index.html) | Plant-workshop HTML entry page; use the native catalogue for workbook navigation |
 | [feedback-demo](homepage/feedback-demo/index.html) | Feedback demonstration |
 
 See [catalogue and cache startup](docs/laminar-workbook-catalog-and-cache.md) for the public registry, IndexedDB lifecycle and startup checks.
@@ -176,6 +177,9 @@ avoid exhaustive class/method lists and historical test-run logs.
 
 - [Digital workbook migration](docs/digital-workbook-migration.md): analysis of linked PDF/ZIP exercises, missing editors and the Blockchain, image-recognition and Phishing adaptations.
 - [Interaction architecture](docs/workbook-interaction-architecture.md): module and editor boundaries, element types, grading/scaffolding, localization and dependency loading.
+- [Interaction formats](docs/interaction-format.md): singleton types, event semantics and self-describing history exchange.
+- [History synchronization](docs/database/interaction-history.md): binding ownership, class responsibilities, per-context batching and storage trade-offs.
+- [Session export](docs/session-data-serialization.md): workbook graphs, public session snapshots and import validation.
 - [State and serialization](docs/state-and-serialization.md): source-of-truth bindings, update importance, history and default uPickle codecs with examples.
 - [Execution clients](docs/execution-clients.md): local, HTTP and implemented worker backends; typed command definitions and calls.
 - [Worker execution](docs/worker-execution-backend.md): supported jobs, transport/lifecycle and browser verification.
@@ -188,8 +192,8 @@ avoid exhaustive class/method lists and historical test-run logs.
 - [Core extraction proposals](docs/core-extraction-proposals.md): reviewed dependency boundaries and proposed follow-up tasks.
 - [Programming conversions](docs/programming-conversions.md): shared VM transformation packages and their state conversion API.
 - [Python parsing](docs/python-parsing-architecture.md): normalization and parser responsibilities.
-- [Core test audit](docs/core-package-unit-tests.md): test locations, behavioral expectations and verification commands.
-- [Testing and serialization audit](docs/testing-and-serialization-audit.md): regression coverage, default codecs and decisions about previously skipped/manual tests.
+- [Core test guide](docs/core-package-unit-tests.md): test locations, behavioral expectations and verification commands.
+- [Testing and serialization audit](docs/testing-and-serialization-audit.md): codec contracts, the serialization inventory and behavioral verification.
 - [Workbook interaction roadmap](WORKBOOK_INTERACTIONS.md): reusable capabilities and edition priorities.
 
 Markdown under bundled third-party libraries documents those distributions. Imported teaching projects retain their conceptual and historical documents; their upstream setup/team instructions do not describe the EduSquirrel repository workflow. MathWorld's README and deployment guide explain its integration here.

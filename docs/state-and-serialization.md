@@ -57,7 +57,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 def answerInput(element: TextInteraction, fullInfo: FullInfo): Element = {
   val answer = element.interactionVariable
-    .createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.executionContextInformation)
+    .createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation)
     .toAirstreamVar
   div(
     textArea(value <-- answer.signal, onInput.mapToValue --> answer.writer),
@@ -87,6 +87,7 @@ configuration and required services instead of reaching into that global context
 Use `bimap` when the two conversions express a valid view of the same value:
 
 ```scala
+import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
 
@@ -112,8 +113,9 @@ stored representation; it is not a general semantic-equivalence test.
 currently compares cleaned XML and handles runtime-pose metadata. The adapter's
 subscriptions, polling and cleanup belong to its Laminar mount lifecycle.
 
-`State.biMap` provides a synchronous bidirectional view; mappings should be pure.
-Chained views compose their forward and reverse functions against the base state.
+`State.biMap` composes pure forward/reverse functions against its backing store.
+Core `State` transitions are synchronous; a Var-backed view follows Airstream's
+transaction ordering.
 
 Shared core `AsyncData` mappings and recoveries run sequentially in source order,
 including across failures. A pending computation delays later inputs; its late
@@ -153,26 +155,28 @@ Grading starts/completions are projected by configured grader identity; a newer
 start represents a running retry and a completion wins a timestamp tie. Language
 changes do not repeat computations; multilingual feedback merges into `LanguageMap`.
 
-## Event synchronization
+User changes and full resets rotate the feedback session and replace computation
+caches. Completion callbacks check their generation and captured context before
+publishing. A same-user `resetLocalHistory` keeps completed computations reusable.
+Captured contexts retain the initiating user's backend token and LLM settings.
 
-`RemoteHistoryCache` unions typed event sets and calculates missing deltas for each
-destination's strategy. It tracks write acknowledgements separately from read
-freshness and event cursors. Successful tail reads advance the inclusive cursor;
-write acknowledgements do not. Empty successful reads become fresh too. Explicit
-window reads do not claim that unread parts of the history were refreshed.
-Timestamp cursors cannot discover a later upload with an older timestamp, so use a
-full read when complete reconciliation is required.
+## Synchronization boundary
 
-The browser binds typed caches to the active workbook, user, destinations and
-session credentials. Fetched events are applied only while their originating
-environment remains active. Local storage stores current self-describing envelopes
-and excludes malformed records individually. The backend rejects malformed requests
-and unsupported formats. See [database and transport](database/interaction-history.md).
+Renderers update their bound value; `InteractionVariable.updateHistory` registers
+writes through the captured `ExecutionContextInformation.syncControl`. To await
+all configured destinations from client code:
 
-Buffered operations return futures for the actual write/read result. Register
-requests before flushing a delegate and force a flush when awaiting a buffered
-batch. Failed writes remain pending; a fetch timestamp alone is never evidence
-that a write committed.
+```scala
+import scala.concurrent.Future
+
+def syncWorkbook(fullInfo: FullInfo): Future[Unit] =
+  fullInfo.syncControl.ensureSynced()
+```
+
+`ensureSynced` fetches and stores with forced buffer flushes. Read failures still
+allow pending writes to be attempted, then fail the returned future. Production
+bindings, event cursors, bulk requests and reset behavior are documented in
+[history storage and synchronization](database/interaction-history.md).
 
 ## Codecs and element definitions
 
@@ -189,9 +193,3 @@ requires that registry. Format-based history exchange does not.
 Test JSON and MessagePack roundtrips on both core platforms, malformed inputs,
 state transitions and behavior after restoration. Keep current schemas strict;
 do not add migration readers or aliases for old fields and names.
-
-User changes and full resets rotate the feedback session. Interaction controls and
-computation caches are replaced; completion callbacks check both their generation
-and captured context before publishing. A same-user `resetLocalHistory` alone keeps
-completed computations reusable. Captured browser contexts retain the initiating
-user’s backend token and LLM settings.
