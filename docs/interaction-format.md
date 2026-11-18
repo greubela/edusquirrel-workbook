@@ -59,10 +59,12 @@ backend requests or stored database events fail with a contextual exception.
 
 `InteractionVariableHistory[F]` stores one `InteractionEvents[F]` set. Its events
 are answer changes, grading starts/completions and scaffolding starts/completions.
-Every event has its associated answer, `LocalDateTime` and importance. Completed
+Every event has a client-generated UUID, its associated answer, `LocalDateTime` and importance. Completed
 feedback derives its answer and timestamp from the typed result.
 
-Merging is set union: retries are idempotent and distinct same-time events survive.
+Merging upserts by UUID: incoming copies replace the same event, retries are idempotent,
+and distinct same-time events survive. IDs are preserved during decoding; missing IDs
+are rejected rather than generated on read.
 Serialized exceptions use immutable stack-trace sequences so error events also retain
 value equality after decoding. State/feedback history views are derived projections,
 not separate persisted stores. A newer grading start represents a retry in progress;

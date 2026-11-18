@@ -24,7 +24,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
   private val otherKey = key.copy(keyForSerialisation = "other")
   private val empty: History = InteractionVariableHistory.empty[TextInteractionFormat.type]
   private def event(value: Int, seconds: Long, importance: UpdateImportance = UpdateImportance.MAJOR): Event =
-    AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(seconds), importance)
+    AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(seconds), importance, new java.util.UUID(0L, s"$value/$seconds/$importance".hashCode.toLong).toString)
   private def history(events: Event*): History = InteractionVariableHistory(InteractionEvents(events.toSet))
   private case class Read(keys: Seq[SyncContext], starting: LocalDateTime, until: LocalDateTime, strategy: EventSyncStrategy)
 

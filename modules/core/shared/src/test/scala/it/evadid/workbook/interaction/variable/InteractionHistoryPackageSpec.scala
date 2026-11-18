@@ -19,6 +19,32 @@ class InteractionHistoryPackageSpec extends FunSuite {
   private def majorAnswer(value: Int): AnswerChangedEvent[TextInteractionFormat.type] =
     AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(10), UpdateImportance.MAJOR)
   
+  test("event identities survive roundtrips, retries and copies without changing timestamps") {
+    val first = majorAnswer(1)
+    val independent = majorAnswer(1)
+    assertNotEquals(first.eventId, independent.eventId)
+    assertEquals(first.timestamp, independent.timestamp)
+    val original = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(first)
+    val restored = read[InteractionVariableHistory[TextInteractionFormat.type]](write(original))
+    assertEquals(restored, original)
+    assertEquals(original.mergeWith(restored).size, 1)
+    assertEquals(original.addEvent(independent).size, 2)
+    val revised = first.copy[TextInteractionFormat.type](newState = "revised")
+    assertEquals(revised.eventId, first.eventId)
+    assertEquals(original.addEvent(revised).events.values, Set[InteractionEvent[TextInteractionFormat.type]](revised))
+    assertEquals(original.mergeWith(original.addEvent(revised)).events.values, Set[InteractionEvent[TextInteractionFormat.type]](revised))
+    val codec = TextInteractionFormat.codecs.eventSerializer
+    val malformed = ujson.read(codec.serialize(first))
+    malformed.obj.remove("eventId")
+    intercept[Exception](codec.deserialize(ujson.write(malformed)))
+  }
+
+  test("publishing a state or result again preserves its event identity") {
+    val state = InteractionVariableState("answer", UpdateImportance.MAJOR, time)
+    val first = InteractionVariableHistory.empty[TextInteractionFormat.type].addState(state)
+    assertEquals(first.addState(state), first)
+  }
+
   test("empty histories have no states and clean to empty") {
     val empty = InteractionVariableHistory.empty[TextInteractionFormat.type]
     assertEquals(empty.allStates.size, 0)

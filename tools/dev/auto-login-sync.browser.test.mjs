@@ -24,7 +24,7 @@ const profile = {user,credentials:{signedBackendToken:token,singleAccessToken:nu
 const context = {programId:'edusquirrel',scenarioId:'workbookTest',userId:user.id,keyForSerialisation:'demo-feedback-1_history'};
 const answer = 'This answer was restored during the first automatic login.';
 const savedHistory = {format:'TextInputWithLlmGradingAndScaffoldingFormat', historyJson:JSON.stringify({events:{values:[
-  {$type:'AnswerChangedEvent',newState:answer,updateImportance:'MAJOR',timestamp:'2026-01-01T12:00:00'}]}})};
+  {$type:'AnswerChangedEvent',eventId:'a86a2e47-40ed-4c65-9fd7-01bf45460b73',newState:answer,updateImportance:'MAJOR',timestamp:'2026-01-01T12:00:00'}]}})};
 function mergeHistory(previous,incoming) {
   assert.equal(previous.format,incoming.format);
   const events=[...JSON.parse(previous.historyJson).events.values,...JSON.parse(incoming.historyJson).events.values];

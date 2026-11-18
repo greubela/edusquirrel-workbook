@@ -95,11 +95,12 @@ test('test workbook preserves edits across human languages, programming language
       const panes = await page.locator('dialog[open] .editor-with-panel').evaluate(container => {
         const editor = container.querySelector('.fullscreen-editor').getBoundingClientRect();
         const sidebar = container.querySelector('.fullscreen-sidepanel').getBoundingClientRect();
-        return {editorRight: editor.right, sidebarLeft: sidebar.left,
+        return {ratio: editor.width / sidebar.width, editorRight: editor.right, sidebarLeft: sidebar.left,
           overlap: Math.min(editor.bottom, sidebar.bottom) - Math.max(editor.top, sidebar.top)};
       });
       assert(panes.editorRight <= panes.sidebarLeft + 1 && panes.overlap > 0,
         'editor and sidebar stay beside each other at desktop and narrow widths');
+      assert(panes.ratio > 2.8 && panes.ratio < 3.2, 'editor receives three quarters of the pane width');
     }
     await page.setViewportSize(originalViewport);
     // Request grading through the shared feedback line. It must produce public
