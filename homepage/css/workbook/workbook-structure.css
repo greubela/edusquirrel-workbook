@@ -246,7 +246,7 @@ dialog {
     background: var(--color-surface-base);
 }
 
-.element-card-label {
+.element-card > .element-card-label {
     margin: 0;
     padding: var(--space-sm) var(--space-md);
     background: var(--color-surface-muted);
@@ -254,7 +254,7 @@ dialog {
     font-size: 0.875rem;
 }
 
-.element-card-content {
+.element-card > .element-card-content {
     min-width: 0;
     padding: var(--space-md);
     overflow: auto;

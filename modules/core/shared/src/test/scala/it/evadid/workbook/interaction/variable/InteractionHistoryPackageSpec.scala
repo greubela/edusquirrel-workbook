@@ -31,8 +31,8 @@ class InteractionHistoryPackageSpec extends FunSuite {
     assertEquals(original.addEvent(independent).size, 2)
     val revised = first.copy[TextInteractionFormat.type](newState = "revised")
     assertEquals(revised.eventId, first.eventId)
-    assertEquals(original.addEvent(revised).events.values, Set(revised))
-    assertEquals(original.mergeWith(original.addEvent(revised)).events.values, Set(revised))
+    assertEquals(original.addEvent(revised).events.values, Set[InteractionEvent[TextInteractionFormat.type]](revised))
+    assertEquals(original.mergeWith(original.addEvent(revised)).events.values, Set[InteractionEvent[TextInteractionFormat.type]](revised))
     val codec = TextInteractionFormat.codecs.eventSerializer
     val malformed = ujson.read(codec.serialize(first))
     malformed.obj.remove("eventId")
