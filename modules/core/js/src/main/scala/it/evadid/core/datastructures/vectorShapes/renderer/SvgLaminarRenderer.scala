@@ -61,7 +61,7 @@ object SvgLaminarRenderer extends SvgRenderer[Double, ReactiveSvgElement[SVGSVGE
               svg.stroke := elementConfig.colorStroke.toWebColor.webStyleHexString,
               svg.strokeWidth := elementConfig.strokeWidth.toString,
               svg.strokeMiterLimit := "4",
-              svg.fontSize := (elementConfig.font.sizeInPx * scale) + "px",
+              svg.fontSize := s"${elementConfig.font.sizeInPx * scale}px",
               svg.fontFamily := elementConfig.font.name,
               svg.fontWeight := (if elementConfig.font.bold then "700" else "400"),
               fontStyleAttr := (if elementConfig.font.italic then "italic" else "normal"),

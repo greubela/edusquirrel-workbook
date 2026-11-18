@@ -149,9 +149,9 @@ case class HtmlSortingReasonExerciseFullscreenElement(
 
     div(
       cls := baseClass,
-      cls.toggle("sorting-item--active") <-- Val(isDraggable),
-      cls.toggle("sorting-item--upcoming") <-- Val(!isDraggable),
-      cls.toggle("sorting-item--waiting-reason") <-- Val(!isDraggable && extraClass.isEmpty),
+      cls("sorting-item--active") <-- Val(isDraggable),
+      cls("sorting-item--upcoming") <-- Val(!isDraggable),
+      cls("sorting-item--waiting-reason") <-- Val(!isDraggable && extraClass.isEmpty),
       draggable := isDraggable,
       onDragStart --> SortingExerciseDragDropHelper.onDragStart(draggingItemIndex, itemIndex),
       onDragEnd --> { _ =>
@@ -256,12 +256,12 @@ case class HtmlSortingReasonExerciseFullscreenElement(
       ),
       div(
         cls := "sorting-success-banner",
-        cls.toggle("is-visible") <-- stateVar.signal.map(_.sanitized(itemCount, fieldCount).isComplete(itemCount, fieldCount)),
+        cls("is-visible") <-- stateVar.signal.map(_.sanitized(itemCount, fieldCount).isComplete(itemCount, fieldCount)),
         child.text <-- contentIdSignal(LanguageMapContentId("basic/sortingFeedbackSuccess"))
       ),
       div(
         cls := "sorting-error-popup",
-        cls.toggle("is-visible") <-- errorPopupContentId.signal.map(_.nonEmpty),
+        cls("is-visible") <-- errorPopupContentId.signal.map(_.nonEmpty),
         div(
           cls := "sorting-error-popup__content",
           child.text <-- errorPopupContentId.signal.flatMapSwitch {

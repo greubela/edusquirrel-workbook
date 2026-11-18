@@ -96,7 +96,7 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
       val baseCls = if (itemCssClass.nonEmpty) s"reorder-item $itemCssClass" else "reorder-item"
       div(
         cls := baseCls,
-        cls.toggle("reorder-item--dragging") <-- draggingId.signal.map(_.contains(itemId)),
+        cls("reorder-item--dragging") <-- draggingId.signal.map(_.contains(itemId)),
         draggable := true,
         onDragStart --> (_ => draggingId.set(Some(itemId))),
         onDragEnd --> (_ => {

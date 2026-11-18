@@ -18,7 +18,7 @@ object MailBody {
   }
   def plainText(mail: Mail): String = if (mail.bodyHtml) fragment(mail.body).textContent else mail.body
   def render(mail: Mail, hover: Var[String], notice: Var[String]): Element = div(
-    cls := "mail-body", cls.toggle("mail-body--plain") := !mail.bodyHtml,
+    cls := "mail-body", cls("mail-body--plain") := !mail.bodyHtml,
     onMountCallback { ctx =>
       if (!mail.bodyHtml) ctx.thisNode.ref.textContent = mail.body
       else {

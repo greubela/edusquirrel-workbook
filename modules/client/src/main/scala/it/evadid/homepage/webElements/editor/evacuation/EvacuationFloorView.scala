@@ -19,7 +19,7 @@ case class EvacuationFloorView(floorMap: Signal[EvaFloorMap], locked: Signal[Boo
         val occupied = planSignal.map(_.people.contains(index))
         button(typ := "button", cls := "evacuation-cell",
           cls <-- tile.map(kind => s"evacuation-cell--${kind.toString.toLowerCase}"),
-          cls.toggle("evacuation-cell--person") <-- occupied, disabled <-- locked,
+          cls("evacuation-cell--person") <-- occupied, disabled <-- locked,
           aria.label <-- textFor("evacuationCell").combineWith(
             tile.flatMapSwitch(kind => textFor(s"evacuation$kind")),
             occupied.flatMapSwitch(present => if (present) textFor("evacuationPerson") else Val("")))

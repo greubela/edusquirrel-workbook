@@ -84,12 +84,12 @@ object FillInCodeEditor {
       ),
       div(
         cls := "reorder-feedback",
-        cls.toggle("mode-hidden") <-- feedbackVar.signal.map(_ == FeedbackState.Hidden),
-        cls.toggle("reorder-feedback--success") <-- feedbackVar.signal.map {
+        cls("mode-hidden") <-- feedbackVar.signal.map(_ == FeedbackState.Hidden),
+        cls("reorder-feedback--success") <-- feedbackVar.signal.map {
           case FeedbackState.Success(_) => true
           case _ => false
         },
-        cls.toggle("reorder-feedback--incomplete") <-- feedbackVar.signal.map {
+        cls("reorder-feedback--incomplete") <-- feedbackVar.signal.map {
           case FeedbackState.Incomplete(_, _) => true
           case _ => false
         },
@@ -107,7 +107,7 @@ object FillInCodeEditor {
       ),
       div(
         cls := "sorting-error-popup",
-        cls.toggle("is-visible") <-- confirmOpen.signal,
+        cls("is-visible") <-- confirmOpen.signal,
         div(
           cls := "sorting-error-popup__content",
           p(text <-- resetConfirmMessage),

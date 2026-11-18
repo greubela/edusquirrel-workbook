@@ -88,8 +88,8 @@ object StateHelper {
 
     def toObservableValue: ObservableValue[T] = {
       val res = underlying match {
-        case strict: StrictSignal[T] => ObservableValueImpl[T](Some(strict.now()))
-        case signal: Signal[T] => ObservableValueImpl[T](None)
+        case strict: StrictSignal[? <: T] => ObservableValueImpl[T](Some(strict.now()))
+        case _ => ObservableValueImpl[T](None)
       }
       underlying.foreach(next => res.onNewValueArrived(Success.apply(next)))(using unsafeWindowOwner)
       res

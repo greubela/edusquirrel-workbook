@@ -48,10 +48,10 @@ case class IfElseUnion() extends ControlFlowShapeDoubleWidth derives upickle.def
 
     var res = cf
 
-    val (changedFirst, parentEndPos1): (ControlFlowPath, Point[Double]) = finishParentPath(res.firstOpenPath, curLineHeight, seg, true)
+    val (changedFirst, parentEndPos1) = finishParentPath(res.firstOpenPath, curLineHeight, seg, true)
     res = res.changeFirstOpenPath(_ => changedFirst)
 
-    val (changedSecond, parentEndPos2): (ControlFlowPath, Point[Double]) = finishParentPath(res.firstOpenPath, curLineHeight, seg, false)
+    val (changedSecond, parentEndPos2) = finishParentPath(res.firstOpenPath, curLineHeight, seg, false)
     res = res.changeFirstOpenPath(_ => changedSecond)
 
     if (parentEndPos1 != parentEndPos2) {

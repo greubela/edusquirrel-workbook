@@ -68,7 +68,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
         laminarHelper.contentIdStringSignal(
           LanguageMapContentId("login/privacyFooterOnlineLogin"),
           PLAINTEXT_UNDERSCORE_REPLACABLE,
-          List(syncDest.size.toString, syncDest.count(!_.isRemote) + "", syncDest.count(_.isRemote) + ""))
+          List(syncDest.size.toString, syncDest.count(!_.isRemote).toString, syncDest.count(_.isRemote).toString))
       }
     })
 

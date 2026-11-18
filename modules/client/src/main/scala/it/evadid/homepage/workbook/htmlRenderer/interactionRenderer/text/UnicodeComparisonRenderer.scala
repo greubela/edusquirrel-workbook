@@ -25,7 +25,7 @@ case object UnicodeComparisonRenderer extends LineBasedRenderingFactory[UnicodeC
         UnicodeText.characters(if first then answer.first else answer.second).map { character =>
           tr(td(character.position.toString), td(code(character.glyph)), td(code(character.hexadecimal)), td(character.codePoint.toString),
             td(text <-- localized(if character.wellFormed then "unicodeScalar" else "unicodeUnpaired")),
-            cls.toggle("unicode-invalid") := !character.wellFormed)
+            cls("unicode-invalid") := !character.wellFormed)
         }
       }))
     val dom = fieldSet(cls := "unicode-comparison",
