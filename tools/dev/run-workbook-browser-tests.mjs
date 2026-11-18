@@ -6,8 +6,8 @@ import {chromium} from 'playwright';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const suiteStarted = performance.now();
-await access(path.join(root, 'artifacts/newest/client.js')).catch(() => {
-  throw new Error('Build the current client first: sbt -batch buildClientDev');
+await Promise.all(['client.js', 'worker.js'].map(file => access(path.join(root, 'artifacts/newest', file)))).catch(() => {
+  throw new Error('Build the current client and worker first: sbt -batch buildClientDev buildWorkerDev');
 });
 // Catch runner sandbox restrictions before starting the long workbook suite.
 const probe = await chromium.launch({
