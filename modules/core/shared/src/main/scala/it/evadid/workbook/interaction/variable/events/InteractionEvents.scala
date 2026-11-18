@@ -14,8 +14,10 @@ case class InteractionEvents[F <: InteractionFormat](values: Set[InteractionEven
 
   lazy val timestampLastChanged: Option[LocalDateTime] = values.map(_.timestamp).maxOption
 
-  def merge(other: InteractionEvents[F]): InteractionEvents[F] =
-    other.values.foldLeft(this)(_.updated(_))
+  def merge(other: InteractionEvents[F]): InteractionEvents[F] = {
+    val incomingIds = other.values.map(_.eventId)
+    copy(values = values.filterNot(event => incomingIds(event.eventId)) ++ other.values)
+  }
 }
 
 object InteractionEvents {
