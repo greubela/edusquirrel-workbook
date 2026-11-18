@@ -67,13 +67,16 @@ row IDs stay on the server. Distinct same-time events survive, and replaying an
 exact event is idempotent. Append-only storage preserves history at the cost of
 growth; transmission strategies do not provide deletion or retention policies.
 
-Relational rows store an ISO timestamp plus epoch day and nanosecond-of-day.
-This intentionally duplicates metadata to support exact indexed queries across
-the full `LocalDateTime` range, beyond MySQL's microsecond datetime precision.
-Decoding verifies that all timestamp fields agree. Both layouts decode through
-the declared format; JDBC bindings accept only `String | Long`.
+Relational rows index timestamps as epoch day and nanosecond-of-day. Together
+these encode one exact `LocalDateTime`, including its full date range and nanosecond
+precision. There is no additional text timestamp column. Decoding verifies that
+the indexed pair agrees with the timestamp in the serialized event. Both layouts
+decode through the declared format; JDBC bindings accept only `String | Long`.
 `DatabaseHistoryFormat.tables` exposes typed `DatabaseTable`, `DatabaseColumn`
 and `MySqlType` declarations checked against [setup.sql](../../artifacts/database/setup.sql).
+An existing three-column event schema needs an explicit removal of the redundant
+`timestamp` column from all three event tables before using this backend; setup
+initializes empty databases only and never alters existing tables.
 
 ## Bulk writes and range reads
 

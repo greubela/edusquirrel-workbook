@@ -518,17 +518,40 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
   }
 
-  test("corrupt event timestamps and unknown format names fail with a clear exception") {
-    store(history())
-    MysqlTestDatabase.withConnection { connection =>
-      Using.resource(connection.createStatement())(_.executeUpdate("UPDATE answer_event SET timestamp='not-a-timestamp'"))
+  for column <- Seq("event_day", "event_nano") do
+    test(s"corrupt indexed $column is rejected against the serialized event timestamp") {
+      store(history())
+      MysqlTestDatabase.withConnection { connection =>
+        Using.resource(connection.createStatement())(_.executeUpdate(s"UPDATE answer_event SET $column=$column+1"))
+      }
+      val error = intercept[IllegalArgumentException](fetch())
+      assert(error.getMessage.contains("Event timestamp columns disagree with the serialized event"))
     }
-    intercept[Exception](fetch())
+
+  test("unknown stored format names fail with a clear exception") {
+    store(history())
     MysqlTestDatabase.withConnection { connection =>
       Using.resource(connection.createStatement())(_.executeUpdate("UPDATE sync_context_id SET format='unknown-format'"))
     }
     val error = intercept[IllegalArgumentException](fetch())
     assert(error.getMessage.contains("Unknown interaction format"))
+  }
+
+  test("relational inclusive ranges preserve adjacent nanoseconds across midnight") {
+    val endOfDay = time.toLocalDate.atTime(23, 59, 59, 999999999)
+    val nextDay = endOfDay.plusNanos(1)
+    val before = history("before midnight", endOfDay)
+    val after = history("at midnight", nextDay)
+    store(before)
+    store(after)
+    val request = FetchEventsFromDbRequest(context, Seq(key), endOfDay, nextDay, config, RelationalFormat, EventSyncStrategy.SYNC_EVERYTHING)
+    val fetched = FetchFromDatabase.handleRequest(request, logger).fetchedElements(sync).typedAs(format)
+    assertEquals(fetched.allStates, before.allStates ++ after.allStates)
+    assertEquals(fetched.events.values.size, 2)
+    val exactBoundary = request.copy(starting = nextDay)
+    val exact = FetchFromDatabase.handleRequest(exactBoundary, logger).fetchedElements(sync).typedAs(format)
+    assertEquals(exact.allStates, after.allStates)
+    assertEquals(exact.events.values.size, 1)
   }
 
 
