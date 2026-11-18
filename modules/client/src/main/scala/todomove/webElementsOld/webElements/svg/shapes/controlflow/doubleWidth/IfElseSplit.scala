@@ -81,7 +81,7 @@ case class IfElseSplit() extends ControlFlowShapeDoubleWidth derives upickle.def
   override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
     val seg = renderingInfo.controlSegmentSize
 
-    val (changedFirst, parentEndPos): (ControlFlowPath, Point[Double]) = handleParentPath(cf.firstOpenPath, renderingInfo, curLineHeight)
+    val (changedFirst, parentEndPos) = handleParentPath(cf.firstOpenPath, renderingInfo, curLineHeight)
     cf
       .changeFirstOpenPath(_ => changedFirst)
       .startNewPath(startElsePath(parentEndPos, curLineHeight, renderingInfo))

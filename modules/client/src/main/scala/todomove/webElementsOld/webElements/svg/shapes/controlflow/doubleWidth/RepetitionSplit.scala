@@ -99,7 +99,7 @@ case class RepetitionSplit() extends ControlFlowShapeDoubleWidth derives upickle
   override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
     val seg = renderingInfo.controlSegmentSize
 
-    val (changedParent, unionPoint, parentEndPos): (ControlFlowPath, Point[Double], Point[Double]) = handleParentPath(cf.firstOpenPath, renderingInfo, curLineHeight)
+    val (changedParent, unionPoint, parentEndPos) = handleParentPath(cf.firstOpenPath, renderingInfo, curLineHeight)
     cf
       .changeFirstOpenPath(_ => changedParent)
       // start the accepting/repetition path

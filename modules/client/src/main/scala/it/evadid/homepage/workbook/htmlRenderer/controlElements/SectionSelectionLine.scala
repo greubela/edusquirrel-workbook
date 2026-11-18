@@ -30,7 +30,7 @@ private case class SectionSelectionLine(workbook: AllWorkbookInfo) extends HtmlA
       }),
       div(
         cls := "section-block-part section-block-number",
-        text <-- Signal.fromValue(nr + "")
+        text <-- Signal.fromValue(nr.toString)
       ),
       div(
         cls := "section-block-part section-block-description",

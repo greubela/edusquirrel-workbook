@@ -59,7 +59,7 @@ case class RepetitionUnion() extends ControlFlowShapeDoubleWidth derives upickle
   override def renderControlFlow(cf: ControlFlowOverlayBuilder, renderingInfo: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
     val seg = renderingInfo.controlSegmentSize
 
-    val (finishedRepetitionStopPath, endPosition): (ControlFlowPath, Point[Double]) = finishRepetitionStopPath(cf.firstOpenPath, curLineHeight, renderingInfo)
+    val (finishedRepetitionStopPath, endPosition) = finishRepetitionStopPath(cf.firstOpenPath, curLineHeight, renderingInfo)
     cf
       .changeFirstOpenPath(_ => finishedRepetitionStopPath)
       .unionFirstTwoOpen(combinePaths(_, _, renderingInfo))

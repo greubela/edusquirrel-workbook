@@ -27,10 +27,10 @@ case class ControlFlowDownUp(isActive: Boolean = false) extends ControlFlowShape
   def renderControlFlowWithArrows(cf: ControlFlowOverlayBuilder, renderingInfo: BeRenderingConfig, centerPoint: Point[Double], curLineHeight: Double): ControlFlowOverlayBuilder = {
     var res = cf
     // left
-    val (handledDown, arrowPositionsDown): (ControlFlowPath, List[Point[Double]]) = downFlow.handleParentPath(res.firstOpenPath, renderingInfo, centerPoint, curLineHeight)
+    val (handledDown, arrowPositionsDown) = downFlow.handleParentPath(res.firstOpenPath, renderingInfo, centerPoint, curLineHeight)
     res = res.changeFirstOpenPath(_ => handledDown)
     // right
-    val (handledUp, arrowPositionsUp): (ControlFlowPath, List[Point[Double]]) = upFlow.handleParentPath(res.firstOpenPath, renderingInfo, centerPoint, curLineHeight)
+    val (handledUp, arrowPositionsUp) = upFlow.handleParentPath(res.firstOpenPath, renderingInfo, centerPoint, curLineHeight)
     res = res.changeFirstOpenPath(_ => handledUp)
     // arrows left
     for (curArrowCenter <- arrowPositionsDown) {

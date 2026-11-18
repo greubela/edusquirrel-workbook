@@ -382,7 +382,7 @@ object PyAST {
 
     println(res)
 
-    println(res.right.get.statements.mkString("\n"))
+    println(res.fold(error => throw new IllegalArgumentException(error.toString), _.statements.mkString("\n")))
 
   }
 

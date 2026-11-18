@@ -94,7 +94,7 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
         v.original.zipWithIndex.map { (character, index) => div(cls := "compression-byte",
           code(character.toString), (0 until 8).map { bit =>
             val position = index * 8 + bit
-            button(typ := "button", cls.toggle("compression-bit-selected") <-- answer.signal.map(_.asInstanceOf[TextBits].flippedBit.contains(position)), disabled <-- locked,
+            button(typ := "button", cls("compression-bit-selected") <-- answer.signal.map(_.asInstanceOf[TextBits].flippedBit.contains(position)), disabled <-- locked,
               aria.label := s"${index + 1}: ${bit + 1}", aria.pressed <-- answer.signal.map(_.asInstanceOf[TextBits].flippedBit.contains(position).toString),
               text <-- answer.signal.map(a => ((a.asInstanceOf[TextBits].bytes(index) >> (7 - bit)) & 1).toString),
               onClick --> (_ => answer.update(a => { val current = a.asInstanceOf[TextBits];

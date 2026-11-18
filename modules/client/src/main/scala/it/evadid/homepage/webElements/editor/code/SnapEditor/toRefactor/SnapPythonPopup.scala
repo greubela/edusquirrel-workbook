@@ -194,7 +194,7 @@ object SnapPythonPopup {
       ),
       div(
         cls := "sorting-error-popup snap-python-popup",
-        cls.toggle("is-visible") <-- showPopup.signal,
+        cls("is-visible") <-- showPopup.signal,
         // Backdrop clicks must not dismiss; only the Close button does.
         div(
           cls := "sorting-error-popup__content snap-python-popup__content",
