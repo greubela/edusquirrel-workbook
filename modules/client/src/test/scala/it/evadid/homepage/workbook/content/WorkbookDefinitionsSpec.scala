@@ -2,6 +2,8 @@ package it.evadid.homepage.workbook.content
 
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.elements.structureElements.Workbook
+import upickle.default.*
 import munit.FunSuite
 
 class WorkbookDefinitionsSpec extends FunSuite {
@@ -19,11 +21,12 @@ class WorkbookDefinitionsSpec extends FunSuite {
   }
 
   factories.foreach { (name, factory) =>
-    test(s"$name workbook definition has unique element IDs and survives both saved formats") {
+    test(s"$name workbook definition has unique IDs and round-trips uPickle JSON and factory formats") {
       val workbook = factory(null).createWorkbook
       val ids = workbook.allChildrenFullSubtree.map(_.elementId)
       assert(ids.nonEmpty, workbook.workbookId)
       assertEquals(ids.distinct.size, ids.size, workbook.workbookId)
+      assertEquals(read[Workbook](write[Workbook](workbook)), workbook, workbook.workbookId)
       for serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike) do
         assertEquals(serializer.deserialize(serializer.serialize(workbook)), workbook, workbook.workbookId)
     }
