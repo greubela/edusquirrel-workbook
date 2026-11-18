@@ -157,10 +157,10 @@ object StateHelper {
     airstreamVar
   }
 
-  def fromAirstreamVarToState[T](airstreamVar: Var[T]): State[T] = {
-    val state = State[T](airstreamVar.now())
-    bindTogether(state, airstreamVar)
-    state
+  def fromAirstreamVarToState[T](airstreamVar: Var[T], owner: Owner = unsafeWindowOwner): State[T] = {
+    val changes = ObservableValueImpl[T](Some(airstreamVar.now()))
+    airstreamVar.signal.distinct.foreach(next => changes.onNewValueArrived(Success(next)))(using owner)
+    State.fromStorage(() => airstreamVar.now(), airstreamVar.set, transform => airstreamVar.update(transform), changes)
   }
 
   def bindTogether[T](state: State[T], airstreamVar: Var[T]): Unit = {

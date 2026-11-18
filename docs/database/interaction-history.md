@@ -49,8 +49,15 @@ writes remain pending. Read cursors replay the last event timestamp inclusively;
 normal polls replay the last event inclusively. A full refresh every five minutes
 recovers late uploads with older event timestamps.
 
-`RemoteInteractionCacheControl` owns a typed cache for each interaction in the active
-workbook/user environment. `FormattedSyncDestination` encodes/decodes envelopes at the
+`RemoteInteractionCacheControl` selects a replaceable workbook binding from the
+user/workbook/credential environment signal. Each typed binding owns a `Var` containing
+an immutable `RemoteHistoryCache.CacheState`, including the map of destination to
+confirmed events and read progress. The shared cache applies immutable updates through
+that state handle. Bindings have no active/closing lifecycle flags: switching signal
+subscriptions disconnects old restorations, while captured histories and handlers let
+departing requests finish with their original credentials as the replacement syncs.
+Normal user changes start the replacement immediately; a running full reset finishes
+first because it also clears shared local answer stores. `FormattedSyncDestination` encodes/decodes envelopes at the
 destination boundary. Local writes merge deltas with the saved typed history;
 IndexedDB performs the read/merge/write in a single read-write transaction.
 Each successful destination read is applied independently, so an unavailable
@@ -79,7 +86,9 @@ one request over their combined bounds, clipped back to each caller’s exact wi
 Full reset drains registered operations, deletes the current user’s histories across
 all workbooks from every backend destination, and clears each configured local
 answer store without decoding records. Synchronization remains paused after partial
-failure until retry or an environment change; successful reset reloads the workbook.
+failure until retry; navigation and credential replacement preserve the user's reset
+state. A different user receives a separate binding, and late reset completions update
+only their originating user. Successful reset reloads the workbook.
 Reset also works from the catalogue without a loaded workbook. Navigation flushes
 the previous workbook’s queued writes before releasing its handlers. Authentication
 and unrelated IndexedDB caches are preserved. User changes and full

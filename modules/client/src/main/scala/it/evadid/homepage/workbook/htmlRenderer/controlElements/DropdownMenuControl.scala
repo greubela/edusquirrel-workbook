@@ -34,7 +34,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
     laminarHelper.plaintextStringSignal(key)
   }
 
-  private def resetOwner = fullInfo.homepageInfoNow().toContext -> fullInfo.signals.syncEnvironmentSignal.now()
+  private def resetOwner = fullInfo.signals.user.now().map(_.user.personId)
 
   private def resetAllData(): Unit = {
     val message = fullInfo.homepageInfoNow().languageMapStore.languageMaps

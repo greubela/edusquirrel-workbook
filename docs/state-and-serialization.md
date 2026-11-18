@@ -41,7 +41,12 @@ handles in `Var`s and releases them through the owning lifecycle.
 `State[T]` and `ObservableValue[T]` are shared abstractions. Airstream/Laminar
 `Var[T]`, `Signal[T]` and DOM bindings belong to JavaScript. Their bridge lives in
 [StateHelper.scala](../modules/core/js/src/main/scala/it/evadid/core/datastructures/state/StateHelper.scala),
-not shared core. A renderer obtains a bound state from the interaction:
+not shared core. `fromAirstreamVarToState(var, owner)` adapts the original store,
+without mirroring its value. Functional updates, including updates through `biMap`,
+compose in the Var's transaction queue. Releasing the owner detaches observations;
+a pending operation can still read and update its original store.
+
+A renderer obtains a bound state from the interaction:
 
 ```scala
 import com.raquo.laminar.api.L.*

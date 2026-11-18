@@ -13,6 +13,7 @@ import it.evadid.homepage.control.info.{SessionData, WorkbookUserDataAnalyzer}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.homepage.workbook.syncDestination.{LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
+import it.evadid.workbook.interaction.sync.SyncResetState
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import upickle.default.*
@@ -278,9 +279,16 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
         WorkbookUserDataAnalyzer().downloadAllData(fullInfo)
         fullInfo.syncControl.ensureSynced()
       }
-      waitFor.recover { case scala.util.control.NonFatal(error) =>
+      val finishing = waitFor.recover { case scala.util.control.NonFatal(error) =>
         logger.logExceptionWarn("Could not finish synchronizing the previous user", error)
-      }.flatMap(_ => {
+      }
+      // Normal session changes replace the binding immediately; its captured IO finishes independently.
+      // A full reset also clears shared local answer stores, so finish that deletion before switching users.
+      val ready = fullInfo.syncControl.resetState.now() match {
+        case _: SyncResetState.Running => finishing
+        case _ => Future.unit
+      }
+      ready.flatMap(_ => {
         actuallySetNewUser()
         saveSession(newUserInfo).flatMap { _ =>
           if (newUserInfo.isEmpty || fullInfo.current.workbookInfo.isEmpty) Future.successful(()) else {

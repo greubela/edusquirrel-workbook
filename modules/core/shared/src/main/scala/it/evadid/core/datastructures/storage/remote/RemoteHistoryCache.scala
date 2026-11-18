@@ -13,11 +13,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Try}
 
 /** Typed additive cache used by workbook synchronization; each destination tracks confirmed event deltas. */
-case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryReaderWriter[K, F]](
-    syncLogger: SyncLogger, cacheStrategies: Map[RW, EventSyncStrategy]) {
+final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryReaderWriter[K, F]](
+    syncLogger: SyncLogger, cacheStrategies: Map[RW, EventSyncStrategy],
+    state: State[CacheState[K, F, RW]]) {
   private given ExecutionContext = ExecutionContext.global
   private type History = InteractionVariableHistory[F]
-  private val state = State(CacheState[K, F, RW](Map.empty, cacheStrategies.keys.map(_ -> Map.empty[K, RemoteHistoryValue[F]]).toMap))
 
   val updateReport: ObservableValue[Map[K, History]] = state.observable.deriveValue(_.histories)
   val reports: ObservableValue[Map[K, CacheReportForKey[K, F, RW]]] = state.observable.deriveValue { current =>
@@ -39,11 +39,7 @@ case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRead
   private def missing(local: History, known: History, strategy: EventSyncStrategy): History =
     InteractionVariableHistory(InteractionEvents(local.cleanWithStrategy(strategy).events.values -- known.events.values))
 
-  def mergeLocal(histories: Map[K, History]): Unit = state.update { current =>
-    current.copy(histories = histories.foldLeft(current.histories) { case (merged, (key, history)) =>
-      merged.updated(key, merged.getOrElse(key, empty).mergeWith(history))
-    })
-  }
+  def mergeLocal(histories: Map[K, History]): Unit = state.update(_.withLocalHistories(histories))
 
   /** Freshness is measured by successful tail-read completion, independently of event timestamps and write acknowledgements. */
   def ensureMaxAge(keys: Set[K], maximumAcceptableAge: LocalDateTime = LocalDateTime.now(),
@@ -139,7 +135,8 @@ case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRead
     require(cacheStrategies.contains(cache), "Cannot store to an unconfigured history destination")
     mergeLocal(histories)
     if forceFlush then flush(true)
-    val current = state.now()
+    // Inputs belong to this request, even when the backing store defers its notification/update.
+    val current = state.now().withLocalHistories(histories)
     val deltas = histories.keys.flatMap { key =>
       val known = current.destinations(cache).getOrElse(key, RemoteHistoryValue.empty).history
       val delta = missing(current.histories(key), known, cacheStrategies(cache))
@@ -175,6 +172,10 @@ case class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRead
 }
 
 object RemoteHistoryCache {
+  def apply[K, F <: InteractionFormat, RW <: RemoteHistoryReaderWriter[K, F]](
+      logger: SyncLogger, strategies: Map[RW, EventSyncStrategy]): RemoteHistoryCache[K, F, RW] =
+    new RemoteHistoryCache(logger, strategies, State(CacheState.empty(strategies.keySet)))
+
   case class RemoteHistoryValue[F <: InteractionFormat](
       history: InteractionVariableHistory[F],
       fetchCompleted: Option[LocalDateTime],
@@ -186,9 +187,19 @@ object RemoteHistoryCache {
       RemoteHistoryValue(InteractionVariableHistory(InteractionEvents.empty), None, None, None)
   }
 
-  private case class CacheState[K, F <: InteractionFormat, RW](
+  case class CacheState[K, F <: InteractionFormat, RW](
       histories: Map[K, InteractionVariableHistory[F]],
-      destinations: Map[RW, Map[K, RemoteHistoryValue[F]]])
+      destinations: Map[RW, Map[K, RemoteHistoryValue[F]]]) {
+    def withLocalHistories(incoming: Map[K, InteractionVariableHistory[F]]): CacheState[K, F, RW] =
+      copy(histories = incoming.foldLeft(histories) { case (merged, (key, history)) =>
+        merged.updated(key, merged.getOrElse(key, InteractionVariableHistory(InteractionEvents.empty[F])).mergeWith(history))
+      })
+  }
+
+  object CacheState {
+    def empty[K, F <: InteractionFormat, RW](destinations: Set[RW]): CacheState[K, F, RW] =
+      CacheState(Map.empty, destinations.map(_ -> Map.empty[K, RemoteHistoryValue[F]]).toMap)
+  }
 
   case class CacheReportForKey[K, F <: InteractionFormat, RW](
       key: K,

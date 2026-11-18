@@ -1,9 +1,11 @@
 package it.evadid.homepage.control.change
 
 import com.raquo.laminar.api.L.*
+import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.core.datastructures.language.{LanguageMapContentId, AppLanguage}
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
-import it.evadid.core.datastructures.user.{AllUserInfo, UserConfig}
+import it.evadid.core.datastructures.user.{AllUserInfo, UserConfig, UserCredentials, UserTokenInfo}
+import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.distribution.command.{ExecutionCommand, SerializedException}
 import it.evadid.distribution.commandTypes.SQLCommands.*
@@ -25,6 +27,7 @@ import it.evadid.workbook.interaction.variable.events.AnswerChangedEvent
 import it.evadid.workbook.meta.ExecutionContextInformation
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters.*
 import upickle.default.*
 import java.time.LocalDateTime
 
@@ -39,6 +42,8 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     val failBlobReads = Var(false)
     val failBlobReset = Var(false)
     val afterStore = Var[() => Unit](() => ())
+    val beforeResponse = Var[ExecutionCommand => Future[Unit]](_ => Future.unit)
+    val authorization = Var(Vector.empty[(ExecutionCommand, String)])
     val elements = Seq(TextInteraction("first"), TextInteraction("second"))
     val user = AllUserInfo.createNewUser("Student", "fixture@example.invalid", UserConfig(Seq(
       SyncInformation(defaultDatabase, EventSyncStrategy.SYNC_EVERYTHING),
@@ -103,9 +108,12 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
       val oldCompression = global.selectDynamic("CompressionStream")
       val fetch: js.Function2[String, js.Dynamic, js.Promise[js.Dynamic]] = (_, init) => {
         val command = read[ExecutionCommand](init.body.asInstanceOf[String])
+        authorization.update(_ :+ (command -> init.headers.selectDynamic("Authorization").asInstanceOf[String]))
         val text = write(response(command))
-        val body: js.Function0[js.Promise[String]] = () => js.Promise.resolve(text)
-        js.Promise.resolve(js.Dynamic.literal(status = 200, statusText = "OK", ok = true, text = body))
+        beforeResponse.now()(command).map { _ =>
+          val body: js.Function0[js.Promise[String]] = () => js.Promise.resolve(text)
+          js.Dynamic.literal(status = 200, statusText = "OK", ok = true, text = body)
+        }.toJSPromise
       }
       global.updateDynamic("CompressionStream")(js.undefined)
       global.updateDynamic("fetch")(fetch)
@@ -242,6 +250,150 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           assertEquals(report.now().get.destinationsWithSufficientWrites.size, 0)
         }
       }
+    }
+  }
+
+  test("an edit inside an Airstream transaction stores its new history at both destinations") {
+    val fixture = new Fixture
+    fixture.withHttp {
+      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+        val owner = new ManualOwner
+        val editing = Var(0)
+        val finished = Promise[Unit]()
+        editing.signal.changes.foreach { _ =>
+          fixture.elements.foreach(_.interactionVariable.setStateFromUserInteraction("transaction edit", UpdateImportance.MAJOR,
+            context = fixture.info.workbookContextInformation))
+          fixture.info.syncControl.storeAll(true).onComplete(finished.tryComplete)
+        }(using owner)
+        fixture.requests.set(Vector.empty)
+        editing.set(1)
+        finished.future.map { _ =>
+          val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
+            .map(command => read[BulkStoreToDbRequest](command.json))
+          assertEquals(writes.size, 2)
+          assert(writes.forall(_.histories.forall(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == "transaction edit"))))
+        }.andThen { case _ => owner.killSubscriptions() }
+      }
+    }
+  }
+
+  test("partial reset remains paused across navigation and credential replacement, then retries") {
+    val fixture = new Fixture
+    fixture.withHttp {
+      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+        fixture.failBlobReset.set(true)
+        fixture.info.syncControl.resetAllData().failed.flatMap { _ =>
+          val workbook = fixture.info.homepageInfoNow().workbookInfo
+          fixture.info.homepageInfoState.update(_.copy(workbookInfo = None))
+          assert(fixture.info.syncControl.resetState.now().isInstanceOf[SyncResetState.Failed])
+          fixture.info.homepageInfoState.update(_.copy(workbookInfo = workbook,
+            userInfo = Some(fixture.user.copy(credentials = UserCredentials(singleAccessToken = Some(it.evadid.core.datastructures.user.User.SingleAccessToken("replacement")))))))
+          fixture.requests.set(Vector.empty)
+          fixture.info.syncControl.ensureSynced().flatMap { _ =>
+            assert(fixture.info.syncControl.resetState.now().isInstanceOf[SyncResetState.Failed])
+            assertEquals(fixture.requests.now(), Vector.empty)
+            fixture.failBlobReset.set(false)
+            fixture.info.syncControl.resetAllData().map { _ =>
+              assertEquals(fixture.info.syncControl.resetState.now(), SyncResetState.Completed)
+              assertEquals(fixture.requests.now().count(_.name == resetUserHistoriesDbCommand.name), 2)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  test("running reset follows its user across navigation without allowing synchronization") {
+    val fixture = new Fixture
+    val release = Promise[Unit]()
+    val deleting = Promise[Unit]()
+    fixture.beforeResponse.set(command =>
+      if command.name == resetUserHistoriesDbCommand.name then {
+        deleting.trySuccess(())
+        release.future
+      } else Future.unit)
+    fixture.withHttp {
+      val reset = fixture.info.syncControl.resetAllData()
+      deleting.future.flatMap { _ =>
+        val workbook = fixture.info.homepageInfoNow().workbookInfo
+        fixture.info.homepageInfoState.update(_.copy(workbookInfo = None))
+        fixture.info.homepageInfoState.update(_.copy(workbookInfo = workbook))
+        assert(fixture.info.syncControl.resetState.now().isInstanceOf[SyncResetState.Running])
+        assert(fixture.info.syncControl.resetAllData() eq reset)
+        fixture.requests.set(Vector.empty)
+        fixture.info.syncControl.storeAll(true).flatMap { _ =>
+          assertEquals(fixture.requests.now(), Vector.empty)
+          release.success(())
+          reset.map(_ => assertEquals(fixture.info.syncControl.resetState.now(), SyncResetState.Completed))
+        }
+      }.andThen { case _ => release.trySuccess(()) }
+    }
+  }
+
+  test("a replacement binding syncs before the old read completes, retaining each user's credentials") {
+    val fixture = new Fixture
+    def signed(user: AllUserInfo, value: String) = SignedToken(UserTokenInfo(user.user, at, at.plusYears(2)), value)
+    val oldToken = signed(fixture.user, "old-session")
+    fixture.info.homepageInfoState.update(_.copy(userInfo = Some(fixture.user.copy(credentials = UserCredentials(signedBackendToken = Some(oldToken))))))
+    val oldRead = Promise[Unit]()
+    val release = Promise[Unit]()
+    fixture.beforeResponse.set(command => {
+      if command.name == fetchEventsFromDbCommand.name && read[FetchEventsFromDbRequest](command.json).usageContext.userId == fixture.user.user.personId then {
+        oldRead.trySuccess(())
+        release.future
+      } else Future.unit
+    })
+    fixture.withHttp {
+      val departing = fixture.info.syncControl.ensureSynced()
+      oldRead.future.flatMap { _ =>
+        val other = AllUserInfo.createNewUser("Next user", "replacement@example.invalid", fixture.user.config)
+        val newToken = signed(other, "new-session")
+        fixture.info.usageControl.changeUser(Some(other.copy(credentials = UserCredentials(signedBackendToken = Some(newToken))))).flatMap { _ =>
+          fixture.elements.foreach(_.interactionVariable.setStateFromUserInteraction("new user's answer", UpdateImportance.MAJOR,
+            context = fixture.info.workbookContextInformation))
+          fixture.info.syncControl.ensureSynced()
+        }.flatMap { _ =>
+          assert(!departing.isCompleted)
+          assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("new user's answer", "new user's answer"))
+          release.success(())
+          departing.map { _ =>
+            assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("new user's answer", "new user's answer"))
+            val writes = fixture.authorization.now().collect { case (command, token) if command.name == bulkStoreToDbCommand.name =>
+              read[BulkStoreToDbRequest](command.json) -> token
+            }
+            val oldWrites = writes.filter(_._1.syncContexts.forall(_.userId == fixture.user.user.personId))
+            val newWrites = writes.filter(_._1.syncContexts.forall(_.userId == other.user.personId))
+            assert(oldWrites.nonEmpty && newWrites.nonEmpty)
+            assert(oldWrites.forall(_._2 == oldToken.toJson))
+            assert(newWrites.forall(_._2 == newToken.toJson))
+            assert(oldWrites.flatMap(_._1.histories).forall(_.typedAs(TextInteractionFormat).allStates.forall(_.newState != "new user's answer")))
+          }
+        }
+      }.andThen { case _ => release.trySuccess(()) }
+    }
+  }
+
+  test("a late reset completion cannot change a replacement user's reset state") {
+    val fixture = new Fixture
+    fixture.info.homepageInfoState.update(_.copy(workbookInfo = None))
+    fixture.failBlobReset.set(true)
+    val release = Promise[Unit]()
+    val deleting = Promise[Unit]()
+    fixture.beforeResponse.set(command =>
+      if command.name == resetUserHistoriesDbCommand.name then {
+        deleting.trySuccess(())
+        release.future
+      } else Future.unit)
+    fixture.withHttp {
+      val reset = fixture.info.syncControl.resetAllData()
+      deleting.future.flatMap { _ =>
+        val other = AllUserInfo.createNewUser("Next user", "next@example.invalid", fixture.user.config)
+        fixture.info.invalidateFeedbackSession()
+        fixture.info.homepageInfoState.update(_.copy(userInfo = Some(other)))
+        assertEquals(fixture.info.syncControl.resetState.now(), SyncResetState.Idle)
+        release.success(())
+        reset.failed.map(_ => assertEquals(fixture.info.syncControl.resetState.now(), SyncResetState.Idle))
+      }.andThen { case _ => release.trySuccess(()) }
     }
   }
 

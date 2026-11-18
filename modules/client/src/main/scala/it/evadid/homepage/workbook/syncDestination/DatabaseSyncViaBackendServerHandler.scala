@@ -1,12 +1,9 @@
 package it.evadid.homepage.workbook.syncDestination
 
-import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements
-import it.evadid.core.util.io.ConstructorLikeParserWithJsonElements.ConstructorLikeReadResult
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.ExecutionInfo.ExecutionSuccess
 import it.evadid.distribution.commandTypes.SQLCommands
-import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, StoreToDbRequest}
-import it.evadid.homepage.control.model.FullInfo
+import it.evadid.distribution.commandTypes.SQLCommands.DbFetchResponse
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.destination.*
@@ -15,12 +12,10 @@ import it.evadid.workbook.interaction.sync.model.{FetchResponse, InteractionHist
 
 import scala.concurrent.*
 
-case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definition: SyncDestinationBasedOnHistoryDatabase, fullInfo: FullInfo) extends SyncDestinationHistoryHandler {
+case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definition: SyncDestinationBasedOnHistoryDatabase,
+    backend: ExecutionClient, databaseConfig: it.evadid.sql.DatabaseConfiguration) extends SyncDestinationHistoryHandler {
 
-  private val backend: ExecutionClient = fullInfo.defaults.backendExecutor
   private given ec: ExecutionContext = ExecutionContext.global
-  private val databaseConfig: it.evadid.sql.DatabaseConfiguration =
-    fullInfo.homepageInfoNow().userInfo.flatMap(_.credentials.databaseConfig).getOrElse(definition.databaseConfig)
 
   override def syncLogger: SyncLogger = pSyncLogger
 

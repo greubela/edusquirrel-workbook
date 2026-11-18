@@ -18,3 +18,9 @@ Post-review fixes authorized on 2026-11-18:
 - Attempt independent pending writes despite read failures.
 - Integrate incremental reads, periodic full recovery, and phase-level batching.
 - Remove stale refactor guidance and update session serialization documentation.
+
+Binding architecture requested on 2026-11-18:
+- Keep immutable per-location cache snapshots in a central Var for each typed binding.
+- Replace workbook bindings from the environment signal (including user and credentials), without active/closing lifecycle flags.
+- Detached bindings retain their own histories and credentials and can finish flushing while the replacement syncs.
+- Scope full-reset progress to the user across navigation and credential changes; a partial reset must not resume writes.
