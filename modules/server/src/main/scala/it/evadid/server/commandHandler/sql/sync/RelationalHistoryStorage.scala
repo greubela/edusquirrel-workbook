@@ -38,8 +38,8 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     val eventId = ContentIdentity.key(ujson.read(serialized))
     val exists = query(s"SELECT id FROM $table WHERE sync_id=? AND event_id=?", List(sync, eventId))(_.getLong(1)).nonEmpty
     if exists then 0 else {
-      update(s"INSERT INTO $table (sync_id,event_id,event_day,event_nano,timestamp,serialized_data) VALUES (?,?,?,?,?,?)",
-        sync, eventId, event.timestamp.toLocalDate.toEpochDay, event.timestamp.toLocalTime.toNanoOfDay, event.timestamp.toString, serialized)
+      update(s"INSERT INTO $table (sync_id,event_id,event_day,event_nano,serialized_data) VALUES (?,?,?,?,?)",
+        sync, eventId, event.timestamp.toLocalDate.toEpochDay, event.timestamp.toLocalTime.toNanoOfDay, serialized)
       1
     }
   }
@@ -61,10 +61,10 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
         List(fromDay, fromDay, starting.toLocalTime.toNanoOfDay, untilDay, untilDay, until.toLocalTime.toNanoOfDay)
     }
     val events = tables.flatMap { table =>
-      query(s"SELECT timestamp,serialized_data,event_day,event_nano FROM $table WHERE sync_id=?" + filter, List(sync) ++ parameters) { row =>
-        val event = InteractionFormat.codecsFor(format).eventSerializer.deserialize(row.getString(2))
-        require(event.timestamp == LocalDateTime.parse(row.getString(1)) &&
-          event.timestamp.toLocalDate.toEpochDay == row.getLong(3) && event.timestamp.toLocalTime.toNanoOfDay == row.getLong(4), "Event timestamp columns disagree")
+      query(s"SELECT serialized_data,event_day,event_nano FROM $table WHERE sync_id=?" + filter, List(sync) ++ parameters) { row =>
+        val event = InteractionFormat.codecsFor(format).eventSerializer.deserialize(row.getString("serialized_data"))
+        require(event.timestamp.toLocalDate.toEpochDay == row.getLong("event_day") &&
+          event.timestamp.toLocalTime.toNanoOfDay == row.getLong("event_nano"), "Event timestamp columns disagree with the serialized event")
         require(table == (event match {
           case _: AnswerChangedEvent[F] => "answer_event"
           case _: GradingEvent[F] => "grading_event"
