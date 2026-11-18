@@ -34,3 +34,4 @@ Follow-up after merging into main (2026-11-18):
 - Make setup.sql create tables in an existing selected database; do not create or switch databases.
 - Fix the deployAll Scala.js cyclic ReadWriter derivation error in DataEntryToSync.
 - Explain the Play server's Java selection and runtime update commands in chat; do not retain the deployment guide in the repository.
+- Keep the PR mergeable with updated main and use the patched Azul Java 21 JRE in deployment/server/docker-compose.yml.
