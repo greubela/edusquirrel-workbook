@@ -427,10 +427,7 @@ class PythonParserSpec extends FunSuite {
       assertions = result => {
         val maybeFunction = result.definedFunctions.find(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "accumulate")
         assert(maybeFunction.nonEmpty, "expected accumulate function to be defined")
-        val functionBody = maybeFunction.get.body match {
-          case seq: BeSequence => seq.body
-          case other => fail(s"Expected sequence body, found ${other.getClass.getSimpleName}")
-        }
+        val functionBody = maybeFunction.get.body.body
         val whileExpressions = functionBody.collect { case loop: BeWhile => loop }
         assertEquals(whileExpressions.length, 1)
         val whileBodyComments = whileExpressions.head.body.body.collect { case comment: BeSingleLineComment => comment }
@@ -531,10 +528,7 @@ class PythonParserSpec extends FunSuite {
           function.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "classify_score"
         }.getOrElse(fail("expected classify_score function to be defined"))
 
-        val functionBody = classifyFunction.body match {
-          case seq: BeSequence => seq.body
-          case other => fail(s"Expected sequence body, found ${other.getClass.getSimpleName}")
-        }
+        val functionBody = classifyFunction.body.body
 
         val topLevelIfs = functionBody.collect { case branch: BeIfElse => branch }
         assertEquals(topLevelIfs.length, 1)
@@ -590,7 +584,7 @@ class PythonParserSpec extends FunSuite {
       val parsingResult = PythonParser.default.parsePythonWithDetails(testCase.python)
       val expression = parsingResult.codeExpression
       assert(
-        !expression.isInstanceOf[BeExpressionUnparsable],
+        expression.body.forall(!_.isInstanceOf[BeExpressionUnparsable]),
         s"parsing produced an unparsable expression for ${testCase.name}"
       )
 
@@ -683,10 +677,7 @@ class PythonParserSpec extends FunSuite {
     val returnVariable = circleFunction.outputs.getOrElse(fail("expected return variable"))
     assertEquals(returnVariable.variableType, BeDataType.Numeric)
 
-    val bodySequence = circleFunction.body match {
-      case seq: BeSequence => seq
-      case other => fail(s"expected function body to be a sequence but was ${other.getClass.getSimpleName}")
-    }
+    val bodySequence = circleFunction.body
     val areaAssignment = bodySequence.body.collectFirst {
       case assign: BeAssignVariable if assign.target.name.getNameIn(English, NamingStyle.SnakeCase) == "area" => assign
     }.getOrElse(fail("expected assignment to area"))
@@ -717,10 +708,7 @@ class PythonParserSpec extends FunSuite {
     val generated = sourceExpression.structureInfo.toStringInLanguage(Python, English)
 
     val parsed = PythonParser.default.parsePythonWithDetails(generated)
-    parsed.codeExpression match {
-      case seq: BeSequence => assertEquals(seq.body.length, 2)
-      case other => fail(s"Expected a sequence after parsing mini program, but received ${other.getClass.getSimpleName}")
-    }
+    assertEquals(parsed.codeExpression.body.length, 2)
 
     val regenerated = parsed.codeExpression.structureInfo.toStringInLanguage(Python, English)
     assertEquals(normalizer.normalizePython(regenerated), normalizer.normalizePython(generated))
@@ -828,12 +816,8 @@ class PythonParserSpec extends FunSuite {
       function.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "outer"
     }.getOrElse(fail("expected to find outer function definition"))
 
-    val innerFunction = outerFunction.body match {
-      case seq: BeSequence =>
-        seq.body.collectFirst { case function: BeDefineFunction => function }
-          .getOrElse(fail("expected nested inner function definition"))
-      case other => fail(s"Expected sequence body, found ${other.getClass.getSimpleName}")
-    }
+    val innerFunction = outerFunction.body.body.collectFirst { case function: BeDefineFunction => function }
+      .getOrElse(fail("expected nested inner function definition"))
 
     val renderedInner = innerFunction.structureInfo.toStringInLanguage(Python, English)
     val expectedInner =
