@@ -6,8 +6,8 @@ import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.{
 
 
 /** Maps the lossless Snap document ([[SnapScalaModel]]) to the program model the expression reader uses.
-  * A document is a project (with scenes, or the older single stage), or a fragment: blocks, a script,
-  * scripts, a sprite or a block library.
+  * A document is a project (with scenes; without them, its one stage or its own scripts and sprites),
+  * or a fragment: blocks, a script, scripts, a sprite or a block library.
   */
 object TurtleStitchModelMapper {
   private type Node = SnapScalaModel.Element
@@ -22,8 +22,10 @@ object TurtleStitchModelMapper {
 
   private def fromProject(root: Node): Project = {
     val scenesNode = firstChild(root, "scenes")
+    // Without scenes, the older format has one stage; a minimal project holds its scripts itself.
     val scenes = childrenNamed(scenesNode, "scene").map(parseScene).toVector match {
-      case Vector() => firstChild(root, "stage").map(stage => Scene(name = attr(root, "name").getOrElse("Untitled"), stage = parseStage(stage))).toVector
+      case Vector() => Vector(Scene(name = attr(root, "name").getOrElse("Untitled"),
+        stage = parseStage(firstChild(root, "stage").getOrElse(root))))
       case found => found
     }
     Project(

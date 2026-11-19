@@ -32,12 +32,6 @@ object TurtleStitchToBeExpressionParser {
     "and", "or", "not", "is", "is not", "&", "|", "^", "<<", ">>", "~"
   )
 
-  private sealed trait BlockInput derives upickle.default.ReadWriter
-  private final case class InputLiteral(value: String) extends BlockInput derives upickle.default.ReadWriter
-  private final case class InputScript(body: String) extends BlockInput derives upickle.default.ReadWriter
-  private final case class InputBlock(attrs: String, body: String) extends BlockInput derives upickle.default.ReadWriter
-  private final case class InputList(items: List[BlockInput]) extends BlockInput derives upickle.default.ReadWriter
-
   private case class Signature(name: String, arity: Int, isOperator: Boolean, isCustom: Boolean = false) derives upickle.default.ReadWriter
   private case class PhaseOneResult(
       orderedDefinitions: List[BeDefineFunction],
@@ -58,54 +52,24 @@ object TurtleStitchToBeExpressionParser {
   def parseProject(project: Project): BeExpression =
     parseProjectWithLayout(project).expression
 
+  /** Failures propagate: a program that cannot be read is never replaced by an empty one. */
   def parseProjectWithLayout(project: Project): ParseWithLayout = {
-    scala.util.Try {
-      val interner = SnapControlFlow.VariableInterner.fromNames(collectVariableNamesFromProject(project))
-      withVars(interner) {
-        val phaseOne = buildDefinitions(project)
-        val scriptParses = parsePhaseTwoScripts(project, phaseOne)
-        val statements = phaseOne.userDefinitions ++ scriptParses.flatMap(_.statements)
-        val layout = SnapCanvasLayout(scriptParses.map(_.layout).filter(_.callCount > 0))
-        ParseWithLayout(BeStartProgram(BeSequence.optionalBody(statements)), layout)
-      }
-    }.getOrElse(ParseWithLayout(BeStartProgram(BeSequence.optionalBody(Nil)), SnapCanvasLayout.empty))
+    val interner = SnapControlFlow.VariableInterner.fromNames(collectVariableNamesFromProject(project))
+    withVars(interner) {
+      val phaseOne = buildDefinitions(project)
+      val scriptParses = parsePhaseTwoScripts(project, phaseOne)
+      val statements = phaseOne.userDefinitions ++ scriptParses.flatMap(_.statements)
+      val layout = SnapCanvasLayout(scriptParses.map(_.layout).filter(_.callCount > 0))
+      ParseWithLayout(BeStartProgram(BeSequence.optionalBody(statements)), layout)
+    }
   }
 
   def parseXml(xml: String): BeExpression =
     parseXmlWithLayout(xml).expression
 
-  def parseXmlWithLayout(xml: String): ParseWithLayout = {
-    val interner = SnapControlFlow.VariableInterner.fromNames(collectVariableNamesFromXml(xml))
-    withVars(interner) {
-      val primary = parseProjectWithLayout(TurtleStitchXmlLoader.load(xml))
-      val chosen =
-        if SnapExpressionSupport.hasSupportedStatements(primary.expression) || !xml.contains("<block") then primary
-        else
-          val recovered = recoverStatementsFromXmlWithLayout(xml)
-          if SnapExpressionSupport.hasSupportedStatements(recovered.expression) then recovered else primary
-      attachXmlBlockDefinitions(xml, chosen)
-    }
-  }
+  /** Snap XML through the single lossless reader; malformed XML is unparsable. */
+  def parseXmlWithLayout(xml: String): ParseWithLayout = parseProjectWithLayout(TurtleStitchXmlLoader.load(xml))
 
-  private def attachXmlBlockDefinitions(xml: String, parsed: ParseWithLayout): ParseWithLayout = {
-    val defs = parseBlockDefinitionsFromXml(xml)
-    if defs.isEmpty then parsed
-    else
-      val body = parsed.expression match
-        case BeStartProgram(Some(seq)) => seq.body.toList
-        case BeStartProgram(None) => Nil
-        case seq: BeSequence => seq.body.toList
-        case other => List(other)
-      val existing = body.collect { case defn: BeDefineFunction => SnapExpressionSupport.pythonNameOf(defn) }.toSet
-      val extra = defs.filterNot(defn => existing.contains(SnapExpressionSupport.pythonNameOf(defn)))
-      if extra.isEmpty then parsed
-      else parsed.copy(expression = BeStartProgram(BeSequence.optionalBody(extra ++ body)))
-  }
-
-  private def parseBlockDefinitionsFromXml(xml: String): List[BeDefineFunction] =
-    topLevelTaggedSections(xml, "block-definition").flatMap { (attrs, body) =>
-      blockSelector(attrs).map(spec => parseBlockDefinitionFromXml(spec, body))
-    }
 
   private def slotDataType(slot: String): BeDataType = slot match {
     case "%n" => BeDataType.Numeric
@@ -113,251 +77,19 @@ object TurtleStitchToBeExpressionParser {
     case _ => BeDataType.AnyType
   }
 
-  private def parseBlockDefinitionFromXml(spec: String, body: String): BeDefineFunction = {
-    val inputSection = findTagInnerAnywhere(body, "inputs").getOrElse("")
-    val namesFromAttr =
-      """<input\b[^>]*\bname="([^"]+)"""".r
-        .findAllMatchIn(inputSection)
-        .map(m => SnapXmlParser.unescape(m.group(1).trim))
-        .filter(_.nonEmpty)
-        .toList
-    val slotTypes = """<input\b[^>]*\btype="([^"]+)"""".r.findAllMatchIn(inputSection).map(_.group(1)).toList
-    val namesFromSpec = SnapTurtleCatalog.inputNamesFromSpec(spec)
-    val inputNames = if namesFromSpec.nonEmpty then namesFromSpec else namesFromAttr
-    val arity = math.max(inputNames.size, SnapTurtleCatalog.arityFromSpec(spec))
-    val params =
-      if inputNames.nonEmpty then
-        inputNames.zipWithIndex.map((name, index) => BeDefineVariable(BeEntityName.fromLiteral(name), slotDataType(slotTypes.lift(index).getOrElse("%s"))))
-      else
-        (1 to arity).toList.map(idx => BeDefineVariable(BeEntityName.fromCodeString(s"arg$idx"), BeDataType.AnyType))
-    params.foreach(param => currentVars.intern(SnapControlFlow.variableName(param)))
-    val scriptBody = definitionBodyScript(body)
-    val statements = commandStatements(topLevelBlocks(scriptBody).flatMap(blockToStatement))
-    BeDefineFunction(
-      params.toList,
-      None,
-      BeSequence.optionalBody(statements),
-      BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(SnapTurtleCatalog.pythonNameFromCustomSpec(spec)))
-    )
-  }
-
-  private def recoverStatementsFromXmlWithLayout(xml: String): ParseWithLayout = {
-    val interner = SnapControlFlow.VariableInterner.fromNames(collectVariableNamesFromXml(xml))
-    withVars(interner) {
-      val scripts = topLevelScriptsPreferringSprite(xml)
-      if scripts.isEmpty then
-        val statements = commandStatements(topLevelBlocks(xml).flatMap(blockToStatement))
-        ParseWithLayout(
-          BeStartProgram(BeSequence.optionalBody(statements)),
-          if statements.isEmpty then SnapCanvasLayout.empty
-          else SnapCanvasLayout.single(callCount = SnapExpressionSupport.scriptStatementCount(statements))
-        )
-      else
-        val scriptParses = scripts.map { case (attrs, body) =>
-          val blocks = topLevelBlocks(body)
-          val statements = commandStatements(blocks.flatMap(blockToStatement))
-          val hasReceiveGo = blocks.headOption.exists(block => blockSelector(block._1).contains("receiveGo"))
-          ScriptParse(
-            statements,
-            layoutFromAttrs(attrs, SnapExpressionSupport.scriptStatementCount(statements), hasReceiveGo)
-          )
-        }
-        val statements = scriptParses.flatMap(_.statements)
-        ParseWithLayout(
-          BeStartProgram(BeSequence.optionalBody(statements)),
-          SnapCanvasLayout(scriptParses.map(_.layout).filter(_.callCount > 0))
-        )
-    }
-  }
-
-  private def topLevelScriptsPreferringSprite(xml: String): List[(String, String)] = {
-    val fromSprites =
-      findTagInnerAnywhere(xml, "sprites").toList.flatMap { sprites =>
-        findTagInnerAnywhere(sprites, "sprite").toList.flatMap { sprite =>
-          findTagInnerAnywhere(sprite, "scripts").toList
-        }
-      }
-    val sections =
-      if fromSprites.exists(_.contains("<block")) then fromSprites.filter(_.contains("<block"))
-      else findAllTagInnersAnywhere(xml, "scripts").filter(_.contains("<block"))
-    sections.flatMap(section => topLevelTaggedSections(section, "script"))
-  }
-
-  private def layoutFromAttrs(attrs: String, statementCount: Int, hasReceiveGo: Boolean): SnapCanvasScript = {
-    val x = attrDouble(attrs, "x").map(_.round.toInt).getOrElse(156)
-    val y = attrDouble(attrs, "y").map(_.round.toInt).getOrElse(66)
-    SnapCanvasScript(x, y, statementCount, hasReceiveGo)
-  }
-
-  private def attrDouble(attrs: String, name: String): Option[Double] =
-    raw"""\b$name="([^"]*)"""".r.findFirstMatchIn(attrs).flatMap(m => scala.util.Try(m.group(1).toDouble).toOption)
-
-  private def topLevelBlocks(scriptBody: String): List[(String, String)] =
-    SnapXmlParser.children(scriptBody).filter(node => node.tag == "block" || node.tag == "custom-block").map { node =>
-      val attributes = node.outer.substring(node.tag.length + 1, node.outer.indexOf('>')).stripSuffix("/").trim
-      attributes -> node.inner
-    }
-
-  private def blockToStatement(block: (String, String)): Option[BeExpression] = {
-    val (attrs, body) = block
-    val selector = blockSelector(attrs)
-    selector match {
-      case Some("doRepeat") => Some(parseDoRepeatFromXml(body))
-      case Some("doFor") => Some(parseDoForFromXml(body))
-      case Some("doIfElse") => Some(parseDoIfElseFromXml(body))
-      case Some("doIf") => Some(parseDoIfFromXml(body))
-      case Some("doUntil") => Some(parseDoUntilFromXml(body))
-      case Some("doSetVar") => Some(parseDoSetVarFromXml(body))
-      case Some("doChangeVar") => Some(parseDoChangeVarFromXml(body))
-      case Some("reportGetVar") =>
-        Some(SnapControlFlow.useVariable(currentVars.intern(variableReporterName(attrs, body))))
-      case Some(name) if SnapControlFlow.isSnapValueReporter(name) =>
-        Some(reporterExpressionFromXml(name, body))
-      case Some(_) => blockToGenericCall(block)
-      case None =>
-        variableAttr(attrs).map(name => SnapControlFlow.useVariable(currentVars.intern(name)))
-    }
-  }
-
-  private def variableReporterName(attrs: String, body: String): String =
-    variableAttr(attrs)
-      .orElse(parseOrderedInputs(body).collectFirst { case InputLiteral(value) if value.trim.nonEmpty => value.trim })
-      .getOrElse("x")
-
   private def variableNameFromReporter(variable: Option[String], inputs: Vector[InputValue]): String =
     variable.filter(_.trim.nonEmpty)
       .orElse(inputs.collectFirst { case Literal(value) if value.trim.nonEmpty => value.trim })
       .getOrElse("x")
 
-  private def blockToGenericCall(block: (String, String)): Option[BeExpression] = {
-    val (attrs, body) = block
-    val selector = blockSelector(attrs)
-    selector.map { name =>
-      val inputs = parseOrderedInputs(body)
-      val arity = inputs.size
-      val define = createDefinition(Signature(name, arity, OperatorSymbols.contains(name)))
-      val params = define.inputs
-      val values: List[BeExpression] =
-        inputs.map {
-          case InputLiteral(value) => BeUseValue(BeDataValueLiteral(value), None)
-          case InputScript(scriptBody) =>
-            BeSequence.optionalBody(commandStatements(topLevelBlocks(scriptBody).flatMap(blockToStatement)))
-          case InputBlock(nestedAttrs, nestedBody) =>
-            blockToStatement((nestedAttrs, nestedBody)).getOrElse(BeExpression.pass)
-          case InputList(items) =>
-            val flattened = items.collect { case InputLiteral(value) => value }.mkString("[", ",", "]")
-            BeUseValue(BeDataValueLiteral(flattened), None)
-        }
-      val mapped = params.zipAll(values, null, BeExpression.pass).filter(_._1 != null).map {
-        case (parameter, value) => parameter -> value
-      }.toMap
-      BeFunctionCall.fromDefinition(define, mapped)
-    }
-  }
-
-  private def parseDoRepeatFromXml(body: String): BeExpression = {
-    val inputs = parseOrderedInputs(body)
-    val amount = inputs.collectFirst { case InputLiteral(value) => value }.flatMap(SnapControlFlow.literalInt).getOrElse(0)
-    val scriptBody = inputs.collectFirst { case InputScript(value) => value }.getOrElse("")
-    BeRepeatNr(amount, scriptBodyFromXml(scriptBody))
-  }
-
-  private def parseDoForFromXml(body: String): BeExpression = {
-    val inputs = parseOrderedInputs(body)
-    val name = literalNameFromInputs(inputs).getOrElse("i")
-    val rest = dropNameInput(inputs)
-    val start = valueFromXmlInputs(rest).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
-    val endInputs = rest match
-      case _ :: tail => tail
-      case Nil => Nil
-    val end = valueFromXmlInputs(endInputs).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
-    val scriptBody = inputs.collectFirst { case InputScript(value) => value }.getOrElse("")
-    BeFor(currentVars.intern(name), start, end, scriptBodyFromXml(scriptBody))
-  }
-
-  private def parseDoIfElseFromXml(body: String): BeExpression = {
-    val inputs = parseOrderedInputs(body)
-    val condition = conditionFromInputs(inputs)
-    val scripts = inputs.collect { case InputScript(value) => value }
-    val thenBody = scripts.headOption.map(scriptBodyFromXml).getOrElse(BeSequence.optionalBody(Nil))
-    val elseBody = scripts.drop(1).headOption.map(scriptBodyFromXml).getOrElse(BeSequence.optionalBody(Nil))
-    BeIfElse(BeSequence.conditionalBody(List(condition)), thenBody, elseBody)
-  }
-
-  private def parseDoIfFromXml(body: String): BeExpression = {
-    val inputs = parseOrderedInputs(body)
-    val condition = conditionFromInputs(inputs)
-    val thenBody = inputs.collectFirst { case InputScript(value) => value }.map(scriptBodyFromXml).getOrElse(BeSequence.optionalBody(Nil))
-    BeIfElse(BeSequence.conditionalBody(List(condition)), thenBody, BeSequence.optionalBody(Nil))
-  }
-
-  private def parseDoUntilFromXml(body: String): BeExpression = {
-    val inputs = parseOrderedInputs(body)
-    val condition = SnapControlFlow.invertCondition(conditionFromInputs(inputs))
-    val scriptBody = inputs.collectFirst { case InputScript(value) => value }.getOrElse("")
-    BeWhile(BeSequence.conditionalBody(List(condition)), scriptBodyFromXml(scriptBody))
-  }
-
-  private def parseDoSetVarFromXml(body: String): BeExpression = {
-    val (name, valueInputs) = assignmentNameAndRest(parseOrderedInputs(body))
-    val value = valueFromXmlInputs(valueInputs).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
-    SnapControlFlow.assignVariable(currentVars.intern(name), value)
-  }
-
-  private def parseDoChangeVarFromXml(body: String): BeExpression = {
-    val (name, amountInputs) = assignmentNameAndRest(parseOrderedInputs(body))
-    val amount = valueFromXmlInputs(amountInputs).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
-    SnapControlFlow.changeVariable(currentVars.intern(name), amount)
-  }
-
   /** The first slot of set/change is the variable, either `<l>name</l>` or `<block var="name"/>`. */
-  private def assignmentNameAndRest(inputs: List[BlockInput]): (String, List[BlockInput]) =
-    inputs match
-      case InputLiteral(value) :: rest if value.trim.nonEmpty => (value.trim, rest)
-      case InputBlock(attrs, body) :: rest
-          if variableAttr(attrs).nonEmpty || blockSelector(attrs).contains("reportGetVar") =>
-        (variableReporterName(attrs, body), rest)
-      case other => (literalNameFromInputs(other).getOrElse("x"), dropNameInput(other))
-
-  private def literalNameFromInputs(inputs: List[BlockInput]): Option[String] =
-    inputs.collectFirst { case InputLiteral(value) if value.trim.nonEmpty => value.trim }
-
-  private def dropNameInput(inputs: List[BlockInput]): List[BlockInput] =
-    inputs match
-      case InputLiteral(_) :: rest => rest
-      case other => other
-
-  private def valueFromXmlInputs(inputs: List[BlockInput]): Option[BeExpression] =
-    inputs.headOption.flatMap {
-      case InputLiteral(value) => Some(BeUseValue(BeDataValueLiteral(value), None))
-      case InputBlock(attrs, nestedBody) => blockToStatement((attrs, nestedBody))
-      case InputList(items) => valueFromXmlInputs(items)
-      case InputScript(_) => None
-    }
-
-  private def scriptBodyFromXml(scriptBody: String): BeSequence =
-    BeSequence.optionalBody(commandStatements(topLevelBlocks(scriptBody).flatMap(blockToStatement)))
-
   /** A variable reporter is a value, not a command. Snap does not keep it in a script stack. */
   private def commandStatements(statements: List[BeExpression]): List[BeExpression] =
     statements.filterNot(_.isInstanceOf[BeUseValue])
 
-  private def conditionFromInputs(inputs: List[BlockInput]): BeExpression =
-    inputs.collectFirst { case InputBlock(attrs, nestedBody) =>
-      blockToStatement((attrs, nestedBody)).getOrElse(BeUseValue(BeDataValueLiteral("True"), None))
-    }.getOrElse(BeUseValue(BeDataValueLiteral("True"), None))
-
-  private def reporterExpressionFromXml(selector: String, body: String): BeExpression =
-    SnapControlFlow.conditionFromSnapReporter(reporterCallFromXml(selector, body))
-
   private def reporterExpressionFromModel(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
     val selector = blockSelector(block).getOrElse("reportTrue")
     SnapControlFlow.conditionFromSnapReporter(reporterCallFromModel(selector, inputValuesOf(block), phaseOne))
-  }
-
-  private def reporterCallFromXml(selector: String, body: String): BeFunctionCall = {
-    val args = expandXmlInputsToExpressions(parseOrderedInputs(body))
-    reporterCall(selector, args)
   }
 
   private def reporterCallFromModel(selector: String, inputs: List[InputValue], phaseOne: PhaseOneResult): BeFunctionCall = {
@@ -377,17 +109,6 @@ object TurtleStitchToBeExpressionParser {
     )
     BeFunctionCall.fromDefinition(define, params.zip(args).toMap)
   }
-
-  private def expandXmlInputsToExpressions(inputs: List[BlockInput]): List[BeExpression] =
-    inputs.flatMap {
-      case InputLiteral(value) =>
-        if value.trim.isEmpty then Nil else List(expressionFromLiteral(value))
-      case InputBlock(attrs, nestedBody) =>
-        blockToStatement((attrs, nestedBody)).toList
-      case InputList(items) => expandXmlInputsToExpressions(items)
-      case InputScript(scriptBody) =>
-        List(BeSequence.optionalBody(commandStatements(topLevelBlocks(scriptBody).flatMap(blockToStatement))))
-    }
 
   private def expandModelInputsToExpressions(inputs: List[InputValue], phaseOne: PhaseOneResult): List[BeExpression] =
     inputs.flatMap {
@@ -414,183 +135,7 @@ object TurtleStitchToBeExpressionParser {
       (value.head.isLetter || value.head == '_') &&
       value.forall(ch => ch.isLetterOrDigit || ch == '_')
 
-  private def parseOrderedInputs(xml: String): List[BlockInput] = {
-    val out = ListBuffer.empty[BlockInput]
-    var i = 0
-    while i < xml.length do
-      val nextTag = findNextTopLevelTag(xml, i)
-      nextTag match
-        case None => return out.toList
-        case Some((start, tag, open, close)) =>
-          val afterTag = start + open.length
-          val gt = xml.indexOf('>', afterTag)
-          if gt < 0 then return out.toList
-          val attrs = xml.substring(afterTag, gt).trim
-          if attrs.endsWith("/") then
-            tag match
-              case "l" => out += InputLiteral("")
-              case "block" => out += InputBlock(attrs.stripSuffix("/").trim, "")
-              case _ => ()
-            i = gt + 1
-          else
-            val innerStart = gt + 1
-            val innerEnd = findMatchingClose(xml, innerStart, open, close)
-            if innerEnd < 0 then return out.toList
-            val inner = xml.substring(innerStart, innerEnd)
-            tag match
-              case "l" if inner.trim.startsWith("<") => out ++= parseOrderedInputs(inner)
-              case "l" => out += InputLiteral(SnapXmlParser.unescape(inner.trim))
-              case "bool" => out += InputLiteral(booleanRaw(inner.trim.equalsIgnoreCase("true")))
-              case "option" => out += InputLiteral(SnapXmlParser.unescape(inner.trim))
-              case "color" =>
-                out += InputLiteral(
-                  SnapInputCodec.pythonQuotedColorFromRaw(inner.trim).getOrElse(SnapInputCodec.quotePython(inner.trim))
-                )
-              case "script" => out += InputScript(inner)
-              case "block" => out += InputBlock(attrs, inner)
-              case "list" => out += InputList(parseOrderedInputs(inner))
-              case _ => ()
-            i = innerEnd + close.length
-    out.toList
-  }
-
-  private def findNextTopLevelTag(xml: String, from: Int): Option[(Int, String, String, String)] = {
-    val candidates = List("l", "bool", "option", "color", "script", "block", "list").flatMap { tag =>
-      val open = s"<$tag"
-      val idx = xml.indexOf(open, from)
-      if idx < 0 then None
-      else
-        val afterTag = idx + open.length
-        if afterTag < xml.length && !isTagNameEnd(xml.charAt(afterTag)) then None
-        else Some((idx, tag, open, s"</$tag>"))
-    }
-    candidates.minByOption(_._1)
-  }
-
-  private def blockSelector(attrs: String): Option[String] =
-    """\bs="([^"]*)"""".r.findFirstMatchIn(attrs).map(m => SnapXmlParser.unescape(m.group(1))).filter(_.nonEmpty)
-
-  private def variableAttr(attrs: String): Option[String] =
-    """\bvar="([^"]*)"""".r.findFirstMatchIn(attrs).map(m => SnapXmlParser.unescape(m.group(1))).filter(_.nonEmpty)
-
   /** Snap-native body is a direct `<script>` child; `<scripts>` holds extras / legacy bodies. */
-  private def definitionBodyScript(xml: String): String = {
-    val scriptsSpan = firstTagSpan(xml, "scripts")
-    topLevelTaggedSectionsIndexed(xml, "script").collectFirst {
-      case (idx, _, inner) if scriptsSpan.forall { case (from, to, _) => idx < from || idx >= to } => inner
-    }.orElse(
-      findTagInnerAnywhere(xml, "scripts").flatMap(scripts => findTagInnerAnywhere(scripts, "script"))
-    ).getOrElse("")
-  }
-
-  private def firstTagSpan(xml: String, tag: String): Option[(Int, Int, String)] = {
-    val open = s"<$tag"
-    val close = s"</$tag>"
-    var i = 0
-    while i < xml.length do
-      val start = xml.indexOf(open, i)
-      if start < 0 then return None
-      val afterTag = start + open.length
-      if afterTag < xml.length && !isTagNameEnd(xml.charAt(afterTag)) then
-        i = afterTag
-      else
-        val gt = xml.indexOf('>', afterTag)
-        if gt < 0 then return None
-        val rawAttrs = xml.substring(afterTag, gt).trim
-        if rawAttrs.endsWith("/") then return Some((start, gt + 1, ""))
-        val innerStart = gt + 1
-        val innerEnd = findMatchingClose(xml, innerStart, open, close)
-        if innerEnd < 0 then return None
-        return Some((start, innerEnd + close.length, xml.substring(innerStart, innerEnd)))
-    None
-  }
-
-  private def findTagInnerAnywhere(xml: String, tag: String): Option[String] =
-    findAllTagInnersAnywhere(xml, tag).headOption
-
-  private def findAllTagInnersAnywhere(xml: String, tag: String): List[String] = {
-    val open = s"<$tag"
-    val close = s"</$tag>"
-    val out = ListBuffer.empty[String]
-    var i = 0
-    while i < xml.length do
-      val start = xml.indexOf(open, i)
-      if start < 0 then return out.toList
-      val afterTag = start + open.length
-      if afterTag < xml.length && !isTagNameEnd(xml.charAt(afterTag)) then
-        i = afterTag
-      else
-        val gt = xml.indexOf('>', afterTag)
-        if gt < 0 then return out.toList
-        val rawAttrs = xml.substring(afterTag, gt).trim
-        if rawAttrs.endsWith("/") then
-          out += ""
-          i = gt + 1
-        else
-          val innerStart = gt + 1
-          val innerEnd = findMatchingClose(xml, innerStart, open, close)
-          if innerEnd < 0 then return out.toList
-          out += xml.substring(innerStart, innerEnd)
-          i = innerEnd + close.length
-    out.toList
-  }
-
-  private def topLevelTaggedSections(xml: String, tag: String): List[(String, String)] =
-    topLevelTaggedSectionsIndexed(xml, tag).map { case (_, attrs, body) => (attrs, body) }
-
-  private def topLevelTaggedSectionsIndexed(xml: String, tag: String): List[(Int, String, String)] = {
-    val open = s"<$tag"
-    val close = s"</$tag>"
-    val out = ListBuffer.empty[(Int, String, String)]
-    var i = 0
-    while i < xml.length do
-      val start = xml.indexOf(open, i)
-      if start < 0 then return out.toList
-      val afterTag = start + open.length
-      if afterTag < xml.length && !isTagNameEnd(xml.charAt(afterTag)) then
-        i = afterTag
-      else
-        val gt = xml.indexOf('>', afterTag)
-        if gt < 0 then return out.toList
-        val attrs = xml.substring(afterTag, gt).trim
-        if attrs.endsWith("/") then
-          out += ((start, attrs.stripSuffix("/").trim, ""))
-          i = gt + 1
-        else
-          val innerStart = gt + 1
-          val innerEnd = findMatchingClose(xml, innerStart, open, close)
-          if innerEnd < 0 then return out.toList
-          out += ((start, attrs, xml.substring(innerStart, innerEnd)))
-          i = innerEnd + close.length
-    out.toList
-  }
-
-  private def isTagNameEnd(ch: Char): Boolean =
-    ch.isWhitespace || ch == '>' || ch == '/'
-
-  private def findMatchingClose(xml: String, from: Int, open: String, close: String): Int = {
-    var depth = 1
-    var i = from
-    while i < xml.length && depth > 0 do
-      val nextOpen = xml.indexOf(open, i)
-      val nextClose = xml.indexOf(close, i)
-      if nextClose < 0 then return -1
-      if nextOpen >= 0 && nextOpen < nextClose then
-        val after = nextOpen + open.length
-        if after < xml.length && isTagNameEnd(xml.charAt(after)) then
-          val gt = xml.indexOf('>', after)
-          val selfClosing = gt >= 0 && xml.substring(after, gt + 1).contains("/")
-          if !selfClosing then depth += 1
-          i = if gt >= 0 then gt + 1 else math.max(after, nextOpen + 1)
-        else
-          i = math.max(after, nextOpen + 1)
-      else
-        depth -= 1
-        if depth == 0 then return nextClose
-        i = nextClose + close.length
-    -1
-  }
-
   private def collectCustomDefinitions(project: Project): List[CustomBlockDefinition] =
     project.scenes.toList.flatMap { scene =>
       scene.customBlocks.toList ++
@@ -841,13 +386,6 @@ object TurtleStitchToBeExpressionParser {
         scene.stage.variables.map(_.name) ++
         scene.stage.sprites.toList.flatMap(_.variables.map(_.name))
     }.map(_.trim).filter(_.nonEmpty)
-
-  private def collectVariableNamesFromXml(xml: String): List[String] =
-    """<variable\b[^>]*\bname="([^"]+)"""".r
-      .findAllMatchIn(xml)
-      .map(m => SnapXmlParser.unescape(m.group(1).trim))
-      .filter(_.nonEmpty)
-      .toList
 
   private def signatureOf(block: BlockLike): Signature = block match {
     case PrimitiveBlock(selector, variable, inputs, _) =>
