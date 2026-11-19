@@ -383,6 +383,31 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     }
   }
 
+  test("answers restored from a session file are sent to every destination") {
+    val fixture = new Fixture
+    fixture.withHttp {
+      val heldBefore = heldEventIds(fixture)
+      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+        // The same workbook in the session's own page, answered there.
+        val (studied, answered) = fixture.anotherWorkbook(fixture.workbook.elementId)
+        answered.zipWithIndex.foreach((interaction, index) => interaction.interactionVariable.setStateFromUserInteraction(
+          s"from the session $index", UpdateImportance.MAJOR, context = ExecutionContextInformation.default))
+        val session = it.evadid.homepage.control.info.SessionData.createSessionData(fixture.info.homepageInfoNow()
+          .copy(workbookInfo = Some(studied))).get
+        val sessionEvents = answered.map(_.interactionVariable.currentHistory.events.values.map(_.eventId)).reduce(_ ++ _)
+        fixture.info.usageControl.continueWithSession(session).flatMap(_ => fixture.info.syncControl.storeAll(true)).map { _ =>
+          assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("from the session 0", "from the session 1"))
+          assertEveryLocalEventSent(fixture, heldBefore)
+          val sent = sentEventIds(fixture)
+          List(defaultDatabase.format, defaultBlobDatabase.format).foreach { format =>
+            val received = fixture.elements.flatMap(element => sent.getOrElse(format -> element.interactionVariable.keyForSerialization, Set.empty)).toSet
+            assert(sessionEvents.subsetOf(received), s"$format received the session's answers")
+          }
+        }
+      }
+    }
+  }
+
   test("partial reset remains paused across navigation and credential replacement, then retries") {
     val fixture = new Fixture
     fixture.withHttp {

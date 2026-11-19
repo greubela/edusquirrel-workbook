@@ -101,6 +101,32 @@ class EvaEditorSpec extends EditorDomSuite {
       assert(f.maximum.now() <= 1)
     }.andThen { case _ => f.close() }
   }
+  test("switching tabs keeps a program built from reporters: Snap blocks, Java methods and back to Python") {
+    val source = ProgrammingStateRaw(Python, "def double(x: float) -> float:\n    return x * 2\n\ndef big(n: float) -> bool:\n    return n > 5\n\nif big(double(3)):\n    forward(double(5))\n")
+    def drawing(state: ProgrammingState) = state.toBeExpression.turtleCommandExecutionInfo.completedCommands
+    val expected = drawing(source)
+    assertEquals(expected.flatMap(_.args), List(10.0))
+    val f = new Fixture(source)
+    f.editor.switchTabTo(SnapLanguage).flatMap { _ =>
+      assertEquals(f.state.now().associatedLanguage, SnapLanguage)
+      assertEquals(drawing(f.state.now()), expected)
+      val types = f.state.now().toSnapXml.toSnapScalaModel.toOption.get.model.root.descendants.collect {
+        case definition: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.BlockDefinition => definition.blockType.map(_.xml)
+      }
+      assertEquals(types.toSet, Set[Option[String]](Some("reporter"), Some("predicate")))
+      f.editor.switchTabTo(Java)
+    }.flatMap { _ =>
+      assert(f.state.now().toString.contains("static double double_(double x)"), f.state.now().toString)
+      assert(f.state.now().toString.contains("static boolean big(double n)"), f.state.now().toString)
+      assertEquals(drawing(f.state.now()), expected)
+      f.editor.switchTabTo(Python)
+    }.map { _ =>
+      assert(f.state.now().toString.contains("def double(x: float) -> float:"), f.state.now().toString)
+      assertEquals(drawing(f.state.now()), expected)
+      assertEquals(f.editor.error, None)
+    }.andThen { case _ => f.close() }
+  }
+
   test("all central changes are observed without an editor-specific edit channel") {
     val f = new Fixture(ProgrammingStateRaw(Python, "forward(1)"))
     try {
