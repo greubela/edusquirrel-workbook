@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion.pythonexpression
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.errors.{BeExpressionUnsupported, BeExpressionUnparsable}
@@ -28,7 +29,7 @@ class PythonObjectConversionSpec extends FunSuite {
     BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())).values.collect { case BeExpressionReference(_, value) => value }.toSeq
 
   test("Python binds constructors, fields, receivers and static calls without source placeholders") {
-    val state = ProgrammingStatePythonString(source).toBeExpression
+    val state = ProgrammingStateRaw(Python, source).toBeExpression
     val all = nodes(state.expression)
     assert(!all.exists(value => value.isInstanceOf[BeExpressionUnsupported] || value.isInstanceOf[BeExpressionUnparsable]), state)
     val targets = all.collect { case call: BeFunctionCall => call.target }
@@ -45,7 +46,7 @@ class PythonObjectConversionSpec extends FunSuite {
 
   test("inheritance and unknown decorators are retained explicitly instead of silently discarded") {
     for code <- Seq("class Derived(Base):\n    pass\n", "class Decorated:\n    @custom\n    def method(self):\n        pass\n") do {
-      val all = nodes(ProgrammingStatePythonString(code).toBeExpression.expression)
+      val all = nodes(ProgrammingStateRaw(Python, code).toBeExpression.expression)
       assert(all.exists(_.isInstanceOf[BeExpressionUnsupported]), code)
     }
   }

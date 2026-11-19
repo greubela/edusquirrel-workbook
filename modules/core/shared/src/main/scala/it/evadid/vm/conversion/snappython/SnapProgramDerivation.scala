@@ -8,7 +8,7 @@ import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchToBeExpressionParser
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
 
 /**
@@ -33,8 +33,8 @@ object SnapProgramDerivation {
         )
   }
 
-  def fromState(state: ProgrammingStateSnapXml): DerivedView =
-    fromXml(state.snapXml)
+  def fromState(state: ProgrammingStateRaw): DerivedView =
+    fromXml(state.code)
 
   def fromXml(xml: String): DerivedView = {
     val parsed = it.evadid.vm.conversion.snapexpression.SnapToExpression.parseWithLayout(xml)
@@ -49,7 +49,7 @@ object SnapProgramDerivation {
   final case class ScriptView(index: Int, x: Int, y: Int, python: String) derives upickle.default.ReadWriter
 
   /** Partition top-level BeProgram statements by derived canvas layout. */
-  def scriptsOf(state: ProgrammingStateSnapXml): List[ScriptView] = {
+  def scriptsOf(state: ProgrammingStateRaw): List[ScriptView] = {
     val derived = SnapProgramDerivation.fromState(state)
     if !derived.pythonCompatible then return Nil
     val statements =

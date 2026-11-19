@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.structured.{SourceStructure, StructuredProgramConversions}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
@@ -131,8 +132,8 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assertEquals(distances(restored), List(20.0, 20.0, 20.0, 100.0))
     assertEquals(distances(restored.toJavaStructured.toPythonStructured.toSnapXml.toPythonStructured), distances(restored))
     val repeated = (1 to 3).foldLeft(snap)((state, _) => state.toPythonStructured.toJavaStructured.toPythonStructured.toSnapXml)
-    assertEquals(SnapXmlParser.elements(repeated.snapXml, "block").count(_.attrOrEmpty("s") == "doSetVar"),
-      SnapXmlParser.elements(snap.snapXml, "block").count(_.attrOrEmpty("s") == "doSetVar"))
+    assertEquals(SnapXmlParser.elements(repeated.code, "block").count(_.attrOrEmpty("s") == "doSetVar"),
+      SnapXmlParser.elements(snap.code, "block").count(_.attrOrEmpty("s") == "doSetVar"))
     assertEquals(distances(repeated), distances(restored))
   }
 
@@ -168,7 +169,7 @@ class StructuredProgrammingStateSpec extends FunSuite {
   }
 
   test("a plain Python main wrapper survives expression conversion without recursive wrapping") {
-    val state = ProgrammingStatePythonString(python).toBeExpression.toPythonStructured
+    val state = ProgrammingStateRaw(Python, python).toBeExpression.toPythonStructured
     assertEquals(state.toString.linesIterator.count(_.startsWith("def main(")), 1)
     assertEquals(distances(state.toJavaStructured), List(20.0, 20.0, 20.0, 100.0))
   }
@@ -185,7 +186,7 @@ class StructuredProgrammingStateSpec extends FunSuite {
   }
 
   test("Java package declarations, imports and comments remain source preamble") {
-    val source = "package school;\nimport java.util.List;\n// a draft\nclass Main { static void main(String[] args) {} }\n// end"
+    val source = "package school;\nimport java.util.List;\n// a draft\nclass Main {static void main(String[] args) {} }\n// end"
     val state = ProgrammingStateJavaStructured(source)
     assert(state.toString.startsWith("package school;\nimport java.util.List;"), state.toString)
     assertEquals("static void main".r.findAllIn(state.toString).size, 1)

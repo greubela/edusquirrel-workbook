@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.code
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
@@ -19,8 +20,8 @@ final class JavaStructuredFunctionBasedEditor(
     conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
     loadingLabel: Signal[String] = Val("Loading editor…")
 ) extends HtmlAppElement {
-  private val source = state.bimap[ProgrammingState](value => ProgrammingStateJavaString(value.toString)) {
-    case ProgrammingStateJavaString(code) => ProgrammingStateJavaStructured(code)
+  private val source = state.bimap[ProgrammingState](value => ProgrammingStateRaw(Java, value.toString)) {
+    case ProgrammingStateRaw(Java, code) => ProgrammingStateJavaStructured(code)
     case other => other.toJavaStructured
   }
   private val editor = new JavaFunctionBasedEditor(logger, source, reference, appearance,

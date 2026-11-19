@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.AppLanguage.{English, Danish}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
@@ -16,7 +17,7 @@ import munit.FunSuite
 class TurtleCommandUsageGraderSpec extends FunSuite {
   private def grader(command: String, maximum: Int, measure: CommandUsageMeasure): TurtleCommandUsageGrader =
     TurtleCommandUsageGrader(TurtleCommand.resolveCanonicalNames(command).get, maximum, measure, s"limit-$command-$measure")
-  private val loop = ProgrammingStatePythonString("for i in range(4):\n    forward(10)")
+  private val loop = ProgrammingStateRaw(Python, "for i in range(4):\n    forward(10)")
   private val target = TurtleGraphic(List.fill(4)(TurtleCommand.Forward(10.0)))
   private def exercise(limits: MaxCommandUsage): TurtleRecreateShapeInteraction =
     TurtleRecreateShapeInteraction("limited-shape", loop, target, customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultDidacticConfig.copy(maxCommandUsage = limits)))
@@ -55,7 +56,7 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
   }
 
   test("checked Java helper calls are counted once in source and repeatedly during execution") {
-    val java = ProgrammingStateJavaString("""class Drawing {
+    val java = ProgrammingStateRaw(Java, """class Drawing {
       static void step() { Turtle.forward(10); }
       public static void main(String[] args) {
         for (int i = 0; i < 4; i++) { step(); }
@@ -71,7 +72,7 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
   }
 
   test("aliases share counts while absent commands remain unlimited") {
-    val state = ProgrammingStatePythonString("fd(10)\nforward(20)\nrt(90)\nturn_right(90)\nright(90)")
+    val state = ProgrammingStateRaw(Python, "fd(10)\nforward(20)\nrt(90)\nturn_right(90)\nright(90)")
     val constraints = exercise(MaxCommandUsage(callsDuringExecution = Map("forward" -> 2))).gradingElements
       .collect { case g: TurtleCommandUsageGrader => g }
     assertEquals(constraints.size, 1)
@@ -86,7 +87,7 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
   }
 
   test("unused definitions and untaken branches count in source but not as executed calls") {
-    val state = ProgrammingStatePythonString("def unused():\n    forward(1)\nif False:\n    fd(2)")
+    val state = ProgrammingStateRaw(Python, "def unused():\n    forward(1)\nif False:\n    fd(2)")
     for {
       source <- grader("forward", 1, CommandUsageMeasure.OccurrencesInCode).gradeStateSafe(state, false, TestExecutionContext())
       runtime <- grader("forward", 0, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(state, false, TestExecutionContext())
@@ -97,12 +98,12 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
   }
 
   test("partial execution and malformed programs never produce a successful execution-limit result") {
-    val infinite = ProgrammingStatePythonString("while True:\n    pass")
+    val infinite = ProgrammingStateRaw(Python, "while True:\n    pass")
     for {
       source <- grader("forward", 0, CommandUsageMeasure.OccurrencesInCode).gradeStateSafe(infinite, false, TestExecutionContext())
       runtime <- grader("forward", 0, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(infinite, false, TestExecutionContext())
       invalid <- grader("forward", 0, CommandUsageMeasure.OccurrencesInCode)
-        .gradeStateSafe(ProgrammingStatePythonString("forward("), false, TestExecutionContext())
+        .gradeStateSafe(ProgrammingStateRaw(Python, "forward("), false, TestExecutionContext())
     } yield {
       assertEquals(source.gradingStatus, GradingStatus.Correct())
       assert(runtime.gradingStatus.isError)
@@ -111,8 +112,8 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
   }
 
   test("user-defined command names do not hide explicitly bound turtle methods") {
-    val userOnly = ProgrammingStatePythonString("def forward(n):\n    pass\nforward(1)")
-    val withNativeCall = ProgrammingStatePythonString(userOnly.code + "\nturtle.forward(2)")
+    val userOnly = ProgrammingStateRaw(Python, "def forward(n):\n    pass\nforward(1)")
+    val withNativeCall = ProgrammingStateRaw(Python, userOnly.code + "\nturtle.forward(2)")
     val saved = ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(withNativeCall.toBeExpression))
     Future.traverse(CommandUsageMeasure.values.toList) { measure =>
       Future.traverse(List(withNativeCall, saved)) { state =>

@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, Java, Python}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
@@ -72,8 +73,8 @@ final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElemen
 
   private def prepare(state: ProgrammingState): Context = {
     val (sourceLanguage, source) = state match {
-      case ProgrammingStateJavaString(code) => Java.name -> code
-      case ProgrammingStatePythonString(code) => Python.name -> code
+      case ProgrammingStateRaw(Java, code) => Java.name -> code
+      case ProgrammingStateRaw(Python, code) => Python.name -> code
       case _ => throw IllegalArgumentException("Hints currently require Java or Python source text.")
     }
     require(source != null && source.length <= 24000, "The source is too long for a hint.")

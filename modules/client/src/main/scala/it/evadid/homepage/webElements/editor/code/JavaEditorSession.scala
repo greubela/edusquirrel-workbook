@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleCommandRunner
@@ -14,7 +15,7 @@ import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 final class JavaEditorSession(
-    initialSource: ProgrammingStateJavaString,
+    initialSource: ProgrammingStateRaw,
     runnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
 ) {
   import JavaEditorSession.*
@@ -28,9 +29,9 @@ final class JavaEditorSession(
   private var active = Option.empty[Attempt[?]]
   private var changingState = false
 
-  def source: ProgrammingStateJavaString = currentSource
+  def source: ProgrammingStateRaw = currentSource
 
-  def updateSource(next: ProgrammingStateJavaString): Unit =
+  def updateSource(next: ProgrammingStateRaw): Unit =
     if next != currentSource then {
       currentSource = next
       invalidate(State.Idle)
@@ -145,7 +146,7 @@ object JavaEditorSession {
   }
 
   def compile(source: String): Either[JavaTurtleSource.Diagnostic, JavaTurtleVmPrograms.Program] =
-    ProgrammingStateJavaString(source).toJavaVmProgram
+    ProgrammingStateRaw(Java, source).toJavaVmProgram
 
   private[code] def requireCompleted(execution: JavaTurtleRuntime.Execution): Unit = execution.status match {
     case JavaTurtleRuntime.Status.Completed => ()

@@ -1,10 +1,11 @@
 package it.evadid.workbook.serialization
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.MaxCommandUsage
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.abstractions.{InteractionFormat,LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{InteractionFormat, LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
@@ -22,7 +23,7 @@ import it.evadid.workbook.elements.interactionElements.pixel.*
 import it.evadid.workbook.model.pixel.*
 import it.evadid.workbook.elements.interactionElements.blockchain.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.text.*
@@ -91,7 +92,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       GptInteractionElement("gpt", input, content("exercise/text"), List(content("hint/text")), List(content("criterion/text"))),
       TurtleStitchExploreProjectElement("turtle-explore", special),
       TurtleStitchRecreateShapeInteractionLegacy("turtle-legacy", special),
-      TurtleRecreateShapeInteraction("turtle-shape", ProgrammingStatePythonString("forward(10)"), TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultForPalette(ProgrammingEditorPalette.Embroidery).copy(maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2))))),
+      TurtleRecreateShapeInteraction("turtle-shape", ProgrammingStateRaw(Python, "forward(10)"), TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultForPalette(ProgrammingEditorPalette.Embroidery).copy(maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2))))),
       ProgrammingExercise("programming", Some(SampleBeTest("assert True")), ProgrammingEditorPalette.Embroidery, Some(special)),
       ProgrammingExerciseFullJava("java", Some(SampleBeTest("assert False"))),
       MailEditor("mail-editor", inbox, special, allowCompose = false),
@@ -154,7 +155,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
   }
 
   test("turtle definitions default to stroke grading without changing their saved source") {
-    val source = ProgrammingStatePythonString(" \r\nforward(10)\n\t ")
+    val source = ProgrammingStateRaw(Python, " \r\nforward(10)\n\t ")
     val original = TurtleRecreateShapeInteraction("turtle-default-policy", source,
       TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultDidacticConfig.copy(maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2)))))
     val serialized = original.toSerialized
@@ -171,9 +172,9 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
 
   test("turtle comparison policies roundtrip through both definition formats without rewriting drafts") {
     val sources: List[ProgrammingState] = List(
-      ProgrammingStatePythonString(" \r\ndef draw(\n\t "),
-      ProgrammingStateJavaString(" \r\npublic class Drawing {\n  static void draw(\t "),
-      ProgrammingStateSnapXml("<project name=\"Grüße\">\r\n  <notes> \\ </notes>\n</project>\t "))
+      ProgrammingStateRaw(Python, " \r\ndef draw(\n\t "),
+      ProgrammingStateRaw(Java, " \r\npublic class Drawing {\n  static void draw(\t "),
+      ProgrammingStateRaw(SnapLanguage, "<project name=\"Grüße\">\r\n  <notes> \\ </notes>\n</project>\t "))
     for {
       policy <- TurtleDrawingPolicy.values
       source <- sources
@@ -202,7 +203,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
   }
 
   test("invalid turtle definition comparison policies do not fall back to stroke grading") {
-    val original = TurtleRecreateShapeInteraction("turtle-invalid-policy", ProgrammingStatePythonString("forward(10)"),
+    val original = TurtleRecreateShapeInteraction("turtle-invalid-policy", ProgrammingStateRaw(Python, "forward(10)"),
       TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"))
     List[ujson.Value](ujson.Str("Other"), ujson.Null, ujson.Num(1), ujson.Bool(true), ujson.Obj()).foreach { policy =>
       val invalid = original.toSerialized.withMapAdded(Map("comparisonPolicy" -> policy))

@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.content.test
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{MaxCommandUsage, RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleRecreateShapeInteraction}
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.core.datastructures.geometry.{Line, Point}
@@ -98,7 +99,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)),
       TurtleRecreateShapeInteraction(
         "turtle-recreate-1",
-        ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
+        ProgrammingStateRaw(SnapLanguage, SnapProjectXml.mini).toBeExpression,
         exp1,
         TurtleDrawingPolicy.Strokes,
         Some(RecreateTurtleDidacticConfig(
@@ -113,7 +114,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)),
       TurtleRecreateShapeInteraction(
         "Turtle-Recreate-2",
-        ProgrammingStateSnapXml(SnapProjectXml.mini).toBeExpression,
+        ProgrammingStateRaw(SnapLanguage, SnapProjectXml.mini).toBeExpression,
         exp2,
         TurtleDrawingPolicy.Strokes,
         Some(RecreateTurtleDidacticConfig(

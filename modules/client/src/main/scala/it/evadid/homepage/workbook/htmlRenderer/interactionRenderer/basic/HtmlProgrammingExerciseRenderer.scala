@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
@@ -73,7 +74,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       Try {
         val current = boundVar.now()
         current match
-          case java: ProgrammingStateJavaString if java.isClassProgram =>
+          case java @ ProgrammingStateRaw(Java, _) if java.isClassProgram =>
             throw IllegalArgumentException("Full Java classes require the checked Java runner.")
           case _ => ()
         SvgLaminarRenderer.render(

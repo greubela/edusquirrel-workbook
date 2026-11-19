@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion.turtlestitchexpression
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.turtlestitchexpression.*
 
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
@@ -10,7 +11,7 @@ import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 
 import it.evadid.vm.conversion.snappython.SnapProgramDerivation
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
@@ -85,12 +86,12 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   }
 
   test("ProgrammingExercise xml persist roundtrips scripts across reload") {
-    val state = ProgrammingStateSnapXml(twoScriptsXml)
+    val state = ProgrammingStateRaw(SnapLanguage, twoScriptsXml)
     val stored = ProgrammingState.serializer.serialize(state)
     val restored = ProgrammingState.serializer.deserialize(stored)
-    assert(restored.toSnapXml.snapXml.contains("""<script x="70" y="80">"""), clue = restored.toSnapXml.snapXml)
-    assert(restored.toSnapXml.snapXml.contains("""<script x="200" y="150">"""), clue = restored.toSnapXml.snapXml)
-    assertEquals("""<script x="[^"]+" y="[^"]+">""".r.findAllIn(restored.toSnapXml.snapXml).size, 2)
+    assert(restored.toSnapXml.code.contains("""<script x="70" y="80">"""), clue = restored.toSnapXml.code)
+    assert(restored.toSnapXml.code.contains("""<script x="200" y="150">"""), clue = restored.toSnapXml.code)
+    assertEquals("""<script x="[^"]+" y="[^"]+">""".r.findAllIn(restored.toSnapXml.code).size, 2)
   }
 
   test("doRepeat XML parses to BeRepeatNr and roundtrips") {
@@ -134,7 +135,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(xmlOut.contains("""<block var="test"/>"""), clue = xmlOut)
     val applied = PythonToSnap.applyPython(python)
     assert(applied.isRight, clue = applied)
-    val reXml = applied.toOption.get.snapXml
+    val reXml = applied.toOption.get.code
     assert(reXml.contains("""s="reportVariadicEquals""""), clue = reXml)
     assert(reXml.contains("""<block var="test"/>"""), clue = reXml)
   }
@@ -210,7 +211,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(xmlOut.contains("""<block var="steps"/>"""), clue = xmlOut)
     val applied = PythonToSnap.applyPython(python)
     assert(applied.isRight, clue = applied)
-    val reXml = applied.toOption.get.snapXml
+    val reXml = applied.toOption.get.code
     assert(reXml.contains("""s="doChangeVar""""), clue = reXml)
     assert(reXml.contains("""<variable name="steps">"""), clue = reXml)
   }
@@ -240,7 +241,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val applied = PythonToSnap.applyPython(python)
     assert(applied.isRight, clue = applied)
 
-    val reXml = applied.toOption.get.snapXml
+    val reXml = applied.toOption.get.code
     assert(reXml.contains("""s="doRepeat""""), clue = reXml)
     assert(reXml.contains("""s="doIfElse""""), clue = reXml)
     assert(reXml.contains("""s="doUntil""""), clue = reXml)
@@ -253,9 +254,9 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("doWait block roundtrips Snap XML to python and back to Snap") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script x="70" y="80"><block s="receiveGo"></block><block s="doWait"><l>1</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val stored = ProgrammingState.serializer.serialize(ProgrammingStateSnapXml(xml))
+    val stored = ProgrammingState.serializer.serialize(ProgrammingStateRaw(SnapLanguage, xml))
     val restored = ProgrammingState.serializer.deserialize(stored)
-    assert(restored.toSnapXml.snapXml.contains("""s="doWait""""), clue = restored.toSnapXml.snapXml)
+    assert(restored.toSnapXml.code.contains("""s="doWait""""), clue = restored.toSnapXml.code)
 
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
     assert(
@@ -271,7 +272,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
 
     val applied = PythonToSnap.applyPython(python)
     assert(applied.isRight, clue = applied)
-    assert(applied.toOption.get.snapXml.contains("""s="doWait""""), clue = applied.toOption.get.snapXml)
+    assert(applied.toOption.get.code.contains("""s="doWait""""), clue = applied.toOption.get.code)
   }
 
   test("doFor XML roundtrips to python for-range and back to Snap") {
@@ -290,7 +291,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(xmlOut.contains("""s="reportVariadicProduct""""), clue = xmlOut)
     val applied = PythonToSnap.applyPython(python)
     assert(applied.isRight, clue = applied)
-    assert(applied.toOption.get.snapXml.contains("""s="doFor""""), clue = applied.toOption.get.snapXml)
+    assert(applied.toOption.get.code.contains("""s="doFor""""), clue = applied.toOption.get.code)
   }
 
   test("custom block-definition XML roundtrips with body and call") {
@@ -306,7 +307,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(xmlOut.contains("""<custom-block s="square %n">"""), clue = xmlOut)
     val applied = PythonToSnap.applyPython(python)
     assert(applied.isRight, clue = applied)
-    val reXml = applied.toOption.get.snapXml
+    val reXml = applied.toOption.get.code
     assert(reXml.contains("""<block-definition s="square %n""""), clue = reXml)
     assert(reXml.contains("""<custom-block s="square %n">"""), clue = reXml)
   }
@@ -334,7 +335,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(SnapExpressionSupport.isPythonCompatibleXml(xml), clue = xml)
     val applied = PythonToSnap.applyPython(python)
     assert(applied.isRight, clue = applied)
-    val reXml = applied.toOption.get.snapXml
+    val reXml = applied.toOption.get.code
     assert(reXml.contains("""<block-definition s="square %size""""), clue = reXml)
     assert(reXml.contains("""<custom-block s="square %n">"""), clue = reXml)
   }
@@ -354,7 +355,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(!python.contains("set_size"), clue = python)
     val applied = PythonToSnap.applyPython(python)
     assert(applied.isRight, clue = applied)
-    val reXml = applied.toOption.get.snapXml
+    val reXml = applied.toOption.get.code
     assert(reXml.contains("""s="setColor""""), clue = reXml)
     assert(reXml.contains("<color>"), clue = reXml)
     assert(reXml.contains("""s="setXPosition""""), clue = reXml)
@@ -379,7 +380,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
         |""".stripMargin
     )
     assert(applied.isRight, clue = applied)
-    val reXml = applied.toOption.get.snapXml
+    val reXml = applied.toOption.get.code
     assert(reXml.contains("""s="turn""""), clue = reXml)
     assert(reXml.contains("""s="turnLeft""""), clue = reXml)
     assert(reXml.contains("""s="gotoXY""""), clue = reXml)
@@ -396,7 +397,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(!python.contains("color(0, 0, 255"), clue = python)
     val applied = PythonToSnap.applyPython(python)
     assert(applied.isRight, clue = applied)
-    assert(applied.toOption.get.snapXml.contains("<color>0,0,255,1</color>") || applied.toOption.get.snapXml.contains("<color>"), clue = applied.toOption.get.snapXml)
+    assert(applied.toOption.get.code.contains("<color>0,0,255,1</color>") || applied.toOption.get.code.contains("<color>"), clue = applied.toOption.get.code)
   }
 
   private def projectWith(definitions: String, scriptBlocks: String): String =
@@ -419,7 +420,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
 
     val applied = PythonToSnap.applyPython(python.replace("forward(size)", "turn(size)"), parsed.canvasLayout, xml)
     assert(applied.isRight, clue = applied)
-    val reXml = applied.toOption.get.snapXml
+    val reXml = applied.toOption.get.code
     assertEquals(SnapCustomBlockRules.obsoleteCalls(reXml), Nil, clue = reXml)
 
     val before = SnapCustomBlockRules.globalDefinitions(xml).head
@@ -462,7 +463,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
 
     val applied = PythonToSnap.applyPython(python, parsed.canvasLayout, xml)
     assert(applied.isRight, clue = applied)
-    val reXml = applied.toOption.get.snapXml
+    val reXml = applied.toOption.get.code
     assertEquals(SnapCustomBlockRules.obsoleteCalls(reXml), Nil, clue = reXml)
     assertEquals(
       SnapCustomBlockRules.globalDefinitions(reXml).map(_.spec).sorted,
@@ -490,7 +491,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val mismatched = python.stripSuffix("\n") + "\nsquare(1, 2)\n"
     val applied = PythonToSnap.applyPython(mismatched)
     assert(applied.isRight, clue = applied)
-    val nextXml = applied.toOption.get.snapXml
+    val nextXml = applied.toOption.get.code
     assert(nextXml.contains("""<custom-block s="square %n"><l>1</l></custom-block>"""), clue = nextXml)
     assert(!nextXml.contains("<l>2</l>"), clue = nextXml)
   }

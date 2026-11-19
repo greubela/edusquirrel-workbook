@@ -4,7 +4,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Sn
 
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 
-import it.evadid.core.datastructures.language.AppLanguage.Java
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage, ProgrammingLanguage}
 import it.evadid.vm.simulation.turtle.{TurtleProgramAnalysis, TurtleCommandExecutionInfo}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.workbook.elements.interactionElements.programming.*
@@ -20,55 +20,49 @@ sealed trait ProgrammingState {
     new it.evadid.vm.conversion.ProgrammingStateDerivations(this)
   def convertToLanguage(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage): it.evadid.vm.conversion.ConversionResult = derivations.convertToLanguage(language)
   def toBeExpression: ProgrammingStateBeExpression = derivations.expression
-  def toJava: ProgrammingStateJavaString = derivations.java
-  def toPython: ProgrammingStatePythonString = derivations.python
-  def toSnapXml: ProgrammingStateSnapXml = derivations.snap
+  def toJava: ProgrammingStateRaw = derivations.java
+  def toPython: ProgrammingStateRaw = derivations.python
+  def toSnapXml: ProgrammingStateRaw = derivations.snap
   def toJavaStructured: ProgrammingStateJavaStructured = derivations.javaStructured
   def toPythonStructured: ProgrammingStatePythonStructured = derivations.pythonStructured
 
-  def associatedLanguage: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage = this match {
-    case _: ProgrammingStateSnapXml | _: ProgrammingStateSnapScalaModel => it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
-    case _: ProgrammingStateJavaString | _: ProgrammingStateJavaStructured => Java
-    case _: ProgrammingStatePythonString | _: ProgrammingStatePythonStructured => it.evadid.core.datastructures.language.AppLanguage.Python
-    case _ => it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
+  def associatedLanguage: ProgrammingLanguage = this match {
+    case ProgrammingStateRaw(language, _) => language
+    case _: ProgrammingStateSnapScalaModel => SnapLanguage
+    case _: ProgrammingStateJavaStructured => Java
+    case _: ProgrammingStatePythonStructured => Python
+    case _: ProgrammingStateBeExpression => SnapLanguage
   }
 
-  def fingerprint(): String = this match
+  def fingerprint(): String = this match {
     case ProgrammingStateBeExpression(expression) => s"expression:${expression.toString}"
-    case ProgrammingStateSnapXml(xml) => s"snap:$xml"
+    case ProgrammingStateRaw(language, code) => s"${language.name.toLowerCase}:$code"
     case snap: ProgrammingStateSnapScalaModel => s"snap:${snap.model.toXml}"
-    case ProgrammingStatePythonString(code) => s"python:$code"
-    case ProgrammingStateJavaString(code) => s"java:$code"
-    case state: ProgrammingStateJavaStructured => s"java-structured:${write(state)}"
-    case state: ProgrammingStatePythonStructured => s"python-structured:${write(state)}"
+    case state: ProgrammingStateJavaStructured => s"java:${state.toString}"
+    case state: ProgrammingStatePythonStructured => s"python:${state.toString}"
+  }
 }
 
 object ProgrammingState {
 
   // One current wire schema, derived from typed payloads. No historical tags or migration paths.
   private enum Payload derives ReadWriter {
-    case Xml(value: ProgrammingStateSnapXml)
+    case Raw(value: ProgrammingStateRaw)
     case SnapModel(value: ProgrammingStateSnapScalaModel)
-    case PythonSource(value: ProgrammingStatePythonString)
-    case JavaSource(value: ProgrammingStateJavaString)
     case JavaStructured(value: ProgrammingStateJavaStructured)
     case PythonStructured(value: ProgrammingStatePythonStructured)
     case Expression(value: ProgrammingStateBeExpression)
   }
   given ReadWriter[ProgrammingState] =
     readwriter[Payload].bimap({
-      case value: ProgrammingStateSnapXml => Payload.Xml(value)
+      case value: ProgrammingStateRaw => Payload.Raw(value)
       case value: ProgrammingStateSnapScalaModel => Payload.SnapModel(value)
-      case value: ProgrammingStatePythonString => Payload.PythonSource(value)
-      case value: ProgrammingStateJavaString => Payload.JavaSource(value)
       case value: ProgrammingStateJavaStructured => Payload.JavaStructured(value)
       case value: ProgrammingStatePythonStructured => Payload.PythonStructured(value)
       case value: ProgrammingStateBeExpression => Payload.Expression(value)
     }, {
-      case Payload.Xml(value) => value
+      case Payload.Raw(value) => value
       case Payload.SnapModel(value) => value
-      case Payload.PythonSource(value) => value
-      case Payload.JavaSource(value) => value
       case Payload.JavaStructured(value) => value
       case Payload.PythonStructured(value) => value
       case Payload.Expression(value) => value
@@ -88,38 +82,27 @@ final case class ProgrammingStateBeExpression(expression: BeExpression) extends 
 }
 
 
-final case class ProgrammingStateSnapXml(snapXml: String) extends ProgrammingState derives ReadWriter {
+/** Transport and in-progress source. Prefer the structured language states for saved answers. */
+final case class ProgrammingStateRaw(language: ProgrammingLanguage, code: String) extends ProgrammingState derives ReadWriter {
   def toSnapScalaModel: Either[String, ProgrammingStateSnapScalaModel] = derivations.snapModel
 
-
-  /** Drop regenerated preview/pen images without changing scripts or authored costumes. */
-  def removeBloatFromXml: ProgrammingStateSnapXml = {
-    val cleaned = SnapGeneratedImages.remove(snapXml)
-    if cleaned == snapXml then this else copy(snapXml = cleaned)
+  def removeBloatFromXml: ProgrammingStateRaw = {
+    val cleaned = if language == SnapLanguage then SnapGeneratedImages.remove(code) else code
+    if cleaned == code then this else copy(code = cleaned)
   }
-
-  override val toString: String = s"ProgrammingStateSnapXml(${snapXml.toString.take(300)})"
-}
-
-object ProgrammingStateSnapXml {
-  def unapply(state: ProgrammingStateSnapXml): Some[String] = Some(state.snapXml)
-  def mini: ProgrammingStateSnapXml = ProgrammingStateSnapXml(SnapProjectXml.mini)
-  def empty: ProgrammingStateSnapXml = ProgrammingStateSnapXml(SnapProjectXml.empty)
-}
-
-final case class ProgrammingStatePythonString(code: String) extends ProgrammingState derives ReadWriter {
-  override val toString: String = s"ProgrammingStatePythonString(${code.toString.take(300)})"
-}
-
-final case class ProgrammingStateJavaString(code: String) extends ProgrammingState derives ReadWriter {
-  def isClassProgram: Boolean = derivations.isJavaClass
-  def toJavaVmProgram = derivations.checkedJava
+  def isClassProgram: Boolean = {
+    require(language == Java, "Class-program validation requires Java source.")
+    derivations.isJavaClass
+  }
+  def toJavaVmProgram = {
+    require(language == Java, "The checked Java runner requires Java source.")
+    derivations.checkedJava
+  }
   def toLegacyTurtleCommands: List[it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand[Double]] = {
     require(!isClassProgram, "Full Java classes require the checked Java runner.")
     toBeExpression.turtleCommandExecutionInfo.completedCommands
   }
-
-  override val toString: String = s"ProgrammingStateJavaString(${code.toString.take(300)})"
+  override val toString: String = s"ProgrammingStateRaw($language, ${code.take(300)})"
 }
 
 /** Full Snap project state. Converting representations preserves native project XML.
@@ -135,6 +118,12 @@ final case class ProgrammingStateSnapScalaModel(
 }
 
 object ProgrammingStateSnapScalaModel {
+  lazy val empty: ProgrammingStateSnapScalaModel = fromXml(SnapProjectXml.empty)
+  lazy val mini: ProgrammingStateSnapScalaModel = fromXml(SnapProjectXml.mini)
+  private def fromXml(xml: String): ProgrammingStateSnapScalaModel =
+    it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec.parse(xml)
+      .fold(message => throw IllegalArgumentException(message), ProgrammingStateSnapScalaModel(_))
+
   private case class Saved(model: snap.SnapScalaModel.Document) derives ReadWriter
   given ReadWriter[ProgrammingStateSnapScalaModel] = upickle.default.readwriter[Saved].bimap(
     state => Saved(state.model.withoutGeneratedImages),

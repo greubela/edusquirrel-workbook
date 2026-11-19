@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import munit.FunSuite
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.ManualOwner
@@ -17,7 +18,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class TurtleProgramExecutionSpec extends FunSuite {
   test("runtime providers dispatch and clean up independently of Eva navigation") {
-    val source = ProgrammingStateJavaString("unsupported source that a provider owns")
+    val source = ProgrammingStateRaw(Java, "unsupported source that a provider owns")
     var offered = Vector.empty[String]
     var executions = 0
     var stopped = Vector.empty[String]
@@ -76,8 +77,8 @@ class TurtleProgramExecutionSpec extends FunSuite {
       runnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner): ExecutionFixture =
     new ExecutionFixture(state, Some(new JavaTurtleEditorExtension(state, runnerFactory)))
   private def javaExtension(fixture: ExecutionFixture): JavaTurtleEditorExtension = fixture.extension.get
-  private def javaSource(distance: Int = 12): ProgrammingStateJavaString =
-    ProgrammingStateJavaString(s"\n\tpublic class Drawing {\r\n  static void draw(int distance) {\r\n    Turtle.forward(distance);\r\n    Turtle.turnRight(-90);\r\n  }\r\n  public static void main(String[] args) { draw($distance); }\r\n}\r\n\t ")
+  private def javaSource(distance: Int = 12): ProgrammingStateRaw =
+    ProgrammingStateRaw(Java, s"\n\tpublic class Drawing {\r\n  static void draw(int distance) {\r\n    Turtle.forward(distance);\r\n    Turtle.turnRight(-90);\r\n  }\r\n  public static void main(String[] args) { draw($distance); }\r\n}\r\n\t ")
 
   private def mappedCommands(distance: Double = 12.0): List[TurtleCommand[Double]] =
     List(TurtleCommand.Forward[Double](distance), TurtleCommand.Right[Double](-90.0))
@@ -147,15 +148,32 @@ class TurtleProgramExecutionSpec extends FunSuite {
     }
   }
 
+  test("raw and structured Java sources use the same checked runner") {
+    Future.sequence(List[ProgrammingState](javaSource(), javaSource().toJavaStructured).map { source =>
+      val factory = new ControlledRunnerFactory
+      val editor = javaPlain(Var(source), testingConfig, runnerFactory = factory.create)
+      val result = editor.getCurrentTurtleCommands()
+      afterDispatch(factory.runners.nonEmpty && factory.runners.head.requests.nonEmpty) {
+        val runner = factory.runners.head
+        runner.complete(execution = T.runVm(runner.requests.head.program))
+        result.map { commands =>
+          assertEquals(commands, mappedCommands())
+          assertEquals(editor.currentState(), source)
+          editor.close()
+        }
+      }
+    }).map(_ => ())
+  }
+
   test("legacy Java snippets remain convertible without running a full Java class") {
-    val source = ProgrammingStateJavaString("forward(12);")
+    val source = ProgrammingStateRaw(Java, "forward(12);")
     val editor = editorFor(source)
     assertEquals(source.toBeExpression.turtleCommandExecutionInfo.completedCommands, List(TurtleCommand.Forward[Double](12.0)))
     assertEquals(editor.currentState(), source)
   }
 
   test("running an unsupported Java class fails without replacing its source") {
-    val source = ProgrammingStateJavaString("\npublic class Drawing {\r\n\tpublic static void main(String[] args) { double side = 25; }\r\n}\r\n\t ")
+    val source = ProgrammingStateRaw(Java, "\npublic class Drawing {\r\n\tpublic static void main(String[] args) { double side = 25; }\r\n}\r\n\t ")
     val editor = editorFor(source)
     editor.getCurrentTurtleCommands().failed.map { _ =>
       assertEquals(editor.currentState(), source)
@@ -163,8 +181,8 @@ class TurtleProgramExecutionSpec extends FunSuite {
   }
 
   test("run uses a source restored while the editor is closed") {
-    val editor = editorFor(ProgrammingStatePythonString("forward(12)"))
-    val restored = ProgrammingStateJavaString("\npublic class Drawing {}\r\n\t ")
+    val editor = editorFor(ProgrammingStateRaw(Python, "forward(12)"))
+    val restored = ProgrammingStateRaw(Java, "\npublic class Drawing {}\r\n\t ")
     editor.state.set(restored)
     editor.getCurrentTurtleCommands().failed.map { _ =>
       assertEquals(editor.currentState(), restored)
@@ -202,10 +220,10 @@ class TurtleProgramExecutionSpec extends FunSuite {
 
   test("unfinished classes and invalid Java main programs reject before creating a runner") {
     val sources = List(
-      ProgrammingStateJavaString("\npublic class Drawing {\r\n\t"),
-      ProgrammingStateJavaString("class Drawing {}"),
-      ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { float side = 25; } }"),
-      ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { Turtle.forward(missing); } }")
+      ProgrammingStateRaw(Java, "\npublic class Drawing {\r\n\t"),
+      ProgrammingStateRaw(Java, "class Drawing {}"),
+      ProgrammingStateRaw(Java, "class Drawing { public static void main(String[] args) { float side = 25; } }"),
+      ProgrammingStateRaw(Java, "class Drawing { public static void main(String[] args) { Turtle.forward(missing); } }")
     )
     Future.sequence(sources.map { source =>
       val factory = new ControlledRunnerFactory
@@ -534,7 +552,7 @@ class TurtleProgramExecutionSpec extends FunSuite {
       "String note = \"class Fake { }\"; forward(12);"
     )
     Future.sequence(sources.map { code =>
-      val source = ProgrammingStateJavaString(code)
+      val source = ProgrammingStateRaw(Java, code)
       val factory = new ControlledRunnerFactory
       val editor = javaPlain(Var[ProgrammingState](source), testingConfig,
         runnerFactory = factory.create)

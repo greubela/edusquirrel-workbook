@@ -1,11 +1,12 @@
 package it.evadid.vm.conversion.unittest
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateBeExpression
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaString
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured}
 
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
@@ -30,18 +31,19 @@ private[evadid] object ProgramForUnitTestExecution {
 
   private def convertedFromState(state: ProgrammingState): Either[String, ProgramForUnitTestExecution] =
     try state match {
-      case value: ProgrammingStateJavaStructured => Right(ProgramForUnitTestExecution(value.toPythonStructured.toString))
+      case value: ProgrammingStateJavaStructured => convertedFromState(value.toJava)
       case value: ProgrammingStatePythonStructured => Right(ProgramForUnitTestExecution(value.toString))
-      case value: ProgrammingStateJavaString =>
+      case value @ ProgrammingStateRaw(Java, _) =>
         value.toJavaVmProgram.left.map(_.message).map { program =>
           val exported = JavaTurtlePythonExport.render(program)
           ProgramForUnitTestExecution(exported.source, Some(CommandEntryPoint(JavaTurtlePythonExport.EntryPoint,
             exported.methods.view.mapValues(_.index).toMap)))
         }
-      case ProgrammingStatePythonString(code) => Right(ProgramForUnitTestExecution(code))
-      case value: ProgrammingStateSnapXml => SnapStateConversion.expressionForExecution(value.snapXml).flatMap(fromExpression)
+      case ProgrammingStateRaw(Python, code) => Right(ProgramForUnitTestExecution(code))
+      case value @ ProgrammingStateRaw(SnapLanguage, _) => SnapStateConversion.expressionForExecution(value.code).flatMap(fromExpression)
       case value: ProgrammingStateSnapScalaModel => convertedFromState(value.toSnapXml)
       case ProgrammingStateBeExpression(expression) => fromExpression(expression)
+      case ProgrammingStateRaw(language, _) => Left(s"Unit-test execution does not support $language source.")
     } catch {
       case NonFatal(_) => Left("This program cannot be converted for unit-test execution.")
     }

@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion.javaexpression
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.code.usage.*
@@ -25,7 +26,7 @@ class JavaObjectConversionSpec extends FunSuite {
     |""".stripMargin
 
   test("Java constructors, implicit fields and implicit methods become neutral object expressions") {
-    val original = ProgrammingStateJavaString(source).toBeExpression
+    val original = ProgrammingStateRaw(Java, source).toBeExpression
     val normalized = original.toPython
     assert(normalized.code.contains("self.value = initial"), normalized.code)
     assert(normalized.code.contains("return self.read()"), normalized.code)
@@ -42,13 +43,13 @@ class JavaObjectConversionSpec extends FunSuite {
 
   test("a local parameter shadows a field while explicit this still selects the field") {
     val code = "class Counter { double value; Counter(double value) { this.value = value; } double read() { return value; } }"
-    val python = ProgrammingStateJavaString(code).toPython.code
+    val python = ProgrammingStateRaw(Java, code).toPython.code
     assert(python.contains("self.value = value"), python)
     assert(python.contains("return self.value"), python)
   }
 
   test("Java keyword translation does not rewrite literals") {
     val code = "class Label { String text() { return \"true false null this new\"; } }"
-    assert(ProgrammingStateJavaString(code).toPython.code.contains("\"true false null this new\""))
+    assert(ProgrammingStateRaw(Java, code).toPython.code.contains("\"true false null this new\""))
   }
 }

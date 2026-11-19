@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
@@ -15,10 +16,10 @@ import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import munit.FunSuite
 
 class PythonTypeHintConversionSpec extends FunSuite {
-  private def converted(source: String): ProgrammingStatePythonString =
-    ProgrammingStatePythonString(source).toBeExpression.toPython
+  private def converted(source: String): ProgrammingStateRaw =
+    ProgrammingStateRaw(Python, source).toBeExpression.toPython
 
-  private def assertStablePython(state: ProgrammingStatePythonString): Unit = {
+  private def assertStablePython(state: ProgrammingStateRaw): Unit = {
     var current = state
     (1 to 3).foreach { _ =>
       current = current.toBeExpression.toPython
@@ -31,7 +32,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
   }
 
   test("Java declared types take precedence over initializer inference and survive reassignment") {
-    val python = ProgrammingStateJavaString(
+    val python = ProgrammingStateRaw(Java,
       """final double distance = 12;
         |Object value = 1;
         |distance = distance + 5;
@@ -100,7 +101,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
   }
 
   test("multiple uninitialized declarations survive reparsing without metadata comments") {
-    val python = ProgrammingStateJavaString(
+    val python = ProgrammingStateRaw(Java,
       "double distance; boolean enabled; String label; Date day; Object value;"
     ).toPython
     List("distance : float", "enabled : bool", "label : str", "day : date", "value : Any").foreach { hint =>
@@ -119,22 +120,22 @@ class PythonTypeHintConversionSpec extends FunSuite {
 
   test("printer comments do not select a different Java conversion mode") {
     val source = "class Drawing { public static void main(String[] args) { float distance = 1; forward(distance); } }"
-    val plain = ProgrammingStateJavaString(source)
-    val commented = ProgrammingStateJavaString(source.replace("class Drawing {", "class Drawing { //EvaEntityName(drawing)\n"))
+    val plain = ProgrammingStateRaw(Java, source)
+    val commented = ProgrammingStateRaw(Java, source.replace("class Drawing {", "class Drawing { //EvaEntityName(drawing)\n"))
     assertEquals(commented.toPython, plain.toPython)
     assertEquals(commented.toBeExpression.turtleCommandExecutionInfo.completedCommands,
       plain.toBeExpression.turtleCommandExecutionInfo.completedCommands)
   }
 
   test("Java runtime validation is independent of shared class conversion") {
-    val source = ProgrammingStateJavaString("class Line { void draw() { forward(12); } }")
+    val source = ProgrammingStateRaw(Java, "class Line { void draw() { forward(12); } }")
     assert(source.toJavaVmProgram.isLeft)
     assert(source.toPython.code.contains("def draw(self)"))
     assertEquals(source.code, "class Line { void draw() { forward(12); } }")
   }
 
   test("entity-looking text in a string remains literal during conversion") {
-    val source = ProgrammingStateJavaString("class Label { String label() { return \"//EvaEntityName(label)\"; } }")
+    val source = ProgrammingStateRaw(Java, "class Label { String label() { return \"//EvaEntityName(label)\"; } }")
     assert(source.toPython.code.contains("//EvaEntityName(label)"))
     assert(source.toPython.toJava.code.contains("//EvaEntityName(label)"))
   }
@@ -145,7 +146,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
       |  Object create() { return new Object(); }
       |}
       |""".stripMargin
-    val java = ProgrammingStateJavaString(source)
+    val java = ProgrammingStateRaw(Java, source)
     assert(java.isClassProgram)
     assert(java.toJavaVmProgram.isLeft)
     intercept[IllegalArgumentException](java.toBeExpression)
@@ -155,7 +156,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
   }
 
   test("a printer-generated instance method named main remains convertible") {
-    val original = ProgrammingStatePythonString("class Calculator:\n    def main(self, value: float) -> float:\n        return value\n").toBeExpression
+    val original = ProgrammingStateRaw(Python, "class Calculator:\n    def main(self, value: float) -> float:\n        return value\n").toBeExpression
     val java = original.toJava
     assert(!java.code.contains("//EvaEntityName("), clue = java.code)
     assert(java.isClassProgram)
@@ -176,7 +177,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
         |    def label(self, text: str) -> str:
         |        return text
         |""".stripMargin
-    val original = ProgrammingStatePythonString(source).toBeExpression
+    val original = ProgrammingStateRaw(Python, source).toBeExpression
     val java = original.toJava
     val roundTripped = java.toPython
 

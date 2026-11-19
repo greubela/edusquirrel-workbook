@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.facades.CodeMirror.{CodeMirrorHandle, EditorConfig}
 
 import com.raquo.airstream.ownership.Subscription
@@ -99,10 +100,10 @@ object CodeMirrorEditor {
     override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
         marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): it.evadid.homepage.webElements.HtmlAppElement = {
       val text = state.bimap {
-        case ProgrammingStatePythonString(code) => code
+        case ProgrammingStateRaw(Python, code) => code
         case value: ProgrammingStatePythonStructured => value.toString
         case _ => ""
-      }(ProgrammingStatePythonString(_))
+      }(ProgrammingStateRaw(Python, _))
       CodeMirrorEditor(logger, text, Python, Var(config), diagnostics = CodeMirrorEditor.marks(marker), loadingLabel = loading)
     }
   }

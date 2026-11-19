@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import com.raquo.airstream.state.Var
 import java.util.concurrent.CancellationException
@@ -27,10 +28,12 @@ final class TurtleProgramExecution(providers: List[TurtleExecutionProvider] = Ni
     providers.iterator.flatMap(_.turtleCommands(source)).nextOption() match {
       case Some(execute) => Try(execute()).fold(Future.failed, identity)
       case None => source match {
-        case xml: ProgrammingStateSnapXml => snap.commandsFor(xml)
+        case xml @ ProgrammingStateRaw(SnapLanguage, _) => snap.commandsFor(xml)
         case model: ProgrammingStateSnapScalaModel => snap.commandsFor(model.toSnapXml)
-        case ProgrammingStatePythonString(code) => python.execute(code)
-        case java: ProgrammingStateJavaString => Future(java.toLegacyTurtleCommands)
+        case ProgrammingStateRaw(Python, code) => python.execute(code)
+        case value: ProgrammingStatePythonStructured => python.execute(value.toString)
+        case value: ProgrammingStateJavaStructured => Future(value.toJava.toLegacyTurtleCommands)
+        case java @ ProgrammingStateRaw(Java, _) => Future(java.toLegacyTurtleCommands)
         case _ => Future(source.toBeExpression.turtleCommandExecutionInfo.completedCommands)
       }
     }

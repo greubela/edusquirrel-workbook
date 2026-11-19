@@ -11,7 +11,7 @@ import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPy
 import it.evadid.vm.BeProgram
 import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import munit.FunSuite
 
 import java.util.concurrent.{CancellationException, TimeoutException}

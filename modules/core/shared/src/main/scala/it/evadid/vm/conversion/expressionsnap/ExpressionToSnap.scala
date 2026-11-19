@@ -1,20 +1,21 @@
 package it.evadid.vm.conversion.expressionsnap
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.conversion.ConversionResult.converted
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 
 object ExpressionToSnap {
-  def convert(expression: BeExpression): ProgrammingStateSnapXml = {
+  def convert(expression: BeExpression): ProgrammingStateRaw = {
     converted(SnapExpressionSupport.validateSubset(expression))
     fromProgram(BeProgram(expression))
   }
 
   def fromProgram(program: BeProgram, canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
-      previousXml: String = ""): ProgrammingStateSnapXml =
-    ProgrammingStateSnapXml(SnapCustomBlockMerge.applyProgram(program, canvasLayout, previousXml))
+      previousXml: String = ""): ProgrammingStateRaw =
+    ProgrammingStateRaw(SnapLanguage, SnapCustomBlockMerge.applyProgram(program, canvasLayout, previousXml))
 }

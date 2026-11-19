@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
 import com.raquo.airstream.state.Var
@@ -11,10 +12,10 @@ private[SnapEditor] final class SnapProjectXmlSync {
   private val loaded = Var(Option.empty[ProgrammingStateSnapScalaModel])
   private val snapshot = Var(Option.empty[ProgrammingStateSnapScalaModel])
 
-  private def clean(xml: String): String = ProgrammingStateSnapXml(xml).removeBloatFromXml.snapXml
+  private def clean(xml: String): String = ProgrammingStateRaw(SnapLanguage, xml).removeBloatFromXml.code
 
   private def model(xml: String): ProgrammingStateSnapScalaModel =
-    ProgrammingStateSnapXml(xml).toSnapScalaModel.fold(message => throw IllegalArgumentException(message), _.persistent)
+    ProgrammingStateRaw(SnapLanguage, xml).toSnapScalaModel.fold(message => throw IllegalArgumentException(message), _.persistent)
 
   def markLoaded(xml: String): Unit = loaded.set(Some(model(xml)))
   def isLoaded(xml: String): Boolean = loaded.now().exists(_.meaningfullyEquals(model(xml)))

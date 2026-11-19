@@ -1,17 +1,18 @@
 package it.evadid.vm.simulation.turtle
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStatePythonString, ProgrammingStateJavaString}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateRaw}
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.core.datastructures.language.AppLanguage.{English, German}
 import munit.FunSuite
 
 class TurtleCommandExecutionInfoSpec extends FunSuite {
-  private def expression(code: String) = ProgrammingStatePythonString(code).toBeExpression.expression
+  private def expression(code: String) = ProgrammingStateRaw(Python, code).toBeExpression.expression
   private def analyze(code: String, limits: TurtleExecutionLimits = TurtleExecutionLimits()) =
     TurtleProgramAnalysis(expression(code), limits)
   private def forward(distance: Double): TurtleCommand[Double] = TurtleCommand.Forward(distance)
-  private def java(body: String, helpers: String = "") = ProgrammingStateJavaString(
+  private def java(body: String, helpers: String = "") = ProgrammingStateRaw(Java,
     s"class Drawing { public static void main(String[] args) { $body } $helpers }").toBeExpression
 
   test("source occurrences and executed frequencies retain their distinct parameter semantics") {

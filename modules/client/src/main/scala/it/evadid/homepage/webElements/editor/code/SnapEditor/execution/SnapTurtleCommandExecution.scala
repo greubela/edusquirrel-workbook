@@ -20,7 +20,7 @@ trait TurtleCommandRunner:
 
 /** Derives and executes a Snap project without modifying editor state. */
 final class SnapTurtleCommandExecution(runner: TurtleCommandRunner):
-  def commandsFor(state: ProgrammingStateSnapXml): Future[List[TurtleCommand[Double]]] =
+  def commandsFor(state: ProgrammingStateRaw): Future[List[TurtleCommand[Double]]] =
     val derived = SnapProgramDerivation.fromState(state)
     if !derived.pythonCompatible then
       Future.failed(IllegalArgumentException(

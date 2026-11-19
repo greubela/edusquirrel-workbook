@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
 
@@ -50,10 +51,10 @@ two</options></input></inputs>
 """
 
   private def converted(xml: String): ProgrammingStateSnapScalaModel =
-    ProgrammingStateSnapXml(xml).toSnapScalaModel.fold(message => fail(message), identity)
+    ProgrammingStateRaw(SnapLanguage, xml).toSnapScalaModel.fold(message => fail(message), identity)
 
   private def assertRoundTrip(xml: String): Unit = {
-    val source = ProgrammingStateSnapXml(xml)
+    val source = ProgrammingStateRaw(SnapLanguage, xml)
     val typed = source.toSnapScalaModel.toOption.get
     assertEquals(typed.toSnapXml, source)
     assertEquals(read[ProgrammingStateSnapScalaModel](write(typed)), typed.persistent)
@@ -62,7 +63,7 @@ two</options></input></inputs>
     assertEquals(readBinary[ProgrammingState](writeBinary[ProgrammingState](typed)), typed.persistent)
     assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(typed)), typed.persistent)
     assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(source)), source)
-    assertEquals(read[ProgrammingStateSnapXml](write(source)), source)
+    assertEquals(read[ProgrammingStateRaw](write(source)), source)
     assertEquals(typed.fingerprint(), source.fingerprint())
   }
 
@@ -111,8 +112,8 @@ two</options></input></inputs>
     assert(converted("<snapdata><project/><media/></snapdata>").model.project.nonEmpty)
   }
   test("existing canonical projects convert without depending on the executable subset") {
-    List(ProgrammingStateSnapXml.empty, ProgrammingStateSnapXml.mini,
-      ProgrammingStatePythonString("forward(10)\nright(90)\n").toSnapXml).foreach(s => assertRoundTrip(s.snapXml))
+    List(ProgrammingStateSnapScalaModel.empty.toSnapXml, ProgrammingStateSnapScalaModel.mini.toSnapXml,
+      ProgrammingStateRaw(Python, "forward(10)\nright(90)\n").toSnapXml).foreach(s => assertRoundTrip(s.code))
     val unsupported = "<project><stage><scripts><script><block s='newUnknownPrimitive'><l>opaque</l></block></script></scripts></stage></project>"
     assertRoundTrip(unsupported)
   }
@@ -123,9 +124,9 @@ two</options></input></inputs>
       case node => node
     })
     assertEquals(edited.model.project.get.scenes.head.stage.get.sprites.head.x, Some(12.25))
-    assertEquals(edited.toSnapXml.snapXml, fullProject.replace("x=\"-2.5\"", "x=\"12.25\""))
-    assertEquals(state.toSnapXml.snapXml, fullProject)
-    assertRoundTrip(edited.toSnapXml.snapXml)
+    assertEquals(edited.toSnapXml.code, fullProject.replace("x=\"-2.5\"", "x=\"12.25\""))
+    assertEquals(state.toSnapXml.code, fullProject)
+    assertRoundTrip(edited.toSnapXml.code)
   }
   test("entity escaping is single-pass, handles supplementary Unicode and safe edited attributes") {
     val document = converted("<project name='&amp;lt; &#128034; &#x1f422;'><notes>&amp;amp;</notes></project>").model
@@ -151,14 +152,14 @@ two</options></input></inputs>
       "<project name='a' name='b'/>", "<project><!-- unclosed</project>", "<project><![CDATA[unclosed</project>",
       "<project a='<'/>", "<project>&#x110000;</project>", "<project>&#0;</project>",
       "<project>" + "<list>" * 260 + "</list>" * 260 + "</project>")
-      .foreach(xml => assert(ProgrammingStateSnapXml(xml).toSnapScalaModel.isLeft, xml.take(100)))
+      .foreach(xml => assert(ProgrammingStateRaw(SnapLanguage, xml).toSnapScalaModel.isLeft, xml.take(100)))
   }
   test("newly authored typed trees serialize, and editing a self-closing node creates a closing tag") {
     val empty = Project(Element("project", selfClosing = true))
     val withNotes = Project(empty.element.copy(children = Vector(Notes(Element("notes", children = Vector(Text("new story")))))))
     val state = ProgrammingStateSnapScalaModel(Document(Vector(withNotes)))
-    assertEquals(state.toSnapXml.snapXml, "<project><notes>new story</notes></project>")
-    assertRoundTrip(state.toSnapXml.snapXml)
+    assertEquals(state.toSnapXml.code, "<project><notes>new story</notes></project>")
+    assertRoundTrip(state.toSnapXml.code)
   }
   test("persisted models omit generated media while retaining authored assets and opaque data") {
     val state = converted("<project><thumbnail>huge-preview</thumbnail><stage><pentrails>huge-trails</pentrails>" +
@@ -167,8 +168,8 @@ two</options></input></inputs>
     assertEquals(saved, state.persistent)
     assert(!write(state).contains("huge-preview"))
     assert(!write(state).contains("huge-trails"))
-    assert(saved.toSnapXml.snapXml.contains("authored-image"))
-    assert(saved.toSnapXml.snapXml.contains("keep me"))
+    assert(saved.toSnapXml.code.contains("authored-image"))
+    assert(saved.toSnapXml.code.contains("keep me"))
     assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(state)), state.persistent)
   }
 
@@ -177,7 +178,7 @@ two</options></input></inputs>
     val same = converted("<project>\n <stage tempo=\"60\" name=\"a\">\n<scripts><script x=\"1\"><block s=\"forward\"><l><![CDATA[10]]></l></block></script></scripts>\n</stage><thumbnail>second</thumbnail></project>")
     assert(first.meaningfullyEquals(same))
     for ((before, after) <- List("10" -> "11", "forward" -> "turn", "x='1'" -> "x='2'", "name='a'" -> "name='b'"))
-      assert(!first.meaningfullyEquals(converted(first.toSnapXml.snapXml.replace(before, after))))
+      assert(!first.meaningfullyEquals(converted(first.toSnapXml.code.replace(before, after))))
     assert(!converted("<project><l> </l></project>").meaningfullyEquals(converted("<project><l></l></project>")))
   }
 

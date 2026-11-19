@@ -1,9 +1,10 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleGraphic, TurtleDrawingPolicy, TurtleRecreateShapeInteraction}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -12,7 +13,7 @@ import munit.FunSuite
 
 class RecreateShapeGraderSpec extends FunSuite {
   test("the reported Python staircase grades correctly in every supported source representation") {
-    val state = ProgrammingStatePythonString("forward(100)\nturn_right(90)\nforward(100)\nturn_right(270)\nforward(100)")
+    val state = ProgrammingStateRaw(Python, "forward(100)\nturn_right(90)\nforward(100)\nturn_right(270)\nforward(100)")
     val target = TurtleGraphic.TurtleGraphicSvgString("M 0 0 L 100 0 L 100 100 L 200 100")
     val commands = state.toBeExpression.turtleCommandExecutionInfo.completedCommands
     assertEquals(commands.size, 5, clues(commands))
@@ -31,7 +32,7 @@ class RecreateShapeGraderSpec extends FunSuite {
         List(GradingStatus.PartiallyCorrect(), GradingStatus.Correct(), GradingStatus.Correct())))
     Future.traverse(cases) { (program, path, grades) =>
       Future.traverse(TurtleDrawingPolicy.values.toList.zip(grades)) { (policy, expected) =>
-        val interaction = TurtleRecreateShapeInteraction(s"policy-$policy", ProgrammingStatePythonString(program),
+        val interaction = TurtleRecreateShapeInteraction(s"policy-$policy", ProgrammingStateRaw(Python, program),
           TurtleGraphic.TurtleGraphicSvgString(path), comparisonPolicy = policy)
         interaction.interactionVariable.control.getOrCalculateGrading(TestExecutionContext()).map { result =>
           assertEquals(result.testsWithResults.head.gradingStatus, expected, clues(policy, program))
@@ -42,8 +43,8 @@ class RecreateShapeGraderSpec extends FunSuite {
 
   test("a completed earlier draft cannot grade the corrected staircase") {
     val target = TurtleGraphic.TurtleGraphicSvgString("M0 0 L100 0 L100 100 L200 100")
-    val first = ProgrammingStatePythonString("forward(100)\nforward(100)")
-    val corrected = ProgrammingStatePythonString("forward(100)\nturn_right(90)\nforward(100)\nturn_right(270)\nforward(100)")
+    val first = ProgrammingStateRaw(Python, "forward(100)\nforward(100)")
+    val corrected = ProgrammingStateRaw(Python, "forward(100)\nturn_right(90)\nforward(100)\nturn_right(270)\nforward(100)")
     val interaction = TurtleRecreateShapeInteraction("edited-staircase", first, target)
     val variable = interaction.interactionVariable
     variable.setStateFromUserInteraction(first, MAJOR, context = TestExecutionContext())

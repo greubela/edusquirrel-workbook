@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
 
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
@@ -19,7 +20,7 @@ class SnapScalaWorkbookProjectsSpec extends FunSuite {
     assert(projects.nonEmpty, "The published Snap project fixtures must be present.")
     projects.foreach { path =>
       val xml = Files.readString(path, StandardCharsets.UTF_8)
-      val state = ProgrammingStateSnapXml(xml)
+      val state = ProgrammingStateRaw(SnapLanguage, xml)
       val typed = state.toSnapScalaModel.fold(message => fail(s"$path: $message"), identity)
       assertEquals(typed.toSnapXml, state, path.toString)
       assert(read[it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.Document](write(typed.model)).toXml == xml, path.toString)

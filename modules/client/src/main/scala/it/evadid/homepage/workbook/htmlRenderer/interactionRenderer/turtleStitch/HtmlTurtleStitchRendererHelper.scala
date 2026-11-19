@@ -1,8 +1,9 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.abstractions.InteractionFormat.{TurtleProjectFormat}
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file
 import it.evadid.core.datastructures.file.FileDescription
@@ -95,7 +96,7 @@ object HtmlTurtleStitchRendererHelper {
       div(
         cls := "preview-content",
         child <-- xmlAsync.observeLoadedValues.toEventStream().map(xml => {
-          val editor = SnapPreviewEditor(Var[ProgrammingState](ProgrammingStateSnapXml(xml)),
+          val editor = SnapPreviewEditor(Var[ProgrammingState](ProgrammingStateRaw(SnapLanguage, xml)),
             SnapCodeEditorConfig.Testing,
             language)
           editor.getDomElement()

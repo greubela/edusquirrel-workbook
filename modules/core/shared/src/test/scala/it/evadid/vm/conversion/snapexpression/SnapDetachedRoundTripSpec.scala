@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion.snapexpression
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.vm.conversion.snapxml.SnapXmlParser
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchToBeExpressionParser
@@ -12,12 +13,12 @@ class SnapDetachedRoundTripSpec extends FunSuite {
     |</scripts></sprite></sprites></stage></scene></scenes></project>""".stripMargin
 
   test("detached scripts remain unexecuted through Python and Java") {
-    val original = ProgrammingStateSnapXml(source).toBeExpression
+    val original = ProgrammingStateRaw(SnapLanguage, source).toBeExpression
     assertEquals(original.turtleCommandExecutionInfo.completedCommands.map(_.args.head), List(10.0))
     for converted <- Seq(original.toPython.toBeExpression, original.toJava.toBeExpression) do {
       val snap = converted.toSnapXml
-      assert(!snap.snapXml.contains("block-definition s=\"unused"), snap.snapXml)
-      val layout = TurtleStitchToBeExpressionParser.parseXmlWithLayout(snap.snapXml).canvasLayout
+      assert(!snap.code.contains("block-definition s=\"unused"), snap.code)
+      val layout = TurtleStitchToBeExpressionParser.parseXmlWithLayout(snap.code).canvasLayout
       assertEquals(layout.scripts.count(_.hasReceiveGo), 1)
       assertEquals(layout.scripts.count(!_.hasReceiveGo), 1)
       assertEquals(snap.toBeExpression.turtleCommandExecutionInfo.completedCommands.map(_.args.head), List(10.0))
@@ -26,14 +27,14 @@ class SnapDetachedRoundTripSpec extends FunSuite {
   }
 
   test("a project containing only loose blocks does not gain startup commands") {
-    val loose = ProgrammingStateSnapXml(source.replace("<block s=\"receiveGo\"/>", "")).toBeExpression.toSnapXml
-    val layout = TurtleStitchToBeExpressionParser.parseXmlWithLayout(loose.snapXml).canvasLayout
-    assert(layout.scripts.forall(!_.hasReceiveGo), loose.snapXml)
+    val loose = ProgrammingStateRaw(SnapLanguage, source.replace("<block s=\"receiveGo\"/>", "")).toBeExpression.toSnapXml
+    val layout = TurtleStitchToBeExpressionParser.parseXmlWithLayout(loose.code).canvasLayout
+    assert(layout.scripts.forall(!_.hasReceiveGo), loose.code)
     assertEquals(loose.toBeExpression.turtleCommandExecutionInfo.completedCommands, Nil)
   }
 
   test("the reserved detached-code function cannot become a callable Snap block") {
-    val code = ProgrammingStatePythonString("def unused_code():\n    forward(3)\nunused_code()\n")
+    val code = ProgrammingStateRaw(Python, "def unused_code():\n    forward(3)\nunused_code()\n")
     intercept[Exception](code.toSnapXml)
   }
 }

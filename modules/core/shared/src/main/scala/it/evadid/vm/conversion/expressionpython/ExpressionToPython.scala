@@ -1,7 +1,8 @@
 package it.evadid.vm.conversion.expressionpython
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.ConversionResult.converted
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.code.abstractions.BeExpression
@@ -9,8 +10,8 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport.*
 
 object ExpressionToPython {
-  def convert(expression: BeExpression): ProgrammingStatePythonString =
-    ProgrammingStatePythonString(printedPython(expression))
+  def convert(expression: BeExpression): ProgrammingStateRaw =
+    ProgrammingStateRaw(Python, printedPython(expression))
 
   /** Preserve the VM's variable, parameter and return types when switching to Python. */
   def printedPython(expression: BeExpression): String = {

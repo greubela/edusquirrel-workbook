@@ -1,6 +1,6 @@
 # Programming conversions
 
-Each immutable programming state owns one [`ProgrammingStateDerivations`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/ProgrammingStateDerivations.scala), shared by views and graders. Direct state methods expose `toBeExpression`, `toLanguage`, `toJava`, `toPython`, `toSnapXml`, `toJavaStructured` and `toPythonStructured`.
+Each immutable programming state owns one [`ProgrammingStateDerivations`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/ProgrammingStateDerivations.scala), shared by views and graders. The central `convertToLanguage` method returns a `ConversionResult` containing the native structured state plus diagnostics. Direct state methods expose `toBeExpression`, `toJava`, `toPython`, `toSnapXml`, `toJavaStructured` and `toPythonStructured`.
 
 Cross-language conversion follows one route:
 
@@ -8,7 +8,7 @@ Cross-language conversion follows one route:
 source state → source frontend → BeExpression → target printer → target state
 ```
 
-Source-string identity conversions preserve the original text. Snap XML ↔ the full Snap model remains a lossless representation conversion; it does not need an executable expression tree. Structured state constructors retain unfinished source for editing, but cross-language conversion requires supported syntax.
+`ProgrammingStateRaw(language, code)` is the single source transport type. Prefer structured Java/Python states and the typed Snap model for persisted answers; raw source is useful for imports and unfinished text editing, and remains permitted in histories. Raw source projections preserve the original text. Snap XML ↔ the full Snap model remains a lossless representation conversion; it does not need an executable expression tree. Structured state constructors retain unfinished source for editing, but cross-language conversion requires supported syntax.
 
 `BeExpression` stores language-neutral definitions, calls, values and control flow. It contains no checked-Java runtime nodes, original Java source, target-language names, metadata-selected semantic modes or implicit Python receiver parameters. Printers supply target syntax, including Python's `self`. Explicit `BeExpressionUnsupported` and `BeExpressionUnparsable` nodes can retain unsupported source for diagnostics.
 
@@ -37,9 +37,8 @@ A target sum type is preferable to independent `isStatic`/`isConstructor` flags 
 
 The next implementation phase is:
 
-1. Bind constructor, member and instance/static-call syntax in the Java/Python frontends to these nodes; cover the object scenario in both source directions.
-2. Introduce the sealed expression-centered state hierarchy and the semi-structured source states from the design. Keep full Snap XML/model conversion lossless.
-3. Route editor conversion through the prepared `ConversionResult`/`ConversionInfo` values, including unsupported features and numeric-type changes; reject unsupported features rather than silently dropping them.
-4. Add first-definition-wins diagnostics for hoisted classes, then extend language-independent execution only where needed.
+Python and Java object binding, detached Snap export, structured editor conversion results, class hoisting and first-definition-wins warnings are implemented. `ConversionInfo.sourceError` optionally preserves parser categories and positions for editor markers. Raw transport uses one current codec; historical source-state tags are not supported.
 
-These are parser/state/API follow-ups; the object model and printer support do not imply that every object-oriented source program can already be parsed or executed.
+Further work should extend the supported type and runtime subsets together with semantic roundtrip tests. Structured and raw sources of a language must use the same execution backend.
+
+The shared model does not imply that every object-oriented source program can be parsed or executed. The checked Java drawing runner retains its narrower execution subset.
