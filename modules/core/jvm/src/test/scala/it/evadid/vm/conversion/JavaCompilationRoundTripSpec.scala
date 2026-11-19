@@ -10,6 +10,7 @@ import scala.jdk.CollectionConverters.*
 import munit.FunSuite
 
 class JavaCompilationRoundTripSpec extends FunSuite {
+  import JavaTestRuntime.compileAndRun
   test("the object scenario emits compilable Java and preserves statement order") {
     val source = ProgrammingStateRaw(Python, "class Counter:\n    def __init__(self, value: float):\n        self.value = value\n    def read(self) -> float:\n        return self.value\ncounter = Counter(3)\ncounter.value = 7\nresult = counter.read()\n")
     val converted = source.convertToLanguage(Java)
@@ -35,6 +36,65 @@ class JavaCompilationRoundTripSpec extends FunSuite {
     } finally {
       val files = Files.walk(directory)
       try files.iterator().asScala.toVector.reverse.foreach(Files.delete) finally files.close()
+    }
+  }
+
+  test("turtle programs converted to Java compile and draw with the generated Turtle class on a plain JVM") {
+    val python = ProgrammingStateRaw(Python, "for _ in range(4):\n    forward(100)\n    left(90)\ncircle(10)\n")
+    val code = python.convertToLanguage(Java).finalState.get.asInstanceOf[ProgrammingStateJavaStructured].toString
+    compileAndRun(code) { loader =>
+      val segments = JavaTestRuntime.turtleSegments(loader).map(_.toArray)
+      assertEquals(segments.take(4).map(_.map(value => math.round(value).toDouble).toVector), Vector(
+        Vector(0.0, 0.0, 100.0, 0.0), Vector(100.0, 0.0, 100.0, 100.0), Vector(100.0, 100.0, 0.0, 100.0), Vector(0.0, 100.0, 0.0, 0.0)))
+      assertEquals(segments.size, 4 + 13, "the circle is drawn in CPython's 13 chords for radius 10")
+    }
+  }
+
+  test("programs that read a URL compile with the generated Web class") {
+    val python = ProgrammingStateRaw(Python, "page = fetch_text(\"http://localhost:1/unused\")\nprint(page)\n")
+    val code = python.convertToLanguage(Java).finalState.get.toString
+    val compiler = Option(ToolProvider.getSystemJavaCompiler).getOrElse(fail("The JVM tests require a JDK compiler."))
+    val directory = Files.createTempDirectory("edusquirrel-java-web-")
+    try {
+      val file = directory.resolve("Main.java")
+      Files.writeString(file, code)
+      val errors = new ByteArrayOutputStream()
+      assertEquals(compiler.run(null, null, errors, "-d", directory.toString, file.toString), 0, errors.toString + "\n" + code)
+    } finally {
+      val files = Files.walk(directory)
+      try files.iterator().asScala.toVector.reverse.foreach(Files.delete) finally files.close()
+    }
+  }
+
+  test("Python conversion built-ins become Java casts and library calls that compile and compute the same values") {
+    val python = ProgrammingStateRaw(Python,
+      "x = int(-3.7)\nt = str(x)\nn = int(\"42\") + float(\"0.5\")\na = abs(x)\nb = bool(a)\nif b:\n    forward(a + n)\n")
+    val code = python.convertToLanguage(Java).finalState.get.toString
+    Seq("(int) (-3.7)", "String.valueOf(x)", "Integer.parseInt(\"42\")", "Double.parseDouble(\"0.5\")", "Math.abs(x)", "(a != 0)")
+      .foreach(spelling => assert(code.contains(spelling), s"$spelling\n$code"))
+    compileAndRun(code) { loader =>
+      val segments = JavaTestRuntime.turtleSegments(loader).map(_.toArray)
+      assertEquals(segments.map(_.toVector), Vector(Vector(0.0, 0.0, 45.5, 0.0)), "int truncates towards zero: abs(-3) + 42.5")
+    }
+  }
+
+  test("text comparison, numeric conditions, module updates, reserved names and multi-value print compile and draw") {
+    val python = ProgrammingStateRaw(Python, """name = "ab"
+      |new = 2
+      |count = 3
+      |def step():
+      |    global count
+      |    count = count - 1
+      |while count:
+      |    if name == "ab" and 0 < count < 5:
+      |        forward(count * new)
+      |    step()
+      |print("done", count)
+      |""".stripMargin)
+    val code = python.convertToLanguage(Java).finalState.get.toString
+    compileAndRun(code) { loader =>
+      val segments = JavaTestRuntime.turtleSegments(loader).map(_.toArray)
+      assertEquals(segments.map(segment => segment(2) - segment(0)), Vector(6.0, 4.0, 2.0), code)
     }
   }
 }

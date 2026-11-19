@@ -7,7 +7,6 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.vm.code.defining.BeDefineClass
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
 import munit.FunSuite
 import upickle.default.*
 
@@ -155,7 +154,9 @@ class StructuredProgrammingStateSpec extends FunSuite {
 
   test("the requested Python example becomes a complete Java class with static globals and helpers") {
     val result = ProgrammingStatePythonStructured(python).toJavaStructured
-    assertEquals(result.definedClasses.keySet, Set(name("Main")))
+    // The turtle library class lets the file run on a regular JVM; it is not a user class.
+    assertEquals(result.definedClasses.keySet, Set(name("Main"), name("Turtle")))
+    assertEquals(distances(result), distances(ProgrammingStatePythonStructured(python)))
     assert(result.toString.contains("static double x = 100;"), result.toString)
     assert(result.toString.contains("static void main(String[] unusableArgs)"), result.toString)
     assertEquals(distances(result), List(20.0, 20.0, 20.0, 100.0))
@@ -202,8 +203,9 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assertEquals(distances(restored), List(20.0, 20.0, 20.0, 100.0))
     assertEquals(distances(restored.toJavaStructured.toPythonStructured.toSnapXml.toPythonStructured), distances(restored))
     val repeated = (1 to 3).foldLeft(snap)((state, _) => state.toPythonStructured.toJavaStructured.toPythonStructured.toSnapXml)
-    assertEquals(SnapXmlParser.elements(repeated.code, "block").count(_.attrOrEmpty("s") == "doSetVar"),
-      SnapXmlParser.elements(snap.code, "block").count(_.attrOrEmpty("s") == "doSetVar"))
+    def setVariableBlocks(xml: String) = it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec.parse(xml).toOption.get
+      .root.descendants.count(_.element.attribute("s").contains("doSetVar"))
+    assertEquals(setVariableBlocks(repeated.code), setVariableBlocks(snap.code))
     assertEquals(distances(repeated), distances(restored))
   }
 

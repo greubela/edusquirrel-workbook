@@ -81,12 +81,13 @@ class ControlStructuresPackageSpec extends FunSuite {
   }
 
   test("BeRepeatNr accepts zero and positive counts and reports negative counts") {
-    List(0, 1, 10).foreach(n => assertEquals(BeRepeatNr(n, body).staticInformationExpression.syntaxErrors, Seq.empty[BeInfo]))
-    val loop = BeRepeatNr(-1, body)
+    List(0, 1, 10).foreach(n => assertEquals(BeRepeatNr.times(n, body).staticInformationExpression.syntaxErrors, Seq.empty[BeInfo]))
+    val loop = BeRepeatNr.times(-1, body)
     assertEquals(loop.staticInformationExpression.syntaxErrors.map(_.infoType), Seq(BeInfo.SyntaxError.InvalidLiteralValue))
     assertEquals(loop.allPossibleBodies, List(body))
-    assertEquals(loop.structureInfo.getChildrenAsReference(global).map(_.expr), Seq(body))
+    assertEquals(loop.structureInfo.getChildrenAsReference(global).map(_.expr), Seq(loop.amount, body))
     assertEquals(replace(loop, Map(BeChildRole.BodySequence(0) -> otherBody)), loop.copy(body = otherBody))
+    assertEquals(replace(loop, Map(BeChildRole.ExpressionInSequence(0) -> literal("7"))).asInstanceOf[BeRepeatNr].fixedAmount, Some(7))
     assertEquals(replace(loop, Map(BeChildRole.BodySequence(0) -> literal("7"))), loop)
     assertEquals(loop.structureInfo.toJavaStyleLines(info).size, 3)
   }
@@ -108,7 +109,7 @@ class ControlStructuresPackageSpec extends FunSuite {
   test("every control structure round-trips through the shared expression codec") {
     val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts("i"), BeDataType.Int)
     val expressions: List[BeExpression] = List(body, condition, BeIfElse(condition, body, otherBody),
-      BeWhile(condition, body), BeRepeatNr(3, body), BeFor(variable, literal("1"), literal("3"), body))
+      BeWhile(condition, body), BeRepeatNr.times(3, body), BeFor(variable, literal("1"), literal("3"), body))
     expressions.foreach(expression => assertEquals(read[BeExpression](write(expression)), expression))
   }
   test("partial and sparse sequence replacements preserve all unreplaced children") {

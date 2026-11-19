@@ -47,7 +47,8 @@ object DefaultDefinitions {
   private def builtinFunctionDefinition(
       name: String,
       parameters: List[(String, BeDataType)],
-      returnType: Option[BeDataType]
+      returnType: Option[BeDataType],
+      intrinsic: Option[it.evadid.vm.code.defining.BeIntrinsic] = None
   ): NamedFunction = {
     val inputs = parameters.map { case (paramName, dataType) =>
       BeDefineVariable(BeEntityName.fromUniversalNameInParts(paramName), dataType)
@@ -57,8 +58,7 @@ object DefaultDefinitions {
     )
     val functionInfo = BeDefineFunction.functionInfo(KnownBeEntityNames.resolveCanonicalNames(name)
       .getOrElse(BeEntityName.fromUniversalNameInParts(name)))
-    val function = BeDefineFunction(inputs, output, BeExpression.pass, functionInfo,
-      Option.when(name == "print")(it.evadid.vm.code.defining.BeIntrinsic.Print))
+    val function = BeDefineFunction(inputs, output, BeExpression.pass, functionInfo, intrinsic)
     name -> function
   }
 
@@ -121,12 +121,15 @@ object DefaultDefinitions {
   }
 
   val builtinFunctionDefinitions: List[NamedFunction] = List(
-    builtinFunctionDefinition("str", List("value" -> AnyType), Some(StringType)),
-    builtinFunctionDefinition("int", List("value" -> AnyType), Some(NumericType)),
-    builtinFunctionDefinition("float", List("value" -> AnyType), Some(NumericType)),
-    builtinFunctionDefinition("bool", List("value" -> AnyType), Some(BooleanType)),
-    builtinFunctionDefinition("abs", List("value" -> NumericType), Some(NumericType)),
-    builtinFunctionDefinition("print", List("value" -> AnyType), Some(BeDataType.Unit))
+    builtinFunctionDefinition("str", List("value" -> AnyType), Some(StringType), Some(it.evadid.vm.code.defining.BeIntrinsic.ToText)),
+    builtinFunctionDefinition("int", List("value" -> AnyType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.ToInteger)),
+    builtinFunctionDefinition("float", List("value" -> AnyType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.ToNumber)),
+    builtinFunctionDefinition("bool", List("value" -> AnyType), Some(BooleanType), Some(it.evadid.vm.code.defining.BeIntrinsic.ToBoolean)),
+    builtinFunctionDefinition("abs", List("value" -> NumericType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.Absolute)),
+    builtinFunctionDefinition("max", List("first" -> NumericType, "second" -> NumericType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.Maximum)),
+    builtinFunctionDefinition("min", List("first" -> NumericType, "second" -> NumericType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.Minimum)),
+    builtinFunctionDefinition("print", List("value" -> AnyType), Some(BeDataType.Unit), Some(it.evadid.vm.code.defining.BeIntrinsic.Print)),
+    builtinFunctionDefinition("fetch_text", List("url" -> StringType), Some(StringType), Some(it.evadid.vm.code.defining.BeIntrinsic.FetchText))
   )
 
   val operatorDefinitions: List[BeDefineFunction] = operatorDefinitionsWithSymbols.map(_._2)

@@ -100,7 +100,7 @@ case class LaminarRenderHelper() derives upickle.default.ReadWriter {
     input(
       hidden := true,
       typ := "file",
-      accept := "json",
+      accept := ".eva,application/json",
       onChange --> { event =>
         val inputElement = event.target.asInstanceOf[org.scalajs.dom.html.Input]
         if (inputElement.files.length > 0) {

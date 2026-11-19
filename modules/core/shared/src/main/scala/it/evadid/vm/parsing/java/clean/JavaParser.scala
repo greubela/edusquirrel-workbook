@@ -257,7 +257,13 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean, r
       node(JavaUpdateExpression(operand.value, operator, prefix = true), range, Seq(operand))
     } | captured(P(operator("!", "-", "+") ~ ws ~ factor)).map { case (range, (op, operand)) =>
       node(JavaOperationUnary(op, operand.value), range, Seq(operand))
-    } | postfix
+    } | cast | postfix
+
+  /** Only primitive casts: `(name) - x` would otherwise be ambiguous with a parenthesized subtraction. */
+  private def cast[$: P]: P[Node[JavaExpression]] =
+    captured(P(LPAR ~ ws ~ primitiveJavaType ~ ws ~ RPAR ~ ws ~ factor)).map { case (range, (javaType, operand)) =>
+      node(JavaCastExpression(javaType, operand.value), range, Seq(operand))
+    }
 
   private def postfix[$: P]: P[Node[JavaExpression]] =
     P(primary ~ (ws ~ captured(operator("++", "--"))).rep).map { (operand, operators) =>
@@ -358,6 +364,13 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean, r
     P(("List" | "java.util.List") ~ ws ~ LESS ~ ws ~ javaType ~ ws ~ GREATER).map(elementType => JAVA_LIST(elementType.asInstanceOf[JavaType[Any]]))
 
   private def baseJavaType[$: P]: P[JavaType[?]] = P(
+    primitiveJavaType |
+      keyword("String").map(_ => JAVA_STRING()) |
+      keyword("void").map(_ => JAVA_UNPARSABLE_TYPE("void")) |
+      qualifiedName.map(JAVA_UNPARSABLE_TYPE(_))
+  )
+
+  private def primitiveJavaType[$: P]: P[JavaType[?]] = P(
     keyword("boolean").map(_ => JAVA_BOOL()) |
       keyword("byte").map(_ => JAVA_INTEGER()) |
       keyword("short").map(_ => JAVA_INTEGER()) |
@@ -365,9 +378,6 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean, r
       keyword("long").map(_ => JAVA_INTEGER()) |
       keyword("float").map(_ => JAVA_FLOAT()) |
       keyword("double").map(_ => JAVA_FLOAT()) |
-      keyword("String").map(_ => JAVA_STRING()) |
-      keyword("char").map(_ => JAVA_STRING()) |
-      keyword("void").map(_ => JAVA_UNPARSABLE_TYPE("void")) |
-      qualifiedName.map(JAVA_UNPARSABLE_TYPE(_))
+      keyword("char").map(_ => JAVA_STRING())
   )
 }

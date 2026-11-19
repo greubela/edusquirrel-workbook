@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion.expressionjava
 
+import it.evadid.vm.conversion.structured.SourceStructure.indent
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Java, JavaScript, ProgrammingLanguage}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.abstractions.{BeControlStructure, BeDefineStructure, BeExpression}
@@ -8,6 +9,7 @@ import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVari
 import it.evadid.vm.code.errors.{BeSingleLineComment, ProgrammingConversionException}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeAssignVariable, BeCallTarget, BeFunctionCall, BeUseValue}
+import it.evadid.vm.conversion.dependencies.{JavaTurtleLibrary, KnownDependencies}
 import it.evadid.vm.conversion.printing.{GenericJavaLikeStringPrinter, ModuleLayout}
 import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter.{JavaScriptSeparation, JavaSeparation}
 import it.evadid.vm.naming.NamingStyle
@@ -33,10 +35,8 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
   private var usedNames = Set.empty[String]
   private var repeatDepth = 0
 
-  private def javaName(variable: BeDefineVariable): String = variable.name.getNameIn(language, NamingStyle.CamelCase)
+  private def javaName(variable: BeDefineVariable): String = entityName(variable.name)
   private def javaType(variable: BeDefineVariable): String = variable.variableType.formatTypeForDisplay.getInLanguage(targetLanguage)
-  private def indent(text: String): String = text.linesIterator.map(line => if line.isEmpty then line else "    " + line).mkString("\n")
-
   override def forExpression(expression: BeExpression): String = {
     if renderingDepth == 0 then prepare(expression)
     renderingDepth += 1
@@ -56,7 +56,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
       case definition: BeDefineFunction => List(definition)
       case _ => Nil
     }
-    val nodes = ModuleLayout.nodes(expression)
+    val nodes = expression.subtree
     if targetLanguage == Java && statements.exists {
         case definition: BeDefineClass => definition.name.universalInterpretation() == "turtle"
         case _ => false
@@ -100,7 +100,8 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     val body = forExpression(BeSequence.optionalBody(layout.main.toList)).trim
     val main = s"public static void main(String[] unusableArgs) {\n${indent(body)}\n}"
     val groups = Seq(parts.fields.mkString("\n")).filter(_.nonEmpty) ++ parts.methods :+ main
-    (parts.classes :+ s"class Main {\n${indent(groups.mkString("\n\n"))}\n}").mkString("\n\n")
+    // Library classes follow the program so that it compiles and runs on a regular JVM.
+    (parts.classes :+ s"class Main {\n${indent(groups.mkString("\n\n"))}\n}" :++ KnownDependencies.definitionsFor(program, Java)).mkString("\n\n")
   }
 
   override def forDefinition(definition: BeDefineStructure): String = definition match {
@@ -130,16 +131,15 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     case _ => super.forControlStructure(structure)
   }
 
-  override protected def callName(call: BeFunctionCall): String =
-    if call.funcDef.intrinsic.contains(BeIntrinsic.Print) then {
-      require(call.funcDef.inputs.size == 1, "Java printing currently supports one value per call.")
-      "System.out.println"
-    } else if TurtleCommand.isTurtleMethod(call.funcDef) then
-      "Turtle." + entityName(call.funcDef.functionTypeInfo.displayName)
-    else if call.target.isInstanceOf[BeCallTarget.Function] && !insideMain &&
-        moduleFunctions(call.funcDef.functionTypeInfo.displayName.universalInterpretation()) then
+  override protected def callName(call: BeFunctionCall): String = call.funcDef.intrinsic match {
+    case Some(BeIntrinsic.Print) => "System.out.println"
+    case Some(BeIntrinsic.Turtle) => "Turtle." + JavaTurtleLibrary.methodName(call.funcDef)
+    case Some(intrinsic) if KnownDependencies.javaCall(intrinsic).nonEmpty => KnownDependencies.javaCall(intrinsic).get
+    case _ if call.target.isInstanceOf[BeCallTarget.Function] && !insideMain &&
+        moduleFunctions(call.funcDef.functionTypeInfo.displayName.universalInterpretation()) =>
       "Main." + entityName(call.funcDef.functionTypeInfo.displayName)
-    else super.callName(call)
+    case _ => super.callName(call)
+  }
 
   override protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
     function.functionTypeInfo.funcType match {
@@ -161,7 +161,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     else super.formatFunctionParameters(inputs)
 
   /** Nested repeats need distinct counters that no program variable uses. */
-  override protected def fixedRepetitionLine(amount: Int): String = {
+  override protected def repetitionLine(amount: String): String = {
     val counter = (Iterator("i", "j", "k", "m", "n") ++ Iterator.from(1).map("i" + _)).filterNot(usedNames).drop(repeatDepth - 1).next()
     s"for (int $counter = 0; $counter < $amount; $counter++) {"
   }
@@ -185,26 +185,50 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     else variableTypeString + " " + nameStr
   }
 
+  /** Like Python's `print(a, b)`, several values print on one line separated by spaces. */
+  private def printCall(call: BeFunctionCall): String =
+    s"System.out.println(${call.arguments.map(forOperand).mkString(" + \" \" + ")});"
+
+  override protected def conditionText(condition: BeSequence): String = condition.body match {
+    case Seq(value) if targetLanguage == Java => JavaSpelling.truthValue(value, forValue(value))
+    case _ => super.conditionText(condition)
+  }
+
   override def forOther(other: BeExpression): String = other match {
     case BeUseValue(BeDataValueLiteral(raw @ ("True" | "False")), _) => raw.toLowerCase
     case BeUseValue(BeDataValueUnit(), _) if targetLanguage == Java => "null"
-    case call: BeFunctionCall if call.funcDef.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Operator] =>
-      val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(forOperand)
-      call.funcDef.functionTypeInfo.displayName.universalInterpretation() match {
+    case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.contains(BeIntrinsic.Print) && call.arguments.size != 1 =>
+      printCall(call)
+    case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.exists(JavaSpelling.handles) =>
+      val arguments = call.arguments
+        .map(value => JavaSpelling.Argument(value, forValue(value), forOperand(value)))
+      // Like other calls, the spelling ends the line; values strip that ending again.
+      JavaSpelling.spell(call.funcDef.intrinsic.get, arguments) + ";"
+    case call: BeFunctionCall if call.isOperator && targetLanguage == Java =>
+      val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
+      val values = call.arguments
+      // Java compares text by content with equals, and only booleans are truth values.
+      def truth(value: BeExpression) = {
+        val operand = forOperand(value)
+        val text = JavaSpelling.truthValue(value, operand)
+        if text != operand && symbol == "not" then s"($text)" else text
+      }
+      val arguments = if Set("and", "or", "not")(symbol) then values.map(truth) else values.map(forOperand)
+      (symbol, values) match {
         // Python's floor division and power have no Java operator; the Java parser reads these calls back.
-        case "//" if arguments.size == 2 => s"Math.floor(${arguments.head} / ${arguments(1)})"
-        case "**" if arguments.size == 2 => s"Math.pow(${arguments.head}, ${arguments(1)})"
-        case symbol =>
-          val operator = symbol match {
-            case "and" => "&&"
-            case "or" => "||"
-            case "not" => "!"
-            case "is" => "=="
-            case "is not" => "!="
-            case other => other
-          }
+        case ("//", Seq(_, _)) => s"Math.floor(${arguments.head} / ${arguments(1)})"
+        case ("**", Seq(_, _)) => s"Math.pow(${arguments.head}, ${arguments(1)})"
+        case ("==" | "!=", Seq(left, right)) if JavaSpelling.isText(left) || JavaSpelling.isText(right) =>
+          val (receiver, other) = if JavaSpelling.isText(left) then (arguments.head, arguments(1)) else (arguments(1), arguments.head)
+          (if symbol == "!=" then "!" else "") + s"$receiver.equals($other)"
+        case _ =>
+          val operator = JavaSpelling.javaOperator(symbol)
           if (arguments.size == 1) s"$operator${arguments.head}" else arguments.mkString(s" $operator ")
       }
+    case call: BeFunctionCall if call.isOperator =>
+      val arguments = call.arguments.map(forOperand)
+      val operator = JavaSpelling.javaOperator(call.funcDef.functionTypeInfo.displayName.universalInterpretation())
+      if (arguments.size == 1) s"$operator${arguments.head}" else arguments.mkString(s" $operator ")
     case _ => super.forOther(other)
   }
 

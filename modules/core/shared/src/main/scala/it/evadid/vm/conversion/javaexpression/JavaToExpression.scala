@@ -2,10 +2,12 @@ package it.evadid.vm.conversion.javaexpression
 
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, ProgrammingConversionException, ProgrammingConversionLocation}
+import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, ProgrammingConversionException, ProgrammingConversionKind}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.compilation.java.turtle.{JavaTurtleCompiler, JavaTurtleInputLimits, JavaTurtleProgram, JavaTurtleSourceParser}
+import it.evadid.vm.conversion.dependencies.KnownDependencies
+import it.evadid.vm.conversion.expressionjava.JavaSpelling
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
 import it.evadid.vm.conversion.parsed.ParsedStatement as S
@@ -23,10 +25,12 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
   * object classes. Loose statements and methods outside any class are module code as well.
   */
 final class JavaToExpression(code: String) {
+  // Library definitions are masked rather than removed, so reported positions match `code`.
   private lazy val parsed: JavaProgram = {
     JavaTurtleInputLimits.checkParserInput(code).fold(
-      diagnostic => rejectAt(diagnostic.message, code, diagnostic.range.map(_.start)), identity)
-    JavaToExpression.parser.parse(code).fold(
+      diagnostic => throw ProgrammingConversionException.at(ProgrammingConversionKind.Unparsable, diagnostic.message, code, diagnostic.range.map(_.start)),
+      identity)
+    JavaToExpression.parser.parse(KnownDependencies.maskDefinitions(code, Java)).fold(
       {
         case conversion: ProgrammingConversionException =>
           throw ProgrammingConversionException.unparsable(
@@ -36,17 +40,11 @@ final class JavaToExpression(code: String) {
       program => { rejectUnparsable(program); program })
   }
 
-  private def rejectAt(message: String, source: String, offset: Option[Int]): Nothing = {
-    val (line, column) = offset.map(ProgrammingConversionLocation.lineColumn(source, _)).map((l, c) => (Some(l), Some(c))).getOrElse((None, None))
-    throw ProgrammingConversionException.unparsable(message, line, column)
-  }
-
   private def rejectUnparsable(program: JavaProgram): Unit = {
     def visit(node: it.evadid.vm.parsing.generic.abstractions.GenericAST): Unit = node match {
       case statement: JavaUnparsableStatement =>
-        val index = code.indexOf(statement.source)
-        throw ProgrammingConversionException.unparsable("This Java source contains unsupported or unfinished syntax.",
-          Option.when(index >= 0)(ProgrammingConversionLocation.lineColumn(code, index)._1))
+        throw ProgrammingConversionException.at(ProgrammingConversionKind.Unparsable,
+          "This Java source contains unsupported or unfinished syntax.", code, Option(code.indexOf(statement.source)).filter(_ >= 0))
       case other => other.getChildren().foreach(visit)
     }
     visit(program)
@@ -63,17 +61,11 @@ final class JavaToExpression(code: String) {
 
   lazy val preparedSource = it.evadid.vm.conversion.structured.PreparedProgramSource(code, Java)
 
-  /** Fails, rather than keeping placeholders, when part of the program has no shared representation. */
-  def convert: ProgrammingStateBeExpression = {
-    val expression = BeStartProgram(JavaToExpression.builder.build(JavaAstToParsed(parsed)).expression)
-    val nodes = expression.recToTree(false, BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())).values
-    nodes.collectFirst {
-      case BeExpressionReference(_, BeExpressionUnsupported(source, _)) => source
-      case BeExpressionReference(_, BeExpressionUnparsable(source, _, _)) => source
-    }.foreach(source => throw ProgrammingConversionException.unsupported(
-      s"This Java construct is not supported by the shared expression tree: ${source.take(160)}"))
-    ProgrammingStateBeExpression(expression)
-  }
+  /** Constructs without a shared form stay placeholders, as in Python; conversion to another language
+    * reports them with their position ([[it.evadid.vm.conversion.ProgrammingStateDerivations]]).
+    */
+  def convert: ProgrammingStateBeExpression =
+    ProgrammingStateBeExpression(BeStartProgram(JavaToExpression.builder.build(JavaAstToParsed(parsed)).expression))
 }
 
 object JavaToExpression {
@@ -192,10 +184,13 @@ private object JavaAstToParsed {
       Seq(assign(target, E.Binary(operator.stripSuffix("="), expression(target, scope), expression(value, scope)), scope))
     case JavaUpdateExpression(target: JavaTarget, operator, _) =>
       Seq(assign(target, E.Binary(operator.take(1), expression(target, scope), E.Literal("1")), scope))
+    case JavaAssignmentExpression(target, "=", value) => Seq(assign(target, expression(value, scope), scope))
+    case JavaAssignmentExpression(target, operator, value) =>
+      Seq(assign(target, E.Binary(operator.stripSuffix("="), expression(target, scope), expression(value, scope)), scope))
     case JavaIfStatement(condition, thenBlock, elseBlock) =>
       Seq(S.If(expression(condition, scope), block(thenBlock, scope), elseBlock.toSeq.flatMap(block(_, scope))))
     case JavaWhileStatement(condition, body) => Seq(S.While(expression(condition, scope), block(body, scope)))
-    case loop: JavaForStatement => Seq(forLoop(loop, scope))
+    case loop: JavaForStatement => forLoop(loop, scope)
     case JavaReturnStatement(value) => Seq(S.Return(value.map(expression(_, scope))))
     case JavaUnparsableStatement(source) => Seq(S.Unsupported(source, "This Java source contains unsupported or unfinished syntax.", unparsable = true))
     case value: JavaExpression => Seq(S.Evaluate(expression(value, scope)))
@@ -210,35 +205,68 @@ private object JavaAstToParsed {
       case other => S.Unsupported(s"${target.name} = ...", "Unsupported assignment target", unparsable = false)
     }
 
-  /** `for (int i = a; i < b; i++)`: a repeat when the counter is unused and counts from 0 to a literal. */
-  private def forLoop(loop: JavaForStatement, scope: Scope): ParsedStatement = {
-    def isIncrement(counter: String): Boolean = loop.update match {
-      case Seq(JavaUpdateExpression(JavaTarget(`counter`, Seq(), None), "++", _)) => true
-      case Seq(JavaAssignmentExpression(JavaTarget(`counter`, Seq(), None), "+=", JavaLiteral("1", _))) => true
+  /** A counting `for` declares one counter, compares it with a bound (`<`, `<=`, `>`, `>=`) and
+    * changes it by a whole-number literal in the direction of the bound, without the body assigning
+    * the counter or a name in the bound. It becomes a fixed repetition, a counting loop or a stepped
+    * while loop ([[ParsedStatement.countingLoop]]); the counter is observed only in the body, as Java
+    * scopes it to the loop. Calls are assumed not to change the bound. Any other loop whose updates
+    * are assignments runs its initialisation and then a while loop that ends with the updates.
+    */
+  private def forLoop(loop: JavaForStatement, scope: Scope): Seq[ParsedStatement] = {
+    def isUpdate(value: JavaExpression): Boolean = value match {
+      case JavaUpdateExpression(_: JavaTarget, _, _) | _: JavaAssignmentExpression => true
       case _ => false
     }
-    (loop.init, loop.condition) match {
-      case (Seq(JavaVariableDeclaration(counter, _, Some(start), _)), Some(JavaOperationBinary(JavaTarget(name, Seq(), None), operator @ ("<" | "<="), limit)))
-          if name == counter && isIncrement(counter) =>
-        val inner = scope.withLocal(counter)
-        (start, operator, limit) match {
-          case (JavaLiteral("0", _: JAVA_INTEGER), "<", JavaLiteral(times, _: JAVA_INTEGER)) if !mentions(loop.bodyBlock, counter) && times.toIntOption.nonEmpty =>
-            S.Repeat(times.toInt, block(loop.bodyBlock, scope))
-          case _ =>
-            val end = if operator == "<=" then expression(limit, scope) else limit match {
-              case JavaLiteral(value, _: JAVA_INTEGER) if value.toIntOption.nonEmpty => E.Literal((value.toInt - 1).toString)
-              case JavaOperationBinary(inner, "+", JavaLiteral("1", _)) => expression(inner, scope)
-              case other => E.Binary("-", expression(other, scope), E.Literal("1"))
-            }
-            S.For(counter, expression(start, scope), end, block(loop.bodyBlock, inner))
+    countingLoop(loop, scope).getOrElse {
+      if loop.update.forall(isUpdate) then {
+        val inner = loop.init.foldLeft(scope) {
+          case (current, declaration: JavaVariableDeclaration) => current.withLocal(declaration.name)
+          case (current, _) => current
         }
-      case _ => S.Unsupported("for (...)", "Only counting for loops are supported", unparsable = false)
+        S.loopWithUpdate(statements(loop.init, scope), loop.condition.map(expression(_, inner)).getOrElse(E.Literal("True")),
+          block(loop.bodyBlock, inner), loop.update.flatMap(statement(_, inner)))
+      } else Seq(S.Unsupported("for (...)", "For-loop updates must be assignments or increments", unparsable = false))
     }
   }
 
+  private def countingLoop(loop: JavaForStatement, scope: Scope): Option[Seq[ParsedStatement]] = loop match {
+    case JavaForStatement(Seq(JavaVariableDeclaration(counter, _, Some(start), _)),
+        Some(JavaOperationBinary(JavaTarget(compared, Seq(), None), comparison @ ("<" | "<=" | ">" | ">="), limit)), Seq(update), body)
+        if compared == counter =>
+      def literal(value: JavaExpression): Option[Int] = E.wholeNumber(expression(value, scope))
+      val step = update match {
+        case JavaUpdateExpression(JavaTarget(`counter`, Seq(), None), operator, _) => Some(if operator == "++" then 1 else -1)
+        case JavaAssignmentExpression(JavaTarget(`counter`, Seq(), None), "+=", amount) => literal(amount)
+        case JavaAssignmentExpression(JavaTarget(`counter`, Seq(), None), "-=", amount) => literal(amount).map(-_)
+        case JavaAssignmentExpression(JavaTarget(`counter`, Seq(), None), "=", JavaOperationBinary(JavaTarget(`counter`, Seq(), None), operator @ ("+" | "-"), amount)) =>
+          literal(amount).map(value => if operator == "+" then value else -value)
+        case _ => None
+      }
+      val ascending = comparison.startsWith("<")
+      val stable = !assigned(body).exists(name => name == counter || mentions(limit, name))
+      step.filter(value => value != 0 && (value > 0) == ascending && stable).map { value =>
+        val bound = expression(limit, scope)
+        val stop = comparison match {
+          case "<=" => E.offset(bound, 1)
+          case ">=" => E.offset(bound, -1)
+          case _ => bound
+        }
+        S.countingLoop(counter, expression(start, scope), stop, value, block(body, scope.withLocal(counter)), counterObserved = mentions(body, counter))
+      }
+    case _ => None
+  }
+
+  /** Names a statement assigns, including increments. */
+  private def assigned(node: it.evadid.vm.parsing.generic.abstractions.GenericAST): Set[String] = (node match {
+    case JavaAssignment(target, _) => Set(target.name)
+    case JavaAugAssignment(target, _, _) => Set(target.name)
+    case JavaAssignmentExpression(target, _, _) => Set(target.name)
+    case JavaUpdateExpression(target: JavaTarget, _, _) => Set(target.name)
+    case _ => Set.empty[String]
+  }) ++ node.getChildren().flatMap(assigned)
+
   // Expressions
 
-  private val operators = Map("&&" -> "and", "||" -> "or", "!" -> "not")
 
   private def expression(value: JavaExpression, scope: Scope): ParsedExpression = value match {
     case JavaLiteral("null", _) => E.NoneValue
@@ -247,10 +275,20 @@ private object JavaAstToParsed {
     case target: JavaTarget if target.sliceExpr.nonEmpty => E.Unsupported(s"${target.name}[...]")
     case target: JavaTarget => qualified(target, scope)
     case JavaParenthesizedExpression(inner) => expression(inner, scope)
-    case JavaOperationUnary(operator, operand) => E.Unary(operators.getOrElse(operator, operator), expression(operand, scope))
+    case JavaCastExpression(javaType, operand) =>
+      JavaSpelling.cast(javaType.typenameInCode).fold[ParsedExpression](E.Unsupported(s"(${javaType.typenameInCode}) ..."))(
+        builtin => E.Call(Seq(builtin), Seq(expression(operand, scope))))
+    case JavaOperationUnary("!", JavaCallExpression(JavaAttributeAccess(receiver, "equals"), Seq(other))) =>
+      E.Binary("!=", expression(receiver, scope), expression(other, scope))
+    case JavaOperationUnary("!", JavaCallExpression(JavaAttributeAccess(receiver, "isEmpty"), Seq())) =>
+      E.Binary("!=", expression(receiver, scope), E.Literal("\"\""))
+    case JavaOperationUnary(operator, operand) => E.Unary(JavaSpelling.operators.getOrElse(operator, operator), expression(operand, scope))
     case JavaOperationBinary(left, operator, right) =>
-      E.Binary(operators.getOrElse(operator, operator), expression(left, scope), expression(right, scope))
+      E.Binary(JavaSpelling.operators.getOrElse(operator, operator), expression(left, scope), expression(right, scope))
     case JavaFunctionCall(target, arguments) => call(target.locationString :+ target.name, arguments.map(expression(_, scope)), scope)
+    // The Java printer spells text equality and emptiness with String methods (JavaSpelling).
+    case JavaCallExpression(JavaAttributeAccess(receiver, "equals"), Seq(other)) => E.Binary("==", expression(receiver, scope), expression(other, scope))
+    case JavaCallExpression(JavaAttributeAccess(receiver, "isEmpty"), Seq()) => E.Binary("==", expression(receiver, scope), E.Literal("\"\""))
     case JavaCallExpression(JavaAttributeAccess(receiver, name), arguments) =>
       names(receiver) match {
         case Some(path) => call(path :+ name, arguments.map(expression(_, scope)), scope)
@@ -285,6 +323,10 @@ private object JavaAstToParsed {
       // The Java printer spells Python's floor division and power with java.lang.Math.
       case (Seq("Math", "floor"), Seq(E.Binary("/", left, right))) => E.Binary("//", left, right)
       case (Seq("Math", "pow"), Seq(base, exponent)) => E.Binary("**", base, exponent)
+      // Library helpers are printed as static methods of their dependency class.
+      case (qualified, _) if KnownDependencies.functionForJavaCall(qualified).nonEmpty =>
+        E.Call(Seq(KnownDependencies.functionForJavaCall(qualified).get), arguments)
+      case (qualified, _) if JavaSpelling.calls.contains(qualified) => E.Call(Seq(JavaSpelling.calls(qualified)), arguments)
       case (Seq(name), _) if !scope.locals(name) && scope.owner.exists(_.methods.contains(name)) =>
         val owner = scope.owner.get
         if owner.methods(name) then E.Call(Seq(owner.name, name), arguments)

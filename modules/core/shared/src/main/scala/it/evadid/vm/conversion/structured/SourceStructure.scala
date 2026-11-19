@@ -116,7 +116,9 @@ object SourceStructure {
     val indent = lines.filter(_.trim.nonEmpty).map(_.takeWhile(c => c == ' ' || c == '\t').length).minOption.getOrElse(0)
     lines.map(_.drop(indent)).mkString("\n").trim
   }
-  def indent(source: String, spaces: Int = 4): String = source.linesIterator.map(" " * spaces + _).mkString("\n")
+  /** Indents every non-empty line, so blank lines carry no trailing whitespace. */
+  def indent(source: String, spaces: Int = 4): String =
+    source.linesIterator.map(line => if line.isEmpty then line else " " * spaces + line).mkString("\n")
 
   /** Tokens that carry code: no whitespace and no comments. */
   def significant(values: Seq[Token]): Seq[Token] = values.filter {

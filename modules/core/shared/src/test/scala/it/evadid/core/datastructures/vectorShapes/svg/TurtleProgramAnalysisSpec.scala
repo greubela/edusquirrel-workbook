@@ -183,4 +183,31 @@ class TurtleProgramAnalysisSpec extends FunSuite {
       List(List(1.0), List(-1.0), List(1.5)))
   }
 
+
+  private def drawn(python: String) = {
+    val info = TurtleProgramAnalysis(PythonToExpression.program(python).fullProgram)
+    (info.executionStatus, info.executedTurtleCommandsInOrder)
+  }
+
+  test("a function's return value feeds the calling statement, and its own drawing comes first") {
+    import TurtleCommand.{Forward, Left}
+    val (status, commands) = drawn("def step(n: float) -> float:\n    left(10)\n    return n * 2\n\nforward(step(3))\n")
+    assertEquals(status, it.evadid.vm.simulation.turtle.TurtleExecutionStatus.Completed)
+    assertEquals(commands, List[TurtleCommand[Double]](Left(10.0), Forward(6.0)))
+  }
+
+  test("return ends the function, also from inside loops, and a bare return ends a command function") {
+    import TurtleCommand.Forward
+    assertEquals(drawn("def first(limit: float) -> float:\n    for i in range(10):\n        forward(1)\n        if i == limit:\n            return i\n    return -1\n\nforward(first(2))\n")._2,
+      List[TurtleCommand[Double]](Forward(1.0), Forward(1.0), Forward(1.0), Forward(2.0)))
+    assertEquals(drawn("def maybe(n: float) -> None:\n    if n > 3:\n        return\n    forward(n)\n\nmaybe(5)\nmaybe(2)\n")._2,
+      List[TurtleCommand[Double]](Forward(2.0)))
+  }
+
+  test("returned values work in conditions, loop bounds, assignments and recursion") {
+    import TurtleCommand.Forward
+    val python = "def fact(n: float) -> float:\n    if n <= 1:\n        return 1\n    return n * fact(n - 1)\n\ndef big(n: float) -> bool:\n    return n > 5\n\n" +
+      "size = fact(3)\nfor _ in range(fact(2)):\n    forward(size)\nwhile big(size):\n    size = size - 1\nforward(size)\n"
+    assertEquals(drawn(python)._2, List[TurtleCommand[Double]](Forward(6.0), Forward(6.0), Forward(5.0)))
+  }
 }

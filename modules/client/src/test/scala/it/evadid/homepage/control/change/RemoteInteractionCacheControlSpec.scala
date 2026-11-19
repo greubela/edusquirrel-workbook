@@ -15,6 +15,7 @@ import it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientRes
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.info.interaction.SyncReporter
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
+import it.evadid.homepage.workbook.syncDestination.InMemoryHistoryDatabase
 import it.evadid.sql.{DatabaseConfigWithCredentials, DatabaseHistoryFormat}
 import it.evadid.sql.DatabaseHistoryFormat.BlobFormat
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
@@ -74,7 +75,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     val info = FullInfo(HomepageInfo(AppLanguage.English,
       Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)), Some(user),
       AllDisplayInfo(false, None), LanguageMapStorage.empty))
-    private val saved = Var(Map.empty[(DatabaseHistoryFormat, SyncContext), InteractionHistoryJson])
+    val database = InMemoryHistoryDatabase()
 
     private def history(text: String, index: Int) = InteractionHistoryJson.fromHistory(TextInteractionFormat,
       InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
@@ -82,7 +83,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     Seq(defaultDatabase.format, defaultBlobDatabase.format).foreach { format =>
       elements.zipWithIndex.foreach { (element, index) =>
         val key = info.homepageInfoNow().toContext.toSyncContext(element.interactionVariable.keyForSerialization)
-        saved.update(_ + ((format -> key) -> history(s"saved-$index", index)))
+        database.rows.update(_ + ((format -> key) -> history(s"saved-$index", index)))
       }
     }
 
@@ -93,7 +94,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
       Seq(defaultDatabase.format, defaultBlobDatabase.format).foreach { format =>
         elements.foreach { element =>
           val key = context.toSyncContext(element.interactionVariable.keyForSerialization)
-          saved.update(_ + ((format -> key) -> value))
+          database.rows.update(_ + ((format -> key) -> value))
         }
       }
     }
@@ -115,22 +116,12 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           val request = read[FetchEventsFromDbRequest](command.json)
           if failBlobReads.now() && request.databaseFormat == BlobFormat then
             ExecutionClientResponse.forError(times, SerializedException("blob destination offline"), command)
-          else {
-            val values = saved.now().collect {
-              case ((format, key), value) if format == request.databaseFormat && key.toUsageContext == request.usageContext &&
-                (request.keys.isEmpty || request.keys.contains(key.keyForSerialisation)) =>
-                key -> value.cleanWithStrategy(request.strategy).between(request.starting, request.until)
-            }
-            ExecutionClientResponse.forValue(times, DbFetchResponse(values), command)
-          }
+          else ExecutionClientResponse.forValue(times, database.fetch(request), command)
         case name if name == bulkStoreToDbCommand.name =>
           val request = read[BulkStoreToDbRequest](command.json)
           if failStores.now() then
             return ExecutionClientResponse.forError(times, SerializedException("retired write failed"), command)
-          request.entries.foreach(entry => saved.update { previous =>
-            val key = request.databaseFormat -> entry.syncContext
-            previous.updated(key, previous.get(key).fold(entry.history)(_.merge(entry.history)))
-          })
+          database.store(request.databaseFormat, request.entries.map(entry => entry.syncContext -> entry.history))
           afterStore.now()()
           ExecutionClientResponse.forValue(times, SyncSuccess.emptyNow(), command)
         case name if name == resetUserHistoriesDbCommand.name =>
@@ -138,9 +129,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           assert(request.allWorkbooks)
           if failBlobReset.now() && request.databaseFormat == BlobFormat then
             return ExecutionClientResponse.forError(times, SerializedException("reset destination offline"), command)
-          saved.update(_.filterNot { case ((format, key), _) =>
-            format == request.databaseFormat && key.programId == request.usageContext.programId && key.userId == request.usageContext.userId
-          })
+          database.delete(request)
           ExecutionClientResponse.forValue(times, SyncSuccess.emptyNow(), command)
         case other => throw IllegalArgumentException(s"Unexpected request: $other")
       }
@@ -320,6 +309,101 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           assertEquals(writes.size, 2)
           assert(writes.forall(_.histories.forall(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == "transaction edit"))))
         }.andThen { case _ => owner.killSubscriptions() }
+      }
+    }
+  }
+
+  /** Event ids each destination format received for each interaction key, from the recorded store commands. */
+  private def sentEventIds(fixture: Fixture): Map[(DatabaseHistoryFormat, String), Set[String]] =
+    fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name).map(command => read[BulkStoreToDbRequest](command.json))
+      .flatMap(request => request.syncContexts.zip(request.histories).map((key, history) =>
+        (request.databaseFormat, key.keyForSerialisation) -> history.typedAs(TextInteractionFormat).events.values.map(_.eventId)))
+      .groupMapReduce(_._1)(_._2)(_ ++ _)
+
+  /** Event ids each destination format holds for each interaction key. */
+  private def heldEventIds(fixture: Fixture): Map[(DatabaseHistoryFormat, String), Set[String]] =
+    fixture.database.rows.now().map { case ((format, key), history) =>
+      (format, key.keyForSerialisation) -> history.typedAs(TextInteractionFormat).events.values.map(_.eventId)
+    }
+
+  /** Every event of every local history, as each destination's strategy selects it, was either sent to that
+    * destination in some store command or already held there (it was fetched from it) before the commands.
+    */
+  private def assertEveryLocalEventSent(fixture: Fixture, heldBefore: Map[(DatabaseHistoryFormat, String), Set[String]]): Unit = {
+    val sent = sentEventIds(fixture)
+    for
+      information <- fixture.user.config.syncDestinations
+      element <- fixture.elements
+    do {
+      val format = information.syncDestination.asInstanceOf[SyncDestinationBasedOnHistoryDatabase].format
+      val key = element.interactionVariable.keyForSerialization
+      val local = element.interactionVariable.currentHistory.cleanWithStrategy(information.syncStrategy).events.values
+      val known = sent.getOrElse(format -> key, Set.empty) ++ heldBefore.getOrElse(format -> key, Set.empty)
+      val missing = local.filterNot(event => known.contains(event.eventId))
+      assertEquals(missing.map(event => (event.associatedState, event.updateImportance)), Set.empty, s"$format $key")
+    }
+  }
+
+  test("every event of every local history reaches at least one store command of each destination") {
+    val fixture = new Fixture
+    fixture.withHttp {
+      val heldBefore = heldEventIds(fixture)
+      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+        val context = fixture.info.workbookContextInformation
+        for
+          (element, index) <- fixture.elements.zipWithIndex
+          (value, importance) <- List("draft" -> UpdateImportance.MINOR, "typing" -> UpdateImportance.TEMPORARY,
+            "submitted" -> UpdateImportance.MAJOR, "revised" -> UpdateImportance.MINOR)
+        do element.interactionVariable.setStateFromUserInteraction(s"$value-$index", importance, context = context)
+        fixture.info.syncControl.storeAll(true)
+      }.map { _ =>
+        assertEveryLocalEventSent(fixture, heldBefore)
+        assert(fixture.elements.forall(_.interactionVariable.currentHistory.allStates.exists(_.newState.startsWith("revised"))))
+      }
+    }
+  }
+
+  test("an edit made while a store is in flight is sent by a later store command") {
+    val fixture = new Fixture
+    val gate = Promise[Unit]()
+    fixture.withHttp {
+      val heldBefore = heldEventIds(fixture)
+      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+        val context = fixture.info.workbookContextInformation
+        fixture.elements.foreach(_.interactionVariable.setStateFromUserInteraction("before", UpdateImportance.MAJOR, context = context))
+        fixture.beforeResponse.set(command => if command.name == bulkStoreToDbCommand.name then gate.future else Future.unit)
+        val first = fixture.info.syncControl.storeAll(true)
+        fixture.elements.foreach(_.interactionVariable.setStateFromUserInteraction("during", UpdateImportance.MAJOR, context = context))
+        gate.success(())
+        first.flatMap { _ =>
+          fixture.beforeResponse.set(_ => Future.unit)
+          fixture.info.syncControl.storeAll(true)
+        }
+      }.map(_ => assertEveryLocalEventSent(fixture, heldBefore))
+    }
+  }
+
+  test("answers restored from a session file are sent to every destination") {
+    val fixture = new Fixture
+    fixture.withHttp {
+      val heldBefore = heldEventIds(fixture)
+      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+        // The same workbook in the session's own page, answered there.
+        val (studied, answered) = fixture.anotherWorkbook(fixture.workbook.elementId)
+        answered.zipWithIndex.foreach((interaction, index) => interaction.interactionVariable.setStateFromUserInteraction(
+          s"from the session $index", UpdateImportance.MAJOR, context = ExecutionContextInformation.default))
+        val session = it.evadid.homepage.control.info.SessionData.createSessionData(fixture.info.homepageInfoNow()
+          .copy(workbookInfo = Some(studied))).get
+        val sessionEvents = answered.map(_.interactionVariable.currentHistory.events.values.map(_.eventId)).reduce(_ ++ _)
+        fixture.info.usageControl.continueWithSession(session).flatMap(_ => fixture.info.syncControl.storeAll(true)).map { _ =>
+          assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("from the session 0", "from the session 1"))
+          assertEveryLocalEventSent(fixture, heldBefore)
+          val sent = sentEventIds(fixture)
+          List(defaultDatabase.format, defaultBlobDatabase.format).foreach { format =>
+            val received = fixture.elements.flatMap(element => sent.getOrElse(format -> element.interactionVariable.keyForSerialization, Set.empty)).toSet
+            assert(sessionEvents.subsetOf(received), s"$format received the session's answers")
+          }
+        }
       }
     }
   }

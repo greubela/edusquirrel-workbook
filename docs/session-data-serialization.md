@@ -45,20 +45,24 @@ def exportSession(info: HomepageInfo): Option[String] =
 ```
 
 `createSessionData` returns `None` without a workbook or user. The UI imports through
-`HomepageUsageControl.tryContinueWithSessionFile`; it resolves the user before calling
-`Workbook.loadDataNoUserCheck`. Applying a history checks its expected format and
-exercise-specific state constraints. Invalid file JSON or unknown format names fail
-parsing; invalid individual history payloads are logged and excluded at the interaction
-import boundary. Only the current saved schema is supported.
+`HomepageUsageControl.tryContinueWithSessionFile`, which parses the file and calls
+`continueWithSession`: it signs in as the session's user if needed, opens the session's
+workbook (the open one when it has the same ID, else the definition stored in the file)
+and calls `Workbook.restoreHistories`. A workbook restores only histories whose context
+names its own ID, so element IDs reused across workbooks never mix. Each history passes
+`InteractionVariable.restoreHistory`, which discards and logs a record with another format,
+an unreadable payload or a state the exercise rejects. Invalid file JSON fails the import.
+Only the current saved schema is supported.
 
 See [interaction formats](interaction-format.md) and [state ownership](state-and-serialization.md).
 
 Round-trip coverage lives in `WorkbookSerializerSpec` (JSON, MessagePack, nested
 structure, prerequisites, wrong-root rejection and definition/history separation)
 and `WorkbookDefinitionsSpec` (every authored catalogue workbook plus the design
-workbook). Shared tests run on both JVM and Scala.js:
+workbook). `SessionDataRoundTripSpec` exports answers, reads the file back and continues
+the session in a fresh client. Shared tests run on both JVM and Scala.js:
 
 ```sh
 sbt 'coreJVM/testOnly *WorkbookSerializerSpec' 'coreJS/testOnly *WorkbookSerializerSpec'
-sbt 'client/testOnly *WorkbookDefinitionsSpec'
+sbt 'client/testOnly *WorkbookDefinitionsSpec *SessionDataRoundTripSpec'
 ```

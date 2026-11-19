@@ -47,6 +47,7 @@ object TurtleGraphic {
     var pendingAngle: Option[PendingAngle] = None
 
     def normal(degrees: Double): Double = ((degrees % 360.0) + 360.0) % 360.0
+    def svgY(turtleY: Double): Double = if turtleY == 0.0 then 0.0 else -turtleY
 
     def move(end: Point[Double], jump: Boolean, isForward: Boolean): Unit =
       require(end.x.isFinite && end.y.isFinite, "Turtle coordinates must be finite")
@@ -84,20 +85,18 @@ object TurtleGraphic {
       }
       heading = normal(heading + normal(degrees))
 
-    // Match TurtlePathBuilder's polygonal circle/arc approximation.
+    // The chords of TurtlePathBuilder's (CPython's) circle, with its half turns.
     def arc(radius: Double, extent: Double, left: Boolean): Unit =
-      val stepCount = math.max(8L, math.round(math.abs(extent) / 10.0))
-      require(stepCount <= 10000, "Turtle arc has too many steps")
-      val steps = stepCount.toInt
-      val distance = (2 * math.Pi * radius) * (extent / 360.0) / steps
-      val rotation = extent / steps * (if left then 1.0 else -1.0)
+      val (steps, distance, rotation) = TurtlePathBuilder.arcSteps(radius, extent, left)
+      turn(rotation / 2)
       (0 until steps).foreach { _ => forward(distance); turn(rotation) }
+      turn(-rotation / 2)
 
     // A dot is drawn even with the pen up and leaves position/heading unchanged.
     // Use the existing SVG conversion for its circular outline rather than a
     // second arc implementation. Style/fill are outside segment grading.
     def dot(size: Double): Unit =
-      val path = TurtlePathBuilder[Double]().goto(position.x, position.y).clear().dot(size)
+      val path = TurtlePathBuilder[Double]().goto(position.x, -position.y).clear().dot(size)
         .svgPathBuilder.furtherCommands.map(_.getPathDString()).mkString(" ")
       val (outline, _) = trace(convert(s"M ${position.x} ${position.y} $path"))
       movements ++= outline.filterNot(_.jump)
@@ -112,9 +111,10 @@ object TurtleGraphic {
         case Backward(distance) => forward(-distance)
         case Left(degrees) => turn(degrees)
         case Right(degrees) => turn(-degrees)
-        case Goto(x, y) => move(Point(x, y), jump = !penDown, isForward = false)
+        // Positions are SVG coordinates (y down, as `forward` draws); commands take turtle coordinates (y up).
+        case Goto(x, y) => move(Point(x, svgY(y)), jump = !penDown, isForward = false)
         case SetX(x) => move(Point(x, position.y), jump = !penDown, isForward = false)
-        case SetY(y) => move(Point(position.x, y), jump = !penDown, isForward = false)
+        case SetY(y) => move(Point(position.x, svgY(y)), jump = !penDown, isForward = false)
         case SetHeading(degrees) => heading = normal(degrees); pendingAngle = None; lastForwardLine = None
         case PenUp() => penDown = false
         case PenDown() => penDown = true

@@ -2,7 +2,7 @@ package it.evadid.distribution.commandTypes
 
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
 import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence, JavaTurtleInterpreter, JavaTurtleTrace}
 import upickle.default.*
@@ -56,7 +56,7 @@ object WorkerCommands {
   }
 
   lazy val health = ExecutionCommandFactory[HealthRequest, HealthResult]("worker.health")
-  lazy val parseSnapXml = ExecutionCommandFactory[ParseSnapXmlRequest, Seq[SnapXmlParser.Element]]("worker.parseSnapXml")
+  lazy val parseSnapXml = ExecutionCommandFactory[ParseSnapXmlRequest, Seq[SnapScalaModel.Element]]("worker.parseSnapXml")
   lazy val pythonFlowchart = ExecutionCommandFactory[PythonFlowchartRequest, PythonFlowchartGutter.Chart]("worker.pythonFlowchart")
   lazy val calculateQrCode = ExecutionCommandFactory[CalculateQrCodeRequest, CalculateQrCodeResult]("worker.calculateQrCode")
   lazy val runPython = ExecutionCommandFactory[RunPythonRequest, RunPythonResult]("worker.runPython",

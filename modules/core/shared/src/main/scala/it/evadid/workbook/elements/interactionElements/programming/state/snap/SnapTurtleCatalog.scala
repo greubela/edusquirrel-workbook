@@ -233,21 +233,29 @@ object SnapTurtleCatalog {
     )
   )
 
+  /** Library blocks with a shared intrinsic but no turtle semantics: printing becomes Snap's `say`
+    * bubble and `fetch_text` its `url` reporter. They map selectors and names like turtle primitives,
+    * but take no part in the turtle palette or in turtle command observation.
+    */
+  val LibraryPrimitives: Seq[Primitive] = List(
+    Primitive("bubble", "print", List("println"), "print", "print(message)", PaletteTab.Other, inputKinds = List(SnapInputKind.String)),
+    Primitive("reportURL", "fetch_text", Nil, "fetch_text", "fetch_text(url)", PaletteTab.Other, inputKinds = List(SnapInputKind.String))
+  )
+
+  private val SnapBlocks: Seq[Primitive] = Primitives ++ LibraryPrimitives
+
   val ExtraPrimitives: Seq[Primitive] = Primitives.filter(_.extraPrimitive)
 
   val AllowedPythonNames: Set[String] =
     Primitives.flatMap(_.allPythonNames).toSet
 
   val AllowedSnapSelectors: Set[String] =
-    Primitives.map(_.snapSelector).toSet
+    SnapBlocks.map(_.snapSelector).toSet
 
   val snapSelectorByPythonName: Map[String, String] =
-    Primitives.flatMap { primitive =>
+    SnapBlocks.flatMap { primitive =>
       primitive.allPythonNames.map(_ -> primitive.snapSelector)
     }.toMap
-
-  val turtleCommandBySnapSelector: Map[String, String] =
-    Primitives.map(p => p.snapSelector -> p.turtleCommand).toMap
 
   val turtleCommandByPythonName: Map[String, String] =
     Primitives.flatMap { primitive =>
@@ -255,21 +263,15 @@ object SnapTurtleCatalog {
     }.toMap
 
   val pythonNameBySnapSelector: Map[String, String] =
-    Primitives.map(p => p.snapSelector -> p.pythonName).toMap
+    SnapBlocks.map(p => p.snapSelector -> p.pythonName).toMap
 
   val primitiveBySnapSelector: Map[String, Primitive] =
-    Primitives.map(p => p.snapSelector -> p).toMap
+    SnapBlocks.map(p => p.snapSelector -> p).toMap
 
   val primitiveByPythonName: Map[String, Primitive] =
-    Primitives.flatMap { primitive =>
+    SnapBlocks.flatMap { primitive =>
       primitive.allPythonNames.map(_ -> primitive)
     }.toMap
-
-  val expectedArityByPythonName: Map[String, Int] =
-    primitiveByPythonName.map((name, primitive) => name -> primitive.arity)
-
-  val expectedArityBySnapSelector: Map[String, Int] =
-    primitiveBySnapSelector.map((selector, primitive) => selector -> primitive.arity)
 
   def primitivesForTab(tab: PaletteTab): Seq[Primitive] =
     Primitives.filter(_.tab == tab)

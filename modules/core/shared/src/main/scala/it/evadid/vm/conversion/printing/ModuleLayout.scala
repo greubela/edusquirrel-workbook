@@ -51,15 +51,9 @@ object ModuleLayout {
 
   def name(variable: BeDefineVariable): String = variable.name.getNameIn(English, NamingStyle.SnakeCase)
 
-  /** Variables assigned by a statement, in source order. */
-  def assigned(statement: BeExpression): Seq[BeDefineVariable] = nodes(statement).collect {
+  /** Variables a statement writes, in source order: assignment targets and the counters of counting loops. */
+  def assigned(statement: BeExpression): Seq[BeDefineVariable] = statement.subtree.collect {
     case BeAssignVariable(target, _) => target
+    case loop: it.evadid.vm.code.controlStructures.BeFor => loop.variable
   }
-
-  /** The statement and its descendants, depth first in source order. */
-  def nodes(expression: BeExpression): Vector[BeExpression] =
-    expression +: expression.structureInfo.getChildren(false, BeScope.GlobalScope()).toVector.flatMap {
-      case BeExpressionReference(_, child) => nodes(child)
-      case _ => Vector.empty
-    }
 }

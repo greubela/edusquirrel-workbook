@@ -131,7 +131,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     sequence,
     BeIfElse(BeSequence.conditionalBody(List(literalTrue)), BeSequence.optionalBody(List(assignX)), BeSequence.optionalBody(List(returnX))),
     BeWhile(BeSequence.conditionalBody(List(literalTrue)), BeSequence.optionalBody(List(assignX))),
-    BeRepeatNr(3, BeSequence.optionalBody(List(assignX))),
+    BeRepeatNr.times(3, BeSequence.optionalBody(List(assignX))),
     BeExpressionUnsupported("unsupported"),
     BeExpressionUnparsable("raw", "bad syntax"),
     BeSingleLineComment(LanguageMap.universalMap("note"))

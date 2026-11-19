@@ -10,7 +10,8 @@ import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import upickle.default.*
-case class BeExpressionUnsupported(originalSource: String, parsedFromLanguage: Option[ProgrammingLanguage] = None) extends BeSourcePlaceholder derives ReadWriter{
+/** Recognised source without a shared form; `reason` says why, when the front end knows. */
+case class BeExpressionUnsupported(originalSource: String, parsedFromLanguage: Option[ProgrammingLanguage] = None, reason: String = "") extends BeSourcePlaceholder derives ReadWriter{
 
   override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
 

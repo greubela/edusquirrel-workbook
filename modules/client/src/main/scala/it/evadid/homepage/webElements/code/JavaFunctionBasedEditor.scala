@@ -13,6 +13,7 @@ import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
 import it.evadid.vm.parsing.java.clean.JavaParser
+import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.conversion.structured.SourceStructure
 import org.scalajs.dom
 
@@ -567,12 +568,17 @@ object JavaFunctionBasedEditor {
 
   private def structurallyBalanced(source: String): Boolean = SourceStructure.balanced(source)
 
-  /** Classes with closed bodies and their methods, from the shared fastparse source lexer. */
-  private[code] def discover(source: String): List[JavaClass] =
-    SourceStructure.javaClassSpans(source).toList.map { clazz =>
+  /** Classes with closed bodies and their methods, from the shared fastparse source lexer. Known
+    * library classes, such as the generated `Turtle`, belong to the runtime and are not listed.
+    */
+  private[code] def discover(source: String): List[JavaClass] = {
+    val libraries = KnownDependencies.definitionRanges(source, Java)
+    SourceStructure.javaClassSpans(source).toList.filterNot(clazz =>
+      libraries.exists((start, end) => start <= clazz.bodyOpen && clazz.bodyClose < end)).map { clazz =>
       JavaClass(clazz.name, clazz.bodyOpen, clazz.bodyClose, clazz.methods.toList.map(method =>
         JavaFunction(clazz.name, method.name, method.returnType, method.parameters, method.start, method.end)))
     }
+  }
 
   private[code] def replaceFunction(source: String, function: JavaFunction, draft: String): String =
     source.substring(0, function.start) + draft + source.substring(function.end)

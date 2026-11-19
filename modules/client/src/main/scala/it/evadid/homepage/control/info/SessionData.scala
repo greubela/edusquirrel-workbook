@@ -17,7 +17,15 @@ case class SessionData(
                         knownUsageData: Map[SyncContext, InteractionHistoryJson],
                         userInfo: User,
                         userConfig: Option[UserConfig],
-                        workbookInfo: AllWorkbookInfo) derives ReadWriter
+                        workbookInfo: AllWorkbookInfo) derives ReadWriter {
+  /** The workbook to continue: the open one when it is this session's workbook, else the copy stored in the file. */
+  def workbookToContinue(open: Option[AllWorkbookInfo]): AllWorkbookInfo =
+    open.filter(_.loadedWorkbook.workbookId == workbookInfo.loadedWorkbook.workbookId).getOrElse(workbookInfo)
+
+  /** Download name; workbook ids may contain path separators. */
+  def fileName: String =
+    s"${it.evadid.core.util.InfoUtil.datetimeFormattedForFilenames(timestampStorage)}-eva-${userInfo.id}-${workbookInfo.loadedWorkbook.elementId.replaceAll("[/\\\\]", "-")}.eva"
+}
 
 object SessionData {
 

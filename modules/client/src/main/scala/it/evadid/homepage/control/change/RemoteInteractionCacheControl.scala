@@ -45,10 +45,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     def publish(context: ExecutionContextInformation): Unit
   }
   private case class TypedRestoration[F <: InteractionFormat](variable: InteractionVariable[F], history: InteractionVariableHistory[F]) extends Restoration {
-    def publish(context: ExecutionContextInformation): Unit = {
-      val merged = variable.currentHistory.mergeWith(history).normalize()
-      if merged != variable.currentHistory then variable.updateHistory(_ => merged, context)
-    }
+    def publish(context: ExecutionContextInformation): Unit = variable.restoreHistory(syncLogger, history, context)
   }
 
   private trait InteractionSnapshot {
@@ -129,7 +126,9 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
   // Switching subscriptions prevents old reads from publishing into a replacement workbook.
   binding.flatMapSwitch(current => current.restorations.map(updates => (current, updates)))
     .foreach { (current, updates) =>
-      if current.user.enabled then updates.foreach(_.publish(current.context))
+      // Each restoration is isolated: one interaction that cannot be restored never blocks the others.
+      if current.user.enabled then updates.foreach(update => Try(update.publish(current.context)).failed.foreach(error =>
+        syncLogger.logExceptionWarn("Could not restore an interaction history", error)))
     }(using unsafeWindowOwner)
 
   override def storeAll(forceFlush: Boolean): Future[Unit] = {

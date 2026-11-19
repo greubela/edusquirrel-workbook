@@ -1,5 +1,7 @@
 package it.evadid.vm.compilation.java.turtle
 
+import it.evadid.core.datastructures.language.AppLanguage.Java
+import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.parsing.java.clean.{JavaParser, JavaSourceMap}
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 
@@ -23,9 +25,13 @@ object JavaTurtleSourceParser {
 
   private val parser = new JavaParser(retainParentheses = true)
 
-  def parse(source: String): Either[Diagnostic, ParsedSource] =
+  /** Known library classes, such as the generated `Turtle`, are masked after the length check: they
+    * belong to the runtime rather than to the program, and masking keeps every program offset valid.
+    */
+  def parse(rawSource: String): Either[Diagnostic, ParsedSource] =
     for {
-      _ <- JavaTurtleInputLimits.checkLength(source)
+      _ <- JavaTurtleInputLimits.checkLength(rawSource)
+      source = KnownDependencies.maskDefinitions(rawSource, Java)
       _ <- checkSource(source)
       _ <- JavaTurtleInputLimits.checkTokens(source)
       parsed <- parseAst(source)

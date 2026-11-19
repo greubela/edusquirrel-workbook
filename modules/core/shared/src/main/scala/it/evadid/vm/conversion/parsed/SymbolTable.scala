@@ -125,6 +125,15 @@ object SymbolTable {
       variable
     }
 
+    /** The module-level variable `name`, defined there if no module code has assigned it yet. */
+    def moduleVariable(name: String, dataType: BeDataType): BeDefineVariable =
+      scopes.last.getOrElse(name, {
+        val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
+        scopes.last.update(name, variable)
+        registerVariable(name, variable)
+        variable
+      })
+
     def lookupVariable(name: String): Option[BeDefineVariable] = scopes.collectFirst { case scope if scope.contains(name) => scope(name) }
 
     private def currentScope: mutable.LinkedHashMap[String, BeDefineVariable] = scopes.head
@@ -132,6 +141,14 @@ object SymbolTable {
     def registerVariable(name: String, variable: BeDefineVariable): Unit = {
       if (!variablesBuffer.exists(_ eq variable)) variablesBuffer += variable
       currentlyKnownStructures = currentlyKnownStructures.addVariable(name, variable)
+    }
+
+    /** Binds a function's signature before its body is read, so recursive calls know its parameters and
+      * result; [[registerFunction]] then replaces it with the built definition.
+      */
+    def declareFunction(name: String, signature: BeDefineFunction): Unit = {
+      functionsByName.update(name, signature)
+      currentlyKnownStructures = currentlyKnownStructures.addFunction(name, signature)
     }
 
     def registerFunction(name: String, function: BeDefineFunction, isOperator: Boolean = false): Unit = {

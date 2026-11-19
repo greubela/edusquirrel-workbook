@@ -603,6 +603,29 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
+  test("an unreadable stored record is discarded while the other histories and events still load") {
+    val other = context.toSyncContext("other_history")
+    Seq(RelationalFormat, BlobFormat).foreach { storage =>
+      MysqlTestDatabase.withConnection(MysqlTestDatabase.reset)
+      store(history(), storage)
+      UpsertToDatabase.handleRequest(StoreToDbRequest(other, encoded(history("other")), config, storage), logger)
+      MysqlTestDatabase.withConnection { connection =>
+        Using.resource(connection.createStatement())(_.executeUpdate(
+          if storage == BlobFormat then s"UPDATE blob_history SET history_json='{\"broken\": true}' WHERE variable_id='$key'"
+          else s"UPDATE answer_event SET serialized_data='{\"broken\": true}' WHERE sync_id=(SELECT id FROM sync_context_id WHERE variable_id='$key')"))
+      }
+      val fetched = FetchFromDatabase.handleRequest(FetchEventsFromDbRequest(context, Seq.empty, LocalDateTime.MIN, LocalDateTime.MAX,
+        config, storage, EventSyncStrategy.SYNC_EVERYTHING), logger).fetchedElements
+      assertEquals(fetched(other).typedAs(format).allStates, history("other").allStates, storage.toString)
+      if storage == BlobFormat then assert(!fetched.contains(sync), "the unreadable blob is discarded")
+      else {
+        // Only the unreadable answer row is discarded; its gradings and scaffolding remain.
+        val remaining = fetched(sync).typedAs(format).events.values
+        assert(remaining.nonEmpty && remaining.forall(!_.isInstanceOf[AnswerChangedEvent[?]]), remaining.toString)
+      }
+    }
+  }
+
   test("unknown stored format names fail with a clear exception") {
     store(history())
     MysqlTestDatabase.withConnection { connection =>

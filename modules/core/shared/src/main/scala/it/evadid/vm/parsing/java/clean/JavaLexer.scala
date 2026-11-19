@@ -12,8 +12,8 @@ object JavaLexer {
   def BLOCK_COMMENT[$: P]: P[Unit] = P("/*" ~ (!"*/" ~ AnyChar).rep ~ "*/".?)
   def WS[$: P]: P[Unit] = P(CharIn(" \t\r\n\f").rep(1))
 
-  def ID_START[$: P]: P[Unit] = P(CharIn("a-zA-Z_") | "$" )
-  def ID_CONTINUE[$: P]: P[Unit] = P(CharIn("a-zA-Z0-9_") | "$" )
+  def ID_START[$: P]: P[Unit] = P(CharPred(c => c.isLetter || c == '_' || c == '$'))
+  def ID_CONTINUE[$: P]: P[Unit] = P(CharPred(c => c.isLetterOrDigit || c == '_' || c == '$'))
   private def KEYWORD[$: P]: P[Unit] = P(StringIn(
     "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "continue", "default", "do", "double",
     "else", "enum", "extends", "final", "finally", "float", "for", "if", "implements", "import", "instanceof", "int", "interface",

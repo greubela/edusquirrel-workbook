@@ -142,6 +142,19 @@ class CrossLanguageRoundTripSpec extends FunSuite {
       ProgrammingStateRaw(Python, python).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
   }
 
+  test("the __main__ guard runs its body, so a guarded main() is the entry point") {
+    val python = """def main():
+      |    forward(20)
+      |
+      |if __name__ == "__main__":
+      |    main()
+      |""".stripMargin
+    val state = ProgrammingStateRaw(Python, python)
+    assertEquals(commands(state), List(forward(20)))
+    assertEquals(state.toJavaStructured.toString, ProgrammingStateRaw(Python, "forward(20)").toJavaStructured.toString)
+    assertRoundTrips(state, all, Some(Seq(forward(20))))
+  }
+
   test("scenario B: while, fixed repetition, if, if-else and if-elif-else survive every language pair") {
     val python = """length = 10
       |count = 0
@@ -181,5 +194,52 @@ class CrossLanguageRoundTripSpec extends FunSuite {
     Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured)
       // The shared drawing simulator does not execute objects yet, so only the source text is compared.
       .foreach(assertRoundTrips(_, languages, None))
+  }
+
+  test("a Java for loop that does not count by one becomes an initialisation and a while loop in every language") {
+    val java = """class Main {
+      |    public static void main(String[] args) {
+      |        for (int size = 10; size > 0; size -= 3) {
+      |            Turtle.forward(size);
+      |        }
+      |    }
+      |}
+      |""".stripMargin
+    val expected = Seq(forward(10), forward(7), forward(4), forward(1))
+    Seq(ProgrammingStateJavaStructured(java), ProgrammingStateJavaStructured(java).toPythonStructured,
+      ProgrammingStateJavaStructured(java).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
+  }
+
+  test("Python ranges with a step count with that step in every language") {
+    val python = """for size in range(10, 0, -3):
+      |    forward(size)
+      |for angle in range(0, 50, 20):
+      |    turn_right(angle)
+      |""".stripMargin
+    val expected = Seq(forward(10), forward(7), forward(4), forward(1), right(0), right(20), right(40))
+    Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured,
+      ProgrammingStateRaw(Python, python).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
+  }
+
+  test("conversion built-ins keep their meaning between Python and Java") {
+    val python = """size = 7.5
+      |forward(int(size) * 2)
+      |forward(abs(int(-size)) + float(1))
+      |turn_left(abs(size - 10))
+      |forward(max(size, 3) - min(size, int(size)))
+      |""".stripMargin
+    val expected = Seq(forward(14), forward(8), left(2.5), forward(0.5))
+    Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured)
+      .foreach(assertRoundTrips(_, Seq(Python, Java), Some(expected)))
+  }
+
+  test("bool of a number has no Java conversion, so it comes back as the comparison Java uses") {
+    val python = ProgrammingStateRaw(Python, "size = 3\nif bool(size):\n    forward(size)\n")
+    val java = converted(python.toBeExpression, Java)
+    assert(java.toString.contains("if ((size != 0)) {") || java.toString.contains("if (size != 0) {"), java.toString)
+    val back = converted(java.toBeExpression, Python)
+    assert(back.toString.contains("if size != 0:"), back.toString)
+    assertEquals(commands(back), commands(python))
+    assertEquals(commands(back), List(forward(3)))
   }
 }

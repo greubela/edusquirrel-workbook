@@ -20,33 +20,11 @@ object SnapPaletteCatalog {
     PaletteTab.Variables
   )
 
-  val ControlLanguageSelectors: Seq[String] = List(
-    "doRepeat",
-    "doIf",
-    "doIfElse",
-    "doUntil",
-    "doFor"
-  )
+  val ControlLanguageSelectors: Seq[String] = SnapControlFlow.ControlSelectorOrder
 
-  val OperatorSelectors: Seq[String] = List(
-    "reportBoolean",
-    "reportVariadicSum",
-    "reportDifference",
-    "reportVariadicProduct",
-    "reportQuotient",
-    "reportModulus",
-    "reportVariadicLessThan",
-    "reportVariadicGreaterThan",
-    "reportVariadicEquals",
-    "reportVariadicLessThanOrEquals",
-    "reportVariadicGreaterThanOrEquals",
-    "reportVariadicNotEquals",
-    "reportVariadicAnd",
-    "reportVariadicOr",
-    "reportNot"
-  )
+  val OperatorSelectors: Seq[String] = SnapControlFlow.OperatorPaletteOrder
 
-  val VariableSelectors: Seq[String] = List("doSetVar", "doChangeVar")
+  val VariableSelectors: Seq[String] = SnapControlFlow.VariableCommandOrder
 
   def selectorsForTab(tab: PaletteTab): Seq[String] =
     tab match

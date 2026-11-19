@@ -311,4 +311,36 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     }
   }
 
+
+  test("a range read over raw stored values discards an unreadable record and returns the others") {
+    val destination = new Destination
+    val broken = context.toSyncContext("broken")
+    destination.readResult.set(ctx => Future.successful(FetchResponse.fromMap(LocalDateTime.now(),
+      Map(key -> saved("kept"), broken -> "{\"not\": \"a history\"}"))))
+    val from = LocalDateTime.of(2026, 1, 1, 0, 0)
+    destination.readHistoriesInRange(context, Seq(key, broken), from, from.plusDays(1), EventSyncStrategy.SYNC_EVERYTHING).map { read =>
+      assertEquals(read.keySet, Set(key))
+      assertEquals(read(key).typedAs(InteractionFormat.TextInteractionFormat).allStates.map(_.newState), Set("kept"))
+    }
+  }
+
+  test("an unreadable record in a shared range answer is left out for every waiting caller instead of stalling them") {
+    val other = context.toSyncContext("other")
+    val destination = new Destination {
+      override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], from: LocalDateTime,
+          until: LocalDateTime, strategy: EventSyncStrategy)(using ExecutionContext) =
+        Future.successful(Map(key -> it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.deserialize(saved("kept")),
+          other -> it.evadid.workbook.interaction.sync.model.InteractionHistoryJson(InteractionFormat.TextInteractionFormat, "{\"not\": \"a history\"}")))
+    }
+    val buffer = destination.toBuffered
+    val from = LocalDateTime.of(2026, 1, 1, 0, 0)
+    val broken = buffer.readHistoriesInRange(context, Seq(other), from, from.plusDays(1), EventSyncStrategy.SYNC_EVERYTHING)
+    val kept = buffer.readHistoriesInRange(context, Seq(key), from, from.plusDays(1), EventSyncStrategy.SYNC_EVERYTHING)
+    buffer.flush(true)
+    for { a <- broken; b <- kept } yield {
+      assertEquals(a, Map.empty)
+      assertEquals(b.keySet, Set(key))
+    }
+  }
+
 }

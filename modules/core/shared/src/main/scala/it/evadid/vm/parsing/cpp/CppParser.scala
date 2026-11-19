@@ -422,7 +422,7 @@ object CppParser {
           val (bodyExpressions, bodyUnsupported) = new Parser(bodyText, context).parseStatementsUntil(stopChar = None)
           context.popScope()
           bodyUnsupported.foreach(stmt => if (stmt.trim.nonEmpty) unsupported += stmt)
-          BeRepeatNr(amount, BeSequence.optionalBody(bodyExpressions))
+          BeRepeatNr.times(amount, BeSequence.optionalBody(bodyExpressions))
         case None =>
           val original = s"for(${headerText.trim}){...}"
           unsupported += original

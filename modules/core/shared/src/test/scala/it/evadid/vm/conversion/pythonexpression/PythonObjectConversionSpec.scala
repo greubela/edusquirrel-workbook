@@ -25,8 +25,7 @@ class PythonObjectConversionSpec extends FunSuite {
     |result = counter.next()
     |zero = Counter.zero()
     |""".stripMargin
-  def nodes(expression: BeExpression): Seq[BeExpression] = expression.recToTree(false,
-    BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())).values.collect { case BeExpressionReference(_, value) => value }.toSeq
+  def nodes(expression: BeExpression): Seq[BeExpression] = expression.subtree
 
   test("Python binds constructors, fields, receivers and static calls without source placeholders") {
     val state = ProgrammingStateRaw(Python, source).toBeExpression

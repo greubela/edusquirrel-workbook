@@ -87,6 +87,13 @@ trait BeExpression {
     }
   }
 
+  /** This expression and its descendants, depth first in source order. */
+  def subtree: Vector[BeExpression] =
+    this +: structureInfo.getChildren(false, GlobalScope()).toVector.flatMap {
+      case BeExpressionReference(_, child) => child.subtree
+      case _ => Vector.empty
+    }
+
   def recToTree(withExtensions: Boolean, myPosition: BeChildInfo): BeExpressionTree = {
     val root: BeExpressionNode = BeExpressionReference(myPosition, this)
 

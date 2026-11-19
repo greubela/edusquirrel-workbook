@@ -384,7 +384,8 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     for penUp <- List(false, true) do
       val program = (if penUp then List(cmd("penup")) else Nil) ++ List(cmd("forward", 10), cmd("left", 45), cmd("goto", 20, 30), cmd("setx", 40), cmd("sety", 50), cmd("home"), cmd("forward", 5))
       val scene = buildScene(program, Nil)
-      val targets = List(Point(10.0, 0.0), Point(20.0, 30.0), Point(40.0, 30.0), Point(40.0, 50.0), Point(0.0, 0.0), Point(5.0, 0.0))
+      // The scene is in SVG coordinates (y down); goto, setx and sety take turtle coordinates (y up).
+      val targets = List(Point(10.0, 0.0), Point(20.0, -30.0), Point(40.0, -30.0), Point(40.0, -50.0), Point(0.0, 0.0), Point(5.0, 0.0))
       assertEquals(scene.lines.size, targets.size)
       scene.lines.zip(targets).foreach { (line, target) =>
         point(line.end, target.x, target.y)
