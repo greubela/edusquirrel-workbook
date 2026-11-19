@@ -21,13 +21,16 @@ final class JavaToBeExpressionParser {
     val output = List.newBuilder[String]
     var indentation = 0
     var emptyBlock = false
+    var scopes = List.empty[Option[String]]
     tokenize(source).foreach {
       case CloseBlock =>
         if emptyBlock then output += (" " * (indentation * 4) + "pass")
+        scopes = scopes.drop(1)
         indentation = (indentation - 1).max(0)
         emptyBlock = false
       case OpenBlock(header) =>
-        output += (" " * (indentation * 4) + translateHeader(header))
+        translateHeader(header, scopes.headOption.flatten).linesIterator.foreach(line => output += (" " * (indentation * 4) + line))
+        scopes = (header match { case ClassHeader(name) => Some(name); case _ => None }) :: scopes
         indentation += 1
         emptyBlock = true
       case Statement(code) if code.trim.nonEmpty =>
@@ -90,7 +93,7 @@ final class JavaToBeExpressionParser {
     tokens.result()
   }
 
-  private def translateHeader(raw: String): String = {
+  private def translateHeader(raw: String, owner: Option[String]): String = {
     val header = raw.trim
     if header.matches("if\\s*\\(.*\\)") then s"if ${conditionBetweenParens(header)}:"
     else if header.matches("else\\s+if\\s*\\(.*\\)") then s"elif ${conditionBetweenParens(header)}:"
@@ -98,7 +101,7 @@ final class JavaToBeExpressionParser {
     else if header.matches("while\\s*\\(.*\\)") then s"while ${conditionBetweenParens(header)}:"
     else header match
       case ClassHeader(name) => s"class $name:"
-      case _ => parseFor(header).getOrElse(parseFunction(header))
+      case _ => parseFor(header).getOrElse(parseFunction(header, owner))
   }
 
   private def conditionBetweenParens(header: String): String =
@@ -128,14 +131,17 @@ final class JavaToBeExpressionParser {
     case "Date" => "date"
     case _ => "Any"
 
-  private def parseFunction(header: String): String = header match
+  private def parseFunction(header: String, owner: Option[String]): String = header match
     case Function(returnType, name, parameters) =>
       val typedParameters = splitArguments(parameters).filter(_.nonEmpty).map { parameter =>
         val parts = parameter.trim.stripPrefix("final ").split("\\s+")
         val parameterName = parts.last.replace("...", "")
         s"$parameterName: ${pythonType(parts.head)}"
       }
-      s"def $name(${typedParameters.mkString(", ")}) -> ${pythonType(returnType)}:"
+      val isStatic = "\\bstatic\\b".r.findFirstIn(header).nonEmpty
+      val parametersWithReceiver = Option.when(owner.nonEmpty && !isStatic)("self").toList ++ typedParameters
+      val decorator = if owner.nonEmpty && isStatic then "@staticmethod\n" else ""
+      decorator + s"def $name(${parametersWithReceiver.mkString(", ")}) -> ${pythonType(returnType)}:"
     case _ => throw IllegalArgumentException(s"Unsupported Java block header: $header")
 
   private val Declaration =

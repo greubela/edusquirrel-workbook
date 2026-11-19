@@ -11,7 +11,7 @@ import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeSingleLineComment}
-import it.evadid.vm.code.usage.BeAssignVariable
+import it.evadid.vm.code.usage.{BeAssignVariable, BeAssignMember, BeMemberAccess}
 import it.evadid.vm.types.BeDataType
 
 object PythonStatementParser {
@@ -34,6 +34,7 @@ object PythonStatementParser {
   private val IfPattern = """^if\s+(.+):$""".r
   private val ForRangePattern = """^for\s+_\s+in\s+range\((\d+)\):$""".r
   private val ForNamedRangePattern = """^for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+range\((.+)\):$""".r
+  private val MemberAssignmentPattern = """^([A-Za-z_][A-Za-z0-9_.]*)\.([A-Za-z_][A-Za-z0-9_]*)(?:\s*:\s*[^=]+)?\s*=(?!=)\s*(.+)$""".r
   private val AssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$""".r
 
   final case class StatementApi(
@@ -105,6 +106,13 @@ object PythonStatementParser {
     // These imports only resolve annotations emitted by the Python conversion bridge.
     DispatchRule(text => Set("from typing import Any", "from datetime import date", "import turtle").contains(text),
       ctx => DispatchOutcome(Nil, ctx.index + 1)),
+    DispatchRule(_.matches(MemberAssignmentPattern.regex), ctx => {
+      val MemberAssignmentPattern(receiver, member, source) = ctx.trimmed: @unchecked
+      api.parseExpression(s"$receiver.$member", ctx.context) match {
+        case BeMemberAccess(instance, field) => DispatchOutcome(List(BeAssignMember(instance, field, api.parseExpression(source, ctx.context))), ctx.index + 1)
+        case _ => throw IllegalArgumentException(s"Cannot resolve member assignment '${ctx.trimmed}'.")
+      }
+    }),
     DispatchRule(_.matches(AnnotationAssignmentPattern.regex), ctx => {
       val (name, typeHint, valueStr) = ctx.trimmed match
         case AnnotationAssignmentPattern(parsedName, parsedTypeHint, parsedValueStr) => (parsedName, parsedTypeHint, parsedValueStr)

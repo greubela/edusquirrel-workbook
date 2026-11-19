@@ -23,7 +23,7 @@ Source-string identity conversions preserve the original text. Snap XML ↔ the 
 | Python-to-Snap application retaining project layout | `pythonsnap`, using the same frontend and expression exporter |
 | SQL clause blocks | `sqlblocks` |
 
-Snap green flags become startup; detached scripts become uncalled functions. Saved variable initializers enter the shared tree once. Unsupported Snap classes are rejected rather than silently discarded. The source parsers do not yet resolve constructors, object member access or mixed static/instance entry-point classes. Static Java entry-point wrappers lower to module functions and startup; original wrapper names and formatting are not replayed after a language change.
+Snap green flags become startup; detached scripts become uncalled functions. Saved variable initializers enter the shared tree once. Unsupported Snap classes are rejected rather than silently discarded. The Python frontend binds constructors, member access, instance calls and static calls. Inheritance and unknown decorators remain explicit unsupported source. Java constructor and member binding is the next frontend step. Static Java entry-point wrappers lower to module functions and startup; original wrapper names and formatting are not replayed after a language change.
 
 Checked Java execution remains a separate runtime capability. Its nodes do not extend `BeExpression`. Java unit-test execution can generate runtime instrumentation through `JavaTurtlePythonExport`; that instrumentation is not an editable programming-state conversion and does not select conversion routes. There is no Java-emulation metadata reader or editable Java/Python/Snap bridge.
 

@@ -12,7 +12,7 @@ import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSeque
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.others.BeReturn
-import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
+import it.evadid.vm.code.usage.*
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeDataValueUnit, BeUseValueReference}
 
@@ -275,6 +275,7 @@ class PythonParser(
       parseBinaryExpression(target, context)
         .orElse(parseUnaryExpression(target, context))
         .orElse(parseFunctionCall(target, context))
+        .orElse(parseMemberAccess(target, context))
         .orElse(parseLiteralExpression(target, context))
         .getOrElse(BeExpressionUnsupported(trimmed, parsedFromLanguage = Some(Python)))
     }
@@ -321,29 +322,64 @@ class PythonParser(
     ParsingUtils.findTopLevelCall(source).map { case (rawName, argsSource) =>
       val name = rawName.trim
       val arguments = ParsingUtils.splitTopLevelArguments(argsSource).map(_.trim).filter(_.nonEmpty).map { arg =>
-        parseExpression(stripKeywordArgument(arg), context)
+        parseExpression(arg, context)
       }
-      val function = context.ensureFunctionArity(name, context.resolveFunction(name, arguments.length), arguments.length)
-      BeFunctionCall.fromDefinition(function, function.inputs.zip(arguments).toMap)
+      def bind(target: BeCallTarget): BeFunctionCall = {
+        require(arguments.size == target.definition.inputs.size, s"Call '$name' expects ${target.definition.inputs.size} arguments, received ${arguments.size}.")
+        BeFunctionCall(target, target.definition.inputs.zip(arguments).toMap)
+      }
+      context.lookupClass(name).filter(_ => context.lookupVariable(name).isEmpty) match {
+        case Some(owner) =>
+          val constructor = owner.methods.find(_.functionTypeInfo.funcType == BeDefineFunction.Constructor()).getOrElse(
+            BeDefineFunction(Nil, None, BeExpression.pass,
+              BeDefineFunction.BeFunctionTypeInfo(Some(owner.copy(methods = Nil)), None, BeDefineFunction.Constructor())))
+          bind(BeCallTarget.Constructor(constructor))
+        case None =>
+          splitMember(name) match {
+            case Some((receiverSource, methodName)) if context.lookupClass(receiverSource).nonEmpty && context.lookupVariable(receiverSource).isEmpty =>
+              val owner = context.lookupClass(receiverSource).get
+              val method = findMethod(owner, methodName)
+              require(method.functionTypeInfo.funcType == BeDefineFunction.StaticMethod(), s"Instance method '$name' needs an object.")
+              bind(BeCallTarget.StaticMethod(method))
+            case Some((receiverSource, methodName)) if receiverSource == "self" || context.lookupVariable(receiverSource).exists(v => context.classForType(v.variableType).nonEmpty) =>
+              val receiver = parseExpression(receiverSource, context)
+              val owner = context.classForType(receiver.staticInformationExpression.staticType)
+                .getOrElse(throw IllegalArgumentException(s"Cannot resolve the receiver of '$name'."))
+              val method = findMethod(owner, methodName)
+              require(method.functionTypeInfo.funcType == BeDefineFunction.Method(), s"Static method '$name' must be called on its class.")
+              bind(BeCallTarget.InstanceMethod(receiver, method))
+            case _ =>
+              val function = context.ensureFunctionArity(name, context.resolveFunction(name, arguments.length), arguments.length)
+              BeFunctionCall.fromDefinition(function, function.inputs.zip(arguments).toMap)
+          }
+      }
     }
   }
 
-  /** Accept legacy/printer form `name = value` as a positional call argument. */
-  private def stripKeywordArgument(arg: String): String = {
-    val eq = arg.indexOf('=')
-    if eq <= 0 then arg
-    else
-      val left = arg.substring(0, eq).trim
-      val right = arg.substring(eq + 1).trim
-      if IdentifierPattern.matches(left) && right.nonEmpty && !arg.substring(eq).startsWith("==") then right
-      else arg
+  private def splitMember(source: String): Option[(String, String)] = {
+    val dot = source.lastIndexOf('.')
+    Option.when(dot > 0 && IdentifierPattern.matches(source.substring(dot + 1)))(source.take(dot) -> source.drop(dot + 1))
   }
+
+  private def findMethod(owner: BeDefineClass, sourceName: String): BeDefineFunction =
+    owner.methods.find(_.functionTypeInfo.displayName.universalInterpretation() == BeEntityName.fromCodeString(sourceName).universalInterpretation())
+      .getOrElse(throw IllegalArgumentException(s"Class '${owner.name.universalInterpretation()}' has no method '$sourceName'."))
+
+  private def parseMemberAccess(source: String, context: ParseContext): Option[BeExpression] =
+    splitMember(source).flatMap { (receiverSource, memberName) =>
+      val receiver = parseExpression(receiverSource, context)
+      context.classForType(receiver.staticInformationExpression.staticType).flatMap { owner =>
+        owner.attributes.find(_.name.universalInterpretation() == BeEntityName.fromCodeString(memberName).universalInterpretation())
+          .map(member => BeMemberAccess(receiver, member))
+      }
+    }
 
   private def parseLiteralExpression(source: String, context: ParseContext): Option[BeExpression] = source match {
     case "None" => Some(BeUseValue(BeDataValueUnit(), None))
     case "True" | "False" => Some(BeUseValue(BeDataValueLiteral(source), None))
     case _ if isStringLiteral(source) => Some(BeUseValue(BeDataValueLiteral(source), None))
     case _ if isNumericLiteral(source) => Some(BeUseValue(BeDataValueLiteral(source), None))
+    case "self" if context.currentClass.nonEmpty => Some(BeCurrentInstance(context.currentClass.get.name))
     case IdentifierPattern() =>
       val variable = context.lookupVariable(source).getOrElse(context.assignVariable(source, AnyType))
       Some(BeUseValue(BeUseValueReference(variable), Some(variable)))
@@ -395,6 +431,7 @@ class PythonParser(
     case "str" | "string" => Some(BeDataType.String)
     case "date" | "datetime" => Some(BeDataType.Date)
     case "none" | "void" | "unit" => Some(BeDataType.Unit)
+    case name if IdentifierPattern.matches(name) => Some(BeDataType.ClassType(BeEntityName.fromCodeString(typeHint)))
     case _ => None
   }
 
