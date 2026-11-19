@@ -118,7 +118,7 @@ abstract class GenericJavaLikeStringPrinter(
     case BeCurrentInstance(_) => currentInstanceName
     case BeMemberAccess(receiver, member) => s"${forOperand(receiver)}.${entityName(member.name)}"
     case BeAssignMember(receiver, member, value) => s"${forOperand(receiver)}.${entityName(member.name)} = ${forOperand(value)}"
-    case BeReturn(value) => s"return ${forExpression(value)}${sepLogic.endLineWith}"
+    case BeReturn(value) => s"return ${value.map(forValue).getOrElse("")}${sepLogic.endLineWith}"
     case BeStartProgram(startSequence) => forExpression(startSequence)
     // usage
     case BeAssignVariable(target, value) => {

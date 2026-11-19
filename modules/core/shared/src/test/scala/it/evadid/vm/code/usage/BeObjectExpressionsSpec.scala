@@ -53,6 +53,8 @@ class BeObjectExpressionsSpec extends FunSuite {
     assert(python.contains("@staticmethod"), python)
     assert(python.contains("Counter.reset_all()"), python)
     assert(!python.contains("new Counter"), python)
+    val returnedCall = ExpressionToJava.convert(BeReturn(Some(invoke))).code
+    assertEquals(returnedCall, "return counterInstance.getValue();")
   }
 
   test("object trees roundtrip through JSON and MessagePack") {
