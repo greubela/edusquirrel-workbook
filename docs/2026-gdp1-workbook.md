@@ -8,8 +8,10 @@ interaction IDs are stable (`2026GdP1-task-1` through `-7`, plus `-reflection`).
 The introduction progresses from explicit square commands to loops, nested loops
 and a `quadrat` function, followed by a reflection asking for two distinct benefits
 of structured code. The parameter section uses increasing and alternating sizes;
-the final orientation sequence is up, up, down, up, up. Gaps are always 100 units
-between neighboring square edges, without connecting strokes.
+the final orientation sequence is down, down, up, down, down. The turtle starts facing
+right (heading 0, as in Snap and Python), so right-turn squares hang below a shared line
+and rows extend horizontally; the mirrored third square uses left turns (`right(-90)`).
+Gaps are always 100 units between neighboring square edges, without connecting strokes.
 
 Programming tasks use Snap, Python and the structured function-based Java editor. The mixed palettes expose only the selected
 blocks, add custom-block creation from task 4, and variable controls from task 5.
