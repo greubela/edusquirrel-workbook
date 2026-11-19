@@ -282,7 +282,10 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(reported.contains("wait"), clue = reported)
     assert(reported.exists(_.contains("'foo'")), clue = reported)
     assert(!SnapExpressionSupport.isPythonCompatibleXml(xml))
-    assert(SnapExpressionSupport.isPythonCompatibleXml("""<project><block s="forward"><l>1</l></block></project>"""))
+    assert(SnapExpressionSupport.isPythonCompatibleXml("""<project><scripts><script><block s="forward"><l>1</l></block></script></scripts></project>"""))
+    // A block outside any script is not part of the program, so it is reported instead of dropped.
+    assertEquals(SnapExpressionSupport.unsupportedSnapSelectors("""<project><block s="forward"><l>1</l></block></project>"""),
+      List("'forward' outside a script"))
   }
 
   test("unsupportedSnapSelectors allows a custom-block whose definition declares the same blockSpec") {

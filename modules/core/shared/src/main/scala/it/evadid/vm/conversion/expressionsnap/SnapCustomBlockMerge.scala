@@ -1,5 +1,7 @@
 package it.evadid.vm.conversion.expressionsnap
 
+import it.evadid.vm.conversion.snapxml.SnapXmlText
+
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
@@ -61,7 +63,7 @@ object SnapCustomBlockMerge {
     def toXml(bodyXml: String): String = {
       val script = if bodyXml.nonEmpty then s"<script>$bodyXml</script>" else ""
       val attributes =
-        s"""s="${SnapInputCodec.escapeXml(spec)}" type="${SnapInputCodec.escapeXml(blockType)}" category="${SnapInputCodec.escapeXml(category)}"$extraAttributes"""
+        s"""s="${SnapXmlText.escape(spec)}" type="${SnapXmlText.escape(blockType)}" category="${SnapXmlText.escape(category)}"$extraAttributes"""
       s"<block-definition $attributes>" +
         commentXml + variablesXml + headerXml + codeXml + translationsXml + inputsXml + script + scriptsXml +
         "</block-definition>"
@@ -243,7 +245,7 @@ object SnapCustomBlockMerge {
 
   private def inputsXmlFor(slotTypes: List[String]): String =
     slotTypes
-      .map(slotType => s"""<input type="${SnapInputCodec.escapeXml(slotType)}"></input>""")
+      .map(slotType => s"""<input type="${SnapXmlText.escape(slotType)}"></input>""")
       .mkString("<inputs>", "", "</inputs>")
 
   /** Keep Snap's declared types when they exist; never persist an empty `<inputs>` list. */

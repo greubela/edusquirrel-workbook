@@ -62,14 +62,6 @@ object SnapXmlParser {
   def child(inner: String, tag: String): Option[Element] =
     children(inner).find(_.tag == tag)
 
-  def unescape(value: String): String =
-    value
-      .replace("&lt;", "<")
-      .replace("&gt;", ">")
-      .replace("&quot;", "\"")
-      .replace("&apos;", "'")
-      .replace("&amp;", "&")
-
   /** Parse the element opening at `pos`; `None` for comments, declarations and malformed input. */
   def parseElementAt(xml: String, pos: Int): Option[Element] = {
     if pos < 0 || pos >= xml.length || xml.charAt(pos) != '<' then return None
@@ -85,7 +77,7 @@ object SnapXmlParser {
     val header = xml.substring(cursor, headerEnd)
     val attributes = AttributePattern
       .findAllMatchIn(header)
-      .map(matched => matched.group(1) -> unescape(matched.group(2)))
+      .map(matched => matched.group(1) -> SnapXmlText.decode(matched.group(2)))
       .toMap
     if header.trim.endsWith("/") then
       Some(Element(tag, attributes, "", xml.substring(pos, headerEnd + 1), pos, headerEnd + 1))

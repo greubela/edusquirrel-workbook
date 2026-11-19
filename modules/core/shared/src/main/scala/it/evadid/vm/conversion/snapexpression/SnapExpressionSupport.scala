@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion.snapexpression
 
+import it.evadid.vm.conversion.turtlestitchexpression.{TurtleStitchProgramModel, TurtleStitchXmlLoader}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 
@@ -28,8 +29,6 @@ object SnapExpressionSupport {
       SnapControlFlow.ConditionSelectors ++
       SnapControlFlow.ArithmeticSelectors
 
-  /** Require whitespace after `block` so `<block-definition>` is not treated as a selector. */
-  private val BlockSelectorPattern = """<block\s[^>]*\bs="([^"]+)"""".r
 
   def isScriptStatement(expression: BeExpression): Boolean =
     expression match
@@ -78,9 +77,13 @@ object SnapExpressionSupport {
    * hats, sprite-local definitions and script/upvar/variadic slots have no Python form,
    * and a call without a matching definition is already an `Undefined!` block in Snap.
    */
-  def unsupportedSnapSelectors(xml: String): List[String] = {
-    val fromBlocks =
-      BlockSelectorPattern.findAllMatchIn(xml).map(_.group(1)).toList.filterNot(AllowedSnapSelectors.contains)
+  def unsupportedSnapSelectors(xml: String): List[String] = unsupportedSnapSelectors(xml, TurtleStitchXmlLoader.load(xml))
+
+  /** Primitive blocks outside the supported set, and custom blocks Python cannot express. */
+  def unsupportedSnapSelectors(xml: String, project: TurtleStitchProgramModel.Project): List[String] = {
+    val fromBlocks = project.allBlocks.toList.collect {
+      case TurtleStitchProgramModel.PrimitiveBlock(Some(selector), _, _, _) if !AllowedSnapSelectors.contains(selector) => selector
+    } ++ project.unreadBlocks.map(block => s"'$block' outside a script")
     val definitionProblems = SnapCustomBlockRules.allDefinitions(xml).flatMap(_.pythonIncompatibility)
     val undefinedCalls =
       SnapCustomBlockRules.obsoleteCalls(xml).map(call => s"'${call.spec}' has no matching block definition")

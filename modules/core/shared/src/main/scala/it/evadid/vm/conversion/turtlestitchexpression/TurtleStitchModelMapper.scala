@@ -15,9 +15,27 @@ object TurtleStitchModelMapper {
 
   val EmptyProject: Project = Project()
 
-  def toProject(document: SnapScalaModel.Document): Project = document.project match {
-    case Some(project) => fromProject(project.element)
-    case None => fragment(document.root.element)
+  def toProject(document: SnapScalaModel.Document): Project = {
+    val project = document.project match {
+      case Some(root) => fromProject(root.element)
+      case None => fragment(document.root.element)
+    }
+    project.copy(unreadBlocks = unread(document.root.element, project))
+  }
+
+  /** Every block element in the document is read, apart from scratch scripts in a block editor. */
+  private def unread(root: Node, project: Project): Vector[String] = {
+    def label(node: Node) = node.attribute("s").orElse(node.attribute("var")).getOrElse(node.tag)
+    def blocks(node: Node): Vector[String] = node.tag match {
+      case "block" | "custom-block" => label(node) +: node.elements.map(_.element).flatMap(blocks)
+      case "block-definition" => node.elements.map(_.element).filterNot(_.tag == "scripts").flatMap(blocks)
+      case _ => node.elements.map(_.element).flatMap(blocks)
+    }
+    def modelLabel(block: BlockLike) = block match {
+      case PrimitiveBlock(selector, variable, _, _) => selector.orElse(variable).getOrElse("block")
+      case call: CustomBlockCall => call.semanticSpec
+    }
+    blocks(root).diff(project.allBlocks.map(modelLabel)).distinct
   }
 
   private def fromProject(root: Node): Project = {

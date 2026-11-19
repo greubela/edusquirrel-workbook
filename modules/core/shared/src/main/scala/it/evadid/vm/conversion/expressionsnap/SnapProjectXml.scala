@@ -1,5 +1,7 @@
 package it.evadid.vm.conversion.expressionsnap
 
+import it.evadid.vm.conversion.snapxml.SnapXmlText
+
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasScript
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
@@ -176,7 +178,7 @@ object SnapProjectXml {
     else
       val categories = names.map { name =>
         val color = previousByName.get(name).flatMap(_.attr("color")).getOrElse(DefaultPaletteColor)
-        s"""<category name="${SnapInputCodec.escapeXml(name)}" color="${SnapInputCodec.escapeXml(color)}"/>"""
+        s"""<category name="${SnapXmlText.escape(name)}" color="${SnapXmlText.escape(color)}"/>"""
       }
       categories.mkString("<palette>", "", "</palette>")
   }
@@ -236,7 +238,7 @@ object SnapProjectXml {
         val valueXml = literal match
           case Some(value) => SnapInputCodec.renderLiteral(SnapInputKind.String, value)
           case None => "<l>0</l>"
-        s"""<variable name="${SnapInputCodec.escapeXml(name)}">$valueXml</variable>"""
+        s"""<variable name="${SnapXmlText.escape(name)}">$valueXml</variable>"""
       }
       .mkString
   }
@@ -302,7 +304,7 @@ object SnapProjectXml {
           .getOrElse(SnapCustomBlockRules.blockSpecOfNewDefinition(
             SnapTurtleCatalog.customBlockSemanticSpec(pythonName, arguments.indices.toList.map(index => s"arg$index"))
           ))
-        s"""<custom-block s="${SnapInputCodec.escapeXml(spec)}">$inputXml</custom-block>"""
+        s"""<custom-block s="${SnapXmlText.escape(spec)}">$inputXml</custom-block>"""
   }
 
   private def renderArgument(argument: BeExpression, kind: SnapInputKind = SnapInputKind.String)(using
@@ -353,7 +355,7 @@ object SnapProjectXml {
   }
 
   private def renderConditionValue(expression: BeExpression)(using RenderContext): String = expression match {
-    case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapInputCodec.escapeXml(value)}</l>"
+    case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapXmlText.escape(value)}</l>"
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
     case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall => renderCall(call)
@@ -364,5 +366,5 @@ object SnapProjectXml {
     s"""<block var="${variableXmlName(variable)}"/>"""
 
   private def variableXmlName(variable: BeDefineVariable)(using context: RenderContext): String =
-    SnapInputCodec.escapeXml(context.slotName(SnapControlFlow.variableName(variable)))
+    SnapXmlText.escape(context.slotName(SnapControlFlow.variableName(variable)))
 }

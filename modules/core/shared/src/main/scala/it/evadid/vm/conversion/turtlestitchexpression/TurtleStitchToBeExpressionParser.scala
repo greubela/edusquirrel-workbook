@@ -54,7 +54,7 @@ object TurtleStitchToBeExpressionParser {
 
   /** Failures propagate: a program that cannot be read is never replaced by an empty one. */
   def parseProjectWithLayout(project: Project): ParseWithLayout = {
-    val interner = SnapControlFlow.VariableInterner.fromNames(collectVariableNamesFromProject(project))
+    val interner = SnapControlFlow.VariableInterner.fromNames(project.variables.map(_.name.trim).filter(_.nonEmpty))
     withVars(interner) {
       val phaseOne = buildDefinitions(project)
       val scriptParses = parsePhaseTwoScripts(project, phaseOne)
@@ -89,7 +89,7 @@ object TurtleStitchToBeExpressionParser {
 
   private def reporterExpressionFromModel(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
     val selector = blockSelector(block).getOrElse("reportTrue")
-    SnapControlFlow.conditionFromSnapReporter(reporterCallFromModel(selector, inputValuesOf(block), phaseOne))
+    SnapControlFlow.conditionFromSnapReporter(reporterCallFromModel(selector, block.inputs.toList, phaseOne))
   }
 
   private def reporterCallFromModel(selector: String, inputs: List[InputValue], phaseOne: PhaseOneResult): BeFunctionCall = {
@@ -136,16 +136,8 @@ object TurtleStitchToBeExpressionParser {
       value.forall(ch => ch.isLetterOrDigit || ch == '_')
 
   /** Snap-native body is a direct `<script>` child; `<scripts>` holds extras / legacy bodies. */
-  private def collectCustomDefinitions(project: Project): List[CustomBlockDefinition] =
-    project.scenes.toList.flatMap { scene =>
-      scene.customBlocks.toList ++
-        scene.primitiveBlocks.toList ++
-        scene.stage.blocks.toList ++
-        scene.stage.sprites.toList.flatMap(_.blocks.toList)
-    }
-
   private def buildDefinitions(project: Project): PhaseOneResult = {
-    val customDefs = collectCustomDefinitions(project)
+    val customDefs = project.customDefinitions.toList
     val fromCalls = collectSignatures(project)
     val fromCustoms = customDefs.map { defn =>
       val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
@@ -234,14 +226,14 @@ object TurtleStitchToBeExpressionParser {
     case CustomBlockCall(spec, _, _, _, _) => Some(spec)
 
   private def parseDoRepeat(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
-    val inputs = inputValuesOf(block)
+    val inputs = block.inputs.toList
     val amount = inputs.collectFirst { case Literal(value) => value }.flatMap(SnapControlFlow.literalInt).getOrElse(0)
     val body = inputs.collectFirst { case NestedScript(script) => script }.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
     BeRepeatNr(amount, body)
   }
 
   private def parseDoFor(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
-    val inputs = inputValuesOf(block)
+    val inputs = block.inputs.toList
     val name = literalNameFromModelInputs(inputs).getOrElse("i")
     val rest = dropNameModelInput(inputs)
     val start = valueFromModelInputs(rest, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
@@ -254,7 +246,7 @@ object TurtleStitchToBeExpressionParser {
   }
 
   private def parseDoIfElse(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
-    val inputs = inputValuesOf(block)
+    val inputs = block.inputs.toList
     val condition = conditionFromModelInputs(inputs, phaseOne)
     val scripts = inputs.collect { case NestedScript(script) => script }
     val thenBody = scripts.headOption.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
@@ -263,27 +255,27 @@ object TurtleStitchToBeExpressionParser {
   }
 
   private def parseDoIf(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
-    val inputs = inputValuesOf(block)
+    val inputs = block.inputs.toList
     val condition = conditionFromModelInputs(inputs, phaseOne)
     val thenBody = inputs.collectFirst { case NestedScript(script) => script }.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
     BeIfElse(BeSequence.conditionalBody(List(condition)), thenBody, BeSequence.optionalBody(Nil))
   }
 
   private def parseDoUntil(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
-    val inputs = inputValuesOf(block)
+    val inputs = block.inputs.toList
     val condition = SnapControlFlow.invertCondition(conditionFromModelInputs(inputs, phaseOne))
     val body = inputs.collectFirst { case NestedScript(script) => script }.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
     BeWhile(BeSequence.conditionalBody(List(condition)), body)
   }
 
   private def parseDoSetVar(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
-    val (name, valueInputs) = assignmentNameAndRestModel(inputValuesOf(block))
+    val (name, valueInputs) = assignmentNameAndRestModel(block.inputs.toList)
     val value = valueFromModelInputs(valueInputs, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
     SnapControlFlow.assignVariable(currentVars.intern(name), value)
   }
 
   private def parseDoChangeVar(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
-    val (name, amountInputs) = assignmentNameAndRestModel(inputValuesOf(block))
+    val (name, amountInputs) = assignmentNameAndRestModel(block.inputs.toList)
     val amount = valueFromModelInputs(amountInputs, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
     SnapControlFlow.changeVariable(currentVars.intern(name), amount)
   }
@@ -332,7 +324,7 @@ object TurtleStitchToBeExpressionParser {
     val definition = phaseOne.definitionBySignature.get(signature)
     definition.map { defn =>
       val params = defn.inputs
-      val values = inputValuesOf(block)
+      val values = block.inputs.toList
       val mapped = params.zipAll(values, null, Literal(""))
         .filter(_._1 != null)
         .map { case (parameter, input) =>
@@ -360,33 +352,10 @@ object TurtleStitchToBeExpressionParser {
     case NestedBlock(block) => parseBlock(block, phaseOne).getOrElse(BeExpression.pass)
   }
 
-  private def collectSignatures(project: Project): List[Signature] = {
-    val scriptBlocks = project.scenes.toList.flatMap { scene =>
-      val stageBlocks = scene.stage.scripts.toList.flatMap(_.blocks)
-      val spriteBlocks = scene.stage.sprites.toList.flatMap(_.scripts.toList.flatMap(_.blocks))
-      stageBlocks ++ spriteBlocks
-    }
-    val definitionBlocks = collectCustomDefinitions(project).flatMap(_.body).flatMap(_.blocks)
-    (scriptBlocks ++ definitionBlocks).flatMap(blocksDeep).map(signatureOf).distinct
-  }
+  private def collectSignatures(project: Project): List[Signature] = project.allBlocks.toList.map(signatureOf).distinct
+
 
   /** A block plus every block nested in its slots, scripts and lists. */
-  private def blocksDeep(block: BlockLike): List[BlockLike] =
-    block :: inputValuesOf(block).flatMap(inputBlocksDeep)
-
-  private def inputBlocksDeep(input: InputValue): List[BlockLike] = input match
-    case NestedBlock(nested) => blocksDeep(nested)
-    case NestedScript(script) => script.blocks.toList.flatMap(blocksDeep)
-    case ListLiteral(items) => items.toList.flatMap(inputBlocksDeep)
-    case _ => Nil
-
-  private def collectVariableNamesFromProject(project: Project): List[String] =
-    project.scenes.toList.flatMap { scene =>
-      scene.variables.map(_.name) ++
-        scene.stage.variables.map(_.name) ++
-        scene.stage.sprites.toList.flatMap(_.variables.map(_.name))
-    }.map(_.trim).filter(_.nonEmpty)
-
   private def signatureOf(block: BlockLike): Signature = block match {
     case PrimitiveBlock(selector, variable, inputs, _) =>
       val name = selector.orElse(variable).getOrElse("block")
@@ -397,11 +366,6 @@ object TurtleStitchToBeExpressionParser {
 
   private def customSignatureName(spec: String): String =
     SnapTurtleCatalog.pythonNameFromCustomSpec(spec)
-
-  private def inputValuesOf(block: BlockLike): List[InputValue] = block match {
-    case PrimitiveBlock(_, _, inputs, _) => inputs.toList
-    case CustomBlockCall(_, _, inputs, _, _) => inputs.toList
-  }
 
   private def colorLiteralToPython(value: TurtleStitchProgramModel.Rgba): String = {
     val raw = s"${value.r},${value.g},${value.b},${value.a}"
