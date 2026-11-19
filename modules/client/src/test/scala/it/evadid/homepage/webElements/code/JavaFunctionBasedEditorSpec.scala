@@ -31,6 +31,15 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
     assertEquals(classes(1).functions.map(_.name), List("run"))
   }
 
+  test("the generated Turtle library is not listed as a student class, while an edited copy is") {
+    val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
+      it.evadid.core.datastructures.language.AppLanguage.Python, "forward(10)").toJava.code
+    assert(source.contains("class Turtle {"), source)
+    assertEquals(JavaFunctionBasedEditor.discover(source).map(_.name), List("Main"))
+    val edited = source.replace("move(distance);", "move(2 * distance);")
+    assertEquals(JavaFunctionBasedEditor.discover(edited).map(_.name), List("Main", "Turtle"))
+  }
+
   test("replacing and adding a function preserves a parseable full Java program") {
     val source = "class Example {\n  public int add(int left, int right) {\n    return left + right;\n  }\n  public void keep() {}\n}\n"
     val clazz = JavaFunctionBasedEditor.discover(source).head

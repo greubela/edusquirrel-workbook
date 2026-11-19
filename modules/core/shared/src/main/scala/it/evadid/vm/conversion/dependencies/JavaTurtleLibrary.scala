@@ -14,13 +14,15 @@ import it.evadid.vm.types.BeDataType
   * JVM is headless; `segments()` returns them as `{x1, y1, x2, y2}`.
   */
 object JavaTurtleLibrary {
-  /** `goto` is reserved in Java, so Java spells it with its turtle alias `setPosition`. */
-  private val reservedSpellings = Map("goto" -> "setPosition")
+  /** Java spellings that differ from the canonical names, all of them turtle aliases: the Java turtle
+    * API (as in the checked Java exercise) turns with `turnLeft`/`turnRight`, and `goto` is reserved.
+    */
+  private val javaSpellings = Map("left" -> "turnLeft", "right" -> "turnRight", "goto" -> "setPosition")
 
   /** The Java name of a turtle method, as printed in calls and declared in the library class. */
   def methodName(method: BeDefineFunction): String = {
     val name = method.functionTypeInfo.displayName.getNameIn(English, NamingStyle.CamelCase)
-    reservedSpellings.getOrElse(name, name)
+    javaSpellings.getOrElse(name, name)
   }
 
   private def javaType(dataType: BeDataType): String =

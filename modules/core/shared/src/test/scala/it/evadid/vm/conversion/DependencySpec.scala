@@ -6,6 +6,8 @@ import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.conversion.printing.ModuleLayout
 import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
+import it.evadid.vm.simulation.java.JavaTurtleInterpreter
 import munit.FunSuite
 
 class DependencySpec extends FunSuite {
@@ -38,6 +40,20 @@ class DependencySpec extends FunSuite {
     assert(java.contains("Turtle.setPosition(10, 20);"), java)
     assert(!java.contains("goto"), java)
     assert(ProgrammingStateRaw(Java, java).toPython.code.contains("turtle.goto(10, 20)"))
+  }
+
+  test("the checked Java runner treats the generated Turtle class as its library, keeping program offsets") {
+    val python = ProgrammingStateRaw(Python, "for _ in range(4):\n    forward(25)\n    right(90)\n")
+    val java = python.toJava.code
+    assert(java.contains("class Turtle {"), java)
+    val compiled = JavaTurtleCompiler.compile(java).fold(problem => fail(s"$problem\n$java"), identity)
+    val execution = JavaTurtleInterpreter.runVm(compiled)
+    assertEquals(execution.status, JavaTurtleInterpreter.Status.Completed)
+    assertEquals(execution.commands.map(command => command.command.toString -> command.value),
+      Vector.fill(4)(Vector("Forward" -> 25.0, "TurnRight" -> 90.0)).flatten)
+    val broken = java.replace("Turtle.forward(25);", "Turtle.forward(025);")
+    val problem = JavaTurtleCompiler.compile(broken).swap.getOrElse(fail("a leading zero must be reported"))
+    assertEquals(problem.range.map(range => broken.substring(range.start, range.end)), Some("025"))
   }
 
   test("a changed library class is the user's own class and keeps the existing name conflict check") {

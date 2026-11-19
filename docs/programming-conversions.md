@@ -58,7 +58,7 @@ A [`BeDependency`](../modules/core/shared/src/main/scala/it/evadid/vm/code/defin
 | `fetch_text(url)` | `urllib.request` helper | `class Web` with `fetchText` | `url` reporter (`reportURL`) |
 | `print` | `print` | `System.out.println` | speech bubble (`bubble`) |
 
-The Java `Turtle` methods are generated from the shared turtle signatures. `goto` is reserved in Java and is spelled with its alias `setPosition`. [`JavaBuiltinSpelling`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/expressionjava/JavaBuiltinSpelling.scala) is the single table for Java built-ins in both directions:
+The Java `Turtle` methods are generated from the shared turtle signatures. Java uses the turtle API of the checked exercise (`turnLeft`/`turnRight`), and `goto` is spelled `setPosition` because `goto` is reserved in Java. Library classes are runtime, not student code. The checked Java runner masks them with whitespace before compiling, which keeps offsets valid, and the Java method editor does not list them. An edited copy is listed again. [`JavaBuiltinSpelling`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/expressionjava/JavaBuiltinSpelling.scala) is the single table for Java built-ins in both directions:
 
 - numbers are cast: `(int) x`, `(double) x`;
 - text is parsed: `Integer.parseInt`, `Double.parseDouble`;

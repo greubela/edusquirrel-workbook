@@ -65,27 +65,38 @@ object KnownDependencies {
 
   private def compact(text: String): String = text.filterNot(_.isWhitespace)
 
-  /** Source without the dependency definitions it contains verbatim, ignoring layout. */
-  def withoutDefinitions(source: String, language: ProgrammingLanguage): String = language match {
+  /** Where `source` contains a dependency definition verbatim, ignoring layout, as `(start, end)` offsets. */
+  def definitionRanges(source: String, language: ProgrammingLanguage): Seq[(Int, Int)] = language match {
     case Java =>
       val definitions = all.flatMap(_.definition(Java)).map(compact).toSet
-      val matches = SourceStructure.javaClasses(source).filter(block => definitions(compact(block.source))).map(block => block.start -> block.end)
-      if matches.isEmpty then source else SourceStructure.remove(source, matches)
-    case Python =>
-      all.flatMap(_.definition(Python)).foldLeft(source)(withoutLines)
-    case _ => source
+      SourceStructure.javaClasses(source).filter(block => definitions(compact(block.source))).map(block => block.start -> block.end)
+    case Python => all.flatMap(_.definition(Python)).flatMap(lineRun(source, _))
+    case _ => Nil
   }
 
-  /** Removes the first run of lines equal to `definition`, ignoring indentation and blank lines. */
-  private def withoutLines(source: String, definition: String): String = {
-    val wanted = definition.linesIterator.map(_.trim).filter(_.nonEmpty).toVector
-    val lines = source.split("\n", -1).toVector
-    val code = lines.indices.filter(index => lines(index).trim.nonEmpty).toVector
-    code.indices.find(start => code.slice(start, start + wanted.size).map(index => lines(index).trim) == wanted) match {
-      case Some(start) =>
-        val (first, last) = (code(start), code(start + wanted.size - 1))
-        (lines.take(first) ++ lines.drop(last + 1)).mkString("\n")
-      case None => source
+  /** Source without the dependency definitions it contains, for the conversion parsers. */
+  def withoutDefinitions(source: String, language: ProgrammingLanguage): String = definitionRanges(source, language) match {
+    case Seq() => source
+    case ranges => SourceStructure.remove(source, ranges)
+  }
+
+  /** Source with its dependency definitions blanked out, keeping line breaks, so that offsets in the
+    * remaining code stay valid for diagnostics and tracing (used by the checked Java runner).
+    */
+  def maskDefinitions(source: String, language: ProgrammingLanguage): String =
+    definitionRanges(source, language).foldLeft(source) { case (text, (start, end)) =>
+      text.take(start) + text.slice(start, end).map(char => if char == '\n' || char == '\r' then char else ' ') + text.drop(end)
     }
+
+  /** The first run of whole lines equal to `definition`, ignoring indentation and blank lines. */
+  private def lineRun(source: String, definition: String): Option[(Int, Int)] = {
+    val wanted = definition.linesIterator.map(_.trim).filter(_.nonEmpty).toVector
+    val lines = (0 +: source.indices.filter(source(_) == '\n').map(_ + 1)).map { start =>
+      val end = source.indexOf('\n', start)
+      start -> (if end < 0 then source.length else end)
+    }
+    val code = lines.filter((start, end) => source.substring(start, end).trim.nonEmpty)
+    code.indices.find(first => code.slice(first, first + wanted.size).map((start, end) => source.substring(start, end).trim) == wanted)
+      .map(first => code(first)._1 -> math.min(source.length, code(first + wanted.size - 1)._2 + 1))
   }
 }
