@@ -146,7 +146,12 @@ object TurtleStitchModelMapper {
     )
 
   private def parseInput(node: TurtleStitchXmlParser.XmlElement): Option[InputValue] = node.name match {
-    case "l" => Some(Literal(node.text.trim))
+    // A slot holds either text or one nested value: a boolean or a menu option.
+    case "l" => children(node) match {
+      case List(value) if value.name == "bool" => parseInput(value)
+      case List(value) if value.name == "option" => Some(Literal(value.text.trim))
+      case _ => Some(Literal(node.text.trim))
+    }
     case "bool" => Some(BoolLiteral(node.text.trim.equalsIgnoreCase("true")))
     case "color" => Some(ColorLiteral(parseRgba(node.text.trim, Rgba(0, 0, 0, 1.0))))
     case "script" => Some(NestedScript(parseScript(node)))

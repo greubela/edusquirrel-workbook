@@ -186,8 +186,12 @@ object TurtleStitchXmlParser {
             if innerEnd < 0 then return out.toList
             val inner = body.substring(innerStart, innerEnd)
             tag match
+              case "l" if inner.trim.startsWith("<") =>
+                out += XmlElement("l", children = parseOrderedBlockInputChildren(inner))
               case "l" =>
                 out += XmlElement("l", text = SnapXmlParser.unescape(inner.trim))
+              case "option" =>
+                out += XmlElement("option", text = SnapXmlParser.unescape(inner.trim))
               case "bool" =>
                 out += XmlElement("bool", text = SnapXmlParser.unescape(inner.trim))
               case "color" =>
@@ -208,7 +212,7 @@ object TurtleStitchXmlParser {
   }
 
   private def findNextInputTag(xml: String, from: Int): Option[(Int, String, String, String)] = {
-    val candidates = List("l", "bool", "color", "script", "block", "custom-block", "list").flatMap { tag =>
+    val candidates = List("l", "bool", "option", "color", "script", "block", "custom-block", "list").flatMap { tag =>
       val open = s"<$tag"
       val idx = xml.indexOf(open, from)
       if idx < 0 then None

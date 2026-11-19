@@ -495,4 +495,13 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(nextXml.contains("""<custom-block s="square %n"><l>1</l></custom-block>"""), clue = nextXml)
     assert(!nextXml.contains("<l>2</l>"), clue = nextXml)
   }
+
+  test("boolean literals read the same in every Snap input slot") {
+    val xml =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><l>flag</l><l><bool>true</bool></l></block><block s="doIf"><block var="flag"/><script><block s="forward"><l>10</l></block></script><list></list></block></script></scripts></sprite></sprites></stage><variables><variable name="flag"><l>0</l></variable></variables></scene></scenes></project>"""
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val python = ExpressionToPython.printedPython(parsed.expression)
+    assert(python.contains("flag: Any = True"), clue = python)
+    assert(!python.contains("= true"), clue = python)
+  }
 }

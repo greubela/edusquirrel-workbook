@@ -393,7 +393,7 @@ object TurtleStitchToBeExpressionParser {
     inputs.flatMap {
       case Literal(value) =>
         if value.trim.isEmpty then Nil else List(expressionFromLiteral(value))
-      case BoolLiteral(value) => List(BeUseValue(BeDataValueLiteral(if value then "True" else "False"), None))
+      case BoolLiteral(value) => List(BeUseValue(BeDataValueLiteral(booleanRaw(value)), None))
       case ListLiteral(items) => expandModelInputsToExpressions(items.toList, phaseOne)
       case NestedBlock(block) => parseBlock(block, phaseOne).toList
       case NestedScript(script) => List(parseScriptBody(script, phaseOne))
@@ -438,8 +438,10 @@ object TurtleStitchToBeExpressionParser {
             if innerEnd < 0 then return out.toList
             val inner = xml.substring(innerStart, innerEnd)
             tag match
+              case "l" if inner.trim.startsWith("<") => out ++= parseOrderedInputs(inner)
               case "l" => out += InputLiteral(SnapXmlParser.unescape(inner.trim))
-              case "bool" => out += InputLiteral(if inner.trim.equalsIgnoreCase("true") then "True" else "False")
+              case "bool" => out += InputLiteral(booleanRaw(inner.trim.equalsIgnoreCase("true")))
+              case "option" => out += InputLiteral(SnapXmlParser.unescape(inner.trim))
               case "color" =>
                 out += InputLiteral(
                   SnapInputCodec.pythonQuotedColorFromRaw(inner.trim).getOrElse(SnapInputCodec.quotePython(inner.trim))
@@ -453,7 +455,7 @@ object TurtleStitchToBeExpressionParser {
   }
 
   private def findNextTopLevelTag(xml: String, from: Int): Option[(Int, String, String, String)] = {
-    val candidates = List("l", "bool", "color", "script", "block", "list").flatMap { tag =>
+    val candidates = List("l", "bool", "option", "color", "script", "block", "list").flatMap { tag =>
       val open = s"<$tag"
       val idx = xml.indexOf(open, from)
       if idx < 0 then None
@@ -766,7 +768,7 @@ object TurtleStitchToBeExpressionParser {
   private def valueFromModelInputs(inputs: List[InputValue], phaseOne: PhaseOneResult): Option[BeExpression] =
     inputs.headOption.map {
       case Literal(value) => BeUseValue(BeDataValueLiteral(value), None)
-      case BoolLiteral(value) => BeUseValue(BeDataValueLiteral(value.toString), None)
+      case BoolLiteral(value) => BeUseValue(BeDataValueLiteral(booleanRaw(value)), None)
       case NestedBlock(nested) => parseBlock(nested, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
       case ListLiteral(items) => valueFromModelInputs(items.toList, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
       case other => parseInputValue(other, None, phaseOne)
@@ -795,14 +797,17 @@ object TurtleStitchToBeExpressionParser {
     }
   }
 
+  /** Snap booleans as the shared tree spells literals (`True`/`False`, as in the other front ends). */
+  private def booleanRaw(value: Boolean): String = if value then "True" else "False"
+
   private def parseInputValue(input: InputValue, context: Option[BeDefineVariable], phaseOne: PhaseOneResult): BeExpression = input match {
     case Literal(value) => BeUseValue(BeDataValueLiteral(value), context)
-    case BoolLiteral(value) => BeUseValue(BeDataValueLiteral(if value then "True" else "False"), context)
+    case BoolLiteral(value) => BeUseValue(BeDataValueLiteral(booleanRaw(value)), context)
     case ColorLiteral(value) => BeUseValue(BeDataValueLiteral(colorLiteralToPython(value)), context)
     case ListLiteral(items) =>
       val flattened = items.map {
         case Literal(v) => v
-        case BoolLiteral(v) => v.toString
+        case BoolLiteral(v) => booleanRaw(v)
         case _ => "item"
       }.mkString("[", ",", "]")
       BeUseValue(BeDataValueLiteral(flattened), context)
