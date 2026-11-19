@@ -126,6 +126,23 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assertEquals(j.definedClasses.keySet, Set(name("Real")))
   }
 
+  test("the fastparse source lexer tolerates unfinished code and classifies members by their tokens") {
+    // Unclosed strings, comments and blocks run to the end instead of failing.
+    assertEquals(SourceStructure.javaClasses("class Open { void draw() { forward(\"x").map(_.name), Vector("Open"))
+    assertEquals(SourceStructure.mask("x = 1 # c", python = true), "x = 1    ")
+    assertEquals(SourceStructure.methodName("static int[] values(int n) { return null; }"), Some("values"))
+    assertEquals(SourceStructure.methodName("List<String> names() { return null; }"), Some("names"))
+    assertEquals(SourceStructure.methodName("forward(10);"), None)
+    assertEquals(SourceStructure.declaration("static double side = 40;"),
+      Some(SourceStructure.Declaration("double", "side", Some("40"))))
+    assertEquals(SourceStructure.declaration("int[] values;").map(_.name), Some("values"))
+    assertEquals(SourceStructure.declaration("return side;"), None)
+    assertEquals(SourceStructure.declaration("side = 40;"), None)
+    assertEquals(SourceStructure.javaMembers("class A { int[] v = {1, 2}; void f() { } int x; }"),
+      Vector("int[] v = {1, 2};", "void f() { }", "int x;"))
+    assertEquals(SourceStructure.pythonBlocks("def f(a,\n      b):\n    return (a +\n  b)\nx = 1", "def").map(_.name), Vector("f"))
+  }
+
   test("loose Java variables, methods and statements become static Main members and startup") {
     val state = ProgrammingStateJavaStructured("int x = 100; void draw() { forward(x); } draw();")
     assertEquals(state.definedClasses.keySet, Set(name("Main")))
