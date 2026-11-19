@@ -20,18 +20,18 @@ class Gdp1WorkbookSpec extends FunSuite {
     match { case task: TurtleRecreateShapeInteraction => task; case other => fail(s"Unexpected task: $other") })
   private val square = "forward(100)\nright(90)\n" * 4
   private val loop = "for i in range(4):\n    forward(100)\n    right(90)\n"
-  private val advance = "penup()\nright(90)\nforward(200)\nright(270)\npendown()\n"
+  private val advance = "penup()\nforward(200)\npendown()\n"
   private val squares = "for j in range(5):\n" + indent(loop + advance)
   private def indent(code: String): String = code.linesIterator.map("    " + _).mkString("\n") + "\n"
   private val function = "def quadrat():\n" + indent(loop)
   private val withFunction = function + "for j in range(5):\n" + indent("quadrat()\n" + advance)
   private val parameterFunction = "def quadrat(distanz):\n    for i in range(4):\n        forward(distanz)\n        right(90)\n"
-  private val parameterAdvance = "penup()\nright(90)\nforward(distanz + 100)\nright(270)\npendown()\n"
+  private val parameterAdvance = "penup()\nforward(distanz + 100)\npendown()\n"
   private val increasing = parameterFunction + "distanz = 100\nfor j in range(5):\n" +
     indent("quadrat(distanz)\n" + parameterAdvance + "distanz = distanz + 100\n")
   private val alternating = parameterFunction + "distanz = 100\nfor j in range(5):\n" +
     indent("quadrat(distanz)\n" + parameterAdvance + "if distanz == 100:\n    distanz = 200\nelse:\n    distanz = 100\n")
-  private val oriented = "def quadrat(distanz, richtung):\n    for i in range(4):\n        forward(distanz * richtung)\n        right(90 * richtung)\n" +
+  private val oriented = "def quadrat(distanz, richtung):\n    for i in range(4):\n        forward(distanz)\n        right(90 * richtung)\n" +
     "distanz = 100\nfor j in range(5):\n" + indent("if j == 2:\n    quadrat(distanz, -1)\nelse:\n    quadrat(distanz, 1)\n" +
       parameterAdvance + "if distanz == 100:\n    distanz = 200\nelse:\n    distanz = 100\n")
   private val solutions = Seq(square, loop, squares, withFunction, increasing, alternating, oriented)
@@ -43,6 +43,24 @@ class Gdp1WorkbookSpec extends FunSuite {
         results.foreach(result => assert(result.gradingStatus.isCorrect, clues(task.elementId, result.grader, result.gradingStatus)))
       }
     }
+  }
+
+  test("row targets run horizontally and match the described orientation") {
+    // Screen (SVG) coordinates: y grows downward, so squares below the shared line have y >= 0.
+    def boxes(graphic: TurtleGraphic) = graphic.renderLines.grouped(4).map { lines =>
+      val points = lines.flatMap(line => Seq(line.start, line.end))
+      (points.map(_.x).min, points.map(_.x).max, points.map(_.y).min, points.map(_.y).max)
+    }.toSeq
+    val sizes = Seq(100, 200, 100, 200, 100)
+    val starts = sizes.scanLeft(0)((x, side) => x + side + 100).init
+    val expected = sizes.zip(starts).zipWithIndex.map { case ((side, x), index) =>
+      if index == 2 then (x.toDouble, (x + side).toDouble, -side.toDouble, 0.0) else (x.toDouble, (x + side).toDouble, 0.0, side.toDouble)
+    }
+    boxes(tasks(6).desiredResult).zip(expected).foreach { (actual, wanted) =>
+      Seq(actual._1 - wanted._1, actual._2 - wanted._2, actual._3 - wanted._3, actual._4 - wanted._4)
+        .foreach(delta => assert(math.abs(delta) < 1e-6, clues(actual, wanted)))
+    }
+    assertEquals(boxes(tasks(2).desiredResult).map(box => math.round(box._3)).distinct, Seq(0L))
   }
 
   test("all reference solutions also pass after conversion to Snap blocks") {

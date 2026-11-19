@@ -73,16 +73,19 @@ case class CreateGdp1Workbook(override val fullInfo: FullInfo) extends WorkbookF
 
 object CreateGdp1Workbook {
   import TurtleCommand.*
-  private def squareCommands(side: Int, down: Boolean = false): Seq[TurtleCommand[Double]] = {
-    val direction = if down then -1.0 else 1.0
-    (0 until 4).flatMap(_ => Seq(Forward(side * direction), Right(90 * direction)))
-  }
+  /** The turtle starts at the shared line facing right, as in Snap and Python. Right turns
+    * draw a square hanging below that line; mirrored turns place it above the line.
+    */
+  private def squareCommands(side: Int, above: Boolean = false): Seq[TurtleCommand[Double]] =
+    Seq.fill(4)(Seq(Forward(side.toDouble), Right(if above then -90.0 else 90.0))).flatten
   private[content] val square: TurtleGraphic = TurtleGraphic(squareCommands(100))
 
-  /** Gaps are measured between neighboring square edges; pen-up travel is not graded as a stroke. */
-  private[content] def row(sides: Seq[Int], down: Set[Int] = Set.empty): TurtleGraphic = TurtleGraphic(
+  /** A horizontal row whose squares share their top or bottom edge line. Gaps are measured
+    * between neighboring square edges; pen-up travel is not graded as a stroke.
+    */
+  private[content] def row(sides: Seq[Int], above: Set[Int] = Set.empty): TurtleGraphic = TurtleGraphic(
     sides.zipWithIndex.flatMap { (side, index) =>
-      squareCommands(side, down(index)) ++ Option.when(index < sides.size - 1)(Seq(
-        PenUp(), Right(90.0), Forward(side + 100.0), Right(270.0), PenDown())).toSeq.flatten
+      squareCommands(side, above(index)) ++ Option.when(index < sides.size - 1)(Seq(
+        PenUp(), Forward(side + 100.0), PenDown())).toSeq.flatten
     })
 }
