@@ -2,7 +2,6 @@ package it.evadid.vm.conversion.expressionjava
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, Java}
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaString
 
 object ExpressionToJava {

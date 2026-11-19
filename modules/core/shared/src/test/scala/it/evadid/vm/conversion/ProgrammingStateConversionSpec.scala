@@ -110,6 +110,24 @@ class ProgrammingStateConversionSpec extends FunSuite {
     }
   }
 
+  test("grouped arithmetic and boolean conditions keep their behavior through all target states") {
+    val original = ProgrammingStatePythonString("distance = (2 + 3) * 4\nif distance == 20 and not False:\n    forward(distance)\n")
+    val expected = original.toBeExpression.turtleCommandExecutionInfo.completedCommands
+    assertEquals(expected.flatMap(_.args), List(20.0))
+    val restored = Seq(original.toJava, original.toSnapXml, original.toJava.toSnapXml.toPython,
+      original.toSnapXml.toJava.toPython)
+    restored.foreach(state => assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands, expected))
+  }
+
+  test("user helpers and native turtle aliases retain distinct identities across languages") {
+    val original = ProgrammingStatePythonString("def right(distance):\n    forward(distance)\nright(7)\nrt(90)\n")
+    val expected = original.toBeExpression.turtleCommandExecutionInfo.completedCommands
+    assertEquals(expected.map(_.name.universalInterpretation()), List("forward", "right"))
+    Seq(original.toJava, original.toSnapXml, original.toSnapXml.toPython).foreach { state =>
+      assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands, expected, clue = state.toString)
+    }
+  }
+
   test("for loop survives all ProgrammingState round trips and becomes a Snap repeat block") {
     assertAllRoundTrips(
       """for _ in range(4):
@@ -607,7 +625,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("unknown parameter types have usable Any hints and round trip to Snap") {
     val converted = ProgrammingStatePythonString("def line(length):\n    forward(length)\nline(10)").toBeExpression.toPython
-    assert(converted.code.startsWith("from typing import Any\n"), clue = converted.code)
+    assert(converted.code.contains("from typing import Any\n"), clue = converted.code)
     assert(converted.code.contains("def line(length: Any) -> None:"), clue = converted.code)
     assert(PythonToSnap.applyPython(converted.code).isRight, clue = converted.code)
     assertEquals(normalized(converted.toBeExpression), converted.code.trim)

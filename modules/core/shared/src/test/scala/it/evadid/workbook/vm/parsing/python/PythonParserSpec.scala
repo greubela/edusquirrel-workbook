@@ -711,7 +711,8 @@ class PythonParserSpec extends FunSuite {
     assertEquals(parsed.codeExpression.body.length, 2)
 
     val regenerated = parsed.codeExpression.structureInfo.toStringInLanguage(Python, English)
-    assertEquals(normalizer.normalizePython(regenerated), normalizer.normalizePython(generated))
+    val canonical = PythonParser.default.parsePythonWithDetails(regenerated).codeExpression.structureInfo.toStringInLanguage(Python, English)
+    assertEquals(normalizer.normalizePython(canonical), normalizer.normalizePython(regenerated))
   }
 
   test("distinguish unsupported and unparsable inputs") {

@@ -7,10 +7,8 @@ import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.vm.simulation.turtle.{TurtleProgramAnalysis, TurtleCommandExecutionInfo}
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapGeneratedImages
-import it.evadid.vm.conversion.ConversionResult
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 import upickle.default.*
 import it.evadid.vm.naming.BeEntityName

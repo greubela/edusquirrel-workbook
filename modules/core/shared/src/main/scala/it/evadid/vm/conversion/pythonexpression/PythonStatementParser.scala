@@ -103,7 +103,7 @@ object PythonStatementParser {
 
   private def buildDispatchRules(api: StatementApi): List[DispatchRule] = List(
     // These imports only resolve annotations emitted by the Python conversion bridge.
-    DispatchRule(text => Set("from typing import Any", "from datetime import date").contains(text),
+    DispatchRule(text => Set("from typing import Any", "from datetime import date", "import turtle").contains(text),
       ctx => DispatchOutcome(Nil, ctx.index + 1)),
     DispatchRule(_.matches(AnnotationAssignmentPattern.regex), ctx => {
       val (name, typeHint, valueStr) = ctx.trimmed match

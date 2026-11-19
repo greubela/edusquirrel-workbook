@@ -37,6 +37,8 @@ case class BeExpressionToPythonString
   override def forOther(other: BeExpression): String = other match {
     case call: BeFunctionCall if isOperatorCall(call) =>
       formatOperatorCall(call)
+    case call: BeFunctionCall if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) =>
+      "turtle." + super.forOther(call)
     case _ =>
       super.forOther(other)
   }
@@ -48,7 +50,7 @@ case class BeExpressionToPythonString
 
   private def formatOperatorCall(call: BeFunctionCall): String = {
     val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
-    val args = call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable)).map(forExpression)
+    val args = call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable)).map(forOperand)
     symbol match {
       case "not" =>
         s"not ${args.headOption.getOrElse("")}"

@@ -6,8 +6,6 @@ import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.datastructures.vectorShapes.svg.{TurtleCommand, TurtlePathBuilder}
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleVmPrograms, JavaTurtleResolution}
-import it.evadid.vm.simulation.java.JavaTurtleRuntime
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import it.evadid.vm.code.abstractions.BeExpression
@@ -119,7 +117,7 @@ object TurtleProgramAnalysis {
     else {
       val python = SnapExpressionSupport.pythonName(call)
       val args = SnapControlFlow.orderedArgs(call)
-      state.defs.get(python).filterNot(_ => TurtleCommandSites.isBoundTurtleMethod(call)) match {
+      state.defs.get(python).filterNot(_ => TurtleCommand.isTurtleMethod(call.funcDef)) match {
         case Some(definition) =>
           if state.callDepth >= limits.maxCallDepth then state.copy(status = TurtleExecutionStatus.LimitExceeded)
           else {

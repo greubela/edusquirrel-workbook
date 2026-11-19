@@ -1,13 +1,10 @@
 package it.evadid.vm.conversion.expressionsnap
 
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
 
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.conversion.ConversionResult.converted
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
-import it.evadid.vm.conversion.structured.StructuredProgramConversions
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateBeExpression
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 

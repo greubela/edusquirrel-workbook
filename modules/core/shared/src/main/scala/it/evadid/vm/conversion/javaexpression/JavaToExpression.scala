@@ -19,7 +19,7 @@ import upickle.default.*
 import it.evadid.vm.conversion.ConversionResult.*
 
 final class JavaToExpression(code: String) {
-  private lazy val classDetails: (Boolean, Boolean, Boolean) = {
+  private lazy val isClass: Boolean = {
     JavaTurtleInputLimits.checkParserInput(code).fold(
       diagnostic => rejectAt(diagnostic.message, code, diagnostic.range.map(_.start)), identity)
     val sourceForAst = JavaToBeExpressionParser.withoutEntityHints(code)
@@ -37,8 +37,6 @@ final class JavaToExpression(code: String) {
       identity)
     var pending: List[GenericAST] = List(parsed)
     var hasClass = false
-    var hasStaticMain = false
-    var hasTurtleCalls = false
     while pending.nonEmpty do {
       val node = pending.head
       pending = pending.tail
@@ -51,17 +49,14 @@ final class JavaToExpression(code: String) {
           throw ProgrammingConversionException.unparsable(
             "This Java source contains unsupported or unfinished syntax.", line)
         case _: JavaClassDef => hasClass = true
-        case method: JavaMethodDef if method.name == "main" && method.modifiers.contains("static") => hasStaticMain = true
-        case JavaFunctionCall(JavaTarget(_, Seq("Turtle"), _), _) => hasTurtleCalls = true
-        case JavaCallExpression(JavaAttributeAccess(JavaTarget("Turtle", locations, _), _), _) if locations.isEmpty => hasTurtleCalls = true
         case _ => ()
       }
       pending = node.getChildren().toList ::: pending
     }
-    (hasClass, hasStaticMain, hasTurtleCalls)
+    hasClass
   }
 
-  def isClassProgram: Boolean = classDetails._1
+  def isClassProgram: Boolean = isClass
 
   private def parsedExpression(source: String): ProgrammingStateBeExpression = {
     val expression = JavaToBeExpressionParser.parse(source)
@@ -71,7 +66,13 @@ final class JavaToExpression(code: String) {
       case BeExpressionReference(_, _: BeExpressionUnparsable) => true
       case _ => false
     }
-    if unsupported then throw ProgrammingConversionException.unsupported("This Java source contains a construct that is not supported by the shared expression tree.")
+    if unsupported then {
+      val reason = nodes.collectFirst {
+        case BeExpressionReference(_, BeExpressionUnsupported(source)) => source
+        case BeExpressionReference(_, BeExpressionUnparsable(source, _)) => source
+      }.getOrElse(source).take(160)
+      throw ProgrammingConversionException.unsupported(s"This Java construct is not supported by the shared expression tree: $reason")
+    }
     ProgrammingStateBeExpression(expression)
   }
 

@@ -72,9 +72,16 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
 
   override def forOther(other: BeExpression): String = other match {
     case call: BeFunctionCall if call.funcDef.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Operator] =>
-      val operator = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
-      val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(forExpression)
+      val operator = call.funcDef.functionTypeInfo.displayName.universalInterpretation() match {
+        case "and" => "&&"
+        case "or" => "||"
+        case "not" => "!"
+        case other => other
+      }
+      val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(forOperand)
       if (arguments.size == 1) s"$operator${arguments.head}" else arguments.mkString(s" $operator ")
+    case call: BeFunctionCall if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) =>
+      "Turtle." + super.forOther(call)
     case _ => super.forOther(other)
   }
 

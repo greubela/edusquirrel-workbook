@@ -261,7 +261,9 @@ object SnapProjectXml {
       val selector = SnapExpressionSupport.snapSelectorOf(call)
       val arguments = SnapControlFlow.orderedArgs(call)
       val kinds = SnapTurtleCatalog.inputKindsForSelector(selector)
-      if SnapExpressionSupport.isPrimitiveSelector(selector) then
+      if SnapExpressionSupport.isPrimitiveSelector(selector) &&
+          (it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) ||
+            context.plans.get(SnapExpressionSupport.pythonName(call)).isEmpty) then
         val inputXml = arguments.zipWithIndex.map { (argument, index) =>
           renderArgument(argument, kinds.lift(index).getOrElse(SnapInputKind.String))
         }.mkString

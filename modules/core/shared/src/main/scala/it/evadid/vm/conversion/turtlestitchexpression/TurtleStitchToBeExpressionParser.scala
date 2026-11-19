@@ -882,6 +882,10 @@ object TurtleStitchToBeExpressionParser {
 
     if (signature.isOperator)
       BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.operatorInfo(signature.name, if signature.arity <= 1 then 0 else 1))
+    else if !signature.isCustom then
+      it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.resolveTurtleMethod(displayName)
+        .map(_.copy(inputs = params)).getOrElse(
+          BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName)))
     else
       BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName))
   }

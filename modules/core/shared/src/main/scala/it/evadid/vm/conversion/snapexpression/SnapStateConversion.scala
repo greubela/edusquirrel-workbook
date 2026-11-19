@@ -1,12 +1,10 @@
 package it.evadid.vm.conversion.snapexpression
 
-import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
 import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
-
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapScalaModel, SnapTurtleCatalog}
+
+
 
 /** Shared primitive decoding and the verified subset for Python unit-test execution. */
 object SnapStateConversion {

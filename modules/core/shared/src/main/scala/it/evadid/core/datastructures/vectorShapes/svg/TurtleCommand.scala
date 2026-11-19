@@ -260,6 +260,9 @@ object TurtleCommand {
         output.map(dataType => variable("result", dataType)))
     })
 
+  def isTurtleMethod(definition: BeDefineFunction): Boolean =
+    definition.functionTypeInfo.isMethodInClass.exists(_.name == turtleClass.name)
+
   def resolveTurtleMethod(sourceName: String): Option[BeDefineFunction] =
     resolveCanonicalNames(sourceName).flatMap { name =>
       turtleClass.methods.find(_.functionTypeInfo.displayName == name)
