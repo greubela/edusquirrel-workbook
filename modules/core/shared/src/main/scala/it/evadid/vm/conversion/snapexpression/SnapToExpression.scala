@@ -36,7 +36,7 @@ object SnapToExpression {
     }
     val unused = Option.when(detached.nonEmpty)(BeDefineFunction(
       inputs = Nil, outputs = None, body = BeSequence.optionalBody(detached),
-      functionTypeInfo = BeDefineFunction.functionInfo(BeEntityName.fromCodeString("unusedCode"))))
+      functionTypeInfo = BeDefineFunction.functionInfo(it.evadid.vm.BeProgram.unusedCodeName)))
     val startup = if parsed.canvasLayout.isEmpty then statements else active
     // The exporter declares variables with defaults even when startup initializes them.
     // Re-importing those declarations must not prepend another redundant assignment.

@@ -82,7 +82,23 @@ object SnapProjectXml {
       case other => List(other)
     }
 
+    val detached = body.collect { case function: BeDefineFunction if BeProgram.isUnusedCode(function) => function.body.body }.flatten
     val statements = SnapExpressionSupport.scriptStatements(body.toList)
+    if detached.nonEmpty then {
+      val knownLayout = layout.scripts.toList
+      if knownLayout.filter(_.hasReceiveGo).map(_.callCount).sum == statements.size &&
+          knownLayout.filterNot(_.hasReceiveGo).map(_.callCount).sum == detached.size && knownLayout.nonEmpty then {
+        val (scripts, _, _) = knownLayout.foldLeft((List.empty[ScriptOut], statements, detached.toList)) {
+          case ((scripts, startup, loose), script) =>
+            val (chunk, rest) = (if script.hasReceiveGo then startup else loose).splitAt(script.callCount)
+            val rendered = ScriptOut(script.x, script.y, if script.hasReceiveGo then createReceiveGoCall() :: chunk else chunk)
+            (scripts :+ rendered, if script.hasReceiveGo then rest else startup, if script.hasReceiveGo then loose else rest)
+        }
+        return scripts
+      }
+      return Option.when(statements.nonEmpty)(ScriptOut(156, 66, createReceiveGoCall() :: statements)).toList :+
+        ScriptOut(156, 240, detached.toList)
+    }
     if statements.isEmpty then Nil
     else if layout.isEmpty || !layoutMatches(layout, statements.size) then
       List(ScriptOut(156, 66, createReceiveGoCall() :: statements))
@@ -128,7 +144,7 @@ object SnapProjectXml {
     val found = List.newBuilder[BeDefineFunction]
     def walk(node: BeExpression): Unit = node match
       case defn: BeDefineFunction =>
-        found += defn
+        if !BeProgram.isUnusedCode(defn) then found += defn
         walk(defn.body)
       case seq: BeSequence => seq.body.foreach(walk)
       case BeStartProgram(Some(seq)) => seq.body.foreach(walk)

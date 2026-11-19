@@ -20,6 +20,11 @@ case class BeProgram(fullProgram: BeExpression) derives ReadWriter {
 }
 
 object BeProgram {
+  /** Reserved source representation of Snap scripts that have no startup hat. */
+  val unusedCodeName = BeEntityName.fromCodeString("unusedCode")
+  def isUnusedCode(function: BeDefineFunction): Boolean =
+    function.functionTypeInfo.displayName.universalInterpretation() == unusedCodeName.universalInterpretation()
+
   lazy val empty: BeProgram = BeProgram(BeStartProgram(BeExpression.pass))
 
   def createSimpleFunc(functionName: LanguageMap[HumanLanguage], parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType], parValues: List[String], output: Option[BeDataType]): BeProgram = {
