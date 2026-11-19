@@ -1,7 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.*
@@ -29,8 +28,7 @@ case class IconGradingAndScaffolding[F <: InteractionFormat](
         case Status.Ready => createScaffoldingFinished()
       }
       val tooltip = report.feedback match {
-        case Some(content) => fullInfo.signals.currentLanguage.map(language =>
-          if content.availableLanguages.nonEmpty then content.getWithLanguagePreference(Seq(language, English)) else "")
+        case Some(content) => laminarHelper.plaintextStringSignal(content)
         case None => laminarHelper.plaintextStringSignal(report.status match {
           case Status.NotRequested => "basic/requestScaffoldingHint"
           case Status.Pending => "basic/scaffoldingLoading"

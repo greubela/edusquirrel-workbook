@@ -23,19 +23,19 @@ trait SnapCodeEditorImpl {
   def changeLanguage(humanLanguage: HumanLanguage): Unit
 
   /** Mount the complete interactive Snap editor and keep its Morphic world ticking. */
-  def renderEditorInto(initState: ProgrammingStateSnapXml, canvas: Canvas, config: SnapCodeEditorConfig): Unit
+  def renderEditorInto(initState: ProgrammingStateRaw, canvas: Canvas, config: SnapCodeEditorConfig): Unit
 
   /** Render only the scripts as a static, tightly-sized preview. */
-  def renderPreviewInto(state: ProgrammingStateSnapXml, canvas: Canvas, config: SnapCodeEditorConfig): Unit
+  def renderPreviewInto(state: ProgrammingStateRaw, canvas: Canvas, config: SnapCodeEditorConfig): Unit
 
   /** Apply an externally restored state to the retained editor without recreating the world. */
-  def loadProgramIfChanged(state: ProgrammingStateSnapXml): Unit
+  def loadProgramIfChanged(state: ProgrammingStateRaw): Unit
 
   /** Like loadProgramIfChanged but always re-opens (fullscreen reopen / hard restore). */
-  def forceLoadProgram(state: ProgrammingStateSnapXml): Unit
+  def forceLoadProgram(state: ProgrammingStateRaw): Unit
 
   /** Record that the live Snap project was just written into this state (skip lossy reload). */
-  def acknowledgeProgramFromEditor(state: ProgrammingStateSnapXml): Unit
+  def acknowledgeProgramFromEditor(state: ProgrammingStateRaw): Unit
 
   /** Push any pending Snap XML edits into the change listener immediately. */
   def flushPendingProjectChanges(): Unit

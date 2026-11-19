@@ -1,8 +1,8 @@
 package it.evadid.homepage.webElements.code
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw, ProgrammingStateJavaStructured}
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L.{label as labelTag, *}
@@ -41,11 +41,13 @@ final class JavaFunctionBasedEditor
 
   private val initialSource = Try(state.now().toJava.code).toOption
   private val sourceDraft = state.bimap {
-    case ProgrammingStateJavaString(code) => code
+    case ProgrammingStateRaw(Java, code) => code
+    case value: ProgrammingStateJavaStructured => value.toString
     case _ => ""
-  }(ProgrammingStateJavaString(_)).distinct
+  }(ProgrammingStateRaw(Java, _)).distinct
   private def sourceCode: String = state.now() match {
-    case ProgrammingStateJavaString(code) => code
+    case ProgrammingStateRaw(Java, code) => code
+    case value: ProgrammingStateJavaStructured => value.toString
     case _ => ""
   }
   private val sourceAvailable = Var(initialSource.isDefined)
@@ -146,13 +148,14 @@ final class JavaFunctionBasedEditor
 
   private def observeProgram(next: ProgrammingState): Unit = {
     val code = next match {
-      case ProgrammingStateJavaString(value) => value
+      case ProgrammingStateRaw(Java, value) => value
+      case value: ProgrammingStateJavaStructured => value.toString
       case _ => ""
     }
     val refreshedClasses = discover(code)
     classes.set(refreshedClasses)
     structureReady.set(structurallyBalanced(code))
-    sourceAvailable.set(next.isInstanceOf[ProgrammingStateJavaString])
+    sourceAvailable.set(next match { case ProgrammingStateRaw(Java, _) | _: ProgrammingStateJavaStructured => true; case _ => false })
     if !sourceView.now() then {
       val range = editingRange.now()
       val fragmentMatches = range.exists(value => value.isWithin(code) && code.substring(value.start, value.end) == functionDraft.now())

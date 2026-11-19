@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleDrawingGrading
 import munit.FunSuite
 import com.raquo.airstream.state.Var
@@ -31,7 +32,7 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
     List.fill(4)(List(TurtleCommand.Forward[Double](side), TurtleCommand.Right[Double](turn))).flatten
 
   private class PanelFixture {
-    val source = Var[ProgrammingState](ProgrammingStateJavaString("class Drawing {}"))
+    val source = Var[ProgrammingState](ProgrammingStateRaw(Java, "class Drawing {}"))
     var requests = Vector.empty[Promise[List[TurtleCommand[Double]]]]
     var stops = 0
     val panel = new TurtleExecutionPanel(source,
@@ -41,8 +42,8 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
   }
 
   test("drawing runs follow the configured policy for Java, Python and Snap sources") {
-    val sources: List[ProgrammingState] = List(ProgrammingStateJavaString("forward(5); forward(5);"),
-      ProgrammingStatePythonString("forward(5)\nforward(5)"), ProgrammingStateSnapXml.empty)
+    val sources: List[ProgrammingState] = List(ProgrammingStateRaw(Java, "forward(5); forward(5);"),
+      ProgrammingStateRaw(Python, "forward(5)\nforward(5)"), ProgrammingStateSnapScalaModel.empty.toSnapXml)
     val commands = List(TurtleCommand.Forward[Double](5.0), TurtleCommand.Forward[Double](5.0))
     val target = TurtleGraphic.TurtleGraphicProgram(List(TurtleCommand.Forward[Double](10.0)))
     Future.sequence(for {
@@ -64,14 +65,14 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
   }
 
   test("drawing execution reads the current central answer without capturing an editor") {
-    val state = Var[ProgrammingState](ProgrammingStatePythonString("forward(5)"))
+    val state = Var[ProgrammingState](ProgrammingStateRaw(Python, "forward(5)"))
     val commands = List(TurtleCommand.Forward[Double](10.0))
     val panel = new TurtleExecutionPanel(state, () => {
-      assertEquals(state.now(), ProgrammingStatePythonString("forward(10)"))
+      assertEquals(state.now(), ProgrammingStateRaw(Python, "forward(10)"))
       Future.successful(commands)
     }, () => ())
     mountPanel(panel)
-    state.set(ProgrammingStatePythonString("forward(10)"))
+    state.set(ProgrammingStateRaw(Python, "forward(10)"))
     panel.run()
     Future.unit.flatMap(_ => Future.unit.map { _ =>
       assertEquals(panel.status.now(), TurtleExecutionPanel.Status.Ready(commands, None))
@@ -172,7 +173,7 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
     fixture.source.set(original)
     assertEquals(fixture.panel.status.now(), Status.Running)
     assertEquals(fixture.stops, 0)
-    fixture.source.set(ProgrammingStateJavaString("class Changed {}"))
+    fixture.source.set(ProgrammingStateRaw(Java, "class Changed {}"))
     fixture.source.set(original)
     assertEquals(fixture.panel.status.now(), Status.Idle)
     assertEquals(fixture.stops, 1)
@@ -201,7 +202,7 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
 
   test("Java execution panel catches synchronous failure without fabricating a drawing") {
     import TurtleExecutionPanel.Status
-    val source = Var[ProgrammingState](ProgrammingStateJavaString("class Drawing {}"))
+    val source = Var[ProgrammingState](ProgrammingStateRaw(Java, "class Drawing {}"))
     val panel = new TurtleExecutionPanel(source, () => throw IllegalStateException("unavailable"), () => ())
     panel.run()
     Future.unit.map { _ =>
@@ -227,7 +228,7 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
 
   test("shared drawing panel accepts a Python source without converting or publishing it") {
     import TurtleExecutionPanel.Status
-    val original = ProgrammingStatePythonString("forward(25)")
+    val original = ProgrammingStateRaw(Python, "forward(25)")
     val source = Var[ProgrammingState](original)
     val panel = new TurtleExecutionPanel(source, () => Future.successful(squareDrawing()), () => ())
     mountPanel(panel)

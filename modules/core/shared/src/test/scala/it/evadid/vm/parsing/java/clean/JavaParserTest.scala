@@ -765,9 +765,10 @@ class JavaParserTest extends FunSuite {
     assertEquals(checked.methods.head.body.statements.size, 3)
   }
 
-  test("turtle source rejects constructors and omitted method return types before structure checking") {
-    for members <- Seq(s"Drawing() {} $mainMethod", s"static move() {} $mainMethod", "public static main(String[] args) {}") do
-      assertEquals(sourceProblem(turtleClass(members)).problem, JavaTurtleSource.Problem.ParseFailure, clue = members)
+  test("turtle structure rejects constructors and methods without return types after general parsing") {
+    for members <- Seq(s"Drawing() {} $mainMethod", s"static move() {} $mainMethod") do
+      assertEquals(structureProblem(turtleClass(members)).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = members)
+    assertEquals(structureProblem(turtleClass("public static main(String[] args) {}")).problem, JavaTurtleSource.Problem.InvalidMain)
   }
 
   test("turtle source excludes alternative Java array parameter spellings") {
@@ -1467,7 +1468,6 @@ class JavaParserTest extends FunSuite {
     val n = resolvedMethod(source, "main").body.statements.head.asInstanceOf[Declare].variable
     val definition = program.bindings.definition(n).fold(problem => fail(problem.message), identity)
     val expression = program.root.entryPoint.body.statements(1).node.asInstanceOf[P.Node.Call].arguments.head
-    assert(expression.expression.staticInformationExpression.hasSideEffects)
     var current: E.Value = E.Value.IntValue(2)
     val read: X.Reader = actual => { assert(actual eq definition); Right(current) }
     val write: X.Writer = (actual, value) => { assert(actual eq definition); current = value; Right(()) }

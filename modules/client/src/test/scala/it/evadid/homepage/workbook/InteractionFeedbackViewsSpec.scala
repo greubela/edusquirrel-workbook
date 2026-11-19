@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
@@ -27,11 +28,11 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val statuses = List(GradingStatus.Correct(), GradingStatus.Correct(), GradingStatus.PartiallyCorrect(),
       GradingStatus.Incorrect(), GradingStatus.NotFinished(),
       GradingStatus.TestError(it.evadid.distribution.command.SerializedException("private execution error")), GradingStatus.NotRequested())
-    val state: ProgrammingState = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString("forward(10)")
+    val state: ProgrammingState = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "forward(10)")
     val results = graders.zip(statuses).map((g, status) => GradingResult(g, state, status))
     val obsolete = GradingResult(grader("removed-grader"), state, GradingStatus.Correct())
     val stale = GradingResult(graders.last,
-      it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString("forward(999)"), GradingStatus.Correct())
+      it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "forward(999)"), GradingStatus.Correct())
     val summary = GradingSummary(graders, GradedState(state, (results ++ List(obsolete, stale)).map(result => result.grader -> result).toMap))
     assertEquals(summary.correct, 2)
     assertEquals(summary.total, 8)
@@ -84,7 +85,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val close = mount(sidebar)
     try {
       assert(sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
-      val next = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString("forward(20)")
+      val next = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "forward(20)")
       variable.updateHistory(_.addState(it.evadid.workbook.interaction.variable.InteractionVariableState(
         next, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, date.plusHours(1))), ExecutionContextInformation.default)
       assert(!sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))

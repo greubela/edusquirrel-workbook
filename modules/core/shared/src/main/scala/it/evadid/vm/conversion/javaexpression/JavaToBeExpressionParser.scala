@@ -20,13 +20,73 @@ final class JavaToBeExpressionParser {
   private[conversion] def toPython(source: String): String = {
     val output = List.newBuilder[String]
     var indentation = 0
+    var emptyBlock = false
+    case class Scope(owner: Option[String], locals: Set[String], isClass: Boolean, isStatic: Boolean)
+    val classes = it.evadid.vm.conversion.structured.SourceStructure.javaClasses(source)
+    val fields = classes.map(block => block.name -> it.evadid.vm.conversion.structured.SourceStructure.javaMembers(block.source).flatMap { member =>
+      stripModifiers(member.trim.stripSuffix(";")) match {
+        case Declaration(_, name, _) => Some(name)
+        case _ => None
+      }
+    }.toSet).toMap
+    val methods = classes.map(block => block.name -> it.evadid.vm.conversion.structured.SourceStructure.javaMembers(block.source).flatMap { member =>
+      member.takeWhile(_ != '{').trim match {
+        case Function(_, name, _) => Some(name -> "\\bstatic\\b".r.findFirstIn(member.takeWhile(_ != '{')).nonEmpty)
+        case _ => None
+      }
+    }.toMap).toMap
+    var scopes = List.empty[Scope]
+    def owner: Option[String] = scopes.headOption.flatMap(_.owner)
+    def visibleLocals: Set[String] = scopes.takeWhile(!_.isClass).flatMap(_.locals).toSet
+    def expression(code: String): String = translateExpression(code, word => {
+      if word == "this" then {
+        require(!scopes.headOption.exists(_.isStatic), "this cannot occur in a static method.")
+        "self"
+      } else if visibleLocals(word) then word
+      else if owner.exists(name => fields.getOrElse(name, Set.empty)(word)) && !scopes.headOption.exists(_.isClass) then {
+        require(!scopes.headOption.exists(_.isStatic), s"Instance field '$word' needs an object.")
+        "self." + word
+      } else owner.flatMap(methods.get).flatMap(_.get(word)) match {
+        case Some(true) => owner.get + "." + word
+        case Some(false) if !scopes.headOption.exists(_.isClass) =>
+          require(!scopes.headOption.exists(_.isStatic), s"Instance method '$word' needs an object.")
+          "self." + word
+        case _ => word
+      }
+    }, classes.map(_.name).toSet)
     tokenize(source).foreach {
-      case CloseBlock => indentation = (indentation - 1).max(0)
+      case CloseBlock =>
+        if emptyBlock then output += (" " * (indentation * 4) + "pass")
+        scopes = scopes.drop(1)
+        indentation = (indentation - 1).max(0)
+        emptyBlock = false
       case OpenBlock(header) =>
-        output += (" " * (indentation * 4) + translateHeader(header))
+        translateHeader(header, owner, expression).linesIterator.foreach(line => output += (" " * (indentation * 4) + line))
+        val next = header match {
+          case ClassHeader(name) => Scope(Some(name), Set.empty, true, false)
+          case Function(_, _, parameters) => Scope(owner, parameterNames(parameters), false, "\\bstatic\\b".r.findFirstIn(header).nonEmpty)
+          case ForLoop(name, _, _, _) => Scope(owner, Set(name), false, scopes.headOption.exists(_.isStatic))
+          case Constructor(_, parameters) => Scope(owner, parameterNames(parameters), false, false)
+          case _ => Scope(owner, Set.empty, false, scopes.headOption.exists(_.isStatic))
+        }
+        scopes = next :: scopes
         indentation += 1
+        emptyBlock = true
       case Statement(code) if code.trim.nonEmpty =>
-        output += (" " * (indentation * 4) + translateStatement(code))
+        val statement = stripModifiers(code.trim)
+        statement match {
+          case Declaration(_, name, _) if scopes.nonEmpty =>
+            require(!scopes.head.isClass || !"\\bstatic\\b".r.findFirstIn(code).nonEmpty, "Static object fields are not supported by the shared expression model.")
+            scopes = scopes.head.copy(locals = scopes.head.locals + name) :: scopes.tail
+          case _ => ()
+        }
+        val rendered = statement match {
+          case Declaration(javaType, name, initializer) =>
+            s"$name: ${pythonType(javaType)}${Option(initializer).map(expression).getOrElse("")}"
+          case other => expression(other)
+        }
+        output += (" " * (indentation * 4) + rendered)
+        emptyBlock = false
       case _ => ()
     }
     output.result().mkString("\n")
@@ -84,27 +144,24 @@ final class JavaToBeExpressionParser {
     tokens.result()
   }
 
-  private def translateHeader(raw: String): String = {
+  private def translateHeader(raw: String, owner: Option[String], expression: String => String): String = {
     val header = raw.trim
-    if header.matches("if\\s*\\(.*\\)") then s"if ${conditionBetweenParens(header)}:"
-    else if header.matches("else\\s+if\\s*\\(.*\\)") then s"elif ${conditionBetweenParens(header)}:"
+    if header.matches("if\\s*\\(.*\\)") then s"if ${expression(header.substring(header.indexOf('(') + 1, header.lastIndexOf(')')))}:"
+    else if header.matches("else\\s+if\\s*\\(.*\\)") then s"elif ${expression(header.substring(header.indexOf('(') + 1, header.lastIndexOf(')')))}:"
     else if header == "else" then "else:"
-    else if header.matches("while\\s*\\(.*\\)") then s"while ${conditionBetweenParens(header)}:"
+    else if header.matches("while\\s*\\(.*\\)") then s"while ${expression(header.substring(header.indexOf('(') + 1, header.lastIndexOf(')')))}:"
     else header match
       case ClassHeader(name) => s"class $name:"
-      case _ => parseFor(header).getOrElse(parseFunction(header))
+      case _ => parseFor(header, expression).getOrElse(parseFunction(header, owner))
   }
-
-  private def conditionBetweenParens(header: String): String =
-    translateExpression(header.substring(header.indexOf('(') + 1, header.lastIndexOf(')')))
 
   private val ForLoop =
     """for\s*\(\s*(?:[A-Za-z_$][\w$<>\[\]]*\s+)?([A-Za-z_$][\w$]*)\s*=\s*(.+?)\s*;\s*\1\s*(<=|<)\s*(.+?)\s*;\s*\1\s*\+\+\s*\)""".r
 
-  private def parseFor(header: String): Option[String] = header match
+  private def parseFor(header: String, expression: String => String): Option[String] = header match
     case ForLoop(name, start, operator, limit) =>
-      val stop = if operator == "<=" then s"${translateExpression(limit)} + 1" else translateExpression(limit)
-      Some(s"for $name in range(${translateExpression(start)}, $stop):")
+      val stop = if operator == "<=" then s"${expression(limit)} + 1" else expression(limit)
+      Some(s"for $name in range(${expression(start)}, $stop):")
     case _ => None
 
   private val ClassHeader =
@@ -113,6 +170,13 @@ final class JavaToBeExpressionParser {
   private val Function =
     """(?:public\s+|private\s+|protected\s+|static\s+)*([A-Za-z_$][\w$<>\[\]]*)\s+([A-Za-z_$][\w$]*)\s*\((.*)\)""".r
 
+  private val Constructor = """(?:public\s+|private\s+|protected\s+)*([A-Za-z_$][\w$]*)\s*\((.*)\)""".r
+  private def parameterNames(source: String): Set[String] = splitArguments(source).map(_.trim.split("\\s+").last).toSet
+  private def typedParameters(source: String): List[String] = splitArguments(source).map { parameter =>
+    val parts = parameter.trim.stripPrefix("final ").split("\\s+")
+    s"${parts.last}: ${pythonType(parts.head)}"
+  }
+
   private def pythonType(javaType: String): String = javaType match
     case "byte" | "short" | "int" | "long" => "float" // The VM currently models these as Numeric.
     case "float" | "double" => "float"
@@ -120,30 +184,31 @@ final class JavaToBeExpressionParser {
     case "char" | "String" => "str"
     case "void" => "None"
     case "Date" => "date"
-    case _ => "Any"
+    case "Object" => "Any"
+    case name if name.matches("[A-Za-z_$][\\w$]*") => name
+    case other => throw IllegalArgumentException(s"Unsupported Java type: $other")
 
-  private def parseFunction(header: String): String = header match
+  private def parseFunction(header: String, owner: Option[String]): String = header match
     case Function(returnType, name, parameters) =>
       val typedParameters = splitArguments(parameters).filter(_.nonEmpty).map { parameter =>
         val parts = parameter.trim.stripPrefix("final ").split("\\s+")
         val parameterName = parts.last.replace("...", "")
         s"$parameterName: ${pythonType(parts.head)}"
       }
-      s"def $name(${typedParameters.mkString(", ")}) -> ${pythonType(returnType)}:"
+      val isStatic = "\\bstatic\\b".r.findFirstIn(header).nonEmpty
+      val parametersWithReceiver = Option.when(owner.nonEmpty && !isStatic)("self").toList ++ typedParameters
+      val decorator = if owner.nonEmpty && isStatic then "@staticmethod\n" else ""
+      decorator + s"def $name(${parametersWithReceiver.mkString(", ")}) -> ${pythonType(returnType)}:"
+    case Constructor(name, parameters) if owner.contains(name) =>
+      s"def __init__(${("self" :: typedParameters(parameters)).mkString(", ")}):"
     case _ => throw IllegalArgumentException(s"Unsupported Java block header: $header")
 
   private val Declaration =
     """^(?:final\s+)?(boolean|byte|short|int|long|float|double|char|String|Object|[A-Z][A-Za-z0-9_$<>\[\]]*)\s+([A-Za-z_$][\w$]*)(\s*=\s*.+)?$""".r
 
-  private def translateStatement(raw: String): String = raw.trim match
-    case Declaration(javaType, name, initializer) =>
-      val assignment = Option(initializer).map(translateExpression).getOrElse("")
-      s"$name: ${pythonType(javaType)}$assignment"
-    case statement if statement.matches("[A-Za-z_$][\\w$]*") =>
-      throw IllegalArgumentException(s"Unsupported Java statement: $statement")
-    case statement => translateExpression(statement)
+  private def stripModifiers(raw: String): String = raw.replaceFirst("^(?:(?:public|private|protected|static|final)\\s+)+", "")
 
-  private def translateExpression(expression: String): String = {
+  private def translateExpression(expression: String, resolve: String => String = identity, knownClasses: Set[String] = Set.empty): String = {
     val result = new StringBuilder
     var index = 0
     var quote: Option[Char] = None
@@ -157,16 +222,35 @@ final class JavaToBeExpressionParser {
           else if char == '\\' then escaped = true
           else if char == delimiter then quote = None
           index += 1
+        case None if char == '(' && expression.indexOf(')', index) > index &&
+            expression.substring(index + 1, expression.indexOf(')', index)).trim == "double" =>
+          index = expression.indexOf(')', index) + 1
         case None if char == '\'' || char == '"' => quote = Some(char); result += char; index += 1
         case None if expression.startsWith("&&", index) => result ++= " and "; index += 2
         case None if expression.startsWith("||", index) => result ++= " or "; index += 2
         case None if char == '!' && !expression.startsWith("!=", index) => result ++= "not "; index += 1
+        case None if char.isLetter || char == '_' || char == '$' =>
+          val end = expression.indexWhere(value => !value.isLetterOrDigit && value != '_' && value != '$', index) match {
+            case -1 => expression.length
+            case value => value
+          }
+          val word = expression.substring(index, end)
+          val qualified = expression.take(index).reverse.dropWhile(_.isWhitespace).headOption.contains('.')
+          val name = word match {
+            case "new" =>
+              val constructed = expression.drop(end).dropWhile(_.isWhitespace).takeWhile(value => value.isLetterOrDigit || value == '_' || value == '$')
+              require(knownClasses(constructed), s"Cannot convert construction of unknown class '$constructed'.")
+              ""
+            case "true" => "True"
+            case "false" => "False"
+            case "null" => "None"
+            case _ => if qualified then word else resolve(word)
+          }
+          result ++= name
+          index = end
         case None => result += char; index += 1
-    normalizeKeywords(result.result())
+    result.result()
   }
-
-  private def normalizeKeywords(value: String): String =
-    value.replaceAll("\\btrue\\b", "True").replaceAll("\\bfalse\\b", "False").replaceAll("\\bnull\\b", "None")
 
   private def splitArguments(value: String): List[String] =
     if value.trim.isEmpty then Nil else value.split(',').toList.map(_.trim)

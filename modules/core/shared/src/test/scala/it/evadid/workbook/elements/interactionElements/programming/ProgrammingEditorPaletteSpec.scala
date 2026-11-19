@@ -1,7 +1,8 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette, SnapPaletteCatalog}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{MaxCommandUsage, RecreateTurtleDidacticConfig, TurtleGraphic, TurtleRecreateShapeInteraction}
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.PaletteTab
@@ -57,7 +58,7 @@ class ProgrammingEditorPaletteSpec extends FunSuite {
       PaletteLayout.CatalogTabs(List(PaletteTab.Control, PaletteTab.Motion)),
       PaletteLayout.NativeSnap, PaletteLayout.Mixed(Nil))
     layouts.foreach { layout =>
-      val original = TurtleRecreateShapeInteraction("custom-shape", ProgrammingStatePythonString("forward(10)"),
+      val original = TurtleRecreateShapeInteraction("custom-shape", ProgrammingStateRaw(Python, "forward(10)"),
         TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"),
         customExerciseConfig = Some(RecreateTurtleDidacticConfig(
           List(SnapLanguage, Python, Java),

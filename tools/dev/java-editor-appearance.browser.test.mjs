@@ -311,19 +311,19 @@ test('language tabs follow the current draft and commit converted representation
       }, code);
       assert.equal(await readSource(), code);
     }
-    async function checkTabs(convertible) {
+    async function checkTabs(convertible, snapConvertible = convertible) {
       await python.focus();
       await snap.focus();
-      await page.waitForFunction(convertible => {
+      await page.waitForFunction(({convertible, snapConvertible}) => {
         const tabs = [...document.querySelectorAll('dialog[open] .eva-editor__tabs button')];
         return ['Python', 'Snap!'].every(label => {
           const tab = tabs.find(tab => tab.getAttribute('aria-label') === label);
-          return tab?.getAttribute('aria-disabled') === String(!convertible);
+          return tab?.getAttribute('aria-disabled') === String(!(label === 'Snap!' ? snapConvertible : convertible));
         });
-      }, convertible);
+      }, {convertible, snapConvertible});
       assert.equal(await java.isDisabled(), false);
       assert.equal(await python.isDisabled(), !convertible);
-      assert.equal(await snap.isDisabled(), !convertible);
+      assert.equal(await snap.isDisabled(), !snapConvertible);
       assert.equal(await java.getAttribute('aria-selected'), 'true');
     }
     const valid = 'public class Drawing {\n  public static void main(String[] args) {\n    Turtle.forward(12);\n  }\n}\n';
@@ -343,7 +343,12 @@ test('language tabs follow the current draft and commit converted representation
     await checkTabs(true);
     const unsupported = spaced.replace('public static void main', 'public void main');
     await writeSource(unsupported);
+    // Instance main is an ordinary method: its unsupported array parameter cannot disappear.
     await checkTabs(false);
+    const instanceOnly = unsupported.replace('void main(String[] args)', 'void draw()');
+    await writeSource(instanceOnly);
+    // A parameter-free instance method is representable in Python; Snap has no class blocks.
+    await checkTabs(true, false);
     await writeSource(spaced);
     await checkTabs(true);
     await page.evaluate(({valid, unfinished}) => {
@@ -367,7 +372,7 @@ test('language tabs follow the current draft and commit converted representation
     await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-label="Java"]')?.getAttribute('aria-selected') === 'true');
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
     assert.match(await readSource(), /Turtle\.forward\(12\);/, 'returning to Java uses the converted program in the central answer');
-    assert.match(await readSource(), /class Drawing/);
+    assert.match(await readSource(), /void main\s*\(/, "the entry point survives without replaying the original Java wrapper");
     await checkTabs(true);
     await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, []);

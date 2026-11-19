@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.ownership.ManualOwner
@@ -75,12 +75,12 @@ class EvaEditorSpec extends EditorDomSuite {
   }
 
   test("startup creates only the matching editor; changes update it without creating another") {
-    val source = ProgrammingStateJavaString("class Unfinished {")
+    val source = ProgrammingStateRaw(Java, "class Unfinished {")
     val f = new Fixture(source)
     try {
       assertEquals(f.created.now(), Vector(Java))
       assertEquals(f.mounted.now(), Set[ProgrammingLanguage](Java))
-      val restored = ProgrammingStateJavaString("class Restored {\n")
+      val restored = ProgrammingStateRaw(Java, "class Restored {\n")
       f.state.set(restored)
       assertEquals(f.created.now(), Vector(Java))
       assertEquals(f.observed.now().last, Java -> restored)
@@ -88,10 +88,10 @@ class EvaEditorSpec extends EditorDomSuite {
     assertEquals(f.mounted.now(), Set.empty)
   }
   test("switching converts the central answer and replaces the editor; returning creates a fresh one") {
-    val source = ProgrammingStatePythonString("forward(12)")
+    val source = ProgrammingStateRaw(Python, "forward(12)")
     val f = new Fixture(source)
     f.editor.switchTabTo(Java).flatMap { _ =>
-      assertEquals(f.state.now(), source.toJava)
+      assertEquals(f.state.now(), source.toJavaStructured)
       assertEquals(f.created.now(), Vector(Python, Java))
       assertEquals(f.mounted.now(), Set[ProgrammingLanguage](Java))
       f.editor.switchTabTo(Python)
@@ -102,16 +102,16 @@ class EvaEditorSpec extends EditorDomSuite {
     }.andThen { case _ => f.close() }
   }
   test("all central changes are observed without an editor-specific edit channel") {
-    val f = new Fixture(ProgrammingStatePythonString("forward(1)"))
+    val f = new Fixture(ProgrammingStateRaw(Python, "forward(1)"))
     try {
-      f.state.set(ProgrammingStatePythonString("forward(2)"))
-      f.state.set(ProgrammingStatePythonString("forward(3)"))
-      assertEquals(f.observed.now().map(_._2), Vector(ProgrammingStatePythonString("forward(1)"),
-        ProgrammingStatePythonString("forward(2)"), ProgrammingStatePythonString("forward(3)")))
+      f.state.set(ProgrammingStateRaw(Python, "forward(2)"))
+      f.state.set(ProgrammingStateRaw(Python, "forward(3)"))
+      assertEquals(f.observed.now().map(_._2), Vector(ProgrammingStateRaw(Python, "forward(1)"),
+        ProgrammingStateRaw(Python, "forward(2)"), ProgrammingStateRaw(Python, "forward(3)")))
     } finally f.close()
   }
   test("failed conversion retains the draft and mounted editor") {
-    val source = ProgrammingStateJavaString("class Unfinished {")
+    val source = ProgrammingStateRaw(Java, "class Unfinished {")
     val f = new Fixture(source)
     f.editor.switchTabTo(Python).map { _ =>
       assertEquals(f.state.now(), source)
@@ -121,18 +121,18 @@ class EvaEditorSpec extends EditorDomSuite {
     }.andThen { case _ => f.close() }
   }
   test("external language restores replace the active editor and release its subscription") {
-    val f = new Fixture(ProgrammingStatePythonString("forward(1)"))
+    val f = new Fixture(ProgrammingStateRaw(Python, "forward(1)"))
     try {
-      f.state.set(ProgrammingStateJavaString("unfinished class"))
+      f.state.set(ProgrammingStateRaw(Java, "unfinished class"))
       val count = f.observed.now().count(_._1 == Python)
-      f.state.set(ProgrammingStateJavaString("restored class"))
+      f.state.set(ProgrammingStateRaw(Java, "restored class"))
       assertEquals(f.created.now(), Vector(Python, Java))
       assertEquals(f.observed.now().count(_._1 == Python), count)
       assertEquals(f.mounted.now(), Set[ProgrammingLanguage](Java))
     } finally f.close()
   }
   test("the latest requested conversion wins") {
-    val f = new Fixture(ProgrammingStatePythonString("forward(1)"))
+    val f = new Fixture(ProgrammingStateRaw(Python, "forward(1)"))
     val first = f.editor.switchTabTo(Java)
     val last = f.editor.switchTabTo(SnapLanguage)
     Future.sequence(List(first, last)).map { _ =>
@@ -141,10 +141,10 @@ class EvaEditorSpec extends EditorDomSuite {
     }.andThen { case _ => f.close() }
   }
   test("state changes and unmount cancel pending conversions, including A-to-B-to-A") {
-    val original = ProgrammingStatePythonString("forward(1)")
+    val original = ProgrammingStateRaw(Python, "forward(1)")
     val f = new Fixture(original)
     val pending = f.editor.switchTabTo(Java)
-    f.state.set(ProgrammingStatePythonString("forward(2)"))
+    f.state.set(ProgrammingStateRaw(Python, "forward(2)"))
     f.state.set(original)
     pending.flatMap { _ =>
       assertEquals(f.created.now(), Vector(Python))
@@ -154,7 +154,7 @@ class EvaEditorSpec extends EditorDomSuite {
     }.map(_ => assertEquals(f.state.now(), original))
   }
   test("empty configurations do not create any editor") {
-    val f = new Fixture(ProgrammingStatePythonString("unfinished("), Nil)
+    val f = new Fixture(ProgrammingStateRaw(Python, "unfinished("), Nil)
     try assertEquals(f.created.now(), Vector.empty) finally f.close()
   }
 
@@ -169,7 +169,7 @@ class EvaEditorSpec extends EditorDomSuite {
   private def click(element: dom.Element): Unit = element.asInstanceOf[js.Dynamic].click()
 
   test("a blocked tab names the conversion failure and stays on the draft") {
-    val source = ProgrammingStateJavaString("class Unfinished {")
+    val source = ProgrammingStateRaw(Java, "class Unfinished {")
     val f = new Fixture(source)
     tabsInDom.filterNot(_.getAttribute("aria-selected") == "true").foreach(
       _.asInstanceOf[dom.html.Element].focus())
@@ -189,7 +189,7 @@ class EvaEditorSpec extends EditorDomSuite {
   }
 
   test("arrow keys move focus between tabs without switching the draft") {
-    val source = ProgrammingStatePythonString("forward(1)")
+    val source = ProgrammingStateRaw(Python, "forward(1)")
     val f = new Fixture(source)
     try {
       val current = tab("Python")
@@ -214,7 +214,7 @@ class EvaEditorSpec extends EditorDomSuite {
 
   test("the editor theme follows data-theme on the page") {
     dom.document.documentElement.setAttribute("data-theme", "light")
-    val f = new Fixture(ProgrammingStatePythonString("forward(1)"))
+    val f = new Fixture(ProgrammingStateRaw(Python, "forward(1)"))
     laterOnPage(50).map { _ =>
       assertEquals(dom.document.querySelector(".eva-editor").getAttribute("data-editor-theme"), "light")
       assert(dom.document.querySelector(".editor-appearance__toggle") == null)

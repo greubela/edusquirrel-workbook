@@ -12,7 +12,6 @@ import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementS
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.EditorWithWorkbookPanel
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.workbook.abstractions.scaffolding.AdditionalInfoLlmScaffolding
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava

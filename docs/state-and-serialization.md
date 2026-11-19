@@ -87,12 +87,12 @@ configuration and required services instead of reaching into that global context
 Use `bimap` when the two conversions express a valid view of the same value:
 
 ```scala
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.core.datastructures.language.AppLanguage.Python
 
 def pythonView(program: Var[ProgrammingState]): Var[String] =
-  program.bimap(_.toPython.code)(ProgrammingStatePythonString(_))
+  program.bimap(_.toPython.code)(code => ProgrammingStateRaw(Python, code))
 ```
 
 This pattern is suitable when the selected editor is bound to its native

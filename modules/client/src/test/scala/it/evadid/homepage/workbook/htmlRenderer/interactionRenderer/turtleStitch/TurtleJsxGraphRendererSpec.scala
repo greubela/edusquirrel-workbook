@@ -1,8 +1,8 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
@@ -26,7 +26,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
       ("forward(5)\nforward(5)", "M0 0 L10 0"),
       ("forward(10)\npen_up()\ngoto_x_y(10, 5)\ngoto_x_y(20, 0)\npen_down()\nforward(10)", "M0 0 L10 0 M20 0 L30 0"))
     Future.traverse(cases) { (code, path) =>
-      val source = ProgrammingStatePythonString(code)
+      val source = ProgrammingStateRaw(Python, code)
       val target = TurtleGraphic.TurtleGraphicSvgString(path)
       Future.traverse(TurtleDrawingPolicy.values.toList) { policy =>
         val visual = TurtleDrawingGrading.assess(source.toBeExpression.turtleCommandExecutionInfo.completedCommands, target, policy)
@@ -51,7 +51,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
 
   test("preview conversion retains Java drafts it cannot display") {
     List("class Drawing {", "class Drawing { static void main(String[] args) {} }").foreach { code =>
-      val state = ProgrammingStateJavaString(code)
+      val state = ProgrammingStateRaw(Java, code)
       val fingerprint = state.fingerprint()
       assert(previewAssessment(state).isFailure)
       assertEquals(state.fingerprint(), fingerprint)
@@ -60,7 +60,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   }
 
   test("shape preview assesses supported turtle commands") {
-    val assessment = previewAssessment(ProgrammingStatePythonString("forward(12)")).get
+    val assessment = previewAssessment(ProgrammingStateRaw(Python, "forward(12)")).get
     assert(assessment.matches)
     assert(assessment.scene.lines.forall(_.result == LineResult.Correct))
   }

@@ -1,5 +1,5 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
 import it.evadid.vm.test.BeTestSuite
@@ -10,6 +10,7 @@ import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSe
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.InteractionFormat.*
 import scala.util.Try
@@ -25,7 +26,7 @@ case class ProgrammingExercise(
                               ) extends WorkbookInteractionElement[ProgrammingExerciseFormat.type] derives upickle.default.ReadWriter {
   override val associatedFactory = ProgrammingExercise.factory
 
-  override val defaultValue: ProgrammingState = ProgrammingStateSnapXml.mini
+  override val defaultValue: ProgrammingState = ProgrammingStateSnapScalaModel.mini
   override val gradingElements = testSuite.toList.flatMap(_.graders)
 
   override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()

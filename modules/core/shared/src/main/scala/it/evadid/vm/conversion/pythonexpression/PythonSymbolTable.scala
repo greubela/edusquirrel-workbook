@@ -78,7 +78,7 @@ object PythonSymbolTable {
       structures.foldLeft(empty)(_ + _)
   }
 
-  final class ParseContext(initialKnownStructures: CurrentlyKnownStructures, initialDeclaredNames: Set[String] = Set.empty) {
+  final class ParseContext(initialKnownStructures: CurrentlyKnownStructures, initialDeclaredNames: Set[String] = Set.empty, val currentClass: Option[BeDefineClass] = None) {
     private var currentlyKnownStructures: CurrentlyKnownStructures = initialKnownStructures
     private var scopes: List[mutable.LinkedHashMap[String, BeDefineVariable]] = {
       val baseScope = mutable.LinkedHashMap[String, BeDefineVariable]()
@@ -143,8 +143,17 @@ object PythonSymbolTable {
     }
 
     def registerClass(name: String, clazz: BeDefineClass): Unit = {
-      if (!classesBuffer.exists(_ eq clazz)) classesBuffer += clazz
+      val existing = classesBuffer.indexWhere(_.name.universalInterpretation() == clazz.name.universalInterpretation())
+      if existing < 0 then classesBuffer += clazz else classesBuffer.update(existing, clazz)
       currentlyKnownStructures = currentlyKnownStructures.addClass(name, clazz)
+    }
+
+    def lookupClass(name: String): Option[BeDefineClass] =
+      currentlyKnownStructures.classes.get(name).orElse(currentlyKnownStructures.classes.values.find(_.name.universalInterpretation() == BeEntityName.fromCodeString(name).universalInterpretation()))
+
+    def classForType(dataType: BeDataType): Option[BeDefineClass] = dataType match {
+      case BeDataType.ClassType(name) => currentlyKnownStructures.classes.values.find(_.name.universalInterpretation() == name.universalInterpretation())
+      case _ => None
     }
 
     def snapshotStructures: CurrentlyKnownStructures = currentlyKnownStructures
@@ -175,7 +184,8 @@ object PythonSymbolTable {
           val canonical = if sourceBinding then None else KnownBeEntityNames.resolveCanonicalNames(name)
           val params = (0 until arity).map(index => BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)).toList
           BeDefineFunction(params, None, BeSequence.optionalBody(Nil),
-            BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))))
+            BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))),
+            Option.when(canonical.contains(KnownBeEntityNames.resolveSystemMethods("print").get))(it.evadid.vm.code.defining.BeIntrinsic.Print))
         }
       }
       // A callable parameter/local shadows a cached builtin or turtle alias in this scope.

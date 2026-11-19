@@ -1,18 +1,13 @@
 package it.evadid.vm.conversion.javaexpression.checked
 
-import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.defining.BeDefineVariable
-import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import it.evadid.vm.code.usage.BeUseValue
-import it.evadid.vm.controlflow.ControlFlowType.ControlFlowDown
-import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution as R
 import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleSource.{Diagnostic, Problem}
 import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmBindings.Bindings
-import it.evadid.vm.simulation.{BeExpressionExecutor, BeSimulatorConfig, BeSimulatorState}
 import it.evadid.vm.simulation.java.JavaTurtleEvaluation as E
-import it.evadid.vm.static.BeExpressionStaticInformation
-import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeDataType, BeScope, BeUseValueReference}
+import it.evadid.vm.types.BeUseValueReference
+
 
 object JavaTurtleVmExpressions {
   enum Node {
@@ -29,52 +24,6 @@ object JavaTurtleVmExpressions {
   }
 
   final class Expression private[JavaTurtleVmExpressions](val node: Node, val valueType: R.ValueType)
-      extends BeExpression {
-    private def children: Vector[BeExpression] = node match {
-      case Node.IntLiteral(_) | Node.DoubleLiteral(_) | Node.BooleanLiteral(_) => Vector.empty
-      case Node.Read(_, reference) => Vector(reference)
-      case Node.Update(_, reference, _, _) => Vector(reference)
-      case Node.Group(expression) => Vector(expression)
-      case Node.Widen(expression) => Vector(expression)
-      case Node.Unary(_, operand) => Vector(operand)
-      case Node.Binary(_, left, right) => Vector(left, right)
-      case Node.ShortCircuit(_, left, right) => Vector(left, right)
-    }
-
-    override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
-      override def hasSideEffects: Boolean = node match {
-        case _: Node.Update => true
-        case _ => children.exists(_.staticInformationExpression.hasSideEffects)
-      }
-
-      override def staticType: BeDataType =
-        valueType match {
-          case R.ValueType.IntValue => BeDataType.Int
-          case R.ValueType.DoubleValue => BeDataType.Numeric
-          case R.ValueType.BooleanValue => BeDataType.Boolean
-          case R.ValueType.MainArguments => throw new IllegalStateException("The main wrapper has no expression value type.")
-        }
-    }
-
-    override lazy val structureInfo: BeExpressionStructureInfo[Expression] = new BeExpressionStructureInfo[Expression](this) {
-      override def withReplacedChildren(replacements: Map[BeChildRole, BeExpression]): Expression = {
-        if replacements.nonEmpty then
-          throw new UnsupportedOperationException("Recompile edited Java source to replace expression children.")
-        Expression.this
-      }
-
-      override def toJavaStyleLines(info: BeChildInfo): Seq[BeSegmentedCodeElement] =
-        asExpressionLine(ControlFlowDown(), info)
-
-      override def getChildrenAndExtension(scope: BeScope): Seq[BeExpressionNode] =
-        children.zipWithIndex.map { (child, index) =>
-          BeExpressionReference(BeChildInfo(BeChildRole.FunctionParameter(index), scope), child)
-        }
-    }
-
-    override def expressionExecutor(config: BeSimulatorConfig, state: BeSimulatorState): BeExpressionExecutor =
-      throw new UnsupportedOperationException("Java expressions require JavaTurtleVmExpressions.evaluate.")
-  }
 
   final class BoundExpression private[JavaTurtleVmExpressions](val bindings: Bindings, val expression: Expression,
       private[vm] val resolved: R.Expression, private[vm] val definitions: Map[R.Variable, BeDefineVariable])

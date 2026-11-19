@@ -111,7 +111,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     } finally close()
   }
 
-  test("feedback for another answer is hidden while an available language remains usable") {
+  test("feedback for another answer is hidden and localization uses the shared fallback") {
     val exercise = TextInputWithScaffoldingAndGrading("renderer-stale", LanguageMapContentId("test/task"),
       contentGrading = List(ContentForLlmInteraction(LanguageMapContentId("test/check"), Map.empty)))
     val grader = exercise.gradingElements.head
@@ -131,6 +131,8 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
       exercise.interactionVariable.updateHistory(_.addGrading(wrongLanguage), fullInfo.workbookContextInformation)
       assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 1)
       assert(element.ref.textContent.contains("Wrong language feedback"))
+      assert(element.ref.textContent.contains(fullInfo.signals.stringFromLanguageMap(
+        wrongLanguage.feedbackInformation.get).now()))
     } finally close()
   }
 }

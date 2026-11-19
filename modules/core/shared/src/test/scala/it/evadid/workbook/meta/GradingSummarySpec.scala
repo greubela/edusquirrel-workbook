@@ -1,15 +1,16 @@
 package it.evadid.workbook.meta
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import munit.FunSuite
 import it.evadid.workbook.abstractions.grading.*
 import GradingStatus.*
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStatePythonString}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.distribution.command.SerializedException
 
 class GradingSummarySpec extends FunSuite {
-  private val state: ProgrammingState = ProgrammingStatePythonString("forward(1)")
+  private val state: ProgrammingState = ProgrammingStateRaw(Python, "forward(1)")
   private val graders = Seq("first", "second").map(id => ProgrammingUnitTestGrader(id, "assert True", GradingImportance.REQUIRED_TEST))
   private def graded(statuses: Seq[GradingStatus]): GradedState[ProgrammingState, AdditionalProgrammingTestInfo] =
     GradedState(state, graders.zip(statuses).map((grader, status) => grader -> GradingResult(grader, state, status)).toMap)
@@ -47,7 +48,7 @@ class GradingSummarySpec extends FunSuite {
 
   test("stale and removed graders are excluded and duplicated authored keys count once") {
     val removed = ProgrammingUnitTestGrader("removed", "assert True", GradingImportance.REQUIRED_TEST)
-    val stale = GradingResult(graders.last, ProgrammingStatePythonString("old"), Correct())
+    val stale = GradingResult(graders.last, ProgrammingStateRaw(Python, "old"), Correct())
     val value = graded(Seq(Correct())).copy(graderResultMap = graded(Seq(Correct())).graderResultMap ++
       Map(graders.last -> stale, removed -> GradingResult(removed, state, Correct())))
     val summary = GradingSummary(graders ++ graders, value)

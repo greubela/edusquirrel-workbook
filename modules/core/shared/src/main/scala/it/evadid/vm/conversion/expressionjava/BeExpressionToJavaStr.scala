@@ -1,7 +1,7 @@
 package it.evadid.vm.conversion.expressionjava
 
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Java, JavaScript, ProgrammingLanguage}
-import it.evadid.vm.code.abstractions.BeExpression
+import it.evadid.vm.code.abstractions.{BeExpression, BeDefineStructure}
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter
@@ -18,6 +18,70 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     skipUnparsable
   ) derives upickle.default.ReadWriter {
 
+  // A printer owns one rendering. Declarations are tracked per function/class scope.
+  private var declared = Set.empty[String]
+  private var renderingDepth = 0
+  private var moduleFunctions = Set.empty[String]
+  override def forExpression(expression: BeExpression): String = {
+    if renderingDepth == 0 then {
+      declared = Set.empty
+      val statements = expression match {
+        case it.evadid.vm.code.others.BeStartProgram(Some(body)) => body.body
+        case body: it.evadid.vm.code.controlStructures.BeSequence => body.body
+        case definition: BeDefineFunction => List(definition)
+        case _ => Nil
+      }
+      val hasTurtleClass = statements.exists {
+        case definition: it.evadid.vm.code.defining.BeDefineClass => definition.name.universalInterpretation() == "turtle"
+        case _ => false
+      }
+      if targetLanguage == Java && hasTurtleClass then {
+        val usesTurtleLibrary = expression.recToTree(false, it.evadid.vm.types.BeChildInfo(
+          it.evadid.vm.types.BeChildRole.NoRole, it.evadid.vm.types.BeScope.GlobalScope())).values.exists {
+          case it.evadid.vm.code.tree.BeExpressionReference(_, call: BeFunctionCall) =>
+            it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef)
+          case _ => false
+        }
+        if usesTurtleLibrary then throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
+          "A user class named Turtle conflicts with the Java turtle library. Rename the class before conversion.")
+      }
+      moduleFunctions = statements.collect { case definition: BeDefineFunction if definition.functionTypeInfo.isMethodInClass.isEmpty =>
+        definition.functionTypeInfo.displayName.universalInterpretation()
+      }.toSet
+    }
+    renderingDepth += 1
+    try super.forExpression(expression) finally renderingDepth -= 1
+  }
+  override def forDefinition(definition: BeDefineStructure): String = definition match {
+    case function: BeDefineFunction =>
+      val previous = declared
+      declared = previous ++ function.inputs.map(_.name.getNameIn(language, it.evadid.vm.naming.NamingStyle.CamelCase))
+      try super.forDefinition(function) finally declared = previous
+    case variable: BeDefineVariable =>
+      declared += variable.name.getNameIn(language, it.evadid.vm.naming.NamingStyle.CamelCase)
+      super.forDefinition(variable)
+    case _ => super.forDefinition(definition)
+  }
+
+  override protected def callName(call: BeFunctionCall): String =
+    if call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Print) then {
+      require(call.funcDef.inputs.size == 1, "Java printing currently supports one value per call.")
+      "java.lang.System.out.println"
+    } else if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
+      "Turtle." + entityName(call.funcDef.functionTypeInfo.displayName)
+    else if call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] &&
+        moduleFunctions(call.funcDef.functionTypeInfo.displayName.universalInterpretation()) then
+      "Main." + entityName(call.funcDef.functionTypeInfo.displayName)
+    else super.callName(call)
+  override protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
+    function.functionTypeInfo.funcType match {
+      case BeDefineFunction.Constructor() =>
+        val owner = function.functionTypeInfo.isMethodInClass.getOrElse(throw IllegalArgumentException("Constructor requires an owning class."))
+        s"${className(owner.name)}$parameters{"
+      case BeDefineFunction.StaticMethod() => "static " + super.functionDeclaration(function, parameters, outputType)
+      case _ => super.functionDeclaration(function, parameters, outputType)
+    }
+
   override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String = {
     if (targetLanguage == JavaScript) s"function $nameStr$parStr {"
     else s"$outputTypeStr $nameStr$parStr{"
@@ -33,25 +97,33 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
   }
 
   override protected def assignToFunctionPar(parName: String, parType: String, parValue: BeExpression): String = {
-    forExpression(parValue)
+    forValue(parValue)
   }
 
   override protected def assignToDefinedVar(varName: String, varType: String, varValue: BeExpression): String = {
-    if (targetLanguage == JavaScript) s"$varName = ${forExpression(varValue)}"
-    else s"$varType $varName = ${forExpression(varValue)}"
+    val first = !declared(varName)
+    declared += varName
+    val value = forValue(varValue)
+    if targetLanguage == JavaScript || !first then s"$varName = $value"
+    else s"$varType $varName = $value"
   }
 
   override protected def defineVariableLine(nameStr: String, variableTypeString: String, initValue: Option[BeExpression]): String = {
-    if (targetLanguage == JavaScript && initValue.nonEmpty) s"$nameStr = ${forExpression(initValue.get)}"
+    if (targetLanguage == JavaScript && initValue.nonEmpty) s"$nameStr = ${forValue(initValue.get)}"
     else if (targetLanguage == JavaScript) nameStr
-    else if (initValue.nonEmpty) variableTypeString + " " + nameStr + " = " + forExpression(initValue.get)
+    else if (initValue.nonEmpty) variableTypeString + " " + nameStr + " = " + forValue(initValue.get)
     else variableTypeString + " " + nameStr
   }
 
   override def forOther(other: BeExpression): String = other match {
     case call: BeFunctionCall if call.funcDef.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Operator] =>
-      val operator = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
-      val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(forExpression)
+      val operator = call.funcDef.functionTypeInfo.displayName.universalInterpretation() match {
+        case "and" => "&&"
+        case "or" => "||"
+        case "not" => "!"
+        case other => other
+      }
+      val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(forOperand)
       if (arguments.size == 1) s"$operator${arguments.head}" else arguments.mkString(s" $operator ")
     case _ => super.forOther(other)
   }

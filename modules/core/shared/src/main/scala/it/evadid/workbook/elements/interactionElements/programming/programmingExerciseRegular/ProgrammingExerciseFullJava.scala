@@ -1,10 +1,11 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.vm.test.BeTestSuite
 import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
@@ -16,7 +17,7 @@ case class ProgrammingExerciseFullJava(
                                       ) extends WorkbookInteractionElement[ProgrammingExerciseWithLlmScaffoldingAndGrading.type] derives upickle.default.ReadWriter {
   override val associatedFactory = ProgrammingExerciseFullJava.factory
 
-  override val defaultValue: ProgrammingState = ProgrammingStateJavaString(startingProgram)
+  override val defaultValue: ProgrammingState = ProgrammingStateRaw(Java, startingProgram)
   override val gradingElements = testSuite.toList.flatMap(_.graders)
   override val scaffoldingElement = hintTask.map(task => new ProgrammingHintScaffolder(this, task))
 

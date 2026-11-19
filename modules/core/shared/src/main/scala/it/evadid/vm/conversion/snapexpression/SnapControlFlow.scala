@@ -183,7 +183,9 @@ object SnapControlFlow {
         if !isSupportedValue(forExpr.start) || !isSupportedValue(forExpr.end) then Some("for range")
         else bodyProblems(forExpr.body, userFunctions)
       case defn: BeDefineFunction =>
-        bodyProblems(defn.body, userFunctions)
+        if it.evadid.vm.BeProgram.isUnusedCode(defn) && (defn.inputs.nonEmpty || defn.outputs.exists(_.variableType != BeDataType.Unit)) then
+          Some("unusedCode must have no parameters or return value")
+        else bodyProblems(defn.body, userFunctions)
       case seq: BeSequence if isPassSequence(seq) =>
         None
       case seq: BeSequence =>
@@ -367,7 +369,7 @@ object SnapControlFlow {
       BeExpression.pass,
       BeDefineFunction.operatorInfo(symbol, if args.size <= 1 then 0 else 1)
     )
-    BeFunctionCall(define, params.zip(args).toMap)
+    BeFunctionCall.fromDefinition(define, params.zip(args).toMap)
   }
 
   def orderedArgs(call: BeFunctionCall): List[BeExpression] =
@@ -382,7 +384,12 @@ object SnapControlFlow {
       case _ => false
 
   private def callProblems(call: BeFunctionCall, userFunctions: Map[String, Int]): Option[String] = {
-    if isOperatorCall(call) then Some(s"${SnapExpressionSupport.pythonName(call)}(...)")
+    if SnapExpressionSupport.pythonName(call) == it.evadid.vm.BeProgram.unusedCodeName.universalInterpretation() then
+      Some("unusedCode is reserved for detached scripts and cannot be called")
+    else if !call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] &&
+        !it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
+      Some("object methods and constructors have no Snap block representation")
+    else if isOperatorCall(call) then Some(s"${SnapExpressionSupport.pythonName(call)}(...)")
     else
       val name = SnapExpressionSupport.pythonName(call)
       val args = orderedArgs(call)

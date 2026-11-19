@@ -255,7 +255,7 @@ object CppParser {
               case Right(expr) => expressions += expr
               case Left(bad) =>
                 if (bad.trim.nonEmpty) unsupported += bad
-                expressions += BeExpressionUnsupported(bad)
+                expressions += BeExpressionUnsupported(bad, parsedFromLanguage = Some(Cpp))
             }
           }
         }
@@ -278,7 +278,7 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ while: condition parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       skipWhitespace()
@@ -290,7 +290,7 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ while: body parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       val conditionSeq = parseCondition(conditionText, context)
@@ -320,7 +320,7 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ if: condition parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       skipWhitespace()
@@ -332,7 +332,7 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ if: body parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       val conditionSeq = parseCondition(conditionText, context)
@@ -360,7 +360,7 @@ object CppParser {
                 val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
                 val msg = s"C++ else: body parse error: $err"
                 unsupported += original
-                return BeExpressionUnparsable(original, msg)
+                return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
             }
 
             context.pushScope()
@@ -390,7 +390,7 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ for: header parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       skipWhitespace()
@@ -402,14 +402,14 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ for: body parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       val parts = splitTopLevel(headerText, ';').map(_.trim)
       if (parts.length != 3) {
         val original = s"for(${headerText.trim}){...}"
         unsupported += original
-        return BeExpressionUnsupported(original)
+        return BeExpressionUnsupported(original, parsedFromLanguage = Some(Cpp))
       }
 
       val initPart = parts(0)
@@ -426,7 +426,7 @@ object CppParser {
         case None =>
           val original = s"for(${headerText.trim}){...}"
           unsupported += original
-          BeExpressionUnsupported(original)
+          BeExpressionUnsupported(original, parsedFromLanguage = Some(Cpp))
       }
     }
 
@@ -568,7 +568,7 @@ object CppParser {
         val rightExpr = rightVar.map(v => parseOperand(right, v.variableType, context)).getOrElse(parseOperand(right, BeDataType.AnyType, context))
 
         val valueMap: Map[BeDefineVariable, BeExpression] = (leftVar.toList.map(_ -> leftExpr) ++ rightVar.toList.map(_ -> rightExpr)).toMap
-        BeSequence.conditionalBody(List(BeFunctionCall(funcDef, valueMap)))
+        BeSequence.conditionalBody(List(BeFunctionCall.fromDefinition(funcDef, valueMap)))
       }
     }
   }
@@ -674,7 +674,7 @@ object CppParser {
       par -> BeUseValue(BeDataValueLiteral(literal), Some(par))
     }.toMap
 
-    BeFunctionCall(funcDef, valueMap)
+    BeFunctionCall.fromDefinition(funcDef, valueMap)
   }
 
   private def splitArgs(argsText: String): List[String] = {

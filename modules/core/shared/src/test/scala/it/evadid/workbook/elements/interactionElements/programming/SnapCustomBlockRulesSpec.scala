@@ -199,7 +199,7 @@ class SnapCustomBlockRulesSpec extends FunSuite {
     sources.foreach { source =>
       val result = PythonToSnap.applyPython(source)
       assert(result.isRight, clue = s"$source -> $result")
-      val xml = result.toOption.get.snapXml
+      val xml = result.toOption.get.code
       assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = s"$source -> $xml")
     }
   }

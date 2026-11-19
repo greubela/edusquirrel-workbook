@@ -21,7 +21,8 @@ case class BeDefineFunction(
                              inputs: List[BeDefineVariable],
                              outputs: Option[BeDefineVariable],
                              body: BeSequence,
-                             functionTypeInfo: BeFunctionTypeInfo
+                             functionTypeInfo: BeFunctionTypeInfo,
+                             intrinsic: Option[BeIntrinsic] = None
                            ) extends BeDefineStructure derives upickle.default.ReadWriter{
 
   /*
@@ -101,6 +102,10 @@ object BeDefineFunction {
   case class Lambda() extends BeFunctionType derives upickle.default.ReadWriter
 
   case class Method() extends BeFunctionType derives upickle.default.ReadWriter
+
+  case class StaticMethod() extends BeFunctionType derives ReadWriter
+
+  case class Constructor() extends BeFunctionType derives ReadWriter
 
   case class Function() extends BeFunctionType derives upickle.default.ReadWriter
 

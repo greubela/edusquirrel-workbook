@@ -1,5 +1,6 @@
 package it.evadid.vm.code.errors
 
+import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.datastructures.language.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.tree.BeExpressionNode
@@ -9,14 +10,14 @@ import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import upickle.default.*
-case class BeExpressionUnsupported(originalSource: String) extends BeExpression derives ReadWriter{
+case class BeExpressionUnsupported(originalSource: String, parsedFromLanguage: Option[ProgrammingLanguage] = None) extends BeSourcePlaceholder derives ReadWriter{
 
   override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
 
     override def staticType: BeDataType = BeDataType.Error
 
     override def syntaxErrors: Seq[BeInfo] =
-      List(BeInfo(LanguageMap.universalMap(s"Unknown Python structure: $originalSource"), BeInfo.SyntaxError.UnsupportedBlock))
+      List(BeInfo(LanguageMap.universalMap(s"Unsupported structure: $originalSource"), BeInfo.SyntaxError.UnsupportedBlock))
 
   }
 

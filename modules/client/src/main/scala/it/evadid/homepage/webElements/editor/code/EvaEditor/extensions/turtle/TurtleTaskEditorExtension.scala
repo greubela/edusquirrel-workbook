@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -10,7 +10,6 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.vm.conversion.javaediting.JavaEditingMetadata
 
 import scala.util.Try
 import scala.concurrent.Future
@@ -18,11 +17,8 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 object TurtleTaskEditorExtension {
   private[code] def requiresRun(source: ProgrammingState): Boolean = source match {
-    case java: ProgrammingStateJavaString => Try(java.isClassProgram).getOrElse(true)
-    case ProgrammingStatePythonString(code) => JavaEditingMetadata.hasPythonMetadata(code)
-    case snap: ProgrammingStateSnapXml => JavaEditingMetadata.hasSnapMetadata(snap.snapXml)
-    case snap: ProgrammingStateSnapScalaModel => JavaEditingMetadata.hasSnapMetadata(snap.toSnapXml.snapXml)
-    case ProgrammingStateBeExpression(_: JavaTurtleVmPrograms.Root) => true
+    case java @ ProgrammingStateRaw(Java, _) => Try(java.isClassProgram).getOrElse(true)
+    case _: ProgrammingStateJavaStructured => true
     case _ => false
   }
 }

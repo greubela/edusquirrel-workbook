@@ -1,6 +1,5 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import com.raquo.laminar.api.L.*
@@ -17,7 +16,7 @@ trait EvaEditorTab {
   def showLabel: Boolean = true
   def icon: Option[ReactiveSvgElement[SVGSVGElement]] = None
   def css: String = ""
-  def convert(source: ProgrammingState): ProgrammingState = source.toLanguage(language)
+  def convert(source: ProgrammingState): it.evadid.vm.conversion.ConversionResult = source.convertToLanguage(language)
   def create(state: Var[ProgrammingState], appearance: EditorAppearance,
       marker: Signal[Option[it.evadid.vm.code.errors.ProgrammingConversionError]] = Val(None),
       loading: Signal[String] = Val("Loading editor…")): HtmlAppElement

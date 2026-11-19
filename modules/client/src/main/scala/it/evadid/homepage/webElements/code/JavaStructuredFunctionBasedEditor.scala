@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.code
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
@@ -7,7 +8,6 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
 import it.evadid.vm.code.errors.ProgrammingConversionError
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 
 /** The existing method-editing UI, bound directly to class-structured source. */
@@ -20,8 +20,8 @@ final class JavaStructuredFunctionBasedEditor(
     conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
     loadingLabel: Signal[String] = Val("Loading editor…")
 ) extends HtmlAppElement {
-  private val source = state.bimap[ProgrammingState](value => ProgrammingStateJavaString(value.toString)) {
-    case ProgrammingStateJavaString(code) => ProgrammingStateJavaStructured(code)
+  private val source = state.bimap[ProgrammingState](value => ProgrammingStateRaw(Java, value.toString)) {
+    case ProgrammingStateRaw(Java, code) => ProgrammingStateJavaStructured(code)
     case other => other.toJavaStructured
   }
   private val editor = new JavaFunctionBasedEditor(logger, source, reference, appearance,
@@ -36,7 +36,6 @@ object JavaStructuredFunctionBasedEditor {
     override val language = it.evadid.core.datastructures.language.AppLanguage.Java
     override val label = tabLabel
     override val css = " eva-editor--java"
-    override def convert(source: ProgrammingState): ProgrammingState = source.toJavaStructured
     override def create(state: Var[ProgrammingState], appearance: EditorAppearance,
         marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement = {
       // A language change reaches bound signals before Laminar unmounts the old tab.

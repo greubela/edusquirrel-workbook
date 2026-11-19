@@ -1,6 +1,6 @@
 # Full Snap project model in shared core
 
-`ProgrammingStateSnapScalaModel` represents the complete **saved Snap project**, independently of the smaller executable Turtle subset. It lives alongside `ProgrammingStateSnapXml` in [ProgrammingState.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/ProgrammingState.scala). Existing workbooks can continue using the XML representation.
+`ProgrammingStateSnapScalaModel` represents the complete **saved Snap project**, independently of the smaller executable Turtle subset. XML transport uses `ProgrammingStateRaw(SnapLanguage, code)` in [ProgrammingState.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/ProgrammingState.scala). Prefer the typed model for saved answers.
 
 All project node types live in
 [SnapScalaModel.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapScalaModel.scala).
@@ -14,9 +14,10 @@ Each Snap node has one authoritative `Element` containing ordered attributes and
 
 ```scala
 import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.*
 
-val xmlState = ProgrammingStateSnapXml(
+val xmlState = ProgrammingStateRaw(SnapLanguage,
   "<project name='Example'><scenes><scene><stage><sprites>" +
     "<sprite name='Turtle' x='0'><scripts/></sprite>" +
     "</sprites></stage></scene></scenes></project>"
@@ -32,7 +33,7 @@ val changed = typed.copy(model = typed.model.transform {
     sprite.withAttribute("x", "12.5")
   case node => node
 })
-val savedXml: ProgrammingStateSnapXml = changed.toSnapXml
+val savedXml: ProgrammingStateRaw = changed.toSnapXml
 ```
 
 `transform` visits nodes from children to parents. Copies preserve the other nodes, assets, identities and extension content. To author a tree directly, construct typed nodes around `Element`, for example `Project(Element("project", selfClosing = true))` and `Document(Vector(project))`. Attribute edits accept decoded values and escape them for XML.

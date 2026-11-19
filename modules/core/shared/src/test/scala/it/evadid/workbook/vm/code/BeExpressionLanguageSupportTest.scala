@@ -115,7 +115,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     functionTypeInfo = functionInfo(BeEntityName.fromUniversalNameInParts("add"))
   )
 
-  private val functionCall = BeFunctionCall(function, Map(xVar -> literalOne, yVar -> literalTwo))
+  private val functionCall = BeFunctionCall.fromDefinition(function, Map(xVar -> literalOne, yVar -> literalTwo))
 
   private val allExpressions: List[BeExpression] = List(
     xVar,
@@ -195,9 +195,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       """int x = 1;
         |int y = 2;
         |if(true){
-        |    int x = 2;
+        |    x = 2;
         |} else {
-        |    int y = 1;
+        |    y = 1;
         |}
         |""".stripMargin
 
@@ -251,9 +251,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       """int x = 1;
         |int y = 2;
         |if(true){
-        |    int x = 2;
+        |    x = 2;
         |} else {
-        |    int y = 1;
+        |    y = 1;
         |}
         |""".stripMargin
 
@@ -499,7 +499,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     for value <- List(Double.NaN, Double.PositiveInfinity, Double.NegativeInfinity) do
       assertEquals(X.adapt(bindings, R.DoubleLiteral(value)).left.toOption.get.problem, JavaTurtleSource.Problem.UnsupportedNumber)
     val expression = X.adapt(bindings, R.Widen(R.IntLiteral(10))).toOption.get
-    assertEquals(expression.expression.staticInformationExpression.staticType, BeDataType.Numeric)
+    assertEquals(expression.expression.valueType, R.ValueType.DoubleValue)
     assertEquals(X.evaluate(expression, _ => fail("Literal does not read")), Right(E.Value.DoubleValue(10.0)))
   }
 
@@ -904,8 +904,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val R.Declare(size, Some(initializer)) = source.methods.head.body.statements.head: @unchecked
     val compiled = X.adapt(bindings, initializer).toOption.get
     assert(compiled.bindings eq bindings)
-    assertEquals(compiled.expression.staticInformationExpression.staticType, BeDataType.Int)
-    assertEquals(compiled.expression.staticInformationExpression.staticValue, None)
+    assertEquals(compiled.expression.valueType, R.ValueType.IntValue)
     compiled.expression.node match {
       case X.Node.Binary(R.BinaryOperator.Multiply, group, three) =>
         assertEquals(three.node, X.Node.IntLiteral(3))
@@ -918,10 +917,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
           }
           case _ => fail("Missing parentheses")
         }
-        val children = compiled.expression.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
-        assertEquals(children.map(_.childInfo.myRoleInParent), Seq(BeChildRole.FunctionParameter(0), BeChildRole.FunctionParameter(1)))
-        assert(children.head.expr eq group)
-        assert(children(1).expr eq three)
       case _ => fail("Missing multiplication")
     }
     assertEquals(X.evaluate(compiled, _ => fail("Unexpected variable read")), Right(E.Value.IntValue(9)))
@@ -929,8 +924,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     read.expression.node match {
       case X.Node.Read(variable, reference) =>
         assertEquals(variable, size)
-        val children = read.expression.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
-        assert(children.head.expr eq reference)
         reference.value match {
           case BeUseValueReference(definition) =>
             assert(definition eq bindings.definition(size).toOption.get)
@@ -943,7 +936,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       case _ => fail("Missing variable read")
     }
     val flag = X.adapt(bindings, R.BooleanLiteral(true)).toOption.get
-    assertEquals(flag.expression.staticInformationExpression.staticType, BeDataType.Boolean)
+    assertEquals(flag.expression.valueType, R.ValueType.BooleanValue)
     assertEquals(X.evaluate(flag, _ => fail("Unexpected variable read")), Right(E.Value.BooleanValue(true)))
     assertEquals(BeDataValueLiteral("1").currentType, BeDataType.Numeric)
   }
@@ -991,7 +984,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       R.BinaryOperator.Greater -> false, R.BinaryOperator.GreaterEqual -> false,
       R.BinaryOperator.Equal -> false, R.BinaryOperator.NotEqual -> true) do {
       val compiled = X.adapt(bindings, R.Binary(operator, R.IntLiteral(Int.MinValue), R.IntLiteral(Int.MaxValue))).toOption.get
-      assertEquals(compiled.expression.staticInformationExpression.staticType, BeDataType.Boolean)
+      assertEquals(compiled.expression.valueType, R.ValueType.BooleanValue)
       assertEquals(X.evaluate(compiled, _ => fail("Unexpected variable read")), Right(E.Value.BooleanValue(expected)))
     }
     for a <- Seq(false, true); b <- Seq(false, true); operator <- Seq(R.BinaryOperator.Equal, R.BinaryOperator.NotEqual) do {
@@ -1101,20 +1094,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(X.evaluate(expression, _ => Right(E.Value.IntValue(40))), Right(E.Value.IntValue(80)))
   }
 
-  test("Java VM nodes reject generic execution and edits without changing existing printers") {
-    val compiled = X.adapt(V.bind(javaProgram("")), R.IntLiteral(1)).toOption.get
-    val expression = compiled.expression
-    assert(expression.structureInfo.withReplacedChildren(Map.empty) eq expression)
-    intercept[UnsupportedOperationException] {
-      expression.structureInfo.withReplacedChildren(Map(BeChildRole.FunctionParameter(0) -> literalTwo))
-    }
-    val state = BeSimulatorState(false, expression, false, Nil, Nil, BeVirtualMachineState.emptyMachineState)
-    intercept[UnsupportedOperationException] { expression.expressionExecutor(BeSimulatorConfig(), state) }
-    for language <- List(Python, Java, Cpp, JavaScript) do
-      intercept[UnsupportedOperationException] { expression.structureInfo.toStringInLanguage(language, English) }
-    assertEquals(literalOne.structureInfo.toStringInLanguage(Python, English), "1")
-  }
-
   test("Java VM programs retain complete methods entry point and main argument metadata") {
     val text = """class Drawing {
       static void square(int size) { for (int i = 0; i < 4; i += 1) { Turtle.forward(size); Turtle.turnRight(90); } }
@@ -1129,7 +1108,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     } yield resolved).toOption.get
     val compiled = P.adapt(source).toOption.get
     assert(compiled.bindings.source eq source)
-    assert(compiled.vm.fullProgram eq compiled.root)
     assertEquals(compiled.bindings.source.source, text)
     assertEquals(compiled.bindings.source.className, "Drawing")
     assertEquals(compiled.root.methods.map(_.binding.originalName), Vector("square", "main", "unused"))
@@ -1140,16 +1118,11 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(main.binding.parameters.map(_.variable.name), Vector("argv"))
     assertEquals(main.binding.parameters.head.variable.valueType, R.ValueType.MainArguments)
     assertEquals(main.binding.parameters.head.definition, None)
-    assertEquals(main.structureInfo.getChildrenAsReference(BeScope.GlobalScope()).map(_.childInfo.myRoleInParent), Seq(BeChildRole.BodySequence(0)))
-    val children = compiled.root.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
-    assertEquals(children.map(_.childInfo.myRoleInParent), Seq(BeChildRole.MethodInClass(0), BeChildRole.MethodInClass(1), BeChildRole.MethodInClass(2)))
     compiled.root.methods.zip(source.methods).foreach { (method, original) =>
       assert(method.binding eq compiled.bindings.method(original.id).get)
       assertEquals(method.binding.parameters.map(_.variable), original.parameters)
       assertEquals(restoredJavaBlock(method.body), original.body)
     }
-    assertEquals(compiled.root.staticInformationExpression.staticType, BeDataType.Unit)
-    assert(compiled.root.staticInformationExpression.hasSideEffects)
   }
 
   test("Java VM declarations and assignment operators share their interned target definition") {
@@ -1164,10 +1137,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         assertEquals(target, variable)
         assert(received eq definition)
         assert(value.bindings eq compiled.bindings)
-        val children = statement.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
-        assert(children.head.expr eq definition)
-        assert(children(1).expr eq value.expression)
-        assertEquals(children(1).childInfo.myRoleInParent, BeChildRole.ValueInAssignment)
         operator
       case _ => fail("Missing assignment")
     } }
@@ -1193,17 +1162,11 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val callee = compiled.root.methods(0)
     val caller = compiled.root.methods(1)
     val callerDefinition = caller.binding.parameters.head.definition.get
-    val parameters = callee.structureInfo.getChildrenAsReference(BeScope.GlobalScope()).take(3)
-    assertEquals(parameters.map(_.childInfo.myRoleInParent), Seq(BeChildRole.FunctionParameter(0), BeChildRole.FunctionParameter(1), BeChildRole.FunctionParameter(2)))
-    parameters.zip(callee.binding.parameters).foreach { (child, parameter) => assert(child.expr eq parameter.definition.get) }
     caller.body.statements.foreach { statement =>
       val P.Node.Call(P.CallTarget.Helper(target), arguments) = statement.node: @unchecked
       assert(target eq callee.binding)
       assertEquals(arguments.size, 3)
       assert(arguments.forall(_.bindings eq compiled.bindings))
-      val children = statement.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
-      assertEquals(children.map(_.childInfo.myRoleInParent), Seq(BeChildRole.FunctionParameter(0), BeChildRole.FunctionParameter(1), BeChildRole.FunctionParameter(2)))
-      assert(children.zip(arguments).forall((child, argument) => child.expr eq argument.expression))
       val X.Node.Read(variable, reference) = arguments.head.expression.node: @unchecked
       assertEquals(variable.id.method, caller.binding.id)
       val BeUseValueReference(definition) = reference.value: @unchecked
@@ -1272,12 +1235,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assert(condition.isDefined)
     assertEquals(update.statements.size, 2)
     assertEquals(repeated.statements.size, 1)
-    val children = loop.structureInfo.getChildrenAsReference(BeScope.GlobalScope())
-    assertEquals(children.map(_.childInfo.myRoleInParent), Seq(BeChildRole.BodySequence(0), BeChildRole.ConditionInControlStructure,
-      BeChildRole.BodySequence(1), BeChildRole.BodySequence(2)))
-    assert(children.head.expr eq init)
-    assert(children(2).expr eq repeated)
-    assert(children(3).expr eq update)
     val P.Node.For(_, omitted, _, _) = compiled.root.methods(1).body.statements.head.node: @unchecked
     val P.Node.For(_, explicit, _, _) = compiled.root.methods(2).body.statements.head.node: @unchecked
     assertEquals(omitted, None)
@@ -1326,29 +1283,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(restoredJavaBlock(nested.root.entryPoint.body), nestedSource.methods.head.body)
   }
 
-  test("Java VM program elements reject generic execution editing and unsupported printers") {
-    val compiled = P.adapt(javaProgram("draw(5);", "static void draw(int size) { int value = size; value += 1; if (value > 0) { Turtle.forward(value); } }")).toOption.get
-    var pending: List[BeExpression] = List(compiled.root)
-    var elements = 0
-    while pending.nonEmpty do {
-      val expression = pending.head
-      pending = pending.tail
-      pending = expression.structureInfo.getChildrenAsReference(BeScope.GlobalScope()).map(_.expr).toList ::: pending
-      expression match {
-        case element: P.Element =>
-          elements += 1
-          assert(element.structureInfo.withReplacedChildren(Map.empty) eq element)
-          intercept[UnsupportedOperationException] { element.structureInfo.withReplacedChildren(Map(BeChildRole.NoRole -> literalOne)) }
-          val state = BeSimulatorState(false, element, false, Nil, Nil, BeVirtualMachineState.emptyMachineState)
-          intercept[UnsupportedOperationException] { element.expressionExecutor(BeSimulatorConfig(), state) }
-          for language <- List(Python, Java, Cpp, JavaScript) do
-            intercept[UnsupportedOperationException] { element.structureInfo.toStringInLanguage(language, English) }
-        case _ => ()
-      }
-    }
-    assertEquals(elements, 11)
-    assertEquals(literalOne.structureInfo.toStringInLanguage(Python, English), "1")
-  }
 
   test("Java VM execution distinguishes correct and incorrect parameterized squares") {
     val variants = Vector(
