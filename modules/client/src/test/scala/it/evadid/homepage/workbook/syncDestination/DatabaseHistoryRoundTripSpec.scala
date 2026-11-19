@@ -47,11 +47,12 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
       AnswerChangedEvent[programming.type](ProgrammingStateRaw(Python, "forward(1)"), at.plusSeconds(5), UpdateImportance.MINOR))))
 
   private def destination[F <: InteractionFormat](format: F, history: SyncDestinationHistoryHandler,
-      definition: SyncDestinationBasedOnHistoryDatabase, context: UsageContext = usage) =
-    FormattedSyncDestination(SyncInformationWithContext(SyncInformation(definition, EventSyncStrategy.SYNC_EVERYTHING), context, _ => history), format)
+      definition: SyncDestinationBasedOnHistoryDatabase, context: UsageContext = usage,
+      strategy: EventSyncStrategy = EventSyncStrategy.SYNC_EVERYTHING) =
+    FormattedSyncDestination(SyncInformationWithContext(SyncInformation(definition, strategy), context, _ => history), format)
 
-  private def cache[F <: InteractionFormat](target: FormattedSyncDestination[F]) =
-    RemoteHistoryCache[SyncContext, F, FormattedSyncDestination[F]](logger, Map(target -> EventSyncStrategy.SYNC_EVERYTHING))
+  private def cache[F <: InteractionFormat](target: FormattedSyncDestination[F], strategy: EventSyncStrategy = EventSyncStrategy.SYNC_EVERYTHING) =
+    RemoteHistoryCache[SyncContext, F, FormattedSyncDestination[F]](logger, Map(target -> strategy))
 
   layouts.foreach { definition =>
     val layout = definition.format.toString
@@ -91,6 +92,26 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
         assertEquals(reader.updateReport.now().get(key).events.values.map(_.associatedState), Set("a", "b", "c"))
         assert(database.commands.now().count(_ == "bulkStore") == 2, database.commands.now().toString)
       }
+    }
+
+    test(s"$layout: a selective strategy stores and restores only the latest answer and the major ones, also after new edits") {
+      val database = InMemoryHistoryDatabase()
+      val key = usage.toSyncContext("answer")
+      val strategy = EventSyncStrategy.KEEP_LAST_AND_MAJOR
+      def answer(value: String, second: Int, importance: UpdateImportance): InteractionEvent[text.type] =
+        AnswerChangedEvent[text.type](value, at.plusSeconds(second), importance)
+      val local = InteractionVariableHistory(InteractionEvents(Set(answer("draft", 1, UpdateImportance.MINOR),
+        answer("submitted", 2, UpdateImportance.MAJOR), answer("typing", 3, UpdateImportance.DEFAULT))))
+      val target = destination(text, handler(database, definition), definition, strategy = strategy)
+      val session = cache(target, strategy)
+      for {
+        _ <- session.requestStore(target, Map(key -> local))
+        restored <- cache(target, strategy).fetchAll(Set(key))
+        _ = assertEquals(restored(key).map(_.associatedState), Seq("submitted", "typing"))
+        _ <- session.requestStore(target, Map(key -> local.addEvent(answer("retyped", 4, UpdateImportance.DEFAULT))))
+        again <- cache(target, strategy).fetchAll(Set(key))
+      } yield assertEquals(again(key).map(_.associatedState), Seq("submitted", "retyped"),
+        "the superseded latest answer is no longer selected")
     }
 
     test(s"$layout: range reads return exactly the events of the inclusive window") {

@@ -61,7 +61,7 @@ class BrowserHistoryStorageRoundTripSpec extends EditorDomSuite {
     }
   }
 
-  test("local storage keeps users apart and discards an unreadable entry without losing the others") {
+  test("local storage keeps users apart; full and range reads discard an unreadable entry without losing the others") {
     val text = TextInteractionFormat
     val mine = destination(text)
     val theirs = destination(text, usage.copy(userId = "other"))
@@ -72,9 +72,11 @@ class BrowserHistoryStorageRoundTripSpec extends EditorDomSuite {
       _ <- cache(theirs).requestStore(theirs, Map(usage.copy(userId = "other").toSyncContext("good") -> history[text.type]("theirs" -> 1)))
       _ = dom.window.localStorage.setItem(SyncContext.serializer.serialize(broken), "{\"not\": \"a history\"}")
       restored <- cache(destination(text)).fetchAll(Set(good, broken))
+      window <- cache(destination(text)).fetchEventsBetween(Seq(good, broken), at, at.plusSeconds(5))
     } yield {
       assertEquals(restored(good).map(_.associatedState), Seq("mine"), "another user's entry for the same key is not mixed in")
       assertEquals(restored.getOrElse(broken, Nil), Nil)
+      assertEquals((window(good).map(_.associatedState), window.getOrElse(broken, Nil)), (Seq("mine"), Nil), "range reads discard it too")
     }
   }
 }

@@ -44,6 +44,16 @@ object InteractionHistoryJson {
     decoded
   }
 
+  /** The storage read rule: each stored record is decoded and narrowed to the strategy's selection within the
+    * inclusive window. A record that cannot be read is reported and left out, so that it cannot hide the others.
+    */
+  def readable[K, S](stored: Iterable[(K, S)])(decode: S => InteractionHistoryJson, strategy: EventSyncStrategy,
+      starting: LocalDateTime, until: LocalDateTime, discarded: (K, Throwable) => Unit): Map[K, InteractionHistoryJson] =
+    stored.flatMap { (key, value) =>
+      scala.util.Try(decode(value).cleanWithStrategy(strategy).between(starting, until)).fold(
+        error => { discarded(key, error); None }, history => Some(key -> history))
+    }.toMap
+
   def mergeSerialized(histories: Iterable[String]): String =
     histories.iterator.map(deserialize).reduce(_.merge(_)).serialized
 }

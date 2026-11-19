@@ -100,8 +100,9 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
       case EventSyncStrategy.SYNC_EVERYTHING | _: EventSyncStrategy.KeepImportance => Some(request.starting -> request.until)
       case _ => None
     }
-    DbFetchResponse.readable(histories(request.usageContext, request.keys, range).fetchedElements, request.strategy, request.starting,
-      request.until, (key, error) => logger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error))
+    DbFetchResponse(InteractionHistoryJson.readable(histories(request.usageContext, request.keys, range).fetchedElements)(identity,
+      request.strategy, request.starting, request.until,
+      (key, error) => logger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error)))
   }
 
   def delete(request: DeleteInDbRequest): SyncSuccess = transaction {

@@ -71,22 +71,7 @@ object SQLCommands {
     require(!allWorkbooks || limitToKey.isEmpty, "An all-workbook reset cannot be restricted to one variable.")
   }
 
-  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionHistoryJson]) derives ReadWriter {
-
-
-  }
-  object DbFetchResponse {
-    /** Stored histories as a read returns them, each reduced to the strategy and the inclusive range.
-      * A record that cannot be read is discarded and reported, so that it cannot hide the others.
-      */
-    def readable(stored: Map[SyncContext, InteractionHistoryJson], strategy: EventSyncStrategy, starting: LocalDateTime,
-        until: LocalDateTime, discarded: (SyncContext, Throwable) => Unit): DbFetchResponse =
-      DbFetchResponse(stored.flatMap { (key, history) =>
-        scala.util.Try(history.cleanWithStrategy(strategy).between(starting, until)).fold(
-          error => { discarded(key, error); None },
-          readable => Some(key -> readable))
-      })
-  }
+  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionHistoryJson]) derives ReadWriter
 
 
   lazy val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory[StoreToDbRequest, SyncSuccess](

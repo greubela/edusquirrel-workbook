@@ -18,7 +18,8 @@ import scala.concurrent.{ExecutionContext, Future}
   *  - reads select the user's workbook and the requested keys, then apply the strategy and the inclusive range;
   *  - deletes are scoped to the user and program, and to the workbook unless all workbooks are reset.
   *
-  * Requests and responses pass through the real command codecs, as over HTTP.
+  * Through [[client]], requests and responses pass through the real command codecs, as over HTTP;
+  * tests that serve their own transport call [[store]], [[fetch]] and [[delete]] directly.
   */
 final class InMemoryHistoryDatabase {
   private given ExecutionContext = ExecutionContext.global
@@ -34,7 +35,7 @@ final class InMemoryHistoryDatabase {
     run
   }
 
-  private def store(format: DatabaseHistoryFormat, entries: Seq[(SyncContext, InteractionHistoryJson)]): SyncSuccess = {
+  def store(format: DatabaseHistoryFormat, entries: Seq[(SyncContext, InteractionHistoryJson)]): SyncSuccess = {
     // Merged outside Var.update, which would report a failure as unhandled instead of failing the request.
     entries.foreach { (key, incoming) =>
       val current = rows.now()
@@ -48,12 +49,12 @@ final class InMemoryHistoryDatabase {
   }
 
   /** The server's read rule: unreadable records are discarded, the others filtered by strategy and range. */
-  private def fetch(request: FetchEventsFromDbRequest): DbFetchResponse = DbFetchResponse.readable(rows.now().collect {
+  def fetch(request: FetchEventsFromDbRequest): DbFetchResponse = DbFetchResponse(InteractionHistoryJson.readable(rows.now().collect {
     case ((format, key), value) if format == request.databaseFormat && key.toUsageContext == request.usageContext &&
         (request.keys.isEmpty || request.keys.contains(key.keyForSerialisation)) => key -> value
-  }, request.strategy, request.starting, request.until, (_, _) => ())
+  })(identity, request.strategy, request.starting, request.until, (_, _) => ()))
 
-  private def delete(request: DeleteInDbRequest): SyncSuccess = {
+  def delete(request: DeleteInDbRequest): SyncSuccess = {
     val context = request.usageContext
     def selected(format: DatabaseHistoryFormat, key: SyncContext) = format == request.databaseFormat &&
       key.programId == context.programId && key.userId == context.userId &&

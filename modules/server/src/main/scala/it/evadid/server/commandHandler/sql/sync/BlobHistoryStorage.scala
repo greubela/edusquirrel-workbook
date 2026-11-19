@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 
 /** Serializes concurrent merges by locking the context row inside the transaction. */
 class BlobHistoryStorage(connection: Connection, logger: Logger) extends HistorySql(connection, logger) {
-  private def identity(context: UsageContext, key: String): Seq[String] =
+  private def rowKeys(context: UsageContext, key: String): Seq[String] =
     List(context.programId, context.scenarioId, context.userId, key)
 
   def store(request: StoreToDbRequest): SyncSuccess = transaction {
@@ -20,7 +20,7 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
     val newHistory = incoming.typedAs[format.type](format)
     val codec = InteractionFormat.codecsFor[format.type](format).historySerializer
     val emptyJson = codec.serialize(InteractionVariableHistory.empty[format.type])
-    val keys = identity(request.usageContext, request.syncContext.keyForSerialisation)
+    val keys = rowKeys(request.usageContext, request.syncContext.keyForSerialisation)
     update("INSERT INTO blob_history (program_id,scenario_id,user_id,variable_id,format,history_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
       (keys ++ List(format.name, emptyJson))*)
     val existing = query("SELECT format,history_json FROM blob_history WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", keys) { row =>
@@ -43,8 +43,9 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
   }
 
   def fetch(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {
-    DbFetchResponse.readable(histories(request.usageContext, request.keys).fetchedElements, request.strategy, request.starting,
-      request.until, (key, error) => logger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error))
+    DbFetchResponse(InteractionHistoryJson.readable(histories(request.usageContext, request.keys).fetchedElements)(identity,
+      request.strategy, request.starting, request.until,
+      (key, error) => logger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error)))
   }
 
   def delete(request: DeleteInDbRequest): SyncSuccess = transaction {

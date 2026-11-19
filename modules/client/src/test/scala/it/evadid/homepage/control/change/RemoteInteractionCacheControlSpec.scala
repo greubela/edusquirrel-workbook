@@ -15,7 +15,8 @@ import it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientRes
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.info.interaction.SyncReporter
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.sql.{DatabaseConfigWithCredentials, DatabaseHistoryFormat}
+import it.evadid.homepage.workbook.syncDestination.InMemoryHistoryDatabase
+import it.evadid.sql.DatabaseConfigWithCredentials
 import it.evadid.sql.DatabaseHistoryFormat.BlobFormat
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
@@ -74,7 +75,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     val info = FullInfo(HomepageInfo(AppLanguage.English,
       Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)), Some(user),
       AllDisplayInfo(false, None), LanguageMapStorage.empty))
-    private val saved = Var(Map.empty[(DatabaseHistoryFormat, SyncContext), InteractionHistoryJson])
+    private val database = InMemoryHistoryDatabase()
 
     private def history(text: String, index: Int) = InteractionHistoryJson.fromHistory(TextInteractionFormat,
       InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
@@ -82,7 +83,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     Seq(defaultDatabase.format, defaultBlobDatabase.format).foreach { format =>
       elements.zipWithIndex.foreach { (element, index) =>
         val key = info.homepageInfoNow().toContext.toSyncContext(element.interactionVariable.keyForSerialization)
-        saved.update(_ + ((format -> key) -> history(s"saved-$index", index)))
+        database.rows.update(_ + ((format -> key) -> history(s"saved-$index", index)))
       }
     }
 
@@ -93,7 +94,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
       Seq(defaultDatabase.format, defaultBlobDatabase.format).foreach { format =>
         elements.foreach { element =>
           val key = context.toSyncContext(element.interactionVariable.keyForSerialization)
-          saved.update(_ + ((format -> key) -> value))
+          database.rows.update(_ + ((format -> key) -> value))
         }
       }
     }
@@ -115,22 +116,12 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           val request = read[FetchEventsFromDbRequest](command.json)
           if failBlobReads.now() && request.databaseFormat == BlobFormat then
             ExecutionClientResponse.forError(times, SerializedException("blob destination offline"), command)
-          else {
-            val values = saved.now().collect {
-              case ((format, key), value) if format == request.databaseFormat && key.toUsageContext == request.usageContext &&
-                (request.keys.isEmpty || request.keys.contains(key.keyForSerialisation)) =>
-                key -> value.cleanWithStrategy(request.strategy).between(request.starting, request.until)
-            }
-            ExecutionClientResponse.forValue(times, DbFetchResponse(values), command)
-          }
+          else ExecutionClientResponse.forValue(times, database.fetch(request), command)
         case name if name == bulkStoreToDbCommand.name =>
           val request = read[BulkStoreToDbRequest](command.json)
           if failStores.now() then
             return ExecutionClientResponse.forError(times, SerializedException("retired write failed"), command)
-          request.entries.foreach(entry => saved.update { previous =>
-            val key = request.databaseFormat -> entry.syncContext
-            previous.updated(key, previous.get(key).fold(entry.history)(_.merge(entry.history)))
-          })
+          database.store(request.databaseFormat, request.entries.map(entry => entry.syncContext -> entry.history))
           afterStore.now()()
           ExecutionClientResponse.forValue(times, SyncSuccess.emptyNow(), command)
         case name if name == resetUserHistoriesDbCommand.name =>
@@ -138,9 +129,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           assert(request.allWorkbooks)
           if failBlobReset.now() && request.databaseFormat == BlobFormat then
             return ExecutionClientResponse.forError(times, SerializedException("reset destination offline"), command)
-          saved.update(_.filterNot { case ((format, key), _) =>
-            format == request.databaseFormat && key.programId == request.usageContext.programId && key.userId == request.usageContext.userId
-          })
+          database.delete(request)
           ExecutionClientResponse.forValue(times, SyncSuccess.emptyNow(), command)
         case other => throw IllegalArgumentException(s"Unexpected request: $other")
       }
