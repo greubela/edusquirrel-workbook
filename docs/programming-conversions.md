@@ -30,7 +30,7 @@ Snap green flags become startup; detached scripts become the reserved, uncalled 
 
 `JavaTurtleCompiler` in `vm.compilation.java.turtle` parses source, validates structure and semantics, resolves symbols, and produces a `JavaTurtleProgram`. `JavaTurtleInterpreter` in `vm.simulation.java` executes that program with Java arithmetic, limits and tracing. This is a separate runtime capability. Its nodes do not extend `BeExpression`. Java unit-test execution can generate runtime instrumentation through `JavaTurtlePythonExport`; that instrumentation is not an editable programming-state conversion and does not select conversion routes. There is no Java-emulation metadata reader or editable Java/Python/Snap bridge.
 
-Regression coverage lives in `ProgrammingStateConversionSpec`, `StructuredProgrammingStateSpec`, `PythonTypeHintConversionSpec`, `CrossLanguageRoundTripSpec` and the turtle execution tests. `CrossLanguageRoundTripSpec` normalises a source once (A → BeExpression → A), so formatting never matters, then requires A → BeExpression → B → BeExpression → A to restore the text between Python and Java and to reach a fixpoint after one pass through Snap, which has no types; every route must draw the same commands. Checked Java arithmetic, bindings, tracing and runtime tests remain independent of conversion tests.
+Regression coverage lives in `ProgrammingStateConversionSpec`, `StructuredProgrammingStateSpec`, `PythonTypeHintConversionSpec`, `CrossLanguageRoundTripSpec`, `ParsedStructureSpec`, `CountingLoopSpec`, `DependencySpec`, `JavaCompilationRoundTripSpec` and the turtle execution tests. `CrossLanguageRoundTripSpec` normalises a source once (A → BeExpression → A), so formatting never matters, then requires A → BeExpression → B → BeExpression → A to restore the text between Python and Java and to reach a fixpoint after one pass through Snap, which has no types; every route must draw the same commands. Checked Java arithmetic, bindings, tracing and runtime tests remain independent of conversion tests.
 
 ## Neutral object model
 
@@ -46,7 +46,38 @@ The shared model does not imply that every object-oriented source program can be
 
 Module variables become static fields of Java `Main` ([`ModuleLayout`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/printing/ModuleLayout.scala)); a literal first assignment becomes the field initializer, other initializers remain in startup order rather than moving ahead of intervening statements. Lifting a Java entry point restores module statements directly. Original source remains the input to the checked Java runtime and its source locations.
 
-`BeIntrinsic` identifies turtle and printing library semantics independently of user names. Printers select target syntax from this marker; user-defined `print`/`forward` methods remain ordinary functions. Java conversion rejects a user `Turtle` class when it would hide actual turtle-library calls.
+`BeIntrinsic` identifies library and built-in semantics (turtle, printing, reading a URL, `int`/`float`/`str`/`bool`/`abs`/`max`/`min`) independently of user names. Printers select target syntax from this marker; user-defined `print`/`forward` methods remain ordinary functions. Java conversion rejects a user `Turtle` class when it would hide actual turtle-library calls.
+
+## Libraries and built-ins
+
+A [`BeDependency`](../modules/core/shared/src/main/scala/it/evadid/vm/code/defining/BeDependency.scala)`(structureName, addDefinitions)` holds the definitions a language needs for a library. [`KnownDependencies`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/dependencies/KnownDependencies.scala) lists them by intrinsic. A program requires a dependency when it calls one of its functions. Printers then add the definitions, and parsers remove a definition only when it matches exactly, ignoring layout, so an edited copy becomes user code.
+
+| Dependency | Python | Java | Snap |
+| --- | --- | --- | --- |
+| Turtle | `import turtle` | generated `class Turtle` ([`JavaTurtleLibrary`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/dependencies/JavaTurtleLibrary.scala)), runnable on a plain JVM, Swing window unless headless | native blocks |
+| `fetch_text(url)` | `urllib.request` helper | `class Web` with `fetchText` | `url` reporter (`reportURL`) |
+| `print` | `print` | `System.out.println` | speech bubble (`bubble`) |
+
+The Java `Turtle` methods are generated from the shared turtle signatures. `goto` is reserved in Java and is spelled with its alias `setPosition`. [`JavaBuiltinSpelling`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/expressionjava/JavaBuiltinSpelling.scala) is the single table for Java built-ins in both directions:
+
+- numbers are cast: `(int) x`, `(double) x`;
+- text is parsed: `Integer.parseInt`, `Double.parseDouble`;
+- `String.valueOf`, `Math.abs`, `Math.max` and `Math.min` map directly;
+- `bool(n)` becomes `(n != 0)` and reads back as that comparison.
+
+`round` is not shared because Python rounds halves to even and Java rounds them up. Lists and other collections need a collection type in the shared tree first. `JavaCompilationRoundTripSpec` compiles and runs generated programs with `javac`.
+
+## Loops
+
+[`ParsedStatement.countingLoop`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/parsed/ParsedProgram.scala) maps Python's `range` and Java's counting `for` to the most specific loop:
+
+- **`BeRepeatNr`** when the counter is never read and the bounds are whole-number literals. This includes `for _ in range(1, 5)`, `for (int i = 4; i > 0; i--)` and `i += 2`.
+- **`BeFor`** for steps of ±1. It is inclusive like Snap's `for`, which counts down when start > end, so empty literal ranges become `repeat 0`.
+- **Initialisation followed by `BeWhile`**, ending with the step, for other steps.
+
+A Java counter belongs to its loop. A Python counter is "read" if the program uses the name anywhere outside `for` targets. A Java `for` that is not a counting loop, for example `i = i * 2` or a body that changes its bound, becomes its initialisation followed by a `while` that ends with its updates. `BeRepeatNr` holds a fixed number, so `range(n)` remains a `BeFor`. `CountingLoopSpec` covers these cases; `ParsedStructureSpec` checks the tree that equivalent Python, Java and Snap sources build.
+
+A top-level `if __name__ == "__main__":` is read as its body, so a guarded `main()` is the usual entry point.
 
 The shared numeric subset uses double precision. Java integer declarations are widened on cross-language conversion; `ConversionResult` reports this as a loss because wrapping overflow and truncating division are not preserved. Same-language source grouping retains the original types.
 
