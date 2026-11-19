@@ -204,7 +204,7 @@ object SnapControlFlow {
         BeUseValue(BeDataValueLiteral("False"), None)
       case BeUseValue(BeDataValueLiteral("False"), _) =>
         BeUseValue(BeDataValueLiteral("True"), None)
-      case call: BeFunctionCall if isOperatorCall(call, "not") =>
+      case call: BeFunctionCall if isOperatorNamed(call, "not") =>
         call.parameterValueMap.values.headOption.getOrElse(BeExpression.pass)
       case other =>
         operatorCall("not", List(other))
@@ -223,19 +223,19 @@ object SnapControlFlow {
       case "reportFalse" =>
         BeUseValue(BeDataValueLiteral("False"), None)
       case "reportBoolean" =>
-        val value = orderedArgs(call).headOption.collect {
+        val value = call.arguments.headOption.collect {
           case BeUseValue(BeDataValueLiteral(v), _) => v
         }.getOrElse("True")
         BeUseValue(BeDataValueLiteral(if value.equalsIgnoreCase("false") then "False" else "True"), None)
       case "reportNot" =>
-        val inner = orderedArgs(call).headOption.getOrElse(BeExpression.pass)
+        val inner = call.arguments.headOption.getOrElse(BeExpression.pass)
         val parsedInner = inner match
           case innerCall: BeFunctionCall => conditionFromSnapReporter(innerCall)
           case other => other
         operatorCall("not", List(parsedInner))
       case snap if SnapReporterToOperator.contains(snap) =>
         val op = SnapReporterToOperator(snap)
-        val args = orderedArgs(call)
+        val args = call.arguments
         operatorCall(op, args)
       case _ =>
         call
@@ -251,7 +251,7 @@ object SnapControlFlow {
           case BeDefineFunction.Operator(_) =>
             val op = operatorSymbol(call)
             SupportedOperators.contains(op) &&
-              orderedArgs(call).forall(arg => isSupportedCondition(arg) || isSupportedValue(arg))
+              call.arguments.forall(arg => isSupportedCondition(arg) || isSupportedValue(arg))
           case _ =>
             false
       case _ => false
@@ -265,12 +265,12 @@ object SnapControlFlow {
           case BeDefineFunction.Operator(_) =>
             val op = operatorSymbol(call)
             SupportedOperators.contains(op) &&
-              orderedArgs(call).forall(isSupportedValue)
+              call.arguments.forall(isSupportedValue)
           // Library reporters such as `url` produce a value in Snap as well.
           case _ =>
             call.funcDef.outputs.nonEmpty &&
               SnapTurtleCatalog.LibraryPrimitives.exists(_.pythonName == SnapExpressionSupport.pythonName(call)) &&
-              orderedArgs(call).forall(isSupportedValue)
+              call.arguments.forall(isSupportedValue)
       case _ => false
 
   def isSupportedAssignment(assign: BeAssignVariable): Boolean =
@@ -291,8 +291,8 @@ object SnapControlFlow {
 
   def changeVarAmount(assign: BeAssignVariable): Option[BeExpression] =
     assign.value match
-      case call: BeFunctionCall if isOperatorCall(call, "+") =>
-        orderedArgs(call) match
+      case call: BeFunctionCall if isOperatorNamed(call, "+") =>
+        call.arguments match
           case List(BeUseValue(BeUseValueReference(referenced), _), amount)
             if variableName(referenced) == variableName(assign.target) && isSupportedValue(amount) =>
             Some(amount)
@@ -328,7 +328,7 @@ object SnapControlFlow {
       case BeUseValue(BeUseValueReference(variable), _) =>
         note(variableName(variable))
       case call: BeFunctionCall =>
-        orderedArgs(call).foreach(walk)
+        call.arguments.foreach(walk)
       case ifElse: BeIfElse =>
         ifElse.condition.body.foreach(walk)
         ifElse.thenBody.body.foreach(walk)
@@ -374,16 +374,8 @@ object SnapControlFlow {
     BeFunctionCall.fromDefinition(define, params.zip(args).toMap)
   }
 
-  def orderedArgs(call: BeFunctionCall): List[BeExpression] =
-    call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable))
-
   def literalInt(value: String): Option[Int] =
     scala.util.Try(value.trim.toDouble.round.toInt).toOption.filter(_ >= 0)
-
-  def isOperatorCall(call: BeFunctionCall): Boolean =
-    call.funcDef.functionTypeInfo.funcType match
-      case BeDefineFunction.Operator(_) => true
-      case _ => false
 
   private def callProblems(call: BeFunctionCall, userFunctions: Map[String, Int]): Option[String] = {
     if SnapExpressionSupport.pythonName(call) == it.evadid.vm.BeProgram.unusedCodeName.universalInterpretation() then
@@ -391,10 +383,10 @@ object SnapControlFlow {
     else if !call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] &&
         !it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
       Some("object methods and constructors have no Snap block representation")
-    else if isOperatorCall(call) then Some(s"${SnapExpressionSupport.pythonName(call)}(...)")
+    else if call.isOperator then Some(s"${SnapExpressionSupport.pythonName(call)}(...)")
     else
       val name = SnapExpressionSupport.pythonName(call)
-      val args = orderedArgs(call)
+      val args = call.arguments
       SnapTurtleCatalog.primitiveByPythonName.get(name) match
         case Some(primitive) =>
           SnapTurtleCatalog.validateCallArity(name, args.size).orElse {
@@ -435,7 +427,7 @@ object SnapControlFlow {
   private def conditionProblems(sequence: BeSequence): Option[String] =
     sequence.body.find(!isSupportedCondition(_)).map(expr => preview(expr.getClass.getSimpleName))
 
-  private def isOperatorCall(call: BeFunctionCall, symbol: String): Boolean =
+  private def isOperatorNamed(call: BeFunctionCall, symbol: String): Boolean =
     call.funcDef.functionTypeInfo.funcType match
       case BeDefineFunction.Operator(_) => operatorSymbol(call) == symbol
       case _ => false

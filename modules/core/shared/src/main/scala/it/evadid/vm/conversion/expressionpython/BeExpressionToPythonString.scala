@@ -56,20 +56,15 @@ case class BeExpressionToPythonString
   }
 
   override def forOther(other: BeExpression): String = other match {
-    case call: BeFunctionCall if isOperatorCall(call) =>
+    case call: BeFunctionCall if call.isOperator =>
       formatOperatorCall(call)
     case _ =>
       super.forOther(other)
   }
 
-  private def isOperatorCall(call: BeFunctionCall): Boolean =
-    call.funcDef.functionTypeInfo.funcType match
-      case BeDefineFunction.Operator(_) => true
-      case _ => false
-
   private def formatOperatorCall(call: BeFunctionCall): String = {
     val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
-    val args = call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable)).map(forOperand)
+    val args = call.arguments.map(forOperand)
     symbol match {
       case "not" =>
         s"not ${args.headOption.getOrElse("")}"

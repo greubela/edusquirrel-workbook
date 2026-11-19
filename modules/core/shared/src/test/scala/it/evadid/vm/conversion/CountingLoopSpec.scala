@@ -24,7 +24,7 @@ class CountingLoopSpec extends FunSuite {
     case other => other.toString
   }
 
-  private def loops(state: ProgrammingState): Vector[Loop] = ModuleLayout.nodes(state.toBeExpression.expression).collect {
+  private def loops(state: ProgrammingState): Vector[Loop] = state.toBeExpression.expression.subtree.collect {
     case loop: BeRepeatNr => Loop.Repeat(loop.amount)
     case loop: BeFor => Loop.For(loop.variable.name.universalInterpretation(), literal(loop.start), literal(loop.end))
     case _: BeWhile => Loop.While

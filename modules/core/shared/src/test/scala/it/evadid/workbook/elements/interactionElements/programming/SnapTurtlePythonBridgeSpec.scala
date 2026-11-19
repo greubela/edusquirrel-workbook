@@ -30,7 +30,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     val statements = SnapExpressionSupport.topLevelStatements(program.fullProgram)
     val call = statements.collectFirst { case c: it.evadid.vm.code.usage.BeFunctionCall => c }.get
     assertEquals(SnapExpressionSupport.pythonName(call), "forward")
-    val args = SnapControlFlow.orderedArgs(call)
+    val args = call.arguments
     assert(args.forall(SnapControlFlow.isSupportedValue), clue = args.map(_.getClass.getName).mkString(","))
     assertEquals(SnapExpressionSupport.validateSubset(program.fullProgram), Right(statements))
   }

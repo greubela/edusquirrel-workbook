@@ -49,7 +49,7 @@ abstract class GenericJavaLikeStringPrinter(
   protected def forOperand(expression: BeExpression): String = {
     val rendered = forValue(expression)
     expression match {
-      case call: BeFunctionCall if call.funcDef.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Operator] => s"($rendered)"
+      case call: BeFunctionCall if call.isOperator => s"($rendered)"
       case _ => rendered
     }
   }

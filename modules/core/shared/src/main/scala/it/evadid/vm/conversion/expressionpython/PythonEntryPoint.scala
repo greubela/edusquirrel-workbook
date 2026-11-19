@@ -26,7 +26,6 @@ object PythonEntryPoint {
     case BeExpressionUnparsable(source, _, _) => source.trim.startsWith("global ")
     case _ => false
   }
-  private def nodes(expression: BeExpression): Seq[BeExpression] = ModuleLayout.nodes(expression)
 
   /** Inline a `def main(): …` + final `main()` entry point into the main sequence. */
   def inline(program: BeStartProgram): BeStartProgram = program.startSequence match {
@@ -37,7 +36,7 @@ object PythonEntryPoint {
         case definition: BeDefineFunction => definition == main
         case _ => false
       }).filter(_ >= 0)
-      val calls = entry.map(main => nodes(sequence).count {
+      val calls = entry.map(main => sequence.subtree.count {
         case call: BeFunctionCall => call.funcDef == main
         case _ => false
       })

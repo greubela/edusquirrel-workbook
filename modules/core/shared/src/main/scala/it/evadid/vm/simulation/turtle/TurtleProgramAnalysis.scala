@@ -11,6 +11,7 @@ import scala.util.control.NonFatal
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.{BeDefineFunction, BeIntrinsic}
+import it.evadid.vm.code.errors.BeSourcePlaceholder
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeAssignVariable, BeCallTarget, BeFunctionCall, BeObjectExpression, BeUseValue}
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
@@ -88,8 +89,13 @@ object TurtleProgramAnalysis {
       interpret(if evalBool(condition, state) then branch.thenBody else branch.elseBody, state, limits, isCancelled)
     case loop: BeWhile => whileBody(loop, 0, state, limits, isCancelled)
     case call: BeFunctionCall => interpretCall(call, state, limits, isCancelled)
+    case placeholder: BeSourcePlaceholder => cannotRun(placeholder)
     case _ => state
   }
+
+  /** Unfinished or unsupported source stops the drawing rather than being skipped. */
+  private def cannotRun(placeholder: BeSourcePlaceholder): Nothing =
+    throw IllegalArgumentException(s"This part of the program cannot run: ${placeholder.originalSource.trim.linesIterator.nextOption().getOrElse("")}")
 
   @tailrec private def repeatBody(body: BeExpression, remaining: Int, state: InterpState,
       limits: TurtleExecutionLimits, isCancelled: () => Boolean): InterpState =
@@ -115,10 +121,10 @@ object TurtleProgramAnalysis {
   private def interpretCall(call: BeFunctionCall, state: InterpState, limits: TurtleExecutionLimits,
       isCancelled: () => Boolean): InterpState = {
     if !call.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(call.funcDef) then unsupportedObjectExecution()
-    else if SnapControlFlow.isOperatorCall(call) then state
+    else if call.isOperator then state
     else {
       val python = SnapExpressionSupport.pythonName(call)
-      val args = SnapControlFlow.orderedArgs(call)
+      val args = call.arguments
       state.defs.get(python).filterNot(_ => TurtleCommand.isTurtleMethod(call.funcDef)) match {
         case Some(definition) =>
           if state.callDepth >= limits.maxCallDepth then state.copy(status = TurtleExecutionStatus.LimitExceeded)
@@ -150,8 +156,9 @@ object TurtleProgramAnalysis {
       case BeUseValue(BeDataValueLiteral(value), _) => numericLiteral(value)
       case BeUseValue(BeUseValueReference(_), _) =>
         Some(evalNumber(expression, state))
-      case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) || call.funcDef.intrinsic.exists(numericIntrinsics) =>
+      case call: BeFunctionCall if call.isOperator || call.funcDef.intrinsic.exists(numericIntrinsics) =>
         Some(evalNumber(call, state))
+      case placeholder: BeSourcePlaceholder => cannotRun(placeholder)
       case _ =>
         None
 
@@ -175,10 +182,11 @@ object TurtleProgramAnalysis {
         state.env.getOrElse(SnapControlFlow.variableName(variable), 0.0)
       case seq: BeSequence =>
         seq.body.lastOption.map(evalNumber(_, state)).getOrElse(0.0)
-      case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) =>
+      case call: BeFunctionCall if call.isOperator =>
         evalOperator(call, state)
+      case placeholder: BeSourcePlaceholder => cannotRun(placeholder)
       case call: BeFunctionCall if call.funcDef.intrinsic.exists(numericIntrinsics) =>
-        val values = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(evalNumber(_, state))
+        val values = call.arguments.map(evalNumber(_, state))
         val value = values.headOption.getOrElse(0.0)
         call.funcDef.intrinsic.get match
           case BeIntrinsic.ToInteger => if value < 0 then math.ceil(value) else math.floor(value)
@@ -196,7 +204,7 @@ object TurtleProgramAnalysis {
 
   private def evalOperator(call: BeFunctionCall, state: InterpState): Double = {
     val op = SnapControlFlow.operatorSymbol(call)
-    val args = SnapControlFlow.orderedArgs(call).map(evalNumber(_, state))
+    val args = call.arguments.map(evalNumber(_, state))
     op match
       case "+" => args.sum
       case "-" if args.size == 1 => -args.head

@@ -42,6 +42,13 @@ object KnownDependencies {
 
   private val byIntrinsic: Seq[(BeIntrinsic, BeDependency)] = Seq(BeIntrinsic.Turtle -> turtle, BeIntrinsic.FetchText -> fetchText)
 
+  /** Python modules that provide a dependency: importing one in any form (`import turtle`,
+    * `from turtle import *`, `from turtle import forward`) means that library, not user code.
+    */
+  private val pythonModules: Map[String, BeDependency] = Map("turtle" -> turtle)
+
+  def providedByPythonModule(module: String): Option[BeDependency] = pythonModules.get(module)
+
   /** Java calls a library function as a static method of the class its definition adds. */
   private val javaFunctionCalls: Map[BeIntrinsic, Seq[String]] = Map(BeIntrinsic.FetchText -> Seq("Web", "fetchText"))
 
@@ -56,7 +63,7 @@ object KnownDependencies {
 
   /** The dependencies a program calls into, in registry order. */
   def requiredBy(expression: BeExpression): Seq[BeDependency] = {
-    val used = ModuleLayout.nodes(expression).collect { case call: BeFunctionCall => call.funcDef.intrinsic }.flatten.toSet
+    val used = expression.subtree.collect { case call: BeFunctionCall => call.funcDef.intrinsic }.flatten.toSet
     byIntrinsic.collect { case (intrinsic, dependency) if used(intrinsic) => dependency }
   }
 

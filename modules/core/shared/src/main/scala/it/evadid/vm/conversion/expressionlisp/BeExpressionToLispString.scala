@@ -33,7 +33,7 @@ case class BeExpressionToLispString(language: HumanLanguage, skipUnparsable: Boo
     case function: BeDefineFunction => s"(defun ${name(function.functionTypeInfo.displayName)} () ${render(function.body, level)})"
     case BeDefineClass(entityName, _, _) => s"(defclass ${name(entityName)} () ())"
     case call: BeFunctionCall if call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] =>
-      s"(${name(call.funcDef.functionTypeInfo.displayName)} ${call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(render(_, level)).mkString(" ")})"
+      s"(${name(call.funcDef.functionTypeInfo.displayName)} ${call.arguments.map(render(_, level)).mkString(" ")})"
     case _: BeFunctionCall | _: it.evadid.vm.code.usage.BeObjectExpression =>
       throw UnsupportedOperationException("Object expressions are not supported by the Lisp printer.")
     case BeUseValue(BeDataValueLiteral(value), _) => value

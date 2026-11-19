@@ -31,7 +31,7 @@ class ParsedStructureSpec extends FunSuite {
   }
   private def variable(definition: BeDefineVariable): String = s"${name(definition.name)}: ${typeName(definition.variableType)}"
   private def arguments(call: BeFunctionCall): String =
-    call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(outline).mkString("(", ", ", ")")
+    call.arguments.map(outline).mkString("(", ", ", ")")
   private def block(sequence: BeSequence): String = sequence.body.filterNot(_.isInstanceOf[BeSingleLineComment]).map(outline).mkString("[", "; ", "]")
 
   def outline(expression: BeExpression): String = expression match {
@@ -44,7 +44,7 @@ class ParsedStructureSpec extends FunSuite {
     case BeUseValue(BeDataValueUnit(), _) => "None"
     case call: BeFunctionCall => call.funcDef.functionTypeInfo.funcType match {
       case BeDefineFunction.Operator(_) =>
-        val operands = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(outline)
+        val operands = call.arguments.map(outline)
         val symbol = name(call.funcDef.functionTypeInfo.displayName)
         if operands.size == 1 then s"($symbol ${operands.head})" else operands.mkString("(", s" $symbol ", ")")
       case _ =>
@@ -183,7 +183,7 @@ class ParsedStructureSpec extends FunSuite {
     val javaSource = java("    static void doSomething(double stepSize) {\n        Turtle.forward(stepSize);\n    }", "        doSomething(5);")
     Seq(python, javaSource).foreach { state =>
       assertEquals(outlineOf(state), "[def do_something(step_size: num) [turtle.forward(step_size)]; do_something(5)]")
-      val nodes = ModuleLayout.nodes(state.toBeExpression.expression)
+      val nodes = state.toBeExpression.expression.subtree
       val definition = nodes.collectFirst { case function: BeDefineFunction if name(function.functionTypeInfo.displayName) == "do_something" => function }.get
       val call = nodes.collectFirst { case call: BeFunctionCall if call.target.isInstanceOf[BeCallTarget.Function] => call }.get
       assertEquals(call.funcDef, definition, "the call is bound to the user definition, not to an unknown name")

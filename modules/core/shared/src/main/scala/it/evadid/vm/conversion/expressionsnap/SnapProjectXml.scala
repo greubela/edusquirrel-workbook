@@ -275,10 +275,10 @@ object SnapProjectXml {
     SnapExpressionSupport.scriptStatements(sequence.body.toList).map(renderStatement).mkString
 
   private def renderCall(call: BeFunctionCall)(using context: RenderContext): String = {
-    if SnapControlFlow.isOperatorCall(call) then renderOperator(call)
+    if call.isOperator then renderOperator(call)
     else
       val selector = SnapExpressionSupport.snapSelectorOf(call)
-      val arguments = SnapControlFlow.orderedArgs(call)
+      val arguments = call.arguments
       val kinds = SnapTurtleCatalog.inputKindsForSelector(selector)
       if SnapExpressionSupport.isPrimitiveSelector(selector) &&
           (it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) ||
@@ -311,7 +311,7 @@ object SnapProjectXml {
     case BeUseValue(BeDataValueLiteral(value), _) => SnapInputCodec.renderLiteral(kind, value)
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
     case sequence: BeSequence => s"<script>${renderScriptBody(sequence)}</script>"
-    case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) => renderOperator(call)
+    case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall => renderCall(call)
     case _ => "<l></l>"
   }
@@ -320,14 +320,14 @@ object SnapProjectXml {
     case BeUseValue(BeDataValueLiteral("True"), _) => """<block s="reportTrue"></block>"""
     case BeUseValue(BeDataValueLiteral("False"), _) => """<block s="reportFalse"></block>"""
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
-    case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) => renderOperator(call)
+    case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall => renderCall(call)
     case _ => """<block s="reportTrue"></block>"""
   }
 
   private def renderOperator(call: BeFunctionCall)(using RenderContext): String = {
     val op = SnapControlFlow.operatorSymbol(call)
-    val args = SnapControlFlow.orderedArgs(call)
+    val args = call.arguments
     op match {
       case "-" if args.size == 1 =>
         // Snap's difference reporter is binary; unary minus needs an explicit zero.
@@ -355,7 +355,7 @@ object SnapProjectXml {
   private def renderConditionValue(expression: BeExpression)(using RenderContext): String = expression match {
     case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapInputCodec.escapeXml(value)}</l>"
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
-    case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) => renderOperator(call)
+    case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall => renderCall(call)
     case _ => "<l>0</l>"
   }

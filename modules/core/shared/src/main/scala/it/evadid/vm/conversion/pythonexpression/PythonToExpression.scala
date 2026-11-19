@@ -77,6 +77,8 @@ object PythonToExpression {
     case PyUnparsableStatement(source) if source.trim.startsWith("global ") => Seq(S.Unsupported(source.trim, "global declaration", unparsable = false))
     case PyUnparsableStatement(source) => Seq(S.Unsupported(source.trim, unreadable(source.trim), unparsable = true))
     case statement: PythonImportStatement if isBridgeImport(statement) => Nil
+    case PyPlainImportStatement(module) if KnownDependencies.providedByPythonModule(module).nonEmpty => Nil
+    case PyImportFromStatement(module, _, _) if KnownDependencies.providedByPythonModule(module).nonEmpty => Nil
     case other: PythonImportStatement => Seq(S.Unsupported(s"import ${other.name}", "Imports are not supported", unparsable = false))
     case PyReturnStatement(expression) => Seq(S.Return(expression.map(this.expression)))
     case PyIfStatement(condition, thenBlock, elseBlock) =>

@@ -52,14 +52,7 @@ object ModuleLayout {
   def name(variable: BeDefineVariable): String = variable.name.getNameIn(English, NamingStyle.SnakeCase)
 
   /** Variables assigned by a statement, in source order. */
-  def assigned(statement: BeExpression): Seq[BeDefineVariable] = nodes(statement).collect {
+  def assigned(statement: BeExpression): Seq[BeDefineVariable] = statement.subtree.collect {
     case BeAssignVariable(target, _) => target
   }
-
-  /** The statement and its descendants, depth first in source order. */
-  def nodes(expression: BeExpression): Vector[BeExpression] =
-    expression +: expression.structureInfo.getChildren(false, BeScope.GlobalScope()).toVector.flatMap {
-      case BeExpressionReference(_, child) => nodes(child)
-      case _ => Vector.empty
-    }
 }

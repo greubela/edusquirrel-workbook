@@ -57,7 +57,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
       case definition: BeDefineFunction => List(definition)
       case _ => Nil
     }
-    val nodes = ModuleLayout.nodes(expression)
+    val nodes = expression.subtree
     if targetLanguage == Java && statements.exists {
         case definition: BeDefineClass => definition.name.universalInterpretation() == "turtle"
         case _ => false
@@ -192,12 +192,12 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     case BeUseValue(BeDataValueLiteral(raw @ ("True" | "False")), _) => raw.toLowerCase
     case BeUseValue(BeDataValueUnit(), _) if targetLanguage == Java => "null"
     case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.exists(JavaBuiltinSpelling.handles) =>
-      val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get)
+      val arguments = call.arguments
         .map(value => JavaBuiltinSpelling.Argument(value, forValue(value), forOperand(value)))
       // Like other calls, the spelling ends the line; values strip that ending again.
       JavaBuiltinSpelling.spell(call.funcDef.intrinsic.get, arguments) + ";"
-    case call: BeFunctionCall if call.funcDef.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Operator] =>
-      val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(forOperand)
+    case call: BeFunctionCall if call.isOperator =>
+      val arguments = call.arguments.map(forOperand)
       call.funcDef.functionTypeInfo.displayName.universalInterpretation() match {
         // Python's floor division and power have no Java operator; the Java parser reads these calls back.
         case "//" if arguments.size == 2 => s"Math.floor(${arguments.head} / ${arguments(1)})"

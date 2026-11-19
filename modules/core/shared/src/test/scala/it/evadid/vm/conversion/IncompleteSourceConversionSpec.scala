@@ -103,4 +103,28 @@ class IncompleteSourceConversionSpec extends FunSuite {
       assert(result.finalState.nonEmpty || result.hasLostFunctionality, s"$origin `$fragment` -> $target")
     }
   }
+
+  test("running a program stops at unfinished code instead of skipping it, in Python and Java") {
+    val python = ProgrammingStateRaw(Python, "forward(10)\nright(90\nforward(5)\n")
+    val javaState = ProgrammingStateRaw(Java, java("        Turtle.forward(10);\n        Turtle.forward(5)"))
+    Seq(python, ProgrammingStateRaw(Python, "forward(10)\nimport os\nforward(5)\n")).foreach { state =>
+      val info = state.toBeExpression.turtleCommandExecutionInfo
+      assertEquals(info.executedTurtleCommandsInOrder.flatMap(_.args), List(10.0), "commands before the problem are kept")
+      assert(info.executionStatus.toString.contains("cannot run"), info.executionStatus.toString)
+    }
+    // Java reads the whole program first, so unfinished Java does not start at all.
+    intercept[IllegalArgumentException](javaState.toBeExpression)
+  }
+
+  test("every turtle import spelling is the library; an aliased import is reported, not skipped") {
+    Seq("from turtle import *\nforward(10)\n", "import turtle\nturtle.forward(10)\n", "from turtle import forward\nforward(10)\n",
+        "forward(10)\nimport turtle\n").foreach { source =>
+      val state = ProgrammingStateRaw(Python, source)
+      assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands.flatMap(_.args), List(10.0), source)
+      assert(!state.convertToLanguage(Java).hasLostFunctionality, source)
+    }
+    val aliased = ProgrammingStateRaw(Python, "import turtle as t\nt.forward(10)\n")
+    assert(aliased.convertToLanguage(Java).hasLostFunctionality)
+    assert(aliased.toBeExpression.turtleCommandExecutionInfo.executionStatus.toString.contains("cannot run"))
+  }
 }

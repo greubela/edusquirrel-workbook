@@ -17,6 +17,11 @@ case class BeFunctionCall(target: BeCallTarget, parameterValueMap: Map[BeDefineV
 
   def funcDef: BeDefineFunction = target.definition
 
+  /** Argument values in parameter order. */
+  def arguments: List[BeExpression] = funcDef.inputs.flatMap(parameterValueMap.get)
+
+  def isOperator: Boolean = funcDef.functionTypeInfo.funcType.isInstanceOf[Operator]
+
   private lazy val parameterWithValues: List[(BeDefineVariable, Option[BeExpression])] = funcDef.inputs.map(curInput => (curInput, parameterValueMap.get(curInput)))
 
   override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {

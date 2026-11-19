@@ -11,7 +11,7 @@ import it.evadid.vm.simulation.java.JavaTurtleInterpreter
 import munit.FunSuite
 
 class DependencySpec extends FunSuite {
-  private def nodes(state: ProgrammingState) = ModuleLayout.nodes(state.toBeExpression.expression)
+  private def nodes(state: ProgrammingState) = state.toBeExpression.expression.subtree
   private def intrinsics(state: ProgrammingState) = nodes(state).collect { case call: BeFunctionCall => call.funcDef.intrinsic }.flatten.toSet
   private def userDefinitions(state: ProgrammingState) = nodes(state).collect {
     case definition: BeDefineClass => definition.name.universalInterpretation()
