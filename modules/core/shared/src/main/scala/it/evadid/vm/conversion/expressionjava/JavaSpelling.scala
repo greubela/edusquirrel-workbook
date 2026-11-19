@@ -36,6 +36,17 @@ object JavaSpelling {
     case _ => None
   }
 
+  def isText(value: BeExpression): Boolean = value.staticInformationExpression.staticType == BeDataType.String
+
+  /** Java conditions and logical operands must be booleans: numbers compare with zero and text with
+    * the empty string, as Python and Snap treat them as truth values. `printed` is the operand form.
+    */
+  def truthValue(value: BeExpression, printed: String): String = value.staticInformationExpression.staticType match {
+    case BeDataType.Numeric => s"$printed != 0"
+    case BeDataType.String => s"!$printed.isEmpty()"
+    case _ => printed
+  }
+
   def handles(intrinsic: BeIntrinsic): Boolean = intrinsic match {
     case BeIntrinsic.ToInteger | BeIntrinsic.ToNumber | BeIntrinsic.ToText | BeIntrinsic.ToBoolean | BeIntrinsic.Absolute |
         BeIntrinsic.Maximum | BeIntrinsic.Minimum => true

@@ -278,10 +278,17 @@ private object JavaAstToParsed {
     case JavaCastExpression(javaType, operand) =>
       JavaSpelling.cast(javaType.typenameInCode).fold[ParsedExpression](E.Unsupported(s"(${javaType.typenameInCode}) ..."))(
         builtin => E.Call(Seq(builtin), Seq(expression(operand, scope))))
+    case JavaOperationUnary("!", JavaCallExpression(JavaAttributeAccess(receiver, "equals"), Seq(other))) =>
+      E.Binary("!=", expression(receiver, scope), expression(other, scope))
+    case JavaOperationUnary("!", JavaCallExpression(JavaAttributeAccess(receiver, "isEmpty"), Seq())) =>
+      E.Binary("!=", expression(receiver, scope), E.Literal("\"\""))
     case JavaOperationUnary(operator, operand) => E.Unary(JavaSpelling.operators.getOrElse(operator, operator), expression(operand, scope))
     case JavaOperationBinary(left, operator, right) =>
       E.Binary(JavaSpelling.operators.getOrElse(operator, operator), expression(left, scope), expression(right, scope))
     case JavaFunctionCall(target, arguments) => call(target.locationString :+ target.name, arguments.map(expression(_, scope)), scope)
+    // The Java printer spells text equality and emptiness with String methods (JavaSpelling).
+    case JavaCallExpression(JavaAttributeAccess(receiver, "equals"), Seq(other)) => E.Binary("==", expression(receiver, scope), expression(other, scope))
+    case JavaCallExpression(JavaAttributeAccess(receiver, "isEmpty"), Seq()) => E.Binary("==", expression(receiver, scope), E.Literal("\"\""))
     case JavaCallExpression(JavaAttributeAccess(receiver, name), arguments) =>
       names(receiver) match {
         case Some(path) => call(path :+ name, arguments.map(expression(_, scope)), scope)

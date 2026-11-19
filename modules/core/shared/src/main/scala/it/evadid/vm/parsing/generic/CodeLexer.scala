@@ -200,9 +200,10 @@ object CodeLexer {
   // ==========================================
   // 4. Identifiers, Structural Spaces & Comments
   // ==========================================
-  def ID_START[ctx: P]: P[Unit] = P(CharIn("a-zA-Z_"))
+  // Identifiers may use any letters, as in Python 3 and Java (`länge`, `größe`).
+  def ID_START[ctx: P]: P[Unit] = P(CharPred(c => c.isLetter || c == '_'))
 
-  def ID_CONTINUE[ctx: P]: P[Unit] = P(CharIn("a-zA-Z0-9_"))
+  def ID_CONTINUE[ctx: P]: P[Unit] = P(CharPred(c => c.isLetterOrDigit || c == '_'))
 
   //  def KEYWORD[ctx: P]: P[String] = (P(IMPORT | FROM | IF | ELSE | ASYNC | OR | YIELD | AND |AWAIT| NOT | GLOBAL | DEL | ASSERT | WHILE | FOR | AS | TRY | LAMBDA | CONTINUE | CLASS | DEF | RETURN | FINALLY | IS | NONE | RAISE ) ~~ !ID_CONTINUE).! // todo
   def KEYWORD[ctx: P]: P[Unit] = P(

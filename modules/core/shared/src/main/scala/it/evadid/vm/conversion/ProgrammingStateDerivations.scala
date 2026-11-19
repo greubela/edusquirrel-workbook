@@ -77,17 +77,29 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     try {
       if language != source.associatedLanguage then requireSharedForm(language)
       val target = inLanguage(language)
+      // Integer declarations in the program itself; library classes, casts and repeat counters do not count.
+      // Scala.js regular expressions support neither look-behind nor \p{L}: the optional group marks
+      // repeat counters, and the letter range is explicit.
+      val integerDeclaration = "(for\\s*\\(\\s*)?\\b(?:byte|short|int|long)\\s+[A-Za-z_$\\u00C0-\\uFFFF]".r
       val numericWarnings = Option.when(source.associatedLanguage == Java && language != Java &&
-          "\\b(?:byte|short|int|long)\\b".r.findFirstIn(
-            it.evadid.vm.conversion.structured.SourceStructure.mask(java.code, false)).nonEmpty) {
+          integerDeclaration.findAllMatchIn(it.evadid.vm.conversion.structured.SourceStructure.mask(
+            it.evadid.vm.conversion.dependencies.KnownDependencies.maskDefinitions(java.code, Java), false)).exists(_.group(1) == null)) {
         ConversionInfo("Java integer types were widened to shared numeric values; integer overflow and truncating division are not preserved.",
           it.evadid.util.logging.LoggingLevel.WARN, true)
+      }.toSeq
+      val remainderWarnings = Option.when((source.associatedLanguage == Java) != (language == Java) &&
+          expression.expression.subtree.exists {
+            case call: it.evadid.vm.code.usage.BeFunctionCall => call.isOperator && call.funcDef.functionTypeInfo.displayName.universalInterpretation() == "%"
+            case _ => false
+          }) {
+        ConversionInfo("Java's % keeps the sign of the dividend, while Python's and Snap's keep the sign of the divisor; results differ for negative numbers.",
+          it.evadid.util.logging.LoggingLevel.WARN, false)
       }.toSeq
       val droppedComments = Option.when(language == SnapLanguage && source.associatedLanguage != SnapLanguage &&
           expression.expression.subtree.exists(_.isInstanceOf[it.evadid.vm.code.errors.BeSingleLineComment])) {
         ConversionInfo("Snap scripts have no comment statements; comments were not converted.", it.evadid.util.logging.LoggingLevel.INFO, false)
       }.toSeq
-      ConversionResult(source, Some(target), preparedSource.diagnostics ++ numericWarnings ++ droppedComments)
+      ConversionResult(source, Some(target), preparedSource.diagnostics ++ numericWarnings ++ remainderWarnings ++ droppedComments)
     }
     catch { case scala.util.control.NonFatal(error) => ConversionResult.failed(source, error) }
   }
@@ -104,8 +116,9 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     expression.expression.subtree.collectFirst {
       case BeExpressionUnparsable(fragment, reason, Some(origin)) if origin != target =>
         (ProgrammingConversionKind.Unparsable, fragment, s"$reason: ${firstLine(fragment)}")
-      case BeExpressionUnsupported(fragment, Some(origin)) if origin != target =>
-        (ProgrammingConversionKind.UnsupportedConstruct, fragment, s"${firstLine(fragment)} has no form in $target.")
+      case BeExpressionUnsupported(fragment, Some(origin), reason) if origin != target =>
+        (ProgrammingConversionKind.UnsupportedConstruct, fragment,
+          if reason.nonEmpty then s"$reason: ${firstLine(fragment)}" else s"${firstLine(fragment)} has no form in $target.")
     }.foreach { (kind, fragment, message) =>
       throw ProgrammingConversionException.at(kind, message, text, Option(text.indexOf(fragment.trim)).filter(index => index >= 0 && fragment.trim.nonEmpty))
     }

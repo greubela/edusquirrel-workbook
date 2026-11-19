@@ -39,6 +39,9 @@ object ParsedStatement {
   final case class FunctionDef(name: String, parameters: Seq[ParsedParameter], returnType: Option[ParsedType],
       body: Seq[ParsedStatement], kind: ParsedFunctionKind) extends ParsedStatement
 
+  /** Python `global a, b`: the enclosing function assigns these module variables. */
+  final case class Global(names: Seq[String]) extends ParsedStatement
+
   /** A declaration without a value, such as Python `x: float` or Java `double x;`. */
   final case class Declare(name: String, typeHint: ParsedType) extends ParsedStatement
 

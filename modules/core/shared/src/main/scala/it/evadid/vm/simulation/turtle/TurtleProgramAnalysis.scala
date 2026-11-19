@@ -10,7 +10,7 @@ import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
-import it.evadid.vm.code.defining.{BeDefineFunction, BeIntrinsic}
+import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable, BeIntrinsic}
 import it.evadid.vm.code.errors.BeSourcePlaceholder
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeAssignVariable, BeCallTarget, BeFunctionCall, BeObjectExpression, BeUseValue}
@@ -39,7 +39,7 @@ object TurtleProgramAnalysis {
     TurtlePathBuilder(startPoint, apply(expression).completedCommands, headingDeg)
 
   private final case class InterpState(
-      env: Map[String, Double],
+      env: Map[String, Value],
       defs: Map[String, BeDefineFunction],
       commands: Vector[TurtleCommand[Double]],
       steps: Int = 0,
@@ -76,8 +76,10 @@ object TurtleProgramAnalysis {
       seq.body.foldLeft(state)((current, child) => interpret(child, current, limits, isCancelled))
     case _: BeObjectExpression => unsupportedObjectExecution()
     case _: BeDefineFunction => state
+    // A declared module variable exists before it is assigned (Java fields and Python `x: float` start at 0).
+    case variable: BeDefineVariable => state.copy(env = state.env.updatedWith(SnapControlFlow.variableName(variable))(_.orElse(Some(Value.Num(0.0)))))
     case assign: BeAssignVariable =>
-      state.copy(env = state.env.updated(SnapControlFlow.variableName(assign.target), evalNumber(assign.value, state)))
+      state.copy(env = state.env.updated(SnapControlFlow.variableName(assign.target), eval(assign.value, state)))
     case repeat: BeRepeatNr =>
       repeatBody(repeat.body, repeat.amount, state, limits, isCancelled)
     case loop: BeFor =>
@@ -106,7 +108,7 @@ object TurtleProgramAnalysis {
       limits: TurtleExecutionLimits, isCancelled: () => Boolean): InterpState =
     if state.status != TurtleExecutionStatus.Completed || (if step > 0 then index > end else index < end) then state
     else {
-      val bound = state.copy(env = state.env.updated(SnapControlFlow.variableName(loop.variable), index.toDouble))
+      val bound = state.copy(env = state.env.updated(SnapControlFlow.variableName(loop.variable), Value.Num(index.toDouble)))
       forBody(loop, index + step, end, step, interpret(loop.body, bound, limits, isCancelled), limits, isCancelled)
     }
 
@@ -130,10 +132,13 @@ object TurtleProgramAnalysis {
           if state.callDepth >= limits.maxCallDepth then state.copy(status = TurtleExecutionStatus.LimitExceeded)
           else {
             val bound = definition.inputs.zip(args).map { (parameter, argument) =>
-              SnapControlFlow.variableName(parameter) -> evalNumber(argument, state)
+              SnapControlFlow.variableName(parameter) -> eval(argument, state)
             }.toMap
             val child = state.copy(env = state.env ++ bound, callDepth = state.callDepth + 1)
-            interpret(definition.body, child, limits, isCancelled).copy(env = state.env, callDepth = state.callDepth)
+            val after = interpret(definition.body, child, limits, isCancelled)
+            // A function updates module variables; its parameters and own locals end with the call.
+            val updated = after.env.filter((name, _) => state.env.contains(name) && !bound.contains(name))
+            after.copy(env = state.env ++ updated, callDepth = state.callDepth)
           }
         case None =>
           val name = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(python, python)
@@ -172,39 +177,79 @@ object TurtleProgramAnalysis {
     if value.exists(ch => ch.isDigit || ch == '.' || ch == '-') then value.trim.toDoubleOption
     else None
 
-  private def evalNumber(expression: BeExpression, state: InterpState): Double =
+  /** The values the drawing simulation computes with: numbers (booleans are 1 and 0) and text. */
+  private enum Value {
+    case Num(value: Double)
+    case Text(value: String)
+  }
+
+  private def eval(expression: BeExpression, state: InterpState): Value =
     expression match
       case _: BeObjectExpression => unsupportedObjectExecution()
       case call: BeFunctionCall if !call.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(call.funcDef) => unsupportedObjectExecution()
       case BeUseValue(BeDataValueLiteral(value), _) =>
-        scala.util.Try(value.trim.toDouble).toOption.getOrElse(if isTruthy(value) then 1.0 else 0.0)
+        value.trim.toDoubleOption.map(Value.Num(_))
+          .orElse(stringArg(expression).filterNot(_ => isTruthy(value) || value.trim.equalsIgnoreCase("false")).map(Value.Text(_)))
+          .getOrElse(Value.Num(if isTruthy(value) then 1.0 else 0.0))
       case BeUseValue(BeUseValueReference(variable), _) =>
-        state.env.getOrElse(SnapControlFlow.variableName(variable), 0.0)
+        state.env.getOrElse(SnapControlFlow.variableName(variable), Value.Num(0.0))
       case seq: BeSequence =>
-        seq.body.lastOption.map(evalNumber(_, state)).getOrElse(0.0)
+        seq.body.lastOption.map(eval(_, state)).getOrElse(Value.Num(0.0))
       case call: BeFunctionCall if call.isOperator =>
         evalOperator(call, state)
       case placeholder: BeSourcePlaceholder => cannotRun(placeholder)
+      case call: BeFunctionCall if call.funcDef.intrinsic.contains(BeIntrinsic.ToText) =>
+        Value.Text(call.arguments.headOption.map(argument => text(eval(argument, state))).getOrElse(""))
+      case call: BeFunctionCall if call.funcDef.intrinsic.contains(BeIntrinsic.ToBoolean) =>
+        Value.Num(if call.arguments.headOption.exists(evalBool(_, state)) then 1.0 else 0.0)
       case call: BeFunctionCall if call.funcDef.intrinsic.exists(numericIntrinsics) =>
         val values = call.arguments.map(evalNumber(_, state))
         val value = values.headOption.getOrElse(0.0)
-        call.funcDef.intrinsic.get match
+        Value.Num(call.funcDef.intrinsic.get match
           case BeIntrinsic.ToInteger => if value < 0 then math.ceil(value) else math.floor(value)
           case BeIntrinsic.Absolute => math.abs(value)
-          case BeIntrinsic.ToBoolean => if value != 0 then 1.0 else 0.0
           case BeIntrinsic.Maximum => values.max
           case BeIntrinsic.Minimum => values.min
-          case _ => value
+          case _ => value)
       case _ =>
-        0.0
+        Value.Num(0.0)
+
+  /** Text that spells a number counts as that number, as in Snap; other text cannot be drawn with. */
+  private def number(value: Value): Double = value match
+    case Value.Num(number) => number
+    case Value.Text(text) => text.trim.toDoubleOption.getOrElse(
+      throw IllegalArgumentException(s"The text \"$text\" is not a number."))
+
+  private def text(value: Value): String = value match
+    case Value.Text(text) => text
+    case Value.Num(number) => if number == math.rint(number) && !number.isInfinite then number.toLong.toString else number.toString
+
+  private def evalNumber(expression: BeExpression, state: InterpState): Double = number(eval(expression, state))
 
   /** Built-ins whose numeric result the drawing simulation computes; `int` truncates towards zero. */
   private val numericIntrinsics: Set[BeIntrinsic] =
-    Set(BeIntrinsic.ToInteger, BeIntrinsic.ToNumber, BeIntrinsic.Absolute, BeIntrinsic.ToBoolean, BeIntrinsic.Maximum, BeIntrinsic.Minimum)
+    Set(BeIntrinsic.ToInteger, BeIntrinsic.ToNumber, BeIntrinsic.Absolute, BeIntrinsic.Maximum, BeIntrinsic.Minimum)
 
-  private def evalOperator(call: BeFunctionCall, state: InterpState): Double = {
+  private def evalOperator(call: BeFunctionCall, state: InterpState): Value = {
     val op = SnapControlFlow.operatorSymbol(call)
-    val args = call.arguments.map(evalNumber(_, state))
+    val values = call.arguments.map(eval(_, state))
+    def truth(condition: Boolean) = Value.Num(if condition then 1.0 else 0.0)
+    def isText = values.exists(_.isInstanceOf[Value.Text])
+    op match
+      case "+" if isText => Value.Text(values.map(text).mkString)
+      case "==" if isText => truth(values.sliding(2).forall(pair => pair.size < 2 || pair.head == pair(1)))
+      case "!=" if isText => truth(values.size >= 2 && values.head != values(1))
+      case "and" => truth(values.forall(truthy))
+      case "or" => truth(values.exists(truthy))
+      case "not" => truth(!values.headOption.exists(truthy))
+      case _ => Value.Num(arithmetic(op, values.map(number)))
+  }
+
+  private def truthy(value: Value): Boolean = value match
+    case Value.Num(number) => number != 0
+    case Value.Text(text) => text.nonEmpty
+
+  private def arithmetic(op: String, args: List[Double]): Double =
     op match
       case "+" => args.sum
       case "-" if args.size == 1 => -args.head
@@ -217,25 +262,22 @@ object TurtleProgramAnalysis {
         val dividend = args.headOption.getOrElse(0.0)
         val divisor = args.drop(1).headOption.getOrElse(1.0)
         if divisor == 0 then throw ArithmeticException("Remainder by zero.") else dividend - divisor * math.floor(dividend / divisor)
+      case "//" =>
+        val divisor = args.drop(1).headOption.getOrElse(1.0)
+        if divisor == 0 then throw ArithmeticException("Division by zero.") else math.floor(args.headOption.getOrElse(0.0) / divisor)
+      case "**" => math.pow(args.headOption.getOrElse(0.0), args.drop(1).headOption.getOrElse(1.0))
       case "<" => if compare(args, _ < _) then 1.0 else 0.0
       case ">" => if compare(args, _ > _) then 1.0 else 0.0
       case "==" => if args.sliding(2).forall(pair => pair.size < 2 || pair.head == pair(1)) then 1.0 else 0.0
       case "<=" => if compare(args, _ <= _) then 1.0 else 0.0
       case ">=" => if compare(args, _ >= _) then 1.0 else 0.0
       case "!=" => if args.size >= 2 && args.head != args(1) then 1.0 else 0.0
-      case "and" => if args.forall(_ != 0) then 1.0 else 0.0
-      case "or" => if args.exists(_ != 0) then 1.0 else 0.0
-      case "not" => if args.headOption.getOrElse(0.0) == 0 then 1.0 else 0.0
       case _ => 0.0
-  }
 
   private def compare(args: List[Double], op: (Double, Double) => Boolean): Boolean =
     args.sliding(2).forall(pair => pair.size < 2 || op(pair.head, pair(1)))
 
-  private def evalBool(expression: BeExpression, state: InterpState): Boolean =
-    evalNumber(expression, state) != 0.0 || (expression match
-      case BeUseValue(BeDataValueLiteral(value), _) => isTruthy(value)
-      case _ => false)
+  private def evalBool(expression: BeExpression, state: InterpState): Boolean = truthy(eval(expression, state))
 
   private def isTruthy(value: String): Boolean = {
     val trimmed = value.trim

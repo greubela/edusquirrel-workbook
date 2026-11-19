@@ -4,7 +4,6 @@ import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.BeDefineFunction
-import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.conversion.printing.ModuleLayout
@@ -21,11 +20,6 @@ object PythonEntryPoint {
   private def isMain(definition: BeDefineFunction): Boolean =
     definition.inputs.isEmpty &&
       definition.functionTypeInfo.displayName.universalInterpretation() == mainName.universalInterpretation()
-  private def isGlobalDeclaration(statement: BeExpression): Boolean = statement match {
-    case BeExpressionUnsupported(source, _) => source.trim.startsWith("global ")
-    case BeExpressionUnparsable(source, _, _) => source.trim.startsWith("global ")
-    case _ => false
-  }
 
   /** Inline a `def main(): …` + final `main()` entry point into the main sequence. */
   def inline(program: BeStartProgram): BeStartProgram = program.startSequence match {
@@ -42,10 +36,10 @@ object PythonEntryPoint {
       })
       (entry, definitionIndex, calls) match {
         case (Some(main), Some(index), Some(1)) =>
-          val statements = main.body.body.filterNot(statement => isGlobalDeclaration(statement) || (statement match {
+          val statements = main.body.body.filterNot {
             case pass: BeSequence => pass.body.isEmpty
             case _ => false
-          }))
+          }
           val rest = body.patch(index, Nil, 1).dropRight(1)
           BeStartProgram(Some(sequence.copy(body = rest ++ statements)))
         case _ => program
@@ -56,9 +50,8 @@ object PythonEntryPoint {
   /** Move the main sequence into `def main():`, called at the end of the module; see [[ModuleLayout]]. */
   def wrap(program: BeStartProgram): BeStartProgram = {
     val layout = ModuleLayout.of(program)
-    val globals = layout.mainVariables.map(ModuleLayout.name)
-    val declaration = Option.when(globals.nonEmpty)(BeExpressionUnsupported(s"global ${globals.mkString(", ")}", Some(Python)))
-    val entry = BeDefineFunction(Nil, None, BeSequence.optionalBody((declaration.toList ++ layout.main).toList),
+    // The Python printer declares the module variables that `main` assigns `global`.
+    val entry = BeDefineFunction(Nil, None, BeSequence.optionalBody(layout.main.toList),
       BeDefineFunction.functionInfo(mainName))
     BeStartProgram(Some(BeSequence.optionalBody((layout.module :+ entry :+ BeFunctionCall.fromDefinition(entry, Map.empty)).toList)))
   }

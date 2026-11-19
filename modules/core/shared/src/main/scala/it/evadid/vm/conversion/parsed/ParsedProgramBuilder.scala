@@ -59,6 +59,10 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
     case definition: S.ClassDef => buildClass(definition, context)
     case definition: S.FunctionDef => buildFunction(definition, context)
     case S.Declare(name, typeHint) => context.defineVariable(name, dataType(typeHint))
+    // Assignments bind to module variables already; `global` makes sure the module variable exists.
+    case S.Global(names) =>
+      names.foreach(context.moduleVariable(_, BeDataType.AnyType))
+      BeExpression.pass
     case S.Assign(name, Some(typeHint), value) =>
       val variable = context.defineVariable(name, dataType(typeHint))
       BeAssignVariable(variable, expression(value, context))
@@ -84,7 +88,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
     case S.Comment(text) => BeSingleLineComment(LanguageMap.universalMap(text))
     case S.Pass => BeExpression.pass
     case S.Unsupported(source, reason, true) => BeExpressionUnparsable(source, reason, Some(language))
-    case S.Unsupported(source, _, false) => BeExpressionUnsupported(source, Some(language))
+    case S.Unsupported(source, reason, false) => BeExpressionUnsupported(source, Some(language), reason)
   }
 
   private def buildFunction(definition: S.FunctionDef, context: ParseContext): BeDefineFunction = {

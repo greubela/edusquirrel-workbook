@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Python
 import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.usage.BeFunctionCall
-import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter
+import it.evadid.vm.conversion.printing.{GenericJavaLikeStringPrinter, ModuleLayout}
 import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter.PythonSeparation
 import it.evadid.vm.naming.NamingStyle
 
@@ -38,17 +38,19 @@ case class BeExpressionToPythonString
   override def forDefinition(definition: BeDefineStructure): String = definition match {
     case function: BeDefineFunction =>
       val previous = declared
+      val parameters = function.inputs.map(input => entityName(input.name)).toSet
+      // A function assigns module variables (as in the shared tree); Python needs `global` for that.
+      val globals = ModuleLayout.assigned(function.body).map(variable => entityName(variable.name))
+        .distinct.filter(name => moduleVariables(name) && !parameters(name))
       // Parameters are annotated in the signature; names declared `global` cannot be annotated.
-      declared = function.inputs.map(_.name.getNameIn(language, NamingStyle.SnakeCase)).toSet ++
-        function.body.body.headOption.collect {
-          case it.evadid.vm.code.errors.BeExpressionUnsupported(source, _) if source.startsWith("global ") =>
-            source.stripPrefix("global ").split(",").map(_.trim).toSet
-        }.getOrElse(Set.empty)
-      try super.forDefinition(function) finally declared = previous
+      declared = parameters ++ globals
+      val printed = if globals.isEmpty then function else function.copy(body = function.body.copy(body =
+        it.evadid.vm.code.errors.BeExpressionUnsupported(s"global ${globals.mkString(", ")}", Some(Python)) +: function.body.body))
+      try super.forDefinition(printed) finally declared = previous
     case BeDefineVariable(name, variableType, initValue) =>
-      declared += name.getNameIn(language, NamingStyle.SnakeCase)
+      declared += entityName(name)
       defineVariableLine(
-        name.getNameIn(language, NamingStyle.SnakeCase),
+        entityName(name),
         variableType.formatTypeForDisplay.getInLanguage(Python),
         initValue
       )
@@ -64,7 +66,10 @@ case class BeExpressionToPythonString
 
   private def formatOperatorCall(call: BeFunctionCall): String = {
     val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
-    val args = call.arguments.map(forOperand)
+    def isText(value: BeExpression) = value.staticInformationExpression.staticType == it.evadid.vm.types.BeDataType.String
+    // Python joins text only with text, so other values in a text `+` are converted with str().
+    val joinsText = symbol == "+" && call.arguments.exists(isText)
+    val args = call.arguments.map(value => if joinsText && !isText(value) then s"str(${forValue(value)})" else forOperand(value))
     symbol match {
       case "not" =>
         s"not ${args.headOption.getOrElse("")}"
@@ -87,8 +92,21 @@ case class BeExpressionToPythonString
   private var declared = Set.empty[String]
   private var renderingDepth = 0
 
+  /** Variables declared or assigned by module-level statements of the program being printed. */
+  private var moduleVariables = Set.empty[String]
+
   override def forExpression(expression: BeExpression): String = {
-    if renderingDepth == 0 then declared = Set.empty
+    if renderingDepth == 0 then {
+      declared = Set.empty
+      moduleVariables = expression match {
+        case it.evadid.vm.code.others.BeStartProgram(Some(body)) => body.body.flatMap {
+          case variable: BeDefineVariable => Some(variable)
+          case it.evadid.vm.code.usage.BeAssignVariable(target, _) => Some(target)
+          case _ => None
+        }.map(variable => entityName(variable.name)).toSet
+        case _ => Set.empty
+      }
+    }
     renderingDepth += 1
     try super.forExpression(expression) finally renderingDepth -= 1
   }
@@ -115,7 +133,7 @@ case class BeExpressionToPythonString
 
   override protected def formatFunctionParameters(inputs: List[BeDefineVariable]): String =
     inputs.map(variable =>
-      s"${variable.name.getNameIn(language, NamingStyle.SnakeCase)}: ${variable.variableType.formatTypeForDisplay.getInLanguage(Python)}"
+      s"${entityName(variable.name)}: ${variable.variableType.formatTypeForDisplay.getInLanguage(Python)}"
     ).mkString("(", ", ", ")")
 
   override protected def fixedRepetitionLine(amount: Int): String = {

@@ -125,6 +125,15 @@ object SymbolTable {
       variable
     }
 
+    /** The module-level variable `name`, defined there if no module code has assigned it yet. */
+    def moduleVariable(name: String, dataType: BeDataType): BeDefineVariable =
+      scopes.last.getOrElse(name, {
+        val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
+        scopes.last.update(name, variable)
+        registerVariable(name, variable)
+        variable
+      })
+
     def lookupVariable(name: String): Option[BeDefineVariable] = scopes.collectFirst { case scope if scope.contains(name) => scope(name) }
 
     private def currentScope: mutable.LinkedHashMap[String, BeDefineVariable] = scopes.head

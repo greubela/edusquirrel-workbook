@@ -103,4 +103,26 @@ class JavaCompilationRoundTripSpec extends FunSuite {
       assertEquals(segments.map(_.toVector), Vector(Vector(0.0, 0.0, 45.5, 0.0)), "int truncates towards zero: abs(-3) + 42.5")
     }
   }
+
+  test("text comparison, numeric conditions, module updates, reserved names and multi-value print compile and draw") {
+    val python = ProgrammingStateRaw(Python, """name = "ab"
+      |new = 2
+      |count = 3
+      |def step():
+      |    global count
+      |    count = count - 1
+      |while count:
+      |    if name == "ab" and 0 < count < 5:
+      |        forward(count * new)
+      |    step()
+      |print("done", count)
+      |""".stripMargin)
+    val code = python.convertToLanguage(Java).finalState.get.toString
+    compileAndRun(code) { loader =>
+      val accessor = loader.loadClass("Turtle").getDeclaredMethod("segments")
+      accessor.setAccessible(true)
+      val segments = accessor.invoke(null).asInstanceOf[java.util.List[Array[Double]]].asScala.toVector
+      assertEquals(segments.map(segment => segment(2) - segment(0)), Vector(6.0, 4.0, 2.0), code)
+    }
+  }
 }

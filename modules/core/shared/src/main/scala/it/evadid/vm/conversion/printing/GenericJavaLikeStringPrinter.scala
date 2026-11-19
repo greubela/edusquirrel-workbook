@@ -1,6 +1,6 @@
 package it.evadid.vm.conversion.printing
 
-import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, ProgrammingLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Java, ProgrammingLanguage, Python}
 import it.evadid.core.util.CodeStringBuilderMutable
 import it.evadid.vm.code.abstractions.{BeControlStructure, BeDefineStructure, BeExpression}
 import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
@@ -20,7 +20,7 @@ abstract class GenericJavaLikeStringPrinter(
                                              skipUnparsable: Boolean
                                            ) {
   private case class NameInfo(entityName: BeEntityName) derives upickle.default.ReadWriter {
-    val inCurLanguage: String = entityName.getNameIn(humLang, sepLogic.preferedDisplayStyle)
+    val inCurLanguage: String = GenericJavaLikeStringPrinter.identifier(entityName.getNameIn(humLang, sepLogic.preferedDisplayStyle), progLang)
   }
 
   private case class TypeInfo(dataType: BeDataType) derives upickle.default.ReadWriter {
@@ -184,10 +184,14 @@ abstract class GenericJavaLikeStringPrinter(
     }
   }
 
+  /** The condition of an `if` or `while`, as one line. */
+  protected def conditionText(condition: BeSequence): String =
+    forExpression(condition).replaceAll("\n", "").stripSuffix(sepLogic.endLineWith)
+
   def forControlStructure(cs: BeControlStructure): String = cs.match {
     case BeIfElse(condition, thenBody, elseBody) => {
       def header(keyword: String, condition: BeSequence): String = {
-        val conditionString = forExpression(condition).replaceAll("\n", "").stripSuffix(sepLogic.endLineWith)
+        val conditionString = conditionText(condition)
         sepLogic match {
           case _: PythonSeparation => s"$keyword $conditionString${sepLogic.startBlockWith}"
           case _ => s"$keyword ($conditionString) ${sepLogic.startBlockWith}"
@@ -246,7 +250,7 @@ abstract class GenericJavaLikeStringPrinter(
       if (sepLogic.isInstanceOf[PythonSeparation] && levelIsTopLevel(rendered)) rendered + "\n" else rendered
     }
     case BeWhile(condition, body) => {
-      val conditionString = forExpression(condition).replaceAll("\n", "").stripSuffix(sepLogic.endLineWith)
+      val conditionString = conditionText(condition)
       val formattedCondition = sepLogic match {
         case _: PythonSeparation => s" $conditionString"
         case _ => s" ($conditionString) "
@@ -267,6 +271,21 @@ abstract class GenericJavaLikeStringPrinter(
 }
 
 object GenericJavaLikeStringPrinter {
+  /** Words a program cannot use as names, per target language. */
+  private val reservedWords: Map[ProgrammingLanguage, Set[String]] = Map(
+    Python -> Set("False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue", "def",
+      "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is", "lambda",
+      "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield"),
+    Java -> Set("abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const", "continue",
+      "default", "do", "double", "else", "enum", "extends", "final", "finally", "float", "for", "goto", "if", "implements",
+      "import", "instanceof", "int", "interface", "long", "native", "new", "package", "private", "protected", "public",
+      "return", "short", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient",
+      "try", "void", "volatile", "while", "true", "false", "null", "_"))
+
+  /** A name as the target language can spell it: a reserved word gets a trailing underscore (`new` → `new_`). */
+  def identifier(name: String, language: ProgrammingLanguage): String =
+    if reservedWords.get(language).exists(_.contains(name)) then name + "_" else name
+
 
   sealed trait SeparateStructures derives upickle.default.ReadWriter {
     def startBlockWith: String

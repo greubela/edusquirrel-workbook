@@ -47,7 +47,7 @@ object PythonToExpression {
       error => ParsedProgram(if source.trim.isEmpty then Nil else Seq(S.Unsupported(source.trim, error.getMessage, unparsable = true))),
       program => {
         val parsed = program.statements.map(_.statement).flatMap(withoutMainGuard)
-        given UsedNames = UsedNames(parsed.flatMap(usedNames).toSet)
+        given ProgramNames = ProgramNames(parsed.flatMap(usedNames).toSet, assignedNames(parsed))
         ParsedProgram(statements(parsed))
       })
   }
@@ -68,13 +68,13 @@ object PythonToExpression {
     case _ => false
   }
 
-  private def statements(values: Seq[PyStatement])(using UsedNames): Seq[ParsedStatement] = values.flatMap(statement)
+  private def statements(values: Seq[PyStatement])(using ProgramNames): Seq[ParsedStatement] = values.flatMap(statement)
 
-  private def statement(value: PyStatement)(using UsedNames): Seq[ParsedStatement] = value match {
+  private def statement(value: PyStatement)(using ProgramNames): Seq[ParsedStatement] = value match {
     case PyEmptyStatement => Nil
     case PyPassStatement => Seq(S.Pass)
     case PyCommentStatement(text) => Seq(S.Comment(text))
-    case PyUnparsableStatement(source) if source.trim.startsWith("global ") => Seq(S.Unsupported(source.trim, "global declaration", unparsable = false))
+    case PyUnparsableStatement(source) if source.trim.startsWith("global ") => Seq(S.Global(globalNames(source)))
     case PyUnparsableStatement(source) => Seq(S.Unsupported(source.trim, unreadable(source.trim), unparsable = true))
     case statement: PythonImportStatement if isBridgeImport(statement) => Nil
     case PyPlainImportStatement(module) if KnownDependencies.providedByPythonModule(module).nonEmpty => Nil
@@ -87,8 +87,11 @@ object PythonToExpression {
     case loop: PyForStatement => forLoop(loop)
     case definition: PyFunctionDef =>
       if definition.decorators.nonEmpty || definition.isAsync then Seq(S.Unsupported(definition.source, "Decorators are not supported outside classes", unparsable = false))
-      else Seq(S.FunctionDef(definition.name, parameters(definition.parameters), definition.returnType.map(parsedType),
-        block(definition.block), ParsedFunctionKind.Function))
+      else {
+        val parsedParameters = parameters(definition.parameters)
+        Seq(S.FunctionDef(definition.name, parsedParameters, definition.returnType.map(parsedType),
+          hiddenModuleVariable(definition, parsedParameters).toSeq ++ block(definition.block), ParsedFunctionKind.Function))
+      }
     case definition: PyClassDef => Seq(classDef(definition))
     case statement: PyTryStatement => Seq(S.Unsupported(statement.source, "try/except statements are currently unsupported", unparsable = false))
     case PySimpleAssignment(target, Some(value)) => Seq(assign(target, expression(value)))
@@ -106,7 +109,7 @@ object PythonToExpression {
       .collectFirst { case (keyword, message) if source == keyword || source.startsWith(keyword + " ") || source.startsWith(keyword + "(") => message }
       .getOrElse("Python source cannot be read")
 
-  private def block(value: PyExecutionBlock)(using UsedNames): Seq[ParsedStatement] = statements(value.statements)
+  private def block(value: PyExecutionBlock)(using ProgramNames): Seq[ParsedStatement] = statements(value.statements)
 
   private def targetExpression(target: PyTarget): ParsedExpression =
     if target.locationString.isEmpty then path(Seq(target.identifier))
@@ -127,7 +130,7 @@ object PythonToExpression {
   /** Names the program uses anywhere except as `for` targets. A loop counter outside this set is
     * never read, so its loop can be a fixed repetition even though Python keeps the counter after it.
     */
-  private final case class UsedNames(names: Set[String])
+  private final case class ProgramNames(names: Set[String], moduleAssigned: Set[String] = Set.empty)
 
   private def usedNames(node: GenericAST): Set[String] = node match {
     case loop: PyForStatement => loop.getChildren().filterNot(_ eq loop.elementExpression).flatMap(usedNames).toSet
@@ -135,8 +138,40 @@ object PythonToExpression {
     case other => other.getChildren().flatMap(usedNames).toSet
   }
 
+  /** Names assigned or declared by statements, including in nested blocks but not in nested definitions. */
+  private def assignedNames(values: Seq[PyStatement]): Set[String] = values.flatMap {
+    case PySimpleAssignment(PyTarget(name, Nil, None, _), _) => Set(name)
+    case PyAugAssignment(PyTarget(name, Nil, None, _), _, _) => Set(name)
+    case loop: PyForStatement => Set(loop.elementExpression).collect { case PyTarget(name, Nil, None, _) => name } ++ assignedNames(loop.bodyBlock.statements)
+    case PyIfStatement(_, thenBlock, elseBlock) => assignedNames(thenBlock.statements) ++ assignedNames(elseBlock.statements)
+    case PyWhileStatement(_, body, _) => assignedNames(body.statements)
+    case _ => Set.empty
+  }.toSet
+
+  private def globalNames(source: String): Seq[String] = source.trim.stripPrefix("global").split(",").map(_.trim).filter(_.nonEmpty).toSeq
+
+  private def declaredGlobals(values: Seq[PyStatement]): Set[String] = values.flatMap {
+    case PyUnparsableStatement(source) if source.trim.startsWith("global ") => globalNames(source)
+    case loop: PyForStatement => declaredGlobals(loop.bodyBlock.statements)
+    case PyIfStatement(_, thenBlock, elseBlock) => declaredGlobals(thenBlock.statements) ++ declaredGlobals(elseBlock.statements)
+    case PyWhileStatement(_, body, _) => declaredGlobals(body.statements)
+    case _ => Nil
+  }.toSet
+
+  /** In the shared tree a function assigns module variables, as in Java and Snap. A Python function
+    * that assigns a module variable's name without `global` has a local of the same name instead,
+    * which the tree cannot hold apart, so it is reported rather than converted differently.
+    */
+  private def hiddenModuleVariable(definition: PyFunctionDef, parameters: Seq[ParsedParameter])(using names: ProgramNames): Option[ParsedStatement] = {
+    val statements = definition.block.statements
+    val hidden = (assignedNames(statements) -- declaredGlobals(statements) -- parameters.map(_.name)).intersect(names.moduleAssigned)
+    hidden.toSeq.sorted.headOption.map(name => S.Unsupported(s"def ${definition.name}(",
+      s"In ${definition.name}, assigning $name makes it a local variable that hides the module variable $name. " +
+        s"Declare global $name to change the module variable, or rename the local variable", unparsable = false))
+  }
+
   /** `for counter in range(…)` with whole-number steps, see [[ParsedStatement.countingLoop]]. */
-  private def forLoop(loop: PyForStatement)(using used: UsedNames): Seq[ParsedStatement] = (loop.elementExpression, loop.inExpression) match {
+  private def forLoop(loop: PyForStatement)(using used: ProgramNames): Seq[ParsedStatement] = (loop.elementExpression, loop.inExpression) match {
     case _ if loop.elseBlock.nonEmpty || loop.isAsync => Seq(S.Unsupported("for ... else", "for/else and async for are not supported", unparsable = false))
     case (PyTarget(name, Nil, None, _), PyFunctionCall(PyTarget("range", Nil, None, _), arguments)) if arguments.size >= 1 && arguments.size <= 3 =>
       val (start, stop) = if arguments.size == 1 then (E.Literal("0"), expression(arguments.head)) else (expression(arguments.head), expression(arguments(1)))
@@ -159,7 +194,7 @@ object PythonToExpression {
 
   // Classes: inheritance, decorators other than @staticmethod and other class-body statements are unsupported.
 
-  private def classDef(definition: PyClassDef)(using UsedNames): ParsedStatement = {
+  private def classDef(definition: PyClassDef)(using ProgramNames): ParsedStatement = {
     def unsupported(reason: String) = S.Unsupported(definition.source, reason, unparsable = false)
     val members = definition.block.statements.filter {
       case PyEmptyStatement | PyPassStatement | _: PyCommentStatement => false
