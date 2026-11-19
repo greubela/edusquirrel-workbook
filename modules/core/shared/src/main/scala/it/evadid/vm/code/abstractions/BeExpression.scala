@@ -6,7 +6,7 @@ import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVari
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.tree.*
-import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.vm.code.usage.*
 import it.evadid.vm.io.BeExpressionStructureInfo
 import it.evadid.vm.simulation.*
 import it.evadid.vm.static.BeExpressionStaticInformation
@@ -52,6 +52,9 @@ object BeExpression {
     taggedExpressionRW[BeReturn],
     taggedExpressionRW[BeStartProgram],
 
+    taggedExpressionRW[BeCurrentInstance],
+    taggedExpressionRW[BeMemberAccess],
+    taggedExpressionRW[BeAssignMember],
     taggedExpressionRW[BeAssignVariable],
     taggedExpressionRW[BeFunctionCall],
     taggedExpressionRW[BeUseValue],

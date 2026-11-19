@@ -1,5 +1,6 @@
 package it.evadid.vm.code.errors
 
+import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.datastructures.language.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.tree.BeExpressionNode
@@ -9,7 +10,7 @@ import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import upickle.default.*
-case class BeExpressionUnparsable(originalSource: String, message: String) extends BeExpression derives ReadWriter{
+case class BeExpressionUnparsable(originalSource: String, message: String, parsedFromLanguage: Option[ProgrammingLanguage] = None) extends BeSourcePlaceholder derives ReadWriter{
 
   override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
 

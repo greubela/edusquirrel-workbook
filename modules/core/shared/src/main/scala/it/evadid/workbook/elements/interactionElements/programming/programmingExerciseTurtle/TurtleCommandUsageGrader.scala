@@ -5,7 +5,6 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.tree.BeExpressionReference
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.simulation.turtle.TurtleProgramAnalysis
 import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeScope}
@@ -47,9 +46,9 @@ case class TurtleCommandUsageGrader(
     require(!malformed, "Command usage cannot be determined for an unsupported or unfinished program.")
     val count = measure match {
       case CommandUsageMeasure.OccurrencesInCode =>
-        TurtleProgramAnalysis.commandSites(expression).count(_.name == canonicalCommand)
+        state.toBeExpression.turtleCommandSites.count(_.name == canonicalCommand)
       case CommandUsageMeasure.CallsDuringExecution =>
-        val info = TurtleProgramAnalysis(expression)
+        val info = state.toBeExpression.turtleCommandExecutionInfo
         val _ = info.completedCommands // A partial trace must never satisfy an execution limit.
         info.nrOfCommandExecutedIgnoreParameter(canonicalCommand)
     }

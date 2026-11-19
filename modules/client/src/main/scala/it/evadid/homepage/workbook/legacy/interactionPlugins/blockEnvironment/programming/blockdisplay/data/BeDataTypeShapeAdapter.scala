@@ -14,7 +14,7 @@ object BeDataTypeShapeAdapter:
     case BeDataType.Date => DateShape
     case BeDataType.Unit => UnitShape
     case BeDataType.Error => NumericShape
-    case BeDataType.AnyType => DuckShape
+    case BeDataType.AnyType | _: BeDataType.ClassType => DuckShape
     case _: BeDataType.BeUnionAllowedTypes => DuckShape
     case _: BeDataType.BeDataTypeAtomic => DuckShape
 

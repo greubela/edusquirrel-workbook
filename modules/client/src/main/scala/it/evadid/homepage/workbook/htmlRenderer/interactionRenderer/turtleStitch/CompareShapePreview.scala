@@ -1,13 +1,13 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.vm.conversion.ProgrammingStateConversions.{toBeExpression, toLegacyTurtleCommands}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleDrawingPolicy.Strokes
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw, ProgrammingStateJavaStructured}
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
@@ -18,7 +18,8 @@ case class CompareShapePreview(boundVar: Var[ProgrammingState], expected: Turtle
 
   private def generateAssessmentFromState(state: ProgrammingState): Try[TurtleDrawingGrading.Assessment] = Try {
     val commands = state.match {
-      case java: ProgrammingStateJavaString => java.toLegacyTurtleCommands.map(_.asDouble)
+      case java @ ProgrammingStateRaw(Java, _) => java.toLegacyTurtleCommands.map(_.asDouble)
+      case java: ProgrammingStateJavaStructured => java.toJava.toLegacyTurtleCommands.map(_.asDouble)
       case _: ProgrammingState => state.toBeExpression.turtleCommandExecutionInfo.completedCommands.map(_.asDouble)
     }
     TurtleDrawingGrading.assess(commands, expected, Strokes)

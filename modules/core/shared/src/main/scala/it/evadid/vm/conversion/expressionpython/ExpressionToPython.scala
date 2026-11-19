@@ -1,9 +1,8 @@
 package it.evadid.vm.conversion.expressionpython
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.ConversionResult.converted
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
-import it.evadid.vm.conversion.javapython.JavaToPython
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.code.abstractions.BeExpression
@@ -11,10 +10,8 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport.*
 
 object ExpressionToPython {
-  def convert(expression: BeExpression): ProgrammingStatePythonString = expression match {
-    case root: JavaTurtleVmPrograms.Root => converted(JavaToPython.toPython(JavaTurtleVmPrograms.fromRoot(root)))
-    case _ => ProgrammingStatePythonString(printedPython(expression))
-  }
+  def convert(expression: BeExpression): ProgrammingStateRaw =
+    ProgrammingStateRaw(Python, printedPython(expression))
 
   /** Preserve the VM's variable, parameter and return types when switching to Python. */
   def printedPython(expression: BeExpression): String = {
@@ -24,7 +21,13 @@ object ExpressionToPython {
       .filter(line => line.trim.startsWith("def ") || variableAnnotation.matches(line))
       .map(_.takeWhile(_ != '='))
       .mkString("\n")
-    val imports = List(
+    val usesTurtle = expression.recToTree(false, it.evadid.vm.types.BeChildInfo(
+      it.evadid.vm.types.BeChildRole.NoRole, it.evadid.vm.types.BeScope.GlobalScope())).values.exists {
+      case it.evadid.vm.code.tree.BeExpressionReference(_, call: it.evadid.vm.code.usage.BeFunctionCall) =>
+        it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef)
+      case _ => false
+    }
+    val imports = Option.when(usesTurtle)("import turtle").toList ++ List(
       "Any" -> "from typing import Any",
       "date" -> "from datetime import date"
     ).collect {

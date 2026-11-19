@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import munit.FunSuite
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.ManualOwner
@@ -18,9 +18,9 @@ import it.evadid.facades.internal.CodeMirrorDiagnostics
 
 class ProgrammingEditorDiagnosticsSpec extends FunSuite {
   test("ProgrammingState converts itself at the Snap editor boundary") {
-    val snap = ProgrammingStatePythonString("forward(10)").toSnapXml
-    assert(snap.snapXml.contains("<project"), clue = snap.snapXml.take(120))
-    assert(snap.snapXml.contains("forward"), clue = snap.snapXml)
+    val snap = ProgrammingStateRaw(Python, "forward(10)").toSnapXml
+    assert(snap.code.contains("<project"), clue = snap.code.take(120))
+    assert(snap.code.contains("forward"), clue = snap.code)
   }
 
   test("CodeMirror maps Java and Python independently") {

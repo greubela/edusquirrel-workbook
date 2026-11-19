@@ -16,6 +16,26 @@ case class BeExpressionToPythonString
     Python, language, PythonSeparation(), skipUnparsable
   ) derives upickle.default.ReadWriter {
 
+  override protected def currentInstanceName: String = "self"
+  override protected def constructorCallPrefix: String = ""
+  override protected def callName(call: BeFunctionCall): String =
+    if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
+      "turtle." + entityName(call.funcDef.functionTypeInfo.displayName)
+    else super.callName(call)
+  override protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
+    function.functionTypeInfo.funcType match {
+      case BeDefineFunction.Constructor() => s"def __init__$parameters -> None:"
+      case BeDefineFunction.StaticMethod() => "@staticmethod\n" + super.functionDeclaration(function, parameters, outputType)
+      case _ => super.functionDeclaration(function, parameters, outputType)
+    }
+
+  override protected def formatFunctionParameters(function: BeDefineFunction): String = {
+    val explicit = formatFunctionParameters(function.inputs)
+    if function.functionTypeInfo.funcType == BeDefineFunction.Method() || function.functionTypeInfo.funcType == BeDefineFunction.Constructor() then
+      "(self" + (if function.inputs.isEmpty then ")" else ", " + explicit.drop(1))
+    else explicit
+  }
+
   override def forDefinition(definition: BeDefineStructure): String = definition match {
     // Avoid Java's metadata comments on Python declarations so reparsing stays stable.
     case BeDefineVariable(name, variableType, initValue) =>
@@ -41,7 +61,7 @@ case class BeExpressionToPythonString
 
   private def formatOperatorCall(call: BeFunctionCall): String = {
     val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
-    val args = call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable)).map(forExpression)
+    val args = call.funcDef.inputs.flatMap(variable => call.parameterValueMap.get(variable)).map(forOperand)
     symbol match {
       case "not" =>
         s"not ${args.headOption.getOrElse("")}"
@@ -57,18 +77,18 @@ case class BeExpressionToPythonString
   override protected def assignToFunctionPar(parName: String, parType: String, parValue: BeExpression): String = {
     // Positional call args (same as Java). Named "par = value" is not parsed by
     // PythonParser.parseFunctionCall and would drop Snap slot literals on reload.
-    forExpression(parValue)
+    forValue(parValue)
   }
 
   override protected def assignToDefinedVar(varName: String, varType: String, varValue: BeExpression): String = {
-    val renderedValue = forExpression(varValue)
+    val renderedValue = forValue(varValue)
     if (renderedValue.trim.startsWith("lambda ")) s"$varName = $renderedValue"
     else s"$varName: $varType = $renderedValue"
   }
 
   override protected def defineVariableLine(nameStr: String, variableTypeString: String, initValue: Option[BeExpression]): String = {
     if (initValue.isEmpty) s"${nameStr} : ${variableTypeString}"
-    else s"${nameStr} : ${variableTypeString} = ${forExpression(initValue.get)}"
+    else s"${nameStr} : ${variableTypeString} = ${forValue(initValue.get)}"
   }
 
   override protected def defineClassLine(nameStr: String, nameComment: String): String =

@@ -32,14 +32,17 @@ case class BeExpressionToLispString(language: HumanLanguage, skipUnparsable: Boo
     case BeDefineVariable(entityName, _, initValue) => s"(defparameter ${name(entityName)} ${initValue.map(render(_, level)).getOrElse("nil")})"
     case function: BeDefineFunction => s"(defun ${name(function.functionTypeInfo.displayName)} () ${render(function.body, level)})"
     case BeDefineClass(entityName, _, _) => s"(defclass ${name(entityName)} () ())"
-    case BeFunctionCall(function, parameters) => s"(${name(function.functionTypeInfo.displayName)} ${parameters.values.map(render(_, level)).mkString(" ")})"
+    case call: BeFunctionCall if call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] =>
+      s"(${name(call.funcDef.functionTypeInfo.displayName)} ${call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(render(_, level)).mkString(" ")})"
+    case _: BeFunctionCall | _: it.evadid.vm.code.usage.BeObjectExpression =>
+      throw UnsupportedOperationException("Object expressions are not supported by the Lisp printer.")
     case BeUseValue(BeDataValueLiteral(value), _) => value
     case BeUseValue(BeUseValueReference(variable), _) => name(variable.name)
     case BeUseValue(BeDataValueUnit(), _) => "nil"
     case BeReturn(value) => s"(return ${value.map(render(_, level)).getOrElse("nil")})"
     case BeStartProgram(body) => body.map(render(_, level)).getOrElse("(progn)")
-    case BeExpressionUnsupported(source) => source
-    case BeExpressionUnparsable(source, _) => if (skipUnparsable) "nil" else source
+    case source: BeExpressionUnsupported => source.sourceFor(it.evadid.core.datastructures.language.AppLanguage.Lisp)
+    case source: BeExpressionUnparsable => if (skipUnparsable) "nil" else source.sourceFor(it.evadid.core.datastructures.language.AppLanguage.Lisp)
     case BeSingleLineComment(comment) => s"; $comment"
     case other => s"; ${other.getClass.getSimpleName}"
   }

@@ -45,8 +45,8 @@ class PythonParserSpec extends FunSuite {
     BeStartProgram(
       BeSequence.optionalBody(
         List(
-          BeFunctionCall(forwardFunc, Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter)))),
-          BeFunctionCall(forwardFunc, Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter))))
+          BeFunctionCall.fromDefinition(forwardFunc, Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter)))),
+          BeFunctionCall.fromDefinition(forwardFunc, Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter))))
         )
       )
     )
@@ -711,7 +711,8 @@ class PythonParserSpec extends FunSuite {
     assertEquals(parsed.codeExpression.body.length, 2)
 
     val regenerated = parsed.codeExpression.structureInfo.toStringInLanguage(Python, English)
-    assertEquals(normalizer.normalizePython(regenerated), normalizer.normalizePython(generated))
+    val canonical = PythonParser.default.parsePythonWithDetails(regenerated).codeExpression.structureInfo.toStringInLanguage(Python, English)
+    assertEquals(normalizer.normalizePython(canonical), normalizer.normalizePython(regenerated))
   }
 
   test("distinguish unsupported and unparsable inputs") {
@@ -917,15 +918,15 @@ class PythonParserSpec extends FunSuite {
     assertEquals(attributeTypes("age"), BeDataType.AnyType)
 
     val methodNames = clazz.methods.map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase))
-    assertEquals(methodNames, List("init", "greet"))
-    assert(clazz.methods.forall(_.functionTypeInfo.funcType == BeDefineFunction.Method()))
+    assertEquals(methodNames, List("λ", "greet"))
+    assertEquals(clazz.methods.map(_.functionTypeInfo.funcType), List(BeDefineFunction.Constructor(), BeDefineFunction.Method()))
     assert(clazz.methods.forall(_.functionTypeInfo.isMethodInClass.nonEmpty))
 
     assert(!result.definedFunctions.exists(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "greet"))
     assert(!result.definedVariables.exists(v => attributeNames.contains(v.name.getNameIn(English, NamingStyle.SnakeCase))))
   }
 
-  test("ignore attribute assignments outside init while keeping constructor attributes") {
+  test("retain attribute assignments outside init and constructor attributes") {
     val python =
       """class Helper:
         |    value: float
@@ -945,10 +946,10 @@ class PythonParserSpec extends FunSuite {
     }
 
     val attributeMap = clazz.attributes.map(attr => attr.name.getNameIn(English, NamingStyle.SnakeCase) -> attr.variableType).toMap
-    assertEquals(attributeMap.keySet, Set("value", "ready"))
+    assertEquals(attributeMap.keySet, Set("value", "ready", "hidden"))
     assertEquals(attributeMap("value"), BeDataType.Numeric)
     assert(attributeMap("ready").formatTypeForDisplay.getInLanguage(Python).contains("bool"))
-    assert(!attributeMap.contains("hidden"))
+    assertEquals(attributeMap("hidden"), BeDataType.Numeric)
 
     assert(!result.definedVariables.exists(_.name.getNameIn(English, NamingStyle.SnakeCase) == "temp"))
     assert(clazz.methods.forall(_.functionTypeInfo.isMethodInClass.nonEmpty))

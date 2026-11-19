@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
-import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
@@ -28,9 +28,7 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
   val scaffolding = reporter.scaffolding
 
   def label(key: String): Signal[String] = helper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
-  def localized(content: LanguageMap[HumanLanguage]): Signal[String] = fullInfo.signals.currentLanguage.map { language =>
-    if content.availableLanguages.isEmpty then "" else content.getWithLanguagePreference(List(language, English))
-  }
+  def localized(content: LanguageMap[HumanLanguage]): Signal[String] = helper.plaintextStringSignal(content)
 
   def description(entry: GradingSummary.Entry): Signal[String] = entry.grader match {
     case grader: ProgrammingUnitTestGrader => grader.publicDescription

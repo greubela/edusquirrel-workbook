@@ -1,7 +1,7 @@
 package it.evadid.vm.conversion.pythonexpression
 
 import it.evadid.vm.conversion.pythonexpression.ParsingUtils.keepExpression
-import it.evadid.vm.conversion.pythonexpression.PythonClassParser.ClassParseResult
+import it.evadid.vm.conversion.pythonexpression.PythonClassParser.{ClassParseResult, ClassPattern}
 import PythonLexerLike.{ParsedLine, splitCodeAndComment}
 import it.evadid.vm.conversion.pythonexpression.PythonSymbolTable.ParseContext
 import it.evadid.core.datastructures.language.LanguageMap
@@ -11,7 +11,7 @@ import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeSingleLineComment}
-import it.evadid.vm.code.usage.BeAssignVariable
+import it.evadid.vm.code.usage.{BeAssignVariable, BeAssignMember, BeMemberAccess}
 import it.evadid.vm.types.BeDataType
 
 object PythonStatementParser {
@@ -28,12 +28,12 @@ object PythonStatementParser {
 
   private val AnnotationDeclarationPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=:]+)$""".r
   private val AnnotationAssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=]+?)\s*=\s*(.+)$""".r
-  private val ClassPattern = """^class\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*\(([^)]*)\))?:$""".r
   private val FunctionPattern = """^def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*)\)\s*(?:->\s*([^:]+))?:$""".r
   private val WhilePattern = """^while\s+(.+):$""".r
   private val IfPattern = """^if\s+(.+):$""".r
   private val ForRangePattern = """^for\s+_\s+in\s+range\((\d+)\):$""".r
   private val ForNamedRangePattern = """^for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+range\((.+)\):$""".r
+  private val MemberAssignmentPattern = """^([A-Za-z_][A-Za-z0-9_.]*)\.([A-Za-z_][A-Za-z0-9_]*)(?:\s*:\s*[^=]+)?\s*=(?!=)\s*(.+)$""".r
   private val AssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$""".r
 
   final case class StatementApi(
@@ -103,8 +103,15 @@ object PythonStatementParser {
 
   private def buildDispatchRules(api: StatementApi): List[DispatchRule] = List(
     // These imports only resolve annotations emitted by the Python conversion bridge.
-    DispatchRule(text => Set("from typing import Any", "from datetime import date").contains(text),
+    DispatchRule(text => Set("from typing import Any", "from datetime import date", "import turtle").contains(text),
       ctx => DispatchOutcome(Nil, ctx.index + 1)),
+    DispatchRule(_.matches(MemberAssignmentPattern.regex), ctx => {
+      val MemberAssignmentPattern(receiver, member, source) = ctx.trimmed: @unchecked
+      api.parseExpression(s"$receiver.$member", ctx.context) match {
+        case BeMemberAccess(instance, field) => DispatchOutcome(List(BeAssignMember(instance, field, api.parseExpression(source, ctx.context))), ctx.index + 1)
+        case _ => throw IllegalArgumentException(s"Cannot resolve member assignment '${ctx.trimmed}'.")
+      }
+    }),
     DispatchRule(_.matches(AnnotationAssignmentPattern.regex), ctx => {
       val (name, typeHint, valueStr) = ctx.trimmed match
         case AnnotationAssignmentPattern(parsedName, parsedTypeHint, parsedValueStr) => (parsedName, parsedTypeHint, parsedValueStr)
@@ -162,7 +169,7 @@ object PythonStatementParser {
     }),
     DispatchRule(api.isTryHeader, ctx => {
       val (rawBlock, nextIndex) = api.collectTryExceptBlock(ctx.lines, ctx.index, ctx.indent)
-      DispatchOutcome(List(BeExpressionUnparsable(rawBlock, "try/except statements are currently unsupported")), nextIndex)
+      DispatchOutcome(List(BeExpressionUnparsable(rawBlock, "try/except statements are currently unsupported", parsedFromLanguage = Some(Python))), nextIndex)
     }),
     DispatchRule(ParsingUtils.startsWithKeyword(_, "return"), ctx => DispatchOutcome(List(api.parseReturn(ctx.trimmed, ctx.context)), ctx.index + 1)),
     DispatchRule(_ == "pass", ctx => DispatchOutcome(List(BeExpression.pass), ctx.index + 1)),
@@ -174,8 +181,8 @@ object PythonStatementParser {
       val variable = ctx.context.assignVariable(name, api.inferType(valueExpr))
       DispatchOutcome(List(BeAssignVariable(variable, valueExpr)), ctx.index + 1)
     }),
-    DispatchRule(ParsingUtils.startsWithKeyword(_, "while"), ctx => DispatchOutcome(List(BeExpressionUnparsable(ctx.trimmed, "While statements must end with ':'")), ctx.index + 1)),
-    DispatchRule(ParsingUtils.startsWithKeyword(_, "if"), ctx => DispatchOutcome(List(BeExpressionUnparsable(ctx.trimmed, "If statements must end with ':'")), ctx.index + 1)),
-    DispatchRule(ParsingUtils.startsWithKeyword(_, "for"), ctx => DispatchOutcome(List(BeExpressionUnparsable(ctx.trimmed, "For statements must use range(...)")), ctx.index + 1))
+    DispatchRule(ParsingUtils.startsWithKeyword(_, "while"), ctx => DispatchOutcome(List(BeExpressionUnparsable(ctx.trimmed, "While statements must end with ':'", parsedFromLanguage = Some(Python))), ctx.index + 1)),
+    DispatchRule(ParsingUtils.startsWithKeyword(_, "if"), ctx => DispatchOutcome(List(BeExpressionUnparsable(ctx.trimmed, "If statements must end with ':'", parsedFromLanguage = Some(Python))), ctx.index + 1)),
+    DispatchRule(ParsingUtils.startsWithKeyword(_, "for"), ctx => DispatchOutcome(List(BeExpressionUnparsable(ctx.trimmed, "For statements must use range(...)", parsedFromLanguage = Some(Python))), ctx.index + 1))
   )
 }

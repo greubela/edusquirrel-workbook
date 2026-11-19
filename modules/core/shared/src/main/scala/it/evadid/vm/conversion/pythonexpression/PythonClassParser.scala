@@ -1,232 +1,112 @@
 package it.evadid.vm.conversion.pythonexpression
 
 import PythonLexerLike.{ParsedLine, findBodyIndent, splitCodeAndComment}
-import it.evadid.vm.conversion.pythonexpression.PythonSymbolTable.ParseContext
-import it.evadid.vm.types.BeDataType.AnyType
-import it.evadid.core.datastructures.language.LanguageMap
-
-import it.evadid.core.datastructures.language.*
+import PythonSymbolTable.ParseContext
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
-import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeSingleLineComment}
+import it.evadid.vm.code.defining.BeDefineFunction.*
+import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.BeDataType
-import scala.collection.mutable
 
+/** Class signatures are bound before bodies; definitions never contain a receiver parameter. */
 object PythonClassParser {
+  private[pythonexpression] val ClassPattern = """^class\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*\(([^)]*)\))?:$""".r
   private val FunctionPattern = """^def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*)\)\s*(?:->\s*([^:]+))?:$""".r
-  private val ClassAttributeAnnotationAssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=]+?)\s*=\s*(.+)$""".r
-  private val ClassAttributeAnnotationPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+)$""".r
-  private val AssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$""".r
-  private val SelfAttributeAnnotationAssignmentPattern = """^(self|cls)\.([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=]+?)\s*=\s*(.+)$""".r
-  private val SelfAttributeAnnotationPattern = """^(self|cls)\.([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+)$""".r
-  private val SelfAttributeAssignmentPattern = """^(self|cls)\.([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)\s*(.+)$""".r
-  private val WhilePattern = """^while\s+(.+):$""".r
-  private val IfPattern = """^if\s+(.+):$""".r
-
-  final case class AttributeRecord(name: String, variable: BeDefineVariable) derives upickle.default.ReadWriter
-
-  final case class ParsedMethod(name: String, template: BeDefineFunction, attributes: List[AttributeRecord], nextIndex: Int) derives upickle.default.ReadWriter
-
+  private val FieldPattern = """^(self\.)?([A-Za-z_][A-Za-z0-9_]*)(?:\s*:\s*([^=]+?))?(?:\s*=(?!=)\s*(.+))?$""".r
   final case class ClassParseResult(expression: BeExpression, nextIndex: Int) derives upickle.default.ReadWriter
-
   final case class ClassParserApi(
-                                   parseBlock: (Vector[ParsedLine], Int, Int, ParseContext) => PythonStatementParser.BlockParseResult,
-                                   parseWhile: (Vector[ParsedLine], Int, Int, String, ParseContext) => PythonStatementParser.NodeWithNext,
-                                   parseIf: (Vector[ParsedLine], Int, Int, String, ParseContext) => PythonStatementParser.NodeWithNext,
-                                   parseReturn: (String, ParseContext) => BeExpression,
-                                   parseExpression: (String, ParseContext) => BeExpression,
-                                   parseParameters: String => List[(String, Option[String])],
-                                   inferType: BeExpression => BeDataType,
-                                   mapType: Option[String] => BeDataType
-                                 )
+    parseBlock: (Vector[ParsedLine], Int, Int, ParseContext) => PythonStatementParser.BlockParseResult,
+    parseExpression: (String, ParseContext) => BeExpression,
+    parseParameters: String => List[(String, Option[String])],
+    inferType: BeExpression => BeDataType,
+    mapType: Option[String] => BeDataType)
 
-  def parseClass(
-                  lines: Vector[ParsedLine],
-                  headerIndex: Int,
-                  indent: Int,
-                  name: String,
-                  basesSource: Option[String],
-                  context: ParseContext,
-                  api: ClassParserApi
-                ): ClassParseResult = {
+  private case class MethodHeader(index: Int, name: String, parameterNames: List[String], parameters: List[BeDefineVariable], result: Option[BeDefineVariable], kind: BeFunctionType)
+
+  def declareClasses(lines: Vector[ParsedLine], context: ParseContext, api: ClassParserApi): Unit = {
+    val declarations = lines.zipWithIndex.collect {
+      case (line, index) if line.indent == 0 && ClassPattern.matches(splitCodeAndComment(line.content)._1.trim) =>
+        val ClassPattern(name, bases) = splitCodeAndComment(line.content)._1.trim: @unchecked
+        (index, name, Option(bases))
+    }
+    declarations.foreach { (_, name, bases) =>
+      if bases.forall(_.trim.isEmpty) then context.registerClass(name, BeDefineClass(BeEntityName.fromCodeString(name), Nil, Nil))
+    }
+    declarations.foreach { (index, name, bases) => parseClass(lines, index, 0, name, bases, context, api, signaturesOnly = true) }
+  }
+
+  def parseClass(lines: Vector[ParsedLine], headerIndex: Int, indent: Int, name: String,
+      basesSource: Option[String], context: ParseContext, api: ClassParserApi, signaturesOnly: Boolean = false): ClassParseResult = {
+    val nextIndex = (headerIndex + 1 until lines.size).find(i => lines(i).content.trim.nonEmpty && lines(i).indent <= indent).getOrElse(lines.size)
     val bodyIndent = findBodyIndent(lines, headerIndex + 1, indent)
-    basesSource.foreach(_ => ())
-    if (bodyIndent <= indent) {
-      ClassParseResult(BeExpressionUnparsable(lines(headerIndex).content.trim, s"Missing body for class $name"), headerIndex + 1)
-    } else {
-      val attributesBuffer = mutable.LinkedHashMap[String, BeDefineVariable]()
-      val methodsBuffer = mutable.ListBuffer[ParsedMethod]()
-      val ignoredBodyExpressions = mutable.ListBuffer[BeExpression]()
-      var index = headerIndex + 1
-      var continue = true
-      while (index < lines.length && continue) {
-        val line = lines(index)
-        if (line.indent < bodyIndent) {
-          continue = false
-        } else if (line.indent > bodyIndent) {
-          val isolatedContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
-          val nested = api.parseBlock(lines, index, line.indent, isolatedContext)
-          ignoredBodyExpressions ++= nested.expressions
-          index = nested.nextIndex
-        } else {
-          val (codePortion, inlineComment) = splitCodeAndComment(line.content)
-          val trimmed = codePortion.trim
-          if (trimmed.isEmpty) {
-            inlineComment.foreach(commentText => ignoredBodyExpressions += BeSingleLineComment(LanguageMap.universalMap(commentText)))
-            index += 1
-          } else {
-            trimmed match {
-              case FunctionPattern(methodName, paramsSource, returnSource) =>
-                val methodResult = parseMethod(lines, index, bodyIndent, methodName, paramsSource, Option(returnSource), context, api)
-                methodsBuffer += methodResult
-                methodResult.attributes.foreach(attributeRecord => attributesBuffer.update(attributeRecord.name, attributeRecord.variable))
-                index = methodResult.nextIndex
-              case ClassAttributeAnnotationAssignmentPattern(attributeName, typeHint, valueSource) =>
-                recordAttribute(attributesBuffer, attributeName, Some(typeHint), Some(valueSource), context, api)
-                index += 1
-              case ClassAttributeAnnotationPattern(attributeName, typeSource) if !typeSource.contains("=") =>
-                recordAttribute(attributesBuffer, attributeName, Some(typeSource), None, context, api)
-                index += 1
-              case AssignmentPattern(attributeName, valueSource) =>
-                recordAttribute(attributesBuffer, attributeName, None, Some(valueSource), context, api)
-                index += 1
-              case WhilePattern(conditionSource) =>
-                val isolatedContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
-                val whileResult = api.parseWhile(lines, index, bodyIndent, conditionSource, isolatedContext)
-                ignoredBodyExpressions += whileResult.expression
-                index = whileResult.nextIndex
-              case IfPattern(conditionSource) =>
-                val isolatedContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
-                val ifResult = api.parseIf(lines, index, bodyIndent, conditionSource, isolatedContext)
-                ignoredBodyExpressions += ifResult.expression
-                index = ifResult.nextIndex
-              case _ if ParsingUtils.startsWithKeyword(trimmed, "return") =>
-                val isolatedContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
-                ignoredBodyExpressions += api.parseReturn(trimmed, isolatedContext)
-                index += 1
-              case _ if trimmed == "pass" =>
-                ignoredBodyExpressions += BeExpression.pass
-                index += 1
-              case _ =>
-                val isolatedContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
-                ignoredBodyExpressions += api.parseExpression(trimmed, isolatedContext)
-                index += 1
-            }
-            inlineComment.foreach(commentText => ignoredBodyExpressions += BeSingleLineComment(LanguageMap.universalMap(commentText)))
+    val bodyLines = lines.slice(headerIndex + 1, nextIndex)
+    def unsupported(reason: String): ClassParseResult = ClassParseResult(
+      BeExpressionUnsupported(lines.slice(headerIndex, nextIndex).map(line => " " * line.indent + line.content).mkString("\n"), Some(Python)), nextIndex)
+    if bodyIndent <= indent then return ClassParseResult(BeExpressionUnparsable(lines(headerIndex).content,
+      s"Missing body for class $name", Some(Python)), nextIndex)
+    if basesSource.exists(_.trim.nonEmpty) then return unsupported("Inheritance")
+
+    val headers = bodyLines.zipWithIndex.collect {
+      case (line, offset) if line.indent == bodyIndent && FunctionPattern.matches(splitCodeAndComment(line.content)._1.trim) =>
+        val FunctionPattern(methodName, parameterSource, resultSource) = splitCodeAndComment(line.content)._1.trim: @unchecked
+        val previous = lines.lift(headerIndex + offset).map(_.content.trim)
+        val kind = if previous.contains("@staticmethod") then StaticMethod()
+          else if methodName == "__init__" then Constructor() else Method()
+        val parameters = api.parseParameters(parameterSource)
+        if kind != StaticMethod() then require(parameters.headOption.exists(_._1 == "self"), s"Method '$name.$methodName' requires an explicit self parameter.")
+        val explicit = if kind == StaticMethod() then parameters else parameters.tail
+        MethodHeader(headerIndex + 1 + offset, methodName, explicit.map(_._1),
+          explicit.map((parameter, hint) => BeDefineVariable(BeEntityName.fromCodeString(parameter), api.mapType(hint))),
+          Option(resultSource).filterNot(value => Set("None", "void")(value.trim)).map(hint => BeDefineVariable(BeEntityName.fromCodeString("result"), api.mapType(Some(hint)))), kind)
+    }.toList
+    val unknownBody = bodyLines.exists { line =>
+      val text = splitCodeAndComment(line.content)._1.trim
+      line.indent == bodyIndent && text.nonEmpty && text != "pass" && text != "@staticmethod" &&
+        !FunctionPattern.matches(text) && !FieldPattern.matches(text)
+    }
+    if unknownBody then return unsupported("Class-body statements or decorators")
+
+    val classContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
+    val fields = bodyLines.zipWithIndex.flatMap { (line, offset) =>
+      val text = splitCodeAndComment(line.content)._1.trim
+      text match {
+        case FieldPattern(receiver, fieldName, hint, value) if (receiver != null || line.indent == bodyIndent) && (hint != null || value != null) =>
+          val position = headerIndex + offset + 1
+          val enclosing = headers.filter(_.index < position).lastOption
+          val fieldContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
+          enclosing.foreach(header => header.parameterNames.zip(header.parameters).foreach((rawName, parameter) => fieldContext.defineVariable(rawName, parameter.variableType)))
+          lazy val initial = Option(value).map(api.parseExpression(_, fieldContext))
+          val constructorType = Option(value).flatMap(ParsingUtils.findTopLevelCall).flatMap { (called, _) =>
+            context.lookupClass(called).map(clazz => BeDataType.ClassType(clazz.name))
           }
-        }
+          val dataType = Option(hint).map(h => api.mapType(Some(h.trim))).orElse(constructorType).orElse(initial.map(api.inferType)).getOrElse(BeDataType.AnyType)
+          Some(BeDefineVariable(BeEntityName.fromCodeString(fieldName), dataType, if receiver == null then initial else None))
+        case _ => None
       }
-
-      val attributes = attributesBuffer.values.toList
-      val parsedMethods = methodsBuffer.toList
-
-      val classNameMap = LanguageMap.universalMap[HumanLanguage](name)
-      val classPlaceholder = BeDefineClass(classNameMap, attributes, Nil)
-      val methodInstances = parsedMethods.map { methodResult =>
-        methodResult.template.copy(
-          functionTypeInfo = BeDefineFunction.BeFunctionTypeInfo(
-            isMethodInClass = Some(classPlaceholder),
-            isNamed = Some(BeEntityName.fromUniversalNameInParts(methodResult.name)),
-            funcType = BeDefineFunction.Method()
-          )
-        )
-      }
-      val classExpr = classPlaceholder.copy(methods = methodInstances)
-      context.registerClass(name, classExpr)
-      ClassParseResult(classExpr, index)
+    }.toList.groupBy(_.name).values.map(_.head).toList.sortBy(_.name.universalInterpretation())
+    val owner = BeDefineClass(BeEntityName.fromCodeString(name), fields, Nil)
+    def signature(header: MethodHeader) = BeDefineFunction(header.parameters, header.result, BeExpression.pass,
+      BeFunctionTypeInfo(Some(owner), Option.when(header.kind != Constructor())(BeEntityName.fromCodeString(header.name)), header.kind))
+    val signatures = owner.copy(methods = headers.map(signature))
+    if signaturesOnly then {
+      context.registerClass(name, signatures)
+      return ClassParseResult(signatures, nextIndex)
     }
-  }
-
-  private def parseMethod(
-                           lines: Vector[ParsedLine],
-                           headerIndex: Int,
-                           indent: Int,
-                           name: String,
-                           paramsSource: String,
-                           returnSource: Option[String],
-                           context: ParseContext,
-                           api: ClassParserApi
-                         ): ParsedMethod = {
-    val methodContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
-    methodContext.pushScope()
-    val parameterDefinitions = api.parseParameters(paramsSource).map { case (paramName, typeHint) =>
-      methodContext.defineVariable(paramName, api.mapType(typeHint))
+    classContext.registerClass(name, signatures)
+    val methods = headers.map { header =>
+      val methodContext = new ParseContext(classContext.snapshotStructures, context.sourceCallableNames,
+        Option.when(header.kind != StaticMethod())(owner))
+      header.parameterNames.zip(header.parameters).foreach((rawName, parameter) => methodContext.defineVariable(rawName, parameter.variableType))
+      val start = header.index + 1
+      val methodIndent = findBodyIndent(lines, start, bodyIndent)
+      require(methodIndent > bodyIndent, s"Missing body for '$name.${header.name}'.")
+      signature(header).copy(body = BeSequence.optionalBody(api.parseBlock(lines, start, methodIndent, methodContext).expressions))
     }
-
-    val returnVariable = returnSource.map(_.trim).filter(_.nonEmpty).map(returnHint => BeDefineVariable(BeEntityName.fromUniversalNameInParts("return"), api.mapType(Some(returnHint))))
-
-    val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
-
-    val (bodyExpressions, nextIndex, discoveredAttributes) =
-      if (computedIndent <= indent) {
-        val unparsable = BeExpressionUnparsable(lines(headerIndex).content.trim, s"Missing body for method $name")
-        (List(unparsable), headerIndex + 1, List.empty[AttributeRecord])
-      } else {
-        val block = api.parseBlock(lines, headerIndex + 1, computedIndent, methodContext)
-        val methodAttributes =
-          if (name == "__init__" || name == "__new__")
-            collectMethodAttributes(lines, headerIndex + 1, block.nextIndex, computedIndent, methodContext, api)
-          else List.empty[AttributeRecord]
-        (block.expressions, block.nextIndex, methodAttributes)
-      }
-
-    methodContext.popScope()
-
-    val body = BeSequence.optionalBody(bodyExpressions)
-    val functionInfo = BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(name))
-    val template = BeDefineFunction(parameterDefinitions, returnVariable, body, functionInfo)
-    ParsedMethod(name, template, discoveredAttributes, nextIndex)
-  }
-
-  private def collectMethodAttributes(
-                                       lines: Vector[ParsedLine],
-                                       startIndex: Int,
-                                       endIndex: Int,
-                                       bodyIndent: Int,
-                                       context: ParseContext,
-                                       api: ClassParserApi
-                                     ): List[AttributeRecord] = {
-    val attributes = mutable.LinkedHashMap[String, BeDefineVariable]()
-    var index = startIndex
-    while (index < endIndex) {
-      val line = lines(index)
-      if (line.indent == bodyIndent) {
-        val (codePortion, _) = splitCodeAndComment(line.content)
-        val trimmed = codePortion.trim
-        trimmed match {
-          case SelfAttributeAnnotationAssignmentPattern(_, attributeName, typeHint, valueSource) =>
-            recordAttribute(attributes, attributeName, Some(typeHint), Some(valueSource), context, api)
-          case SelfAttributeAnnotationPattern(_, attributeName, typeSource) if !typeSource.contains("=") =>
-            recordAttribute(attributes, attributeName, Some(typeSource), None, context, api)
-          case SelfAttributeAssignmentPattern(_, attributeName, valueSource) =>
-            recordAttribute(attributes, attributeName, None, Some(valueSource), context, api)
-          case _ =>
-        }
-      }
-      index += 1
-    }
-    attributes.iterator.map { case (name, variable) => AttributeRecord(name, variable) }.toList
-  }
-
-  private def recordAttribute(
-                               buffer: mutable.LinkedHashMap[String, BeDefineVariable],
-                               attributeName: String,
-                               explicitType: Option[String],
-                               valueSource: Option[String],
-                               context: ParseContext,
-                               api: ClassParserApi
-                             ): Unit = {
-    val normalizedExplicit = explicitType.map(_.trim).filter(_.nonEmpty)
-    val dataType = normalizedExplicit.map(typeHint => api.mapType(Some(typeHint))).getOrElse {
-      valueSource.map(_.trim).filter(_.nonEmpty).map { valueText =>
-        val isolated = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
-        api.inferType(api.parseExpression(valueText, isolated))
-      }.getOrElse(AnyType)
-    }
-    val attribute = BeDefineVariable(BeEntityName.fromUniversalNameInParts(attributeName), dataType)
-    buffer.update(attributeName, attribute)
+    val result = owner.copy(methods = methods)
+    context.registerClass(name, result)
+    ClassParseResult(result, nextIndex)
   }
 }

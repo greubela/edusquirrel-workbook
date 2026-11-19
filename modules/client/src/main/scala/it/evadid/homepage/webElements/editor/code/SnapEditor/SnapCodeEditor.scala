@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import it.evadid.facades.Snap.*
 import com.raquo.airstream.ownership.{Owner, Subscription}
@@ -30,7 +30,7 @@ case class SnapCodeEditor(
   // A typed view of the interaction Var: no second answer or synchronization store.
   private[SnapEditor] val snapState: Var[ProgrammingStateSnapScalaModel] = state.bimap {
     case model: ProgrammingStateSnapScalaModel => model.persistent
-    case xml: ProgrammingStateSnapXml => SnapCodeEditor.typed(xml)
+    case xml @ ProgrammingStateRaw(SnapLanguage, _) => SnapCodeEditor.typed(xml)
     case other if other.associatedLanguage == SnapLanguage => SnapCodeEditor.typed(other.toSnapXml)
     case _ => SnapCodeEditor.empty // inactive while Eva switches to another language
   }(identity)
@@ -38,7 +38,7 @@ case class SnapCodeEditor(
   private def publishProgramFromSnapXml(xml: String): Unit = {
     if state.now().associatedLanguage == SnapLanguage then {
       val current = snapState.now()
-      val next = SnapCodeEditor.typed(ProgrammingStateSnapXml(xml))
+      val next = SnapCodeEditor.typed(ProgrammingStateRaw(SnapLanguage, xml))
       impl.acknowledgeProgramFromEditor(next.toSnapXml)
       if !current.meaningfullyEquals(next) then snapState.set(next)
     }
@@ -131,9 +131,9 @@ case class SnapCodeEditor(
 }
 
 object SnapCodeEditor {
-  private def typed(xml: ProgrammingStateSnapXml): ProgrammingStateSnapScalaModel =
+  private def typed(xml: ProgrammingStateRaw): ProgrammingStateSnapScalaModel =
     xml.toSnapScalaModel.fold(message => throw IllegalArgumentException(message), _.persistent)
-  private lazy val empty = typed(ProgrammingStateSnapXml.empty)
+  private lazy val empty = typed(ProgrammingStateSnapScalaModel.empty.toSnapXml)
 
   def apply(logger: Logger, state: Var[ProgrammingState], config: SnapCodeEditorConfig,
             humanLanguage: Signal[HumanLanguage]): SnapCodeEditor =
@@ -149,10 +149,6 @@ object SnapCodeEditor {
       tabLabel: String = "Snap!"): EvaEditorTab = new EvaEditorTab {
     override val language = SnapLanguage
     override val label = tabLabel
-    override def convert(source: ProgrammingState): ProgrammingState = source match {
-      case snap: ProgrammingStateSnapScalaModel => snap.persistent
-      case _ => typed(source.toSnapXml)
-    }
     override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
         marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement =
       SnapCodeEditor(tabLogger, state, config, SnapCodeEditorImplDelegateToOriginal(), humanLanguage, marker, loading)

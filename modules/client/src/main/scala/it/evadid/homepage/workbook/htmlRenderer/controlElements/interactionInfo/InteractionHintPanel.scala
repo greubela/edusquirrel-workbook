@@ -1,7 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.control.info.interaction.GradingReporter
 
@@ -10,9 +9,11 @@ case class InteractionHintPanel(reporter: GradingReporter) extends HtmlAppElemen
   override def getDomElement(): Element = {
     val feedback = reporter.hintFeedback
     val available = feedback.map(_.exists(_.availableLanguages.nonEmpty)).distinct
-    val text = feedback.combineWith(fullInfo.signals.currentLanguage).map { (content, language) =>
-      content.filter(_.availableLanguages.nonEmpty).map(_.getWithLanguagePreference(Seq(language, English))).getOrElse("")
+    val text = feedback.flatMapSwitch {
+      case Some(content) => laminarHelper.plaintextStringSignal(content)
+      case None => Val("")
     }
+
     div(cls := "interaction-feedback interaction-hint-panel", hidden <-- available.map(!_),
       detailsTag(cls := "feedback-section",
         htmlProp("open", com.raquo.laminar.codecs.BooleanAsIsCodec) <-- available,

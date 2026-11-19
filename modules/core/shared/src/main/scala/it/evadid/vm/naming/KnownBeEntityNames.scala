@@ -22,7 +22,7 @@ object KnownBeEntityNames {
   )
 
   private val printingName = BeEntityName.fromUniversalNameInParts("print")
-  private val printingAliases = Set("print", "println", "system.out.println")
+  private val printingAliases = Set("print", "println", "system.out.println", "java.lang.system.out.println")
 
   val functionNames: List[BeEntityName] = List(
     BeEntityName.fromUniversalNameInParts("str"),

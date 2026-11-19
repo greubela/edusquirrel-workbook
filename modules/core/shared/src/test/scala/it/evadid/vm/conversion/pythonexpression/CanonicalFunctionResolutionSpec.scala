@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion.pythonexpression
 
+import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.language.AppLanguage.{English, German}
 import it.evadid.core.datastructures.vectorShapes.svg.{TurtleCommand, TurtleStitchMode}
 import it.evadid.vm.code.abstractions.BeExpression
@@ -62,9 +63,9 @@ class CanonicalFunctionResolutionSpec extends FunSuite {
   }
 
   test("source classes and callable parameters shadow qualified and cached turtle names") {
-    val sourceClass = calls("Turtle.forward(1)\nclass Turtle:\n    def forward(self, n):\n        pass")
-    assert(sourceClass.exists(call => name(call) == "turtle.forward"))
-    assert(sourceClass.forall(_.funcDef.functionTypeInfo.isMethodInClass.isEmpty))
+    val sourceClass = calls("Turtle.forward(1)\nclass Turtle:\n    @staticmethod\n    def forward(n):\n        pass")
+    assert(sourceClass.exists(call => name(call) == "forward"))
+    assert(sourceClass.forall(call => !TurtleCommand.isTurtleMethod(call.funcDef)))
     val parsed = calls("fd(1)\ndef apply(fd):\n    fd(2)\nfd(3)")
     assertEquals(parsed.map(name).sorted, List("fd", "forward", "forward"))
   }
@@ -97,4 +98,28 @@ class CanonicalFunctionResolutionSpec extends FunSuite {
     assertEquals(parsed.find(call => name(call) == "running_stitch").get.parameterValueMap.size, 0)
     assertEquals(TurtleCommand.resolveTurtleMethod("running_stitch").get.inputs.size, 1)
   }
+  test("a user class named turtle cannot acquire native library semantics") {
+    val parsed = calls("class turtle:\n    @staticmethod\n    def forward(n: float):\n        pass\nturtle.forward(5)\n")
+    assertEquals(parsed.size, 1)
+    assert(!TurtleCommand.isTurtleMethod(parsed.head.funcDef))
+  }
+
+  test("printing aliases and user print functions keep separate semantics through Java") {
+    val builtin = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "print(3)\n")
+    assert(builtin.toJava.code.contains("java.lang.System.out.println"), builtin.toJava.code)
+    assertEquals(builtin.toJava.toPython.code.trim, builtin.toBeExpression.toPython.code.trim)
+    val user = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python,
+      "def print(value: float):\n    forward(value)\nprint(3)\n")
+    assert(!user.toJava.code.contains("System.out.println"), user.toJava.code)
+    assertEquals(user.toJava.toPython.code.trim, user.toBeExpression.toPython.code.trim)
+  }
+
+  test("Java rejects a user class that would hide native turtle operations") {
+    val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python,
+      "class Turtle:\n    pass\nforward(3)\n")
+    val result = source.convertToLanguage(it.evadid.core.datastructures.language.AppLanguage.Java)
+    assert(result.finalState.isEmpty)
+    assert(result.conversionInfo.exists(_.warningMsg.contains("conflicts")))
+  }
+
 }

@@ -38,7 +38,7 @@ object TurtleStitchToBeExpressionParser {
   private final case class InputBlock(attrs: String, body: String) extends BlockInput derives upickle.default.ReadWriter
   private final case class InputList(items: List[BlockInput]) extends BlockInput derives upickle.default.ReadWriter
 
-  private case class Signature(name: String, arity: Int, isOperator: Boolean) derives upickle.default.ReadWriter
+  private case class Signature(name: String, arity: Int, isOperator: Boolean, isCustom: Boolean = false) derives upickle.default.ReadWriter
   private case class PhaseOneResult(
       orderedDefinitions: List[BeDefineFunction],
       definitionBySignature: Map[Signature, BeDefineFunction],
@@ -107,6 +107,12 @@ object TurtleStitchToBeExpressionParser {
       blockSelector(attrs).map(spec => parseBlockDefinitionFromXml(spec, body))
     }
 
+  private def slotDataType(slot: String): BeDataType = slot match {
+    case "%n" => BeDataType.Numeric
+    case "%b" => BeDataType.Boolean
+    case _ => BeDataType.AnyType
+  }
+
   private def parseBlockDefinitionFromXml(spec: String, body: String): BeDefineFunction = {
     val inputSection = findTagInnerAnywhere(body, "inputs").getOrElse("")
     val namesFromAttr =
@@ -115,12 +121,13 @@ object TurtleStitchToBeExpressionParser {
         .map(m => SnapXmlParser.unescape(m.group(1).trim))
         .filter(_.nonEmpty)
         .toList
+    val slotTypes = """<input\b[^>]*\btype="([^"]+)"""".r.findAllMatchIn(inputSection).map(_.group(1)).toList
     val namesFromSpec = SnapTurtleCatalog.inputNamesFromSpec(spec)
     val inputNames = if namesFromSpec.nonEmpty then namesFromSpec else namesFromAttr
     val arity = math.max(inputNames.size, SnapTurtleCatalog.arityFromSpec(spec))
     val params =
       if inputNames.nonEmpty then
-        inputNames.map(name => BeDefineVariable(BeEntityName.fromLiteral(name), BeDataType.AnyType))
+        inputNames.zipWithIndex.map((name, index) => BeDefineVariable(BeEntityName.fromLiteral(name), slotDataType(slotTypes.lift(index).getOrElse("%s"))))
       else
         (1 to arity).toList.map(idx => BeDefineVariable(BeEntityName.fromCodeString(s"arg$idx"), BeDataType.AnyType))
     params.foreach(param => currentVars.intern(SnapControlFlow.variableName(param)))
@@ -229,20 +236,8 @@ object TurtleStitchToBeExpressionParser {
     selector.map { name =>
       val inputs = parseOrderedInputs(body)
       val arity = inputs.size
-      val params = (1 to arity).toList.map { idx =>
-        BeDefineVariable(BeEntityName.fromCodeString(s"arg$idx"), BeDataType.AnyType)
-      }
-      val isOperator = OperatorSymbols.contains(name)
-      val define =
-        if isOperator then
-          BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.operatorInfo(name, if arity <= 1 then 0 else 1))
-        else
-          BeDefineFunction(
-            params.toList,
-            None,
-            BeExpression.pass,
-            BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(SnapTurtleCatalog.canonicalPythonName(name)))
-          )
+      val define = createDefinition(Signature(name, arity, OperatorSymbols.contains(name)))
+      val params = define.inputs
       val values: List[BeExpression] =
         inputs.map {
           case InputLiteral(value) => BeUseValue(BeDataValueLiteral(value), None)
@@ -257,7 +252,7 @@ object TurtleStitchToBeExpressionParser {
       val mapped = params.zipAll(values, null, BeExpression.pass).filter(_._1 != null).map {
         case (parameter, value) => parameter -> value
       }.toMap
-      BeFunctionCall(define, mapped)
+      BeFunctionCall.fromDefinition(define, mapped)
     }
   }
 
@@ -381,7 +376,7 @@ object TurtleStitchToBeExpressionParser {
       BeExpression.pass,
       BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(selector))
     )
-    BeFunctionCall(define, params.zip(args).toMap)
+    BeFunctionCall.fromDefinition(define, params.zip(args).toMap)
   }
 
   private def expandXmlInputsToExpressions(inputs: List[BlockInput]): List[BeExpression] =
@@ -608,7 +603,7 @@ object TurtleStitchToBeExpressionParser {
     val fromCalls = collectSignatures(project)
     val fromCustoms = customDefs.map { defn =>
       val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
-      Signature(customSignatureName(defn.spec), arity, false)
+      Signature(customSignatureName(defn.spec), arity, false, isCustom = true)
     }
     val signatures = (fromCalls ++ fromCustoms).distinct
     val stubs = signatures.map(createDefinition)
@@ -616,12 +611,12 @@ object TurtleStitchToBeExpressionParser {
     val phaseOneStubs = PhaseOneResult(stubs, stubMap, Nil)
     val userDefinitions = customDefs.flatMap { defn =>
       val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
-      val sig = Signature(customSignatureName(defn.spec), arity, false)
+      val sig = Signature(customSignatureName(defn.spec), arity, false, isCustom = true)
       stubMap.get(sig).map { stub =>
         val specNames = SnapTurtleCatalog.inputNamesFromSpec(defn.spec)
         val params =
           if specNames.nonEmpty then
-            specNames.map(name => BeDefineVariable(BeEntityName.fromLiteral(name), BeDataType.AnyType))
+            specNames.zipWithIndex.map((name, index) => BeDefineVariable(BeEntityName.fromLiteral(name), slotDataType(defn.inputs.lift(index).map(_.inputType).getOrElse("%s"))))
           else if defn.inputs.nonEmpty then
             defn.inputs.toList.zipWithIndex.map { (inp, idx) =>
               val name =
@@ -642,7 +637,7 @@ object TurtleStitchToBeExpressionParser {
     }
     val userBySpec = customDefs.zip(userDefinitions).map { (defn, fn) =>
       val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
-      Signature(customSignatureName(defn.spec), arity, false) -> fn
+      Signature(customSignatureName(defn.spec), arity, false, isCustom = true) -> fn
     }.toMap
     val merged = stubMap ++ userBySpec
     PhaseOneResult(merged.values.toList, merged, userDefinitions)
@@ -797,7 +792,7 @@ object TurtleStitchToBeExpressionParser {
         .map { case (parameter, input) =>
           parameter -> parseInputValue(input, Some(parameter), phaseOne)
         }.toMap
-      BeFunctionCall(defn, mapped)
+      BeFunctionCall.fromDefinition(defn, mapped)
     }
   }
 
@@ -855,7 +850,7 @@ object TurtleStitchToBeExpressionParser {
       val name = selector.orElse(variable).getOrElse("block")
       Signature(name, inputs.size.max(0), OperatorSymbols.contains(name))
     case CustomBlockCall(spec, _, inputs, _, _) =>
-      Signature(customSignatureName(spec), inputs.size.max(0), false)
+      Signature(customSignatureName(spec), inputs.size.max(0), false, isCustom = true)
   }
 
   private def customSignatureName(spec: String): String =
@@ -876,11 +871,18 @@ object TurtleStitchToBeExpressionParser {
       BeDefineVariable(BeEntityName.fromCodeString(s"arg$idx"), BeDataType.AnyType)
     }
     val displayName = SnapTurtleCatalog.canonicalPythonName(signature.name)
+    val entityName = if signature.isCustom then BeEntityName.fromUniversalNameInParts(displayName)
+      else it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.resolveCanonicalNames(displayName)
+        .getOrElse(BeEntityName.fromUniversalNameInParts(displayName))
 
     if (signature.isOperator)
       BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.operatorInfo(signature.name, if signature.arity <= 1 then 0 else 1))
+    else if !signature.isCustom then
+      it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.resolveTurtleMethod(displayName)
+        .map(_.copy(inputs = params)).getOrElse(
+          BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName)))
     else
-      BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(displayName)))
+      BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName))
   }
 }
 

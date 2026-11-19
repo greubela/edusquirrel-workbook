@@ -6,15 +6,13 @@ import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.datastructures.vectorShapes.svg.{TurtleCommand, TurtlePathBuilder}
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleVmPrograms, JavaTurtleResolution}
-import it.evadid.vm.simulation.java.JavaTurtleRuntime
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.vm.code.usage.{BeAssignVariable, BeCallTarget, BeFunctionCall, BeObjectExpression, BeUseValue}
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapTurtleCatalog}
 
@@ -28,12 +26,8 @@ object TurtleProgramAnalysis {
   def apply(expression: BeExpression, limits: TurtleExecutionLimits = TurtleExecutionLimits(),
       isCancelled: () => Boolean = () => false): TurtleCommandExecutionInfo[Double] = {
     val sites = commandSites(expression)
-    expression match {
-      case root: JavaTurtleVmPrograms.Root => analyzeJava(root, sites, limits, isCancelled)
-      case _ =>
-        val result = interpret(expression, InterpState.initial(expression), limits, isCancelled)
-        TurtleCommandExecutionInfo(result.commands.toList, sites, result.status)
-    }
+    val result = interpret(expression, InterpState.initial(expression), limits, isCancelled)
+    TurtleCommandExecutionInfo(result.commands.toList, sites, result.status)
   }
 
   /** Static analysis can also be requested without executing the program. */
@@ -42,24 +36,6 @@ object TurtleProgramAnalysis {
   def toPathBuilder(expression: BeExpression, startPoint: Point[Double] = Point(0.0, 0.0),
       headingDeg: Double = TurtlePathBuilder.SnapHeadingDeg): TurtlePathBuilder[Double] =
     TurtlePathBuilder(startPoint, apply(expression).completedCommands, headingDeg)
-
-  private def analyzeJava(root: JavaTurtleVmPrograms.Root, sites: List[TurtleCommandSite[Double]],
-      limits: TurtleExecutionLimits, isCancelled: () => Boolean): TurtleCommandExecutionInfo[Double] = {
-    val execution = JavaTurtleRuntime.runVm(JavaTurtleVmPrograms.fromRoot(root),
-      JavaTurtleRuntime.Limits(maxSteps = limits.maxSteps, maxCommands = limits.maxCommands,
-        maxCallDepth = limits.maxCallDepth), isCancelled)
-    val status = execution.status match {
-      case JavaTurtleRuntime.Status.Completed => TurtleExecutionStatus.Completed
-      case JavaTurtleRuntime.Status.LimitExceeded => TurtleExecutionStatus.LimitExceeded
-      case JavaTurtleRuntime.Status.Cancelled => TurtleExecutionStatus.Cancelled
-      case JavaTurtleRuntime.Status.Failed(problem) => TurtleExecutionStatus.Failed(problem.toString)
-    }
-    val commands = execution.commands.toList.map { command => command.command match {
-      case JavaTurtleResolution.TurtleCommand.Forward => TurtleCommand.Forward(command.value)
-      case JavaTurtleResolution.TurtleCommand.TurnRight => TurtleCommand.Right(command.value)
-    }}
-    TurtleCommandExecutionInfo(commands, sites, status)
-  }
 
   private final case class InterpState(
       env: Map[String, Double],
@@ -97,6 +73,7 @@ object TurtleProgramAnalysis {
     case BeStartProgram(None) => state
     case seq: BeSequence =>
       seq.body.foldLeft(state)((current, child) => interpret(child, current, limits, isCancelled))
+    case _: BeObjectExpression => unsupportedObjectExecution()
     case _: BeDefineFunction => state
     case assign: BeAssignVariable =>
       state.copy(env = state.env.updated(SnapControlFlow.variableName(assign.target), evalNumber(assign.value, state)))
@@ -137,11 +114,12 @@ object TurtleProgramAnalysis {
 
   private def interpretCall(call: BeFunctionCall, state: InterpState, limits: TurtleExecutionLimits,
       isCancelled: () => Boolean): InterpState = {
-    if SnapControlFlow.isOperatorCall(call) then state
+    if !call.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(call.funcDef) then unsupportedObjectExecution()
+    else if SnapControlFlow.isOperatorCall(call) then state
     else {
       val python = SnapExpressionSupport.pythonName(call)
       val args = SnapControlFlow.orderedArgs(call)
-      state.defs.get(python).filterNot(_ => TurtleCommandSites.isBoundTurtleMethod(call)) match {
+      state.defs.get(python).filterNot(_ => TurtleCommand.isTurtleMethod(call.funcDef)) match {
         case Some(definition) =>
           if state.callDepth >= limits.maxCallDepth then state.copy(status = TurtleExecutionStatus.LimitExceeded)
           else {
@@ -162,8 +140,13 @@ object TurtleProgramAnalysis {
     }
   }
 
+  private def unsupportedObjectExecution(): Nothing =
+    throw UnsupportedOperationException("The drawing simulator does not support object operations.")
+
   private def numericArg(expression: BeExpression, state: InterpState): Option[Double] =
     expression match
+      case _: BeObjectExpression => unsupportedObjectExecution()
+      case call: BeFunctionCall if !call.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(call.funcDef) => unsupportedObjectExecution()
       case BeUseValue(BeDataValueLiteral(value), _) => numericLiteral(value)
       case BeUseValue(BeUseValueReference(_), _) =>
         Some(evalNumber(expression, state))
@@ -184,6 +167,8 @@ object TurtleProgramAnalysis {
 
   private def evalNumber(expression: BeExpression, state: InterpState): Double =
     expression match
+      case _: BeObjectExpression => unsupportedObjectExecution()
+      case call: BeFunctionCall if !call.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(call.funcDef) => unsupportedObjectExecution()
       case BeUseValue(BeDataValueLiteral(value), _) =>
         scala.util.Try(value.trim.toDouble).toOption.getOrElse(if isTruthy(value) then 1.0 else 0.0)
       case BeUseValue(BeUseValueReference(variable), _) =>
@@ -205,11 +190,11 @@ object TurtleProgramAnalysis {
       case "*" => args.product
       case "/" =>
         val denom = args.drop(1).headOption.getOrElse(1.0)
-        if denom == 0 then 0.0 else args.headOption.getOrElse(0.0) / denom
+        if denom == 0 then throw ArithmeticException("Division by zero.") else args.headOption.getOrElse(0.0) / denom
       case "%" =>
         val dividend = args.headOption.getOrElse(0.0)
         val divisor = args.drop(1).headOption.getOrElse(1.0)
-        if divisor == 0 then 0.0 else dividend - divisor * math.floor(dividend / divisor)
+        if divisor == 0 then throw ArithmeticException("Remainder by zero.") else dividend - divisor * math.floor(dividend / divisor)
       case "<" => if compare(args, _ < _) then 1.0 else 0.0
       case ">" => if compare(args, _ > _) then 1.0 else 0.0
       case "==" => if args.sliding(2).forall(pair => pair.size < 2 || pair.head == pair(1)) then 1.0 else 0.0

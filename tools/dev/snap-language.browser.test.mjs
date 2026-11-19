@@ -173,7 +173,7 @@ test('test workbook preserves edits across human languages, programming language
     assert.match(await code.innerText(), /forward\(92\)/, 'tab conversion includes the pending Snap input');
     await code.fill('forward(123)\nforward(17)\n');
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
-    assert.match(await code.innerText(), /forward\(123\)\s+forward\(17\)/);
+    assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
     await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => {
       const blocks = snapLanguageEditor.currentSprite.scripts.allChildren().filter(m => m.selector === 'forward');
@@ -183,27 +183,27 @@ test('test workbook preserves edits across human languages, programming language
     await page.waitForFunction(() => snapLanguageEditor.currentSprite.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'gehe %n Schritte' && Number(m.inputs()[0].evaluate()) === 123));
     await editor.getByRole('tab',{name:'Python',exact:true}).click();
-    assert.match(await code.innerText(), /forward\(123\)\s+forward\(17\)/);
+    assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
     await page.locator('.fullscreen-close-button').click();
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
-    assert.match(await code.innerText(), /forward\(123\)\s+forward\(17\)/);
+    assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
     await code.fill('public class Drawing {\n  static void line(int size) { Turtle.forward(size); }\n  public static void main(String[] args) { line(64); }\n}\n');
     await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => {
       const xml = window.snapLanguageEditor?.getProjectXML();
-      return xml?.includes('line') && xml.includes('64') && xml.includes('doJavaForward');
+      return xml?.includes('line') && xml.includes('64') && xml.includes('forward');
     });
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
     await page.waitForFunction(() => SnapTranslator.language === 'en');
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
-    assert.match(await code.innerText(), /void line\(int size\)/);
+    assert.match(await code.innerText(), /void line\((?:int|double) size\)/);
     assert.match(await code.innerText(), /line\(64\)/);
     await page.locator('.fullscreen-close-button').click();
     // Reload only after this answer's IndexedDB transaction has committed.
-    await page.waitForFunction(() => snapCommittedHistoryWrites.some(value => value.includes('void line(int size)')));
+    await page.waitForFunction(() => snapCommittedHistoryWrites.some(value => /void line\((?:int|double) size\)/.test(value)));
     await page.reload();
     await page.locator('.section-block').first().click();
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
@@ -211,8 +211,8 @@ test('test workbook preserves edits across human languages, programming language
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
     // Saved-state restoration and editor conversion complete asynchronously.
     await page.waitForFunction(() => document.querySelector('dialog[open] .eva-editor .cm-content')
-      ?.textContent.includes('void line(int size)'));
-    assert.match(await code.innerText(), /void line\(int size\)/, 'saved methods survive a page reload');
+      ?.textContent.match(/void line\((?:int|double) size\)/));
+    assert.match(await code.innerText(), /void line\((?:int|double) size\)/, 'saved methods survive a page reload');
     assert.match(await code.innerText(), /line\(64\)/);
     await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, []);

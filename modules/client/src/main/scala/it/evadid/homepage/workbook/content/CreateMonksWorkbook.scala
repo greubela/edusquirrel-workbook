@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.file.CopyrightInfo
 import it.evadid.core.datastructures.file.CopyrightInfo.AiGenerated
 import it.evadid.core.datastructures.geometry.{Line, Point}
@@ -13,7 +14,7 @@ import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.HintLa
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleRecreateShapeInteraction}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette.PythonCompatibleSnap
 import it.evadid.workbook.elements.interactionElements.slideshow.*
@@ -88,7 +89,7 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
             instructionMarkdown(key("koch" + depth)),
             TurtleRecreateShapeInteraction(
               "monks-koch-" + depth,
-              ProgrammingStatePythonString(""),
+              ProgrammingStateRaw(Python, ""),
               kochTarget(depth),
               TurtleDrawingPolicy.Strokes,
               Some(RecreateTurtleDidacticConfig.defaultForPalette(PythonCompatibleSnap)))))

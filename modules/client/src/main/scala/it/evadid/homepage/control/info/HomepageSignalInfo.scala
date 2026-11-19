@@ -121,20 +121,24 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     signal.toObservableValue
   }
 
+  private def localizedText(content: LanguageMap[HumanLanguage], language: HumanLanguage): String =
+    if content.availableLanguages.isEmpty then content.getInLanguage(language)
+    else content.getWithLanguagePreference(Seq(language, English))
+
   def stringFromLanguageMap(languageMap: LanguageMap[HumanLanguage]): StrictSignal[String] = {
-    currentLanguage.mapLazy(curLang => languageMap.getInLanguage(curLang))
+    currentLanguage.mapLazy(curLang => localizedText(languageMap, curLang))
   }
 
   def stringFromLanguageMapId(languageMapId: LanguageMapContentId): Signal[String] = {
     Signal.combine(currentLanguage, ensuredLanguageMapSignal(languageMapId)).map(tup => {
-      tup._2.getInLanguage(tup._1)
+      localizedText(tup._2, tup._1)
     })
   }
 
   def stringFromMapWithFallback(base: Signal[Option[LanguageMap[HumanLanguage]]], fallback: Signal[LanguageMap[HumanLanguage]]): Signal[String] = {
     Signal.combine(base, fallback, currentLanguage).map(trip => {
-      val baseOp = trip._1.map(myMap => myMap.getInLanguage(trip._3))
-      val other = trip._2.getInLanguage(trip._3)
+      val baseOp = trip._1.map(myMap => localizedText(myMap, trip._3))
+      val other = localizedText(trip._2, trip._3)
       baseOp.getOrElse(other)
     })
   }

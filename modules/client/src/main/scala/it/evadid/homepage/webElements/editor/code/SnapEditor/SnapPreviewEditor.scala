@@ -1,6 +1,5 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 
 import com.raquo.laminar.api.L.{canvasTag, *}
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage}
@@ -35,7 +34,7 @@ case class SnapPreviewEditor(
                               humanLanguage: Signal[HumanLanguage] = Val(English)
                             ) extends HtmlAppElement {
   private val renderingError = Var(Option.empty[String])
-  private def createCanvas(currentState: ProgrammingStateSnapXml, language: HumanLanguage): Element = {
+  private def createCanvas(currentState: ProgrammingStateRaw, language: HumanLanguage): Element = {
     canvasTag(
       cls := "be-program-snap-renderer__canvas",
       aria.label := "Block program preview",

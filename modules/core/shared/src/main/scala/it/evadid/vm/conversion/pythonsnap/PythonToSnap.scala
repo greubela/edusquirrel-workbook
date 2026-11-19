@@ -1,21 +1,22 @@
 package it.evadid.vm.conversion.pythonsnap
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
 import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport.*
 
 object PythonToSnap {
   /** Apply Python while retaining the current project's layout and authored block definitions. */
-  def replacing(current: ProgrammingStateSnapXml, source: String): Either[String, ProgrammingStateSnapXml] = {
+  def replacing(current: ProgrammingStateRaw, source: String): Either[String, ProgrammingStateRaw] = {
     val derived = it.evadid.vm.conversion.snappython.SnapProgramDerivation.fromState(current)
-    applyPython(source, derived.canvasLayout, current.snapXml)
-      .map(next => current.copy(snapXml = next.snapXml))
+    applyPython(source, derived.canvasLayout, current.code)
+      .map(next => current.copy(code = next.code))
   }
 
   /**
@@ -28,14 +29,14 @@ object PythonToSnap {
       source: String,
       previousLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
       previousXml: String = ""
-  ): Either[String, ProgrammingStateSnapXml] =
+  ): Either[String, ProgrammingStateRaw] =
     try
       val program = PythonToExpression.program(source)
       validateSubset(program.fullProgram) match
         case Left(message) => Left(message)
         case Right(statements) =>
           if statements.isEmpty && collectUserFunctionArities(program.fullProgram).isEmpty then
-            Right(ProgrammingStateSnapXml.empty)
+            Right(ProgrammingStateSnapScalaModel.empty.toSnapXml)
           else
             val layout = reconcileLayout(previousLayout, scriptStatementCount(statements))
             Right(ExpressionToSnap.fromProgram(program, layout, previousXml))

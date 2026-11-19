@@ -1,7 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
 import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport
-import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonHelpers
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
 import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 
@@ -12,7 +11,7 @@ import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPy
 import it.evadid.vm.BeProgram
 import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import munit.FunSuite
 
 import java.util.concurrent.{CancellationException, TimeoutException}
@@ -132,7 +131,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       assertEquals(executor.readyCalls, 2)
       assert(executor.requests.forall(_._2.callbacks("turtle").contains("forward")))
       assertEquals(executor.requests.map(_._1), Vector("forward(10)", "forward(20)")
-        .map(code => s"${JavaTurtlePythonHelpers.installationSource}from turtle import *\n$code"))
+        .map(code => s"from turtle import *\n$code"))
       assert(executor.requests.forall(_._2.resetGlobals))
       runner.close()
       runner.close()
@@ -391,7 +390,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
 
       override def run(config: RunPythonRequest): Future[RunPythonResult] =
         val code = config.code
-        assertEquals(code, s"${JavaTurtlePythonHelpers.installationSource}from turtle import *\n$python")
+        assertEquals(code, s"from turtle import *\n$python")
         assert(config.resetGlobals)
         Future.successful(RunPythonResult(
           ujson.Null, callbackOps = calls.map { case (name, args) =>
@@ -464,7 +463,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       .execute("for i in range(1, 4):\n    forward(i * 10)")
       .map { commands =>
         assert(installedMethods.contains("forward"))
-        assert(executedCode.startsWith(s"${JavaTurtlePythonHelpers.installationSource}from turtle import *\n"), clue = executedCode)
+        assert(executedCode.startsWith(s"from turtle import *\n"), clue = executedCode)
         assertEquals(
           commands,
           List(

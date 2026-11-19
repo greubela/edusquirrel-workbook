@@ -6,7 +6,7 @@ import it.evadid.workbook.abstractions.InteractionFormat.{TextInputWithLlmGradin
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
 
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}

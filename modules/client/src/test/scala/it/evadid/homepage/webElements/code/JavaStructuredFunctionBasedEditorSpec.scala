@@ -7,7 +7,6 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEdito
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.vm.naming.BeEntityName
@@ -75,7 +74,7 @@ class JavaStructuredFunctionBasedEditorSpec extends EditorDomSuite {
       labels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading")))
     val close = mount(editor.getDomElement())
     editor.switchTabTo(Python).flatMap { _ =>
-      assert(state.now().isInstanceOf[ProgrammingStatePythonString])
+      assert(state.now().isInstanceOf[ProgrammingStatePythonStructured])
       assert(field.value.contains("forward(10)"), field.value)
       field.value = field.value.replace("forward(10)", "forward(35)")
       edited()

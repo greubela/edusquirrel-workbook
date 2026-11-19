@@ -1,90 +1,48 @@
 # Programming conversions
 
-Language conversion belongs to [`it.evadid.vm.conversion`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion), in shared core. `ProgrammingState` and `SnapScalaModel` contain the representations and their current persistence codecs; editors select and invoke conversions without implementing them.
+Each immutable programming state owns one [`ProgrammingStateDerivations`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/ProgrammingStateDerivations.scala), shared by views and graders. The central `convertToLanguage` method returns a `ConversionResult` containing the native structured state plus diagnostics. Direct state methods expose `toBeExpression`, `toJava`, `toPython`, `toSnapXml`, `toJavaStructured` and `toPythonStructured`.
 
-Import `it.evadid.vm.conversion.ProgrammingStateConversions.*` to use `state.toLanguage(language)`, `toBeExpression`, `toJava`, `toPython`, `toSnapXml` and `toSnapScalaModel`. These are VM extension methods, not methods implemented by individual state classes. Their dispatcher composes the converters below; there is no second set of converters in the workbook package.
+Cross-language conversion follows one route:
 
-For class-structured editing use `toJavaStructured` / `toPythonStructured`. Their states retain class source in `definedClasses`, plus Python's module-level `mainScript`; `apply(source)` infers and hoists classes, keeping the first duplicate and warning. Bodies remain source text so unsupported syntax and unfinished edits can be stored without requiring a complete AST.
-
-`structured/` owns the scope convention: static members of Java `Main` correspond to Python module scope; instance members remain a class. Green-flag scripts become `main`, detached Snap scripts become `unusedCode`, and class declarations are omitted when exporting to Snap. Structured states lower to the ordinary `BeStartProgram` for Turtle analysis, using the same execution information as rendering and grading.
-
-`JavaStructuredFunctionBasedEditor` binds a typed Var to the existing method-editing UI and opens `Main.main` by default. Existing source-string editors retain their contracts; their `toJava` / `toPython` projections remain available during editor migration.
-
-| Transformation | Package under `vm.conversion` |
-| --- | --- |
-| Java source → expression / checked VM program | `javaexpression`, with checked lowering in `javaexpression.checked` |
-| Python source → expression | `pythonexpression` |
-| Snap XML → expression, with subset checks | `snapexpression` |
-| Expression → Snap XML, preserving custom blocks and layout | `expressionsnap` |
-| Expression → Java / JavaScript, Python, Lisp | `expressionjava`, `expressionpython`, `expressionlisp` |
-| SQL source ↔ lossless clause blocks | `sqlblocks` |
-| Python source → Snap XML | `pythonsnap` |
-| Snap project → Python source and per-script views | `snappython` |
-| Checked Java → editable Snap / Python | `javasnap`, `javapython` |
-| Edited Java-semantic Snap / Python → Java | `snapjava`, `pythonjava` |
-| Full Snap XML → immutable Snap document | `snapxmlmodel` |
-| Immutable Snap document → lossless XML | `snapmodelxml` |
-| TurtleStitch project / XML → expression and canvas layout | `turtlestitchexpression` |
-| State → executable unit-test Python | `unittest` |
-| Class-level source inference and static/module scope conversion | `structured` |
-
-`javaediting` shares the metadata and type rules needed by the four Java editing directions. `snapxml` supplies XML scanning and entity handling; `printing` supplies the shared Java-like printer. Shared helpers are implementation support, not alternative conversion routes. Native Java/Python lexical and AST parsers remain in `vm.parsing`; execution remains in `vm.simulation`.
-
-For full projects, `SnapScalaXmlCodec.parse(xml)` produces a `SnapScalaModel.Document`; import `vm.conversion.snapmodelxml.SnapModelToXml.*` to emit its original XML. This path preserves unknown nodes, authored assets and lexical details independently of the executable Snap subset. `ProgrammingStateSnapXml(xml).toSnapScalaModel` wraps that document as a programming state.
-
-Java editing conversions retain their checked numeric, scope and evaluation-order semantics. See the [semantics and trade-offs](programming-conversion-review.md) for the remaining design tradeoffs.
-
-The older TurtleStitch editor uses the same shared conversion layer. Its project adapter has no browser DOM dependency; every parse owns its variable-binding context. Browser mount, Snap runtime and drawing components remain in the client.
-
-## Turtle source occurrences and execution
-
-[`TurtleProgramAnalysis`](../modules/core/shared/src/main/scala/it/evadid/vm/simulation/turtle/TurtleProgramAnalysis.scala)
-analyzes ordinary expressions and
-checked Java roots as `TurtleCommandExecutionInfo[Double]`:
-
-```scala
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
-import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-
-val info = state.toBeExpression.turtleCommandExecutionInfo
-val forward = TurtleCommand.Forward(10.0)
-val executionsWithDistance10 = info.nrOfCommandExecuted(forward)
-val forwardExecutions = info.nrOfCommandExecutedIgnoreParameter(forward)
-val forwardSites = info.nrOfCommandInCodeIgnoreParameter(forward)
-val literalForward10Sites = info.nrOfLiteralCommandInCode(forward)
-val symbolicForwardSites = info.nrOfUnresolvedCommandSitesInCode(forward)
+```
+source state → source frontend → BeExpression → target printer → target state
 ```
 
-`executedTurtleCommandsInOrder` contains evaluated commands, including repeated
-loop/function executions. `turtleCommandSitesInCodeOrder` instead follows the
-expression tree once, including both branches, zero-iteration loop bodies and
-unused function definitions. Helper calls do not expand their definitions in
-this traversal. Each site retains its structural path, canonical `BeEntityName`,
-argument expressions and an optional concrete `literalCommand`. Paths distinguish
-identical blocks within one source snapshot; they are not stable IDs across edits
-or source line/column positions. Operator expressions and variables remain
-symbolic; they are not counted as literal matches. Java signed/grouped/widened
-numeric literals retain their literal values. Command aliases use the same
-canonicalization for static and executed counts.
+`ProgrammingStateRaw(language, code)` is the single source transport type. Prefer structured Java/Python states and the typed Snap model for persisted answers; raw source is useful for imports and unfinished text editing, and remains permitted in histories. Raw source projections preserve the original text. Snap XML ↔ the full Snap model remains a lossless representation conversion; it does not need an executable expression tree. Structured state constructors retain unfinished source for editing, but cross-language conversion requires supported syntax.
 
-For `for i in range(3): forward(i * 10)` followed by `forward(10)`, there are two
-source sites, one literal match for distance 10, one symbolic site, four forward
-executions and two executions with distance 10. This is normalized program
-analysis; exact native Snap block counts should use `SnapScalaModel` because
-conversion can expand or normalize editor syntax.
+`BeExpression` stores language-neutral definitions, calls, values and control flow. It contains no checked-Java runtime nodes, original Java source, target-language names, metadata-selected semantic modes or implicit Python receiver parameters. Printers supply target syntax, including Python's `self`. Explicit `BeExpressionUnsupported` and `BeExpressionUnparsable` nodes can retain unsupported source for diagnostics.
 
-`TurtleProgramAnalysis.commandSites(expression)` performs only the static walk.
-Full analysis is synchronous; GUI consumers should run it in a Future as they do
-other program execution. `executionStatus` distinguishes completion, limits,
-cancellation and failure. Counts on an incomplete result describe only its
-recorded prefix; source counts remain available. Rendering/grading uses
-`completedCommands`, which rejects incomplete execution. The turtle-subset
-interpreter bounds steps, commands, call depth and while iterations; checked Java
-uses its existing bounded runtime and maps its status into the same result.
-Limits and cancellation can be supplied to `TurtleProgramAnalysis.apply`.
+| Responsibility | Package below `vm.conversion` |
+| --- | --- |
+| Python frontend | `pythonexpression` |
+| Java frontend and separate checked compilation | `javaexpression` |
+| Snap frontend, startup and detached scripts | `snapexpression.SnapToExpression`, using `turtlestitchexpression` |
+| Shared-tree printers | `expressionpython`, `expressionjava`, `expressionsnap`, `expressionlisp` |
+| Source grouping for structured editors | `structured` |
+| Lossless Snap project representation | `snapxmlmodel`, `snapmodelxml` |
+| Python-to-Snap application retaining project layout | `pythonsnap`, using the same frontend and expression exporter |
+| SQL clause blocks | `sqlblocks` |
 
-The analysis result and call sites are runtime views holding AST references,
-including checked Java nodes; they are not persisted answer schemas. Persist the
-`ProgrammingState`, then analyze that snapshot when needed. The numeric result
-container itself requires no `Fractional` instance and derives its counts from
-its two ordered collections rather than storing parallel counters.
+Snap green flags become startup; detached scripts become the reserved, uncalled `unusedCode` function. Export restores its body as loose blocks without a green-flag hat, including after Python/Java roundtrips. Saved variable initializers enter the shared tree once. Unsupported Snap classes are rejected rather than silently discarded. The Python frontend binds constructors, member access, instance calls and static calls. Inheritance and unknown decorators remain explicit unsupported source. The Java frontend also binds constructors, explicit and implicit instance receivers, local shadowing and static methods. Its lexical lowering shares the expression binder; the checked Java runtime still enforces its narrower subset. Static Java entry-point wrappers lower to module functions and startup; original wrapper names and formatting are not replayed after a language change.
+
+Checked Java execution remains a separate runtime capability. Its nodes do not extend `BeExpression`. Java unit-test execution can generate runtime instrumentation through `JavaTurtlePythonExport`; that instrumentation is not an editable programming-state conversion and does not select conversion routes. There is no Java-emulation metadata reader or editable Java/Python/Snap bridge.
+
+Regression coverage lives in `ProgrammingStateConversionSpec`, `StructuredProgrammingStateSpec`, `PythonTypeHintConversionSpec` and the turtle execution tests. Checked Java arithmetic, bindings, tracing and runtime tests remain independent of conversion tests.
+
+## Neutral object model
+
+`BeFunctionCall.target` distinguishes a function, an instance method with a receiver, a static method, and a constructor. Its declaration remains the sole owner of the signature and canonical name. `BeCurrentInstance`, `BeMemberAccess` and `BeAssignMember` represent object operations; `BeDataType.ClassType` represents named object types. Receivers participate in traversal and replacement, and these nodes roundtrip through JSON and MessagePack. Java and Python printers render the same tree; Snap rejects object functionality explicitly. The small drawing simulator also rejects unsupported object execution.
+
+A target sum type is preferable to independent `isStatic`/`isConstructor` flags and receiver fields: callers cannot accidentally retain a receiver on a constructor or static call, and each new call category has one explicit branch. No source-language names or runtime nodes are added to the model. Source placeholders alone retain optional `parsedFromLanguage`; emitting known foreign source fails explicitly. Snap numeric slots recover numeric types; they do not preserve an original Java `int`/`double` distinction.
+
+Python and Java object binding, detached Snap export, structured editor conversion results, class hoisting and first-definition-wins warnings are implemented. `ConversionInfo.sourceError` optionally preserves parser categories and positions for editor markers. Raw transport uses one current codec; historical source-state tags are not supported.
+
+Further work should extend the supported type and runtime subsets together with semantic roundtrip tests. Structured and raw sources of a language must use the same execution backend.
+
+The shared model does not imply that every object-oriented source program can be parsed or executed. The checked Java drawing runner retains its narrower execution subset.
+
+Module variables become static fields of Java `Main`; their initializers remain in startup order rather than moving ahead of intervening statements. Lifting a Java entry point restores module statements directly. Original source remains the input to the checked Java runtime and its source locations.
+
+`BeIntrinsic` identifies turtle and printing library semantics independently of user names. Printers select target syntax from this marker; user-defined `print`/`forward` methods remain ordinary functions. Java conversion rejects a user `Turtle` class when it would hide actual turtle-library calls.
+
+The shared numeric subset uses double precision. Java integer declarations are widened on cross-language conversion; `ConversionResult` reports this as a loss because wrapping overflow and truncating division are not preserved. Same-language source grouping retains the original types.
