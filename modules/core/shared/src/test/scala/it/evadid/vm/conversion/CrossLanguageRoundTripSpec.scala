@@ -112,6 +112,20 @@ class CrossLanguageRoundTripSpec extends FunSuite {
     assertRoundTrips(ProgrammingStateRaw(Python, calculationPython).toSnapXml, all, Some(calculationCommands))
   }
 
+  test("formatting does not matter: tabs, two-space indentation, CRLF and spacing normalise identically") {
+    val variants = Seq(
+      calculationPython,
+      calculationPython.replace("    ", "\t"),
+      calculationPython.replace("    ", "  ").replace(" = ", "=").replace("\n", "\r\n"),
+      calculationPython.replace("(side + gap) * factor", "( side+gap )*factor"))
+    val normalized = variants.map(variant => ProgrammingStateRaw(Python, variant).toBeExpression.toPythonStructured.toString)
+    assertEquals(normalized.distinct.size, 1, normalized.mkString("\n---\n"))
+    variants.foreach(variant => assertRoundTrips(ProgrammingStateRaw(Python, variant), all, Some(calculationCommands)))
+    val java = ProgrammingStateRaw(Python, calculationPython).toJavaStructured.toString
+    val compactJava = java.replace("\n", " ").replaceAll(" +", " ")
+    assertEquals(ProgrammingStateJavaStructured(compactJava).toBeExpression.toJavaStructured.toString, java)
+  }
+
   test("scenario A: the basic turtle script with a helper survives every language pair") {
     val python = """x = 100
       |def doSomething():
