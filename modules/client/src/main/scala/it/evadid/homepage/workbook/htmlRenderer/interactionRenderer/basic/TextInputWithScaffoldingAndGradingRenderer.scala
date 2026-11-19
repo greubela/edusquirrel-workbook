@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.language.AppLanguage.English
-import it.evadid.core.datastructures.state.StateHelper.{StateBasedVar, RichObservableValue}
+import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.editor.SimpleTextEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
@@ -11,7 +11,6 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.
 import it.evadid.workbook.abstractions.grading.GradingStatus
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
-import it.evadid.workbook.meta.InteractionVariableGradingReporter
 
 
 object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFactory[TextInputWithScaffoldingAndGrading] {
@@ -19,26 +18,21 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
     val variable = element.interactionVariable
     val answer = variable.createBoundStateWithUpdateLogic( TextInteraction.decideTextareaUpdateImportance, fullInfo.workbookContextInformation).toAirstreamVar
     def label(key: String) = laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
-    val feedback: Signal[Seq[Element]] = {
-      val history = variable.observableHistoryWithDefault.toEventStream().toSignal(variable.currentHistory)
-      history.combineWith(answer.signal, fullInfo.signals.currentLanguage).map { (saved, source, language) =>
-        element.gradingElements.flatMap { grader =>
-          saved.gradingForState(element.gradingElements, source).graderResultMap.get(grader)
-            .filter(result => result.gradedState == source && result.grader == grader).toList.map { result =>
-              val key = result.gradingStatus match {
-                case GradingStatus.Correct() => "textGradingCorrect"
-                case GradingStatus.Incorrect() => "textGradingIncorrect"
-                case GradingStatus.PartiallyCorrect() => "textGradingPartiallyCorrect"
-                case GradingStatus.TestError(_) => "gradingError"
-                case GradingStatus.NotFinished() => "gradingLoading"
-                case GradingStatus.NotRequested() => "gradingNotRun"
-              }
-              div(cls := "text-input-feedback__result",
-                strong(child.text <-- label(key)),
-                result.feedbackInformation.filter(_.availableLanguages.nonEmpty).map(_.getWithLanguagePreference(List(language, English))).map(text =>
-                  p(cls := "interaction-scaffolding__message", text)))
-            }
+    val reporter = fullInfo.signals.reportersFor(element).grading
+    val feedback: Signal[Seq[Element]] = reporter.summary.combineWith(fullInfo.signals.currentLanguage).map { (grading, language) =>
+      grading.entries.flatMap(_.result).map { result =>
+        val key = result.gradingStatus match {
+          case GradingStatus.Correct() => "textGradingCorrect"
+          case GradingStatus.Incorrect() => "textGradingIncorrect"
+          case GradingStatus.PartiallyCorrect() => "textGradingPartiallyCorrect"
+          case GradingStatus.TestError(_) => "gradingError"
+          case GradingStatus.NotFinished() => "gradingLoading"
+          case GradingStatus.NotRequested() => "gradingNotRun"
         }
+        div(cls := "text-input-feedback__result",
+          strong(child.text <-- label(key)),
+          result.feedbackInformation.filter(_.availableLanguages.nonEmpty).map(_.getWithLanguagePreference(Seq(language, English))).map(text =>
+            p(cls := "interaction-scaffolding__message", text)))
       }
     }
     val content = div(
@@ -50,7 +44,7 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
           p(cls := "interaction-scaffolding__notice", child.text <-- label("gradingNotice")),
           div(role := "status", aria.live := "polite",
             children <-- feedback),
-          InteractionHintPanel(InteractionVariableGradingReporter(element)).getDomElement()))
+          InteractionHintPanel(reporter).getDomElement()))
     )
     // basicLine supplies the shared grading, synchronization and hint controls.
     AtomarLineRendering.basicLine(element, content)

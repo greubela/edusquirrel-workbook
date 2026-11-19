@@ -2,12 +2,11 @@ package it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.workbook.content.wip.CreateImageRecognitionWorkbook.binaryTable.gradingElements
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.linePanelBottom.GradingInfoLine
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.meta.InteractionVariableGradingReporter
+import it.evadid.homepage.control.info.interaction.GradingReporter
 
 case class RenderingInteractionLine[F <: InteractionFormat](
                                              interactionElement: WorkbookInteractionElement[F],
@@ -16,7 +15,7 @@ case class RenderingInteractionLine[F <: InteractionFormat](
                                              showGradingLine: Signal[Boolean] = Var(false).signal
                                            ) extends AtomarLineRendering {
 
-  lazy val  gradingReporter: InteractionVariableGradingReporter[F] = InteractionVariableGradingReporter(interactionElement)
+  lazy val gradingReporter: GradingReporter = fullInfo.signals.reportersFor(interactionElement).grading
   lazy val interactionInfoPanel: InteractionInfoPanel[F] = InteractionInfoPanel(interactionElement, gradingReporter)
 
   protected val lineCssStr: String = getCssString(interactionElement)

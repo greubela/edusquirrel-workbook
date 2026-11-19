@@ -39,3 +39,5 @@ Follow-up after merging into main (2026-11-18):
 - Repair the Pages build's Maven Central HTTP 403 dependency failures and verify resolution without a warm dependency cache.
 - Below-exercise grading panels must also show available scaffolding hints as readable content for the current answer, including hint-only exercises.
 - Outline the existing status calculations and prefer shared grading/sync reporter outputs over calculations duplicated in renderers.
+
+Implement a workbook-instance reporter registry in fullInfo.signals. All icons, sidebars, inline panels and editors share one grading snapshot per relevant update and one sync classification per report. Preserve binding-switch isolation and test reuse, workbook/user switches and subscription/remount behavior.

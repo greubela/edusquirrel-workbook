@@ -9,7 +9,7 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.TextIn
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.linePanelBottom.GradingInfoLine
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
-import it.evadid.workbook.meta.InteractionVariableGradingReporter
+import it.evadid.homepage.control.info.interaction.GradingReporter
 import it.evadid.workbook.interaction.variable.InteractionVariableState
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import java.time.LocalDateTime
@@ -19,6 +19,18 @@ import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffold
 
 
 class TextInputFeedbackRendererSpec extends EditorDomSuite {
+  import com.raquo.laminar.api.L.*
+  import it.evadid.homepage.control.model.*
+  import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
+  private val previousWorkbook = Var(Option.empty[AllWorkbookInfo])
+  override def beforeEach(context: BeforeEach): Unit = previousWorkbook.set(fullInfo.homepageInfoNow().workbookInfo)
+  override def afterEach(context: AfterEach): Unit = fullInfo.usageControl.changeWorkbook(previousWorkbook.now())
+  private def loadExercise(exercise: TextInputWithScaffoldingAndGrading): Unit = {
+    val section = WorkbookSection("feedback-tests", WorkbookSection.WorkbookSectionMetadata(LanguageMapContentId("test/section")), Seq(exercise))
+    val workbook = Workbook("feedback-tests", Workbook.WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("test/title"), Seq(English)), Seq(section))
+    fullInfo.usageControl.changeWorkbook(Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)))
+  }
+
   private def hintExercise(id: String) = TextInputWithScaffoldingAndGrading(id, LanguageMapContentId("test/task"),
     contentGrading = Nil, contentScaffolding = Some(ContentForLlmInteraction(LanguageMapContentId("test/hint"), Map.empty)))
 
@@ -29,6 +41,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val content = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "English hint\nSecond line", German -> "Deutscher Hinweis"))
     exercise.interactionVariable.updateHistory(_.addScaffolding(ScaffoldingResult[String, MessengerModel]("",
       ScaffoldingStatus.ScaffoldingFeedback(content), FeedbackEntity.TestEntity(), None, LocalDateTime.now())), fullInfo.workbookContextInformation)
+    loadExercise(exercise)
     val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
     val close = mount(element)
     try {
@@ -49,7 +62,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val exercise = hintExercise("renderer-current-hint")
     val variable = exercise.interactionVariable
     val context = fullInfo.workbookContextInformation
-    val reporter = InteractionVariableGradingReporter(exercise)
+    val reporter = GradingReporter(exercise)
     val element = GradingInfoLine(exercise, reporter).getDomElement()
     val close = mount(element)
     val time = LocalDateTime.now()
@@ -85,6 +98,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
         Some(LanguageMap.universalMap[HumanLanguage](s"Feedback for criterion $index")))
     }
     exercise.interactionVariable.updateHistory(_.addGradings(results), fullInfo.workbookContextInformation)
+    loadExercise(exercise)
     val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
     val close = mount(element)
     try {
@@ -106,6 +120,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
       Some(LanguageMap.universalMap("Wrong answer feedback")))
     val wrongLanguage = wrongAnswer.copy(gradedState = "", feedbackInformation = Some(
       LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(otherLanguage -> "Wrong language feedback"))))
+    loadExercise(exercise)
     val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
     val close = mount(element)
     try {

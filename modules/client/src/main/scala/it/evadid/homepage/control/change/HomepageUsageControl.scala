@@ -51,7 +51,9 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def changeWorkbook(newWorkbook: Option[AllWorkbookInfo]): Unit = fullInfo.synchronized {
-    if (fullInfo.homepageInfoNow().workbookInfo != newWorkbook) {
+    val previous = fullInfo.homepageInfoNow().workbookInfo
+    val sameInstance = previous.zip(newWorkbook).forall((a, b) => a.loadedWorkbook eq b.loadedWorkbook)
+    if (previous != newWorkbook || !sameInstance) {
       fullInfo.homepageInfoState.update(_.copy(workbookInfo = newWorkbook))
       // Var updates inside a UI observer run in a child transaction. Select the binding after that update.
       if (newWorkbook.nonEmpty) Future.unit.flatMap(_ => fullInfo.syncControl.ensureSynced())

@@ -9,13 +9,13 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.ElementCard
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.editorSidePanel.InteractionSidePanelForEditor
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookDisplayElement, WorkbookInteractionElement}
-import it.evadid.workbook.meta.InteractionVariableGradingReporter
+import it.evadid.homepage.control.info.interaction.GradingReporter
 
 case class EditorWithWorkbookPanel[F <: InteractionFormat, EC <: WebEditorConfig]
 (
   interaction: WorkbookInteractionElement[F],
   associatedInstruction: Option[WorkbookDisplayElement],
-  gradingReporter: InteractionVariableGradingReporter[F],
+  gradingReporter: GradingReporter,
   additionalModules: Seq[ElementCard],
   editor: SimpleWebEditor[InteractionFormat.State[F], EC]
 ) extends HtmlAppElement {

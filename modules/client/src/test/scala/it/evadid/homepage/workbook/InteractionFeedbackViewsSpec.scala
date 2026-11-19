@@ -4,14 +4,15 @@ import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.GradingSummary
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.GradingSummary.Group
+import it.evadid.workbook.meta.GradingSummary
+import it.evadid.workbook.meta.GradingSummary.Group
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.editorSidePanel.InteractionInfoSidebar
 import it.evadid.vm.test.ProgrammingTestSuite
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingUnitTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.meta.{ExecutionContextInformation, InteractionVariableGradingReporter}
+import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.homepage.control.info.interaction.GradingReporter
 import java.time.LocalDateTime
 
 class InteractionFeedbackViewsSpec extends EditorDomSuite {
@@ -51,7 +52,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val hiddenResult = GradingResult(hidden, source, GradingStatus.Correct(),
       Some(LanguageMap.universalMap[HumanLanguage]("SECRET-HIDDEN-FEEDBACK")), None, LocalDateTime.parse("1999-01-01T01:02:03"))
     variable.updateHistory(_.addGradings(List(publicResult, hiddenResult)), ExecutionContextInformation.default)
-    val sidebar = InteractionInfoSidebar(exercise, None, InteractionVariableGradingReporter(exercise)).getDomElement()
+    val sidebar = InteractionInfoSidebar(exercise, None, GradingReporter(exercise)).getDomElement()
     val previous = fullInfo.signals.currentLanguage.now()
     fullInfo.usageControl.changeLanguage(German)
     val close = mount(sidebar)
@@ -79,7 +80,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val variable = exercise.interactionVariable
     variable.updateHistory(_.addGrading(GradingResult(test, variable.currentValue, GradingStatus.Correct(),
       Some(LanguageMap.universalMap[HumanLanguage]("FEEDBACK-FOR-OLD-ANSWER")))), ExecutionContextInformation.default)
-    val sidebar = InteractionInfoSidebar(exercise, None, InteractionVariableGradingReporter(exercise)).getDomElement()
+    val sidebar = InteractionInfoSidebar(exercise, None, GradingReporter(exercise)).getDomElement()
     val close = mount(sidebar)
     try {
       assert(sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
@@ -102,7 +103,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val saved = ScaffoldingResult[String, MessengerModel]("", ScaffoldingStatus.ScaffoldingFeedback(
       LanguageMap.universalMap[HumanLanguage]("PUBLIC-HINT")), FeedbackEntity.TestEntity(), None, date)
     exercise.interactionVariable.updateHistory(_.addScaffolding(saved), ExecutionContextInformation.default)
-    val sidebar = InteractionInfoSidebar(exercise, None, InteractionVariableGradingReporter(exercise)).getDomElement()
+    val sidebar = InteractionInfoSidebar(exercise, None, GradingReporter(exercise)).getDomElement()
     val close = mount(sidebar)
     try {
       assert(sidebar.ref.querySelector(".feedback-section").hasAttribute("open"))

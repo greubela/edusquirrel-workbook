@@ -19,14 +19,13 @@ import it.evadid.workbook.abstractions.{LangMapContentIdType, TypeOfTextDisplay}
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
 import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.meta.InteractionVariableGradingReporter
 
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
 
   override protected def createRendering(workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
     val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
-    val gradingReporter = InteractionVariableGradingReporter(workbookElement)
+    val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
     val shapeGradingPreview = CompareShapePreview(boundVar, workbookElement.desiredResult)
 
     val associatedInstruction = DisplayLangMapContent(workbookElement.elementId + "-sidebar-instruction", LanguageMapContentId("turtlestitch/instructionRecreateShape"), LangMapContentIdType(EXERCISE_DESCRIPTION, PLAINTEXT))

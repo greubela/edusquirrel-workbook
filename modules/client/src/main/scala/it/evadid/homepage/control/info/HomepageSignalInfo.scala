@@ -18,16 +18,35 @@ import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
 import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.{LocalIndexedDbSyncDefinition, LocalStorageSyncDefinition, SyncDestinationBasedOnHistoryDatabase}
 
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
+import it.evadid.homepage.control.info.interaction.InteractionReporters
 import scala.concurrent.*
 
 case class HomepageSignalInfo(fullInfo: FullInfo) {
+
+  /** Only replacing the loaded workbook replaces its reporter instances. */
+  lazy val interactionReporters: StrictSignal[Map[WorkbookInteractionElement[? <: InteractionFormat], InteractionReporters[? <: InteractionFormat]]] =
+    baseSignal.map(_.workbookInfo.map(_.loadedWorkbook))
+      .distinctByFn((previous, next) => previous.zip(next).exists((a, b) => a eq b) || (previous.isEmpty && next.isEmpty))
+      .map(_.toSeq.flatMap(_.allContainedInteractionsById.values).map { interaction =>
+        interaction -> new InteractionReporters(interaction, fullInfo)
+      }.toMap).observe(using unsafeWindowOwner)
+
+  def reportersFor(interaction: WorkbookInteractionElement[? <: InteractionFormat]): InteractionReporters[? <: InteractionFormat] =
+    interactionReporters.now().get(interaction).filter(entry => entry.interaction eq interaction).getOrElse(
+      throw new IllegalArgumentException(s"Interaction ${interaction.elementId} does not belong to the loaded workbook"))
+
 
 
 
   lazy val syncEnvironmentSignal: StrictSignal[Option[WorkbookSyncEnvironment]] = {
 
-    fullInfo.homepageInfoState.signal.distinctBy(info =>
-      (info.toContext, info.workbookInfo.map(_.loadedWorkbook), info.userInfo.map(user => (user.config.syncDestinations, user.credentials)))
+    fullInfo.homepageInfoState.signal.distinctByFn((previous, next) =>
+      previous.toContext == next.toContext &&
+        previous.workbookInfo.map(_.loadedWorkbook).zip(next.workbookInfo.map(_.loadedWorkbook)).forall((a, b) => a eq b) &&
+        previous.workbookInfo.isDefined == next.workbookInfo.isDefined &&
+        previous.userInfo.map(user => (user.config.syncDestinations, user.credentials)) ==
+          next.userInfo.map(user => (user.config.syncDestinations, user.credentials))
     ).map(curHomepageInfo => {
       if (curHomepageInfo.userInfo.isEmpty || curHomepageInfo.workbookInfo.isEmpty) None
       else Some(WorkbookSyncEnvironment(

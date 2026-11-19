@@ -71,16 +71,42 @@ Pending and completed computations are cached by answer, independently of displa
 language. A language change reuses them; result merges retain available feedback
 translations. Synchronization includes feedback updates even when the answer is unchanged.
 
-`InteractionInfoSidebar` and `GradingInfoLine` share the client-side
+`InteractionInfoSidebar` and `GradingInfoLine` share the core
 `GradingSummary`: the score counts fully correct tests, including hidden tests;
 partial results belong to the incorrect group. Hidden results contribute counts
 but never detail rows. Public descriptions and localized feedback are rendered
 as text; internal test programs and LLM instructions are not displayed.
 
+`fullInfo.signals.interactionReporters` holds one registry per loaded workbook
+instance. `reportersFor(element)` returns its shared `grading` and `sync` reporters;
+icons, inline panels, sidebars and editors consume these reporters rather than
+constructing their own. Lookup rejects elements from another workbook instance,
+even if their IDs and definitions match.
+
+`GradingReporter.report` derives one current-answer snapshot from history updates.
+Its `summary`, `scaffolding` and `hintFeedback` signals share that snapshot.
+The core `GradingSummary` owns test grouping, counts and aggregate status;
+`ScaffoldingReport` owns hint status. Views choose translated labels, icons and CSS.
+For example:
+
+```scala
+val reporters = fullInfo.signals.reportersFor(exercise)
+val score = reporters.grading.summary.map(_.score)
+val syncStatus = reporters.sync.report.map(_.status)
+```
+
+Registry entries survive language, display, section and user changes. Replacing or
+closing the workbook replaces the registry. Reporter signals subscribe while
+observed, detach when their final observer leaves, and read current history when
+observed again. `SyncReporter` follows the controller's replaceable environment
+binding and reset state, classifying configured destination confirmations as
+disabled, unsynced, partial or synced. Retired requests cannot confirm writes in a
+replacement binding; old bindings retain their captured credentials for flushing.
+
 Below-exercise feedback panels show completed hints in an initially expanded,
 collapsible section, including hint-only exercises. `InteractionHintPanel` consumes
-the grading reporter's current-answer hint signal; language changes update its text,
-and changing the answer removes stale hints until matching feedback is available.
+the shared reporter's `hintFeedback`; language changes update its text, and changing
+the answer hides stale hints until matching feedback is available.
 
 `TextInputWithScaffoldingAndGrading` owns its description, string answer, hint IDs
 and grading-criterion IDs. Each LLM grader evaluates one criterion in the selected

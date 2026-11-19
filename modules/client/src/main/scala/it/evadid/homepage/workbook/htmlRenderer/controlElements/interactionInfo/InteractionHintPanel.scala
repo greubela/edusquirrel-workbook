@@ -2,15 +2,13 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.English
-import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.meta.InteractionVariableGradingReporter
+import it.evadid.homepage.control.info.interaction.GradingReporter
 
 /** Readable, collapsible hint content shared by below-exercise feedback panels. */
-case class InteractionHintPanel[F <: InteractionFormat](reporter: InteractionVariableGradingReporter[F]) extends HtmlAppElement {
+case class InteractionHintPanel(reporter: GradingReporter) extends HtmlAppElement {
   override def getDomElement(): Element = {
-    val feedback = reporter.currentScaffoldingFeedbackSignal.toSignal(None)
+    val feedback = reporter.hintFeedback
     val available = feedback.map(_.exists(_.availableLanguages.nonEmpty)).distinct
     val text = feedback.combineWith(fullInfo.signals.currentLanguage).map { (content, language) =>
       content.filter(_.availableLanguages.nonEmpty).map(_.getWithLanguagePreference(Seq(language, English))).getOrElse("")
