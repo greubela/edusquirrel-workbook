@@ -40,9 +40,11 @@ class PythonTypeHintConversionSpec extends FunSuite {
         |""".stripMargin
     ).toPython
     assert(python.code.contains("distance: float = 12"), clue = python.code)
-    assert(python.code.contains("distance: float = distance + 5"), clue = python.code)
     assert(python.code.contains("value: Any = 1"), clue = python.code)
-    assert(python.code.contains("value: Any = \"text\""), clue = python.code)
+    // Reassignments run in main, where names declared `global` cannot carry annotations.
+    assert(python.code.contains("global distance, value"), clue = python.code)
+    assert(python.code.contains("    distance = distance + 5"), clue = python.code)
+    assert(python.code.contains("    value = \"text\""), clue = python.code)
     assertEquals(python.code.linesIterator.count(_ == "from typing import Any"), 1)
     assertStablePython(python)
   }

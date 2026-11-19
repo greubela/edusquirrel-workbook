@@ -47,6 +47,10 @@ Module variables become static fields of Java `Main`; their initializers remain 
 
 The shared numeric subset uses double precision. Java integer declarations are widened on cross-language conversion; `ConversionResult` reports this as a loss because wrapping overflow and truncating division are not preserved. Same-language source grouping retains the original types.
 
+## Entry points and empty programs
+
+The main sequence has one canonical shape per language. Snap marks it with a green flag, which is emitted even when no blocks follow. Java places it in `Main.main(String[] unusableArgs)`; empty source becomes `Main` with an empty `main`. Python prints it as a called `def main()` after classes, functions and literal-initialised module variables ([`PythonEntryPoint`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/expressionpython/PythonEntryPoint.scala)). Variables assigned in `main` are declared `global` and printed without annotations, so they behave like module statements. When Python is converted to a BeExpression, a parameterless `main` that is called once, by the last top-level statement, becomes the main sequence again; any other `main` stays an ordinary function. Empty raw source in any language is therefore an empty program that survives every conversion (`StructuredProgrammingStateSpec`).
+
 ## Running Python
 
 `ProgrammingStatePythonStructured.startExecution()(using ExecutionClient, ExecutionContext)` sends the native source to the existing `worker.runPython` command; supply the application's worker client. It returns `Future[RunPythonResult]` with captured stdout/stderr and also prints those streams to the caller's console when execution completes. Python exceptions fail the future; output emitted before the failure is retained in the worker diagnostic output and printed too.

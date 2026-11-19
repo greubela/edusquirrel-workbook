@@ -148,7 +148,8 @@ two</options></input></inputs>
     assertRoundTrip("\ufeff<?xml version='1.0'?>\r\n<!-- before --><project  name = 'a > b' ><notes>  a\r\nb  <![CDATA[<block/>]]><!-- mid -->tail</notes><scenes /></project   >\n<!-- after -->")
   }
   test("malformed and deeply nested projects fail explicitly rather than discarding content") {
-    List("", "<project>", "<project><scene></project>", "<project/><project/>", "<project name='unclosed>",
+    // Empty text is an empty program, not malformed XML; see StructuredProgrammingStateSpec.
+    List("<project>", "<project><scene></project>", "<project/><project/>", "<project name='unclosed>",
       "<project name='a' name='b'/>", "<project><!-- unclosed</project>", "<project><![CDATA[unclosed</project>",
       "<project a='<'/>", "<project>&#x110000;</project>", "<project>&#0;</project>",
       "<project>" + "<list>" * 260 + "</list>" * 260 + "</project>")

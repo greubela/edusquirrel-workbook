@@ -141,9 +141,10 @@ final case class ProgrammingStateJavaStructured(definedClasses: Map[BeEntityName
   override def toString: String = definedClasses.values.mkString("\n\n")
 }
 object ProgrammingStateJavaStructured {
+  /** Loose code, including none at all, becomes `Main.main`: an empty program is a `Main` class with an empty entry point. */
   def apply(source: String): ProgrammingStateJavaStructured = {
     val parts = SourceStructure.java(source)
-    if parts.remaining.isEmpty then new ProgrammingStateJavaStructured(parts.definedClasses)
+    if parts.remaining.isEmpty && parts.definedClasses.nonEmpty then new ProgrammingStateJavaStructured(parts.definedClasses)
     else StructuredProgramConversions.javaWithLooseCode(parts.definedClasses, parts.remaining)
   }
 }
@@ -175,8 +176,12 @@ final case class ProgrammingStatePythonStructured(definedClasses: Map[BeEntityNa
   override def toString: String = (definedClasses.values.toList :+ mainScript).filter(_.nonEmpty).mkString("\n\n")
 }
 object ProgrammingStatePythonStructured {
+  /** The main program of an empty source: an explicit entry point, called at the end. */
+  lazy val emptyMainScript: String =
+    it.evadid.vm.conversion.expressionpython.ExpressionToPython.convert(it.evadid.vm.BeProgram.empty.fullProgram).code.trim
   def apply(source: String): ProgrammingStatePythonStructured = {
     val parts = SourceStructure.python(source)
-    new ProgrammingStatePythonStructured(parts.definedClasses, parts.remaining)
+    new ProgrammingStatePythonStructured(parts.definedClasses,
+      if parts.remaining.isEmpty && parts.definedClasses.isEmpty then emptyMainScript else parts.remaining)
   }
 }

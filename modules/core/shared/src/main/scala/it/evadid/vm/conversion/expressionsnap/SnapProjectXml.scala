@@ -96,10 +96,11 @@ object SnapProjectXml {
         }
         return scripts
       }
-      return Option.when(statements.nonEmpty)(ScriptOut(156, 66, createReceiveGoCall() :: statements)).toList :+
-        ScriptOut(156, 240, detached.toList)
+      return ScriptOut(156, 66, createReceiveGoCall() :: statements) ::
+        ScriptOut(156, 240, detached.toList) :: Nil
     }
-    if statements.isEmpty then Nil
+    // The green flag always marks the main program, even when it has no statements yet.
+    if statements.isEmpty then List(ScriptOut(156, 66, List(createReceiveGoCall())))
     else if layout.isEmpty || !layoutMatches(layout, statements.size) then
       List(ScriptOut(156, 66, createReceiveGoCall() :: statements))
     else

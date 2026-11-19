@@ -44,10 +44,13 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
   lazy val java: ProgrammingStateRaw = source match {
     case value @ ProgrammingStateRaw(Java, _) => value
     case value: ProgrammingStateJavaStructured => ProgrammingStateRaw(Java, value.toString)
-    case _ => ExpressionToJava.convert(expression.expression)
+    case _ => ExpressionToJava.convert(expression.expression) match {
+      case ProgrammingStateRaw(_, code) if code.trim.isEmpty => ProgrammingStateRaw(Java, ProgrammingStateJavaStructured("").toString)
+      case generated => generated
+    }
   }
   lazy val snap: ProgrammingStateRaw = source match {
-    case value @ ProgrammingStateRaw(SnapLanguage, _) => value
+    case value @ ProgrammingStateRaw(SnapLanguage, xml) if xml.trim.nonEmpty => value
     case ProgrammingStateSnapScalaModel(model) => ProgrammingStateRaw(SnapLanguage, model.toXml)
     case _ => ExpressionToSnap.convert(expression.expression)
   }
