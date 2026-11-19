@@ -20,13 +20,19 @@ final class JavaToBeExpressionParser {
   private[conversion] def toPython(source: String): String = {
     val output = List.newBuilder[String]
     var indentation = 0
+    var emptyBlock = false
     tokenize(source).foreach {
-      case CloseBlock => indentation = (indentation - 1).max(0)
+      case CloseBlock =>
+        if emptyBlock then output += (" " * (indentation * 4) + "pass")
+        indentation = (indentation - 1).max(0)
+        emptyBlock = false
       case OpenBlock(header) =>
         output += (" " * (indentation * 4) + translateHeader(header))
         indentation += 1
+        emptyBlock = true
       case Statement(code) if code.trim.nonEmpty =>
         output += (" " * (indentation * 4) + translateStatement(code))
+        emptyBlock = false
       case _ => ()
     }
     output.result().mkString("\n")

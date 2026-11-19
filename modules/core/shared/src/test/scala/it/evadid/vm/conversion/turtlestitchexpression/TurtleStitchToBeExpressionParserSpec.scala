@@ -1,4 +1,4 @@
-package it.evadid.homepage.workbook.legacy.snap.snapFileHandling.conversion
+package it.evadid.vm.conversion.turtlestitchexpression
 
 import it.evadid.vm.conversion.turtlestitchexpression.*
 
@@ -44,7 +44,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       """<project><scenes><scene><stage><sprites><sprite><scripts><script><block s="gotoXY"><l>10</l><block var="x"/></block><variables><variable name="x"></variable>"""
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(malformedXml)
     val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("goto_x_y(10, x)"), clue = python)
+    assert(python.contains("turtle.goto(10, x)"), clue = python)
   }
 
   test("gotoXY with mixed literal and variable reporter keeps both arguments") {
@@ -52,8 +52,8 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="gotoXY"><l>10</l><block var="x"/></block></script></scripts></sprite></sprites></stage><variables><variable name="x"></variable></variables></scene></scenes></project>"""
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
     val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("goto_x_y(10, x)"), clue = python)
-    assert(!python.contains("goto_x_y(10)"), clue = python)
+    assert(python.contains("turtle.goto(10, x)"), clue = python)
+    assert(!python.contains("turtle.goto(10)"), clue = python)
   }
 
   test("simple_forward XML yields callable function calls") {
@@ -127,7 +127,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(python.contains("if test == 1:"), clue = python)
     assert(python.contains("for _ in range(10):"), clue = python)
     assert(python.contains("forward(10)"), clue = python)
-    assert(python.contains("turn_right(18)"), clue = python)
+    assert(python.contains("turtle.right(18)"), clue = python)
     assert(!python.contains("do_if"), clue = python)
     assert(!python.contains("report_variadic_equals"), clue = python)
     val xmlOut = SnapProjectXml.toXml(parsed.expression, "equals-var", parsed.canvasLayout)
@@ -229,10 +229,10 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(python.contains("steps: Any = 10"), clue = python)
     assert(python.contains("for _ in range(4):"), clue = python)
     assert(python.contains("forward(50)"), clue = python)
-    assert(python.contains("turn_right(90)"), clue = python)
+    assert(python.contains("turtle.right(90)"), clue = python)
     assert(python.contains("if steps < 20:"), clue = python)
-    assert(python.contains("goto_x_y(10, 20)"), clue = python)
-    assert(python.contains("set_heading(90)"), clue = python)
+    assert(python.contains("turtle.goto(10, 20)"), clue = python)
+    assert(python.contains("turtle.setheading(90)"), clue = python)
     assert(python.contains("while True:"), clue = python)
     assert(python.contains("down()"), clue = python)
     assert(python.contains("up()"), clue = python)
@@ -319,7 +319,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("def square(n: Any) -> None:"), clue = python)
     assert(python.contains("forward(n)"), clue = python)
-    assert(python.contains("turn_right(90)"), clue = python)
+    assert(python.contains("turtle.right(90)"), clue = python)
     assert(python.contains("square(50)"), clue = python)
   }
 
@@ -347,9 +347,9 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("color("), clue = python)
     assert(!python.contains("set_color"), clue = python)
-    assert(python.contains("set_x(10)"), clue = python)
+    assert(python.contains("turtle.setx(10)"), clue = python)
     assert(!python.contains("set_x_position"), clue = python)
-    assert(python.contains("set_y(20)"), clue = python)
+    assert(python.contains("turtle.sety(20)"), clue = python)
     assert(!python.contains("set_y_position"), clue = python)
     assert(python.contains("pensize(3)"), clue = python)
     assert(!python.contains("set_size"), clue = python)
@@ -368,9 +368,9 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="turn"><l>90</l></block><block s="turnLeft"><l>15</l></block><block s="gotoXY"><l>1</l><l>2</l></block><block s="up"></block><block s="down"></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
     val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("turn_right(90)"), clue = python)
-    assert(python.contains("turn_left(15)"), clue = python)
-    assert(python.contains("goto_x_y(1, 2)"), clue = python)
+    assert(python.contains("turtle.right(90)"), clue = python)
+    assert(python.contains("turtle.left(15)"), clue = python)
+    assert(python.contains("turtle.goto(1, 2)"), clue = python)
     val applied = PythonToSnap.applyPython(
       """right(90)
         |left(15)

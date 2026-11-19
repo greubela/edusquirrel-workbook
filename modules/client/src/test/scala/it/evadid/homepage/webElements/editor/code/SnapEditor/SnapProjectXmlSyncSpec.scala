@@ -53,14 +53,14 @@ class SnapProjectXmlSyncSpec extends FunSuite {
     assertEquals(sync.changedSnapshot(xml("program", "image")), Some(clean("program")))
   }
 
-  test("running a typed Java project does not publish its sprite pose as a source edit") {
+  test("converted projects use the same pose and source tracking as native projects") {
     val source = ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { Turtle.forward(12); } }").toSnapXml.snapXml
     val moved = source.replace("x=\"0\" y=\"0\" heading=\"90\"", "x=\"12\" y=\"3\" heading=\"180\"")
     assert(moved != source)
     val sync = new SnapProjectXmlSync
     sync.markLoaded(source)
     sync.resetSnapshot(source)
-    assertEquals(sync.changedSnapshot(moved), None)
+    assertEquals(sync.changedSnapshot(moved), Some(moved))
     assert(sync.isLoaded(source))
     assert(!sync.isLoaded(moved))
     val edited = moved.replace("<l>12</l>", "<l>23</l>")

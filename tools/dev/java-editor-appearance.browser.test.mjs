@@ -367,7 +367,7 @@ test('language tabs follow the current draft and commit converted representation
     await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-label="Java"]')?.getAttribute('aria-selected') === 'true');
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
     assert.match(await readSource(), /Turtle\.forward\(12\);/, 'returning to Java uses the converted program in the central answer');
-    assert.match(await readSource(), /class Drawing/);
+    assert.match(await readSource(), /void main\s*\(/, "the entry point survives without replaying the original Java wrapper");
     await checkTabs(true);
     await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, []);

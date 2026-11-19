@@ -6,7 +6,6 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.conversion.snappython.SnapProgramDerivation
 import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPythonRequest}
-import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonHelpers
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 
@@ -92,7 +91,7 @@ final class PyodideTurtleCommandRunner(
           .fold(Future.failed, identity).onComplete {
             case Success(_) if current(run) =>
               deadline(run, executionTimeoutMs, "execution")
-              Try(transport.run(RunPythonRequest(s"${JavaTurtlePythonHelpers.installationSource}from ${PyodideTurtleCommandRunner.ModuleName} import *\n$python",
+              Try(transport.run(RunPythonRequest(s"from ${PyodideTurtleCommandRunner.ModuleName} import *\n$python",
                 callbacks = Map(PyodideTurtleCommandRunner.ModuleName -> SnapTurtleCatalog.AllowedPythonNames.toList.sorted)))).fold(Future.failed, identity).onComplete {
                   case Success(report) if current(run) =>
                     val commands = Try {

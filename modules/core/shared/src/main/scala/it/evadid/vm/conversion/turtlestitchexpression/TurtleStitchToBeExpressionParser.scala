@@ -229,20 +229,8 @@ object TurtleStitchToBeExpressionParser {
     selector.map { name =>
       val inputs = parseOrderedInputs(body)
       val arity = inputs.size
-      val params = (1 to arity).toList.map { idx =>
-        BeDefineVariable(BeEntityName.fromCodeString(s"arg$idx"), BeDataType.AnyType)
-      }
-      val isOperator = OperatorSymbols.contains(name)
-      val define =
-        if isOperator then
-          BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.operatorInfo(name, if arity <= 1 then 0 else 1))
-        else
-          BeDefineFunction(
-            params.toList,
-            None,
-            BeExpression.pass,
-            BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(SnapTurtleCatalog.canonicalPythonName(name)))
-          )
+      val define = createDefinition(Signature(name, arity, OperatorSymbols.contains(name)))
+      val params = define.inputs
       val values: List[BeExpression] =
         inputs.map {
           case InputLiteral(value) => BeUseValue(BeDataValueLiteral(value), None)
