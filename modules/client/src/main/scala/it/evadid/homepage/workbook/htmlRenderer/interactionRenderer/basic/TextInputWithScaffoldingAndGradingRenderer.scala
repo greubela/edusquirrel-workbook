@@ -2,7 +2,6 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.editor.SimpleTextEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -19,7 +18,7 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
     val answer = variable.createBoundStateWithUpdateLogic( TextInteraction.decideTextareaUpdateImportance, fullInfo.workbookContextInformation).toAirstreamVar
     def label(key: String) = laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
     val reporter = fullInfo.signals.reportersFor(element).grading
-    val feedback: Signal[Seq[Element]] = reporter.summary.combineWith(fullInfo.signals.currentLanguage).map { (grading, language) =>
+    val feedback: Signal[Seq[Element]] = reporter.summary.map { grading =>
       grading.entries.flatMap(_.result).map { result =>
         val key = result.gradingStatus match {
           case GradingStatus.Correct() => "textGradingCorrect"
@@ -31,8 +30,8 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
         }
         div(cls := "text-input-feedback__result",
           strong(child.text <-- label(key)),
-          result.feedbackInformation.filter(_.availableLanguages.nonEmpty).map(_.getWithLanguagePreference(Seq(language, English))).map(text =>
-            p(cls := "interaction-scaffolding__message", text)))
+          result.feedbackInformation.filter(_.availableLanguages.nonEmpty).map(content =>
+            p(cls := "interaction-scaffolding__message", child.text <-- laminarHelper.plaintextStringSignal(content))))
       }
     }
     val content = div(

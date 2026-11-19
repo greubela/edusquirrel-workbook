@@ -3,7 +3,8 @@ package it.evadid.homepage.workbook.htmlRenderer
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.file.{CopyrightInfo, LoadedFile}
-import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
+import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.util.logging.Logger
@@ -44,6 +45,8 @@ case class LaminarRenderHelper() derives upickle.default.ReadWriter {
   }
 
   /* Signal Fetching */
+
+  def plaintextStringSignal(content: LanguageMap[HumanLanguage]): Signal[String] = fullInfo.signals.stringFromLanguageMap(content)
 
   def plaintextStringSignal(contentIdAsString: String): Signal[String] = plaintextStringSignal(LanguageMapContentId.apply(contentIdAsString))
 
