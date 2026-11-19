@@ -67,7 +67,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
         |    print(total)
         |
         |sum_primes_below(30)
-        |""".stripMargin, false)
+        |""".stripMargin, true)
   )
 
   private def normalized(state: ProgrammingState): String = state.toPython.code.trim
@@ -489,7 +489,8 @@ class ProgrammingStateConversionSpec extends FunSuite {
     ).toJava
     val source = state.code
 
-    assert(!source.contains("//"), clue = source)
+    assert(!source.contains("EvaEntityName") && !source.contains("EvaParsingHint"), clue = source)
+    assert(source.contains("class Turtle {"), clue = source)
     assert(source.contains("static void draw(Object distance) {"), clue = source)
     assert(source.contains("public static void main(String[] unusableArgs) {"), clue = source)
     assert(state.isClassProgram, clue = source)

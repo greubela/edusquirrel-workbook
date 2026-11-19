@@ -8,6 +8,7 @@ import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVari
 import it.evadid.vm.code.errors.{BeSingleLineComment, ProgrammingConversionException}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeAssignVariable, BeCallTarget, BeFunctionCall, BeUseValue}
+import it.evadid.vm.conversion.dependencies.{JavaTurtleLibrary, KnownDependencies}
 import it.evadid.vm.conversion.printing.{GenericJavaLikeStringPrinter, ModuleLayout}
 import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter.{JavaScriptSeparation, JavaSeparation}
 import it.evadid.vm.naming.NamingStyle
@@ -100,7 +101,8 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     val body = forExpression(BeSequence.optionalBody(layout.main.toList)).trim
     val main = s"public static void main(String[] unusableArgs) {\n${indent(body)}\n}"
     val groups = Seq(parts.fields.mkString("\n")).filter(_.nonEmpty) ++ parts.methods :+ main
-    (parts.classes :+ s"class Main {\n${indent(groups.mkString("\n\n"))}\n}").mkString("\n\n")
+    // Library classes follow the program so that it compiles and runs on a regular JVM.
+    (parts.classes :+ s"class Main {\n${indent(groups.mkString("\n\n"))}\n}" :++ KnownDependencies.definitionsFor(program, Java)).mkString("\n\n")
   }
 
   override def forDefinition(definition: BeDefineStructure): String = definition match {
@@ -134,8 +136,9 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     if call.funcDef.intrinsic.contains(BeIntrinsic.Print) then {
       require(call.funcDef.inputs.size == 1, "Java printing currently supports one value per call.")
       "System.out.println"
-    } else if TurtleCommand.isTurtleMethod(call.funcDef) then
-      "Turtle." + entityName(call.funcDef.functionTypeInfo.displayName)
+    } else if call.funcDef.intrinsic.contains(BeIntrinsic.FetchText) then "Web.fetchText"
+    else if TurtleCommand.isTurtleMethod(call.funcDef) then
+      "Turtle." + JavaTurtleLibrary.methodName(call.funcDef)
     else if call.target.isInstanceOf[BeCallTarget.Function] && !insideMain &&
         moduleFunctions(call.funcDef.functionTypeInfo.displayName.universalInterpretation()) then
       "Main." + entityName(call.funcDef.functionTypeInfo.displayName)

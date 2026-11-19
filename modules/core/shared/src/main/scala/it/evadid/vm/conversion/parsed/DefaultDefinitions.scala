@@ -47,7 +47,8 @@ object DefaultDefinitions {
   private def builtinFunctionDefinition(
       name: String,
       parameters: List[(String, BeDataType)],
-      returnType: Option[BeDataType]
+      returnType: Option[BeDataType],
+      intrinsic: Option[it.evadid.vm.code.defining.BeIntrinsic] = None
   ): NamedFunction = {
     val inputs = parameters.map { case (paramName, dataType) =>
       BeDefineVariable(BeEntityName.fromUniversalNameInParts(paramName), dataType)
@@ -57,8 +58,7 @@ object DefaultDefinitions {
     )
     val functionInfo = BeDefineFunction.functionInfo(KnownBeEntityNames.resolveCanonicalNames(name)
       .getOrElse(BeEntityName.fromUniversalNameInParts(name)))
-    val function = BeDefineFunction(inputs, output, BeExpression.pass, functionInfo,
-      Option.when(name == "print")(it.evadid.vm.code.defining.BeIntrinsic.Print))
+    val function = BeDefineFunction(inputs, output, BeExpression.pass, functionInfo, intrinsic)
     name -> function
   }
 
@@ -126,7 +126,8 @@ object DefaultDefinitions {
     builtinFunctionDefinition("float", List("value" -> AnyType), Some(NumericType)),
     builtinFunctionDefinition("bool", List("value" -> AnyType), Some(BooleanType)),
     builtinFunctionDefinition("abs", List("value" -> NumericType), Some(NumericType)),
-    builtinFunctionDefinition("print", List("value" -> AnyType), Some(BeDataType.Unit))
+    builtinFunctionDefinition("print", List("value" -> AnyType), Some(BeDataType.Unit), Some(it.evadid.vm.code.defining.BeIntrinsic.Print)),
+    builtinFunctionDefinition("fetch_text", List("url" -> StringType), Some(StringType), Some(it.evadid.vm.code.defining.BeIntrinsic.FetchText))
   )
 
   val operatorDefinitions: List[BeDefineFunction] = operatorDefinitionsWithSymbols.map(_._2)

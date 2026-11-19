@@ -155,7 +155,9 @@ class StructuredProgrammingStateSpec extends FunSuite {
 
   test("the requested Python example becomes a complete Java class with static globals and helpers") {
     val result = ProgrammingStatePythonStructured(python).toJavaStructured
-    assertEquals(result.definedClasses.keySet, Set(name("Main")))
+    // The turtle library class lets the file run on a regular JVM; it is not a user class.
+    assertEquals(result.definedClasses.keySet, Set(name("Main"), name("Turtle")))
+    assertEquals(distances(result), distances(ProgrammingStatePythonStructured(python)))
     assert(result.toString.contains("static double x = 100;"), result.toString)
     assert(result.toString.contains("static void main(String[] unusableArgs)"), result.toString)
     assertEquals(distances(result), List(20.0, 20.0, 20.0, 100.0))

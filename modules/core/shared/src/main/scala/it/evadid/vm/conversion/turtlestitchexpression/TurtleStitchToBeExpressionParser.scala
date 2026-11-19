@@ -878,8 +878,12 @@ object TurtleStitchToBeExpressionParser {
       BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.operatorInfo(signature.name, if signature.arity <= 1 then 0 else 1))
     else if !signature.isCustom then
       it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.resolveTurtleMethod(displayName)
-        .map(_.copy(inputs = params)).getOrElse(
-          BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName)))
+        .map(_.copy(inputs = params))
+        // Library blocks bind to the same built-in definitions as Python and Java calls.
+        .orElse(it.evadid.vm.conversion.parsed.DefaultDefinitions.builtinFunctionDefinitions.collectFirst {
+          case (`displayName`, builtin) if builtin.inputs.size == params.size => builtin
+        })
+        .getOrElse(BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName)))
     else
       BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName))
   }

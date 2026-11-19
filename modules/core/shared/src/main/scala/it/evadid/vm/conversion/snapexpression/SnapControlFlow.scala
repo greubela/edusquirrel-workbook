@@ -266,8 +266,11 @@ object SnapControlFlow {
             val op = operatorSymbol(call)
             SupportedOperators.contains(op) &&
               orderedArgs(call).forall(isSupportedValue)
+          // Library reporters such as `url` produce a value in Snap as well.
           case _ =>
-            false
+            call.funcDef.outputs.nonEmpty &&
+              SnapTurtleCatalog.LibraryPrimitives.exists(_.pythonName == SnapExpressionSupport.pythonName(call)) &&
+              orderedArgs(call).forall(isSupportedValue)
       case _ => false
 
   def isSupportedAssignment(assign: BeAssignVariable): Boolean =

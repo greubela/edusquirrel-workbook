@@ -6,6 +6,7 @@ import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.compilation.java.turtle.{JavaTurtleCompiler, JavaTurtleInputLimits, JavaTurtleProgram, JavaTurtleSourceParser}
+import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
 import it.evadid.vm.conversion.parsed.ParsedStatement as S
@@ -26,7 +27,7 @@ final class JavaToExpression(code: String) {
   private lazy val parsed: JavaProgram = {
     JavaTurtleInputLimits.checkParserInput(code).fold(
       diagnostic => rejectAt(diagnostic.message, code, diagnostic.range.map(_.start)), identity)
-    JavaToExpression.parser.parse(code).fold(
+    JavaToExpression.parser.parse(KnownDependencies.withoutDefinitions(code, Java)).fold(
       {
         case conversion: ProgrammingConversionException =>
           throw ProgrammingConversionException.unparsable(
@@ -285,6 +286,8 @@ private object JavaAstToParsed {
       // The Java printer spells Python's floor division and power with java.lang.Math.
       case (Seq("Math", "floor"), Seq(E.Binary("/", left, right))) => E.Binary("//", left, right)
       case (Seq("Math", "pow"), Seq(base, exponent)) => E.Binary("**", base, exponent)
+      // Library helpers are printed as static methods of their dependency class.
+      case (Seq("Web", "fetchText"), _) => E.Call(Seq("fetch_text"), arguments)
       case (Seq(name), _) if !scope.locals(name) && scope.owner.exists(_.methods.contains(name)) =>
         val owner = scope.owner.get
         if owner.methods(name) then E.Call(Seq(owner.name, name), arguments)

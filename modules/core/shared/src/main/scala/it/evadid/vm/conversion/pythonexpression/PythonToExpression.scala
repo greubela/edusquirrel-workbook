@@ -7,6 +7,7 @@ import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVari
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.conversion.parsed.SymbolTable
 import it.evadid.vm.conversion.parsed.SymbolTable.KnownStructure
+import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.conversion.expressionpython.PythonEntryPoint
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
@@ -37,14 +38,16 @@ object PythonToExpression {
   }
 
   /** Unreadable source is retained as one unparsable statement rather than discarded. */
-  def parse(source: String): ParsedProgram =
+  /** Known dependency definitions are libraries, not user code, and are removed before parsing. */
+  def parse(rawSource: String): ParsedProgram = {
+    val source = KnownDependencies.withoutDefinitions(rawSource, Python)
     PythonAstParserSimple.parse(source).fold(
       error => ParsedProgram(if source.trim.isEmpty then Nil else Seq(S.Unsupported(source.trim, error.getMessage, unparsable = true))),
       program => ParsedProgram(statements(program.statements.map(_.statement))))
+  }
 
-  /** Imports that only resolve annotations and the turtle library emitted by the Python printer. */
+  /** Imports that only resolve annotations emitted by the Python printer. */
   private def isBridgeImport(statement: PythonImportStatement): Boolean = statement match {
-    case PyPlainImportStatement("turtle") => true
     case PyImportFromStatement("typing", List(PyTarget("Any", Nil, None, _)), false) => true
     case PyImportFromStatement("datetime", List(PyTarget("date", Nil, None, _)), false) => true
     case _ => false
