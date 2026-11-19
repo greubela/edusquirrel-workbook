@@ -490,7 +490,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
     assert(!source.contains("EvaEntityName") && !source.contains("EvaParsingHint"), clue = source)
     assert(source.contains("class Turtle {"), clue = source)
-    assert(source.contains("static void draw(Object distance) {"), clue = source)
+    assert(source.contains("static void draw(double distance) {"), "the parameter's type follows its use as a distance: " + source)
     assert(source.contains("public static void main(String[] unusableArgs) {"), clue = source)
     assert(state.isClassProgram, clue = source)
     assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands.flatMap(_.args), List(12.0))
@@ -643,11 +643,17 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(normalized(converted.toBeExpression), converted.code.trim)
   }
 
-  test("unknown parameter types have usable Any hints and round trip to Snap") {
+  test("unannotated parameters take the type their uses agree on and round trip to Snap") {
     val converted = ProgrammingStateRaw(Python, "def line(length):\n    forward(length)\nline(10)").toBeExpression.toPython
-    assert(converted.code.contains("from typing import Any\n"), clue = converted.code)
-    assert(converted.code.contains("def line(length: Any) -> None:"), clue = converted.code)
+    assert(converted.code.contains("def line(length: float) -> None:"), clue = converted.code)
     assert(PythonToSnap.applyPython(converted.code).isRight, clue = converted.code)
+    assertEquals(normalized(converted.toBeExpression), converted.code.trim)
+  }
+
+  test("parameters without evidence have usable Any hints") {
+    val converted = ProgrammingStateRaw(Python, "def show(value):\n    print(value)\n").toBeExpression.toPython
+    assert(converted.code.contains("from typing import Any\n"), clue = converted.code)
+    assert(converted.code.contains("def show(value: Any) -> None:"), clue = converted.code)
     assertEquals(normalized(converted.toBeExpression), converted.code.trim)
   }
 

@@ -81,6 +81,14 @@ A top-level `if __name__ == "__main__":` is read as its body, so a guarded `main
 
 The shared numeric subset uses double precision. Java integer declarations are widened on cross-language conversion; `ConversionResult` reports this as a loss because wrapping overflow and truncating division are not preserved. Same-language source grouping retains the original types.
 
+## Types of untyped functions
+
+Python functions need no annotations, but Java does. Before the shared tree is built,
+[ParsedTypeInference](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/parsed/ParsedTypeInference.scala)
+gives an unannotated parameter the one type its evidence agrees on (arguments passed to it, its use as a drawing
+argument or arithmetic operand), and a function returning a value the type its returns share, else `Any`. Annotations
+are kept; conflicting evidence leaves `Any` (Java `Object`). See `ParsedTypeInferenceSpec`.
+
 ## Functions that return a value
 
 A function with a declared result (`-> float`, `-> bool`, a Java return type) converts between Python and Java

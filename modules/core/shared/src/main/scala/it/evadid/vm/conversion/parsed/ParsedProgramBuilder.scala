@@ -28,7 +28,8 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
 
   final case class Result(expression: BeSequence, context: ParseContext)
 
-  def build(program: ParsedProgram): Result = {
+  def build(source: ParsedProgram): Result = {
+    val program = ParsedTypeInference.infer(source)
     val context = new ParseContext(CurrentlyKnownStructures.fromKnown(knownStructures))
     program.statements.collect { case definition: S.ClassDef => definition }.foreach { definition =>
       context.registerClass(definition.name, BeDefineClass(BeEntityName.fromCodeString(definition.name), Nil, Nil))
