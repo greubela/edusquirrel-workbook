@@ -52,8 +52,15 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   def normalizeLineEndingsAndDetab(source: String): String =
     source.replace("\r\n", "\n").replace('\r', '\n').replace("\t", "    ")
 
+  /** Removes the indentation all non-blank lines share, as an indented fragment carries it. */
+  def dedent(source: String): String = {
+    val lines = normalizeLineEndingsAndDetab(source).split("\n", -1).toVector
+    val shared = lines.filter(_.trim.nonEmpty).map(_.takeWhile(_ == ' ').length).minOption.getOrElse(0)
+    lines.map(_.drop(shared)).mkString("\n")
+  }
+
   def parse(pythonCode: String): Either[Throwable, PyProgram] = {
-    val trimmed = normalizeLineEndingsAndDetab(pythonCode).trim
+    val trimmed = dedent(pythonCode).trim
     fastparse.parse(trimmed + "\n", c => py_program(using c)) match {
       case Parsed.Success(astModule, _) => Right(astModule)
       case f: Parsed.Failure =>
@@ -236,7 +243,11 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   // 7. EXPRESSION TYPES
   // ==========================================
 
-  def expression[ctx: P]: P[PyExpression] = named_expression | disjunction
+  def expression[ctx: P]: P[PyExpression] = lambdaExpression | named_expression | disjunction
+
+  /** Lambdas are kept as source text; the shared tree has no anonymous functions. */
+  def lambdaExpression[ctx: P]: P[PyExpression] =
+    P(("lambda" ~~ !ID_CONTINUE ~~ CharsWhile(_ != ':', 0) ~~ ":" ~~ SPACES.? ~~ disjunction).!).map(PyRawExpression(_))
 
   def named_expression[ctx: P]: P[PyExpression] = P(target() ~~ SPACES.? ~~ COLONEQUAL ~~ SPACES.? ~~ expression)
     .map { case (name: PyTarget, expr: PyExpression) => NamedExpression(name.name, expr) }
@@ -325,7 +336,7 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   }
 
   def identifierWithTypeHint[ctx: P]: P[PyTarget] = {
-    P(identifierWithSlice ~~ SPACES.? ~~ COLON ~~ SPACES.? ~~ expression_type).map { case (target, typeExpr) => PyTarget(target.name, target.locationString, target.sliceExpr, Some(typeExpr)) }
+    P(identifierWithSlice ~~ SPACES.? ~~ COLON ~~ SPACES.? ~~ expression_type).map { case (target, typeExpr) => target.copy(typeHint = Some(typeExpr)) }
       | identifierWithSlice
   }
 

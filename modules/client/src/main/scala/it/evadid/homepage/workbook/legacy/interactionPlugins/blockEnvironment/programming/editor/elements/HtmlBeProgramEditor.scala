@@ -12,7 +12,7 @@ import it.evadid.homepage.webElements.sqlEditor.HtmlSqlCommandExerciseRenderer.f
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.parsing.cpp.CppParser
-import it.evadid.vm.conversion.pythonexpression.PythonParser
+import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import todomove.webElementsOld.webElements.*
 import todomove.webElementsOld.webElements.genericHtmlElements.other.{HtmlTab, HtmlTabElement}
 
@@ -44,7 +44,7 @@ case class HtmlBeProgramEditor(
     try {
       textLanguage match {
         case Python =>
-          val parsedProgram = PythonParser.default.parsePython(raw)
+          val parsedProgram = PythonToExpression.parseWithDetails(raw).codeExpression
           editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
           textDirtyVar.set(false)
           parseWarningVar.set(None)
@@ -65,7 +65,7 @@ case class HtmlBeProgramEditor(
 
         // probably not optimal to parse python again here, but ok for now
         case _ =>
-          val parsedProgram = PythonParser.default.parsePython(raw)
+          val parsedProgram = PythonToExpression.parseWithDetails(raw).codeExpression
           if (trimmed.isEmpty || parsedProgram.body.nonEmpty) {
             editorState.treeToEdit.set(BeProgram(BeStartProgram(parsedProgram)))
             textDirtyVar.set(false)

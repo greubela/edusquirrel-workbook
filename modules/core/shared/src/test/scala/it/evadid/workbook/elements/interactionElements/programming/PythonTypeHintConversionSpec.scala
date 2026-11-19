@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -9,7 +10,6 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.vm.naming.NamingStyle
-import it.evadid.vm.conversion.pythonexpression.PythonParser
 import it.evadid.vm.types.BeDataType
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
@@ -192,7 +192,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     intercept[IllegalArgumentException](java.toSnapXml)
     assertEquals(roundTripped.code.trim, original.toPython.code.trim, clue = java.code)
 
-    val parsed = PythonParser.default.parsePythonWithDetails(roundTripped.code)
+    val parsed = PythonToExpression.parseWithDetails(roundTripped.code)
     assertEquals(parsed.definedClasses.size, 1, clue = roundTripped.code)
     val standaloneNames = parsed.definedFunctions
       .map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase)).toSet

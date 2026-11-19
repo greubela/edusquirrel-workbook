@@ -13,7 +13,6 @@ import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.conversion.pythonexpression.PythonParser
 
 case class BeProgram(fullProgram: BeExpression) derives ReadWriter {
   override val toString: String = s"BeProgram($fullProgram)"

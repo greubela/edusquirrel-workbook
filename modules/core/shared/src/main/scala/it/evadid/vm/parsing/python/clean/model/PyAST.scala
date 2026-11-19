@@ -64,6 +64,7 @@ object PyAST {
     case PyContinueStatement => StoredAst("PyContinueStatement", ujson.Null)
     case PyEmptyStatement => StoredAst("PyEmptyStatement", ujson.Null)
     case node: PyCommentStatement => StoredAst("PyCommentStatement", upickle.default.writeJs(node))
+    case node: PyRawExpression => StoredAst("PyRawExpression", upickle.default.writeJs(node))
     case other => throw new IllegalArgumentException(s"Unsupported Python AST node: ${other.getClass.getName}")
   }
 
@@ -103,6 +104,7 @@ object PyAST {
     case "PyContinueStatement" => PyContinueStatement
     case "PyEmptyStatement" => PyEmptyStatement
     case "PyCommentStatement" => upickle.default.read[PyCommentStatement](value.payload)
+    case "PyRawExpression" => upickle.default.read[PyRawExpression](value.payload)
     case other => throw new IllegalArgumentException(s"Unknown Python AST node: $other")
   }
 
@@ -151,6 +153,9 @@ object PyAST {
 
   /** A blank source line with no semantic statement. */
   case object PyEmptyStatement extends PyStatement
+
+  /** An expression kept as source text because it has no structured form here, such as a lambda. */
+  case class PyRawExpression(source: String) extends PyExpression derives upickle.default.ReadWriter
 
   /** A `#` comment on its own line or after a statement, without the `#`. */
   case class PyCommentStatement(text: String) extends PyStatement derives upickle.default.ReadWriter

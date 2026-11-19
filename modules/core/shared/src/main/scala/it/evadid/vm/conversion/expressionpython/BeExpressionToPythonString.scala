@@ -1,6 +1,5 @@
 package it.evadid.vm.conversion.expressionpython
 
-import it.evadid.vm.conversion.pythonexpression.PythonParser
 
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Python}
 import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
@@ -85,7 +84,7 @@ case class BeExpressionToPythonString
 
   override protected def assignToFunctionPar(parName: String, parType: String, parValue: BeExpression): String = {
     // Positional call args (same as Java). Named "par = value" is not parsed by
-    // PythonParser.parseFunctionCall and would drop Snap slot literals on reload.
+    // bound by the Python conversion and would drop Snap slot literals on reload.
     forValue(parValue)
   }
 

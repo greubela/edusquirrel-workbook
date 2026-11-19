@@ -20,8 +20,8 @@ object SourceStructure {
 
   sealed trait Token { def start: Int; def end: Int }
   final case class Word(start: Int, end: Int, text: String) extends Token
-  /** A comment or string literal. */
-  final case class Opaque(start: Int, end: Int, comment: Boolean) extends Token
+  /** A comment or string literal; `closed` is false when the text ends inside it. */
+  final case class Opaque(start: Int, end: Int, comment: Boolean, closed: Boolean = true) extends Token
   final case class Symbol(start: Int, end: Int, text: String) extends Token {
     def isSpace: Boolean = text.forall(_.isWhitespace)
   }
@@ -38,16 +38,17 @@ object SourceStructure {
       P(comment | string | group | word | stray(closer) | spaces | symbol)
 
     private def comment[$: P]: P[Token] =
-      if python then P(Index ~ "#" ~ CharsWhile(_ != '\n', 0) ~ Index).map((s, e) => Opaque(s, e, comment = true))
-      else P(Index ~ ("//" ~ CharsWhile(_ != '\n', 0) | "/*" ~ (!"*/" ~ AnyChar).rep ~ ("*/" | End)) ~ Index)
-        .map((s, e) => Opaque(s, e, comment = true))
+      if python then P(Index ~ "#" ~ CharsWhile(c => c != '\n' && c != '\r', 0) ~ Index).map((s, e) => Opaque(s, e, comment = true))
+      else P(Index ~ ("//" ~ CharsWhile(c => c != '\n' && c != '\r', 0) ~ Pass(true) | "/*" ~ (!"*/" ~ AnyChar).rep ~ ("*/".!.map(_ => true) | End.map(_ => false))) ~ Index)
+        .map((s, closed, e) => Opaque(s, e, comment = true, closed))
 
-    private def quoted[$: P](delimiter: String, multiline: Boolean): P[Unit] =
-      P(delimiter ~ (("\\" ~ AnyChar) | (!delimiter ~ (if multiline then AnyChar else CharPred(_ != '\n')))).rep ~ (delimiter | End | &("\n")))
+    private def quoted[$: P](delimiter: String, multiline: Boolean): P[Boolean] =
+      P(delimiter ~ (("\\" ~ AnyChar) | (!delimiter ~ (if multiline then AnyChar else CharPred(c => c != '\n' && c != '\r')))).rep ~
+        (delimiter.!.map(_ => true) | (End | &(CharIn("\r\n"))).map(_ => false)))
 
     private def string[$: P]: P[Token] =
       P(Index ~ (quoted("\"\"\"", multiline = true) | (if python then quoted("'''", multiline = true) else Fail) |
-        quoted("\"", multiline = false) | quoted("'", multiline = false)) ~ Index).map((s, e) => Opaque(s, e, comment = false))
+        quoted("\"", multiline = false) | quoted("'", multiline = false)) ~ Index).map((s, closed, e) => Opaque(s, e, comment = false, closed))
 
     private def group[$: P]: P[Token] =
       P(Index ~ CharIn("([{").! ~~ Pass).flatMapX { (start, open) =>
@@ -84,11 +85,19 @@ object SourceStructure {
     case other => Seq(other)
   }
 
+  /** Every bracket, string and comment is closed and no closing bracket is left over. */
+  def balanced(source: String, python: Boolean = false): Boolean = flatten(tokens(source, python)).forall {
+    case group: Group => group.closed
+    case opaque: Opaque => opaque.closed
+    case Symbol(_, _, text) => !")]}".contains(text)
+    case _ => true
+  }
+
   /** Comments and string contents become spaces; line breaks and offsets are kept. */
   def mask(source: String, python: Boolean): String = {
     val result = source.toCharArray
     flatten(tokens(source, python)).foreach {
-      case Opaque(start, end, _) => (start until end).foreach(i => if result(i) != '\n' && result(i) != '\r' then result(i) = ' ')
+      case Opaque(start, end, _, _) => (start until end).foreach(i => if result(i) != '\n' && result(i) != '\r' then result(i) = ' ')
       case _ => ()
     }
     new String(result)
@@ -101,6 +110,7 @@ object SourceStructure {
     outer.reverse.foldLeft(source) { case (text, (start, end)) => text.take(start) + text.drop(end) }
   }
 
+  /** Removes shared leading spaces and tabs; unlike Python's tokenizer it keeps tabs in the text. */
   def dedent(source: String): String = {
     val lines = source.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1).toVector
     val indent = lines.filter(_.trim.nonEmpty).map(_.takeWhile(c => c == ' ' || c == '\t').length).minOption.getOrElse(0)
@@ -111,7 +121,7 @@ object SourceStructure {
   /** Tokens that carry code: no whitespace and no comments. */
   def significant(values: Seq[Token]): Seq[Token] = values.filter {
     case symbol: Symbol => !symbol.isSpace
-    case Opaque(_, _, comment) => !comment
+    case Opaque(_, _, comment, _) => !comment
     case _ => true
   }
 
@@ -128,6 +138,16 @@ object SourceStructure {
       Line(start, end, source.substring(start, end).takeWhile(c => c == ' ' || c == '\t').length, inLine)
     }.toVector
   }
+
+  /** A Python logical line holding code: its 1-based physical row, indentation and code without comments. */
+  final case class CodeLine(row: Int, indent: Int, code: String)
+
+  def pythonCodeLines(source: String): Vector[CodeLine] =
+    pythonLines(source).flatMap { line =>
+      val code = significant(line.tokens)
+      Option.when(code.nonEmpty)(CodeLine(1 + source.substring(0, line.start).count(_ == '\n'), line.indent,
+        source.substring(code.head.start, code.last.end)))
+    }
 
   def pythonBlocks(source: String, kind: String): Vector[Block] = {
     val lines = pythonLines(source)
@@ -221,22 +241,68 @@ object SourceStructure {
   }
   def python(source: String, warn: String => Unit = logger.logWarn): Parts = extract(source, pythonBlocks(source, "class"), true, warn)
 
-  /** Direct class members, separated without parsing their bodies: a member ends with `;` or with
-    * a `{…}` body that is not part of an initializer.
+  /** Spans of the direct members of a class body: a member ends with `;` or with a `{…}` body that is
+    * not part of an initializer. Spans start at the member's first code token.
     */
-  def javaMembers(source: String): Vector[String] =
-    tokens(source, python = false).collectFirst { case group: Group if group.open == '{' => group } match {
-      case None => Vector.empty
-      case Some(body) =>
-        val (members, start, _) = body.children.foldLeft((Vector.empty[String], body.start + 1, false)) {
-          case ((done, start, assigned), Symbol(_, end, ";")) => (done :+ source.substring(start, end).trim, end, false)
-          case ((done, start, false), group: Group) if group.open == '{' => (done :+ source.substring(start, group.end).trim, group.end, false)
-          case ((done, start, _), Symbol(_, _, "=")) => (done, start, true)
-          case (state, _) => state
-        }
-        val end = if body.closed then body.end - 1 else body.end
-        (members :+ source.substring(start, end).trim).filter(_.nonEmpty)
+  private def memberSpans(source: String, body: Group): Vector[(Int, Int)] = {
+    final case class State(done: Vector[(Int, Int)] = Vector.empty, start: Option[Int] = None, assigned: Boolean = false) {
+      def begin(token: Token): State = if start.nonEmpty then this else copy(start = Some(token.start))
+      def finish(end: Int): State = State(done ++ start.map(_ -> end))
     }
+    val state = body.children.foldLeft(State()) { (state, token) => token match {
+      case Opaque(_, _, true, _) => state
+      case symbol: Symbol if symbol.isSpace => state
+      case Symbol(_, end, ";") => state.begin(token).finish(end)
+      case group: Group if group.open == '{' && !state.assigned => state.begin(group).finish(group.end)
+      case Symbol(_, _, "=") => state.begin(token).copy(assigned = true)
+      case other => state.begin(other)
+    } }
+    state.start.fold(state.done)(start => state.done :+ (start -> (if body.closed then body.end - 1 else body.end)))
+  }
+
+  private def firstBody(values: Seq[Token]): Option[Group] = values.collectFirst { case group: Group if group.open == '{' => group }
+
+  /** Direct class members as source text. */
+  def javaMembers(source: String): Vector[String] =
+    firstBody(tokens(source, python = false)).toVector.flatMap(body =>
+      memberSpans(source, body).map((start, end) => source.substring(start, end).trim)).filter(_.nonEmpty)
+
+  /** A method in a class body: its signature parts and the offsets from its first token to its `}`. */
+  final case class MethodSpan(name: String, returnType: String, parameters: String, start: Int, end: Int)
+  /** A class whose body is closed: offsets of its `{` and `}` and its methods. */
+  final case class ClassSpan(name: String, bodyOpen: Int, bodyClose: Int, methods: Vector[MethodSpan])
+
+  private val memberModifiers = classModifiers ++ Set("synchronized", "native", "default")
+
+  def javaClassSpans(source: String): Vector[ClassSpan] = {
+    def find(values: Seq[Token]): Vector[ClassSpan] = {
+      val code = significant(values).toVector
+      val here = code.indices.flatMap { index =>
+        (code(index), code.lift(index + 1)) match {
+          case (Word(_, _, "class"), Some(Word(_, _, name))) =>
+            code.drop(index + 2).takeWhile { case Symbol(_, _, ";") => false; case _ => true }
+              .collectFirst { case group: Group if group.open == '{' && group.closed => group }
+              .map(body => ClassSpan(name, body.start, body.end - 1, memberSpans(source, body).flatMap { (start, end) =>
+                val member = source.substring(start, end)
+                for {
+                  name <- methodName(member)
+                  parameters <- header(member).collectFirst { case group: Group if group.open == '(' && group.closed => group }
+                  _ <- firstBody(tokens(member, python = false)).filter(_.closed)
+                } yield {
+                  val typeStart = header(member).dropWhile { case Word(_, _, modifier) => memberModifiers(modifier); case _ => false }
+                    .headOption.map(_.start).getOrElse(0)
+                  val nameStart = header(member).collect { case word @ Word(_, _, `name`) if word.end <= parameters.start => word }.last.start
+                  MethodSpan(name, member.substring(typeStart, nameStart).trim, member.substring(parameters.start + 1, parameters.end - 1).trim,
+                    start, end)
+                }
+              }))
+          case _ => None
+        }
+      }.toVector
+      here ++ values.collect { case group: Group => find(group.children) }.flatten
+    }
+    find(tokens(source, python = false)).sortBy(_.bodyOpen)
+  }
 
   def scope(member: String): MemberScope =
     if header(member).exists { case Word(_, _, "static") => true; case _ => false } then MemberScope.Static else MemberScope.Instance
