@@ -127,14 +127,10 @@ object TurtleStitchXmlParser {
       XmlElement("script", attrsFromAttrText(attrs), children = parseBlocksFromString(body))
     }
 
-  private def parseBlocksFromString(xml: String): List[XmlElement] = {
-    val withIndex = List("custom-block", "block").flatMap { tag =>
-      topLevelTaggedSectionsIndexed(xml, tag).map { case (idx, attrs, body) => (idx, tag, attrs, body) }
-    }.sortBy(_._1)
-    withIndex.map { case (_, tag, attrs, body) =>
-      XmlElement(tag, attrsFromAttrText(attrs), children = parseBlockInputChildren(body))
+  private def parseBlocksFromString(xml: String): List[XmlElement] =
+    SnapXmlParser.children(xml).filter(node => node.tag == "block" || node.tag == "custom-block").map { node =>
+      XmlElement(node.tag, node.attributes, children = parseBlockInputChildren(node.inner))
     }
-  }
 
   private def parseBlockDefinitionsFromString(xml: String): List[XmlElement] = {
     val blocksInner = findAllTagInnersAnywhere(xml, "blocks").find(_.contains("<block-definition")).getOrElse("")

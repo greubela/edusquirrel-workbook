@@ -33,6 +33,15 @@ class SnapDetachedRoundTripSpec extends FunSuite {
     assertEquals(loose.toBeExpression.turtleCommandExecutionInfo.completedCommands, Nil)
   }
 
+  test("custom calls nested in branches and their reporter arguments are not replayed as startup") {
+    val python = ProgrammingStatePythonStructured(
+      "def step(distance):\n    forward(distance)\nfor i in range(2):\n    if i == 0:\n        step(-10)\n    else:\n        step(20)\n")
+    val snap = python.toSnapXml
+    val expected = python.toBeExpression.turtleCommandExecutionInfo.completedCommands
+    assertEquals(snap.toBeExpression.turtleCommandExecutionInfo.completedCommands, expected)
+    assertEquals(expected.map(_.args.head), List(-10.0, 20.0))
+  }
+
   test("the reserved detached-code function cannot become a callable Snap block") {
     val code = ProgrammingStateRaw(Python, "def unused_code():\n    forward(3)\nunused_code()\n")
     intercept[Exception](code.toSnapXml)

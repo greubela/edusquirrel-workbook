@@ -6,6 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.ProgramStructureGrader
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestGrader
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{CommandUsageMeasure, RecreateShapeGrader, TurtleCommandUsageGrader}
@@ -31,6 +32,7 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
   def localized(content: LanguageMap[HumanLanguage]): Signal[String] = helper.plaintextStringSignal(content)
 
   def description(entry: GradingSummary.Entry): Signal[String] = entry.grader match {
+    case grader: ProgramStructureGrader => helper.plaintextStringSignal(grader.publicDescription)
     case grader: ProgrammingUnitTestGrader => grader.publicDescription
       .map(helper.plaintextStringSignal).getOrElse(Val(grader.testId))
     case _: RecreateShapeGrader => label("gradingShapeDescription")

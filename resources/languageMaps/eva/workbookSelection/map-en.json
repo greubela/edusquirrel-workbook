@@ -37,5 +37,7 @@
   "evacuation-title": "Evacuation with grid automata",
   "evacuation-description": "Construct floors, compare locker and door layouts, and question evacuation models.",
   "embroidery-preview-title": "Embroidery machine – interactive turtle previews",
-  "embroidery-preview-description": "Program patterns directly in the editor, including conditionals and recursion. New edition in German and English."
+  "embroidery-preview-description": "Program patterns directly in the editor, including conditionals and recursion. New edition in German and English.",
+  "2026GdP1-title": "2026GdP1 – Turtle graphics and program structure",
+  "2026GdP1-description": "Practise squares, loops, functions and parameters using Snap, Python or Java."
 }

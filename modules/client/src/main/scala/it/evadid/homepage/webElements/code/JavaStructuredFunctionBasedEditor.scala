@@ -41,6 +41,7 @@ object JavaStructuredFunctionBasedEditor {
       // A language change reaches bound signals before Laminar unmounts the old tab.
       val structured = state.bimap {
         case value: ProgrammingStateJavaStructured => value
+        case value @ ProgrammingStateRaw(Java, _) => value.toJavaStructured
         case _ => ProgrammingStateJavaStructured(Map.empty)
       }(identity)
       new JavaStructuredFunctionBasedEditor(logger, structured, appearance = Some(appearance),

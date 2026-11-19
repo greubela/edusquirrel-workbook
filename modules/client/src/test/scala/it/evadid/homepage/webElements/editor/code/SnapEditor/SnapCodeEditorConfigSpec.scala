@@ -156,7 +156,7 @@ class SnapCodeEditorConfigSpec extends FunSuite {
           assertEquals(config.libraryTabs.map(_.name), tabs.map(_.toString))
           assertEquals(config.libraryTabs.map(_.selectableElements.map(_.id)), tabs.map(SnapPaletteCatalog.selectorsForTab))
           assert(config.parts.libraryCategories)
-        case PaletteLayout.Mixed(selectors) =>
+        case PaletteLayout.Mixed(selectors, _, _) =>
           assertEquals(config.libraryTabs.flatMap(_.selectableElements.map(_.id)), selectors)
           assert(!config.parts.libraryCategories)
       }

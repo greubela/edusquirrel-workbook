@@ -10,14 +10,14 @@ enum PaletteLayout derives ReadWriter:
   /** An ordered subset of [[SnapPaletteCatalog]] tabs. */
   case CatalogTabs(tabs: Seq[PaletteTab])
   /** One mixed tab, blocks in the given Snap selector order. */
-  case Mixed(selectors: Seq[String])
+  case Mixed(selectors: Seq[String], allowCustomBlocks: Boolean = false, allowVariables: Boolean = false)
 
   def pythonCompatible: Boolean = {
     val supported = SnapPaletteCatalog.pythonCompatibleSelectorSet
     this match
       case NativeSnap => false
       case CatalogTabs(tabs) => tabs.flatMap(SnapPaletteCatalog.selectorsForTab).forall(supported.contains)
-      case Mixed(selectors) => selectors.forall(supported.contains)
+      case Mixed(selectors, _, _) => selectors.forall(supported.contains)
   }
 
 object PaletteLayout {
@@ -28,7 +28,7 @@ object PaletteLayout {
       case PaletteLayout.CatalogTabs(tabs) =>
         require(tabs.nonEmpty, "A catalog palette needs at least one tab; use Mixed(Nil) for an empty palette.")
         require(tabs.distinct.size == tabs.size, "Catalog palette tabs must be unique.")
-      case PaletteLayout.Mixed(selectors) =>
+      case PaletteLayout.Mixed(selectors, _, _) =>
         val supported = SnapPaletteCatalog.pythonCompatibleSelectorSet
         val unknown = selectors.filterNot(supported.contains).distinct
         require(unknown.isEmpty, s"Unsupported custom palette selectors: ${unknown.mkString(", ")}. Use Snap selectors from SnapPaletteCatalog.")
