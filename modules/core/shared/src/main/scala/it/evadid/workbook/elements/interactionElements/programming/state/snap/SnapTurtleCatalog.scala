@@ -257,9 +257,6 @@ object SnapTurtleCatalog {
       primitive.allPythonNames.map(_ -> primitive.snapSelector)
     }.toMap
 
-  val turtleCommandBySnapSelector: Map[String, String] =
-    Primitives.map(p => p.snapSelector -> p.turtleCommand).toMap
-
   val turtleCommandByPythonName: Map[String, String] =
     Primitives.flatMap { primitive =>
       primitive.allPythonNames.map(_ -> primitive.turtleCommand)
@@ -275,12 +272,6 @@ object SnapTurtleCatalog {
     SnapBlocks.flatMap { primitive =>
       primitive.allPythonNames.map(_ -> primitive)
     }.toMap
-
-  val expectedArityByPythonName: Map[String, Int] =
-    primitiveByPythonName.map((name, primitive) => name -> primitive.arity)
-
-  val expectedArityBySnapSelector: Map[String, Int] =
-    primitiveBySnapSelector.map((selector, primitive) => selector -> primitive.arity)
 
   def primitivesForTab(tab: PaletteTab): Seq[Primitive] =
     Primitives.filter(_.tab == tab)

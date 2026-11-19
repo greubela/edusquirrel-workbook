@@ -20,32 +20,26 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Sn
  */
 object SnapControlFlow {
 
-  val ControlSelectors: Set[String] = Set("doRepeat", "doIf", "doIfElse", "doUntil", "doFor")
+  // The supported Snap language blocks. Lists are in palette order; the sets classify selectors.
 
-  val VariableSelectors: Set[String] = Set("doSetVar", "doChangeVar", "reportGetVar")
+  val ControlSelectorOrder: Seq[String] = List("doRepeat", "doIf", "doIfElse", "doUntil", "doFor")
+  val ControlSelectors: Set[String] = ControlSelectorOrder.toSet
 
-  val ConditionSelectors: Set[String] = Set(
-    "reportTrue",
-    "reportFalse",
-    "reportBoolean",
-    "reportNot",
-    "reportVariadicLessThan",
-    "reportVariadicGreaterThan",
-    "reportVariadicEquals",
-    "reportVariadicAnd",
-    "reportVariadicOr",
-    "reportVariadicLessThanOrEquals",
-    "reportVariadicGreaterThanOrEquals",
-    "reportVariadicNotEquals"
-  )
+  /** Variable commands in palette order; reading a variable is the `reportGetVar` reporter. */
+  val VariableCommandOrder: Seq[String] = List("doSetVar", "doChangeVar")
+  val VariableSelectors: Set[String] = VariableCommandOrder.toSet + "reportGetVar"
 
-  val ArithmeticSelectors: Set[String] = Set(
-    "reportVariadicSum",
-    "reportDifference",
-    "reportVariadicProduct",
-    "reportQuotient",
-    "reportModulus"
-  )
+  val ArithmeticSelectorOrder: Seq[String] =
+    List("reportVariadicSum", "reportDifference", "reportVariadicProduct", "reportQuotient", "reportModulus")
+  val ArithmeticSelectors: Set[String] = ArithmeticSelectorOrder.toSet
+
+  private val ComparisonAndLogicOrder: Seq[String] = List(
+    "reportVariadicLessThan", "reportVariadicGreaterThan", "reportVariadicEquals", "reportVariadicLessThanOrEquals",
+    "reportVariadicGreaterThanOrEquals", "reportVariadicNotEquals", "reportVariadicAnd", "reportVariadicOr", "reportNot")
+  val ConditionSelectors: Set[String] = (ComparisonAndLogicOrder ++ Seq("reportTrue", "reportFalse", "reportBoolean")).toSet
+
+  /** The operator blocks the palette offers; `true`/`false` come from the boolean block's menu. */
+  val OperatorPaletteOrder: Seq[String] = ("reportBoolean" +: ArithmeticSelectorOrder) ++ ComparisonAndLogicOrder
 
   final class VariableInterner {
     private val byName = scala.collection.mutable.LinkedHashMap.empty[String, BeDefineVariable]
@@ -72,11 +66,6 @@ object SnapControlFlow {
     }
   }
 
-  private val SupportedOperators: Set[String] = Set(
-    "<", ">", "==", "and", "or", "not",
-    "+", "-", "*", "/", "%",
-    "<=", ">=", "!="
-  )
 
   enum SnapReporterKind derives ReadWriter:
     case Variadic, Binary, Unary, Literal
@@ -99,6 +88,8 @@ object SnapControlFlow {
     "/" -> SnapReporter("reportQuotient", SnapReporterKind.Binary),
     "%" -> SnapReporter("reportModulus", SnapReporterKind.Binary)
   )
+
+  private val SupportedOperators: Set[String] = OperatorToSnapReporter.keySet
 
   private val SnapReporterToOperator: Map[String, String] =
     OperatorToSnapReporter.map { case (op, snap) => snap.selector -> op } ++ Map(
@@ -208,9 +199,6 @@ object SnapControlFlow {
         call.parameterValueMap.values.headOption.getOrElse(BeExpression.pass)
       case other =>
         operatorCall("not", List(other))
-
-  def isSnapConditionReporter(selector: String): Boolean =
-    ConditionSelectors.contains(selector)
 
   def isSnapValueReporter(selector: String): Boolean =
     ConditionSelectors.contains(selector) || ArithmeticSelectors.contains(selector)

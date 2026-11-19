@@ -15,7 +15,7 @@ object TurtleStitchXmlParser {
       text: String = "",
       children: List[XmlElement] = Nil
   ) derives upickle.default.ReadWriter
-  final case class ParseResult(document: Option[XmlDocument], fallbackReason: Option[String] = None) derives upickle.default.ReadWriter
+  final case class ParseResult(document: Option[XmlDocument]) derives upickle.default.ReadWriter
 
   def parse(xml: String): ParseResult =
     if xml.contains("<block") || xml.contains("<custom-block") then
@@ -26,7 +26,7 @@ object TurtleStitchXmlParser {
           node.text.trim, node.element.elements.map(element).toList)
       SnapScalaXmlCodec.parse(xml) match {
         case Right(document) => ParseResult(Some(XmlDocument(element(document.root))))
-        case Left(message) => ParseResult(None, Some(message))
+        case Left(_) => ParseResult(None)
       }
     }
 

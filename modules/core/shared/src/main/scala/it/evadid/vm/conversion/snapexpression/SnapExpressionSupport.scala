@@ -21,23 +21,6 @@ import it.evadid.vm.naming.NamingStyle
  */
 object SnapExpressionSupport {
 
-  val ControlFlowExamples: List[String] = List(
-    "if condition:\n    ...\nelse:\n    ...",
-    "while not condition:\n    ...",
-    "for _ in range(n):\n    ...",
-    "for i in range(start, end + 1):\n    ..."
-  )
-
-  val VariableExamples: List[String] = List(
-    "steps = x",
-    "steps = steps + n",
-    "if steps < n:\n    forward(steps)"
-  )
-
-  val UserFunctionExamples: List[String] = List(
-    "def square(n):\n    forward(n)"
-  )
-
   val AllowedSnapSelectors: Set[String] =
     SnapTurtleCatalog.AllowedSnapSelectors ++
       SnapControlFlow.ControlSelectors ++
@@ -47,8 +30,6 @@ object SnapExpressionSupport {
 
   /** Require whitespace after `block` so `<block-definition>` is not treated as a selector. */
   private val BlockSelectorPattern = """<block\s[^>]*\bs="([^"]+)"""".r
-  private val CustomBlockPattern = """<custom-block\b[^>]*\bs="([^"]+)"""".r
-  private val BlockDefinitionPattern = """<block-definition\b[^>]*\bs="([^"]+)"""".r
 
   def isScriptStatement(expression: BeExpression): Boolean =
     expression match
@@ -64,9 +45,6 @@ object SnapExpressionSupport {
 
   def scriptStatementCount(expressions: List[BeExpression]): Int =
     scriptStatements(expressions).size
-
-  def collectUserFunctionNames(expression: BeExpression): Set[String] =
-    collectUserFunctionArities(expression).keySet
 
   def collectUserFunctionArities(expression: BeExpression): Map[String, Int] = {
     val arities = scala.collection.mutable.LinkedHashMap.empty[String, Int]
@@ -114,10 +92,6 @@ object SnapExpressionSupport {
 
   def isPrimitiveSelector(selector: String): Boolean =
     AllowedSnapSelectors.contains(selector)
-
-  def isOperatorSelector(selector: String): Boolean =
-    SnapControlFlow.ConditionSelectors.contains(selector) ||
-      SnapControlFlow.ArithmeticSelectors.contains(selector)
 
   /** Keep previous script partitions/positions when statement counts still match; else single script. */
   def reconcileLayout(previous: SnapCanvasLayout, statementCount: Int): SnapCanvasLayout =
