@@ -347,7 +347,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(xml.contains("""s="setColor""""), clue = xml)
     assert(xml.contains("""s="home""""), clue = xml)
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
-    assert(python.contains("for i in range(1, 4 + 1):"), clue = python)
+    assert(python.contains("for i in range(1, 5):"), clue = python)
     assert(python.contains("forward(i * 10)"), clue = python)
   }
 

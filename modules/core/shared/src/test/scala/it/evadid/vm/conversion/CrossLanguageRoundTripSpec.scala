@@ -182,4 +182,29 @@ class CrossLanguageRoundTripSpec extends FunSuite {
       // The shared drawing simulator does not execute objects yet, so only the source text is compared.
       .foreach(assertRoundTrips(_, languages, None))
   }
+
+  test("a Java for loop that does not count by one becomes an initialisation and a while loop in every language") {
+    val java = """class Main {
+      |    public static void main(String[] args) {
+      |        for (int size = 10; size > 0; size -= 3) {
+      |            Turtle.forward(size);
+      |        }
+      |    }
+      |}
+      |""".stripMargin
+    val expected = Seq(forward(10), forward(7), forward(4), forward(1))
+    Seq(ProgrammingStateJavaStructured(java), ProgrammingStateJavaStructured(java).toPythonStructured,
+      ProgrammingStateJavaStructured(java).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
+  }
+
+  test("Python ranges with a step count with that step in every language") {
+    val python = """for size in range(10, 0, -3):
+      |    forward(size)
+      |for angle in range(0, 50, 20):
+      |    turn_right(angle)
+      |""".stripMargin
+    val expected = Seq(forward(10), forward(7), forward(4), forward(1), right(0), right(20), right(40))
+    Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured,
+      ProgrammingStateRaw(Python, python).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
+  }
 }

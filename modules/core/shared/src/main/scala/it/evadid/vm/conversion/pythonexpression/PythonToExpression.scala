@@ -12,6 +12,7 @@ import it.evadid.vm.conversion.expressionpython.PythonEntryPoint
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
 import it.evadid.vm.conversion.parsed.ParsedStatement as S
+import it.evadid.vm.parsing.generic.abstractions.GenericAST
 import it.evadid.vm.parsing.python.clean.PythonAstParserSimple
 import it.evadid.vm.parsing.python.clean.model.PyAST.*
 import it.evadid.vm.parsing.python.clean.model.PythonType
@@ -43,7 +44,11 @@ object PythonToExpression {
     val source = KnownDependencies.withoutDefinitions(rawSource, Python)
     PythonAstParserSimple.parse(source).fold(
       error => ParsedProgram(if source.trim.isEmpty then Nil else Seq(S.Unsupported(source.trim, error.getMessage, unparsable = true))),
-      program => ParsedProgram(statements(program.statements.map(_.statement))))
+      program => {
+        val parsed = program.statements.map(_.statement)
+        given UsedNames = UsedNames(parsed.flatMap(usedNames).toSet)
+        ParsedProgram(statements(parsed))
+      })
   }
 
   /** Imports that only resolve annotations emitted by the Python printer. */
@@ -53,9 +58,9 @@ object PythonToExpression {
     case _ => false
   }
 
-  private def statements(values: Seq[PyStatement]): Seq[ParsedStatement] = values.flatMap(statement)
+  private def statements(values: Seq[PyStatement])(using UsedNames): Seq[ParsedStatement] = values.flatMap(statement)
 
-  private def statement(value: PyStatement): Seq[ParsedStatement] = value match {
+  private def statement(value: PyStatement)(using UsedNames): Seq[ParsedStatement] = value match {
     case PyEmptyStatement => Nil
     case PyPassStatement => Seq(S.Pass)
     case PyCommentStatement(text) => Seq(S.Comment(text))
@@ -67,7 +72,7 @@ object PythonToExpression {
     case PyIfStatement(condition, thenBlock, elseBlock) =>
       Seq(S.If(expression(condition), block(thenBlock), block(elseBlock)))
     case PyWhileStatement(condition, body, None) => Seq(S.While(expression(condition), block(body)))
-    case loop: PyForStatement => Seq(forLoop(loop))
+    case loop: PyForStatement => forLoop(loop)
     case definition: PyFunctionDef =>
       if definition.decorators.nonEmpty || definition.isAsync then Seq(S.Unsupported(definition.source, "Decorators are not supported outside classes", unparsable = false))
       else Seq(S.FunctionDef(definition.name, parameters(definition.parameters), definition.returnType.map(parsedType),
@@ -89,7 +94,7 @@ object PythonToExpression {
       .collectFirst { case (keyword, message) if source == keyword || source.startsWith(keyword + " ") || source.startsWith(keyword + "(") => message }
       .getOrElse("Python source cannot be read")
 
-  private def block(value: PyExecutionBlock): Seq[ParsedStatement] = statements(value.statements)
+  private def block(value: PyExecutionBlock)(using UsedNames): Seq[ParsedStatement] = statements(value.statements)
 
   private def targetExpression(target: PyTarget): ParsedExpression =
     if target.locationString.isEmpty then path(Seq(target.identifier))
@@ -107,27 +112,42 @@ object PythonToExpression {
     case PySimpleAssignment(target, _) => ParsedParameter(target.identifier, target.typeHint.map(parsedType))
   }
 
-  /** `for _ in range(n)` repeats; a named counter counts with Snap's inclusive end (the step is not modelled). */
-  private def forLoop(loop: PyForStatement): ParsedStatement = (loop.elementExpression, loop.inExpression) match {
-    case (PyTarget("_", Nil, None, _), PyFunctionCall(PyTarget("range", Nil, None, _), List(PythonLiteral(count, _: PYTHON_INTEGER))))
-        if loop.elseBlock.isEmpty && !loop.isAsync && count.toIntOption.nonEmpty =>
-      S.Repeat(count.toInt, block(loop.bodyBlock))
-    case (PyTarget(name, Nil, None, _), PyFunctionCall(PyTarget("range", Nil, None, _), arguments))
-        if loop.elseBlock.isEmpty && !loop.isAsync && arguments.size >= 1 && arguments.size <= 3 =>
-      val (start, stop) = if arguments.size == 1 then (E.Literal("0"), arguments.head) else (expression(arguments.head), arguments(1))
-      S.For(name, start, inclusiveEnd(stop), block(loop.bodyBlock))
-    case _ => S.Unsupported("for ...", "For statements must use range(...)", unparsable = true)
+  /** Names the program uses anywhere except as `for` targets. A loop counter outside this set is
+    * never read, so its loop can be a fixed repetition even though Python keeps the counter after it.
+    */
+  private final case class UsedNames(names: Set[String])
+
+  private def usedNames(node: GenericAST): Set[String] = node match {
+    case loop: PyForStatement => loop.getChildren().filterNot(_ eq loop.elementExpression).flatMap(usedNames).toSet
+    case target: PyTarget => target.getChildren().flatMap(usedNames).toSet + target.locationString.headOption.getOrElse(target.identifier)
+    case other => other.getChildren().flatMap(usedNames).toSet
   }
 
-  private def inclusiveEnd(stop: PyExpression): ParsedExpression = stop match {
-    case PyOperationBinary(inner, "+", PythonLiteral("1", _)) => expression(inner)
-    case PythonLiteral(value, _: PYTHON_INTEGER) if value.toIntOption.nonEmpty => E.Literal((value.toInt - 1).toString)
-    case other => E.Binary("-", expression(other), E.Literal("1"))
+  /** `for counter in range(…)` with whole-number steps, see [[ParsedStatement.countingLoop]]. */
+  private def forLoop(loop: PyForStatement)(using used: UsedNames): Seq[ParsedStatement] = (loop.elementExpression, loop.inExpression) match {
+    case _ if loop.elseBlock.nonEmpty || loop.isAsync => Seq(S.Unsupported("for ... else", "for/else and async for are not supported", unparsable = false))
+    case (PyTarget(name, Nil, None, _), PyFunctionCall(PyTarget("range", Nil, None, _), arguments)) if arguments.size >= 1 && arguments.size <= 3 =>
+      val (start, stop) = if arguments.size == 1 then (E.Literal("0"), expression(arguments.head)) else (expression(arguments.head), expression(arguments(1)))
+      val body = block(loop.bodyBlock)
+      arguments.lift(2).fold(Some(1))(step => E.wholeNumber(expression(step))) match {
+        case _ if assigns(loop.bodyBlock, name) =>
+          Seq(S.Unsupported(s"for $name in range(...)", s"Assigning the loop counter $name inside its loop is not supported", unparsable = false))
+        case Some(step) if step != 0 => S.countingLoop(name, start, stop, step, body, counterObserved = used.names(name))
+        case _ => Seq(S.Unsupported("for ... in range(...)", "The step of range(...) must be a nonzero whole number", unparsable = false))
+      }
+    case _ => Seq(S.Unsupported("for ...", "For statements must use range(...)", unparsable = true))
+  }
+
+  private def assigns(node: GenericAST, name: String): Boolean = node match {
+    case PySimpleAssignment(PyTarget(`name`, Nil, _, _), _) => true
+    case PyAugAssignment(PyTarget(`name`, Nil, _, _), _, _) => true
+    case loop: PyForStatement if loop.elementExpression == PyTarget(name) => true
+    case other => other.getChildren().exists(assigns(_, name))
   }
 
   // Classes: inheritance, decorators other than @staticmethod and other class-body statements are unsupported.
 
-  private def classDef(definition: PyClassDef): ParsedStatement = {
+  private def classDef(definition: PyClassDef)(using UsedNames): ParsedStatement = {
     def unsupported(reason: String) = S.Unsupported(definition.source, reason, unparsable = false)
     val members = definition.block.statements.filter {
       case PyEmptyStatement | PyPassStatement | _: PyCommentStatement => false

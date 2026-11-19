@@ -729,7 +729,7 @@ class PythonParserSpec extends FunSuite {
 
     val namedForSource =
       """for i in range(3):
-        |    pass
+        |    forward(i)
         |""".stripMargin
     val namedForResult = PythonToExpression.parseWithDetails(namedForSource)
     val namedForExpressions = namedForResult.codeExpression.asInstanceOf[BeSequence].body

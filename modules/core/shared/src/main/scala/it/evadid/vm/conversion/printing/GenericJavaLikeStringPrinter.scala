@@ -91,8 +91,10 @@ abstract class GenericJavaLikeStringPrinter(
 
   protected def fixedRepetitionLine(amount: Int): String
 
+  /** An inclusive counting loop; like Snap's `for`, literal bounds that decrease count down. */
   protected def namedRangeLine(varName: String, start: String, end: String): String =
-    s"for (int $varName = $start; $varName <= $end; $varName++) ${sepLogic.startBlockWith}"
+    if start.toIntOption.zip(end.toIntOption).exists(_ > _) then s"for (int $varName = $start; $varName >= $end; $varName--) ${sepLogic.startBlockWith}"
+    else s"for (int $varName = $start; $varName <= $end; $varName++) ${sepLogic.startBlockWith}"
 
   /** Printed when a function body would otherwise be empty. Python overrides this with `pass`. */
   protected def emptyFunctionBody: String = ""

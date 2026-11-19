@@ -134,6 +134,11 @@ case class BeExpressionToPythonString
         s"for $varName in range(${stop.trim}):"
       case ("0", digits) if digits.nonEmpty && digits.forall(_.isDigit) =>
         s"for $varName in range(${digits.toInt + 1}):"
+      // Snap's inclusive for counts down when it starts above its end.
+      case (first, last) if first.toIntOption.zip(last.toIntOption).exists(_ > _) =>
+        s"for $varName in range($start, ${last.toInt - 1}, -1):"
+      case (first, last) if first.toIntOption.nonEmpty && last.toIntOption.nonEmpty =>
+        s"for $varName in range($start, ${last.toInt + 1}):"
       case _ =>
         s"for $varName in range($start, $end + 1):"
     }

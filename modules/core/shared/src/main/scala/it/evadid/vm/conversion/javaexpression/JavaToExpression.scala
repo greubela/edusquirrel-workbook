@@ -193,10 +193,13 @@ private object JavaAstToParsed {
       Seq(assign(target, E.Binary(operator.stripSuffix("="), expression(target, scope), expression(value, scope)), scope))
     case JavaUpdateExpression(target: JavaTarget, operator, _) =>
       Seq(assign(target, E.Binary(operator.take(1), expression(target, scope), E.Literal("1")), scope))
+    case JavaAssignmentExpression(target, "=", value) => Seq(assign(target, expression(value, scope), scope))
+    case JavaAssignmentExpression(target, operator, value) =>
+      Seq(assign(target, E.Binary(operator.stripSuffix("="), expression(target, scope), expression(value, scope)), scope))
     case JavaIfStatement(condition, thenBlock, elseBlock) =>
       Seq(S.If(expression(condition, scope), block(thenBlock, scope), elseBlock.toSeq.flatMap(block(_, scope))))
     case JavaWhileStatement(condition, body) => Seq(S.While(expression(condition, scope), block(body, scope)))
-    case loop: JavaForStatement => Seq(forLoop(loop, scope))
+    case loop: JavaForStatement => forLoop(loop, scope)
     case JavaReturnStatement(value) => Seq(S.Return(value.map(expression(_, scope))))
     case JavaUnparsableStatement(source) => Seq(S.Unsupported(source, "This Java source contains unsupported or unfinished syntax.", unparsable = true))
     case value: JavaExpression => Seq(S.Evaluate(expression(value, scope)))
@@ -211,31 +214,65 @@ private object JavaAstToParsed {
       case other => S.Unsupported(s"${target.name} = ...", "Unsupported assignment target", unparsable = false)
     }
 
-  /** `for (int i = a; i < b; i++)`: a repeat when the counter is unused and counts from 0 to a literal. */
-  private def forLoop(loop: JavaForStatement, scope: Scope): ParsedStatement = {
-    def isIncrement(counter: String): Boolean = loop.update match {
-      case Seq(JavaUpdateExpression(JavaTarget(`counter`, Seq(), None), "++", _)) => true
-      case Seq(JavaAssignmentExpression(JavaTarget(`counter`, Seq(), None), "+=", JavaLiteral("1", _))) => true
+  /** A counting `for` declares one counter, compares it with a bound (`<`, `<=`, `>`, `>=`) and
+    * changes it by a whole-number literal in the direction of the bound, without the body assigning
+    * the counter or a name in the bound. It becomes a fixed repetition, a counting loop or a stepped
+    * while loop ([[ParsedStatement.countingLoop]]); the counter is observed only in the body, as Java
+    * scopes it to the loop. Calls are assumed not to change the bound. Any other loop whose updates
+    * are assignments runs its initialisation and then a while loop that ends with the updates.
+    */
+  private def forLoop(loop: JavaForStatement, scope: Scope): Seq[ParsedStatement] = {
+    def isUpdate(value: JavaExpression): Boolean = value match {
+      case JavaUpdateExpression(_: JavaTarget, _, _) | _: JavaAssignmentExpression => true
       case _ => false
     }
-    (loop.init, loop.condition) match {
-      case (Seq(JavaVariableDeclaration(counter, _, Some(start), _)), Some(JavaOperationBinary(JavaTarget(name, Seq(), None), operator @ ("<" | "<="), limit)))
-          if name == counter && isIncrement(counter) =>
-        val inner = scope.withLocal(counter)
-        (start, operator, limit) match {
-          case (JavaLiteral("0", _: JAVA_INTEGER), "<", JavaLiteral(times, _: JAVA_INTEGER)) if !mentions(loop.bodyBlock, counter) && times.toIntOption.nonEmpty =>
-            S.Repeat(times.toInt, block(loop.bodyBlock, scope))
-          case _ =>
-            val end = if operator == "<=" then expression(limit, scope) else limit match {
-              case JavaLiteral(value, _: JAVA_INTEGER) if value.toIntOption.nonEmpty => E.Literal((value.toInt - 1).toString)
-              case JavaOperationBinary(inner, "+", JavaLiteral("1", _)) => expression(inner, scope)
-              case other => E.Binary("-", expression(other, scope), E.Literal("1"))
-            }
-            S.For(counter, expression(start, scope), end, block(loop.bodyBlock, inner))
+    countingLoop(loop, scope).getOrElse {
+      if loop.update.forall(isUpdate) then {
+        val inner = loop.init.foldLeft(scope) {
+          case (current, declaration: JavaVariableDeclaration) => current.withLocal(declaration.name)
+          case (current, _) => current
         }
-      case _ => S.Unsupported("for (...)", "Only counting for loops are supported", unparsable = false)
+        S.loopWithUpdate(statements(loop.init, scope), loop.condition.map(expression(_, inner)).getOrElse(E.Literal("True")),
+          block(loop.bodyBlock, inner), loop.update.flatMap(statement(_, inner)))
+      } else Seq(S.Unsupported("for (...)", "For-loop updates must be assignments or increments", unparsable = false))
     }
   }
+
+  private def countingLoop(loop: JavaForStatement, scope: Scope): Option[Seq[ParsedStatement]] = loop match {
+    case JavaForStatement(Seq(JavaVariableDeclaration(counter, _, Some(start), _)),
+        Some(JavaOperationBinary(JavaTarget(compared, Seq(), None), comparison @ ("<" | "<=" | ">" | ">="), limit)), Seq(update), body)
+        if compared == counter =>
+      def literal(value: JavaExpression): Option[Int] = E.wholeNumber(expression(value, scope))
+      val step = update match {
+        case JavaUpdateExpression(JavaTarget(`counter`, Seq(), None), operator, _) => Some(if operator == "++" then 1 else -1)
+        case JavaAssignmentExpression(JavaTarget(`counter`, Seq(), None), "+=", amount) => literal(amount)
+        case JavaAssignmentExpression(JavaTarget(`counter`, Seq(), None), "-=", amount) => literal(amount).map(-_)
+        case JavaAssignmentExpression(JavaTarget(`counter`, Seq(), None), "=", JavaOperationBinary(JavaTarget(`counter`, Seq(), None), operator @ ("+" | "-"), amount)) =>
+          literal(amount).map(value => if operator == "+" then value else -value)
+        case _ => None
+      }
+      val ascending = comparison.startsWith("<")
+      val stable = !assigned(body).exists(name => name == counter || mentions(limit, name))
+      step.filter(value => value != 0 && (value > 0) == ascending && stable).map { value =>
+        val bound = expression(limit, scope)
+        val stop = comparison match {
+          case "<=" => E.offset(bound, 1)
+          case ">=" => E.offset(bound, -1)
+          case _ => bound
+        }
+        S.countingLoop(counter, expression(start, scope), stop, value, block(body, scope.withLocal(counter)), counterObserved = mentions(body, counter))
+      }
+    case _ => None
+  }
+
+  /** Names a statement assigns, including increments. */
+  private def assigned(node: it.evadid.vm.parsing.generic.abstractions.GenericAST): Set[String] = (node match {
+    case JavaAssignment(target, _) => Set(target.name)
+    case JavaAugAssignment(target, _, _) => Set(target.name)
+    case JavaAssignmentExpression(target, _, _) => Set(target.name)
+    case JavaUpdateExpression(target: JavaTarget, _, _) => Set(target.name)
+    case _ => Set.empty[String]
+  }) ++ node.getChildren().flatMap(assigned)
 
   // Expressions
 

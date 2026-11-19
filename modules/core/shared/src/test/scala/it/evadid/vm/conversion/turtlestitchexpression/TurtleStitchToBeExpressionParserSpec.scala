@@ -284,7 +284,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       clue = parsed.expression
     )
     val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("for i in range(1, 4 + 1):"), clue = python)
+    assert(python.contains("for i in range(1, 5):"), clue = python)
     assert(python.contains("forward(i * 10)"), clue = python)
     val xmlOut = SnapProjectXml.toXml(parsed.expression, "dofor", parsed.canvasLayout)
     assert(xmlOut.contains("""s="doFor""""), clue = xmlOut)
