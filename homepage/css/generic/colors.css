@@ -173,6 +173,18 @@
     --color-accent-active: var(--color-blue-4);
     --color-accent-success: var(--color-green-5);
     --color-accent-error: var(--color-red-5);
+    /* Feedback panel tones (interaction-feedback.css) */
+    --feedback-correct: var(--color-green-7);
+    --feedback-correct-surface: color-mix(in srgb, var(--color-green-5) 12%, var(--color-surface-base));
+    --feedback-partial: var(--color-yellow-8);
+    --feedback-partial-surface: color-mix(in srgb, var(--color-yellow-5) 18%, var(--color-surface-base));
+    --feedback-incorrect: var(--color-red-7);
+    --feedback-incorrect-surface: color-mix(in srgb, var(--color-red-5) 10%, var(--color-surface-base));
+    --feedback-pending: var(--color-blue-6);
+    --feedback-pending-surface: color-mix(in srgb, var(--color-blue-4) 12%, var(--color-surface-base));
+    --feedback-neutral: var(--color-gray-11);
+    --feedback-neutral-surface: var(--color-surface-muted);
+    --feedback-icon-size: 1.15rem;
     --color-border-soft: var(--color-gray-3);
     --color-border: var(--color-gray-3);
     --color-surface-base: var(--color-background-workarea-interactible);

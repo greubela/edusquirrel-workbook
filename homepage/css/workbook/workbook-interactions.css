@@ -1,6 +1,7 @@
 @import url("../generic/colors.css");
 @import url("../generic/dimensions.css");
 @import url("interaction-scaffolding.css");
+@import url("interaction-feedback.css");
 
 /* TEXT EDITOR  */
 
@@ -20,7 +21,6 @@
     max-width: 100%;
     resize: vertical;
 }
-.text-input-feedback__result + .text-input-feedback__result { margin-block-start: var(--space-md); }
 
 /* TURTLE INTERACTIONS */
 

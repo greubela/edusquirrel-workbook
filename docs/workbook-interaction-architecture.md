@@ -71,11 +71,20 @@ Pending and completed computations are cached by answer, independently of displa
 language. A language change reuses them; result merges retain available feedback
 translations. Synchronization includes feedback updates even when the answer is unchanged.
 
-`InteractionInfoSidebar` and `GradingInfoLine` share the core
-`GradingSummary`: the score counts fully correct tests, including hidden tests;
-partial results belong to the incorrect group. Hidden results contribute counts
-but never detail rows. Public descriptions and localized feedback are rendered
-as text; internal test programs and LLM instructions are not displayed.
+Feedback is presented by one component set, [`FeedbackPanels`](../modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/controlElements/interactionInfo/FeedbackPanels.scala):
+an action bar (check/hint buttons, score chip with progress, hint status), a result
+list and a hint card. Both placements render it from the same `InteractionFeedbackView`
+over the shared `GradingReporter`. `InteractionFeedbackPanel` sits below every graded
+or hinted exercise in the workbook overview (results expand once they exist; the hint
+card appears only for a completed hint). `InteractionInfoSidebar` shows it beside the
+fullscreen editor (results expanded; hint card always present). `FeedbackPresentation`
+maps statuses to tones, icons and labels; styles live in `homepage/css/workbook/interaction-feedback.css`.
+
+The score counts fully correct tests, including hidden tests; partial results belong
+to the core incorrect group but keep their own tone in the view. Hidden results appear
+only as status rows ("hidden test"), never with descriptions, feedback or times.
+Public descriptions and localized feedback are rendered as text; internal test
+programs and LLM instructions are not displayed (LLM criteria are titled "AI assessment").
 
 `fullInfo.signals.interactionReporters` holds one registry per loaded workbook
 instance. `reportersFor(element)` returns its shared `grading` and `sync` reporters;
@@ -84,7 +93,7 @@ constructing their own. Lookup rejects elements from another workbook instance,
 even if their IDs and definitions match.
 
 `GradingReporter.report` derives one current-answer snapshot from history updates.
-Its `summary`, `scaffolding` and `hintFeedback` signals share that snapshot.
+Its `summary` and `scaffolding` signals share that snapshot.
 The core `GradingSummary` owns test grouping, counts and aggregate status;
 `ScaffoldingReport` owns hint status. Views choose translated labels, icons and CSS.
 For example:
@@ -103,9 +112,8 @@ binding and reset state, classifying configured destination confirmations as
 disabled, unsynced, partial or synced. Retired requests cannot confirm writes in a
 replacement binding; old bindings retain their captured credentials for flushing.
 
-Below-exercise feedback panels show completed hints in an initially expanded,
-collapsible section, including hint-only exercises. `InteractionHintPanel` consumes
-the shared reporter's `hintFeedback`; language changes update its text, and changing
+The overview hint card shows completed hints in an initially expanded, collapsible
+section, including hint-only exercises. Language changes update its text, and changing
 the answer hides stale hints until matching feedback is available.
 
 `TextInputWithScaffoldingAndGrading` owns its description, string answer, hint IDs

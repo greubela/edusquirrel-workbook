@@ -31,9 +31,6 @@
   "gradingGroupPending": "Sin terminar",
   "gradingGroupError": "Error de ejecución",
   "gradingGroupNotRequested": "No solicitado",
-  "gradingVisibleCount": "{count} públicos",
-  "gradingHiddenCount": "{count} ocultos",
-  "gradingNoFeedback": "No hay comentarios disponibles.",
   "gradingShapeDescription": "Comparar el dibujo con el modelo",
   "gradingUsageCode": "{command}: como máximo {maximum} apariciones en el código",
   "gradingUsageExecution": "{command}: como máximo {maximum} llamadas durante la ejecución",
@@ -41,14 +38,12 @@
   "scaffoldingReady": "Listo",
   "gradingCompactScore": "{correct}/{total} correctos",
   "gradingCompactUnavailable": "({count} pendientes / no disponibles)",
-  "gradingNoTests": "No hay pruebas en este grupo.",
-  "gradingTestDescription": "Prueba",
-  "gradingExecutionDate": "Ejecutado el",
-  "gradingFeedback": "Comentarios",
-  "gradingScore": "Puntuación total: {score}",
   "resetAllData": "Restablecer todas las respuestas guardadas",
   "resetAllDataRunning": "Eliminando respuestas guardadas…",
   "resetAllDataRetry": "Reintentar el restablecimiento completo",
   "resetAllDataConfirm": "¿Vaciar todos los almacenes locales de respuestas configurados y eliminar las respuestas y comentarios de este usuario en todos los cuadernos y destinos de servidor configurados? Esta acción no se puede deshacer.",
-  "resetAllDataError": "No todos los destinos confirmaron la eliminación. La sincronización está pausada para evitar guardar de nuevo las respuestas eliminadas. Reintenta el restablecimiento."
+  "resetAllDataError": "No todos los destinos confirmaron la eliminación. La sincronización está pausada para evitar guardar de nuevo las respuestas eliminadas. Reintenta el restablecimiento.",
+  "gradingHiddenTest": "Prueba oculta",
+  "gradingAiAssessment": "Valoración de la IA",
+  "gradingAiCriterion": "Valoración de la IA {number}"
 }

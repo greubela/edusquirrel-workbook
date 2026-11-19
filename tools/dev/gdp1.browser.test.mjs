@@ -76,7 +76,8 @@ test('2026GdP1 opens from the catalogue, localizes its tasks and exposes the pro
     assert(!/class Main/.test(await method.innerText()), 'Java opens the function editor rather than a raw source editor');
     await method.fill('static void main(String[] args) { ' + 'Turtle.forward(100); Turtle.right(90); '.repeat(4) + '}');
     await page.locator('dialog[open] .grading-info-line').getByRole('button', {name:/Prüfen|Check/,exact:true}).click();
-    await page.locator('dialog[open]').getByText('4/4 ✓', {exact:true}).waitFor();
+    await page.locator('dialog[open] .feedback-score-chip').getByText('4/4', {exact:true}).waitFor();
+    await page.locator('dialog[open] .feedback-entry.feedback-status--correct').nth(3).waitFor();
     await page.locator('dialog[open]').getByText('Programmiere die Zielfigur nach:', {exact:false}).waitFor();
     await page.locator('.fullscreen-close-button').click();
     await page.evaluate(() => {window.gdpIde = null;});

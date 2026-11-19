@@ -107,7 +107,7 @@ test('test workbook preserves edits across human languages, programming language
     // results without replacing the editor or rewriting its current draft.
     await page.locator('dialog[open] .grading-info-line').getByRole('button', {name: 'Prüfen', exact: true}).click();
     await page.waitForFunction(() => [...document.querySelectorAll('dialog[open] .feedback-date')]
-      .some(cell => /\d{4}-\d{2}-\d{2}/.test(cell.textContent)));
+      .some(time => /\d{4}-\d{2}-\d{2}/.test(time.getAttribute('title') ?? '')));
     await page.waitForTimeout(750); // include the periodic native snapshot in the baseline
     const historyBeforeLanguage = await page.evaluate(() => snapHistoryWrites.length);
     const source = await page.evaluate(() => {
