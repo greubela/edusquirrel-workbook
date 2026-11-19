@@ -25,6 +25,9 @@ object JavaAST {
 
   sealed trait JavaStatement extends JavaAST derives upickle.default.ReadWriter
   /** Unsupported Java syntax preserved as source text, e.g. an unimplemented switch expression. */
+  /** A `//` comment, kept when the parser retains comments; `text` excludes the slashes. */
+  case class JavaCommentStatement(text: String) extends JavaStatement derives upickle.default.ReadWriter
+
   case class JavaUnparsableStatement(source: String) extends JavaStatement derives upickle.default.ReadWriter
   /** An empty statement, e.g. `;`. */
   case object JavaEmptyStatement extends JavaStatement

@@ -10,8 +10,11 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport.*
 
 object ExpressionToPython {
-  def convert(expression: BeExpression): ProgrammingStateRaw =
-    ProgrammingStateRaw(Python, printedPython(expression))
+  /** Source for editing: the main sequence becomes a called `def main()`, see [[PythonEntryPoint]]. */
+  def convert(expression: BeExpression): ProgrammingStateRaw = ProgrammingStateRaw(Python, expression match {
+    case program: it.evadid.vm.code.others.BeStartProgram => printedPython(PythonEntryPoint.wrap(program))
+    case other => printedPython(other)
+  })
 
   /** Preserve the VM's variable, parameter and return types when switching to Python. */
   def printedPython(expression: BeExpression): String = {

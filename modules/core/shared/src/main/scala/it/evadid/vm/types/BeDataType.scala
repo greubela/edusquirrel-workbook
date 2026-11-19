@@ -71,14 +71,8 @@ object BeDataType {
   }
 
   case object AnyType extends BeUnionType with AutoSerializableSingleton[AnyType.type] {
-    private val displayMap: LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap("Any") /*LanguageMap.concatLanguageMaps[
-      ProgrammingLanguage
-    ](
-      List(
-        LanguageMap.mapBasedLanguageMap(Map(Python -> "Any", Java -> "Object")),
-        LanguageMap.universalMap("Any")
-      )
-    )*/
+    private val displayMap: LanguageMap[ProgrammingLanguage] =
+      LanguageMap.mapBasedLanguageMapWithFallback[ProgrammingLanguage](Map(Python -> "Any", Java -> "Object"), "Any")
 
     def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = displayMap
 

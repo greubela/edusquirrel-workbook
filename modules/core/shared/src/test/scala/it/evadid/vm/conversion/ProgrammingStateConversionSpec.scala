@@ -3,7 +3,6 @@ package it.evadid.vm.conversion
 import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
-import it.evadid.vm.conversion.javaexpression.JavaToBeExpressionParser
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapxml.SnapXmlParser
@@ -215,10 +214,9 @@ class ProgrammingStateConversionSpec extends FunSuite {
       val original = ProgrammingStateRaw(Python, source).toBeExpression
       val throughPython = original.toPython.toBeExpression
       val java = original.toJava
-      val loweredJava = new JavaToBeExpressionParser().toPython(java.code)
       val throughJava = java.toBeExpression
       assertEquals(normalized(throughPython), normalized(original))
-      assertEquals(normalized(throughJava), normalized(original), clue = s"Java:\n${java.code}\nLowered:\n$loweredJava")
+      assertEquals(normalized(throughJava), normalized(original), clue = s"Java:\n${java.code}")
       if snapSupported then {
         val snap = original.toSnapXml
         val restoredSnap = ProgrammingState.serializer.deserialize(
@@ -362,11 +360,11 @@ class ProgrammingStateConversionSpec extends FunSuite {
         |}
         |draw(2);
         |""".stripMargin
-    val python = new JavaToBeExpressionParser().toPython(java)
+    val python = ProgrammingStateRaw(Java, java).toPython.code
     assert(python.contains("def draw(count: float) -> None:"), clue = python)
-    assert(python.contains("while i < count  and  True:"), clue = python)
-    assert(python.contains("println(\"!;{}\")"), clue = python)
-    assert(ProgrammingStateRaw(Java, java).toBeExpression.expression != null)
+    assert(python.contains("while (i < count) and True:"), clue = python)
+    assert(python.contains("i = i + 1"), clue = python)
+    assert(python.contains("print(\"!;{}\")"), clue = python)
   }
 
   test("full Java classes compile through the state boundary and execute a parameterized square") {
@@ -485,16 +483,17 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(blockComment.code, "/* class Fake {} */ forward(12);")
   }
 
-  test("Java fragments remain executable without embedded source-name hints") {
+  test("generated Java is a complete Main class without source-name hints") {
     val state = ProgrammingStateRaw(Python,
       "def draw(distance):\n    forward(distance)\ndraw(12)\n"
     ).toJava
     val source = state.code
 
-    assert(!source.contains("//EvaEntityName("), clue = source)
-    assert(!state.isClassProgram, clue = source)
-    assertEquals(state.toLegacyTurtleCommands.map(_.name.universalInterpretation()), List("forward"))
-    assertEquals(state.toLegacyTurtleCommands.flatMap(_.args), List(12.0))
+    assert(!source.contains("//"), clue = source)
+    assert(source.contains("static void draw(Object distance) {"), clue = source)
+    assert(source.contains("public static void main(String[] unusableArgs) {"), clue = source)
+    assert(state.isClassProgram, clue = source)
+    assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands.flatMap(_.args), List(12.0))
     assert(state.toSnapXml.code.contains("custom-block"), clue = source)
     assertEquals(state.code, source)
   }
@@ -506,7 +505,6 @@ class ProgrammingStateConversionSpec extends FunSuite {
     intercept[IllegalArgumentException](state.toLegacyTurtleCommands)
     intercept[IllegalArgumentException](state.toSnapXml)
     assertEquals(state.code, source)
-    assertEquals(JavaToBeExpressionParser.withoutEntityHints(source), source)
   }
 
   test("Java turtle classification bounds parser input and rejects unclosed lexemes") {
@@ -641,7 +639,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("uninitialized Java variables retain their annotations") {
     val converted = ProgrammingStateRaw(Java, "double distance;").toPython
-    assert(converted.code.contains("distance : float"), clue = converted.code)
+    assert(converted.code.contains("distance: float"), clue = converted.code)
     assertEquals(normalized(converted.toBeExpression), converted.code.trim)
   }
 
@@ -656,7 +654,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("date annotations include their import and survive Python reparsing") {
     val converted = ProgrammingStateRaw(Java, "Date day;").toPython
     assert(converted.code.startsWith("from datetime import date\n"), clue = converted.code)
-    assert(converted.code.contains("day : date"), clue = converted.code)
+    assert(converted.code.contains("day: date"), clue = converted.code)
     assertEquals(normalized(converted.toBeExpression), converted.code.trim)
   }
 

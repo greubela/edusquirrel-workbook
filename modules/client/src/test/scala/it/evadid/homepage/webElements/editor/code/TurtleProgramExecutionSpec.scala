@@ -172,19 +172,21 @@ class TurtleProgramExecutionSpec extends FunSuite {
     assertEquals(editor.currentState(), source)
   }
 
-  test("running an unsupported Java class fails without replacing its source") {
-    val source = ProgrammingStateRaw(Java, "\npublic class Drawing {\r\n\tpublic static void main(String[] args) { double side = 25; }\r\n}\r\n\t ")
+  test("without the checked runner a Java class runs on the shared interpreter without replacing its source") {
+    val source = ProgrammingStateRaw(Java, "\npublic class Drawing {\r\n\tpublic static void main(String[] args) { double side = 25; Turtle.forward(side * 2); }\r\n}\r\n\t ")
     val editor = editorFor(source)
-    editor.getCurrentTurtleCommands().failed.map { _ =>
+    editor.getCurrentTurtleCommands().map { commands =>
+      assertEquals(commands, List(TurtleCommand.Forward[Double](50.0)))
       assertEquals(editor.currentState(), source)
     }
   }
 
   test("run uses a source restored while the editor is closed") {
     val editor = editorFor(ProgrammingStateRaw(Python, "forward(12)"))
-    val restored = ProgrammingStateRaw(Java, "\npublic class Drawing {}\r\n\t ")
+    val restored = ProgrammingStateRaw(Java, "\npublic class Drawing {\r\n\tpublic static void main(String[] args) { Turtle.forward(30); }\r\n}\r\n\t ")
     editor.state.set(restored)
-    editor.getCurrentTurtleCommands().failed.map { _ =>
+    editor.getCurrentTurtleCommands().map { commands =>
+      assertEquals(commands, List(TurtleCommand.Forward[Double](30.0)))
       assertEquals(editor.currentState(), restored)
     }
   }

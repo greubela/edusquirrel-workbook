@@ -174,9 +174,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       """x: int = 1
         |y: int = 2
         |if true:
-        |    x: int = 2
+        |    x = 2
         |else:
-        |    y: int = 1
+        |    y = 1
         |""".stripMargin
 
     assertEquals(rendered, expected)
@@ -196,7 +196,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val expected =
       """int x = 1;
         |int y = 2;
-        |if(true){
+        |if (true) {
         |    x = 2;
         |} else {
         |    y = 1;
@@ -252,7 +252,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val expected =
       """int x = 1;
         |int y = 2;
-        |if(true){
+        |if (true) {
         |    x = 2;
         |} else {
         |    y = 1;

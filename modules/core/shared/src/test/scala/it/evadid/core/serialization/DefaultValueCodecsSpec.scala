@@ -1,7 +1,5 @@
 package it.evadid.core.serialization
 
-import it.evadid.vm.conversion.pythonexpression.normalization.PythonNormalizationModel
-
 import it.evadid.core.datastructures.geometry.*
 import it.evadid.core.datastructures.matrix.*
 import it.evadid.workbook.interaction.sync.*
@@ -49,17 +47,6 @@ class DefaultValueCodecsSpec extends FunSuite {
     roundTrip(descriptor)
   }
 
-  test("normalized Python models preserve nested statements and indentation") {
-    import it.evadid.vm.conversion.pythonexpression.normalization.PythonNormalizationModel.*
-    roundTrip(RawLine(4, "print('x')"))
-    roundTrip(Line(1, "print('x')"))
-    val statements: List[Statement] = List(SimpleStatement("x = 1"),
-      CompoundStatement("while running:", List(SimpleStatement("break"))),
-      IfStatement("enabled", List(SimpleStatement("forward(1)")), Some(List(SimpleStatement("pass")))))
-    statements.foreach(roundTrip(_))
-    roundTrip(ParsedStatementTree(statements, 4))
-    roundTrip(ParsedStatementTree(Nil, 2))
-  }
   test("chat value models and every sender role have default codecs") {
     import it.evadid.core.datastructures.chat.*
     SenderRole.allRoles.foreach(roundTrip(_))

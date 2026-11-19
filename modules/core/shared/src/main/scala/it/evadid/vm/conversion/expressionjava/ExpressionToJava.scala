@@ -7,6 +7,5 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 
 object ExpressionToJava {
   def convert(expression: BeExpression): ProgrammingStateRaw =
-    ProgrammingStateRaw(Java, it.evadid.vm.conversion.javaexpression.JavaToBeExpressionParser.withoutEntityHints(
-      expression.structureInfo.toStringInLanguage(Java, English, false)))
+    ProgrammingStateRaw(Java, expression.structureInfo.toStringInLanguage(Java, English, false))
 }

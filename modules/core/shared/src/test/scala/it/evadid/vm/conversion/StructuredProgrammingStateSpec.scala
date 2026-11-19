@@ -1,6 +1,6 @@
 package it.evadid.vm.conversion
 
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.vm.conversion.structured.SourceStructure
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
@@ -30,6 +30,58 @@ class StructuredProgrammingStateSpec extends FunSuite {
     |}
     |""".stripMargin
   private def distances(state: ProgrammingState) = state.toBeExpression.turtleCommandExecutionInfo.completedCommands.flatMap(_.args)
+
+  private val languages = Seq(SnapLanguage, Python, Java)
+  private def converted(state: ProgrammingState, language: ProgrammingLanguage): ProgrammingState =
+    state.convertToLanguage(language).finalState.getOrElse(fail(s"$state could not be converted to $language"))
+  private def assertEmptyIn(state: ProgrammingState, language: ProgrammingLanguage, clue: String): Unit = language match {
+    case SnapLanguage =>
+      val xml = state.toSnapXml.code
+      assertEquals("<script\\b".r.findAllIn(xml).size, 1, s"$clue: one script")
+      assertEquals("""<block s="([^"]+)"""".r.findAllMatchIn(xml).map(_.group(1)).toList, List("receiveGo"), s"$clue: only the green flag")
+    case Python =>
+      assertEquals(state.toPythonStructured.toString, "def main() -> None:\n    pass\nmain()", clue)
+    case Java =>
+      val classes = state.toJavaStructured.definedClasses
+      assertEquals(classes.keySet, Set(name("Main")), clue)
+      assertEquals(SourceStructure.javaMembers(classes(name("Main"))).map(_.replaceAll("\\s+", " ")),
+        Vector("public static void main(String[] unusableArgs) { }"), clue)
+    case other => fail(s"unexpected language $other")
+  }
+
+  test("an empty raw source is a green flag in Snap, a called main with pass in Python and a static main in Java, across all conversions") {
+    def isEmpty(state: ProgrammingState) = state.toBeExpression.expression match {
+      case BeStartProgram(Some(sequence)) => sequence.body.isEmpty
+      case BeStartProgram(None) => true
+      case _ => false
+    }
+    languages.foreach { origin =>
+      val raw = ProgrammingStateRaw(origin, "")
+      assert(isEmpty(raw), s"raw empty $origin")
+      // Every conversion chain of length three, starting from the empty raw source.
+      for (first <- languages; second <- languages; third <- languages) {
+        val chain = Seq(first, second, third).scanLeft(raw: ProgrammingState)(converted).tail
+        chain.zip(Seq(first, second, third)).foreach { (state, language) =>
+          val clue = s"raw $origin -> $first -> $second -> $third, at $language"
+          assertEmptyIn(state, language, clue)
+          assert(isEmpty(state), s"$clue: ${state.toBeExpression}")
+          assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands, Nil, clue)
+        }
+      }
+    }
+    // The generated representations parse back as written.
+    assertEquals(ProgrammingStatePythonStructured(ProgrammingStatePythonStructured("").toString), ProgrammingStatePythonStructured(""))
+    assertEquals(ProgrammingStateJavaStructured(ProgrammingStateJavaStructured("").toString), ProgrammingStateJavaStructured(""))
+    assert(isEmpty(ProgrammingStateRaw(Python, "def main():\n    pass\n\nmain()")), "a hand-written entry point is read the same way")
+  }
+
+  test("Python's called main idiom is the main program, not a helper function") {
+    val idiom = ProgrammingStateRaw(Python, "x = 100\ndef main():\n    forward(x)\n\nmain()")
+    assertEquals(idiom.toBeExpression, ProgrammingStateRaw(Python, "x = 100\nforward(x)").toBeExpression)
+    val helper = ProgrammingStateRaw(Python, "def main():\n    forward(1)\n\nmain()\nmain()")
+    assertNotEquals(helper.toBeExpression, ProgrammingStateRaw(Python, "forward(1)\nforward(1)").toBeExpression,
+      "a main called twice stays an ordinary function")
+  }
 
   test("Python class structure is inferred, hoisted and rendered before the main script") {
     val state = ProgrammingStatePythonStructured("""x = 1
@@ -74,6 +126,23 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assertEquals(j.definedClasses.keySet, Set(name("Real")))
   }
 
+  test("the fastparse source lexer tolerates unfinished code and classifies members by their tokens") {
+    // Unclosed strings, comments and blocks run to the end instead of failing.
+    assertEquals(SourceStructure.javaClasses("class Open { void draw() { forward(\"x").map(_.name), Vector("Open"))
+    assertEquals(SourceStructure.mask("x = 1 # c", python = true), "x = 1    ")
+    assertEquals(SourceStructure.methodName("static int[] values(int n) { return null; }"), Some("values"))
+    assertEquals(SourceStructure.methodName("List<String> names() { return null; }"), Some("names"))
+    assertEquals(SourceStructure.methodName("forward(10);"), None)
+    assertEquals(SourceStructure.declaration("static double side = 40;"),
+      Some(SourceStructure.Declaration("double", "side", Some("40"))))
+    assertEquals(SourceStructure.declaration("int[] values;").map(_.name), Some("values"))
+    assertEquals(SourceStructure.declaration("return side;"), None)
+    assertEquals(SourceStructure.declaration("side = 40;"), None)
+    assertEquals(SourceStructure.javaMembers("class A { int[] v = {1, 2}; void f() { } int x; }"),
+      Vector("int[] v = {1, 2};", "void f() { }", "int x;"))
+    assertEquals(SourceStructure.pythonBlocks("def f(a,\n      b):\n    return (a +\n  b)\nx = 1", "def").map(_.name), Vector("f"))
+  }
+
   test("loose Java variables, methods and statements become static Main members and startup") {
     val state = ProgrammingStateJavaStructured("int x = 100; void draw() { forward(x); } draw();")
     assertEquals(state.definedClasses.keySet, Set(name("Main")))
@@ -87,8 +156,7 @@ class StructuredProgrammingStateSpec extends FunSuite {
   test("the requested Python example becomes a complete Java class with static globals and helpers") {
     val result = ProgrammingStatePythonStructured(python).toJavaStructured
     assertEquals(result.definedClasses.keySet, Set(name("Main")))
-    assert(result.toString.contains("static double x;"), result.toString)
-    assert(result.toString.contains("x = 100;"), result.toString)
+    assert(result.toString.contains("static double x = 100;"), result.toString)
     assert(result.toString.contains("static void main(String[] unusableArgs)"), result.toString)
     assertEquals(distances(result), List(20.0, 20.0, 20.0, 100.0))
   }
@@ -97,7 +165,7 @@ class StructuredProgrammingStateSpec extends FunSuite {
     val result = ProgrammingStateJavaStructured(java).toPythonStructured
     assertEquals(result.definedClasses, Map.empty)
     assert(result.mainScript.contains("def do_something("), result.mainScript)
-    assert(result.mainScript.trim.endsWith("turtle.forward(x)"), result.mainScript)
+    assert(result.mainScript.trim.endsWith("def main() -> None:\n    do_something()\n    turtle.forward(x)\nmain()"), result.mainScript)
     assertEquals(distances(result), List(20.0, 20.0, 20.0, 100.0))
     assertEquals(distances(result.toJavaStructured.toPythonStructured), distances(result))
   }

@@ -53,6 +53,8 @@ object SnapExpressionSupport {
   def isScriptStatement(expression: BeExpression): Boolean =
     expression match
       case _: BeDefineFunction | _: BeDefineVariable => false
+      // Snap scripts have no comment statements; ConversionResult reports that comments are dropped.
+      case _: it.evadid.vm.code.errors.BeSingleLineComment => false
       // The green-flag hat is Snap execution metadata, not Python source.
       case call: BeFunctionCall => snapSelectorOf(call) != "receiveGo"
       case _ => true

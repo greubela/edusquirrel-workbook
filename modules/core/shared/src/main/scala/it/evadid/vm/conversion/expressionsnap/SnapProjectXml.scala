@@ -96,10 +96,11 @@ object SnapProjectXml {
         }
         return scripts
       }
-      return Option.when(statements.nonEmpty)(ScriptOut(156, 66, createReceiveGoCall() :: statements)).toList :+
-        ScriptOut(156, 240, detached.toList)
+      return ScriptOut(156, 66, createReceiveGoCall() :: statements) ::
+        ScriptOut(156, 240, detached.toList) :: Nil
     }
-    if statements.isEmpty then Nil
+    // The green flag always marks the main program, even when it has no statements yet.
+    if statements.isEmpty then List(ScriptOut(156, 66, List(createReceiveGoCall())))
     else if layout.isEmpty || !layoutMatches(layout, statements.size) then
       List(ScriptOut(156, 66, createReceiveGoCall() :: statements))
     else
@@ -229,6 +230,8 @@ object SnapProjectXml {
     SnapControlFlow
       .declaredVariables(expression)
       .filterNot((name, _) => parameterNames.contains(name))
+      // Snap lists project variables by name; a fixed order keeps exports stable.
+      .sortBy(_._1)
       .map { (name, literal) =>
         val valueXml = literal match
           case Some(value) => SnapInputCodec.renderLiteral(SnapInputKind.String, value)
@@ -269,7 +272,7 @@ object SnapProjectXml {
   }
 
   private def renderScriptBody(sequence: BeSequence)(using RenderContext): String =
-    sequence.body.map(renderStatement).mkString
+    SnapExpressionSupport.scriptStatements(sequence.body.toList).map(renderStatement).mkString
 
   private def renderCall(call: BeFunctionCall)(using context: RenderContext): String = {
     if SnapControlFlow.isOperatorCall(call) then renderOperator(call)

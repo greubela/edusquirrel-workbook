@@ -13,7 +13,8 @@ right (heading 0, as in Snap and Python), so right-turn squares hang below a sha
 and rows extend horizontally; the mirrored third square uses left turns (`right(-90)`).
 Gaps are always 100 units between neighboring square edges, without connecting strokes.
 
-Programming tasks use Snap, Python and the structured function-based Java editor. The mixed palettes expose only the selected
+Programming tasks start in an empty Snap project and also offer Python and the structured
+function-based Java editor. The mixed palettes expose only the selected
 blocks, add custom-block creation from task 4, and variable controls from task 5.
 German and English lesson text and internal LLM instructions live in
 `resources/languageMaps/eva/2026gdp1/`. A Danish map satisfies the repository-wide

@@ -190,8 +190,7 @@ object SnapControlFlow {
         None
       case seq: BeSequence =>
         seq.body.flatMap(describeUnsupportedStatement(_, userFunctions)).headOption
-      case _: BeSingleLineComment =>
-        Some("comments are not mapped to Snap blocks")
+      case _: BeSingleLineComment => None
       case u: BeExpressionUnsupported =>
         Some(preview(u.originalSource))
       case u: BeExpressionUnparsable =>

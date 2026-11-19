@@ -11,11 +11,12 @@ import it.evadid.vm.parsing.java.clean.model.JavaType.*
 import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
 import it.evadid.vm.parsing.java.clean.JavaSourceMap.{Node, SourceRange}
 
-object JavaParser extends JavaParser(retainParentheses = false)
+object JavaParser extends JavaParser(retainParentheses = false, retainComments = false)
 
-class JavaParser(private val retainParentheses: Boolean) extends GenericAstScanner[JavaAST] {
-  private val grammar = new JavaGrammar(retainParentheses, trackLocations = false)
-  private val locatedGrammar = new JavaGrammar(retainParentheses, trackLocations = true)
+/** `retainComments` keeps `//` comments as statements, as source conversion needs them. */
+class JavaParser(private val retainParentheses: Boolean, retainComments: Boolean = false) extends GenericAstScanner[JavaAST] {
+  private val grammar = new JavaGrammar(retainParentheses, trackLocations = false, retainComments)
+  private val locatedGrammar = new JavaGrammar(retainParentheses, trackLocations = true, retainComments)
 
   override def parseASTFromProgramString(programString: String): Either[Throwable, JavaAST] = parse(programString)
 
@@ -39,7 +40,7 @@ class JavaParser(private val retainParentheses: Boolean) extends GenericAstScann
   def javaProgram[$: P]: P[JavaProgram] = grammar.javaProgram.map(_.value)
 }
 
-private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
+private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean, retainComments: Boolean) {
   private val emptyRange = SourceRange(0, 0)
   private val maxBodyDepth = 32
 
@@ -66,11 +67,17 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
   private def ws[$: P]: P[Unit] = P((WS | LINE_COMMENT | BLOCK_COMMENT).rep)
   private def ws1[$: P]: P[Unit] = P((WS | LINE_COMMENT | BLOCK_COMMENT).rep(1))
 
+  /** Space between statements; line comments are statements of their own when retained. */
+  private def gap[$: P]: P[Unit] = if retainComments then P((WS | BLOCK_COMMENT).rep) else ws
+
+  def commentStatement[$: P]: P[Node[JavaStatement]] =
+    leaf(P("//" ~ CharsWhile(ch => ch != '\n' && ch != '\r', 0).!).map(text => JavaCommentStatement(text.trim)))
+
   // ==========================================
   // 2. PROGRAM
   // ==========================================
 
-  def javaProgram[$: P]: P[Node[JavaProgram]] = captured(P(ws ~ statement(0).rep ~ ws ~ End)).map { (range, statements) =>
+  def javaProgram[$: P]: P[Node[JavaProgram]] = captured(P(gap ~ statement(0).rep ~ gap ~ End)).map { (range, statements) =>
     val wrapped = statements.zipWithIndex.map { (statement, index) =>
       node(StatementWithLineNumber(statement.value, index), statement.range, Seq(statement))
     }
@@ -83,7 +90,7 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
 
   def block[$: P](depth: Int): P[Node[JavaExecutionBlock]] =
     if depth >= maxBodyDepth then P(Fail)
-    else captured(P(LBRACE ~ ws ~ statement(depth).rep ~ ws ~ RBRACE)).map {
+    else captured(P(LBRACE ~ gap ~ statement(depth).rep ~ gap ~ RBRACE)).map {
       (range, statements) => node(JavaExecutionBlock(statements.map(_.value)), range, statements)
     }
 
@@ -95,7 +102,9 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
   // 4. STATEMENTS TYPES
   // ==========================================
 
-  def statement[$: P](depth: Int): P[Node[JavaStatement]] = P(ws ~ (compoundStatement(depth) | simpleStatement | unparsable) ~ ws)
+  def statement[$: P](depth: Int): P[Node[JavaStatement]] =
+    if retainComments then P(gap ~ (commentStatement | compoundStatement(depth) | simpleStatement | unparsable) ~ gap)
+    else P(ws ~ (compoundStatement(depth) | simpleStatement | unparsable) ~ ws)
 
   def simpleStatement[$: P]: P[Node[JavaStatement]] = P(
     packageStatement | importStatement | returnStatement | throwStatement | breakStatement | continueStatement |
@@ -328,9 +337,10 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
   // ==========================================
 
   def literal[$: P]: P[Node[JavaLiteral[?]]] = leaf(P(
-    STRING_LITERAL.map(JAVA_STRING().createLiteralUnsafe) |
-      NUMBER_LITERAL.map(raw => if (raw.contains('.')) JAVA_FLOAT().createLiteralUnsafe(raw) else JAVA_INTEGER().createLiteralUnsafe(raw)) |
-      P(keyword("true").!.map(_ => "true") | keyword("false").!.map(_ => "false")).map(JAVA_BOOL().createLiteralUnsafe) |
+    // Literals keep their source spelling.
+    STRING_LITERAL.map(raw => JavaLiteral(raw, JAVA_STRING()): JavaLiteral[?]) |
+      NUMBER_LITERAL.map(raw => if (raw.contains('.')) JavaLiteral(raw, JAVA_FLOAT()) else JavaLiteral(raw, JAVA_INTEGER())) |
+      P(keyword("true").!.map(_ => "true") | keyword("false").!.map(_ => "false")).map(raw => JavaLiteral(raw, JAVA_BOOL())) |
       P(keyword("null").!).map(raw => JAVA_UNPARSABLE_TYPE(raw).createLiteralUnsafe(raw): JavaLiteral[?])
   ))
 
@@ -356,6 +366,7 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
       keyword("float").map(_ => JAVA_FLOAT()) |
       keyword("double").map(_ => JAVA_FLOAT()) |
       keyword("String").map(_ => JAVA_STRING()) |
+      keyword("char").map(_ => JAVA_STRING()) |
       keyword("void").map(_ => JAVA_UNPARSABLE_TYPE("void")) |
       qualifiedName.map(JAVA_UNPARSABLE_TYPE(_))
   )

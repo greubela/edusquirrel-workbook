@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -9,7 +10,6 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.vm.naming.NamingStyle
-import it.evadid.vm.conversion.pythonexpression.PythonParser
 import it.evadid.vm.types.BeDataType
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
@@ -40,9 +40,11 @@ class PythonTypeHintConversionSpec extends FunSuite {
         |""".stripMargin
     ).toPython
     assert(python.code.contains("distance: float = 12"), clue = python.code)
-    assert(python.code.contains("distance: float = distance + 5"), clue = python.code)
     assert(python.code.contains("value: Any = 1"), clue = python.code)
-    assert(python.code.contains("value: Any = \"text\""), clue = python.code)
+    // Reassignments run in main, where names declared `global` cannot carry annotations.
+    assert(python.code.contains("global distance, value"), clue = python.code)
+    assert(python.code.contains("    distance = distance + 5"), clue = python.code)
+    assert(python.code.contains("    value = \"text\""), clue = python.code)
     assertEquals(python.code.linesIterator.count(_ == "from typing import Any"), 1)
     assertStablePython(python)
   }
@@ -60,7 +62,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     )
     assert(python.code.contains("def advance(distance: float, enabled: bool) -> None:"), clue = python.code)
     assert(python.code.contains("remaining: float = distance"), clue = python.code)
-    assert(python.code.contains("remaining: float = remaining - 1"), clue = python.code)
+    assert(python.code.contains("remaining = remaining - 1"), clue = python.code)
     assertEquals(python.toJava.toPython.code.trim, python.code.trim)
     assertStablePython(python)
   }
@@ -104,7 +106,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     val python = ProgrammingStateRaw(Java,
       "double distance; boolean enabled; String label; Date day; Object value;"
     ).toPython
-    List("distance : float", "enabled : bool", "label : str", "day : date", "value : Any").foreach { hint =>
+    List("distance: float", "enabled: bool", "label: str", "day: date", "value: Any").foreach { hint =>
       assert(python.code.contains(hint), clue = python.code)
     }
     assert(!python.code.contains("EvaEntityName"), clue = python.code)
@@ -190,7 +192,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     intercept[IllegalArgumentException](java.toSnapXml)
     assertEquals(roundTripped.code.trim, original.toPython.code.trim, clue = java.code)
 
-    val parsed = PythonParser.default.parsePythonWithDetails(roundTripped.code)
+    val parsed = PythonToExpression.parseWithDetails(roundTripped.code)
     assertEquals(parsed.definedClasses.size, 1, clue = roundTripped.code)
     val standaloneNames = parsed.definedFunctions
       .map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase)).toSet

@@ -47,7 +47,7 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     case _ => ExpressionToJava.convert(expression.expression)
   }
   lazy val snap: ProgrammingStateRaw = source match {
-    case value @ ProgrammingStateRaw(SnapLanguage, _) => value
+    case value @ ProgrammingStateRaw(SnapLanguage, xml) if xml.trim.nonEmpty => value
     case ProgrammingStateSnapScalaModel(model) => ProgrammingStateRaw(SnapLanguage, model.toXml)
     case _ => ExpressionToSnap.convert(expression.expression)
   }
@@ -77,7 +77,15 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
         ConversionInfo("Java integer types were widened to shared numeric values; integer overflow and truncating division are not preserved.",
           it.evadid.util.logging.LoggingLevel.WARN, true)
       }.toSeq
-      ConversionResult(source, Some(target), preparedSource.diagnostics ++ numericWarnings)
+      val droppedComments = Option.when(language == SnapLanguage && source.associatedLanguage != SnapLanguage &&
+          expression.expression.recToTree(false, it.evadid.vm.types.BeChildInfo(it.evadid.vm.types.BeChildRole.NoRole,
+            it.evadid.vm.types.BeScope.GlobalScope())).values.exists {
+            case it.evadid.vm.code.tree.BeExpressionReference(_, _: it.evadid.vm.code.errors.BeSingleLineComment) => true
+            case _ => false
+          }) {
+        ConversionInfo("Snap scripts have no comment statements; comments were not converted.", it.evadid.util.logging.LoggingLevel.INFO, false)
+      }.toSeq
+      ConversionResult(source, Some(target), preparedSource.diagnostics ++ numericWarnings ++ droppedComments)
     }
     catch { case scala.util.control.NonFatal(error) => ConversionResult.failed(source, error) }
   }

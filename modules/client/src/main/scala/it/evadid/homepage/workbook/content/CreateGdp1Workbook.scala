@@ -9,7 +9,7 @@ import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette}
 import it.evadid.workbook.elements.structureElements.Workbook
 
@@ -33,7 +33,7 @@ case class CreateGdp1Workbook(override val fullInfo: FullInfo) extends WorkbookF
     }
     container(key(s"task${number}Title"), Seq(
       instructionMarkdown(key(s"task${number}Instruction")),
-      TurtleRecreateShapeInteraction(id, ProgrammingStatePythonStructured(""), target,
+      TurtleRecreateShapeInteraction(id, ProgrammingStateSnapScalaModel.empty, target,
         customExerciseConfig = Some(RecreateTurtleDidacticConfig(Seq(SnapLanguage, Python, Java), available, MaxCommandUsage.noBounds)),
         structureTests = tests, instructionText = Some(content(s"task${number}Instruction")))))
   }

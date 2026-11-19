@@ -4,7 +4,6 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLan
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.vm.code.errors.ProgrammingConversionKind
-import it.evadid.vm.conversion.pythonexpression.PythonParser
 import it.evadid.util.logging.LoggingLevel
 import munit.FunSuite
 

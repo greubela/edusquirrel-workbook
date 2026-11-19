@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion.pythonexpression
 
+import it.evadid.vm.conversion.parsed.SymbolTable
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.language.AppLanguage.{English, German}
 import it.evadid.core.datastructures.vectorShapes.svg.{TurtleCommand, TurtleStitchMode}
@@ -73,8 +74,8 @@ class CanonicalFunctionResolutionSpec extends FunSuite {
   test("explicit supplied definitions retain their multilingual names") {
     val translated = BeEntityName.fromMapInCodeNotation(Map(English -> "advance", German -> "vorwärts"))
     val definition = BeDefineFunction(Nil, None, BeExpression.pass, BeDefineFunction.functionInfo(translated))
-    val context = new PythonSymbolTable.ParseContext(PythonSymbolTable.CurrentlyKnownStructures.fromKnown(
-      Seq(PythonSymbolTable.KnownStructure.Function("fd", definition))))
+    val context = new SymbolTable.ParseContext(SymbolTable.CurrentlyKnownStructures.fromKnown(
+      Seq(SymbolTable.KnownStructure.Function("fd", definition))))
     val resolved = context.resolveFunction("fd", 0)
     assert(resolved eq definition)
     assertEquals(resolved.functionTypeInfo.displayName.getNameIn(German, NamingStyle.SnakeCase), "vorwärts")
@@ -106,7 +107,7 @@ class CanonicalFunctionResolutionSpec extends FunSuite {
 
   test("printing aliases and user print functions keep separate semantics through Java") {
     val builtin = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "print(3)\n")
-    assert(builtin.toJava.code.contains("java.lang.System.out.println"), builtin.toJava.code)
+    assert(builtin.toJava.code.contains("System.out.println(3);"), builtin.toJava.code)
     assertEquals(builtin.toJava.toPython.code.trim, builtin.toBeExpression.toPython.code.trim)
     val user = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python,
       "def print(value: float):\n    forward(value)\nprint(3)\n")

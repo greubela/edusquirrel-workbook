@@ -203,7 +203,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("steps: Any = 1"), clue = python)
-    assert(python.contains("steps: Any = steps + 2"), clue = python)
+    assert(python.contains("steps = steps + 2"), clue = python)
     assert(python.contains("if steps < 10:"), clue = python)
     assert(python.contains("forward(steps)"), clue = python)
     val xmlOut = SnapProjectXml.toXml(parsed.expression, "vars", parsed.canvasLayout)

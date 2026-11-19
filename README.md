@@ -156,9 +156,11 @@ The [test workflow](.github/workflows/tests.yml) runs these checks and every Sca
 module on pull requests and, through the Pages workflow, before publication from main. Individual test files can still be run
 with `node --test`.
 
-CI resolves sbt, plugins and Scala dependencies through the Maven Central endpoint
-in [project/repositories](project/repositories). Dependency and compiler cache keys
-include that configuration so repository changes invalidate cached resolution paths.
+CI resolves sbt, plugins and Scala dependencies through Google's Maven Central mirror,
+falling back to Maven Central, as listed in [project/repositories](project/repositories);
+Maven Central rate-limits bursts from shared runners. Dependency and compiler cache keys
+include that configuration. Only `scala-tests`, which resolves every module, saves the
+dependency cache, so a JVM-only job cannot publish an incomplete one.
 
 ## Deployment
 
@@ -196,7 +198,7 @@ avoid exhaustive class/method lists and historical test-run logs.
 - [Snap command execution service](docs/snap-turtle-command-execution-overview.md): implemented snapshot extraction, Pyodide boundary and editor integration.
 - [Core extraction proposals](docs/core-extraction-proposals.md): reviewed dependency boundaries and proposed follow-up tasks.
 - [Programming conversions](docs/programming-conversions.md): shared VM transformation packages and their state conversion API.
-- [Python parsing](docs/python-parsing-architecture.md): normalization and parser responsibilities.
+- [Source parsing](docs/python-parsing-architecture.md): fastparse grammars, the shared parsed model and lexical structure.
 - [Core test guide](docs/core-package-unit-tests.md): test locations, behavioral expectations and verification commands.
 - [Testing and serialization audit](docs/testing-and-serialization-audit.md): codec contracts, the serialization inventory and behavioral verification.
 - [Workbook interaction roadmap](WORKBOOK_INTERACTIONS.md): reusable capabilities and edition priorities.

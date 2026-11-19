@@ -237,7 +237,9 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   test("empty-canvas diagnostics distinguish real blocks from empty project containers") {
-    assert(!CanvasVisibility.looksLikeProgramWithBlocks(ProgrammingStateSnapScalaModel.empty.toSnapXml.code))
+    assert(!CanvasVisibility.looksLikeProgramWithBlocks("<project><scenes><scene><stage><sprites><sprite><scripts></scripts></sprite></sprites></stage></scene></scenes></project>"))
+    // An empty program still shows its green-flag hat.
+    assert(CanvasVisibility.looksLikeProgramWithBlocks(ProgrammingStateSnapScalaModel.empty.toSnapXml.code))
     assert(CanvasVisibility.looksLikeProgramWithBlocks(ProgrammingStateSnapScalaModel.mini.toSnapXml.code))
     assert(CanvasVisibility.looksLikeProgramWithBlocks("<scripts><custom-block s=\"example\"/></scripts>"))
     assert(!CanvasVisibility.looksLikeProgramWithBlocks("<blocks><block-definition s=\"example\"/></blocks>"))

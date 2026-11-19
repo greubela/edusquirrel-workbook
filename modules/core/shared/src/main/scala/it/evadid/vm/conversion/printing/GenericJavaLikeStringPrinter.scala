@@ -21,7 +21,6 @@ abstract class GenericJavaLikeStringPrinter(
                                            ) {
   private case class NameInfo(entityName: BeEntityName) derives upickle.default.ReadWriter {
     val inCurLanguage: String = entityName.getNameIn(humLang, sepLogic.preferedDisplayStyle)
-    val associatedComment: String = s"${sepLogic.startSingleLineComment}EvaEntityName(${entityName.universalInterpretation()})"
   }
 
   private case class TypeInfo(dataType: BeDataType) derives upickle.default.ReadWriter {
@@ -82,8 +81,8 @@ abstract class GenericJavaLikeStringPrinter(
 
   protected def defineVariableLine(nameStr: String, variableTypeString: String, initValue: Option[BeExpression]): String
 
-  protected def defineClassLine(nameStr: String, nameComment: String): String =
-    s"class $nameStr${sepLogic.startBlockWith} $nameComment"
+  protected def defineClassLine(nameStr: String): String =
+    s"class $nameStr ${sepLogic.startBlockWith}"
 
   protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String
 
@@ -93,18 +92,15 @@ abstract class GenericJavaLikeStringPrinter(
   protected def fixedRepetitionLine(amount: Int): String
 
   protected def namedRangeLine(varName: String, start: String, end: String): String =
-    s"for(int $varName = $start; $varName <= $end; $varName++)${sepLogic.startBlockWith}"
-
-  /** Optional trailing parse hint after a fixed-count repeat line; empty for idiomatic Python. */
-  protected def repetitionParsingHint(amount: Int): String =
-    sepLogic.startSingleLineComment + "EvaParsingHint(BeRepeatNr)"
+    s"for (int $varName = $start; $varName <= $end; $varName++) ${sepLogic.startBlockWith}"
 
   /** Printed when a function body would otherwise be empty. Python overrides this with `pass`. */
   protected def emptyFunctionBody: String = ""
 
   protected def forStatement(expr: BeExpression): String = {
     forExpression(expr) + (expr match {
-      case _: BeControlStructure | _: BeReturn | _: BeFunctionCall => ""
+      case _: BeControlStructure | _: BeReturn | _: BeFunctionCall | _: BeDefineClass | _: BeDefineFunction |
+           _: BeSingleLineComment | _: BeExpressionUnsupported | _: BeExpressionUnparsable => ""
       case _ => sepLogic.endLineWith
     })
   }
@@ -113,7 +109,7 @@ abstract class GenericJavaLikeStringPrinter(
 
   def forOther(other: BeExpression): String = other.match {
     case source: BeExpressionUnparsable => if (skipUnparsable) "" else source.sourceFor(progLang)
-    case BeSingleLineComment(commentStr) => s"${sepLogic.startSingleLineComment}${commentStr}"
+    case BeSingleLineComment(commentStr) => s"${sepLogic.startSingleLineComment} ${commentStr.getInLanguage(humLang)}"
     case source: BeExpressionUnsupported => source.sourceFor(progLang)
     case BeCurrentInstance(_) => currentInstanceName
     case BeMemberAccess(receiver, member) => s"${forOperand(receiver)}.${entityName(member.name)}"
@@ -154,7 +150,7 @@ abstract class GenericJavaLikeStringPrinter(
   def forDefinition(ds: BeDefineStructure): String = ds.match {
     case BeDefineClass(name, attributes, methods) => {
       CodeStringBuilderMutable()
-        .appendNextLine(defineClassLine(className(name), NameInfo(name).associatedComment))
+        .appendNextLine(defineClassLine(className(name)))
         .changeIntLevel(1)
         .appendAllAsLines(attributes.map(forStatement))
         .appendNextLine("")
@@ -182,39 +178,47 @@ abstract class GenericJavaLikeStringPrinter(
     case BeDefineVariable(name, variableType, initValueOp) => {
       val nameInfo = NameInfo(name)
       val varType = variableType.formatTypeForDisplay.getInLanguage(progLang)
-      defineVariableLine(nameInfo.inCurLanguage, varType, initValueOp) + nameInfo.associatedComment
+      defineVariableLine(nameInfo.inCurLanguage, varType, initValueOp)
     }
   }
 
   def forControlStructure(cs: BeControlStructure): String = cs.match {
     case BeIfElse(condition, thenBody, elseBody) => {
-      val conditionString = forExpression(condition).replaceAll("\n", "").stripSuffix(sepLogic.endLineWith)
-      val formattedCondition = sepLogic match {
-        case _: JavaSeparation => s"($conditionString)"
-        case _ => s" $conditionString"
+      def header(keyword: String, condition: BeSequence): String = {
+        val conditionString = forExpression(condition).replaceAll("\n", "").stripSuffix(sepLogic.endLineWith)
+        sepLogic match {
+          case _: PythonSeparation => s"$keyword $conditionString${sepLogic.startBlockWith}"
+          case _ => s"$keyword ($conditionString) ${sepLogic.startBlockWith}"
+        }
       }
       val res = CodeStringBuilderMutable()
-        .appendNextLine(s"if$formattedCondition${sepLogic.startBlockWith}")
+        .appendNextLine(header("if", condition))
         .changeIntLevel(1)
         .appendAsLines(forExpression(thenBody))
         .changeIntLevel(-1)
-        .appendNextLine(sepLogic.endBlockWith)
-      if (elseBody.body.nonEmpty) {
-        res
-          .appendInLine(sepLogic match {
-            case _: PythonSeparation => s"else${sepLogic.startBlockWith}"
-            case _ => s" else ${sepLogic.startBlockWith}"
-          })
-          .changeIntLevel(1)
-          .appendAsLines(forExpression(elseBody))
-          .changeIntLevel(-1)
-          .appendNextLine(sepLogic.endBlockWith)
+      // An else branch holding only another if prints as an elif / else-if chain.
+      @scala.annotation.tailrec def branches(otherwise: BeSequence): Unit = otherwise.body match {
+        case Seq(BeIfElse(nextCondition, nextThen, nextElse)) =>
+          sepLogic match {
+            case _: PythonSeparation => res.appendNextLine(header("elif", nextCondition))
+            case _ => res.appendNextLine(sepLogic.endBlockWith + " " + header("else if", nextCondition))
+          }
+          res.changeIntLevel(1).appendAsLines(forExpression(nextThen)).changeIntLevel(-1)
+          branches(nextElse)
+        case Seq() => res.appendNextLine(sepLogic.endBlockWith)
+        case _ =>
+          sepLogic match {
+            case _: PythonSeparation => res.appendNextLine(s"else${sepLogic.startBlockWith}")
+            case _ => res.appendNextLine(s"${sepLogic.endBlockWith} else ${sepLogic.startBlockWith}")
+          }
+          res.changeIntLevel(1).appendAsLines(forExpression(otherwise)).changeIntLevel(-1).appendNextLine(sepLogic.endBlockWith)
       }
+      branches(elseBody)
       res.toString
     }
     case BeRepeatNr(amount, body) => {
       CodeStringBuilderMutable()
-        .appendNextLine(fixedRepetitionLine(amount) + repetitionParsingHint(amount))
+        .appendNextLine(fixedRepetitionLine(amount))
         .changeIntLevel(1)
         .appendAsLines(forExpression(body))
         .changeIntLevel(-1)
