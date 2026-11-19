@@ -551,16 +551,28 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   }
 
   for stored <- Seq("not-an-ISO-timestamp", "2026-11-09T12:13:14.123456790", "2026-11-09T12:13:14.1234567890") do
-    test(s"invalid, mismatched or noncanonical timestamp_nano is rejected: $stored") {
-      store(history())
+    test(s"invalid timestamp_nano discards only its event and reports the reason: $stored") {
+      val original = history()
+      val healthy = history("healthy", time.plusSeconds(10))
+      val combined = original.mergeWith(healthy)
+      store(combined)
+      val corruptEventId = original.allStates.head.eventId
       MysqlTestDatabase.withConnection { connection =>
-        Using.resource(connection.prepareStatement("UPDATE answer_event SET timestamp_nano=?")) { statement =>
+        Using.resource(connection.prepareStatement("UPDATE answer_event SET timestamp_nano=? WHERE event_id=?")) { statement =>
           statement.setString(1, stored)
-          statement.executeUpdate()
+          statement.setString(2, corruptEventId)
+          assertEquals(statement.executeUpdate(), 1)
         }
       }
-      val error = intercept[IllegalArgumentException](fetch())
-      assert(error.getMessage.contains("timestamp_nano must match the serialized event"))
+      val readLogger = BasicLogger()
+      val fetched = FetchFromDatabase.handleRequest(FetchEventsFromDbRequest(context, Seq.empty,
+        LocalDateTime.MIN, LocalDateTime.MAX, config, RelationalFormat, EventSyncStrategy.SYNC_EVERYTHING), readLogger)
+      val expected = combined.copy(events = InteractionEvents(
+        combined.events.values.filterNot(_.eventId == corruptEventId)))
+      assertEquals(fetched.fetchedElements(sync).typedAs(format), expected)
+      assert(readLogger.getOut().contains(s"Discarded the unreadable answer_event row $corruptEventId"))
+      assert(readLogger.getOut().contains("timestamp_nano must match the serialized event"))
+      assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 2L, "reading must not delete stored records")
     }
 
   test("relational timestamps use indexed ISO 8601 text with nine fractional digits") {

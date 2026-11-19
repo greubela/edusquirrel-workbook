@@ -51,7 +51,7 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
       request('qr','worker.calculateQrCode',{text:'Hello',version:2,mask:3})
     ]));
     assert.deepEqual(replies.map(reply=>reply.requestId),['xml','qr']);
-    assert.deepEqual(result(replies[0]).map(element=>element.attributes.s),['Grüße','外']);
+    assert.deepEqual(result(replies[0]).map(element=>element.attributes.find(attribute=>attribute.name === 's')?.rawValue),['Grüße','外']);
     assert(result(replies[1]),JSON.stringify(replies[1]));
     assert.equal(result(replies[1]).modules.length,25);
     const chart = result(await page.evaluate(() => request('chart','worker.pythonFlowchart',{
