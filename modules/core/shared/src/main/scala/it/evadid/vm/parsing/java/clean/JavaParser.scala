@@ -203,9 +203,12 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
 
   // Definitions
 
+  private def methodNameAndType[$: P]: P[(Option[JavaType[?]], String)] =
+    P((javaType ~ ws1 ~ NAME).map((typ, name) => (Some(typ), name)) | NAME.map(name => (None, name)))
+
   def methodDef[$: P](depth: Int): P[Node[JavaMethodDef]] =
-    captured(P(modifiers ~ javaType.? ~ ws ~ NAME ~ ws ~ LPAR ~ ws ~ parameters.? ~ ws ~ RPAR ~ ws ~ block(depth + 1))).map {
-      case (range, (mods, returnType, name, params, body)) =>
+    captured(P(modifiers ~ methodNameAndType ~ ws ~ LPAR ~ ws ~ parameters.? ~ ws ~ RPAR ~ ws ~ block(depth + 1))).map {
+      case (range, (mods, (returnType, name), params, body)) =>
         val parameters = params.getOrElse(Seq.empty)
         node(JavaMethodDef(name, mods, returnType, parameters.map(_.value), body.value), range, parameters :+ body)
     }
@@ -299,7 +302,7 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
       node(JavaSubscript(receiver.value, Seq(index.value)), joined(receiver, range), Seq(receiver, index))
     }
 
-  private def targetAtom[$: P]: P[Node[JavaTarget]] = leaf(NAME.map(JavaTarget(_)))
+  private def targetAtom[$: P]: P[Node[JavaTarget]] = leaf(P(keyword("this").! | NAME).map(JavaTarget(_)))
 
   def functionCall[$: P]: P[Node[JavaExpression]] = captured(P(target ~ ws ~ LPAR ~ ws ~ arguments.? ~ ws ~ RPAR)).map {
     case (range, (func, args)) =>
@@ -314,7 +317,7 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean) {
         node(JavaNewExpression(typ, arguments.map(_.value)), range, arguments)
     }
 
-  def target[$: P]: P[Node[JavaTarget]] = captured(P(qualifiedName ~ (ws ~ LSQB ~ ws ~ expression ~ ws ~ RSQB).?)).map {
+  def target[$: P]: P[Node[JavaTarget]] = captured(P((P(keyword("this").! ~ (ws ~ DOT ~ ws ~ NAME).rep).map((first, rest) => (first +: rest).mkString(".")) | qualifiedName) ~ (ws ~ LSQB ~ ws ~ expression ~ ws ~ RSQB).?)).map {
     case (range, (name, slice)) =>
       val parts = name.split('.').toSeq
       node(JavaTarget(parts.last, parts.dropRight(1), slice.map(_.value)), range, slice.toSeq)

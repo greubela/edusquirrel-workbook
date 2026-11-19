@@ -765,9 +765,10 @@ class JavaParserTest extends FunSuite {
     assertEquals(checked.methods.head.body.statements.size, 3)
   }
 
-  test("turtle source rejects constructors and omitted method return types before structure checking") {
-    for members <- Seq(s"Drawing() {} $mainMethod", s"static move() {} $mainMethod", "public static main(String[] args) {}") do
-      assertEquals(sourceProblem(turtleClass(members)).problem, JavaTurtleSource.Problem.ParseFailure, clue = members)
+  test("turtle structure rejects constructors and methods without return types after general parsing") {
+    for members <- Seq(s"Drawing() {} $mainMethod", s"static move() {} $mainMethod") do
+      assertEquals(structureProblem(turtleClass(members)).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = members)
+    assertEquals(structureProblem(turtleClass("public static main(String[] args) {}")).problem, JavaTurtleSource.Problem.InvalidMain)
   }
 
   test("turtle source excludes alternative Java array parameter spellings") {
