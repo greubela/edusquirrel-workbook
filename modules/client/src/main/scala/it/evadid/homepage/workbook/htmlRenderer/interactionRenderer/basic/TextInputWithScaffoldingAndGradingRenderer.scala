@@ -7,9 +7,11 @@ import it.evadid.core.datastructures.state.StateHelper.{StateBasedVar, RichObser
 import it.evadid.homepage.webElements.editor.SimpleTextEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionHintPanel
 import it.evadid.workbook.abstractions.grading.GradingStatus
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.meta.InteractionVariableGradingReporter
 
 
 object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFactory[TextInputWithScaffoldingAndGrading] {
@@ -43,11 +45,12 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
       cls := "text-input-feedback",
       p(cls := "text-input-feedback__task", child.text <-- laminarHelper.plaintextStringSignal(element.instructionText)),
       SimpleTextEditor(answer).getDomElement().amend(aria.label <-- laminarHelper.plaintextStringSignal(element.instructionText)),
-      Option.when(element.gradingElements.nonEmpty)(
+      Option.when(element.gradingElements.nonEmpty || element.scaffoldingElement.nonEmpty)(
         div(cls := "interaction-scaffolding",
           p(cls := "interaction-scaffolding__notice", child.text <-- label("gradingNotice")),
           div(role := "status", aria.live := "polite",
-            children <-- feedback)))
+            children <-- feedback),
+          InteractionHintPanel(InteractionVariableGradingReporter(element)).getDomElement()))
     )
     // basicLine supplies the shared grading, synchronization and hint controls.
     AtomarLineRendering.basicLine(element, content)

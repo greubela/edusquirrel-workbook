@@ -375,6 +375,8 @@ details[open] > .feedback-summary::before { transform: rotate(90deg); }
 .feedback-results-table { table-layout: fixed; min-width: 22rem; }
 .feedback-results-table th:nth-child(2) { width: 6.5rem; }
 .grading-info-line { display: flex; align-items: center; gap: var(--space-xs); max-width: 100%; overflow-x: auto; }
+.grading-feedback-panel { min-width: 0; }
+.interaction-hint-panel { margin-block-start: var(--space-sm); min-width: 0; }
 .feedback-actions { display: flex; flex: none; gap: var(--space-xs); }
 .feedback-action {
     display: inline-flex;

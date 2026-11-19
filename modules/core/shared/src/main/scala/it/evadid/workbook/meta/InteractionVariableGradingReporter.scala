@@ -1,10 +1,11 @@
 package it.evadid.workbook.meta
 
 import it.evadid.core.datastructures.state.observable.ObservableValue
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.abstractions.grading.GradedState
-import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
+import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 
 case class InteractionVariableGradingReporter[F <: InteractionFormat](
@@ -18,6 +19,15 @@ case class InteractionVariableGradingReporter[F <: InteractionFormat](
     val lastValue: InteractionFormat.State[F] = curHistory.historyStates.lastStateOption.get.value
     interactionVariable.control.getCurrentStateOfScaffolding(lastValue)
   })
+
+  /** Completed hint content for the current answer, excluding pending and failed requests. */
+  lazy val currentScaffoldingFeedbackSignal: ObservableValue[Option[LanguageMap[AppLanguage.HumanLanguage]]] =
+    currentScaffoldingSignal.deriveValue(_.flatMap { result =>
+      result.scaffoldingStatus match {
+        case ScaffoldingStatus.ScaffoldingFeedback(content) => Some(content)
+        case _ => None
+      }
+    })
 
   lazy val isGradingSupported: Boolean = interactionVariable.underlyingInteraction.gradingElements.nonEmpty
 

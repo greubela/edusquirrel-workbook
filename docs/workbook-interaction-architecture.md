@@ -77,6 +77,11 @@ partial results belong to the incorrect group. Hidden results contribute counts
 but never detail rows. Public descriptions and localized feedback are rendered
 as text; internal test programs and LLM instructions are not displayed.
 
+Below-exercise feedback panels show completed hints in an initially expanded,
+collapsible section, including hint-only exercises. `InteractionHintPanel` consumes
+the grading reporter's current-answer hint signal; language changes update its text,
+and changing the answer removes stale hints until matching feedback is available.
+
 `TextInputWithScaffoldingAndGrading` owns its description, string answer, hint IDs
 and grading-criterion IDs. Each LLM grader evaluates one criterion in the selected
 language and identifies itself as `FeedbackEntity.LlmEntity`. The final marker

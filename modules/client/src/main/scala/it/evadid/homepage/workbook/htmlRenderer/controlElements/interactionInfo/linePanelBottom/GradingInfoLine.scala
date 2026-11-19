@@ -2,14 +2,16 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionFeedbackView
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.{InteractionFeedbackView, InteractionHintPanel}
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingRequestedButNotFinished
 import it.evadid.workbook.meta.InteractionVariableGradingReporter
 
 case class GradingInfoLine[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], gradingReporter: InteractionVariableGradingReporter[F]) extends HtmlAppElement {
   override def getDomElement(): Element =
-    GradingInfoLine.render(new InteractionFeedbackView(interaction, gradingReporter, fullInfo, laminarHelper))
+    div(cls := "grading-feedback-panel",
+      GradingInfoLine.render(new InteractionFeedbackView(interaction, gradingReporter, fullInfo, laminarHelper)),
+      InteractionHintPanel(gradingReporter).getDomElement())
 }
 
 object GradingInfoLine {
