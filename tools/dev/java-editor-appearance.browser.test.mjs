@@ -343,7 +343,11 @@ test('language tabs follow the current draft and commit converted representation
     await checkTabs(true);
     const unsupported = spaced.replace('public static void main', 'public void main');
     await writeSource(unsupported);
-    // An instance-only class is representable in Python, but Snap has no class blocks.
+    // Instance main is an ordinary method: its unsupported array parameter cannot disappear.
+    await checkTabs(false);
+    const instanceOnly = unsupported.replace('void main(String[] args)', 'void draw()');
+    await writeSource(instanceOnly);
+    // A parameter-free instance method is representable in Python; Snap has no class blocks.
     await checkTabs(true, false);
     await writeSource(spaced);
     await checkTabs(true);

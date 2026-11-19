@@ -199,8 +199,8 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
       snapPreviewWorlds > previewReuseProbe.worlds && snapPreviewPictures > previewReuseProbe.pictures));
     assert(await page.evaluate(() => previewReuseProbe.xml !== snapPreviewLoadedXml &&
       new DOMParser().parseFromString(snapPreviewLoadedXml,'application/xml')
-        .querySelector('block-definition[s="main"] block[s="forward"] > l')?.textContent === '30'),
-      'the regenerated preview loads the changed method body');
+        .querySelector('script > block[s="receiveGo"] + block[s="forward"] > l')?.textContent === '30'),
+      'the regenerated preview loads the changed startup command');
     await rememberPreview();
     await writeSource(changed.slice(0, changed.lastIndexOf('}')));
     assert.equal(await preview.locator('canvas').count(), 0);

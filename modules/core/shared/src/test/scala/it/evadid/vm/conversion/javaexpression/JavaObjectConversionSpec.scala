@@ -52,4 +52,13 @@ class JavaObjectConversionSpec extends FunSuite {
     val code = "class Label { String text() { return \"true false null this new\"; } }"
     assert(ProgrammingStateRaw(Java, code).toPython.code.contains("\"true false null this new\""))
   }
+  test("ordinary instance methods convert, but unsupported array parameters cannot disappear") {
+    val instance = ProgrammingStateRaw(Java, "class Drawing { public void draw() { Turtle.forward(12); } }")
+    assert(instance.convertToLanguage(Python).finalState.nonEmpty)
+    assert(instance.convertToLanguage(SnapLanguage).finalState.isEmpty)
+    val withArray = ProgrammingStateRaw(Java, "class Drawing { public void main(String[] args) { Turtle.forward(12); } }")
+    assert(withArray.convertToLanguage(Python).finalState.isEmpty)
+    assert(withArray.convertToLanguage(SnapLanguage).finalState.isEmpty)
+  }
+
 }
