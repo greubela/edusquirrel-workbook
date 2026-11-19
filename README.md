@@ -81,7 +81,7 @@ into workbooks. See the
 | [homepage/index.html](homepage/index.html) | Classic catalogue, including PDF/ZIP editions |
 | [workbooks](homepage/workbooks/index.html) | Laminar catalogue of available digital workbooks; browsing is public |
 | [evacuationWorkbook](homepage/evacuationWorkbook/index.html) | Partial evacuation adaptation with local EVA2 playback, locker/door comparisons with saved graphs, a budget plan and model critique |
-| [2026GdP1](homepage/2026GdP1/index.html) | Seven turtle tasks on loops, functions and parameters plus a reflection; [authoring notes](docs/2026-gdp1-workbook.md) (DE/EN; Snap/Python) |
+| [2026GdP1](homepage/2026GdP1/index.html) | Seven turtle tasks on loops, functions and parameters plus a reflection; [authoring notes](docs/2026-gdp1-workbook.md) (DE/EN; Snap/Python/Java) |
 | [workbookDesign](homepage/workbookDesign/index.html) | Test workbook and interaction examples, including local EVA2 floor construction |
 | [monksWorkbook](homepage/monksWorkbook/index.html) | Mons Komputarius stories, sorting, towers and Koch recursion practice (DE/EN) |
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |

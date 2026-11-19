@@ -9,7 +9,7 @@ import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette}
 import it.evadid.workbook.elements.structureElements.Workbook
 
@@ -19,8 +19,8 @@ case class CreateGdp1Workbook(override val fullInfo: FullInfo) extends WorkbookF
   override val availableLanguages: Seq[HumanLanguage] = Seq(German, English)
   private def key(name: String) = s"2026gdp1/$name"
   private def content(name: String) = LanguageMapContentId(key(name))
-  private val movement = Seq("forward", "turn")
-  private val beginner = Seq("forward", "turn", "up", "down", "doRepeat", "doIfElse", "reportVariadicSum", "reportDifference", "reportVariadicProduct", "reportVariadicEquals")
+  private val movement = Seq("receiveGo", "forward", "turn")
+  private val beginner = Seq("receiveGo", "forward", "turn", "up", "down", "doRepeat", "doIfElse", "reportVariadicSum", "reportDifference", "reportVariadicProduct", "reportVariadicEquals")
 
   private def palette(selectors: Seq[String], functions: Boolean = false, variables: Boolean = false) =
     ProgrammingEditorPalette.Custom(PaletteLayout.Mixed(selectors, functions, variables))
@@ -33,8 +33,8 @@ case class CreateGdp1Workbook(override val fullInfo: FullInfo) extends WorkbookF
     }
     container(key(s"task${number}Title"), Seq(
       instructionMarkdown(key(s"task${number}Instruction")),
-      TurtleRecreateShapeInteraction(id, ProgrammingStatePythonString(""), target,
-        customExerciseConfig = Some(RecreateTurtleDidacticConfig(Seq(SnapLanguage, Python), available, MaxCommandUsage.noBounds)),
+      TurtleRecreateShapeInteraction(id, ProgrammingStatePythonStructured(""), target,
+        customExerciseConfig = Some(RecreateTurtleDidacticConfig(Seq(SnapLanguage, Python, Java), available, MaxCommandUsage.noBounds)),
         structureTests = tests, instructionText = Some(content(s"task${number}Instruction")))))
   }
 

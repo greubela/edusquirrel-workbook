@@ -2,14 +2,13 @@ package it.evadid.workbook.elements.interactionElements.programming.programmingE
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
+import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.simulation.turtle.TurtleProgramAnalysis
 import it.evadid.vm.code.controlStructures.{BeFor, BeRepeatNr, BeWhile}
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.tree.BeExpressionReference
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms as J
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeScope}
 import it.evadid.workbook.abstractions.FeedbackEntity
@@ -56,23 +55,13 @@ case class ProgramStructureGrader(
 
   private def containsLoop(nodes: Seq[BeExpression]): Boolean = nodes.exists {
       case _: BeRepeatNr | _: BeFor | _: BeWhile => true
-      case statement: J.Statement => statement.node match {
-        case J.Node.For(_, _, _, _) | J.Node.While(_, _) => true
-        case _ => false
-      }
       case _ => false
     }
 
-  private def functionSignatures(expression: BeExpression, nodes: Seq[BeExpression]): Seq[(String, Seq[String])] = {
-    val entryPoint = expression match {
-      case root: J.Root => Some(root.entryPoint)
-      case _ => None
-    }
+  private def functionSignatures(nodes: Seq[BeExpression]): Seq[(String, Seq[String])] = {
     nodes.collect {
-      case function: BeDefineFunction =>
+      case function: BeDefineFunction if !BeProgram.isUnusedCode(function) =>
         SnapExpressionSupport.pythonNameOf(function) -> function.inputs.map(_.name.universalInterpretation())
-      case method: J.Method if !entryPoint.contains(method) =>
-        method.binding.originalName -> method.binding.parameters.map(_.variable.name)
     }
   }
 
@@ -85,9 +74,9 @@ case class ProgramStructureGrader(
         TurtleProgramAnalysis.commandSites(expression).forall(site => allowed(site.name))
       case ProgramStructureRequirement.UsesLoop => containsLoop(nodes)
       case ProgramStructureRequirement.NoLoops => !containsLoop(nodes)
-      case ProgramStructureRequirement.NoFunctions => functionSignatures(expression, nodes).isEmpty
+      case ProgramStructureRequirement.NoFunctions => functionSignatures(nodes).isEmpty
       case ProgramStructureRequirement.DefinesFunction(name, parameters) =>
-        functionSignatures(expression, nodes).exists((actual, inputs) => actual == name && parameters.forall(inputs.contains))
+        functionSignatures(nodes).exists((actual, inputs) => actual == name && parameters.forall(inputs.contains))
     }
   }
 }

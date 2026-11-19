@@ -13,7 +13,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.Try
 
 /** Runtime dispatch belongs to the turtle feature, independently of Eva's tab navigation. */
-final class TurtleProgramExecution(providers: List[TurtleExecutionProvider] = Nil) {
+final class TurtleProgramExecution(providers: Seq[TurtleExecutionProvider] = Seq.empty, sharedInterpreter: Boolean = false) {
   private val revision = Var(0L)
   private lazy val python = new PyodideTurtleCommandRunner()
   private lazy val snap = new SnapTurtleCommandExecution(python)
@@ -25,7 +25,8 @@ final class TurtleProgramExecution(providers: List[TurtleExecutionProvider] = Ni
     }
   }
   private def dispatch(source: ProgrammingState): Future[List[TurtleCommand[Double]]] =
-    providers.iterator.flatMap(_.turtleCommands(source)).nextOption() match {
+    if sharedInterpreter then Future(source.toBeExpression.turtleCommandExecutionInfo.completedCommands)
+    else providers.iterator.flatMap(_.turtleCommands(source)).nextOption() match {
       case Some(execute) => Try(execute()).fold(Future.failed, identity)
       case None => source match {
         case xml @ ProgrammingStateRaw(SnapLanguage, _) => snap.commandsFor(xml)

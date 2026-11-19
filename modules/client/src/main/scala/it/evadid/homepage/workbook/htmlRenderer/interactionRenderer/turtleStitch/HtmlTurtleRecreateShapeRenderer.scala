@@ -43,7 +43,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
 
 
       val useConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.forPalette(workbookElement.exerciseConfig.availablePalette)
-      val draw = new TurtleTaskEditorExtension(boundVar, None)
+      val draw = new TurtleTaskEditorExtension(boundVar, None, sharedExecution = true)
       val evaEditor = EvaEditor(
         fullInfo.loggerSystemInfo.uiAndDomLogger,
         boundVar,

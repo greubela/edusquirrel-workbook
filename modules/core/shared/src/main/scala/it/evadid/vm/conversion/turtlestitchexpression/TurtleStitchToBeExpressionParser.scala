@@ -192,12 +192,11 @@ object TurtleStitchToBeExpressionParser {
   private def attrDouble(attrs: String, name: String): Option[Double] =
     raw"""\b$name="([^"]*)"""".r.findFirstMatchIn(attrs).flatMap(m => scala.util.Try(m.group(1).toDouble).toOption)
 
-  private def topLevelBlocks(scriptBody: String): List[(String, String)] = {
-    val withIndex = List("custom-block", "block").flatMap { tag =>
-      topLevelTaggedSectionsIndexed(scriptBody, tag)
-    }.sortBy(_._1)
-    withIndex.map { case (_, attrs, body) => (attrs, body) }
-  }
+  private def topLevelBlocks(scriptBody: String): List[(String, String)] =
+    SnapXmlParser.children(scriptBody).filter(node => node.tag == "block" || node.tag == "custom-block").map { node =>
+      val attributes = node.outer.substring(node.tag.length + 1, node.outer.indexOf('>')).stripSuffix("/").trim
+      attributes -> node.inner
+    }
 
   private def blockToStatement(block: (String, String)): Option[BeExpression] = {
     val (attrs, body) = block

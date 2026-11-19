@@ -1,12 +1,11 @@
 package it.evadid.homepage.workbook.content
 
 import munit.FunSuite
-import it.evadid.core.datastructures.language.AppLanguage.{SnapLanguage, Python}
+import it.evadid.core.datastructures.language.AppLanguage.{SnapLanguage, Python, Java}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.workbook.meta.ExecutionContextInformation
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.abstractions.InteractionFormat.TurtleRecreateShapeInteractionFormat
@@ -39,7 +38,7 @@ class Gdp1WorkbookSpec extends FunSuite {
 
   tasks.zip(solutions).zipWithIndex.foreach { case ((task, source), index) =>
     test(s"task ${index + 1}: an independently authored solution passes every drawing and structure test") {
-      val state = ProgrammingStatePythonString(source)
+      val state = ProgrammingStatePythonStructured(source)
       Future.traverse(task.gradingElements)(_.gradeStateSafe(state, true, ExecutionContextInformation.default)).map { results =>
         results.foreach(result => assert(result.gradingStatus.isCorrect, clues(task.elementId, result.grader, result.gradingStatus)))
       }
@@ -48,34 +47,52 @@ class Gdp1WorkbookSpec extends FunSuite {
 
   test("all reference solutions also pass after conversion to Snap blocks") {
     Future.traverse(tasks.zip(solutions)) { (task, source) =>
-      val snap = ProgrammingStatePythonString(source).toSnapXml
+      val snap = ProgrammingStatePythonStructured(source).toSnapXml
       Future.traverse(task.gradingElements)(_.gradeStateSafe(snap, true, ExecutionContextInformation.default)).map { results =>
         results.foreach(result => assert(result.gradingStatus.isCorrect, clues(task.elementId, result.grader, result.gradingStatus)))
       }
     }
   }
 
+  test("all reference solutions pass as structured Java programs using the shared interpreter") {
+    Future.traverse(tasks.zip(solutions)) { (task, source) =>
+      val java = ProgrammingStatePythonStructured(source).toJavaStructured
+      Future.traverse(task.gradingElements)(_.gradeStateSafe(java, true, ExecutionContextInformation.default)).map { results =>
+        results.foreach(result => assert(result.gradingStatus.isCorrect, clues(task.elementId, java, result.grader, result.gradingStatus)))
+      }
+    }
+  }
+
+  test("editor execution and grading share the BeExpression drawing for all languages") {
+    val execution = new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleProgramExecution(sharedInterpreter = true)
+    val python = ProgrammingStatePythonStructured(oriented)
+    val expected = python.toBeExpression.turtleCommandExecutionInfo.completedCommands
+    Future.traverse(Seq(python, python.toSnapXml, python.toJavaStructured)) { source =>
+      execution.commandsFor(source).map(commands => assertEquals(commands, expected))
+    }.andThen { case _ => execution.close() }
+  }
+
   test("correct geometry alone cannot bypass the requested structure") {
     val examples = Seq(tasks(1) -> square, tasks(2) -> withFunction, tasks(3) -> withFunction.replace("quadrat", "anderer_name"),
       tasks(4) -> increasing.replace("distanz", "andere_laenge"))
     Future.traverse(examples) { (task, code) =>
-      Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStatePythonString(code), true, ExecutionContextInformation.default)).map { results =>
+      Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStatePythonStructured(code), true, ExecutionContextInformation.default)).map { results =>
         assert(results.head.gradingStatus.isCorrect, clues(task.elementId, results.head.gradingStatus))
         assert(results.tail.exists(!_.gradingStatus.isCorrect), task.elementId)
       }
     }
   }
 
-  test("palettes progressively enable loops, custom blocks and variables, with Snap and Python only") {
+  test("palettes progressively enable loops, custom blocks and variables, with Snap, Python and Java") {
     tasks.zipWithIndex.foreach { (task, index) =>
-      assertEquals(task.exerciseConfig.allowedEditorLanguages, Seq(SnapLanguage, Python))
+      assertEquals(task.exerciseConfig.allowedEditorLanguages, Seq(SnapLanguage, Python, Java))
       val tabs = SnapCodeEditorConfig.forPalette(task.exerciseConfig.availablePalette).libraryTabs
       assertEquals(tabs.size, 1)
       assertEquals(tabs.head.includeMakeBlockButton, index >= 3)
       assertEquals(tabs.head.includeVariableControls, index >= 4)
       val selectors = tabs.head.selectableElements.map(_.id)
       assertEquals(selectors.contains("doRepeat"), index >= 1)
-      if index == 0 then assertEquals(selectors, Seq("forward", "turn"))
+      if index == 0 then assertEquals(selectors, Seq("receiveGo", "forward", "turn"))
     }
   }
 
@@ -92,7 +109,7 @@ class Gdp1WorkbookSpec extends FunSuite {
 
   test("structure grading results round-trip through InteractionHistoryJson") {
     val task = tasks(3)
-    Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStatePythonString(withFunction), true, ExecutionContextInformation.default)).map { results =>
+    Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStatePythonStructured(withFunction), true, ExecutionContextInformation.default)).map { results =>
       val history = InteractionVariableHistory.empty[TurtleRecreateShapeInteractionFormat.type].addGradings(results)
       val envelope = InteractionHistoryJson.fromHistory(TurtleRecreateShapeInteractionFormat, history)
       val restored = read[InteractionHistoryJson](write(envelope))

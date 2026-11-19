@@ -60,20 +60,29 @@ test('2026GdP1 opens from the catalogue, localizes its tasks and exposes the pro
     await page.waitForFunction(() => document.querySelectorAll('.workbook-body .turtle-gradig-panel svg').length >= 4);
     const openButtons = () => page.locator('.workbook-body').getByRole('button', {name:/Editor.*öffnen|Open editor/i});
     await openButtons().first().click();
-    await page.waitForFunction(() => window.gdpIde?.currentSprite);
+    await page.waitForFunction(() => window.gdpIde?.currentSprite?.blockTemplates('Blocks')?.some(item => item?.selector === 'forward'));
     const palette = () => page.evaluate(() => {
       const items = gdpIde.currentSprite.blockTemplates('Blocks');
       return {selectors:items.filter(item => item?.selector).map(item => item.selector),
         makeBlock:items.some(item => item?.gdpMakeBlock)};
     });
     const initial = await palette();
-    assert.deepEqual(initial.selectors, ['forward','turn']);
+    assert.deepEqual(initial.selectors, ['receiveGo','forward','turn']);
     assert.equal(initial.makeBlock, false);
-    assert.equal(await page.locator('dialog[open]').getByRole('tab', {name:'Java',exact:true}).count(), 0);
+    await page.locator('dialog[open]').getByRole('tab', {name:'Java',exact:true}).click();
+    const method = page.locator('dialog[open] .java-function-editor__method .cm-content');
+    await method.waitFor();
+    assert.match(await method.innerText(), /static void main/);
+    assert(!/class Main/.test(await method.innerText()), 'Java opens the function editor rather than a raw source editor');
+    await method.fill('static void main(String[] args) { ' + 'Turtle.forward(100); Turtle.right(90); '.repeat(4) + '}');
+    await page.locator('dialog[open] .grading-info-line').getByRole('button', {name:/Prüfen|Check/,exact:true}).click();
+    await page.locator('dialog[open]').getByText('4/4 ✓', {exact:true}).waitFor();
     await page.locator('dialog[open]').getByText('Programmiere die Zielfigur nach:', {exact:false}).waitFor();
     await page.locator('.fullscreen-close-button').click();
+    await page.evaluate(() => {window.gdpIde = null;});
     await openButtons().nth(3).click();
     await page.waitForFunction(() => window.gdpIde?.world()?.worldCanvas.closest('dialog'));
+    await page.waitForFunction(() => window.gdpIde?.currentSprite?.blockTemplates('Blocks')?.some(item => item?.gdpMakeBlock));
     assert.equal((await palette()).makeBlock, true, 'function tasks expose the native Make a block button');
     await language('british-blue').evaluate(flag => flag.click());
     await page.locator('dialog[open]').getByText('Call this function to draw the squares.', {exact:false}).waitFor();
@@ -84,6 +93,7 @@ test('2026GdP1 opens from the catalogue, localizes its tasks and exposes the pro
     await page.waitForFunction(() => document.querySelectorAll('.workbook-body .turtle-gradig-panel svg').length >= 3);
     await mkdir(path.join(root,'tmp/work/gdp1'), {recursive:true});
     await page.screenshot({path:path.join(root,'tmp/work/gdp1/parameters.png'),fullPage:true});
+    await page.locator('.workbook-body .interaction-element').last().screenshot({path:path.join(root,'tmp/work/gdp1/orientation-task.png')});
     await page.setViewportSize({width:390,height:844});
     await page.screenshot({path:path.join(root,'tmp/work/gdp1/parameters-mobile.png'),fullPage:true});
     assert.deepEqual(errors, []);

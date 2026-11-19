@@ -50,13 +50,23 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   }
 
   test("preview conversion retains Java drafts it cannot display") {
-    List("class Drawing {", "class Drawing { static void main(String[] args) {} }").foreach { code =>
+    List("class Drawing {").foreach { code =>
       val state = ProgrammingStateRaw(Java, code)
       val fingerprint = state.fingerprint()
       assert(previewAssessment(state).isFailure)
       assertEquals(state.fingerprint(), fingerprint)
       assertEquals(state.code, code)
     }
+  }
+
+  test("shape preview evaluates complete Java classes through the shared expression tree") {
+    val code = "class Drawing { static void main(String[] args) { Turtle.forward(12); } }"
+    val state = ProgrammingStateRaw(Java, code)
+    val assessment = previewAssessment(state).get
+    assert(assessment.matches)
+    assertEquals(state.code, code)
+    val empty = previewAssessment(ProgrammingStateRaw(Java, "class Drawing { static void main(String[] args) {} }")).get
+    assert(!empty.matches)
   }
 
   test("shape preview assesses supported turtle commands") {

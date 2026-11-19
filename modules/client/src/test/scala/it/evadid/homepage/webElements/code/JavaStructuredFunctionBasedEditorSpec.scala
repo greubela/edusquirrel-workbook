@@ -56,6 +56,22 @@ class JavaStructuredFunctionBasedEditorSpec extends EditorDomSuite {
     }
   }
 
+  test("the default Java tab projects raw transport and publishes only structured method edits") {
+    val state = Var[ProgrammingState](ProgrammingStateRaw(Java, code))
+    val editor = EvaEditor(logger, state, Nil, Var(EvaEditorConfig(enabledLanguages = Seq(Java))),
+      labels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading")))
+    val close = mount(editor.getDomElement())
+    Future.unit.flatMap { _ =>
+      assert(field.value.contains("forward(10)"), field.value)
+      field.value = "static void main(String[] args) { forward(45); }"
+      edited()
+      Future.unit.map { _ =>
+        assert(state.now().isInstanceOf[ProgrammingStateJavaStructured])
+        assert(state.now().toString.contains("forward(45)"))
+      }
+    }.andThen { case _ => close() }
+  }
+
   test("structured selection prefers Main and leaves the string editor's public-main rule intact") {
     assertEquals(JavaFunctionBasedEditor.initialFunction(code), None)
     assertEquals(JavaFunctionBasedEditor.initialFunction(code, requirePublicMain = false).map(_.name), Some("main"))

@@ -24,9 +24,10 @@ object TurtleTaskEditorExtension {
 }
 
 final class TurtleTaskEditorExtension(
-    state: Var[ProgrammingState], target: Option[TurtleGraphic]
+    state: Var[ProgrammingState], target: Option[TurtleGraphic], sharedExecution: Boolean = false
 ) extends it.evadid.homepage.webElements.HtmlAppElement {
-  private val execution = new TurtleProgramExecution(List(new JavaTurtleEditorExtension(state)))
+  private val execution = new TurtleProgramExecution(if sharedExecution then Seq.empty else Seq(new JavaTurtleEditorExtension(state)),
+    sharedInterpreter = sharedExecution)
   private val panel = new TurtleExecutionPanel(state, () => execution.commandsFor(state.now()), () => execution.cancel(), target)
   override def getDomElement(): Element = {
     lazy val runPanel = panel.getDomElement()
