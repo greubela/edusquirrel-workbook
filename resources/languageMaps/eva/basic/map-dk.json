@@ -161,5 +161,6 @@
   "sortStepLength": "Læs længden: {length}",
   "sortShowReads": "Vis læsninger som trin",
   "sortStepStats": "{swaps} ombytninger · {sets} tildelinger · {reads} læsninger",
-  "sortTestList": "Sorterer {list}"
+  "sortTestList": "Sorterer {list}",
+  "DrawTitle": "Tegning"
 }

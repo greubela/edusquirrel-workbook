@@ -6,6 +6,10 @@ import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
 
 /** Labels, tones and icons belong to the browser; status decisions belong to reporters. */
 private[interactionInfo] object FeedbackPresentation {
+  /** Replaces `{name}` placeholders of a translated template, e.g. the list of a generated sort test. */
+  def fill(template: String, arguments: Map[String, String]): String =
+    arguments.foldLeft(template) { case (text, (name, value)) => text.replace(s"{$name}", value) }
+
   /** Visual tone shared by status chips, result rows and the CSS modifier `feedback-status--<tone>`. */
   enum Tone(val css: String, val icon: FeedbackIcon, val labelKey: String) {
     case Correct extends Tone("correct", FeedbackIcon.Passed, "gradingGroupCorrect")

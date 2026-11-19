@@ -107,9 +107,9 @@ trait BeExpression {
 
 
   /**
-   * This expression and all nested expressions in preorder, as `recToTree(false, …)` lists them.
-   * Use it when only the nodes matter: building the positioned tree copies subtrees per level,
-   * which becomes slow for deeply nested programs.
+   * This expression and every nested occurrence in preorder: the expressions of `recToTree(false, …)`,
+   * whose unordered values drop repeated equal subexpressions. Use it when only the nodes matter:
+   * building the positioned tree copies subtrees per level, which becomes slow for nested programs.
    */
   def subtreeNodes: Vector[BeExpression] = {
     @scala.annotation.tailrec

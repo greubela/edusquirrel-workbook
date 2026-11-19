@@ -24,12 +24,15 @@ case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortL
     case other => other.toPython.code
   }
 
+  /** Overview card and editor side module replaying the sort function's list operations. */
+  private[homepage] def sortStepsCard(element: SortListExercise, boundVar: Var[ProgrammingState]): ElementCard =
+    ElementCard(LanguageMapContentId("basic/sortStepsTitle"), new SortStepPanel(boundVar, element.sortFunction, element.exampleList,
+      key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
+
   override protected def createRendering(element: SortListExercise): AtomarLineRendering = {
     val boundVar = element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val gradingReporter = fullInfo.signals.reportersFor(element).grading
-    def text(key: String) = laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
-    def stepsCard = ElementCard(LanguageMapContentId("basic/sortStepsTitle"),
-      new SortStepPanel(boundVar, element.sortFunction, element.exampleList, text).getDomElement())
+    def stepsCard = sortStepsCard(element, boundVar)
 
     def openEditor(): Unit = {
       val instruction = element.instructionText.map(content => DisplayLangMapContent(element.elementId + "-sidebar-instruction", content,

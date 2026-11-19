@@ -161,5 +161,6 @@
   "sortStepLength": "Lies die Länge: {length}",
   "sortShowReads": "Lesezugriffe als Schritte zeigen",
   "sortStepStats": "{swaps} Vertauschungen · {sets} Zuweisungen · {reads} Lesezugriffe",
-  "sortTestList": "Sortiert {list}"
+  "sortTestList": "Sortiert {list}",
+  "DrawTitle": "Zeichnung"
 }

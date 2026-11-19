@@ -230,14 +230,7 @@ object TurtleJsxGraphRenderer:
     def createLine(line: RenderedLine, index: Int): Unit = {
       val a = pointObject(line.start);
       val b = pointObject(line.end)
-      val resultClass = line.result match
-        case LineResult.Correct => "turtle-line--correct"
-        case LineResult.Unexpected => "turtle-line--unexpected"
-        case LineResult.Missing => "turtle-line--missing"
-        case LineResult.Neutral => "turtle-line--neutral"
-        case LineResult.Current => "turtle-line--current"
-        case LineResult.Upcoming => "turtle-line--upcoming"
-      val classes = s"turtle-line $resultClass" + (if line.jump then " turtle-line--jump" else "")
+      val classes = lineClasses(line)
       val segment: js.Dynamic = board.create("segment", js.Array(a, b), js.Dynamic.literal(
         cssClass = classes, highlightCssClass = classes, fixed = true
       ))
@@ -281,6 +274,17 @@ object TurtleJsxGraphRenderer:
       case NonFatal(error) =>
         JSXGraph.free(board)
         throw error
+
+  /** CSS classes of a rendered segment: its result and, for pen-up travel, the dashed jump style. */
+  private[htmlRenderer] def lineClasses(line: RenderedLine): String =
+    val resultClass = line.result match
+      case LineResult.Correct => "turtle-line--correct"
+      case LineResult.Unexpected => "turtle-line--unexpected"
+      case LineResult.Missing => "turtle-line--missing"
+      case LineResult.Neutral => "turtle-line--neutral"
+      case LineResult.Current => "turtle-line--current"
+      case LineResult.Upcoming => "turtle-line--upcoming"
+    s"turtle-line $resultClass" + (if line.jump then " turtle-line--jump" else "")
 
   private def hoverRelated(scene: Scene, lineIndex: Int, points: collection.mutable.Map[Point[Double], js.Dynamic], angles: collection.mutable.Map[Int, js.Dynamic], board: JSXGraph.Board, active: Boolean): Unit =
     val line = scene.lines(lineIndex)

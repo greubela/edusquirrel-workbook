@@ -34,8 +34,8 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
 
   def description(entry: GradingSummary.Entry): Signal[String] = entry.grader match {
     case grader: ProgramStructureGrader => helper.plaintextStringSignal(grader.publicDescription)
-    case grader: ProgramDataTestGrader => helper.plaintextStringSignal(grader.publicDescription).map(template =>
-      grader.publicDescriptionArguments.foldLeft(template) { case (text, (name, value)) => text.replace(s"{$name}", value) })
+    case grader: ProgramDataTestGrader =>
+      helper.plaintextStringSignal(grader.publicDescription).map(fill(_, grader.publicDescriptionArguments))
     case grader: ProgrammingUnitTestGrader => grader.publicDescription
       .map(helper.plaintextStringSignal).getOrElse(Val(grader.testId))
     case _: RecreateShapeGrader => label("gradingShapeDescription")

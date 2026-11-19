@@ -114,4 +114,72 @@ class BeProgramInterpreterSpec extends FunSuite {
     assert(!solved.updated(0, 0, 3).isConsistent)
     assert(!SudokuGrid.default.isComplete)
   }
+
+  private val arithmetic = java(
+    """    static int rechne(int a, int b) {
+      |        return a % b + Math.floor(a / b) * 10 - (-b);
+      |    }
+      |    static int zaehle(int n) {
+      |        int k = 0;
+      |        while (k < n) {
+      |            k = k + 1;
+      |            NumberList.set(0, k);
+      |        }
+      |        return k;
+      |    }
+      |    static void teile(int a) {
+      |        NumberList.set(0, 10 / a);
+      |    }
+      |    public static void main(String[] args) {
+      |    }""".stripMargin).toBeExpression
+
+  test("operators follow Python semantics for remainder and floor division; while loops repeat until false") {
+    assertEquals(arithmetic.execute(entry = ProgramEntry.Call("rechne", Seq(7, 2))).returnValue, Some(1.0 + 30.0 + 2.0))
+    assertEquals(arithmetic.execute(entry = ProgramEntry.Call("rechne", Seq(-7, 2))).returnValue, Some(1.0 - 40.0 + 2.0))
+    val counted = arithmetic.execute(DataWorld(list = Vector(0)), ProgramEntry.Call("zaehle", Seq(3)))
+    assertEquals((counted.returnValue, counted.world.list), (Some(3.0), Vector(3)))
+  }
+
+  test("invalid calls and values fail with an explanation instead of an exception") {
+    def status(entry: ProgramEntry, world: DataWorld = DataWorld()) = arithmetic.execute(world, entry).status.toString
+    assert(status(ProgramEntry.Call("rechne", Seq(1))).contains("expects 2 values"))
+    assert(status(ProgramEntry.Call("teile", Seq(0))).contains("Division by zero"))
+    assert(status(ProgramEntry.Call("teile", Seq(4))).contains("whole number"), "2.5 cannot be stored in the list")
+    val sudoku = java(
+      """    static void falsch() {
+        |        Sudoku.set(0, 2, 10);
+        |    }
+        |    static void ausserhalb() {
+        |        Sudoku.get(9, 0);
+        |    }
+        |    public static void main(String[] args) {
+        |    }""".stripMargin).toBeExpression
+    assert(sudoku.execute(entry = ProgramEntry.Call("falsch")).status.toString.contains("1 to 9"))
+    assert(sudoku.execute(entry = ProgramEntry.Call("ausserhalb")).status.toString.contains("outside the sudoku"))
+  }
+
+  test("step, call-depth and data-command limits end execution and keep the recorded commands") {
+    val recursion = java(
+      """    static void tief(int n) {
+        |        NumberList.length();
+        |        tief(n + 1);
+        |    }
+        |    public static void main(String[] args) {
+        |    }""".stripMargin).toBeExpression
+    val deep = recursion.execute(entry = ProgramEntry.Call("tief", Seq(0)), limits = TurtleExecutionLimits(maxCallDepth = 5))
+    assertEquals((deep.status, deep.listCommands.size), (TurtleExecutionStatus.LimitExceeded, 5))
+    val bounded = arithmetic.execute(DataWorld(list = Vector(0)), ProgramEntry.Call("zaehle", Seq(100)), TurtleExecutionLimits(maxDataCommands = 4))
+    assertEquals((bounded.status, bounded.listCommands.size), (TurtleExecutionStatus.LimitExceeded, 4))
+    val steps = arithmetic.execute(DataWorld(list = Vector(0)), ProgramEntry.Call("zaehle", Seq(100)), TurtleExecutionLimits(maxSteps = 20))
+    assertEquals(steps.status, TurtleExecutionStatus.LimitExceeded)
+    intercept[IllegalArgumentException](steps.completedListCommands)
+  }
+
+  test("cancellation stops a run, and startup runs record turtle and list commands together") {
+    val cancelled = BeProgramInterpreter.run(swap.toBeExpression.expression, isCancelled = () => true)
+    assertEquals(cancelled.status, TurtleExecutionStatus.Cancelled)
+    val mixed = ProgrammingStateRaw(Python, "forward(10)\nNumberList.swap(0, 1)\nright(90)\n").toBeExpression.programExecution
+    assertEquals(mixed.completedTurtleCommands.map(_.name.universalInterpretation()), List("forward", "right"))
+    assertEquals(mixed.completedListCommands, List(ListCommand.Swap(0, 1)))
+  }
 }
