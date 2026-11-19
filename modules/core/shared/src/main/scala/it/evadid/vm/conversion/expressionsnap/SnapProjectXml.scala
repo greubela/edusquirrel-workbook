@@ -45,7 +45,7 @@ object SnapProjectXml {
       projectName: String = "fromBeExpression",
       canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
       previousXml: String = "",
-      newBlockCategory: String = SnapCustomBlockMerge.DefaultNewBlockCategory
+      newBlockCategory: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockCategory = SnapCustomBlockMerge.DefaultNewBlockCategory
   ): String = {
     val functionDefs = collectFunctionDefs(expression)
     val plans = SnapCustomBlockMerge.planFor(functionDefs, previousXml, newBlockCategory)
@@ -171,7 +171,7 @@ object SnapProjectXml {
   private def renderPalette(plans: CustomBlockPlans, previousXml: String): String = {
     val previous = SnapCustomBlockRules.paletteEntries(previousXml)
     val previousByName = previous.flatMap(node => node.attribute("name").map(_ -> node)).toMap
-    val names = (previous.flatMap(_.attribute("name")) ++ plans.categories).distinct
+    val names = (previous.flatMap(_.attribute("name")) ++ plans.categories.map(_.xml)).distinct
       .filterNot(SnapCustomBlockRules.BuiltInCategories.contains)
     if names.isEmpty then ""
     else

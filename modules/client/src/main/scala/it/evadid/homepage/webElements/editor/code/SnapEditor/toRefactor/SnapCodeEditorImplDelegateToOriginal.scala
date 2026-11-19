@@ -21,6 +21,7 @@ import org.scalajs.dom.html.Canvas
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
+import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.SnapExtraPrimitives
 
 /** A retained Snap/Morphic session for the interactive editor and exact previews. */
 final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
@@ -381,7 +382,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     if libraries.exists(_.useNativeCategory) then
       spriteMorphPrototype.applyDynamic("initBlocks")()
     ensurePrimitiveSelectors(libraries.flatMap(_.selectableElements.map(_.id)))
-    injectExtraPrimitives()
+    SnapExtraPrimitives.install()
 
     // Snap calls blockTemplates(category) or blockTemplates(category, forSearch).
     // Exercise-only: only library tab names return blocks; everything else is empty.
@@ -704,7 +705,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     try
       spriteMorphPrototype.applyDynamic("initBlocks")()
       JavaTurtleSnapPrimitives.install()
-      injectExtraPrimitives()
+      SnapExtraPrimitives.install()
     catch case _: Throwable => ()
 
   private val SceneGlobalVariables = """(?s)</stage><variables>(.*?)</variables>""".r
@@ -771,30 +772,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     }
     if missing.nonEmpty then
       proto.applyDynamic("initBlocks")()
-    injectExtraPrimitives()
-
-  /** TurtleStitch embroidery / circle / home / backward specs are not in vanilla Snap. */
-  private def injectExtraPrimitives(): Unit =
-    val proto = spriteMorphPrototype
-    val blocks = proto.selectDynamic("blocks")
-    val blockColor = proto.selectDynamic("blockColor")
-    val Color = js.Dynamic.global.Color
-    val embroideryColor = blockColor.selectDynamic("embroidery")
-    if js.isUndefined(embroideryColor) || embroideryColor == null then
-      blockColor.updateDynamic("embroidery")(js.Dynamic.newInstance(Color)(0, 120, 0))
-    SnapTurtleCatalog.ExtraPrimitives.foreach { primitive =>
-      primitive.extraSpec.foreach { spec =>
-        val obj = js.Dynamic.literal()
-        obj.updateDynamic("type")("command")
-        obj.updateDynamic("category")(spec.category)
-        obj.updateDynamic("spec")(spec.spec)
-        obj.updateDynamic("only")(js.Dynamic.global.SpriteMorph)
-        if spec.defaults.nonEmpty then
-          val defaults = spec.defaults.map(value => js.JSON.parse(ujson.write(value))).toJSArray
-          obj.updateDynamic("defaults")(defaults)
-        blocks.updateDynamic(primitive.snapSelector)(obj)
-      }
-    }
+    SnapExtraPrimitives.install()
 
   private def nativeMakeBlockButton(ide: IDEMorph): List[js.Any] = {
     val sprite = ide.currentSprite.asInstanceOf[js.Dynamic]
@@ -812,7 +790,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
     var raw = invoke()
     if js.isUndefined(raw) || raw == null then
       proto.applyDynamic("initBlocks")()
-      injectExtraPrimitives()
+      SnapExtraPrimitives.install()
       raw = invoke()
     if js.isUndefined(raw) || raw == null then None
     else

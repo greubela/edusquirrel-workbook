@@ -421,7 +421,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val after = SnapCustomBlockRules.globalDefinitions(reXml).head
     assertEquals(after.spec, before.spec)
     assertEquals(after.blockType, before.blockType)
-    assertEquals(after.rawCategory, before.rawCategory)
+    assertEquals(after.category, before.category)
     assertEquals(
 after.element.element.named("inputs").headOption.map(_.element.toXml),
       before.element.element.named("inputs").headOption.map(_.element.toXml)

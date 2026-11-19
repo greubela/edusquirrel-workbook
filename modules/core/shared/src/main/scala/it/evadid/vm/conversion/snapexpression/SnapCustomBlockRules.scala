@@ -18,11 +18,12 @@ import upickle.default.ReadWriter
  * type (`byob.js` `CustomBlockDefinition.blockSpec`), defaulting to `%s` — which is
  * also the type Snap gives new slots in the Block Editor.
  */
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.{BlockCategory, BlockType}
+
 object SnapCustomBlockRules {
 
-  /** Snap's built-in palette categories (`SpriteMorph.prototype.categories`). */
-  val BuiltInCategories: List[String] =
-    List("motion", "looks", "sound", "pen", "control", "sensing", "operators", "variables", "lists", "other")
+  /** The bundled TurtleStitch's built-in palette categories (`SpriteMorph.prototype.categories`), `embroidery` included. */
+  val BuiltInCategories: List[String] = BlockCategory.builtIn.map(_.xml)
 
   /** Snap's fallback slot type when a declaration is missing (`CustomBlockDefinition.typeOf`). */
   val DefaultSlotType: String = "%s"
@@ -39,16 +40,15 @@ object SnapCustomBlockRules {
   /** One `<block-definition>` as Snap would load it. */
   final case class SnapCustomBlock(
       spec: String,
-      blockType: String,
-      rawCategory: String,
-      scope: Option[String],
+      blockType: BlockType,
+      category: BlockCategory,
+      /** Defined in the scene's `<blocks>` (or a bare library); otherwise in a sprite's, and so sprite-local. */
+      isGlobal: Boolean,
       slots: List[SnapSlot],
       element: SnapScalaModel.BlockDefinition,
       /** Document order among all definitions; identifies the definition within its document. */
       position: Int
   ) derives ReadWriter {
-    def isGlobal: Boolean = scope.isEmpty
-
     def slotNames: List[String] = SnapCustomBlockRules.slotNames(spec)
 
     def arity: Int = slotNames.size
@@ -70,7 +70,7 @@ object SnapCustomBlockRules {
 
     /** Why Python cannot represent this block faithfully, if so. */
     def pythonIncompatibility: Option[String] =
-      if blockType != "command" then Some(s"'${spec}' is a $blockType block; Python apply only writes command blocks")
+      if blockType != BlockType.Command then Some(s"'${spec}' is a ${blockType.xml} block; Python apply only writes command blocks")
       else if !isGlobal then Some(s"'${spec}' is a sprite-local block; Python apply only writes global blocks")
       else
         slots
@@ -153,16 +153,17 @@ object SnapCustomBlockRules {
   def blockSpecOfNewDefinition(spec: String): String =
     blockSpec(spec, _ => "%n")
 
-  def definition(element: SnapScalaModel.BlockDefinition, position: Int): SnapCustomBlock = {
+  /** Snap's load defaults: a missing type is a command, a missing category `other`. */
+  def definition(element: SnapScalaModel.BlockDefinition, position: Int, isGlobal: Boolean): SnapCustomBlock = {
     val spec = element.spec.getOrElse("")
     val slots = slotNames(spec).zip(element.inputs).map { (name, input) =>
       SnapSlot(name, input.inputType.getOrElse(DefaultSlotType), input)
     }
     SnapCustomBlock(
       spec = spec,
-      blockType = element.blockType.getOrElse("command"),
-      rawCategory = element.category.getOrElse("other"),
-      scope = element.element.attribute("scope").filter(_.nonEmpty),
+      blockType = element.blockType.getOrElse(BlockType.Command),
+      category = element.category.getOrElse(BlockCategory.Other),
+      isGlobal = isGlobal,
       slots = slots,
       element = element,
       position = position
@@ -175,9 +176,12 @@ object SnapCustomBlockRules {
   private def elements(document: SnapScalaModel.Document): Vector[SnapScalaModel.SnapElement] =
     document.root +: document.root.descendants
 
-  private def definitions(document: SnapScalaModel.Document): List[SnapCustomBlock] =
+  private def definitions(document: SnapScalaModel.Document): List[SnapCustomBlock] = {
+    // Snap loads the scene's definitions as global blocks; a bare `<blocks>` library has no scene, so all are global.
+    val global = elements(document).collectFirst { case scene: SnapScalaModel.Scene => scene }.map(_.definitions)
     elements(document).collect { case definition: SnapScalaModel.BlockDefinition => definition }.zipWithIndex
-      .map((element, position) => definition(element, position)).toList
+      .map((element, position) => definition(element, position, global.forall(_.exists(_ eq element)))).toList
+  }
 
   def allDefinitions(xml: String): List[SnapCustomBlock] = document(xml).toList.flatMap(definitions)
 
@@ -188,18 +192,12 @@ object SnapCustomBlockRules {
   def globalDefinitions(xml: String): List[SnapCustomBlock] = document(xml).toList.flatMap(globalDefinitions)
 
   private def globalDefinitions(document: SnapScalaModel.Document): List[SnapCustomBlock] =
-    elements(document).collectFirst { case scene: SnapScalaModel.Scene => scene } match
-      case Some(scene) =>
-        val global = scene.definitions
-        definitions(document).filter(block => global.exists(_ eq block.element))
-      case None => definitions(document)
+    definitions(document).filter(_.isGlobal)
 
   def localDefinitions(xml: String): List[SnapCustomBlock] = document(xml).toList.flatMap(localDefinitions)
 
-  private def localDefinitions(document: SnapScalaModel.Document): List[SnapCustomBlock] = {
-    val global = globalDefinitions(document).map(_.position).toSet
-    definitions(document).filterNot(block => global(block.position))
-  }
+  private def localDefinitions(document: SnapScalaModel.Document): List[SnapCustomBlock] =
+    definitions(document).filterNot(_.isGlobal)
 
   /** The `<category>` entries of `<palette>`, which Snap adds to the built-ins. */
   def paletteEntries(xml: String): List[SnapScalaModel.Element] = document(xml).toList.flatMap(paletteEntries)
@@ -242,13 +240,13 @@ object SnapCustomBlockRules {
     val locals = localDefinitions(document)
     elements(document).collect { case call: SnapScalaModel.CustomBlock => call }.toList.flatMap { call =>
       val spec = call.selector.getOrElse("")
-      val pool = if call.scope.exists(_.nonEmpty) then locals else globals
+      val pool = if call.isLocal then locals else globals
       pool.find(_.blockSpec == spec) match
         case None =>
           val known = pool.map(_.blockSpec).mkString(", ")
           Some(ObsoleteCall(spec, s"no definition has blockSpec() '$spec' (defined: [$known])"))
-        case Some(defn) if !categories.contains(effectiveCategory(defn.rawCategory, categories)) =>
-          Some(ObsoleteCall(spec, s"category '${defn.rawCategory}' is outside allCategories"))
+        case Some(defn) if !categories.contains(effectiveCategory(defn.category.xml, categories)) =>
+          Some(ObsoleteCall(spec, s"category '${defn.category.xml}' is outside allCategories"))
         case Some(_) => None
     }
   }

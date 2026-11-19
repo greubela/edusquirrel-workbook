@@ -30,7 +30,7 @@ object SnapControlFlow {
   val VariableSelectors: Set[String] = VariableCommandOrder.toSet + "reportGetVar"
 
   val ArithmeticSelectorOrder: Seq[String] =
-    List("reportVariadicSum", "reportDifference", "reportVariadicProduct", "reportQuotient", "reportModulus")
+    List("reportVariadicSum", "reportDifference", "reportVariadicProduct", "reportQuotient", "reportModulus", "reportPower")
   val ArithmeticSelectors: Set[String] = ArithmeticSelectorOrder.toSet
 
   private val ComparisonAndLogicOrder: Seq[String] = List(
@@ -87,7 +87,8 @@ object SnapControlFlow {
     "-" -> SnapReporter("reportDifference", SnapReporterKind.Binary),
     "*" -> SnapReporter("reportVariadicProduct", SnapReporterKind.Variadic),
     "/" -> SnapReporter("reportQuotient", SnapReporterKind.Binary),
-    "%" -> SnapReporter("reportModulus", SnapReporterKind.Binary)
+    "%" -> SnapReporter("reportModulus", SnapReporterKind.Binary),
+    "**" -> SnapReporter("reportPower", SnapReporterKind.Binary)
   )
 
   private val SupportedOperators: Set[String] = OperatorToSnapReporter.keySet

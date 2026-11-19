@@ -85,11 +85,12 @@ class AdditionalDefaultCodecsSpec extends FunSuite {
     val xml = "<block-definition s=\"draw %steps\" type=\"command\" category=\"motion\"><inputs><input type=\"%n\">20</input></inputs><script><block s=\"forward\"><l>20</l></block></script></block-definition>"
     val element = it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec.parse(xml).toOption.get.root.asInstanceOf[SnapScalaModel.BlockDefinition]
     assertEquals(restore(element).element.toXml, xml)
-    val block = SnapCustomBlockRules.definition(element, 0)
+    val block = SnapCustomBlockRules.definition(element, 0, isGlobal = true)
     assertEquals(restore(block).blockSpec, "draw %n")
     block.slots.foreach(restore(_))
     val plan = SnapCustomBlockMerge.CustomBlockPlan("draw", "draw %steps", List("steps"), List("%n"),
-      "command", "motion", "", "<comment>ä</comment>", "", "", "", "", "<inputs/>", "", Map("length" -> "steps"))
+      it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockType.Command,
+      it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockCategory.Motion, "", "<comment>ä</comment>", "", "", "", "", "<inputs/>", "", Map("length" -> "steps"))
     val restoredPlan = restore(plan)
     assertEquals(restoredPlan.callSpec, "draw %n")
     assertEquals(restoredPlan.toXml("<block s=\"forward\"/>"), plan.toXml("<block s=\"forward\"/>"))

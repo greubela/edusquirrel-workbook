@@ -15,6 +15,7 @@ import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.{BlockCategory, BlockType}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
@@ -28,8 +29,8 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
  */
 object SnapCustomBlockMerge {
 
-  /** Palette category for blocks Python declares from scratch. */
-  val DefaultNewBlockCategory: String = SnapTurtleCatalog.PaletteTab.Variables.toString
+  /** Palette category for blocks Python declares from scratch: the exercise palette's own Variables tab. */
+  val DefaultNewBlockCategory: BlockCategory = BlockCategory.fromXml(SnapTurtleCatalog.PaletteTab.Variables.toString)
 
   /** Everything the write-back needs to emit one `<block-definition>` and its calls. */
   final case class CustomBlockPlan(
@@ -37,8 +38,8 @@ object SnapCustomBlockMerge {
       spec: String,
       slotNames: List[String],
       slotTypes: List[String],
-      blockType: String,
-      category: String,
+      blockType: BlockType,
+      category: BlockCategory,
       extraAttributes: String,
       commentXml: String,
       variablesXml: String,
@@ -63,7 +64,7 @@ object SnapCustomBlockMerge {
     def toXml(bodyXml: String): String = {
       val script = if bodyXml.nonEmpty then s"<script>$bodyXml</script>" else ""
       val attributes =
-        s"""s="${SnapXmlText.escape(spec)}" type="${SnapXmlText.escape(blockType)}" category="${SnapXmlText.escape(category)}"$extraAttributes"""
+        s"""s="${SnapXmlText.escape(spec)}" type="${blockType.xml}" category="${SnapXmlText.escape(category.xml)}"$extraAttributes"""
       s"<block-definition $attributes>" +
         commentXml + variablesXml + headerXml + codeXml + translationsXml + inputsXml + script + scriptsXml +
         "</block-definition>"
@@ -77,7 +78,7 @@ object SnapCustomBlockMerge {
 
     def get(pythonName: String): Option[CustomBlockPlan] = byPythonName.get(pythonName)
 
-    def categories: List[String] = ordered.map(_.category).distinct
+    def categories: List[BlockCategory] = ordered.map(_.category).distinct
   }
 
   object CustomBlockPlans {
@@ -106,7 +107,7 @@ object SnapCustomBlockMerge {
   def planFor(
       defs: List[BeDefineFunction],
       previousXml: String,
-      newBlockCategory: String = DefaultNewBlockCategory
+      newBlockCategory: BlockCategory = DefaultNewBlockCategory
   ): CustomBlockPlans = {
     val existingByName =
       SnapCustomBlockRules
@@ -145,7 +146,7 @@ object SnapCustomBlockMerge {
       slotNames = slotNames.toList,
       slotTypes = slotNames.map(existing.typeOf),
       blockType = existing.blockType,
-      category = existing.rawCategory,
+      category = existing.category,
       extraAttributes = extraAttributes(existing.element),
       commentXml = childOuter(existing, "comment", ""),
       variablesXml = childOuter(existing, "variables", ""),
@@ -174,7 +175,7 @@ object SnapCustomBlockMerge {
       slotNames = slotNames.toList,
       slotTypes = slotTypes,
       blockType = existing.blockType,
-      category = existing.rawCategory,
+      category = existing.category,
       extraAttributes = extraAttributes(existing.element),
       commentXml = childOuter(existing, "comment", ""),
       variablesXml = childOuter(existing, "variables", ""),
@@ -206,7 +207,7 @@ object SnapCustomBlockMerge {
       slotNames = slotNames.toList,
       slotTypes = slotTypes,
       blockType = existing.blockType,
-      category = existing.rawCategory,
+      category = existing.category,
       extraAttributes = extraAttributes(existing.element, dropIdentity = true),
       commentXml = childOuter(existing, "comment", ""),
       variablesXml = childOuter(existing, "variables", ""),
@@ -221,7 +222,7 @@ object SnapCustomBlockMerge {
   }
 
   /** Block declared in Python only: single label word, numeric slots. */
-  private def freshPlan(pythonName: String, parameters: List[String], category: String): CustomBlockPlan = {
+  private def freshPlan(pythonName: String, parameters: List[String], category: BlockCategory): CustomBlockPlan = {
     val slotNames = SnapTurtleCatalog.uniqueSlotNames(parameters)
     val slotTypes = List.fill(slotNames.size)("%n")
     CustomBlockPlan(
@@ -229,7 +230,7 @@ object SnapCustomBlockMerge {
       spec = SnapTurtleCatalog.customBlockSemanticSpec(pythonName, parameters),
       slotNames = slotNames.toList,
       slotTypes = slotTypes,
-      blockType = "command",
+      blockType = BlockType.Command,
       category = category,
       extraAttributes = "",
       commentXml = "",

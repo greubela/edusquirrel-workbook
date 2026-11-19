@@ -3,6 +3,7 @@ package it.evadid.vm.conversion.turtlestitchexpression
 import it.evadid.vm.code.errors.ProgrammingConversionException
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.{BlockInputDefinition, BlockLike, BoolLiteral, ColorLiteral, Comment, Costume, CustomBlockCall, CustomBlockDefinition, Dispatch, InputValue, ListLiteral, Literal, NestedBlock, NestedScript, PrimitiveBlock, Project, Rgba, Scene, Script, Sound, Sprite, Stage, Variable}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.{BlockCategory, BlockType}
 
 
 /** Maps the lossless Snap document ([[SnapScalaModel]]) to the program model the expression reader uses.
@@ -208,8 +209,8 @@ object TurtleStitchModelMapper {
   private def parseCustomBlockDefinition(node: Node): CustomBlockDefinition =
     CustomBlockDefinition(
       spec = attr(node, "s").getOrElse(""),
-      blockType = attr(node, "type").getOrElse("command"),
-      category = attr(node, "category").getOrElse("other"),
+      blockType = attr(node, "type").flatMap(BlockType.fromXml).getOrElse(BlockType.Command),
+      category = attr(node, "category").map(BlockCategory.fromXml).getOrElse(BlockCategory.Other),
       selector = attr(node, "selector"),
       primitive = attr(node, "primitive"),
       helper = attr(node, "helper"),
