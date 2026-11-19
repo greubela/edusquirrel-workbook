@@ -16,6 +16,10 @@ sealed trait BeCallTarget derives ReadWriter {
 object BeCallTarget {
   case class Function(definition: BeDefineFunction) extends BeCallTarget derives ReadWriter {
     require(definition.functionTypeInfo.isMethodInClass.isEmpty, "A free-function call cannot target a class member.")
+    require(definition.functionTypeInfo.funcType match {
+      case BeDefineFunction.Function() | BeDefineFunction.Lambda() | BeDefineFunction.Operator(_) => true
+      case _ => false
+    }, "A free-function call requires a function, lambda or operator declaration.")
   }
   case class InstanceMethod(instance: BeExpression, definition: BeDefineFunction) extends BeCallTarget derives ReadWriter {
     require(definition.functionTypeInfo.funcType == BeDefineFunction.Method(), "An instance call requires an instance-method declaration.")

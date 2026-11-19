@@ -65,6 +65,7 @@ object BeDataType {
     def canTakeValuesFrom(other: BeDataType): BeDataTypeAssigningPossible = other match {
       case AnyType => AssigningPossibleWithImplicitCast(this)
       case value if value == this => AssigningPossibleWithSameType(this)
+      case BeUnionAllowedTypes(types) if types.contains(this) => AssigningPossibleWithImplicitCast(this)
       case _ => AssigningNotPossible()
     }
   }
@@ -137,9 +138,13 @@ object BeDataType {
   def typeIntersection(typeA: BeUnionType, typeB: BeUnionType): Option[BeDataType] = {
     if (typeA == AnyType) Some(typeB)
     else if (typeB == AnyType) Some(typeA)
-    else if (typeA.isInstanceOf[BeUnionAllowedTypes] && typeB.isInstanceOf[BeUnionAllowedTypes]) {
-      allowedTypesIntersection(typeA.asInstanceOf[BeUnionAllowedTypes], typeB.asInstanceOf[BeUnionAllowedTypes])
-    } else if (typeA == typeB) Some(typeA) else None
+    else {
+      def members(value: BeUnionType): BeUnionAllowedTypes = value match {
+        case union: BeUnionAllowedTypes => union
+        case single => BeUnionAllowedTypes(Set(single))
+      }
+      allowedTypesIntersection(members(typeA), members(typeB))
+    }
   }
 
   /*trait ClassDataType extends BeDataType {

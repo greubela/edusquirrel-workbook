@@ -80,6 +80,9 @@ class BeObjectExpressionsSpec extends FunSuite {
     assertEquals(kind.canTakeValuesFrom(BeDataType.Int), AssigningNotPossible())
     assertEquals(BeDataType.Int.canTakeValuesFrom(kind), AssigningNotPossible())
     assert(!kind.isValidLiteral("Counter()"))
+    val alternatives = BeDataType.BeUnionAllowedTypes(Set(kind, BeDataType.Int))
+    assertEquals(BeDataType.typeIntersection(kind, alternatives), Some(kind))
+    assertEquals(kind.canTakeValuesFrom(alternatives), AssigningPossibleWithImplicitCast(kind))
     assert(BeAssignMember(self, field, ref(instance)).staticInformationExpression.syntaxErrors.nonEmpty)
   }
 
