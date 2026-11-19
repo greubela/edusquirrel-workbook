@@ -4,8 +4,8 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLan
 
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleCommandRunner
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleSource, JavaTurtleVmPrograms}
-import it.evadid.vm.simulation.java.{JavaTurtleEvaluation, JavaTurtleRuntime}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSourceParser, JavaTurtleProgram}
+import it.evadid.vm.simulation.java.{JavaTurtleEvaluation, JavaTurtleInterpreter}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 
 import java.util.concurrent.CancellationException
@@ -37,10 +37,10 @@ final class JavaEditorSession(
       invalidate(State.Idle)
     }
 
-  def run(limits: JavaTurtleRuntime.Limits = JavaTurtleRuntime.Limits()): Future[JavaTurtleRuntime.Execution] =
+  def run(limits: JavaTurtleInterpreter.Limits = JavaTurtleInterpreter.Limits()): Future[JavaTurtleInterpreter.Execution] =
     execute((program, owned) => owned.run(program, limits), State.Finished.apply)
 
-  private def execute[A](operation: (JavaTurtleVmPrograms.Program, Runner) => Future[A], finished: A => State): Future[A] =
+  private def execute[A](operation: (JavaTurtleProgram, Runner) => Future[A], finished: A => State): Future[A] =
     if changingState then Future.failed(IllegalStateException("Java execution is changing state."))
     else if active.nonEmpty then Future.failed(IllegalStateException("Java execution is already running."))
     else Try(compile(currentSource.code)) match {
@@ -123,40 +123,40 @@ final class JavaEditorSession(
 object JavaEditorSession {
   enum State {
     case Idle, Running, Stopped
-    case Invalid(diagnostic: JavaTurtleSource.Diagnostic)
-    case Finished(execution: JavaTurtleRuntime.Execution)
+    case Invalid(diagnostic: JavaTurtleSourceParser.Diagnostic)
+    case Finished(execution: JavaTurtleInterpreter.Execution)
     case Failed(error: Throwable)
   }
 
-  final case class ValidationFailure(diagnostic: JavaTurtleSource.Diagnostic)
+  final case class ValidationFailure(diagnostic: JavaTurtleSourceParser.Diagnostic)
       extends IllegalArgumentException(diagnostic.message)
 
   trait Runner {
-    def run(program: JavaTurtleVmPrograms.Program, limits: JavaTurtleRuntime.Limits): Future[JavaTurtleRuntime.Execution]
+    def run(program: JavaTurtleProgram, limits: JavaTurtleInterpreter.Limits): Future[JavaTurtleInterpreter.Execution]
     def cancel(): Boolean
     def close(): Unit
   }
 
   def defaultRunner(): Runner = new Runner {
     private val underlying = new JavaTurtleCommandRunner()
-    override def run(program: JavaTurtleVmPrograms.Program, limits: JavaTurtleRuntime.Limits): Future[JavaTurtleRuntime.Execution] =
+    override def run(program: JavaTurtleProgram, limits: JavaTurtleInterpreter.Limits): Future[JavaTurtleInterpreter.Execution] =
       underlying.run(program, limits)
     override def cancel(): Boolean = underlying.cancel()
     override def close(): Unit = underlying.close()
   }
 
-  def compile(source: String): Either[JavaTurtleSource.Diagnostic, JavaTurtleVmPrograms.Program] =
-    ProgrammingStateRaw(Java, source).toJavaVmProgram
+  def compile(source: String): Either[JavaTurtleSourceParser.Diagnostic, JavaTurtleProgram] =
+    ProgrammingStateRaw(Java, source).compileForExecution
 
-  private[code] def requireCompleted(execution: JavaTurtleRuntime.Execution): Unit = execution.status match {
-    case JavaTurtleRuntime.Status.Completed => ()
-    case JavaTurtleRuntime.Status.Cancelled => throw CancellationException("Java execution cancelled.")
-    case JavaTurtleRuntime.Status.LimitExceeded =>
+  private[code] def requireCompleted(execution: JavaTurtleInterpreter.Execution): Unit = execution.status match {
+    case JavaTurtleInterpreter.Status.Completed => ()
+    case JavaTurtleInterpreter.Status.Cancelled => throw CancellationException("Java execution cancelled.")
+    case JavaTurtleInterpreter.Status.LimitExceeded =>
       throw IllegalStateException("Your program reached its execution limit. Check its loops or recursion.")
-    case JavaTurtleRuntime.Status.Failed(JavaTurtleRuntime.Failure.Evaluation(JavaTurtleEvaluation.Failure.DivisionByZero)) =>
+    case JavaTurtleInterpreter.Status.Failed(JavaTurtleInterpreter.Failure.Evaluation(JavaTurtleEvaluation.Failure.DivisionByZero)) =>
       throw IllegalStateException("Your program tried to divide by zero.")
-    case JavaTurtleRuntime.Status.Failed(JavaTurtleRuntime.Failure.NonFiniteCommand) =>
+    case JavaTurtleInterpreter.Status.Failed(JavaTurtleInterpreter.Failure.NonFiniteCommand) =>
       throw IllegalStateException("Your drawing needs finite distances and angles. Check the numeric calculations.")
-    case JavaTurtleRuntime.Status.Failed(_) => throw IllegalStateException("Your Java program could not finish.")
+    case JavaTurtleInterpreter.Status.Failed(_) => throw IllegalStateException("Your Java program could not finish.")
   }
 }

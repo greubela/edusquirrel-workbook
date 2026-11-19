@@ -1,19 +1,19 @@
-package it.evadid.vm.conversion.javaexpression.checked
+package it.evadid.vm.compilation.java.turtle
 
 import it.evadid.vm.code.defining.BeDefineVariable
 import it.evadid.vm.code.usage.BeUseValue
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution as R
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleSource.{Diagnostic, Problem}
+import it.evadid.vm.compilation.java.turtle.JavaTurtleSymbolResolver as R
+import it.evadid.vm.compilation.java.turtle.JavaTurtleSourceParser.{Diagnostic, Problem}
 import it.evadid.vm.types.{BeDataType, BeUseValueReference}
 
-object JavaTurtleVmBindings {
+object JavaTurtleExecutionBindings {
   case class VariableBinding(variable: R.Variable, definition: Option[BeDefineVariable])
   case class MethodBinding(id: R.MethodId, originalName: String, name: BeEntityName,
       parameters: Vector[VariableBinding])
 
   // IDs and generated names belong to this source, not to a persisted Workbook element.
-  final class Bindings private[JavaTurtleVmBindings](val source: R.ResolvedSource,
+  final class Bindings private[JavaTurtleExecutionBindings](val source: R.ResolvedSource,
       val methods: Vector[MethodBinding], val variables: Vector[VariableBinding]) {
     private val methodById = methods.map(method => method.id -> method).toMap
     private val variableById = variables.map(binding => binding.variable.id -> binding).toMap

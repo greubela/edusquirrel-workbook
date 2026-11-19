@@ -4,7 +4,7 @@ import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.vm.conversion.snapxml.SnapXmlParser
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
-import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence, JavaTurtleRuntime, JavaTurtleTrace}
+import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence, JavaTurtleInterpreter, JavaTurtleTrace}
 import upickle.default.*
 
 /** DOM-independent jobs supported by the workbook worker. */
@@ -18,13 +18,13 @@ object WorkerCommands {
   case class CalculateQrCodeResult(code: QrCode, modules: Vector[Vector[Boolean]]) derives ReadWriter
   case class RunPythonRequest(code: String, context: Map[String, ujson.Value] = Map.empty,
       callbacks: Map[String, Seq[String]] = Map.empty, packages: Seq[String] = Nil,
-      resetGlobals: Boolean = true, captureStdout: Boolean = true, captureStderr: Boolean = true) derives ReadWriter
+      resetGlobals: Boolean = true, captureStdout: Boolean = true, captureStderr: Boolean = true, logTurtleCalls: Boolean = false) derives ReadWriter
   case class PythonCallback(module: String, method: String, args: Seq[ujson.Value]) derives ReadWriter
   case class RunPythonResult(value: ujson.Value, stdout: String, stderr: String,
       callbackOps: Seq[PythonCallback]) derives ReadWriter
   case class JavaExecutionEvidenceRequest(source: String, method: Option[String] = None,
       arguments: Vector[JavaTurtleExecutionEvidence.Scalar] = Vector.empty,
-      limits: JavaTurtleRuntime.Limits = JavaTurtleRuntime.Limits(),
+      limits: JavaTurtleInterpreter.Limits = JavaTurtleInterpreter.Limits(),
       budget: JavaTurtleTrace.Budget = JavaTurtleTrace.Budget())
 
   object JavaExecutionEvidenceRequest {

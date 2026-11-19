@@ -10,6 +10,12 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapGeneratedImages
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
+import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.command.ExecutionCommand
+import it.evadid.distribution.commandTypes.WorkerCommands
+import it.evadid.distribution.commandTypes.WorkerCommands.RunPythonResult
+import it.evadid.util.logging.BasicLogger
+import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.conversion.structured.{SourceStructure, StructuredProgramConversions}
@@ -94,9 +100,9 @@ final case class ProgrammingStateRaw(language: ProgrammingLanguage, code: String
     require(language == Java, "Class-program validation requires Java source.")
     derivations.isJavaClass
   }
-  def toJavaVmProgram = {
+  def compileForExecution = {
     require(language == Java, "The checked Java runner requires Java source.")
-    derivations.checkedJava
+    derivations.javaExecutionProgram
   }
   def toLegacyTurtleCommands: List[it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand[Double]] = {
     require(!isClassProgram, "Full Java classes require the checked Java runner.")
@@ -144,6 +150,28 @@ object ProgrammingStateJavaStructured {
 
 /** Classes precede module-level variables, functions and startup code when printed. */
 final case class ProgrammingStatePythonStructured(definedClasses: Map[BeEntityName, String], mainScript: String) extends ProgrammingState derives ReadWriter {
+  /** Execute this source on the supplied worker client, preserving stdout/stderr on the console.
+    * Turtle operations print their calls; they do not create a drawing window.
+    */
+  def startExecution()(using client: ExecutionClient, ec: ExecutionContext): Future[RunPythonResult] = {
+    val request = WorkerCommands.RunPythonRequest(toString, logTurtleCalls = true)
+    val command = ExecutionCommand(WorkerCommands.runPython.name, upickle.default.writeJs(request))
+    val logger = BasicLogger()
+    client.executeResponse(logger, command).map { response =>
+      response.result match {
+        case Right(encoded) =>
+          val result = encoded.getAs[RunPythonResult]
+          print(result.stdout)
+          Console.err.print(result.stderr)
+          result
+        case Left(error) =>
+          print(response.additionalOutput.loggerOut)
+          Console.err.print(response.additionalOutput.loggerError)
+          throw error
+      }
+    }
+  }
+
   override def toString: String = (definedClasses.values.toList :+ mainScript).filter(_.nonEmpty).mkString("\n\n")
 }
 object ProgrammingStatePythonStructured {

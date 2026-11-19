@@ -66,7 +66,7 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     case _ => SnapScalaXmlCodec.parse(snap.code).map(ProgrammingStateSnapScalaModel(_))
   }
   lazy val isJavaClass: Boolean = javaFrontend.isClassProgram
-  lazy val checkedJava = javaFrontend.toJavaVmProgram
+  lazy val javaExecutionProgram = javaFrontend.compileForExecution
 
   def convertToLanguage(language: ProgrammingLanguage): ConversionResult = {
     try {

@@ -10,8 +10,8 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
-import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleProgram as P}
+import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleInterpreter as T}
 import java.util.concurrent.CancellationException
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -90,13 +90,13 @@ class TurtleProgramExecutionSpec extends FunSuite {
     ), 10)
 
   private class ControlledRunner extends JavaEditorSession.Runner {
-    case class Request(program: P.Program, limits: T.Limits, result: Promise[T.Execution])
+    case class Request(program: P, limits: T.Limits, result: Promise[T.Execution])
     var requests = Vector.empty[Request]
     var cancelCalls = 0
     var closeCalls = 0
     var onRun: () => Unit = () => ()
 
-    override def run(program: P.Program, limits: T.Limits): Future[T.Execution] = {
+    override def run(program: P, limits: T.Limits): Future[T.Execution] = {
       val result = Promise[T.Execution]()
       requests :+= Request(program, limits, result)
       onRun()

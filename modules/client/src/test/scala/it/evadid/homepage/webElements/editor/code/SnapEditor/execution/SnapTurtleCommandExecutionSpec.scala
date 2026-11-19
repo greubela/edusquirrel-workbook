@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
+import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
+
 import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
 import it.evadid.vm.conversion.pythonexpression.PythonToExpression
@@ -9,8 +11,8 @@ import it.evadid.facades
 import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPythonRequest, RunPythonResult}
 import it.evadid.vm.BeProgram
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure, JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
-import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSemanticValidator, JavaTurtleSourceParser, JavaTurtleStructureValidator, JavaTurtleSymbolResolver as R, JavaTurtleProgram as P}
+import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleInterpreter as T}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import munit.FunSuite
 
@@ -22,7 +24,7 @@ import scala.scalajs.js.timers.setTimeout
 
 class SnapTurtleCommandExecutionSpec extends FunSuite:
 
-  private lazy val javaFixture: P.Program =
+  private lazy val javaFixture: P =
     val source =
       """class Drawing {
         |  static void draw(int size, boolean turn) {
@@ -32,14 +34,14 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
         |  public static void main(String[] args) { draw(40, true); }
         |}""".stripMargin
     (for
-      parsed <- JavaTurtleSource.parse(source)
-      structure <- JavaTurtleStructure.check(parsed)
-      checked <- JavaTurtleSemantics.check(structure)
+      parsed <- JavaTurtleSourceParser.parse(source)
+      structure <- JavaTurtleStructureValidator.check(parsed)
+      checked <- JavaTurtleSemanticValidator.check(structure)
       resolved <- R.resolve(checked)
-      program <- P.adapt(resolved)
+      program <- JavaTurtleCompiler.compileResolved(resolved)
     yield program).fold(problem => fail(problem.message), identity)
 
-  private lazy val javaDoubleFixture: P.Program = P.compile(
+  private lazy val javaDoubleFixture: P = JavaTurtleCompiler.compile(
     """class Drawing {
       |  static void draw(double size, int depth) {
       |    Turtle.forward(size);

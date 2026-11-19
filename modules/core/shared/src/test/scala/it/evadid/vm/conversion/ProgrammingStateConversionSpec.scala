@@ -1,5 +1,7 @@
 package it.evadid.vm.conversion
 
+import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.javaexpression.JavaToBeExpressionParser
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
@@ -10,9 +12,9 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleSource, JavaTurtleVmPrograms as P}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleSourceParser, JavaTurtleProgram as P}
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
-import it.evadid.vm.simulation.java.JavaTurtleRuntime as T
+import it.evadid.vm.simulation.java.JavaTurtleInterpreter as T
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import munit.FunSuite
@@ -369,7 +371,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("full Java classes compile through the state boundary and execute a parameterized square") {
     val state = ProgrammingStateRaw(Java, squareJava())
-    val compiled = state.toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
+    val compiled = state.compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
     val execution = T.runVm(compiled)
 
     assertEquals(execution.status, T.Status.Completed)
@@ -377,7 +379,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(execution.commands.size, 8)
     assertEquals(compiled.root.entryPoint.binding.originalName, "main")
     assertEquals(compiled.root.methods.map(_.binding.originalName), Vector("square", "main"))
-    assertEquals(P.compile(state.code).map(program => T.runVm(program)), Right(execution))
+    assertEquals(JavaTurtleCompiler.compile(state.code).map(program => T.runVm(program)), Right(execution))
     assertEquals(state.toJava, state)
     assertEquals(state.code, squareJava())
   }
@@ -390,7 +392,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
       squareJava(turn = 45) -> false
     )
     variants.foreach { (source, correct) =>
-      val program = ProgrammingStateRaw(Java, source).toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
+      val program = ProgrammingStateRaw(Java, source).compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
       val execution = T.runVm(program)
       assertEquals(execution.status, T.Status.Completed)
       assertEquals(execution.commands.size, 8)
@@ -400,22 +402,22 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("failed full Java compilation keeps the raw source representation and diagnostics") {
     val cases = List(
-      "\tpublic class Main {\r\n\tpublic static void main(String[] args) {\r\n\t\tTurtle.forward(10);\r\n" -> JavaTurtleSource.Problem.UnsupportedSyntax,
-      "public class Main {\r\n\tint side = 25;\r\n\tpublic static void main(String[] args) { Turtle.forward(side); }\r\n}\r\n" -> JavaTurtleSource.Problem.UnsupportedStructure,
-      "public class Main {\r\n\tpublic static void main(String[] args) { float side = 25; }\r\n}\r\n" -> JavaTurtleSource.Problem.UnsupportedType,
-      "public class Main {\r\n\tpublic static void main(String[] args) { missing(); }\r\n}\r\n" -> JavaTurtleSource.Problem.UnknownMethod
+      "\tpublic class Main {\r\n\tpublic static void main(String[] args) {\r\n\t\tTurtle.forward(10);\r\n" -> JavaTurtleSourceParser.Problem.UnsupportedSyntax,
+      "public class Main {\r\n\tint side = 25;\r\n\tpublic static void main(String[] args) { Turtle.forward(side); }\r\n}\r\n" -> JavaTurtleSourceParser.Problem.UnsupportedStructure,
+      "public class Main {\r\n\tpublic static void main(String[] args) { float side = 25; }\r\n}\r\n" -> JavaTurtleSourceParser.Problem.UnsupportedType,
+      "public class Main {\r\n\tpublic static void main(String[] args) { missing(); }\r\n}\r\n" -> JavaTurtleSourceParser.Problem.UnknownMethod
     )
     cases.foreach { (source, expectedProblem) =>
       val state = ProgrammingStateRaw(Java, source)
       val serialized = ProgrammingState.serializer.serialize(state)
       val fingerprint = state.fingerprint()
-      state.toJavaVmProgram match {
+      state.compileForExecution match {
         case Left(diagnostic) =>
           assertEquals(diagnostic.problem, expectedProblem, clue = source)
           assert(diagnostic.message.nonEmpty)
         case Right(_) => fail(s"Unsupported Java source compiled: $source")
       }
-      assertEquals(P.compile(source).left.map(_.problem), Left(expectedProblem))
+      assertEquals(JavaTurtleCompiler.compile(source).left.map(_.problem), Left(expectedProblem))
       assertEquals(state.toJava.code, source)
       assertEquals(ProgrammingState.serializer.serialize(state), serialized)
       assertEquals(state.fingerprint(), fingerprint)
@@ -434,7 +436,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(restored.toJava.code, source)
     assertEquals(restored.fingerprint(), s"java:$source")
     assertEquals(ProgrammingState.serializer.serialize(restored), stored)
-    val program = restored.toJava.toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
+    val program = restored.toJava.compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
     assertEquals(T.runVm(program).commands, squareCommands(25))
     assertEquals(original.code, source)
   }
@@ -442,7 +444,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("typed full Java programs reject generic simulation without changing their source") {
     val state = ProgrammingStateRaw(Java, squareJava())
     val fingerprint = state.fingerprint()
-    val program = state.toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
+    val program = state.compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
 
     assertEquals(T.runVm(program).status, T.Status.Completed)
     assertEquals(state.code, squareJava())
@@ -533,14 +535,14 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("full Java state programs enforce execution limits on endless loops") {
     val source = "class Main { public static void main(String[] args) { while (true) {} } }"
-    val program = ProgrammingStateRaw(Java, source).toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
+    val program = ProgrammingStateRaw(Java, source).compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
     assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
   }
 
   test("full Java state execution retains int32 overflow and negative integer division") {
     val source = "class Main { public static void main(String[] args) { " +
       "Turtle.forward(2147483647 + 1); Turtle.forward(-9 / 2); Turtle.forward(-9 % 2); } }"
-    val program = ProgrammingStateRaw(Java, source).toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
+    val program = ProgrammingStateRaw(Java, source).compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
     val execution = T.runVm(program)
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(Int.MinValue, -4, -1).map(value => T.Command(R.TurtleCommand.Forward, value)))
@@ -550,7 +552,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val exercise = ProgrammingExerciseFullJava("kept-java-exercise")
     val source = exercise.defaultValue.toJava
     val stored = exercise.interactionFormat.stateSerializer.serialize(source)
-    val program = source.toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
+    val program = source.compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
     val result = T.runVm(program)
     assertEquals(result.status, T.Status.Completed)
     assertEquals(result.commands, Vector.empty[T.Command])
@@ -564,7 +566,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val snap = ProgrammingStateRaw(SnapLanguage, xml)
     val fingerprint = snap.fingerprint()
     val stored = ProgrammingState.serializer.serialize(snap)
-    val program = ProgrammingStateRaw(Java, squareJava()).toJavaVmProgram.fold(diagnostic => fail(diagnostic.toString), identity)
+    val program = ProgrammingStateRaw(Java, squareJava()).compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
 
     assertEquals(T.runVm(program).commands, squareCommands(25))
     assertEquals(snap.toBeExpression.turtleCommandExecutionInfo.completedCommands.flatMap(_.args), List(12.0))

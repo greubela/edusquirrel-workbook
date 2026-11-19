@@ -3,7 +3,7 @@ package it.evadid.workbook.abstractions.grading
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution.If
+import it.evadid.vm.compilation.java.turtle.JavaTurtleSymbolResolver.If
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.abstractions.grading.GradingStatus.*
 import upickle.default.*

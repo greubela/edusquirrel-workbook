@@ -7,7 +7,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleExecutionProvider
 import it.evadid.homepage.webElements.editor.code.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{CompareShapePreview, HtmlTurtleRecreateShapeRenderer}
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
+import it.evadid.vm.compilation.java.turtle.JavaTurtleProgram
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 

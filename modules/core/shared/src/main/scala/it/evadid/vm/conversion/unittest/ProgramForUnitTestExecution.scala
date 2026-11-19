@@ -15,7 +15,7 @@ import it.evadid.vm.conversion.snapexpression.SnapStateConversion
 
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
+import it.evadid.vm.compilation.java.turtle.JavaTurtleProgram
 import scala.util.control.NonFatal
 
 private[evadid] final case class UnitTestConversionError(message: String)
@@ -34,7 +34,7 @@ private[evadid] object ProgramForUnitTestExecution {
       case value: ProgrammingStateJavaStructured => convertedFromState(value.toJava)
       case value: ProgrammingStatePythonStructured => Right(ProgramForUnitTestExecution(value.toString))
       case value @ ProgrammingStateRaw(Java, _) =>
-        value.toJavaVmProgram.left.map(_.message).map { program =>
+        value.compileForExecution.left.map(_.message).map { program =>
           val exported = JavaTurtlePythonExport.render(program)
           ProgramForUnitTestExecution(exported.source, Some(CommandEntryPoint(JavaTurtlePythonExport.EntryPoint,
             exported.methods.view.mapValues(_.index).toMap)))

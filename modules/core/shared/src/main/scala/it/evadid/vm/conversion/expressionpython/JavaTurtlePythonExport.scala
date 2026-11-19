@@ -1,8 +1,8 @@
 package it.evadid.vm.conversion.expressionpython
 
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleExpressionCompiler as X, JavaTurtleProgram as P}
 import it.evadid.vm.simulation.java.JavaTurtleEvaluation as E
-import it.evadid.vm.simulation.java.JavaTurtleRuntime.Limits
+import it.evadid.vm.simulation.java.JavaTurtleInterpreter.Limits
 import it.evadid.vm.simulation.java.JavaTurtleTrace.SourceNode
 
 object JavaTurtlePythonExport {
@@ -22,9 +22,9 @@ object JavaTurtlePythonExport {
     }
 
   // Keep Java arithmetic and execution limits out of the existing Python/Snap printers.
-  def render(program: P.Program): Export = render(program, None)
+  def render(program: P): Export = render(program, None)
 
-  def renderObserved(program: P.Program, maxObservations: Int = 4096): ObservedExport = {
+  def renderObserved(program: P, maxObservations: Int = 4096): ObservedExport = {
     require(maxObservations >= 0 && maxObservations <= 10000, "Invalid observation budget.")
     val result = render(program, Some(maxObservations))
     ObservedExport(result.source, result.methods)
@@ -51,7 +51,7 @@ __import__("json").dumps(_java_result, allow_nan=False)
 """
   }
 
-  private def render(program: P.Program, maxObservations: Option[Int]): Export = {
+  private def render(program: P, maxObservations: Option[Int]): Export = {
     val writer = new Writer(maxObservations)
     writer.runtime()
     program.root.methods.foreach(writer.method)
