@@ -14,6 +14,7 @@ import it.evadid.workbook.meta.ExecutionContextInformation
 
 import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext
+import scala.util.Try
 
 object InteractionVariable {
 
@@ -103,26 +104,21 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
     createBoundStateWithUpdateLogic(_ => importance, context)
   }
 
-  def addSerializedHistory(logger: Logger, serializedHistory: String, executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
-    val deserialized = try {
-      // Use the format's serializer directly since we know the type F
-      InteractionHistoryJson.deserialize(serializedHistory).typedAs(underlyingInteraction.interactionFormat)
-    } catch case (err: Throwable) => {
-      logger.logExceptionWarn("Ignoring serialized history as it was not parsable!", err)
-      InteractionVariableHistory.empty[F]
-    }
-    updateHistory(_.mergeWith(deserialized), executionContextInformation)
-  }
+  /** Storage boundary for a stored record: it is merged unless it cannot be read as this element's format or
+    * holds an answer the element rejects. Such a record is reported and discarded; the current history stays.
+    */
+  def restoreHistory(logger: Logger, received: InteractionHistoryJson, context: ExecutionContextInformation): Unit =
+    Try(received.typedAs(underlyingInteraction.interactionFormat)).fold(
+      error => logger.logExceptionWarn(s"Discarded the unreadable stored history of $keyForSerialization", error),
+      history => restoreHistory(logger, history, context))
 
-  /** Add history from an InteractionHistoryJson, using the format's serializer. */
-  def addSerializedHistoryFromInteractionHistoryJson(logger: Logger, historyJson: InteractionHistoryJson, executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {
-    val deserialized = try {
-      historyJson.typedAs(underlyingInteraction.interactionFormat)
-    } catch case (err: Throwable) => {
-      logger.logExceptionWarn("Ignoring serialized history from InteractionHistoryJson as it was not parsable!", err)
-      InteractionVariableHistory.empty[F]
-    }
-    updateHistory(_.mergeWith(deserialized), executionContextInformation)
+  def restoreHistory(logger: Logger, received: InteractionVariableHistory[F], context: ExecutionContextInformation): Unit = this.synchronized {
+    Try(received.events.values.foreach(event => underlyingInteraction.validateState(event.associatedState))).fold(
+      error => logger.logExceptionWarn(s"Discarded the stored history of $keyForSerialization: the exercise rejects one of its answers", error),
+      _ => {
+        val merged = currentHistory.mergeWith(received).normalize()
+        if merged != currentHistory then updateHistory(_ => merged, context)
+      })
   }
 
   def updateHistory(func: InteractionVariableHistory[F] => InteractionVariableHistory[F], executionContextInformation: ExecutionContextInformation): Unit = this.synchronized {

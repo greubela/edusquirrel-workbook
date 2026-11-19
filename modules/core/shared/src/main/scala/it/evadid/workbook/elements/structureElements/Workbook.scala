@@ -42,7 +42,7 @@ case class Workbook(
       data.keys.foreach(curSyncContext => {
         if (curInteraction.interactionVariable.keyForSerialization == curSyncContext.keyForSerialisation) {
           val historyJson = data(curSyncContext)
-          curInteraction.interactionVariable.addSerializedHistoryFromInteractionHistoryJson(logger, historyJson, executionContextInformation)
+          curInteraction.interactionVariable.restoreHistory(logger, historyJson, executionContextInformation)
         }
       })
     })
