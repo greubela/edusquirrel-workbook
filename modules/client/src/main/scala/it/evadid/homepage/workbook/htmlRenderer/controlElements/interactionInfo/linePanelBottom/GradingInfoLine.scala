@@ -2,14 +2,15 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionFeedbackView
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.{InteractionFeedbackView, InteractionHintPanel}
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingRequestedButNotFinished
-import it.evadid.workbook.meta.InteractionVariableGradingReporter
+import it.evadid.homepage.control.info.interaction.GradingReporter
 
-case class GradingInfoLine[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], gradingReporter: InteractionVariableGradingReporter[F]) extends HtmlAppElement {
+case class GradingInfoLine[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], gradingReporter: GradingReporter) extends HtmlAppElement {
   override def getDomElement(): Element =
-    GradingInfoLine.render(new InteractionFeedbackView(interaction, gradingReporter, fullInfo, laminarHelper))
+    div(cls := "grading-feedback-panel",
+      GradingInfoLine.render(new InteractionFeedbackView(interaction, gradingReporter, fullInfo, laminarHelper)),
+      InteractionHintPanel(gradingReporter).getDomElement())
 }
 
 object GradingInfoLine {
@@ -33,7 +34,7 @@ object GradingInfoLine {
           aria.label <-- view.label("scaffoldingRequest"), title <-- view.label("scaffoldingRequest"),
           createScaffoldingNothing(), span(cls := "feedback-button-label", child.text <-- view.label("scaffoldingRequest")),
           disabled <-- view.scaffolding.combineWith(view.disabled).map((result, disabled) =>
-            disabled || result.exists(_.scaffoldingStatus.isInstanceOf[ScaffoldingRequestedButNotFinished])),
+            disabled || result.status == it.evadid.workbook.meta.ScaffoldingReport.Status.Pending),
           dataAttr("tooltip") <-- view.scaffolding.flatMapSwitch(view.scaffoldingText),
           onClick --> (_ => view.requestScaffolding())))
       ),
@@ -53,12 +54,12 @@ object GradingInfoLine {
           )),
           Option.when(canHint)(td(title <-- hintText, aria.label <-- hintText,
             span(cls := "feedback-hint-status", child.text <-- view.scaffolding.map { result =>
-              import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus
-              result.map(_.scaffoldingStatus) match {
-                case None => "—"
-                case Some(_: ScaffoldingStatus.ScaffoldingRequestedButNotFinished) => "…"
-                case Some(status) if status.isError => "!"
-                case _ => "✓"
+              import it.evadid.workbook.meta.ScaffoldingReport.Status
+              result.status match {
+                case Status.NotRequested => "—"
+                case Status.Pending => "…"
+                case Status.Error => "!"
+                case Status.Ready => "✓"
               }
             })))
         ))

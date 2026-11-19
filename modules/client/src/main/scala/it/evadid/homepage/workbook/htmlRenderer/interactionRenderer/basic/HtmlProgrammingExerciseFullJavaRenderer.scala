@@ -19,7 +19,7 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleDrawingPolicy
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
-import it.evadid.workbook.meta.InteractionVariableGradingReporter
+import it.evadid.homepage.control.info.interaction.GradingReporter
 
 case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFactory[ProgrammingExerciseFullJava] {
   private[homepage] def editorState(element: ProgrammingExerciseFullJava, syncControl: SyncControl): Var[ProgrammingState] =
@@ -28,7 +28,7 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
   private[homepage] def createNewEditor(
                                          element: ProgrammingExerciseFullJava,
                                          boundVar: Var[ProgrammingState],
-                                         gradingReporter: InteractionVariableGradingReporter[ProgrammingExerciseWithLlmScaffoldingAndGrading.type]
+                                         gradingReporter: GradingReporter
                                        ):
   EditorWithWorkbookPanel[ProgrammingExerciseWithLlmScaffoldingAndGrading.type, EvaEditorConfig] = {
 
@@ -47,7 +47,7 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
 
   override protected def createRendering(workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {
     val boundVar = editorState(workbookElement, fullInfo.syncControl)
-    val gradingReporter = InteractionVariableGradingReporter(workbookElement)
+    val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
 
     val openButton = HtmlButtonElement.withTextLabel(
       "basic/OpenEditor", _ => fullInfo.displayControl.setFullscreen(createNewEditor(workbookElement, boundVar, gradingReporter))

@@ -25,7 +25,6 @@ import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.meta.InteractionVariableGradingReporter
 import todomove.datastructures.web.file.FullImage
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -43,7 +42,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     val javaExecution = new JavaTurtleEditorExtension(boundVar)
     val execution = new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleProgramExecution(List(javaExecution))
 
-    val gradingReporter = InteractionVariableGradingReporter(workbookElement)
+    val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
 
     def editor = EvaEditor(
       fullInfo.loggerSystemInfo.uiAndDomLogger,

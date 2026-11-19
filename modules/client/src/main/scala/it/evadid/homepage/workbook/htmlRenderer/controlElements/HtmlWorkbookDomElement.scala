@@ -33,14 +33,16 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   // BODY
 
   private lazy val workbookBodyDomSignal: Signal[Element] = {
-    val workbookSignal = fullInfo.signals.workbook.distinct
+    val workbookSignal = fullInfo.signals.workbook.distinctByFn((previous, next) =>
+      previous == next && previous.zip(next).forall((a, b) => a.loadedWorkbook eq b.loadedWorkbook))
     val userSignal = fullInfo.signals.user.distinct
-    val watchSignal = workbookSignal.combineWith(userSignal)
+    // Construct the registry before any view asks for an interaction's reporters.
+    val watchSignal = workbookSignal.combineWith(userSignal, fullInfo.signals.interactionReporters)
 
     watchSignal.map {
-      case (None, _) => HtmlSelectWorkbookElement().getDomElement()
-      case (_, None) => HtmlLoginElement().getDomElement()
-      case (Some(workbookInfo), Some(userInfo)) => HtmlWorkbookBodyElement(workbookInfo, userInfo).getDomElement()
+      case (None, _, _) => HtmlSelectWorkbookElement().getDomElement()
+      case (_, None, _) => HtmlLoginElement().getDomElement()
+      case (Some(workbookInfo), Some(userInfo), _) => HtmlWorkbookBodyElement(workbookInfo, userInfo).getDomElement()
     }
   }
 

@@ -13,6 +13,7 @@ import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientResponseTimestamps
 import it.evadid.homepage.control.model.*
+import it.evadid.homepage.control.info.interaction.SyncReporter
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.sql.{DatabaseConfigWithCredentials, DatabaseHistoryFormat}
 import it.evadid.sql.DatabaseHistoryFormat.BlobFormat
@@ -286,10 +287,14 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     fixture.withHttp {
       fixture.info.syncControl.ensureSynced().flatMap { _ =>
         val report = fixture.info.syncControl.createReportFor(fixture.elements.head).observe(using unsafeWindowOwner)
+        val sharedReporter = fixture.info.signals.reportersFor(fixture.elements.head).sync
+        val summary = sharedReporter.report.observe(using unsafeWindowOwner)
         assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)
+        assertEquals(summary.now().confirmed, 2)
         fixture.failBlobReset.set(true)
         fixture.info.syncControl.resetAllData().failed.map { _ =>
           assertEquals(report.now().get.destinationsWithSufficientWrites.size, 0)
+          assertEquals(summary.now().confirmed, 0)
         }
       }
     }
@@ -542,18 +547,23 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
             fixture.elements.foreach(_.interactionVariable.setStateFromUserInteraction(replacementAnswer, UpdateImportance.MAJOR,
               context = ExecutionContextInformation.default))
             val report = fixture.info.syncControl.createReportFor(fixture.elements.head).observe(using owner)
+            val sharedReporter = fixture.info.signals.reportersFor(fixture.elements.head).sync
+            val summary = sharedReporter.report.observe(using owner)
             val replacement = fixture.info.syncControl.storeAll(true)
             newGate.arrived.flatMap { _ =>
               assert(!replacement.isCompleted)
               assertEquals(report.now().get.destinationsWithSufficientWrites.size, 0)
+              assertEquals(summary.now().confirmed, 0)
               oldGate.release()
               retired.flatMap { result =>
                 if retiredFails then assert(result.isFailure)
                 assert(!replacement.isCompleted)
                 assertEquals(report.now().get.destinationsWithSufficientWrites.size, 0)
+                assertEquals(summary.now().confirmed, 0)
                 newGate.release()
                 replacement.map { _ =>
                   assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)
+                  assertEquals(summary.now().confirmed, 2)
                   assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq.fill(2)(replacementAnswer))
                   val writes = fixture.authorization.now().collect { case (command, token) if command.name == bulkStoreToDbCommand.name =>
                     read[BulkStoreToDbRequest](command.json) -> token
@@ -616,6 +626,8 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         fixture.elements.foreach(_.interactionVariable.setStateFromUserInteraction("after destination change", UpdateImportance.MAJOR,
           context = ExecutionContextInformation.default))
         val report = fixture.info.syncControl.createReportFor(fixture.elements.head).observe(using owner)
+        val sharedReporter = fixture.info.signals.reportersFor(fixture.elements.head).sync
+        val summary = sharedReporter.report.observe(using owner)
         fixture.requests.set(Vector.empty)
         fixture.info.syncControl.ensureSynced().map { _ =>
           val reads = fixture.requests.now().filter(_.name == fetchEventsFromDbCommand.name)
@@ -628,7 +640,9 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           assertEquals(writes.size, 1)
           assertEquals(writes.head.databaseFormat, defaultDatabase.format)
           assertEquals(report.now().get.allSyncDestinations.size, 1)
+          assertEquals(summary.now().total, 1)
           assertEquals(report.now().get.destinationsWithSufficientWrites.size, 1)
+          assertEquals(summary.now().confirmed, 1)
         }
       }.andThen { case _ => owner.killSubscriptions() }
     }
@@ -640,11 +654,15 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     fixture.withHttp {
       fixture.info.syncControl.ensureSynced().flatMap { _ =>
         val report = fixture.info.syncControl.createReportFor(fixture.elements.head).observe(using owner)
+        val sharedReporter = fixture.info.signals.reportersFor(fixture.elements.head).sync
+        val summary = sharedReporter.report.observe(using owner)
         assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)
+        assertEquals(summary.now().confirmed, 2)
         fixture.requests.set(Vector.empty)
         fixture.info.usageControl.changeLanguage(AppLanguage.German)
         fixture.info.homepageInfoState.update(info => info.copy(displayInfo = info.displayInfo.copy(collapsedNavigation = true)))
         assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)
+        assertEquals(summary.now().confirmed, 2)
         fixture.info.syncControl.ensureSynced().map { _ =>
           val reads = fixture.requests.now().filter(_.name == fetchEventsFromDbCommand.name)
             .map(command => read[FetchEventsFromDbRequest](command.json))
