@@ -328,7 +328,8 @@ private object JavaAstToParsed {
       case (Seq("Math", "floor"), Seq(E.Binary("/", left, right))) => E.Binary("//", left, right)
       case (Seq("Math", "pow"), Seq(base, exponent)) => E.Binary("**", base, exponent)
       // Library helpers are printed as static methods of their dependency class.
-      case (Seq("Web", "fetchText"), _) => E.Call(Seq("fetch_text"), arguments)
+      case (qualified, _) if KnownDependencies.functionForJavaCall(qualified).nonEmpty =>
+        E.Call(Seq(KnownDependencies.functionForJavaCall(qualified).get), arguments)
       case (qualified, _) if JavaBuiltinSpelling.calls.contains(qualified) => E.Call(Seq(JavaBuiltinSpelling.calls(qualified)), arguments)
       case (Seq(name), _) if !scope.locals(name) && scope.owner.exists(_.methods.contains(name)) =>
         val owner = scope.owner.get

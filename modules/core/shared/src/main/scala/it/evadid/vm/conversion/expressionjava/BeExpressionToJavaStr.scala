@@ -132,17 +132,17 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     case _ => super.forControlStructure(structure)
   }
 
-  override protected def callName(call: BeFunctionCall): String =
-    if call.funcDef.intrinsic.contains(BeIntrinsic.Print) then {
+  override protected def callName(call: BeFunctionCall): String = call.funcDef.intrinsic match {
+    case Some(BeIntrinsic.Print) =>
       require(call.funcDef.inputs.size == 1, "Java printing currently supports one value per call.")
       "System.out.println"
-    } else if call.funcDef.intrinsic.contains(BeIntrinsic.FetchText) then "Web.fetchText"
-    else if TurtleCommand.isTurtleMethod(call.funcDef) then
-      "Turtle." + JavaTurtleLibrary.methodName(call.funcDef)
-    else if call.target.isInstanceOf[BeCallTarget.Function] && !insideMain &&
-        moduleFunctions(call.funcDef.functionTypeInfo.displayName.universalInterpretation()) then
+    case Some(BeIntrinsic.Turtle) => "Turtle." + JavaTurtleLibrary.methodName(call.funcDef)
+    case Some(intrinsic) if KnownDependencies.javaCall(intrinsic).nonEmpty => KnownDependencies.javaCall(intrinsic).get
+    case _ if call.target.isInstanceOf[BeCallTarget.Function] && !insideMain &&
+        moduleFunctions(call.funcDef.functionTypeInfo.displayName.universalInterpretation()) =>
       "Main." + entityName(call.funcDef.functionTypeInfo.displayName)
-    else super.callName(call)
+    case _ => super.callName(call)
+  }
 
   override protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
     function.functionTypeInfo.funcType match {

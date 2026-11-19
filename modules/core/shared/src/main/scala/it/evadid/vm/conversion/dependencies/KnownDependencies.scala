@@ -42,6 +42,16 @@ object KnownDependencies {
 
   private val byIntrinsic: Seq[(BeIntrinsic, BeDependency)] = Seq(BeIntrinsic.Turtle -> turtle, BeIntrinsic.FetchText -> fetchText)
 
+  /** Java calls a library function as a static method of the class its definition adds. */
+  private val javaFunctionCalls: Map[BeIntrinsic, Seq[String]] = Map(BeIntrinsic.FetchText -> Seq("Web", "fetchText"))
+
+  def javaCall(intrinsic: BeIntrinsic): Option[String] = javaFunctionCalls.get(intrinsic).map(_.mkString("."))
+
+  /** The shared function name a qualified Java call to a library function stands for. */
+  def functionForJavaCall(path: Seq[String]): Option[String] = javaFunctionCalls.collectFirst {
+    case (intrinsic, `path`) => byIntrinsic.collectFirst { case (`intrinsic`, dependency) => dependency.structureName.universalInterpretation() }.get
+  }
+
   val all: Seq[BeDependency] = byIntrinsic.map(_._2)
 
   /** The dependencies a program calls into, in registry order. */
