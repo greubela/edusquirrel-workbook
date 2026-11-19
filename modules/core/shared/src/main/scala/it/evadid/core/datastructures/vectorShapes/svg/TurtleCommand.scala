@@ -260,11 +260,11 @@ object TurtleCommand {
         inputs.map((name, dataType) => variable(name, dataType)),
         output.map(dataType => variable("result", dataType)))
     })
-    definition.copy(methods = definition.methods.map(method => method.copy(functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod()))))
+    definition.copy(methods = definition.methods.map(method => method.copy(functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod()), intrinsic = Some(it.evadid.vm.code.defining.BeIntrinsic.Turtle))))
   }
 
   def isTurtleMethod(definition: BeDefineFunction): Boolean =
-    definition.functionTypeInfo.isMethodInClass.exists(_.name == turtleClass.name)
+    definition.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Turtle)
 
   def resolveTurtleMethod(sourceName: String): Option[BeDefineFunction] =
     resolveCanonicalNames(sourceName).flatMap { name =>

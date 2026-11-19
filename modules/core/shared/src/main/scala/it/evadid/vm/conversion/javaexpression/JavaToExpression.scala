@@ -89,30 +89,47 @@ final class JavaToExpression(code: String) {
     parsedExpression(conversionSource)
   }
 
+  lazy val preparedSource = it.evadid.vm.conversion.structured.PreparedProgramSource(code, Java)
+
   /** A static entry-point class is a module plus startup, not a language-specific VM node. */
   private def conversionSource: String = {
     import it.evadid.vm.conversion.structured.SourceStructure.*
-    val source = JavaToBeExpressionParser.withoutEntityHints(code)
+    val source = JavaToBeExpressionParser.withoutEntityHints(preparedSource.code)
     val classes = javaClasses(source)
     val main = "\\bstatic\\s+void\\s+main\\s*\\(\\s*(?:String\\s*\\[\\]\\s+([A-Za-z_$][\\w$]*)\\s*)?\\)".r
     val entry = classes.find(block => javaMembers(block.source).exists(main.findFirstIn(_).nonEmpty))
+    def declarationNames(declarations: Seq[String]): Set[String] = declarations.flatMap { declaration =>
+      "^(?:(?:public|private|protected|static|final)\\s+)*[\\w$<>\\[\\]]+\\s+([\\w$]+)".r.findFirstMatchIn(declaration).map(_.group(1))
+    }.toSet
+    def unqualify(source: String, owner: String, names: Set[String]): String = {
+      val qualified = ("\\b" + Pattern.quote(owner) + "\\s*\\.\\s*([A-Za-z_$][\\w$]*)").r
+        .findAllMatchIn(mask(source, false)).filter(found => names(found.group(1))).toVector
+      remove(source, qualified.map(found => found.start -> found.start(1)))
+    }
     entry match {
+      case None if !classes.exists(_.name == "Main") =>
+        val loose = remove(source, classes.map(block => block.start -> block.end))
+        unqualify(source, "Main", declarationNames(javaMembers(s"class Main { $loose }")))
       case None => source
       case Some(block) =>
         val members = javaMembers(block.source)
         if members.exists(scope(_) == MemberScope.Static) && members.exists(scope(_) == MemberScope.Instance) then
           throw ProgrammingConversionException.unsupported("Mixed static and instance members are not supported by the shared expression tree.")
-        val module = members.map { member =>
-          main.findFirstMatchIn(member).foreach { entry =>
-            Option(entry.group(1)).foreach { name =>
-              val body = mask(member, true).drop(entry.end)
-              if ("\\b" + Pattern.quote(name) + "\\b").r.findFirstIn(body).nonEmpty then
-                throw ProgrammingConversionException.unsupported("Program arguments cannot be represented by the shared startup expression.")
-            }
+        val candidates = members.filter(main.findFirstIn(_).nonEmpty)
+        val entryMember = candidates.find(member => main.findFirstMatchIn(member).exists(_.group(1) != null)).getOrElse(candidates.head)
+        main.findFirstMatchIn(entryMember).foreach { entry =>
+          Option(entry.group(1)).foreach { name =>
+            val body = mask(entryMember, false).drop(entry.end)
+            if ("\\b" + Pattern.quote(name) + "\\b").r.findFirstIn(body).nonEmpty then
+              throw ProgrammingConversionException.unsupported("Program arguments cannot be represented by the shared startup expression.")
           }
-          main.replaceFirstIn(member, "static void main()")
-        }.mkString("\n")
-        remove(source, Seq(block.start -> block.end)) + "\n" + module + "\nmain();"
+        }
+        val cleanEntry = mask(entryMember, false)
+        val startup = entryMember.substring(cleanEntry.indexOf('{') + 1, cleanEntry.lastIndexOf('}'))
+        val declarations = members.filterNot(_ == entryMember)
+        // Calls to module members use Main's namespace in Java, and the module namespace in the tree.
+        val combined = remove(source, Seq(block.start -> block.end)) + "\n" + declarations.mkString("\n") + "\n" + startup
+        unqualify(combined, block.name, declarationNames(declarations))
     }
   }
 

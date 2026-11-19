@@ -42,3 +42,9 @@ Python and Java object binding, detached Snap export, structured editor conversi
 Further work should extend the supported type and runtime subsets together with semantic roundtrip tests. Structured and raw sources of a language must use the same execution backend.
 
 The shared model does not imply that every object-oriented source program can be parsed or executed. The checked Java drawing runner retains its narrower execution subset.
+
+Module variables become static fields of Java `Main`; their initializers remain in startup order rather than moving ahead of intervening statements. Lifting a Java entry point restores module statements directly. Original source remains the input to the checked Java runtime and its source locations.
+
+`BeIntrinsic` identifies turtle and printing library semantics independently of user names. Printers select target syntax from this marker; user-defined `print`/`forward` methods remain ordinary functions. Java conversion rejects a user `Turtle` class when it would hide actual turtle-library calls.
+
+The shared numeric subset uses double precision. Java integer declarations are widened on cross-language conversion; `ConversionResult` reports this as a loss because wrapping overflow and truncating division are not preserved. Same-language source grouping retains the original types.

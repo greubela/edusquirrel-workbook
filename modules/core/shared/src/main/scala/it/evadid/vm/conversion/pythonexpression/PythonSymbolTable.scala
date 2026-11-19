@@ -184,7 +184,8 @@ object PythonSymbolTable {
           val canonical = if sourceBinding then None else KnownBeEntityNames.resolveCanonicalNames(name)
           val params = (0 until arity).map(index => BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)).toList
           BeDefineFunction(params, None, BeSequence.optionalBody(Nil),
-            BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))))
+            BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))),
+            Option.when(canonical.contains(KnownBeEntityNames.resolveSystemMethods("print").get))(it.evadid.vm.code.defining.BeIntrinsic.Print))
         }
       }
       // A callable parameter/local shadows a cached builtin or turtle alias in this scope.

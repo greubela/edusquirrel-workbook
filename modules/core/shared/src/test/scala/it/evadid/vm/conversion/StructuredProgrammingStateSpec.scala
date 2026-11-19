@@ -77,7 +77,8 @@ class StructuredProgrammingStateSpec extends FunSuite {
   test("loose Java variables, methods and statements become static Main members and startup") {
     val state = ProgrammingStateJavaStructured("int x = 100; void draw() { forward(x); } draw();")
     assertEquals(state.definedClasses.keySet, Set(name("Main")))
-    assert(state.toString.contains("static int x = 100"))
+    assert(state.toString.contains("static int x;"))
+    assert(state.toString.contains("x = 100;"))
     assert(state.toString.contains("static void draw()"))
     assert(state.toString.contains("static void main(String[] unusableArgs)"))
     assertEquals(distances(state), List(100.0))
@@ -86,7 +87,8 @@ class StructuredProgrammingStateSpec extends FunSuite {
   test("the requested Python example becomes a complete Java class with static globals and helpers") {
     val result = ProgrammingStatePythonStructured(python).toJavaStructured
     assertEquals(result.definedClasses.keySet, Set(name("Main")))
-    assert(result.toString.contains("static double x = 100"), result.toString)
+    assert(result.toString.contains("static double x;"), result.toString)
+    assert(result.toString.contains("x = 100;"), result.toString)
     assert(result.toString.contains("static void main(String[] unusableArgs)"), result.toString)
     assertEquals(distances(result), List(20.0, 20.0, 20.0, 100.0))
   }
@@ -94,8 +96,8 @@ class StructuredProgrammingStateSpec extends FunSuite {
   test("an entirely static Main becomes Python module code and not a Python class") {
     val result = ProgrammingStateJavaStructured(java).toPythonStructured
     assertEquals(result.definedClasses, Map.empty)
-    assert(result.mainScript.contains("def main("), result.mainScript)
-    assert(result.mainScript.trim.endsWith("main()"), result.mainScript)
+    assert(result.mainScript.contains("def do_something("), result.mainScript)
+    assert(result.mainScript.trim.endsWith("turtle.forward(x)"), result.mainScript)
     assertEquals(distances(result), List(20.0, 20.0, 20.0, 100.0))
     assertEquals(distances(result.toJavaStructured.toPythonStructured), distances(result))
   }

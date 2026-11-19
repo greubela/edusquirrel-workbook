@@ -15,15 +15,15 @@ import it.evadid.workbook.elements.interactionElements.programming.state.*
 /** Owned by one immutable state. Views and graders share its parsing and projections. */
 final class ProgrammingStateDerivations private[evadid](source: ProgrammingState) {
   private lazy val preparedSource = source match {
-    case ProgrammingStateRaw(Java, code) => it.evadid.vm.conversion.structured.PreparedProgramSource(code, Java)
-    case value: ProgrammingStateJavaStructured => it.evadid.vm.conversion.structured.PreparedProgramSource(value.toString, Java)
+    case ProgrammingStateRaw(Java, code) => javaFrontend.preparedSource
+    case value: ProgrammingStateJavaStructured => javaFrontend.preparedSource
     case ProgrammingStateRaw(Python, code) => it.evadid.vm.conversion.structured.PreparedProgramSource(code, Python)
     case value: ProgrammingStatePythonStructured => it.evadid.vm.conversion.structured.PreparedProgramSource(value.toString, Python)
     case _ => it.evadid.vm.conversion.structured.PreparedProgramSource("", Seq.empty)
   }
   private lazy val javaFrontend = JavaToExpression(source match {
-    case ProgrammingStateRaw(Java, _) => preparedSource.code
-    case _: ProgrammingStateJavaStructured => preparedSource.code
+    case ProgrammingStateRaw(Java, code) => code
+    case value: ProgrammingStateJavaStructured => value.toString
     case _ => java.code
   })
 
@@ -71,8 +71,13 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
   def convertToLanguage(language: ProgrammingLanguage): ConversionResult = {
     try {
       val target = inLanguage(language)
-      val sourceWarnings = preparedSource.diagnostics
-      ConversionResult(source, Some(target), sourceWarnings)
+      val numericWarnings = Option.when(source.associatedLanguage == Java && language != Java &&
+          "\\b(?:byte|short|int|long)\\b".r.findFirstIn(
+            it.evadid.vm.conversion.structured.SourceStructure.mask(java.code, false)).nonEmpty) {
+        ConversionInfo("Java integer types were widened to shared numeric values; integer overflow and truncating division are not preserved.",
+          it.evadid.util.logging.LoggingLevel.WARN, true)
+      }.toSeq
+      ConversionResult(source, Some(target), preparedSource.diagnostics ++ numericWarnings)
     }
     catch { case scala.util.control.NonFatal(error) => ConversionResult.failed(source, error) }
   }

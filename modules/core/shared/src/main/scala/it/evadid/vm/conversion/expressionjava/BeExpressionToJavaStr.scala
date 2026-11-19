@@ -21,8 +21,34 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
   // A printer owns one rendering. Declarations are tracked per function/class scope.
   private var declared = Set.empty[String]
   private var renderingDepth = 0
+  private var moduleFunctions = Set.empty[String]
   override def forExpression(expression: BeExpression): String = {
-    if renderingDepth == 0 then declared = Set.empty
+    if renderingDepth == 0 then {
+      declared = Set.empty
+      val statements = expression match {
+        case it.evadid.vm.code.others.BeStartProgram(Some(body)) => body.body
+        case body: it.evadid.vm.code.controlStructures.BeSequence => body.body
+        case definition: BeDefineFunction => List(definition)
+        case _ => Nil
+      }
+      val hasTurtleClass = statements.exists {
+        case definition: it.evadid.vm.code.defining.BeDefineClass => definition.name.universalInterpretation() == "turtle"
+        case _ => false
+      }
+      if targetLanguage == Java && hasTurtleClass then {
+        val usesTurtleLibrary = expression.recToTree(false, it.evadid.vm.types.BeChildInfo(
+          it.evadid.vm.types.BeChildRole.NoRole, it.evadid.vm.types.BeScope.GlobalScope())).values.exists {
+          case it.evadid.vm.code.tree.BeExpressionReference(_, call: BeFunctionCall) =>
+            it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef)
+          case _ => false
+        }
+        if usesTurtleLibrary then throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
+          "A user class named Turtle conflicts with the Java turtle library. Rename the class before conversion.")
+      }
+      moduleFunctions = statements.collect { case definition: BeDefineFunction if definition.functionTypeInfo.isMethodInClass.isEmpty =>
+        definition.functionTypeInfo.displayName.universalInterpretation()
+      }.toSet
+    }
     renderingDepth += 1
     try super.forExpression(expression) finally renderingDepth -= 1
   }
@@ -38,8 +64,14 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
   }
 
   override protected def callName(call: BeFunctionCall): String =
-    if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
+    if call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Print) then {
+      require(call.funcDef.inputs.size == 1, "Java printing currently supports one value per call.")
+      "java.lang.System.out.println"
+    } else if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
       "Turtle." + entityName(call.funcDef.functionTypeInfo.displayName)
+    else if call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] &&
+        moduleFunctions(call.funcDef.functionTypeInfo.displayName.universalInterpretation()) then
+      "Main." + entityName(call.funcDef.functionTypeInfo.displayName)
     else super.callName(call)
   override protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
     function.functionTypeInfo.funcType match {

@@ -162,7 +162,7 @@ abstract class GenericJavaLikeStringPrinter(
         .appendNextLine(sepLogic.endBlockWith)
         .toString
     }
-    case function @ BeDefineFunction(inputs, outputs, body, functionTypeInfo) => {
+    case function @ BeDefineFunction(inputs, outputs, body, functionTypeInfo, _) => {
       if (functionTypeInfo.isNamed.isEmpty && functionTypeInfo.funcType != BeDefineFunction.Constructor())
         throw UnsupportedOperationException("Anonymous function declarations are not supported by this printer.")
       else {

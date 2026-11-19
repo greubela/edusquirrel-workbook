@@ -57,7 +57,8 @@ object DefaultDefinitions {
     )
     val functionInfo = BeDefineFunction.functionInfo(KnownBeEntityNames.resolveCanonicalNames(name)
       .getOrElse(BeEntityName.fromUniversalNameInParts(name)))
-    val function = BeDefineFunction(inputs, output, BeExpression.pass, functionInfo)
+    val function = BeDefineFunction(inputs, output, BeExpression.pass, functionInfo,
+      Option.when(name == "print")(it.evadid.vm.code.defining.BeIntrinsic.Print))
     name -> function
   }
 

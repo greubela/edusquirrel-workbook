@@ -7,6 +7,7 @@ import upickle.default.ReadWriter
 
 /** An authored occurrence. Paths identify occurrences within this expression tree,
   * including identical blocks, unused definitions and both conditional branches.
+  * Order follows the normalized tree (definitions before startup), independent of source layout.
   * Argument expressions are retained without substituting runtime variable values.
   */
 case class TurtleCommandSite[T](

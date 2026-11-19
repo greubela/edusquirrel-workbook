@@ -169,7 +169,7 @@ class TurtleCommandExecutionInfoSpec extends FunSuite {
       .turtleCommandExecutionInfo
     assertEquals(result.completedCommands, List(forward(10), forward(20), forward(10)))
     assertEquals(result.nrOfCommandExecuted(forward(10)), 2)
-    assertEquals(result.turtleCommandSitesInCodeOrder.map(_.literalCommand), List(Some(forward(10)), None, Some(forward(99))))
+    assertEquals(result.turtleCommandSitesInCodeOrder.map(_.literalCommand), List(None, Some(forward(99)), Some(forward(10))))
     assertEquals(result.nrOfCommandInCodeIgnoreParameter(forward(0)), 3)
     assertEquals(result.nrOfLiteralCommandInCode(forward(10)), 1)
     assertEquals(result.nrOfUnresolvedCommandSitesInCode(forward(0)), 1)

@@ -43,4 +43,28 @@ class ConversionResultSpec extends FunSuite {
     val normalized = source.toBeExpression.toPython
     assertEquals(normalized.toJava.toPython.code.trim, normalized.code.trim)
   }
+  test("Java Main preserves initialization order relative to other module statements") {
+    val source = ProgrammingStateRaw(Python, "x = 1\nforward(x)\nx = 5\ny = x + 1\nforward(y)\n")
+    val java = source.convertToLanguage(Java).finalState.get
+    val expected = source.toBeExpression.turtleCommandExecutionInfo.completedCommands
+    assertEquals(java.toBeExpression.turtleCommandExecutionInfo.completedCommands, expected)
+    assertEquals(java.toPython.toBeExpression.turtleCommandExecutionInfo.completedCommands, expected)
+  }
+
+  test("module helpers observe global assignments in source order") {
+    val source = ProgrammingStateRaw(Python, "x = 1\ndef report():\n    forward(x)\nx = 6\nreport()\n")
+    val java = source.convertToLanguage(Java).finalState.get
+    assertEquals(java.toBeExpression.turtleCommandExecutionInfo.completedCommands,
+      source.toBeExpression.turtleCommandExecutionInfo.completedCommands)
+  }
+
+  test("integer widening is reported as a conversion loss rather than silently hidden") {
+    val source = ProgrammingStateRaw(Java, "class Main { static int value = 5 / 2; public static void main(String[] args) {} }")
+    val result = source.convertToLanguage(Python)
+    assert(result.finalState.nonEmpty)
+    assert(result.hasLostFunctionality)
+    assert(result.conversionInfo.exists(_.warningMsg.contains("integer")))
+    assert(!source.convertToLanguage(Java).conversionInfo.exists(_.warningMsg.contains("integer")))
+  }
+
 }

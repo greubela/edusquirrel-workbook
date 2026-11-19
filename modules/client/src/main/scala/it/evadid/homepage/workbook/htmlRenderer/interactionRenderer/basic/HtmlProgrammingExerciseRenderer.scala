@@ -76,6 +76,8 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
         current match
           case java @ ProgrammingStateRaw(Java, _) if java.isClassProgram =>
             throw IllegalArgumentException("Full Java classes require the checked Java runner.")
+          case _: ProgrammingStateJavaStructured =>
+            throw IllegalArgumentException("Full Java classes require the checked Java runner.")
           case _ => ()
         SvgLaminarRenderer.render(
           shapeLogger,
