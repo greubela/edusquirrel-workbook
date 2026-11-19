@@ -3,7 +3,7 @@ package it.evadid.server.commandHandler.sql.sync
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.{SyncSuccess, UsageContext}
+import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import java.sql.Connection
@@ -33,17 +33,18 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
     SyncSuccess(0, merged.size - previous.size, 0, LocalDateTime.now())
   }
 
-  private def histories(context: UsageContext, keys: Seq[String]): DbFetchResponse = {
+  /** Stored rows as (format name, history JSON); decoding is left to the per-record read rule. */
+  private def histories(context: UsageContext, keys: Seq[String]): Seq[(SyncContext, (String, String))] = {
     val filter = if keys.isEmpty then "" else " AND variable_id IN (" + keys.map(_ => "?").mkString(",") + ")"
-    val entries = query("SELECT variable_id,format,history_json FROM blob_history WHERE program_id=? AND scenario_id=? AND user_id=?" + filter,
+    query("SELECT variable_id,format,history_json FROM blob_history WHERE program_id=? AND scenario_id=? AND user_id=?" + filter,
       List(context.programId, context.scenarioId, context.userId) ++ keys) { row =>
-      context.toSyncContext(row.getString(1)) -> InteractionHistoryJson(InteractionFormat.fromName(row.getString(2)), row.getString(3))
+      context.toSyncContext(row.getString(1)) -> (row.getString(2), row.getString(3))
     }
-    DbFetchResponse(entries.toMap)
   }
 
   def fetch(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {
-    DbFetchResponse(InteractionHistoryJson.readable(histories(request.usageContext, request.keys).fetchedElements)(identity,
+    DbFetchResponse(InteractionHistoryJson.readable(histories(request.usageContext, request.keys))(
+      (format, json) => InteractionHistoryJson(InteractionFormat.fromName(format), json),
       request.strategy, request.starting, request.until,
       (key, error) => logger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error)))
   }

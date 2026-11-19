@@ -551,7 +551,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   }
 
   for stored <- Seq("not-an-ISO-timestamp", "2026-11-09T12:13:14.123456790", "2026-11-09T12:13:14.1234567890") do
-    test(s"invalid, mismatched or noncanonical timestamp_nano is rejected: $stored") {
+    test(s"an answer row with invalid, mismatched or noncanonical timestamp_nano is discarded: $stored") {
       store(history())
       MysqlTestDatabase.withConnection { connection =>
         Using.resource(connection.prepareStatement("UPDATE answer_event SET timestamp_nano=?")) { statement =>
@@ -559,8 +559,8 @@ class InteractionHistoryMysqlSpec extends FunSuite {
           statement.executeUpdate()
         }
       }
-      val error = intercept[IllegalArgumentException](fetch())
-      assert(error.getMessage.contains("timestamp_nano must match the serialized event"))
+      val remaining = read[History](fetch()(sync)).events.values
+      assertEquals(remaining, history().events.values.filterNot(_.isInstanceOf[AnswerChangedEvent[?]]), "its feedback still loads")
     }
 
   test("relational timestamps use indexed ISO 8601 text with nine fractional digits") {
@@ -626,13 +626,21 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
-  test("unknown stored format names fail with a clear exception") {
-    store(history())
-    MysqlTestDatabase.withConnection { connection =>
-      Using.resource(connection.createStatement())(_.executeUpdate("UPDATE sync_context_id SET format='unknown-format'"))
+  test("a history saved under an unknown format name is discarded and the other histories still load") {
+    val other = context.toSyncContext("other_history")
+    Seq(RelationalFormat -> "sync_context_id", BlobFormat -> "blob_history").foreach { (storage, table) =>
+      MysqlTestDatabase.withConnection(MysqlTestDatabase.reset)
+      store(history(), storage)
+      UpsertToDatabase.handleRequest(StoreToDbRequest(other, encoded(history("other")), config, storage), logger)
+      MysqlTestDatabase.withConnection { connection =>
+        Using.resource(connection.createStatement())(_.executeUpdate(s"UPDATE $table SET format='unknown-format' WHERE variable_id='$key'"))
+      }
+      val fetched = fetch(storage)
+      assertEquals(fetched.keySet, Set(other), storage.toString)
+      assertEquals(read[History](fetched(other)).allStates, history("other").allStates)
+      // Writing to it is refused rather than overwriting data this version cannot read.
+      intercept[IllegalArgumentException](store(history("later", time.plusDays(1)), storage))
     }
-    val error = intercept[IllegalArgumentException](fetch())
-    assert(error.getMessage.contains("Unknown interaction format"))
   }
 
   test("relational inclusive ranges preserve adjacent nanoseconds across midnight") {
