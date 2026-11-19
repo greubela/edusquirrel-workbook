@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{SnapLanguage, Python,
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ExerciseDataView, ProgramDataTestGrader, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ExerciseDataView, ProgramDataTestGrader, ProgrammingExerciseFullJava, SortListExercise}
 import it.evadid.workbook.abstractions.grading.GradingStatus
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.meta.ExecutionContextInformation
@@ -250,10 +250,56 @@ class Gdp1WorkbookSpec extends FunSuite {
     assert(Seq("swap", "bubble", "sudoku").forall(javaTask(_).instructionText.nonEmpty))
   }
 
+  private val sortTask = workbook.allContainedInteractionsById("2026GdP1-sort") match {
+    case task: SortListExercise => task
+    case other => fail(s"Unexpected sort task: $other")
+  }
+  private val selectionSort =
+    """def sortiere():
+      |    n = NumberList.length()
+      |    for i in range(n):
+      |        kleinste = i
+      |        for j in range(i + 1, n):
+      |            if NumberList.get(j) < NumberList.get(kleinste):
+      |                kleinste = j
+      |        NumberList.swap(i, kleinste)
+      |
+      |sortiere()
+      |""".stripMargin
+
+  private def sortResults(state: it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState) =
+    Future.traverse(sortTask.gradingElements)(_.gradeStateSafe(state, true, ExecutionContextInformation.default))
+
+  test("sort exercise: a swap-based solution passes every generated test in Python and after conversion to Java") {
+    assertEquals(sortTask.sortTests.size, SortListExercise.defaultTestLists.size)
+    val python = ProgrammingStatePythonStructured(selectionSort)
+    for {
+      inPython <- sortResults(python)
+      inJava <- sortResults(python.toJavaStructured)
+    } yield {
+      assert(inPython.forall(_.gradingStatus.isCorrect), inPython.map(r => (r.grader, r.gradingStatus, r.feedbackInformation)))
+      assert(inJava.forall(_.gradingStatus.isCorrect), python.toJavaStructured.toString)
+    }
+  }
+
+  test("sort exercise: the starting program fails and moving values with set breaks the swaps-only rule") {
+    val bySet = selectionSort.replace("        NumberList.swap(i, kleinste)",
+      "        merke = NumberList.get(i)\n        NumberList.set(i, NumberList.get(kleinste))\n        NumberList.set(kleinste, merke)")
+    for {
+      start <- sortResults(ProgrammingStatePythonStructured(sortTask.initProgram.toString))
+      set <- sortResults(ProgrammingStatePythonStructured(bySet))
+    } yield {
+      assert(start.exists(!_.gradingStatus.isCorrect))
+      val unsorted = set.find(_.grader.asInstanceOf[ProgramDataTestGrader].publicDescriptionArguments("list") == "[5, 1, 4, 2, 8]").get
+      assertEquals(unsorted.gradingStatus, GradingStatus.Incorrect())
+      assert(unsorted.feedbackInformation.get.toString.contains("NumberList.set"), unsorted.feedbackInformation)
+    }
+  }
+
   test("catalogue identity, four sections and reflection grading are configured") {
     assertEquals(workbook.workbookId, "2026GdP1")
     assertEquals(workbook.sections.size, 4)
-    assertEquals(workbook.allContainedInteractionsById.size, 11)
+    assertEquals(workbook.allContainedInteractionsById.size, 12)
     val entry = DigitalWorkbookCatalog.entries.find(_.id == "2026GdP1").get
     assertEquals(entry.native.get.page, "2026GdP1")
     val reflection = workbook.allContainedInteractionsById.values.collectFirst { case text: TextInputWithScaffoldingAndGrading => text }.get

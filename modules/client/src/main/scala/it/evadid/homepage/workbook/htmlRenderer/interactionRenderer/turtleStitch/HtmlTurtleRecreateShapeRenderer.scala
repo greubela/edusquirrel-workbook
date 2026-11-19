@@ -51,7 +51,10 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
         Var(EvaEditorConfig(enabledLanguages = workbookElement.exerciseConfig.allowedEditorLanguages, snapConfig = useConfig)),
         humanLanguage = fullInfo.signals.currentLanguage,
         labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
-      val editor = EditorWithWorkbookPanel(workbookElement, Some(associatedInstruction), gradingReporter, List(createShapeGradingCard), evaEditor)
+      val stepsCard = ElementCard(LanguageMapContentId("basic/turtleStepsTitle"),
+        new it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps.TurtleStepPanel(boundVar,
+          key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
+      val editor = EditorWithWorkbookPanel(workbookElement, Some(associatedInstruction), gradingReporter, List(createShapeGradingCard, stepsCard), evaEditor)
 
       editor
     }

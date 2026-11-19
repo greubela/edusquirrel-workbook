@@ -471,3 +471,54 @@
 /* Static source preview of full Java exercises: code reads left-aligned and scrolls when long. */
 .java-full-editor-preview { width: 100%; text-align: start; }
 .java-full-editor-preview pre { max-height: 22rem; margin: 0; overflow: auto; font-size: 0.8rem; }
+
+/* STEP-BY-STEP PANELS: turtle drawing and sorting replays share the navigator */
+
+.step-panel { display: grid; gap: var(--space-sm); min-width: 0; font-size: 0.875rem; text-align: start; }
+.step-panel__caption { margin: 0; min-height: 1.4em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.step-panel__problem { margin: 0; color: var(--feedback-incorrect); overflow-wrap: anywhere; }
+.step-panel__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-xs) var(--space-md); }
+.step-panel__toggle { display: inline-flex; align-items: center; gap: var(--space-xs); cursor: pointer; }
+.step-panel__stats { color: var(--color-text-muted-light); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+.step-navigator { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; }
+.step-navigator:focus-within { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
+.step-navigator button.step-navigator__button,
+.step-navigator button.step-navigator__button:hover,
+.step-navigator button.step-navigator__button:focus {
+    min-width: 2rem;
+    min-height: 2rem;
+    padding: 0 var(--space-sm);
+    border: 1px solid var(--color-button-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+    color: var(--color-text-primary);
+    line-height: 1;
+}
+.step-navigator button.step-navigator__button:hover:not(:disabled) { background: var(--color-surface-muted); }
+.step-navigator button.step-navigator__button:disabled { opacity: 0.45; cursor: default; }
+.step-navigator__range { flex: 1 1 auto; min-width: 4rem; accent-color: var(--color-accent-strong); }
+.step-navigator__position { flex: none; color: var(--color-text-muted-light); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+.sort-steps {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-xs);
+    height: 9rem;
+    margin: 0;
+    padding: var(--space-sm);
+    list-style: none;
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-base);
+}
+.sort-steps--sorted { border-color: var(--feedback-correct); background: var(--feedback-correct-surface); }
+.sort-bar { display: grid; grid-template-rows: minmax(0, 1fr) auto auto; flex: 1 1 0; min-width: 1.4rem; max-width: 3rem; height: 100%; justify-items: stretch; }
+.sort-bar__column { display: flex; align-items: flex-end; min-height: 0; }
+.sort-bar__fill { width: 100%; height: var(--sort-bar-height, 50%); border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--color-gray-4); transition: height 0.15s ease; }
+.sort-bar__value { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sort-bar__index { text-align: center; color: var(--color-text-muted-light); font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+.sort-bar--changed .sort-bar__fill { background: var(--color-accent-strong); }
+.sort-bar--read .sort-bar__fill { background: var(--feedback-partial); }
+.sort-steps--sorted .sort-bar__fill { background: var(--feedback-correct); }
+@media (prefers-reduced-motion: reduce) { .sort-bar__fill { transition: none; } }

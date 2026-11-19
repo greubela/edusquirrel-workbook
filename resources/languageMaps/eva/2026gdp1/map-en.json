@@ -62,5 +62,8 @@
   "testFitsFree": "passt allows a number that only occurs in another block",
   "testSolveExample": "loese solves the example sudoku",
   "testSolveMedium": "loese solves a sudoku with 17 empty cells",
-  "testSolveImpossible": "loese returns false for an unsolvable sudoku and leaves it unchanged"
+  "testSolveImpossible": "loese returns false for an unsolvable sudoku and leaves it unchanged",
+  "sortIntroduction": "Finally, you decide **how** to sort – in Python or Java. In “Sorting step by step” you can view every swap of your program one at a time and step back and forth.",
+  "sortTitle": "Task 11 · Sorting your own way",
+  "sortInstruction": "Implement `sortiere()` (sort), which sorts the list of numbers in ascending order. You may use bubble sort, selection sort or your own idea. Use `NumberList.length()`, `NumberList.get(i)` and `NumberList.swap(i, j)`; values may only change places by swapping. The tests also sort an empty list, a single-value list and an already sorted list."
 }

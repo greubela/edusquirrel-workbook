@@ -62,5 +62,8 @@
   "testFitsFree": "passt tillader et tal, der kun står i en anden blok",
   "testSolveExample": "loese løser eksempel-sudokuen",
   "testSolveMedium": "loese løser en sudoku med 17 tomme felter",
-  "testSolveImpossible": "loese returnerer false for en uløselig sudoku og efterlader den uændret"
+  "testSolveImpossible": "loese returnerer false for en uløselig sudoku og efterlader den uændret",
+  "sortIntroduction": "Til sidst bestemmer du selv, **hvordan** du sorterer – i Python eller Java. Under „Sortering trin for trin“ kan du se hver ombytning i dit program enkeltvis og gå frem og tilbage.",
+  "sortTitle": "Opgave 11 · Sortering på din egen måde",
+  "sortInstruction": "Implementér `sortiere()` (sortér), som sorterer tallisten stigende. Du kan bruge bubble sort, selection sort eller din egen idé. Brug `NumberList.length()`, `NumberList.get(i)` og `NumberList.swap(i, j)`; værdier må kun skifte plads ved at blive byttet. Testene sorterer også en tom liste, en liste med én værdi og en allerede sorteret liste."
 }

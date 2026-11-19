@@ -62,5 +62,8 @@
   "testFitsFree": "passt erlaubt eine Zahl, die nur in einem anderen Block steht",
   "testSolveExample": "loese löst das Beispiel-Sudoku",
   "testSolveMedium": "loese löst ein Sudoku mit 17 leeren Feldern",
-  "testSolveImpossible": "loese gibt bei einem unlösbaren Sudoku false zurück und hinterlässt es unverändert"
+  "testSolveImpossible": "loese gibt bei einem unlösbaren Sudoku false zurück und hinterlässt es unverändert",
+  "sortIntroduction": "Zum Schluss darfst du selbst entscheiden, **wie** du sortierst – in Python oder Java. Im Bereich „Sortieren Schritt für Schritt“ kannst du jede Vertauschung deines Programms einzeln ansehen und vor- und zurückspringen.",
+  "sortTitle": "Aufgabe 11 · Sortieren nach eigener Idee",
+  "sortInstruction": "Implementiere `sortiere()`, das die Zahlenliste aufsteigend sortiert. Du kannst Bubble Sort, Selection Sort oder eine eigene Idee umsetzen. Verwende `NumberList.length()`, `NumberList.get(i)` und `NumberList.swap(i, j)`; Werte dürfen nur durch Vertauschen ihren Platz wechseln. Die Tests sortieren auch eine leere, eine einelementige und eine bereits sortierte Liste."
 }

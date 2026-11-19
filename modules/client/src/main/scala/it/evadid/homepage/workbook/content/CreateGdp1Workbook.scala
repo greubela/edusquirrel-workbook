@@ -9,10 +9,10 @@ import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStatePythonStructured, ProgrammingStateSnapScalaModel}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette}
 import it.evadid.workbook.elements.structureElements.Workbook
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{DataExpectation, ExerciseDataView, ListOperation, ProgramDataTestGrader, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{DataExpectation, ExerciseDataView, ListOperation, ProgramDataTestGrader, ProgrammingExerciseFullJava, SortListExercise, SortingMethod}
 import it.evadid.vm.test.ProgrammingTestSuite
 import it.evadid.vm.simulation.data.{DataWorld, SudokuGrid}
 
@@ -78,7 +78,12 @@ case class CreateGdp1Workbook(override val fullInfo: FullInfo) extends WorkbookF
       instructionMarkdown(key("bubbleIntroduction")),
       javaTask("bubble", CreateGdp1Workbook.bubbleProgram, ExerciseDataView.NumberList, CreateGdp1Workbook.bubbleTests),
       instructionMarkdown(key("sudokuIntroduction")),
-      javaTask("sudoku", CreateGdp1Workbook.sudokuProgram, ExerciseDataView.Sudoku, CreateGdp1Workbook.sudokuTests)
+      javaTask("sudoku", CreateGdp1Workbook.sudokuProgram, ExerciseDataView.Sudoku, CreateGdp1Workbook.sudokuTests),
+      instructionMarkdown(key("sortIntroduction")),
+      container(key("sortTitle"), Seq(
+        instructionMarkdown(key("sortInstruction")),
+        SortListExercise(s"$workbookId-sort", ProgrammingStatePythonStructured(CreateGdp1Workbook.sortProgram), "sortiere",
+          method = SortingMethod.SwapsOnly, instructionText = Some(content("sortInstruction")))))
     ))), User.AndreGreubel)
 
   /** A full Java exercise whose unit tests run on the shared interpreter against the provided list or sudoku. */
@@ -193,6 +198,14 @@ object CreateGdp1Workbook {
       |        loese();
       |    }
       |}
+      |""".stripMargin
+
+  private[content] val sortProgram: String =
+    """def sortiere():
+      |    # NumberList.length(), NumberList.get(i) und NumberList.swap(i, j) stehen zur Verfügung.
+      |    pass
+      |
+      |sortiere()
       |""".stripMargin
 
   import DataExpectation.*

@@ -3,7 +3,7 @@
 Entry page: [homepage/2026GdP1/index.html](../homepage/2026GdP1/index.html).
 The workbook catalogue links this page. Its workbook ID is `2026GdP1`;
 interaction IDs are stable (`2026GdP1-task-1` through `-7`, `-reflection`, and
-`2026GdP1-java-swap`, `-java-bubble`, `-java-sudoku`).
+`2026GdP1-java-swap`, `-java-bubble`, `-java-sudoku`, `2026GdP1-sort`).
 
 `CreateGdp1Workbook` defines four sections: overview, introduction, parameters and Java algorithms.
 The introduction progresses from explicit square commands to loops, nested loops
@@ -66,3 +66,8 @@ explain the difference in German or English. The editor shows the data after `ma
 shared model, so the sudoku task computes block starts as `zeile - zeile % 3`.
 `Gdp1WorkbookSpec` checks reference solutions, starting programs and typical mistakes
 (ready-made swap, selection sort, missing block check, missing undo).
+
+Task 11 is a `SortListExercise` (Python or Java, `SortingMethod.SwapsOnly`): any algorithm
+that sorts `NumberList` by swapping. Its generated tests sort the default test lists
+(including empty, single and sorted lists). The recreate-shape editors show the turtle
+drawing step by step beside the comparison panel.

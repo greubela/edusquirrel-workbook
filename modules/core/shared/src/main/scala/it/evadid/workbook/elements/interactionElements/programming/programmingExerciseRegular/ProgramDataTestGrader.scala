@@ -54,7 +54,9 @@ case class ProgramDataTestGrader(
     world: DataWorld,
     expectations: Seq[DataExpectation],
     importance: GradingImportance = GradingImportance.REQUIRED_TEST,
-    limits: TurtleExecutionLimits = ProgramDataTestGrader.defaultLimits
+    limits: TurtleExecutionLimits = ProgramDataTestGrader.defaultLimits,
+    /** Values for `{name}` placeholders in the description, e.g. the list a generated test sorts. */
+    publicDescriptionArguments: Map[String, String] = Map.empty
 ) extends ProgrammingTestGrader derives ReadWriter {
   require(testId.nonEmpty && testId == testId.trim, "A data test needs a nonempty ID.")
   require(expectations.nonEmpty, "A data test needs at least one expectation.")
