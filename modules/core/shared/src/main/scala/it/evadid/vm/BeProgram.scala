@@ -50,11 +50,11 @@ object BeProgram {
     BeStartProgram(
       BeSequence.optionalBody(
         List[BeExpression](
-          BeFunctionCall(
+          BeFunctionCall.fromDefinition(
             forwardFunc,
             Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter)))
           ),
-          BeFunctionCall(
+          BeFunctionCall.fromDefinition(
             forwardFunc,
             Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter)))
           )
@@ -162,7 +162,7 @@ object BeProgram {
     }).toMap
 
     val expression: BeExpression =
-      BeFunctionCall(
+      BeFunctionCall.fromDefinition(
         BeDefineFunction(
           parVariables, outputVar, BeExpression.pass, BeDefineFunction.functionInfo(BeEntityName.fromMapInCodeNotation(functionName))
         ),

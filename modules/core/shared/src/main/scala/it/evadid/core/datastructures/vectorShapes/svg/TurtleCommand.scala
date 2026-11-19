@@ -249,7 +249,8 @@ object TurtleCommand {
   )
 
   /** One shared, typed turtle definition; methods retain the canonical name objects. */
-  lazy val turtleClass: BeDefineClass = BeDefineClass.withMethods(
+  lazy val turtleClass: BeDefineClass = {
+    val definition = BeDefineClass.withMethods(
     BeEntityName.fromUniversalNameInParts("turtle"), Nil,
     turtleMethodSignatures.map { (alias, inputs, output) =>
       def variable(name: String, dataType: BeDataType): BeDefineVariable =
@@ -259,6 +260,8 @@ object TurtleCommand {
         inputs.map((name, dataType) => variable(name, dataType)),
         output.map(dataType => variable("result", dataType)))
     })
+    definition.copy(methods = definition.methods.map(method => method.copy(functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod()))))
+  }
 
   def isTurtleMethod(definition: BeDefineFunction): Boolean =
     definition.functionTypeInfo.isMethodInClass.exists(_.name == turtleClass.name)

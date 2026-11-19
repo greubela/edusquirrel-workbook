@@ -102,6 +102,10 @@ object BeDefineFunction {
 
   case class Method() extends BeFunctionType derives upickle.default.ReadWriter
 
+  case class StaticMethod() extends BeFunctionType derives ReadWriter
+
+  case class Constructor() extends BeFunctionType derives ReadWriter
+
   case class Function() extends BeFunctionType derives upickle.default.ReadWriter
 
   case class Operator(nameBeforeChildNr: Int) extends BeFunctionType derives upickle.default.ReadWriter

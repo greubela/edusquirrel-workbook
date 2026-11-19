@@ -39,10 +39,10 @@ object SnapProgramDerivation {
   def fromXml(xml: String): DerivedView = {
     val parsed = it.evadid.vm.conversion.snapexpression.SnapToExpression.parseWithLayout(xml)
     val program = BeProgram(parsed.expression)
-    val python = ExpressionToPython.printedPython(parsed.expression)
     val unsupported = SnapExpressionSupport.unsupportedSnapSelectors(xml)
     val astOk = SnapExpressionSupport.validateSubset(program.fullProgram).isRight
     val pythonCompatible = unsupported.isEmpty && astOk
+    val python = if pythonCompatible then ExpressionToPython.printedPython(parsed.expression) else ""
     DerivedView(program, parsed.canvasLayout, python, pythonCompatible, unsupported)
   }
   /** One Snap top-level script rendered as Python (plus canvas position). */
@@ -51,6 +51,7 @@ object SnapProgramDerivation {
   /** Partition top-level BeProgram statements by derived canvas layout. */
   def scriptsOf(state: ProgrammingStateSnapXml): List[ScriptView] = {
     val derived = SnapProgramDerivation.fromState(state)
+    if !derived.pythonCompatible then return Nil
     val statements =
       SnapExpressionSupport.scriptStatements(
         SnapExpressionSupport.topLevelStatements(derived.program.fullProgram)

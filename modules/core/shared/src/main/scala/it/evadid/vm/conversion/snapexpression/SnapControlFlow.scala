@@ -367,7 +367,7 @@ object SnapControlFlow {
       BeExpression.pass,
       BeDefineFunction.operatorInfo(symbol, if args.size <= 1 then 0 else 1)
     )
-    BeFunctionCall(define, params.zip(args).toMap)
+    BeFunctionCall.fromDefinition(define, params.zip(args).toMap)
   }
 
   def orderedArgs(call: BeFunctionCall): List[BeExpression] =
@@ -382,7 +382,10 @@ object SnapControlFlow {
       case _ => false
 
   private def callProblems(call: BeFunctionCall, userFunctions: Map[String, Int]): Option[String] = {
-    if isOperatorCall(call) then Some(s"${SnapExpressionSupport.pythonName(call)}(...)")
+    if !call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] &&
+        !it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
+      Some("object methods and constructors have no Snap block representation")
+    else if isOperatorCall(call) then Some(s"${SnapExpressionSupport.pythonName(call)}(...)")
     else
       val name = SnapExpressionSupport.pythonName(call)
       val args = orderedArgs(call)

@@ -114,7 +114,7 @@ object SnapProjectXml {
         BeEntityName.fromUniversalNameInParts("receiveGo")
       )
     )
-    BeFunctionCall(define, Map.empty)
+    BeFunctionCall.fromDefinition(define, Map.empty)
   }
 
   /**

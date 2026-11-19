@@ -96,7 +96,7 @@ class PythonParser(
 
     val (bodyExpressions, nextIndex) = try {
       if (computedIndent <= indent) {
-        (List(BeExpressionUnparsable(lines(headerIndex).content.trim, s"Missing body for function $name")), headerIndex + 1)
+        (List(BeExpressionUnparsable(lines(headerIndex).content.trim, s"Missing body for function $name", parsedFromLanguage = Some(Python))), headerIndex + 1)
       } else {
         val block = parseBlock(lines, headerIndex + 1, computedIndent, context)
         (block.expressions, block.nextIndex)
@@ -144,7 +144,7 @@ class PythonParser(
     val conditionExpr = parseExpression(conditionSource.trim, context)
     val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
     if (computedIndent <= indent) {
-      NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for while loop"), headerIndex + 1)
+      NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for while loop", parsedFromLanguage = Some(Python)), headerIndex + 1)
     } else {
       val bodyBlock = parseBlock(lines, headerIndex + 1, computedIndent, context)
       val conditionSequence = BeSequence.conditionalBody(List(conditionExpr))
@@ -156,7 +156,7 @@ class PythonParser(
   private def parseRepeat(lines: Vector[ParsedLine], headerIndex: Int, indent: Int, amount: Int, context: ParseContext): NodeWithNext = {
     val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
     if (computedIndent <= indent) {
-      NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for for loop"), headerIndex + 1)
+      NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for for loop", parsedFromLanguage = Some(Python)), headerIndex + 1)
     } else {
       val bodyBlock = parseBlock(lines, headerIndex + 1, computedIndent, context)
       val bodySequence = BeSequence.optionalBody(bodyBlock.expressions)
@@ -174,7 +174,7 @@ class PythonParser(
   ): NodeWithNext = {
     val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
     if (computedIndent <= indent) {
-      NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for for loop"), headerIndex + 1)
+      NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for for loop", parsedFromLanguage = Some(Python)), headerIndex + 1)
     } else {
       val (startExpr, endExpr) = parseRangeBounds(rangeSource, context)
       val variable = context.defineVariable(varName, mapType(Some("int")))
@@ -217,7 +217,7 @@ class PythonParser(
               BeDefineVariable(BeEntityName.fromCodeString("arg1"), BeDataType.AnyType)
             )
             val define = BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.operatorInfo("-", 1))
-            BeFunctionCall(define, Map(params.head -> stopExpr, params(1) -> one))
+            BeFunctionCall.fromDefinition(define, Map(params.head -> stopExpr, params(1) -> one))
         }
     }
   }
@@ -226,7 +226,7 @@ class PythonParser(
     val conditionExpr = parseExpression(conditionSource.trim, context)
     val computedIndent = findBodyIndent(lines, headerIndex + 1, indent)
     if (computedIndent <= indent) {
-      NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for if clause"), headerIndex + 1)
+      NodeWithNext(BeExpressionUnparsable(lines(headerIndex).content.trim, "Missing body for if clause", parsedFromLanguage = Some(Python)), headerIndex + 1)
     } else {
       val thenBlock = parseBlock(lines, headerIndex + 1, computedIndent, context)
       val nextIndex = skipBlankLines(lines, thenBlock.nextIndex)
@@ -235,7 +235,7 @@ class PythonParser(
           case ElsePattern() =>
             val elseIndent = findBodyIndent(lines, nextIndex + 1, indent)
             if (elseIndent <= indent) {
-              NodeWithNext(BeExpressionUnparsable(lines(nextIndex).content.trim, "Missing body for else clause"), nextIndex + 1)
+              NodeWithNext(BeExpressionUnparsable(lines(nextIndex).content.trim, "Missing body for else clause", parsedFromLanguage = Some(Python)), nextIndex + 1)
             } else {
               val elseBlock = parseBlock(lines, nextIndex + 1, elseIndent, context)
               NodeWithNext(
@@ -244,7 +244,7 @@ class PythonParser(
               )
             }
           case other if other.startsWith("else") =>
-            NodeWithNext(BeExpressionUnparsable(lines(nextIndex).content.trim, "Else statements must end with ':'"), nextIndex + 1)
+            NodeWithNext(BeExpressionUnparsable(lines(nextIndex).content.trim, "Else statements must end with ':'", parsedFromLanguage = Some(Python)), nextIndex + 1)
           case _ =>
             NodeWithNext(BeIfElse(BeSequence.conditionalBody(List(conditionExpr)), BeSequence.optionalBody(thenBlock.expressions), BeSequence.optionalBody(Nil)), nextIndex)
         }
@@ -276,7 +276,7 @@ class PythonParser(
         .orElse(parseUnaryExpression(target, context))
         .orElse(parseFunctionCall(target, context))
         .orElse(parseLiteralExpression(target, context))
-        .getOrElse(BeExpressionUnsupported(trimmed))
+        .getOrElse(BeExpressionUnsupported(trimmed, parsedFromLanguage = Some(Python)))
     }
   }
 
@@ -289,7 +289,7 @@ class PythonParser(
         Option.when(operandSource.nonEmpty) {
           val operandExpr = parseExpression(operandSource, context)
           val function = context.resolveOperator(operator, 1, List(operandExpr))
-          BeFunctionCall(function, Map(function.inputs.head -> operandExpr))
+          BeFunctionCall.fromDefinition(function, Map(function.inputs.head -> operandExpr))
         }
     }.flatten
   }
@@ -312,7 +312,7 @@ class PythonParser(
         val leftExpr = parseExpression(left, context)
         val rightExpr = parseExpression(right, context)
         val function = context.resolveOperator(operator.trim, 2, List(leftExpr, rightExpr))
-        BeFunctionCall(function, Map(function.inputs.head -> leftExpr, function.inputs(1) -> rightExpr))
+        BeFunctionCall.fromDefinition(function, Map(function.inputs.head -> leftExpr, function.inputs(1) -> rightExpr))
       }
     }.headOption
   }
@@ -324,7 +324,7 @@ class PythonParser(
         parseExpression(stripKeywordArgument(arg), context)
       }
       val function = context.ensureFunctionArity(name, context.resolveFunction(name, arguments.length), arguments.length)
-      BeFunctionCall(function, function.inputs.zip(arguments).toMap)
+      BeFunctionCall.fromDefinition(function, function.inputs.zip(arguments).toMap)
     }
   }
 

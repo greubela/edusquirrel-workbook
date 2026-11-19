@@ -37,6 +37,19 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     case _ => super.forDefinition(definition)
   }
 
+  override protected def callName(call: BeFunctionCall): String =
+    if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
+      "Turtle." + entityName(call.funcDef.functionTypeInfo.displayName)
+    else super.callName(call)
+  override protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
+    function.functionTypeInfo.funcType match {
+      case BeDefineFunction.Constructor() =>
+        val owner = function.functionTypeInfo.isMethodInClass.getOrElse(throw IllegalArgumentException("Constructor requires an owning class."))
+        s"${className(owner.name)}$parameters{"
+      case BeDefineFunction.StaticMethod() => "static " + super.functionDeclaration(function, parameters, outputType)
+      case _ => super.functionDeclaration(function, parameters, outputType)
+    }
+
   override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String = {
     if (targetLanguage == JavaScript) s"function $nameStr$parStr {"
     else s"$outputTypeStr $nameStr$parStr{"
@@ -52,21 +65,21 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
   }
 
   override protected def assignToFunctionPar(parName: String, parType: String, parValue: BeExpression): String = {
-    forExpression(parValue)
+    forValue(parValue)
   }
 
   override protected def assignToDefinedVar(varName: String, varType: String, varValue: BeExpression): String = {
     val first = !declared(varName)
     declared += varName
-    val value = forExpression(varValue)
+    val value = forValue(varValue)
     if targetLanguage == JavaScript || !first then s"$varName = $value"
     else s"$varType $varName = $value"
   }
 
   override protected def defineVariableLine(nameStr: String, variableTypeString: String, initValue: Option[BeExpression]): String = {
-    if (targetLanguage == JavaScript && initValue.nonEmpty) s"$nameStr = ${forExpression(initValue.get)}"
+    if (targetLanguage == JavaScript && initValue.nonEmpty) s"$nameStr = ${forValue(initValue.get)}"
     else if (targetLanguage == JavaScript) nameStr
-    else if (initValue.nonEmpty) variableTypeString + " " + nameStr + " = " + forExpression(initValue.get)
+    else if (initValue.nonEmpty) variableTypeString + " " + nameStr + " = " + forValue(initValue.get)
     else variableTypeString + " " + nameStr
   }
 
@@ -80,8 +93,6 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
       }
       val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(forOperand)
       if (arguments.size == 1) s"$operator${arguments.head}" else arguments.mkString(s" $operator ")
-    case call: BeFunctionCall if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) =>
-      "Turtle." + super.forOther(call)
     case _ => super.forOther(other)
   }
 

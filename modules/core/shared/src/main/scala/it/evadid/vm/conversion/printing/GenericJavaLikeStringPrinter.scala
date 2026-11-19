@@ -7,7 +7,7 @@ import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSeque
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
-import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.vm.code.usage.*
 import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter.{JavaSeparation, PythonSeparation, SeparateStructures}
 import it.evadid.vm.naming.NamingStyle.{CamelCase, SnakeCase}
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
@@ -44,13 +44,34 @@ abstract class GenericJavaLikeStringPrinter(
     )
   }*/
 
+  protected def forValue(expression: BeExpression): String =
+    if sepLogic.endLineWith.nonEmpty then forExpression(expression).stripSuffix(sepLogic.endLineWith) else forExpression(expression)
+
   protected def forOperand(expression: BeExpression): String = {
-    val rendered = forExpression(expression)
+    val rendered = forValue(expression)
     expression match {
       case call: BeFunctionCall if call.funcDef.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Operator] => s"($rendered)"
       case _ => rendered
     }
   }
+
+  protected def entityName(name: BeEntityName): String = NameInfo(name).inCurLanguage
+  protected def className(name: BeEntityName): String = BeDataType.ClassType(name).formatTypeForDisplay.getInLanguage(progLang)
+  protected def currentInstanceName: String = "this"
+  protected def constructorCallPrefix: String = "new "
+  protected def callName(call: BeFunctionCall): String = {
+    val definition = call.funcDef
+    def owner = definition.functionTypeInfo.isMethodInClass
+      .getOrElse(throw IllegalArgumentException("Method or constructor has no owning class."))
+    call.target match {
+      case BeCallTarget.Function(_) => entityName(definition.functionTypeInfo.displayName)
+      case BeCallTarget.InstanceMethod(receiver, _) => forOperand(receiver) + "." + entityName(definition.functionTypeInfo.displayName)
+      case BeCallTarget.StaticMethod(_) => className(owner.name) + "." + entityName(definition.functionTypeInfo.displayName)
+      case BeCallTarget.Constructor(_) => constructorCallPrefix + className(owner.name)
+    }
+  }
+  protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
+    defineFunctionLine(entityName(function.functionTypeInfo.displayName), parameters, outputType)
 
   protected def formatFunctionParameters(function: BeDefineFunction): String =
     formatFunctionParameters(function.inputs)
@@ -91,9 +112,12 @@ abstract class GenericJavaLikeStringPrinter(
   // protected def assignToString(typeString: String, nameString: String, value: BeExpression, willBeInlined: Boolean): String
 
   def forOther(other: BeExpression): String = other.match {
-    case BeExpressionUnparsable(originalSource, message) => if (skipUnparsable) "" else originalSource
+    case source: BeExpressionUnparsable => if (skipUnparsable) "" else source.sourceFor(progLang)
     case BeSingleLineComment(commentStr) => s"${sepLogic.startSingleLineComment}${commentStr}"
-    case BeExpressionUnsupported(originalSource) => originalSource
+    case source: BeExpressionUnsupported => source.sourceFor(progLang)
+    case BeCurrentInstance(_) => currentInstanceName
+    case BeMemberAccess(receiver, member) => s"${forOperand(receiver)}.${entityName(member.name)}"
+    case BeAssignMember(receiver, member, value) => s"${forOperand(receiver)}.${entityName(member.name)} = ${forOperand(value)}"
     case BeReturn(value) => s"return ${forExpression(value)}${sepLogic.endLineWith}"
     case BeStartProgram(startSequence) => forExpression(startSequence)
     // usage
@@ -104,16 +128,18 @@ abstract class GenericJavaLikeStringPrinter(
         value
       )
     }
-    case BeFunctionCall(funcDef, parameterValueMap) => {
-      if (funcDef.functionTypeInfo.isNamed.isEmpty) ???
+    case call: BeFunctionCall => {
+      val funcDef = call.funcDef
+      val parameterValueMap = call.parameterValueMap
+      if (funcDef.functionTypeInfo.isNamed.isEmpty && !call.target.isInstanceOf[BeCallTarget.Constructor])
+        throw UnsupportedOperationException("Anonymous function calls are not supported by this printer.")
       else {
-        val nameInfo = NameInfo(funcDef.functionTypeInfo.isNamed.get)
         val callParInfo = funcDef.inputs.map(curIn => {
           val name = NameInfo(curIn.name)
           val typeStr = curIn.variableType.formatTypeForDisplay.getInLanguage(progLang)
           assignToFunctionPar(name.inCurLanguage, typeStr, parameterValueMap(curIn))
         }).mkString("(", ", ", ")")
-        s"${nameInfo.inCurLanguage}${callParInfo}${sepLogic.endLineWith}"
+        s"${callName(call)}${callParInfo}${sepLogic.endLineWith}"
       }
     }
     case BeUseValue(value, contextIfKnown) => value.match {
@@ -128,7 +154,7 @@ abstract class GenericJavaLikeStringPrinter(
   def forDefinition(ds: BeDefineStructure): String = ds.match {
     case BeDefineClass(name, attributes, methods) => {
       CodeStringBuilderMutable()
-        .appendNextLine(defineClassLine(NameInfo(name).inCurLanguage.capitalize, NameInfo(name).associatedComment))
+        .appendNextLine(defineClassLine(className(name), NameInfo(name).associatedComment))
         .changeIntLevel(1)
         .appendAllAsLines(attributes.map(forStatement))
         .appendNextLine("")
@@ -137,16 +163,15 @@ abstract class GenericJavaLikeStringPrinter(
         .toString
     }
     case function @ BeDefineFunction(inputs, outputs, body, functionTypeInfo) => {
-      if (functionTypeInfo.isNamed.isEmpty) ???
+      if (functionTypeInfo.isNamed.isEmpty && functionTypeInfo.funcType != BeDefineFunction.Constructor())
+        throw UnsupportedOperationException("Anonymous function declarations are not supported by this printer.")
       else {
-        val name = NameInfo(functionTypeInfo.isNamed.get)
         val par = formatFunctionParameters(function)
         val outTypeStr = outputs.map(_.variableType.formatTypeForDisplay.getInLanguage(progLang)).getOrElse(BeDataType.Unit.formatTypeForDisplay.getInLanguage(progLang))
         val renderedBody = forExpression(body)
         val bodyText = if renderedBody.trim.isEmpty then emptyFunctionBody else renderedBody
         CodeStringBuilderMutable()
-          // .appendNextLine(s"def ${name.inCurLanguage}${par} -> ${outTypeStr}: ${name.associatedComment}")
-          .appendNextLine(defineFunctionLine(name.inCurLanguage, par, outTypeStr))
+          .appendNextLine(functionDeclaration(function, par, outTypeStr))
           .changeIntLevel(1)
           .appendAsLines(bodyText)
           .changeIntLevel(-1)

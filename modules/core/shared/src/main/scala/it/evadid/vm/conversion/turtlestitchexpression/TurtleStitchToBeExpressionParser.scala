@@ -107,6 +107,12 @@ object TurtleStitchToBeExpressionParser {
       blockSelector(attrs).map(spec => parseBlockDefinitionFromXml(spec, body))
     }
 
+  private def slotDataType(slot: String): BeDataType = slot match {
+    case "%n" => BeDataType.Numeric
+    case "%b" => BeDataType.Boolean
+    case _ => BeDataType.AnyType
+  }
+
   private def parseBlockDefinitionFromXml(spec: String, body: String): BeDefineFunction = {
     val inputSection = findTagInnerAnywhere(body, "inputs").getOrElse("")
     val namesFromAttr =
@@ -115,12 +121,13 @@ object TurtleStitchToBeExpressionParser {
         .map(m => SnapXmlParser.unescape(m.group(1).trim))
         .filter(_.nonEmpty)
         .toList
+    val slotTypes = """<input\b[^>]*\btype="([^"]+)"""".r.findAllMatchIn(inputSection).map(_.group(1)).toList
     val namesFromSpec = SnapTurtleCatalog.inputNamesFromSpec(spec)
     val inputNames = if namesFromSpec.nonEmpty then namesFromSpec else namesFromAttr
     val arity = math.max(inputNames.size, SnapTurtleCatalog.arityFromSpec(spec))
     val params =
       if inputNames.nonEmpty then
-        inputNames.map(name => BeDefineVariable(BeEntityName.fromLiteral(name), BeDataType.AnyType))
+        inputNames.zipWithIndex.map((name, index) => BeDefineVariable(BeEntityName.fromLiteral(name), slotDataType(slotTypes.lift(index).getOrElse("%s"))))
       else
         (1 to arity).toList.map(idx => BeDefineVariable(BeEntityName.fromCodeString(s"arg$idx"), BeDataType.AnyType))
     params.foreach(param => currentVars.intern(SnapControlFlow.variableName(param)))
@@ -245,7 +252,7 @@ object TurtleStitchToBeExpressionParser {
       val mapped = params.zipAll(values, null, BeExpression.pass).filter(_._1 != null).map {
         case (parameter, value) => parameter -> value
       }.toMap
-      BeFunctionCall(define, mapped)
+      BeFunctionCall.fromDefinition(define, mapped)
     }
   }
 
@@ -369,7 +376,7 @@ object TurtleStitchToBeExpressionParser {
       BeExpression.pass,
       BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(selector))
     )
-    BeFunctionCall(define, params.zip(args).toMap)
+    BeFunctionCall.fromDefinition(define, params.zip(args).toMap)
   }
 
   private def expandXmlInputsToExpressions(inputs: List[BlockInput]): List[BeExpression] =
@@ -609,7 +616,7 @@ object TurtleStitchToBeExpressionParser {
         val specNames = SnapTurtleCatalog.inputNamesFromSpec(defn.spec)
         val params =
           if specNames.nonEmpty then
-            specNames.map(name => BeDefineVariable(BeEntityName.fromLiteral(name), BeDataType.AnyType))
+            specNames.zipWithIndex.map((name, index) => BeDefineVariable(BeEntityName.fromLiteral(name), slotDataType(defn.inputs.lift(index).map(_.inputType).getOrElse("%s"))))
           else if defn.inputs.nonEmpty then
             defn.inputs.toList.zipWithIndex.map { (inp, idx) =>
               val name =
@@ -785,7 +792,7 @@ object TurtleStitchToBeExpressionParser {
         .map { case (parameter, input) =>
           parameter -> parseInputValue(input, Some(parameter), phaseOne)
         }.toMap
-      BeFunctionCall(defn, mapped)
+      BeFunctionCall.fromDefinition(defn, mapped)
     }
   }
 

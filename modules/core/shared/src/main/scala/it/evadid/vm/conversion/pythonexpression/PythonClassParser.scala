@@ -55,7 +55,7 @@ object PythonClassParser {
     val bodyIndent = findBodyIndent(lines, headerIndex + 1, indent)
     basesSource.foreach(_ => ())
     if (bodyIndent <= indent) {
-      ClassParseResult(BeExpressionUnparsable(lines(headerIndex).content.trim, s"Missing body for class $name"), headerIndex + 1)
+      ClassParseResult(BeExpressionUnparsable(lines(headerIndex).content.trim, s"Missing body for class $name", parsedFromLanguage = Some(Python)), headerIndex + 1)
     } else {
       val attributesBuffer = mutable.LinkedHashMap[String, BeDefineVariable]()
       val methodsBuffer = mutable.ListBuffer[ParsedMethod]()
@@ -168,7 +168,7 @@ object PythonClassParser {
 
     val (bodyExpressions, nextIndex, discoveredAttributes) =
       if (computedIndent <= indent) {
-        val unparsable = BeExpressionUnparsable(lines(headerIndex).content.trim, s"Missing body for method $name")
+        val unparsable = BeExpressionUnparsable(lines(headerIndex).content.trim, s"Missing body for method $name", parsedFromLanguage = Some(Python))
         (List(unparsable), headerIndex + 1, List.empty[AttributeRecord])
       } else {
         val block = api.parseBlock(lines, headerIndex + 1, computedIndent, methodContext)

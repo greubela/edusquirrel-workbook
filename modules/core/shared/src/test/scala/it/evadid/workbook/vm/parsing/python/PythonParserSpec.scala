@@ -45,8 +45,8 @@ class PythonParserSpec extends FunSuite {
     BeStartProgram(
       BeSequence.optionalBody(
         List(
-          BeFunctionCall(forwardFunc, Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter)))),
-          BeFunctionCall(forwardFunc, Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter))))
+          BeFunctionCall.fromDefinition(forwardFunc, Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter)))),
+          BeFunctionCall.fromDefinition(forwardFunc, Map(parameter -> BeUseValue(BeDataValueLiteral("100"), Some(parameter))))
         )
       )
     )

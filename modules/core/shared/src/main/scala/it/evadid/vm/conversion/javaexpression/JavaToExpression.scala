@@ -68,8 +68,8 @@ final class JavaToExpression(code: String) {
     }
     if unsupported then {
       val reason = nodes.collectFirst {
-        case BeExpressionReference(_, BeExpressionUnsupported(source)) => source
-        case BeExpressionReference(_, BeExpressionUnparsable(source, _)) => source
+        case BeExpressionReference(_, BeExpressionUnsupported(source, _)) => source
+        case BeExpressionReference(_, BeExpressionUnparsable(source, _, _)) => source
       }.getOrElse(source).take(160)
       throw ProgrammingConversionException.unsupported(s"This Java construct is not supported by the shared expression tree: $reason")
     }

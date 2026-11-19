@@ -115,7 +115,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     functionTypeInfo = functionInfo(BeEntityName.fromUniversalNameInParts("add"))
   )
 
-  private val functionCall = BeFunctionCall(function, Map(xVar -> literalOne, yVar -> literalTwo))
+  private val functionCall = BeFunctionCall.fromDefinition(function, Map(xVar -> literalOne, yVar -> literalTwo))
 
   private val allExpressions: List[BeExpression] = List(
     xVar,

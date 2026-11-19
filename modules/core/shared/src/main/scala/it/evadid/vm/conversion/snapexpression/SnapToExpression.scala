@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion.snapexpression
 
+import it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
@@ -21,7 +22,7 @@ object SnapToExpression {
   def parseWithLayout(xml: String): TurtleStitchToBeExpressionParser.ParseWithLayout = {
     val unsupported = SnapExpressionSupport.unsupportedSnapSelectors(xml)
     if unsupported.nonEmpty then return TurtleStitchToBeExpressionParser.ParseWithLayout(
-      it.evadid.vm.code.errors.BeExpressionUnsupported(xml),
+      it.evadid.vm.code.errors.BeExpressionUnsupported(xml, parsedFromLanguage = Some(SnapLanguage)),
       it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout.empty)
     val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
     val top = SnapExpressionSupport.topLevelStatements(parsed.expression)

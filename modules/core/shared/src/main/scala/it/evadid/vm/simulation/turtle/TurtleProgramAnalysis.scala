@@ -12,7 +12,7 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.vm.code.usage.{BeAssignVariable, BeCallTarget, BeFunctionCall, BeObjectExpression, BeUseValue}
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapTurtleCatalog}
 
@@ -73,6 +73,7 @@ object TurtleProgramAnalysis {
     case BeStartProgram(None) => state
     case seq: BeSequence =>
       seq.body.foldLeft(state)((current, child) => interpret(child, current, limits, isCancelled))
+    case _: BeObjectExpression => unsupportedObjectExecution()
     case _: BeDefineFunction => state
     case assign: BeAssignVariable =>
       state.copy(env = state.env.updated(SnapControlFlow.variableName(assign.target), evalNumber(assign.value, state)))
@@ -113,7 +114,8 @@ object TurtleProgramAnalysis {
 
   private def interpretCall(call: BeFunctionCall, state: InterpState, limits: TurtleExecutionLimits,
       isCancelled: () => Boolean): InterpState = {
-    if SnapControlFlow.isOperatorCall(call) then state
+    if !call.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(call.funcDef) then unsupportedObjectExecution()
+    else if SnapControlFlow.isOperatorCall(call) then state
     else {
       val python = SnapExpressionSupport.pythonName(call)
       val args = SnapControlFlow.orderedArgs(call)
@@ -138,8 +140,13 @@ object TurtleProgramAnalysis {
     }
   }
 
+  private def unsupportedObjectExecution(): Nothing =
+    throw UnsupportedOperationException("The drawing simulator does not support object operations.")
+
   private def numericArg(expression: BeExpression, state: InterpState): Option[Double] =
     expression match
+      case _: BeObjectExpression => unsupportedObjectExecution()
+      case call: BeFunctionCall if !call.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(call.funcDef) => unsupportedObjectExecution()
       case BeUseValue(BeDataValueLiteral(value), _) => numericLiteral(value)
       case BeUseValue(BeUseValueReference(_), _) =>
         Some(evalNumber(expression, state))
@@ -160,6 +167,8 @@ object TurtleProgramAnalysis {
 
   private def evalNumber(expression: BeExpression, state: InterpState): Double =
     expression match
+      case _: BeObjectExpression => unsupportedObjectExecution()
+      case call: BeFunctionCall if !call.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(call.funcDef) => unsupportedObjectExecution()
       case BeUseValue(BeDataValueLiteral(value), _) =>
         scala.util.Try(value.trim.toDouble).toOption.getOrElse(if isTruthy(value) then 1.0 else 0.0)
       case BeUseValue(BeUseValueReference(variable), _) =>
