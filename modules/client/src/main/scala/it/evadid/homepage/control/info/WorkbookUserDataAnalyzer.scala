@@ -1,6 +1,5 @@
 package it.evadid.homepage.control.info
 
-import it.evadid.core.util.InfoUtil
 import it.evadid.homepage.control.model.*
 import it.evadid.util.DownloadToDisc
 import it.evadid.util.logging.Logger
@@ -22,8 +21,7 @@ case class WorkbookUserDataAnalyzer() {
     val dataOp = SessionData.createSessionData(homepageInfo)
     if (dataOp.nonEmpty) {
       val data = dataOp.get
-      val name = s"${InfoUtil.datetimeFormattedForFilenames(data.timestampStorage)}-eva-${data.userInfo.id}-${data.workbookInfo.loadedWorkbook.elementId.replace("[/]", "-")}.eva"
-      downloadToDisc.downloadFile(name, write(data))
+      downloadToDisc.downloadFile(data.fileName, write(data))
     }
   }
 

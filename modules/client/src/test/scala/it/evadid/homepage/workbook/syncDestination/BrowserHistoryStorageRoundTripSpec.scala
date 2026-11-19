@@ -71,6 +71,8 @@ class BrowserHistoryStorageRoundTripSpec extends EditorDomSuite {
       _ <- cache(mine).requestStore(mine, Map(good -> history[text.type]("mine" -> 1), broken -> history[text.type]("lost" -> 1)))
       _ <- cache(theirs).requestStore(theirs, Map(usage.copy(userId = "other").toSyncContext("good") -> history[text.type]("theirs" -> 1)))
       _ = dom.window.localStorage.setItem(SyncContext.serializer.serialize(broken), "{\"not\": \"a history\"}")
+      // The saved login shares the browser storage; it is not a history and is skipped.
+      _ = dom.window.localStorage.setItem("edusquirrel-alluserinfo", "{\"user\": {}, \"config\": {}}")
       restored <- cache(destination(text)).fetchAll(Set(good, broken))
       window <- cache(destination(text)).fetchEventsBetween(Seq(good, broken), at, at.plusSeconds(5))
     } yield {

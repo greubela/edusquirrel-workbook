@@ -160,33 +160,30 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     tryServerLoginWith(mail, Left(singleAccessToken))
   }
 
-  def tryContinueWithSessionFile(loadedFile: LoadedFile): Future[Unit] = Future {
-    val logger = fullInfo.loggerSystemInfo.uiAndDomLogger
-    logger.logInfo("WorkbookUserDataAnalyzer: now trying to load prio session data!")
-
-    val sessionData = read[SessionData](loadedFile.fileDataAsUtf8String)
-
-    val loginFuture: Future[?] = if (fullInfo.current.userInfo.isEmpty || fullInfo.current.userInfo.get.user.id != sessionData.userInfo.id) {
-      tryLoginOrLocalRegistration(Some(sessionData.userInfo), sessionData.userConfig)
-    } else Future.successful(())
-
-
-    def actuallyLoadData(): Unit = {
-      if (fullInfo.current.userInfo.isEmpty || fullInfo.current.userInfo.get.user.id == sessionData.userInfo.id) {
-        fullInfo.current.workbookInfo.foreach(_.loadedWorkbook.loadDataNoUserCheck(
-          logger, sessionData.knownUsageData, fullInfo.workbookContextInformation
-        ))
-      }
+  def tryContinueWithSessionFile(loadedFile: LoadedFile): Future[Unit] =
+    Future(read[SessionData](loadedFile.fileDataAsUtf8String)).transformWith {
+      case Success(session) => continueWithSession(session)
+      case Failure(error) =>
+        logger.logExceptionWarn("The selected file is not a readable session file", error)
+        Future.failed(error)
     }
 
-    loginFuture.onComplete {
-      case Success(_) => actuallyLoadData()
-      case Failure(err) => {
-        logger.logExceptionWarn("Could not locally log in even though that should work. Loading without user account set", err)
-        actuallyLoadData()
+  /** Signs in as the session's user if needed, opens the session's workbook and restores its answers into it.
+    * The returned future completes once the answers are restored.
+    */
+  def continueWithSession(session: SessionData): Future[Unit] = {
+    def sameUser = fullInfo.current.userInfo.exists(_.user.id == session.userInfo.id)
+    val login: Future[Unit] = if sameUser then Future.unit else
+      tryLoginOrLocalRegistration(Some(session.userInfo), session.userConfig).recover { case scala.util.control.NonFatal(error) =>
+        logger.logExceptionWarn("Could not sign in as the session's user; restoring the answers without an account", error)
       }
+    login.map { _ =>
+      if fullInfo.current.userInfo.isEmpty || sameUser then {
+        val workbook = session.workbookToContinue(fullInfo.current.workbookInfo)
+        changeWorkbook(Some(workbook))
+        workbook.loadedWorkbook.restoreHistories(logger, session.knownUsageData, fullInfo.workbookContextInformation)
+      } else logger.logWarn("Ignored a session file of another user")
     }
-
   }
 
   def tryLoginOrLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = {
