@@ -41,7 +41,8 @@ object PythonToExpression {
   /** Unreadable source is retained as one unparsable statement rather than discarded. */
   /** Known dependency definitions are libraries, not user code, and are removed before parsing. */
   def parse(rawSource: String): ParsedProgram = {
-    val source = KnownDependencies.withoutDefinitions(rawSource, Python)
+    // Library definitions are masked rather than removed, so positions match the original text.
+    val source = KnownDependencies.maskDefinitions(rawSource, Python)
     PythonAstParserSimple.parse(source).fold(
       error => ParsedProgram(if source.trim.isEmpty then Nil else Seq(S.Unsupported(source.trim, error.getMessage, unparsable = true))),
       program => {
@@ -87,7 +88,7 @@ object PythonToExpression {
       else Seq(S.FunctionDef(definition.name, parameters(definition.parameters), definition.returnType.map(parsedType),
         block(definition.block), ParsedFunctionKind.Function))
     case definition: PyClassDef => Seq(classDef(definition))
-    case statement: PyTryStatement => Seq(S.Unsupported(statement.source, "try/except statements are currently unsupported", unparsable = true))
+    case statement: PyTryStatement => Seq(S.Unsupported(statement.source, "try/except statements are currently unsupported", unparsable = false))
     case PySimpleAssignment(target, Some(value)) => Seq(assign(target, expression(value)))
     case PySimpleAssignment(target, None) if target.locationString.isEmpty =>
       Seq(S.Declare(target.identifier, target.typeHint.map(parsedType).getOrElse(ParsedType.AnyValue)))

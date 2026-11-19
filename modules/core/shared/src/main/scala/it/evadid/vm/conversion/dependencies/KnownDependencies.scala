@@ -74,14 +74,9 @@ object KnownDependencies {
     case _ => Nil
   }
 
-  /** Source without the dependency definitions it contains, for the conversion parsers. */
-  def withoutDefinitions(source: String, language: ProgrammingLanguage): String = definitionRanges(source, language) match {
-    case Seq() => source
-    case ranges => SourceStructure.remove(source, ranges)
-  }
-
   /** Source with its dependency definitions blanked out, keeping line breaks, so that offsets in the
-    * remaining code stay valid for diagnostics and tracing (used by the checked Java runner).
+    * remaining code stay valid for diagnostics and tracing. Parsers and the checked Java runner read
+    * this instead of the definitions.
     */
   def maskDefinitions(source: String, language: ProgrammingLanguage): String =
     definitionRanges(source, language).foldLeft(source) { case (text, (start, end)) =>

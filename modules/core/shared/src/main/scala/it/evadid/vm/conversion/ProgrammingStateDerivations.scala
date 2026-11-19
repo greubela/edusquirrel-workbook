@@ -2,10 +2,12 @@ package it.evadid.vm.conversion
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, ProgrammingConversionException, ProgrammingConversionKind}
 import it.evadid.vm.conversion.expressionjava.ExpressionToJava
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
 import it.evadid.vm.conversion.javaexpression.JavaToExpression
+import it.evadid.vm.conversion.printing.ModuleLayout
 import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.vm.conversion.snapexpression.SnapToExpression
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
@@ -32,7 +34,10 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     case ProgrammingStateRaw(Java, _) | _: ProgrammingStateJavaStructured => javaFrontend.convert
     case ProgrammingStateRaw(Python, code) => ProgrammingStateBeExpression(PythonToExpression.program(preparedSource.code).fullProgram)
     case value: ProgrammingStatePythonStructured => ProgrammingStateBeExpression(PythonToExpression.program(preparedSource.code).fullProgram)
-    case ProgrammingStateRaw(SnapLanguage, xml) => ProgrammingStateBeExpression(SnapToExpression.parse(xml))
+    case ProgrammingStateRaw(SnapLanguage, xml) =>
+      // Malformed XML has no blocks to read; the lossless Snap codec reports why.
+      if xml.trim.nonEmpty then snapModel.left.foreach(message => throw ProgrammingConversionException.unparsable(message))
+      ProgrammingStateBeExpression(SnapToExpression.parse(xml))
     case ProgrammingStateSnapScalaModel(model) => ProgrammingStateBeExpression(SnapToExpression.parse(model.toXml))
     case ProgrammingStateRaw(language, _) => throw UnsupportedOperationException(s"Parsing $language source into expressions is not supported.")
   }
@@ -70,6 +75,7 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
 
   def convertToLanguage(language: ProgrammingLanguage): ConversionResult = {
     try {
+      if language != source.associatedLanguage then requireSharedForm(language)
       val target = inLanguage(language)
       val numericWarnings = Option.when(source.associatedLanguage == Java && language != Java &&
           "\\b(?:byte|short|int|long)\\b".r.findFirstIn(
@@ -90,10 +96,29 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     catch { case scala.util.control.NonFatal(error) => ConversionResult.failed(source, error) }
   }
 
+  /** Unfinished or unsupported source keeps its text within its own language, but has no form in
+    * another one. The first such part is reported with its kind and, for text sources, its position.
+    */
+  private def requireSharedForm(target: ProgrammingLanguage): Unit = {
+    val text = source match {
+      case ProgrammingStateRaw(Python | Java, _) | _: ProgrammingStateJavaStructured | _: ProgrammingStatePythonStructured => preparedSource.code
+      case _ => ""
+    }
+    def firstLine(fragment: String) = fragment.trim.linesIterator.nextOption().getOrElse("").trim
+    ModuleLayout.nodes(expression.expression).collectFirst {
+      case BeExpressionUnparsable(fragment, reason, Some(origin)) if origin != target =>
+        (ProgrammingConversionKind.Unparsable, fragment, s"$reason: ${firstLine(fragment)}")
+      case BeExpressionUnsupported(fragment, Some(origin)) if origin != target =>
+        (ProgrammingConversionKind.UnsupportedConstruct, fragment, s"${firstLine(fragment)} has no form in $target.")
+    }.foreach { (kind, fragment, message) =>
+      throw ProgrammingConversionException.at(kind, message, text, Option(text.indexOf(fragment.trim)).filter(index => index >= 0 && fragment.trim.nonEmpty))
+    }
+  }
+
   private def inLanguage(language: ProgrammingLanguage): ProgrammingState = language match {
     case Python => pythonStructured
     case Java => javaStructured
-    case SnapLanguage => snapModel.fold(message => throw IllegalArgumentException(message), _.persistent)
+    case SnapLanguage => snapModel.fold(message => throw ProgrammingConversionException.unparsable(message), _.persistent)
     case _ => throw UnsupportedOperationException(s"Programming language '$language' cannot be converted.")
   }
 }

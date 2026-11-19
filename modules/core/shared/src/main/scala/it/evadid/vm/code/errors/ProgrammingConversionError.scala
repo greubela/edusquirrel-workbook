@@ -28,6 +28,12 @@ object ProgrammingConversionException {
 
   def unparsable(message: String, line: Option[Int] = None, column: Option[Int] = None): ProgrammingConversionException =
     new ProgrammingConversionException(message, ProgrammingConversionError(ProgrammingConversionKind.Unparsable, line, column))
+
+  /** A failure at a character offset of `source`, reported as a 1-based line and column. */
+  def at(kind: ProgrammingConversionKind, message: String, source: String, offset: Option[Int]): ProgrammingConversionException = {
+    val position = offset.map(ProgrammingConversionLocation.lineColumn(source, _))
+    new ProgrammingConversionException(message, ProgrammingConversionError(kind, position.map(_._1), position.map(_._2)))
+  }
 }
 
 object ProgrammingConversionLocation {

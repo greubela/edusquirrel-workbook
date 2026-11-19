@@ -2,7 +2,7 @@ package it.evadid.vm.conversion.javaexpression
 
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, ProgrammingConversionException, ProgrammingConversionLocation}
+import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, ProgrammingConversionException, ProgrammingConversionKind}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.compilation.java.turtle.{JavaTurtleCompiler, JavaTurtleInputLimits, JavaTurtleProgram, JavaTurtleSourceParser}
@@ -25,10 +25,12 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
   * object classes. Loose statements and methods outside any class are module code as well.
   */
 final class JavaToExpression(code: String) {
+  // Library definitions are masked rather than removed, so reported positions match `code`.
   private lazy val parsed: JavaProgram = {
     JavaTurtleInputLimits.checkParserInput(code).fold(
-      diagnostic => rejectAt(diagnostic.message, code, diagnostic.range.map(_.start)), identity)
-    JavaToExpression.parser.parse(KnownDependencies.withoutDefinitions(code, Java)).fold(
+      diagnostic => throw ProgrammingConversionException.at(ProgrammingConversionKind.Unparsable, diagnostic.message, code, diagnostic.range.map(_.start)),
+      identity)
+    JavaToExpression.parser.parse(KnownDependencies.maskDefinitions(code, Java)).fold(
       {
         case conversion: ProgrammingConversionException =>
           throw ProgrammingConversionException.unparsable(
@@ -38,17 +40,11 @@ final class JavaToExpression(code: String) {
       program => { rejectUnparsable(program); program })
   }
 
-  private def rejectAt(message: String, source: String, offset: Option[Int]): Nothing = {
-    val (line, column) = offset.map(ProgrammingConversionLocation.lineColumn(source, _)).map((l, c) => (Some(l), Some(c))).getOrElse((None, None))
-    throw ProgrammingConversionException.unparsable(message, line, column)
-  }
-
   private def rejectUnparsable(program: JavaProgram): Unit = {
     def visit(node: it.evadid.vm.parsing.generic.abstractions.GenericAST): Unit = node match {
       case statement: JavaUnparsableStatement =>
-        val index = code.indexOf(statement.source)
-        throw ProgrammingConversionException.unparsable("This Java source contains unsupported or unfinished syntax.",
-          Option.when(index >= 0)(ProgrammingConversionLocation.lineColumn(code, index)._1))
+        throw ProgrammingConversionException.at(ProgrammingConversionKind.Unparsable,
+          "This Java source contains unsupported or unfinished syntax.", code, Option(code.indexOf(statement.source)).filter(_ >= 0))
       case other => other.getChildren().foreach(visit)
     }
     visit(program)
