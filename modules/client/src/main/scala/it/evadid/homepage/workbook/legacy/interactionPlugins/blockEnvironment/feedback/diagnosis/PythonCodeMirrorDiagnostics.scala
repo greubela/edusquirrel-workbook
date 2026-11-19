@@ -24,9 +24,9 @@ object PythonCodeMirrorDiagnostics:
 
     val problems =
       tree.values.toSeq.collect {
-        case BeExpressionReference(_, BeExpressionUnparsable(original, message)) =>
+        case BeExpressionReference(_, BeExpressionUnparsable(original, message, _)) =>
           SourceProblem(original, message, "warning")
-        case BeExpressionReference(_, BeExpressionUnsupported(original)) =>
+        case BeExpressionReference(_, BeExpressionUnsupported(original, _)) =>
           SourceProblem(original, s"Unknown Python structure: $original", "soft")
       }
 
