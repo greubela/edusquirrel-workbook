@@ -45,10 +45,19 @@ object PythonToExpression {
     PythonAstParserSimple.parse(source).fold(
       error => ParsedProgram(if source.trim.isEmpty then Nil else Seq(S.Unsupported(source.trim, error.getMessage, unparsable = true))),
       program => {
-        val parsed = program.statements.map(_.statement)
+        val parsed = program.statements.map(_.statement).flatMap(withoutMainGuard)
         given UsedNames = UsedNames(parsed.flatMap(usedNames).toSet)
         ParsedProgram(statements(parsed))
       })
+  }
+
+  /** `if __name__ == "__main__":` holds whenever the program runs, so its body runs as module
+    * statements; a final `main()` in it is then the usual entry point ([[PythonEntryPoint]]).
+    */
+  private def withoutMainGuard(statement: PyStatement): Seq[PyStatement] = statement match {
+    case PyIfStatement(PyOperationBinary(PyTarget("__name__", Nil, None, _), "==", PythonLiteral(raw, _: PYTHON_STRING)), thenBlock, elseBlock)
+        if Set("\"__main__\"", "'__main__'")(raw) && elseBlock.statements.isEmpty => thenBlock.statements
+    case other => Seq(other)
   }
 
   /** Imports that only resolve annotations emitted by the Python printer. */

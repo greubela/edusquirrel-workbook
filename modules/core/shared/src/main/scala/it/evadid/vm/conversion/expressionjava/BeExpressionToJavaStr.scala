@@ -192,12 +192,10 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     case BeUseValue(BeDataValueLiteral(raw @ ("True" | "False")), _) => raw.toLowerCase
     case BeUseValue(BeDataValueUnit(), _) if targetLanguage == Java => "null"
     case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.exists(JavaBuiltinSpelling.handles) =>
-      val value = call.funcDef.inputs.flatMap(call.parameterValueMap.get) match {
-        case Seq(only) => only
-        case _ => throw ProgrammingConversionException.unsupported("Java conversion built-ins take one value.")
-      }
+      val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get)
+        .map(value => JavaBuiltinSpelling.Argument(value, forValue(value), forOperand(value)))
       // Like other calls, the spelling ends the line; values strip that ending again.
-      JavaBuiltinSpelling.spell(call.funcDef.intrinsic.get, value, forValue(value), forOperand(value)) + ";"
+      JavaBuiltinSpelling.spell(call.funcDef.intrinsic.get, arguments) + ";"
     case call: BeFunctionCall if call.funcDef.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Operator] =>
       val arguments = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(forOperand)
       call.funcDef.functionTypeInfo.displayName.universalInterpretation() match {

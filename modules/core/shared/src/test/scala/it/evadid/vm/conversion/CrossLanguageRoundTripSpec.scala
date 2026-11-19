@@ -142,6 +142,19 @@ class CrossLanguageRoundTripSpec extends FunSuite {
       ProgrammingStateRaw(Python, python).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
   }
 
+  test("the __main__ guard runs its body, so a guarded main() is the entry point") {
+    val python = """def main():
+      |    forward(20)
+      |
+      |if __name__ == "__main__":
+      |    main()
+      |""".stripMargin
+    val state = ProgrammingStateRaw(Python, python)
+    assertEquals(commands(state), List(forward(20)))
+    assertEquals(state.toJavaStructured.toString, ProgrammingStateRaw(Python, "forward(20)").toJavaStructured.toString)
+    assertRoundTrips(state, all, Some(Seq(forward(20))))
+  }
+
   test("scenario B: while, fixed repetition, if, if-else and if-elif-else survive every language pair") {
     val python = """length = 10
       |count = 0
@@ -213,8 +226,9 @@ class CrossLanguageRoundTripSpec extends FunSuite {
       |forward(int(size) * 2)
       |forward(abs(int(-size)) + float(1))
       |turn_left(abs(size - 10))
+      |forward(max(size, 3) - min(size, int(size)))
       |""".stripMargin
-    val expected = Seq(forward(14), forward(8), left(2.5))
+    val expected = Seq(forward(14), forward(8), left(2.5), forward(0.5))
     Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured)
       .foreach(assertRoundTrips(_, Seq(Python, Java), Some(expected)))
   }

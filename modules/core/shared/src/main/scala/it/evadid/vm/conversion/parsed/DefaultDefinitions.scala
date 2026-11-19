@@ -126,6 +126,8 @@ object DefaultDefinitions {
     builtinFunctionDefinition("float", List("value" -> AnyType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.ToNumber)),
     builtinFunctionDefinition("bool", List("value" -> AnyType), Some(BooleanType), Some(it.evadid.vm.code.defining.BeIntrinsic.ToBoolean)),
     builtinFunctionDefinition("abs", List("value" -> NumericType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.Absolute)),
+    builtinFunctionDefinition("max", List("first" -> NumericType, "second" -> NumericType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.Maximum)),
+    builtinFunctionDefinition("min", List("first" -> NumericType, "second" -> NumericType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.Minimum)),
     builtinFunctionDefinition("print", List("value" -> AnyType), Some(BeDataType.Unit), Some(it.evadid.vm.code.defining.BeIntrinsic.Print)),
     builtinFunctionDefinition("fetch_text", List("url" -> StringType), Some(StringType), Some(it.evadid.vm.code.defining.BeIntrinsic.FetchText))
   )

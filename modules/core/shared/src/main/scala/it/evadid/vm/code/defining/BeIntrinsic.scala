@@ -7,4 +7,6 @@ enum BeIntrinsic derives upickle.default.ReadWriter {
   case FetchText
   /** Python's `int`, `float`, `str` and `bool` conversions and `abs`; `int` truncates towards zero. */
   case ToInteger, ToNumber, ToText, ToBoolean, Absolute
+  /** The larger and the smaller of two numbers. Python's `round` is not shared: Java rounds halves up. */
+  case Maximum, Minimum
 }

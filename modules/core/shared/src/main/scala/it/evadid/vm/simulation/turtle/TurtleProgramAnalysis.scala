@@ -178,17 +178,21 @@ object TurtleProgramAnalysis {
       case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) =>
         evalOperator(call, state)
       case call: BeFunctionCall if call.funcDef.intrinsic.exists(numericIntrinsics) =>
-        val value = call.funcDef.inputs.headOption.flatMap(call.parameterValueMap.get).map(evalNumber(_, state)).getOrElse(0.0)
+        val values = call.funcDef.inputs.flatMap(call.parameterValueMap.get).map(evalNumber(_, state))
+        val value = values.headOption.getOrElse(0.0)
         call.funcDef.intrinsic.get match
           case BeIntrinsic.ToInteger => if value < 0 then math.ceil(value) else math.floor(value)
           case BeIntrinsic.Absolute => math.abs(value)
           case BeIntrinsic.ToBoolean => if value != 0 then 1.0 else 0.0
+          case BeIntrinsic.Maximum => values.max
+          case BeIntrinsic.Minimum => values.min
           case _ => value
       case _ =>
         0.0
 
   /** Built-ins whose numeric result the drawing simulation computes; `int` truncates towards zero. */
-  private val numericIntrinsics: Set[BeIntrinsic] = Set(BeIntrinsic.ToInteger, BeIntrinsic.ToNumber, BeIntrinsic.Absolute, BeIntrinsic.ToBoolean)
+  private val numericIntrinsics: Set[BeIntrinsic] =
+    Set(BeIntrinsic.ToInteger, BeIntrinsic.ToNumber, BeIntrinsic.Absolute, BeIntrinsic.ToBoolean, BeIntrinsic.Maximum, BeIntrinsic.Minimum)
 
   private def evalOperator(call: BeFunctionCall, state: InterpState): Double = {
     val op = SnapControlFlow.operatorSymbol(call)
