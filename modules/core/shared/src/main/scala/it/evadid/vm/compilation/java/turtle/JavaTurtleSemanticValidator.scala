@@ -1,12 +1,12 @@
-package it.evadid.vm.conversion.javaexpression.checked
+package it.evadid.vm.compilation.java.turtle
 
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType.*
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleSource.{Diagnostic, Problem}
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleStructure.StructuredSource
+import it.evadid.vm.compilation.java.turtle.JavaTurtleSourceParser.{Diagnostic, Problem}
+import it.evadid.vm.compilation.java.turtle.JavaTurtleStructureValidator.StructuredSource
 
-object JavaTurtleSemantics {
-  final class TypedSource private[JavaTurtleSemantics](val structure: StructuredSource)
+object JavaTurtleSemanticValidator {
+  final class TypedSource private[JavaTurtleSemanticValidator](val structure: StructuredSource)
 
   def check(structure: StructuredSource): Either[Diagnostic, TypedSource] =
     new Checker(structure).check().map(_ => new TypedSource(structure))

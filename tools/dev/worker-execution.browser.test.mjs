@@ -105,6 +105,35 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     assert.deepEqual(python.value,{sum:5,label:'学校'});
     assert.equal(python.stdout,'Grüße\n');
     assert.equal(python.stderr,'warning\n');
+    const turtleModuleBefore = result(await page.evaluate(() => request('turtle-before','worker.runPython',{
+      code:"import sys\nid(sys.modules.get('turtle'))"
+    }))).value;
+    const consoleProgram = result(await page.evaluate(() => request('console-program','worker.runPython',{
+      code:'from turtle import *\nforward(100)\nprintln("hai")\n',logTurtleCalls:true
+    })));
+    assert.equal(consoleProgram.stdout,'forward(100)\nhai\n');
+    assert.equal(consoleProgram.stderr,'');
+    const mixedConsole = result(await page.evaluate(() => request('mixed-console','worker.runPython',{
+      code:'import turtle as t\nfor i in range(2):\n    t.fd(i)\n    print("学校", end="!")\nt.forward(distance=3)\nimport sys\nprint("warning",file=sys.stderr)\n',logTurtleCalls:true
+    })));
+    assert.equal(mixedConsole.stdout,'fd(0)\n学校!fd(1)\n学校!forward(distance=3)\n');
+    assert.equal(mixedConsole.stderr,'warning\n');
+    await page.evaluate(() => request('console-state','worker.runPython',{
+      code:'console_value = 21',logTurtleCalls:true
+    }));
+    const retainedConsole = result(await page.evaluate(() => request('console-retained','worker.runPython',{
+      code:'println(console_value * 2)',logTurtleCalls:true,resetGlobals:false
+    })));
+    assert.equal(retainedConsole.stdout,'42\n','console mode honors explicitly retained globals');
+    const failingConsole = await page.evaluate(() => request('failing-console','worker.runPython',{
+      code:'forward(7)\nraise ValueError("stop")',logTurtleCalls:true
+    }));
+    assert.equal(result(failingConsole),undefined);
+    assert(failingConsole.response.additionalOutput.loggerOut.includes('forward(7)'));
+    assert(JSON.stringify(failingConsole.response.result).includes('stop'));
+    assert.equal(result(await page.evaluate(() => request('turtle-after','worker.runPython',{
+      code:"import sys\nid(sys.modules.get('turtle'))"
+    }))).value,turtleModuleBefore,'console execution restores turtle after successful and failed runs');
     const pythonNone = result(await page.evaluate(() => request('python-none','worker.runPython',{
       code:"{'status':'Completed','problem':None,'commands':[],'steps':2}"
     })));

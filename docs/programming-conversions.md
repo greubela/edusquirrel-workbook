@@ -15,7 +15,7 @@ source state → source frontend → BeExpression → target printer → target 
 | Responsibility | Package below `vm.conversion` |
 | --- | --- |
 | Python frontend | `pythonexpression` |
-| Java frontend and separate checked compilation | `javaexpression` |
+| Java conversion frontend | `javaexpression` |
 | Snap frontend, startup and detached scripts | `snapexpression.SnapToExpression`, using `turtlestitchexpression` |
 | Shared-tree printers | `expressionpython`, `expressionjava`, `expressionsnap`, `expressionlisp` |
 | Source grouping for structured editors | `structured` |
@@ -25,7 +25,7 @@ source state → source frontend → BeExpression → target printer → target 
 
 Snap green flags become startup; detached scripts become the reserved, uncalled `unusedCode` function. Export restores its body as loose blocks without a green-flag hat, including after Python/Java roundtrips. Saved variable initializers enter the shared tree once. Unsupported Snap classes are rejected rather than silently discarded. The Python frontend binds constructors, member access, instance calls and static calls. Inheritance and unknown decorators remain explicit unsupported source. The Java frontend also binds constructors, explicit and implicit instance receivers, local shadowing and static methods. Its lexical lowering shares the expression binder; the checked Java runtime still enforces its narrower subset. Static Java entry-point wrappers lower to module functions and startup; original wrapper names and formatting are not replayed after a language change.
 
-Checked Java execution remains a separate runtime capability. Its nodes do not extend `BeExpression`. Java unit-test execution can generate runtime instrumentation through `JavaTurtlePythonExport`; that instrumentation is not an editable programming-state conversion and does not select conversion routes. There is no Java-emulation metadata reader or editable Java/Python/Snap bridge.
+`JavaTurtleCompiler` in `vm.compilation.java.turtle` parses source, validates structure and semantics, resolves symbols, and produces a `JavaTurtleProgram`. `JavaTurtleInterpreter` in `vm.simulation.java` executes that program with Java arithmetic, limits and tracing. This is a separate runtime capability. Its nodes do not extend `BeExpression`. Java unit-test execution can generate runtime instrumentation through `JavaTurtlePythonExport`; that instrumentation is not an editable programming-state conversion and does not select conversion routes. There is no Java-emulation metadata reader or editable Java/Python/Snap bridge.
 
 Regression coverage lives in `ProgrammingStateConversionSpec`, `StructuredProgrammingStateSpec`, `PythonTypeHintConversionSpec` and the turtle execution tests. Checked Java arithmetic, bindings, tracing and runtime tests remain independent of conversion tests.
 
@@ -46,3 +46,15 @@ Module variables become static fields of Java `Main`; their initializers remain 
 `BeIntrinsic` identifies turtle and printing library semantics independently of user names. Printers select target syntax from this marker; user-defined `print`/`forward` methods remain ordinary functions. Java conversion rejects a user `Turtle` class when it would hide actual turtle-library calls.
 
 The shared numeric subset uses double precision. Java integer declarations are widened on cross-language conversion; `ConversionResult` reports this as a loss because wrapping overflow and truncating division are not preserved. Same-language source grouping retains the original types.
+
+## Running Python
+
+`ProgrammingStatePythonStructured.startExecution()(using ExecutionClient, ExecutionContext)` sends the native source to the existing `worker.runPython` command; supply the application's worker client. It returns `Future[RunPythonResult]` with captured stdout/stderr and also prints those streams to the caller's console when execution completes. Python exceptions fail the future; output emitted before the failure is retained in the worker diagnostic output and printed too.
+
+```scala
+given ExecutionClient = fullInfo.defaults.workerExecuter
+val state = ProgrammingStatePythonStructured("from turtle import *\nforward(100)\nprintln(\"hai\")")
+val result = state.startExecution() // stdout: "forward(100)\nhai\n"
+```
+
+This enables `RunPythonRequest.logTurtleCalls`: turtle methods log their called name and arguments instead of drawing, and `println` aliases `print`. Both imported and unqualified turtle calls work. The state API uses a fresh program namespace; explicit worker requests can retain globals with `resetGlobals = false`. Execution sets `__name__` to `__main__`, and restores the worker's previous turtle module even after an exception. Ordinary worker Python requests retain their existing behavior.

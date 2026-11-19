@@ -3,8 +3,8 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 import it.evadid.distribution.clients.PythonExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.{RunPythonRequest, RunPythonResult}
 import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
-import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleExecutionReport, JavaTurtleRuntime as T}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleProgram as P}
+import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleExecutionReport, JavaTurtleInterpreter as T}
 
 import java.util.concurrent.{CancellationException, TimeoutException}
 import scala.concurrent.{Future, Promise}
@@ -30,10 +30,10 @@ final class JavaTurtleCommandRunner(
   private var active: Option[Run] = None
   private var closed = false
 
-  def run(program: P.Program, limits: T.Limits = T.Limits()): Future[T.Execution] =
+  def run(program: P, limits: T.Limits = T.Limits()): Future[T.Execution] =
     execute(program, None, Vector.empty, limits)
 
-  def invoke(program: P.Program, method: R.MethodId, arguments: Vector[E.Value],
+  def invoke(program: P, method: R.MethodId, arguments: Vector[E.Value],
       limits: T.Limits = T.Limits()): Future[T.Execution] =
     execute(program, Some(method), arguments, limits)
 
@@ -85,7 +85,7 @@ final class JavaTurtleCommandRunner(
     slot
   }
 
-  private def execute(program: P.Program, method: Option[R.MethodId], arguments: Vector[E.Value],
+  private def execute(program: P, method: Option[R.MethodId], arguments: Vector[E.Value],
       limits: T.Limits): Future[T.Execution] = {
     if closed then Future.failed(new IllegalStateException("Java runner is closed."))
     else if active.nonEmpty then Future.failed(new IllegalStateException("Java execution is already running."))
@@ -127,7 +127,7 @@ object JavaTurtleCommandRunner {
   private def workerFactory(): PythonExecutionClient =
     PythonExecutionClient.worker(it.evadid.homepage.control.startup.ClientRuntimeConfig.workerUrl)
 
-  private def validInvocation(program: P.Program, method: Option[R.MethodId], arguments: Vector[E.Value]): Boolean =
+  private def validInvocation(program: P, method: Option[R.MethodId], arguments: Vector[E.Value]): Boolean =
     method.fold(arguments.isEmpty) { id =>
       program.root.methods.find(_.binding.id == id).exists { method =>
         (method ne program.root.entryPoint) && method.binding.parameters.size == arguments.size &&
@@ -142,7 +142,7 @@ object JavaTurtleCommandRunner {
       }
     }
 
-  private def code(program: P.Program, method: Option[R.MethodId], arguments: Vector[E.Value], limits: T.Limits): String =
+  private def code(program: P, method: Option[R.MethodId], arguments: Vector[E.Value], limits: T.Limits): String =
     JavaTurtlePythonExport.invocationSource(JavaTurtlePythonExport.render(program), method, arguments, limits)
 
   private[execution] def decode(report: RunPythonResult, limits: T.Limits): T.Execution = {

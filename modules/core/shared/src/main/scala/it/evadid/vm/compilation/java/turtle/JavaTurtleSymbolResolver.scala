@@ -1,12 +1,12 @@
-package it.evadid.vm.conversion.javaexpression.checked
+package it.evadid.vm.compilation.java.turtle
 
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
 import it.evadid.vm.parsing.java.clean.model.JavaType.*
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleSemantics.TypedSource
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleSource.{Diagnostic, Problem}
+import it.evadid.vm.compilation.java.turtle.JavaTurtleSemanticValidator.TypedSource
+import it.evadid.vm.compilation.java.turtle.JavaTurtleSourceParser.{Diagnostic, Problem}
 
-object JavaTurtleResolution {
+object JavaTurtleSymbolResolver {
   enum ValueType {
     case IntValue, DoubleValue, BooleanValue, MainArguments
   }
@@ -100,7 +100,7 @@ object JavaTurtleResolution {
   case class Block(statements: Vector[Statement])
   case class Method(id: MethodId, name: String, parameters: Vector[Variable], body: Block)
 
-  final class ResolvedSource private[JavaTurtleResolution](
+  final class ResolvedSource private[JavaTurtleSymbolResolver](
       val typedSource: TypedSource,
       val methods: Vector[Method],
       val entryPoint: MethodId

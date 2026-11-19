@@ -1,9 +1,9 @@
-package it.evadid.vm.conversion.javaexpression.checked
+package it.evadid.vm.compilation.java.turtle
 
 import it.evadid.vm.parsing.generic.abstractions.GenericAST
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
-import JavaTurtleSource.{Diagnostic, Problem}
+import JavaTurtleSourceParser.{Diagnostic, Problem}
 import it.evadid.vm.parsing.java.clean.JavaSourceMap.SourceRange
 import scala.collection.mutable.ArrayBuffer
 
@@ -28,7 +28,7 @@ object JavaTurtleInputLimits {
   def checkParserInput(source: String): Either[Diagnostic, Unit] =
     checkLength(source).flatMap(_ => checkTokens(source))
 
-  private[checked] def checkLength(source: String): Either[Diagnostic, Unit] =
+  private[turtle] def checkLength(source: String): Either[Diagnostic, Unit] =
     if source.length > MaxSourceCharacters then
       exceeded(s"Keep the turtle program within $MaxSourceCharacters characters.",
         Some(SourceRange(MaxSourceCharacters, source.length)))
@@ -44,8 +44,8 @@ object JavaTurtleInputLimits {
     (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
       (char >= '0' && char <= '9') || char == '_' || char == '$'
 
-  // Comments and literals have already been checked by JavaTurtleSource.
-  private[checked] def checkTokens(source: String): Either[Diagnostic, Unit] = {
+  // Comments and literals have already been checked by JavaTurtleSourceParser.
+  private[turtle] def checkTokens(source: String): Either[Diagnostic, Unit] = {
     var offset = 0
     var tokens = 0
     var segmentTokens = 0
@@ -117,7 +117,7 @@ object JavaTurtleInputLimits {
 
   private case class Entry(node: GenericAST, depth: Int, method: Int, parameter: Boolean = false)
 
-  private[checked] def checkAst(program: JavaProgram): Either[Diagnostic, Unit] = {
+  private[turtle] def checkAst(program: JavaProgram): Either[Diagnostic, Unit] = {
     var pending = List(Entry(program, 1, -1))
     val locals = ArrayBuffer.empty[Int]
     var nodes = 0

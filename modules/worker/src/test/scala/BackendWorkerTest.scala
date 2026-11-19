@@ -4,7 +4,7 @@ import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.distribution.formats.WorkerExecutionProtocol.{Request, Response}
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
-import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence as Evidence, JavaTurtleRuntime as T}
+import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence as Evidence, JavaTurtleInterpreter as T}
 import munit.FunSuite
 import upickle.default.*
 import scala.concurrent.{ExecutionContext, Future}

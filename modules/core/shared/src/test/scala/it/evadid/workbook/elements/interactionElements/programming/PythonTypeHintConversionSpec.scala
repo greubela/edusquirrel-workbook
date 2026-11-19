@@ -129,7 +129,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
 
   test("Java runtime validation is independent of shared class conversion") {
     val source = ProgrammingStateRaw(Java, "class Line { void draw() { forward(12); } }")
-    assert(source.toJavaVmProgram.isLeft)
+    assert(source.compileForExecution.isLeft)
     assert(source.toPython.code.contains("def draw(self)"))
     assertEquals(source.code, "class Line { void draw() { forward(12); } }")
   }
@@ -148,7 +148,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
       |""".stripMargin
     val java = ProgrammingStateRaw(Java, source)
     assert(java.isClassProgram)
-    assert(java.toJavaVmProgram.isLeft)
+    assert(java.compileForExecution.isLeft)
     intercept[IllegalArgumentException](java.toBeExpression)
     intercept[IllegalArgumentException](java.toPython)
     intercept[IllegalArgumentException](java.toSnapXml)
@@ -160,7 +160,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     val java = original.toJava
     assert(!java.code.contains("//EvaEntityName("), clue = java.code)
     assert(java.isClassProgram)
-    assert(java.toJavaVmProgram.isLeft)
+    assert(java.compileForExecution.isLeft)
     assertEquals(java.toPython.code.trim, original.toPython.code.trim)
     intercept[IllegalArgumentException](java.toSnapXml)
   }
@@ -186,7 +186,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     assert(java.code.contains("String label("), clue = java.code)
     assert(!java.code.contains("//EvaEntityName("), clue = java.code)
     assert(java.isClassProgram)
-    assert(java.toJavaVmProgram.isLeft)
+    assert(java.compileForExecution.isLeft)
     intercept[IllegalArgumentException](java.toSnapXml)
     assertEquals(roundTripped.code.trim, original.toPython.code.trim, clue = java.code)
 

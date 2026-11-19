@@ -1,5 +1,7 @@
 package it.evadid.vm.conversion.javaexpression
 
+import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
+
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateBeExpression
 
 
@@ -10,7 +12,7 @@ import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.parsing.generic.abstractions.GenericAST
 import it.evadid.vm.parsing.java.clean.JavaParser
 import it.evadid.vm.parsing.java.clean.model.JavaAST.{JavaAttributeAccess, JavaCallExpression, JavaClassDef, JavaFunctionCall, JavaMethodDef, JavaTarget, JavaUnparsableStatement}
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleInputLimits, JavaTurtleSource, JavaTurtleVmPrograms}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleInputLimits, JavaTurtleSourceParser, JavaTurtleProgram}
 import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeScope}
 import it.evadid.workbook.elements.interactionElements.programming.*
 import upickle.default.*
@@ -81,8 +83,8 @@ final class JavaToExpression(code: String) {
     convert.turtleCommandExecutionInfo.completedCommands
   }
 
-  def toJavaVmProgram: Either[JavaTurtleSource.Diagnostic, JavaTurtleVmPrograms.Program] =
-    JavaTurtleVmPrograms.compile(code)
+  def compileForExecution: Either[JavaTurtleSourceParser.Diagnostic, JavaTurtleProgram] =
+    JavaTurtleCompiler.compile(code)
 
   def convert: ProgrammingStateBeExpression = {
     val _ = isClassProgram // Validate limits, syntax and incomplete input before lowering.

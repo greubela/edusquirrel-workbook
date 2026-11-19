@@ -1,12 +1,12 @@
-package it.evadid.vm.conversion.javaexpression.checked
+package it.evadid.vm.compilation.java.turtle
 
 import it.evadid.vm.parsing.generic.abstractions.GenericAST
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType.*
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleSource.{Diagnostic, ParsedSource, Problem}
+import it.evadid.vm.compilation.java.turtle.JavaTurtleSourceParser.{Diagnostic, ParsedSource, Problem}
 
-object JavaTurtleStructure {
-  final class StructuredSource private[JavaTurtleStructure](
+object JavaTurtleStructureValidator {
+  final class StructuredSource private[JavaTurtleStructureValidator](
       val parsedSource: ParsedSource,
       val classDef: JavaClassDef,
       val main: JavaMethodDef,

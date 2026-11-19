@@ -1,12 +1,12 @@
 package it.evadid.vm.simulation.java
 
 import it.evadid.core.datastructures.state.State
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleProgram as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleTrace as J}
 import scala.collection.mutable
 import upickle.default.ReadWriter
 
-object JavaTurtleRuntime {
+object JavaTurtleInterpreter {
   enum Failure {
     case InvalidInvocation, InvalidLimits, NonFiniteCommand
     case Evaluation(problem: E.Failure)
@@ -43,27 +43,27 @@ object JavaTurtleRuntime {
       limits: Limits = Limits(), isCancelled: () => Boolean = () => false): Execution =
     execute(source.methods, source.entryPoint, method, arguments, false, limits, isCancelled)
 
-  def runVm(program: P.Program, limits: Limits = Limits(),
+  def runVm(program: P, limits: Limits = Limits(),
       isCancelled: () => Boolean = () => false): Execution =
     execute(program.resolvedMethods, program.root.entryPoint.binding.id, program.root.entryPoint.binding.id,
       Vector.empty, true, limits, isCancelled)
 
-  def invokeVm(program: P.Program, method: R.MethodId, arguments: Vector[E.Value],
+  def invokeVm(program: P, method: R.MethodId, arguments: Vector[E.Value],
       limits: Limits = Limits(), isCancelled: () => Boolean = () => false): Execution =
     execute(program.resolvedMethods, program.root.entryPoint.binding.id, method, arguments, false, limits, isCancelled)
 
-  def runVmTraced(program: P.Program, limits: Limits = Limits(),
+  def runVmTraced(program: P, limits: Limits = Limits(),
       isCancelled: () => Boolean = () => false, budget: J.Budget = J.Budget()): J.RecordedExecution =
     recorded(program, budget)(recorder => execute(program.resolvedMethods, program.root.entryPoint.binding.id,
       program.root.entryPoint.binding.id, Vector.empty, true, limits, isCancelled, Some(recorder)))
 
-  def invokeVmTraced(program: P.Program, method: R.MethodId, arguments: Vector[E.Value],
+  def invokeVmTraced(program: P, method: R.MethodId, arguments: Vector[E.Value],
       limits: Limits = Limits(), isCancelled: () => Boolean = () => false,
       budget: J.Budget = J.Budget()): J.RecordedExecution =
     recorded(program, budget)(recorder => execute(program.resolvedMethods, program.root.entryPoint.binding.id,
       method, arguments, false, limits, isCancelled, Some(recorder)))
 
-  private def recorded(program: P.Program, budget: J.Budget)(run: J.Recorder => Execution): J.RecordedExecution = {
+  private def recorded(program: P, budget: J.Budget)(run: J.Recorder => Execution): J.RecordedExecution = {
     val recorder = new J.Recorder(budget, program.bindings.source)
     val execution = run(recorder)
     J.RecordedExecution(execution, recorder.capture)

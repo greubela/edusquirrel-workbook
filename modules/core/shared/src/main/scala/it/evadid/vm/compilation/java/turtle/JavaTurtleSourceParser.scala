@@ -1,9 +1,9 @@
-package it.evadid.vm.conversion.javaexpression.checked
+package it.evadid.vm.compilation.java.turtle
 
 import it.evadid.vm.parsing.java.clean.{JavaParser, JavaSourceMap}
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 
-object JavaTurtleSource {
+object JavaTurtleSourceParser {
   enum Problem {
     case UnclosedComment, UnsupportedType, UnsupportedLiteral, UnsupportedNumber
     case UnicodeEscape, UnsupportedSyntax, ParseFailure
@@ -16,7 +16,7 @@ object JavaTurtleSource {
   import JavaSourceMap.SourceRange
   case class Diagnostic(problem: Problem, message: String, range: Option[SourceRange])
 
-  final class ParsedSource private[JavaTurtleSource](val sourceMap: JavaSourceMap) {
+  final class ParsedSource private[JavaTurtleSourceParser](val sourceMap: JavaSourceMap) {
     def source: String = sourceMap.source
     def program: JavaProgram = sourceMap.program
   }

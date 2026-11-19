@@ -1,15 +1,15 @@
-package it.evadid.vm.conversion.javaexpression.checked
+package it.evadid.vm.compilation.java.turtle
 
 import it.evadid.vm.code.defining.BeDefineVariable
 import it.evadid.vm.code.usage.BeUseValue
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution as R
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleSource.{Diagnostic, Problem}
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmBindings.Bindings
+import it.evadid.vm.compilation.java.turtle.JavaTurtleSymbolResolver as R
+import it.evadid.vm.compilation.java.turtle.JavaTurtleSourceParser.{Diagnostic, Problem}
+import it.evadid.vm.compilation.java.turtle.JavaTurtleExecutionBindings.Bindings
 import it.evadid.vm.simulation.java.JavaTurtleEvaluation as E
 import it.evadid.vm.types.BeUseValueReference
 
 
-object JavaTurtleVmExpressions {
+object JavaTurtleExpressionCompiler {
   enum Node {
     case IntLiteral(value: Int)
     case DoubleLiteral(value: Double)
@@ -23,9 +23,9 @@ object JavaTurtleVmExpressions {
     case ShortCircuit(operator: R.ShortCircuitOperator, left: Expression, right: Expression)
   }
 
-  final class Expression private[JavaTurtleVmExpressions](val node: Node, val valueType: R.ValueType)
+  final class Expression private[JavaTurtleExpressionCompiler](val node: Node, val valueType: R.ValueType)
 
-  final class BoundExpression private[JavaTurtleVmExpressions](val bindings: Bindings, val expression: Expression,
+  final class BoundExpression private[JavaTurtleExpressionCompiler](val bindings: Bindings, val expression: Expression,
       private[vm] val resolved: R.Expression, private[vm] val definitions: Map[R.Variable, BeDefineVariable])
 
   type Reader = BeDefineVariable => Either[E.Failure, E.Value]

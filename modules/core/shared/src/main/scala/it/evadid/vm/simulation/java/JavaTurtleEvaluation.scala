@@ -1,6 +1,6 @@
 package it.evadid.vm.simulation.java
 
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R}
 
 object JavaTurtleEvaluation {
   enum Value {

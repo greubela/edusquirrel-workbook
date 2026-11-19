@@ -3,8 +3,8 @@ package it.evadid.vm.simulation.java
 import it.evadid.core.datastructures.state.State
 import it.evadid.vm.parsing.java.clean.JavaSourceMap
 import it.evadid.vm.parsing.java.clean.JavaSourceMap.{Position, SourceRange}
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R}
-import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R}
+import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleInterpreter as T}
 import scala.annotation.tailrec
 import upickle.default.ReadWriter
 

@@ -1,7 +1,9 @@
 package it.evadid.worker
 
+import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
+
 import it.evadid.distribution.commandTypes.WorkerCommands.{JavaExecutionEvidenceRequest, RunPythonRequest, RunPythonResult}
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleInputLimits, JavaTurtleVmPrograms}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleInputLimits, JavaTurtleProgram}
 import it.evadid.vm.simulation.java.JavaTurtleExecutionEvidence
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -12,7 +14,7 @@ object JavaTurtleEvidenceJob {
     Future {
       require(request.source != null && request.limits.isValid, "Invalid execution input.")
       require(request.arguments.size <= JavaTurtleInputLimits.MaxParameters, "Too many invocation arguments.")
-      val program = JavaTurtleVmPrograms.compile(request.source).fold(
+      val program = JavaTurtleCompiler.compile(request.source).fold(
         _ => throw IllegalArgumentException("Unsupported Java source."), identity)
       val method = request.method.map { name =>
         program.bindings.methods.find(binding => binding.originalName == name && binding != program.bindings.entryPoint)

@@ -1,7 +1,7 @@
 package it.evadid.vm.simulation.java
 
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R}
-import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R}
+import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleInterpreter as T}
 import scala.util.Try
 
 object JavaTurtleExecutionReport {
