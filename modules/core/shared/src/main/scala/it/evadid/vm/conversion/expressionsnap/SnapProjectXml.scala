@@ -230,6 +230,8 @@ object SnapProjectXml {
     SnapControlFlow
       .declaredVariables(expression)
       .filterNot((name, _) => parameterNames.contains(name))
+      // Snap lists project variables by name; a fixed order keeps exports stable.
+      .sortBy(_._1)
       .map { (name, literal) =>
         val valueXml = literal match
           case Some(value) => SnapInputCodec.renderLiteral(SnapInputKind.String, value)

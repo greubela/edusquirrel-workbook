@@ -161,7 +161,7 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   ).map { case (expr: PyExpression, body: PyExecutionBlock, orelse: Option[PyExecutionBlock]) => PyIfStatement(expr, body, orelse.getOrElse(passBlock)) }
 
   def elifBranches[ctx: P](state: IndentState): P[PyExecutionBlock] = P(
-    checkIndent(state) ~~ ELIF ~~ SPACES ~~ expression ~~ SPACES.? ~~ COLON ~~ SPACES.? ~~ NEWLINE ~~ nextExecutionBlock(state) ~~ elifBranches(state).?)
+    checkIndent(state) ~~ ELIF ~~ SPACES ~~ expression ~~ SPACES.? ~~ COLON ~~ SPACES.? ~~ NEWLINE ~~ nextExecutionBlock(state) ~~ P(elifBranches(state) | elseBranch(state)).?)
     .map { case (indent: String, expr: PyExpression, body: PyExecutionBlock, orelse: Option[PyExecutionBlock]) => PyExecutionBlock(List(PyIfStatement(expr, body, orelse.getOrElse(passBlock)))) }
 
   def elseBranch[ctx: P](state: IndentState): P[PyExecutionBlock] = P(

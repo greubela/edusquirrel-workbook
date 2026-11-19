@@ -6,9 +6,12 @@ import munit.FunSuite
 
 /** Language A → BeExpression → language B → BeExpression → language A, after normalising A once.
   *
-  * Normalisation (A → BeExpression → A) removes formatting differences, so the comparison checks
-  * that functionality survives each pair rather than whitespace. Every intermediate state must also
-  * draw the same turtle commands, which guards against content hidden in unsupported placeholders.
+  * Normalisation (A → BeExpression → A) removes formatting differences, so comparisons check that
+  * functionality survives rather than whitespace. Between typed languages (Python, Java) the text
+  * must come back unchanged. Snap has no variable types and stores every project variable with a
+  * value, so a route through Snap may change hints and initial values once; a second pass must then
+  * change nothing. Every intermediate state must draw the same turtle commands, which guards
+  * against content hidden in unsupported placeholders.
   */
 class CrossLanguageRoundTripSpec extends FunSuite {
   private def converted(state: ProgrammingState, language: ProgrammingLanguage): ProgrammingState = {
@@ -24,32 +27,41 @@ class CrossLanguageRoundTripSpec extends FunSuite {
   }
   private def commands(state: ProgrammingState) =
     state.toBeExpression.turtleCommandExecutionInfo.completedCommands.map(command => command.getClass.getSimpleName -> command.args)
+  private def through(state: ProgrammingState, target: ProgrammingLanguage, origin: ProgrammingLanguage): ProgrammingState =
+    converted(converted(state.toBeExpression, target).toBeExpression, origin)
 
   /** Collects every failing route, so one run shows the complete picture. */
   private def assertRoundTrips(source: ProgrammingState, languages: Seq[ProgrammingLanguage],
       expectedCommands: Option[Seq[(String, Seq[Double])]]): Unit = {
     val problems = Vector.newBuilder[String]
     def check(ok: => Boolean, message: => String): Unit =
-      try { if !ok then problems += message } catch { case e: Throwable => problems += s"$message\n  EXCEPTION ${e.getMessage.take(300)}" }
+      try { if !ok then problems += message } catch { case e: Throwable => problems += s"$message\n  EXCEPTION ${e.getMessage}" }
     def diff(a: String, b: String) = {
       val (x, y) = (a.linesIterator.toVector, b.linesIterator.toVector)
       x.zipAll(y, "<none>", "<none>").zipWithIndex.filter { case ((l, r), _) => l != r }.take(6)
-        .map { case ((l, r), i) => s"    line $i: expected [${l.replace(" ", "·")}]\n            obtained [${r.replace(" ", "·")}]" }.mkString("\n")
+        .map { case ((l, r), i) => s"    line $i: expected [$l]\n            obtained [$r]" }.mkString("\n")
     }
-    val origin = source.associatedLanguage
     def drawsExpected(state: ProgrammingState) = expectedCommands.forall(commands(state) == _.toList)
+    val origin = source.associatedLanguage
     check(drawsExpected(source), s"SOURCE commands ${commands(source)}")
     val normalized = converted(source.toBeExpression, origin)
+    val expected = rendered(normalized, origin)
     val again = rendered(converted(normalized.toBeExpression, origin), origin)
-    check(again == rendered(normalized, origin), s"$origin NORMALISATION unstable\n${diff(rendered(normalized, origin), again)}")
+    check(again == expected, s"$origin normalisation is unstable\n${diff(expected, again)}")
     languages.foreach { target =>
       val route = s"$origin -> $target -> $origin"
       try {
         val viaTarget = converted(normalized.toBeExpression, target)
-        check(drawsExpected(viaTarget), s"$route COMMANDS at $target ${commands(viaTarget)}")
-        val back = rendered(converted(viaTarget.toBeExpression, origin), origin)
-        check(back == rendered(normalized, origin), s"$route TEXT\n${diff(rendered(normalized, origin), back)}")
-      } catch { case e: Throwable => problems += s"$route EXCEPTION ${e.getMessage.take(400)}" }
+        check(drawsExpected(viaTarget), s"$route draws ${commands(viaTarget)} in $target")
+        val back = through(normalized, target, origin)
+        check(drawsExpected(back), s"$route draws ${commands(back)} after returning")
+        if Set(origin, target).subsetOf(Set(Python, Java)) then
+          check(rendered(back, origin) == expected, s"$route changed the text\n${diff(expected, rendered(back, origin))}")
+        else {
+          val second = rendered(through(back, target, origin), origin)
+          check(second == rendered(back, origin), s"$route is not stable after one pass\n${diff(rendered(back, origin), second)}")
+        }
+      } catch { case e: Throwable => problems += s"$route EXCEPTION ${e.getMessage}" }
     }
     val found = problems.result()
     if found.nonEmpty then fail(s"${found.size} round-trip problems starting from $origin:\n${found.mkString("\n")}")

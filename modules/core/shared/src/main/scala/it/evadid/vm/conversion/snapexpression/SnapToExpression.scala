@@ -39,10 +39,13 @@ object SnapToExpression {
       functionTypeInfo = BeDefineFunction.functionInfo(it.evadid.vm.BeProgram.unusedCodeName)))
     val startup = if parsed.canvasLayout.isEmpty then statements else active
     // The exporter declares variables with defaults even when startup initializes them.
-    // Re-importing those declarations must not prepend another redundant assignment.
-    val initialized = startup.takeWhile(_.isInstanceOf[BeAssignVariable]).collect {
-      case BeAssignVariable(target, BeUseValue(_: BeDataValueLiteral, _)) => target.name.universalInterpretation()
-    }.toSet
+    // Re-importing those declarations must not prepend another redundant assignment, and the
+    // initial literal assignments stay ahead of the definitions, as module variables do.
+    val (initial, rest) = startup.span {
+      case BeAssignVariable(_, BeUseValue(_: BeDataValueLiteral, _)) => true
+      case _ => false
+    }
+    val initialized = initial.collect { case BeAssignVariable(target, _) => target.name.universalInterpretation() }.toSet
     val variables = SnapXmlParser.elements(xml, "variables").flatMap(container => SnapXmlParser.children(container.inner))
       .filter(variable => variable.tag == "variable" && !initialized(BeEntityName.fromCodeString(variable.attrOrEmpty("name")).universalInterpretation())).distinctBy(_.attrOrEmpty("name")).map { variable =>
         val raw = SnapXmlParser.children(variable.inner).headOption.map(value => SnapXmlParser.unescape(value.inner)).getOrElse("0")
@@ -51,9 +54,10 @@ object SnapToExpression {
           case "false" => "False"
           case text => SnapInputCodec.quotePython(text)
         }
-        val target = BeDefineVariable(BeEntityName.fromCodeString(variable.attrOrEmpty("name")), BeDataValueLiteral(literal).currentType)
+        // Snap variables are untyped, like those its scripts assign.
+        val target = BeDefineVariable(BeEntityName.fromCodeString(variable.attrOrEmpty("name")), BeDataType.AnyType)
         BeAssignVariable(target, BeUseValue(BeDataValueLiteral(literal), None))
       }
-    parsed.copy(expression = BeStartProgram(BeSequence.optionalBody(variables.toList ++ definitions ++ unused.toList ++ startup)))
+    parsed.copy(expression = BeStartProgram(BeSequence.optionalBody(variables.toList ++ initial ++ definitions ++ unused.toList ++ rest)))
   }
 }
