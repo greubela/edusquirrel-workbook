@@ -121,11 +121,11 @@ object DefaultDefinitions {
   }
 
   val builtinFunctionDefinitions: List[NamedFunction] = List(
-    builtinFunctionDefinition("str", List("value" -> AnyType), Some(StringType)),
-    builtinFunctionDefinition("int", List("value" -> AnyType), Some(NumericType)),
-    builtinFunctionDefinition("float", List("value" -> AnyType), Some(NumericType)),
-    builtinFunctionDefinition("bool", List("value" -> AnyType), Some(BooleanType)),
-    builtinFunctionDefinition("abs", List("value" -> NumericType), Some(NumericType)),
+    builtinFunctionDefinition("str", List("value" -> AnyType), Some(StringType), Some(it.evadid.vm.code.defining.BeIntrinsic.ToText)),
+    builtinFunctionDefinition("int", List("value" -> AnyType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.ToInteger)),
+    builtinFunctionDefinition("float", List("value" -> AnyType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.ToNumber)),
+    builtinFunctionDefinition("bool", List("value" -> AnyType), Some(BooleanType), Some(it.evadid.vm.code.defining.BeIntrinsic.ToBoolean)),
+    builtinFunctionDefinition("abs", List("value" -> NumericType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.Absolute)),
     builtinFunctionDefinition("print", List("value" -> AnyType), Some(BeDataType.Unit), Some(it.evadid.vm.code.defining.BeIntrinsic.Print)),
     builtinFunctionDefinition("fetch_text", List("url" -> StringType), Some(StringType), Some(it.evadid.vm.code.defining.BeIntrinsic.FetchText))
   )

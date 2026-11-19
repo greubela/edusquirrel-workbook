@@ -89,4 +89,18 @@ class JavaCompilationRoundTripSpec extends FunSuite {
       try files.iterator().asScala.toVector.reverse.foreach(Files.delete) finally files.close()
     }
   }
+
+  test("Python conversion built-ins become Java casts and library calls that compile and compute the same values") {
+    val python = ProgrammingStateRaw(Python,
+      "x = int(-3.7)\nt = str(x)\nn = int(\"42\") + float(\"0.5\")\na = abs(x)\nb = bool(a)\nif b:\n    forward(a + n)\n")
+    val code = python.convertToLanguage(Java).finalState.get.toString
+    Seq("(int) (-3.7)", "String.valueOf(x)", "Integer.parseInt(\"42\")", "Double.parseDouble(\"0.5\")", "Math.abs(x)", "(a != 0)")
+      .foreach(spelling => assert(code.contains(spelling), s"$spelling\n$code"))
+    compileAndRun(code) { loader =>
+      val accessor = loader.loadClass("Turtle").getDeclaredMethod("segments")
+      accessor.setAccessible(true)
+      val segments = accessor.invoke(null).asInstanceOf[java.util.List[Array[Double]]].asScala.toVector
+      assertEquals(segments.map(_.toVector), Vector(Vector(0.0, 0.0, 45.5, 0.0)), "int truncates towards zero: abs(-3) + 42.5")
+    }
+  }
 }

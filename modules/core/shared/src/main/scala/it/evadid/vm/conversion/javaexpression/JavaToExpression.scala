@@ -7,6 +7,7 @@ import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.compilation.java.turtle.{JavaTurtleCompiler, JavaTurtleInputLimits, JavaTurtleProgram, JavaTurtleSourceParser}
 import it.evadid.vm.conversion.dependencies.KnownDependencies
+import it.evadid.vm.conversion.expressionjava.JavaBuiltinSpelling
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
 import it.evadid.vm.conversion.parsed.ParsedStatement as S
@@ -285,6 +286,9 @@ private object JavaAstToParsed {
     case target: JavaTarget if target.sliceExpr.nonEmpty => E.Unsupported(s"${target.name}[...]")
     case target: JavaTarget => qualified(target, scope)
     case JavaParenthesizedExpression(inner) => expression(inner, scope)
+    case JavaCastExpression(javaType, operand) =>
+      JavaBuiltinSpelling.cast(javaType.typenameInCode).fold[ParsedExpression](E.Unsupported(s"(${javaType.typenameInCode}) ..."))(
+        builtin => E.Call(Seq(builtin), Seq(expression(operand, scope))))
     case JavaOperationUnary(operator, operand) => E.Unary(operators.getOrElse(operator, operator), expression(operand, scope))
     case JavaOperationBinary(left, operator, right) =>
       E.Binary(operators.getOrElse(operator, operator), expression(left, scope), expression(right, scope))
@@ -325,6 +329,7 @@ private object JavaAstToParsed {
       case (Seq("Math", "pow"), Seq(base, exponent)) => E.Binary("**", base, exponent)
       // Library helpers are printed as static methods of their dependency class.
       case (Seq("Web", "fetchText"), _) => E.Call(Seq("fetch_text"), arguments)
+      case (qualified, _) if JavaBuiltinSpelling.calls.contains(qualified) => E.Call(Seq(JavaBuiltinSpelling.calls(qualified)), arguments)
       case (Seq(name), _) if !scope.locals(name) && scope.owner.exists(_.methods.contains(name)) =>
         val owner = scope.owner.get
         if owner.methods(name) then E.Call(Seq(owner.name, name), arguments)

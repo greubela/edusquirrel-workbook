@@ -257,7 +257,16 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean, r
       node(JavaUpdateExpression(operand.value, operator, prefix = true), range, Seq(operand))
     } | captured(P(operator("!", "-", "+") ~ ws ~ factor)).map { case (range, (op, operand)) =>
       node(JavaOperationUnary(op, operand.value), range, Seq(operand))
-    } | postfix
+    } | cast | postfix
+
+  /** Only primitive casts: `(name) - x` would otherwise be ambiguous with a parenthesized subtraction. */
+  private def cast[$: P]: P[Node[JavaExpression]] =
+    captured(P(LPAR ~ ws ~ &(primitiveTypeName) ~ baseJavaType ~ ws ~ RPAR ~ ws ~ factor)).map { case (range, (javaType, operand)) =>
+      node(JavaCastExpression(javaType, operand.value), range, Seq(operand))
+    }
+
+  private def primitiveTypeName[$: P]: P[Unit] =
+    P(keyword("boolean") | keyword("byte") | keyword("short") | keyword("int") | keyword("long") | keyword("float") | keyword("double") | keyword("char"))
 
   private def postfix[$: P]: P[Node[JavaExpression]] =
     P(primary ~ (ws ~ captured(operator("++", "--"))).rep).map { (operand, operators) =>

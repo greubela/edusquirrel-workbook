@@ -207,4 +207,25 @@ class CrossLanguageRoundTripSpec extends FunSuite {
     Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured,
       ProgrammingStateRaw(Python, python).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
   }
+
+  test("conversion built-ins keep their meaning between Python and Java") {
+    val python = """size = 7.5
+      |forward(int(size) * 2)
+      |forward(abs(int(-size)) + float(1))
+      |turn_left(abs(size - 10))
+      |""".stripMargin
+    val expected = Seq(forward(14), forward(8), left(2.5))
+    Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured)
+      .foreach(assertRoundTrips(_, Seq(Python, Java), Some(expected)))
+  }
+
+  test("bool of a number has no Java conversion, so it comes back as the comparison Java uses") {
+    val python = ProgrammingStateRaw(Python, "size = 3\nif bool(size):\n    forward(size)\n")
+    val java = converted(python.toBeExpression, Java)
+    assert(java.toString.contains("if ((size != 0)) {") || java.toString.contains("if (size != 0) {"), java.toString)
+    val back = converted(java.toBeExpression, Python)
+    assert(back.toString.contains("if size != 0:"), back.toString)
+    assertEquals(commands(back), commands(python))
+    assertEquals(commands(back), List(forward(3)))
+  }
 }
