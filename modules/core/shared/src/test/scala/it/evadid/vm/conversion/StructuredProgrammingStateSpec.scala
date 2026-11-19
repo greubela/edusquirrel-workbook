@@ -1,7 +1,7 @@
 package it.evadid.vm.conversion
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
-import it.evadid.vm.conversion.structured.{SourceStructure, StructuredProgramConversions}
+import it.evadid.vm.conversion.structured.SourceStructure
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.workbook.elements.interactionElements.programming.state.*

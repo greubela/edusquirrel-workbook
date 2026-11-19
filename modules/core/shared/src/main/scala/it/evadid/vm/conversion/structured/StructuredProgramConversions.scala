@@ -1,7 +1,5 @@
 package it.evadid.vm.conversion.structured
 
-import it.evadid.vm.conversion.expressionpython.ExpressionToPython
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 
@@ -45,9 +43,4 @@ object StructuredProgramConversions {
     new ProgrammingStateJavaStructured(classes.updated(mainName, code))
   }
 
-  def toExpression(state: ProgrammingStatePythonStructured): ProgrammingStateBeExpression =
-    ProgrammingStateBeExpression(PythonToExpression.program(state.toString).fullProgram)
-
-  def fromExpression(state: ProgrammingStateBeExpression): ProgrammingStatePythonStructured =
-    ProgrammingStatePythonStructured(ExpressionToPython.printedPython(state.expression))
 }
