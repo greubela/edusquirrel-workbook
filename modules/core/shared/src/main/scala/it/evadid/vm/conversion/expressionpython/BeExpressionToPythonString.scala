@@ -37,8 +37,17 @@ case class BeExpressionToPythonString
   }
 
   override def forDefinition(definition: BeDefineStructure): String = definition match {
-    // Avoid Java's metadata comments on Python declarations so reparsing stays stable.
+    case function: BeDefineFunction =>
+      val previous = declared
+      // Parameters are annotated in the signature; names declared `global` cannot be annotated.
+      declared = function.inputs.map(_.name.getNameIn(language, NamingStyle.SnakeCase)).toSet ++
+        function.body.body.headOption.collect {
+          case it.evadid.vm.code.errors.BeExpressionUnsupported(source, _) if source.startsWith("global ") =>
+            source.stripPrefix("global ").split(",").map(_.trim).toSet
+        }.getOrElse(Set.empty)
+      try super.forDefinition(function) finally declared = previous
     case BeDefineVariable(name, variableType, initValue) =>
+      declared += name.getNameIn(language, NamingStyle.SnakeCase)
       defineVariableLine(
         name.getNameIn(language, NamingStyle.SnakeCase),
         variableType.formatTypeForDisplay.getInLanguage(Python),
@@ -80,18 +89,30 @@ case class BeExpressionToPythonString
     forValue(parValue)
   }
 
+  /** Names already annotated in the current scope: a variable's type hint is printed once. */
+  private var declared = Set.empty[String]
+  private var renderingDepth = 0
+
+  override def forExpression(expression: BeExpression): String = {
+    if renderingDepth == 0 then declared = Set.empty
+    renderingDepth += 1
+    try super.forExpression(expression) finally renderingDepth -= 1
+  }
+
   override protected def assignToDefinedVar(varName: String, varType: String, varValue: BeExpression): String = {
     val renderedValue = forValue(varValue)
-    if (renderedValue.trim.startsWith("lambda ")) s"$varName = $renderedValue"
+    val first = !declared(varName)
+    declared += varName
+    if (renderedValue.trim.startsWith("lambda ") || !first) s"$varName = $renderedValue"
     else s"$varName: $varType = $renderedValue"
   }
 
   override protected def defineVariableLine(nameStr: String, variableTypeString: String, initValue: Option[BeExpression]): String = {
-    if (initValue.isEmpty) s"${nameStr} : ${variableTypeString}"
-    else s"${nameStr} : ${variableTypeString} = ${forValue(initValue.get)}"
+    if (initValue.isEmpty) s"$nameStr: $variableTypeString"
+    else s"$nameStr: $variableTypeString = ${forValue(initValue.get)}"
   }
 
-  override protected def defineClassLine(nameStr: String, nameComment: String): String =
+  override protected def defineClassLine(nameStr: String): String =
     s"class $nameStr:"
 
   override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String = {
@@ -118,8 +139,6 @@ case class BeExpressionToPythonString
         s"for $varName in range($start, $end + 1):"
     }
   }
-
-  override protected def repetitionParsingHint(amount: Int): String = ""
 
   override protected def emptyFunctionBody: String = "pass"
 

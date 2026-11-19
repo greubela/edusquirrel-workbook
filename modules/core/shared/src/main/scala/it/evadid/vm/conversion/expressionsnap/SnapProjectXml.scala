@@ -270,7 +270,7 @@ object SnapProjectXml {
   }
 
   private def renderScriptBody(sequence: BeSequence)(using RenderContext): String =
-    sequence.body.map(renderStatement).mkString
+    SnapExpressionSupport.scriptStatements(sequence.body.toList).map(renderStatement).mkString
 
   private def renderCall(call: BeFunctionCall)(using context: RenderContext): String = {
     if SnapControlFlow.isOperatorCall(call) then renderOperator(call)

@@ -12,7 +12,7 @@ import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport.*
 object ExpressionToPython {
   /** Source for editing: the main sequence becomes a called `def main()`, see [[PythonEntryPoint]]. */
   def convert(expression: BeExpression): ProgrammingStateRaw = ProgrammingStateRaw(Python, expression match {
-    case program: it.evadid.vm.code.others.BeStartProgram => PythonEntryPoint.withoutGlobalAnnotations(printedPython(PythonEntryPoint.wrap(program)))
+    case program: it.evadid.vm.code.others.BeStartProgram => printedPython(PythonEntryPoint.wrap(program))
     case other => printedPython(other)
   })
 

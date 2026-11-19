@@ -3,7 +3,6 @@ package it.evadid.vm.conversion
 import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
-import it.evadid.vm.conversion.javaexpression.JavaToBeExpressionParser
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapxml.SnapXmlParser
@@ -215,10 +214,9 @@ class ProgrammingStateConversionSpec extends FunSuite {
       val original = ProgrammingStateRaw(Python, source).toBeExpression
       val throughPython = original.toPython.toBeExpression
       val java = original.toJava
-      val loweredJava = new JavaToBeExpressionParser().toPython(java.code)
       val throughJava = java.toBeExpression
       assertEquals(normalized(throughPython), normalized(original))
-      assertEquals(normalized(throughJava), normalized(original), clue = s"Java:\n${java.code}\nLowered:\n$loweredJava")
+      assertEquals(normalized(throughJava), normalized(original), clue = s"Java:\n${java.code}")
       if snapSupported then {
         val snap = original.toSnapXml
         val restoredSnap = ProgrammingState.serializer.deserialize(
@@ -362,11 +360,10 @@ class ProgrammingStateConversionSpec extends FunSuite {
         |}
         |draw(2);
         |""".stripMargin
-    val python = new JavaToBeExpressionParser().toPython(java)
+    val python = ProgrammingStateRaw(Java, java).toPython.code
     assert(python.contains("def draw(count: float) -> None:"), clue = python)
-    assert(python.contains("while i < count  and  True:"), clue = python)
-    assert(python.contains("println(\"!;{}\")"), clue = python)
-    assert(ProgrammingStateRaw(Java, java).toBeExpression.expression != null)
+    assert(python.contains("while i < count and True:"), clue = python)
+    assert(python.contains("print(\"!;{}\")"), clue = python)
   }
 
   test("full Java classes compile through the state boundary and execute a parameterized square") {
@@ -506,7 +503,6 @@ class ProgrammingStateConversionSpec extends FunSuite {
     intercept[IllegalArgumentException](state.toLegacyTurtleCommands)
     intercept[IllegalArgumentException](state.toSnapXml)
     assertEquals(state.code, source)
-    assertEquals(JavaToBeExpressionParser.withoutEntityHints(source), source)
   }
 
   test("Java turtle classification bounds parser input and rejects unclosed lexemes") {
