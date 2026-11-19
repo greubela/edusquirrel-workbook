@@ -7,7 +7,7 @@ import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.compilation.java.turtle.{JavaTurtleCompiler, JavaTurtleInputLimits, JavaTurtleProgram, JavaTurtleSourceParser}
 import it.evadid.vm.conversion.dependencies.KnownDependencies
-import it.evadid.vm.conversion.expressionjava.JavaBuiltinSpelling
+import it.evadid.vm.conversion.expressionjava.JavaSpelling
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
 import it.evadid.vm.conversion.parsed.ParsedStatement as S
@@ -267,7 +267,6 @@ private object JavaAstToParsed {
 
   // Expressions
 
-  private val operators = Map("&&" -> "and", "||" -> "or", "!" -> "not")
 
   private def expression(value: JavaExpression, scope: Scope): ParsedExpression = value match {
     case JavaLiteral("null", _) => E.NoneValue
@@ -277,11 +276,11 @@ private object JavaAstToParsed {
     case target: JavaTarget => qualified(target, scope)
     case JavaParenthesizedExpression(inner) => expression(inner, scope)
     case JavaCastExpression(javaType, operand) =>
-      JavaBuiltinSpelling.cast(javaType.typenameInCode).fold[ParsedExpression](E.Unsupported(s"(${javaType.typenameInCode}) ..."))(
+      JavaSpelling.cast(javaType.typenameInCode).fold[ParsedExpression](E.Unsupported(s"(${javaType.typenameInCode}) ..."))(
         builtin => E.Call(Seq(builtin), Seq(expression(operand, scope))))
-    case JavaOperationUnary(operator, operand) => E.Unary(operators.getOrElse(operator, operator), expression(operand, scope))
+    case JavaOperationUnary(operator, operand) => E.Unary(JavaSpelling.operators.getOrElse(operator, operator), expression(operand, scope))
     case JavaOperationBinary(left, operator, right) =>
-      E.Binary(operators.getOrElse(operator, operator), expression(left, scope), expression(right, scope))
+      E.Binary(JavaSpelling.operators.getOrElse(operator, operator), expression(left, scope), expression(right, scope))
     case JavaFunctionCall(target, arguments) => call(target.locationString :+ target.name, arguments.map(expression(_, scope)), scope)
     case JavaCallExpression(JavaAttributeAccess(receiver, name), arguments) =>
       names(receiver) match {
@@ -320,7 +319,7 @@ private object JavaAstToParsed {
       // Library helpers are printed as static methods of their dependency class.
       case (qualified, _) if KnownDependencies.functionForJavaCall(qualified).nonEmpty =>
         E.Call(Seq(KnownDependencies.functionForJavaCall(qualified).get), arguments)
-      case (qualified, _) if JavaBuiltinSpelling.calls.contains(qualified) => E.Call(Seq(JavaBuiltinSpelling.calls(qualified)), arguments)
+      case (qualified, _) if JavaSpelling.calls.contains(qualified) => E.Call(Seq(JavaSpelling.calls(qualified)), arguments)
       case (Seq(name), _) if !scope.locals(name) && scope.owner.exists(_.methods.contains(name)) =>
         val owner = scope.owner.get
         if owner.methods(name) then E.Call(Seq(owner.name, name), arguments)

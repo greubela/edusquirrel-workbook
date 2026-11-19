@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion.expressionjava
 
+import it.evadid.vm.conversion.structured.SourceStructure.indent
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Java, JavaScript, ProgrammingLanguage}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.abstractions.{BeControlStructure, BeDefineStructure, BeExpression}
@@ -36,8 +37,6 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
 
   private def javaName(variable: BeDefineVariable): String = variable.name.getNameIn(language, NamingStyle.CamelCase)
   private def javaType(variable: BeDefineVariable): String = variable.variableType.formatTypeForDisplay.getInLanguage(targetLanguage)
-  private def indent(text: String): String = text.linesIterator.map(line => if line.isEmpty then line else "    " + line).mkString("\n")
-
   override def forExpression(expression: BeExpression): String = {
     if renderingDepth == 0 then prepare(expression)
     renderingDepth += 1
@@ -191,11 +190,11 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
   override def forOther(other: BeExpression): String = other match {
     case BeUseValue(BeDataValueLiteral(raw @ ("True" | "False")), _) => raw.toLowerCase
     case BeUseValue(BeDataValueUnit(), _) if targetLanguage == Java => "null"
-    case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.exists(JavaBuiltinSpelling.handles) =>
+    case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.exists(JavaSpelling.handles) =>
       val arguments = call.arguments
-        .map(value => JavaBuiltinSpelling.Argument(value, forValue(value), forOperand(value)))
+        .map(value => JavaSpelling.Argument(value, forValue(value), forOperand(value)))
       // Like other calls, the spelling ends the line; values strip that ending again.
-      JavaBuiltinSpelling.spell(call.funcDef.intrinsic.get, arguments) + ";"
+      JavaSpelling.spell(call.funcDef.intrinsic.get, arguments) + ";"
     case call: BeFunctionCall if call.isOperator =>
       val arguments = call.arguments.map(forOperand)
       call.funcDef.functionTypeInfo.displayName.universalInterpretation() match {
@@ -203,14 +202,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
         case "//" if arguments.size == 2 => s"Math.floor(${arguments.head} / ${arguments(1)})"
         case "**" if arguments.size == 2 => s"Math.pow(${arguments.head}, ${arguments(1)})"
         case symbol =>
-          val operator = symbol match {
-            case "and" => "&&"
-            case "or" => "||"
-            case "not" => "!"
-            case "is" => "=="
-            case "is not" => "!="
-            case other => other
-          }
+          val operator = JavaSpelling.javaOperator(symbol)
           if (arguments.size == 1) s"$operator${arguments.head}" else arguments.mkString(s" $operator ")
       }
     case _ => super.forOther(other)

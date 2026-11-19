@@ -5,14 +5,21 @@ import it.evadid.vm.code.defining.BeIntrinsic
 import it.evadid.vm.code.errors.ProgrammingConversionException
 import it.evadid.vm.types.BeDataType
 
-/** How Java spells the shared built-ins (Python's `int`, `float`, `str`, `bool`, `abs`, `max`, `min`).
+/** How Java spells the shared operators and built-ins (Python's `int`, `float`, `str`, `bool`, `abs`, `max`, `min`).
   *
   * The printer chooses a spelling from the argument's static type: numbers are cast, text is
   * parsed. The Java adapter reads each spelling back as the built-in, so one table serves both
   * directions. `bool` has no Java conversion of its own; numbers compare with zero, which reads
   * back as that comparison.
   */
-object JavaBuiltinSpelling {
+object JavaSpelling {
+  /** Java operators that differ from the shared symbols, read by the Java adapter. */
+  val operators: Map[String, String] = Map("&&" -> "and", "||" -> "or", "!" -> "not")
+
+  /** The Java operator for a shared symbol; identity comparison (`is`) is `==` on Java references. */
+  def javaOperator(symbol: String): String = toJava.getOrElse(symbol, symbol)
+  private val toJava = operators.map(_.swap) ++ Map("is" -> "==", "is not" -> "!=")
+
   /** Static calls the printer emits, by qualified Java name, with the built-in they mean. */
   val calls: Map[Seq[String], String] = Map(
     Seq("Integer", "parseInt") -> "int",
