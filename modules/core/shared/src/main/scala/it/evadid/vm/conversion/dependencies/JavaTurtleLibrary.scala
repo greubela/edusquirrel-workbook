@@ -84,10 +84,13 @@ object JavaTurtleLibrary {
       |    moveTo(posX + distance * Math.cos(radians), posY + distance * Math.sin(radians));
       |}
       |
+      |/** As Python's turtle.circle (and the shared TurtlePathBuilder.arcSteps): chords with a half turn at both ends. */
       |private static void arc(double radius, double extent, boolean left) {
-      |    int steps = Math.max(1, (int) Math.ceil(Math.abs(extent) / 10));
-      |    double turn = extent / steps * (left ? 1 : -1);
-      |    double length = 2 * Math.abs(radius) * Math.sin(Math.toRadians(Math.abs(extent) / steps / 2));
+      |    int steps = 1 + (int) (Math.min(11 + Math.abs(radius) / 6.0, 59.0) * Math.abs(extent) / 360.0);
+      |    double turn = extent / steps;
+      |    double length = 2 * radius * Math.sin(Math.toRadians(turn / 2));
+      |    if (radius < 0) { length = -length; turn = -turn; }
+      |    if (!left) turn = -turn;
       |    heading += turn / 2;
       |    for (int step = 0; step < steps; step++) {
       |        move(length);

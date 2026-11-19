@@ -10,6 +10,7 @@ import scala.jdk.CollectionConverters.*
 import munit.FunSuite
 
 class JavaCompilationRoundTripSpec extends FunSuite {
+  import JavaTestRuntime.compileAndRun
   test("the object scenario emits compilable Java and preserves statement order") {
     val source = ProgrammingStateRaw(Python, "class Counter:\n    def __init__(self, value: float):\n        self.value = value\n    def read(self) -> float:\n        return self.value\ncounter = Counter(3)\ncounter.value = 7\nresult = counter.read()\n")
     val converted = source.convertToLanguage(Java)
@@ -38,39 +39,14 @@ class JavaCompilationRoundTripSpec extends FunSuite {
     }
   }
 
-  /** Compiles `code` as Main.java, runs `Main.main` headless and returns the loader for inspection. */
-  private def compileAndRun[A](code: String)(inspect: ClassLoader => A): A = {
-    System.setProperty("java.awt.headless", "true")
-    val directory = Files.createTempDirectory("edusquirrel-java-dependency-")
-    try {
-      val file = directory.resolve("Main.java")
-      Files.writeString(file, code)
-      val errors = new ByteArrayOutputStream()
-      val compiler = Option(ToolProvider.getSystemJavaCompiler).getOrElse(fail("The JVM tests require a JDK compiler."))
-      assertEquals(compiler.run(null, null, errors, "-d", directory.toString, file.toString), 0, errors.toString + "\n" + code)
-      val loader = new URLClassLoader(Array(directory.toUri.toURL), getClass.getClassLoader)
-      try {
-        val main = loader.loadClass("Main").getDeclaredMethod("main", classOf[Array[String]])
-        main.setAccessible(true) // the generated classes are package-private
-        main.invoke(null, Array.empty[String].asInstanceOf[Object])
-        inspect(loader)
-      } finally loader.close()
-    } finally {
-      val files = Files.walk(directory)
-      try files.iterator().asScala.toVector.reverse.foreach(Files.delete) finally files.close()
-    }
-  }
-
   test("turtle programs converted to Java compile and draw with the generated Turtle class on a plain JVM") {
     val python = ProgrammingStateRaw(Python, "for _ in range(4):\n    forward(100)\n    left(90)\ncircle(10)\n")
     val code = python.convertToLanguage(Java).finalState.get.asInstanceOf[ProgrammingStateJavaStructured].toString
     compileAndRun(code) { loader =>
-      val accessor = loader.loadClass("Turtle").getDeclaredMethod("segments")
-      accessor.setAccessible(true)
-      val segments = accessor.invoke(null).asInstanceOf[java.util.List[Array[Double]]].asScala.toVector
+      val segments = JavaTestRuntime.turtleSegments(loader).map(_.toArray)
       assertEquals(segments.take(4).map(_.map(value => math.round(value).toDouble).toVector), Vector(
         Vector(0.0, 0.0, 100.0, 0.0), Vector(100.0, 0.0, 100.0, 100.0), Vector(100.0, 100.0, 0.0, 100.0), Vector(0.0, 100.0, 0.0, 0.0)))
-      assertEquals(segments.size, 4 + 36, "the circle is drawn in 36 segments")
+      assertEquals(segments.size, 4 + 13, "the circle is drawn in CPython's 13 chords for radius 10")
     }
   }
 
@@ -97,9 +73,7 @@ class JavaCompilationRoundTripSpec extends FunSuite {
     Seq("(int) (-3.7)", "String.valueOf(x)", "Integer.parseInt(\"42\")", "Double.parseDouble(\"0.5\")", "Math.abs(x)", "(a != 0)")
       .foreach(spelling => assert(code.contains(spelling), s"$spelling\n$code"))
     compileAndRun(code) { loader =>
-      val accessor = loader.loadClass("Turtle").getDeclaredMethod("segments")
-      accessor.setAccessible(true)
-      val segments = accessor.invoke(null).asInstanceOf[java.util.List[Array[Double]]].asScala.toVector
+      val segments = JavaTestRuntime.turtleSegments(loader).map(_.toArray)
       assertEquals(segments.map(_.toVector), Vector(Vector(0.0, 0.0, 45.5, 0.0)), "int truncates towards zero: abs(-3) + 42.5")
     }
   }
@@ -119,9 +93,7 @@ class JavaCompilationRoundTripSpec extends FunSuite {
       |""".stripMargin)
     val code = python.convertToLanguage(Java).finalState.get.toString
     compileAndRun(code) { loader =>
-      val accessor = loader.loadClass("Turtle").getDeclaredMethod("segments")
-      accessor.setAccessible(true)
-      val segments = accessor.invoke(null).asInstanceOf[java.util.List[Array[Double]]].asScala.toVector
+      val segments = JavaTestRuntime.turtleSegments(loader).map(_.toArray)
       assertEquals(segments.map(segment => segment(2) - segment(0)), Vector(6.0, 4.0, 2.0), code)
     }
   }
