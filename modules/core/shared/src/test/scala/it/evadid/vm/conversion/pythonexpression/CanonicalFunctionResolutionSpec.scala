@@ -107,7 +107,7 @@ class CanonicalFunctionResolutionSpec extends FunSuite {
 
   test("printing aliases and user print functions keep separate semantics through Java") {
     val builtin = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "print(3)\n")
-    assert(builtin.toJava.code.contains("java.lang.System.out.println"), builtin.toJava.code)
+    assert(builtin.toJava.code.contains("System.out.println(3);"), builtin.toJava.code)
     assertEquals(builtin.toJava.toPython.code.trim, builtin.toBeExpression.toPython.code.trim)
     val user = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python,
       "def print(value: float):\n    forward(value)\nprint(3)\n")

@@ -139,8 +139,7 @@ class StructuredProgrammingStateSpec extends FunSuite {
   test("the requested Python example becomes a complete Java class with static globals and helpers") {
     val result = ProgrammingStatePythonStructured(python).toJavaStructured
     assertEquals(result.definedClasses.keySet, Set(name("Main")))
-    assert(result.toString.contains("static double x;"), result.toString)
-    assert(result.toString.contains("x = 100;"), result.toString)
+    assert(result.toString.contains("static double x = 100;"), result.toString)
     assert(result.toString.contains("static void main(String[] unusableArgs)"), result.toString)
     assertEquals(distances(result), List(20.0, 20.0, 20.0, 100.0))
   }

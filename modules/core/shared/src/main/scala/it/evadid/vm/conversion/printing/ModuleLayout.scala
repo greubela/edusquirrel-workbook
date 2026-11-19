@@ -25,20 +25,28 @@ object ModuleLayout {
 
   def of(program: BeStartProgram): Layout = {
     val body = program.startSequence.map(_.body).getOrElse(Nil)
-    val (module, main, pending, declared) = body.foldLeft((Vector.empty[BeExpression], Vector.empty[BeExpression], Vector.empty[BeExpression], Set.empty[String])) {
-      case ((module, main, comments, names), statement) => statement match {
-        case comment: BeSingleLineComment => (module, main, comments :+ comment, names)
-        case _: BeDefineFunction | _: BeDefineClass => (module ++ comments :+ statement, main, Vector.empty, names)
-        case declaration: BeDefineVariable => (module ++ comments :+ declaration, main, Vector.empty, names + name(declaration))
-        case assignment @ BeAssignVariable(target, BeUseValue(_: BeDataValueLiteral, _)) if !names(name(target)) =>
-          (module ++ comments :+ assignment, main, Vector.empty, names + name(target))
-        case other => (module, main ++ comments :+ other, Vector.empty, names ++ assigned(other).map(name))
-      }
+    // Module items keep their preceding comments; `seen` holds names assigned so far, which stops
+    // later literal assignments from being hoisted.
+    final case class State(module: Vector[Vector[BeExpression]] = Vector.empty, main: Vector[BeExpression] = Vector.empty,
+        comments: Vector[BeExpression] = Vector.empty, seen: Set[String] = Set.empty, declared: Set[String] = Set.empty) {
+      def toModule(item: BeExpression, names: Set[String] = Set.empty): State =
+        copy(module = module :+ (comments :+ item), comments = Vector.empty, seen = seen ++ names, declared = declared ++ names)
     }
-    val mainStatements = main ++ pending
+    val state = body.foldLeft(State()) { (state, statement) => statement match {
+      case comment: BeSingleLineComment => state.copy(comments = state.comments :+ comment)
+      case _: BeDefineFunction | _: BeDefineClass => state.toModule(statement)
+      case declaration: BeDefineVariable => state.toModule(declaration, Set(name(declaration)))
+      case assignment @ BeAssignVariable(target, BeUseValue(_: BeDataValueLiteral, _)) if !state.seen(name(target)) =>
+        state.toModule(assignment, Set(name(target)))
+      case other => state.copy(main = state.main ++ state.comments :+ other, comments = Vector.empty,
+        seen = state.seen ++ assigned(other).map(name))
+    } }
+    val mainStatements = state.main ++ state.comments
     val mainVariables = mainStatements.flatMap(assigned).distinctBy(name)
-    val declarations = mainVariables.filterNot(variable => declared(name(variable))).map(_.copy(initValue = None))
-    Layout(declarations ++ module, mainStatements, mainVariables)
+    val declarations = mainVariables.filterNot(variable => state.declared(name(variable))).map(_.copy(initValue = None))
+    // Classes come first, as structured sources hoist class definitions.
+    val (classes, others) = state.module.partition(_.lastOption.exists(_.isInstanceOf[BeDefineClass]))
+    Layout(classes.flatten ++ declarations ++ others.flatten, mainStatements, mainVariables)
   }
 
   def name(variable: BeDefineVariable): String = variable.name.getNameIn(English, NamingStyle.SnakeCase)

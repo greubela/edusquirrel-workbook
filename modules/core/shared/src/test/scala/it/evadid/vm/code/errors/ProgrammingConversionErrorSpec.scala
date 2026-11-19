@@ -29,8 +29,10 @@ class ProgrammingConversionErrorSpec extends FunSuite {
     assert(ProgrammingStateRaw(Python, "forward(1)").convertToLanguage(Cpp).conversionInfo.nonEmpty)
   }
 
-  test("a python comment that cannot become blocks is reported as unsupported") {
-    val failed = intercept[ProgrammingConversionException](ProgrammingStateRaw(Python, "# keep\nforward(1)").toSnapXml)
-    assertEquals(failed.error.kind, ProgrammingConversionKind.UnsupportedConstruct)
+  test("Snap has no comment statements, so comments are dropped with a notice rather than failing") {
+    val result = ProgrammingStateRaw(Python, "# keep\nforward(1)").convertToLanguage(SnapLanguage)
+    assert(result.finalState.nonEmpty, result.conversionInfo)
+    assert(result.conversionInfo.exists(_.warningMsg.contains("comments")), result.conversionInfo)
+    assert(!result.hasLostFunctionality)
   }
 }

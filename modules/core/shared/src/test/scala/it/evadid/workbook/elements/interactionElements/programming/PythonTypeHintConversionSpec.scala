@@ -62,7 +62,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     )
     assert(python.code.contains("def advance(distance: float, enabled: bool) -> None:"), clue = python.code)
     assert(python.code.contains("remaining: float = distance"), clue = python.code)
-    assert(python.code.contains("remaining: float = remaining - 1"), clue = python.code)
+    assert(python.code.contains("remaining = remaining - 1"), clue = python.code)
     assertEquals(python.toJava.toPython.code.trim, python.code.trim)
     assertStablePython(python)
   }
@@ -106,7 +106,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
     val python = ProgrammingStateRaw(Java,
       "double distance; boolean enabled; String label; Date day; Object value;"
     ).toPython
-    List("distance : float", "enabled : bool", "label : str", "day : date", "value : Any").foreach { hint =>
+    List("distance: float", "enabled: bool", "label: str", "day: date", "value: Any").foreach { hint =>
       assert(python.code.contains(hint), clue = python.code)
     }
     assert(!python.code.contains("EvaEntityName"), clue = python.code)

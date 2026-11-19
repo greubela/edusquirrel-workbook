@@ -119,7 +119,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("i: float = 1"), clue = python)
     assert(python.contains("while i < 3:"), clue = python)
-    assert(python.contains("i: float = i + 1"), clue = python)
+    assert(python.contains("i = i + 1"), clue = python)
     assert(python.contains("forward(i)"), clue = python)
     val xml = result.toOption.get.code
     assert(xml.contains("""s="doSetVar""""), clue = xml)
@@ -141,7 +141,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(result.isRight, clue = result)
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("steps: float = 1"), clue = python)
-    assert(python.contains("steps: float = steps + 2"), clue = python)
+    assert(python.contains("steps = steps + 2"), clue = python)
     assert(result.toOption.get.code.contains("""s="doChangeVar""""), clue = result.toOption.get.code)
   }
 
