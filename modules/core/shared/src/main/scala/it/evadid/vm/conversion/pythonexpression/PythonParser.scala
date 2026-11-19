@@ -1,10 +1,11 @@
 package it.evadid.vm.conversion.pythonexpression
 
+import it.evadid.vm.conversion.parsed.{DefaultDefinitions, SymbolTable}
 import it.evadid.vm.conversion.pythonexpression.ParsingUtils.keepExpression
 import PythonClassParser.{ClassParseResult, ClassParserApi}
 import PythonLexerLike.{ParsedLine, findBodyIndent, skipBlankLines, toParsedLines}
 import PythonStatementParser.{BlockParseResult, NodeWithNext, StatementApi}
-import PythonSymbolTable.{CurrentlyKnownStructures, KnownStructure, ParseContext}
+import SymbolTable.{CurrentlyKnownStructures, KnownStructure, ParseContext}
 import it.evadid.vm.types.BeDataType.{AnyType, BeUnionAllowedTypes}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression

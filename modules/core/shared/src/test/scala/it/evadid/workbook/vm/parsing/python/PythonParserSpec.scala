@@ -1,7 +1,7 @@
 package it.evadid.workbook.vm.parsing.python
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, JavaScript, Python}
-import it.evadid.vm.conversion.pythonexpression.PythonSymbolTable.KnownStructure
+import it.evadid.vm.conversion.parsed.SymbolTable.KnownStructure
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
@@ -11,7 +11,8 @@ import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
-import it.evadid.vm.conversion.pythonexpression.{DefaultDefinitions, PythonNormalizer, PythonParser}
+import it.evadid.vm.conversion.pythonexpression.{PythonNormalizer, PythonParser}
+import it.evadid.vm.conversion.parsed.DefaultDefinitions
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import munit.FunSuite
 

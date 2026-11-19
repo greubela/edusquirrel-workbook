@@ -1,9 +1,10 @@
 package it.evadid.vm.conversion.pythonexpression
 
+import it.evadid.vm.conversion.parsed.{DefaultDefinitions, SymbolTable}
 import it.evadid.vm.conversion.pythonexpression.ParsingUtils.keepExpression
 import it.evadid.vm.conversion.pythonexpression.PythonClassParser.{ClassParseResult, ClassPattern}
 import PythonLexerLike.{ParsedLine, splitCodeAndComment}
-import it.evadid.vm.conversion.pythonexpression.PythonSymbolTable.ParseContext
+import it.evadid.vm.conversion.parsed.SymbolTable.ParseContext
 import it.evadid.core.datastructures.language.LanguageMap
 
 import scala.collection.mutable

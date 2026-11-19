@@ -1,7 +1,8 @@
 package it.evadid.vm.conversion.pythonexpression
 
+import it.evadid.vm.conversion.parsed.{DefaultDefinitions, SymbolTable}
 import PythonLexerLike.{ParsedLine, findBodyIndent, splitCodeAndComment}
-import PythonSymbolTable.ParseContext
+import SymbolTable.ParseContext
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence

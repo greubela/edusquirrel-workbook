@@ -248,7 +248,8 @@ object CodeLexer {
 
   def SHIFTOP[ctx: P]: P[String] = P(LEFTSHIFT | RIGHTSHIFT).!
 
-  def MULTLIKEOP[ctx: P]: P[String] = P(STAR | SLASH | DOUBLESLASH | PERCENT | AT).!
+  /** Bare operators: `STAR` also matches surrounding whitespace, and `//` must win over `/`. */
+  def MULTLIKEOP[ctx: P]: P[String] = P(("*" ~~ !"*") | DOUBLESLASH | SLASH | PERCENT | AT).!
 
   def UNARYPREFIX[ctx: P]: P[String] = P(PLUS | MINUS | TILDE).!
 

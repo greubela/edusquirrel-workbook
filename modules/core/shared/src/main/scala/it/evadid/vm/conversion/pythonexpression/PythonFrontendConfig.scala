@@ -1,6 +1,7 @@
 package it.evadid.vm.conversion.pythonexpression
 
-import it.evadid.vm.conversion.pythonexpression.PythonSymbolTable.KnownStructure
+import it.evadid.vm.conversion.parsed.{DefaultDefinitions, SymbolTable}
+import it.evadid.vm.conversion.parsed.SymbolTable.KnownStructure
 
 final case class PythonFrontendConfig(
                                        defaultIndent: Int,
@@ -11,6 +12,6 @@ object PythonFrontendConfig {
   val default: PythonFrontendConfig =
     PythonFrontendConfig(
       defaultIndent = 4,
-      defaultKnownStructures = PythonSymbolTable.defaultKnownStructures
+      defaultKnownStructures = SymbolTable.defaultKnownStructures
     )
 }

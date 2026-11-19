@@ -1,4 +1,4 @@
-package it.evadid.vm.conversion.pythonexpression
+package it.evadid.vm.conversion.parsed
 
 import it.evadid.vm.types.BeDataType.AnyType
 
@@ -13,7 +13,7 @@ import it.evadid.vm.naming.{BeEntityName, KnownBeEntityNames}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.types.{AssigningNotPossible, AssigningPossibleWithImplicitCast, AssigningPossibleWithSameType, BeDataType}
 
-object PythonSymbolTable {
+object SymbolTable {
   sealed trait KnownStructure derives upickle.default.ReadWriter {
     def name: String
   }
@@ -160,7 +160,7 @@ object PythonSymbolTable {
 
     private val declaredCallableNames = mutable.Set.from(initialDeclaredNames)
 
-    private[pythonexpression] def sourceCallableNames: Set[String] = declaredCallableNames.toSet
+    private[conversion] def sourceCallableNames: Set[String] = declaredCallableNames.toSet
 
     /** Reserve declarations before reading their bodies or any calls in the block. */
     def reserveCallableNames(names: Set[String]): Unit = names.foreach { name =>
