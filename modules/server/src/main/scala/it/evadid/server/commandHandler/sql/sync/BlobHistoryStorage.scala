@@ -37,16 +37,14 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
     val filter = if keys.isEmpty then "" else " AND variable_id IN (" + keys.map(_ => "?").mkString(",") + ")"
     val entries = query("SELECT variable_id,format,history_json FROM blob_history WHERE program_id=? AND scenario_id=? AND user_id=?" + filter,
       List(context.programId, context.scenarioId, context.userId) ++ keys) { row =>
-      val history = InteractionHistoryJson(InteractionFormat.fromName(row.getString(2)), row.getString(3))
-      history.toTyped
-      context.toSyncContext(row.getString(1)) -> history
+      context.toSyncContext(row.getString(1)) -> InteractionHistoryJson(InteractionFormat.fromName(row.getString(2)), row.getString(3))
     }
     DbFetchResponse(entries.toMap)
   }
 
   def fetch(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {
-    val response = histories(request.usageContext, request.keys)
-    response.copy(fetchedElements = response.fetchedElements.map((key, value) => key -> value.cleanWithStrategy(request.strategy).between(request.starting, request.until)))
+    DbFetchResponse.readable(histories(request.usageContext, request.keys).fetchedElements, request.strategy, request.starting,
+      request.until, (key, error) => logger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error))
   }
 
   def delete(request: DeleteInDbRequest): SyncSuccess = transaction {

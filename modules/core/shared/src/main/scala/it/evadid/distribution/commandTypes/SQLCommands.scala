@@ -75,6 +75,19 @@ object SQLCommands {
 
 
   }
+  object DbFetchResponse {
+    /** Stored histories as a read returns them, each reduced to the strategy and the inclusive range.
+      * A record that cannot be read is discarded and reported, so that it cannot hide the others.
+      */
+    def readable(stored: Map[SyncContext, InteractionHistoryJson], strategy: EventSyncStrategy, starting: LocalDateTime,
+        until: LocalDateTime, discarded: (SyncContext, Throwable) => Unit): DbFetchResponse =
+      DbFetchResponse(stored.flatMap { (key, history) =>
+        scala.util.Try(history.cleanWithStrategy(strategy).between(starting, until)).fold(
+          error => { discarded(key, error); None },
+          readable => Some(key -> readable))
+      })
+  }
+
 
   lazy val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory[StoreToDbRequest, SyncSuccess](
     "sync-to-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)

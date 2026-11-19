@@ -74,19 +74,23 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     }
     val filter = bounds.map((sql, _) => " AND " + sql).mkString
     val parameters = bounds.map(_._2)
+    // An unreadable or inconsistent event row is discarded and reported; the other events still load.
     val events = tables.flatMap { table =>
       query(s"SELECT event_id,serialized_data,timestamp_nano FROM $table WHERE sync_id=?" + filter, List(sync) ++ parameters) { row =>
-        val event = InteractionFormat.codecsFor(format).eventSerializer.deserialize(row.getString("serialized_data"))
-        require(row.getString("event_id") == event.eventId, "Stored event_id must match the serialized client eventId")
-        require(row.getString("timestamp_nano") == timestampText(event.timestamp),
-          "timestamp_nano must match the serialized event as canonical ISO 8601 with nanosecond precision")
-        require(table == (event match {
-          case _: AnswerChangedEvent[F] => "answer_event"
-          case _: GradingEvent[F] => "grading_event"
-          case _: ScaffoldingEvent[F] => "scaffolding_event"
-        }), "Event stored in the wrong table")
-        event
-      }
+        val eventId = row.getString("event_id")
+        scala.util.Try {
+          val event = InteractionFormat.codecsFor(format).eventSerializer.deserialize(row.getString("serialized_data"))
+          require(eventId == event.eventId, "Stored event_id must match the serialized client eventId")
+          require(row.getString("timestamp_nano") == timestampText(event.timestamp),
+            "timestamp_nano must match the serialized event as canonical ISO 8601 with nanosecond precision")
+          require(table == (event match {
+            case _: AnswerChangedEvent[F] => "answer_event"
+            case _: GradingEvent[F] => "grading_event"
+            case _: ScaffoldingEvent[F] => "scaffolding_event"
+          }), "Event stored in the wrong table")
+          event
+        }.fold(error => { logger.logExceptionWarn(s"Discarded the unreadable $table row $eventId", error); None }, Some(_))
+      }.flatten
     }.toSet
     InteractionHistoryJson.fromHistory(format, InteractionVariableHistory(InteractionEvents(events)))
   }
@@ -96,10 +100,8 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
       case EventSyncStrategy.SYNC_EVERYTHING | _: EventSyncStrategy.KeepImportance => Some(request.starting -> request.until)
       case _ => None
     }
-    val response = histories(request.usageContext, request.keys, range)
-    response.copy(fetchedElements = response.fetchedElements.map { (key, history) =>
-      key -> history.cleanWithStrategy(request.strategy).between(request.starting, request.until)
-    })
+    DbFetchResponse.readable(histories(request.usageContext, request.keys, range).fetchedElements, request.strategy, request.starting,
+      request.until, (key, error) => logger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error))
   }
 
   def delete(request: DeleteInDbRequest): SyncSuccess = transaction {

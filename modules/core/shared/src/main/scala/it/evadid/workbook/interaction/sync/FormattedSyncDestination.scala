@@ -19,8 +19,11 @@ case class FormattedSyncDestination[F <: InteractionFormat](information: SyncInf
   val reader: RemoteHistoryDataReader[SyncContext, F] = new RemoteHistoryDataReader[SyncContext, F] {
     def fetchEventsBetween(logger: SyncLogger, keys: Seq[SyncContext], starting: LocalDateTime, until: LocalDateTime,
         selection: EventSyncStrategy): Future[Map[SyncContext, Seq[InteractionEvent[F]]]] =
-      handler.readHistoriesInRange(information.usageContext, keys, starting, until, selection).map(_.map { (key, history) =>
-        key -> history.typedAs(format).events.values.toList
+      // Each history is typed separately: one unreadable record is discarded without hiding the others.
+      handler.readHistoriesInRange(information.usageContext, keys, starting, until, selection).map(_.flatMap { (key, history) =>
+        scala.util.Try(history.typedAs(format).events.values.toList).fold(
+          error => { logger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error); None },
+          events => Some(key -> events))
       })
 
     override def flush(logger: SyncLogger, forceFlush: Boolean): Unit = handler.flush(forceFlush)
