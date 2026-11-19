@@ -47,7 +47,8 @@ object SnapControlFlow {
     def intern(rawName: String): BeDefineVariable = {
       val name = rawName.trim
       if name.isEmpty then intern("x")
-      else byName.getOrElseUpdate(name, BeDefineVariable(BeEntityName.fromLiteral(name), BeDataType.AnyType))
+      // Snap names may contain spaces (`my size`); they read as code names, as saved variables do.
+      else byName.getOrElseUpdate(name, BeDefineVariable(BeEntityName.fromCodeString(name), BeDataType.AnyType))
     }
 
     def internAll(names: Iterable[String]): Unit =
@@ -128,7 +129,7 @@ object SnapControlFlow {
         isSupportedConditionSequence(whileExpr.condition) &&
           bodyHasSupported(whileExpr.body, userFunctions)
       case repeat: BeRepeatNr =>
-        repeat.amount >= 0 && bodyHasSupported(repeat.body, userFunctions)
+        repeat.fixedAmount.forall(_ >= 0) && isSupportedValue(repeat.amount) && bodyHasSupported(repeat.body, userFunctions)
       case forExpr: BeFor =>
         isSupportedValue(forExpr.start) &&
           isSupportedValue(forExpr.end) &&
@@ -168,7 +169,8 @@ object SnapControlFlow {
       case whileExpr: BeWhile =>
         conditionProblems(whileExpr.condition).orElse(bodyProblems(whileExpr.body, userFunctions))
       case repeat: BeRepeatNr =>
-        if repeat.amount < 0 then Some("negative repeat count")
+        if repeat.fixedAmount.exists(_ < 0) then Some("negative repeat count")
+        else if !isSupportedValue(repeat.amount) then Some("repeat count")
         else bodyProblems(repeat.body, userFunctions)
       case forExpr: BeFor =>
         if !isSupportedValue(forExpr.start) || !isSupportedValue(forExpr.end) then Some("for range")

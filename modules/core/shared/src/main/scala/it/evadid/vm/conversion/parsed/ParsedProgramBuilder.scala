@@ -78,11 +78,11 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
       BeIfElse(BeSequence.conditionalBody(List(expression(condition, context))), body(thenBody, context), body(elseBody, context))
     case S.While(condition, loopBody) =>
       BeWhile(BeSequence.conditionalBody(List(expression(condition, context))), body(loopBody, context))
-    case S.Repeat(times, loopBody) => BeRepeatNr(times, body(loopBody, context))
-    case S.For(variable, start, end, loopBody) =>
+    case S.Repeat(times, loopBody) => BeRepeatNr(expression(times, context), body(loopBody, context))
+    case S.For(variable, start, end, loopBody, up) =>
       val (first, last) = (expression(start, context), expression(end, context))
       val counter = context.defineVariable(variable, BeDataType.Numeric)
-      BeFor(counter, first, last, body(loopBody, context))
+      BeFor(counter, first, last, body(loopBody, context), if up then BeFor.Direction.Up else BeFor.Direction.Down)
     case S.Return(value) => BeReturn(value.map(expression(_, context)))
     case S.Evaluate(value) => expression(value, context)
     case S.Comment(text) => BeSingleLineComment(LanguageMap.universalMap(text))

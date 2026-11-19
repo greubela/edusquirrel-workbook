@@ -324,7 +324,8 @@ class SnapExpressionSupportSpec extends FunSuite {
     val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
     val xml = result.toOption.get.code
-    assert(xml.contains("""<block s="doFor"><l>_</l>"""), clue = xml)
+    // An unused counter is a repeat; its count may be computed, here a variable.
+    assert(xml.contains("""<block s="doRepeat"><block var="edges"/>"""), clue = xml)
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("for _ in range(edges):"), clue = python)
     assert(!python.contains("for 0 in range"), clue = python)

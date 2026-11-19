@@ -136,24 +136,22 @@ case class BeExpressionToPythonString
       s"${entityName(variable.name)}: ${variable.variableType.formatTypeForDisplay.getInLanguage(Python)}"
     ).mkString("(", ", ", ")")
 
-  override protected def fixedRepetitionLine(amount: Int): String = {
-    s"for _ in range(${amount}):"
-  }
+  override protected def repetitionLine(amount: String): String = s"for _ in range($amount):"
 
-  override protected def namedRangeLine(varName: String, start: String, end: String): String = {
+  override protected def namedRangeLine(varName: String, start: String, end: String, down: Boolean): String = {
     val minusOne = """^(.+)\s-\s1$""".r
-    (start, end) match {
-      case ("0", minusOne(stop)) =>
-        s"for $varName in range(${stop.trim}):"
-      case ("0", digits) if digits.nonEmpty && digits.forall(_.isDigit) =>
-        s"for $varName in range(${digits.toInt + 1}):"
-      // Snap's inclusive for counts down when it starts above its end.
-      case (first, last) if first.toIntOption.zip(last.toIntOption).exists(_ > _) =>
-        s"for $varName in range($start, ${last.toInt - 1}, -1):"
-      case (first, last) if first.toIntOption.nonEmpty && last.toIntOption.nonEmpty =>
-        s"for $varName in range($start, ${last.toInt + 1}):"
-      case _ =>
-        s"for $varName in range($start, $end + 1):"
+    val plusOne = """^(.+)\s\+\s1$""".r
+    if down then end match {
+      case literal if literal.toIntOption.nonEmpty => s"for $varName in range($start, ${literal.toInt - 1}, -1):"
+      case plusOne(stop) => s"for $varName in range($start, ${stop.trim}, -1):"
+      case _ => s"for $varName in range($start, $end - 1, -1):"
+    }
+    else (start, end) match {
+      case ("0", minusOne(stop)) => s"for $varName in range(${stop.trim}):"
+      case ("0", digits) if digits.toIntOption.nonEmpty => s"for $varName in range(${digits.toInt + 1}):"
+      case (_, last) if last.toIntOption.nonEmpty => s"for $varName in range($start, ${last.toInt + 1}):"
+      case (_, minusOne(stop)) => s"for $varName in range($start, ${stop.trim}):"
+      case _ => s"for $varName in range($start, $end + 1):"
     }
   }
 

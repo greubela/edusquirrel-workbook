@@ -16,7 +16,8 @@ object SnapToExpression {
   def parse(xml: String): BeExpression = {
     val project = TurtleStitchXmlLoader.load(xml)
     val unsupported = SnapExpressionSupport.unsupportedSnapSelectors(xml, project)
-    require(unsupported.isEmpty, s"Unsupported Snap blocks: ${unsupported.mkString(", ")}")
+    if unsupported.nonEmpty then
+      throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(s"Unsupported Snap blocks: ${unsupported.mkString(", ")}")
     fromProject(project).expression
   }
 

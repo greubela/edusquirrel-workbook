@@ -154,7 +154,9 @@ object SnapProjectXml {
         ifElse.thenBody.body.foreach(walk)
         ifElse.elseBody.body.foreach(walk)
       case whileExpr: BeWhile => whileExpr.body.body.foreach(walk)
-      case repeat: BeRepeatNr => repeat.body.body.foreach(walk)
+      case repeat: BeRepeatNr =>
+        walk(repeat.amount)
+        repeat.body.body.foreach(walk)
       case forExpr: BeFor => forExpr.body.body.foreach(walk)
       case _ => ()
     walk(expression)
@@ -242,13 +244,33 @@ object SnapProjectXml {
 
   private def renderRepeat(repeat: BeRepeatNr)(using RenderContext): String = {
     val body = renderScriptBody(repeat.body)
-    s"""<block s="doRepeat"><l>${repeat.amount}</l><script>$body</script></block>"""
+    s"""<block s="doRepeat">${renderArgument(repeat.amount)}<script>$body</script></block>"""
   }
 
+  /** Snap's `for` counts either way. A one-way loop (Python `range`, Java `for`) with computed bounds
+    * runs only when its bounds point its way, so it is guarded by that comparison.
+    */
   private def renderDoFor(forExpr: BeFor)(using RenderContext): String = {
     val name = variableXmlName(forExpr.variable)
     val body = renderScriptBody(forExpr.body)
-    s"""<block s="doFor"><l>$name</l>${renderArgument(forExpr.start)}${renderArgument(forExpr.end)}<script>$body</script></block>"""
+    val loop = s"""<block s="doFor"><l>$name</l>${renderArgument(forExpr.start)}${renderArgument(forExpr.end)}<script>$body</script></block>"""
+    def literal(value: BeExpression) = value match {
+      case BeUseValue(BeDataValueLiteral(raw), _) => raw.trim.toDoubleOption
+      case _ => None
+    }
+    val comparison = forExpr.direction match {
+      case BeFor.Direction.Up => Some("<=")
+      case BeFor.Direction.Down => Some(">=")
+      case BeFor.Direction.Either => None
+    }
+    (comparison, literal(forExpr.start).zip(literal(forExpr.end))) match {
+      case (None, _) => loop
+      case (Some(operator), Some((start, end))) =>
+        if (operator == "<=" && start <= end) || (operator == ">=" && start >= end) then loop else ""
+      case (Some(operator), None) =>
+        val guard = SnapControlFlow.operatorCall(operator, List(forExpr.start, forExpr.end))
+        s"""<block s="doIf">${renderCondition(guard)}<script>$loop</script><list></list></block>"""
+    }
   }
 
   private def renderIfElse(ifElse: BeIfElse)(using RenderContext): String = {

@@ -109,4 +109,32 @@ class SemanticConsistencySpec extends FunSuite {
     val failed = ProgrammingStateRaw(Python, "distance = \"far\"\nforward(distance)\n").toBeExpression.turtleCommandExecutionInfo.executionStatus
     assert(failed.toString.contains("is not a number"), failed.toString)
   }
+
+  private def snap(scripts: String, variables: String = "") = ProgrammingStateRaw(SnapLanguage,
+    s"""<project name="p" app="Snap! 9" version="2"><scenes select="1"><scene name="p"><blocks></blocks><stage name="Stage"><sprites select="1">""" +
+      s"""<sprite name="S"><scripts><script><block s="receiveGo"/>$scripts</script></scripts></sprite></sprites></stage><variables>$variables</variables></scene></scenes></project>""")
+
+  test("Snap slots keep Snap's meaning: empty conditions are false, slot text is text, repeat counts may be computed") {
+    val emptyCondition = snap("""<block s="doIf"><l/><script><block s="forward"><l>10</l></block></script><list></list></block>""")
+    val falseLiteral = snap("""<block s="doIf"><l><bool>false</bool></l><script><block s="forward"><l>10</l></block></script><list></list></block>""")
+    Seq(emptyCondition, falseLiteral).foreach(state => assertEquals(drawing(state), Nil))
+    val computedRepeat = snap("""<block s="doSetVar"><l>n</l><l>3</l></block><block s="doRepeat"><block var="n"/><script><block s="forward"><l>5</l></block></script></block>""",
+      """<variable name="n"><l>0</l></variable>""")
+    everyLanguage(computedRepeat).foreach(state => assertEquals(drawing(state), List(5.0, 5.0, 5.0), state.toString))
+    assert(text(converted(computedRepeat, Python)).contains("for _ in range(n):"))
+    val textSlot = snap("""<block s="bubble"><l>A &amp; B &lt;3 &#228;</l></block>""")
+    assert(text(converted(textSlot, Python)).contains("print(\"A & B <3 ä\")"), text(converted(textSlot, Python)))
+    val wordInOperator = snap("""<block s="doIf"><block s="reportVariadicEquals"><list><l>abc</l><l>abc</l></list></block><script><block s="forward"><l>1</l></block></script><list></list></block>""")
+    assert(text(converted(wordInOperator, Python)).contains("if \"abc\" == \"abc\":"), "slot words are text, not variables")
+    assertEquals(drawing(wordInOperator), List(1.0))
+    val spacedName = snap("""<block s="doSetVar"><l>my size</l><l>7</l></block><block s="forward"><block var="my size"/></block>""",
+      """<variable name="my size"><l>0</l></variable>""")
+    val python = text(converted(spacedName, Python))
+    assert(python.contains("my_size: Any = 7") && python.contains("turtle.forward(my_size)") && !python.contains("my size"), python)
+  }
+
+  test("unsupported Snap blocks are reported without internal messages") {
+    val result = snap("""<block s="doForever"><script><block s="forward"><l>1</l></block></script></block>""").convertToLanguage(Python)
+    assert(result.conversionInfo.head.warningMsg.startsWith("Unsupported Snap blocks: doForever"), result.conversionInfo.toString)
+  }
 }

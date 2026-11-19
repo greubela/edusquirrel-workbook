@@ -1,6 +1,6 @@
 package it.evadid.vm.conversion
 
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeFor, BeRepeatNr, BeWhile}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeUseValue}
@@ -15,6 +15,7 @@ import munit.FunSuite
 class CountingLoopSpec extends FunSuite {
   private enum Loop {
     case Repeat(times: Int)
+    case RepeatComputed(amount: String)
     case For(variable: String, start: String, end: String)
     case While
   }
@@ -25,7 +26,7 @@ class CountingLoopSpec extends FunSuite {
   }
 
   private def loops(state: ProgrammingState): Vector[Loop] = state.toBeExpression.expression.subtree.collect {
-    case loop: BeRepeatNr => Loop.Repeat(loop.amount)
+    case loop: BeRepeatNr => loop.fixedAmount.fold(Loop.RepeatComputed(loop.amount.toString))(Loop.Repeat(_))
     case loop: BeFor => Loop.For(loop.variable.name.universalInterpretation(), literal(loop.start), literal(loop.end))
     case _: BeWhile => Loop.While
   }
@@ -74,10 +75,14 @@ class CountingLoopSpec extends FunSuite {
     assertEquals(distances(state), Seq(1.0, 1.0, 1.0, 2.0))
   }
 
-  test("counts without literal bounds stay counting for loops, as a repeat needs a fixed number") {
-    val state = python("n = 3\nfor _ in range(n):\n    forward(1)\n")
-    assert(loops(state).forall(_.isInstanceOf[Loop.For]), loops(state).toString)
-    assertEquals(distances(state), Seq(1.0, 1.0, 1.0))
+  test("counts from computed bounds are repetitions too, and a zero count repeats nothing") {
+    Seq(python("n = 3\nfor _ in range(n):\n    forward(1)\n"),
+        java("double n = 3;\nfor (int i = 0; i < n; i++) {\n    Turtle.forward(1);\n}")).foreach { state =>
+      assert(loops(state).forall(_.isInstanceOf[Loop.RepeatComputed]), loops(state).toString)
+      assertEquals(distances(state), Seq(1.0, 1.0, 1.0))
+    }
+    assertEquals(distances(python("n = 0\nfor _ in range(n):\n    forward(1)\n")), Nil)
+    assertEquals(distances(python("n = 0\nfor i in range(n):\n    forward(i)\n")), Nil, "an observed counter keeps the counting loop")
   }
 
   test("empty literal ranges do not count down like Snap's for") {
@@ -110,5 +115,16 @@ class CountingLoopSpec extends FunSuite {
   test("a loop that assigns its own Python counter is reported as unsupported rather than changed") {
     val result = python("for i in range(4):\n    i = i + 1\n    forward(i)\n").convertToLanguage(Java)
     assert(result.hasLostFunctionality, result.conversionInfo.toString)
+  }
+
+  test("one-way counting loops keep their direction in every language, also with computed bounds") {
+    val up = python("n = 0\nfor i in range(n):\n    forward(i)\nfor i in range(1, n + 3):\n    forward(i)\n")
+    val down = python("n = 2\nfor i in range(n, 0, -1):\n    forward(i)\nfor i in range(n, 5, -1):\n    forward(9)\n")
+    for (state, expected) <- Seq(up -> Seq(1.0, 2.0), down -> Seq(2.0, 1.0)); target <- Seq(Python, Java, SnapLanguage) do {
+      val converted = state.convertToLanguage(target).finalState.getOrElse(fail(s"$target: ${state.convertToLanguage(target).conversionInfo}"))
+      assertEquals(distances(converted), expected, s"$target\n$converted")
+    }
+    assert(down.toJava.code.contains("for (int i = n; i >= 1; i--) {"), down.toJava.code)
+    assert(up.toSnapXml.code.contains("""<block s="doIf"><block s="reportVariadicLessThanOrEquals">"""), "Snap guards a one-way loop")
   }
 }

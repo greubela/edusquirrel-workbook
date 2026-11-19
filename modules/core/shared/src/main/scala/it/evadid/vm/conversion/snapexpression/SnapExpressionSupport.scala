@@ -62,6 +62,7 @@ object SnapExpressionSupport {
       case whileExpr: it.evadid.vm.code.controlStructures.BeWhile =>
         whileExpr.body.body.foreach(walk)
       case repeat: it.evadid.vm.code.controlStructures.BeRepeatNr =>
+        walk(repeat.amount)
         repeat.body.body.foreach(walk)
       case forExpr: it.evadid.vm.code.controlStructures.BeFor =>
         forExpr.body.body.foreach(walk)

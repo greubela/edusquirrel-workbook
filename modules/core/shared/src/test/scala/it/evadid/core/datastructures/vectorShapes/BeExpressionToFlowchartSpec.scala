@@ -79,7 +79,7 @@ class BeExpressionToFlowchartSpec extends FunSuite {
   }
 
   test("counted repetition has initialization, a test and an update") {
-    val chart = build(BeRepeatNr(3, body(step("work"))))
+    val chart = build(BeRepeatNr.times(3, body(step("work"))))
     val decision = chart.nodes.find(_.kind == NodeKind.Decision).get
     val init = chart.nodes.find(_.label.endsWith(" = 3")).get
     val update = chart.nodes.find(_.label.endsWith(" -= 1")).get
@@ -111,7 +111,7 @@ class BeExpressionToFlowchartSpec extends FunSuite {
   }
 
   test("nested loops retain separate counters and return exits all loops") {
-    val expression = BeRepeatNr(2, body(BeRepeatNr(3, body(step("work"))), BeReturn(None)))
+    val expression = BeRepeatNr.times(2, body(BeRepeatNr.times(3, body(step("work"))), BeReturn(None)))
     val chart = build(expression)
     assertEquals(chart.nodes.filter(_.label.endsWith(" > 0")).map(_.label).distinct.size, 2)
     assertConnected(chart)
@@ -200,7 +200,7 @@ class BeExpressionToFlowchartSpec extends FunSuite {
 
   test("unconditional returns in counted loops remove unreachable counter updates") {
     val returned = BeReturn(None)
-    val chart = build(body(BeRepeatNr(3, body(returned, step("unreachable"))), step("after")))
+    val chart = build(body(BeRepeatNr.times(3, body(returned, step("unreachable"))), step("after")))
     assert(!chart.nodes.exists(_.label == "unreachable"))
     assert(!chart.nodes.exists(_.label.endsWith(" -= 1")))
     assertEquals(chart.edges.count(_.backEdge), 0)
@@ -213,7 +213,7 @@ class BeExpressionToFlowchartSpec extends FunSuite {
   }
 
   test("empty counted loop bodies still update their counters before testing again") {
-    val chart = build(BeRepeatNr(0, BeExpression.pass))
+    val chart = build(BeRepeatNr.times(0, BeExpression.pass))
     val decision = chart.nodes.find(_.kind == NodeKind.Decision).get
     val update = chart.nodes.find(_.label.endsWith(" -= 1")).get
     assertEquals(outgoing(chart, decision.id).find(_.label.contains("Yes")).get.to, update.id)

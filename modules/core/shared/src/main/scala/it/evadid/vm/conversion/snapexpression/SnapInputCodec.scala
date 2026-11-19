@@ -24,7 +24,7 @@ object SnapInputCodec {
   }
 
   def quotePython(value: String): String =
-    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
 
   def parseColor(raw: String): Option[RGBColor] = {
     val value = stripQuotes(raw).trim

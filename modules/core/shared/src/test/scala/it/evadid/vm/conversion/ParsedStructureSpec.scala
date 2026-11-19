@@ -74,8 +74,8 @@ class ParsedStructureSpec extends FunSuite {
     case BeIfElse(condition, thenBody, elseBody) =>
       s"if ${block(condition)} ${block(thenBody)}" + (if elseBody.body.isEmpty then "" else s" else ${block(elseBody)}")
     case BeWhile(condition, body) => s"while ${block(condition)} ${block(body)}"
-    case BeRepeatNr(times, body) => s"repeat $times ${block(body)}"
-    case BeFor(counter, start, end, body) => s"for ${name(counter.name)} = ${outline(start)}..${outline(end)} ${block(body)}"
+    case BeRepeatNr(times, body) => s"repeat ${outline(times)} ${block(body)}"
+    case BeFor(counter, start, end, body, direction) => s"for ${name(counter.name)} = ${outline(start)}..${outline(end)} $direction ${block(body)}"
     case BeCurrentInstance(_) => "self"
     case BeMemberAccess(receiver, member) => s"${outline(receiver)}.${name(member.name)}"
     case BeAssignMember(receiver, member, value) => s"${outline(receiver)}.${name(member.name)} = ${outline(value)}"

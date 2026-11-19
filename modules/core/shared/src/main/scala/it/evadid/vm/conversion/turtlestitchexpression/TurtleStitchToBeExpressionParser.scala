@@ -112,7 +112,7 @@ object TurtleStitchToBeExpressionParser {
   private def expandModelInputsToExpressions(inputs: List[InputValue], phaseOne: PhaseOneResult): List[BeExpression] =
     inputs.flatMap {
       case Literal(value) =>
-        if value.trim.isEmpty then Nil else List(expressionFromLiteral(value))
+        if value.trim.isEmpty then Nil else List(slotLiteral(value, numeric = true))
       case BoolLiteral(value) => List(BeUseValue(BeDataValueLiteral(booleanRaw(value)), None))
       case ListLiteral(items) => expandModelInputsToExpressions(items.toList, phaseOne)
       case NestedBlock(block) => parseBlock(block, phaseOne).toList
@@ -121,18 +121,13 @@ object TurtleStitchToBeExpressionParser {
         List(BeUseValue(BeDataValueLiteral(colorLiteralToPython(value)), None))
     }
 
-  private def expressionFromLiteral(value: String): BeExpression = {
-    val trimmed = value.trim
-    if isVariableNameLiteral(trimmed) then SnapControlFlow.useVariable(currentVars.intern(trimmed))
-    else BeUseValue(BeDataValueLiteral(value), None)
-  }
-
-  private def isVariableNameLiteral(value: String): Boolean =
-    value.nonEmpty &&
-      value != "True" &&
-      value != "False" &&
-      (value.head.isLetter || value.head == '_') &&
-      value.forall(ch => ch.isLetterOrDigit || ch == '_')
+  /** A Snap slot literal. Variables are separate reporters (`<block var="x"/>`), so slot text is text:
+    * numbers stay numbers, other text is a text literal, and an empty number slot is 0, as in Snap.
+    */
+  private def slotLiteral(value: String, numeric: Boolean): BeExpression =
+    if value.trim.toDoubleOption.nonEmpty then BeUseValue(BeDataValueLiteral(value.trim), None)
+    else if value.isEmpty && numeric then BeUseValue(BeDataValueLiteral("0"), None)
+    else BeUseValue(BeDataValueLiteral(SnapInputCodec.quotePython(value)), None)
 
   /** Snap-native body is a direct `<script>` child; `<scripts>` holds extras / legacy bodies. */
   private def buildDefinitions(project: Project): PhaseOneResult = {
@@ -153,13 +148,13 @@ object TurtleStitchToBeExpressionParser {
         val specNames = SnapTurtleCatalog.inputNamesFromSpec(defn.spec)
         val params =
           if specNames.nonEmpty then
-            specNames.zipWithIndex.map((name, index) => BeDefineVariable(BeEntityName.fromLiteral(name), slotDataType(defn.inputs.lift(index).map(_.inputType).getOrElse("%s"))))
+            specNames.zipWithIndex.map((name, index) => BeDefineVariable(BeEntityName.fromCodeString(name), slotDataType(defn.inputs.lift(index).map(_.inputType).getOrElse("%s"))))
           else if defn.inputs.nonEmpty then
             defn.inputs.toList.zipWithIndex.map { (inp, idx) =>
               val name =
                 if inp.name.trim.nonEmpty then inp.name.trim
                 else s"arg${idx + 1}"
-              BeDefineVariable(BeEntityName.fromLiteral(name), BeDataType.AnyType)
+              BeDefineVariable(BeEntityName.fromCodeString(name), BeDataType.AnyType)
             }
           else stub.inputs
         val body = defn.body.headOption.map(parseScriptBody(_, phaseOneStubs)).getOrElse(BeSequence.optionalBody(Nil))
@@ -226,7 +221,8 @@ object TurtleStitchToBeExpressionParser {
 
   private def parseDoRepeat(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
     val inputs = block.inputs.toList
-    val amount = inputs.collectFirst { case Literal(value) => value }.flatMap(SnapControlFlow.literalInt).getOrElse(0)
+    // The count is a number or a reporter; an empty slot repeats zero times, as in Snap.
+    val amount = valueFromModelInputs(inputs.take(1), phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
     val body = inputs.collectFirst { case NestedScript(script) => script }.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
     BeRepeatNr(amount, body)
   }
@@ -303,17 +299,19 @@ object TurtleStitchToBeExpressionParser {
 
   private def valueFromModelInputs(inputs: List[InputValue], phaseOne: PhaseOneResult): Option[BeExpression] =
     inputs.headOption.map {
-      case Literal(value) => BeUseValue(BeDataValueLiteral(value), None)
+      case Literal(value) => slotLiteral(value, numeric = false)
       case BoolLiteral(value) => BeUseValue(BeDataValueLiteral(booleanRaw(value)), None)
       case NestedBlock(nested) => parseBlock(nested, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
       case ListLiteral(items) => valueFromModelInputs(items.toList, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
       case other => parseInputValue(other, None, phaseOne)
     }
 
-  private def conditionFromModelInputs(inputs: List[InputValue], phaseOne: PhaseOneResult): BeExpression =
-    inputs.collectFirst { case NestedBlock(nested) =>
-      parseBlock(nested, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("True"), None))
-    }.getOrElse(BeUseValue(BeDataValueLiteral("True"), None))
+  /** The condition slot: a predicate, a boolean literal, or empty, which Snap treats as false. */
+  private def conditionFromModelInputs(inputs: List[InputValue], phaseOne: PhaseOneResult): BeExpression = inputs.headOption match {
+    case Some(NestedBlock(nested)) => parseBlock(nested, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("False"), None))
+    case Some(BoolLiteral(value)) => BeUseValue(BeDataValueLiteral(booleanRaw(value)), None)
+    case _ => BeUseValue(BeDataValueLiteral("False"), None)
+  }
 
   private def parseScriptBody(script: Script, phaseOne: PhaseOneResult): BeSequence =
     BeSequence.optionalBody(commandStatements(script.blocks.toList.flatMap(block => parseBlock(block, phaseOne))))
@@ -337,7 +335,7 @@ object TurtleStitchToBeExpressionParser {
   private def booleanRaw(value: Boolean): String = if value then "True" else "False"
 
   private def parseInputValue(input: InputValue, context: Option[BeDefineVariable], phaseOne: PhaseOneResult): BeExpression = input match {
-    case Literal(value) => BeUseValue(BeDataValueLiteral(value), context)
+    case Literal(value) => slotLiteral(value, numeric = context.exists(_.variableType == BeDataType.Numeric))
     case BoolLiteral(value) => BeUseValue(BeDataValueLiteral(booleanRaw(value)), context)
     case ColorLiteral(value) => BeUseValue(BeDataValueLiteral(colorLiteralToPython(value)), context)
     case ListLiteral(items) =>

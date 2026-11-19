@@ -53,11 +53,14 @@ object ParsedStatement {
 
   final case class While(condition: ParsedExpression, body: Seq[ParsedStatement]) extends ParsedStatement
 
-  /** A counting loop whose counter is not observable. */
-  final case class Repeat(times: Int, body: Seq[ParsedStatement]) extends ParsedStatement
+  /** A counting loop whose counter is not observable; `times` is any numeric expression. */
+  final case class Repeat(times: ParsedExpression, body: Seq[ParsedStatement]) extends ParsedStatement
 
-  /** A counting loop with an inclusive end, as Snap's `for` block counts. */
-  final case class For(variable: String, start: ParsedExpression, endInclusive: ParsedExpression, body: Seq[ParsedStatement]) extends ParsedStatement
+  /** A counting loop with an inclusive end that counts up (`up`) or down by one and makes no pass when
+    * the bounds point the other way, like Python's `range` and Java's counting `for`.
+    */
+  final case class For(variable: String, start: ParsedExpression, endInclusive: ParsedExpression, body: Seq[ParsedStatement],
+      up: Boolean = true) extends ParsedStatement
 
   /** A loop that runs `update` after each pass, as Java's general `for` and Python's stepped `range`:
     * the initialisation, then a while loop whose body ends with the update. The shared tree has no
@@ -69,9 +72,9 @@ object ParsedStatement {
   /** A loop over `start, start + step, …` that stops before `stop`, like Python's `range(start, stop, step)`
     * and Java's counting `for`. It becomes the most specific shared loop:
     *
-    *  - a fixed [[Repeat]] when `counterObserved` is false and both bounds are whole-number literals;
-    *  - a [[For]] for steps of ±1 (Snap's inclusive `for`, which counts down when start > end, so
-    *    literal bounds that describe no pass become an empty repeat instead);
+    *  - a [[Repeat]] when `counterObserved` is false and both bounds are whole-number literals, or the
+    *    loop counts from 0 by 1 to a computed bound (`range(n)`);
+    *  - a [[For]] counting up or down for steps of ±1 (literal bounds that describe no pass are an empty repeat);
     *  - otherwise the counter's initialisation and a while loop that ends with the step.
     *
     * The caller decides whether the counter is observed: Java counters live only in the loop, while
@@ -85,8 +88,10 @@ object ParsedStatement {
       case _ => None
     }
     passes match {
-      case Some(times) if !counterObserved || times == 0 => Seq(Repeat(times, body))
-      case _ if step.abs == 1 => Seq(For(variable, start, ParsedExpression.offset(stop, -step), body))
+      case Some(times) if !counterObserved || times == 0 => Seq(Repeat(ParsedExpression.Literal(times.toString), body))
+      // `range(n)` with an unobserved counter repeats n times, also when n is computed.
+      case None if !counterObserved && step == 1 && ParsedExpression.wholeNumber(start).contains(0) => Seq(Repeat(stop, body))
+      case _ if step.abs == 1 => Seq(For(variable, start, ParsedExpression.offset(stop, -step), body, up = step > 0))
       case _ =>
         val (comparison, change) = if step > 0 then ("<", "+") else (">", "-")
         loopWithUpdate(Seq(Assign(variable, None, start)), ParsedExpression.Binary(comparison, ParsedExpression.Name(variable), stop), body,

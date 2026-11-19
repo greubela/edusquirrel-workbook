@@ -81,11 +81,17 @@ object TurtleProgramAnalysis {
     case assign: BeAssignVariable =>
       state.copy(env = state.env.updated(SnapControlFlow.variableName(assign.target), eval(assign.value, state)))
     case repeat: BeRepeatNr =>
-      repeatBody(repeat.body, repeat.amount, state, limits, isCancelled)
+      // Like Python's range and Snap's repeat, a fractional count rounds down and a negative one repeats nothing.
+      repeatBody(repeat.body, math.max(0, math.floor(evalNumber(repeat.amount, state)).toInt), state, limits, isCancelled)
     case loop: BeFor =>
       val start = evalNumber(loop.start, state).round.toInt.toLong
       val end = evalNumber(loop.end, state).round.toInt.toLong
-      forBody(loop, start, end, if start <= end then 1L else -1L, state, limits, isCancelled)
+      val step = loop.direction match {
+        case BeFor.Direction.Up => 1L
+        case BeFor.Direction.Down => -1L
+        case BeFor.Direction.Either => if start <= end then 1L else -1L
+      }
+      forBody(loop, start, end, step, state, limits, isCancelled)
     case branch: BeIfElse =>
       val condition = branch.condition.body.headOption.getOrElse(BeUseValue(BeDataValueLiteral("True"), None))
       interpret(if evalBool(condition, state) then branch.thenBody else branch.elseBody, state, limits, isCancelled)

@@ -161,7 +161,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     else super.formatFunctionParameters(inputs)
 
   /** Nested repeats need distinct counters that no program variable uses. */
-  override protected def fixedRepetitionLine(amount: Int): String = {
+  override protected def repetitionLine(amount: String): String = {
     val counter = (Iterator("i", "j", "k", "m", "n") ++ Iterator.from(1).map("i" + _)).filterNot(usedNames).drop(repeatDepth - 1).next()
     s"for (int $counter = 0; $counter < $amount; $counter++) {"
   }

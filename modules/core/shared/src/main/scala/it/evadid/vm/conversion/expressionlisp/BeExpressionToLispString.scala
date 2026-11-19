@@ -28,7 +28,7 @@ case class BeExpressionToLispString(language: HumanLanguage, skipUnparsable: Boo
         s"(progn\n${indent(level + 2)}(progn\n${body.body.map(item => indent(level + 3) + render(item, level + 3)).mkString("\n")}\n${indent(level + 2)})\n${indent(level + 1)})"
       s"(if $conditionText\n${indent(level + 1)}${branch(thenBody)}\n${indent(level + 1)}${branch(elseBody)}\n${indent(level)})"
     case BeWhile(condition, body) => s"(loop while ${render(condition, level)} do ${render(body, level)})"
-    case BeRepeatNr(amount, body) => s"(dotimes (_ $amount) ${render(body, level)})"
+    case BeRepeatNr(amount, body) => s"(dotimes (_ ${render(amount, level)}) ${render(body, level)})"
     case BeDefineVariable(entityName, _, initValue) => s"(defparameter ${name(entityName)} ${initValue.map(render(_, level)).getOrElse("nil")})"
     case function: BeDefineFunction => s"(defun ${name(function.functionTypeInfo.displayName)} () ${render(function.body, level)})"
     case BeDefineClass(entityName, _, _) => s"(defclass ${name(entityName)} () ())"

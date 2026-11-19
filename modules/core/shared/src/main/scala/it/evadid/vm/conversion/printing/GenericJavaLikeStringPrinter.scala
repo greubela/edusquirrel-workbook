@@ -89,11 +89,21 @@ abstract class GenericJavaLikeStringPrinter(
   protected def formatFunctionParameters(inputs: List[BeDefineVariable]): String =
     inputs.map(forExpression).map(_.replace("\n", "")).mkString("(", ", ", ")")
 
-  protected def fixedRepetitionLine(amount: Int): String
+  /** The header of a repetition; `amount` is the printed count. */
+  protected def repetitionLine(amount: String): String
 
-  /** An inclusive counting loop; like Snap's `for`, literal bounds that decrease count down. */
-  protected def namedRangeLine(varName: String, start: String, end: String): String =
-    if start.toIntOption.zip(end.toIntOption).exists(_ > _) then s"for (int $varName = $start; $varName >= $end; $varName--) ${sepLogic.startBlockWith}"
+  /** Whether a counting loop counts down. Snap's two-way `for` can only be decided for literal bounds;
+    * with computed bounds it is printed counting up.
+    */
+  protected def countsDown(start: String, end: String, direction: BeFor.Direction): Boolean = direction match {
+    case BeFor.Direction.Up => false
+    case BeFor.Direction.Down => true
+    case BeFor.Direction.Either => start.toIntOption.zip(end.toIntOption).exists(_ > _)
+  }
+
+  /** An inclusive counting loop in one direction. */
+  protected def namedRangeLine(varName: String, start: String, end: String, down: Boolean): String =
+    if down then s"for (int $varName = $start; $varName >= $end; $varName--) ${sepLogic.startBlockWith}"
     else s"for (int $varName = $start; $varName <= $end; $varName++) ${sepLogic.startBlockWith}"
 
   /** Printed when a function body would otherwise be empty. Python overrides this with `pass`. */
@@ -224,19 +234,19 @@ abstract class GenericJavaLikeStringPrinter(
     }
     case BeRepeatNr(amount, body) => {
       CodeStringBuilderMutable()
-        .appendNextLine(fixedRepetitionLine(amount))
+        .appendNextLine(repetitionLine(forValue(amount)))
         .changeIntLevel(1)
         .appendAsLines(forExpression(body))
         .changeIntLevel(-1)
         .appendNextLine(sepLogic.endBlockWith)
         .toString
     }
-    case BeFor(variable, start, end, body) => {
+    case BeFor(variable, start, end, body, direction) => {
       val varName = NameInfo(variable.name).inCurLanguage
       val startStr = forExpression(start).replaceAll("\n", "").trim
       val endStr = forExpression(end).replaceAll("\n", "").trim
       CodeStringBuilderMutable()
-        .appendNextLine(namedRangeLine(varName, startStr, endStr))
+        .appendNextLine(namedRangeLine(varName, startStr, endStr, countsDown(startStr, endStr, direction)))
         .changeIntLevel(1)
         .appendAsLines(forExpression(body))
         .changeIntLevel(-1)
