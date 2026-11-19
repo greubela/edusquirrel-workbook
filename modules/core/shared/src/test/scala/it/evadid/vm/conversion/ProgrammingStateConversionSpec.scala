@@ -1,6 +1,5 @@
 package it.evadid.vm.conversion
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.javaexpression.JavaToBeExpressionParser
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
@@ -108,6 +107,18 @@ class ProgrammingStateConversionSpec extends FunSuite {
       )
       assertEquals(normalized(restored), normalized(state), clue = s"serialized ${state.getClass.getSimpleName}")
     }
+  }
+
+  test("one immutable state shares conversion and turtle derivations across consumers") {
+    val source = ProgrammingStatePythonString("forward(7)")
+    assert(source.toBeExpression eq source.toBeExpression)
+    assert(source.toJava eq source.toJava)
+    assert(source.toSnapXml eq source.toSnapXml)
+    assert(source.toBeExpression.turtleCommandExecutionInfo eq source.toBeExpression.turtleCommandExecutionInfo)
+    assert(source.toBeExpression.turtleCommandSites eq source.toBeExpression.turtleCommandSites)
+    val other = ProgrammingStatePythonString("forward(7)")
+    assert(!(source.derivations eq other.derivations))
+    assertEquals(other.toBeExpression.turtleCommandExecutionInfo, source.toBeExpression.turtleCommandExecutionInfo)
   }
 
   test("unsupported program arguments cannot disappear during conversion") {

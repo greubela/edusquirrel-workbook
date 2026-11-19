@@ -2,7 +2,6 @@ package it.evadid.vm.conversion.javaexpression
 
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateBeExpression
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand

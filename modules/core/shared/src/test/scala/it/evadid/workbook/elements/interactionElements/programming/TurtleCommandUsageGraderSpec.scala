@@ -3,7 +3,6 @@ package it.evadid.workbook.elements.interactionElements.programming
 import it.evadid.core.datastructures.language.AppLanguage.{English, Danish}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*

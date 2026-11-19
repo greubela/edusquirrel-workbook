@@ -16,6 +16,16 @@ import it.evadid.vm.conversion.structured.{SourceStructure, StructuredProgramCon
 
 /** The source representation currently edited by a programming exercise. */
 sealed trait ProgrammingState {
+  lazy val derivations: it.evadid.vm.conversion.ProgrammingStateDerivations =
+    new it.evadid.vm.conversion.ProgrammingStateDerivations(this)
+  def toLanguage(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage): ProgrammingState = derivations.inLanguage(language)
+  def toBeExpression: ProgrammingStateBeExpression = derivations.expression
+  def toJava: ProgrammingStateJavaString = derivations.java
+  def toPython: ProgrammingStatePythonString = derivations.python
+  def toSnapXml: ProgrammingStateSnapXml = derivations.snap
+  def toJavaStructured: ProgrammingStateJavaStructured = derivations.javaStructured
+  def toPythonStructured: ProgrammingStatePythonStructured = derivations.pythonStructured
+
   def associatedLanguage: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage = this match {
     case _: ProgrammingStateSnapXml | _: ProgrammingStateSnapScalaModel => it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
     case _: ProgrammingStateJavaString | _: ProgrammingStateJavaStructured => Java
@@ -70,7 +80,8 @@ object ProgrammingState {
 }
 
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState derives ReadWriter {
-  def turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleProgramAnalysis(expression)
+  lazy val turtleCommandSites = TurtleProgramAnalysis.commandSites(expression)
+  lazy val turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleProgramAnalysis(expression)
 
   override val toString: String = s"ProgrammingStateBeExpression(${expression.toString.take(300)})"
 
@@ -78,6 +89,8 @@ final case class ProgrammingStateBeExpression(expression: BeExpression) extends 
 
 
 final case class ProgrammingStateSnapXml(snapXml: String) extends ProgrammingState derives ReadWriter {
+  def toSnapScalaModel: Either[String, ProgrammingStateSnapScalaModel] = derivations.snapModel
+
 
   /** Drop regenerated preview/pen images without changing scripts or authored costumes. */
   def removeBloatFromXml: ProgrammingStateSnapXml = {
@@ -99,6 +112,13 @@ final case class ProgrammingStatePythonString(code: String) extends ProgrammingS
 }
 
 final case class ProgrammingStateJavaString(code: String) extends ProgrammingState derives ReadWriter {
+  def isClassProgram: Boolean = derivations.isJavaClass
+  def toJavaVmProgram = derivations.checkedJava
+  def toLegacyTurtleCommands: List[it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand[Double]] = {
+    require(!isClassProgram, "Full Java classes require the checked Java runner.")
+    toBeExpression.turtleCommandExecutionInfo.completedCommands
+  }
+
   override val toString: String = s"ProgrammingStateJavaString(${code.toString.take(300)})"
 }
 

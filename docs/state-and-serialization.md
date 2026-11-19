@@ -87,7 +87,6 @@ configuration and required services instead of reaching into that global context
 Use `bimap` when the two conversions express a valid view of the same value:
 
 ```scala
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
 

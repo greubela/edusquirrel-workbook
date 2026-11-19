@@ -1,6 +1,5 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 
 import munit.FunSuite
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaString

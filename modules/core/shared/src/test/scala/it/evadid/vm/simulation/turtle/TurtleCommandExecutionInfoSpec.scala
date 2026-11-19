@@ -1,7 +1,6 @@
 package it.evadid.vm.simulation.turtle
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStatePythonString, ProgrammingStateJavaString}
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.core.datastructures.language.AppLanguage.{English, German}

@@ -1,6 +1,6 @@
 # Programming conversions
 
-The shared API is [`ProgrammingStateConversions`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/ProgrammingStateConversions.scala) in `it.evadid.vm.conversion`. Import its extensions to use `toBeExpression`, `toLanguage`, `toJava`, `toPython`, `toSnapXml`, `toJavaStructured` and `toPythonStructured`.
+Each immutable programming state owns one [`ProgrammingStateDerivations`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/ProgrammingStateDerivations.scala), shared by views and graders. Direct state methods expose `toBeExpression`, `toLanguage`, `toJava`, `toPython`, `toSnapXml`, `toJavaStructured` and `toPythonStructured`.
 
 Cross-language conversion follows one route:
 

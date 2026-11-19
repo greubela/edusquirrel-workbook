@@ -1,6 +1,5 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}

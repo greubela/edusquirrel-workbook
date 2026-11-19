@@ -1,6 +1,5 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*

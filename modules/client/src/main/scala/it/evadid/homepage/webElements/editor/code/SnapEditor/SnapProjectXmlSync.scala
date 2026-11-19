@@ -1,6 +1,5 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
 import com.raquo.airstream.state.Var

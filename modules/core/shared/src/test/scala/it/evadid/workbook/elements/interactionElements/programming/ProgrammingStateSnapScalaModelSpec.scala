@@ -1,6 +1,5 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
 

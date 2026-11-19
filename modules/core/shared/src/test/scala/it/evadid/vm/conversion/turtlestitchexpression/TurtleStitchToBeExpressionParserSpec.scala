@@ -2,7 +2,6 @@ package it.evadid.vm.conversion.turtlestitchexpression
 
 import it.evadid.vm.conversion.turtlestitchexpression.*
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap

@@ -1,6 +1,5 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.conversion.snappython.SnapProgramDerivation

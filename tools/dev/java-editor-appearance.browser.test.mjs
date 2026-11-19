@@ -311,19 +311,19 @@ test('language tabs follow the current draft and commit converted representation
       }, code);
       assert.equal(await readSource(), code);
     }
-    async function checkTabs(convertible) {
+    async function checkTabs(convertible, snapConvertible = convertible) {
       await python.focus();
       await snap.focus();
-      await page.waitForFunction(convertible => {
+      await page.waitForFunction(({convertible, snapConvertible}) => {
         const tabs = [...document.querySelectorAll('dialog[open] .eva-editor__tabs button')];
         return ['Python', 'Snap!'].every(label => {
           const tab = tabs.find(tab => tab.getAttribute('aria-label') === label);
-          return tab?.getAttribute('aria-disabled') === String(!convertible);
+          return tab?.getAttribute('aria-disabled') === String(!(label === 'Snap!' ? snapConvertible : convertible));
         });
-      }, convertible);
+      }, {convertible, snapConvertible});
       assert.equal(await java.isDisabled(), false);
       assert.equal(await python.isDisabled(), !convertible);
-      assert.equal(await snap.isDisabled(), !convertible);
+      assert.equal(await snap.isDisabled(), !snapConvertible);
       assert.equal(await java.getAttribute('aria-selected'), 'true');
     }
     const valid = 'public class Drawing {\n  public static void main(String[] args) {\n    Turtle.forward(12);\n  }\n}\n';
@@ -343,7 +343,8 @@ test('language tabs follow the current draft and commit converted representation
     await checkTabs(true);
     const unsupported = spaced.replace('public static void main', 'public void main');
     await writeSource(unsupported);
-    await checkTabs(false);
+    // An instance-only class is representable in Python, but Snap has no class blocks.
+    await checkTabs(true, false);
     await writeSource(spaced);
     await checkTabs(true);
     await page.evaluate(({valid, unfinished}) => {

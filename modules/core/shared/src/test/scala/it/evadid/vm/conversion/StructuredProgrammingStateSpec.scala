@@ -1,6 +1,5 @@
 package it.evadid.vm.conversion
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.structured.{SourceStructure, StructuredProgramConversions}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}

@@ -1,6 +1,5 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.vm.conversion.pythonexpression.PythonToExpression

@@ -7,7 +7,6 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
 import it.evadid.vm.code.errors.ProgrammingConversionError
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 
 /** The existing method-editing UI, bound directly to class-structured source. */

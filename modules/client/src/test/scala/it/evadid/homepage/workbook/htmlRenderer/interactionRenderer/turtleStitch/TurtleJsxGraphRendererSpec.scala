@@ -1,6 +1,5 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
