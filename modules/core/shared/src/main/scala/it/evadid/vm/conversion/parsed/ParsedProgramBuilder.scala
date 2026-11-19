@@ -91,13 +91,16 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
     context.pushScope()
     val built = try {
       val parameters = definition.parameters.map(parameter => context.defineVariable(parameter.name, dataType(parameter.typeHint))).toList
-      val result = definition.returnType.map(typeHint => BeDefineVariable(BeEntityName.fromUniversalNameInParts("return"), dataType(typeHint)))
-      BeDefineFunction(parameters, result, body(definition.body, context),
+      BeDefineFunction(parameters, result(definition.returnType), body(definition.body, context),
         BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(definition.name)))
     } finally context.popScope()
     context.registerFunction(definition.name, built)
     built
   }
+
+  /** A function's result; `None`/`void` and a missing hint both mean that it returns nothing. */
+  private def result(returnType: Option[ParsedType]): Option[BeDefineVariable] =
+    returnType.filterNot(_ == ParsedType.Unit).map(typeHint => BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), dataType(typeHint)))
 
   // Classes: signatures are bound before bodies; definitions never contain a receiver parameter.
 
@@ -110,7 +113,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
   private def methodSignature(owner: BeDefineClass, method: S.FunctionDef): BeDefineFunction =
     BeDefineFunction(
       method.parameters.map(parameter => BeDefineVariable(BeEntityName.fromCodeString(parameter.name), dataType(parameter.typeHint))).toList,
-      method.returnType.filterNot(_ == ParsedType.Unit).map(typeHint => BeDefineVariable(BeEntityName.fromCodeString("result"), dataType(typeHint))),
+      result(method.returnType),
       BeExpression.pass,
       BeFunctionTypeInfo(Some(owner), Option.when(kind(method) != Constructor())(BeEntityName.fromCodeString(method.name)), kind(method)))
 
