@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.{Python, SnapLanguage}
 
 import com.raquo.airstream.state.Var
 import java.util.concurrent.CancellationException
@@ -12,7 +12,12 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.Try
 
-/** Runtime dispatch belongs to the turtle feature, independently of Eva's tab navigation. */
+/** Runtime dispatch belongs to the turtle feature, independently of Eva's tab navigation.
+  *
+  * A provider (the checked Java runner of the full Java exercise) takes precedence. Otherwise Python
+  * runs in Pyodide and Snap in its runtime, and every other state, including Java, runs on the
+  * shared BeExpression interpreter; `sharedInterpreter` uses that interpreter for all languages.
+  */
 final class TurtleProgramExecution(providers: Seq[TurtleExecutionProvider] = Seq.empty, sharedInterpreter: Boolean = false) {
   private val revision = Var(0L)
   private lazy val python = new PyodideTurtleCommandRunner()
@@ -33,8 +38,6 @@ final class TurtleProgramExecution(providers: Seq[TurtleExecutionProvider] = Seq
         case model: ProgrammingStateSnapScalaModel => snap.commandsFor(model.toSnapXml)
         case ProgrammingStateRaw(Python, code) => python.execute(code)
         case value: ProgrammingStatePythonStructured => python.execute(value.toString)
-        case value: ProgrammingStateJavaStructured => Future(value.toJava.toLegacyTurtleCommands)
-        case java @ ProgrammingStateRaw(Java, _) => Future(java.toLegacyTurtleCommands)
         case _ => Future(source.toBeExpression.turtleCommandExecutionInfo.completedCommands)
       }
     }
