@@ -118,6 +118,13 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     })));
     assert.equal(mixedConsole.stdout,'fd(0)\n学校!fd(1)\n学校!forward(distance=3)\n');
     assert.equal(mixedConsole.stderr,'warning\n');
+    await page.evaluate(() => request('console-state','worker.runPython',{
+      code:'console_value = 21',logTurtleCalls:true
+    }));
+    const retainedConsole = result(await page.evaluate(() => request('console-retained','worker.runPython',{
+      code:'println(console_value * 2)',logTurtleCalls:true,resetGlobals:false
+    })));
+    assert.equal(retainedConsole.stdout,'42\n','console mode honors explicitly retained globals');
     const failingConsole = await page.evaluate(() => request('failing-console','worker.runPython',{
       code:'forward(7)\nraise ValueError("stop")',logTurtleCalls:true
     }));

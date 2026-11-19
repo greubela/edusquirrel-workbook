@@ -57,4 +57,4 @@ val state = ProgrammingStatePythonStructured("from turtle import *\nforward(100)
 val result = state.startExecution() // stdout: "forward(100)\nhai\n"
 ```
 
-This enables `RunPythonRequest.logTurtleCalls`: turtle methods log their called name and arguments instead of drawing, and `println` aliases `print`. Both imported and unqualified turtle calls work. Execution uses a fresh program namespace, sets `__name__` to `__main__`, and restores the worker's previous turtle module even after an exception. Ordinary worker Python requests retain their existing behavior.
+This enables `RunPythonRequest.logTurtleCalls`: turtle methods log their called name and arguments instead of drawing, and `println` aliases `print`. Both imported and unqualified turtle calls work. The state API uses a fresh program namespace; explicit worker requests can retain globals with `resetGlobals = false`. Execution sets `__name__` to `__main__`, and restores the worker's previous turtle module even after an exception. Ordinary worker Python requests retain their existing behavior.

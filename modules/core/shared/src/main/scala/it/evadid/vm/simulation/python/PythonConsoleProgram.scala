@@ -10,20 +10,22 @@ object PythonConsoleProgram {
     s"""def __edusquirrel_run_program():
        |    import sys
        |    import types
+       |    import builtins
        |    turtle = types.ModuleType("turtle")
        |    def logged_call(name):
        |        def call(*args, **kwargs):
-       |            values = [repr(value) for value in args]
-       |            values.extend(key + "=" + repr(value) for key, value in kwargs.items())
-       |            print(name + "(" + ", ".join(values) + ")")
+       |            values = [builtins.repr(value) for value in args]
+       |            values.extend(key + "=" + builtins.repr(value) for key, value in kwargs.items())
+       |            builtins.print(name + "(" + ", ".join(values) + ")")
        |        return call
        |    turtle.__all__ = $names
        |    for name in turtle.__all__:
        |        setattr(turtle, name, logged_call(name))
        |    previous = sys.modules.get("turtle")
        |    had_previous = "turtle" in sys.modules
-       |    namespace = globals().copy()
-       |    namespace.update({"__name__": "__main__", "println": print})
+       |    namespace = globals()
+       |    namespace["__name__"] = "__main__"
+       |    namespace.setdefault("println", builtins.print)
        |    for name in turtle.__all__:
        |        namespace.setdefault(name, getattr(turtle, name))
        |    sys.modules["turtle"] = turtle
