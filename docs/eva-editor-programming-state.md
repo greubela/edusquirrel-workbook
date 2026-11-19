@@ -81,7 +81,7 @@ Unsupported constructs are rejected, including class declarations that Snap cann
 
 Interactions use the current implicit `ProgrammingState` codec. JSON and
 MessagePack preserve source text and full Snap projects. Expression
-states save their source and recompile on read. This is a development schema;
+states serialize their language-neutral tree. This is a development schema;
 historical readers and migration aliases are deliberately unsupported.
 
 Tests cover single-editor construction and mounting, direct state observation,

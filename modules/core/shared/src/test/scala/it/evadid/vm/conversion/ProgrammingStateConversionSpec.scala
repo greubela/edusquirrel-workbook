@@ -110,6 +110,14 @@ class ProgrammingStateConversionSpec extends FunSuite {
     }
   }
 
+  test("unsupported program arguments cannot disappear during conversion") {
+    val state = ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { print(args); } }")
+    val before = state.code
+    intercept[IllegalArgumentException](state.toPython)
+    intercept[IllegalArgumentException](state.toSnapXml)
+    assertEquals(state.code, before)
+  }
+
   test("grouped arithmetic and boolean conditions keep their behavior through all target states") {
     val original = ProgrammingStatePythonString("distance = (2 + 3) * 4\nif distance == 20 and not False:\n    forward(distance)\n")
     val expected = original.toBeExpression.turtleCommandExecutionInfo.completedCommands

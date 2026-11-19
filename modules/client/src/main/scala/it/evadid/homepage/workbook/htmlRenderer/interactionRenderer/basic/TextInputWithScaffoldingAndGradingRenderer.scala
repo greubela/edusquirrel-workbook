@@ -38,7 +38,7 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
       cls := "text-input-feedback",
       p(cls := "text-input-feedback__task", child.text <-- laminarHelper.plaintextStringSignal(element.instructionText)),
       SimpleTextEditor(answer).getDomElement().amend(aria.label <-- laminarHelper.plaintextStringSignal(element.instructionText)),
-      Option.when(element.gradingElements.nonEmpty || element.scaffoldingElement.nonEmpty)(
+      Option.when(reporter.isGradingSupported || reporter.isScaffoldingSupported)(
         div(cls := "interaction-scaffolding",
           p(cls := "interaction-scaffolding__notice", child.text <-- label("gradingNotice")),
           div(role := "status", aria.live := "polite",

@@ -15,6 +15,7 @@ import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleInputLimits, Ja
 import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeScope}
 import it.evadid.workbook.elements.interactionElements.programming.*
 import upickle.default.*
+import java.util.regex.Pattern
 
 import it.evadid.vm.conversion.ConversionResult.*
 
@@ -94,7 +95,7 @@ final class JavaToExpression(code: String) {
     import it.evadid.vm.conversion.structured.SourceStructure.*
     val source = JavaToBeExpressionParser.withoutEntityHints(code)
     val classes = javaClasses(source)
-    val main = "\\bstatic\\s+void\\s+main\\s*\\(\\s*(?:String\\s*\\[\\]\\s+\\w+\\s*)?\\)".r
+    val main = "\\bstatic\\s+void\\s+main\\s*\\(\\s*(?:String\\s*\\[\\]\\s+([A-Za-z_$][\\w$]*)\\s*)?\\)".r
     val entry = classes.find(block => javaMembers(block.source).exists(main.findFirstIn(_).nonEmpty))
     entry match {
       case None => source
@@ -102,7 +103,16 @@ final class JavaToExpression(code: String) {
         val members = javaMembers(block.source)
         if members.exists(scope(_) == MemberScope.Static) && members.exists(scope(_) == MemberScope.Instance) then
           throw ProgrammingConversionException.unsupported("Mixed static and instance members are not supported by the shared expression tree.")
-        val module = members.map(member => main.replaceFirstIn(member, "static void main()")).mkString("\n")
+        val module = members.map { member =>
+          main.findFirstMatchIn(member).foreach { entry =>
+            Option(entry.group(1)).foreach { name =>
+              val body = mask(member, true).drop(entry.end)
+              if ("\\b" + Pattern.quote(name) + "\\b").r.findFirstIn(body).nonEmpty then
+                throw ProgrammingConversionException.unsupported("Program arguments cannot be represented by the shared startup expression.")
+            }
+          }
+          main.replaceFirstIn(member, "static void main()")
+        }.mkString("\n")
         remove(source, Seq(block.start -> block.end)) + "\n" + module + "\nmain();"
     }
   }
