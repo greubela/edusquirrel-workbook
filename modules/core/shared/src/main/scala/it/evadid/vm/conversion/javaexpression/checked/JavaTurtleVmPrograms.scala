@@ -29,76 +29,13 @@ object JavaTurtleVmPrograms {
     case For(init: Block, condition: Option[X.BoundExpression], update: Block, body: Block)
   }
 
-  sealed abstract class Element private[JavaTurtleVmPrograms]() extends BeExpression {
-    protected def children: Vector[(BeChildRole, BeExpression)]
-
-    override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
-      override def hasSideEffects: Boolean = true
-    }
-
-    override lazy val structureInfo: BeExpressionStructureInfo[Element] = new BeExpressionStructureInfo[Element](this) {
-      override def withReplacedChildren(replacements: Map[BeChildRole, BeExpression]): Element = {
-        if replacements.nonEmpty then
-          throw new UnsupportedOperationException("Recompile edited Java source to replace program children.")
-        Element.this
-      }
-
-      override def toJavaStyleLines(info: BeChildInfo): Seq[BeSegmentedCodeElement] =
-        asExpressionLine(ControlFlowDown(), info)
-
-      override def getChildrenAndExtension(scope: BeScope): Seq[BeExpressionNode] =
-        children.map { (role, child) => BeExpressionReference(BeChildInfo(role, scope), child) }
-    }
-
-    override def expressionExecutor(config: BeSimulatorConfig, state: BeSimulatorState): BeExpressionExecutor =
-      throw new UnsupportedOperationException("Java program nodes do not support the generic simulator.")
-  }
-
-  final class Statement private[JavaTurtleVmPrograms](val node: Node) extends Element {
-    protected def children: Vector[(BeChildRole, BeExpression)] = node match {
-      case Node.Empty | Node.Return => Vector.empty
-      case Node.Declare(_, definition, initial) =>
-        Vector(BeChildRole.NoRole -> definition) ++ initial.toVector.map(value =>
-          BeChildRole.ValueForVariable(definition) -> value.expression)
-      case Node.Assign(_, definition, _, value) =>
-        Vector(BeChildRole.NoRole -> definition, BeChildRole.ValueInAssignment -> value.expression)
-      case Node.Evaluate(value) => Vector(BeChildRole.NoRole -> value.expression)
-      case Node.Call(_, arguments) => arguments.zipWithIndex.map { (argument, index) =>
-        BeChildRole.FunctionParameter(index) -> argument.expression
-      }
-      case Node.If(condition, positive, negative) =>
-        Vector(BeChildRole.ConditionInControlStructure -> condition.expression, BeChildRole.BodySequence(0) -> positive) ++
-          negative.toVector.map(BeChildRole.BodySequence(1) -> _)
-      case Node.While(condition, body) =>
-        Vector(BeChildRole.ConditionInControlStructure -> condition.expression, BeChildRole.BodySequence(0) -> body)
-      case Node.For(init, condition, update, body) =>
-        Vector(BeChildRole.BodySequence(0) -> init) ++ condition.toVector.map(value =>
-          BeChildRole.ConditionInControlStructure -> value.expression) ++
-          Vector(BeChildRole.BodySequence(1) -> body, BeChildRole.BodySequence(2) -> update)
-    }
-  }
-
-  final class Block private[JavaTurtleVmPrograms](val statements: Vector[Statement]) extends Element {
-    protected def children: Vector[(BeChildRole, BeExpression)] = statements.zipWithIndex.map { (statement, index) =>
-      BeChildRole.ExpressionInSequence(index) -> statement
-    }
-  }
-
-  final class Method private[JavaTurtleVmPrograms](val binding: V.MethodBinding, val body: Block) extends Element {
-    protected def children: Vector[(BeChildRole, BeExpression)] =
-      binding.parameters.zipWithIndex.flatMap { (parameter, index) =>
-        parameter.definition.map(BeChildRole.FunctionParameter(index) -> _)
-      } :+ (BeChildRole.BodySequence(0) -> body)
-  }
-
-  final class Root private[JavaTurtleVmPrograms](val bindings: V.Bindings, val methods: Vector[Method], val entryPoint: Method) extends Element {
-    protected def children: Vector[(BeChildRole, BeExpression)] = methods.zipWithIndex.map { (method, index) =>
-      BeChildRole.MethodInClass(index) -> method
-    }
-  }
+  // Checked Java runtime nodes are deliberately separate from the language-neutral expression tree.
+  final class Statement private[JavaTurtleVmPrograms](val node: Node)
+  final class Block private[JavaTurtleVmPrograms](val statements: Vector[Statement])
+  final class Method private[JavaTurtleVmPrograms](val binding: V.MethodBinding, val body: Block)
+  final class Root private[JavaTurtleVmPrograms](val bindings: V.Bindings, val methods: Vector[Method], val entryPoint: Method)
 
   final class Program private[JavaTurtleVmPrograms](val bindings: V.Bindings, val root: Root) {
-    val vm: BeProgram = BeProgram(root)
     private[vm] val resolvedMethods: Vector[R.Method] = root.methods.map { method =>
       R.Method(method.binding.id, method.binding.originalName, method.binding.parameters.map(_.variable), restore(method.body))
     }

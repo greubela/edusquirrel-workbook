@@ -135,7 +135,7 @@ final class JavaToBeExpressionParser {
   private val Declaration =
     """^(?:final\s+)?(boolean|byte|short|int|long|float|double|char|String|Object|[A-Z][A-Za-z0-9_$<>\[\]]*)\s+([A-Za-z_$][\w$]*)(\s*=\s*.+)?$""".r
 
-  private def translateStatement(raw: String): String = raw.trim match
+  private def translateStatement(raw: String): String = raw.trim.replaceFirst("^(?:(?:public|private|protected|static|final)\\s+)+", "") match
     case Declaration(javaType, name, initializer) =>
       val assignment = Option(initializer).map(translateExpression).getOrElse("")
       s"$name: ${pythonType(javaType)}$assignment"
@@ -157,6 +157,9 @@ final class JavaToBeExpressionParser {
           else if char == '\\' then escaped = true
           else if char == delimiter then quote = None
           index += 1
+        case None if char == '(' && expression.indexOf(')', index) > index &&
+            expression.substring(index + 1, expression.indexOf(')', index)).trim == "double" =>
+          index = expression.indexOf(')', index) + 1
         case None if char == '\'' || char == '"' => quote = Some(char); result += char; index += 1
         case None if expression.startsWith("&&", index) => result ++= " and "; index += 2
         case None if expression.startsWith("||", index) => result ++= " or "; index += 2

@@ -1,7 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
 import it.evadid.vm.conversion.ProgrammingStateConversions.*
-import it.evadid.vm.conversion.javaediting.JavaEditingMetadata
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.conversion.snappython.SnapProgramDerivation
@@ -24,8 +23,6 @@ trait TurtleCommandRunner:
 /** Derives and executes a Snap project without modifying editor state. */
 final class SnapTurtleCommandExecution(runner: TurtleCommandRunner):
   def commandsFor(state: ProgrammingStateSnapXml): Future[List[TurtleCommand[Double]]] =
-    if it.evadid.vm.conversion.javaediting.JavaEditingMetadata.hasSnapMetadata(state.snapXml) then
-      return Try(state.toPython.code).fold(Future.failed, runner.execute)
     val derived = SnapProgramDerivation.fromState(state)
     if !derived.pythonCompatible then
       Future.failed(IllegalArgumentException(

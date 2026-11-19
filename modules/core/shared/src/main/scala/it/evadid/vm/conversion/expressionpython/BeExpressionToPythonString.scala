@@ -16,6 +16,13 @@ case class BeExpressionToPythonString
     Python, language, PythonSeparation(), skipUnparsable
   ) derives upickle.default.ReadWriter {
 
+  override protected def formatFunctionParameters(function: BeDefineFunction): String = {
+    val explicit = formatFunctionParameters(function.inputs)
+    if function.functionTypeInfo.isMethodInClass.nonEmpty then
+      "(self" + (if function.inputs.isEmpty then ")" else ", " + explicit.drop(1))
+    else explicit
+  }
+
   override def forDefinition(definition: BeDefineStructure): String = definition match {
     // Avoid Java's metadata comments on Python declarations so reparsing stays stable.
     case BeDefineVariable(name, variableType, initValue) =>

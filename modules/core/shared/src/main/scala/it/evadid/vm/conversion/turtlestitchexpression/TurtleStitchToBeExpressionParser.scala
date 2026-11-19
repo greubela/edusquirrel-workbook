@@ -38,7 +38,7 @@ object TurtleStitchToBeExpressionParser {
   private final case class InputBlock(attrs: String, body: String) extends BlockInput derives upickle.default.ReadWriter
   private final case class InputList(items: List[BlockInput]) extends BlockInput derives upickle.default.ReadWriter
 
-  private case class Signature(name: String, arity: Int, isOperator: Boolean) derives upickle.default.ReadWriter
+  private case class Signature(name: String, arity: Int, isOperator: Boolean, isCustom: Boolean = false) derives upickle.default.ReadWriter
   private case class PhaseOneResult(
       orderedDefinitions: List[BeDefineFunction],
       definitionBySignature: Map[Signature, BeDefineFunction],
@@ -608,7 +608,7 @@ object TurtleStitchToBeExpressionParser {
     val fromCalls = collectSignatures(project)
     val fromCustoms = customDefs.map { defn =>
       val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
-      Signature(customSignatureName(defn.spec), arity, false)
+      Signature(customSignatureName(defn.spec), arity, false, isCustom = true)
     }
     val signatures = (fromCalls ++ fromCustoms).distinct
     val stubs = signatures.map(createDefinition)
@@ -616,7 +616,7 @@ object TurtleStitchToBeExpressionParser {
     val phaseOneStubs = PhaseOneResult(stubs, stubMap, Nil)
     val userDefinitions = customDefs.flatMap { defn =>
       val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
-      val sig = Signature(customSignatureName(defn.spec), arity, false)
+      val sig = Signature(customSignatureName(defn.spec), arity, false, isCustom = true)
       stubMap.get(sig).map { stub =>
         val specNames = SnapTurtleCatalog.inputNamesFromSpec(defn.spec)
         val params =
@@ -642,7 +642,7 @@ object TurtleStitchToBeExpressionParser {
     }
     val userBySpec = customDefs.zip(userDefinitions).map { (defn, fn) =>
       val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
-      Signature(customSignatureName(defn.spec), arity, false) -> fn
+      Signature(customSignatureName(defn.spec), arity, false, isCustom = true) -> fn
     }.toMap
     val merged = stubMap ++ userBySpec
     PhaseOneResult(merged.values.toList, merged, userDefinitions)
@@ -855,7 +855,7 @@ object TurtleStitchToBeExpressionParser {
       val name = selector.orElse(variable).getOrElse("block")
       Signature(name, inputs.size.max(0), OperatorSymbols.contains(name))
     case CustomBlockCall(spec, _, inputs, _, _) =>
-      Signature(customSignatureName(spec), inputs.size.max(0), false)
+      Signature(customSignatureName(spec), inputs.size.max(0), false, isCustom = true)
   }
 
   private def customSignatureName(spec: String): String =
@@ -876,11 +876,14 @@ object TurtleStitchToBeExpressionParser {
       BeDefineVariable(BeEntityName.fromCodeString(s"arg$idx"), BeDataType.AnyType)
     }
     val displayName = SnapTurtleCatalog.canonicalPythonName(signature.name)
+    val entityName = if signature.isCustom then BeEntityName.fromUniversalNameInParts(displayName)
+      else it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.resolveCanonicalNames(displayName)
+        .getOrElse(BeEntityName.fromUniversalNameInParts(displayName))
 
     if (signature.isOperator)
       BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.operatorInfo(signature.name, if signature.arity <= 1 then 0 else 1))
     else
-      BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(displayName)))
+      BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName))
   }
 }
 

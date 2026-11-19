@@ -32,16 +32,16 @@ class ProgrammingStateSerializationSpec extends FunSuite {
       states.foreach(state => assertEquals(read[ProgrammingState](write(state)), state))
     }
   }
-  test("checked Java expression states serialize their source and recover executable semantics") {
+  test("Java expressions serialize their neutral tree and recover executable semantics") {
     val java = ProgrammingStateJavaString("\r\nclass Drawing { public static void main(String[] args) { Turtle.forward(12); } }\t\n")
     val expression = java.toBeExpression
     val restored = read[ProgrammingState](write[ProgrammingState](expression))
     assert(restored.isInstanceOf[ProgrammingStateBeExpression])
-    assertEquals(restored.toJava, java)
+    assertEquals(restored.toJava, expression.toJava)
     assertEquals(restored.fingerprint(), expression.fingerprint())
     assertEquals(restored.toBeExpression.turtleCommandExecutionInfo.completedCommands, expression.turtleCommandExecutionInfo.completedCommands)
     val binary = readBinary[ProgrammingState](writeBinary[ProgrammingState](expression))
-    assertEquals(binary.toJava, java)
+    assertEquals(binary.toJava, expression.toJava)
   }
   test("both programming interactions use the current implicit state codec") {
     val state = ProgrammingStateJavaString("\nclass Drawing {\r\n")

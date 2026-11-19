@@ -37,7 +37,7 @@ object SnapProgramDerivation {
     fromXml(state.snapXml)
 
   def fromXml(xml: String): DerivedView = {
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = it.evadid.vm.conversion.snapexpression.SnapToExpression.parseWithLayout(xml)
     val program = BeProgram(parsed.expression)
     val python = ExpressionToPython.printedPython(parsed.expression)
     val unsupported = SnapExpressionSupport.unsupportedSnapSelectors(xml)

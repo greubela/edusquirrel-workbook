@@ -1,7 +1,7 @@
 package it.evadid.vm.conversion.expressionjava
 
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Java, JavaScript, ProgrammingLanguage}
-import it.evadid.vm.code.abstractions.BeExpression
+import it.evadid.vm.code.abstractions.{BeExpression, BeDefineStructure}
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter
@@ -17,6 +17,25 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     if (targetLanguage == JavaScript) JavaScriptSeparation() else JavaSeparation(),
     skipUnparsable
   ) derives upickle.default.ReadWriter {
+
+  // A printer owns one rendering. Declarations are tracked per function/class scope.
+  private var declared = Set.empty[String]
+  private var renderingDepth = 0
+  override def forExpression(expression: BeExpression): String = {
+    if renderingDepth == 0 then declared = Set.empty
+    renderingDepth += 1
+    try super.forExpression(expression) finally renderingDepth -= 1
+  }
+  override def forDefinition(definition: BeDefineStructure): String = definition match {
+    case function: BeDefineFunction =>
+      val previous = declared
+      declared = previous ++ function.inputs.map(_.name.getNameIn(language, it.evadid.vm.naming.NamingStyle.CamelCase))
+      try super.forDefinition(function) finally declared = previous
+    case variable: BeDefineVariable =>
+      declared += variable.name.getNameIn(language, it.evadid.vm.naming.NamingStyle.CamelCase)
+      super.forDefinition(variable)
+    case _ => super.forDefinition(definition)
+  }
 
   override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String = {
     if (targetLanguage == JavaScript) s"function $nameStr$parStr {"
@@ -37,8 +56,11 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
   }
 
   override protected def assignToDefinedVar(varName: String, varType: String, varValue: BeExpression): String = {
-    if (targetLanguage == JavaScript) s"$varName = ${forExpression(varValue)}"
-    else s"$varType $varName = ${forExpression(varValue)}"
+    val first = !declared(varName)
+    declared += varName
+    val value = forExpression(varValue)
+    if targetLanguage == JavaScript || !first then s"$varName = $value"
+    else s"$varType $varName = $value"
   }
 
   override protected def defineVariableLine(nameStr: String, variableTypeString: String, initValue: Option[BeExpression]): String = {

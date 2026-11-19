@@ -44,6 +44,9 @@ abstract class GenericJavaLikeStringPrinter(
     )
   }*/
 
+  protected def formatFunctionParameters(function: BeDefineFunction): String =
+    formatFunctionParameters(function.inputs)
+
   protected def assignToFunctionPar(parName: String, parType: String, parValue: BeExpression): String
 
   protected def assignToDefinedVar(varName: String, varType: String, varValue: BeExpression): String
@@ -117,7 +120,7 @@ abstract class GenericJavaLikeStringPrinter(
   def forDefinition(ds: BeDefineStructure): String = ds.match {
     case BeDefineClass(name, attributes, methods) => {
       CodeStringBuilderMutable()
-        .appendNextLine(defineClassLine(NameInfo(name).inCurLanguage, NameInfo(name).associatedComment))
+        .appendNextLine(defineClassLine(NameInfo(name).inCurLanguage.capitalize, NameInfo(name).associatedComment))
         .changeIntLevel(1)
         .appendAllAsLines(attributes.map(forStatement))
         .appendNextLine("")
@@ -125,11 +128,11 @@ abstract class GenericJavaLikeStringPrinter(
         .appendNextLine(sepLogic.endBlockWith)
         .toString
     }
-    case BeDefineFunction(inputs, outputs, body, functionTypeInfo) => {
+    case function @ BeDefineFunction(inputs, outputs, body, functionTypeInfo) => {
       if (functionTypeInfo.isNamed.isEmpty) ???
       else {
         val name = NameInfo(functionTypeInfo.isNamed.get)
-        val par = formatFunctionParameters(inputs)
+        val par = formatFunctionParameters(function)
         val outTypeStr = outputs.map(_.variableType.formatTypeForDisplay.getInLanguage(progLang)).getOrElse(BeDataType.Unit.formatTypeForDisplay.getInLanguage(progLang))
         val renderedBody = forExpression(body)
         val bodyText = if renderedBody.trim.isEmpty then emptyFunctionBody else renderedBody

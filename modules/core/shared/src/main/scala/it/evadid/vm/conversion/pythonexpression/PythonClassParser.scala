@@ -126,7 +126,13 @@ object PythonClassParser {
       val classNameMap = LanguageMap.universalMap[HumanLanguage](name)
       val classPlaceholder = BeDefineClass(classNameMap, attributes, Nil)
       val methodInstances = parsedMethods.map { methodResult =>
+        val parameters = methodResult.template.inputs
+        val explicitParameters = parameters.headOption match {
+          case Some(receiver) if Set("self", "cls")(receiver.name.universalInterpretation()) => parameters.tail
+          case _ => parameters
+        }
         methodResult.template.copy(
+          inputs = explicitParameters,
           functionTypeInfo = BeDefineFunction.BeFunctionTypeInfo(
             isMethodInClass = Some(classPlaceholder),
             isNamed = Some(BeEntityName.fromUniversalNameInParts(methodResult.name)),

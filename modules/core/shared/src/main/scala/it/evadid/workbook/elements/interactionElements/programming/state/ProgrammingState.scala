@@ -26,7 +26,6 @@ sealed trait ProgrammingState {
   }
 
   def fingerprint(): String = this match
-    case ProgrammingStateBeExpression(root: JavaTurtleVmPrograms.Root) => s"java:${root.bindings.source.source}"
     case ProgrammingStateBeExpression(expression) => s"expression:${expression.toString}"
     case ProgrammingStateSnapXml(xml) => s"snap:$xml"
     case snap: ProgrammingStateSnapScalaModel => s"snap:${snap.model.toXml}"
@@ -72,32 +71,13 @@ object ProgrammingState {
 
 }
 
-final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState {
+final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState derives ReadWriter {
   def turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleProgramAnalysis(expression)
 
   override val toString: String = s"ProgrammingStateBeExpression(${expression.toString.take(300)})"
 
 }
 
-object ProgrammingStateBeExpression {
-  // Checked VM nodes contain runtime bindings rather than a persistent BeExpression tree.
-  // Store their source and recompile it on read; all other expressions use their tree codec.
-  private enum Content derives ReadWriter {
-    case Tree(expression: BeExpression)
-    case CheckedJava(source: String)
-  }
-  given ReadWriter[ProgrammingStateBeExpression] = readwriter[Content].bimap(
-    state => state.expression match {
-      case root: JavaTurtleVmPrograms.Root => Content.CheckedJava(root.bindings.source.source)
-      case expression => Content.Tree(expression)
-    }, {
-      case Content.Tree(expression) => ProgrammingStateBeExpression(expression)
-      case Content.CheckedJava(source) =>
-        val program = JavaTurtleVmPrograms.compile(source).fold(
-          diagnostic => ConversionResult.rejectAt(diagnostic.message, source, diagnostic.range.map(_.start)), identity)
-        ProgrammingStateBeExpression(program.root)
-    })
-}
 
 final case class ProgrammingStateSnapXml(snapXml: String) extends ProgrammingState derives ReadWriter {
 

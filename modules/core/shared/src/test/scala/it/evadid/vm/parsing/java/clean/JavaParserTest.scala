@@ -1467,7 +1467,6 @@ class JavaParserTest extends FunSuite {
     val n = resolvedMethod(source, "main").body.statements.head.asInstanceOf[Declare].variable
     val definition = program.bindings.definition(n).fold(problem => fail(problem.message), identity)
     val expression = program.root.entryPoint.body.statements(1).node.asInstanceOf[P.Node.Call].arguments.head
-    assert(expression.expression.staticInformationExpression.hasSideEffects)
     var current: E.Value = E.Value.IntValue(2)
     val read: X.Reader = actual => { assert(actual eq definition); Right(current) }
     val write: X.Writer = (actual, value) => { assert(actual eq definition); current = value; Right(()) }

@@ -19,7 +19,7 @@ class ProgrammingConversionErrorSpec extends FunSuite {
     // carries the same 1-based position as the Java parser, computed on the trimmed source.
     assertEquals(ProgrammingConversionLocation.inTrimmed("\n(\n(", "(\n(", 1), (2, 2))
     val diagnostic = intercept[ProgrammingConversionException](ProgrammingStateJavaString(
-      "public class Drawing {\n  public static void main(String[] args) {\n    String value = \"hi\";\n  }\n}\n").toPython)
+      "public class Drawing {\n  public static void main(String[] args) {\n    Turtle.forward(;\n  }\n}\n").toPython)
     assertEquals(diagnostic.error.kind, ProgrammingConversionKind.Unparsable)
     assert(diagnostic.error.line.exists(_ >= 3))
   }

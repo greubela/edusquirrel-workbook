@@ -74,7 +74,6 @@ final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElemen
     val (sourceLanguage, source) = state match {
       case ProgrammingStateJavaString(code) => Java.name -> code
       case ProgrammingStatePythonString(code) => Python.name -> code
-      case ProgrammingStateBeExpression(root: JavaTurtleVmPrograms.Root) => Java.name -> root.bindings.source.source
       case _ => throw IllegalArgumentException("Hints currently require Java or Python source text.")
     }
     require(source != null && source.length <= 24000, "The source is too long for a hint.")

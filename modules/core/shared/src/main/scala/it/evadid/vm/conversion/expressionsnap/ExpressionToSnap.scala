@@ -1,7 +1,6 @@
 package it.evadid.vm.conversion.expressionsnap
 
 import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
-import it.evadid.vm.conversion.javasnap.JavaToSnap
 
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
@@ -13,11 +12,10 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 
 object ExpressionToSnap {
-  def convert(expression: BeExpression): ProgrammingStateSnapXml =
-    expression match {
-      case root: JavaTurtleVmPrograms.Root => converted(JavaToSnap.toSnap(JavaTurtleVmPrograms.fromRoot(root)))
-      case _ => StructuredProgramConversions.toSnap(StructuredProgramConversions.fromExpression(ProgrammingStateBeExpression(expression)))
-    }
+  def convert(expression: BeExpression): ProgrammingStateSnapXml = {
+    converted(SnapExpressionSupport.validateSubset(expression))
+    fromProgram(BeProgram(expression))
+  }
 
   def fromProgram(program: BeProgram, canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
       previousXml: String = ""): ProgrammingStateSnapXml =

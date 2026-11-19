@@ -37,15 +37,6 @@ private[turtle] object TurtleCommandSites {
         val python = SnapExpressionSupport.pythonName(call)
         val name = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(python, python)
         Some(site(path, BeEntityName.fromCodeString(name), SnapControlFlow.orderedArgs(call).toVector))
-      case (path, statement: J.Statement) => statement.node match {
-        case J.Node.Call(J.CallTarget.Turtle(command), arguments) =>
-          val name = command match {
-            case R.TurtleCommand.Forward => "forward"
-            case R.TurtleCommand.TurnRight => "right"
-          }
-          Some(site(path, BeEntityName.fromCodeString(name), arguments.map(_.expression)))
-        case _ => None
-      }
       case _ => None
     }
   }
@@ -69,15 +60,16 @@ private[turtle] object TurtleCommandSites {
       value.trim.toDoubleOption.filter(_.isFinite).map(number => Left(number)).orElse {
         Some(Right(Serializer.stringLiteralIO(parseEverything = true).deserialize(value)))
       }
-    case value: X.Expression => value.node match {
-      case X.Node.IntLiteral(number) => Some(Left(number.toDouble))
-      case X.Node.DoubleLiteral(number) => Some(Left(number))
-      case X.Node.Group(child) => literal(child)
-      case X.Node.Widen(child) => literal(child)
-      case X.Node.Unary(R.UnaryOperator.Plus, child) => literal(child).collect { case Left(number) => Left(number) }
-      case X.Node.Unary(R.UnaryOperator.Negate, child) => literal(child).collect { case Left(number) => Left(-number) }
-      case _ => None
-    }
+    case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) =>
+      SnapControlFlow.orderedArgs(call) match {
+        case argument :: Nil =>
+          val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
+          literal(argument).collect {
+            case Left(number) if symbol == "-" => Left(-number)
+            case Left(number) if symbol == "+" => Left(number)
+          }
+        case _ => None
+      }
     case _ => None
   }
 }

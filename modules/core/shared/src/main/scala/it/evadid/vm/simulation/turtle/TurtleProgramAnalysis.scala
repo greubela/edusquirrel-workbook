@@ -28,12 +28,8 @@ object TurtleProgramAnalysis {
   def apply(expression: BeExpression, limits: TurtleExecutionLimits = TurtleExecutionLimits(),
       isCancelled: () => Boolean = () => false): TurtleCommandExecutionInfo[Double] = {
     val sites = commandSites(expression)
-    expression match {
-      case root: JavaTurtleVmPrograms.Root => analyzeJava(root, sites, limits, isCancelled)
-      case _ =>
-        val result = interpret(expression, InterpState.initial(expression), limits, isCancelled)
-        TurtleCommandExecutionInfo(result.commands.toList, sites, result.status)
-    }
+    val result = interpret(expression, InterpState.initial(expression), limits, isCancelled)
+    TurtleCommandExecutionInfo(result.commands.toList, sites, result.status)
   }
 
   /** Static analysis can also be requested without executing the program. */
@@ -42,24 +38,6 @@ object TurtleProgramAnalysis {
   def toPathBuilder(expression: BeExpression, startPoint: Point[Double] = Point(0.0, 0.0),
       headingDeg: Double = TurtlePathBuilder.SnapHeadingDeg): TurtlePathBuilder[Double] =
     TurtlePathBuilder(startPoint, apply(expression).completedCommands, headingDeg)
-
-  private def analyzeJava(root: JavaTurtleVmPrograms.Root, sites: List[TurtleCommandSite[Double]],
-      limits: TurtleExecutionLimits, isCancelled: () => Boolean): TurtleCommandExecutionInfo[Double] = {
-    val execution = JavaTurtleRuntime.runVm(JavaTurtleVmPrograms.fromRoot(root),
-      JavaTurtleRuntime.Limits(maxSteps = limits.maxSteps, maxCommands = limits.maxCommands,
-        maxCallDepth = limits.maxCallDepth), isCancelled)
-    val status = execution.status match {
-      case JavaTurtleRuntime.Status.Completed => TurtleExecutionStatus.Completed
-      case JavaTurtleRuntime.Status.LimitExceeded => TurtleExecutionStatus.LimitExceeded
-      case JavaTurtleRuntime.Status.Cancelled => TurtleExecutionStatus.Cancelled
-      case JavaTurtleRuntime.Status.Failed(problem) => TurtleExecutionStatus.Failed(problem.toString)
-    }
-    val commands = execution.commands.toList.map { command => command.command match {
-      case JavaTurtleResolution.TurtleCommand.Forward => TurtleCommand.Forward(command.value)
-      case JavaTurtleResolution.TurtleCommand.TurnRight => TurtleCommand.Right(command.value)
-    }}
-    TurtleCommandExecutionInfo(commands, sites, status)
-  }
 
   private final case class InterpState(
       env: Map[String, Double],
@@ -205,11 +183,11 @@ object TurtleProgramAnalysis {
       case "*" => args.product
       case "/" =>
         val denom = args.drop(1).headOption.getOrElse(1.0)
-        if denom == 0 then 0.0 else args.headOption.getOrElse(0.0) / denom
+        if denom == 0 then throw ArithmeticException("Division by zero.") else args.headOption.getOrElse(0.0) / denom
       case "%" =>
         val dividend = args.headOption.getOrElse(0.0)
         val divisor = args.drop(1).headOption.getOrElse(1.0)
-        if divisor == 0 then 0.0 else dividend - divisor * math.floor(dividend / divisor)
+        if divisor == 0 then throw ArithmeticException("Remainder by zero.") else dividend - divisor * math.floor(dividend / divisor)
       case "<" => if compare(args, _ < _) then 1.0 else 0.0
       case ">" => if compare(args, _ > _) then 1.0 else 0.0
       case "==" => if args.sliding(2).forall(pair => pair.size < 2 || pair.head == pair(1)) then 1.0 else 0.0

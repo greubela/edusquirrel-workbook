@@ -63,15 +63,15 @@ final class JavaToExpression(code: String) {
 
   def isClassProgram: Boolean = classDetails._1
 
-  private def legacyPrinterExpression(): ProgrammingStateBeExpression = {
-    val expression = JavaToBeExpressionParser.parse(code)
+  private def parsedExpression(source: String): ProgrammingStateBeExpression = {
+    val expression = JavaToBeExpressionParser.parse(source)
     val nodes = expression.recToTree(false, BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())).values
     val unsupported = nodes.exists {
       case BeExpressionReference(_, _: BeExpressionUnsupported) => true
       case BeExpressionReference(_, _: BeExpressionUnparsable) => true
       case _ => false
     }
-    if unsupported then throw IllegalArgumentException("This legacy Java class cannot be converted completely.")
+    if unsupported then throw ProgrammingConversionException.unsupported("This Java source contains a construct that is not supported by the shared expression tree.")
     ProgrammingStateBeExpression(expression)
   }
 
@@ -83,13 +83,27 @@ final class JavaToExpression(code: String) {
   def toJavaVmProgram: Either[JavaTurtleSource.Diagnostic, JavaTurtleVmPrograms.Program] =
     JavaTurtleVmPrograms.compile(code)
 
-  def convert: ProgrammingStateBeExpression =
-    if !isClassProgram then ProgrammingStateBeExpression(JavaToBeExpressionParser.parse(code))
-    else toJavaVmProgram match {
-      case Right(program) => ProgrammingStateBeExpression(program.root)
-      case Left(_) if JavaToBeExpressionParser.withoutEntityHints(code) != code && !classDetails._2 && !classDetails._3 =>
-        legacyPrinterExpression()
-      case Left(diagnostic) => rejectAt(diagnostic.message, code, diagnostic.range.map(_.start))
+  def convert: ProgrammingStateBeExpression = {
+    val _ = isClassProgram // Validate limits, syntax and incomplete input before lowering.
+    parsedExpression(conversionSource)
+  }
+
+  /** A static entry-point class is a module plus startup, not a language-specific VM node. */
+  private def conversionSource: String = {
+    import it.evadid.vm.conversion.structured.SourceStructure.*
+    val source = JavaToBeExpressionParser.withoutEntityHints(code)
+    val classes = javaClasses(source)
+    val main = "\\bstatic\\s+void\\s+main\\s*\\(\\s*(?:String\\s*\\[\\]\\s+\\w+\\s*)?\\)".r
+    val entry = classes.find(block => javaMembers(block.source).exists(main.findFirstIn(_).nonEmpty))
+    entry match {
+      case None => source
+      case Some(block) =>
+        val members = javaMembers(block.source)
+        if members.exists(scope(_) == MemberScope.Static) && members.exists(scope(_) == MemberScope.Instance) then
+          throw ProgrammingConversionException.unsupported("Mixed static and instance members are not supported by the shared expression tree.")
+        val module = members.map(member => main.replaceFirstIn(member, "static void main()")).mkString("\n")
+        remove(source, Seq(block.start -> block.end)) + "\n" + module + "\nmain();"
     }
+  }
 
 }

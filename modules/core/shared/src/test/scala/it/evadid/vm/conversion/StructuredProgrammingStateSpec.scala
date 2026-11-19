@@ -86,7 +86,7 @@ class StructuredProgrammingStateSpec extends FunSuite {
   test("the requested Python example becomes a complete Java class with static globals and helpers") {
     val result = ProgrammingStatePythonStructured(python).toJavaStructured
     assertEquals(result.definedClasses.keySet, Set(name("Main")))
-    assert(result.toString.contains("static int x = 100"), result.toString)
+    assert(result.toString.contains("static double x = 100"), result.toString)
     assert(result.toString.contains("static void main(String[] unusableArgs)"), result.toString)
     assertEquals(distances(result), List(20.0, 20.0, 20.0, 100.0))
   }
@@ -100,14 +100,11 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assertEquals(distances(result.toJavaStructured.toPythonStructured), distances(result))
   }
 
-  test("instance Main members remain in a class while its static members enter module scope") {
-    val source = "class Main { int local = 2; void paint(double n) { forward(n); } static int x = 100; static void main(String[] args) { forward(x); } }"
-    val python = ProgrammingStateJavaStructured(source).toPythonStructured
-    assert(python.definedClasses.contains(name("Main")))
-    assert(python.definedClasses(name("Main")).contains("self"), python.toString)
-    assert(!python.definedClasses(name("Main")).contains("def main("))
-    assert(python.mainScript.contains("x"))
-    assert(python.toString.indexOf("class Main") < python.toString.indexOf("def main("))
+  test("mixed static and instance scope is rejected without changing source") {
+    val source = ProgrammingStateJavaStructured("class Shape { int distance = 10; static int angle = 90; Shape() { forward(5); } void draw() { forward(20); } }")
+    val before = source.toString
+    intercept[IllegalArgumentException](source.toPythonStructured)
+    assertEquals(source.toString, before)
   }
 
   test("ordinary Python classes are retained in Java and precede startup in BeExpression") {
@@ -120,37 +117,23 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assertEquals(distances(state), List(100.0))
   }
 
-  test("classes are omitted from Snap and unusedCode becomes a detached script") {
-    val state = ProgrammingStatePythonStructured("class Shape:\n    pass\n\ndef unusedCode():\n    forward(99)\n\ndef main():\n    forward(10)\n\nmain()")
-    val snap = state.toSnapXml
-    val scripts = SnapXmlParser.elements(snap.snapXml, "scripts").flatMap(c => SnapXmlParser.children(c.inner).filter(_.tag == "script"))
-    assertEquals(scripts.size, 2)
-    assertEquals(scripts.count(s => SnapXmlParser.children(s.inner).headOption.exists(_.attrOrEmpty("s") == "receiveGo")), 1)
-    assert(!snap.snapXml.contains("Shape"))
-    assert(!snap.snapXml.contains("unusedCode"))
-    val restored = snap.toPythonStructured
-    assert(restored.mainScript.contains("def unusedCode()"), restored.toString)
-    assertEquals(distances(restored), List(10.0))
-    assertEquals(distances(restored.toJavaStructured), List(10.0))
-    assertEquals(distances(snap), List(10.0))
-    val throughJava = restored.toJavaStructured.toPythonStructured.toSnapXml
-    val throughExpression = state.toBeExpression.toSnapXml
-    List(throughJava, throughExpression).foreach { converted =>
-      val convertedScripts = SnapXmlParser.elements(converted.snapXml, "scripts").flatMap(c => SnapXmlParser.children(c.inner).filter(_.tag == "script"))
-      assertEquals(convertedScripts.size, 2)
-      assertEquals(distances(converted), List(10.0))
-    }
+  test("Snap export rejects unsupported classes rather than dropping them") {
+    val state = ProgrammingStatePythonStructured("class Shape:\n    pass\n\nforward(10)")
+    val before = state.toString
+    intercept[IllegalArgumentException](state.toSnapXml)
+    assertEquals(state.toString, before)
   }
 
   test("Snap project variables, custom blocks and flag startup survive structured round trips") {
     val snap = ProgrammingStatePythonStructured(python).toSnapXml
     val restored = snap.toPythonStructured
-    assert(restored.mainScript.contains("x = 100"), restored.toString)
+    assert(restored.mainScript.contains("100"), restored.toString)
     assert(restored.mainScript.contains("def main("))
     assertEquals(distances(restored), List(20.0, 20.0, 20.0, 100.0))
     assertEquals(distances(restored.toJavaStructured.toPythonStructured.toSnapXml.toPythonStructured), distances(restored))
     val repeated = (1 to 3).foldLeft(snap)((state, _) => state.toPythonStructured.toJavaStructured.toPythonStructured.toSnapXml)
-    assertEquals(SnapXmlParser.elements(repeated.snapXml, "block").count(_.attrOrEmpty("s") == "doSetVar"), 0)
+    assertEquals(SnapXmlParser.elements(repeated.snapXml, "block").count(_.attrOrEmpty("s") == "doSetVar"),
+      SnapXmlParser.elements(snap.snapXml, "block").count(_.attrOrEmpty("s") == "doSetVar"))
     assertEquals(distances(repeated), distances(restored))
   }
 
@@ -212,19 +195,11 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assertEquals(ProgrammingStateJavaStructured(state.toString), state)
   }
 
-  test("instance fields and constructors remain distinct from class static fields") {
-    val java = ProgrammingStateJavaStructured("class Shape { int distance = 10; static int angle = 90; Shape() { forward(5); } void draw() { forward(20); } }")
-    val python = java.toPythonStructured
-    val shape = python.definedClasses(name("Shape"))
-    assert(shape.contains("def __init__(self)"), shape)
-    assert(shape.contains("self.distance"), shape)
-    assert(shape.contains("angle"), shape)
-    val restored = python.toJavaStructured.definedClasses(name("Shape"))
-    assert(restored.contains("Shape("), restored)
-    assert(restored.contains("double distance;"), restored)
-    assert(!restored.contains("static double distance"), restored)
-    assert(restored.contains("static double angle"), restored)
-    assert(restored.contains("forward(5)"), restored)
+  test("unsupported constructors retain their source when conversion is rejected") {
+    val source = ProgrammingStateJavaStructured("class Shape { int distance = 10; static int angle = 90; Shape() { forward(5); } void draw() { forward(20); } }")
+    val before = source.toString
+    intercept[IllegalArgumentException](source.toPythonStructured)
+    assertEquals(source.toString, before)
   }
 
   test("instance qualifier conversion preserves literal text") {

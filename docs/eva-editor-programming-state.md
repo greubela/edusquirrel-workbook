@@ -36,9 +36,8 @@ including Pyodide and the checked Java runtime. Native libraries still need
 callbacks at their JavaScript boundary. Keep those callbacks inside the adapter;
 Scala consumers observe the bound Var or a supplied diagnostic signal.
 
-The [conversion design review](programming-conversion-review.md) examines repeated
-transformations, metadata routing and Java semantic guarantees. Its alternatives
-are pending a separate decision; the conversion bridge is unchanged.
+Language switching uses the shared, language-neutral expression pipeline described in
+[programming conversions](programming-conversions.md). Checked Java execution is separate.
 
 ## Mounting and panels
 
@@ -74,16 +73,14 @@ immutable calculations and derived signals to additional stores. See
 package. Use `toBeExpression`, `toJava`, `toPython`, `toSnapXml` and instance `fingerprint()`;
 there are no nested type aliases or alternate conversion names.
 
-For workbook initial programs: beginner turtle / native Snap tasks should start from
-`ProgrammingStateSnapXml` (for example `SnapProjectXml.mini`), not from
-`ProgrammingStateJavaString(...).toSnapXml`. The latter is correct for Eva language
-switching on full Java classes, but it produces Java editing-bridge Snap (custom blocks
-and project notes), not a normal Snap turtle project.
+Workbook initial programs can use any supported representation. Language conversion
+uses `BeExpression`; generated Snap is an ordinary project without Java metadata.
+Unsupported constructs are rejected, including class declarations that Snap cannot represent.
 
 ## Persistence and verification
 
 Interactions use the current implicit `ProgrammingState` codec. JSON and
-MessagePack preserve source text and full Snap projects. Checked Java expression
+MessagePack preserve source text and full Snap projects. Expression
 states save their source and recompile on read. This is a development schema;
 historical readers and migration aliases are deliberately unsupported.
 
