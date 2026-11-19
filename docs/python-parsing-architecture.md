@@ -18,8 +18,8 @@ source --fastparse--> PyAST / JavaAST --adapter--> ParsedProgram --ParsedProgram
 The adapters keep raw names, literal spellings and declared types; the builder declares
 every class (signatures first) and reserves each block's function and class names before
 it reads bodies, then binds calls, operators and members. Language rules live in the
-adapters: Python's `for _ in range(n)` and an unused Java counter `for (int i = 0; i < n; i++)`
-are both a repeat; Java's entry class (the one with a static `main`) is the module, and its
+adapters, and both use the shared `countingLoop` for Python ranges and Java counting loops
+([loops](programming-conversions.md#loops)); Java's entry class (the one with a static `main`) is the module, and its
 `main` body the main sequence. Constructs without a shared form become explicit unsupported or
 unparsable nodes with their source.
 

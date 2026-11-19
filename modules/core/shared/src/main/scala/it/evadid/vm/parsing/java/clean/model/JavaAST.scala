@@ -146,6 +146,11 @@ object JavaAST {
     override def getChildren(): Seq[GenericAST] = Seq(operand)
   }
 
+  /** A cast to a primitive type, e.g. `(int) value`. */
+  case class JavaCastExpression(javaType: JavaType[?], operand: JavaExpression) extends JavaExpression derives upickle.default.ReadWriter {
+    override def getChildren(): Seq[GenericAST] = Seq(operand)
+  }
+
   case class JavaParenthesizedExpression(expression: JavaExpression) extends JavaExpression {
     override def getChildren(): Seq[GenericAST] = Seq(expression)
   }

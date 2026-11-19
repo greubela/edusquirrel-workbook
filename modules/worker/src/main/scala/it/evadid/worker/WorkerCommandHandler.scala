@@ -3,7 +3,7 @@ package it.evadid.worker
 import it.evadid.distribution.clients.{ExecutionClient, ExecutionClientPool}
 import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
+import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
 import it.evadid.workbook.model.qr.QrCode
 import it.evadid.util.logging.BasicLogger
 import scala.concurrent.{ExecutionContext, Future}
@@ -15,7 +15,9 @@ object WorkerCommandHandler {
     health.toLocalExecutionClient((_, _) => Future.successful(HealthResult("edusquirrel-worker", supportedCommands.toList.sorted))),
     parseSnapXml.toLocalExecutionClient((request, _) => Future {
       require(request.tag.matches("[A-Za-z_][A-Za-z0-9_.:-]*"), "Invalid Snap XML tag")
-      SnapXmlParser.elements(request.xml, request.tag)
+      // Every element with the tag, nested ones included, in document order.
+      val document = SnapScalaXmlCodec.parse(request.xml).fold(message => throw IllegalArgumentException(message), identity)
+      (document.root +: document.root.descendants).map(_.element).filter(_.tag == request.tag)
     }),
     pythonFlowchart.toLocalExecutionClient((request, _) => Future {
       PythonFlowchartGutter.fromPython(request.source)

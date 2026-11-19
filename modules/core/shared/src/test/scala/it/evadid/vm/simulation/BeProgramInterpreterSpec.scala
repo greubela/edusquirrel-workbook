@@ -182,4 +182,29 @@ class BeProgramInterpreterSpec extends FunSuite {
     assertEquals(mixed.completedTurtleCommands.map(_.name.universalInterpretation()), List("forward", "right"))
     assertEquals(mixed.completedListCommands, List(ListCommand.Swap(0, 1)))
   }
+
+  test("recursive calls keep their caller's locals, while functions still update module variables") {
+    val program = ProgrammingStateRaw(Python,
+      """zaehler = 0
+        |def zaehle():
+        |    global zaehler
+        |    zaehler = zaehler + 1
+        |def tiefe(n):
+        |    for i in range(3):
+        |        if n > 0:
+        |            tiefe(n - 1)
+        |        NumberList.set(0, i)
+        |    return n
+        |zaehle()
+        |zaehle()
+        |NumberList.set(1, zaehler)
+        |""".stripMargin).toBeExpression
+    val startup = program.execute(DataWorld(list = Vector(0, 0)))
+    assertEquals(startup.world.list, Vector(0, 2), startup.status.toString)
+    val nested = program.execute(DataWorld(list = Vector(0, 0)), ProgramEntry.Call("tiefe", Seq(2)))
+    // Every level runs its own loop to the end: 3 + 3·3 + 3·3·3 assignments, the last one from the outermost loop.
+    assertEquals((nested.status, nested.returnValue), (TurtleExecutionStatus.Completed, Some(2.0)))
+    assertEquals(nested.listCommands.size, 39)
+    assertEquals(nested.world.list, Vector(2, 0))
+  }
 }

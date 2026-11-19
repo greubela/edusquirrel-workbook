@@ -417,7 +417,7 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
     )
     new SnapTurtleCommandExecution(runner).commandsFor(state).map { actual =>
       assertEquals(actual, expected)
-      assert(executed.contains("for i in range(1, 3 + 1)"), clue = executed)
+      assert(executed.contains("for i in range(1, 4):"), clue = executed)
       assert(executed.contains("forward(i * 10)"), clue = executed)
     }
   }

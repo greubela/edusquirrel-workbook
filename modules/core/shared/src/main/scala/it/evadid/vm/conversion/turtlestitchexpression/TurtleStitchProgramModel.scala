@@ -27,8 +27,24 @@ object TurtleStitchProgramModel {
       selectedScene: Int = 1,
       creator: Option[String] = None,
       origCreator: Option[String] = None,
-      origName: Option[String] = None
-  ) derives upickle.default.ReadWriter
+      origName: Option[String] = None,
+      /** Blocks the document contains outside scripts and block definitions; they have no meaning here. */
+      unreadBlocks: Vector[String] = Vector.empty
+  ) derives upickle.default.ReadWriter {
+    /** Block definitions of every scene, stage and sprite. */
+    def customDefinitions: Vector[CustomBlockDefinition] = scenes.flatMap(scene =>
+      scene.customBlocks ++ scene.primitiveBlocks ++ scene.stage.blocks ++ scene.stage.sprites.flatMap(_.blocks))
+
+    /** The scripts of every stage and sprite. */
+    def scripts: Vector[Script] = scenes.flatMap(scene => scene.stage.scripts ++ scene.stage.sprites.flatMap(_.scripts))
+
+    /** Every block in scripts and definition bodies, nested blocks included. */
+    def allBlocks: Vector[BlockLike] = (scripts ++ customDefinitions.flatMap(_.body)).flatMap(_.blocks).flatMap(_.withNested)
+
+    /** Variables of every scene, stage and sprite. */
+    def variables: Vector[Variable] = scenes.flatMap(scene =>
+      scene.variables ++ scene.stage.variables ++ scene.stage.sprites.flatMap(_.variables))
+  }
 
   /**
    * Mirrors `<scene ...>`.
@@ -88,15 +104,15 @@ object TurtleStitchProgramModel {
    * Mirrors `<sprite ...>` attributes and child elements.
    */
   final case class Sprite(
-      name: String,
-      idx: Int,
-      x: Double,
-      y: Double,
-      heading: Double,
-      scale: Double,
-      volume: Double,
-      pan: Double,
-      rotation: Int,
+      name: String = "Sprite",
+      idx: Int = 1,
+      x: Double = 0.0,
+      y: Double = 0.0,
+      heading: Double = 90.0,
+      scale: Double = 1.0,
+      volume: Double = 100.0,
+      pan: Double = 0.0,
+      rotation: Int = 1,
       instrument: Option[Int] = None,
       draggable: Boolean = true,
       hidden: Boolean = false,
@@ -125,7 +141,12 @@ object TurtleStitchProgramModel {
       blocks: Vector[BlockLike] = Vector.empty
   ) derives upickle.default.ReadWriter
 
-  sealed trait BlockLike derives upickle.default.ReadWriter
+  sealed trait BlockLike derives upickle.default.ReadWriter {
+    def inputs: Vector[InputValue]
+
+    /** This block and every block in its slots, scripts and lists. */
+    def withNested: Vector[BlockLike] = this +: inputs.flatMap(_.blocks)
+  }
 
   /** `<block s="selector"> ... </block>` and `<block var="..."/>`. */
   final case class PrimitiveBlock(
@@ -144,7 +165,14 @@ object TurtleStitchProgramModel {
       comment: Option[Comment] = None
   ) extends BlockLike derives upickle.default.ReadWriter
 
-  sealed trait InputValue derives upickle.default.ReadWriter
+  sealed trait InputValue derives upickle.default.ReadWriter {
+    def blocks: Vector[BlockLike] = this match {
+      case NestedBlock(block) => block.withNested
+      case NestedScript(script) => script.blocks.flatMap(_.withNested)
+      case ListLiteral(items) => items.flatMap(_.blocks)
+      case _ => Vector.empty
+    }
+  }
   final case class Literal(value: String) extends InputValue derives upickle.default.ReadWriter
   final case class BoolLiteral(value: Boolean) extends InputValue derives upickle.default.ReadWriter
   final case class ColorLiteral(value: Rgba) extends InputValue derives upickle.default.ReadWriter
@@ -154,8 +182,9 @@ object TurtleStitchProgramModel {
 
   final case class CustomBlockDefinition(
       spec: String,
-      blockType: String,
-      category: String = "other",
+      blockType: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockType,
+      category: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockCategory =
+        it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockCategory.Other,
       selector: Option[String] = None,
       primitive: Option[String] = None,
       helper: Option[String] = None,

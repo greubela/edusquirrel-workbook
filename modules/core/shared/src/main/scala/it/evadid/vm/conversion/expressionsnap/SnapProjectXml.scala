@@ -1,5 +1,7 @@
 package it.evadid.vm.conversion.expressionsnap
 
+import it.evadid.vm.conversion.snapxml.SnapXmlText
+
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasScript
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
@@ -8,14 +10,13 @@ import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapexpression.SnapInputCodec
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.*
 import it.evadid.vm.code.defining
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import it.evadid.vm.code.others.BeStartProgram
+import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
@@ -44,7 +45,7 @@ object SnapProjectXml {
       projectName: String = "fromBeExpression",
       canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
       previousXml: String = "",
-      newBlockCategory: String = SnapCustomBlockMerge.DefaultNewBlockCategory
+      newBlockCategory: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockCategory = SnapCustomBlockMerge.DefaultNewBlockCategory
   ): String = {
     val functionDefs = collectFunctionDefs(expression)
     val plans = SnapCustomBlockMerge.planFor(functionDefs, previousXml, newBlockCategory)
@@ -153,7 +154,9 @@ object SnapProjectXml {
         ifElse.thenBody.body.foreach(walk)
         ifElse.elseBody.body.foreach(walk)
       case whileExpr: BeWhile => whileExpr.body.body.foreach(walk)
-      case repeat: BeRepeatNr => repeat.body.body.foreach(walk)
+      case repeat: BeRepeatNr =>
+        walk(repeat.amount)
+        repeat.body.body.foreach(walk)
       case forExpr: BeFor => forExpr.body.body.foreach(walk)
       case _ => ()
     walk(expression)
@@ -166,17 +169,15 @@ object SnapProjectXml {
    * previous XML registered are kept so a reload does not drop the exercise tabs.
    */
   private def renderPalette(plans: CustomBlockPlans, previousXml: String): String = {
-    val previous = SnapXmlParser
-      .elements(previousXml, "palette")
-      .flatMap(palette => SnapXmlParser.children(palette.inner).filter(_.tag == "category"))
-    val previousByName = previous.flatMap(node => node.attr("name").map(_ -> node)).toMap
-    val names = (previous.flatMap(_.attr("name")) ++ plans.categories).distinct
+    val previous = SnapCustomBlockRules.paletteEntries(previousXml)
+    val previousByName = previous.flatMap(node => node.attribute("name").map(_ -> node)).toMap
+    val names = (previous.flatMap(_.attribute("name")) ++ plans.categories.map(_.xml)).distinct
       .filterNot(SnapCustomBlockRules.BuiltInCategories.contains)
     if names.isEmpty then ""
     else
       val categories = names.map { name =>
-        val color = previousByName.get(name).flatMap(_.attr("color")).getOrElse(DefaultPaletteColor)
-        s"""<category name="${SnapInputCodec.escapeXml(name)}" color="${SnapInputCodec.escapeXml(color)}"/>"""
+        val color = previousByName.get(name).flatMap(_.attribute("color")).getOrElse(DefaultPaletteColor)
+        s"""<category name="${SnapXmlText.escape(name)}" color="${SnapXmlText.escape(color)}"/>"""
       }
       categories.mkString("<palette>", "", "</palette>")
   }
@@ -208,7 +209,16 @@ object SnapProjectXml {
     case whileExpr: BeWhile => renderDoUntil(whileExpr)
     case repeat: BeRepeatNr => renderRepeat(repeat)
     case forExpr: BeFor => renderDoFor(forExpr)
+    case BeReturn(Some(value)) => s"""<block s="doReport">${renderReported(value)}</block>"""
     case _ => ""
+  }
+
+  /** A reported truth value is a predicate input; any other value an ordinary reporter input. */
+  private def renderReported(value: BeExpression)(using RenderContext): String = value match {
+    case BeUseValue(BeDataValueLiteral("True" | "False"), _) => renderCondition(value)
+    case call: BeFunctionCall if call.isOperator && value.staticInformationExpression.staticType == it.evadid.vm.types.BeDataType.Boolean =>
+      renderCondition(value)
+    case _ => renderArgument(value)
   }
 
   private def renderAssignment(assign: BeAssignVariable)(using RenderContext): String = {
@@ -236,20 +246,40 @@ object SnapProjectXml {
         val valueXml = literal match
           case Some(value) => SnapInputCodec.renderLiteral(SnapInputKind.String, value)
           case None => "<l>0</l>"
-        s"""<variable name="${SnapInputCodec.escapeXml(name)}">$valueXml</variable>"""
+        s"""<variable name="${SnapXmlText.escape(name)}">$valueXml</variable>"""
       }
       .mkString
   }
 
   private def renderRepeat(repeat: BeRepeatNr)(using RenderContext): String = {
     val body = renderScriptBody(repeat.body)
-    s"""<block s="doRepeat"><l>${repeat.amount}</l><script>$body</script></block>"""
+    s"""<block s="doRepeat">${renderArgument(repeat.amount)}<script>$body</script></block>"""
   }
 
+  /** Snap's `for` counts either way. A one-way loop (Python `range`, Java `for`) with computed bounds
+    * runs only when its bounds point its way, so it is guarded by that comparison.
+    */
   private def renderDoFor(forExpr: BeFor)(using RenderContext): String = {
     val name = variableXmlName(forExpr.variable)
     val body = renderScriptBody(forExpr.body)
-    s"""<block s="doFor"><l>$name</l>${renderArgument(forExpr.start)}${renderArgument(forExpr.end)}<script>$body</script></block>"""
+    val loop = s"""<block s="doFor"><l>$name</l>${renderArgument(forExpr.start)}${renderArgument(forExpr.end)}<script>$body</script></block>"""
+    def literal(value: BeExpression) = value match {
+      case BeUseValue(BeDataValueLiteral(raw), _) => raw.trim.toDoubleOption
+      case _ => None
+    }
+    val comparison = forExpr.direction match {
+      case BeFor.Direction.Up => Some("<=")
+      case BeFor.Direction.Down => Some(">=")
+      case BeFor.Direction.Either => None
+    }
+    (comparison, literal(forExpr.start).zip(literal(forExpr.end))) match {
+      case (None, _) => loop
+      case (Some(operator), Some((start, end))) =>
+        if (operator == "<=" && start <= end) || (operator == ">=" && start >= end) then loop else ""
+      case (Some(operator), None) =>
+        val guard = SnapControlFlow.operatorCall(operator, List(forExpr.start, forExpr.end))
+        s"""<block s="doIf">${renderCondition(guard)}<script>$loop</script><list></list></block>"""
+    }
   }
 
   private def renderIfElse(ifElse: BeIfElse)(using RenderContext): String = {
@@ -275,10 +305,10 @@ object SnapProjectXml {
     SnapExpressionSupport.scriptStatements(sequence.body.toList).map(renderStatement).mkString
 
   private def renderCall(call: BeFunctionCall)(using context: RenderContext): String = {
-    if SnapControlFlow.isOperatorCall(call) then renderOperator(call)
+    if call.isOperator then renderOperator(call)
     else
       val selector = SnapExpressionSupport.snapSelectorOf(call)
-      val arguments = SnapControlFlow.orderedArgs(call)
+      val arguments = call.arguments
       val kinds = SnapTurtleCatalog.inputKindsForSelector(selector)
       if SnapExpressionSupport.isPrimitiveSelector(selector) &&
           (it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) ||
@@ -302,7 +332,7 @@ object SnapProjectXml {
           .getOrElse(SnapCustomBlockRules.blockSpecOfNewDefinition(
             SnapTurtleCatalog.customBlockSemanticSpec(pythonName, arguments.indices.toList.map(index => s"arg$index"))
           ))
-        s"""<custom-block s="${SnapInputCodec.escapeXml(spec)}">$inputXml</custom-block>"""
+        s"""<custom-block s="${SnapXmlText.escape(spec)}">$inputXml</custom-block>"""
   }
 
   private def renderArgument(argument: BeExpression, kind: SnapInputKind = SnapInputKind.String)(using
@@ -311,7 +341,7 @@ object SnapProjectXml {
     case BeUseValue(BeDataValueLiteral(value), _) => SnapInputCodec.renderLiteral(kind, value)
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
     case sequence: BeSequence => s"<script>${renderScriptBody(sequence)}</script>"
-    case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) => renderOperator(call)
+    case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall => renderCall(call)
     case _ => "<l></l>"
   }
@@ -320,14 +350,14 @@ object SnapProjectXml {
     case BeUseValue(BeDataValueLiteral("True"), _) => """<block s="reportTrue"></block>"""
     case BeUseValue(BeDataValueLiteral("False"), _) => """<block s="reportFalse"></block>"""
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
-    case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) => renderOperator(call)
+    case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall => renderCall(call)
     case _ => """<block s="reportTrue"></block>"""
   }
 
   private def renderOperator(call: BeFunctionCall)(using RenderContext): String = {
     val op = SnapControlFlow.operatorSymbol(call)
-    val args = SnapControlFlow.orderedArgs(call)
+    val args = call.arguments
     op match {
       case "-" if args.size == 1 =>
         // Snap's difference reporter is binary; unary minus needs an explicit zero.
@@ -353,9 +383,9 @@ object SnapProjectXml {
   }
 
   private def renderConditionValue(expression: BeExpression)(using RenderContext): String = expression match {
-    case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapInputCodec.escapeXml(value)}</l>"
+    case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapXmlText.escape(value)}</l>"
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
-    case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) => renderOperator(call)
+    case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall => renderCall(call)
     case _ => "<l>0</l>"
   }
@@ -364,5 +394,5 @@ object SnapProjectXml {
     s"""<block var="${variableXmlName(variable)}"/>"""
 
   private def variableXmlName(variable: BeDefineVariable)(using context: RenderContext): String =
-    SnapInputCodec.escapeXml(context.slotName(SnapControlFlow.variableName(variable)))
+    SnapXmlText.escape(context.slotName(SnapControlFlow.variableName(variable)))
 }

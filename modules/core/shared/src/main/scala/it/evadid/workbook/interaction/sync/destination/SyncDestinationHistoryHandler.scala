@@ -46,9 +46,10 @@ trait SyncDestinationHistoryHandler {
       until: LocalDateTime, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
     require(!until.isBefore(starting), "History range end must not precede its start")
     val selected = keys.toSet
-    readHistoriesJson(usageContext).map(response => response.fetchedValues.filter(entry => selected(entry.dataKey)).map { entry =>
-      entry.dataKey -> InteractionHistoryJson.deserialize(entry.dataValue).cleanWithStrategy(strategy).between(starting, until)
-    }.toMap)
+    readHistoriesJson(usageContext).map(response => InteractionHistoryJson.readable(
+      response.fetchedValues.filter(entry => selected(entry.dataKey)).map(entry => entry.dataKey -> entry.dataValue))(
+      InteractionHistoryJson.deserialize, strategy, starting, until,
+      (key, error) => syncLogger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error)))
   }
 
   def readHistory[F <: InteractionFormat](syncContext: SyncContext)(using ec: ExecutionContext, format: ValueOf[F]): Future[InteractionVariableHistory[F]] =

@@ -115,7 +115,8 @@ object BufferedSyncDestinationHandler {
             .map(values => FetchResponse.fromMap(LocalDateTime.now(), values.map((key, value) => key -> value.serialized)))
       }
       reading.transform { outcome =>
-        requests.foreach(_.fulfillWith(outcome))
+        requests.foreach(_.fulfillWith(outcome, (key, error) =>
+          underlying.syncLogger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error)))
         Success(())
       }
     }.map(_ => ())
@@ -145,20 +146,27 @@ object BufferedSyncDestinationHandler {
   private sealed trait CachedRequest { def requestTimestamp: LocalDateTime }
   private case class CachedStoreRequest(requestTimestamp: LocalDateTime, toStore: Map[SyncContext, String], promise: Promise[SyncSuccess])
   private sealed trait CachedReadRequest extends CachedRequest {
-    def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit
+    def fulfillWith(data: Try[FetchResponse[SyncContext, String]], discarded: (SyncContext, Throwable) => Unit): Unit
     def usageContext: UsageContext
     def range: Option[Range]
   }
   private case class CachedReadRequestMultipleRaw(requestTimestamp: LocalDateTime, usageContext: UsageContext, promise: Promise[FetchResponse[SyncContext, String]]) extends CachedReadRequest {
     val range: Option[Range] = None
-    override def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data)
+    override def fulfillWith(data: Try[FetchResponse[SyncContext, String]], discarded: (SyncContext, Throwable) => Unit): Unit =
+      promise.tryComplete(data)
   }
   private case class CachedRangeRead(requestTimestamp: LocalDateTime, usageContext: UsageContext,
       keys: Set[SyncContext], window: Range, promise: Promise[FetchResponse[SyncContext, String]]) extends CachedReadRequest {
     val range: Option[Range] = Some(window)
-    def fulfillWith(data: Try[FetchResponse[SyncContext, String]]): Unit = promise.tryComplete(data.map(response =>
-      response.copy(fetchedValues = response.fetchedValues.filter(entry => keys(entry.dataKey)).map(entry =>
-        entry.copy(dataValue = InteractionHistoryJson.deserialize(entry.dataValue).between(window.starting, window.until).serialized)))))
+    /** The shared answer covers the union of all windows; each caller receives its own keys and window. */
+    def fulfillWith(data: Try[FetchResponse[SyncContext, String]], discarded: (SyncContext, Throwable) => Unit): Unit =
+      promise.tryComplete(data.map { response =>
+        val readable = InteractionHistoryJson.readable(response.fetchedValues.filter(entry => keys(entry.dataKey))
+          .map(entry => entry.dataKey -> entry.dataValue))(InteractionHistoryJson.deserialize,
+          EventSyncStrategy.SYNC_EVERYTHING, window.starting, window.until, discarded)
+        response.copy(fetchedValues = response.fetchedValues.flatMap(entry =>
+          readable.get(entry.dataKey).map(history => entry.copy(dataValue = history.serialized))))
+      })
   }
 
 }

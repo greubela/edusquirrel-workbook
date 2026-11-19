@@ -14,16 +14,16 @@ import upickle.ReadWriter
 import upickle.default.*
 
 /**
- * Inclusive, ascending numeric for-loop: `variable` takes start, start + 1, …, end, and the body
- * runs zero times when start > end. Python prints `for i in range(start, end + 1):`, Java
- * `for (… i = start; i <= end; i++)`, Snap `doFor`. (Snap's own runtime also counts down when
- * start > end; the shared model and interpreter follow the Java/Python reading.)
+ * Inclusive counting loop from `start` to `end` in steps of one. `direction` says which way it counts:
+ * Snap's `for i = start to end` counts towards `end` either way; Python's `range` and Java's counting
+ * `for` count only up (or only down) and make no pass when the bounds point the other way.
  */
 case class BeFor(
     variable: BeDefineVariable,
     start: BeExpression,
     end: BeExpression,
-    body: BeSequence
+    body: BeSequence,
+    direction: BeFor.Direction = BeFor.Direction.Either
 ) extends BeControlStructure derives ReadWriter{
 
   override def allPossibleBodies: Seq[BeExpression] = List(body)
@@ -54,5 +54,11 @@ case class BeFor(
         getChildrenAsReference(myInfo.myScope).last.toSegment(Some(ControlFlowUp())),
         BeControlFlowLine(RepeatUnion())
       )
+  }
+}
+
+object BeFor {
+  enum Direction derives ReadWriter {
+    case Either, Up, Down
   }
 }

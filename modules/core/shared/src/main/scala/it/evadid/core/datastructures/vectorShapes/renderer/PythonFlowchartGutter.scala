@@ -37,7 +37,7 @@ object PythonFlowchartGutter {
   /** Parses exactly `source`. `None` means the program is incomplete or unsupported. */
   private def parseChart(source: String): Option[Chart] = try {
     val expression = PythonToExpression.program(source).fullProgram
-    val expressions = expression.subtreeNodes
+    val expressions = expression.subtree
     if (expressions.exists {
       case _: BeExpressionUnparsable | _: BeExpressionUnsupported => true
       case _ => false

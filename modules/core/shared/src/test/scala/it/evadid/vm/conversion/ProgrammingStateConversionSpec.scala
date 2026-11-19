@@ -5,7 +5,6 @@ import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
@@ -67,7 +66,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
         |    print(total)
         |
         |sum_primes_below(30)
-        |""".stripMargin, false)
+        |""".stripMargin, true)
   )
 
   private def normalized(state: ProgrammingState): String = state.toPython.code.trim
@@ -346,7 +345,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
     assertEquals(normalized(restoredJava), normalized(java))
     assert(restoredJava.code.contains("forward(10)"), clue = restoredJava.code)
-    assert(restoredJava.code.contains("right(90)"), clue = restoredJava.code)
+    assert(restoredJava.code.contains("Turtle.turnRight(90)"), clue = restoredJava.code)
   }
 
   test("Java parser handles functions, loops, booleans, and string punctuation") {
@@ -489,8 +488,9 @@ class ProgrammingStateConversionSpec extends FunSuite {
     ).toJava
     val source = state.code
 
-    assert(!source.contains("//"), clue = source)
-    assert(source.contains("static void draw(Object distance) {"), clue = source)
+    assert(!source.contains("EvaEntityName") && !source.contains("EvaParsingHint"), clue = source)
+    assert(source.contains("class Turtle {"), clue = source)
+    assert(source.contains("static void draw(double distance) {"), "the parameter's type follows its use as a distance: " + source)
     assert(source.contains("public static void main(String[] unusableArgs) {"), clue = source)
     assert(state.isClassProgram, clue = source)
     assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands.flatMap(_.args), List(12.0))
@@ -643,11 +643,17 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(normalized(converted.toBeExpression), converted.code.trim)
   }
 
-  test("unknown parameter types have usable Any hints and round trip to Snap") {
+  test("unannotated parameters take the type their uses agree on and round trip to Snap") {
     val converted = ProgrammingStateRaw(Python, "def line(length):\n    forward(length)\nline(10)").toBeExpression.toPython
-    assert(converted.code.contains("from typing import Any\n"), clue = converted.code)
-    assert(converted.code.contains("def line(length: Any) -> None:"), clue = converted.code)
+    assert(converted.code.contains("def line(length: float) -> None:"), clue = converted.code)
     assert(PythonToSnap.applyPython(converted.code).isRight, clue = converted.code)
+    assertEquals(normalized(converted.toBeExpression), converted.code.trim)
+  }
+
+  test("parameters without evidence have usable Any hints") {
+    val converted = ProgrammingStateRaw(Python, "def show(value):\n    print(value)\n").toBeExpression.toPython
+    assert(converted.code.contains("from typing import Any\n"), clue = converted.code)
+    assert(converted.code.contains("def show(value: Any) -> None:"), clue = converted.code)
     assertEquals(normalized(converted.toBeExpression), converted.code.trim)
   }
 

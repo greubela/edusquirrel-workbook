@@ -9,7 +9,7 @@ import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
+import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
 
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 
@@ -30,21 +30,15 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     """<project name="test2" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="test2"><notes></notes><hidden></hidden><headers></headers><code></code><blocks></blocks><primitives></primitives><stage name="Stage" width="480" height="360" costume="0" color="255,255,255,1" tempo="60" threadsafe="false" penlog="false" volume="100" pan="0" lines="round" ternary="false" hyperops="true" codify="false" inheritance="true" sublistIDs="false" id="6"><costumes><list struct="atomic" id="7"></list></costumes><sounds><list struct="atomic" id="8"></list></sounds><variables></variables><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Sprite" idx="1" x="0" y="0" heading="90" scale="0.1" volume="100" pan="0" rotation="1" draggable="true" hidden="true" costume="0" color="0,0,0,1" pen="tip" id="13"><costumes><list struct="atomic" id="14"></list></costumes><sounds><list struct="atomic" id="15"></list></sounds><blocks></blocks><variables></variables><scripts><script x="156" y="66"><block s="receiveGo"></block><block s="doRepeat"><l>10</l><script><block s="forward"><l>10</l></block><block s="turn"><l>15</l></block></script></block></script></scripts></sprite></sprites></stage><variables></variables></scene></scenes><creator>anonymous</creator><origCreator></origCreator><origName></origName></project>"""
 
   private val simpleForwardXml =
-    """<project name="simple_forward" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="simple_forward"><notes></notes><hidden></hidden><headers></headers><code></code><blocks></blocks><primitives></primitives><stage name="Bühne" width="480" height="360" costume="0" color="255,255,255,1" tempo="60" threadsafe="false" penlog="false" volume="100" pan="0" lines="round" ternary="false" hyperops="true" codify="false" inheritance="true" sublistIDs="false" id="6"><costumes><list struct="atomic" id="7"></list></costumes><sounds><list struct="atomic" id="8"></list></sounds><variables></variables><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Objekt" idx="1" x="0" y="0" heading="90" scale="0.1" volume="100" pan="0" rotation="1" draggable="true" hidden="true" costume="0" color="0,0,0,1" pen="tip" id="13"><costumes><list struct="atomic" id="14"></list></costumes><sounds><list struct="atomic" id="15"></list></sounds><blocks></blocks><variables></variables><scripts><script x="70" y="80"><block s="receiveGo"></block><block s="forward"><l>100</l></block></script></scripts></sprite></sprites></stage><variables></variables></scene></scenes>"""
+    """<project name="simple_forward" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="simple_forward"><notes></notes><hidden></hidden><headers></headers><code></code><blocks></blocks><primitives></primitives><stage name="Bühne" width="480" height="360" costume="0" color="255,255,255,1" tempo="60" threadsafe="false" penlog="false" volume="100" pan="0" lines="round" ternary="false" hyperops="true" codify="false" inheritance="true" sublistIDs="false" id="6"><costumes><list struct="atomic" id="7"></list></costumes><sounds><list struct="atomic" id="8"></list></sounds><variables></variables><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Objekt" idx="1" x="0" y="0" heading="90" scale="0.1" volume="100" pan="0" rotation="1" draggable="true" hidden="true" costume="0" color="0,0,0,1" pen="tip" id="13"><costumes><list struct="atomic" id="14"></list></costumes><sounds><list struct="atomic" id="15"></list></sounds><blocks></blocks><variables></variables><scripts><script x="70" y="80"><block s="receiveGo"></block><block s="forward"><l>100</l></block></script></scripts></sprite></sprites></stage><variables></variables></scene></scenes></project>"""
 
-  test("malformed XML is handled safely in BeExpression parser") {
-    val malformedXml = "<project><scenes><scene><stage><sprites><sprite><scripts><script><block s=\"forward\"><l>10</l>"
-    val expression = TurtleStitchToBeExpressionParser.parseXml(malformedXml)
-    assert(expression.isInstanceOf[BeStartProgram])
-  }
-
-  test("recovery mixed literal and nested-block inputs keep full arity") {
-    // Incomplete project XML forces the string recovery path (model parse has no statements).
-    val malformedXml =
-      """<project><scenes><scene><stage><sprites><sprite><scripts><script><block s="gotoXY"><l>10</l><block var="x"/></block><variables><variable name="x"></variable>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(malformedXml)
-    val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("turtle.goto(10, x)"), clue = python)
+  test("truncated XML is reported as unparsable rather than read as a partial or empty program") {
+    Seq("<project><scenes><scene><stage><sprites><sprite><scripts><script><block s=\"forward\"><l>10</l>",
+        """<project><scenes><scene><stage><sprites><sprite><scripts><script><block s="gotoXY"><l>10</l><block var="x"/></block><variables><variable name="x"></variable>""")
+      .foreach { truncated =>
+        val error = intercept[it.evadid.vm.code.errors.ProgrammingConversionException](TurtleStitchToBeExpressionParser.parseXml(truncated))
+        assertEquals(error.error.kind, it.evadid.vm.code.errors.ProgrammingConversionKind.Unparsable)
+      }
   }
 
   test("gotoXY with mixed literal and variable reporter keeps both arguments") {
@@ -284,7 +278,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       clue = parsed.expression
     )
     val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("for i in range(1, 4 + 1):"), clue = python)
+    assert(python.contains("for i in range(1, 5):"), clue = python)
     assert(python.contains("forward(i * 10)"), clue = python)
     val xmlOut = SnapProjectXml.toXml(parsed.expression, "dofor", parsed.canvasLayout)
     assert(xmlOut.contains("""s="doFor""""), clue = xmlOut)
@@ -427,18 +421,18 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val after = SnapCustomBlockRules.globalDefinitions(reXml).head
     assertEquals(after.spec, before.spec)
     assertEquals(after.blockType, before.blockType)
-    assertEquals(after.rawCategory, before.rawCategory)
+    assertEquals(after.category, before.category)
     assertEquals(
-      SnapXmlParser.child(after.element.inner, "inputs").map(_.outer),
-      SnapXmlParser.child(before.element.inner, "inputs").map(_.outer)
+after.element.element.named("inputs").headOption.map(_.element.toXml),
+      before.element.element.named("inputs").headOption.map(_.element.toXml)
     )
     assertEquals(
-      SnapXmlParser.child(after.element.inner, "comment").map(_.outer),
-      SnapXmlParser.child(before.element.inner, "comment").map(_.outer)
+after.element.element.named("comment").headOption.map(_.element.toXml),
+      before.element.element.named("comment").headOption.map(_.element.toXml)
     )
     assert(reXml.contains("""helper="true""""), clue = reXml)
 
-    val body = after.bodyScript.map(_.inner).getOrElse("")
+    val body = after.bodyScript.map(_.element.toXml).getOrElse("")
     assert(body.contains("""s="turn""""), clue = body)
     assert(!body.contains("""s="forward""""), clue = body)
     assert(body.contains("""<block var="size"/>"""), clue = body)
@@ -471,15 +465,16 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     )
   }
 
-  test("a reporter definition is reported by name instead of being flattened to a command") {
+  test("a reporter definition becomes a function returning what it reports, not a command") {
     val xml = projectWith(
-      """<block-definition s="area %size" type="reporter" category="Pen"><inputs><input type="%n"></input></inputs><script><block s="doReport"><block var="size"/></block></script></block-definition>""",
+      """<block-definition s="area %size" type="reporter" category="Pen"><inputs><input type="%n"></input></inputs><script><block s="doReport"><block s="reportVariadicProduct"><list><block var="size"/><block var="size"/></list></block></block></script></block-definition>""",
       """<block s="receiveGo"></block>"""
     )
     val derived = SnapProgramDerivation.fromXml(xml)
-    assert(!derived.pythonCompatible, clue = derived)
-    assertEquals(derived.python, "", "unsupported Snap XML must never appear as executable Python")
-    assert(derived.unsupportedSelectors.exists(_.contains("area %size")), clue = derived.unsupportedSelectors)
+    assert(derived.pythonCompatible, clue = derived)
+    assert(derived.python.contains("def area(size: float) -> float:"), derived.python)
+    assert(derived.python.contains("return size * size"), derived.python)
+    assertEquals(derived.unsupportedSelectors, Nil)
   }
 
   test("custom block extra arguments are dropped on python apply") {
@@ -494,5 +489,14 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val nextXml = applied.toOption.get.code
     assert(nextXml.contains("""<custom-block s="square %n"><l>1</l></custom-block>"""), clue = nextXml)
     assert(!nextXml.contains("<l>2</l>"), clue = nextXml)
+  }
+
+  test("boolean literals read the same in every Snap input slot") {
+    val xml =
+      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><l>flag</l><l><bool>true</bool></l></block><block s="doIf"><block var="flag"/><script><block s="forward"><l>10</l></block></script><list></list></block></script></scripts></sprite></sprites></stage><variables><variable name="flag"><l>0</l></variable></variables></scene></scenes></project>"""
+    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val python = ExpressionToPython.printedPython(parsed.expression)
+    assert(python.contains("flag: Any = True"), clue = python)
+    assert(!python.contains("= true"), clue = python)
   }
 }

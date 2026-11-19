@@ -87,6 +87,13 @@ trait BeExpression {
     }
   }
 
+  /** This expression and its descendants, depth first in source order. */
+  def subtree: Vector[BeExpression] =
+    this +: structureInfo.getChildren(false, GlobalScope()).toVector.flatMap {
+      case BeExpressionReference(_, child) => child.subtree
+      case _ => Vector.empty
+    }
+
   def recToTree(withExtensions: Boolean, myPosition: BeChildInfo): BeExpressionTree = {
     val root: BeExpressionNode = BeExpressionReference(myPosition, this)
 
@@ -106,27 +113,11 @@ trait BeExpression {
   }
 
 
-  /**
-   * This expression and every nested occurrence in preorder: the expressions of `recToTree(false, …)`,
-   * whose unordered values drop repeated equal subexpressions. Use it when only the nodes matter:
-   * building the positioned tree copies subtrees per level, which becomes slow for nested programs.
-   */
-  def subtreeNodes: Vector[BeExpression] = {
-    @scala.annotation.tailrec
-    def visit(pending: List[(BeExpression, BeScope)], result: Vector[BeExpression]): Vector[BeExpression] = pending match {
-      case Nil => result
-      case (node, scope) :: rest =>
-        val children = node.structureInfo.getChildrenAsReference(scope).map(reference => (reference.expr, reference.childInfo.myScope)).toList
-        visit(children ::: rest, result :+ node)
-    }
-    visit(List((this, GlobalScope())), Vector.empty)
-  }
-
   def stopExecutionBeforeThisBlock: Boolean = false
 
   def staticInformationSubtree: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
 
-    private lazy val allExprChildren: List[BeExpression] = subtreeNodes.toList
+    private lazy val allExprChildren: List[BeExpression] = subtree.toList
 
     override def staticType: BeDataType = staticInformationExpression.staticType
 

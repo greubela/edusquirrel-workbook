@@ -28,7 +28,7 @@ class DataLibrariesSpec extends FunSuite {
   }
 
   private def calls(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage, code: String): List[BeFunctionCall] =
-    ProgrammingStateRaw(language, code).toBeExpression.expression.subtreeNodes.collect { case call: BeFunctionCall => call }.toList
+    ProgrammingStateRaw(language, code).toBeExpression.expression.subtree.collect { case call: BeFunctionCall => call }.toList
 
   test("Python and Java bind library calls; unqualified user functions with library method names stay ordinary") {
     assert(calls(Python, "NumberList.swap(0, 1)\n").exists(call => DataLibraries.isDataMethod(call.funcDef)))

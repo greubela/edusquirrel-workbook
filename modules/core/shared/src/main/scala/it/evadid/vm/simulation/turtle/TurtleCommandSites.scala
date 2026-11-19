@@ -32,11 +32,11 @@ private[simulation] object TurtleCommandSites {
     val all = nodes(root)
     val helpers = all.collect { case (_, definition: BeDefineFunction) => SnapExpressionSupport.pythonNameOf(definition) }.toSet
     all.flatMap {
-      case (path, call: BeFunctionCall) if !SnapControlFlow.isOperatorCall(call) && !DataLibraries.isDataMethod(call.funcDef) &&
+      case (path, call: BeFunctionCall) if !call.isOperator && !DataLibraries.isDataMethod(call.funcDef) &&
           (TurtleCommand.isTurtleMethod(call.funcDef) || !helpers(SnapExpressionSupport.pythonName(call))) =>
         val python = SnapExpressionSupport.pythonName(call)
         val name = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(python, python)
-        Some(site(path, BeEntityName.fromCodeString(name), SnapControlFlow.orderedArgs(call).toVector))
+        Some(site(path, BeEntityName.fromCodeString(name), call.arguments.toVector))
       case _ => None
     }
   }
@@ -56,8 +56,8 @@ private[simulation] object TurtleCommandSites {
       value.trim.toDoubleOption.filter(_.isFinite).map(number => Left(number)).orElse {
         Some(Right(Serializer.stringLiteralIO(parseEverything = true).deserialize(value)))
       }
-    case call: BeFunctionCall if SnapControlFlow.isOperatorCall(call) =>
-      SnapControlFlow.orderedArgs(call) match {
+    case call: BeFunctionCall if call.isOperator =>
+      call.arguments match {
         case argument :: Nil =>
           val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
           literal(argument).collect {

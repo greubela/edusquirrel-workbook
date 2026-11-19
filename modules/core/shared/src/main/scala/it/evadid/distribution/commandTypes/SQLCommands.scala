@@ -71,10 +71,8 @@ object SQLCommands {
     require(!allWorkbooks || limitToKey.isEmpty, "An all-workbook reset cannot be restricted to one variable.")
   }
 
-  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionHistoryJson]) derives ReadWriter {
+  case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionHistoryJson]) derives ReadWriter
 
-
-  }
 
   lazy val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory[StoreToDbRequest, SyncSuccess](
     "sync-to-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)

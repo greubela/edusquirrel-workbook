@@ -39,7 +39,7 @@ case class TurtleCommandUsageGrader(
   override protected def handleGrading(state: ProgrammingState, contextInformation: ExecutionContextInformation)
       : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
     val expression = state.toBeExpression.expression
-    val malformed = expression.subtreeNodes.exists {
+    val malformed = expression.subtree.exists {
       case _: BeExpressionUnparsable | _: BeExpressionUnsupported => true
       case _ => false
     }

@@ -268,7 +268,13 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   def inversion[ctx: P]: P[PyExpression] = comparison |
     P(NOT ~ SPACES.? ~ inversion).map(PyOperationUnary("not", _))
 
-  def comparison[ctx: P]: P[PyExpression] = binaryLeft(bitwise_or, COMPAREOP)
+  /** Python chains comparisons: `a < b < c` means `a < b and b < c`. */
+  def comparison[ctx: P]: P[PyExpression] =
+    P(bitwise_or ~ (SPACES.? ~ COMPAREOP ~ SPACES.? ~ bitwise_or).rep).map { case (first, rest) =>
+      val operands = first +: rest.map(_._2)
+      rest.zipWithIndex.map { case ((operator, right), index) => PyOperationBinary(operands(index), operator, right) }
+        .reduceLeftOption[PyExpression]((left, right) => PyOperationBinary(left, "and", right)).getOrElse(first)
+    }
 
   def bitwise_or[ctx: P]: P[PyExpression] = binaryLeft(bitwise_xor, VBAR.!)
 

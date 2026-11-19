@@ -8,7 +8,7 @@ import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
+import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
@@ -30,8 +30,8 @@ class SnapExpressionSupportSpec extends FunSuite {
     val statements = SnapExpressionSupport.topLevelStatements(program.fullProgram)
     val call = statements.collectFirst { case c: it.evadid.vm.code.usage.BeFunctionCall => c }.get
     assertEquals(SnapExpressionSupport.pythonName(call), "forward")
-    val args = SnapControlFlow.orderedArgs(call)
-    assert(args.forall(SnapControlFlow.isSupportedValue), clue = args.map(_.getClass.getName).mkString(","))
+    val args = call.arguments
+    assert(args.forall(SnapControlFlow.isSupportedValue(_)), clue = args.map(_.getClass.getName).mkString(","))
     assertEquals(SnapExpressionSupport.validateSubset(program.fullProgram), Right(statements))
   }
 
@@ -282,7 +282,10 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(reported.contains("wait"), clue = reported)
     assert(reported.exists(_.contains("'foo'")), clue = reported)
     assert(!SnapExpressionSupport.isPythonCompatibleXml(xml))
-    assert(SnapExpressionSupport.isPythonCompatibleXml("""<project><block s="forward"><l>1</l></block></project>"""))
+    assert(SnapExpressionSupport.isPythonCompatibleXml("""<project><scripts><script><block s="forward"><l>1</l></block></script></scripts></project>"""))
+    // A block outside any script is not part of the program, so it is reported instead of dropped.
+    assertEquals(SnapExpressionSupport.unsupportedSnapSelectors("""<project><block s="forward"><l>1</l></block></project>"""),
+      List("'forward' outside a script"))
   }
 
   test("unsupportedSnapSelectors allows a custom-block whose definition declares the same blockSpec") {
@@ -291,10 +294,13 @@ class SnapExpressionSupportSpec extends FunSuite {
     assertEquals(SnapExpressionSupport.unsupportedSnapSelectors(xml), Nil)
   }
 
-  test("unsupportedSnapSelectors reports reporter and script-slot custom blocks by spec") {
+  test("unsupportedSnapSelectors reports hat and script-slot custom blocks by spec, not reporters") {
+    val hat =
+      """<project><blocks><block-definition s="when ready" type="hat"><inputs></inputs></block-definition></blocks></project>"""
+    assert(SnapExpressionSupport.unsupportedSnapSelectors(hat).exists(_.contains("when ready")))
     val reporter =
       """<project><blocks><block-definition s="area %size" type="reporter"><inputs><input type="%n"></input></inputs></block-definition></blocks></project>"""
-    assert(SnapExpressionSupport.unsupportedSnapSelectors(reporter).exists(_.contains("area %size")))
+    assertEquals(SnapExpressionSupport.unsupportedSnapSelectors(reporter), Nil)
     val scripted =
       """<project><blocks><block-definition s="twice %action" type="command"><inputs><input type="%cs"></input></inputs></block-definition></blocks></project>"""
     assert(SnapExpressionSupport.unsupportedSnapSelectors(scripted).exists(_.contains("%cs")))
@@ -321,7 +327,8 @@ class SnapExpressionSupportSpec extends FunSuite {
     val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
     val xml = result.toOption.get.code
-    assert(xml.contains("""<block s="doFor"><l>_</l>"""), clue = xml)
+    // An unused counter is a repeat; its count may be computed, here a variable.
+    assert(xml.contains("""<block s="doRepeat"><block var="edges"/>"""), clue = xml)
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("for _ in range(edges):"), clue = python)
     assert(!python.contains("for 0 in range"), clue = python)
@@ -347,7 +354,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(xml.contains("""s="setColor""""), clue = xml)
     assert(xml.contains("""s="home""""), clue = xml)
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
-    assert(python.contains("for i in range(1, 4 + 1):"), clue = python)
+    assert(python.contains("for i in range(1, 5):"), clue = python)
     assert(python.contains("forward(i * 10)"), clue = python)
   }
 
@@ -569,7 +576,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     val definition = SnapCustomBlockRules.globalDefinitions(xml).head
     assertEquals(definition.spec, "draw %distance")
     assertEquals(definition.slots.map(_.slotType), List("%s"))
-    assertEquals(SnapXmlParser.child(definition.element.inner, "inputs").map(_.outer), Some(inputs))
+    assertEquals(definition.element.element.named("inputs").headOption.map(_.element.toXml), Some(inputs))
   }
 
   test("applyPython keeps parameterless definitions without input slots") {

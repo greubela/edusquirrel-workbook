@@ -300,8 +300,9 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     assert(!result.matches)
     val scene = result.scene
     assertEquals(scene.lines.map(_.result), List(LineResult.Correct, LineResult.Missing, LineResult.Unexpected))
-    assertPoint(scene.lines.last.start, Point(30.0, 30.0))
-    assertPoint(scene.lines.last.end, Point(35.0, 30.0))
+    // Scenes are in SVG coordinates (y down); goto takes turtle coordinates (y up).
+    assertPoint(scene.lines.last.start, Point(30.0, -30.0))
+    assertPoint(scene.lines.last.end, Point(35.0, -30.0))
     assertEquals(scene.angles.map(angle => (angle.lineBefore, angle.lineAfter)), List((0, 1)))
     assertEqualsDouble(TurtleJsxGraphRenderer.angleSector(scene, scene.angles.head, 2).degrees, 90.0, 1e-7)
   }
@@ -311,7 +312,8 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
       command("forward", 10), command("right", 90), command("forward", 10)))
     val split = List(command("penup"), command("forward", 2), command("pendown"),
       command("forward", 5), command("forward", 5), command("right", 90), command("forward", 5), command("forward", 5))
-    val reversed = List(command("penup"), command("goto", 12, 10), command("pendown"),
+    // The target turns right, which is downwards: turtle y -10.
+    val reversed = List(command("penup"), command("goto", 12, -10), command("pendown"),
       command("goto", 12, 0), command("goto", 2, 0))
     val nearby = List(command("penup"), command("forward", 2), command("pendown"),
       command("forward", 9.9), command("right", 90), command("forward", 10))

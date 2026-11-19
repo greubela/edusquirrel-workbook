@@ -131,6 +131,8 @@ object JavaTurtleInputLimits {
       entry.node match {
         case _: JavaUnparsableStatement =>
           return Left(Diagnostic(Problem.UnsupportedSyntax, "This Java construct is not supported yet.", None))
+        case _: JavaCastExpression =>
+          return Left(Diagnostic(Problem.UnsupportedSyntax, "Casts are not supported in turtle programs yet.", None))
         case method: JavaMethodDef =>
           if locals.size >= MaxMethods then return exceeded(s"Use at most $MaxMethods methods in a turtle program.")
           if method.parameters.size > MaxParameters then return exceeded(s"Use at most $MaxParameters parameters per method.")

@@ -28,7 +28,8 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
 
   final case class Result(expression: BeSequence, context: ParseContext)
 
-  def build(program: ParsedProgram): Result = {
+  def build(source: ParsedProgram): Result = {
+    val program = ParsedTypeInference.infer(source)
     val context = new ParseContext(CurrentlyKnownStructures.fromKnown(knownStructures))
     program.statements.collect { case definition: S.ClassDef => definition }.foreach { definition =>
       context.registerClass(definition.name, BeDefineClass(BeEntityName.fromCodeString(definition.name), Nil, Nil))
@@ -59,6 +60,10 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
     case definition: S.ClassDef => buildClass(definition, context)
     case definition: S.FunctionDef => buildFunction(definition, context)
     case S.Declare(name, typeHint) => context.defineVariable(name, dataType(typeHint))
+    // Assignments bind to module variables already; `global` makes sure the module variable exists.
+    case S.Global(names) =>
+      names.foreach(context.moduleVariable(_, BeDataType.AnyType))
+      BeExpression.pass
     case S.Assign(name, Some(typeHint), value) =>
       val variable = context.defineVariable(name, dataType(typeHint))
       BeAssignVariable(variable, expression(value, context))
@@ -74,30 +79,35 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
       BeIfElse(BeSequence.conditionalBody(List(expression(condition, context))), body(thenBody, context), body(elseBody, context))
     case S.While(condition, loopBody) =>
       BeWhile(BeSequence.conditionalBody(List(expression(condition, context))), body(loopBody, context))
-    case S.Repeat(times, loopBody) => BeRepeatNr(times, body(loopBody, context))
-    case S.For(variable, start, end, loopBody) =>
+    case S.Repeat(times, loopBody) => BeRepeatNr(expression(times, context), body(loopBody, context))
+    case S.For(variable, start, end, loopBody, up) =>
       val (first, last) = (expression(start, context), expression(end, context))
       val counter = context.defineVariable(variable, BeDataType.Numeric)
-      BeFor(counter, first, last, body(loopBody, context))
+      BeFor(counter, first, last, body(loopBody, context), if up then BeFor.Direction.Up else BeFor.Direction.Down)
     case S.Return(value) => BeReturn(value.map(expression(_, context)))
     case S.Evaluate(value) => expression(value, context)
     case S.Comment(text) => BeSingleLineComment(LanguageMap.universalMap(text))
     case S.Pass => BeExpression.pass
     case S.Unsupported(source, reason, true) => BeExpressionUnparsable(source, reason, Some(language))
-    case S.Unsupported(source, _, false) => BeExpressionUnsupported(source, Some(language))
+    case S.Unsupported(source, reason, false) => BeExpressionUnsupported(source, Some(language), reason)
   }
 
   private def buildFunction(definition: S.FunctionDef, context: ParseContext): BeDefineFunction = {
     context.pushScope()
     val built = try {
       val parameters = definition.parameters.map(parameter => context.defineVariable(parameter.name, dataType(parameter.typeHint))).toList
-      val result = definition.returnType.map(typeHint => BeDefineVariable(BeEntityName.fromUniversalNameInParts("return"), dataType(typeHint)))
-      BeDefineFunction(parameters, result, body(definition.body, context),
+      val signature = BeDefineFunction(parameters, result(definition.returnType), BeExpression.pass,
         BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(definition.name)))
+      context.declareFunction(definition.name, signature)
+      signature.copy(body = body(definition.body, context))
     } finally context.popScope()
     context.registerFunction(definition.name, built)
     built
   }
+
+  /** A function's result; `None`/`void` and a missing hint both mean that it returns nothing. */
+  private def result(returnType: Option[ParsedType]): Option[BeDefineVariable] =
+    returnType.filterNot(_ == ParsedType.Unit).map(typeHint => BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), dataType(typeHint)))
 
   // Classes: signatures are bound before bodies; definitions never contain a receiver parameter.
 
@@ -110,7 +120,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
   private def methodSignature(owner: BeDefineClass, method: S.FunctionDef): BeDefineFunction =
     BeDefineFunction(
       method.parameters.map(parameter => BeDefineVariable(BeEntityName.fromCodeString(parameter.name), dataType(parameter.typeHint))).toList,
-      method.returnType.filterNot(_ == ParsedType.Unit).map(typeHint => BeDefineVariable(BeEntityName.fromCodeString("result"), dataType(typeHint))),
+      result(method.returnType),
       BeExpression.pass,
       BeFunctionTypeInfo(Some(owner), Option.when(kind(method) != Constructor())(BeEntityName.fromCodeString(method.name)), kind(method)))
 
