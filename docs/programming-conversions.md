@@ -81,6 +81,20 @@ A top-level `if __name__ == "__main__":` is read as its body, so a guarded `main
 
 The shared numeric subset uses double precision. Java integer declarations are widened on cross-language conversion; `ConversionResult` reports this as a loss because wrapping overflow and truncating division are not preserved. Same-language source grouping retains the original types.
 
+## Unfinished and unsupported source
+
+Front ends keep source they cannot read as `BeExpressionUnparsable` and recognised source without a shared form as `BeExpressionUnsupported`. Placeholders keep their text, so editing in the same language never loses code.
+
+[`ProgrammingStateDerivations.convertToLanguage`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/ProgrammingStateDerivations.scala) rejects conversion to another language at the first placeholder, whatever the source language. The diagnostic gives:
+
+- the kind (`Unparsable` or `UnsupportedConstruct`);
+- the line and column in the student's text, since parsers mask library definitions rather than remove them;
+- no partial program.
+
+Malformed Snap XML is unparsable. The drawing interpreter stops with a failure at a placeholder instead of skipping it. `IncompleteSourceConversionSpec` covers these rules for every pair of languages and checks that conversion never throws.
+
+Python's `import turtle`, `from turtle import *` and `from turtle import …` all mean the turtle library. `import turtle as t` is reported as unsupported.
+
 ## Entry points and empty programs
 
 The main sequence has one canonical shape per language, laid out by `ModuleLayout` for both printers. Snap marks it with a green flag, which is emitted even when no blocks follow. Java prints object classes, then `class Main` with static fields and methods and `main(String[] unusableArgs)`; empty source becomes `Main` with an empty `main`. Python prints classes, module declarations, functions and literal-initialised variables, then a called `def main()` ([`PythonEntryPoint`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/expressionpython/PythonEntryPoint.scala)). Every module variable assigned in `main` is declared with its type at module level (`x: float`, `static double x;`); Python's `main` declares it `global`, and a local variable is annotated on its first assignment only. When Python is converted to a BeExpression, a parameterless `main` that is called once, by the last top-level statement, becomes the main sequence again; any other `main` stays an ordinary function. Empty raw source in any language is therefore an empty program that survives every conversion (`StructuredProgrammingStateSpec`).
