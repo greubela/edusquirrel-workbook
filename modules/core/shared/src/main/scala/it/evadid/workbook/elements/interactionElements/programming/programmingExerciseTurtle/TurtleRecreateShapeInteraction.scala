@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.grading.GradingImportance.REQUIRED_TEST
@@ -24,7 +25,9 @@ case class TurtleRecreateShapeInteraction
   initProgram: ProgrammingState,
   desiredResult: TurtleGraphic,
   comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes,
-  customExerciseConfig: Option[RecreateTurtleDidacticConfig] = Some(defaultDidacticConfig)
+  customExerciseConfig: Option[RecreateTurtleDidacticConfig] = Some(defaultDidacticConfig),
+  structureTests: Seq[ProgramStructureGrader] = Seq.empty,
+  instructionText: Option[LanguageMapContentId] = None
 ) extends WorkbookInteractionElement[TurtleRecreateShapeInteractionFormat.type] {
 
   override val defaultValue: ProgrammingState = initProgram
@@ -36,7 +39,7 @@ case class TurtleRecreateShapeInteraction
 
   override val gradingElements: Seq[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]] =
     List(RecreateShapeGrader(desiredResult, REQUIRED_TEST, elementId + "-grader", comparisonPolicy)) ++
-      TurtleCommandUsageGrader.forLimits(elementId, exerciseConfig.maxCommandUsage)
+      TurtleCommandUsageGrader.forLimits(elementId, exerciseConfig.maxCommandUsage) ++ structureTests
   //val scaffoldingElement: Option[WorkbookInteractionScaffolder[ProgrammingState, ?]] = None
 
 }
@@ -44,13 +47,15 @@ case class TurtleRecreateShapeInteraction
 object TurtleRecreateShapeInteraction  {
 
   val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
-    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "comparisonPolicy", "customExerciseConfig")
+    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "comparisonPolicy", "customExerciseConfig", "structureTests", "instructionText")
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, element: TurtleRecreateShapeInteraction): WorkbookElementSerializable = {
       val serialized = baseElement
         .withElementAddedAs("initProgram", element.initProgram)
         .withElementAddedAs("desiredResult", element.desiredResult)
         .withElementAddedAs("customExerciseConfig", element.customExerciseConfig)
+        .withElementAddedAs("structureTests", element.structureTests)
+        .withElementAddedAs("instructionText", element.instructionText)
       if element.comparisonPolicy == TurtleDrawingPolicy.Strokes then serialized
       else serialized.withElementAddedAs("comparisonPolicy", element.comparisonPolicy)
     }
@@ -62,6 +67,8 @@ object TurtleRecreateShapeInteraction  {
         serialized.getElementAs[TurtleGraphic]("desiredResult"),
         serialized.getOptionalElementAs[TurtleDrawingPolicy]("comparisonPolicy", TurtleDrawingPolicy.Strokes),
         serialized.getOptionalElementAs[Option[RecreateTurtleDidacticConfig]]("customExerciseConfig", None),
+        serialized.getElementAs[Seq[ProgramStructureGrader]]("structureTests"),
+        serialized.getElementAs[Option[LanguageMapContentId]]("instructionText"),
       )
   }
 }

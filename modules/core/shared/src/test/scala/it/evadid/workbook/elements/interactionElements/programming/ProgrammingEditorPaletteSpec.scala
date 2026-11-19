@@ -15,7 +15,7 @@ class ProgrammingEditorPaletteSpec extends FunSuite {
     List(ProgrammingEditorPalette.Default, ProgrammingEditorPalette.PythonCompatibleSnap,
       ProgrammingEditorPalette.BeginnerTurtle, ProgrammingEditorPalette.Embroidery).foreach { palette =>
       palette.layout match
-        case PaletteLayout.Mixed(selectors) =>
+        case PaletteLayout.Mixed(selectors, _, _) =>
           val unknown = selectors.filterNot(SnapPaletteCatalog.pythonCompatibleSelectorSet.contains)
           assertEquals(unknown, Nil, clue = palette.toString)
         case _ => ()

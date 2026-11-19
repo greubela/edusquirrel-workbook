@@ -32,7 +32,7 @@ import it.evadid.workbook.model.qr.QrCode
 import it.evadid.workbook.abstractions.grading.{GradingResult, WorkbookInteractionGrader}
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputLlmGrader
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleCommandUsageGrader}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleCommandUsageGrader, ProgramStructureGrader}
 import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
 import upickle.default.*
 
@@ -110,6 +110,7 @@ object InteractionFormat {
 
   private lazy val programmingGraders = gradersFor[ProgrammingState, AdditionalProgrammingTestInfo](
     Serializer.serializerForSubclass[RecreateShapeGrader, WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](classOf[RecreateShapeGrader]),
+    Serializer.serializerForSubclass[ProgramStructureGrader, WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](classOf[ProgramStructureGrader]),
     Serializer.serializerForSubclass[TurtleCommandUsageGrader, WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](classOf[TurtleCommandUsageGrader]),
     Serializer.serializerForSubclass[ProgrammingUnitTestGrader, WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](classOf[ProgrammingUnitTestGrader]))
   private lazy val textGraders = gradersFor[String, MessengerModel](

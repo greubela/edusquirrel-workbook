@@ -37,5 +37,7 @@
   "evacuation-title": "Evakuering med gitterautomater",
   "evacuation-description": "Opret grundplaner, sammenlign skabe og døre, og undersøg evakueringsmodellernes begrænsninger.",
   "embroidery-preview-title": "Broderimaskine – interaktiv Turtle-forhåndsvisning",
-  "embroidery-preview-description": "Programmér mønstre direkte i editoren med forgreninger og rekursion. Ny udgave på tysk og engelsk."
+  "embroidery-preview-description": "Programmér mønstre direkte i editoren med forgreninger og rekursion. Ny udgave på tysk og engelsk.",
+  "2026GdP1-title": "2026GdP1 – Turtle-grafik og programstruktur",
+  "2026GdP1-description": "Øv firkanter, løkker, funktioner og parametre med Snap eller Python."
 }

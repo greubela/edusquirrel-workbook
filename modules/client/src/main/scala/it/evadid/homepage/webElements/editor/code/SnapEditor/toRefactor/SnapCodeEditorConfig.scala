@@ -104,7 +104,7 @@ object SnapCodeEditorConfig:
   def forPalette(palette: ProgrammingEditorPalette): SnapCodeEditorConfig = {
     val layout = palette.layout
     val showCategories = layout match
-      case PaletteLayout.Mixed(_) => false
+      case PaletteLayout.Mixed(_, _, _) => false
       case _ => true
     Testing.copy(
       parts = Testing.parts.copy(libraryCategories = showCategories),
@@ -124,8 +124,9 @@ object SnapCodeEditorConfig:
         includeMakeBlockButton = tab == SnapTurtleCatalog.PaletteTab.Variables
       )
     }
-    case PaletteLayout.Mixed(selectors) =>
-      List(mixedTab("blocks", "Blocks", selectors.map(block(_))))
+    case PaletteLayout.Mixed(selectors, customBlocks, variables) =>
+      List(mixedTab("blocks", "Blocks", selectors.map(block(_)),
+        includeVariableControls = variables, includeMakeBlockButton = customBlocks))
 
   /** Explicit palette limited to blocks with full Snap ↔ BeExpression ↔ Python support. */
   val PythonCompatibleSnapCategories: Seq[LibraryTab] =

@@ -37,5 +37,7 @@
   "evacuation-title": "Evakuierung mit Gitterautomaten",
   "evacuation-description": "Erstelle Grundrisse, vergleiche Spinde und Türen und hinterfrage Evakuierungsmodelle.",
   "embroidery-preview-title": "Stickmaschine – interaktive Turtle-Vorschau",
-  "embroidery-preview-description": "Programmiere Muster direkt im Editor, mit Fallunterscheidungen und Rekursion. Neue Fassung auf Deutsch und Englisch."
+  "embroidery-preview-description": "Programmiere Muster direkt im Editor, mit Fallunterscheidungen und Rekursion. Neue Fassung auf Deutsch und Englisch.",
+  "2026GdP1-title": "2026GdP1 – Turtle-Grafik und Programmstruktur",
+  "2026GdP1-description": "Übe Quadrate, Wiederholungen, eigene Funktionen und Parameter mit Snap oder Python."
 }
