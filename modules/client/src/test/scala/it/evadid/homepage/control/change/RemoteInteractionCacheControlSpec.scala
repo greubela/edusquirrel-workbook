@@ -16,7 +16,7 @@ import it.evadid.homepage.control.model.*
 import it.evadid.homepage.control.info.interaction.SyncReporter
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.homepage.workbook.syncDestination.InMemoryHistoryDatabase
-import it.evadid.sql.DatabaseConfigWithCredentials
+import it.evadid.sql.{DatabaseConfigWithCredentials, DatabaseHistoryFormat}
 import it.evadid.sql.DatabaseHistoryFormat.BlobFormat
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
@@ -75,7 +75,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     val info = FullInfo(HomepageInfo(AppLanguage.English,
       Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)), Some(user),
       AllDisplayInfo(false, None), LanguageMapStorage.empty))
-    private val database = InMemoryHistoryDatabase()
+    val database = InMemoryHistoryDatabase()
 
     private def history(text: String, index: Int) = InteractionHistoryJson.fromHistory(TextInteractionFormat,
       InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
@@ -310,6 +310,76 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           assert(writes.forall(_.histories.forall(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == "transaction edit"))))
         }.andThen { case _ => owner.killSubscriptions() }
       }
+    }
+  }
+
+  /** Event ids each destination format received for each interaction key, from the recorded store commands. */
+  private def sentEventIds(fixture: Fixture): Map[(DatabaseHistoryFormat, String), Set[String]] =
+    fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name).map(command => read[BulkStoreToDbRequest](command.json))
+      .flatMap(request => request.syncContexts.zip(request.histories).map((key, history) =>
+        (request.databaseFormat, key.keyForSerialisation) -> history.typedAs(TextInteractionFormat).events.values.map(_.eventId)))
+      .groupMapReduce(_._1)(_._2)(_ ++ _)
+
+  /** Event ids each destination format holds for each interaction key. */
+  private def heldEventIds(fixture: Fixture): Map[(DatabaseHistoryFormat, String), Set[String]] =
+    fixture.database.rows.now().map { case ((format, key), history) =>
+      (format, key.keyForSerialisation) -> history.typedAs(TextInteractionFormat).events.values.map(_.eventId)
+    }
+
+  /** Every event of every local history, as each destination's strategy selects it, was either sent to that
+    * destination in some store command or already held there (it was fetched from it) before the commands.
+    */
+  private def assertEveryLocalEventSent(fixture: Fixture, heldBefore: Map[(DatabaseHistoryFormat, String), Set[String]]): Unit = {
+    val sent = sentEventIds(fixture)
+    for
+      information <- fixture.user.config.syncDestinations
+      element <- fixture.elements
+    do {
+      val format = information.syncDestination.asInstanceOf[SyncDestinationBasedOnHistoryDatabase].format
+      val key = element.interactionVariable.keyForSerialization
+      val local = element.interactionVariable.currentHistory.cleanWithStrategy(information.syncStrategy).events.values
+      val known = sent.getOrElse(format -> key, Set.empty) ++ heldBefore.getOrElse(format -> key, Set.empty)
+      val missing = local.filterNot(event => known.contains(event.eventId))
+      assertEquals(missing.map(event => (event.associatedState, event.updateImportance)), Set.empty, s"$format $key")
+    }
+  }
+
+  test("every event of every local history reaches at least one store command of each destination") {
+    val fixture = new Fixture
+    fixture.withHttp {
+      val heldBefore = heldEventIds(fixture)
+      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+        val context = fixture.info.workbookContextInformation
+        for
+          (element, index) <- fixture.elements.zipWithIndex
+          (value, importance) <- List("draft" -> UpdateImportance.MINOR, "typing" -> UpdateImportance.TEMPORARY,
+            "submitted" -> UpdateImportance.MAJOR, "revised" -> UpdateImportance.MINOR)
+        do element.interactionVariable.setStateFromUserInteraction(s"$value-$index", importance, context = context)
+        fixture.info.syncControl.storeAll(true)
+      }.map { _ =>
+        assertEveryLocalEventSent(fixture, heldBefore)
+        assert(fixture.elements.forall(_.interactionVariable.currentHistory.allStates.exists(_.newState.startsWith("revised"))))
+      }
+    }
+  }
+
+  test("an edit made while a store is in flight is sent by a later store command") {
+    val fixture = new Fixture
+    val gate = Promise[Unit]()
+    fixture.withHttp {
+      val heldBefore = heldEventIds(fixture)
+      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+        val context = fixture.info.workbookContextInformation
+        fixture.elements.foreach(_.interactionVariable.setStateFromUserInteraction("before", UpdateImportance.MAJOR, context = context))
+        fixture.beforeResponse.set(command => if command.name == bulkStoreToDbCommand.name then gate.future else Future.unit)
+        val first = fixture.info.syncControl.storeAll(true)
+        fixture.elements.foreach(_.interactionVariable.setStateFromUserInteraction("during", UpdateImportance.MAJOR, context = context))
+        gate.success(())
+        first.flatMap { _ =>
+          fixture.beforeResponse.set(_ => Future.unit)
+          fixture.info.syncControl.storeAll(true)
+        }
+      }.map(_ => assertEveryLocalEventSent(fixture, heldBefore))
     }
   }
 
