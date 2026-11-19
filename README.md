@@ -198,7 +198,7 @@ avoid exhaustive class/method lists and historical test-run logs.
 - [Snap command execution service](docs/snap-turtle-command-execution-overview.md): implemented snapshot extraction, Pyodide boundary and editor integration.
 - [Core extraction proposals](docs/core-extraction-proposals.md): reviewed dependency boundaries and proposed follow-up tasks.
 - [Programming conversions](docs/programming-conversions.md): shared VM transformation packages and their state conversion API.
-- [Python parsing](docs/python-parsing-architecture.md): normalization and parser responsibilities.
+- [Source parsing](docs/python-parsing-architecture.md): fastparse grammars, the shared parsed model and lexical structure.
 - [Core test guide](docs/core-package-unit-tests.md): test locations, behavioral expectations and verification commands.
 - [Testing and serialization audit](docs/testing-and-serialization-audit.md): codec contracts, the serialization inventory and behavioral verification.
 - [Workbook interaction roadmap](WORKBOOK_INTERACTIONS.md): reusable capabilities and edition priorities.

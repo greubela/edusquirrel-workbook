@@ -18,7 +18,7 @@ import it.evadid.vm.types.{BeDataValueLiteral, BeScope}
   * order, in `main`. Each module variable they assign is declared with its type at module level
   * (`x: float`, `static double x;`) unless the module already declares it, so both languages keep
   * their type hints; Python's `main` then declares those names `global`. Comments stay with the item
-  * that follows them.
+  * that follows them, and classes come first because structured sources hoist class definitions.
   */
 object ModuleLayout {
   final case class Layout(module: Seq[BeExpression], main: Seq[BeExpression], mainVariables: Seq[BeDefineVariable])
