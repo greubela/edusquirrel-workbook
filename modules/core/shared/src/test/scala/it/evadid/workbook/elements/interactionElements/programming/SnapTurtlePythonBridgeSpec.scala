@@ -8,7 +8,7 @@ import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
+import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
@@ -572,7 +572,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     val definition = SnapCustomBlockRules.globalDefinitions(xml).head
     assertEquals(definition.spec, "draw %distance")
     assertEquals(definition.slots.map(_.slotType), List("%s"))
-    assertEquals(SnapXmlParser.child(definition.element.inner, "inputs").map(_.outer), Some(inputs))
+    assertEquals(definition.element.element.named("inputs").headOption.map(_.element.toXml), Some(inputs))
   }
 
   test("applyPython keeps parameterless definitions without input slots") {

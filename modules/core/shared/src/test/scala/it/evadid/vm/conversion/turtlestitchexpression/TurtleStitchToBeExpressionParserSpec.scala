@@ -9,7 +9,7 @@ import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
+import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
 
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 
@@ -423,16 +423,16 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assertEquals(after.blockType, before.blockType)
     assertEquals(after.rawCategory, before.rawCategory)
     assertEquals(
-      SnapXmlParser.child(after.element.inner, "inputs").map(_.outer),
-      SnapXmlParser.child(before.element.inner, "inputs").map(_.outer)
+after.element.element.named("inputs").headOption.map(_.element.toXml),
+      before.element.element.named("inputs").headOption.map(_.element.toXml)
     )
     assertEquals(
-      SnapXmlParser.child(after.element.inner, "comment").map(_.outer),
-      SnapXmlParser.child(before.element.inner, "comment").map(_.outer)
+after.element.element.named("comment").headOption.map(_.element.toXml),
+      before.element.element.named("comment").headOption.map(_.element.toXml)
     )
     assert(reXml.contains("""helper="true""""), clue = reXml)
 
-    val body = after.bodyScript.map(_.inner).getOrElse("")
+    val body = after.bodyScript.map(_.element.toXml).getOrElse("")
     assert(body.contains("""s="turn""""), clue = body)
     assert(!body.contains("""s="forward""""), clue = body)
     assert(body.contains("""<block var="size"/>"""), clue = body)

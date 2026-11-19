@@ -5,7 +5,6 @@ import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*

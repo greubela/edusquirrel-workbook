@@ -1,7 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
 import com.raquo.airstream.state.Var
 

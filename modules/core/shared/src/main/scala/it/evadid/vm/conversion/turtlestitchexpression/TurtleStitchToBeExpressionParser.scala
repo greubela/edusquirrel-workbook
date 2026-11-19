@@ -3,7 +3,6 @@ package it.evadid.vm.conversion.turtlestitchexpression
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapexpression.SnapInputCodec
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.{BlockLike, BoolLiteral, ColorLiteral, CustomBlockCall, CustomBlockDefinition, InputValue, ListLiteral, Literal, NestedBlock, NestedScript, PrimitiveBlock, Project, Script}
 import it.evadid.vm.code.abstractions.BeExpression

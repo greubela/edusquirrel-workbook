@@ -10,7 +10,6 @@ import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapexpression.SnapInputCodec
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
 
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
@@ -168,16 +167,14 @@ object SnapProjectXml {
    * previous XML registered are kept so a reload does not drop the exercise tabs.
    */
   private def renderPalette(plans: CustomBlockPlans, previousXml: String): String = {
-    val previous = SnapXmlParser
-      .elements(previousXml, "palette")
-      .flatMap(palette => SnapXmlParser.children(palette.inner).filter(_.tag == "category"))
-    val previousByName = previous.flatMap(node => node.attr("name").map(_ -> node)).toMap
-    val names = (previous.flatMap(_.attr("name")) ++ plans.categories).distinct
+    val previous = SnapCustomBlockRules.paletteEntries(previousXml)
+    val previousByName = previous.flatMap(node => node.attribute("name").map(_ -> node)).toMap
+    val names = (previous.flatMap(_.attribute("name")) ++ plans.categories).distinct
       .filterNot(SnapCustomBlockRules.BuiltInCategories.contains)
     if names.isEmpty then ""
     else
       val categories = names.map { name =>
-        val color = previousByName.get(name).flatMap(_.attr("color")).getOrElse(DefaultPaletteColor)
+        val color = previousByName.get(name).flatMap(_.attribute("color")).getOrElse(DefaultPaletteColor)
         s"""<category name="${SnapXmlText.escape(name)}" color="${SnapXmlText.escape(color)}"/>"""
       }
       categories.mkString("<palette>", "", "</palette>")

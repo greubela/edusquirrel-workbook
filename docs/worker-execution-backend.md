@@ -19,11 +19,11 @@ on demand. The HTTP backend remains available as `backendExecutor`. See
 ```scala
 import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
 import scala.concurrent.{ExecutionContext, Future}
 
 def parseBlocks(fullInfo: FullInfo, xml: String)
-    (using ExecutionContext): Future[Seq[SnapXmlParser.Element]] =
+    (using ExecutionContext): Future[Seq[SnapScalaModel.Element]] =
   WorkerCommands.parseSnapXml.sendCommandTo(
     fullInfo.defaults.workerExecuter, WorkerCommands.ParseSnapXmlRequest(xml, "block")
   ).map(_.result)

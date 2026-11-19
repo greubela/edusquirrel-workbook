@@ -2,7 +2,6 @@ package it.evadid.vm.conversion.snapexpression
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchToBeExpressionParser
 import munit.FunSuite
 
