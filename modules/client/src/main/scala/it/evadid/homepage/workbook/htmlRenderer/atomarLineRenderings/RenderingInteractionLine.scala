@@ -1,18 +1,15 @@
 package it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings
 
-import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.linePanelBottom.GradingInfoLine
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.{InteractionFeedbackPanel, InteractionInfoPanel}
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.homepage.control.info.interaction.GradingReporter
 
 case class RenderingInteractionLine[F <: InteractionFormat](
                                              interactionElement: WorkbookInteractionElement[F],
                                              content: DomElementCollection,
-                                             additionalCssStr: String,
-                                             showGradingLine: Signal[Boolean] = Var(false).signal
+                                             additionalCssStr: String
                                            ) extends AtomarLineRendering {
 
   lazy val gradingReporter: GradingReporter = fullInfo.signals.reportersFor(interactionElement).grading
@@ -22,7 +19,10 @@ case class RenderingInteractionLine[F <: InteractionFormat](
 
   override lazy val elementsWithoutContainer: DomElementCollection = createElementsWithoutContainer
 
-  private val gradingLine = GradingInfoLine(interactionElement, gradingReporter)
+  /** Every interaction with grading or hints shows the shared feedback panel below its content. */
+  private lazy val feedbackPanel: Option[Element] =
+    Option.when(gradingReporter.isGradingSupported || gradingReporter.isScaffoldingSupported)(
+      InteractionFeedbackPanel(interactionElement, gradingReporter).getDomElement())
 
   override lazy val render: Element = {
     div(
@@ -34,10 +34,7 @@ case class RenderingInteractionLine[F <: InteractionFormat](
 
   private def createElementsWithoutContainer: Element = div(
     cls := interactionContentCssString + " " + additionalCssStr, //
-    children <-- content.allElementsSignal.combineWith(showGradingLine).map((regularContent, showGradingLine) => {
-      if (showGradingLine) regularContent ++ List(gradingLine.getDomElement())
-      else regularContent
-    })
+    children <-- content.allElementsSignal.map(_ ++ feedbackPanel.toList)
   )
 
 

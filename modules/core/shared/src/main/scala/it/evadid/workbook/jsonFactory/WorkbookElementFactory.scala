@@ -188,6 +188,7 @@ object WorkbookElementFactory {
     classOf[SqlCommandExercise].getSimpleName -> SqlCommandExercise.factory,
     classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.factory,
     classOf[ProgrammingExerciseFullJava].getSimpleName -> ProgrammingExerciseFullJava.factory,
+    classOf[SortListExercise].getSimpleName -> SortListExercise.factory,
     //  classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
     classOf[WorkbookImageElement.LanguageMapBasedWorkbookImageElement].getSimpleName -> LanguageMapBasedWorkbookImageElement.factory
   )

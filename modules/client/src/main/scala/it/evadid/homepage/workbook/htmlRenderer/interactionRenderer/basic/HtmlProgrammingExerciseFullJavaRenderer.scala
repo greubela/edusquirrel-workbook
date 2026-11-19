@@ -19,6 +19,8 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.interaction.sync.{SyncControl, UpdateImportance}
 import it.evadid.homepage.control.info.interaction.GradingReporter
+import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
+import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 
 case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFactory[ProgrammingExerciseFullJava] {
   private[homepage] def editorState(element: ProgrammingExerciseFullJava, syncControl: SyncControl): Var[ProgrammingState] =
@@ -31,17 +33,24 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
                                        ):
   EditorWithWorkbookPanel[ProgrammingExerciseWithLlmScaffoldingAndGrading.type, EvaEditorConfig] = {
 
-    val draw = new TurtleTaskEditorExtension(boundVar, None)
-    val drawCard = ElementCard(LanguageMapContentId("basic/DrawTitle"), draw.getDomElement())
+    // Data exercises show the list or sudoku after main; other programs keep the turtle drawing.
+    val draw = Option.when(element.dataView.isEmpty)(new TurtleTaskEditorExtension(boundVar, None))
+    val previewCard = element.dataView match {
+      case Some(view) => ElementCard(LanguageMapContentId("basic/programDataTitle"),
+        new ProgramDataPreview(boundVar, view, key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
+      case None => ElementCard(LanguageMapContentId("basic/DrawTitle"), draw.get.getDomElement())
+    }
+    val instruction = element.instructionText.map(text => DisplayLangMapContent(element.elementId + "-sidebar-instruction", text,
+      LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)))
 
     val evaEditor = EvaEditor(
       fullInfo.loggerSystemInfo.uiAndDomLogger,
       boundVar,
-      List(draw),
+      draw.toList,
       Var(EvaEditorConfig(enabledLanguages = List(AppLanguage.Java))),
       humanLanguage = fullInfo.signals.currentLanguage,
       labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
-    EditorWithWorkbookPanel(element, None, gradingReporter, List(drawCard), evaEditor)
+    EditorWithWorkbookPanel(element, instruction, gradingReporter, List(previewCard), evaEditor)
   }
 
   override protected def createRendering(workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {

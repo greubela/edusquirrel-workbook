@@ -1,0 +1,222 @@
+/* Grading and hint feedback, shared by the workbook overview (below an exercise)
+   and the fullscreen editor sidebar. Both render FeedbackPanels with the same markup. */
+
+/* Tokens are defined in generic/colors.css. Tone variables: every status-colored part reads --tone / --tone-surface. */
+.feedback-status--correct { --tone: var(--feedback-correct); --tone-surface: var(--feedback-correct-surface); }
+.feedback-status--partial { --tone: var(--feedback-partial); --tone-surface: var(--feedback-partial-surface); }
+.feedback-status--incorrect,
+.feedback-status--error { --tone: var(--feedback-incorrect); --tone-surface: var(--feedback-incorrect-surface); }
+.feedback-status--pending { --tone: var(--feedback-pending); --tone-surface: var(--feedback-pending-surface); }
+.feedback-status--neutral { --tone: var(--feedback-neutral); --tone-surface: var(--feedback-neutral-surface); }
+
+.feedback-panel {
+    display: grid;
+    gap: var(--space-sm);
+    min-width: 0;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+    line-height: 1.45;
+    text-align: start;
+}
+
+/* Exercise content keeps its full-height layout; the panel follows it instead of overflowing. */
+.interaction-element-content:has(> .feedback-panel) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+.interaction-element-content:has(> .feedback-panel) > * { height: auto; }
+.interaction-element-content:has(> .feedback-panel) > :not(.feedback-panel) { flex: 1 1 auto; }
+
+.side-panel-interaction {
+    display: grid;
+    gap: var(--space-md);
+}
+
+/* Icons */
+.feedback-icon {
+    width: var(--feedback-icon-size);
+    height: var(--feedback-icon-size);
+    flex: none;
+}
+
+.feedback-icon-slot { display: inline-flex; }
+.feedback-icon-spin { transform-origin: 12px 12px; animation: feedback-spin 1s linear infinite; }
+
+@keyframes feedback-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .feedback-icon-spin { animation: none; }
+}
+
+/* Action bar: request buttons followed by status chips. */
+.feedback-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm) var(--space-md);
+    min-width: 0;
+}
+
+.feedback-actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+
+/* Scoped with the element name to win over the global `:root button` defaults in colors.css. */
+.feedback-panel button.feedback-action,
+.feedback-panel button.feedback-action:hover,
+.feedback-panel button.feedback-action:focus {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    min-height: 36px;
+    margin: 0;
+    padding: var(--space-xs) var(--space-md);
+    border: 1px solid var(--color-button-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+    color: var(--color-text-primary);
+    box-shadow: none;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.feedback-panel button.feedback-action:hover:not(:disabled) { background: var(--color-surface-muted); }
+.feedback-panel button.feedback-action--primary,
+.feedback-panel button.feedback-action--primary:hover,
+.feedback-panel button.feedback-action--primary:focus {
+    border-color: var(--color-accent-primary);
+    background: var(--color-accent-primary);
+    color: var(--color-text-inverse);
+}
+.feedback-panel button.feedback-action--primary:hover:not(:disabled) { border-color: var(--color-accent-strong); background: var(--color-accent-strong); }
+.feedback-panel button.feedback-action:disabled { cursor: progress; opacity: 0.6; }
+.feedback-panel button.feedback-action:focus-visible,
+.feedback-summary:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.feedback-status-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    min-width: 0;
+}
+
+/* Chips */
+.feedback-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 2px var(--space-sm);
+    border-radius: 999px;
+    background: var(--tone-surface, var(--feedback-neutral-surface));
+    color: var(--tone, var(--feedback-neutral));
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.feedback-chip--compact { padding: 1px 6px; font-size: 0.8rem; }
+.feedback-chip--compact .feedback-icon { width: 0.95rem; height: 0.95rem; }
+.feedback-chip__text { color: var(--color-text-primary); }
+.feedback-score-chip .feedback-chip__text { color: inherit; }
+
+.feedback-progress {
+    width: 4.5rem;
+    height: 6px;
+    margin-inline-start: var(--space-xs);
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, currentColor 18%, transparent);
+    appearance: none;
+    overflow: hidden;
+}
+.feedback-progress::-webkit-progress-bar { background: transparent; }
+.feedback-progress::-webkit-progress-value { border-radius: 999px; background: currentColor; }
+.feedback-progress::-moz-progress-bar { border-radius: 999px; background: currentColor; }
+
+/* Collapsible sections (results and hint) */
+.feedback-section {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-base);
+}
+
+.feedback-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-xs) var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    list-style: none;
+    cursor: pointer;
+    background: var(--color-surface-muted);
+}
+
+.feedback-summary::-webkit-details-marker { display: none; }
+.feedback-summary::after {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-inline: auto var(--space-xs);
+    border-right: 2px solid var(--color-text-muted-light);
+    border-bottom: 2px solid var(--color-text-muted-light);
+    transform: rotate(-45deg);
+    transition: transform 0.15s ease;
+}
+details[open] > .feedback-summary::after { transform: rotate(45deg); }
+details[open] > .feedback-summary { border-bottom: 1px solid var(--color-border-soft); }
+.feedback-summary:hover { background: var(--color-gray-1); }
+
+.feedback-summary__icon { display: inline-flex; color: var(--color-accent-strong); }
+.feedback-summary__title { margin: 0; font-size: 0.9rem; font-weight: 700; }
+.feedback-group-chips { display: inline-flex; flex-wrap: wrap; gap: var(--space-xs); }
+
+.feedback-section-content { margin: 0; padding: var(--space-sm) var(--space-md); }
+
+/* Result list */
+.feedback-entries {
+    display: grid;
+    gap: var(--space-xs);
+    list-style: none;
+}
+
+.feedback-entry {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    border-inline-start: 3px solid var(--tone);
+    border-radius: var(--radius-sm);
+    background: var(--tone-surface);
+}
+
+.feedback-entry__icon { display: inline-flex; padding-block-start: 1px; color: var(--tone); }
+.feedback-entry__body { display: grid; gap: 2px; min-width: 0; }
+.feedback-entry__heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0 var(--space-sm);
+}
+.feedback-test-description { font-weight: 600; overflow-wrap: anywhere; }
+.feedback-entry__meta { display: inline-flex; align-items: baseline; gap: var(--space-sm); margin-inline-start: auto; white-space: nowrap; }
+.feedback-entry__status { color: var(--tone); font-size: 0.75rem; font-weight: 700; }
+.feedback-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.feedback-date { color: var(--color-text-muted-light); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+
+.feedback-hint-text { line-height: 1.5; }
+
+/* Sidebar: narrow column, so buttons share the row and labels may wrap. */
+.feedback-panel--sidebar .feedback-actions { flex: 1 1 100%; }
+.feedback-panel--sidebar button.feedback-action { flex: 1 1 0; justify-content: center; }
+
+@media (max-width: 600px) {
+    .feedback-actions { flex: 1 1 100%; }
+    .feedback-panel button.feedback-action { flex: 1 1 0; justify-content: center; }
+}

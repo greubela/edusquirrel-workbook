@@ -39,8 +39,8 @@ case class TurtleCommandUsageGrader(
   override protected def handleGrading(state: ProgrammingState, contextInformation: ExecutionContextInformation)
       : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
     val expression = state.toBeExpression.expression
-    val malformed = expression.recToTree(false, BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())).values.exists {
-      case BeExpressionReference(_, _: BeExpressionUnparsable | _: BeExpressionUnsupported) => true
+    val malformed = expression.subtree.exists {
+      case _: BeExpressionUnparsable | _: BeExpressionUnsupported => true
       case _ => false
     }
     require(!malformed, "Command usage cannot be determined for an unsupported or unfinished program.")

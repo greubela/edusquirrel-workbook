@@ -31,9 +31,6 @@
   "gradingGroupPending": "Non terminé",
   "gradingGroupError": "Erreur d’exécution",
   "gradingGroupNotRequested": "Non demandé",
-  "gradingVisibleCount": "{count} publics",
-  "gradingHiddenCount": "{count} cachés",
-  "gradingNoFeedback": "Aucun retour disponible.",
   "gradingShapeDescription": "Comparer le dessin avec le modèle",
   "gradingUsageCode": "{command} : au plus {maximum} occurrences dans le code",
   "gradingUsageExecution": "{command} : au plus {maximum} appels pendant l’exécution",
@@ -41,14 +38,12 @@
   "scaffoldingReady": "Prêt",
   "gradingCompactScore": "{correct}/{total} corrects",
   "gradingCompactUnavailable": "({count} en attente / indisponibles)",
-  "gradingNoTests": "Aucun test dans ce groupe.",
-  "gradingTestDescription": "Test",
-  "gradingExecutionDate": "Exécuté le",
-  "gradingFeedback": "Retour",
-  "gradingScore": "Score total : {score}",
   "resetAllData": "Réinitialiser toutes les réponses enregistrées",
   "resetAllDataRunning": "Suppression des réponses…",
   "resetAllDataRetry": "Réessayer la réinitialisation complète",
   "resetAllDataConfirm": "Vider tous les stockages locaux de réponses configurés et supprimer les réponses et commentaires de cet utilisateur dans tous les cahiers et toutes les destinations serveur configurées ? Cette action est irréversible.",
-  "resetAllDataError": "Certaines destinations n’ont pas confirmé la suppression. La synchronisation est suspendue pour éviter de réenregistrer les réponses supprimées. Réessayez la réinitialisation."
+  "resetAllDataError": "Certaines destinations n’ont pas confirmé la suppression. La synchronisation est suspendue pour éviter de réenregistrer les réponses supprimées. Réessayez la réinitialisation.",
+  "gradingHiddenTest": "Test masqué",
+  "gradingAiAssessment": "Évaluation de l'IA",
+  "gradingAiCriterion": "Évaluation de l'IA {number}"
 }

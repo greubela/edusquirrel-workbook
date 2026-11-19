@@ -148,6 +148,7 @@ object InteractionFormat {
   case object CompressionExperimentInteractionFormat extends Typed[CompressionExperiment, Unit, Unit]
   case object TurtleRecreateShapeInteractionFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit](programmingGraders)
   case object ProgrammingExerciseFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit](programmingGraders)
+  case object SortListExerciseFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit](programmingGraders)
   case object EvacuationExperimentFormat extends Typed[EvacuationExperiment, Unit, Unit]
 
   lazy val knownFormats: Seq[InteractionFormat] = List(
@@ -181,6 +182,7 @@ object InteractionFormat {
     CompressionExperimentInteractionFormat,
     TurtleRecreateShapeInteractionFormat,
     ProgrammingExerciseFormat,
+    SortListExerciseFormat,
     EvacuationExperimentFormat
   )
 

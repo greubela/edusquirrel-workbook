@@ -8,14 +8,15 @@ import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.ProgramStructureGrader
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{CommandUsageMeasure, RecreateShapeGrader, TurtleCommandUsageGrader}
 import it.evadid.homepage.control.info.interaction.GradingReporter
+import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
 import FeedbackPresentation.*
 import scala.concurrent.{ExecutionContext, Future}
 
-/** Presentation shared by the sidebar and compact line; requests still belong to the existing control. */
+/** Presentation model shared by the overview panel and the editor sidebar; requests still belong to the interaction control. */
 private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFormat](
     val interaction: WorkbookInteractionElement[F],
     reporter: GradingReporter,
@@ -33,6 +34,8 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
 
   def description(entry: GradingSummary.Entry): Signal[String] = entry.grader match {
     case grader: ProgramStructureGrader => helper.plaintextStringSignal(grader.publicDescription)
+    case grader: ProgramDataTestGrader =>
+      helper.plaintextStringSignal(grader.publicDescription).map(fill(_, grader.publicDescriptionArguments))
     case grader: ProgrammingUnitTestGrader => grader.publicDescription
       .map(helper.plaintextStringSignal).getOrElse(Val(grader.testId))
     case _: RecreateShapeGrader => label("gradingShapeDescription")
@@ -41,17 +44,27 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
       label(measure).map(template => template.replace("{command}", grader.command.universalInterpretation())
         .replace("{maximum}", grader.maximum.toString))
     case grader: ProgrammingTestGrader => Val(grader.testId)
-    // Internal LLM instructions and serialized graders are not public descriptions.
+    // Internal LLM instructions are not public descriptions; number criteria only when there are several.
+    case grader if grader.gradingEntity == FeedbackEntity.LlmEntity() =>
+      if aiCriteria <= 1 then label("gradingAiAssessment")
+      else label("gradingAiCriterion").map(_.replace("{number}", entry.index.toString))
     case _ => label("gradingTestNumber").map(_.replace("{number}", entry.index.toString))
   }
 
-  def feedback(entry: GradingSummary.Entry): Signal[String] = entry.result.flatMap(_.feedbackInformation)
-    .filter(_.availableLanguages.nonEmpty).map(localized).getOrElse(label("gradingNoFeedback"))
+  private lazy val aiCriteria = interaction.gradingElements.count(_.gradingEntity == FeedbackEntity.LlmEntity())
+
+  /** Hidden tests reveal only their status; their description and feedback stay private. */
+  def title(entry: GradingSummary.Entry): Signal[String] =
+    if entry.hidden then label("gradingHiddenTest") else description(entry)
+
+  def feedback(entry: GradingSummary.Entry): Option[Signal[String]] =
+    if entry.hidden then None
+    else entry.result.flatMap(_.feedbackInformation).filter(_.availableLanguages.nonEmpty).map(localized)
 
   def scaffoldingLabel(result: ScaffoldingReport): String = result.status.labelKey
 
   def scaffoldingText(result: ScaffoldingReport): Signal[String] =
-    result.feedback.filter(_.availableLanguages.nonEmpty).map(localized).getOrElse(label(scaffoldingLabel(result)))
+    result.feedback.filter(_.availableLanguages.nonEmpty).map(localized).getOrElse(label(result.status.messageKey))
 
   private def request(operation: => Future[?]): Unit = {
     val result = scala.util.Try(operation).fold(Future.failed, identity)

@@ -22,7 +22,8 @@ import it.evadid.workbook.elements.interactionElements.table.*
 import it.evadid.workbook.elements.interactionElements.pixel.*
 import it.evadid.workbook.model.pixel.*
 import it.evadid.workbook.elements.interactionElements.blockchain.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava, SortListExercise, SortingMethod}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{ProgramStructureGrader, ProgramStructureRequirement}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
@@ -95,6 +96,9 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       TurtleRecreateShapeInteraction("turtle-shape", ProgrammingStateRaw(Python, "forward(10)"), TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultForPalette(ProgrammingEditorPalette.Embroidery).copy(maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2))))),
       ProgrammingExercise("programming", Some(SampleBeTest("assert True")), ProgrammingEditorPalette.Embroidery, Some(special)),
       ProgrammingExerciseFullJava("java", Some(SampleBeTest("assert False"))),
+      SortListExercise("sort", ProgrammingStateRaw(Python, "def sortiere():\n    pass"), "sortiere", Seq(3, 1, 2), Seq(Seq(2, 1), Seq()),
+        SortingMethod.BubbleSort, Seq(Python), Seq(ProgramStructureGrader(ProgramStructureRequirement.UsesLoop, "sort-loop", content("test/loop"))),
+        Some(content("exercise/sort"))),
       MailEditor("mail-editor", inbox, special, allowCompose = false),
       MailInteraction("mail-interaction", inbox, special, allowCompose = false),
       CreateQrCodeInteraction("qr", QrCodeRequirements(minBytes = 2, maxBytes = Some(200), requiredMask = Some(3)), QrCode.fromText(special)),
