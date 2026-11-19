@@ -143,8 +143,8 @@ class StructuredProgrammingStateSpec extends FunSuite {
       assertEquals(readBinary[ProgrammingState](writeBinary(value)), value)
       assertEquals(read[ProgrammingState](write(value)).fingerprint(), value.fingerprint())
     }
-    assertEquals(values.head.toLanguage(Python), values.head.toPython)
-    assertEquals(values.last.toLanguage(Java), values.last.toJava)
+    assertEquals(values.head.convertToLanguage(Python).finalState.get, values.head.toPythonStructured)
+    assertEquals(values.last.convertToLanguage(Java).finalState.get, values.last.toJavaStructured)
   }
 
   test("Python classes with two typed instance methods preserve their instance scope") {

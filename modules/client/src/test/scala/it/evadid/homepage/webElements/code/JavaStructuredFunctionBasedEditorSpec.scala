@@ -74,7 +74,7 @@ class JavaStructuredFunctionBasedEditorSpec extends EditorDomSuite {
       labels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading")))
     val close = mount(editor.getDomElement())
     editor.switchTabTo(Python).flatMap { _ =>
-      assert(state.now().isInstanceOf[ProgrammingStatePythonString])
+      assert(state.now().isInstanceOf[ProgrammingStatePythonStructured])
       assert(field.value.contains("forward(10)"), field.value)
       field.value = field.value.replace("forward(10)", "forward(35)")
       edited()

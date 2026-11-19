@@ -23,9 +23,9 @@ class ProgrammingConversionErrorSpec extends FunSuite {
     assert(diagnostic.error.line.exists(_ >= 3))
   }
 
-  test("unknown toLanguage targets are not ProgrammingConversionException") {
+  test("unknown conversion targets return structured diagnostics") {
     // Routing for Snap / Python / Java only; see ProgrammingLanguageConversionSpec.
-    intercept[UnsupportedOperationException](ProgrammingStatePythonString("forward(1)").toLanguage(Cpp))
+    assert(ProgrammingStatePythonString("forward(1)").convertToLanguage(Cpp).conversionInfo.nonEmpty)
   }
 
   test("a python comment that cannot become blocks is reported as unsupported") {

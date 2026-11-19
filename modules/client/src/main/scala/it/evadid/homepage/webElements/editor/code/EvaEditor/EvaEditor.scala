@@ -12,7 +12,9 @@ import org.scalajs.dom
 
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
+import it.evadid.vm.conversion.{ConversionInfo, ConversionResult}
+import it.evadid.util.logging.LoggingLevel
 
 
 /** One editor bound to the answer; panels only observe that same answer. */
@@ -30,7 +32,7 @@ case class EvaEditor(
   def currentConfig: EvaEditorConfig = config.now()
   private val tabs = choices.getOrElse(EvaEditorConfig.tabs(logger, currentConfig, labels, humanLanguage)).distinctBy(_.language)
   private val selected = underlyingVar.signal.map(source => tabs.find(_.language == source.associatedLanguage)).distinct
-  private val lastError = Var(Option.empty[Throwable])
+  private val lastConversion = Var(Option.empty[ConversionResult])
   private val request = Var(Option.empty[AnyRef])
   private val focused = Var(Option.empty[ProgrammingLanguage])
   private val tabListId = s"eva-tabs-${java.util.UUID.randomUUID()}"
@@ -39,49 +41,52 @@ case class EvaEditor(
     def source: ProgrammingState
   }
 
-  private final case class PendingConversion(source: ProgrammingState, result: Future[Try[ProgrammingState]])
+  private final case class PendingConversion(source: ProgrammingState, result: Future[ConversionResult])
     extends ConversionCheck
 
-  private final case class CompletedConversion(source: ProgrammingState, result: Try[ProgrammingState])
+  private final case class CompletedConversion(source: ProgrammingState, result: ConversionResult)
     extends ConversionCheck
 
   private val conversionChecks = Var(Map.empty[ProgrammingLanguage, ConversionCheck])
   private val mounted = Var(false)
-  private val marker: Signal[Option[ProgrammingConversionError]] = lastError.signal.map {
-    case Some(failure: ProgrammingConversionException) => Some(failure.error)
-    case Some(_) => Some(ProgrammingConversionError(ProgrammingConversionKind.UnsupportedConstruct))
-    case None => None
-  }
+  private def failure(result: ConversionResult): Option[ProgrammingConversionException] =
+    Option.when(result.finalState.isEmpty) {
+      val info = result.conversionInfo.find(_.warningLevel == LoggingLevel.ERROR)
+      new ProgrammingConversionException(info.map(_.warningMsg).getOrElse("Conversion failed."),
+        info.flatMap(_.sourceError).getOrElse(ProgrammingConversionError(ProgrammingConversionKind.UnsupportedConstruct)))
+    }
+  private val marker: Signal[Option[ProgrammingConversionError]] = lastConversion.signal.map(
+    _.flatMap(failure).map(_.error))
 
   def selectedLanguage: Option[ProgrammingLanguage] = tabs.find(_.language == underlyingVar.now().associatedLanguage).map(_.language)
 
-  def error: Option[Throwable] = lastError.now()
+  def error: Option[Throwable] = lastConversion.now().flatMap(failure)
 
   def switchTabTo(language: ProgrammingLanguage): Future[Unit] = tabs.find(_.language == language) match {
     case None => Future.unit
     case Some(_) if selectedLanguage.contains(language) =>
       request.set(None)
-      lastError.set(None)
+      lastConversion.set(None)
       Future.unit
     case Some(tab) =>
       val source = underlyingVar.now()
       val token = new Object
       request.set(Some(token))
       checkConversion(tab, source).map { outcome =>
-        if mounted.now() && request.now().contains(token) && underlyingVar.now() == source then outcome match {
-          case Success(converted) => commit(converted)
-          case Failure(error) => lastError.set(Some(error))
+        if mounted.now() && request.now().contains(token) && underlyingVar.now() == source then {
+          outcome.finalState.foreach(commit)
+          lastConversion.set(Some(outcome))
         }
       }
   }
 
-  private def checkConversion(tab: EvaEditorTab, source: ProgrammingState = underlyingVar.now()): Future[Try[ProgrammingState]] =
-    if source.associatedLanguage == tab.language then Future.successful(Success(source))
+  private def checkConversion(tab: EvaEditorTab, source: ProgrammingState = underlyingVar.now()): Future[ConversionResult] =
+    if source.associatedLanguage == tab.language then Future.successful(ConversionResult(source, Some(source), Seq.empty))
     else conversionChecks.now().get(tab.language) match {
       case Some(PendingConversion(`source`, result)) => result
       case Some(CompletedConversion(`source`, result)) => Future.successful(result)
       case _ =>
-        val result = Future(Try(tab.convert(source)))
+        val result = Future(Try(tab.convert(source)).fold(error => ConversionResult.failed(source, error), identity))
         val pending = PendingConversion(source, result)
         conversionChecks.update(_.updated(tab.language, pending))
         result.foreach { outcome =>
@@ -96,7 +101,7 @@ case class EvaEditor(
     }
 
   private def commit(converted: ProgrammingState): Unit = {
-    lastError.set(None)
+    lastConversion.set(None)
     underlyingVar.set(converted)
     request.set(None)
   }
@@ -118,7 +123,7 @@ case class EvaEditor(
   private def tabButton(tab: EvaEditorTab): Element = {
     val status = underlyingVar.signal.combineWith(conversionChecks.signal).map { (source, checks) =>
       checks.get(tab.language) match {
-        case Some(CompletedConversion(`source`, Failure(error))) => Some(describeConversionError(error))
+        case Some(CompletedConversion(`source`, result)) => failure(result).map(describeConversionError)
         case _ => None
       }
     }
@@ -171,13 +176,17 @@ case class EvaEditor(
     underlyingVar.signal.changes --> { _ =>
       request.set(None)
       focused.set(None)
-      lastError.set(None)
+      lastConversion.set(None)
       conversionChecks.set(Map.empty)
     },
     div(cls := "eva-editor__toolbar",
       div(cls := "eva-editor__tabs", role := "tablist", aria.label <-- labels.languages, tabs.map(tabButton)),
-      child.maybe <-- lastError.signal.combineWith(labels.switchFailed).map {
-        case (Some(error), prefix) => Some(div(cls := "eva-editor__error", role := "alert", s"$prefix: ${describeConversionError(error)}"))
+      child.maybe <-- lastConversion.signal.combineWith(labels.switchFailed).map {
+        case (Some(result), prefix) => failure(result) match {
+          case Some(error) => Some(div(cls := "eva-editor__error", role := "alert", s"$prefix: ${describeConversionError(error)}"))
+          case None => Option.when(result.conversionInfo.nonEmpty)(div(cls := "instruction-callout instruction-callout--warning",
+            role := "status", result.conversionInfo.map(info => div(info.warningMsg))))
+        }
         case _ => None
       }),
     div(cls := "eva-editor__content", child <-- selected.map {

@@ -37,6 +37,7 @@ class PythonParser(
     } else {
       val context = new ParseContext(initialStructures)
       val lines = toParsedLines(normalized)
+      PythonClassParser.declareClasses(lines, context, classParserApi)
       val blockResult = parseBlock(lines, 0, 0, context)
       val expression = BeSequence.optionalBody(blockResult.expressions.filter(keepExpression))
       PythonParser.CodeParsingResult(context.definedClasses, context.definedFunctions, context.definedVariables, context.currentStructures, expression)
@@ -62,18 +63,16 @@ class PythonParser(
     PythonStatementParser.parseBlock(lines, startIndex, indent, context, statementApi)
   }
 
-  private def parseClass(lines: Vector[ParsedLine], headerIndex: Int, indent: Int, name: String, basesSource: Option[String], context: ParseContext): ClassParseResult = {
-    val classApi = ClassParserApi(
+  private lazy val classParserApi = ClassParserApi(
       parseBlock = parseBlock,
-      parseWhile = parseWhile,
-      parseIf = parseIf,
-      parseReturn = parseReturn,
       parseExpression = parseExpression,
       parseParameters = parseParameters,
       inferType = inferType,
       mapType = mapType
     )
-    PythonClassParser.parseClass(lines, headerIndex, indent, name, basesSource, context, classApi)
+
+  private def parseClass(lines: Vector[ParsedLine], headerIndex: Int, indent: Int, name: String, basesSource: Option[String], context: ParseContext): ClassParseResult = {
+    PythonClassParser.parseClass(lines, headerIndex, indent, name, basesSource, context, classParserApi)
   }
 
   private def parseFunction(

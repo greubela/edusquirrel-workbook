@@ -95,7 +95,7 @@ object SourceStructure {
   private def extract(source: String, blocks: Vector[Block], python: Boolean, warn: String => Unit): Parts = {
     val classes = blocks.foldLeft(VectorMap.empty[BeEntityName, String]) { (saved, block) =>
       val name = BeEntityName.fromCodeString(block.name)
-      if saved.contains(name) then { warn(s"Duplicate class '${block.name}' ignored; keeping the first definition."); saved }
+      if saved.keys.exists(_.universalInterpretation() == name.universalInterpretation()) then { warn(s"Duplicate class '${block.name}' ignored; keeping the first definition."); saved }
       else {
         val children = blocks.filter(child => child.start > block.start && child.end <= block.end)
         val text = remove(source.substring(block.start, block.end), children.map(c => (c.start - block.start, c.end - block.start)))

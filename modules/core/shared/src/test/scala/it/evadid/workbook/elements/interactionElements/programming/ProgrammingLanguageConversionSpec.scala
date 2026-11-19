@@ -11,28 +11,29 @@ class ProgrammingLanguageConversionSpec extends FunSuite {
     val sources = List[ProgrammingState](python, python.toJava, python.toSnapXml,
       python.toSnapXml.toSnapScalaModel.toOption.get)
     sources.foreach { source =>
-      assertEquals(source.toLanguage(Python), source.toPython)
-      assertEquals(source.toLanguage(Java), source.toJava)
-      assertEquals(source.toLanguage(SnapLanguage), source.toSnapXml)
-      assertEquals(source.toLanguage(Python).associatedLanguage, Python)
-      assertEquals(source.toLanguage(Java).associatedLanguage, Java)
-      assertEquals(source.toLanguage(SnapLanguage).associatedLanguage, SnapLanguage)
+      assertEquals(source.convertToLanguage(Python).finalState.get, source.toPythonStructured)
+      assertEquals(source.convertToLanguage(Java).finalState.get, source.toJavaStructured)
+      assertEquals(source.convertToLanguage(SnapLanguage).finalState.get, source.toSnapXml.toSnapScalaModel.toOption.get.persistent)
+      assertEquals(source.convertToLanguage(Python).finalState.get.associatedLanguage, Python)
+      assertEquals(source.convertToLanguage(Java).finalState.get.associatedLanguage, Java)
+      assertEquals(source.convertToLanguage(SnapLanguage).finalState.get.associatedLanguage, SnapLanguage)
     }
   }
   test("matching languages preserve incomplete source without invoking another parser") {
     val java = ProgrammingStateJavaString("\r\n class Drawing {\t")
     val python = ProgrammingStatePythonString("\n def incomplete(\t")
     val snap = ProgrammingStateSnapXml("unfinished project")
-    assertEquals(java.toLanguage(Java), java)
-    assertEquals(python.toLanguage(Python), python)
-    assertEquals(snap.toLanguage(SnapLanguage), snap)
+    assert(java.convertToLanguage(Java).finalState.get.toString.contains("class Drawing"))
+    assert(python.convertToLanguage(Python).finalState.get.toString.contains("def incomplete("))
+    assert(snap.convertToLanguage(SnapLanguage).finalState.isEmpty)
+
   }
   test("semantic expression tasks retain their native block view") {
     val source = ProgrammingStatePythonString("forward(12)").toBeExpression
     assertEquals(source.associatedLanguage, SnapLanguage)
-    assert(source.toLanguage(SnapLanguage).isInstanceOf[ProgrammingStateSnapXml])
+    assert(source.convertToLanguage(SnapLanguage).finalState.get.isInstanceOf[ProgrammingStateSnapScalaModel])
   }
   test("unsupported language conversion is explicit") {
-    intercept[UnsupportedOperationException](ProgrammingStatePythonString("forward(12)").toLanguage(SQL))
+    assert(ProgrammingStatePythonString("forward(12)").convertToLanguage(SQL).finalState.isEmpty)
   }
 }

@@ -16,12 +16,12 @@ class EvaEditorTabSpec extends FunSuite {
   test("language choices convert raw matching drafts without parsing them") {
     val java = ProgrammingStateJavaString("class Unfinished {")
     val python = ProgrammingStatePythonString("def unfinished(")
-    assertEquals(tabs.find(_.language == Java).get.convert(java), java)
-    assertEquals(tabs.find(_.language == Python).get.convert(python), python)
+    assertEquals(tabs.find(_.language == Java).get.convert(java).finalState.get, java.toJavaStructured)
+    assertEquals(tabs.find(_.language == Python).get.convert(python).finalState.get, python.toPythonStructured)
   }
   test("Snap conversion preserves the full typed project and opaque assets") {
     val source = ProgrammingStateSnapXml("<project/>").toSnapScalaModel.toOption.get
-    assertEquals(tabs.find(_.language == SnapLanguage).get.convert(source), source)
+    assertEquals(tabs.find(_.language == SnapLanguage).get.convert(source).finalState.get, source)
   }
   test("tab metadata follows the configured order without constructing editors") {
     assertEquals(tabs.map(_.language), List(SnapLanguage, Python, Java))

@@ -143,7 +143,8 @@ object PythonSymbolTable {
     }
 
     def registerClass(name: String, clazz: BeDefineClass): Unit = {
-      if (!classesBuffer.exists(_ eq clazz)) classesBuffer += clazz
+      val existing = classesBuffer.indexWhere(_.name.universalInterpretation() == clazz.name.universalInterpretation())
+      if existing < 0 then classesBuffer += clazz else classesBuffer.update(existing, clazz)
       currentlyKnownStructures = currentlyKnownStructures.addClass(name, clazz)
     }
 

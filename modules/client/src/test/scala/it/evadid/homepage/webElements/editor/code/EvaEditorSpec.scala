@@ -90,7 +90,7 @@ class EvaEditorSpec extends EditorDomSuite {
     val source = ProgrammingStatePythonString("forward(12)")
     val f = new Fixture(source)
     f.editor.switchTabTo(Java).flatMap { _ =>
-      assertEquals(f.state.now(), source.toJava)
+      assertEquals(f.state.now(), source.toJavaStructured)
       assertEquals(f.created.now(), Vector(Python, Java))
       assertEquals(f.mounted.now(), Set[ProgrammingLanguage](Java))
       f.editor.switchTabTo(Python)

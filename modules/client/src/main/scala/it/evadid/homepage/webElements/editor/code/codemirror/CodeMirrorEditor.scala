@@ -100,6 +100,7 @@ object CodeMirrorEditor {
         marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): it.evadid.homepage.webElements.HtmlAppElement = {
       val text = state.bimap {
         case ProgrammingStatePythonString(code) => code
+        case value: ProgrammingStatePythonStructured => value.toString
         case _ => ""
       }(ProgrammingStatePythonString(_))
       CodeMirrorEditor(logger, text, Python, Var(config), diagnostics = CodeMirrorEditor.marks(marker), loadingLabel = loading)

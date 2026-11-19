@@ -35,7 +35,6 @@ object JavaStructuredFunctionBasedEditor {
     override val language = it.evadid.core.datastructures.language.AppLanguage.Java
     override val label = tabLabel
     override val css = " eva-editor--java"
-    override def convert(source: ProgrammingState): ProgrammingState = source.toJavaStructured
     override def create(state: Var[ProgrammingState], appearance: EditorAppearance,
         marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement = {
       // A language change reaches bound signals before Laminar unmounts the old tab.

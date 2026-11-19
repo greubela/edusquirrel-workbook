@@ -148,10 +148,6 @@ object SnapCodeEditor {
       tabLabel: String = "Snap!"): EvaEditorTab = new EvaEditorTab {
     override val language = SnapLanguage
     override val label = tabLabel
-    override def convert(source: ProgrammingState): ProgrammingState = source match {
-      case snap: ProgrammingStateSnapScalaModel => snap.persistent
-      case _ => typed(source.toSnapXml)
-    }
     override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
         marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement =
       SnapCodeEditor(tabLogger, state, config, SnapCodeEditorImplDelegateToOriginal(), humanLanguage, marker, loading)

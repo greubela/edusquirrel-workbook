@@ -16,7 +16,7 @@ trait EvaEditorTab {
   def showLabel: Boolean = true
   def icon: Option[ReactiveSvgElement[SVGSVGElement]] = None
   def css: String = ""
-  def convert(source: ProgrammingState): ProgrammingState = source.toLanguage(language)
+  def convert(source: ProgrammingState): it.evadid.vm.conversion.ConversionResult = source.convertToLanguage(language)
   def create(state: Var[ProgrammingState], appearance: EditorAppearance,
       marker: Signal[Option[it.evadid.vm.code.errors.ProgrammingConversionError]] = Val(None),
       loading: Signal[String] = Val("Loading editor…")): HtmlAppElement

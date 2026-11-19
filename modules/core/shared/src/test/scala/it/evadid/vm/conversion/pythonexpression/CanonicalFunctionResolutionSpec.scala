@@ -62,9 +62,9 @@ class CanonicalFunctionResolutionSpec extends FunSuite {
   }
 
   test("source classes and callable parameters shadow qualified and cached turtle names") {
-    val sourceClass = calls("Turtle.forward(1)\nclass Turtle:\n    def forward(self, n):\n        pass")
-    assert(sourceClass.exists(call => name(call) == "turtle.forward"))
-    assert(sourceClass.forall(_.funcDef.functionTypeInfo.isMethodInClass.isEmpty))
+    val sourceClass = calls("Turtle.forward(1)\nclass Turtle:\n    @staticmethod\n    def forward(n):\n        pass")
+    assert(sourceClass.exists(call => name(call) == "forward"))
+    assert(sourceClass.forall(call => !TurtleCommand.isTurtleMethod(call.funcDef)))
     val parsed = calls("fd(1)\ndef apply(fd):\n    fd(2)\nfd(3)")
     assertEquals(parsed.map(name).sorted, List("fd", "forward", "forward"))
   }

@@ -1,7 +1,7 @@
 package it.evadid.vm.conversion.pythonexpression
 
 import it.evadid.vm.conversion.pythonexpression.ParsingUtils.keepExpression
-import it.evadid.vm.conversion.pythonexpression.PythonClassParser.ClassParseResult
+import it.evadid.vm.conversion.pythonexpression.PythonClassParser.{ClassParseResult, ClassPattern}
 import PythonLexerLike.{ParsedLine, splitCodeAndComment}
 import it.evadid.vm.conversion.pythonexpression.PythonSymbolTable.ParseContext
 import it.evadid.core.datastructures.language.LanguageMap
@@ -28,7 +28,6 @@ object PythonStatementParser {
 
   private val AnnotationDeclarationPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=:]+)$""".r
   private val AnnotationAssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^=]+?)\s*=\s*(.+)$""".r
-  private val ClassPattern = """^class\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*\(([^)]*)\))?:$""".r
   private val FunctionPattern = """^def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*)\)\s*(?:->\s*([^:]+))?:$""".r
   private val WhilePattern = """^while\s+(.+):$""".r
   private val IfPattern = """^if\s+(.+):$""".r

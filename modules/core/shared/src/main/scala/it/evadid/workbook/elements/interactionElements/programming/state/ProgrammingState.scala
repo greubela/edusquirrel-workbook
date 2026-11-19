@@ -18,7 +18,7 @@ import it.evadid.vm.conversion.structured.{SourceStructure, StructuredProgramCon
 sealed trait ProgrammingState {
   lazy val derivations: it.evadid.vm.conversion.ProgrammingStateDerivations =
     new it.evadid.vm.conversion.ProgrammingStateDerivations(this)
-  def toLanguage(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage): ProgrammingState = derivations.inLanguage(language)
+  def convertToLanguage(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage): it.evadid.vm.conversion.ConversionResult = derivations.convertToLanguage(language)
   def toBeExpression: ProgrammingStateBeExpression = derivations.expression
   def toJava: ProgrammingStateJavaString = derivations.java
   def toPython: ProgrammingStatePythonString = derivations.python
