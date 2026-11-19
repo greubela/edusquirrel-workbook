@@ -6,10 +6,8 @@ import it.evadid.workbook.elements.interactionElements.programming.state.{Progra
 import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L.{label as labelTag, *}
-import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
@@ -23,7 +21,6 @@ import scala.scalajs.js
 import scala.util.Try
 import java.util.UUID
 import it.evadid.workbook.model.qr.QrErrorCorrection.L.*
-import org.scalajs.dom.SVGSVGElement
 
 final class JavaFunctionBasedEditor
 (
@@ -34,7 +31,8 @@ final class JavaFunctionBasedEditor
   editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
   conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
   loadingLabel: Signal[String] = Val("Loading editor…"),
-  requirePublicMain: Boolean = true
+  requirePublicMain: Boolean = true,
+  sameSource: (String, String) => Boolean = _ == _
 ) extends HtmlAppElement {
 
   import JavaFunctionBasedEditor.*
@@ -89,7 +87,8 @@ final class JavaFunctionBasedEditor
     language = it.evadid.core.datastructures.language.AppLanguage.Java,
     config = Var(editorConfig),
     diagnostics = CodeMirrorEditor.marks(conversionMarker),
-    loadingLabel = loadingLabel
+    loadingLabel = loadingLabel,
+    sameSource = sameSource
   )
 
   private def currentSourceAvailable(): Boolean = sourceAvailable.now()
@@ -733,19 +732,4 @@ object JavaFunctionBasedEditor {
           case Nil => (stack, matches)
         case _ => (stack, matches)
     }._2
-
-  def forEvaTab(tabLogger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Java"): EvaEditorTab = new EvaEditorTab {
-    override val language = it.evadid.core.datastructures.language.AppLanguage.Java
-    override val label = tabLabel
-    override val showLabel = false
-    override val css = " eva-editor--java"
-    override def icon: Option[ReactiveSvgElement[SVGSVGElement]] = Some(svg.svg(svg.cls := "eva-editor__language-icon", svg.viewBox := "0 0 24 24",
-      svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.6",
-      svg.strokeLineCap := "round", svg.strokeLineJoin := "round",
-      svg.path(svg.d := "M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6")))
-    override def create(state: Var[ProgrammingState], appearance: EditorAppearance,
-        marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement =
-      new JavaFunctionBasedEditor(tabLogger, state, appearance = Some(appearance), editorConfig = config,
-        conversionMarker = marker, loadingLabel = loading)
-  }
 }

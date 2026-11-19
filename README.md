@@ -156,9 +156,11 @@ The [test workflow](.github/workflows/tests.yml) runs these checks and every Sca
 module on pull requests and, through the Pages workflow, before publication from main. Individual test files can still be run
 with `node --test`.
 
-CI resolves sbt, plugins and Scala dependencies through the Maven Central endpoint
-in [project/repositories](project/repositories). Dependency and compiler cache keys
-include that configuration so repository changes invalidate cached resolution paths.
+CI resolves sbt, plugins and Scala dependencies through Google's Maven Central mirror,
+falling back to Maven Central, as listed in [project/repositories](project/repositories);
+Maven Central rate-limits bursts from shared runners. Dependency and compiler cache keys
+include that configuration. Only `scala-tests`, which resolves every module, saves the
+dependency cache, so a JVM-only job cannot publish an incomplete one.
 
 ## Deployment
 

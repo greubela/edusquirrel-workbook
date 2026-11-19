@@ -18,7 +18,8 @@ permissions:
   contents: read
 
 env:
-  COURSIER_REPOSITORIES: https://repo.maven.apache.org/maven2
+  # Keep in sync with project/repositories; the mirror is tried before Maven Central.
+  COURSIER_REPOSITORIES: https://maven-central.storage-download.googleapis.com/maven2|https://repo.maven.apache.org/maven2
   SBT_OPTS: >-
     -Dsbt.override.build.repos=true
     -Dsbt.repository.config=${{ github.workspace }}/project/repositories
@@ -60,6 +61,8 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: sbt
+          # Only scala-tests resolves every module, so only it saves the dependency cache.
+          cache-read-only: true
           cache-dependency-path: |
             build.sbt
             project/*.scala
@@ -194,6 +197,7 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: 'sbt'
+          cache-read-only: true
           cache-dependency-path: |
             build.sbt
             project/*.scala

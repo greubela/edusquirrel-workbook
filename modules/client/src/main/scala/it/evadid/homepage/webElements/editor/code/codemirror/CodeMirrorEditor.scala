@@ -29,7 +29,9 @@ case class CodeMirrorEditor(
     diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil),
     createEditor: EditorConfig => scala.concurrent.Future[CodeMirrorHandle] = settings => CodeMirror.editor(settings).createInstance(),
     loadingLabel: Signal[String] = Val("Loading editor…"),
-    firstLineNumber: Signal[Int] = Val(1)
+    firstLineNumber: Signal[Int] = Val(1),
+    /** Equivalent documents leave the user's text, including formatting the state cannot represent, untouched. */
+    sameSource: (String, String) => Boolean = _ == _
 ) extends SimpleWebEditor[String, CodeMirrorEditorConfig] {
   import CodeMirrorEditor.*
 
@@ -58,7 +60,7 @@ case class CodeMirrorEditor(
                 new CodeMirrorFlowchartGutter.Analysis(new CodeMirrorFlowchartGutter.Cache))
               // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
               val created = createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
-                value => if !lifetime.isKilled && underlyingVar.now() != value then underlyingVar.set(value),
+                value => if !lifetime.isKilled && !sameSource(underlyingVar.now(), value) then underlyingVar.set(value),
                 languageToJs(language), analysis.map(current => source => current.chartForDoc(source).map(CodeMirrorFlowchartGutter.render)),
                 firstLineNumber = lineNumbers.now()))
               created.foreach { native =>
@@ -72,7 +74,7 @@ case class CodeMirrorEditor(
                     handle.update(_.filterNot(_ == native))
                   })
                   handle.set(Some(native))
-                  underlyingVar.signal.foreach(value => if native.getDoc() != value then native.setDoc(value))(using ctx.owner)
+                  underlyingVar.signal.foreach(value => if !sameSource(native.getDoc(), value) then native.setDoc(value))(using ctx.owner)
                   diagnostics.foreach(values => native.setDiagnostics(js.Array(values.map(_.toJs)*)))(using ctx.owner)
                   lineNumbers.foreach(native.setFirstLineNumber)(using ctx.owner)
                 }
