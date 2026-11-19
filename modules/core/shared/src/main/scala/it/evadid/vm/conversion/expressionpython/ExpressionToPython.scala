@@ -24,9 +24,8 @@ object ExpressionToPython {
       .filter(line => line.trim.startsWith("def ") || variableAnnotation.matches(line))
       .map(_.takeWhile(_ != '='))
       .mkString("\n")
-    val usesTurtle = expression.recToTree(false, it.evadid.vm.types.BeChildInfo(
-      it.evadid.vm.types.BeChildRole.NoRole, it.evadid.vm.types.BeScope.GlobalScope())).values.exists {
-      case it.evadid.vm.code.tree.BeExpressionReference(_, call: it.evadid.vm.code.usage.BeFunctionCall) =>
+    val usesTurtle = expression.subtreeNodes.exists {
+      case call: it.evadid.vm.code.usage.BeFunctionCall =>
         it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef)
       case _ => false
     }

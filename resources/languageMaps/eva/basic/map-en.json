@@ -137,5 +137,12 @@
   "resetAllDataError": "Not every destination confirmed deletion. Synchronization is paused to prevent deleted answers from being saved again. Please retry the reset.",
   "gradingHiddenTest": "Hidden test",
   "gradingAiAssessment": "AI assessment",
-  "gradingAiCriterion": "AI assessment {number}"
+  "gradingAiCriterion": "AI assessment {number}",
+  "programDataTitle": "Data after main()",
+  "programDataList": "List of numbers",
+  "programDataSudoku": "Sudoku",
+  "programDataRunning": "Running main() …",
+  "programDataUnavailable": "The program cannot be run yet:",
+  "programDataFailed": "main() stopped with an error:",
+  "programDataLimit": "main() was stopped after too many steps – perhaps an endless loop?"
 }

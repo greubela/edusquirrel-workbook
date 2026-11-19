@@ -53,7 +53,7 @@ test('2026GdP1 opens from the catalogue, localizes its tasks and exposes the pro
     const language = flag => page.locator(`.select-language-line > div:has(.flag-fill-${flag})`);
     await language('german-red').click();
     await page.getByText('alle Aufgaben grün zu bekommen', {exact:false}).waitFor();
-    assert.equal(await page.locator('.section-block').count(), 3);
+    assert.equal(await page.locator('.section-block').count(), 4);
     await page.locator('.section-block').nth(1).click();
     await page.getByText('Aufgabe 1 · Ein Quadrat von Hand', {exact:true}).waitFor();
     assert.equal(await page.locator('.workbook-body .interaction-element').count(), 5);
@@ -97,6 +97,16 @@ test('2026GdP1 opens from the catalogue, localizes its tasks and exposes the pro
     await page.locator('.workbook-body .interaction-element').last().screenshot({path:path.join(root,'tmp/work/gdp1/orientation-task.png')});
     await page.setViewportSize({width:390,height:844});
     await page.screenshot({path:path.join(root,'tmp/work/gdp1/parameters-mobile.png'),fullPage:true});
+    await page.setViewportSize({width:1440,height:1000});
+    await page.locator('.section-block').nth(3).click();
+    await page.getByText('Task 10 · Sudoku solver', {exact:true}).waitFor();
+    await page.locator('.workbook-body').getByRole('button', {name:/Editor.*öffnen|Open editor/i}).nth(2).click();
+    await page.locator('dialog[open] .program-data-sudoku').waitFor();
+    assert.equal(await page.locator('dialog[open] .program-data-sudoku td').count(), 81, 'the sudoku after main is shown beside the editor');
+    await page.locator('dialog[open] .feedback-panel button.feedback-action--primary').click();
+    await page.locator('dialog[open] .feedback-entry.feedback-status--incorrect').first().waitFor();
+    assert.equal(await page.locator('dialog[open] .feedback-entry').count(), 8, 'all sudoku unit tests report a result');
+    await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, []);
   } finally {await browser.close();}
 });

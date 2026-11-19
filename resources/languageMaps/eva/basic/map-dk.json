@@ -136,5 +136,12 @@
   "resetAllDataError": "Ikke alle mål har bekræftet sletningen. Synkroniseringen er sat på pause, så slettede svar ikke gemmes igen. Prøv nulstillingen igen.",
   "gradingHiddenTest": "Skjult test",
   "gradingAiAssessment": "AI-vurdering",
-  "gradingAiCriterion": "AI-vurdering {number}"
+  "gradingAiCriterion": "AI-vurdering {number}",
+  "programDataTitle": "Data efter main()",
+  "programDataList": "Talliste",
+  "programDataSudoku": "Sudoku",
+  "programDataRunning": "Kører main() …",
+  "programDataUnavailable": "Programmet kan ikke køres endnu:",
+  "programDataFailed": "main() stoppede med en fejl:",
+  "programDataLimit": "main() blev stoppet efter for mange skridt – måske en uendelig løkke?"
 }

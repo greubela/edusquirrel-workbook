@@ -136,6 +136,8 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
       "System.out.println"
     } else if TurtleCommand.isTurtleMethod(call.funcDef) then
       "Turtle." + entityName(call.funcDef.functionTypeInfo.displayName)
+    else if it.evadid.vm.simulation.data.DataLibraries.isDataMethod(call.funcDef) then
+      it.evadid.vm.simulation.data.DataLibraries.ownerName(call.funcDef).get + "." + entityName(call.funcDef.functionTypeInfo.displayName)
     else if call.target.isInstanceOf[BeCallTarget.Function] && !insideMain &&
         moduleFunctions(call.funcDef.functionTypeInfo.displayName.universalInterpretation()) then
       "Main." + entityName(call.funcDef.functionTypeInfo.displayName)

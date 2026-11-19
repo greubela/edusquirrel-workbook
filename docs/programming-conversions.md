@@ -48,6 +48,12 @@ Module variables become static fields of Java `Main` ([`ModuleLayout`](../module
 
 `BeIntrinsic` identifies turtle and printing library semantics independently of user names. Printers select target syntax from this marker; user-defined `print`/`forward` methods remain ordinary functions. Java conversion rejects a user `Turtle` class when it would hide actual turtle-library calls.
 
+## Shared interpreter and data libraries
+
+[`BeProgramInterpreter`](../modules/core/shared/src/main/scala/it/evadid/vm/simulation/BeProgramInterpreter.scala) executes the shared tree: numbers and booleans (1/0), control flow, functions with parameters, return values and recursion, turtle commands, and the `NumberList`/`Sudoku` libraries ([`DataLibraries`](../modules/core/shared/src/main/scala/it/evadid/vm/simulation/data/DataLibraries.scala)). Library methods carry `BeIntrinsic.NumberList`/`Sudoku`, bind only when qualified (`NumberList.get(i)`) and print qualified in Java and Python. A run starts at startup or at one function (`ProgramEntry`) on a `DataWorld` and yields a `ProgramExecution` with the turtle, list and sudoku commands in order, the final data and the return value. `ProgrammingStateBeExpression.programExecution` runs startup on the default data; `turtleCommandExecutionInfo` (via `TurtleProgramAnalysis`) is the turtle view of the same interpreter. `BeFor` is inclusive and ascending: it runs zero times when the start exceeds the end, matching the Java and Python printers.
+
+Use `BeExpression.subtreeNodes` when only the nodes of a tree are needed; `recToTree` builds positioned trees by copying subtrees and is slow for deeply nested programs.
+
 The shared numeric subset uses double precision. Java integer declarations are widened on cross-language conversion; `ConversionResult` reports this as a loss because wrapping overflow and truncating division are not preserved. Same-language source grouping retains the original types.
 
 ## Entry points and empty programs

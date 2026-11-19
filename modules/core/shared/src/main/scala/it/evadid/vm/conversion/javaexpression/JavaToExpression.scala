@@ -66,10 +66,9 @@ final class JavaToExpression(code: String) {
   /** Fails, rather than keeping placeholders, when part of the program has no shared representation. */
   def convert: ProgrammingStateBeExpression = {
     val expression = BeStartProgram(JavaToExpression.builder.build(JavaAstToParsed(parsed)).expression)
-    val nodes = expression.recToTree(false, BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())).values
-    nodes.collectFirst {
-      case BeExpressionReference(_, BeExpressionUnsupported(source, _)) => source
-      case BeExpressionReference(_, BeExpressionUnparsable(source, _, _)) => source
+    expression.subtreeNodes.collectFirst {
+      case BeExpressionUnsupported(source, _) => source
+      case BeExpressionUnparsable(source, _, _) => source
     }.foreach(source => throw ProgrammingConversionException.unsupported(
       s"This Java construct is not supported by the shared expression tree: ${source.take(160)}"))
     ProgrammingStateBeExpression(expression)

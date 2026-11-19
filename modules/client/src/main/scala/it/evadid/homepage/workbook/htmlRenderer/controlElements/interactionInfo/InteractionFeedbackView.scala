@@ -8,7 +8,7 @@ import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.ProgramStructureGrader
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{CommandUsageMeasure, RecreateShapeGrader, TurtleCommandUsageGrader}
 import it.evadid.homepage.control.info.interaction.GradingReporter
 import it.evadid.workbook.abstractions.FeedbackEntity
@@ -34,6 +34,7 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
 
   def description(entry: GradingSummary.Entry): Signal[String] = entry.grader match {
     case grader: ProgramStructureGrader => helper.plaintextStringSignal(grader.publicDescription)
+    case grader: ProgramDataTestGrader => helper.plaintextStringSignal(grader.publicDescription)
     case grader: ProgrammingUnitTestGrader => grader.publicDescription
       .map(helper.plaintextStringSignal).getOrElse(Val(grader.testId))
     case _: RecreateShapeGrader => label("gradingShapeDescription")

@@ -43,9 +43,7 @@ case class ProgramStructureGrader(
   }(using context.futureExecutionContext)
 
   private def nodesOf(expression: BeExpression): Seq[BeExpression] = {
-    val nodes = expression.recToTree(false, BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())).values.collect {
-      case BeExpressionReference(_, node) => node
-    }.toSeq
+    val nodes = expression.subtreeNodes
     require(!nodes.exists {
       case _: BeExpressionUnparsable | _: BeExpressionUnsupported => true
       case _ => false

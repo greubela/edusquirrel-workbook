@@ -14,8 +14,10 @@ import upickle.ReadWriter
 import upickle.default.*
 
 /**
- * Inclusive numeric for-loop (`for i = start to end` in Snap `doFor`).
- * Python prints as `for i in range(start, end + 1):`.
+ * Inclusive, ascending numeric for-loop: `variable` takes start, start + 1, …, end, and the body
+ * runs zero times when start > end. Python prints `for i in range(start, end + 1):`, Java
+ * `for (… i = start; i <= end; i++)`, Snap `doFor`. (Snap's own runtime also counts down when
+ * start > end; the shared model and interpreter follow the Java/Python reading.)
  */
 case class BeFor(
     variable: BeDefineVariable,

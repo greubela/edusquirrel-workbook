@@ -136,5 +136,12 @@
   "resetAllDataError": "Nicht alle Ziele haben die Löschung bestätigt. Die Synchronisierung ist pausiert, damit gelöschte Antworten nicht erneut gespeichert werden. Bitte den Reset erneut versuchen.",
   "gradingHiddenTest": "Verdeckter Test",
   "gradingAiAssessment": "KI-Einschätzung",
-  "gradingAiCriterion": "KI-Einschätzung {number}"
+  "gradingAiCriterion": "KI-Einschätzung {number}",
+  "programDataTitle": "Daten nach main()",
+  "programDataList": "Zahlenliste",
+  "programDataSudoku": "Sudoku",
+  "programDataRunning": "main() wird ausgeführt …",
+  "programDataUnavailable": "Das Programm kann so noch nicht ausgeführt werden:",
+  "programDataFailed": "main() wurde mit einem Fehler beendet:",
+  "programDataLimit": "main() wurde nach zu vielen Schritten angehalten – vielleicht eine Endlosschleife?"
 }

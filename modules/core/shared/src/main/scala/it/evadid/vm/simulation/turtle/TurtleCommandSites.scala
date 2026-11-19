@@ -8,11 +8,12 @@ import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.conversion.snapexpression.{SnapControlFlow, SnapExpressionSupport}
 import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.simulation.data.DataLibraries
 import it.evadid.vm.types.{BeDataValueLiteral, BeScope}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import scala.annotation.tailrec
 
-private[turtle] object TurtleCommandSites {
+private[simulation] object TurtleCommandSites {
   /** Preorder traversal follows structural children, never a call's definition reference. */
   def nodes(root: BeExpression): List[(Vector[Int], BeExpression)] = {
     @tailrec def visit(pending: List[(Vector[Int], BeExpression, BeScope)], result: List[(Vector[Int], BeExpression)]): List[(Vector[Int], BeExpression)] =
@@ -31,7 +32,7 @@ private[turtle] object TurtleCommandSites {
     val all = nodes(root)
     val helpers = all.collect { case (_, definition: BeDefineFunction) => SnapExpressionSupport.pythonNameOf(definition) }.toSet
     all.flatMap {
-      case (path, call: BeFunctionCall) if !SnapControlFlow.isOperatorCall(call) &&
+      case (path, call: BeFunctionCall) if !SnapControlFlow.isOperatorCall(call) && !DataLibraries.isDataMethod(call.funcDef) &&
           (TurtleCommand.isTurtleMethod(call.funcDef) || !helpers(SnapExpressionSupport.pythonName(call))) =>
         val python = SnapExpressionSupport.pythonName(call)
         val name = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(python, python)

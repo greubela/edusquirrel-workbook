@@ -176,7 +176,8 @@ object SymbolTable {
     def resolveFunction(name: String, arity: Int): BeDefineFunction = {
       def definition(): BeDefineFunction = {
         val sourceBinding = hasSourceBinding(name)
-        val turtleMethod = if sourceBinding then None else TurtleCommand.resolveTurtleMethod(name)
+        val turtleMethod = if sourceBinding then None
+          else TurtleCommand.resolveTurtleMethod(name).orElse(it.evadid.vm.simulation.data.DataLibraries.resolveMethod(name))
         turtleMethod.map { method =>
           // Preserve the class signature while binding only the arguments supplied by this call.
           if arity < method.inputs.size then method.copy(inputs = method.inputs.take(arity)) else method

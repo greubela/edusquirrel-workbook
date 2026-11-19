@@ -78,11 +78,7 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
           it.evadid.util.logging.LoggingLevel.WARN, true)
       }.toSeq
       val droppedComments = Option.when(language == SnapLanguage && source.associatedLanguage != SnapLanguage &&
-          expression.expression.recToTree(false, it.evadid.vm.types.BeChildInfo(it.evadid.vm.types.BeChildRole.NoRole,
-            it.evadid.vm.types.BeScope.GlobalScope())).values.exists {
-            case it.evadid.vm.code.tree.BeExpressionReference(_, _: it.evadid.vm.code.errors.BeSingleLineComment) => true
-            case _ => false
-          }) {
+          expression.expression.subtreeNodes.exists(_.isInstanceOf[it.evadid.vm.code.errors.BeSingleLineComment])) {
         ConversionInfo("Snap scripts have no comment statements; comments were not converted.", it.evadid.util.logging.LoggingLevel.INFO, false)
       }.toSeq
       ConversionResult(source, Some(target), preparedSource.diagnostics ++ numericWarnings ++ droppedComments)

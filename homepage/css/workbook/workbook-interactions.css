@@ -420,3 +420,54 @@
     .sorting-fields--cols-3 { grid-template-columns: 1fr; }
     .sorting-field-card--full-width { grid-column: auto; }
 }
+
+/* PROGRAM DATA PREVIEW: number list or sudoku after running main (full Java exercises) */
+
+.program-data-preview { display: grid; gap: var(--space-sm); font-size: 0.875rem; }
+.program-data-preview__pending { margin: 0; color: var(--color-text-muted-light); }
+.program-data-preview__problem { margin: 0; color: var(--feedback-incorrect); overflow-wrap: anywhere; }
+
+.program-data-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.program-data-list__item { display: grid; justify-items: center; gap: 2px; }
+.program-data-list__value {
+    min-width: 2.25rem;
+    padding: var(--space-xs) var(--space-sm);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+.program-data-list__index { color: var(--color-text-muted-light); font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+
+.program-data-sudoku {
+    border-collapse: collapse;
+    margin-inline: auto;
+    border: 2px solid var(--color-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.program-data-sudoku__cell {
+    width: 1.6rem;
+    height: 1.6rem;
+    padding: 0;
+    border: 1px solid var(--color-border-soft);
+    background: var(--color-surface-base);
+    text-align: center;
+    vertical-align: middle;
+}
+.program-data-sudoku tr:nth-child(3n) .program-data-sudoku__cell { border-bottom: 2px solid var(--color-text-primary); }
+.program-data-sudoku .program-data-sudoku__cell:nth-child(3n) { border-right: 2px solid var(--color-text-primary); }
+.program-data-sudoku__cell--given { font-weight: 700; }
+.program-data-sudoku__cell--placed { color: var(--color-accent-strong); background: var(--feedback-pending-surface); }
+
+/* Static source preview of full Java exercises: code reads left-aligned and scrolls when long. */
+.java-full-editor-preview { width: 100%; text-align: start; }
+.java-full-editor-preview pre { max-height: 22rem; margin: 0; overflow: auto; font-size: 0.8rem; }
