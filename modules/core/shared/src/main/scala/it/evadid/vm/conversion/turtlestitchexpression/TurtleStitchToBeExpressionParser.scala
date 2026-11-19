@@ -8,7 +8,7 @@ import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.{
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.*
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import it.evadid.vm.code.others.BeStartProgram
+import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
@@ -129,6 +129,40 @@ object TurtleStitchToBeExpressionParser {
     else if value.isEmpty && numeric then BeUseValue(BeDataValueLiteral("0"), None)
     else BeUseValue(BeDataValueLiteral(SnapInputCodec.quotePython(value)), None)
 
+  /** The result of a reporter (of `valueType`) or a predicate (a truth value); commands return nothing. */
+  private def reportedResult(blockType: SnapVocabulary.BlockType, valueType: BeDataType): Option[BeDefineVariable] = blockType match {
+    case SnapVocabulary.BlockType.Reporter => Some(BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), valueType))
+    case SnapVocabulary.BlockType.Predicate => Some(BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), BeDataType.Boolean))
+    case _ => None
+  }
+
+  /** Snap values are untyped: a reporter's result type is the one type all its reports share, if they do. */
+  private def reportedType(body: BeSequence): BeDataType = {
+    def reports(expression: BeExpression): List[BeExpression] = expression match {
+      case BeReturn(Some(value)) => List(value)
+      case sequence: BeSequence => sequence.body.toList.flatMap(reports)
+      case structure: it.evadid.vm.code.abstractions.BeControlStructure => structure.allPossibleBodies.toList.flatMap(reports)
+      case _ => Nil
+    }
+    reports(body).map(snapValueType).distinct match {
+      case List(single) => single
+      case _ => BeDataType.AnyType
+    }
+  }
+
+  /** Snap operator calls are read untyped; their result is a number (arithmetic) or a truth value. */
+  private def snapValueType(value: BeExpression): BeDataType = value match {
+    case call: BeFunctionCall if call.isOperator =>
+      val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
+      if Set("+", "-", "*", "/", "//", "%", "**").contains(symbol) then BeDataType.Numeric
+      else if Set("<", "<=", ">", ">=", "==", "!=", "and", "or", "not").contains(symbol) then BeDataType.Boolean
+      else BeDataType.AnyType
+    case other => other.staticInformationExpression.staticType match {
+      case BeDataType.Error | BeDataType.Unit => BeDataType.AnyType
+      case known => known
+    }
+  }
+
   /** Snap-native body is a direct `<script>` child; `<scripts>` holds extras / legacy bodies. */
   private def buildDefinitions(project: Project): PhaseOneResult = {
     val customDefs = project.customDefinitions.toList
@@ -138,7 +172,12 @@ object TurtleStitchToBeExpressionParser {
       Signature(customSignatureName(defn.spec), arity, false, isCustom = true)
     }
     val signatures = (fromCalls ++ fromCustoms).distinct
-    val stubs = signatures.map(createDefinition)
+    // Reporters and predicates return a value; their calls, also inside definitions, are expressions.
+    val reported = customDefs.flatMap { defn =>
+      val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
+      reportedResult(defn.blockType, BeDataType.AnyType).map(Signature(customSignatureName(defn.spec), arity, false, isCustom = true) -> _)
+    }.toMap
+    val stubs = signatures.map(signature => createDefinition(signature).copy(outputs = reported.get(signature)))
     val stubMap = signatures.zip(stubs).toMap
     val phaseOneStubs = PhaseOneResult(stubs, stubMap, Nil)
     val userDefinitions = customDefs.flatMap { defn =>
@@ -160,7 +199,7 @@ object TurtleStitchToBeExpressionParser {
         val body = defn.body.headOption.map(parseScriptBody(_, phaseOneStubs)).getOrElse(BeSequence.optionalBody(Nil))
         val named = BeDefineFunction(
           params.toList,
-          stub.outputs,
+          reportedResult(defn.blockType, reportedType(body)),
           body,
           BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(SnapTurtleCatalog.pythonNameFromCustomSpec(defn.spec)))
         )
@@ -210,6 +249,7 @@ object TurtleStitchToBeExpressionParser {
           case "doUntil" => Some(parseDoUntil(block, phaseOne))
           case "doSetVar" => Some(parseDoSetVar(block, phaseOne))
           case "doChangeVar" => Some(parseDoChangeVar(block, phaseOne))
+          case "doReport" => Some(BeReturn(Some(block.inputs.headOption.map(parseInputValue(_, None, phaseOne)).getOrElse(BeExpression.pass))))
           case name if SnapControlFlow.isSnapValueReporter(name) =>
             Some(reporterExpressionFromModel(block, phaseOne))
           case _ => parseGenericBlock(block, phaseOne)

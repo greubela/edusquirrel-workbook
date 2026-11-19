@@ -16,7 +16,7 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.*
 import it.evadid.vm.code.defining
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import it.evadid.vm.code.others.BeStartProgram
+import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
@@ -209,7 +209,16 @@ object SnapProjectXml {
     case whileExpr: BeWhile => renderDoUntil(whileExpr)
     case repeat: BeRepeatNr => renderRepeat(repeat)
     case forExpr: BeFor => renderDoFor(forExpr)
+    case BeReturn(Some(value)) => s"""<block s="doReport">${renderReported(value)}</block>"""
     case _ => ""
+  }
+
+  /** A reported truth value is a predicate input; any other value an ordinary reporter input. */
+  private def renderReported(value: BeExpression)(using RenderContext): String = value match {
+    case BeUseValue(BeDataValueLiteral("True" | "False"), _) => renderCondition(value)
+    case call: BeFunctionCall if call.isOperator && value.staticInformationExpression.staticType == it.evadid.vm.types.BeDataType.Boolean =>
+      renderCondition(value)
+    case _ => renderArgument(value)
   }
 
   private def renderAssignment(assign: BeAssignVariable)(using RenderContext): String = {

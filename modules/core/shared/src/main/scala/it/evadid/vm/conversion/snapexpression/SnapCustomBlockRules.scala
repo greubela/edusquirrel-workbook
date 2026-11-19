@@ -70,7 +70,7 @@ object SnapCustomBlockRules {
 
     /** Why Python cannot represent this block faithfully, if so. */
     def pythonIncompatibility: Option[String] =
-      if blockType != BlockType.Command then Some(s"'${spec}' is a ${blockType.xml} block; Python apply only writes command blocks")
+      if blockType == BlockType.Hat then Some(s"'${spec}' is a hat block; Python functions are command, reporter or predicate blocks")
       else if !isGlobal then Some(s"'${spec}' is a sprite-local block; Python apply only writes global blocks")
       else
         slots

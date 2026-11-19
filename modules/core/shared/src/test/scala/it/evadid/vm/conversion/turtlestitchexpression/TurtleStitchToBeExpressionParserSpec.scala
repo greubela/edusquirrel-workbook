@@ -465,15 +465,16 @@ after.element.element.named("comment").headOption.map(_.element.toXml),
     )
   }
 
-  test("a reporter definition is reported by name instead of being flattened to a command") {
+  test("a reporter definition becomes a function returning what it reports, not a command") {
     val xml = projectWith(
-      """<block-definition s="area %size" type="reporter" category="Pen"><inputs><input type="%n"></input></inputs><script><block s="doReport"><block var="size"/></block></script></block-definition>""",
+      """<block-definition s="area %size" type="reporter" category="Pen"><inputs><input type="%n"></input></inputs><script><block s="doReport"><block s="reportVariadicProduct"><list><block var="size"/><block var="size"/></list></block></block></script></block-definition>""",
       """<block s="receiveGo"></block>"""
     )
     val derived = SnapProgramDerivation.fromXml(xml)
-    assert(!derived.pythonCompatible, clue = derived)
-    assertEquals(derived.python, "", "unsupported Snap XML must never appear as executable Python")
-    assert(derived.unsupportedSelectors.exists(_.contains("area %size")), clue = derived.unsupportedSelectors)
+    assert(derived.pythonCompatible, clue = derived)
+    assert(derived.python.contains("def area(size: float) -> float:"), derived.python)
+    assert(derived.python.contains("return size * size"), derived.python)
+    assertEquals(derived.unsupportedSelectors, Nil)
   }
 
   test("custom block extra arguments are dropped on python apply") {

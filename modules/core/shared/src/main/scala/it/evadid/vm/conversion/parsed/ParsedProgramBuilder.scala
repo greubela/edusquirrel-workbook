@@ -95,8 +95,10 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
     context.pushScope()
     val built = try {
       val parameters = definition.parameters.map(parameter => context.defineVariable(parameter.name, dataType(parameter.typeHint))).toList
-      BeDefineFunction(parameters, result(definition.returnType), body(definition.body, context),
+      val signature = BeDefineFunction(parameters, result(definition.returnType), BeExpression.pass,
         BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(definition.name)))
+      context.declareFunction(definition.name, signature)
+      signature.copy(body = body(definition.body, context))
     } finally context.popScope()
     context.registerFunction(definition.name, built)
     built

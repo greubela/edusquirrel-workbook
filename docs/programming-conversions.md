@@ -81,6 +81,17 @@ A top-level `if __name__ == "__main__":` is read as its body, so a guarded `main
 
 The shared numeric subset uses double precision. Java integer declarations are widened on cross-language conversion; `ConversionResult` reports this as a loss because wrapping overflow and truncating division are not preserved. Same-language source grouping retains the original types.
 
+## Functions that return a value
+
+A function with a declared result (`-> float`, `-> bool`, a Java return type) converts between Python and Java
+as is. In Snap it is a custom `reporter` block, or a `predicate` when it returns a truth value; `return v`
+becomes `report`, and calls are reporter inputs. Reading Snap back, a reporter's result type is the one type all
+its reports share (arithmetic is a number, comparisons and logic a truth value), otherwise `Any`. Snap has no
+command form of a reporter, so a call whose value is unused, a bare `return` and a function that returns a value
+without declaring a result are reported as unsupported for Snap. The drawing simulation runs these functions:
+a call's own drawing happens before the statement using its value, and `return` ends the function, also
+inside loops. See `ReturningFunctionConversionSpec` and the `py-reporters` native Snap fixture.
+
 ## Unfinished and unsupported source
 
 Front ends keep source they cannot read as `BeExpressionUnparsable` and recognised source without a shared form as `BeExpressionUnsupported`. Placeholders keep their text, so editing in the same language never loses code.

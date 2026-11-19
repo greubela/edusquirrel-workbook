@@ -27,6 +27,7 @@ object NativeSnapFixtures {
     "py-if-while" -> ProgrammingStateRaw(Python, "x = 0\nwhile x < 100:\n    if x % 20 == 0:\n        pen_up()\n    else:\n        pen_down()\n    forward(10)\n    x = x + 10\n"),
     "py-function" -> ProgrammingStateRaw(Python, "def square(side):\n    for _ in range(4):\n        forward(side)\n        right(90)\n\nsquare(30)\nsquare(60)\n"),
     "py-power" -> ProgrammingStateRaw(Python, "side = 2\nforward(side ** 3)\nright(90)\n"),
+    "py-reporters" -> ProgrammingStateRaw(Python, "def double(x: float) -> float:\n    return x * 2\n\ndef big(n: float) -> bool:\n    return n > 10\n\ndef fact(n: float) -> float:\n    if n <= 1:\n        return 1\n    return n * fact(n - 1)\n\nif big(double(fact(3))):\n    forward(double(5))\n"),
     "py-print" -> ProgrammingStateRaw(Python, "name = \"Ada\"\nprint(\"Hello \" + name)\n"),
     "java-loop" -> ProgrammingStateRaw(Java, "public class Main {\n  public static void main(String[] args) {\n    for (int i = 0; i < 4; i++) {\n      forward(40);\n      right(90);\n    }\n  }\n}\n"))
 

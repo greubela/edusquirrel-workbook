@@ -53,6 +53,7 @@ class JavaTurtleLibrarySpec extends FunSuite {
     "home" -> "goto(40, 40)\nleft(30)\nhome()\nforward(10)\n",
     "pen up and down" -> "forward(10)\npenup()\nforward(10)\npendown()\nforward(10)\npen_up()\nleft(90)\nforward(5)\npen_down()\nforward(5)\n",
     "loops and functions" -> "def side(length: float):\n    forward(length)\n    left(120)\n\nfor i in range(3):\n    side(10 + i)\n",
+    "functions returning values" -> "def double(x: float) -> float:\n    return x * 2\n\ndef big(n: float) -> bool:\n    return n > 10\n\nfor i in range(3):\n    if big(double(i * 4)):\n        forward(double(i))\n    else:\n        left(90)\n",
     "clear keeps the position" -> "forward(15)\nclear()\nforward(5)\n")
 
   programs.foreach { (label, python) =>

@@ -143,6 +143,14 @@ object SymbolTable {
       currentlyKnownStructures = currentlyKnownStructures.addVariable(name, variable)
     }
 
+    /** Binds a function's signature before its body is read, so recursive calls know its parameters and
+      * result; [[registerFunction]] then replaces it with the built definition.
+      */
+    def declareFunction(name: String, signature: BeDefineFunction): Unit = {
+      functionsByName.update(name, signature)
+      currentlyKnownStructures = currentlyKnownStructures.addFunction(name, signature)
+    }
+
     def registerFunction(name: String, function: BeDefineFunction, isOperator: Boolean = false): Unit = {
       functionsByName.update(name, function)
       if (!functionsBuffer.exists(_ eq function)) functionsBuffer += function

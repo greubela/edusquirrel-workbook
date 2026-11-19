@@ -122,15 +122,24 @@ object SnapCustomBlockMerge {
       val candidates = existingByName.getOrElse(pythonName, Nil).filterNot(c => claimed.contains(c.position))
       val matched = candidates.find(_.arity == parameters.size).orElse(candidates.headOption)
       matched.foreach(existing => claimed += existing.position)
-      matched match
+      val plan = matched match
         case Some(existing) if existing.arity == parameters.size && existing.slotNames == pythonSlots =>
           preservedPlan(pythonName, parameters, existing)
         case Some(existing) if existing.arity == parameters.size =>
           renamedSlotsPlan(pythonName, parameters, pythonSlots.toList, existing)
         case Some(existing) => reshapedPlan(pythonName, parameters, existing)
         case None => freshPlan(pythonName, parameters, newBlockCategory)
+      // Python decides whether the block reports a value; the existing definition keeps everything else.
+      plan.copy(blockType = blockTypeOf(defn))
     }
     new CustomBlockPlans(plans)
+  }
+
+  /** Snap's block type for a definition: one returning a truth value is a predicate, any other value a reporter. */
+  def blockTypeOf(defn: BeDefineFunction): BlockType = defn.outputs match {
+    case None => BlockType.Command
+    case Some(output) if output.variableType == it.evadid.vm.types.BeDataType.Boolean => BlockType.Predicate
+    case Some(_) => BlockType.Reporter
   }
 
   /** Existing definition kept as is; only the body will be replaced. */

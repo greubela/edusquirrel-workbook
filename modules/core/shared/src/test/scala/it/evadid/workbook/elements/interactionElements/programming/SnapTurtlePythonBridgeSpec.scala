@@ -31,7 +31,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     val call = statements.collectFirst { case c: it.evadid.vm.code.usage.BeFunctionCall => c }.get
     assertEquals(SnapExpressionSupport.pythonName(call), "forward")
     val args = call.arguments
-    assert(args.forall(SnapControlFlow.isSupportedValue), clue = args.map(_.getClass.getName).mkString(","))
+    assert(args.forall(SnapControlFlow.isSupportedValue(_)), clue = args.map(_.getClass.getName).mkString(","))
     assertEquals(SnapExpressionSupport.validateSubset(program.fullProgram), Right(statements))
   }
 
@@ -294,10 +294,13 @@ class SnapExpressionSupportSpec extends FunSuite {
     assertEquals(SnapExpressionSupport.unsupportedSnapSelectors(xml), Nil)
   }
 
-  test("unsupportedSnapSelectors reports reporter and script-slot custom blocks by spec") {
+  test("unsupportedSnapSelectors reports hat and script-slot custom blocks by spec, not reporters") {
+    val hat =
+      """<project><blocks><block-definition s="when ready" type="hat"><inputs></inputs></block-definition></blocks></project>"""
+    assert(SnapExpressionSupport.unsupportedSnapSelectors(hat).exists(_.contains("when ready")))
     val reporter =
       """<project><blocks><block-definition s="area %size" type="reporter"><inputs><input type="%n"></input></inputs></block-definition></blocks></project>"""
-    assert(SnapExpressionSupport.unsupportedSnapSelectors(reporter).exists(_.contains("area %size")))
+    assertEquals(SnapExpressionSupport.unsupportedSnapSelectors(reporter), Nil)
     val scripted =
       """<project><blocks><block-definition s="twice %action" type="command"><inputs><input type="%cs"></input></inputs></block-definition></blocks></project>"""
     assert(SnapExpressionSupport.unsupportedSnapSelectors(scripted).exists(_.contains("%cs")))

@@ -87,7 +87,7 @@ object SnapInputCodec {
       case _ =>
         s"<l>${SnapXmlText.escape(value)}</l>"
 
-  def isValidForKind(kind: SnapInputKind, expression: BeExpression): Boolean =
+  def isValidForKind(kind: SnapInputKind, expression: BeExpression, userFunctions: Map[String, Int] = Map.empty): Boolean =
     kind match
       case SnapInputKind.Color =>
         expression match
@@ -96,9 +96,9 @@ object SnapInputCodec {
           case _: BeFunctionCall => false
           case _ => false
       case SnapInputKind.Bool =>
-        SnapControlFlow.isSupportedCondition(expression) || SnapControlFlow.isSupportedValue(expression)
+        SnapControlFlow.isSupportedCondition(expression, userFunctions) || SnapControlFlow.isSupportedValue(expression, userFunctions)
       case SnapInputKind.Numeric | SnapInputKind.String =>
-        SnapControlFlow.isSupportedValue(expression)
+        SnapControlFlow.isSupportedValue(expression, userFunctions)
 
   private def inByte(value: Int): Boolean =
     value >= 0 && value <= 255
