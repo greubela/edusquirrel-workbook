@@ -73,4 +73,16 @@ class TurtleProgramInterpreterSpec extends FunSuite {
       case other => fail(s"Unexpected $other")
     }
   }
+
+  test("built-in conversions, text values and floor division are evaluated like Python") {
+    val cases = Seq("bool(3) + bool(0)" -> 1.0, "int(-2.7)" -> -2.0, "int(2.7)" -> 2.0, "float(\"1.5\")" -> 1.5, "7 // 2" -> 3.0,
+      "abs(-2) + max(1, 4) + min(3, 5)" -> 9.0, "int(str(12))" -> 12.0, "float(str(2.5))" -> 2.5)
+    val results = cases.map((call, _) => call -> run(s"forward($call)").executedTurtleCommandsInOrder.map(_.args))
+    assertEquals(results.toList, cases.map((call, value) => call -> List(List(value))).toList)
+    assertEquals(run("forward(7 // 0)").executionStatus, TurtleExecutionStatus.Failed("Division by zero."))
+    run("forward(int(\"ten\"))").executionStatus match {
+      case TurtleExecutionStatus.Failed(message) => assert(message.contains("is not a number"), message)
+      case other => fail(s"Unexpected $other")
+    }
+  }
 }
