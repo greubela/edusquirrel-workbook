@@ -189,7 +189,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   def tryLoginOrLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = {
     if (withUser.nonEmpty && withConfig.nonEmpty && withConfig.get.isOnlineAccount) {
       logger.logInfo("TryLoginOrLocalRegistration -> requested with online account, trying to log in")
-      tryOnlineRegistration(withUser.get.name, withUser.get.mail).recover {
+      tryOnlineRegistration(withUser.get.name, withUser.get.mail).recoverWith {
         case (err: Throwable) => {
           logger.logExceptionWarn(s"TryLoginOrLocalRegistration did not succeed for user ${withUser.get}, likely because of missing credentials. Using local mode!", err)
           tryLocalRegistration(withUser, withConfig)
@@ -200,12 +200,12 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     }
   }
 
+  /** Completes once the local profile is the page's user. */
   def tryLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = Future {
     val userConfig: UserConfig = withConfig.getOrElse(UserConfig(UserConfig.defaultSyncDestinations, false))
     val user: User = withUser.getOrElse(User.createNewUser("Anonymous", "no-reply@evadid.it"))
-    val allUserInfo = AllUserInfo(user, UserCredentials(signedBackendToken = None), userConfig)
-    changeUser(Some(allUserInfo))
-  }
+    AllUserInfo(user, UserCredentials(signedBackendToken = None), userConfig)
+  }.flatMap(allUserInfo => changeUser(Some(allUserInfo))).map(_ => ())
 
   def tryOnlineRegistration(name: String, email: String): Future[Unit] = {
     val normalizedEmail = email.trim.toLowerCase
