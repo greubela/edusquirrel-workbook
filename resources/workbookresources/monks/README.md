@@ -14,11 +14,11 @@ in four-frame sheets, mechanically separated and exported as individual images.
 The separate artwork under `resources/img/art/marie/monkworkbook/` uses a
 different style and is not mixed into the slideshow.
 
-The theater now has 69 frames and the tower continuation has 17. Each frame has
-one dialogue pane: one speaking turn with that speaker's mouth open, or `...`
-with everyone silent. Speech and actions are separate frames. Shared artwork
-is used only with the same caption (for example, the master's “In der Tat!”).
-There is no stage-direction pane.
+The theater is aggregated into 13 slides and the tower continuation into 4
+(`CreateMonksWorkbook.theaterScenes` / `countingScenes`). Each slide shows one key
+image from the `beats/` set with the dialogue lines of that part of the story
+below it, plus short italic narration lines (`narr-*` keys) that replace the
+action-only frames. Unused beat images remain available in the folder.
 
 Each card selection shows the tray before lifting, the lift, and the retained
 card. Each return shows the retained card at the right, moving left, and resting

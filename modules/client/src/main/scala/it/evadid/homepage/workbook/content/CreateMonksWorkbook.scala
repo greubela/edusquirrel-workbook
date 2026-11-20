@@ -43,16 +43,14 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   private def lm(name: String): LanguageMapContentId = LanguageMapContentId(key(name))
 
   private def panel(scene: Scene): WorkbookDisplayElement =
-    ExerciseGroup("monks-panel-" + scene.id, List(
+    ExerciseGroup("monks-panel-" + scene.id,
       LanguageMapBasedWorkbookImageElement(
         "monks-image-" + scene.id,
         LanguageMapContentId(key(scene.imageKey)),
         TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES,
-        Some(LanguageMapContentId(key(scene.dialogueKey))),
+        Some(LanguageMapContentId(key(scene.lines.head))),
         Some(CopyrightInfo.fromAi)
-      ),
-      instructionLabeledPair(key("dialoguelabel"), key(scene.dialogueKey), HintLabel)
-    ))
+      ) :: scene.lines.map(line => instructionMarkdown(key(line))))
 
   // ---- task builders: the task `id` determines the container title and all language-map keys
 
@@ -178,105 +176,37 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
 }
 
 object CreateMonksWorkbook {
-  /** One speaking turn or one visual action/state per frame. Empty speaker
-   * means silence (the dialogue is exactly "..."). Action labels document
-   * the sequence; they are never displayed as stage directions.
+  /** One slide: a key image plus the lines shown below it. A line is the key of a spoken dialogue
+   * (`...dialogue`, prefixed with the speaker in the text) or of a short narration (`narr-...`).
+   * Several beats of the story are aggregated into one slide so the stories stay short.
    */
-  case class Scene(id: String, imageKey: String, dialogueKey: String = "silence",
-                   speaker: Option[String] = None, action: Option[String] = None) derives upickle.default.ReadWriter {
-    require(speaker.isEmpty || action.isEmpty, "A speaking frame cannot also perform an action")
-    require(speaker.nonEmpty || dialogueKey == "silence", "Silent frames use only an ellipsis")
+  case class Scene(id: String, imageKey: String, lines: List[String]) derives upickle.default.ReadWriter {
+    require(lines.nonEmpty, "A slide needs at least one line")
   }
 
   val theaterScenes: List[Scene] = List(
-    Scene("arrival", "fileimage1", action = Some("travel")),
-    Scene("entrance", "fileimage2", dialogueKey = "entrancedialogue", speaker = Some("R")),
-    Scene("master-wait", "filebeattemplepause"),
-    Scene("warning", "filebeatmasterwarning", dialogueKey = "warningdialogue", speaker = Some("M")),
-    Scene("shout", "filebeattravelershout", dialogueKey = "shoutdialogue", speaker = Some("R")),
-    Scene("shout-pause", "filebeattemplepause"),
-    Scene("cards-demand", "fileimage3", dialogueKey = "cards-demanddialogue", speaker = Some("R")),
-    Scene("help-wait", "filebeattemplepause"),
-    Scene("in-deed-one", "filebeathelpmaster", dialogueKey = "in-deed-onedialogue", speaker = Some("M")),
-    Scene("help-uncertain", "filebeathelpuncertain", dialogueKey = "help-uncertaindialogue", speaker = Some("R")),
-    Scene("help-pause-one", "filebeattemplepause"),
-    Scene("in-deed-two", "filebeathelpmaster", dialogueKey = "in-deed-onedialogue", speaker = Some("M")),
-    Scene("help-question", "filebeathelpquestion", dialogueKey = "help-questiondialogue", speaker = Some("R")),
-    Scene("help-pause-two", "filebeattemplepause"),
-    Scene("in-deed-three", "filebeathelpmaster", dialogueKey = "in-deed-onedialogue", speaker = Some("M")),
-    Scene("help-long-pause", "filebeattemplepause"),
-    Scene("help-insistent", "filebeathelpinsistent", dialogueKey = "help-insistentdialogue", speaker = Some("R")),
-    Scene("journey-question", "filebeatjourneyquestion", dialogueKey = "journey-questiondialogue", speaker = Some("M")),
-    Scene("journey-answer", "filebeatjourneyanswer", dialogueKey = "journey-answerdialogue", speaker = Some("R")),
-    Scene("return-question", "filebeatreturnquestion", dialogueKey = "return-questiondialogue", speaker = Some("M")),
-    Scene("return-answer", "filebeatreturnanswer", dialogueKey = "return-answerdialogue", speaker = Some("R")),
-    Scene("patience", "filebeatpatiencespeaking", dialogueKey = "patiencedialogue", speaker = Some("M")),
-    Scene("tray-offered", "filebeattrayoffered", action = Some("offer-tray")),
-    Scene("tray-instruction", "filebeattrayinstruction", dialogueKey = "tray-instructiondialogue", speaker = Some("M")),
-    Scene("cards-deposited", "filebeatcardsdeposited", action = Some("deposit-cards")),
-    Scene("tray-to-master", "filebeattraytomaster", action = Some("carry-tray")),
-    Scene("watch", "filebeatwatchinstruction", dialogueKey = "watchdialogue", speaker = Some("M")),
-    Scene("select-9-before", "filebeatselect9before", action = Some("select-9-before")),
-    Scene("select-9-lifting", "filebeatselect9lifting", action = Some("select-9-lifting")),
-    Scene("select-9-held", "filebeatselect9held", action = Some("select-9-held")),
-    Scene("select-7-before", "filebeatselect7before", action = Some("select-7-before")),
-    Scene("select-7-lifting", "filebeatselect7lifting", action = Some("select-7-lifting")),
-    Scene("select-7-held", "filebeatselect7held", action = Some("select-7-held")),
-    Scene("select-4-before", "filebeatselect4before", action = Some("select-4-before")),
-    Scene("select-4-lifting", "filebeatselect4lifting", action = Some("select-4-lifting")),
-    Scene("select-4-held", "filebeatselect4held", action = Some("select-4-held")),
-    Scene("select-2-before", "filebeatselect2before", action = Some("select-2-before")),
-    Scene("select-2-lifting", "filebeatselect2lifting", action = Some("select-2-lifting")),
-    Scene("select-2-held", "filebeatselect2held", action = Some("select-2-held")),
-    Scene("waiting-monks", "filebeatwaitingmonks"),
-    Scene("empty-delivery", "filebeatemptydelivery", action = Some("handoff-empty-tray")),
-    Scene("empty-pause", "filebeatemptywait"),
-    Scene("empty", "filebeatemptyspeaking", dialogueKey = "emptydialogue", speaker = Some("M")),
-    Scene("giveback", "filebeatreturninstruction", dialogueKey = "givebackdialogue", speaker = Some("M")),
-    Scene("empty-return", "filebeatemptyreturn", action = Some("return-empty-tray")),
-    Scene("empty-carry", "filebeatemptycarry", action = Some("carry-empty-tray")),
-    Scene("insert-2-right", "filebeatinsert2right", action = Some("insert-2-right")),
-    Scene("insert-2-moving", "filebeatinsert2moving", action = Some("insert-2-moving")),
-    Scene("insert-2-left", "filebeatinsert2left", action = Some("insert-2-left")),
-    Scene("shift-4-before", "filebeatshift4before", action = Some("shift-4-before")),
-    Scene("shift-4-moving", "filebeatshift4moving", action = Some("shift-4-moving")),
-    Scene("insert-4-right", "filebeatinsert4right", action = Some("insert-4-right")),
-    Scene("insert-4-moving", "filebeatinsert4moving", action = Some("insert-4-moving")),
-    Scene("insert-4-left", "filebeatinsert4left", action = Some("insert-4-left")),
-    Scene("shift-7-before", "filebeatshift7before", action = Some("shift-7-before")),
-    Scene("shift-7-moving", "filebeatshift7moving", action = Some("shift-7-moving")),
-    Scene("insert-7-right", "filebeatinsert7right", action = Some("insert-7-right")),
-    Scene("insert-7-moving", "filebeatinsert7moving", action = Some("insert-7-moving")),
-    Scene("insert-7-left", "filebeatinsert7left", action = Some("insert-7-left")),
-    Scene("shift-9-before", "filebeatshift9before", action = Some("shift-9-before")),
-    Scene("shift-9-moving", "filebeatshift9moving", action = Some("shift-9-moving")),
-    Scene("insert-9-right", "filebeatinsert9right", action = Some("insert-9-right")),
-    Scene("insert-9-moving", "filebeatinsert9moving", action = Some("insert-9-moving")),
-    Scene("insert-9-left", "filebeatinsert9left", action = Some("insert-9-left")),
-    Scene("sorted-delivery", "filebeatsorteddelivery", action = Some("handoff-sorted-tray")),
-    Scene("sorted", "filebeatsortedspeaking", dialogueKey = "sorteddialogue", speaker = Some("M")),
-    Scene("understood", "filebeatunderstoodspeaking", dialogueKey = "understooddialogue", speaker = Some("R")),
-    Scene("farewell", "filebeatfarewellspeaking", dialogueKey = "farewelldialogue", speaker = Some("M")),
-    Scene("farewell-walk", "fileimage13", action = Some("walk-away")))
+    Scene("arrival", "fileimage2", List("narr-arrival", "entrancedialogue")),
+    Scene("warning", "filebeattravelershout", List("warningdialogue", "shoutdialogue")),
+    Scene("help", "filebeathelpquestion", List("narr-help", "cards-demanddialogue", "in-deed-onedialogue",
+      "help-uncertaindialogue", "in-deed-onedialogue", "help-questiondialogue", "in-deed-onedialogue")),
+    Scene("journey", "filebeatreturnanswer", List("help-insistentdialogue", "journey-questiondialogue",
+      "journey-answerdialogue", "return-questiondialogue", "return-answerdialogue")),
+    Scene("patience", "filebeatpatiencespeaking", List("patiencedialogue")),
+    Scene("tray", "filebeattraytomaster", List("tray-instructiondialogue", "narr-tray", "watchdialogue")),
+    Scene("select-a", "filebeatselect7held", List("narr-select-a")),
+    Scene("select-b", "filebeatselect2held", List("narr-select-b")),
+    Scene("empty", "filebeatemptyspeaking", List("narr-empty", "emptydialogue", "givebackdialogue")),
+    Scene("insert-a", "filebeatinsert4left", List("narr-insert-a")),
+    Scene("insert-b", "filebeatinsert9left", List("narr-insert-b")),
+    Scene("sorted", "filebeatunderstoodspeaking", List("narr-sorted", "sorteddialogue", "understooddialogue")),
+    Scene("farewell", "fileimage13", List("farewelldialogue", "narr-farewell")))
 
   val countingScenes: List[Scene] = List(
-    Scene("family", "filebeatfamilychildintro", dialogueKey = "familydialogue", speaker = Some("K")),
-    Scene("family-father-reply", "filebeatfamilyfatherreply", dialogueKey = "family-father-replydialogue", speaker = Some("R")),
-    Scene("family-child-question", "filebeatfamilychildquestion", dialogueKey = "family-child-questiondialogue", speaker = Some("K")),
-    Scene("family-father-hurry", "filebeatfamilyfatherhurry", dialogueKey = "family-father-hurrydialogue", speaker = Some("R")),
-    Scene("family-pause", "filebeatfamilypause"),
-    Scene("count-explanation", "filebeatfamilysolution", dialogueKey = "count-explanationdialogue", speaker = Some("R")),
-    Scene("count-paper", "filebeatcountpaper", action = Some("count-paper")),
-    Scene("count-remove", "filebeatcountremove", action = Some("count-remove")),
-    Scene("count-place", "filebeatcountplace", action = Some("count-place")),
-    Scene("count-tally", "filebeatcounttally", action = Some("count-tally")),
-    Scene("count-remove-yellow", "filebeatcountremoveyellow", action = Some("count-remove-yellow")),
-    Scene("count-place-yellow", "filebeatcountplaceyellow", action = Some("count-place-yellow")),
-    Scene("count-tally-two", "filebeatcounttallytwo", action = Some("count-tally-two")),
-    Scene("count-remove-blue", "filebeatcountremoveblue", action = Some("count-remove-blue")),
-    Scene("count-place-blue", "filebeatcountplaceblue", action = Some("count-place-blue")),
-    Scene("count-tally-three", "filebeatcounttallythree", action = Some("count-tally-three")),
-    Scene("count-empty", "filebeatcountempty"))
+    Scene("family", "filebeatfamilyfatherhurry", List("familydialogue", "family-father-replydialogue",
+      "family-child-questiondialogue", "family-father-hurrydialogue")),
+    Scene("count-red", "filebeatcounttally", List("count-explanationdialogue", "narr-count-red")),
+    Scene("count-yellow", "filebeatcounttallytwo", List("narr-count-yellow")),
+    Scene("count-blue", "filebeatcountempty", List("narr-count-blue")))
 
   /** Java starting code of the editor tasks E1–E8. From E4 on, the helper methods are prefilled
    * (the same code is shown in the collapsible "helpers" block of part C). Identifiers follow the
