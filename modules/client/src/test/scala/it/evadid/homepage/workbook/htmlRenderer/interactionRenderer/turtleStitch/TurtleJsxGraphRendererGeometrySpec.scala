@@ -10,6 +10,7 @@ import munit.FunSuite
 import org.scalajs.dom
 import scala.collection.mutable.ListBuffer
 import scala.scalajs.js
+import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 
 class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
   private def cmd(name: String, args: Double*): TurtleCommand[Double] = TurtleCommand.fromText(name, args.toList)
@@ -82,21 +83,21 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     def coords(obj: Obj): Point[Double] = Point(obj.parents(0).asInstanceOf[Double], obj.parents(1).asInstanceOf[Double])
 
   private def withDom[A](test: => A): A =
+    val restore = installDom()
+    try test
+    finally restore()
+
+  private def installDom(): () => Unit =
     val globals = js.Dynamic.global.globalThis
-    val requireFn = js.Dynamic.global.selectDynamic("require")
-    val root = js.Dynamic.global.process.cwd().asInstanceOf[String]
-    val jsdom = requireFn(root + "/node_modules/jsdom")
-    val window = js.Dynamic.newInstance(jsdom.JSDOM)("<html><body></body></html>").window
-    val names = List("window", "document", "Element", "Node")
+    val window = EditorDomSuite.window
+    val names = List("window", "document", "Element", "Node", "Event")
     val previous = names.map(name => name -> js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, name))
     names.foreach(name => globals.updateDynamic(name)(window.selectDynamic(name)))
-    try test
-    finally
+    () =>
       previous.foreach { (name, descriptor) =>
         if js.isUndefined(descriptor) then js.special.delete(globals, name)
         else js.Dynamic.global.Object.defineProperty(globals, name, descriptor)
       }
-      window.close()
 
   test("DOM fixtures restore absent and explicitly undefined document properties") {
     val globals = js.Dynamic.global.globalThis
@@ -195,20 +196,32 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     }
   }
 
-  test("missing JSXGraph produces a visible warning without failing the mount") {
-    withDom {
-      val globals = js.Dynamic.global.globalThis
-      val previous = globals.selectDynamic("JXG")
-      globals.updateDynamic("JXG")(js.undefined)
-      try
-        val host = dom.document.createElement("div")
-        dom.document.body.appendChild(host)
-        val mounted = L.render(host, TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target"))
-        try
-          assert(host.textContent.contains("drawing preview is unavailable"))
-          assert(host.firstElementChild.classList.contains("turtle-gradig-panel--unavailable"))
-        finally mounted.unmount()
-      finally globals.updateDynamic("JXG")(previous)
+  test("missing JSXGraph is requested, and a failed load produces a visible warning without failing the mount") {
+    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+    val restore = installDom()
+    val globals = js.Dynamic.global.globalThis
+    val previous = globals.selectDynamic("JXG")
+    globals.updateDynamic("JXG")(js.undefined)
+    val host = dom.document.createElement("div")
+    dom.document.body.appendChild(host)
+    val mounted = L.render(host, TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target"))
+    def settled(remaining: Int): scala.concurrent.Future[Unit] =
+      if host.textContent.contains("unavailable") || remaining == 0 then scala.concurrent.Future.unit
+      else scala.concurrent.Future(()).flatMap(_ => settled(remaining - 1))
+    scala.concurrent.Future {
+      val script = dom.document.querySelector("script[src$='jsxgraphcore.js']")
+      assert(script != null, "the page requests the library")
+      // The browser reports a script that cannot be fetched with an error event.
+      script.dispatchEvent(new dom.Event("error"))
+    }.flatMap(_ => settled(20)).map { _ =>
+      assert(host.textContent.contains("drawing preview is unavailable"), host.textContent)
+      assert(host.firstElementChild.classList.contains("turtle-gradig-panel--unavailable"))
+    }.transform { result =>
+      mounted.unmount()
+      host.remove()
+      globals.updateDynamic("JXG")(previous)
+      restore()
+      result
     }
   }
 

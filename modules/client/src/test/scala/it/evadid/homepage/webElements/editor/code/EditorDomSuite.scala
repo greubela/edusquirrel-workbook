@@ -12,11 +12,7 @@ trait EditorDomSuite extends FunSuite {
   protected def jsdomGlobals: List[String] = List("window", "document", "Element", "Node", "HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement")
   private lazy val names = jsdomGlobals.distinct
   private val previous = Var(List.empty[(String, js.Dynamic)])
-  private lazy val window = {
-    val req = js.Dynamic.global.selectDynamic("require")
-    js.Dynamic.newInstance(req(js.Dynamic.global.process.cwd().asInstanceOf[String] + "/node_modules/jsdom").JSDOM)(
-      "<html><body></body></html>", js.Dynamic.literal(url = "http://localhost/")).window
-  }
+  private def window = EditorDomSuite.window
   override def beforeAll(): Unit = {
     previous.set(names.map(name => name -> js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, name)))
     names.foreach(name => globals.updateDynamic(name)(if name == "window" then window else window.selectDynamic(name)))
@@ -26,12 +22,22 @@ trait EditorDomSuite extends FunSuite {
       if js.isUndefined(descriptor) then js.special.delete(globals, name)
       else js.Dynamic.global.Object.defineProperty(globals, name, descriptor)
     }
-    window.close()
   }
   protected def mount(element: Element): () => Unit = {
     val host = dom.document.createElement("div")
     dom.document.body.appendChild(host)
     val root = render(host, element)
     () => { root.unmount(); host.remove() }
+  }
+}
+
+object EditorDomSuite {
+  /** One jsdom window for the whole test run. Libraries cache DOM nodes from the first document they see
+    * (Laminar keeps its HTML parser container), so a window per suite would leak nodes across windows.
+    */
+  lazy val window: js.Dynamic = {
+    val req = js.Dynamic.global.selectDynamic("require")
+    js.Dynamic.newInstance(req(js.Dynamic.global.process.cwd().asInstanceOf[String] + "/node_modules/jsdom").JSDOM)(
+      "<html><body></body></html>", js.Dynamic.literal(url = "http://localhost/")).window
   }
 }

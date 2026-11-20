@@ -6,7 +6,6 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.homepage.workbook.content.DigitalWorkbookCatalog
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
-import org.scalajs.dom
 import scala.util.Try
 
 /** Every section of every catalogue workbook mounts as the page shows it, opened in the page's own state:
@@ -36,7 +35,7 @@ class WorkbookRenderingSpec extends EditorDomSuite {
           current.set(s"${section.elementId}/${element.elementId}")
           Try(HtmlRenderFactory.render(element).getDomElement()).fold(error => report(String.valueOf(error)), { root =>
             val unmount = mount(div(root))
-            val text = dom.document.body.textContent
+            val text = root.ref.textContent
             if root.ref.childNodes.length == 0 && root.ref.textContent.trim.isEmpty then report("renders no content")
             placeholders.find(text.contains).foreach(placeholder => report(text.substring(text.indexOf(placeholder))))
             unmount()
