@@ -4,10 +4,11 @@ package it.evadid.vm.conversion.expressionpython
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Python}
 import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import it.evadid.vm.code.usage.BeFunctionCall
+import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.conversion.printing.{GenericJavaLikeStringPrinter, ModuleLayout}
 import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter.PythonSeparation
 import it.evadid.vm.naming.NamingStyle
+import it.evadid.vm.types.BeDataValueUnit
 
 case class BeExpressionToPythonString
 (language: HumanLanguage, skipUnparsable: Boolean)
@@ -60,6 +61,7 @@ case class BeExpressionToPythonString
   }
 
   override def forOther(other: BeExpression): String = other match {
+    case BeUseValue(BeDataValueUnit(), _) => "None"
     case call: BeFunctionCall if call.isOperator =>
       formatOperatorCall(call)
     case _ =>

@@ -294,6 +294,9 @@ private object JavaAstToParsed {
         case Some(path) => call(path :+ name, arguments.map(expression(_, scope)), scope)
         case None => E.MethodCall(expression(receiver, scope), name, arguments.map(expression(_, scope)))
       }
+    // `Main.count` reads a module variable of the entry class.
+    case JavaAttributeAccess(JavaTarget(owner, Seq(), None), name) if scope.module.contains(owner) && !scope.locals(owner) =>
+      qualified(JavaTarget(name), scope)
     case JavaAttributeAccess(receiver, name) => E.Member(expression(receiver, scope), name)
     case JavaNewExpression(javaType, arguments) => E.Construct(javaType.typenameInCode, arguments.map(expression(_, scope)))
     case other => E.Unsupported(other.getClass.getSimpleName.stripPrefix("Java"))
