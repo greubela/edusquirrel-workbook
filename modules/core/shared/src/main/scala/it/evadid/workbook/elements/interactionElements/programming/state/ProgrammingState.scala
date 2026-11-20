@@ -82,8 +82,11 @@ object ProgrammingState {
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState derives ReadWriter {
   lazy val turtleCommandSites = TurtleProgramAnalysis.commandSites(expression)
   lazy val turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleProgramAnalysis(expression)
-  /** Startup run on the default list and sudoku; its list and sudoku commands are extracted like turtle commands. */
+  /** Startup run on the default list and sudoku. */
   lazy val programExecution: it.evadid.vm.simulation.ProgramExecution = execute()
+
+  /** The commands `module`'s functions executed in the startup run, e.g. `moduleCommands(BeModules.Turtle)`. */
+  def moduleCommands[C](module: it.evadid.vm.modules.BeModule[C]): List[C] = programExecution.moduleCommands(module)
 
   def execute(world: it.evadid.vm.simulation.data.DataWorld = it.evadid.vm.simulation.data.DataWorld(),
       entry: it.evadid.vm.simulation.ProgramEntry = it.evadid.vm.simulation.ProgramEntry.Startup,

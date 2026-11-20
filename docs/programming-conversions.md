@@ -79,11 +79,19 @@ A Java counter belongs to its loop. A Python counter is "read" if the program us
 
 A top-level `if __name__ == "__main__":` is read as its body, so a guarded `main()` is the usual entry point.
 
-## Shared interpreter and data libraries
+## Modules and the shared interpreter
 
-[`BeProgramInterpreter`](../modules/core/shared/src/main/scala/it/evadid/vm/simulation/BeProgramInterpreter.scala) executes the shared tree: numbers and booleans (1/0), control flow, functions with parameters, return values and recursion, turtle commands, and the `NumberList`/`Sudoku` libraries ([`DataLibraries`](../modules/core/shared/src/main/scala/it/evadid/vm/simulation/data/DataLibraries.scala)). Library methods carry `BeIntrinsic.NumberList`/`Sudoku`, bind only when qualified (`NumberList.get(i)`) and print qualified in Java and Python. A run starts at startup or at one function (`ProgramEntry`) on a `DataWorld` and yields a `ProgramExecution` with the turtle, list and sudoku commands in order, the final data and the return value. `ProgrammingStateBeExpression.programExecution` runs startup on the default data; `turtleCommandExecutionInfo` (via `TurtleProgramAnalysis`) is the turtle view of the same interpreter. Calls inside an expression run first; `and`/`or` skip their right operand once the left one decides.
+Predefined modules ([`BeModules`](../modules/core/shared/src/main/scala/it/evadid/vm/modules/BeModule.scala)) are libraries of static functions: `Turtle`, `NumberList` (sorting exercises) and `Sudoku`. A `BeModule[C]` names its functions (`library`), marks them with its `BeIntrinsic`, holds the `BeDependency` definitions printers add (the turtle's), and types its recorded calls as `C` (`TurtleCommand[Double]`, `ListCommand`, `SudokuCommand`). Data-module calls bind only when qualified (`NumberList.get(i)`) and print qualified in Java and Python.
 
-The shared numeric subset uses double precision. Java integer declarations are widened on cross-language conversion; `ConversionResult` reports this as a loss because wrapping overflow and truncating division are not preserved. Same-language source grouping retains the original types.
+[`BeProgramInterpreter`](../modules/core/shared/src/main/scala/it/evadid/vm/simulation/BeProgramInterpreter.scala) executes the shared tree: numbers (booleans are 1/0) and text, control flow, functions with return values and recursion, built-ins and module functions. A run starts at startup or at one function (`ProgramEntry`) on a `DataWorld`; its `ProgramExecution` records every module call in program order. Extraction takes the module:
+
+```scala
+expression.moduleCalls(BeModules.Sudoku)                 // call sites in the code
+state.toBeExpression.moduleCommands(BeModules.Turtle)    // startup run on the default data
+run.completedModuleCommands(BeModules.NumberList)        // List[ListCommand]; refuses partial runs
+```
+
+`turtleCommandExecutionInfo` (via `TurtleProgramAnalysis`) remains the turtle view with call sites and status. Calls inside an expression run first; `and`/`or` skip their right operand once the left one decides. Only module variables flow back from a call, so recursion keeps its caller's locals.
 
 ## Types of untyped functions
 

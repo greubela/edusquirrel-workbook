@@ -1,8 +1,7 @@
 package it.evadid.vm.projectexport
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
-import it.evadid.vm.code.defining.BeIntrinsic
-import it.evadid.vm.code.usage.BeFunctionCall
+import it.evadid.vm.modules.BeModules
 import it.evadid.vm.simulation.data.{DataLibrarySources, DataWorld}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 
@@ -29,12 +28,12 @@ object ProjectExport {
       case ProgrammingStateRaw(Python, code) => code
       case other => other.toPython.code
     }
-    val intrinsics = try state.toBeExpression.expression.subtree.collect { case call: BeFunctionCall => call.funcDef.intrinsic }.flatten.toSet
-      catch { case NonFatal(_) => Set.empty[BeIntrinsic] }
+    val program = try Some(state.toBeExpression.expression) catch { case NonFatal(_) => None }
+    def uses(module: it.evadid.vm.modules.BeModule[?]) = program.exists(_.moduleCalls(module).nonEmpty)
     def defines(name: String) = source.linesIterator.exists(line => line.startsWith(s"class $name:") || line.startsWith(s"class $name("))
     val libraries = Seq(
-      Option.when(intrinsics(BeIntrinsic.NumberList) && !defines("NumberList"))(DataLibrarySources.pythonNumberList(world.list)),
-      Option.when(intrinsics(BeIntrinsic.Sudoku) && !defines("Sudoku"))(DataLibrarySources.pythonSudoku(world.sudoku))).flatten
+      Option.when(uses(BeModules.NumberList) && !defines("NumberList"))(DataLibrarySources.pythonNumberList(world.list)),
+      Option.when(uses(BeModules.Sudoku) && !defines("Sudoku"))(DataLibrarySources.pythonSudoku(world.sudoku))).flatten
     val main = (libraries :+ source.trim).mkString("", "\n\n", "\n")
     ExportedProject(ExportedProject.folderName(title), Seq(ProjectFile("main.py", main)))
   }

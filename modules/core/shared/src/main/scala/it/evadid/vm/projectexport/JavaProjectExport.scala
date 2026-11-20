@@ -2,8 +2,7 @@ package it.evadid.vm.projectexport
 
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.defining.BeIntrinsic
-import it.evadid.vm.code.usage.BeFunctionCall
+import it.evadid.vm.modules.BeModules
 import it.evadid.vm.conversion.dependencies.{JavaTurtleLibrary, KnownDependencies}
 import it.evadid.vm.conversion.structured.SourceStructure
 import it.evadid.vm.simulation.data.{DataLibrarySources, DataWorld}
@@ -74,13 +73,12 @@ object JavaProjectExport {
     * also answers to the spellings in `turtleCalls`.
     */
   def libraryFiles(expression: Option[BeExpression], world: DataWorld, turtleCalls: Set[String] = Set.empty): Seq[JavaClassFile] = expression.toSeq.flatMap { program =>
-    val intrinsics = program.subtree.collect { case call: BeFunctionCall => call.funcDef.intrinsic }.flatten.toSet
     val dependencies = KnownDependencies.requiredBy(program).flatMap { dependency =>
       if dependency == KnownDependencies.turtle then Some(JavaTurtleLibrary.exportSource(turtleCalls)) else dependency.definition(Java)
     }
     val data = Seq(
-      Option.when(intrinsics(BeIntrinsic.NumberList))(DataLibrarySources.javaNumberList(world.list)),
-      Option.when(intrinsics(BeIntrinsic.Sudoku))(DataLibrarySources.javaSudoku(world.sudoku))).flatten
+      Option.when(program.moduleCalls(BeModules.NumberList).nonEmpty)(DataLibrarySources.javaNumberList(world.list)),
+      Option.when(program.moduleCalls(BeModules.Sudoku).nonEmpty)(DataLibrarySources.javaSudoku(world.sudoku))).flatten
     (dependencies ++ data).flatMap { source =>
       SourceStructure.javaClasses(source).headOption.map(block => JavaClassFile(block.name, source.trim + "\n", library = true))
     }

@@ -20,8 +20,8 @@ case class BeExpressionToPythonString
   override protected def callName(call: BeFunctionCall): String =
     if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
       "turtle." + entityName(call.funcDef.functionTypeInfo.displayName)
-    else if it.evadid.vm.simulation.data.DataLibraries.isDataMethod(call.funcDef) then
-      it.evadid.vm.simulation.data.DataLibraries.ownerName(call.funcDef).get + "." + entityName(call.funcDef.functionTypeInfo.displayName)
+    else if it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).nonEmpty then
+      it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).get + "." + entityName(call.funcDef.functionTypeInfo.displayName)
     else super.callName(call)
   override protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
     function.functionTypeInfo.funcType match {
