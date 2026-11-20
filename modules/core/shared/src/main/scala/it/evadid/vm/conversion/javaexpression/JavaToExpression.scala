@@ -294,6 +294,9 @@ private object JavaAstToParsed {
         case Some(path) => call(path :+ name, arguments.map(expression(_, scope)), scope)
         case None => E.MethodCall(expression(receiver, scope), name, arguments.map(expression(_, scope)))
       }
+    // `Main.count` reads a module variable of the entry class.
+    case JavaAttributeAccess(JavaTarget(owner, Seq(), None), name) if scope.module.contains(owner) && !scope.locals(owner) =>
+      qualified(JavaTarget(name), scope)
     case JavaAttributeAccess(receiver, name) => E.Member(expression(receiver, scope), name)
     case JavaNewExpression(javaType, arguments) => E.Construct(javaType.typenameInCode, arguments.map(expression(_, scope)))
     case other => E.Unsupported(other.getClass.getSimpleName.stripPrefix("Java"))
@@ -327,6 +330,8 @@ private object JavaAstToParsed {
       case (qualified, _) if KnownDependencies.functionForJavaCall(qualified).nonEmpty =>
         E.Call(Seq(KnownDependencies.functionForJavaCall(qualified).get), arguments)
       case (qualified, _) if JavaSpelling.calls.contains(qualified) => E.Call(Seq(JavaSpelling.calls(qualified)), arguments)
+      // Other java.lang.Math methods have no shared built-in; a plain call would print as an unimported `math.…`.
+      case (Seq("Math", name), _) => E.Unsupported(s"Math.$name(...)")
       case (Seq(name), _) if !scope.locals(name) && scope.owner.exists(_.methods.contains(name)) =>
         val owner = scope.owner.get
         if owner.methods(name) then E.Call(Seq(owner.name, name), arguments)
