@@ -14,6 +14,8 @@
     --mail-list-width: 20rem;
     --qr-symbol-size: 24rem;
     --turtle-preview-size: 300px;
+    --block-editor-library-width: 12rem;
+    --block-editor-popup-width: 14rem;
     --snap-category-row-gap: 4px;
     --snap-category-border: var(--space-borders);
     --snap-category-padding: var(--radius-sm);

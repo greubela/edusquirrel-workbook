@@ -162,5 +162,22 @@
   "sortShowReads": "Lesezugriffe als Schritte zeigen",
   "sortStepStats": "{swaps} Vertauschungen · {sets} Zuweisungen · {reads} Lesezugriffe",
   "sortTestList": "Sortiert {list}",
-  "DrawTitle": "Zeichnung"
+  "DrawTitle": "Zeichnung",
+  "blockEditorLibrary": "Blöcke",
+  "blockEditorLibraryHint": "Ziehe einen Block ins Programm. Ziehe einen Programmblock hierher zurück, um ihn zu entfernen.",
+  "blockEditorProgram": "Programm",
+  "blockEditorPlaceholders": "Platzhalter anzeigen",
+  "blockEditorControlFlow": "Kontrollfluss",
+  "blockEditorFlowHidden": "Kontrollfluss ausblenden",
+  "blockEditorFlowBackgrounds": "Kontrollhintergründe anzeigen",
+  "blockEditorFlowFull": "Vollständigen Kontrollfluss anzeigen",
+  "blockEditorEditValue": "Wert",
+  "blockEditorApply": "Übernehmen",
+  "blockEditorCancel": "Abbrechen",
+  "blockEditorInvalidNumber": "Gib eine Zahl ein, z. B. 90 oder 2.5.",
+  "blockEditorInvalidInteger": "Gib eine ganze Zahl ein, z. B. 4.",
+  "blockEditorInvalidBoolean": "Gib true oder false ein.",
+  "blockEditorInvalidText": "Gib einen Text ein.",
+  "blockEditorInvalidDate": "Gib ein Datum als JJJJ-MM-TT ein.",
+  "blockEditorInvalidAnyValue": "Gib einen gültigen Wert ein."
 }

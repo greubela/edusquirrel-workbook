@@ -21,6 +21,10 @@ object BeLiteralInput {
   def literalAt(program: BeProgram, path: BeNodePath): Option[BeUseValue] =
     BeProgramEditing.find(program, path).collect { case value @ BeUseValue(_: BeDataValueLiteral, _) => value }
 
+  /** The literal's text as the learner edits it. */
+  def textAt(program: BeProgram, path: BeNodePath): Option[String] =
+    literalAt(program, path).map(_.value).collect { case BeDataValueLiteral(text) => text }
+
   /** The type the literal at `path` must have: its parameter's type, a repeat count, or its own context. */
   def expectedType(program: BeProgram, path: BeNodePath): BeDataType =
     (path.parent.flatMap(BeProgramEditing.find(program, _)), path.lastRole) match {

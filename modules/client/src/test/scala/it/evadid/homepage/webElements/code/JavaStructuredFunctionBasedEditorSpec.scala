@@ -59,7 +59,7 @@ class JavaStructuredFunctionBasedEditorSpec extends EditorDomSuite {
   test("the default Java tab projects raw transport and publishes only structured method edits") {
     val state = Var[ProgrammingState](ProgrammingStateRaw(Java, code))
     val editor = EvaEditor(logger, state, Nil, Var(EvaEditorConfig(enabledLanguages = Seq(Java))),
-      labels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading")))
+      labels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading"), it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_"))))
     val close = mount(editor.getDomElement())
     Future.unit.flatMap { _ =>
       assert(field.value.contains("forward(10)"), field.value)
@@ -87,7 +87,7 @@ class JavaStructuredFunctionBasedEditorSpec extends EditorDomSuite {
     val config = CodeMirrorEditorConfig.Default
     val editor = EvaEditor(logger, state, Nil, Var(EvaEditorConfig(enabledLanguages = List(Java, Python))),
       Some(List(JavaStructuredFunctionBasedEditor.forEvaTab(logger, config), CodeMirrorEditor.pythonEditorForEva(logger, config))),
-      labels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading")))
+      labels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading"), it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_"))))
     val close = mount(editor.getDomElement())
     editor.switchTabTo(Python).flatMap { _ =>
       assert(state.now().isInstanceOf[ProgrammingStatePythonStructured])

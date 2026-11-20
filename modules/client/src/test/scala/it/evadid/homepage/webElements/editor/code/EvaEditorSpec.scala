@@ -46,7 +46,8 @@ class EvaEditorSpec extends EditorDomSuite {
     unavailable = Val("_"),
     languages = Val("_"),
     switchFailed = Val("_"),
-    loading = Val("_")
+    loading = Val("_"),
+    blocks = it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_"))
   )
   private val logger = Logger.withNameAndPrefixes(Some("EvaEditorSpec"), PrintToStdLogger.printNothing)
 

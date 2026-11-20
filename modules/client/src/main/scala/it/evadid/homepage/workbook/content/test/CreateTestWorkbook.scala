@@ -1,10 +1,10 @@
 package it.evadid.homepage.workbook.content.test
 
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Java, Python, SnapLanguage}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{MaxCommandUsage, RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleRecreateShapeInteraction}
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.core.datastructures.geometry.{Line, Point}
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
@@ -103,7 +103,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         exp1,
         TurtleDrawingPolicy.Strokes,
         Some(RecreateTurtleDidacticConfig(
-          List(SnapLanguage, Python, Java),
+          List(SnapLanguage, Python, Java, BlockDisplay),
           ProgrammingEditorPalette.BeginnerTurtle,
           MaxCommandUsage(occurrencesInCode = Map("forward" -> 5))
         ))
@@ -118,7 +118,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
         exp2,
         TurtleDrawingPolicy.Strokes,
         Some(RecreateTurtleDidacticConfig(
-          List(SnapLanguage, Python, Java),
+          List(SnapLanguage, Python, Java, BlockDisplay),
           ProgrammingEditorPalette.BeginnerTurtle,
           MaxCommandUsage(occurrencesInCode = Map("forward" -> 2))
         ))
