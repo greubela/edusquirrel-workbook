@@ -5,6 +5,8 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.EditorWithWorkbookPanel
@@ -17,11 +19,13 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 /** Sorting counterpart of the recreate-turtle renderer: editor, current source and a step-by-step replay. */
 case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortListExercise] {
 
-  private def source(state: ProgrammingState): String = state match {
+  /** The answer as text: Snap blocks in their Python form. */
+  private[homepage] def source(state: ProgrammingState): String = state match {
     case value: ProgrammingStateJavaStructured => value.toString
     case value: ProgrammingStatePythonStructured => value.toString
-    case value: ProgrammingStateRaw => value.code
-    case other => other.toPython.code
+    case ProgrammingStateRaw(language, code) if language != it.evadid.core.datastructures.language.AppLanguage.SnapLanguage => code
+    // Blocks are shown as their Python form rather than as project XML.
+    case other => scala.util.Try(other.toPython.code).getOrElse("")
   }
 
   /** Overview card and editor side module replaying the sort function's list operations. */
@@ -41,7 +45,8 @@ case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortL
         fullInfo.loggerSystemInfo.uiAndDomLogger,
         boundVar,
         Nil,
-        Var(EvaEditorConfig(enabledLanguages = element.allowedLanguages.toList)),
+        Var(EvaEditorConfig(enabledLanguages = element.allowedLanguages.toList,
+          snapConfig = SnapCodeEditorConfig.forPalette(ProgrammingEditorPalette.NumberList))),
         humanLanguage = fullInfo.signals.currentLanguage,
         labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
       fullInfo.displayControl.setFullscreen(EditorWithWorkbookPanel(element, instruction, gradingReporter, List(stepsCard), editor))

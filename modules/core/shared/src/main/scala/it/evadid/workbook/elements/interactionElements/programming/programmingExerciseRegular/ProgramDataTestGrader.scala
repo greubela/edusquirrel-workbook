@@ -2,6 +2,7 @@ package it.evadid.workbook.elements.interactionElements.programming.programmingE
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
+import it.evadid.vm.modules.BeModules
 import it.evadid.vm.simulation.{ProgramEntry, ProgramExecution}
 import it.evadid.vm.simulation.data.{DataWorld, ListCommand, SudokuGrid}
 import it.evadid.vm.simulation.turtle.{TurtleExecutionLimits, TurtleExecutionStatus}
@@ -100,8 +101,9 @@ case class ProgramDataTestGrader(
     import DataExpectation.*
     import ProgramDataTestGrader.text
     def list(values: Seq[Int]) = values.mkString("[", ", ", "]")
-    val swaps = run.listCommands.collect { case swap: ListCommand.Swap => swap }
-    val used = run.listCommands.map(ListOperation.of).toSet
+    val listCommands = run.moduleCommands(BeModules.NumberList)
+    val swaps = listCommands.collect { case swap: ListCommand.Swap => swap }
+    val used = listCommands.map(ListOperation.of).toSet
     expectation match {
       case ListEquals(values) => Option.when(run.world.list != values.toVector)(text(
         s"Erwartet war die Liste ${list(values)}, am Ende war sie ${list(run.world.list)}.",

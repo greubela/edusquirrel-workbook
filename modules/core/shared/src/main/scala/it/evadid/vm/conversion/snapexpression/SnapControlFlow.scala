@@ -1,6 +1,6 @@
 package it.evadid.vm.conversion.snapexpression
 
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapModuleBlocks, SnapTurtleCatalog, SnapVocabulary}
 
 import upickle.default.ReadWriter
 
@@ -279,6 +279,8 @@ object SnapControlFlow {
               call.arguments.forall(isSupportedValue(_, userFunctions))
           // Library reporters such as `url` produce a value in Snap as well.
           case _ =>
+            SnapModuleBlocks.of(call.funcDef).exists(_.blockType == SnapVocabulary.BlockType.Reporter) &&
+              call.arguments.forall(isSupportedValue(_, userFunctions)) ||
             isUserReporterCall(call, userFunctions) || call.funcDef.outputs.nonEmpty &&
               SnapTurtleCatalog.LibraryPrimitives.exists(_.pythonName == SnapExpressionSupport.pythonName(call)) &&
               call.arguments.forall(isSupportedValue(_, userFunctions))
@@ -394,10 +396,20 @@ object SnapControlFlow {
   def literalInt(value: String): Option[Int] =
     scala.util.Try(value.trim.toDouble.round.toInt).toOption.filter(_ >= 0)
 
+  /** A predefined module block (see [[SnapModuleBlocks]]) standing alone: only its command blocks can. */
+  private def moduleCallProblems(call: BeFunctionCall, userFunctions: Map[String, Int]): Option[String] = {
+    val name = SnapExpressionSupport.pythonName(call)
+    if SnapModuleBlocks.of(call.funcDef).exists(_.blockType == SnapVocabulary.BlockType.Reporter) then
+      Some(s"$name(...) reports a value; Snap has no command block for a reporter")
+    else if call.arguments.forall(isSupportedValue(_, userFunctions)) then None
+    else Some(s"$name(...)")
+  }
+
   /** Problems of a call that stands alone as a command; inputs are checked by [[isSupportedValue]]. */
   private def callProblems(call: BeFunctionCall, userFunctions: Map[String, Int]): Option[String] = {
     if SnapExpressionSupport.pythonName(call) == it.evadid.vm.BeProgram.unusedCodeName.universalInterpretation() then
       Some("unusedCode is reserved for detached scripts and cannot be called")
+    else if SnapModuleBlocks.of(call.funcDef).nonEmpty then moduleCallProblems(call, userFunctions)
     else if !call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] &&
         !it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
       Some("object methods and constructors have no Snap block representation")

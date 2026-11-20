@@ -275,7 +275,8 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
       val retagged = customBlockDefinitions(ide).count { definition =>
         val category = definition.selectDynamic("category")
         val current = if js.isUndefined(category) || category == null then "" else category.toString
-        if tabNames.contains(current) then false
+        // Predefined module blocks are shown where the palette lists them.
+        if tabNames.contains(current) || moduleBlockOf(definition).nonEmpty then false
         else
           definition.updateDynamic("category")(target.name)
           true
@@ -308,6 +309,42 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
         val body = definition.selectDynamic("body")
         if !js.isUndefined(body) && body != null then
           body.updateDynamic("inputs")(names.toJSArray)
+    }
+
+  private def moduleBlockOf(definition: js.Dynamic): Option[SnapModuleBlocks.ModuleBlock] =
+    val spec = definition.selectDynamic("spec")
+    if js.isUndefined(spec) || spec == null then None else SnapModuleBlocks.bySpec(spec.toString)
+
+  /**
+   * Adds the definitions of predefined module blocks the palette offers but the project lacks (a program
+   * only carries them once it calls the module), as Snap imports a blocks library. The data variable is
+   * added only when missing, so the list a student changed while trying blocks stays.
+   */
+  private def installModuleBlocks(ide: IDEMorph, blocks: Seq[SnapModuleBlocks.ModuleBlock]): Unit =
+    val installed = customBlockDefinitions(ide).flatMap(moduleBlockOf).toSet
+    val missing = blocks.filterNot(installed.contains)
+    val dynamicIde = ide.asInstanceOf[js.Dynamic]
+    val stage = dynamicIde.selectDynamic("stage")
+    if missing.nonEmpty && !js.isUndefined(stage) && stage != null then
+      val loaded = dynamicIde.selectDynamic("serializer").applyDynamic("loadBlocks")(SnapModuleBlocks.libraryXml(missing), stage)
+      loaded.selectDynamic("global").asInstanceOf[js.Array[js.Dynamic]].foreach { definition =>
+        definition.updateDynamic("receiver")(stage)
+        stage.selectDynamic("globalBlocks").applyDynamic("push")(definition)
+      }
+      val globals = dynamicIde.selectDynamic("globalVariables")
+      val existing = globals.selectDynamic("vars").selectDynamic(SnapModuleBlocks.NumberListVariable)
+      val data = loaded.selectDynamic("data")
+      if (js.isUndefined(existing) || existing == null) && !js.isUndefined(data) && data != null then
+        globals.applyDynamic("merge")(data)
+      ide.flushPaletteCache()
+
+  /** The palette template of a module block, from its installed definition. */
+  private def moduleTemplateBlock(ide: IDEMorph, block: SnapModuleBlocks.ModuleBlock): Option[BlockMorph] =
+    customBlockDefinitions(ide).find(moduleBlockOf(_).contains(block)).flatMap { definition =>
+      try
+        val template = definition.applyDynamic("templateInstance")()
+        Option.when(!js.isUndefined(template) && template != null)(template.asInstanceOf[BlockMorph])
+      catch case _: Throwable => None
     }
 
   /** Global definitions plus the current sprite's local ones. */
@@ -381,8 +418,10 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
 
     if libraries.exists(_.useNativeCategory) then
       spriteMorphPrototype.applyDynamic("initBlocks")()
-    ensurePrimitiveSelectors(libraries.flatMap(_.selectableElements.map(_.id)))
+    val (moduleIds, primitiveIds) = libraries.flatMap(_.selectableElements.map(_.id)).partition(SnapModuleBlocks.byId(_).nonEmpty)
+    ensurePrimitiveSelectors(primitiveIds)
     SnapExtraPrimitives.install()
+    installModuleBlocks(ide, moduleIds.flatMap(SnapModuleBlocks.byId).distinct)
 
     // Snap calls blockTemplates(category) or blockTemplates(category, forSearch).
     // Exercise-only: only library tab names return blocks; everything else is empty.
@@ -400,7 +439,7 @@ final class SnapCodeEditorImplDelegateToOriginal() extends SnapCodeEditorImpl:
               (if tab.includeVariableControls then nativeVariablePaletteItems(ide) else Nil) ++
                 (if tab.includeMakeBlockButton then nativeMakeBlockButton(ide) else Nil)
             val blocks = tab.selectableElements.flatMap { data =>
-              createTemplateBlock(data) match
+              SnapModuleBlocks.byId(data.id).fold(createTemplateBlock(data))(moduleTemplateBlock(ide, _)) match
                 case Some(block) => List(block)
                 case None =>
                   println(s"Snap library: skipping unknown block selector '${data.id}'")

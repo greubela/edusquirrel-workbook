@@ -270,15 +270,19 @@ class Gdp1WorkbookSpec extends FunSuite {
   private def sortResults(state: it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState) =
     Future.traverse(sortTask.gradingElements)(_.gradeStateSafe(state, true, ExecutionContextInformation.default))
 
-  test("sort exercise: a swap-based solution passes every generated test in Python and after conversion to Java") {
+  test("sort exercise: a swap-based solution passes every generated test in Python and after conversion to Java and Snap") {
     assertEquals(sortTask.sortTests.size, SortListExercise.defaultTestLists.size)
+    assertEquals(sortTask.allowedLanguages, Seq(SnapLanguage, Python, Java))
     val python = ProgrammingStatePythonStructured(selectionSort)
+    val blocks = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(SnapLanguage, python.toSnapXml.code)
     for {
       inPython <- sortResults(python)
       inJava <- sortResults(python.toJavaStructured)
+      inSnap <- sortResults(blocks)
     } yield {
       assert(inPython.forall(_.gradingStatus.isCorrect), inPython.map(r => (r.grader, r.gradingStatus, r.feedbackInformation)))
       assert(inJava.forall(_.gradingStatus.isCorrect), python.toJavaStructured.toString)
+      assert(inSnap.forall(_.gradingStatus.isCorrect), inSnap.map(r => (r.gradingStatus, r.feedbackInformation)))
     }
   }
 

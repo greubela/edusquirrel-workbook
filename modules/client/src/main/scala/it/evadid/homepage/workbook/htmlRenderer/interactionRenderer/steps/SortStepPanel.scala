@@ -29,7 +29,7 @@ final class SortStepPanel(state: Var[ProgrammingState], sortFunction: String, ex
     }
 
   private val replay: Signal[SortStepPanel.Replay] = executions.combineWith(showReads.signal).map { (execution, reads) =>
-    SortStepPanel.Replay(example.toVector, execution.flatMap(_.toOption).fold(Nil)(_.listCommands), reads)
+    SortStepPanel.Replay(example.toVector, execution.flatMap(_.toOption).fold(Nil)(_.moduleCommands(it.evadid.vm.modules.BeModules.NumberList)), reads)
   }.distinct
 
   private val navigator = new StepNavigator(replay.map(_.steps.size), text)

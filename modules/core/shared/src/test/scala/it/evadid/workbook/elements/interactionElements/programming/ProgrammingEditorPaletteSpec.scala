@@ -32,6 +32,21 @@ class ProgrammingEditorPaletteSpec extends FunSuite {
     assert(ProgrammingEditorPalette.Custom(PaletteLayout.Mixed(Nil)).pythonCompatible)
   }
 
+  test("mixed palettes may offer predefined module blocks by id, but no unknown ids") {
+    val layout = PaletteLayout.Mixed(List("receiveGo", "NumberList.swap", "NumberList.length"))
+    assert(ProgrammingEditorPalette.Custom(layout).pythonCompatible)
+    intercept[IllegalArgumentException](ProgrammingEditorPalette.Custom(PaletteLayout.Mixed(List("NumberList.sort"))))
+    val listPalette = ProgrammingEditorPalette.NumberList.layout
+    assert(ProgrammingEditorPalette.NumberList.pythonCompatible)
+    listPalette match
+      case PaletteLayout.Mixed(selectors, customBlocks, variables) =>
+        assert(customBlocks && variables)
+        assertEquals(selectors.filter(_.startsWith("NumberList.")),
+          List("NumberList.get", "NumberList.set", "NumberList.swap", "NumberList.length"))
+      case other => fail(other.toString)
+    assertEquals(read[ProgrammingEditorPalette](write[ProgrammingEditorPalette](ProgrammingEditorPalette.NumberList)), ProgrammingEditorPalette.NumberList)
+  }
+
   test("custom catalog palettes retain the selected categories") {
     val layout = PaletteLayout.CatalogTabs(List(PaletteTab.Control, PaletteTab.Motion))
     val palette = ProgrammingEditorPalette.Custom(layout)

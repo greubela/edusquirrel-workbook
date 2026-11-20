@@ -21,6 +21,18 @@ object TurtleStitchToBeExpressionParser {
 
   def parseProject(project: Project): BeExpression = parseProjectWithLayout(project).expression
   def parseProjectWithLayout(project: Project): ParseWithLayout = Reader().parseProjectWithLayout(project)
+
+  /**
+   * The project without predefined module blocks' definitions and data variables: their calls bind to the
+   * module functions instead (see [[SnapModuleBlocks]]).
+   */
+  def withoutModuleLibraries(project: Project): Project = {
+    def definitions(blocks: Vector[CustomBlockDefinition]) = blocks.filter(block => SnapModuleBlocks.bySpec(block.spec).isEmpty)
+    def variables(values: Vector[TurtleStitchProgramModel.Variable]) = values.filterNot(variable => SnapModuleBlocks.isDataVariable(variable.name))
+    project.copy(scenes = project.scenes.map(scene => scene.copy(customBlocks = definitions(scene.customBlocks),
+      variables = variables(scene.variables), stage = scene.stage.copy(variables = variables(scene.stage.variables)))))
+  }
+
   def parseXml(xml: String): BeExpression = parseXmlWithLayout(xml).expression
   def parseXmlWithLayout(xml: String): ParseWithLayout = Reader().parseXmlWithLayout(xml)
 
@@ -52,7 +64,8 @@ object TurtleStitchToBeExpressionParser {
     parseProjectWithLayout(project).expression
 
   /** Failures propagate: a program that cannot be read is never replaced by an empty one. */
-  def parseProjectWithLayout(project: Project): ParseWithLayout = {
+  def parseProjectWithLayout(loaded: Project): ParseWithLayout = {
+    val project = withoutModuleLibraries(loaded)
     val interner = SnapControlFlow.VariableInterner.fromNames(project.variables.map(_.name.trim).filter(_.nonEmpty))
     withVars(interner) {
       val phaseOne = buildDefinitions(project)
@@ -177,7 +190,11 @@ object TurtleStitchToBeExpressionParser {
       val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
       reportedResult(defn.blockType, BeDataType.AnyType).map(Signature(customSignatureName(defn.spec), arity, false, isCustom = true) -> _)
     }.toMap
-    val stubs = signatures.map(signature => createDefinition(signature).copy(outputs = reported.get(signature)))
+    val stubs = signatures.map { signature =>
+      val stub = createDefinition(signature)
+      if signature.isCustom && SnapModuleBlocks.byName(signature.name, signature.arity).nonEmpty then stub
+      else stub.copy(outputs = reported.get(signature))
+    }
     val stubMap = signatures.zip(stubs).toMap
     val phaseOneStubs = PhaseOneResult(stubs, stubMap, Nil)
     val userDefinitions = customDefs.flatMap { defn =>
@@ -429,7 +446,9 @@ object TurtleStitchToBeExpressionParser {
         })
         .getOrElse(BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName)))
     else
-      BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName))
+      // Predefined module blocks call the module's function, as `NumberList.get` does in Python and Java.
+      SnapModuleBlocks.byName(signature.name, signature.arity).map(_.definition)
+        .getOrElse(BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName)))
   }
 }
 

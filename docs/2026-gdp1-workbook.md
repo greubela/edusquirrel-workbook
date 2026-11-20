@@ -67,7 +67,7 @@ shared model, so the sudoku task computes block starts as `zeile - zeile % 3`.
 `Gdp1WorkbookSpec` checks reference solutions, starting programs and typical mistakes
 (ready-made swap, selection sort, missing block check, missing undo).
 
-Task 11 is a `SortListExercise` (Python or Java, `SortingMethod.SwapsOnly`): any algorithm
+Task 11 is a `SortListExercise` (Snap, Python or Java, `SortingMethod.SwapsOnly`; Snap offers the number-list blocks): any algorithm
 that sorts `NumberList` by swapping. Its generated tests sort the default test lists
 (including empty, single and sorted lists). The recreate-shape editors show the turtle
 drawing step by step beside the comparison panel.

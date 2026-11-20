@@ -25,7 +25,7 @@ enum SortingMethod derives ReadWriter {
 
 /**
  * Sorting counterpart of `TurtleRecreateShapeInteraction`: the program defines `sortFunction`, which sorts
- * the provided `NumberList` ascending. One test per entry of `testLists` calls it on that list; the editor
+ * the provided `NumberList` ascending (in Snap: a block of that name using the number-list blocks). One test per entry of `testLists` calls it on that list; the editor
  * and overview replay its list operations step by step on `exampleList`.
  */
 case class SortListExercise(
@@ -41,8 +41,7 @@ case class SortListExercise(
 ) extends WorkbookInteractionElement[SortListExerciseFormat.type] {
   require(sortFunction.nonEmpty && sortFunction == sortFunction.trim, "A sorting exercise needs the name of its sort function.")
   require(testLists.nonEmpty, "A sorting exercise needs at least one test list.")
-  require(allowedLanguages.nonEmpty && !allowedLanguages.contains(it.evadid.core.datastructures.language.AppLanguage.SnapLanguage),
-    "Snap has no number-list blocks; choose Python and/or Java.")
+  require(allowedLanguages.nonEmpty, "A sorting exercise needs at least one language.")
 
   override val defaultValue: ProgrammingState = initProgram
   override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
