@@ -48,7 +48,8 @@ class SvgLaminarRendererSpec extends FunSuite {
 
   private val rendering = AppShapeRenderingConfig.defaultDouble
   private def config(clicked: Boolean => Unit = _ => (), stroke: Double = 1,
-      fontToUse: AppFont = AppFont.defaultFont): AppShapeElementConfig[Double] = new AppShapeElementConfig[Double] {
+      fontToUse: AppFont = AppFont.defaultFont, fill: Boolean = true): AppShapeElementConfig[Double] = new AppShapeElementConfig[Double] {
+    override def fillEnabled = fill
     override def colorStroke = RGBColor.black
     override def colorFill = RGBColor.red
     override def colorFont = RGBColor.yellow
@@ -146,6 +147,26 @@ class SvgLaminarRendererSpec extends FunSuite {
         val element = SvgLaminarRenderer.renderSvgImage(BasicLogger(), shape).ref
         assert(!element.outerHTML.contains("NaN") && !element.outerHTML.contains("Infinity"))
       }
+    } finally missingHeight = false
+  }
+
+  test("outline-only shapes render without fill while filled shapes use their fill color") {
+    val outline = config(fill = false)
+    val shape = AppShapeComposition(CompositionHBox[Double](AlignmentInParent.TopLeft), outline,
+      List(rectangle(outline), rectangle(config()))).renderWithMinimumDimension(rendering)
+    val element = SvgLaminarRenderer.renderSvgImage(BasicLogger(), shape).ref
+    assertEquals(element.getAttribute("fill"), "none")
+    assertEquals(element.querySelectorAll("path").toList.map(_.getAttribute("fill")),
+      List("none", RGBColor.red.toWebColor.webStyleHexString))
+  }
+
+  test("zero-size fonts render text at zero size instead of an invalid scale") {
+    missingHeight = true
+    try {
+      val shape = AppShapeTextElement("abc", config(stroke = 0, fontToUse = AppFont("Arial", 0)))
+        .renderWithMinimumDimension(rendering)
+      val text = SvgLaminarRenderer.renderSvgImage(BasicLogger(), shape).ref.querySelector("text")
+      assertEquals(text.getAttribute("font-size"), "0px")
     } finally missingHeight = false
   }
 }
