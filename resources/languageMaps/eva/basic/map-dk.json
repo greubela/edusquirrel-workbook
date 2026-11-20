@@ -162,5 +162,22 @@
   "sortShowReads": "Vis læsninger som trin",
   "sortStepStats": "{swaps} ombytninger · {sets} tildelinger · {reads} læsninger",
   "sortTestList": "Sorterer {list}",
-  "DrawTitle": "Tegning"
+  "DrawTitle": "Tegning",
+  "blockEditorLibrary": "Blokke",
+  "blockEditorLibraryHint": "Træk en blok ind i programmet. Træk en programblok tilbage hertil for at fjerne den.",
+  "blockEditorProgram": "Program",
+  "blockEditorPlaceholders": "Vis pladsholdere",
+  "blockEditorControlFlow": "Kontrolflow",
+  "blockEditorFlowHidden": "Skjul kontrolflow",
+  "blockEditorFlowBackgrounds": "Vis kontrolbaggrunde",
+  "blockEditorFlowFull": "Vis hele kontrolflowet",
+  "blockEditorEditValue": "Værdi",
+  "blockEditorApply": "Anvend",
+  "blockEditorCancel": "Annuller",
+  "blockEditorInvalidNumber": "Indtast et tal, f.eks. 90 eller 2.5.",
+  "blockEditorInvalidInteger": "Indtast et heltal, f.eks. 4.",
+  "blockEditorInvalidBoolean": "Indtast true eller false.",
+  "blockEditorInvalidText": "Indtast en tekst.",
+  "blockEditorInvalidDate": "Indtast en dato som ÅÅÅÅ-MM-DD.",
+  "blockEditorInvalidAnyValue": "Indtast en gyldig værdi."
 }

@@ -128,6 +128,7 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     case Python => pythonStructured
     case Java => javaStructured
     case SnapLanguage => snapModel.fold(message => throw ProgrammingConversionException.unparsable(message), _.persistent)
+    case BlockDisplay => expression
     case _ => throw UnsupportedOperationException(s"Programming language '$language' cannot be converted.")
   }
 }

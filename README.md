@@ -194,7 +194,7 @@ avoid exhaustive class/method lists and historical test-run logs.
 - [Email simulator](docs/email-simulator.md): state, grading, content handling and verification.
 - [QR interaction](docs/qr-code-interaction.md): encoding model, requirements, region colors and reference tests.
 - [Plant workshop](docs/PlantWorkshop_Quickstart.md): implemented sections and remaining migration work.
-- [Eva programming state](docs/eva-editor-programming-state.md) and [Snap editor](docs/snap-editor.md): representations and editor lifecycle.
+- [Eva programming state](docs/eva-editor-programming-state.md), [Snap editor](docs/snap-editor.md) and [block editor](docs/block-editor.md): representations and editor lifecycle.
 - [Snap command execution service](docs/snap-turtle-command-execution-overview.md): implemented snapshot extraction, Pyodide boundary and editor integration.
 - [Core extraction proposals](docs/core-extraction-proposals.md): reviewed dependency boundaries and proposed follow-up tasks.
 - [Programming conversions](docs/programming-conversions.md): shared VM transformation packages and their state conversion API.

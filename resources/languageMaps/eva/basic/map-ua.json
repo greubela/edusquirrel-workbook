@@ -45,5 +45,22 @@
   "resetAllDataError": "Не всі сховища підтвердили видалення. Синхронізацію призупинено, щоб видалені відповіді не зберігалися знову. Повторіть скидання.",
   "gradingHiddenTest": "Прихований тест",
   "gradingAiAssessment": "Оцінка ШІ",
-  "gradingAiCriterion": "Оцінка ШІ {number}"
+  "gradingAiCriterion": "Оцінка ШІ {number}",
+  "blockEditorLibrary": "Блоки",
+  "blockEditorLibraryHint": "Перетягни блок у програму. Перетягни блок програми сюди, щоб вилучити його.",
+  "blockEditorProgram": "Програма",
+  "blockEditorPlaceholders": "Показати заповнювачі",
+  "blockEditorControlFlow": "Потік керування",
+  "blockEditorFlowHidden": "Сховати потік керування",
+  "blockEditorFlowBackgrounds": "Показати тло керування",
+  "blockEditorFlowFull": "Показати весь потік керування",
+  "blockEditorEditValue": "Значення",
+  "blockEditorApply": "Застосувати",
+  "blockEditorCancel": "Скасувати",
+  "blockEditorInvalidNumber": "Введи число, напр. 90 або 2.5.",
+  "blockEditorInvalidInteger": "Введи ціле число, напр. 4.",
+  "blockEditorInvalidBoolean": "Введи true або false.",
+  "blockEditorInvalidText": "Введи текст.",
+  "blockEditorInvalidDate": "Введи дату у форматі РРРР-ММ-ДД.",
+  "blockEditorInvalidAnyValue": "Введи коректне значення."
 }

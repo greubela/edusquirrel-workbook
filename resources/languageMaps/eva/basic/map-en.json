@@ -163,5 +163,22 @@
   "sortShowReads": "Show reads as steps",
   "sortStepStats": "{swaps} swaps · {sets} assignments · {reads} reads",
   "sortTestList": "Sorts {list}",
-  "DrawTitle": "Drawing"
+  "DrawTitle": "Drawing",
+  "blockEditorLibrary": "Blocks",
+  "blockEditorLibraryHint": "Drag a block into the program. Drag a program block back here to remove it.",
+  "blockEditorProgram": "Program",
+  "blockEditorPlaceholders": "Show placeholders",
+  "blockEditorControlFlow": "Control flow",
+  "blockEditorFlowHidden": "Hide control flow",
+  "blockEditorFlowBackgrounds": "Show control backgrounds",
+  "blockEditorFlowFull": "Show full control flow",
+  "blockEditorEditValue": "Value",
+  "blockEditorApply": "Apply",
+  "blockEditorCancel": "Cancel",
+  "blockEditorInvalidNumber": "Enter a number, e.g. 90 or 2.5.",
+  "blockEditorInvalidInteger": "Enter a whole number, e.g. 4.",
+  "blockEditorInvalidBoolean": "Enter true or false.",
+  "blockEditorInvalidText": "Enter a text.",
+  "blockEditorInvalidDate": "Enter a date as YYYY-MM-DD.",
+  "blockEditorInvalidAnyValue": "Enter a valid value."
 }

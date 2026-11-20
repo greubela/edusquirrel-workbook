@@ -77,6 +77,32 @@ object BeProgramInterpreter {
     ProgramExecution(finished.recorded.toList, finished.world, finished.returned.collect { case Value.Num(number) => number }, finished.status)
   }
 
+  private val booleanOperators = Set("<", ">", "==", "<=", ">=", "!=", "and", "or", "not")
+
+  /** Replaces operator and built-in calls whose inputs are all literals by their value, as the interpreter
+    * computes it; other calls, e.g. to user functions, keep their folded arguments. `3 + 5` becomes `8`,
+    * `add(3 + 5, 3)` becomes `add(8, 3)` and `2 < 3` becomes `True`.
+    */
+  def foldConstants(expression: BeExpression): BeExpression = expression match {
+    case call: BeFunctionCall =>
+      val folded = call.copy(parameterValueMap = call.parameterValueMap.map((parameter, value) => parameter -> foldConstants(value)))
+      val computable = folded.isOperator || folded.funcDef.intrinsic.exists(intrinsic =>
+        numericIntrinsics(intrinsic) || intrinsic == BeIntrinsic.ToText || intrinsic == BeIntrinsic.ToBoolean)
+      val literalInputs = folded.arguments.nonEmpty && folded.arguments.forall {
+        case BeUseValue(BeDataValueLiteral(_), _) => true
+        case _ => false
+      }
+      if !computable || !literalInputs then folded
+      else scala.util.Try(eval(folded, State.initial(folded, DataWorld()))).toOption.map {
+        case Value.Num(number) if folded.isOperator && booleanOperators(SnapControlFlow.operatorSymbol(folded)) =>
+          BeUseValue(BeDataValueLiteral(if number != 0 then "True" else "False"), None)
+        case Value.Num(number) if number.isNaN || number.isInfinite => folded
+        case Value.Num(number) => BeUseValue(BeDataValueLiteral(text(Value.Num(number))), None)
+        case value: Value.Text => literal(value)
+      }.getOrElse(folded)
+    case other => other
+  }
+
   /** The values programs compute with: numbers (booleans are 1 and 0) and text. */
   private enum Value {
     case Num(value: Double)
