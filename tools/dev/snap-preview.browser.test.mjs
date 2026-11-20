@@ -43,6 +43,7 @@ test('Snap previews and editor wait for the runtime and ignore closed mounts', a
     assert.equal(await page.evaluate(() => typeof window.WorldMorph), 'undefined', 'runtime is deliberately incomplete');
     const open = page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first();
     await open.click();
+    await page.locator('dialog[open]').getByRole('tab', {name:'Snap!',exact:true}).click();
     await page.locator('dialog[open] .be-program-snap-renderer__canvas').waitFor();
     await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, [], 'pending runtime must not throw from preview/editor mount');

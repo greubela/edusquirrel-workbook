@@ -82,6 +82,7 @@ test('test workbook preserves edits across human languages, programming language
     await page.waitForFunction(() => snapLanguagePreviews.some(p => p.language === 'de' && p.specs.includes('gehe %n Schritte')));
     assert(await preview.evaluate(canvas => canvas !== englishPreview), 'language changes replace a static preview');
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
+    await page.locator('dialog[open]').getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => window.snapLanguageEditor?.currentSprite?.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'gehe %n Schritte'), null, {timeout:60000}).catch(async error => {
         console.error({errors, state:await page.evaluate(() => ({language:SnapTranslator.language,

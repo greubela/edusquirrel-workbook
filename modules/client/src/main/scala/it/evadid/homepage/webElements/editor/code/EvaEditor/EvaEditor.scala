@@ -62,7 +62,8 @@ case class EvaEditor(
 
   def error: Option[Throwable] = lastConversion.now().flatMap(failure)
 
-  def switchTabTo(language: ProgrammingLanguage): Future[Unit] = tabs.find(_.language == language) match {
+  /** Convert the bound answer; its resulting representation determines the active editor. */
+  def setActiveTab(language: ProgrammingLanguage): Future[Unit] = tabs.find(_.language == language) match {
     case None => Future.unit
     case Some(_) if selectedLanguage.contains(language) =>
       request.set(None)
@@ -155,7 +156,7 @@ case class EvaEditor(
       },
       onFocus --> (_ => checkConversion(tab)),
       onPointerEnter --> (_ => checkConversion(tab)),
-      onClick --> (_ => switchTabTo(tab.language)))
+      onClick --> (_ => setActiveTab(tab.language)))
   }
 
   private def describeConversionError(error: Throwable): String = EvaEditor.describe(error)
@@ -166,7 +167,6 @@ case class EvaEditor(
     onMountCallback { context =>
       mounted.set(true)
       appearance.watch(context.owner)
-      if selectedLanguage.isEmpty then tabs.headOption.foreach(tab => switchTabTo(tab.language))
     },
     onUnmountCallback { _ =>
       mounted.set(false)

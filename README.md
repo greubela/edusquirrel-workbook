@@ -156,11 +156,18 @@ The [test workflow](.github/workflows/tests.yml) runs these checks and every Sca
 module on pull requests and, through the Pages workflow, before publication from main. Individual test files can still be run
 with `node --test`.
 
-CI resolves sbt, plugins and Scala dependencies through Google's Maven Central mirror,
+Standard sbt launchers read [.sbtopts](.sbtopts), so local builds and CI resolve
+sbt, plugins and Scala dependencies through Google's Maven Central mirror,
 falling back to Maven Central, as listed in [project/repositories](project/repositories);
 Maven Central rate-limits bursts from shared runners. Dependency and compiler cache keys
 include that configuration. Only `scala-tests`, which resolves every module, saves the
 dependency cache, so a JVM-only job cannot publish an incomplete one.
+
+If an agent reports Maven Central HTTP 429/403 errors, check its launcher: a managed
+wrapper may override `.sbtopts`, `sbt.repository.config`, or `COURSIER_REPOSITORIES`.
+It must use this repository's configuration and preserve explicit caller overrides;
+setting a mirror in the build alone cannot fix a launcher that forces a different
+repository. Keep dependency caches between runs rather than deleting them to retry.
 
 ## Deployment
 

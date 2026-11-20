@@ -67,6 +67,7 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     assert.equal(requests.length, 1, 'completed feedback is cached');
     await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
     const editor = page.locator('dialog[open] .eva-editor');
+    await editor.getByRole('tab', {name:'Java',exact:true}).click();
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
     const code = editor.locator('.cm-content');
     const draft = 'class Drawing {\n  static void square(int side) {';
@@ -127,6 +128,7 @@ test('Java method editing and theme changes preserve source and undo history', a
     const open = page.getByRole('button', {name: /Editor.*öffnen|Open editor/i});
     await open.last().click();
     const editor = page.locator('dialog[open] .eva-editor');
+    await editor.getByRole('tab', {name:'Java',exact:true}).click();
     await editor.locator('.cm-content').waitFor();
     await editor.getByRole('button', {name: 'Full source', exact: true}).click();
     await page.waitForFunction(() => !!globalThis.EduSquirrelCodeMirrorLibraries?.EditorView);

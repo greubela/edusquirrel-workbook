@@ -91,3 +91,5 @@ Tests cover single-editor construction and mounting, direct state observation,
 conversion failure/cancellation, unmount cleanup and the owning execution
 services. Browser checks cover real input, delayed library loading, native editor
 replacement, draft restoration and panel geometry.
+
+The active tab is derived from the current `ProgrammingState`, including the Blocks tab for a `ProgrammingStateBeExpression`. Mounting the editor does not select the first configured tab or convert the answer implicitly. If the native tab is unavailable, the answer remains intact. External controls and Scala tests can await `EvaEditor.setActiveTab(language)` to convert the bound answer and activate that representation. Browser tests select the intended tab explicitly before testing its behavior.
