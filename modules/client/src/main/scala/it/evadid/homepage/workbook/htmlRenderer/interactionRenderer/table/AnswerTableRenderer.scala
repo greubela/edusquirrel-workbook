@@ -34,7 +34,7 @@ case object AnswerTableRenderer extends LineBasedRenderingFactory[AnswerTableInt
     val dom = div(cls := "answer-table",
       div(cls := "answer-table__scroll", table(
         caption(InlineMarkdown.element(laminarHelper.plaintextStringSignal(e.caption))),
-        thead(tr(th(text <-- laminarHelper.plaintextStringSignal("digitalWorkbooks/tableRow")),
+        thead(tr(th(text <-- e.rowHeader.fold(laminarHelper.plaintextStringSignal("digitalWorkbooks/tableRow"))(id => laminarHelper.plaintextStringSignal(id))),
           e.columnLabels.map(id => th(headerScope := "col", InlineMarkdown.element(laminarHelper.plaintextStringSignal(id)))))),
         tbody(e.rows.zipWithIndex.map((cells, row) => tr(
           th(headerScope := "row", InlineMarkdown.element(laminarHelper.plaintextStringSignal(e.rowLabels(row)))),

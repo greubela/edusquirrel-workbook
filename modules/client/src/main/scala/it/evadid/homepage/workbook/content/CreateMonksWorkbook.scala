@@ -23,12 +23,13 @@ import scala.collection.mutable.ListBuffer
 
 /** Recursion workbook "Die Mönche von Mons Komputarius".
  *
- * Parts: 0 (editor basics), A (monks), B (outward/return path), C (tower), D (bridge to the final task)
- * and the Koch curve practice (section 3).
+ * Sections 0 (monks), 1 (tower), 2 (editor basics and the building-brick methods),
+ * 3 (drawing recursively with bricks) and 4 (Koch curve). Task titles are numbered per section
+ * ("Aufgabe 2.3") in the language maps.
  *
  * The programming tasks E1–E8 open the Eva editor with Java starting code; their targets are recorded
  * from the sample solutions in [[CreateMonksWorkbook.editorTarget]]. Element IDs are stable per task
- * (`monks-a2`, `monks-e5`, ...).
+ * (`monks-a2`, `monks-e5`, ...) and independent of the displayed numbers.
  */
 case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
@@ -74,14 +75,16 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
         expected = Some(List(categories.indexOf(answer))))
     }
 
-  /** Free-input table. A cell lists accepted spellings separated by `|`; `columns` are full language-map keys. */
-  private def table(id: String, columns: List[String], answers: List[List[String]]): AnswerTableInteraction =
+  /** Free-input table. A cell lists accepted spellings separated by `|`; `columns` and `rowHeader` are full
+   * language-map keys. */
+  private def table(id: String, columns: List[String], answers: List[List[String]], rowHeader: String): AnswerTableInteraction =
     AnswerTableInteraction("monks-" + id, lm(id + "-caption"),
       answers.indices.map(i => lm(s"$id-row$i")).toList, columns.map(lm),
-      answers.map(_.map(cell => EditableTableCell(expected = Some(cell.split('|').toList)))))
+      answers.map(_.map(cell => EditableTableCell(expected = Some(cell.split('|').toList)))), Some(lm(rowHeader)))
 
+  /** One question per row, answered in a single column. */
   private def singleColumn(id: String, answers: List[String]): AnswerTableInteraction =
-    table(id, List("answercolumn"), answers.map(List(_)))
+    table(id, List("answercolumn"), answers.map(List(_)), "questioncolumn")
 
   /** `items` are listed in their correct order; the interaction shuffles them. */
   private def reorder(id: String, itemCount: Int): ReorderMapIdInteraction =
@@ -97,10 +100,6 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   override lazy val createWorkbook: Workbook = workbook(
     key("workbooktitle"),
     List(
-      section("monks-editor", key("partzero"), List(
-        container(key("partzero"), List(text("zerointro"))),
-        editorTask("e1"), editorTask("e2"), editorTask("e3"))),
-
       section("monks-story", key("parta"), List(
         container(key("parta"), List(
           text("introduction"),
@@ -109,50 +108,50 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
         task("a1", List(prompt("a1"), reorder("a1", 8))),
         task("a2", List(singleColumn("a2", List("3", "5", "5 4 2|5,4,2|5, 4, 2|5 , 4 , 2", "5")))),
         task("a3", List(choice("a3", List(1), 4))),
+        // "none" stays an option (distractor) so stored selections of the remaining rows stay valid.
         task("a4", List(prompt("a4")) ++ assign("a4",
           List("abort", "simplify", "call", "combine", "first", "none"),
-          List("simplify", "call", "abort", "combine", "first", "none"))),
-        task("a5", List(prompt("a5"), text("a5code")) ++ assign("a5",
+          List("simplify", "call", "abort", "combine", "first"))),
+        // The story as code: one method with four gaps, one question per gap.
+        task("ac", List(text("ac-intro"), text("ac-code"),
+          choice("ac-1", List(0), 3), choice("ac-2", List(1), 3), choice("ac-3", List(2), 3), choice("ac-4", List(1), 3))),
+        // Refers to the gaps of task "ac" instead of showing the finished method, which would spoil "ac".
+        task("a5", List(prompt("a5")) ++ assign("a5",
           List("abort", "simplify", "call", "combine"),
           List("abort", "simplify", "simplify", "call", "combine"))),
         task("a6", List(choice("a6", List(1, 3, 5), 6, multiple = true))),
-        task("a7", List(choice("a7", List(1, 3, 5), 6, multiple = true), text("a7note"))),
+        task("a7", List(choice("a7", List(1, 3, 5), 6, multiple = true))),
         task("a8", List(text("a8intro"),
           choice("a8a", List(1), 4),
           singleColumn("a8b", List("6")),
           choice("a8c", List(2), 4))))),
 
-      section("monks-phases", key("partb"), List(
-        task("b1", List(prompt("b1"), text("b1code"), reorder("b1", 8))),
-        task("b2", List(choice("b2", List(1, 3, 4, 5), 6, multiple = true))),
-        task("b3", List(prompt("b3"), text("b3code")) ++ assign("b3",
-          List("exception", "overflow", "ascending", "correct"),
-          List("exception", "overflow", "ascending", "correct"))))),
-
       section("monks-tower", key("partc"), List(
         container(key("partc"), List(
           prompt("c0"),
-          Slideshow("monks-counting-story", countingScenes.map(panel)),
-          text("countingend"))),
+          Slideshow("monks-counting-story", countingScenes.map(panel)))),
         task("c1", List(prompt("c1")) ++ assign("c1",
           List("abort", "simplify", "call", "combine", "state"),
           List("simplify", "state", "call", "abort", "combine"))),
         task("c2", List(
-          table("c2", List("c2-col0", "c2-col1", "c2-col2"), List(List("2", "1", "1"), List("1", "2", "2"), List("0", "3", "3"))),
-          singleColumn("c2b", List("4")),
-          text("c2c-prompt"), reorder("c2c", 3))),
+          table("c2", List("c2-col0", "c2-col1", "c2-col2"), List(List("2", "1", "1"), List("1", "2", "2"), List("0", "3", "3")),
+            "c2-rowheader"),
+          singleColumn("c2b", List("4")))),
         task("c3", List(prompt("c3"), text("c3code")) ++ assign("c3",
           List("variant-a", "variant-b", "variant-c"), List("variant-a", "variant-b", "variant-c"))),
         task("c4", List(singleColumn("c4", List("6", "3", "5", "3")))),
-        task("c5", List(text("functionalexplanation"), choice("c5", List(1, 3, 4, 5), 6, multiple = true))),
-        task("c6", List(choice("c6", List(2), 3, multiple = true,
-          optionKeys = Some(List("cat-variant-a", "cat-variant-b", "cat-variant-c"))))),
-        container(key("helperslabel"), List(instructionCollapsibleHint(key("helperslabel"), key("helperscode")))),
-        editorTask("e4"), editorTask("e5"), editorTask("e6a"), editorTask("e6b"))),
+        task("c5", List(text("functionalexplanation"), choice("c5", List(1, 3, 4, 5), 6, multiple = true))))),
 
+      // Placed right before the drawing section, so learners use the editor directly after getting to know it.
+      section("monks-editor", key("partzero"), List(
+        container(key("partzero"), List(text("zerointro"))),
+        editorTask("e1"), editorTask("e2"), editorTask("e3"))),
+
+      // Drawing with the building-brick methods from the editor section (tower, pyramids, contract).
       section("monks-bridge", key("partd"), List(
+        container(key("partd"), List(text("partdintro"))),
+        editorTask("e4"), editorTask("e5"), editorTask("e6a"), editorTask("e6b"),
         task("d1", List(choice("d1a", List(1), 4), choice("d1b", List(1, 3), 5, multiple = true), text("d1note"))),
-        task("d2", List(text("d2code"), table("d2", List("answercolumn"), List(List("15"), List("8"), List("9"))))),
         editorTask("e7", List(singleColumn("e7b", List("15")))),
         editorTask("e8", List(singleColumn("e8b", List("7")))))),
 
@@ -206,15 +205,16 @@ object CreateMonksWorkbook {
     Scene("farewell", "fileimage13", List("farewelldialogue", "narr-farewell")))
 
   val countingScenes: List[Scene] = List(
-    Scene("family", "filebeatfamilyfatherhurry", List("familydialogue", "family-father-replydialogue",
-      "family-child-questiondialogue", "family-father-hurrydialogue")),
+    Scene("family", "filebeatfamilychildquestion", List("familydialogue", "family-father-replydialogue",
+      "family-child-questiondialogue")),
     Scene("count-red", "filebeatcounttally", List("count-explanationdialogue", "narr-count-red")),
     Scene("count-yellow", "filebeatcounttallytwo", List("narr-count-yellow")),
-    Scene("count-blue", "filebeatcountempty", List("narr-count-blue")))
+    Scene("count-blue", "filebeatcountempty", List("narr-count-blue", "count-resultdialogue", "count-brokendialogue",
+      "count-rememberdialogue", "narr-count-rebuild", "count-grandmadialogue")))
 
-  /** Java starting code of the editor tasks E1–E8. From E4 on, the helper methods are prefilled
-   * (the same code is shown in the collapsible "helpers" block of part C). Identifiers follow the
-   * German task texts; the class name is free, `Turtle` is reserved by the runner.
+  /** Java starting code of the editor tasks E1–E8. Section 0 lets the learner write the building-brick methods
+   * `stein`, `hoch`, `runter` and `springe`; from E4 on they are prefilled ([[EditorCode.helpers]]).
+   * Identifiers follow the German task texts; the class name is free, `Turtle` is reserved by the runner.
    */
   object EditorCode {
     val helpers: String =
@@ -229,38 +229,25 @@ object CreateMonksWorkbook {
         |        Turtle.turnLeft(90);
         |    }
         |
-        |    static void linie(double laenge) {
-        |        Turtle.forward(laenge);
-        |        Turtle.penUp();
-        |        Turtle.forward(-laenge);
-        |        Turtle.penDown();
-        |    }
-        |
-        |    static void nachRechts(double a) {
-        |        Turtle.penUp();
-        |        Turtle.forward(a);
-        |        Turtle.penDown();
-        |    }
-        |
-        |    static void nachLinks(double a) {
-        |        Turtle.penUp();
-        |        Turtle.forward(-a);
-        |        Turtle.penDown();
-        |    }
-        |
-        |    static void nachOben(double a) {
+        |    static void hoch() {
         |        Turtle.penUp();
         |        Turtle.turnLeft(90);
-        |        Turtle.forward(a);
+        |        Turtle.forward(20);
         |        Turtle.turnRight(90);
         |        Turtle.penDown();
         |    }
         |
-        |    static void nachUnten(double a) {
+        |    static void runter() {
         |        Turtle.penUp();
         |        Turtle.turnRight(90);
-        |        Turtle.forward(a);
+        |        Turtle.forward(20);
         |        Turtle.turnLeft(90);
+        |        Turtle.penDown();
+        |    }
+        |
+        |    static void springe(double weite) {
+        |        Turtle.penUp();
+        |        Turtle.forward(weite);
         |        Turtle.penDown();
         |    }
         |""".stripMargin
@@ -271,7 +258,7 @@ object CreateMonksWorkbook {
     private val pyramidMain: String =
       """    public static void main(String[] args) {
         |        zeichnePyramide(4);
-        |        nachRechts(100);
+        |        springe(100);
         |        zeichnePyramide(3);
         |    }
         |"""
@@ -281,7 +268,7 @@ object CreateMonksWorkbook {
         """    public static void main(String[] args) {
           |        Turtle.forward(60);
           |        Turtle.turnLeft(90);
-          |        // TODO: zweite Haelfte des Rechtecks
+          |        // TODO
           |    }
           |"""),
       "e2" -> program(
@@ -290,6 +277,10 @@ object CreateMonksWorkbook {
           |    }
           |
           |    static void hoch() {
+          |        // TODO
+          |    }
+          |
+          |    static void runter() {
           |        // TODO
           |    }
           |
@@ -304,9 +295,13 @@ object CreateMonksWorkbook {
           |        // TODO
           |    }
           |
+          |    static void springe(double weite) {
+          |        // TODO
+          |    }
+          |
           |    public static void main(String[] args) {
           |        vieleck(4, 60);
-          |        // TODO: 100 nach rechts (ohne zu zeichnen), dann das Sechseck
+          |        // TODO
           |    }
           |"""),
       "e4" -> program(
@@ -327,11 +322,11 @@ object CreateMonksWorkbook {
       "e6a" -> program(
         """    static void zeichnePyramide(int n) {
           |        stein(n * 20);
-          |        nachOben(20);
-          |        nachRechts(10);
+          |        hoch();
+          |        springe(10);
           |        zeichnePyramide(n - 1);
-          |        nachLinks(10);
-          |        nachUnten(20);
+          |        springe(-10);
+          |        runter();
           |    }
           |
           |""" + pyramidMain, withHelpers = true),
@@ -341,14 +336,14 @@ object CreateMonksWorkbook {
           |            return;
           |        }
           |        stein(n * 20);
-          |        nachOben(20);
-          |        nachRechts(10);
+          |        hoch();
+          |        springe(10);
           |        zeichnePyramide(n - 1);
           |    }
           |
           |""" + pyramidMain, withHelpers = true),
       "e7" -> program(
-        """    static void cantor(double laenge, int n) {
+        """    static void cantor(double breite, int n) {
           |        // TODO
           |    }
           |
@@ -385,30 +380,29 @@ object CreateMonksWorkbook {
     def stein(breite: Double): Unit = (0 until 2).foreach { _ =>
       forward(breite); turnLeft(90); forward(20); turnLeft(90)
     }
-    def linie(laenge: Double): Unit = { forward(laenge); penUp(); forward(-laenge); penDown() }
-    def nachRechts(a: Double): Unit = { penUp(); forward(a); penDown() }
-    def nachLinks(a: Double): Unit = { penUp(); forward(-a); penDown() }
-    def nachOben(a: Double): Unit = { penUp(); turnLeft(90); forward(a); turnRight(90); penDown() }
-    def nachUnten(a: Double): Unit = { penUp(); turnRight(90); forward(a); turnLeft(90); penDown() }
+    def hoch(): Unit = { penUp(); turnLeft(90); forward(20); turnRight(90); penDown() }
+    def runter(): Unit = { penUp(); turnRight(90); forward(20); turnLeft(90); penDown() }
+    def springe(weite: Double): Unit = { penUp(); forward(weite); penDown() }
 
     def vieleck(ecken: Int, laenge: Double): Unit = (0 until ecken).foreach { _ => forward(laenge); turnLeft(360.0 / ecken) }
 
-    def turm(n: Int): Unit = if n > 0 then { stein(40); nachOben(20); turm(n - 1) }
+    def turm(n: Int): Unit = if n > 0 then { stein(40); hoch(); turm(n - 1) }
 
     def pyramide(n: Int): Unit = if n > 0 then {
-      stein(n * 20); nachOben(20); nachRechts(10)
+      stein(n * 20); hoch(); springe(10)
       pyramide(n - 1)
-      nachLinks(10); nachUnten(20)
+      springe(-10); runter()
     }
 
-    def cantor(laenge: Double, n: Int): Unit = {
-      linie(laenge)
+    /** One brick per level; the next level starts two brick heights lower, so the levels do not touch. */
+    def cantor(breite: Double, n: Int): Unit = {
+      stein(breite)
       if n > 0 then {
-        nachUnten(20)
-        cantor(laenge / 3, n - 1)
-        nachRechts(2 * laenge / 3)
-        cantor(laenge / 3, n - 1)
-        nachLinks(2 * laenge / 3); nachOben(20)
+        runter(); runter()
+        cantor(breite / 3, n - 1)
+        springe(2 * breite / 3)
+        cantor(breite / 3, n - 1)
+        springe(-2 * breite / 3); hoch(); hoch()
       }
     }
 
@@ -417,7 +411,7 @@ object CreateMonksWorkbook {
       turnLeft(30); baum(laenge * 0.6, n - 1)
       turnRight(60); baum(laenge * 0.6, n - 1)
       turnLeft(30)
-      penUp(); forward(-laenge); penDown()
+      springe(-laenge)
     }
 
     def graphic: TurtleGraphic = TurtleGraphic(commands.toList)
@@ -430,10 +424,10 @@ object CreateMonksWorkbook {
       case "e1" =>
         sketch.forward(60); sketch.turnLeft(90); sketch.forward(20); sketch.turnLeft(90)
         sketch.forward(60); sketch.turnLeft(90); sketch.forward(20)
-      case "e2" => sketch.stein(80); sketch.nachOben(20); sketch.stein(60); sketch.nachOben(20); sketch.stein(40)
-      case "e3" => sketch.vieleck(4, 60); sketch.nachRechts(100); sketch.vieleck(6, 40)
+      case "e2" => sketch.stein(80); sketch.hoch(); sketch.stein(60); sketch.hoch(); sketch.stein(40)
+      case "e3" => sketch.vieleck(4, 60); sketch.springe(100); sketch.vieleck(6, 40)
       case "e4" => sketch.turm(5)
-      case "e5" | "e6a" | "e6b" => sketch.pyramide(4); sketch.nachRechts(100); sketch.pyramide(3)
+      case "e5" | "e6a" | "e6b" => sketch.pyramide(4); sketch.springe(100); sketch.pyramide(3)
       case "e7" => sketch.cantor(270, 3)
       case "e8" => sketch.turnLeft(90); sketch.baum(80, 5)
       case other => throw IllegalArgumentException(s"No editor target for $other")

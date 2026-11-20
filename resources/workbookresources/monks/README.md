@@ -33,30 +33,32 @@ last frame shows the empty tower position and three tally marks.
 
 ## Structure
 
-`CreateMonksWorkbook` builds six sections with stable element IDs (`monks-a2`, `monks-e5`, ...):
+`CreateMonksWorkbook` builds five sections with stable element IDs (`monks-a2`, `monks-e5`, ...).
+Displayed task titles are numbered per section ("Aufgabe 2.3" / "Task 2.3") in the language maps and
+are independent of the element IDs.
 
 | Section | Content |
 | --- | --- |
-| `monks-editor` (0) | Editor introduction and tasks E1–E3 |
-| `monks-story` (A) | Theater slideshow, recursion scheme, tasks A1–A8 |
-| `monks-phases` (B) | Outward/return path, tasks B1–B3 |
-| `monks-tower` (C) | Counting slideshow (existing frames only, text conclusion), tasks C1–C6 and E4–E6b |
-| `monks-bridge` (D) | Contract, multiple calls, tasks D1–D2, E7, E8 |
-| `monks-koch` (3) | Koch curve practice |
+| `monks-story` (0) | Theater slideshow, recursion scheme, tasks A1–A4, the story as code (`ac`: one method with four gaps), A5–A8 (tasks 0.1–0.9) |
+| `monks-tower` (1) | Counting slideshow (story ending in the last slide), tasks C1–C5 (1.1–1.5) |
+| `monks-editor` (2) | Editor introduction; E1–E3 (tasks 2.1–2.3) introduce the brick methods `stein`, `hoch`, `runter`, `springe` |
+| `monks-bridge` (3) | Drawing recursively with bricks: E4–E6b, D1, E7 (Cantor wall), E8 (3.1–3.7) |
+| `monks-koch` (4) | Koch curve practice (4.1–4.3) |
 
 Task types map to existing interactions: `ChoiceInteraction` (choice, multiple select and one
 row per assignment), `AnswerTableInteraction` (graded inputs; accepted spellings separated by `|`)
 and `ReorderMapIdInteraction`. Language-map keys derive from the task ID (`<id>-question`,
-`<id>-opt<i>`, `<id>-row<i>`); code blocks and category names that need no translation are in
-`map-universal.json`.
+`<id>-opt<i>`, `<id>-row<i>`). Code snippets are language-dependent (German or English identifiers
+and comments) and live in `map-de.json` / `map-en.json`; `map-universal.json` holds image paths and
+names that need no translation.
 
 The programming tasks E1–E8 are `TurtleRecreateShapeInteraction`s with Java starting code
-(`CreateMonksWorkbook.EditorCode`, prefilled helper methods from E4 on). Each target drawing is
+(`CreateMonksWorkbook.EditorCode`; from E4 on the brick methods from section 0 are prefilled). Each target drawing is
 recorded from the sample solution (`CreateMonksWorkbook.editorTarget`) with the same helper
 methods, so the strokes match what the checked Java runner emits. The runner supports
 `Turtle.forward`, `Turtle.turnRight`, `Turtle.turnLeft`, `Turtle.penUp` and `Turtle.penDown`.
 Grading uses the default stroke policy: pen-up moves are ignored, duplicated strokes count as
-unexpected, so returning along a drawn line must happen with the pen lifted (E7, E8).
+unexpected, so returning along a drawn line must happen with the pen lifted (`springe`).
 
 ## Open items
 

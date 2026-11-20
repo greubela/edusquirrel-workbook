@@ -6,6 +6,8 @@ import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
+import scala.util.chaining.*
+
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 sealed trait AnswerTableCell derives ReadWriter
 
@@ -28,9 +30,11 @@ case class TableGrade(correct: Int, total: Int) derives upickle.default.ReadWrit
   def passed: Boolean = total > 0 && correct == total
 }
 
-/** Learner values contain only editable cells, in row-major order. Fixed cells cannot be overwritten. */
+/** Learner values contain only editable cells, in row-major order. Fixed cells cannot be overwritten.
+ * `rowHeader` labels the column of row labels; without it the renderer uses a generic "row" label. */
 case class AnswerTableInteraction(elementId: String, caption: LanguageMapContentId,
-                                  rowLabels: List[LanguageMapContentId], columnLabels: List[LanguageMapContentId], rows: List[List[AnswerTableCell]])
+                                  rowLabels: List[LanguageMapContentId], columnLabels: List[LanguageMapContentId], rows: List[List[AnswerTableCell]],
+                                  rowHeader: Option[LanguageMapContentId] = None)
   extends WorkbookInteractionElement[TableAnswer] derives upickle.default.ReadWriter {
   require(rowLabels.nonEmpty && columnLabels.nonEmpty && rows.size == rowLabels.size && rows.forall(_.size == columnLabels.size),
     "Table labels and rectangular cells must have matching dimensions")
@@ -78,15 +82,16 @@ case class AnswerTableInteraction(elementId: String, caption: LanguageMapContent
 
 object AnswerTableInteraction {
   val factory = new WorkbookElementFactory.SimpleWorkbookElementFactory[AnswerTableInteraction] {
-    override protected val constructorFieldOrder = List("elementId", "caption", "rowLabels", "columnLabels", "rows")
+    override protected val constructorFieldOrder = List("elementId", "caption", "rowLabels", "columnLabels", "rows", "rowHeader")
 
     override def finishSerialization(base: WorkbookElementSerializable, e: AnswerTableInteraction): WorkbookElementSerializable =
       base.withElementAddedAs("caption", e.caption).withElementAddedAs("rowLabels", e.rowLabels)
         .withElementAddedAs("columnLabels", e.columnLabels).withElementAddedAs("rows", e.rows)
+        .pipe(withRows => e.rowHeader.fold(withRows)(_ => withRows.withElementAddedAs("rowHeader", e.rowHeader)))
 
     override def finishDeserialization(e: WorkbookElementSerializable): AnswerTableInteraction =
       AnswerTableInteraction(e.elementId, e.getElementAs[LanguageMapContentId]("caption"),
         e.getElementAs[List[LanguageMapContentId]]("rowLabels"), e.getElementAs[List[LanguageMapContentId]]("columnLabels"),
-        e.getElementAs[List[List[AnswerTableCell]]]("rows"))
+        e.getElementAs[List[List[AnswerTableCell]]]("rows"), e.getOptionalElementAs[Option[LanguageMapContentId]]("rowHeader", None))
   }
 }

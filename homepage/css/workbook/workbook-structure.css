@@ -274,6 +274,18 @@ dialog {
     text-align: center;
 }
 
+.workbook-footer-close {
+    flex: none;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border: none;
+    background: none;
+    color: inherit;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
 
 /*
 .container-sub {
