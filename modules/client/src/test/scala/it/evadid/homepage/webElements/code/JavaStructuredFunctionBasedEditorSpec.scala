@@ -89,12 +89,12 @@ class JavaStructuredFunctionBasedEditorSpec extends EditorDomSuite {
       Some(List(JavaStructuredFunctionBasedEditor.forEvaTab(logger, config), CodeMirrorEditor.pythonEditorForEva(logger, config))),
       labels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading"), it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_"))))
     val close = mount(editor.getDomElement())
-    editor.switchTabTo(Python).flatMap { _ =>
+    editor.setActiveTab(Python).flatMap { _ =>
       assert(state.now().isInstanceOf[ProgrammingStatePythonStructured])
       assert(field.value.contains("forward(10)"), field.value)
       field.value = field.value.replace("forward(10)", "forward(35)")
       edited()
-      editor.switchTabTo(Java)
+      editor.setActiveTab(Java)
     }.map { _ =>
       assert(state.now().isInstanceOf[ProgrammingStateJavaStructured])
       assert(field.value.contains("forward(35)"), field.value)

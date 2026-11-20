@@ -60,6 +60,7 @@ test('2026GdP1 opens from the catalogue, localizes its tasks and exposes the pro
     await page.waitForFunction(() => document.querySelectorAll('.workbook-body .turtle-gradig-panel svg').length >= 4);
     const openButtons = () => page.locator('.workbook-body').getByRole('button', {name:/Editor.*öffnen|Open editor/i});
     await openButtons().first().click();
+    await page.locator('dialog[open]').getByRole('tab', {name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => window.gdpIde?.currentSprite?.blockTemplates('Blocks')?.some(item => item?.selector === 'forward'));
     const palette = () => page.evaluate(() => {
       const items = gdpIde.currentSprite.blockTemplates('Blocks');
@@ -82,6 +83,7 @@ test('2026GdP1 opens from the catalogue, localizes its tasks and exposes the pro
     await page.locator('.fullscreen-close-button').click();
     await page.evaluate(() => {window.gdpIde = null;});
     await openButtons().nth(3).click();
+    await page.locator('dialog[open]').getByRole('tab', {name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => window.gdpIde?.world()?.worldCanvas.closest('dialog'));
     await page.waitForFunction(() => window.gdpIde?.currentSprite?.blockTemplates('Blocks')?.some(item => item?.gdpMakeBlock));
     assert.equal((await palette()).makeBlock, true, 'function tasks expose the native Make a block button');
