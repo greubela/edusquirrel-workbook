@@ -109,4 +109,22 @@ class JavaToExpressionSpec extends FunSuite {
     assertEquals(fragment.toLegacyTurtleCommands.size, 2)
     assertEquals(fragment.preparedSource.code, "Turtle.forward(5);\nTurtle.turnLeft(90);")
   }
+
+  test("array reads, chained calls and parenthesised values translate or are rejected explicitly") {
+    assert(python(program("double x = (1 + 2) * 3;")).contains("x = (1 + 2) * 3"), python(program("double x = (1 + 2) * 3;")))
+    assert(rejected(program("double[] v = new double[2];\nTurtle.forward(v[0]);")).getMessage.nonEmpty)
+    val chained = python(
+      """class Pen { Pen self() { return this; } void draw() { Turtle.forward(1); } }
+        |class Main { public static void main(String[] args) { Pen pen = new Pen(); pen.self().draw(); } }""".stripMargin)
+    assert(chained.contains("pen.self().draw()"), chained)
+  }
+
+  test("static methods cannot call instance methods without an object and other class bodies are rejected") {
+    val error = intercept[IllegalArgumentException](python("class Box { void grow() { } static void make() { grow(); } }"))
+    assert(error.getMessage.contains("needs an object"), error.getMessage)
+    assert(rejected("class Box { static { Turtle.forward(1); } }").getMessage.nonEmpty)
+    assert(rejected(program("do { Turtle.forward(1); } while (false);")).getMessage.nonEmpty)
+    val nested = python("class Outer { class Inner { double size = 1; } public static void main(String[] args) { Turtle.forward(1); } }")
+    assert(nested.contains("class Inner"), nested)
+  }
 }

@@ -120,4 +120,27 @@ class PythonToParsedSpec extends FunSuite {
     }
     intercept[IllegalArgumentException](parse("class Box:\n    def grow(size):\n        pass\n"))
   }
+
+  test("subscripts, chained calls and walrus expressions stay explicit unsupported expressions") {
+    val evaluated = parse("forward(items[0])\nmake().draw(1)\nprint((n := 3))\nwalker.legs[0].move()\n").collect { case S.Evaluate(e) => e }
+    assertEquals(evaluated.head, E.Call(Seq("forward"), Seq(E.Unsupported("[...]"))))
+    assert(evaluated.exists {
+      case E.MethodCall(E.Call(Seq("make"), Nil), "draw", Seq(E.Literal("1"))) => true
+      case E.MethodCall(_, "draw", _) => true
+      case _ => false
+    }, evaluated)
+    assert(evaluated.exists(_.toString.contains("n := ...")), evaluated)
+  }
+
+  test("type hints accept common spellings from other languages") {
+    val hints = parse("a: boolean\nb: string\nc: any\nd: double\ne: unit\nf: datetime\n").collect { case S.Declare(_, hint) => hint }
+    assertEquals(hints, Seq(ParsedType.Boolean, ParsedType.Text, ParsedType.AnyValue, ParsedType.Numeric, ParsedType.Unit, ParsedType.Date))
+  }
+
+  test("instance fields assigned inside loops of a constructor are collected") {
+    val Seq(S.ClassDef(_, fields, _, _)) = parse(
+      "class Walker:\n    def __init__(self):\n        while False:\n            self.a = 1\n        for i in range(2):\n            self.b = i\n        self.pos.x = 3\n").take(1): @unchecked
+    assertEquals(fields.map(_.name), Seq("a", "b"))
+    assertEquals(parse("self.pos.x = 3\n"), Seq(S.AssignMember(E.Member(E.Self, "pos"), "x", E.Literal("3"))))
+  }
 }
