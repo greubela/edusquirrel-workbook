@@ -112,5 +112,8 @@ class SymbolTableSpec extends FunSuite {
     val widened = ctx.ensureFunctionArity("<=>", custom, 4)
     assertEquals(widened.inputs.size, 4)
     assertEquals(ctx.currentStructures.functions("<=>"), widened)
+    assertEquals(ctx.currentStructures.operators(("<=>", 4)), List(widened))
+    assertEquals(ctx.currentStructures.operators(("<=>", 3)), Nil)
+    assert(ctx.resolveOperator("<=>", 4, Nil) eq widened, "the widened operator is found under its new arity")
   }
 }
