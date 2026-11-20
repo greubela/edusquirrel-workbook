@@ -51,7 +51,7 @@ class BlockchainEditorSpec extends UiDomSuite {
       assert(miningStatus(root).contains(text("miningIdle")))
       click(buttonNamed(blocks(root).head, text("blockMine")))
       assert(miningStatus(root).contains(text("miningRunning")))
-      eventually(miningStatus(root).contains(text("miningFound")), what = "mined block").map { _ =>
+      eventually(miningStatus(root).contains(text("miningFound")), clue = "mined block").map { _ =>
         val hash = state.now().hashes.head
         assert(hash.startsWith("0"), hash)
         assertEquals(one(blocks(root).head, ".blockchain-hash").textContent, hash)

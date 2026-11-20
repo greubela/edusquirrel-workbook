@@ -58,7 +58,7 @@ class SessionCredentialsEditorSpec extends UiDomSuite {
         typeInto(field(root, "Maximum output tokens"), "256")
         typeInto(field(root, "API key"), "")
         click(buttonNamed(root, "Apply"))
-        eventually(closed.now() == 1, what = "closing after applying").map { _ =>
+        eventually(closed.now() == 1, clue = "closing after applying").map { _ =>
           val credentials = page.current.userInfo.get.credentials
           assertEquals(credentials.databaseConfig, Some(database.copy(host = "db2.school.example", port = "3306")))
           assertEquals(credentials.llmApiConfig, Some(LlmConfiguration(LlmConfiguration.defaultEndpoint, "tiny-model", None, Some(256))))

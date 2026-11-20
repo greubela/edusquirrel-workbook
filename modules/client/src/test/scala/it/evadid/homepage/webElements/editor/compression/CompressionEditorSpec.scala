@@ -114,7 +114,7 @@ class CompressionEditorSpec extends UiDomSuite {
       click(play)
       assert(play.textContent.contains(text("pause")))
       eventually(answer.now().asInstanceOf[DictionaryText].step == 3 && play.textContent.contains(text("play")),
-        attempts = 1000, what = "playback to the end").map(_ => assertEquals(answer.now(), DictionaryText("x y z", 3)))
+        attempts = 1000, clue = "playback to the end").map(_ => assertEquals(answer.now(), DictionaryText("x y z", 3)))
     }
   }
 
@@ -145,7 +145,7 @@ class CompressionEditorSpec extends UiDomSuite {
     mountedAsync(element) { root =>
       assert(one(root, "[role=status]").textContent.contains(text("imageLoading")))
       (for {
-        _ <- eventually(canvas.lastRaster.nonEmpty, what = "first preview")
+        _ <- eventually(canvas.lastRaster.nonEmpty, clue = "first preview")
         _ = assertEquals(canvas.lastRaster, rgb(1, 1), "1×1 blocks reproduce the image")
         _ = assertEquals(one(root, "canvas").asInstanceOf[dom.html.Canvas].style.width, "150%")
         _ = assert(one(root, "img.compression-original-image").getAttribute("src").endsWith("sample.png"))
@@ -179,7 +179,7 @@ class CompressionEditorSpec extends UiDomSuite {
         _ = assertEquals(canvas.lastRaster, Seq.fill(4)((40, 40, 40)), "plain RGB averaging of the whole block")
         _ = typeInto(one(first, "input[type=number]"), "200")
         _ = assertEquals(answer.now().asInstanceOf[ImageBlocks].zoom, 200)
-        _ <- eventually(one(second, "[role=status]").textContent.contains(text("imageLoadFailed")), what = "load failure")
+        _ <- eventually(one(second, "[role=status]").textContent.contains(text("imageLoadFailed")), clue = "load failure")
       } yield ()).transform { outcome => canvas.uninstall(); outcome }
     }
   }

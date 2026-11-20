@@ -117,7 +117,7 @@ class CompressionActivitiesEditorSpec extends UiDomSuite {
       assert(phases.head.contains(text("transferOpen")))
       assert(phases(2).contains(text("transferAllocate")))
       click(buttonNamed(root, src("widget.zipArchive.simulateButton")))
-      eventually(step == 8, attempts = 1000, what = "automatic transfer").map { _ =>
+      eventually(step == 8, attempts = 1000, clue = "automatic transfer").map { _ =>
         assert(phases.take(2).forall(_.contains(text("transferDone"))), phases.toString)
         click(buttonNamed(root, text("nextStep")))
         assertEquals(step, 8, "the last step is final")

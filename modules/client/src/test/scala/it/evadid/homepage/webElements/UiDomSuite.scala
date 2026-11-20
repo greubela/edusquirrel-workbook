@@ -83,14 +83,4 @@ trait UiDomSuite extends EditorDomSuite {
     try body finally control.changeWorkbook(None)
   }
 
-  /** Completes once `condition` holds, polling the event loop; fails after `attempts` tries. */
-  protected def eventually(condition: => Boolean, attempts: Int = 200, what: String = "condition"): Future[Unit] = {
-    val done = Promise[Unit]()
-    def poll(left: Int): Unit =
-      if scala.util.Try(condition).getOrElse(false) then done.trySuccess(())
-      else if left <= 0 then done.tryFailure(new AssertionError(s"timed out waiting for $what"))
-      else js.timers.setTimeout(5)(poll(left - 1))
-    poll(attempts)
-    done.future
-  }
 }

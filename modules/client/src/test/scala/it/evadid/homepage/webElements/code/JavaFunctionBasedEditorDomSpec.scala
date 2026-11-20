@@ -54,11 +54,11 @@ class JavaFunctionBasedEditorDomSpec extends UiDomSuite {
       assertEquals(functionButton(root, "main").getAttribute("aria-pressed"), "true")
       assertEquals(all(root, ".java-function-editor__class-name").map(_.textContent), List("Main"))
       typeInto(field(root), "public static void main(String[] args) {\n    forward(20);\n    left(90);\n  }")
-      eventually(code(state).contains("left(90)"), what = "merged method").flatMap { _ =>
+      eventually(code(state).contains("left(90)"), clue = "merged method").flatMap { _ =>
         assertEquals(code(state), source.replace("forward(10);\n", "forward(20);\n    left(90);\n"))
         assertEquals(heading(root), "Main.main")
         typeInto(field(root), "public static void main(String[] args) {\n    forward(")
-        eventually(code(state).contains("forward(\n"), what = "unfinished draft kept").map { _ =>
+        eventually(code(state).contains("forward(\n"), clue = "unfinished draft kept").map { _ =>
           assert(!one(root, ".java-function-editor__draft-warning").classList.contains("java-function-editor__draft-warning--hidden"),
             "an unbalanced draft is flagged")
           assert(all(root, ".java-function-editor__function").forall(isDisabled), "navigation waits for balanced source")
@@ -113,7 +113,7 @@ class JavaFunctionBasedEditorDomSpec extends UiDomSuite {
         _ <- eventually(error == "Enter a valid Java class name.")
         _ = typeInto(dialogField("Class name"), "Helper")
         _ = submit("Add class")
-        _ <- eventually(all(root, "dialog").isEmpty, what = "class dialog closed")
+        _ <- eventually(all(root, "dialog").isEmpty, clue = "class dialog closed")
         _ = assert(code(state).startsWith(source) && code(state).endsWith("\n\nclass Helper {\n}\n"), code(state))
         _ = assertEquals(viewStatus(root), "Full source", "a new class is shown in the full source")
         helperCard = withText(root, ".java-function-editor__class-card", "Helper").head
@@ -133,7 +133,7 @@ class JavaFunctionBasedEditorDomSpec extends UiDomSuite {
         _ = typeInto(dialogField("Parameters"), "String name")
         _ = click(withText(dialog, "label", "Static method").map(one(_, "input")).head)
         _ = submit("Add function")
-        _ <- eventually(all(root, "dialog").isEmpty, what = "function dialog closed")
+        _ <- eventually(all(root, "dialog").isEmpty, clue = "function dialog closed")
       } yield {
         assert(code(state).contains("class Helper {\n\n  public String greet(String name) {"), code(state))
         assertEquals(heading(root), "Helper.greet")
