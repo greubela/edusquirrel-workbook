@@ -133,3 +133,7 @@ val result = state.startExecution() // stdout: "forward(100)\nhai\n"
 ```
 
 This enables `RunPythonRequest.logTurtleCalls`: turtle methods log their called name and arguments instead of drawing, and `println` aliases `print`. Both imported and unqualified turtle calls work. The state API uses a fresh program namespace; explicit worker requests can retain globals with `resetGlobals = false`. Execution sets `__name__` to `__main__`, and restores the worker's previous turtle module even after an exception. Ordinary worker Python requests retain their existing behavior.
+
+## Project downloads
+
+[`ProjectExport`](../modules/core/shared/src/main/scala/it/evadid/vm/projectexport/ProjectExport.scala) turns a programming state into an `ExportedProject` (one folder of text files) for another IDE: Java as a BlueJ project (`JavaProjectExport`: `package.bluej`, `README.TXT`, one `<Class>.java` per structured class with all imports and no `package` declaration), Python as `main.py`, Snap as the project XML. Programs in another language are converted first. Library classes the program calls are added unless the program defines that class: `Turtle` (with forwarding methods for the turtle spellings it uses, e.g. `right`), `Web`, and `NumberList`/`Sudoku` from `DataLibrarySources` filled with the exercise's `DataWorld`. `ExportedProject.zip` uses the dependency-free `ZipArchive` (stored entries, CRC-32, UTF-8 names), so browser and JVM produce the same archive; the client's `ProjectDownload` saves it through a Blob link.

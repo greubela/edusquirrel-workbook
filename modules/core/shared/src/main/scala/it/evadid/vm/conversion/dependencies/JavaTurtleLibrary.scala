@@ -122,8 +122,26 @@ object JavaTurtleLibrary {
       |    window.repaint();
       |}""".stripMargin
 
-  lazy val source: String = {
-    val methods = TurtleCommand.turtleClass.methods.map(method)
+  lazy val source: String = withMethods(Nil)
+
+  private def withMethods(extra: Seq[String]): String = {
+    val methods = TurtleCommand.turtleClass.methods.map(method) ++ extra
     s"class Turtle {\n    // Turtle graphics for running this program on a regular JVM.\n${indent((support +: methods).mkString("\n\n"))}\n}"
+  }
+
+  /** The library for a program that leaves the workbook: `source` plus forwarding methods for the turtle
+    * spellings the program calls that the class does not declare (the workbook accepts `Turtle.right`,
+    * `Turtle.fd`, … as aliases). Kept apart from `source`, which printers and parsers match verbatim.
+    */
+  def exportSource(calledNames: Set[String]): String = {
+    val declared = TurtleCommand.turtleClass.methods.map(methodName).toSet
+    val aliases = calledNames.toSeq.sorted.filterNot(declared).flatMap { alias =>
+      TurtleCommand.resolveTurtleMethod(alias).map { target =>
+        val inputs = target.inputs.map(_.name.getNameIn(English, NamingStyle.CamelCase))
+        val parameters = target.inputs.zip(inputs).map((input, name) => s"${javaType(input.variableType)} $name").mkString(", ")
+        s"public static void $alias($parameters) {\n    ${methodName(target)}(${inputs.mkString(", ")});\n}"
+      }
+    }
+    withMethods(aliases)
   }
 }
