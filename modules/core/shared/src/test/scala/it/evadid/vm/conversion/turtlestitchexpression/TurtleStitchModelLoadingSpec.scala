@@ -33,6 +33,7 @@ class TurtleStitchModelLoadingSpec extends FunSuite {
     val stage = scene.stage
     assertEquals(stage.pentrails, Some("data:trails"))
     assertEquals(stage.wear.map(_.name), Some("cloth"))
+    assertEquals(stage.costumes.map(costume => (costume.name, costume.centerX, costume.id)), Vector(("bg", 1.0, Some("9"))))
     val sprite = stage.sprites.head
     assertEquals((sprite.name, sprite.x, sprite.y, sprite.color), ("Turtle", 5.0, -5.0, Rgba(0, 0, 255, 1.0)))
     assertEquals(sprite.variables.map(v => (v.name, v.value, v.transient, v.hidden)), Vector(

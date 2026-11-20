@@ -252,8 +252,9 @@ object TurtleStitchModelMapper {
       )
     }.toVector
 
+  /** Snap saves a costume list as `<costumes><list><item><costume/></item></list></costumes>`. */
   private def parseCostumes(node: Option[Node]): Vector[Costume] =
-    childrenNamed(node, "costume").map { costumeNode =>
+    node.toList.flatMap(_.elements.flatMap(child => child +: child.descendants)).map(_.element).filter(_.name == "costume").map { costumeNode =>
       Costume(
         name = attr(costumeNode, "name").getOrElse(""),
         centerX = attrDouble(costumeNode, "center-x").getOrElse(0.0),
