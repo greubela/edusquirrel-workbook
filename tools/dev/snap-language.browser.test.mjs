@@ -174,7 +174,7 @@ test('test workbook preserves edits across human languages, programming language
     await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => {
       const xml = window.snapLanguageEditor?.getProjectXML();
-      return xml?.includes('line') && xml.includes('64') && xml.includes('doJavaForward');
+      return xml?.includes('line') && xml.includes('64') && xml.includes('s="forward"') && !xml.includes('doJava');
     });
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
     await page.waitForFunction(() => SnapTranslator.language === 'en');

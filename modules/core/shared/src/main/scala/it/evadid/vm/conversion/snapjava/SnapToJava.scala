@@ -12,10 +12,29 @@ import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.vm.conversion.javaediting.JavaEditingMetadata.*
 
 object SnapToJava {
+  /** Lossless editing conversion: every script must be representable in Java. */
   def fromSnap(state: ProgrammingStateSnapXml): Either[String, ProgrammingStateJavaString] = attempt {
     bounded(state.snapXml)
     fromCleanSnap(state.copy(snapXml = SnapGeneratedImages.remove(state.snapXml)))
   }
+
+  /** Conversion for running the project: like Snap itself, scripts without a green-flag hat are not executed,
+   * so they are ignored instead of rejected. The stored project is not changed. */
+  def forExecution(state: ProgrammingStateSnapXml): Either[String, ProgrammingStateJavaString] = attempt {
+    bounded(state.snapXml)
+    fromCleanSnap(state.copy(snapXml = withoutLooseScripts(SnapGeneratedImages.remove(state.snapXml))))
+  }
+
+  private def startsWithGreenFlag(script: SnapXmlParser.Element): Boolean =
+    script.tag == "script" && SnapXmlParser.children(script.inner).headOption
+      .exists(block => block.tag == "block" && block.attrOrEmpty("s") == "receiveGo")
+
+  private def withoutLooseScripts(xml: String): String =
+    SnapXmlParser.elements(xml, "scripts").filter(_.inner.nonEmpty).reverse.foldLeft(xml) { (current, container) =>
+      val innerStart = container.start + container.outer.indexOf('>') + 1
+      val kept = SnapXmlParser.children(container.inner).filter(startsWithGreenFlag).map(_.outer).mkString
+      current.substring(0, innerStart) + kept + current.substring(innerStart + container.inner.length)
+    }
 
   private def fromCleanSnap(state: ProgrammingStateSnapXml): ProgrammingStateJavaString = {
     val document = SnapXmlParser.children(state.snapXml.trim)
@@ -26,9 +45,11 @@ object SnapToJava {
     val meta = readMetadata(notes.head.substring(NotesPrefix.length))
     ensure(SnapXmlParser.elements(state.snapXml, "scene").size == 1 && SnapXmlParser.elements(state.snapXml, "sprite").size == 1,
       "Only one scene and one Turtle sprite can be converted.")
+    // main() is the green-flag script; every other Java method is a global custom command block.
+    val helpers = meta.methods.filterNot(_.name == meta.entry.name)
     val definitions = SnapCustomBlockRules.globalDefinitions(state.snapXml)
-    ensure(definitions.size == meta.methods.size && definitions.map(_.spec).distinct.size == definitions.size &&
-      SnapCustomBlockRules.localDefinitions(state.snapXml).isEmpty, "Every Java method must have one global command block.")
+    ensure(definitions.size == helpers.size && definitions.map(_.spec).distinct.size == definitions.size &&
+      SnapCustomBlockRules.localDefinitions(state.snapXml).isEmpty, "Every Java helper method must have one global command block.")
     ensure(SnapCustomBlockRules.obsoleteCalls(state.snapXml).isEmpty, "A custom block call has no matching definition.")
     val allowedTags = Set("project", "notes", "scenes", "scene", "palette", "category", "hidden", "headers", "code", "blocks", "primitives",
       "stage", "costumes", "sounds", "list", "variables", "sprites", "sprite", "scripts", "script", "creator", "origCreator", "origName",
@@ -80,19 +101,36 @@ object SnapToJava {
       result
     }
     def text(element: SnapXmlParser.Element): String = { ensure(element.tag == "l" && !element.inner.contains('<'), "Expected a literal block input."); SnapXmlParser.unescape(element.inner) }
+    // Standard Snap blocks only. Java types follow from the variable metadata and literal spelling (`2` int, `2.0` double);
+    // the generated Java then applies Java semantics, e.g. int division for two int operands.
+    def arithmeticValue(token: String, left: Value, right: Value): Value = {
+      ensure(numeric(left.kind) && numeric(right.kind), "Arithmetic blocks need numbers, not true/false.")
+      Value(s"(${left.code} $token ${right.code})",
+        if left.kind == R.ValueType.DoubleValue || right.kind == R.ValueType.DoubleValue then R.ValueType.DoubleValue else R.ValueType.IntValue)
+    }
+    def operands(element: SnapXmlParser.Element, method: Method): List[Value] = {
+      val containers = children(element, 1)
+      ensure(containers.head.tag == "list", "Use the operand slots of the Snap block.")
+      val values = SnapXmlParser.children(containers.head.inner).map(expression(_, method))
+      ensure(values.nonEmpty, "Fill in the operand slots of the Snap block.")
+      values
+    }
     def expression(element: SnapXmlParser.Element, method: Method): Value = {
       element.attr("var") match {
         case Some(name) =>
+          ensure(element.tag == "block" && element.inner.trim.isEmpty, "A variable reporter has no inputs.")
           val variable = method.variable(name)
-          ensure(element.tag == "block" && element.inner.trim.isEmpty && variable.kind == R.ValueType.BooleanValue,
-            "Use a typed Java numeric read block instead of a raw numeric variable reporter.")
-          Value(name, variable.kind)
+          Value(variable.name, variable.kind)
         case None if element.tag == "l" =>
           val literals = SnapXmlParser.children(element.inner)
           if literals.nonEmpty then {
             ensure(literals.size == 1 && literals.head.tag == "bool" && Set("true", "false")(literals.head.inner), "Use a scalar boolean literal.")
             Value(literals.head.inner, R.ValueType.BooleanValue)
-          } else number(text(element).trim, snapLiteral = true)
+          } else {
+            val raw = text(element).trim
+            ensure(raw.nonEmpty, "Fill in every empty number slot.")
+            number(raw, snapLiteral = true)
+          }
         case None if element.tag == "block" =>
           element.attrOrEmpty("s") match {
             case "reportTrue" | "reportFalse" => ensure(children(element, 0).isEmpty, "A boolean reporter has no inputs."); Value(if element.attrOrEmpty("s") == "reportTrue" then "true" else "false", R.ValueType.BooleanValue)
@@ -100,55 +138,64 @@ object SnapToJava {
               val value = expression(children(element, 1).head, method)
               ensure(value.kind == R.ValueType.BooleanValue, "Use a scalar boolean constant.")
               value
-            case "reportJavaRead" =>
-              val variable = method.variable(text(children(element, 1).head))
-              ensure(numeric(variable.kind), "Read a numeric Java cell with the typed read block.")
-              Value(variable.name, variable.kind)
-            case "reportJavaInt" | "reportJavaDouble" =>
-              val args = children(element, 3)
-              typedOperation(text(args.head), expression(args(1), method), expression(args(2), method), element.attrOrEmpty("s") == "reportJavaDouble")
-            case "reportJavaCompare" =>
-              val args = children(element, 4)
-              val floating = expression(args(3), method)
-              ensure(floating.kind == R.ValueType.BooleanValue && Set("true", "false")(floating.code), "Use a fixed boolean numeric-comparison flag.")
-              typedComparison(text(args.head), expression(args(1), method), expression(args(2), method), floating.code == "true")
-            case "reportJavaUpdate" =>
-              val args = children(element, 4); val target = method.variable(text(args.head)); val delta = text(args(1)).trim
-              ensure(Set("1", "-1")(delta) && numeric(target.kind), "Update a numeric Java variable by one.")
-              val prefix = expression(args(2), method); val floating = expression(args(3), method)
-              ensure(Set("true", "false")(prefix.code) && floating.code == (if target.kind == R.ValueType.DoubleValue then "true" else "false"), "The update flags do not match its type.")
-              val token = if delta == "1" then "++" else "--"
-              Value(if prefix.code == "true" then s"($token${target.name})" else s"(${target.name}$token)", target.kind)
+            case "reportVariadicSum" => operands(element, method).reduceLeft(arithmeticValue("+", _, _))
+            case "reportVariadicProduct" => operands(element, method).reduceLeft(arithmeticValue("*", _, _))
+            case selector @ ("reportDifference" | "reportQuotient" | "reportModulus") =>
+              val args = children(element, 2)
+              val token = SnapControlFlow.OperatorToSnapReporter.find(_._2.selector == selector).get._1
+              arithmeticValue(token, expression(args.head, method), expression(args(1), method))
+            case "reportMonadic" =>
+              val args = children(element, 2)
+              ensure(args.head.tag == "l" && SnapXmlParser.child(args.head.inner, "option").exists(_.inner == "neg"),
+                "Only the 'neg' function of the Snap function block is available in Java tasks.")
+              val value = expression(args(1), method)
+              ensure(numeric(value.kind), "Only numbers can be negated.")
+              Value(s"(- ${value.code})", value.kind)
             case "reportNot" => logical("!", expression(children(element, 1).head, method), None)
+            case selector @ ("reportVariadicAnd" | "reportVariadicOr") =>
+              operands(element, method).reduceLeft((left, right) => logical(if selector == "reportVariadicAnd" then "&&" else "||", left, Some(right)))
             case selector if SnapControlFlow.ConditionSelectors(selector) =>
-              val containers = children(element, 1); ensure(containers.head.tag == "list", "Use a variadic condition input list.")
-              val args = SnapXmlParser.children(containers.head.inner); ensure(args.size == 2, "Use exactly two condition operands.")
+              val args = operands(element, method); ensure(args.size == 2, "Compare exactly two values.")
               val token = SnapControlFlow.OperatorToSnapReporter.find(_._2.selector == selector).map(_._1).getOrElse(reject("Unknown condition reporter."))
-              val left = expression(args.head, method); val right = expression(args(1), method)
-              ensure(left.kind == R.ValueType.BooleanValue && right.kind == R.ValueType.BooleanValue && Set("and", "or", "==", "!=")(token),
-                "Use a typed Java comparison block for numeric comparisons.")
-              logical(if token == "and" then "&&" else if token == "or" then "||" else token, left, Some(right))
-            case selector => reject(s"Unsupported Snap value block '$selector'. Use a typed Java arithmetic block.")
+              logical(token, args.head, Some(args(1)))
+            case selector => reject(s"The Snap block '$selector' is not available in Java tasks.")
           }
         case _ => reject("Unsupported Snap value input.")
       }
     }
-    def stored(element: SnapXmlParser.Element, expected: R.ValueType, method: Method): Value = {
-      if numeric(expected) then {
-        ensure(element.tag == "block" && element.attrOrEmpty("s") == "reportJavaCell", "Store and pass numeric Java values in a typed cell block.")
-        val value = expression(children(element, 1).head, method)
-        ensure(numeric(value.kind), "A numeric Java cell cannot contain a boolean.")
-        value
-      } else expression(element, method)
+    // A repeat becomes `for (int i = 0; i < count; i++)`, which JavaToSnap shows as repeat again.
+    // Counters are scoped to their loop, so only enclosing counters and method names must be avoided.
+    def repeatCounter(method: Method, enclosing: Set[String]): String = {
+      val taken = method.variables.map(_.name).toSet ++ meta.methods.map(_.name) ++ enclosing
+      (Iterator("i", "j", "k") ++ Iterator.from(1).map(index => s"repeat_$index")).find(name => !taken(name)).get
     }
-    def statements(script: SnapXmlParser.Element, method: Method, level: Int): Vector[String] = {
+    var repeatLimits = 0
+    def repeatLimit(method: Method): String = {
+      repeatLimits += 1
+      val name = s"repeat_limit_$repeatLimits"
+      if method.variables.exists(_.name == name) || meta.methods.exists(_.name == name) then repeatLimit(method) else name
+    }
+    def variablesRead(element: SnapXmlParser.Element): Set[String] =
+      SnapXmlParser.elements(element.outer, "block").flatMap(_.attr("var")).toSet
+    def variablesWritten(element: SnapXmlParser.Element): Set[String] =
+      SnapXmlParser.elements(element.outer, "block").filter(block => Set("doSetVar", "doChangeVar")(block.attrOrEmpty("s")))
+        .flatMap(block => SnapXmlParser.children(block.inner).headOption.filter(_.tag == "l").map(text)).toSet
+    /** Drops one pair of parentheses that encloses the whole generated expression, e.g. `(i < 2)` → `i < 2`. */
+    def bare(code: String): String = {
+      val inner = code.drop(1).dropRight(1)
+      val balanced = inner.scanLeft(0)((depth, char) => depth + (if char == '(' then 1 else if char == ')' then -1 else 0))
+      if code.startsWith("(") && code.endsWith(")") && balanced.forall(_ >= 0) && balanced.last == 0 then inner else code
+    }
+    def statements(script: SnapXmlParser.Element, method: Method, level: Int, counters: Set[String] = Set.empty): Vector[String] = {
       ensure(script.tag == "script", "Expected a method script.")
+      commands(SnapXmlParser.children(script.inner), method, level, counters)
+    }
+    def commands(elements: List[SnapXmlParser.Element], method: Method, level: Int, counters: Set[String] = Set.empty): Vector[String] = {
       val prefix = "    " * level
-      SnapXmlParser.children(script.inner).toVector.flatMap { element =>
+      elements.toVector.flatMap { element =>
         if element.tag == "custom-block" then {
-          val called = meta.methods.find(_.callSpec == element.attrOrEmpty("s")).getOrElse(reject("Unknown Java custom block identity."))
-          Vector(prefix + call(meta, called.name, children(element, called.parameters.size).zip(called.parameters)
-            .map((value, parameter) => stored(value, parameter.kind, method)).toVector))
+          val called = helpers.find(_.callSpec == element.attrOrEmpty("s")).getOrElse(reject("Unknown Java custom block identity."))
+          Vector(prefix + call(meta, called.name, children(element, called.parameters.size).map(expression(_, method)).toVector))
         } else {
           ensure(element.tag == "block", "Unknown Snap command element.")
           element.attrOrEmpty("s") match {
@@ -158,35 +205,58 @@ object SnapToJava {
               ensure(names.distinct.size == names.size && names.forall(name => !method.variable(name).parameter), "Declare each Java local exactly once.")
               names.toVector.map(name => prefix + s"${kindName(method.variable(name).kind)} $name;")
             case "doSetVar" =>
-              val args = children(element, 2); val variable = method.variable(text(args.head)); val value = stored(args(1), variable.kind, method)
+              val args = children(element, 2); val variable = method.variable(text(args.head)); val value = expression(args(1), method)
               ensure(assignable(value.kind, variable.kind), "The assigned value has the wrong Java type.")
               Vector(prefix + s"${variable.name} = ${value.code};")
+            case "doChangeVar" =>
+              val args = children(element, 2); val variable = method.variable(text(args.head))
+              val value = arithmeticValue("+", Value(variable.name, variable.kind), expression(args(1), method))
+              ensure(assignable(value.kind, variable.kind), "Change an int variable only by a whole number.")
+              Vector(prefix + s"${variable.name} = ${value.code};")
+            case "doRepeat" =>
+              val args = children(element, 2); val count = expression(args.head, method)
+              ensure(count.kind == R.ValueType.IntValue, "Repeat needs a whole number.")
+              val counter = repeatCounter(method, counters)
+              val body = statements(args(1), method, level + 1, counters + counter) ++ Vector(prefix + "}")
+              // Snap evaluates the count once. Java re-evaluates the loop condition, so a count whose variables
+              // change inside the loop is first copied into a limit local.
+              if (variablesRead(args.head) & variablesWritten(args(1))).isEmpty then
+                Vector(prefix + s"for (int $counter = 0; $counter < ${count.code}; $counter++) {") ++ body
+              else {
+                val limit = repeatLimit(method)
+                Vector(prefix + s"int $limit = ${count.code};", prefix + s"for (int $counter = 0; $counter < $limit; $counter++) {") ++ body
+              }
             case selector if R.TurtleCommand.bySnapSelector.contains(selector) =>
               val command = R.TurtleCommand.bySnapSelector(selector)
               Vector(prefix + call(meta, R.TurtleCommand.qualified(command),
                 children(element, command.arity).map(expression(_, method)).toVector))
             case "doStopThis" =>
               val input = children(element, 1).head
-              ensure(input.tag == "l" && SnapXmlParser.child(input.inner, "option").exists(_.inner == "this block"), "Only 'stop this block' represents Java return.")
+              ensure(input.tag == "l" && SnapXmlParser.child(input.inner, "option").exists(option => Set("this block", "this script")(option.inner)),
+                "Only 'stop this block' or 'stop this script' represents Java return.")
               Vector(prefix + "return;")
             case "doIf" | "doIfElse" =>
               val args = children(element, 3)
               val isElse = element.attrOrEmpty("s") == "doIfElse"
               if !isElse then ensure(args(2).tag == "list" && args(2).inner.trim.isEmpty, "Additional Snap elseif slots cannot be discarded.")
               val condition = expression(args.head, method); ensure(condition.kind == R.ValueType.BooleanValue, "Use a boolean if condition.")
-              Vector(prefix + s"if (${condition.code}) {") ++ statements(args(1), method, level + 1) ++ Vector(prefix + "}") ++
-                (if !isElse then Vector.empty else Vector(prefix + "else {") ++ statements(args(2), method, level + 1) ++ Vector(prefix + "}"))
+              Vector(prefix + s"if (${bare(condition.code)}) {") ++ statements(args(1), method, level + 1, counters) ++ Vector(prefix + "}") ++
+                (if !isElse then Vector.empty else Vector(prefix + "else {") ++ statements(args(2), method, level + 1, counters) ++ Vector(prefix + "}"))
             case "doUntil" =>
-              val args = children(element, 2); val condition = expression(args.head, method)
+              // `repeat until not c` is `while (c)`; anything else is `while (!(c))`.
+              val args = children(element, 2)
+              val negated = args.head.tag == "block" && args.head.attrOrEmpty("s") == "reportNot"
+              val condition = expression(if negated then children(args.head, 1).head else args.head, method)
               ensure(condition.kind == R.ValueType.BooleanValue, "Use a boolean loop condition.")
-              Vector(prefix + s"while (!(${condition.code})) {") ++ statements(args(1), method, level + 1) ++ Vector(prefix + "}")
-            case selector => reject(s"Unsupported Snap command '$selector'.")
+              val test = if negated then bare(condition.code) else s"!(${bare(condition.code)})"
+              Vector(prefix + s"while ($test) {") ++ statements(args(1), method, level + 1, counters) ++ Vector(prefix + "}")
+            case selector => reject(s"The Snap block '$selector' is not available in Java tasks.")
           }
         }
       }
     }
-    val bodies = definitions.map { definition =>
-      val method = meta.methods.find(_.spec == definition.spec).getOrElse(reject("The custom block declaration no longer matches its Java identity."))
+    val helperBodies = definitions.map { definition =>
+      val method = helpers.find(_.spec == definition.spec).getOrElse(reject("The custom block declaration no longer matches its Java identity."))
       ensure(definition.isGlobal && definition.blockType == "command" && definition.slotNames == method.parameters.map(_.name).toList &&
         method.parameters.forall(parameter => definition.typeOf(parameter.name) == (if parameter.kind == R.ValueType.BooleanValue then "%b" else "%n")),
         "Keep the typed scalar Java block parameters.")
@@ -204,16 +274,20 @@ object SnapToJava {
     ensure(SnapXmlParser.children(sprite.inner).count(_.tag == "scripts") == 1,
       "Multiple sprite script containers cannot be discarded.")
     val startup = SnapXmlParser.child(sprite.inner, "scripts").toList.flatMap(container => SnapXmlParser.children(container.inner))
-    ensure(startup.size == 1 && startup.head.tag == "script", "Keep exactly one startup script; loose scripts cannot be discarded.")
-    val startBlocks = SnapXmlParser.children(startup.head.inner)
-    ensure(startBlocks.size == 3 && startBlocks.head.tag == "block" && startBlocks.head.attrOrEmpty("s") == "receiveGo" && startBlocks.head.inner.trim.isEmpty &&
-      startBlocks(1).tag == "block" && startBlocks(1).attrOrEmpty("s") == "doJavaReset" && startBlocks(1).inner.trim.isEmpty &&
-      startBlocks(2).tag == "custom-block" && startBlocks(2).attrOrEmpty("s") == meta.entry.callSpec && startBlocks(2).inner.trim.isEmpty,
-      "Keep the green-flag reset and main() startup script.")
+    ensure(startup.forall(startsWithGreenFlag),
+      "Blocks outside the green-flag script are not part of main(). Attach them below the green flag or delete them.")
+    ensure(startup.size <= 1, "Keep only one green-flag script; it is the Java main() method.")
+    // Without a green-flag script main() is empty. Java always starts with a reset turtle.
+    val mainBlocks = startup.flatMap(script => SnapXmlParser.children(script.inner)) match {
+      case Nil => Nil
+      case hat :: body =>
+        ensure(hat.inner.trim.isEmpty, "The green-flag block has no inputs.")
+        body
+    }
     val stage = SnapXmlParser.elements(state.snapXml, "stage").head
     ensure(SnapXmlParser.child(stage.inner, "scripts").forall(_.inner.trim.isEmpty), "Additional stage scripts cannot be discarded.")
-    ensure(SnapXmlParser.elements(state.snapXml, "scripts").count(_.inner.trim.nonEmpty) == 1,
+    ensure(SnapXmlParser.elements(state.snapXml, "scripts").count(_.inner.trim.nonEmpty) <= startup.size,
       "Additional or loose script containers cannot be discarded.")
-    finish(meta, bodies)
+    finish(meta, helperBodies + (meta.entry.name -> commands(mainBlocks, meta.entry, 0)))
   }
 }

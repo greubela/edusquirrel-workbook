@@ -111,13 +111,17 @@ final class TurtleExecutionPanel(
     child.maybe <-- status.signal.map {
       case Status.Ready(_, _) =>
         Some(picture(scenes.now().head, if target.isDefined then "Target comparison" else "Your drawing"))
-      case _ => target.map { graphic =>
-        Try(TurtleDrawingGrading.targetScene(graphic, comparisonPolicy)).fold(
-          error => p(cls := "turtle-execution__error", role := "alert", error.getMessage),
-          scene => picture(scene, "Target"))
-      }
-    }
+      case _ => None
+    },
+    // Every edit resets the status; only a change between result and target may rebuild the (costly) target board.
+    child.maybe <-- status.signal.map(_.isInstanceOf[Status.Ready]).distinct.map(ready => if ready then None else targetPicture)
   )
+
+  private lazy val targetPicture: Option[Element] = target.map { graphic =>
+    Try(TurtleDrawingGrading.targetScene(graphic, comparisonPolicy)).fold(
+      error => p(cls := "turtle-execution__error", role := "alert", error.getMessage),
+      scene => picture(scene, "Target"))
+  }
 
   override def getDomElement(): Element = domElement
 }

@@ -469,7 +469,8 @@ class ProgrammingStateConversionSpec extends FunSuite {
     List("turtle.left(45)", "turtle.penup()", "turtle.pendown()").foreach(call => assert(python.code.contains(call), clue = python.code))
     assertEquals(T.runVm(bridgeJava(PythonToJava.fromPython(python.code))).commands, expected)
     val snap = bridgeSnap(program)
-    List("doJavaTurnLeft", "doJavaPenUp", "doJavaPenDown").foreach(selector => assert(snap.snapXml.contains(selector), clue = snap.snapXml))
+    List("turnLeft", "up", "down").foreach(selector => assert(snap.snapXml.contains(s"s=\"$selector\""), clue = snap.snapXml))
+    assert(!snap.snapXml.contains("s=\"doJava") && !snap.snapXml.contains("s=\"reportJava"), clue = snap.snapXml)
     assertEquals(T.runVm(bridgeJava(SnapToJava.fromSnap(snap))).commands, expected)
 
     val exported = it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport.render(program).source
@@ -757,9 +758,9 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assert(python.code.contains("java_turtle.int_op(\"div\""))
     assert(python.code.contains("java_turtle.int_op(\"rem\""))
     assert(!python.code.contains("exec("))
-    assert(snap.snapXml.contains("s=\"reportJavaInt\""))
-    assert(snap.snapXml.contains("s=\"doDeclareVariables\""))
-    assert(snap.snapXml.contains("s=\"doJavaForward\""))
+    List("reportQuotient", "reportModulus", "doChangeVar", "doDeclareVariables", "forward")
+      .foreach(selector => assert(snap.snapXml.contains(s"s=\"$selector\""), clue = snap.snapXml))
+    assert(!snap.snapXml.contains("s=\"reportJava"), clue = snap.snapXml)
     assert(!snap.snapXml.contains("s=\"doFor\""))
     assertEquals(T.runVm(bridgeJava(PythonToJava.fromPython(python.code))).commands, expected)
     assertEquals(T.runVm(bridgeJava(SnapToJava.fromSnap(snap))).commands, expected)
@@ -803,7 +804,76 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val program = checked(source)
     val expected = T.runVm(program).commands
     assertEquals(T.runVm(bridgeJava(PythonToJava.fromPython(bridgePython(program).code))).commands, expected)
-    assertEquals(T.runVm(bridgeJava(SnapToJava.fromSnap(bridgeSnap(program)))).commands, expected)
+    // Standard Snap has no block for ++/-- inside an expression.
+    assert(JavaToSnap.toSnap(program).left.exists(_.contains("++")))
+  }
+
+  test("Snap programs built from standard palette blocks run with Java semantics") {
+    val snap = bridgeSnap(checked("class Built { static void side(int length) { Turtle.forward(length); } public static void main(String[] args) { } }"))
+    val body = "<block s=\"doRepeat\"><l>4</l><script>" +
+      "<custom-block s=\"side %n\"><block s=\"reportVariadicProduct\"><list><l>7</l><block s=\"reportQuotient\"><l>5</l><l>2</l></block></list></block></custom-block>" +
+      "<block s=\"turn\"><l>90</l></block><block s=\"turnLeft\"><block s=\"reportMonadic\"><l><option>neg</option></l><l>0.5</l></block></block>" +
+      "</script></block><block s=\"up\"></block><block s=\"forward\"><l>2.5</l></block><block s=\"down\"></block>"
+    val xml = snap.snapXml.replace("<block s=\"receiveGo\"></block>", "<block s=\"receiveGo\"></block>" + body)
+    assert(xml != snap.snapXml)
+    val commands = T.runVm(bridgeJava(SnapToJava.fromSnap(snap.copy(snapXml = xml)))).commands
+    // 5 / 2 stays Java int division: 7 * 2 = 14.
+    assertEquals(commands, Vector.fill(4)(Vector(T.Command(R.TurtleCommand.Forward, 14), T.Command(R.TurtleCommand.TurnRight, 90),
+      T.Command(R.TurtleCommand.TurnLeft, -0.5))).flatten ++
+      Vector(T.Command(R.TurtleCommand.PenUp, 0), T.Command(R.TurtleCommand.Forward, 2.5), T.Command(R.TurtleCommand.PenDown, 0)))
+    assert(SnapToJava.fromSnap(snap.copy(snapXml = xml.replace("<l>4</l>", "<l>4.5</l>"))).isLeft)
+  }
+
+  test("repeat until conditions translate without double negation and stay stable") {
+    val snap = bridgeSnap(checked("class Until { public static void main(String[] args) { int i = 0; Turtle.forward(1); } }"))
+    def withLoop(condition: String): ProgrammingStateSnapXml = {
+      val loop = s"<block s=\"doUntil\">$condition<script><block s=\"forward\"><l>60</l></block><block s=\"doChangeVar\"><l>i</l><l>1</l></block></script></block>"
+      val xml = snap.snapXml.replace("<block s=\"forward\"><l>1</l></block>", loop)
+      assert(xml != snap.snapXml)
+      snap.copy(snapXml = xml)
+    }
+    val less = "<block s=\"reportVariadicLessThan\"><list><block var=\"i\"/><l>2</l></list></block>"
+    val cases = List(
+      withLoop(s"<block s=\"reportNot\">$less</block>") -> "while (i < 2) {",
+      withLoop("<block s=\"reportVariadicEquals\"><list><block var=\"i\"/><l>2</l></list></block>") -> "while (!(i == 2)) {")
+    cases.foreach { (state, expectedLine) =>
+      val java = SnapToJava.fromSnap(state).fold(message => fail(message), identity)
+      assert(java.code.contains(expectedLine), clue = java.code)
+      assert(!java.code.contains("!((!"), clue = java.code)
+      assertEquals(T.runVm(checked(java.code)).commands.size, 2)
+      val back = bridgeSnap(checked(java.code))
+      assertEquals(SnapXmlParser.elements(back.snapXml, "block").count(_.attrOrEmpty("s") == "reportNot"),
+        SnapXmlParser.elements(state.snapXml, "block").count(_.attrOrEmpty("s") == "reportNot"), clue = back.snapXml)
+      assertEquals(SnapToJava.fromSnap(back).map(_.code), Right(java.code))
+    }
+  }
+
+  test("repeat survives Java round trips as a repeat block with a stable counter") {
+    val snap = bridgeSnap(checked("class Loop { public static void main(String[] args) { } }"))
+    val body = "<block s=\"doRepeat\"><l>2</l><script><block s=\"forward\"><l>60</l></block>" +
+      "<block s=\"doRepeat\"><l>3</l><script><block s=\"turnLeft\"><l>90</l></block></script></block></script></block>"
+    val authored = snap.copy(snapXml = snap.snapXml.replace("<block s=\"receiveGo\"></block>", "<block s=\"receiveGo\"></block>" + body))
+    val java = SnapToJava.fromSnap(authored).fold(message => fail(message), identity)
+    assert(java.code.contains("for (int i = 0; i < 2; i++)"), clue = java.code)
+    assert(java.code.contains("for (int j = 0; j < 3; j++)"), clue = java.code)
+    val back = bridgeSnap(checked(java.code))
+    assertEquals(SnapXmlParser.elements(back.snapXml, "block").count(_.attrOrEmpty("s") == "doRepeat"), 2, clue = back.snapXml)
+    List("doDeclareVariables", "doSetVar", "doChangeVar", "doUntil").foreach(selector =>
+      assert(!back.snapXml.contains(s"s=\"$selector\""), clue = back.snapXml))
+    val again = SnapToJava.fromSnap(back).fold(message => fail(message), identity)
+    assertEquals(again.code, java.code)
+    assertEquals(bridgeSnap(checked(again.code)).snapXml, back.snapXml)
+    // A Java loop that uses its counter stays a loop with a visible variable.
+    val counted = bridgeSnap(checked("class Uses { public static void main(String[] args) { for (int i = 0; i < 3; i++) { Turtle.forward(i); } } }"))
+    assert(!counted.snapXml.contains("s=\"doRepeat\""), clue = counted.snapXml)
+    // A count whose variable changes inside the loop is evaluated once, as in Snap.
+    val changing = bridgeSnap(checked("class Changes { static void draw(int n) { } public static void main(String[] args) { } }"))
+    val drawBody = "<block s=\"doRepeat\"><block var=\"n\"/><script><block s=\"doChangeVar\"><l>n</l><l>1</l></block>" +
+      "<block s=\"forward\"><l>1</l></block></script></block>"
+    val withChange = changing.snapXml.replace("<script></script></block-definition>", s"<script>$drawBody</script></block-definition>")
+      .replace("<block s=\"receiveGo\"></block>", "<block s=\"receiveGo\"></block><custom-block s=\"draw %n\"><l>3</l></custom-block>")
+    assert(withChange != changing.snapXml)
+    assertEquals(T.runVm(bridgeJava(SnapToJava.fromSnap(changing.copy(snapXml = withChange)))).commands.size, 3)
   }
 
   test("edited typed Snap and Python views reconstruct changed programs instead of replaying hidden Java") {
@@ -833,16 +903,18 @@ class ProgrammingStateConversionSpec extends FunSuite {
       assert(PythonToJava.fromPython(code).isLeft, clue = code.take(200))
     }
     val badXml = List(
-      snap.snapXml.replace("s=\"doJavaForward\"", "s=\"wait\""),
-      snap.snapXml.replace("</sprite>", "<scripts><script><block s=\"doJavaForward\"><l>1</l></block></script></scripts></sprite>"),
+      snap.snapXml.replace("s=\"forward\"", "s=\"wait\""),
+      snap.snapXml.replace("</sprite>", "<scripts><script><block s=\"forward\"><l>1</l></block></script></scripts></sprite>"),
       snap.snapXml.replace("</project>", "<unknown-extension/></project>"),
-      snap.snapXml.replace("s=\"doJavaForward\"", "s=\"doJavaForward\" unknown=\"kept\""),
-      snap.snapXml.replace("<l>add</l>", "<l> add </l>"),
-      snap.snapXml.replace("<block s=\"doSetVar\"><l>i</l>", "<block s=\"doSetVar\"><l> i </l>"),
+      snap.snapXml.replace("s=\"forward\"", "s=\"forward\" unknown=\"kept\""),
+      snap.snapXml.replace("s=\"doRepeat\"", "s=\"doWarp\""),
+      snap.snapXml.replace("<l>4</l>", "<l>4.5</l>"),
       snap.snapXml.replace("<block s=\"receiveGo\"></block>", "<block s=\"receiveGo\"><l>1</l></block>"),
-      snap.snapXml.replace("<block s=\"reportJavaRead\"><l>i</l></block>", "<block var=\"i\"/>"),
-      snap.snapXml.replace("<block s=\"reportJavaCell\"><l>25</l></block>", "<l>25</l>"),
-      snap.snapXml.replace("<block s=\"doJavaReset\"></block>", ""),
+      snap.snapXml.replace("<block var=\"side\"/>", "<block var=\"unknown\"/>"),
+      snap.snapXml.replace("<block var=\"side\"/>", "<block var=\" side \"/>"),
+      snap.snapXml.replace("<l>25</l>", "<l>2.5</l>"),
+      snap.snapXml.replace("<block s=\"receiveGo\"></block>", "<block s=\"receiveGo\"></block><block s=\"doJavaReset\"></block>"),
+      snap.snapXml.replace("<block s=\"receiveGo\"></block>", "<block s=\"receiveGo\"></block><block s=\"forward\"><l></l></block>"),
       snap.snapXml.replace("category=\"variables\"", "category=\"control\""),
       snap.snapXml.replace("</block-definition>", "<comment>authored</comment></block-definition>"),
       snap.snapXml.replace("</block-definition>", "<header>authored</header></block-definition>"),
@@ -857,6 +929,39 @@ class ProgrammingStateConversionSpec extends FunSuite {
     }
     assertEquals(bridgePython(program), python)
     assertEquals(bridgeSnap(program), snap)
+  }
+
+  test("the green-flag script is main: appended blocks run and a removed script is an empty main") {
+    val program = checked(squareJava())
+    val snap = bridgeSnap(program)
+    assert(!snap.snapXml.contains("<custom-block s=\"main\""), clue = snap.snapXml)
+    assertEquals(SnapCustomBlockRules.globalDefinitions(snap.snapXml).size, 1)
+    val reset = "<block s=\"receiveGo\"></block>"
+    val forward = "<block s=\"forward\"><l>7</l></block>"
+    val sprite = SnapXmlParser.elements(snap.snapXml, "sprite").head
+    val startup = SnapXmlParser.children(SnapXmlParser.child(sprite.inner, "scripts").get.inner).head
+    def run(xml: String): Vector[T.Command] = T.runVm(bridgeJava(SnapToJava.fromSnap(snap.copy(snapXml = xml)))).commands
+
+    val appended = snap.snapXml.replace(reset, reset + forward)
+    assertEquals(run(appended), T.Command(R.TurtleCommand.Forward, 7.0) +: squareCommands(25))
+    val roundTrip = bridgeSnap(bridgeJava(SnapToJava.fromSnap(snap.copy(snapXml = appended))))
+    assertEquals(run(roundTrip.snapXml), run(appended))
+    assertEquals(run(snap.snapXml.replace(startup.outer, "")), Vector.empty[T.Command])
+  }
+
+  test("loose and duplicate green-flag scripts block editing conversion while execution ignores loose scripts only") {
+    val program = checked(squareJava())
+    val snap = bridgeSnap(program)
+    val sprite = SnapXmlParser.elements(snap.snapXml, "sprite").head
+    val startup = SnapXmlParser.children(SnapXmlParser.child(sprite.inner, "scripts").get.inner).head
+    val loose = "<script x=\"10\" y=\"300\"><block s=\"wait\"><l>1</l></block><block s=\"forward\"><l>1</l></block></script>"
+    val withLoose = snap.copy(snapXml = snap.snapXml.replace(startup.outer, startup.outer + loose))
+    assert(SnapToJava.fromSnap(withLoose).isLeft)
+    assertEquals(T.runVm(bridgeJava(SnapToJava.forExecution(withLoose))).commands, squareCommands(25))
+    assertEquals(withLoose.snapXml, snap.snapXml.replace(startup.outer, startup.outer + loose))
+    val twoFlags = snap.copy(snapXml = snap.snapXml.replace(startup.outer, startup.outer + startup.outer))
+    assert(SnapToJava.fromSnap(twoFlags).isLeft)
+    assert(SnapToJava.forExecution(twoFlags).isLeft)
   }
 
   test("editing metadata recognition does not capture ordinary text mentions and retains malformed bridge headers") {
@@ -888,8 +993,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
       val python = bridgePython(program)
       val snap = bridgeSnap(program)
       assert(!python.code.contains("java_turtle.update(i,"), clue = python.code)
-      assert(!snap.snapXml.contains("s=\"reportJavaUpdate\""), clue = snap.snapXml)
-      assert(snap.snapXml.contains("s=\"doJavaReset\""), clue = snap.snapXml)
+      assert(!snap.snapXml.contains("s=\"doJava") && !snap.snapXml.contains("s=\"reportJava"), clue = snap.snapXml)
       assertEquals(T.runVm(bridgeJava(PythonToJava.fromPython(python.code))).commands, expected)
       assertEquals(T.runVm(bridgeJava(SnapToJava.fromSnap(snap))).commands, expected)
     }
@@ -942,9 +1046,9 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val snap = bridgeSnap(program)
     assert(python.code.contains("java_turtle.compare(\"le\""), clue = python.code)
     assert(python.code.contains("java_turtle.compare(\"ge\""), clue = python.code)
-    assert(snap.snapXml.contains("s=\"reportJavaCompare\""), clue = snap.snapXml)
-    assert(!snap.snapXml.contains("s=\"reportVariadicLessThanOrEquals\""), clue = snap.snapXml)
-    assert(!snap.snapXml.contains("s=\"reportVariadicGreaterThanOrEquals\""), clue = snap.snapXml)
+    assert(snap.snapXml.contains("s=\"reportVariadicLessThanOrEquals\""), clue = snap.snapXml)
+    assert(snap.snapXml.contains("s=\"reportVariadicGreaterThanOrEquals\""), clue = snap.snapXml)
+    assert(!snap.snapXml.contains("s=\"reportJava"), clue = snap.snapXml)
     val pythonJava = bridgeJava(PythonToJava.fromPython(python.code))
     val snapJava = bridgeJava(SnapToJava.fromSnap(snap))
     assertEquals(T.runVm(pythonJava).commands, expected)
@@ -998,7 +1102,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val program = checked("class Zero { static void draw(double length) { Turtle.forward(length); } public static void main(String[] args) { draw(0.0); Turtle.forward(0); } }")
     val snap = bridgeSnap(program)
     val changed = snap.snapXml.replace("<l>0.0</l>", "<l>-0</l>")
-      .replace("<block s=\"doJavaForward\"><l>0</l></block>", "<block s=\"doJavaForward\"><l>-0</l></block>")
+      .replace("<block s=\"forward\"><l>0</l></block>", "<block s=\"forward\"><l>-0</l></block>")
     assert(changed != snap.snapXml)
     val execution = T.runVm(bridgeJava(SnapToJava.fromSnap(snap.copy(snapXml = changed))))
     assertEquals(execution.commands.size, 2)
@@ -1010,7 +1114,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   }
 
   test("typed projects cannot move global Java methods into local sprite blocks by removing the global container") {
-    val snap = bridgeSnap(checked("class Localized { public static void main(String[] args) { Turtle.forward(12); } }"))
+    val snap = bridgeSnap(checked("class Localized { static void draw() { Turtle.forward(12); } public static void main(String[] args) { draw(); } }"))
     val scene = SnapXmlParser.elements(snap.snapXml, "scene").head
     val globals = SnapXmlParser.child(scene.inner, "blocks").get
     val withoutGlobals = snap.snapXml.replace(globals.outer, "")

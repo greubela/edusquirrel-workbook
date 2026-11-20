@@ -42,11 +42,12 @@ object JavaTurtleResolution {
    * `arity` is the number of numeric arguments (pen commands take none).
    */
   enum TurtleCommand(val javaName: String, val pythonName: String, val snapSelector: String, val arity: Int) {
-    case Forward extends TurtleCommand("forward", "forward", "doJavaForward", 1)
-    case TurnRight extends TurtleCommand("turnRight", "right", "doJavaTurnRight", 1)
-    case TurnLeft extends TurtleCommand("turnLeft", "left", "doJavaTurnLeft", 1)
-    case PenUp extends TurtleCommand("penUp", "penup", "doJavaPenUp", 0)
-    case PenDown extends TurtleCommand("penDown", "pendown", "doJavaPenDown", 0)
+    // Standard Snap palette selectors: move, turn right/left, pen up/down.
+    case Forward extends TurtleCommand("forward", "forward", "forward", 1)
+    case TurnRight extends TurtleCommand("turnRight", "right", "turn", 1)
+    case TurnLeft extends TurtleCommand("turnLeft", "left", "turnLeft", 1)
+    case PenUp extends TurtleCommand("penUp", "penup", "up", 0)
+    case PenDown extends TurtleCommand("penDown", "pendown", "down", 0)
   }
 
   object TurtleCommand {

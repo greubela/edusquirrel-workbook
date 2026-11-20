@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.grading.GradingImportance.REQUIRED_TEST
@@ -20,7 +21,9 @@ case class TurtleRecreateShapeInteraction
   desiredResult: TurtleGraphic,
   availablePalette: ProgrammingEditorPalette = ProgrammingEditorPalette.BeginnerTurtle,
   limitTurtleCommandUsage: Map[String, Integer],
-  comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes
+  comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes,
+  /** Language tabs offered by the editor, in this order. */
+  editorLanguages: List[ProgrammingLanguage] = TurtleRecreateShapeInteraction.AllEditorLanguages
 ) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit] derives ReadWriter {
 
   override val defaultValue: ProgrammingState = initProgram
@@ -34,8 +37,10 @@ case class TurtleRecreateShapeInteraction
 }
 
 object TurtleRecreateShapeInteraction {
+  val AllEditorLanguages: List[ProgrammingLanguage] = List(SnapLanguage, Python, Java)
+
   val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
-    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "availablePalette", "limitTurtleCommandUsage", "comparisonPolicy")
+    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "availablePalette", "limitTurtleCommandUsage", "comparisonPolicy", "editorLanguages")
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, element: TurtleRecreateShapeInteraction): WorkbookElementSerializable = {
       val serialized = baseElement
@@ -43,8 +48,10 @@ object TurtleRecreateShapeInteraction {
         .withElementAddedAs("desiredResult", element.desiredResult)
         .withElementAddedAs("availablePalette", element.availablePalette)
         .withElementAddedAs("limitTurtleCommandUsage", element.limitTurtleCommandUsage)
-      if element.comparisonPolicy == TurtleDrawingPolicy.Strokes then serialized
-      else serialized.withElementAddedAs("comparisonPolicy", element.comparisonPolicy)
+      val withPolicy = if element.comparisonPolicy == TurtleDrawingPolicy.Strokes then serialized
+        else serialized.withElementAddedAs("comparisonPolicy", element.comparisonPolicy)
+      if element.editorLanguages == AllEditorLanguages then withPolicy
+      else withPolicy.withElementAddedAs("editorLanguages", element.editorLanguages)
     }
 
     override def finishDeserialization(serialized: WorkbookElementSerializable): TurtleRecreateShapeInteraction =
@@ -54,7 +61,8 @@ object TurtleRecreateShapeInteraction {
         serialized.getElementAs[TurtleGraphic]("desiredResult"),
         serialized.getElementAs[ProgrammingEditorPalette]("availablePalette"),
         serialized.getElementAs[Map[String, Integer]]("limitTurtleCommandUsage"),
-        serialized.getOptionalElementAs[TurtleDrawingPolicy]("comparisonPolicy", TurtleDrawingPolicy.Strokes)
+        serialized.getOptionalElementAs[TurtleDrawingPolicy]("comparisonPolicy", TurtleDrawingPolicy.Strokes),
+        serialized.getOptionalElementAs[List[ProgrammingLanguage]]("editorLanguages", AllEditorLanguages)
       )
   }
 }

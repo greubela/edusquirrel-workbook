@@ -10,7 +10,6 @@ import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguag
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.vm.code.errors.ProgrammingConversionError
-import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -45,7 +44,6 @@ case class SnapCodeEditor(
   }
 
   private[SnapEditor] def mountEditorInto(canvas: Canvas, owner: Owner): Unit = {
-    JavaTurtleSnapPrimitives.install()
     impl.mount(owner)
     impl.setOnProjectXmlChangedListener(publishProgramFromSnapXml)
     impl.renderEditorInto(snapState.now().toSnapXml, canvas, config)

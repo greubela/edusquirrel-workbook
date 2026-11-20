@@ -62,7 +62,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
       case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
       case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.PythonCompatibleTesting
 
-    val editorConfig = EvaEditorConfig(snapConfig = snapEditorConfig)
+    val editorConfig = EvaEditorConfig(enabledLanguages = workbookElement.editorLanguages, snapConfig = snapEditorConfig)
     def editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension(
         boundVar, Some(workbookElement.desiredResult), workbookElement.comparisonPolicy)), editorConfig, humanLanguage = fullInfo.signals.currentLanguage,
         labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal(_)))

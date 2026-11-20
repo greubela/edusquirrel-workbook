@@ -91,7 +91,7 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   private def editorTask(id: String, extra: List[WorkbookElement] = Nil): WorkbookElement =
     task(id, List(prompt(id),
       TurtleRecreateShapeInteraction("monks-" + id, ProgrammingStateJavaString(EditorCode(id)), editorTarget(id),
-        ProgrammingEditorPalette.PythonCompatibleSnap, Map.empty[String, Integer])) ++ extra)
+        ProgrammingEditorPalette.PythonCompatibleSnap, Map.empty[String, Integer], editorLanguages = EditorLanguages)) ++ extra)
 
   // Building once makes IDs and state references stable across createWorkbook/createEverything calls.
   override lazy val createWorkbook: Workbook = workbook(
@@ -168,7 +168,8 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
               ProgrammingStatePythonString(""),
               kochTarget(depth),
               ProgrammingEditorPalette.PythonCompatibleSnap,
-              Map.empty[String, Integer])))
+              Map.empty[String, Integer],
+              editorLanguages = EditorLanguages)))
         })
     ),
     User.AndreGreubel
@@ -176,6 +177,9 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
 }
 
 object CreateMonksWorkbook {
+  /** Python is hidden in this workbook for now; learners work in Snap! or Java. */
+  val EditorLanguages: List[AppLanguage.ProgrammingLanguage] = List(AppLanguage.SnapLanguage, AppLanguage.Java)
+
   /** One slide: a key image plus the lines shown below it. A line is the key of a spoken dialogue
    * (`...dialogue`, prefixed with the speaker in the text) or of a short narration (`narr-...`).
    * Several beats of the story are aggregated into one slide so the stories stay short.
