@@ -130,4 +130,15 @@ class JavaToExpressionSpec extends FunSuite {
     val nested = python("class Outer { class Inner { double size = 1; } public static void main(String[] args) { Turtle.forward(1); } }")
     assert(nested.contains("class Inner"), nested)
   }
+
+  test("Math methods map to Python built-ins or stay explicit placeholders instead of unimported math calls") {
+    val code = python(program("Turtle.forward(Math.abs(-3) + Math.max(1, 2) + Math.min(4, 5) + java.lang.Math.abs(-1));\nTurtle.forward(Math.pow(2, 3) + Math.floor(7.0 / 2));"))
+    Seq("abs(-3)", "max(1, 2)", "min(4, 5)", "abs(-1)", "2 ** 3", "7.0 // 2").foreach(part => assert(code.contains(part), s"'$part' missing in\n$code"))
+    assert(!code.contains("math."), code)
+    assertEquals(drawn(program("Turtle.forward(Math.abs(-3) + Math.max(1, 2));")), List(5.0))
+    for method <- Seq("sqrt(16)", "round(2.5)", "ceil(2.1)", "sin(0)") do {
+      val tree = new JavaToExpression(program(s"Turtle.forward(Math.$method);")).convert.expression.toString
+      assert(tree.contains(s"BeExpressionUnsupported(Math.${method.takeWhile(_ != '(')}(...)"), tree)
+    }
+  }
 }
