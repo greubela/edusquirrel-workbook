@@ -1,10 +1,11 @@
-package todomove.webElementsOld.webElements.svg.shapes
+package it.evadid.core.datastructures.vectorShapes.blocks
 
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 
 
-private[shapes] object ShapeFactory {
+/** Outline paths of the block shapes, fitted to the bounds they are drawn in. */
+object BlockPaths {
 
   private def intToT[T: Fractional](number: Int): T = {
     val N = summon[Fractional[T]]

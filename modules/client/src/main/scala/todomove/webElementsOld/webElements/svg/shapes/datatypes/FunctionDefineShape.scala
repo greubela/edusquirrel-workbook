@@ -4,7 +4,6 @@ import todomove.webElementsOld.webElements.svg.shapes.BeShape.BeShapePathBased
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import todomove.webElementsOld.webElements.svg.shapes.ShapeFactory
 
 object FunctionDefineShape extends BeShapePathBased {
 

@@ -1,5 +1,7 @@
 package todomove.webElementsOld.webElements.svg.shapes.datatypes
 
+import it.evadid.core.datastructures.vectorShapes.blocks.{BlockPaths, FlowDecorationPaths}
+
 import todomove.webElementsOld.webElements.svg.shapes.BeShape.{BeShapeAtomic, BeShapeContainerable, BeShapePathBased}
 
 import com.raquo.laminar.api.L
@@ -9,11 +11,10 @@ import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import todomove.webElementsOld.webElements.svg.AppSvgElement
-import todomove.webElementsOld.webElements.svg.shapes.ShapeFactory
 
 object LiteralShape extends BeShapePathBased {
 
-  override protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = ShapeFactory.buildLiteralShape(bounds)
+  override protected def getPathBuilder(config: BeRenderingConfig, bounds: Bounds[Double]): SvgPathBuilder[Double] = BlockPaths.buildLiteralShape(bounds)
 
   override protected def spaceBeforeChild(config: BeRenderingConfig, childDim: Dimension[Double]): Dimension[Double] =
     config.paddingSmall.increaseSize(childDim.height / 2, 0).increaseSize(childDim.height / 5, 0)

@@ -22,6 +22,9 @@ trait AppShapeElementConfig[T: Fractional] {
 
   def fillEnabled: Boolean = true
 
+  /** An SVG `stroke-dasharray`, e.g. `1,1`; solid when empty. */
+  def strokeDashArray: Option[String] = None
+
   def onMouseClicked(leftButton: Boolean): Unit
 
 

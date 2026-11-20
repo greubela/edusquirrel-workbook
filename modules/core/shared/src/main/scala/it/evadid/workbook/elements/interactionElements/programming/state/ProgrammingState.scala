@@ -4,7 +4,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Sn
 
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage, ProgrammingLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Java, Python, SnapLanguage, ProgrammingLanguage}
 import it.evadid.vm.simulation.turtle.{TurtleProgramAnalysis, TurtleCommandExecutionInfo}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.workbook.elements.interactionElements.programming.*
@@ -37,7 +37,7 @@ sealed trait ProgrammingState {
     case _: ProgrammingStateSnapScalaModel => SnapLanguage
     case _: ProgrammingStateJavaStructured => Java
     case _: ProgrammingStatePythonStructured => Python
-    case _: ProgrammingStateBeExpression => SnapLanguage
+    case _: ProgrammingStateBeExpression => BlockDisplay
   }
 
   def fingerprint(): String = this match {

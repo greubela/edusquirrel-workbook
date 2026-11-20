@@ -1,16 +1,14 @@
-package todomove.webElementsOld.webElements.svg.shapes
+package it.evadid.core.datastructures.vectorShapes.blocks
 
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 
 
-case class DecorationFactory[T: Fractional](renderingConfig: BeRenderingConfig) {
+/** Control-flow arrows, connectors and backgrounds, scaled by the control-flow segment size. */
+case class FlowDecorationPaths[T: Fractional](segmentSize: T) {
   val N = summon[Fractional[T]]
 
   import N.*
-
-  val segmentSize: T = fromInt(renderingConfig.controlSegmentSizeInt)
 
   private def intDim(width: Int, height: Int): Dimension[T] = Dimension[T](fromInt(width), fromInt(height))
 

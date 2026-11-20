@@ -14,7 +14,7 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.co
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.rendering.ControlFlowOverlayBuilder
 import todomove.webElementsOld.webElements.svg.AppSvgElement
 import todomove.webElementsOld.webElements.svg.compositeElements.AppDecoratedSvgElement
-import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeDecoration, ShapeFactory}
+import todomove.webElementsOld.webElements.svg.shapes.{BeShape, BeShapeDecoration}
 import todomove.webElementsOld.webElements.svg.shapes.controlflow.{ControlFlowConnectorBackground, ControlFlowStarterBackground}
 import todomove.webElementsOld.webElements.svg.shapes.decorations.{PathSplitOverlay, TriangleOverlay}
 

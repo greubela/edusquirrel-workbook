@@ -1,11 +1,13 @@
 package todomove.webElementsOld.webElements.svg.shapes.decorations
 
+import it.evadid.core.datastructures.vectorShapes.blocks.{BlockPaths, FlowDecorationPaths}
+
 import com.raquo.laminar.api.L
 import todomove.webElementsOld.webElements.svg.shapes.*
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
-import todomove.webElementsOld.webElements.svg.shapes.{BeShapeDecoration, DecorationFactory}
+import todomove.webElementsOld.webElements.svg.shapes.{BeShapeDecoration}
 
 case class ControlArrowUpDown(pointsDown: Boolean = true, isActive: Boolean = true) extends BeShapeDecoration derives upickle.default.ReadWriter {
 
@@ -13,8 +15,8 @@ case class ControlArrowUpDown(pointsDown: Boolean = true, isActive: Boolean = tr
   override def displaySize(rendererConfig: BeRenderingConfig): Dimension[Double] = Dimension(rendererConfig.controlSegmentSize / 5.0 * 6.0, rendererConfig.controlSegmentSize / 5.0 * 8.0)
 
   def getOverlayPath(rendererConfig: BeRenderingConfig, center: Point[Double]): SvgPathBuilder[Double] = {
-    if (pointsDown) DecorationFactory[Double](rendererConfig).controlArrowDown(center)
-    else DecorationFactory[Double](rendererConfig).controlArrowUp(center)
+    if (pointsDown) FlowDecorationPaths[Double](rendererConfig.controlSegmentSize).controlArrowDown(center)
+    else FlowDecorationPaths[Double](rendererConfig.controlSegmentSize).controlArrowUp(center)
   }
 
   def getAmends(renderingConfig: BeRenderingConfig): Seq[L.Modifier[L.SvgElement]] =

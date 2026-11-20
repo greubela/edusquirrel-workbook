@@ -14,6 +14,7 @@ case class BeAssignVariable(target: BeDefineVariable, value: BeExpression) exten
   override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeAssignVariable](this) {
     override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeAssignVariable = {
       val replacement = newChildren.collectFirst {
+        case (BeChildRole.ValueInAssignment, expr) => expr
         case (BeChildRole.ValueForVariable(variable), expr) if variable == target => expr
         case (BeChildRole.ExpressionInSequence(_), expr) => expr
       }
