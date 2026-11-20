@@ -73,4 +73,16 @@ class LoggerSpec extends FunSuite {
     assert(underlying.entries.now().forall(_._1.contains("Sync to 'backend''")))
     assert(underlying.entries.now().last._1.contains("Recovered from exception by: ignored"))
   }
+
+  test("basic loggers keep errors apart from informational output") {
+    val logger = BasicLogger()
+    logger.logInfo("started")
+    logger.logWarn("slow")
+    logger.logError("failed")
+    assertEquals(logger.getOut(), "started\nslow\n")
+    assertEquals(logger.getErr(), "failed\n")
+    val collector = new Recording
+    collector.logAllFrom(logger)
+    assertEquals(collector.entries.now().map(_._2), Vector(LoggingLevel.INFO, LoggingLevel.ERROR))
+  }
 }
