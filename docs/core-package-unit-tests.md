@@ -32,6 +32,20 @@ npm run test:static
 npm run test:workbooks
 ```
 
+The MySQL integration suite needs a disposable MySQL 8.4, for example in Docker
+(the variables match the CI job):
+
+```sh
+docker run -d --name edu-mysql -p 3306:3306 -e MYSQL_DATABASE=edusquirrel_account_test \
+  -e MYSQL_USER=account_test -e MYSQL_PASSWORD=disposable -e MYSQL_RANDOM_ROOT_PASSWORD=yes mysql:8.4
+SQL_HOST=127.0.0.1 SQL_PORT=3306 SQL_DATABASE=edusquirrel_account_test SQL_USER=account_test \
+  SQL_PW=disposable SERVER_SECRET=disposable sbt 'server / MysqlIntegration / test'
+```
+
+`ProgrammingUnitTestGraderSpec` (coreJVM) grades answers through the worker's
+unit-test harness in a local `python3` via the test-only `CPythonRuntime` client; it
+is skipped when no `python3` is installed.
+
 For a narrow shared package:
 
 ```sh

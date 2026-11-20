@@ -123,4 +123,72 @@ class JsRemoteExecutionClientSpec extends FunSuite {
       assert(error.getMessage.contains("502: Bad Gateway"))
     }
   }
+
+  private def withFetch[A](fetch: js.Function2[String, dom.RequestInit, js.Promise[dom.Response]])(body: => Future[A]): Future[A] = {
+    val originalFetch = js.Dynamic.global.fetch
+    js.Dynamic.global.fetch = fetch
+    Future.unit.flatMap(_ => body).andThen { case _ => js.Dynamic.global.fetch = originalFetch }
+  }
+
+  test("commands are posted to the configured backend address and decode the execution response") {
+    val time = java.time.LocalDateTime.parse("2026-11-20T09:00:00")
+    val command = it.evadid.distribution.command.ExecutionCommand("health", ujson.Obj())
+    val envelope = it.evadid.distribution.formats.ExecutionClientResponse.forValue(
+      it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientResponseTimestamps(time, time, time), "ok", command)
+    val requests = js.Array[(String, dom.RequestInit)]()
+    withFetch((url: String, init: dom.RequestInit) => {
+      requests.push(url -> init)
+      js.Promise.resolve[dom.Response](new dom.Response(upickle.default.write(envelope)))
+    }) {
+      val logger = BasicLogger()
+      JsRemoteExecutionClient("backend.example.org", 8443, None).executeResponse(logger, command)
+        .zip(JsRemoteExecutionClient("http://localhost", 8080, None).executeResponse(logger, command))
+    }.map { (secure, local) =>
+      assertEquals(secure, envelope)
+      assertEquals(local, envelope)
+      assertEquals(requests.toList.map(_._1), List("https://backend.example.org:8443/executeCommand", "http://localhost:8080/executeCommand"))
+      val init = requests(0)._2
+      assertEquals(init.method.get, dom.HttpMethod.POST)
+      assertEquals(init.credentials.get, dom.RequestCredentials.include)
+      assertEquals(upickle.default.read[it.evadid.distribution.command.ExecutionCommand](init.body.asInstanceOf[String]), command)
+      assertEquals(new dom.Headers(init.headers.get).get("Authorization"), "", "anonymous requests carry no token")
+    }
+  }
+
+  test("a failing browser compressor names the command instead of sending a corrupt request") {
+    val originalCompression = js.Dynamic.global.CompressionStream
+    js.Dynamic.global.CompressionStream = js.constructorOf[RejectingCompressionStream]
+    val sent = js.Array[String]()
+    withFetch((url: String, _: dom.RequestInit) => { sent.push(url); js.Promise.resolve[dom.Response](new dom.Response("{}")) }) {
+      JsRemoteExecutionClient("localhost", 443, None).sendCommand(BasicLogger(),
+        it.evadid.distribution.command.ExecutionCommand("save-history", ujson.Obj()), "https://localhost/executeCommand", "x" * 4096)
+    }.failed.map { error =>
+      assertEquals(error.getMessage, "Could not encode backend request for command save-history; browser request compression failed.")
+      assertEquals(sent.length, 0)
+    }.andThen { case _ => js.Dynamic.global.CompressionStream = originalCompression }
+  }
+
+  test("unexpected fetch failures report an unreachable backend") {
+    withFetch((_: String, _: dom.RequestInit) => throw IllegalStateException("fetch is disabled")) {
+      JsRemoteExecutionClient("localhost", 443, None).sendCommand(BasicLogger(),
+        it.evadid.distribution.command.ExecutionCommand("health", ujson.Obj()), "https://localhost/executeCommand", "{}")
+    }.failed.map { error =>
+      assertEquals(error.getMessage,
+        "Backend request for command health failed: The backend could not be reached; check network access, the backend URL and browser CORS errors.")
+    }
+  }
+
+  test("interrupted response bodies report the HTTP status") {
+    val response = js.Dynamic.literal(ok = true, status = 200, statusText = "OK",
+      text = (() => js.Promise.reject("connection reset")): js.Function0[js.Promise[String]])
+    JsRemoteExecutionClient("localhost", 443, None).handleResponse(BasicLogger(), response.asInstanceOf[Response]).failed.map { error =>
+      assertEquals(error.getMessage,
+        "Could not read backend response body (HTTP 200); the connection closed or the response was interrupted.")
+    }
+  }
+}
+
+/** A browser compression stream that cannot be created, e.g. when the encoder is unavailable. */
+private class RejectingCompressionStream(format: String) extends js.Object {
+  throw js.JavaScriptException(js.Error(s"$format compression is unavailable"))
 }

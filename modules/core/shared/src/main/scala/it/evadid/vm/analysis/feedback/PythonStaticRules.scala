@@ -262,25 +262,12 @@ object PythonStaticRules {
       val tr = line.trim
       (tr.startsWith("import ") || tr.startsWith("from ")) && !tr.startsWith("#")
     }
+    val importLineNumbers = importLines.map(_._2).toSet
+    val codeWithoutImports = lines.zipWithIndex.collect { case (line, idx) if !importLineNumbers(idx) => line }.mkString("\n")
     val unusedImports = importLines.flatMap { case (line, lineNum) =>
-      val tr = line.trim
-      val moduleName =
-        if tr.startsWith("import ") then
-          tr.drop(7).takeWhile(c => c.isLetterOrDigit || c == '_' || c == '.').split("\\.").head
-        else if tr.startsWith("from ") then
-          tr.drop(5).takeWhile(c => c.isLetterOrDigit || c == '_' || c == '.').split("\\.").head
-        else ""
-      val usedElsewhere =
-        if tr.startsWith("import ") then
-          normalized.replace(line, "").contains(s"$moduleName.")
-        else {
-          val rest = normalized.replace(line, "")
-          val afterImport = tr.drop(tr.indexOf(" import ") + 8)
-          val names = afterImport.split(",").map(_.trim.takeWhile(c => c.isLetterOrDigit || c == '_')).filter(_.nonEmpty)
-          names.isEmpty || names.exists(n => rest.contains(n))
-        }
-      if moduleName.nonEmpty && !usedElsewhere then Some((lineNum + 1, moduleName))
-      else None
+      importedNames(line.trim)
+        .filterNot(name => s"\\b${Regex.quote(name)}\\b".r.findFirstIn(codeWithoutImports).nonEmpty)
+        .map(name => (lineNum + 1, name))
     }
     if unusedImports.nonEmpty then {
       val detail = unusedImports.map { case (ln, m) => s"line $ln: '$m'" }.mkString(", ")
@@ -305,12 +292,13 @@ object PythonStaticRules {
     }
     if defLineIndices.nonEmpty then {
       val DefPat = """^(?:async\s+)?def\s+([a-zA-Z_]\w*)\s*\(""".r
-      val missingReturn = defLineIndices.zip(defLineIndices.drop(1) :+ lines.length).flatMap {
-        case (start, end) =>
-          val bodyLines = lines.slice(start + 1, end)
-          val hasReturn = bodyLines.exists(l =>
-            l.trim.startsWith("return") || l.contains("return ") || l.trim == "return"
+      val ReturnPat = """\breturn\b""".r
+      val missingReturn = defLineIndices.flatMap { start =>
+          // The body ends at the next unindented code line.
+          val bodyLines = lines.drop(start + 1).takeWhile(l =>
+            l.trim.isEmpty || l.head.isWhitespace || l.trim.startsWith("#")
           )
+          val hasReturn = bodyLines.exists(l => ReturnPat.findFirstIn(l.takeWhile(_ != '#')).nonEmpty)
           if !hasReturn then {
             val isStub = bodyLines.forall(l =>
               l.trim.isEmpty || l.trim == "pass" || l.trim == "..." || l.trim.startsWith("#")
@@ -345,6 +333,26 @@ object PythonStaticRules {
     }
 
     results.toList
+  }
+
+  /** Names an import statement binds: aliases, top-level packages of plain imports, nothing for `*`. */
+  private def importedNames(statement: String): Seq[String] = {
+    val code = statement.takeWhile(_ != '#').trim
+    def boundName(clause: String, plainImport: Boolean): Option[String] =
+      clause.trim.split("\\s+").toList match {
+        case _ :: "as" :: alias :: Nil => Some(alias)
+        case "*" :: Nil => None
+        case name :: Nil if name.nonEmpty => Some(if plainImport then name.takeWhile(_ != '.') else name)
+        case _ => None
+      }
+    def clauses(text: String): Seq[String] =
+      text.filterNot(c => c == '(' || c == ')').split(",").toSeq.map(_.trim).filter(_.nonEmpty)
+
+    if code.startsWith("import ") then clauses(code.drop(7)).flatMap(boundName(_, plainImport = true))
+    else code.indexOf(" import ") match {
+      case -1 => Nil
+      case idx => clauses(code.drop(idx + 8)).flatMap(boundName(_, plainImport = false))
+    }
   }
 
   private def computeMaxBlankStreak(lines: IndexedSeq[String]): Int = {

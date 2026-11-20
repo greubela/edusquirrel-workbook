@@ -102,10 +102,7 @@ object BeDataType {
       other match {
         case AnyType => AssigningPossibleWithImplicitCast(this)
         case BeUnionAllowedTypes(otherTypes) => {
-          val typeIntersection = BeDataType.allowedTypesIntersection(
-            BeUnionAllowedTypes(Set(this)),
-            BeUnionAllowedTypes(otherTypes)
-          )
+          val typeIntersection = BeDataType.allowedTypesIntersection(this, BeUnionAllowedTypes(otherTypes))
           if (typeIntersection.isEmpty) AssigningNotPossible()
           else if (typeIntersection.get == this) AssigningPossibleWithSameType(this)
           else AssigningPossibleWithImplicitCast(typeIntersection.get)

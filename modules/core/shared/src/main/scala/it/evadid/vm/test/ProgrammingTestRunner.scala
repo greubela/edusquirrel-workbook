@@ -345,12 +345,17 @@ private[evadid] object ProgrammingTestRunner {
         def isatty(self):
             return False
 
-    previous = (sys.gettrace(), sys.stdout, sys.stderr)
+    previous = (sys.gettrace(), sys.stdout, sys.stderr, sys.modules.get("turtle"))
     try:
         sys.stdout = Output()
         sys.stderr = Output()
-        sys.settrace(trace)
         student = {name: primitive(specification) for name, specification in turtle_primitives.items()}
+        # `import turtle` and `from turtle import *` resolve to the same recorded primitives as bare calls.
+        turtle_module = type(sys)("turtle")
+        turtle_module.__dict__.update(student)
+        turtle_module.__all__ = list(student)
+        sys.modules["turtle"] = turtle_module
+        sys.settrace(trace)
         student["__name__"] = "__main__"
         try:
             exec(student_code, student, student)
@@ -419,6 +424,10 @@ private[evadid] object ProgrammingTestRunner {
     finally:
         sys.settrace(previous[0])
         sys.stdout, sys.stderr = previous[1], previous[2]
+        if previous[3] is None:
+            sys.modules.pop("turtle", None)
+        else:
+            sys.modules["turtle"] = previous[3]
 
 _eva_evaluate(_eva_source, _eva_tests, _eva_entry_point, _eva_turtle_primitives, _eva_observe_program, globals().get("_eva_publish_invocation", False), globals().get("_eva_publish_command_comparison", False))
 """
