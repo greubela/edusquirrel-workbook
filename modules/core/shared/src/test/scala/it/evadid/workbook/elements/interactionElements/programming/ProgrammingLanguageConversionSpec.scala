@@ -29,9 +29,9 @@ class ProgrammingLanguageConversionSpec extends FunSuite {
     assert(snap.convertToLanguage(SnapLanguage).finalState.isEmpty)
 
   }
-  test("semantic expression tasks retain their native block view") {
+  test("semantic expression tasks open in the block editor and convert to Snap") {
     val source = ProgrammingStateRaw(Python, "forward(12)").toBeExpression
-    assertEquals(source.associatedLanguage, SnapLanguage)
+    assertEquals(source.associatedLanguage, BlockDisplay)
     assert(source.convertToLanguage(SnapLanguage).finalState.get.isInstanceOf[ProgrammingStateSnapScalaModel])
   }
   test("unsupported language conversion is explicit") {

@@ -42,13 +42,13 @@ class BeExpressionBlocksSpec extends FunSuite {
     }
   }
 
-  test("slots, statements and literals carry their editor roles") {
+  test("slots, statements and values carry their editor roles") {
     val roles = BlockElements.roles(laidOut(BlockView())).map(_._1)
     assertEquals(roles.collect { case BlockRole.Slot(slot) => slot }.toSet, BeProgramEditing.slots(program).toSet)
     val statements = roles.collect { case BlockRole.Statement(path) => path }
     assert(statements.nonEmpty)
     assert(statements.forall(path => BeProgramEditing.find(program, path).nonEmpty), statements)
-    val literals = roles.collect { case BlockRole.Literal(path) => path }
+    val literals = roles.collect { case BlockRole.Value(path) => path }
     assert(literals.exists(path => BeProgramEditing.find(program, path).exists(_.toString.contains("BeDataValueLiteral(100)"))), literals)
     assert(BlockElements.roles(laidOut(BlockView(placeholders = false))).forall(!_._1.isInstanceOf[BlockRole.Slot]))
   }

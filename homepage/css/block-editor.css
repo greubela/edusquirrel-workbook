@@ -95,7 +95,7 @@
     cursor: grab;
 }
 
-.block-editor__literal {
+.block-editor__value {
     cursor: text;
 }
 

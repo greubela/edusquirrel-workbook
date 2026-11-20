@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.blocks
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.vectorShapes.blocks.ControlFlowDisplay
-import it.evadid.vm.editing.BeLiteralInput.Kind
+import it.evadid.vm.editing.BeValueInput.Kind
 
 /** UI strings of the block editor; supply them with [[fromContent]] from a workbook renderer. */
 final case class BlockEditorLabels(

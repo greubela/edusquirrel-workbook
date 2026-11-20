@@ -109,16 +109,16 @@ object BeExpressionBlocks {
   private def childrenWithSlots(expression: BeExpression, context: Context) =
     expression.structureInfo.getChildren(context.view.placeholders, GlobalScope()).distinct
 
-  private def child(expression: BeExpression, path: BeNodePath, role: it.evadid.vm.types.BeChildRole, context: Context): Option[Block] =
+  private def child(expression: BeExpression, path: BeNodePath, role: it.evadid.vm.types.BeChildRole, context: Context,
+                    blockRole: BeNodePath => Option[BlockRole] = _ => None): Option[Block] =
     expression.structureInfo.getChildrenAsReference(GlobalScope()).collectFirst {
-      case BeExpressionReference(info, value) if info.myRoleInParent == role => node(value, path / role, context)
+      case BeExpressionReference(info, value) if info.myRoleInParent == role => node(value, path / role, context, blockRole(path / role))
     }
 
-  private def statementRole(path: BeNodePath): Option[BlockRole] = path.lastRole.collect {
-    case ExpressionInSequence(_) => BlockRole.Statement(path)
-  }
+  private def value(path: BeNodePath): Option[BlockRole] = Some(BlockRole.Value(path))
 
-  private def node(expression: BeExpression, path: BeNodePath, context: Context): Block = expression match {
+  /** `role` is how the editor treats the node: a statement of a sequence, an editable value, or neither. */
+  private def node(expression: BeExpression, path: BeNodePath, context: Context, role: Option[BlockRole] = None): Block = expression match {
     case BeStartProgram(sequence) =>
       val body = sequence.map(node(_, path / BodySequence(0), context)).toList
       val column = BlockElements.composite(Column(context.rendering, false, Horizontal.Left), body.map(_.element), context.config(context.paints.control))
@@ -132,46 +132,47 @@ object BeExpressionBlocks {
       val thenBody = child(expression, path, BodySequence(0), context).toList
       val elseBody = child(expression, path, BodySequence(1), context).toList
       nested(List(FlowShape.IfElseSplit, FlowShape.IfElseCross, FlowShape.IfElseUnion), List(Some(condition), None, None),
-        List(thenBody, elseBody), path, context,
+        List(thenBody, elseBody), role, context,
         (FlowLine.Increase(FlowShape.IfElseSplit, FlowShape.Directed(true, false)) -> Some(condition)) ::
           thenBody.flatMap(_.lines) ++ ((FlowLine.Replace(FlowShape.IfElseCross, FlowShape.Directed(true, false)) -> None) ::
           elseBody.flatMap(_.lines)) :+ (FlowLine.Decrease(FlowShape.IfElseUnion) -> None))
-    case BeWhile(_, _) => loop(expression, path, conditionExpression(expression, path, ConditionInControlStructure, context), context)
+    case BeWhile(_, _) => loop(expression, path, conditionExpression(expression, path, ConditionInControlStructure, context), role, context)
     case BeRepeatNr(_, _) =>
-      val amount = child(expression, path, ExpressionInSequence(0), context).flatMap(_.expression)
+      val amount = child(expression, path, ExpressionInSequence(0), context, value).flatMap(_.expression)
         .getOrElse(throw IllegalArgumentException("A repetition needs an amount."))
-      loop(expression, path, amount, context)
-    case call: BeFunctionCall => single(FlowShape.FunctionCall, functionCall(call, path, context), context)
-    case value: BeUseValue => single(FlowShape.Empty, useValue(value, path, context), context)
+      loop(expression, path, amount, role, context)
+    case call: BeFunctionCall => single(FlowShape.FunctionCall, functionCall(call, path, context, role), context)
+    case used: BeUseValue => single(FlowShape.Empty, useValue(used, context, role), context)
     case variable: BeDefineVariable => single(FlowShape.Empty, defineVariable(variable, context), context)
     case BeAssignVariable(target, _) =>
-      val value = child(expression, path, ValueInAssignment, context).flatMap(_.expression).toList
+      val assigned = child(expression, path, ValueInAssignment, context, value).flatMap(_.expression).toList
       val arrow = BlockElements.path(bounds => FlowDecorationPaths[Double](context.segment).dataArrowLeft(bounds.centerPoint),
         Dimension(context.segment / 5.0 * 8.0, context.segment / 5.0 * 8.0), context.config(context.paints.activeDecoration))
-      val content = BlockElements.composite(Row(context.rendering), defineVariable(target, context) :: arrow :: value, context.config(context.paints.control))
+      val content = BlockElements.composite(Row(context.rendering), defineVariable(target, context) :: arrow :: assigned, context.config(context.paints.control))
       single(FlowShape.Directed(true, true),
-        around(BlockContainer.Unit, content, context.mutedOnDrag(context.paints.function), statementRole(path), context), context)
+        around(BlockContainer.Unit, content, context.mutedOnDrag(context.paints.function), role, context), context)
     case definition: BeDefineFunction =>
       val source = definition.structureInfo.toStringInLanguage(Python, English).replaceAll("\n", "")
       single(FlowShape.Empty, around(BlockContainer.Rectangle, context.text(source, context.paints.text), context.paints.control,
-        statementRole(path), context), context)
+        role, context), context)
     case BeSingleLineComment(comment) =>
       single(FlowShape.Directed(true, false), around(BlockContainer.Comment, context.text(context.localized(comment), context.paints.text),
-        context.mutedOnDrag(context.paints.control), statementRole(path), context), context)
+        context.mutedOnDrag(context.paints.control), role, context), context)
     case unparsable: BeExpressionUnparsable =>
-      single(FlowShape.Empty, errorBox(unparsable.originalSource, path, context), context)
+      single(FlowShape.Empty, errorBox(unparsable.originalSource, role, context), context)
     case unsupported: BeExpressionUnsupported =>
-      single(FlowShape.Directed(true, false), errorBox(unsupported.originalSource, path, context), context)
+      single(FlowShape.Directed(true, false), errorBox(unsupported.originalSource, role, context), context)
     case other =>
-      single(FlowShape.Directed(true, false), errorBox(other.getClass.getSimpleName, path, context), context)
+      single(FlowShape.Directed(true, false), errorBox(other.getClass.getSimpleName, role, context), context)
   }
 
-  private def errorBox(source: String, path: BeNodePath, context: Context): AppShapeElement[Double] =
-    around(BlockContainer.Rectangle, context.text(source, context.paints.text), context.paints.error, statementRole(path), context)
+  private def errorBox(source: String, role: Option[BlockRole], context: Context): AppShapeElement[Double] =
+    around(BlockContainer.Rectangle, context.text(source, context.paints.text), context.paints.error, role, context)
 
-  private def loop(expression: BeExpression, path: BeNodePath, condition: AppShapeElement[Double], context: Context): Block = {
+  private def loop(expression: BeExpression, path: BeNodePath, condition: AppShapeElement[Double], role: Option[BlockRole],
+                   context: Context): Block = {
     val body = child(expression, path, BodySequence(0), context).toList
-    nested(List(FlowShape.RepetitionSplit, FlowShape.RepetitionUnion), List(Some(condition), None), List(body), path, context,
+    nested(List(FlowShape.RepetitionSplit, FlowShape.RepetitionUnion), List(Some(condition), None), List(body), role, context,
       (FlowLine.Increase(FlowShape.RepetitionSplit, FlowShape.DownUp(false)) -> Some(condition)) :: body.flatMap(_.lines) ++
         List(FlowLine.Decrease(FlowShape.RepetitionUnion) -> None))
   }
@@ -184,7 +185,8 @@ object BeExpressionBlocks {
 
   private def sequence(sequence: BeSequence, path: BeNodePath, context: Context): Block = {
     val children = childrenWithSlots(sequence, context).map {
-      case BeExpressionReference(info, value) => node(value, path / info.myRoleInParent, context)
+      case BeExpressionReference(info, statement) =>
+        node(statement, path / info.myRoleInParent, context, Some(BlockRole.Statement(path / info.myRoleInParent)))
       case BeExtensionPoint(_, info, dataType) => info.myRoleInParent match {
         case ExpressionInSequence(index) => placeholder(BeSequenceSlot(path, index), dataType, context)
         case other => throw IllegalArgumentException(s"Unexpected sequence slot $other.")
@@ -219,27 +221,28 @@ object BeExpressionBlocks {
     case _ => BlockContainer.Duck
   }
 
-  private def functionCall(call: BeFunctionCall, path: BeNodePath, context: Context): AppShapeElement[Double] = {
+  private def functionCall(call: BeFunctionCall, path: BeNodePath, context: Context, role: Option[BlockRole]): AppShapeElement[Double] = {
     val parameters = call.structureInfo.getChildrenAsReference(GlobalScope()).collect {
       case BeExpressionReference(info @ _, value) if info.myRoleInParent.isInstanceOf[FunctionParameter] =>
-        info.myRoleInParent.asInstanceOf[FunctionParameter].nr -> node(value, path / info.myRoleInParent, context)
+        info.myRoleInParent.asInstanceOf[FunctionParameter].nr -> node(value, path / info.myRoleInParent, context, this.value(path / info.myRoleInParent))
     }.sortBy(_._1).flatMap(_._2.expression).toList
     val name = context.text(context.localized(call.funcDef.functionTypeInfo.displayName.asLanguageMap(NamingStyle.SnakeCase)), context.paints.text)
     val position = call.funcDef.functionTypeInfo.displayNamePosition
     val content = BlockElements.composite(Row(context.rendering),
       parameters.take(position) ++ (name :: parameters.drop(position)), context.config(context.paints.control))
     val output = call.funcDef.outputs.map(output => container(output.variableType)).getOrElse(BlockContainer.Unit)
-    around(output, content, context.mutedOnDrag(context.paints.function), statementRole(path), context)
+    around(output, content, context.mutedOnDrag(context.paints.function), role, context)
   }
 
-  private def useValue(value: BeUseValue, path: BeNodePath, context: Context): AppShapeElement[Double] = {
-    val label = context.text(value.structureInfo.toStringInLanguage(Python, English), context.paints.text)
-    value.value match {
-      case BeDataValueLiteral(_) =>
-        around(BlockContainer.Literal, label, context.paints.literal, Some(BlockRole.Literal(path)), context)
-      case BeDataValueUnit() => around(BlockContainer.Literal, label, context.paints.literal, statementRole(path), context)
-      case BeUseValueReference(reference) => around(container(reference.variableType), label, context.paints.variableUse, statementRole(path), context)
-    }
+  /** Literals show their own text, variables their name. */
+  private def useValue(used: BeUseValue, context: Context, role: Option[BlockRole]): AppShapeElement[Double] = used.value match {
+    case BeDataValueLiteral(text) =>
+      around(BlockContainer.Literal, context.text(text, context.paints.text), context.paints.literal, role, context)
+    case BeDataValueUnit() =>
+      around(BlockContainer.Literal, context.text("", context.paints.text), context.paints.literal, role, context)
+    case BeUseValueReference(reference) =>
+      around(container(reference.variableType), context.text(context.localized(reference.name.asLanguageMap(NamingStyle.SnakeCase)),
+        context.paints.text), context.paints.variableUse, role, context)
   }
 
   private def defineVariable(variable: BeDefineVariable, context: Context): AppShapeElement[Double] =
@@ -248,7 +251,7 @@ object BeExpressionBlocks {
 
   /** A control structure: flow-change rows with optional expressions, separated by indented bodies. */
   private def nested(changes: List[FlowShape], expressions: List[Option[AppShapeElement[Double]]], bodies: List[List[Block]],
-                     path: BeNodePath, context: Context, lines: List[(FlowLine, Option[AppShapeElement[Double]])]): Block = {
+                     role: Option[BlockRole], context: Context, lines: List[(FlowLine, Option[AppShapeElement[Double]])]): Block = {
     val segment = context.segment
     val leftColumn = segment * 6
     val flowWidth = segment * 12
@@ -269,7 +272,7 @@ object BeExpressionBlocks {
     val background = BlockElements.path(bounds => nestedBackground(bounds, changeHeights, bodyHeights, leftColumn, flowWidth, segment),
       size, context.config(context.paints.controlFlowBackground))
     val element = BlockElements.composite(Fixed(Bounds(Point(0.0, 0.0), size) :: content.map(_._2)),
-      background :: content.map(_._1), context.config(context.paints.control, statementRole(path)))
+      background :: content.map(_._1), context.config(context.paints.control, role))
     Block(element, None, None, lines)
   }
 

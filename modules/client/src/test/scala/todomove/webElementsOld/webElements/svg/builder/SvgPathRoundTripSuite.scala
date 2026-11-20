@@ -1,9 +1,8 @@
 package todomove.webElementsOld.webElements.svg.builder
 
-import it.evadid.core.datastructures.vectorShapes.blocks.{BlockPaths, FlowDecorationPaths}
+import it.evadid.core.datastructures.vectorShapes.blocks.{BlockRenderingConfig, FlowDecorationPaths}
 
 import todomove.webElementsOld.webElements.svg.shapes.TestShapeFactoryAccess
-import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.config.BeRenderingConfig
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.MoveAbs
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.{SvgPathBuilder, SvgPathBuilderImmutable, SvgPathParser}
@@ -140,15 +139,13 @@ class SvgPathRoundTripSuite extends FunSuite {
   }
 
   test("data arrow left from decoration factory keeps canonical representation after round trip") {
-    val config = BeRenderingConfig.default()
-    val decorationFactory = FlowDecorationPaths[Double](config.controlSegmentSize)
+    val decorationFactory = FlowDecorationPaths[Double](BlockRenderingConfig().segmentSize)
     val builder = decorationFactory.dataArrowLeft(Point(32.0, 24.0))
     assertBuilderRoundTrip(builder)
   }
 
   test("data arrow right from decoration factory keeps canonical representation after round trip") {
-    val config = BeRenderingConfig.default()
-    val decorationFactory = FlowDecorationPaths[Double](config.controlSegmentSize)
+    val decorationFactory = FlowDecorationPaths[Double](BlockRenderingConfig().segmentSize)
     val builder = decorationFactory.dataArrowRight(Point(12.0, 18.0))
     assertBuilderRoundTrip(builder)
   }

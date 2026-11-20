@@ -1,6 +1,6 @@
 package todomove.webElementsOld.webElements.svg.shapes
 
-import it.evadid.core.datastructures.vectorShapes.blocks.{BlockPaths, FlowDecorationPaths}
+import it.evadid.core.datastructures.vectorShapes.blocks.BlockPaths
 
 import it.evadid.core.datastructures.geometry.Bounds
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder

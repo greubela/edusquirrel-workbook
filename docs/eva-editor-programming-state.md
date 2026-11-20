@@ -60,7 +60,7 @@ CodeMirror keeps one optional native handle. The fallback textarea's visibility
 is derived from that handle. Diagnostics arrive as a signal; there is no pending
 diagnostic store or copied current-document state. The mount owns the optional
 flowchart analysis and releases it with the native handle. The gutter reuses
-`NestedBlockRenderer`’s flow overlay, mapped to physical source rows; CodeMirror
+the block editor's `FlowLayout` overlay, mapped to physical source rows; CodeMirror
 alone renders the editable content. Parsing stays in the worker. The library loader
 shares one asynchronous module request between startup warmup and editors;
 failure/timeout leaves the fallback usable and allows a later retry.
@@ -72,6 +72,9 @@ immutable calculations and derived signals to additional stores. See
 `ProgrammingState` and its concrete representations live directly in the `programming.state`
 package. Use `toBeExpression`, `toJava`, `toPython`, `toSnapXml` and instance `fingerprint()`;
 there are no nested type aliases or alternate conversion names.
+
+Expression states (`ProgrammingStateBeExpression`) belong to the `BlockDisplay` language and open in
+the [block editor](block-editor.md) tab; the Snap editor still shows them in previews.
 
 Workbook initial programs can use any supported representation. Language conversion
 uses `BeExpression`; generated Snap is an ordinary project without Java metadata.

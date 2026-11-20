@@ -55,15 +55,16 @@ test('the Eva block tab inserts, moves, removes and edits blocks of the central 
     await drag(page, forward, editor.locator('.block-editor__drawing [data-block-role=slot]').first());
     await page.waitForFunction(count => document.querySelectorAll('dialog[open] .block-editor__drawing [data-block-role=statement]').length === count + 1, initial);
 
-    // Typed parameter editing rejects text that is not a number.
-    await editor.locator('.block-editor__drawing [data-block-role=literal]').first().click();
+    // Parameters are expressions of the parameter's type: text that is not a number is rejected,
+    // operators on literals are computed.
+    await editor.locator('.block-editor__drawing [data-block-role=value]').first().click();
     const popup = editor.locator('.block-editor__popup');
     const input = popup.locator('input');
     await input.fill('abc');
     assert.equal(await input.getAttribute('aria-invalid'), 'true');
     assert(await popup.locator('.block-editor__popup-apply').isDisabled(), 'invalid values cannot be applied');
     assert((await popup.locator('[role=alert]').textContent()).length > 0, 'the rejection is explained');
-    await input.fill('42');
+    await input.fill('40+2');
     assert(!(await popup.locator('.block-editor__popup-apply').isDisabled()));
     await input.press('Enter');
     await popup.waitFor({state:'detached'});
@@ -89,20 +90,29 @@ test('the Eva block tab inserts, moves, removes and edits blocks of the central 
     await editor.screenshot({path:path.join(root, 'tmp/work/browser-tests/block-editor-dragging.png')});
     await page.mouse.up();
     // The body's command is the last one drawn with the template's default distance.
-    await editor.locator('.block-editor__drawing [data-block-role=literal]', {hasText:/^100$/}).last().click();
+    await editor.locator('.block-editor__drawing [data-block-role=value]', {hasText:/^100$/}).last().click();
     await input.fill('37');
     await popup.locator('.block-editor__popup-apply').click();
     await popup.waitFor({state:'detached'});
-    const count = editor.locator('.block-editor__drawing [data-block-role=literal]', {hasText:/^4$/});
+    const count = editor.locator('.block-editor__drawing [data-block-role=value]', {hasText:/^4$/});
     await count.click();
     await input.fill('2.5');
     assert(await popup.locator('.block-editor__popup-apply').isDisabled(), 'repeat counts are whole numbers');
     await input.press('Escape');
+    // A call keeps its function and folded arguments; its own values stay editable.
+    await editor.locator('.block-editor__drawing [data-block-role=value]', {hasText:/^100$/}).first().click();
+    await input.fill('add(3+5, 3)');
+    await input.press('Enter');
+    await editor.locator('.block-editor__drawing [data-block-role=value]', {hasText:/^8$/}).waitFor();
     await editor.screenshot({path:path.join(root, 'tmp/work/browser-tests/block-editor-loop.png')});
 
     // The other editors see the block edits.
     await dialog.getByRole('tab', {name:'Python'}).click();
-    await page.waitForFunction(() => /for _ in range\(4\):\s*(turtle\.)?forward\(37\)/.test(document.querySelector('dialog[open] .cm-content')?.innerText ?? ''));
+    await page.waitForFunction(() => {
+      const lines = (document.querySelector('dialog[open] .cm-content')?.innerText ?? '').split('\n').map(line => line.trim());
+      const loop = lines.indexOf('for _ in range(4):');
+      return loop >= 0 && lines[loop + 1]?.endsWith('forward(37)') && lines.some(line => line.endsWith('forward(add(8, 3))'));
+    });
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();

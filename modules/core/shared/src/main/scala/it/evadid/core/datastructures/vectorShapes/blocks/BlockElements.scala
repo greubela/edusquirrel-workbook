@@ -19,8 +19,8 @@ enum BlockRole {
   case Statement(path: BeNodePath)
   /** A placeholder accepting dropped statements. */
   case Slot(slot: BeSequenceSlot)
-  /** A literal value edited as text. */
-  case Literal(path: BeNodePath)
+  /** A value (parameter, repeat count, assigned value) edited as an expression. */
+  case Value(path: BeNodePath)
 }
 
 /** Paint, font and editor role of one block element. Blocks manage their own spacing: no default padding. */

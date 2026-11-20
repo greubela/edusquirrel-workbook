@@ -15,27 +15,28 @@ import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateBeExpression}
 import it.evadid.util.logging.Logger
 import it.evadid.vm.BeProgram
-import it.evadid.vm.editing.{BeBlockLibrary, BeLiteralInput, BeNodePath, BeProgramEditing, BeSequenceSlot}
+import it.evadid.vm.editing.{BeBlockLibrary, BeValueInput, BeNodePath, BeProgramEditing, BeSequenceSlot}
 import it.evadid.vm.types.BeChildRole.BodySequence
 import org.scalajs.dom
 
 /** Drag-and-drop block editor bound directly to a program.
   *
   * Templates are dragged from the library into a slot; program statements are dragged between slots or
-  * back onto the library to remove them. Clicking a literal opens a value editor that accepts only text
-  * parsing as the parameter's type. Every edit replaces the program in `program`; drag, view and value
-  * drafts are the editor's transient state.
+  * back onto the library to remove them. Clicking a value (parameter, repeat count or assigned value) opens
+  * an editor that accepts an expression of the value's type; operators on literals are computed, so `3+5`
+  * becomes `8`. Every edit replaces the program in `program`; drag, view and value drafts are the editor's
+  * transient state.
   */
 final case class BlockProgramEditor(program: Var[BeProgram], library: BeBlockLibrary, labels: BlockEditorLabels,
                                language: Signal[HumanLanguage] = Val(English), initialView: BlockView = BlockView())
   extends HtmlAppElement {
 
-  private final case class LiteralEdit(path: BeNodePath, draft: String, anchor: Point[Double])
+  private final case class ValueEdit(path: BeNodePath, draft: String, anchor: Point[Double])
 
   private val logger = Logger.withNameAndPrefixes(Some("BlockProgramEditor"))
   private val view = Var(initialView)
   private val press = Var(Option.empty[Press])
-  private val editing = Var(Option.empty[LiteralEdit])
+  private val editing = Var(Option.empty[ValueEdit])
   /** The element holding the program drawing, for converting pointer positions. */
   private val workspace = Var(Option.empty[dom.html.Element])
 
@@ -58,7 +59,7 @@ final case class BlockProgramEditor(program: Var[BeProgram], library: BeBlockLib
   private val decorate: SvgLaminarRenderer.Decoration = rendered => rendered.elementConfig match {
     case BlockElementConfig(_, _, _, Some(role)) => role match {
       case BlockRole.Statement(_) => Seq(svg.cls := "block-editor__statement", roleAttr := "statement")
-      case BlockRole.Literal(_) => Seq(svg.cls := "block-editor__literal", roleAttr := "literal")
+      case BlockRole.Value(_) => Seq(svg.cls := "block-editor__value", roleAttr := "value")
       case BlockRole.Slot(_) => Seq(svg.cls := "block-editor__slot", roleAttr := "slot")
     }
     case _ => Nil
@@ -96,9 +97,9 @@ final case class BlockProgramEditor(program: Var[BeProgram], library: BeBlockLib
     Point(rect.left - origin.left + host.scrollLeft + (point.x - box.startX) / sx, rect.top - origin.top + host.scrollTop + (point.y - box.startY) / sy)
   }).getOrElse(point)
 
-  private def startPress(event: dom.PointerEvent, source: Option[DragSource], literal: Option[BeNodePath], inProgram: Option[Point[Double]]): Unit = {
+  private def startPress(event: dom.PointerEvent, source: Option[DragSource], value: Option[BeNodePath], inProgram: Option[Point[Double]]): Unit = {
     event.preventDefault()
-    press.set(Some(Press(source, literal, client(event), client(event), false, inProgram)))
+    press.set(Some(Press(source, value, client(event), client(event), false, inProgram)))
   }
 
   private def finishPress(event: dom.PointerEvent, destination: Option[BeSequenceSlot], current: BeProgram,
@@ -111,19 +112,19 @@ final case class BlockProgramEditor(program: Var[BeProgram], library: BeBlockLib
         }
         val result = if overLibrary then BlockDragging.discard(current, source) else destination.map(BlockDragging.drop(current, source, _)).getOrElse(Right(current))
         result.toOption.filter(_ != current).foreach(program.set)
-      } else finished.literal.foreach(path => openValueEditor(current, path, placed))
+      } else finished.value.foreach(path => openValueEditor(current, path, placed))
     }
     press.set(None)
   }
 
   private def openValueEditor(current: BeProgram, path: BeNodePath, placed: Seq[(BlockRole, Bounds[Double])]): Unit =
     for {
-      text <- BeLiteralInput.textAt(current, path)
-      bounds <- placed.collectFirst { case (BlockRole.Literal(`path`), bounds) => bounds }
-    } editing.set(Some(LiteralEdit(path, text, workspacePosition(Point(bounds.startX, bounds.endY)))))
+      text <- BeValueInput.textAt(current, path)
+      bounds <- placed.collectFirst { case (BlockRole.Value(`path`), bounds) => bounds }
+    } editing.set(Some(ValueEdit(path, text, workspacePosition(Point(bounds.startX, bounds.endY)))))
 
   private def commitValue(): Unit = editing.now().foreach { edit =>
-    BeLiteralInput.update(program.now(), edit.path, edit.draft).foreach { edited =>
+    BeValueInput.update(program.now(), edit.path, edit.draft).foreach { edited =>
       editing.set(None)
       program.set(edited)
     }
@@ -177,7 +178,7 @@ final case class BlockProgramEditor(program: Var[BeProgram], library: BeBlockLib
 
   private def valueEditor(path: BeNodePath, anchor: Point[Double]): Element = {
     val outcome = program.signal.combineWith(editing.signal).map((current, edit) =>
-      edit.map(value => BeLiteralInput.update(current, value.path, value.draft)))
+      edit.map(value => BeValueInput.update(current, value.path, value.draft)))
     val rejected = outcome.map(_.flatMap(_.left.toOption).map(_.expected))
     val errorId = s"block-editor-value-error-${path.roles.mkString("-").hashCode.abs}"
     div(
@@ -226,8 +227,8 @@ final case class BlockProgramEditor(program: Var[BeProgram], library: BeBlockLib
       onPointerDown.compose(_.filter(_.button == 0).map(event => event -> programPoint(event)).withCurrentValueOf(roles, program.signal)) --> {
         (event, point, placed, current) =>
           point.foreach { position =>
-            val (source, literal) = BlockDragging.pressAt(current, placed, position)
-            startPress(event, source, literal, Some(position))
+            val (source, value) = BlockDragging.pressAt(current, placed, position)
+            startPress(event, source, value, Some(position))
           }
       },
       child <-- drawing.map(rendered => SvgLaminarRenderer.renderSvgImage(logger, rendered, decorate).amend(svg.cls := "block-editor__drawing")),

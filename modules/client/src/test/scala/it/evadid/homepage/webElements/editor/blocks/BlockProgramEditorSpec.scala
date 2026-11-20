@@ -30,9 +30,9 @@ class BlockProgramEditorSpec extends EditorDomSuite {
   private def roles(of: BeProgram) = BlockElements.roles(BlockElements.layout(BeExpressionBlocks.program(of, BlockView())))
   private def centerOf(role: BlockRole) = roles(program).collectFirst { case (`role`, bounds) => bounds.centerPoint }.get
 
-  test("a press picks the innermost statement and literal under the pointer") {
+  test("a press picks the innermost statement and value under the pointer") {
     val distance = main / ExpressionInSequence(0) / FunctionParameter(0)
-    val (source, literal) = BlockDragging.pressAt(program, roles(program), centerOf(BlockRole.Literal(distance)))
+    val (source, literal) = BlockDragging.pressAt(program, roles(program), centerOf(BlockRole.Value(distance)))
     assertEquals(literal, Some(distance))
     assertEquals(source.collect { case DragSource.Moving(path, _) => path }, Some(main / ExpressionInSequence(0)))
     val nested = main / ExpressionInSequence(1) / BodySequence(0) / ExpressionInSequence(0)

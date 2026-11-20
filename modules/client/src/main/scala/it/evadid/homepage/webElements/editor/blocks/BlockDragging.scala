@@ -17,7 +17,7 @@ enum DragSource {
 /** A pointer press in client coordinates; it becomes a drag once it moved past the threshold.
   * `overProgram` is the pointer in the program drawing's coordinates while it is above the drawing.
   */
-final case class Press(source: Option[DragSource], literal: Option[BeNodePath], start: Point[Double], current: Point[Double],
+final case class Press(source: Option[DragSource], value: Option[BeNodePath], start: Point[Double], current: Point[Double],
                        active: Boolean, overProgram: Option[Point[Double]]) {
   def movedTo(point: Point[Double], inProgram: Option[Point[Double]]): Press =
     copy(current = point, overProgram = inProgram,
@@ -35,11 +35,11 @@ object BlockDragging {
   private def innermost[T](roles: Seq[(BlockRole, Bounds[Double])], point: Point[Double])(pick: PartialFunction[BlockRole, T]): Option[T] =
     roles.filter((_, bounds) => contains(bounds, point)).map(_._1).collect(pick).lastOption
 
-  /** The statement and literal under a press in the program drawing. */
+  /** The statement and value under a press in the program drawing. */
   def pressAt(program: BeProgram, roles: Seq[(BlockRole, Bounds[Double])], point: Point[Double]): (Option[DragSource], Option[BeNodePath]) = {
     val statement = innermost(roles, point) { case BlockRole.Statement(path) => path }
       .flatMap(path => BeProgramEditing.find(program, path).map(DragSource.Moving(path, _)))
-    (statement, innermost(roles, point) { case BlockRole.Literal(path) => path })
+    (statement, innermost(roles, point) { case BlockRole.Value(path) => path })
   }
 
   /** Slots that would take the dragged statement; a statement cannot move into itself. */

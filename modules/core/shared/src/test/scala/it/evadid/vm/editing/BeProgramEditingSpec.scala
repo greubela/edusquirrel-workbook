@@ -79,25 +79,65 @@ class BeProgramEditingSpec extends FunSuite {
     assertEquals(BeProgramEditing.remove(program, statement(0)).map(python), Right(python(BeProgram.empty)))
   }
 
-  test("literal input validates against the parameter type") {
+  private def valueAt(program: BeProgram, path: BeNodePath) = BeProgramEditing.find(program, path)
+
+  test("values are typed expressions checked against the parameter type") {
     val program = BeProgramEditing.insert(BeProgram.empty, BeSequenceSlot(main, 0), forward).toOption.get
     val distance = statement(0) / FunctionParameter(0)
-    assertEquals(BeLiteralInput.expectedType(program, distance), BeDataType.Numeric)
-    assertEquals(BeLiteralInput.update(program, distance, "abc"), Left(BeLiteralInput.Rejected(BeLiteralInput.Kind.Number)))
-    val edited = BeLiteralInput.update(program, distance, " 42.5 ").toOption.get
-    assertEquals(BeLiteralInput.literalAt(edited, distance).map(_.value), Some(BeDataValueLiteral("42.5")))
+    assert(BeValueInput.isValuePosition(program, distance))
+    assertEquals(BeValueInput.expectedType(program, distance), BeDataType.Numeric)
+    assertEquals(BeValueInput.textAt(program, distance), Some("100"))
+    assertEquals(BeValueInput.update(program, distance, "abc"), Left(BeValueInput.Rejected(BeValueInput.Kind.Number)))
+    assertEquals(BeValueInput.update(program, distance, "forward(3)").left.map(_.expected), Left(BeValueInput.Kind.Number))
+    val edited = BeValueInput.update(program, distance, " 42.5 ").toOption.get
+    assertEquals(valueAt(edited, distance).collect { case BeUseValue(value, _) => value }, Some(BeDataValueLiteral("42.5")))
     assert(python(edited).contains("forward(42.5)"), python(edited))
   }
 
-  test("repeat counts must be whole numbers and booleans are normalized") {
+  test("operators on literals are computed and other calls keep their folded arguments") {
+    val program = BeProgramEditing.insert(BeProgram.empty, BeSequenceSlot(main, 0), forward).toOption.get
+    val distance = statement(0) / FunctionParameter(0)
+    val sum = BeValueInput.update(program, distance, "3+5").toOption.get
+    assertEquals(BeValueInput.textAt(sum, distance), Some("8"))
+    assertEquals(BeValueInput.textAt(BeValueInput.update(program, distance, "(2 + 4) * 1.5 - 1").toOption.get, distance), Some("8"))
+    val call = BeValueInput.update(program, distance, "add(3+5, 3)").toOption.get
+    assertEquals(BeValueInput.textAt(call, distance), Some("add(8, 3)"))
+    assert(python(call).contains("forward(add(8, 3))"), python(call))
+    // The call's literal arguments stay editable values.
+    assertEquals(BeValueInput.textAt(call, distance / FunctionParameter(0)), Some("8"))
+    assert(BeValueInput.isValuePosition(call, distance / FunctionParameter(0)))
+  }
+
+  test("calls bind to the program's own functions and inputs may only use its variables") {
+    val program = PythonToExpression.program("def add(a: float, b: float) -> float:\n    return a + b\n\nforward(1)\n")
+    val forwardPath = BeProgramEditing.slots(program).collectFirst { case slot if slot.sequence == main => slot }
+      .map(slot => main / ExpressionInSequence(slot.index)).get
+    val sequencePath = BeProgramEditing.find(program, main).collect { case seq: it.evadid.vm.code.controlStructures.BeSequence =>
+      main / ExpressionInSequence(seq.body.indexWhere(_.isInstanceOf[BeFunctionCall])) }.get
+    val distance = sequencePath / FunctionParameter(0)
+    val edited = BeValueInput.update(program, distance, "add(1, 2*3)").toOption.get
+    val defined = edited.fullProgram.subtree.collect { case d: it.evadid.vm.code.defining.BeDefineFunction
+      if d.functionTypeInfo.displayName.universalInterpretation() == "add" => d }.head
+    assertEquals(valueAt(edited, distance).collect { case call: BeFunctionCall => call.funcDef }, Some(defined))
+    assertEquals(BeValueInput.textAt(edited, distance), Some("add(1, 6)"))
+    assertEquals(BeValueInput.update(program, distance, "undefinedName + 1").left.map(_.expected), Left(BeValueInput.Kind.Number))
+    assert(forwardPath.roles.nonEmpty)
+  }
+
+  test("repeat counts must be whole numbers and literals keep their typed meaning") {
     val program = BeProgramEditing.insert(BeProgram.empty, BeSequenceSlot(main, 0), repeat).toOption.get
     val count = statement(0) / ExpressionInSequence(0)
-    assertEquals(BeLiteralInput.update(program, count, "2.5").left.map(_.expected), Left(BeLiteralInput.Kind.Integer))
-    assertEquals(BeLiteralInput.update(program, count, "6").map(BeProgramEditing.find(_, statement(0)).collect { case r: BeRepeatNr => r.fixedAmount }),
+    assertEquals(BeValueInput.update(program, count, "2.5").left.map(_.expected), Left(BeValueInput.Kind.Integer))
+    assertEquals(BeValueInput.update(program, count, "2*3").map(BeProgramEditing.find(_, statement(0)).collect { case r: BeRepeatNr => r.fixedAmount }),
       Right(Some(Some(6))))
-    assertEquals(BeLiteralInput.parse(BeDataType.Boolean, " TRUE "), Right(BeDataValueLiteral("true")))
-    assertEquals(BeLiteralInput.parse(BeDataType.Date, "11.10.1999").left.map(_.expected), Left(BeLiteralInput.Kind.Date))
-    assert(BeLiteralInput.parse(BeDataType.String, "  spaced ").contains(BeDataValueLiteral("  spaced ")))
+    assertEquals(BeValueInput.parse(program, BeDataType.Boolean, " TRUE "), Right(BeUseValue(BeDataValueLiteral("true"), None)))
+    assertEquals(BeValueInput.parse(program, BeDataType.Boolean, "3 < 5"), Right(BeUseValue(BeDataValueLiteral("true"), None)))
+    assertEquals(BeValueInput.parse(program, BeDataType.Date, "2024-05-01"), Right(BeUseValue(BeDataValueLiteral("2024-05-01"), None)))
+    assertEquals(BeValueInput.parse(program, BeDataType.Date, "11.10.1999").left.map(_.expected), Left(BeValueInput.Kind.Date))
+    assertEquals(BeValueInput.parse(program, BeDataType.String, "  spaced words "), Right(BeUseValue(BeDataValueLiteral("  spaced words "), None)))
+    // Untyped positions (e.g. calls to functions without annotations) still compute expressions.
+    assertEquals(BeValueInput.parse(program, BeDataType.AnyType, "3+5"), Right(BeUseValue(BeDataValueLiteral("8"), None)))
+    assert(BeValueInput.parse(program, BeDataType.AnyType, "add(3+5, 3)").exists(_.isInstanceOf[BeFunctionCall]))
   }
 
   test("expression states are edited in the block representation") {

@@ -31,12 +31,12 @@ case class SnapCodeEditor(
   private[SnapEditor] val snapState: Var[ProgrammingStateSnapScalaModel] = state.bimap {
     case model: ProgrammingStateSnapScalaModel => model.persistent
     case xml @ ProgrammingStateRaw(SnapLanguage, _) => SnapCodeEditor.typed(xml)
-    case other if other.associatedLanguage == SnapLanguage => SnapCodeEditor.typed(other.toSnapXml)
+    case other if SnapCodeEditor.shownAsSnap(other) => SnapCodeEditor.typed(other.toSnapXml)
     case _ => SnapCodeEditor.empty // inactive while Eva switches to another language
   }(identity)
 
   private def publishProgramFromSnapXml(xml: String): Unit = {
-    if state.now().associatedLanguage == SnapLanguage then {
+    if SnapCodeEditor.shownAsSnap(state.now()) then {
       val current = snapState.now()
       val next = SnapCodeEditor.typed(ProgrammingStateRaw(SnapLanguage, xml))
       impl.acknowledgeProgramFromEditor(next.toSnapXml)
@@ -51,7 +51,7 @@ case class SnapCodeEditor(
     impl.renderEditorInto(snapState.now().toSnapXml, canvas, config)
     // Mount once. Later updates only synchronize the retained project;
     // acknowledgeProgramFromEditor makes Snap-originated echoes no-ops.
-    state.signal.changes.filter(_.associatedLanguage == SnapLanguage).map {
+    state.signal.changes.filter(SnapCodeEditor.shownAsSnap).map {
       case model: ProgrammingStateSnapScalaModel => model.persistent
       case other => SnapCodeEditor.typed(other.toSnapXml)
     }.distinctByFn((previous, next) => previous.meaningfullyEquals(next)).foreach(model => impl.loadProgramIfChanged(model.toSnapXml))(using owner)
@@ -106,10 +106,10 @@ case class SnapCodeEditor(
       // Morphic's shared textarea lives inside this element. Commit before an
       // outside control (especially a language tab) reads the central answer.
       onBlur.useCapture.filter(_.target == dom.document.getElementById("morphic_keyboard")) --> { _ =>
-        if state.now().associatedLanguage == SnapLanguage then impl.flushPendingProjectChanges()
+        if SnapCodeEditor.shownAsSnap(state.now()) then impl.flushPendingProjectChanges()
       },
       onUnmountCallback { _ =>
-        if state.now().associatedLanguage == SnapLanguage then impl.flushPendingProjectChanges()
+        if SnapCodeEditor.shownAsSnap(state.now()) then impl.flushPendingProjectChanges()
         impl.setOnProjectXmlChangedListener(_ => ())
         impl.destroy()
       }
@@ -131,6 +131,9 @@ case class SnapCodeEditor(
 }
 
 object SnapCodeEditor {
+  /** Snap projects, and expression answers whose Snap view the editor shows (e.g. in previews). */
+  private[SnapEditor] def shownAsSnap(state: ProgrammingState): Boolean =
+    state.associatedLanguage == SnapLanguage || state.isInstanceOf[ProgrammingStateBeExpression]
   private def typed(xml: ProgrammingStateRaw): ProgrammingStateSnapScalaModel =
     xml.toSnapScalaModel.fold(message => throw IllegalArgumentException(message), _.persistent)
   private lazy val empty = typed(ProgrammingStateSnapScalaModel.empty.toSnapXml)
