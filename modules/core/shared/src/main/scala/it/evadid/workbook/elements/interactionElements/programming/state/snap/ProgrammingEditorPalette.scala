@@ -9,11 +9,11 @@ enum PaletteLayout derives ReadWriter:
   case NativeSnap
   /** An ordered subset of [[SnapPaletteCatalog]] tabs. */
   case CatalogTabs(tabs: Seq[PaletteTab])
-  /** One mixed tab, blocks in the given Snap selector order. */
+  /** One mixed tab, blocks in the given order: Snap selectors and predefined module block ids ([[SnapModuleBlocks]]). */
   case Mixed(selectors: Seq[String], allowCustomBlocks: Boolean = false, allowVariables: Boolean = false)
 
   def pythonCompatible: Boolean = {
-    val supported = SnapPaletteCatalog.pythonCompatibleSelectorSet
+    val supported = PaletteLayout.mixedSelectorSet
     this match
       case NativeSnap => false
       case CatalogTabs(tabs) => tabs.flatMap(SnapPaletteCatalog.selectorsForTab).forall(supported.contains)
@@ -21,6 +21,9 @@ enum PaletteLayout derives ReadWriter:
   }
 
 object PaletteLayout {
+  /** What a mixed palette may list: Python-compatible Snap selectors and predefined module blocks. */
+  def mixedSelectorSet: Set[String] = SnapPaletteCatalog.pythonCompatibleSelectorSet ++ SnapModuleBlocks.all.map(_.id)
+
   /** Validate exercise-authored layouts before they reach the native editor. */
   private[snap] def validated(layout: PaletteLayout): PaletteLayout = {
     layout match {
@@ -29,9 +32,9 @@ object PaletteLayout {
         require(tabs.nonEmpty, "A catalog palette needs at least one tab; use Mixed(Nil) for an empty palette.")
         require(tabs.distinct.size == tabs.size, "Catalog palette tabs must be unique.")
       case PaletteLayout.Mixed(selectors, _, _) =>
-        val supported = SnapPaletteCatalog.pythonCompatibleSelectorSet
+        val supported = PaletteLayout.mixedSelectorSet
         val unknown = selectors.filterNot(supported.contains).distinct
-        require(unknown.isEmpty, s"Unsupported custom palette selectors: ${unknown.mkString(", ")}. Use Snap selectors from SnapPaletteCatalog.")
+        require(unknown.isEmpty, s"Unsupported custom palette selectors: ${unknown.mkString(", ")}. Use Snap selectors from SnapPaletteCatalog or ids from SnapModuleBlocks.")
     }
     layout
   }
@@ -51,6 +54,10 @@ enum ProgrammingEditorPalette(val layout: PaletteLayout) derives ReadWriter:
   case Embroidery extends ProgrammingEditorPalette(PaletteLayout.CatalogTabs(List(
     PaletteTab.Motion, PaletteTab.Pen, PaletteTab.Embroidery, PaletteTab.Control
   )))
+  /** List exercises: control, operators, variables and own blocks, plus the number-list blocks. */
+  case NumberList extends ProgrammingEditorPalette(PaletteLayout.Mixed(
+    SnapPaletteCatalog.ControlLanguageSelectors ++ SnapPaletteCatalog.OperatorSelectors ++ SnapPaletteCatalog.VariableSelectors ++
+      SnapModuleBlocks.numberList.map(_.id), allowCustomBlocks = true, allowVariables = true))
   /** Exercise-specific layout, serialized with the exercise rather than defined in the client. */
   case Custom(customLayout: PaletteLayout) extends ProgrammingEditorPalette(PaletteLayout.validated(customLayout))
 

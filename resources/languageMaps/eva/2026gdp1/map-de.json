@@ -63,7 +63,7 @@
   "testSolveExample": "loese löst das Beispiel-Sudoku",
   "testSolveMedium": "loese löst ein Sudoku mit 17 leeren Feldern",
   "testSolveImpossible": "loese gibt bei einem unlösbaren Sudoku false zurück und hinterlässt es unverändert",
-  "sortIntroduction": "Zum Schluss darfst du selbst entscheiden, **wie** du sortierst – in Python oder Java. Im Bereich „Sortieren Schritt für Schritt“ kannst du jede Vertauschung deines Programms einzeln ansehen und vor- und zurückspringen.",
+  "sortIntroduction": "Zum Schluss darfst du selbst entscheiden, **wie** du sortierst – in Snap, Python oder Java. Im Bereich „Sortieren Schritt für Schritt“ kannst du jede Vertauschung deines Programms einzeln ansehen und vor- und zurückspringen.",
   "sortTitle": "Aufgabe 11 · Sortieren nach eigener Idee",
-  "sortInstruction": "Implementiere `sortiere()`, das die Zahlenliste aufsteigend sortiert. Du kannst Bubble Sort, Selection Sort oder eine eigene Idee umsetzen. Verwende `NumberList.length()`, `NumberList.get(i)` und `NumberList.swap(i, j)`; Werte dürfen nur durch Vertauschen ihren Platz wechseln. Die Tests sortieren auch eine leere, eine einelementige und eine bereits sortierte Liste."
+  "sortInstruction": "Implementiere `sortiere()`, das die Zahlenliste aufsteigend sortiert. Du kannst Bubble Sort, Selection Sort oder eine eigene Idee umsetzen. Verwende `NumberList.length()`, `NumberList.get(i)` und `NumberList.swap(i, j)`; Werte dürfen nur durch Vertauschen ihren Platz wechseln. In Snap baust du einen Block `sortiere` mit den Blöcken „length of number list“, „item … of number list“ und „swap items … and … of number list“; Positionen zählen wie in Python ab 0. Die Tests sortieren auch eine leere, eine einelementige und eine bereits sortierte Liste."
 }

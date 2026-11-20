@@ -29,7 +29,8 @@ object SnapToExpression {
     else fromProject(project)
   }
 
-  private def fromProject(project: TurtleStitchProgramModel.Project): TurtleStitchToBeExpressionParser.ParseWithLayout = {
+  private def fromProject(loaded: TurtleStitchProgramModel.Project): TurtleStitchToBeExpressionParser.ParseWithLayout = {
+    val project = TurtleStitchToBeExpressionParser.withoutModuleLibraries(loaded)
     val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(project)
     val top = SnapExpressionSupport.topLevelStatements(parsed.expression)
     val definitions = top.collect { case definition: BeDefineFunction => definition }

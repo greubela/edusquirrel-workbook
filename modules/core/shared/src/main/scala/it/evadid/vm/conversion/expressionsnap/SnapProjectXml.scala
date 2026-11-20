@@ -4,6 +4,7 @@ import it.evadid.vm.conversion.snapxml.SnapXmlText
 
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasScript
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapModuleBlocks
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
@@ -52,8 +53,9 @@ object SnapProjectXml {
     given RenderContext = RenderContext(plans)
     val scripts = scriptsFromExpression(expression, canvasLayout)
     val xmlScripts = if scripts.nonEmpty then scripts.map(renderScript).mkString else ""
-    val globalVariables = renderGlobalVariables(expression, functionDefs)
-    val blockDefinitions = renderBlockDefinitions(functionDefs, plans)
+    val moduleBlocks = SnapModuleBlocks.requiredBy(expression)
+    val globalVariables = renderGlobalVariables(expression, functionDefs) + SnapModuleBlocks.variableXml(moduleBlocks)
+    val blockDefinitions = renderBlockDefinitions(functionDefs, plans) + moduleBlocks.map(_.definitionXml).mkString
     val palette = renderPalette(plans, previousXml)
 
     s"""<project name="$projectName" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="$projectName"><notes></notes>$palette<hidden></hidden><headers></headers><code></code><blocks>$blockDefinitions</blocks><primitives></primitives><stage name="Stage" width="480" height="360" costume="0" color="255,255,255,1" tempo="60" threadsafe="false" penlog="false" volume="100" pan="0" lines="round" ternary="false" hyperops="true" codify="false" inheritance="true" sublistIDs="false" id="6"><costumes><list struct="atomic" id="7"></list></costumes><sounds><list struct="atomic" id="8"></list></sounds><variables></variables><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Sprite" idx="1" x="0" y="0" heading="90" scale="0.1" volume="100" pan="0" rotation="1" draggable="true" hidden="true" costume="0" color="0,0,0,1" pen="tip" id="13"><costumes><list struct="atomic" id="14"></list></costumes><sounds><list struct="atomic" id="15"></list></sounds><blocks></blocks><variables></variables><scripts>$xmlScripts</scripts></sprite></sprites></stage><variables>$globalVariables</variables></scene></scenes><creator>anonymous</creator><origCreator></origCreator><origName></origName></project>"""
@@ -306,33 +308,40 @@ object SnapProjectXml {
 
   private def renderCall(call: BeFunctionCall)(using context: RenderContext): String = {
     if call.isOperator then renderOperator(call)
+    else SnapModuleBlocks.of(call.funcDef) match
+      case Some(block) =>
+        val inputXml = call.arguments.map(renderArgument(_, SnapInputKind.Numeric)).mkString
+        s"""<custom-block s="${SnapXmlText.escape(block.blockSpec)}">$inputXml</custom-block>"""
+      case None => renderOrdinaryCall(call)
+  }
+
+  private def renderOrdinaryCall(call: BeFunctionCall)(using context: RenderContext): String = {
+    val selector = SnapExpressionSupport.snapSelectorOf(call)
+    val arguments = call.arguments
+    val kinds = SnapTurtleCatalog.inputKindsForSelector(selector)
+    if SnapExpressionSupport.isPrimitiveSelector(selector) &&
+        (it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) ||
+          context.plans.get(SnapExpressionSupport.pythonName(call)).isEmpty) then
+      val inputXml = arguments.zipWithIndex.map { (argument, index) =>
+        renderArgument(argument, kinds.lift(index).getOrElse(SnapInputKind.String))
+      }.mkString
+      s"<block s=\"$selector\">$inputXml</block>"
     else
-      val selector = SnapExpressionSupport.snapSelectorOf(call)
-      val arguments = call.arguments
-      val kinds = SnapTurtleCatalog.inputKindsForSelector(selector)
-      if SnapExpressionSupport.isPrimitiveSelector(selector) &&
-          (it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) ||
-            context.plans.get(SnapExpressionSupport.pythonName(call)).isEmpty) then
-        val inputXml = arguments.zipWithIndex.map { (argument, index) =>
-          renderArgument(argument, kinds.lift(index).getOrElse(SnapInputKind.String))
-        }.mkString
-        s"<block s=\"$selector\">$inputXml</block>"
-      else
-        val pythonName = SnapExpressionSupport.pythonName(call)
-        val plan = context.plans.get(pythonName)
-        val arity = plan.map(_.slotNames.size).getOrElse(arguments.size)
-        val aligned = arguments.take(arity) ++ List.fill((arity - arguments.size).max(0))(
-          BeUseValue(BeDataValueLiteral(""), None)
-        )
-        val inputXml = aligned.zipWithIndex.map { (argument, index) =>
-          renderArgument(argument, kinds.lift(index).getOrElse(SnapInputKind.String))
-        }.mkString
-        val spec = plan
-          .map(_.callSpec)
-          .getOrElse(SnapCustomBlockRules.blockSpecOfNewDefinition(
-            SnapTurtleCatalog.customBlockSemanticSpec(pythonName, arguments.indices.toList.map(index => s"arg$index"))
-          ))
-        s"""<custom-block s="${SnapXmlText.escape(spec)}">$inputXml</custom-block>"""
+      val pythonName = SnapExpressionSupport.pythonName(call)
+      val plan = context.plans.get(pythonName)
+      val arity = plan.map(_.slotNames.size).getOrElse(arguments.size)
+      val aligned = arguments.take(arity) ++ List.fill((arity - arguments.size).max(0))(
+        BeUseValue(BeDataValueLiteral(""), None)
+      )
+      val inputXml = aligned.zipWithIndex.map { (argument, index) =>
+        renderArgument(argument, kinds.lift(index).getOrElse(SnapInputKind.String))
+      }.mkString
+      val spec = plan
+        .map(_.callSpec)
+        .getOrElse(SnapCustomBlockRules.blockSpecOfNewDefinition(
+          SnapTurtleCatalog.customBlockSemanticSpec(pythonName, arguments.indices.toList.map(index => s"arg$index"))
+        ))
+      s"""<custom-block s="${SnapXmlText.escape(spec)}">$inputXml</custom-block>"""
   }
 
   private def renderArgument(argument: BeExpression, kind: SnapInputKind = SnapInputKind.String)(using

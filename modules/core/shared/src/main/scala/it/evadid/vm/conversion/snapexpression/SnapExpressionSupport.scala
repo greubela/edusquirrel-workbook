@@ -1,6 +1,6 @@
 package it.evadid.vm.conversion.snapexpression
 
-import it.evadid.vm.conversion.turtlestitchexpression.{TurtleStitchProgramModel, TurtleStitchXmlLoader}
+import it.evadid.vm.conversion.turtlestitchexpression.{TurtleStitchProgramModel, TurtleStitchToBeExpressionParser, TurtleStitchXmlLoader}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 
@@ -84,7 +84,8 @@ object SnapExpressionSupport {
 
   /** Primitive blocks outside the supported set, and custom blocks Python cannot express. */
   def unsupportedSnapSelectors(xml: String, project: TurtleStitchProgramModel.Project): List[String] = {
-    val fromBlocks = project.allBlocks.toList.collect {
+    // Predefined module blocks are implemented with list primitives; their calls are what the program uses.
+    val fromBlocks = TurtleStitchToBeExpressionParser.withoutModuleLibraries(project).allBlocks.toList.collect {
       case TurtleStitchProgramModel.PrimitiveBlock(Some(selector), _, _, _) if !AllowedSnapSelectors.contains(selector) => selector
     } ++ project.unreadBlocks.map(block => s"'$block' outside a script")
     val definitionProblems = SnapCustomBlockRules.allDefinitions(xml).flatMap(_.pythonIncompatibility)
