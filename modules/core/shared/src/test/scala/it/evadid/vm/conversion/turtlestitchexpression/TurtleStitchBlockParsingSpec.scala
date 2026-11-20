@@ -31,4 +31,36 @@ class TurtleStitchBlockParsingSpec extends FunSuite {
   test("unterminated projects are rejected instead of guessed") {
     intercept[it.evadid.vm.code.errors.ProgrammingConversionException](TurtleStitchToBeExpressionParser.parseXml(project.stripSuffix("</project>")))
   }
+
+  private def scriptProject(blocks: String, definitions: String = "") =
+    s"""<project><scenes select="1"><scene><blocks>$definitions</blocks><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"/>$blocks</script></scripts></sprite></sprites></stage></scene></scenes></project>"""
+
+  test("blocks with empty slots use Snap's defaults instead of failing") {
+    val code = python(scriptProject(
+      """<block s="doRepeat"/><block s="doFor"/><block s="doIf"/><block s="doIfElse"/><block s="doUntil"/>""" +
+        """<block s="doSetVar"/><block s="doChangeVar"/><block s="forward"><block s="reportGetVar"><l>size</l></block></block>"""))
+    Seq("for _ in range(0):", "for i in range(1, 2):", "if False:", "while True:", "x: Any = 0", "x = x + 1", "turtle.forward(size)").foreach { part =>
+      assert(code.contains(part), s"'$part' missing in\n$code")
+    }
+  }
+
+  test("custom block definitions keep boolean slots, unnamed slots and colour arguments") {
+    val definition = """<block-definition s="draw %'flag' %'shade'" type="command" category="pen"><inputs><input type="%b"></input><input type="%clr"></input></inputs>""" +
+      """<script><block s="forward"><l>1</l></block></script></block-definition>"""
+    val code = python(scriptProject("""<custom-block s="draw %b %clr"><l><bool>true</bool></l><color>0,0,255,1</color></custom-block>""", definition))
+    assert(code.contains("def draw(flag: bool, shade"), code)
+    assert(code.contains("draw(True"), code)
+    assert(code.contains("blue") || code.contains("0, 0, 255"), code)
+  }
+
+  test("empty Snap C-slots print as pass so the Python stays valid") {
+    val xml = scriptProject("""<block s="doRepeat"><l>3</l><script></script></block><block s="doIf"><l><bool>true</bool></l><script></script></block>""")
+    val code = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
+      it.evadid.core.datastructures.language.AppLanguage.SnapLanguage, xml).toPython.code
+    val lines = code.linesIterator.toVector
+    lines.zipWithIndex.filter(_._1.trim.endsWith(":")).foreach { (line, index) =>
+      val next = lines.lift(index + 1).getOrElse("")
+      assert(next.takeWhile(_ == ' ').length > line.takeWhile(_ == ' ').length, s"'$line' has no indented body in\n$code")
+    }
+  }
 }
