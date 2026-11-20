@@ -42,20 +42,15 @@ object AtomarLineRendering {
     )
   }
 
-  def cardLine(workbookElement: WorkbookElement, cards: Seq[ElementCard], showBottomGradingPanel: Signal[Boolean] = Var(false).signal): AtomarLineRendering = {
-    val cardBasedContent = cardLineContent(workbookElement, cards)
-    basicLine(workbookElement, cardBasedContent, "element-card-grid", showBottomGradingPanel)
-  }
+  def cardLine(workbookElement: WorkbookElement, cards: Seq[ElementCard]): AtomarLineRendering =
+    basicLine(workbookElement, cardLineContent(workbookElement, cards), "element-card-grid")
 
-  def basicLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssString: String = "", showBottomGradingPanel: Signal[Boolean] = Var(false).signal): AtomarLineRendering = workbookElement match {
+  def basicLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssString: String = ""): AtomarLineRendering = workbookElement match {
     case d: WorkbookDisplayElement => RenderingDisplayLine(d, content, additionalCssString)
     case s: WorkbookStructureElement[?] => RenderingStructureLine(s, content, additionalCssString)
-    case i: WorkbookInteractionElement[? <: InteractionFormat] => RenderingInteractionLine(i, content, additionalCssString, showBottomGradingPanel)
+    case i: WorkbookInteractionElement[? <: InteractionFormat] => RenderingInteractionLine(i, content, additionalCssString)
   }
 
 
-  def lineWithGrader[F <: InteractionFormat](workbookInteractionElement: WorkbookInteractionElement[F], content: DomElementCollection, additionalCssString: String = ""): AtomarLineRendering = {
-    basicLine(workbookInteractionElement, content, additionalCssString, Var(true).signal)
-  }
 
 }

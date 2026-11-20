@@ -64,7 +64,8 @@ case class TurtleExecutionLimits(
     maxSteps: Int = 100000,
     maxCommands: Int = 10000,
     maxCallDepth: Int = 64,
-    maxLoopIterations: Int = 10000) derives ReadWriter {
-  require(maxSteps > 0 && maxCommands >= 0 && maxCallDepth > 0 && maxLoopIterations > 0,
-    "Turtle execution limits must be positive (the command limit may be zero).")
+    maxLoopIterations: Int = 10000,
+    maxDataCommands: Int = 200000) derives ReadWriter {
+  require(maxSteps > 0 && maxCommands >= 0 && maxCallDepth > 0 && maxLoopIterations > 0 && maxDataCommands >= 0,
+    "Execution limits must be positive (the command limits may be zero).")
 }

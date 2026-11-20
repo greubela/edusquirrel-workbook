@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{English, German, Huma
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.TextInputWithScaffoldingAndGradingRenderer
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.linePanelBottom.GradingInfoLine
+import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionFeedbackPanel
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.homepage.control.info.interaction.GradingReporter
@@ -45,16 +45,16 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
     val close = mount(element)
     try {
-      val panel = element.ref.querySelector(".interaction-scaffolding .interaction-hint-panel")
+      val panel = element.ref.querySelector(".feedback-panel .interaction-hint-panel")
       assert(!panel.hasAttribute("hidden"))
-      assertEquals(panel.querySelector("p").textContent, "English hint\nSecond line")
-      val details = panel.querySelector("details")
+      assertEquals(panel.querySelector(".feedback-hint-text").textContent, "English hint\nSecond line")
+      val details = panel
       assert(details.hasAttribute("open"))
       details.removeAttribute("open")
       fullInfo.usageControl.changeLanguage(German)
-      assertEquals(panel.querySelector("p").textContent, "Deutscher Hinweis")
+      assertEquals(panel.querySelector(".feedback-hint-text").textContent, "Deutscher Hinweis")
       assert(!details.hasAttribute("open"))
-      assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 0)
+      assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 0)
     } finally { close(); fullInfo.usageControl.changeLanguage(previous) }
   }
 
@@ -63,7 +63,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val variable = exercise.interactionVariable
     val context = fullInfo.workbookContextInformation
     val reporter = GradingReporter(exercise)
-    val element = GradingInfoLine(exercise, reporter).getDomElement()
+    val element = InteractionFeedbackPanel(exercise, reporter).getDomElement()
     val close = mount(element)
     val time = LocalDateTime.now()
     def save(status: ScaffoldingStatus, offset: Long): Unit = variable.updateHistory(_.addScaffolding(
@@ -78,15 +78,15 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
       assert(!element.ref.textContent.contains("PRIVATE ERROR"))
       save(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("CURRENT HINT")), 3)
       assert(!panel.hasAttribute("hidden"))
-      assertEquals(panel.querySelector("p").textContent, "CURRENT HINT")
+      assertEquals(panel.querySelector(".feedback-hint-text").textContent, "CURRENT HINT")
       variable.updateHistory(_.addState(InteractionVariableState("changed answer", UpdateImportance.MAJOR, time.plusSeconds(4))), context)
       assert(panel.hasAttribute("hidden"))
-      assertEquals(panel.querySelector("p").textContent, "")
+      assertEquals(panel.querySelector(".feedback-hint-text").textContent, "")
       save(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("LATE OLD HINT")), 5)
       assert(panel.hasAttribute("hidden"))
       variable.updateHistory(_.addState(InteractionVariableState("", UpdateImportance.MAJOR, time.plusSeconds(6))), context)
       assert(!panel.hasAttribute("hidden"))
-      assertEquals(panel.querySelector("p").textContent, "LATE OLD HINT")
+      assertEquals(panel.querySelector(".feedback-hint-text").textContent, "LATE OLD HINT")
     } finally close()
   }
 
@@ -102,10 +102,11 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
     val close = mount(element)
     try {
-      val displayed = element.ref.querySelectorAll(".text-input-feedback__result")
+      val displayed = element.ref.querySelectorAll(".feedback-entry")
       assertEquals(displayed.length, 2)
-      assertEquals(displayed(0).querySelector("p").textContent, "Feedback for criterion 0")
-      assertEquals(displayed(1).querySelector("p").textContent, "Feedback for criterion 1")
+      assertEquals(displayed(0).querySelector(".feedback-text").textContent, "Feedback for criterion 0")
+      assertEquals(displayed(1).querySelector(".feedback-text").textContent, "Feedback for criterion 1")
+      assert(displayed(1).classList.contains("feedback-status--partial"))
       assert(!element.ref.textContent.contains("Correct()"))
       assert(!element.ref.textContent.contains("PartiallyCorrect()"))
     } finally close()
@@ -126,10 +127,10 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     try {
       // Use the correct event-based API - addGrading creates a GradingCompletedEvent
       exercise.interactionVariable.updateHistory(_.addGrading(wrongAnswer), fullInfo.workbookContextInformation)
-      assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 1)
+      assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 1)
       assert(!element.ref.textContent.contains("Wrong answer feedback"))
       exercise.interactionVariable.updateHistory(_.addGrading(wrongLanguage), fullInfo.workbookContextInformation)
-      assertEquals(element.ref.querySelectorAll(".text-input-feedback__result").length, 1)
+      assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 1)
       assert(element.ref.textContent.contains("Wrong language feedback"))
       assert(element.ref.textContent.contains(fullInfo.signals.stringFromLanguageMap(
         wrongLanguage.feedbackInformation.get).now()))

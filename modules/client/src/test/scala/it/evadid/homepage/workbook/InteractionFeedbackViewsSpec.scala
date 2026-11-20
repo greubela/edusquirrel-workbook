@@ -15,6 +15,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.workbook.meta.ExecutionContextInformation
 import it.evadid.homepage.control.info.interaction.GradingReporter
 import java.time.LocalDateTime
+import com.raquo.laminar.api.L.div
 
 class InteractionFeedbackViewsSpec extends EditorDomSuite {
   private val date = LocalDateTime.parse("2026-11-15T12:30:00")
@@ -58,21 +59,55 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     fullInfo.usageControl.changeLanguage(German)
     val close = mount(sidebar)
     try {
-      val group = sidebar.ref.querySelector(".feedback-status--correct")
-      group.setAttribute("open", "")
+      val details = sidebar.ref.querySelector("details.feedback-grading")
+      assert(details.hasAttribute("open"), "the sidebar shows results expanded")
       assert(sidebar.ref.textContent.contains("Öffentliche Rückmeldung"))
-      assert(sidebar.ref.textContent.contains("2026-11-15 12:30:00"))
+      val time = sidebar.ref.querySelector(".feedback-entry .feedback-date")
+      assertEquals(time.textContent, "12:30")
+      assertEquals(time.getAttribute("title"), "2026-11-15 12:30:00")
       assert(!sidebar.ref.outerHTML.contains("SECRET-HIDDEN"))
-      assert(!sidebar.ref.textContent.contains("1999-01-01"))
-      assertEquals(sidebar.ref.querySelectorAll(".feedback-results-table tbody tr").length, 1)
+      assert(!sidebar.ref.outerHTML.contains("1999-01-01"))
+      val rows = sidebar.ref.querySelectorAll(".feedback-entry")
+      assertEquals(rows.length, 2)
+      assert(rows(1).textContent.toLowerCase.contains("gradinghiddentest"), clues(rows(1).textContent)) // the hidden-test label, not its description
+      assertEquals(rows(1).querySelectorAll(".feedback-date, .feedback-text").length, 0)
       fullInfo.usageControl.changeLanguage(English)
       assert(sidebar.ref.textContent.contains("Public feedback"))
+      details.removeAttribute("open")
       val changed = publicResult.copy(gradingStatus = GradingStatus.Incorrect(), gradingTime = date.plusMinutes(1))
       variable.updateHistory(_.addGrading(changed), ExecutionContextInformation.default)
-      assert(sidebar.ref.querySelector(".feedback-status--correct") eq group)
-      assert(group.hasAttribute("open"))
-      assertEquals(sidebar.ref.querySelectorAll(".feedback-status--incorrect tbody tr").length, 1)
+      assert(sidebar.ref.querySelector("details.feedback-grading") eq details)
+      assert(!details.hasAttribute("open"), "a result update keeps the reader's disclosure choice")
+      assertEquals(sidebar.ref.querySelectorAll(".feedback-entry.feedback-status--incorrect").length, 1)
+      assertEquals(sidebar.ref.querySelector(".feedback-score-chip").textContent, "1/2")
     } finally { close(); fullInfo.usageControl.changeLanguage(previous) }
+  }
+
+  test("overview panel and editor sidebar render the same results from the shared reporter") {
+    val tests = List(grader("first"), grader("second"), grader("secret", true))
+    val exercise = ProgrammingExercise("feedback-shared-source", Some(ProgrammingTestSuite(tests)))
+    val variable = exercise.interactionVariable
+    val reporter = GradingReporter(exercise)
+    val overview = it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
+      .InteractionFeedbackPanel(exercise, reporter).getDomElement()
+    val sidebar = InteractionInfoSidebar(exercise, None, reporter).getDomElement()
+    val close = mount(div(overview, sidebar))
+    def rows(root: org.scalajs.dom.Element) = (0 until root.querySelectorAll(".feedback-entry").length)
+      .map(i => root.querySelectorAll(".feedback-entry")(i)).map(row => row.getAttribute("class") -> row.textContent)
+    try {
+      assertEquals(rows(overview.ref).size, 3)
+      assert(rows(overview.ref).forall(_._1.contains("feedback-status--neutral")))
+      assert(!overview.ref.querySelector("details.feedback-grading").hasAttribute("open"), "unchecked results start collapsed")
+      val statuses = List(GradingStatus.Correct(), GradingStatus.PartiallyCorrect(), GradingStatus.Incorrect())
+      variable.updateHistory(_.addGradings(tests.zip(statuses).map((test, status) =>
+        GradingResult(test, variable.currentValue, status, Some(feedback), None, date))), ExecutionContextInformation.default)
+      assertEquals(rows(overview.ref), rows(sidebar.ref))
+      assertEquals(rows(overview.ref).map(_._1.split(' ').last), Seq("feedback-status--correct", "feedback-status--partial", "feedback-status--incorrect"))
+      assertEquals(overview.ref.querySelector(".feedback-score-chip").textContent, sidebar.ref.querySelector(".feedback-score-chip").textContent)
+      assertEquals(overview.ref.querySelectorAll(".feedback-group-chips .feedback-chip").length, 3, "correct, partial and incorrect are counted separately")
+      assert(overview.ref.querySelector("details.feedback-grading").hasAttribute("open"), "results expand once they exist")
+      assert(sidebar.ref.querySelector("details.feedback-grading").hasAttribute("open"), "the sidebar starts expanded")
+    } finally close()
   }
 
   test("sidebar never presents old feedback as a result for a changed answer") {
@@ -89,8 +124,8 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       variable.updateHistory(_.addState(it.evadid.workbook.interaction.variable.InteractionVariableState(
         next, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, date.plusHours(1))), ExecutionContextInformation.default)
       assert(!sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
-      assertEquals(sidebar.ref.querySelectorAll(".feedback-status--neutral tbody tr").length, 1)
-      assertEquals(sidebar.ref.querySelector(".feedback-status--neutral .feedback-date").textContent, "—")
+      assertEquals(sidebar.ref.querySelectorAll(".feedback-entry.feedback-status--neutral").length, 1)
+      assertEquals(sidebar.ref.querySelectorAll(".feedback-entry .feedback-date").length, 0)
     } finally close()
   }
   test("available hints open automatically and disabled interactions cannot request feedback") {
@@ -107,9 +142,9 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val sidebar = InteractionInfoSidebar(exercise, None, GradingReporter(exercise)).getDomElement()
     val close = mount(sidebar)
     try {
-      assert(sidebar.ref.querySelector(".feedback-section").hasAttribute("open"))
+      assert(sidebar.ref.querySelector(".interaction-hint-panel").hasAttribute("open"))
       assert(sidebar.ref.querySelector(".feedback-text").textContent.contains("PUBLIC-HINT"))
-      val request = sidebar.ref.querySelector("button").asInstanceOf[org.scalajs.dom.HTMLButtonElement]
+      val request = sidebar.ref.querySelector("button.scaffolding-info").asInstanceOf[org.scalajs.dom.HTMLButtonElement]
       assert(!request.disabled)
       exercise.isDisabledState.set(true)
       assert(request.disabled)

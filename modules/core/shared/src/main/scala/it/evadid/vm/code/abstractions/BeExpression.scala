@@ -117,9 +117,7 @@ trait BeExpression {
 
   def staticInformationSubtree: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
 
-    private lazy val allExprChildren: List[BeExpression] = {
-      recToTree(false, BeChildInfo(BeChildRole.NoRole, GlobalScope())).values.toList.collect { case BeExpressionReference(_, expr) => expr }
-    }
+    private lazy val allExprChildren: List[BeExpression] = subtree.toList
 
     override def staticType: BeDataType = staticInformationExpression.staticType
 

@@ -15,7 +15,6 @@ final class GradingReporter private (
 ) {
   val summary = report.map(_.grading)
   val scaffolding = report.map(_.scaffolding)
-  val hintFeedback = scaffolding.map(_.feedback)
 }
 
 object GradingReporter {

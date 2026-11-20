@@ -57,7 +57,8 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.B
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.slideshow.HtmlSlideshowEditor
 import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.text.UnicodeComparisonRenderer
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava, SortListExercise}
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps.HtmlSortListExerciseRenderer
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
 import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.SortingInteraction
 import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
@@ -177,6 +178,7 @@ object HtmlRenderFactory {
       case s: SqlCommandExercise => HtmlSqlCommandExerciseRenderer.renderWorkbookElement(s)
       case p: ProgrammingExercise => HtmlProgrammingExerciseRenderer.renderWorkbookElement(p)
       case p: ProgrammingExerciseFullJava => HtmlProgrammingExerciseFullJavaRenderer.renderWorkbookElement(p)
+      case s: SortListExercise => HtmlSortListExerciseRenderer.renderWorkbookElement(s)
       case a: T => createPlaceholderElement(a, "HtmlRenderFactory::renderWorkbookElement cannot yet render objects of type '" + a.getClass.getName + "'!")
       // error
     }

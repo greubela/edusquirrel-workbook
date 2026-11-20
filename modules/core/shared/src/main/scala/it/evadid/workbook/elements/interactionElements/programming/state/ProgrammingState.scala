@@ -82,6 +82,14 @@ object ProgrammingState {
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState derives ReadWriter {
   lazy val turtleCommandSites = TurtleProgramAnalysis.commandSites(expression)
   lazy val turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleProgramAnalysis(expression)
+  /** Startup run on the default list and sudoku; its list and sudoku commands are extracted like turtle commands. */
+  lazy val programExecution: it.evadid.vm.simulation.ProgramExecution = execute()
+
+  def execute(world: it.evadid.vm.simulation.data.DataWorld = it.evadid.vm.simulation.data.DataWorld(),
+      entry: it.evadid.vm.simulation.ProgramEntry = it.evadid.vm.simulation.ProgramEntry.Startup,
+      limits: it.evadid.vm.simulation.turtle.TurtleExecutionLimits = it.evadid.vm.simulation.turtle.TurtleExecutionLimits()
+  ): it.evadid.vm.simulation.ProgramExecution =
+    it.evadid.vm.simulation.BeProgramInterpreter.run(expression, world, entry, limits)
 
   override val toString: String = s"ProgrammingStateBeExpression(${expression.toString.take(300)})"
 

@@ -22,6 +22,12 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
 
+  /** Editor side module replaying the drawing of the bound answer step by step. */
+  private[homepage] def turtleStepsCard(boundVar: Var[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState]): ElementCard =
+    ElementCard(LanguageMapContentId("basic/turtleStepsTitle"),
+      new it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps.TurtleStepPanel(boundVar,
+        key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
+
   override protected def createRendering(workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
     val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
@@ -51,7 +57,8 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
         Var(EvaEditorConfig(enabledLanguages = workbookElement.exerciseConfig.allowedEditorLanguages, snapConfig = useConfig)),
         humanLanguage = fullInfo.signals.currentLanguage,
         labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
-      val editor = EditorWithWorkbookPanel(workbookElement, Some(associatedInstruction), gradingReporter, List(createShapeGradingCard), evaEditor)
+      val editor = EditorWithWorkbookPanel(workbookElement, Some(associatedInstruction), gradingReporter,
+        List(createShapeGradingCard, turtleStepsCard(boundVar)), evaEditor)
 
       editor
     }

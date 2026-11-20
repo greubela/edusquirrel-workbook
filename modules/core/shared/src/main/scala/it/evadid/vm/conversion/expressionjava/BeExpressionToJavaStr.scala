@@ -134,6 +134,8 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
   override protected def callName(call: BeFunctionCall): String = call.funcDef.intrinsic match {
     case Some(BeIntrinsic.Print) => "System.out.println"
     case Some(BeIntrinsic.Turtle) => "Turtle." + JavaTurtleLibrary.methodName(call.funcDef)
+    case Some(BeIntrinsic.NumberList | BeIntrinsic.Sudoku) =>
+      it.evadid.vm.simulation.data.DataLibraries.ownerName(call.funcDef).get + "." + entityName(call.funcDef.functionTypeInfo.displayName)
     case Some(intrinsic) if KnownDependencies.javaCall(intrinsic).nonEmpty => KnownDependencies.javaCall(intrinsic).get
     case _ if call.target.isInstanceOf[BeCallTarget.Function] && !insideMain &&
         moduleFunctions(call.funcDef.functionTypeInfo.displayName.universalInterpretation()) =>

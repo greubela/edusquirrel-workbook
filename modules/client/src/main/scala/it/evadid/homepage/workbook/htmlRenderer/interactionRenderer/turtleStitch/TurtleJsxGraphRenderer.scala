@@ -103,12 +103,15 @@ object TurtleJsxGraphRenderer:
 
   enum LineResult derives ReadWriter:
     case Correct, Unexpected, Missing, Neutral
+    /** Step-by-step replay: the segment drawn by the current step, and segments of later steps. */
+    case Current, Upcoming
 
   final case class RenderedLine(start: Point[Double], end: Point[Double], result: LineResult, jump: Boolean) derives ReadWriter
 
   final case class RenderedAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int, lineAfter: Int) derives ReadWriter
 
-  final case class Scene(lines: Seq[RenderedLine], angles: Seq[RenderedAngle]) derives ReadWriter
+  /** `marker` shows the turtle's position, e.g. after the current step of a replay. */
+  final case class Scene(lines: Seq[RenderedLine], angles: Seq[RenderedAngle], marker: Option[Point[Double]] = None) derives ReadWriter
 
   private[turtleStitch] final case class AngleSector(first: Point[Double], last: Point[Double], degrees: Double) derives upickle.default.ReadWriter
 
@@ -191,7 +194,7 @@ object TurtleJsxGraphRenderer:
 
   def render(container: dom.html.Div, scene: Scene, title: String): JSXGraph.Board =
     container.classList.add("turtle-gradig-panel")
-    val points = scene.lines.flatMap(line => List(line.start, line.end))
+    val points = scene.lines.flatMap(line => List(line.start, line.end)) ++ scene.marker
     if points.exists(point => !point.x.isFinite || !point.y.isFinite) then
       throw IllegalArgumentException("The drawing contains non-finite coordinates.")
     val bounds = boundingBox(points.map(p => Point(p.x, -p.y)))
@@ -227,12 +230,7 @@ object TurtleJsxGraphRenderer:
     def createLine(line: RenderedLine, index: Int): Unit = {
       val a = pointObject(line.start);
       val b = pointObject(line.end)
-      val resultClass = line.result match
-        case LineResult.Correct => "turtle-line--correct"
-        case LineResult.Unexpected => "turtle-line--unexpected"
-        case LineResult.Missing => "turtle-line--missing"
-        case LineResult.Neutral => "turtle-line--neutral"
-      val classes = s"turtle-line $resultClass" + (if line.jump then " turtle-line--jump" else "")
+      val classes = lineClasses(line)
       val segment: js.Dynamic = board.create("segment", js.Array(a, b), js.Dynamic.literal(
         cssClass = classes, highlightCssClass = classes, fixed = true
       ))
@@ -266,12 +264,27 @@ object TurtleJsxGraphRenderer:
         else angleEntries.groupBy { case (angle, _) => math.round(angle.degrees * 1e6) }
           .values.map(_.head).toList.sortBy(_._2)
       visibleAngles.foreach { case (angle, index) => createAngle(angle, index) }
+      scene.marker.foreach { position =>
+        board.create("point", js.Array(position.x, -position.y), js.Dynamic.literal(
+          name = "", fixed = true, showInfobox = false, size = 5, cssClass = "turtle-marker", highlightCssClass = "turtle-marker"))
+      }
       if canBatch then board.unsuspendUpdate() else board.update()
       board
     catch
       case NonFatal(error) =>
         JSXGraph.free(board)
         throw error
+
+  /** CSS classes of a rendered segment: its result and, for pen-up travel, the dashed jump style. */
+  private[htmlRenderer] def lineClasses(line: RenderedLine): String =
+    val resultClass = line.result match
+      case LineResult.Correct => "turtle-line--correct"
+      case LineResult.Unexpected => "turtle-line--unexpected"
+      case LineResult.Missing => "turtle-line--missing"
+      case LineResult.Neutral => "turtle-line--neutral"
+      case LineResult.Current => "turtle-line--current"
+      case LineResult.Upcoming => "turtle-line--upcoming"
+    s"turtle-line $resultClass" + (if line.jump then " turtle-line--jump" else "")
 
   private def hoverRelated(scene: Scene, lineIndex: Int, points: collection.mutable.Map[Point[Double], js.Dynamic], angles: collection.mutable.Map[Int, js.Dynamic], board: JSXGraph.Board, active: Boolean): Unit =
     val line = scene.lines(lineIndex)

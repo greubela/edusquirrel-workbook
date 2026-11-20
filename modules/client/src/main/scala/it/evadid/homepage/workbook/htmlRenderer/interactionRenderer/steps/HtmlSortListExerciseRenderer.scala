@@ -1,0 +1,57 @@
+package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps
+
+import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
+import it.evadid.homepage.webElements.basic.HtmlButtonElement
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
+import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
+import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
+import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.EditorWithWorkbookPanel
+import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
+import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.SortListExercise
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
+/** Sorting counterpart of the recreate-turtle renderer: editor, current source and a step-by-step replay. */
+case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortListExercise] {
+
+  private def source(state: ProgrammingState): String = state match {
+    case value: ProgrammingStateJavaStructured => value.toString
+    case value: ProgrammingStatePythonStructured => value.toString
+    case value: ProgrammingStateRaw => value.code
+    case other => other.toPython.code
+  }
+
+  /** Overview card and editor side module replaying the sort function's list operations. */
+  private[homepage] def sortStepsCard(element: SortListExercise, boundVar: Var[ProgrammingState]): ElementCard =
+    ElementCard(LanguageMapContentId("basic/sortStepsTitle"), new SortStepPanel(boundVar, element.sortFunction, element.exampleList,
+      key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
+
+  override protected def createRendering(element: SortListExercise): AtomarLineRendering = {
+    val boundVar = element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val gradingReporter = fullInfo.signals.reportersFor(element).grading
+    def stepsCard = sortStepsCard(element, boundVar)
+
+    def openEditor(): Unit = {
+      val instruction = element.instructionText.map(content => DisplayLangMapContent(element.elementId + "-sidebar-instruction", content,
+        LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)))
+      val editor = EvaEditor(
+        fullInfo.loggerSystemInfo.uiAndDomLogger,
+        boundVar,
+        Nil,
+        Var(EvaEditorConfig(enabledLanguages = element.allowedLanguages.toList)),
+        humanLanguage = fullInfo.signals.currentLanguage,
+        labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
+      fullInfo.displayControl.setFullscreen(EditorWithWorkbookPanel(element, instruction, gradingReporter, List(stepsCard), editor))
+    }
+
+    val open = HtmlButtonElement.withTextLabel("basic/OpenEditor", _ => openEditor())
+    AtomarLineRendering.cardLine(element, List(
+      ElementCard(LanguageMapContentId("basic/openEditor"), open.getDomElement()),
+      ElementCard(LanguageMapContentId("basic/staticPreviewProgram"),
+        div(cls := "java-full-editor-preview", pre(code(child.text <-- boundVar.signal.map(source))))),
+      stepsCard))
+  }
+}

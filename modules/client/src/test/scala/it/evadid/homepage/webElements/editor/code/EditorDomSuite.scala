@@ -23,6 +23,17 @@ trait EditorDomSuite extends FunSuite {
       else js.Dynamic.global.Object.defineProperty(globals, name, descriptor)
     }
   }
+  /** Polls until `condition` holds, for views that compute in Futures or after a debounce. */
+  protected def eventually(condition: => Boolean, clue: => String = "", attempts: Int = 300): scala.concurrent.Future[Unit] = {
+    val promise = scala.concurrent.Promise[Unit]()
+    def poll(remaining: Int): Unit =
+      if scala.util.Try(condition).getOrElse(false) then promise.success(())
+      else if remaining <= 0 then promise.failure(AssertionError(s"Condition not reached. $clue"))
+      else scala.scalajs.js.timers.setTimeout(10)(poll(remaining - 1))
+    poll(attempts)
+    promise.future
+  }
+
   protected def mount(element: Element): () => Unit = {
     val host = dom.document.createElement("div")
     dom.document.body.appendChild(host)

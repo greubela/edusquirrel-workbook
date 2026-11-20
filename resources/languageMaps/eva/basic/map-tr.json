@@ -31,9 +31,6 @@
   "gradingGroupPending": "Tamamlanmadı",
   "gradingGroupError": "Çalıştırma hatası",
   "gradingGroupNotRequested": "İstenmedi",
-  "gradingVisibleCount": "{count} açık",
-  "gradingHiddenCount": "{count} gizli",
-  "gradingNoFeedback": "Geri bildirim yok.",
   "gradingShapeDescription": "Çizimi hedefle karşılaştır",
   "gradingUsageCode": "{command}: kodda en fazla {maximum} kullanım",
   "gradingUsageExecution": "{command}: çalıştırma sırasında en fazla {maximum} çağrı",
@@ -41,14 +38,12 @@
   "scaffoldingReady": "Hazır",
   "gradingCompactScore": "{correct}/{total} doğru",
   "gradingCompactUnavailable": "({count} bekleyen / kullanılamayan)",
-  "gradingNoTests": "Bu grupta test yok.",
-  "gradingTestDescription": "Test",
-  "gradingExecutionDate": "Çalıştırılma zamanı",
-  "gradingFeedback": "Geri bildirim",
-  "gradingScore": "Toplam puan: {score}",
   "resetAllData": "Kaydedilmiş tüm yanıtları sıfırla",
   "resetAllDataRunning": "Kaydedilmiş yanıtlar siliniyor…",
   "resetAllDataRetry": "Tam sıfırlamayı yeniden dene",
   "resetAllDataConfirm": "Yapılandırılmış tüm yerel yanıt depoları temizlensin ve bu kullanıcının tüm çalışma kitaplarındaki yanıtları ve geri bildirimleri yapılandırılmış tüm sunucu hedeflerinden silinsin mi? Bu işlem geri alınamaz.",
-  "resetAllDataError": "Tüm hedefler silmeyi onaylamadı. Silinen yanıtların yeniden kaydedilmesini önlemek için eşitleme duraklatıldı. Lütfen sıfırlamayı yeniden deneyin."
+  "resetAllDataError": "Tüm hedefler silmeyi onaylamadı. Silinen yanıtların yeniden kaydedilmesini önlemek için eşitleme duraklatıldı. Lütfen sıfırlamayı yeniden deneyin.",
+  "gradingHiddenTest": "Gizli test",
+  "gradingAiAssessment": "Yapay zekâ değerlendirmesi",
+  "gradingAiCriterion": "Yapay zekâ değerlendirmesi {number}"
 }

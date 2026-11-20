@@ -9,11 +9,22 @@ import it.evadid.workbook.elements.interactionElements.programming.state.{Progra
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
+/** Data a program changes through the provided libraries; the editor shows it after running `main`. */
+enum ExerciseDataView derives ReadWriter {
+  case NumberList, Sudoku
+}
+
+/**
+ * A Java class program. Without `dataView` the editor previews turtle drawings; with it, the editor
+ * shows the number list or sudoku after `main` instead. `instructionText` appears beside the editor.
+ */
 case class ProgrammingExerciseFullJava(
                                         override val elementId: String,
                                         testSuite: Option[BeTestSuite] = None,
                                         startingProgram: String = ProgrammingExerciseFullJava.defaultStartingProgram,
-                                        hintTask: Option[LanguageMapContentId] = None
+                                        hintTask: Option[LanguageMapContentId] = None,
+                                        instructionText: Option[LanguageMapContentId] = None,
+                                        dataView: Option[ExerciseDataView] = None
                                       ) extends WorkbookInteractionElement[ProgrammingExerciseWithLlmScaffoldingAndGrading.type] derives upickle.default.ReadWriter {
   override val associatedFactory = ProgrammingExerciseFullJava.factory
 
@@ -44,14 +55,18 @@ object ProgrammingExerciseFullJava {
           element.elementId,
           element.getOptionalElementAs[Option[BeTestSuite]]("testSuite", None),
           element.getOptionalElementAs[String]("startingProgram", defaultStartingProgram),
-          element.getOptionalElementAs[Option[LanguageMapContentId]]("hintTask", None)
+          element.getOptionalElementAs[Option[LanguageMapContentId]]("hintTask", None),
+          element.getOptionalElementAs[Option[LanguageMapContentId]]("instructionText", None),
+          element.getOptionalElementAs[Option[ExerciseDataView]]("dataView", None)
         )
 
       override def toSerializableElement(element: ProgrammingExerciseFullJava): WorkbookElementSerializable =
         val base = toFactoryBase(element).withElementAddedAs("testSuite", element.testSuite)
         val withSource = if element.startingProgram == defaultStartingProgram then base
         else base.withElementAdded("startingProgram", element.startingProgram)
-        element.hintTask.fold(withSource)(_ => withSource.withElementAddedAs("hintTask", element.hintTask))
+        val withHint = element.hintTask.fold(withSource)(_ => withSource.withElementAddedAs("hintTask", element.hintTask))
+        val withInstruction = element.instructionText.fold(withHint)(_ => withHint.withElementAddedAs("instructionText", element.instructionText))
+        element.dataView.fold(withInstruction)(_ => withInstruction.withElementAddedAs("dataView", element.dataView))
 
       lazy override val writerJsonRegularRefBased: Writer[ProgrammingExerciseFullJava] = macroRW
     }
