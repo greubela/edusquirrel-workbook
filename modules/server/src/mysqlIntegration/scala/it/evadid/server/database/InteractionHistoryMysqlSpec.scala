@@ -638,13 +638,21 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
-  test("unknown stored format names fail with a clear exception") {
-    store(history())
-    MysqlTestDatabase.withConnection { connection =>
-      Using.resource(connection.createStatement())(_.executeUpdate("UPDATE sync_context_id SET format='unknown-format'"))
+  test("a history saved under an unknown format name is discarded and the other histories still load") {
+    val other = context.toSyncContext("other_history")
+    Seq(RelationalFormat -> "sync_context_id", BlobFormat -> "blob_history").foreach { (storage, table) =>
+      MysqlTestDatabase.withConnection(MysqlTestDatabase.reset)
+      store(history(), storage)
+      UpsertToDatabase.handleRequest(StoreToDbRequest(other, encoded(history("other")), config, storage), logger)
+      MysqlTestDatabase.withConnection { connection =>
+        Using.resource(connection.createStatement())(_.executeUpdate(s"UPDATE $table SET format='unknown-format' WHERE variable_id='$key'"))
+      }
+      val fetched = fetch(storage)
+      assertEquals(fetched.keySet, Set(other), storage.toString)
+      assertEquals(read[History](fetched(other)).allStates, history("other").allStates)
+      // Writing to it is refused rather than overwriting data this version cannot read.
+      intercept[IllegalArgumentException](store(history("later", time.plusDays(1)), storage))
     }
-    val error = intercept[IllegalArgumentException](fetch())
-    assert(error.getMessage.contains("Unknown interaction format"))
   }
 
   test("relational inclusive ranges preserve adjacent nanoseconds across midnight") {

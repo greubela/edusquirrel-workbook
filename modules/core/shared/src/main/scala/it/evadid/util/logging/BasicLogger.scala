@@ -13,7 +13,7 @@ case class BasicLogger() extends Logger {
   override def log(msg: String, level: LoggingLevel): Unit = level.match{
     case INFO => out.append(msg).append("\n")
     case WARN => out.append(msg).append("\n")
-    case ERROR => out.append(msg).append("\n")
+    case ERROR => err.append(msg).append("\n")
   }
 
 }

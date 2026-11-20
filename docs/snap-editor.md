@@ -61,6 +61,15 @@ additional native selectors requires adding them to the shared catalogue and
 reviewing their conversion support first. Python compatibility is derived from
 the selected layout, not supplied by the exercise author.
 
+Mixed entries may also name predefined module blocks by id (`NumberList.get`,
+`NumberList.set`, `NumberList.swap`, `NumberList.length`; see
+[`SnapModuleBlocks`](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapModuleBlocks.scala)).
+`ProgrammingEditorPalette.NumberList` combines them with control, operator and
+variable blocks and Make a block. The editor imports the listed definitions into
+the project as Snap imports a blocks library when they are missing, adding the
+`number list` variable only if absent, and shows their templates in palette
+order; module blocks are never retagged into another tab.
+
 Custom layouts use the same `SnapCodeEditorConfig.forPalette` mapping as presets;
 the exercise factory stores them in both JSON and constructor-style definitions.
 Palette selection controls offered blocks, not acceptance of submitted programs.

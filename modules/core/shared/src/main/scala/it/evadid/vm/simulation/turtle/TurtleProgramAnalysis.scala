@@ -14,7 +14,7 @@ object TurtleProgramAnalysis {
   def apply(expression: BeExpression, limits: TurtleExecutionLimits = TurtleExecutionLimits(),
       isCancelled: () => Boolean = () => false): TurtleCommandExecutionInfo[Double] = {
     val execution = BeProgramInterpreter.run(expression, limits = limits, isCancelled = isCancelled)
-    TurtleCommandExecutionInfo(execution.turtleCommands, commandSites(expression), execution.status)
+    TurtleCommandExecutionInfo(execution.moduleCommands(it.evadid.vm.modules.BeModules.Turtle), commandSites(expression), execution.status)
   }
 
   /** Static analysis can also be requested without executing the program. */

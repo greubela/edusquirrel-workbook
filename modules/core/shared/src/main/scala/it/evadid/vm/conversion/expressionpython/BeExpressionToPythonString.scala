@@ -4,10 +4,11 @@ package it.evadid.vm.conversion.expressionpython
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Python}
 import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
-import it.evadid.vm.code.usage.BeFunctionCall
+import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.conversion.printing.{GenericJavaLikeStringPrinter, ModuleLayout}
 import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter.PythonSeparation
 import it.evadid.vm.naming.NamingStyle
+import it.evadid.vm.types.BeDataValueUnit
 
 case class BeExpressionToPythonString
 (language: HumanLanguage, skipUnparsable: Boolean)
@@ -20,8 +21,8 @@ case class BeExpressionToPythonString
   override protected def callName(call: BeFunctionCall): String =
     if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
       "turtle." + entityName(call.funcDef.functionTypeInfo.displayName)
-    else if it.evadid.vm.simulation.data.DataLibraries.isDataMethod(call.funcDef) then
-      it.evadid.vm.simulation.data.DataLibraries.ownerName(call.funcDef).get + "." + entityName(call.funcDef.functionTypeInfo.displayName)
+    else if it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).nonEmpty then
+      it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).get + "." + entityName(call.funcDef.functionTypeInfo.displayName)
     else super.callName(call)
   override protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
     function.functionTypeInfo.funcType match {
@@ -60,6 +61,7 @@ case class BeExpressionToPythonString
   }
 
   override def forOther(other: BeExpression): String = other match {
+    case BeUseValue(BeDataValueUnit(), _) => "None"
     case call: BeFunctionCall if call.isOperator =>
       formatOperatorCall(call)
     case _ =>

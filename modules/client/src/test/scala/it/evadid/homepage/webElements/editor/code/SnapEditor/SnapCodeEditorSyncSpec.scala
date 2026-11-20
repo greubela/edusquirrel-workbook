@@ -15,14 +15,12 @@ import munit.FunSuite
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 import scala.scalajs.js
+import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 
 class SnapCodeEditorSyncSpec extends FunSuite {
   private val logger = it.evadid.util.logging.Logger.withNameAndPrefixes(Some("test"), it.evadid.util.logging.derived.PrintToStdLogger.printNothing)
   private val globals = js.Dynamic.global.globalThis
-  private val requireFn = js.Dynamic.global.selectDynamic("require")
-  private val root = js.Dynamic.global.process.cwd().asInstanceOf[String]
-  private val jsdom = requireFn(root + "/node_modules/jsdom")
-  private val window = js.Dynamic.newInstance(jsdom.JSDOM)("<html><body></body></html>").window
+  private val window = EditorDomSuite.window
   private val names = List("window", "document", "Element", "Node")
   private var previous = List.empty[(String, js.Dynamic)]
 
@@ -36,7 +34,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       if js.isUndefined(descriptor) then js.special.delete(globals, name)
       else js.Dynamic.global.Object.defineProperty(globals, name, descriptor)
     }
-    window.close()
   }
 
   private def withKeyboard(test: it.evadid.facades.Snap.KeyboardInput => Unit): Unit = {

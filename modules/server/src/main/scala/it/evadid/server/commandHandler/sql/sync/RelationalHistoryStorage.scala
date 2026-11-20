@@ -3,7 +3,7 @@ package it.evadid.server.commandHandler.sql.sync
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncSuccess, UsageContext}
+import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.variable.events.*
@@ -53,13 +53,11 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     }
   }
 
-  private def histories(context: UsageContext, keys: Seq[String], range: Option[(LocalDateTime, LocalDateTime)]): DbFetchResponse = {
+  /** Stored contexts as (sync id, format name); their events are read by the per-record read rule. */
+  private def contexts(context: UsageContext, keys: Seq[String]): Seq[(SyncContext, (Long, String))] = {
     val keyFilter = if keys.isEmpty then "" else " AND variable_id IN (" + keys.map(_ => "?").mkString(",") + ")"
-    val contexts = query("SELECT id,variable_id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=?" + keyFilter,
-      List(context.programId, context.scenarioId, context.userId) ++ keys)(row => (row.getLong(1), row.getString(2), InteractionFormat.fromName(row.getString(3))))
-    DbFetchResponse(contexts.map { (sync, key, format) =>
-      context.toSyncContext(key) -> readHistory[format.type](sync, format, range)
-    }.toMap)
+    query("SELECT id,variable_id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=?" + keyFilter,
+      List(context.programId, context.scenarioId, context.userId) ++ keys)(row => context.toSyncContext(row.getString(2)) -> (row.getLong(1), row.getString(3)))
   }
 
   private def readHistory[F <: InteractionFormat](sync: Long, format: F, range: Option[(LocalDateTime, LocalDateTime)]): InteractionHistoryJson = {
@@ -100,7 +98,10 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
       case EventSyncStrategy.SYNC_EVERYTHING | _: EventSyncStrategy.KeepImportance => Some(request.starting -> request.until)
       case _ => None
     }
-    DbFetchResponse(InteractionHistoryJson.readable(histories(request.usageContext, request.keys, range).fetchedElements)(identity,
+    DbFetchResponse(InteractionHistoryJson.readable(contexts(request.usageContext, request.keys))({ (sync, name) =>
+        val format = InteractionFormat.fromName(name)
+        readHistory[format.type](sync, format, range)
+      },
       request.strategy, request.starting, request.until,
       (key, error) => logger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error)))
   }

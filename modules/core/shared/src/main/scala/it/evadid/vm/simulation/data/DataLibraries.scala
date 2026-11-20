@@ -61,8 +61,8 @@ object DataWorld {
 }
 
 /**
- * Library classes `NumberList` and `Sudoku`, bound like `Turtle` but only through their class name.
- * Java and Python print the calls as `NumberList.get(i)` / `Sudoku.set(row, column, value)`.
+ * Function signatures of the `NumberList` and `Sudoku` modules ([[it.evadid.vm.modules.BeModules]]), bound
+ * like `Turtle` but only through their class name. Java and Python print the calls as `NumberList.get(i)`.
  */
 object DataLibraries {
   private def variable(name: String) = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), BeDataType.Int)
@@ -84,14 +84,6 @@ object DataLibraries {
     ("remove", List("row", "column"), false)))
 
   private val byOwner = Map("numberlist" -> numberList, "number_list" -> numberList, "sudoku" -> sudoku)
-
-  /** Source class name used by the printers. */
-  def ownerName(definition: BeDefineFunction): Option[String] = definition.intrinsic.collect {
-    case BeIntrinsic.NumberList => "NumberList"
-    case BeIntrinsic.Sudoku => "Sudoku"
-  }
-
-  def isDataMethod(definition: BeDefineFunction): Boolean = ownerName(definition).nonEmpty
 
   /** Resolves `NumberList.get`, `Sudoku.set`, …; unqualified names never bind to a library. */
   def resolveMethod(sourceName: String): Option[BeDefineFunction] = sourceName.trim.split('.').toList match {

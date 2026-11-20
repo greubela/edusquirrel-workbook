@@ -6,6 +6,7 @@ import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.simulation.{ProgramEntry, ProgramExecution}
 import it.evadid.vm.simulation.turtle.TurtleProgramAnalysis
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.vm.modules.{BeModules, ModuleCommand}
 import munit.FunSuite
 import upickle.default.*
 
@@ -23,7 +24,7 @@ class DataLibrariesSpec extends FunSuite {
     assertEquals(DataLibraries.numberList.methods.map(DataLibraries.methodName).toSet, Set("get", "set", "swap", "length"))
     assertEquals(DataLibraries.sudoku.methods.map(DataLibraries.methodName).toSet, Set("get", "set", "remove"))
     val get = DataLibraries.resolveMethod("Sudoku.get").get
-    assertEquals((DataLibraries.ownerName(get), DataLibraries.isDataMethod(get)), (Some("Sudoku"), true))
+    assertEquals((BeModules.of(get), BeModules.qualifiedName(get)), (Some(BeModules.Sudoku), Some("Sudoku")))
     assertEquals(get.inputs.size, 2)
   }
 
@@ -31,12 +32,12 @@ class DataLibrariesSpec extends FunSuite {
     ProgrammingStateRaw(language, code).toBeExpression.expression.subtree.collect { case call: BeFunctionCall => call }.toList
 
   test("Python and Java bind library calls; unqualified user functions with library method names stay ordinary") {
-    assert(calls(Python, "NumberList.swap(0, 1)\n").exists(call => DataLibraries.isDataMethod(call.funcDef)))
+    assert(calls(Python, "NumberList.swap(0, 1)\n").exists(call => BeModules.qualifiedName(call.funcDef).nonEmpty))
     assert(calls(Java, "public class Main {\n  public static void main(String[] args) {\n    Sudoku.set(0, 2, 4);\n  }\n}").exists(call =>
       call.funcDef.intrinsic.contains(BeIntrinsic.Sudoku)))
-    assert(!calls(Python, "def get(i):\n    return i\nget(1)\n").exists(call => DataLibraries.isDataMethod(call.funcDef)))
+    assert(!calls(Python, "def get(i):\n    return i\nget(1)\n").exists(call => BeModules.qualifiedName(call.funcDef).nonEmpty))
     val shadowed = calls(Python, "def swap(a, b):\n    pass\nswap(0, 1)\n")
-    assert(shadowed.nonEmpty && !shadowed.exists(call => DataLibraries.isDataMethod(call.funcDef)))
+    assert(shadowed.nonEmpty && !shadowed.exists(call => BeModules.qualifiedName(call.funcDef).nonEmpty))
   }
 
   test("library calls are not counted as turtle command sites") {
@@ -72,8 +73,8 @@ class DataLibrariesSpec extends FunSuite {
   test("the default data and commands serialize and round-trip") {
     assertEquals(DataWorld().list, DataWorld.defaultList)
     assertEquals(DataWorld().sudoku.cells.count(_ == 0), 3)
-    val execution = ProgramExecution(Nil, List(ListCommand.Swap(0, 1), ListCommand.Length(2)),
-      List(SudokuCommand.Remove(0, 2)), DataWorld(), Some(1.0), it.evadid.vm.simulation.turtle.TurtleExecutionStatus.Completed)
+    val execution = ProgramExecution(List(ModuleCommand.NumberList(ListCommand.Swap(0, 1)), ModuleCommand.Sudoku(SudokuCommand.Remove(0, 2)),
+      ModuleCommand.NumberList(ListCommand.Length(2))), DataWorld(), Some(1.0), it.evadid.vm.simulation.turtle.TurtleExecutionStatus.Completed)
     assertEquals(read[ProgramExecution](write(execution)), execution)
     assertEquals(read[ProgramEntry](write[ProgramEntry](ProgramEntry.Call("f", Seq(1.0)))), ProgramEntry.Call("f", Seq(1.0)))
   }

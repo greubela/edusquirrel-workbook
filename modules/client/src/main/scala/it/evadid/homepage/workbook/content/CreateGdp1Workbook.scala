@@ -83,7 +83,7 @@ case class CreateGdp1Workbook(override val fullInfo: FullInfo) extends WorkbookF
       container(key("sortTitle"), Seq(
         instructionMarkdown(key("sortInstruction")),
         SortListExercise(s"$workbookId-sort", ProgrammingStatePythonStructured(CreateGdp1Workbook.sortProgram), "sortiere",
-          method = SortingMethod.SwapsOnly, instructionText = Some(content("sortInstruction")))))
+          method = SortingMethod.SwapsOnly, allowedLanguages = Seq(SnapLanguage, Python, Java), instructionText = Some(content("sortInstruction")))))
     ))), User.AndreGreubel)
 
   /** A full Java exercise whose unit tests run on the shared interpreter against the provided list or sudoku. */

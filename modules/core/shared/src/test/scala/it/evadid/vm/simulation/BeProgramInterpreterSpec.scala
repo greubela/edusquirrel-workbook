@@ -4,6 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.vm.simulation.data.{DataWorld, ListCommand, SudokuCommand, SudokuGrid}
 import it.evadid.vm.simulation.turtle.{TurtleExecutionLimits, TurtleExecutionStatus}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStateRaw}
+import it.evadid.vm.modules.BeModules
 import munit.FunSuite
 
 class BeProgramInterpreterSpec extends FunSuite {
@@ -22,15 +23,15 @@ class BeProgramInterpreterSpec extends FunSuite {
   test("list commands are extracted from a call like turtle commands, with the data afterwards") {
     val run = swap.toBeExpression.execute(DataWorld(list = Vector(4, 8, 15)), ProgramEntry.Call("tausche", Seq(0, 2)))
     assertEquals(run.status, TurtleExecutionStatus.Completed)
-    assertEquals(run.completedListCommands, List(ListCommand.Get(0, 4), ListCommand.Get(2, 15), ListCommand.Set(0, 15), ListCommand.Set(2, 4)))
+    assertEquals(run.completedModuleCommands(BeModules.NumberList), List(ListCommand.Get(0, 4), ListCommand.Get(2, 15), ListCommand.Set(0, 15), ListCommand.Set(2, 4)))
     assertEquals(run.world.list, Vector(15, 8, 4))
-    assertEquals(run.turtleCommands, Nil)
+    assertEquals(run.moduleCommands(BeModules.Turtle), Nil)
   }
 
   test("the startup run uses the default data and is available on the expression state") {
     val run = swap.toBeExpression.programExecution
     assertEquals(run.world.list, Vector(9, 3, 7, 1, 5))
-    assertEquals(run.listCommands.count(_.isInstanceOf[ListCommand.Set]), 2)
+    assertEquals(run.moduleCommands(BeModules.NumberList).count(_.isInstanceOf[ListCommand.Set]), 2)
   }
 
   test("library calls print qualified and bind again after a round trip through Python") {
@@ -57,7 +58,7 @@ class BeProgramInterpreterSpec extends FunSuite {
     assertEquals(program.execute(entry = ProgramEntry.Call("fakultaet", Seq(5))).returnValue, Some(120.0))
     val guarded = program.execute(DataWorld(list = Vector(3)), ProgramEntry.Call("sicher", Seq(4)))
     assertEquals((guarded.status, guarded.returnValue), (TurtleExecutionStatus.Completed, Some(0.0)))
-    assertEquals(guarded.listCommands, List(ListCommand.Length(1)), "the right operand is not evaluated")
+    assertEquals(guarded.moduleCommands(BeModules.NumberList), List(ListCommand.Length(1)), "the right operand is not evaluated")
   }
 
   test("for loops ascend and run zero times when the start is beyond the end, as in Java and Python") {
@@ -70,7 +71,7 @@ class BeProgramInterpreterSpec extends FunSuite {
         |    public static void main(String[] args) {
         |    }""".stripMargin).toBeExpression
     val single = program.execute(DataWorld(list = Vector(7)), ProgramEntry.Call("markiere"))
-    assertEquals((single.status, single.world.list, single.listCommands), (TurtleExecutionStatus.Completed, Vector(7), List(ListCommand.Length(1))))
+    assertEquals((single.status, single.world.list, single.moduleCommands(BeModules.NumberList)), (TurtleExecutionStatus.Completed, Vector(7), List(ListCommand.Length(1))))
   }
 
   test("sudoku operations record commands, read 0 for empty cells and protect givens") {
@@ -83,9 +84,9 @@ class BeProgramInterpreterSpec extends FunSuite {
         |    public static void main(String[] args) {
         |    }""".stripMargin).toBeExpression
     val run = program.execute(entry = ProgramEntry.Call("probe"))
-    assertEquals(run.sudokuCommands, List(SudokuCommand.Get(0, 2, 0), SudokuCommand.Set(0, 2, 4), SudokuCommand.Remove(0, 2)))
+    assertEquals(run.moduleCommands(BeModules.Sudoku), List(SudokuCommand.Get(0, 2, 0), SudokuCommand.Set(0, 2, 4), SudokuCommand.Remove(0, 2)))
     assert(run.status.toString.contains("given"), run.status.toString)
-    intercept[IllegalArgumentException](run.completedSudokuCommands)
+    intercept[IllegalArgumentException](run.completedModuleCommands(BeModules.Sudoku))
     assertEquals(run.world.sudoku, SudokuGrid.default)
   }
 
@@ -167,20 +168,20 @@ class BeProgramInterpreterSpec extends FunSuite {
         |    public static void main(String[] args) {
         |    }""".stripMargin).toBeExpression
     val deep = recursion.execute(entry = ProgramEntry.Call("tief", Seq(0)), limits = TurtleExecutionLimits(maxCallDepth = 5))
-    assertEquals((deep.status, deep.listCommands.size), (TurtleExecutionStatus.LimitExceeded, 5))
+    assertEquals((deep.status, deep.moduleCommands(BeModules.NumberList).size), (TurtleExecutionStatus.LimitExceeded, 5))
     val bounded = arithmetic.execute(DataWorld(list = Vector(0)), ProgramEntry.Call("zaehle", Seq(100)), TurtleExecutionLimits(maxDataCommands = 4))
-    assertEquals((bounded.status, bounded.listCommands.size), (TurtleExecutionStatus.LimitExceeded, 4))
+    assertEquals((bounded.status, bounded.moduleCommands(BeModules.NumberList).size), (TurtleExecutionStatus.LimitExceeded, 4))
     val steps = arithmetic.execute(DataWorld(list = Vector(0)), ProgramEntry.Call("zaehle", Seq(100)), TurtleExecutionLimits(maxSteps = 20))
     assertEquals(steps.status, TurtleExecutionStatus.LimitExceeded)
-    intercept[IllegalArgumentException](steps.completedListCommands)
+    intercept[IllegalArgumentException](steps.completedModuleCommands(BeModules.NumberList))
   }
 
   test("cancellation stops a run, and startup runs record turtle and list commands together") {
     val cancelled = BeProgramInterpreter.run(swap.toBeExpression.expression, isCancelled = () => true)
     assertEquals(cancelled.status, TurtleExecutionStatus.Cancelled)
     val mixed = ProgrammingStateRaw(Python, "forward(10)\nNumberList.swap(0, 1)\nright(90)\n").toBeExpression.programExecution
-    assertEquals(mixed.completedTurtleCommands.map(_.name.universalInterpretation()), List("forward", "right"))
-    assertEquals(mixed.completedListCommands, List(ListCommand.Swap(0, 1)))
+    assertEquals(mixed.completedModuleCommands(BeModules.Turtle).map(_.name.universalInterpretation()), List("forward", "right"))
+    assertEquals(mixed.completedModuleCommands(BeModules.NumberList), List(ListCommand.Swap(0, 1)))
   }
 
   test("recursive calls keep their caller's locals, while functions still update module variables") {
@@ -204,7 +205,7 @@ class BeProgramInterpreterSpec extends FunSuite {
     val nested = program.execute(DataWorld(list = Vector(0, 0)), ProgramEntry.Call("tiefe", Seq(2)))
     // Every level runs its own loop to the end: 3 + 3·3 + 3·3·3 assignments, the last one from the outermost loop.
     assertEquals((nested.status, nested.returnValue), (TurtleExecutionStatus.Completed, Some(2.0)))
-    assertEquals(nested.listCommands.size, 39)
+    assertEquals(nested.moduleCommands(BeModules.NumberList).size, 39)
     assertEquals(nested.world.list, Vector(2, 0))
   }
 }

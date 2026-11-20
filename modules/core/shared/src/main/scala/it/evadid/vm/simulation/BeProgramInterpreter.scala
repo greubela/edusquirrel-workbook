@@ -10,6 +10,7 @@ import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeCallTarget, BeFunctionCall, BeObjectExpression, BeUseValue}
 import it.evadid.vm.conversion.snapexpression.{SnapControlFlow, SnapExpressionSupport}
 import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.modules.{BeModule, BeModules, ModuleCommand}
 import it.evadid.vm.simulation.data.{DataLibraries, DataWorld, ListCommand, SudokuCommand, SudokuGrid}
 import it.evadid.vm.simulation.turtle.{TurtleCommandSites, TurtleExecutionLimits, TurtleExecutionStatus}
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
@@ -31,19 +32,20 @@ enum ProgramEntry derives ReadWriter {
  * `returnValue` is the numeric result of a called function (booleans are 1 and 0).
  */
 final case class ProgramExecution(
-    turtleCommands: List[TurtleCommand[Double]],
-    listCommands: List[ListCommand],
-    sudokuCommands: List[SudokuCommand],
+    recorded: List[ModuleCommand],
     world: DataWorld,
     returnValue: Option[Double],
     status: TurtleExecutionStatus) derives ReadWriter {
   def completed: Boolean = status == TurtleExecutionStatus.Completed
 
+  /** The calls of `module`'s functions in program order, typed as that module's commands. */
+  def moduleCommands[C](module: BeModule[C]): List[C] = recorded.flatMap(module.command)
+
   /** Grading callers must not silently accept a partial execution. */
-  def completedListCommands: List[ListCommand] = { requireCompleted(); listCommands }
-  def completedSudokuCommands: List[SudokuCommand] = { requireCompleted(); sudokuCommands }
-  def completedTurtleCommands: List[TurtleCommand[Double]] = { requireCompleted(); turtleCommands }
-  private def requireCompleted(): Unit = require(completed, s"Program execution did not complete: $status.")
+  def completedModuleCommands[C](module: BeModule[C]): List[C] = {
+    require(completed, s"Program execution did not complete: $status.")
+    moduleCommands(module)
+  }
 }
 
 /**
@@ -72,8 +74,7 @@ object BeProgramInterpreter {
           after.copy(returned = Some(returned))
       }
     }
-    ProgramExecution(finished.commands.toList, finished.listCommands.toList, finished.sudokuCommands.toList, finished.world,
-      finished.returned.collect { case Value.Num(number) => number }, finished.status)
+    ProgramExecution(finished.recorded.toList, finished.world, finished.returned.collect { case Value.Num(number) => number }, finished.status)
   }
 
   private val booleanOperators = Set("<", ">", "==", "<=", ">=", "!=", "and", "or", "not")
@@ -112,9 +113,10 @@ object BeProgramInterpreter {
       env: Map[String, Value],
       defs: Map[String, BeDefineFunction],
       world: DataWorld,
-      commands: Vector[TurtleCommand[Double]] = Vector.empty,
-      listCommands: Vector[ListCommand] = Vector.empty,
-      sudokuCommands: Vector[SudokuCommand] = Vector.empty,
+      /** Calls of module functions in program order; the counts bound each kind separately. */
+      recorded: Vector[ModuleCommand] = Vector.empty,
+      turtleCount: Int = 0,
+      dataCount: Int = 0,
       steps: Int = 0,
       callDepth: Int = 0,
       status: TurtleExecutionStatus = TurtleExecutionStatus.Completed,
@@ -123,7 +125,6 @@ object BeProgramInterpreter {
       /** Module variables: names assigned or declared outside every function call. */
       globals: Set[String] = Set.empty) {
     def running: Boolean = status == TurtleExecutionStatus.Completed && returned.isEmpty
-    def dataCommandCount: Int = listCommands.size + sudokuCommands.size
     /** Binds `name`; at module level (outside calls) it becomes a module variable. */
     def bind(name: String, value: Value): State =
       copy(env = env.updated(name, value), globals = if callDepth == 0 then globals + name else globals)
@@ -231,7 +232,7 @@ object BeProgramInterpreter {
   // Calls
 
   private def interpretCall(unresolved: BeFunctionCall, before: State, limits: TurtleExecutionLimits, isCancelled: () => Boolean): State = {
-    val library = DataLibraries.isDataMethod(unresolved.funcDef)
+    val library = isDataModule(unresolved.funcDef)
     if !unresolved.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(unresolved.funcDef) && !library then
       unsupportedObjectExecution()
     else if unresolved.isOperator then before
@@ -251,13 +252,13 @@ object BeProgramInterpreter {
     val command = TurtleCommand.fromCall(BeEntityName.fromCodeString(name),
       call.arguments.flatMap(numericArg(_, state)), call.arguments.flatMap(stringArg))
     if !command.args.forall(_.isFinite) then state.copy(status = TurtleExecutionStatus.Failed("A drawing command needs finite numbers."))
-    else if state.commands.size >= limits.maxCommands then state.copy(status = TurtleExecutionStatus.LimitExceeded)
-    else state.copy(commands = state.commands :+ command)
+    else if state.turtleCount >= limits.maxCommands then state.copy(status = TurtleExecutionStatus.LimitExceeded)
+    else state.copy(recorded = state.recorded :+ ModuleCommand.Turtle(command), turtleCount = state.turtleCount + 1)
   }
 
   private def userDefinition(call: BeFunctionCall, state: State): Option[BeDefineFunction] =
     if call.isOperator || !call.target.isInstanceOf[BeCallTarget.Function] || TurtleCommand.isTurtleMethod(call.funcDef) ||
-      DataLibraries.isDataMethod(call.funcDef) then None
+      isDataModule(call.funcDef) then None
     else state.defs.get(SnapExpressionSupport.pythonName(call))
 
   /** Runs one of the program's own functions on argument values; returns what it returned. */
@@ -293,7 +294,7 @@ object BeProgramInterpreter {
         }
       case call: BeFunctionCall =>
         val (resolved, evaluated) = resolveArguments(call, state, limits, isCancelled)
-        if DataLibraries.isDataMethod(resolved.funcDef) then {
+        if isDataModule(resolved.funcDef) then {
           val (value, after) = dataOperation(resolved.funcDef, resolved.arguments.map(evalNumber(_, evaluated)), evaluated, limits)
           (literal(Value.Num(value)), after)
         } else userDefinition(resolved, evaluated) match {
@@ -448,12 +449,15 @@ object BeProgramInterpreter {
 
   // Data libraries
 
+  private def isDataModule(definition: BeDefineFunction): Boolean =
+    BeModules.of(definition).exists(module => module == BeModules.NumberList || module == BeModules.Sudoku)
+
   private def whole(value: Double, what: String): Int =
     if value.isWhole && value.abs <= Int.MaxValue then value.toInt
     else throw IllegalArgumentException(s"$what must be a whole number, not $value.")
 
   private def dataOperation(definition: BeDefineFunction, values: List[Double], state: State, limits: TurtleExecutionLimits): (Double, State) =
-    if state.dataCommandCount >= limits.maxDataCommands then (0.0, state.copy(status = TurtleExecutionStatus.LimitExceeded))
+    if state.dataCount >= limits.maxDataCommands then (0.0, state.copy(status = TurtleExecutionStatus.LimitExceeded))
     else definition.intrinsic match {
       case Some(BeIntrinsic.NumberList) => listOperation(DataLibraries.methodName(definition), values, state)
       case Some(BeIntrinsic.Sudoku) => sudokuOperation(DataLibraries.methodName(definition), values, state)
@@ -468,8 +472,8 @@ object BeProgramInterpreter {
         throw IllegalArgumentException(s"Position $position is outside the list (positions 0 to ${list.size - 1}).")
       position
     }
-    def record(command: ListCommand, changed: Vector[Int] = list) =
-      state.copy(listCommands = state.listCommands :+ command, world = state.world.copy(list = changed))
+    def record(command: ListCommand, changed: Vector[Int] = list) = state.copy(recorded = state.recorded :+ ModuleCommand.NumberList(command),
+      dataCount = state.dataCount + 1, world = state.world.copy(list = changed))
     (method, values) match {
       case ("get", List(position)) =>
         val i = index(position)
@@ -496,8 +500,8 @@ object BeProgramInterpreter {
     def changeable(row: Int, column: Int): Unit =
       if grid.givens(row * 9 + column) then
         throw IllegalArgumentException(s"Row $row, column $column holds a given number and cannot be changed.")
-    def record(command: SudokuCommand, changed: SudokuGrid = grid) =
-      state.copy(sudokuCommands = state.sudokuCommands :+ command, world = state.world.copy(sudoku = changed))
+    def record(command: SudokuCommand, changed: SudokuGrid = grid) = state.copy(recorded = state.recorded :+ ModuleCommand.Sudoku(command),
+      dataCount = state.dataCount + 1, world = state.world.copy(sudoku = changed))
     (method, values) match {
       case ("get", List(r, c)) =>
         val (row, column) = (coordinate(r, "Row"), coordinate(c, "Column"))

@@ -110,6 +110,13 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
     }.andThen(_ => close())
   }
 
+  test("the sort overview shows a Snap answer as Python, with its number-list blocks as NumberList calls") {
+    val blocks = ProgrammingStateRaw(it.evadid.core.datastructures.language.AppLanguage.SnapLanguage, sortExercise.initProgram.toSnapXml.code)
+    val shown = HtmlSortListExerciseRenderer.source(blocks)
+    assert(shown.contains("NumberList.swap(0, 1)") && !shown.contains("<project"), shown)
+    assertEquals(HtmlSortListExerciseRenderer.source(sortExercise.initProgram), "def sortiere():\n    NumberList.swap(0, 1)\n")
+  }
+
   test("the editor side modules replay sorting and turtle drawings") {
     load(sortExercise)
     val sortCard = HtmlSortListExerciseRenderer.sortStepsCard(sortExercise, Var(sortExercise.initProgram)).getDomElement()

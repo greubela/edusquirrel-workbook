@@ -94,6 +94,10 @@ trait BeExpression {
       case _ => Vector.empty
     }
 
+  /** The calls of `module`'s functions in this subtree, in source order. */
+  def moduleCalls(module: it.evadid.vm.modules.BeModule[?]): Vector[BeFunctionCall] =
+    subtree.collect { case call: BeFunctionCall if module.owns(call.funcDef) => call }
+
   def recToTree(withExtensions: Boolean, myPosition: BeChildInfo): BeExpressionTree = {
     val root: BeExpressionNode = BeExpressionReference(myPosition, this)
 

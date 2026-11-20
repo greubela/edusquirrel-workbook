@@ -136,7 +136,11 @@ class ProgramDataTestGraderSpec extends FunSuite {
     assert(statuses.forall(_ == GradingStatus.Correct()), statuses)
     intercept[IllegalArgumentException](exercise.copy(testLists = Nil))
     intercept[IllegalArgumentException](exercise.copy(sortFunction = " "))
-    intercept[IllegalArgumentException](exercise.copy(allowedLanguages = Seq(SnapLanguage)))
+    intercept[IllegalArgumentException](exercise.copy(allowedLanguages = Nil))
+    // In Snap the number-list blocks call the same functions, so a block solution passes the same tests.
+    val blocks = ProgrammingStateRaw(SnapLanguage, bubble.toSnapXml.code)
+    val snapStatuses = exercise.copy(allowedLanguages = Seq(SnapLanguage)).sortTests.map(_.evaluate(blocks)._1)
+    assert(snapStatuses.forall(_ == GradingStatus.Correct()), snapStatuses)
   }
 
   test("full Java exercises keep their data view and instruction through serialization") {

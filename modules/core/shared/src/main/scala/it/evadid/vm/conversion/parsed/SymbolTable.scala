@@ -59,6 +59,9 @@ object SymbolTable {
       )
     }
 
+    def removeOperator(key: (String, Int), function: BeDefineFunction): CurrentlyKnownStructures =
+      copy(operators = operators.updatedWith(key)(_.map(_.filterNot(_ eq function))))
+
     def addClass(name: String, clazz: BeDefineClass): CurrentlyKnownStructures =
       copy(classes = classes.updated(name, clazz))
 
@@ -221,14 +224,13 @@ object SymbolTable {
         functionsByName.update(name, updated)
         val idx = functionsBuffer.indexWhere(_ eq function)
         if (idx >= 0) functionsBuffer.update(idx, updated)
-        val operatorKey = name -> updated.inputs.length
-        if (operatorFunctions.contains(operatorKey)) {
-          val existing = operatorFunctions(operatorKey)
-          val replaced =
-            if (existing.exists(_ eq function)) existing.map(cur => if (cur eq function) updated else cur)
-            else existing :+ updated
-          operatorFunctions.update(operatorKey, replaced)
-          currentlyKnownStructures = currentlyKnownStructures.addOperator(name, updated)
+        // Operators are registered by arity: a widened operator moves from its old key to the new one.
+        val previousKey = name -> function.inputs.length
+        if (operatorFunctions.get(previousKey).exists(_.exists(_ eq function))) {
+          operatorFunctions.update(previousKey, operatorFunctions(previousKey).filterNot(_ eq function))
+          val widenedKey = name -> updated.inputs.length
+          operatorFunctions.update(widenedKey, operatorFunctions.getOrElse(widenedKey, Nil) :+ updated)
+          currentlyKnownStructures = currentlyKnownStructures.removeOperator(previousKey, function).addOperator(name, updated)
         } else {
           currentlyKnownStructures = currentlyKnownStructures.addFunction(name, updated)
         }
