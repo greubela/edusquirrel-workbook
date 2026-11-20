@@ -133,7 +133,7 @@ final class CppParserSpec extends FunSuite {
     val result = CppParser.parseCppWithDiagnostics(
       "while (name != \"a)\") { x++; } if (analogRead(0) > 512) { } else { y--; } for (int i = 0; i < 2; i++) { z *= 2; }")
     assertEquals(result.unsupportedStatements, List("x++", "y--", "z *= 2"))
-    val Seq(BeWhile(whileCondition, _), BeIfElse(ifCondition, _, _), BeRepeatNr(2, _)) = result.sequence.body: @unchecked
+    val Seq(BeWhile(whileCondition, _), BeIfElse(ifCondition, _, _), BeRepeatNr(BeUseValue(BeDataValueLiteral("2"), None), _)) = result.sequence.body: @unchecked
     assertComparison(whileCondition, "!=", reference(variable("name",
       DefaultDefinitions.operatorDefinitionsBySymbolAndArity("!=" -> 2).inputs.head.variableType)), literal("\"a)\""))
     val operator = DefaultDefinitions.operatorDefinitionsBySymbolAndArity(">" -> 2)
@@ -151,7 +151,7 @@ final class CppParserSpec extends FunSuite {
   test("counted for loops become repeat blocks with the computed iteration count") {
     val result = CppParser.parseCppWithDiagnostics("for (int i = 0; i < 10; i++) { tick(); n++; }")
     val BeRepeatNr(ten, loopBody) = result.sequence.body.head: @unchecked
-    assertEquals(ten, 10)
+    assertEquals(ten, literal("10"))
     assertEquals(call(loopBody.body.head), named("tick"))
     assertEquals(result.unsupportedStatements, List("n++"))
     val counts = Seq(
@@ -160,7 +160,7 @@ final class CppParserSpec extends FunSuite {
       "for (int i = 0; i < 3; i = i + 1) { }",
       "for (int i = 0; i <= 0; i = 1 + i) { }"
     ).map(source => body(source).head match {
-      case BeRepeatNr(amount, _) => amount
+      case BeRepeatNr(BeUseValue(BeDataValueLiteral(amount), _), _) => amount.toInt
       case other => fail(s"$source parsed as $other")
     })
     assertEquals(counts, Seq(5, 5, 3, 1))
@@ -179,7 +179,7 @@ final class CppParserSpec extends FunSuite {
     sources.foreach { source =>
       val result = CppParser.parseCppWithDiagnostics(source)
       result.sequence.body match {
-        case Seq(BeExpressionUnsupported(original, Some(Cpp))) =>
+        case Seq(BeExpressionUnsupported(original, Some(Cpp), _)) =>
           assert(original.startsWith("for(") && original.endsWith("){...}"), original)
           assertEquals(result.unsupportedStatements, List(original))
         case other => fail(s"$source parsed as $other")

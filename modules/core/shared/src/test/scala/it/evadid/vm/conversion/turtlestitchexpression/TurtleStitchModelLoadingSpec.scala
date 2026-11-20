@@ -43,7 +43,7 @@ class TurtleStitchModelLoadingSpec extends FunSuite {
     val project = TurtleStitchXmlLoader.load(projectXml("""<script><block s="forward"><block var="n"/></block></script>""", script))
     val scene = project.scenes.head
     val definition = scene.customBlocks.head
-    assertEquals((definition.spec, definition.blockType, definition.category), ("jump %'n'", "command", "motion"))
+    assertEquals((definition.spec, definition.blockType.xml, definition.category.xml), ("jump %'n'", "command", "motion"))
     assertEquals(definition.body.head.blocks.size, 1)
     assertEquals(scene.stage.pentrails, Some("data:trails"))
     val loaded = scene.stage.sprites.head.scripts.head
@@ -60,7 +60,7 @@ class TurtleStitchModelLoadingSpec extends FunSuite {
     assertEquals(list.inputs, Vector(ListLiteral(Vector(Literal("a"), Literal("b")))))
   }
 
-  test("unreadable XML yields the empty project") {
-    assertEquals(TurtleStitchXmlLoader.load("not xml at all"), TurtleStitchModelMapper.EmptyProject)
+  test("unreadable XML is rejected as unparsable") {
+    intercept[it.evadid.vm.code.errors.ProgrammingConversionException](TurtleStitchXmlLoader.load("not xml at all"))
   }
 }

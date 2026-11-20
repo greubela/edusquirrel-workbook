@@ -24,13 +24,26 @@ class PythonToParsedSpec extends FunSuite {
     assertEquals(parse("import math\n"), Seq(S.Unsupported("import math", "Imports are not supported", unparsable = false)))
   }
 
-  test("range loops repeat, count with inclusive ends or are reported") {
-    assertEquals(parse("for _ in range(3):\n    pass\n"), Seq(S.Repeat(3, Seq(S.Pass))))
-    assertEquals(parse("for i in range(4):\n    pass\n"), Seq(S.For("i", E.Literal("0"), E.Literal("3"), Seq(S.Pass))))
-    assertEquals(parse("for i in range(1, n + 1):\n    pass\n"), Seq(S.For("i", E.Literal("1"), E.Name("n"), Seq(S.Pass))))
-    assertEquals(parse("for i in range(a, b, 2):\n    pass\n"),
-      Seq(S.For("i", E.Name("a"), E.Binary("-", E.Name("b"), E.Literal("1")), Seq(S.Pass))))
+  private def drawn(code: String): List[Double] =
+    it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(it.evadid.core.datastructures.language.AppLanguage.Python, code)
+      .toBeExpression.turtleCommandExecutionInfo.completedCommands.map(_.args.head)
+
+  test("range loops repeat, count with steps like Python or are reported") {
+    assertEquals(parse("for _ in range(3):\n    pass\n"), Seq(S.Repeat(E.Literal("3"), Seq(S.Pass))))
+    assertEquals(drawn("for i in range(4):\n    forward(i)\n"), List(0.0, 1.0, 2.0, 3.0))
+    assertEquals(drawn("n = 3\nfor i in range(1, n + 1):\n    forward(i)\n"), List(1.0, 2.0, 3.0))
+    assertEquals(drawn("for i in range(0, 7, 3):\n    forward(i)\n"), List(0.0, 3.0, 6.0))
+    assertEquals(drawn("for i in range(5, 0, -2):\n    forward(i)\n"), List(5.0, 3.0, 1.0))
+    assertEquals(drawn("for i in range(5, 1):\n    forward(i)\n"), Nil)
     assertEquals(parse("for item in items:\n    pass\n"), Seq(S.Unsupported("for ...", "For statements must use range(...)", unparsable = true)))
+    parse("for i in range(0, 4, 0):\n    pass\n") match {
+      case Seq(S.Unsupported(_, reason, false)) => assert(reason.contains("nonzero whole number"), reason)
+      case other => fail(s"Unexpected $other")
+    }
+    parse("for i in range(3):\n    i = 1\n") match {
+      case Seq(S.Unsupported(_, reason, false)) => assert(reason.contains("Assigning the loop counter"), reason)
+      case other => fail(s"Unexpected $other")
+    }
   }
 
   test("control flow and returns keep their bodies") {
@@ -75,18 +88,18 @@ class PythonToParsedSpec extends FunSuite {
       case other => fail(s"Unexpected $other")
     }
     parse("try:\n    x = 1\nexcept ValueError:\n    pass\n") match {
-      case Seq(S.Unsupported(_, reason, true)) => assertEquals(reason, "try/except statements are currently unsupported")
+      case Seq(S.Unsupported(_, reason, _)) => assertEquals(reason, "try/except statements are currently unsupported")
       case other => fail(s"Unexpected $other")
     }
   }
 
   test("unreadable source keeps the statement and explains common mistakes") {
-    val reasons = Seq("if x\n    pass\n", "while x\n    pass\n", "global count\n").map(source => parse(source).collectFirst {
+    val reasons = Seq("if x\n    pass\n", "while x\n    pass\n").map(source => parse(source).collectFirst {
       case S.Unsupported(_, reason, _) => reason
     })
     assertEquals(reasons.head, Some("If statements must end with ':'"))
     assertEquals(reasons(1), Some("While statements must end with ':'"))
-    assertEquals(reasons(2), Some("global declaration"))
+    assertEquals(parse("global count, size\n"), Seq(S.Global(Seq("count", "size"))))
     assertEquals(parse("   "), Seq.empty)
   }
 

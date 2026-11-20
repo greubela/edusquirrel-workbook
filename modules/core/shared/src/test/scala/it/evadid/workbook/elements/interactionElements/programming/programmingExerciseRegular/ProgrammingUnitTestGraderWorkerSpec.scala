@@ -18,7 +18,7 @@ import upickle.default.{read, write}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class ProgrammingUnitTestGraderSpec extends FunSuite {
+class ProgrammingUnitTestGraderWorkerSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private val description = LanguageMapContentId("test/checkDescription")
   private val answer = ProgrammingStateRaw(Python, "def area(w, h):\n    return w * h\n")

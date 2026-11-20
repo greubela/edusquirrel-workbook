@@ -13,7 +13,7 @@ class SnapProjectXmlRoundTripSpec extends FunSuite {
     "variable condition" -> ("ready = 1\nwhile ready:\n    forward(10)\n    ready = 0\n", "while ready:"),
     "comparison chain" -> ("x = 3\nif x >= 2 and x != 5 or x <= 0:\n    left(90)\nelse:\n    right(90)\n", "((x >= 2) and (x != 5)) or (x <= 0)"),
     "nested arithmetic arguments" -> ("size = 10\nforward((size + 2) * 3 - size / 2 % 4)\n", "((size + 2) * 3) - ((size / 2) % 4)"),
-    "counting loop" -> ("for i in range(1, 4):\n    forward(i * 10)\n", "for i in range(1, 3 + 1):"),
+    "counting loop" -> ("for i in range(1, 4):\n    forward(i * 10)\n", "for i in range(1, 4):"),
     "defined helper with parameters" -> ("def square(side):\n    for _ in range(4):\n        forward(side)\n        left(90)\nsquare(20)\n", "square(20)"))
 
   for ((label, (code, kept)) <- programs) {
@@ -26,8 +26,10 @@ class SnapProjectXmlRoundTripSpec extends FunSuite {
     }
   }
 
-  test("helper functions that return values have no Snap command representation") {
-    intercept[IllegalArgumentException](ProgrammingStateRaw(Python, "def ready():\n    return 1\nif ready() == 1:\n    forward(5)\n").toSnapXml)
+  test("helper functions that return values become Snap reporters") {
+    val python = ProgrammingStateRaw(Python, "def ready():\n    return 1\nif ready() == 1:\n    forward(5)\n")
+    assertEquals(commands(python.toSnapXml), commands(python))
+    assertEquals(commands(python).map(_.args), List(List(5.0)))
   }
 
   test("the empty and mini projects are complete Snap documents") {

@@ -13,21 +13,17 @@ class JavaToExpressionSpec extends FunSuite {
   private def rejected(java: String): ProgrammingConversionException =
     intercept[ProgrammingConversionException](new JavaToExpression(java).convert)
 
-  test("counting for loops become repeats, ranges or rejected loops depending on their header") {
-    assert(python(program("for (int i = 0; i < 3; i++) { Turtle.forward(10); }")).contains("for _ in range(3)"),
-      python(program("for (int i = 0; i < 3; i++) { Turtle.forward(10); }")))
-    val inclusive = python(program("for (int i = 1; i <= 4; i += 1) { Turtle.forward(i); }"))
-    assert(inclusive.contains("range(1, 4 + 1)") || inclusive.contains("range(1, 5)"), inclusive)
-    val exclusiveLiteral = python(program("for (int i = 2; i < 6; i++) { Turtle.forward(i); }"))
-    assert(exclusiveLiteral.contains("range(2, 6)") || exclusiveLiteral.contains("range(2, 5 + 1)"), exclusiveLiteral)
-    val usedCounter = python(program("for (int i = 0; i < 3; i++) { Turtle.forward(i); }"))
-    assert(usedCounter.contains("for i in range"), usedCounter)
-    val variableLimit = python(program("double n = 5;\nfor (int i = 0; i < n; i++) { Turtle.forward(i); }"))
-    assert(variableLimit.contains("for i in range"), variableLimit)
-    val plusOne = python(program("double n = 5;\nfor (int i = 0; i < n + 1; i++) { Turtle.forward(i); }"))
-    assert(plusOne.contains("for i in range"), plusOne)
-    assertEquals(rejected(program("for (int i = 0; i < 3; i += 2) { Turtle.forward(i); }")).error.kind,
-      ProgrammingConversionKind.UnsupportedConstruct)
+  private def drawn(java: String): List[Double] =
+    new JavaToExpression(java).convert.turtleCommandExecutionInfo.completedCommands.map(_.args.head)
+
+  test("counting for loops run like Java, including steps, downward counts and empty ranges") {
+    assert(python(program("for (int i = 0; i < 3; i++) { Turtle.forward(10); }")).contains("for _ in range(3)"))
+    assertEquals(drawn(program("for (int i = 0; i < 3; i++) { Turtle.forward(10); }")), List(10.0, 10.0, 10.0))
+    assertEquals(drawn(program("for (int i = 1; i <= 4; i += 1) { Turtle.forward(i); }")), List(1.0, 2.0, 3.0, 4.0))
+    assertEquals(drawn(program("for (int i = 0; i < 5; i += 2) { Turtle.forward(i); }")), List(0.0, 2.0, 4.0))
+    assertEquals(drawn(program("for (int i = 3; i > 0; i--) { Turtle.forward(i); }")), List(3.0, 2.0, 1.0))
+    assertEquals(drawn(program("for (int i = 5; i < 2; i++) { Turtle.forward(i); }")), Nil)
+    assertEquals(drawn(program("double n = 2;\nfor (int i = 0; i < n + 1; i++) { Turtle.forward(i); }")), List(0.0, 1.0, 2.0))
   }
 
   test("assignments, updates and literals translate to the neutral program") {
@@ -81,15 +77,22 @@ class JavaToExpressionSpec extends FunSuite {
   }
 
   test("constructs without a shared representation are rejected with an explanation") {
-    val mixed = rejected(program("Turtle.forward(1);", "    double size = 1;"))
-    assert(mixed.getMessage.contains("Mixed static and instance members"), mixed.getMessage)
-    assert(rejected(program("Turtle.forward(args.length);")).getMessage.contains("Program arguments"))
-    assert(rejected("class Box { static double size = 1; }").getMessage.contains("Static object fields"))
-    assert(rejected("class Box extends Base { }").getMessage.contains("class Box"))
-    assert(rejected(program("double[] values = new double[3];\nvalues[0] = 1;")).getMessage.nonEmpty)
+    val cases = Seq(
+      program("Turtle.forward(args.length);") -> "Program arguments",
+      "class Box { static double size = 1; }" -> "Static object fields",
+      program("double[] values = new double[3];\nvalues[0] = 1;") -> "",
+      program("Turtle.forward(1") -> "")
+    val outcomes = cases.map { (source, expected) =>
+      scala.util.Try(new JavaToExpression(source).convert).failed.toOption match {
+        case Some(error) => Option.when(!error.getMessage.contains(expected))(s"$source -> ${error.getMessage}")
+        case None => Some(s"$source was accepted")
+      }
+    }
+    assertEquals(outcomes.flatten.toList, Nil)
     assert(python(program("char letter = 'a';")).contains("letter: str = 'a'"))
-    val unparsable = rejected(program("Turtle.forward(1"))
-    assertEquals(unparsable.error.kind, ProgrammingConversionKind.Unparsable)
+    val inheritance = new JavaToExpression("class Box extends Base { }").convert.expression.toString
+    assert(inheritance.contains("BeExpressionUnsupported(class Box") && inheritance.contains("Inheritance"), inheritance)
+    assertEquals(rejected(program("Turtle.forward(1")).error.kind, ProgrammingConversionKind.Unparsable)
   }
 
   test("declared types map to neutral types, including dates and named classes") {

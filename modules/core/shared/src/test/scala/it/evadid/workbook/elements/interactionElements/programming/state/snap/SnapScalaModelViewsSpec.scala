@@ -2,6 +2,7 @@ package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
 import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.*
 import munit.FunSuite
 
 class SnapScalaModelViewsSpec extends FunSuite {
@@ -32,16 +33,16 @@ class SnapScalaModelViewsSpec extends FunSuite {
     assertEquals((project.notes, project.thumbnail, project.creator), (Some("Read me"), Some("data:png"), Some("bob")))
     assertEquals((project.originalCreator, project.originalName), (Some("alice"), Some("first")))
     assertEquals((project.selectedScene, project.legacyStage), (Some(1), None))
-    assertEquals((scene.role, scene.paletteMode, scene.colorModel), (Some("learner"), Some("single"), Some("hsl")))
+    assertEquals((scene.role, scene.unifiedPalette, scene.colorModel), (Some("learner"), true, Some(ColorModel.Hsl)))
     assertEquals((scene.showCategories, scene.showButtons, scene.clickRun, scene.dragData, scene.strict),
       (Some(false), Some(true), Some(true), Some(false), Some(true)))
   }
 
   test("primitive definitions expose their signature, inputs and body") {
     val definition = scene.primitiveDefinitions.head
-    assertEquals((definition.spec, definition.blockType, definition.category), (Some("forward %n"), Some("command"), Some("motion")))
-    assertEquals((definition.primitiveSelector, definition.primitive, definition.reports, definition.semantics),
-      (Some("forward"), Some("forward"), Some("number"), Some("wide")))
+    assertEquals((definition.spec, definition.blockType, definition.category), (Some("forward %n"), Some(BlockType.Command), Some(BlockCategory.Motion)))
+    assertEquals((definition.primitiveSelector, definition.primitive, definition.reports, definition.isRuleHat),
+      (Some("forward"), Some("forward"), Some("number"), false))
     assertEquals((definition.helper, definition.spaceAbove, definition.strict), (Some(false), Some(true), Some(false)))
     assertEquals(definition.body.head.blocks.flatMap(_.selector), Vector("forward"))
     val input = definition.inputs.head
@@ -51,7 +52,7 @@ class SnapScalaModelViewsSpec extends FunSuite {
 
   test("stage views decode numbers, flags, colors, media and watchers") {
     assertEquals((stage.width, stage.height, stage.tempo, stage.volume, stage.pan), (Some(480.0), Some(360.0), Some(60.0), Some(80.0), Some(5.0)))
-    assertEquals((stage.costumeIndex, stage.instrument, stage.lines), (Some(1), Some(3), Some("round")))
+    assertEquals((stage.costumeIndex, stage.instrument, stage.lineEnds), (Some(1), Some(3), Some(LineEnds.Round)))
     assertEquals((stage.penLog, stage.ternary, stage.hyperops, stage.codify, stage.inheritanceEnabled, stage.sublistIDs, stage.threadSafe),
       (Some(true), Some(false), Some(true), Some(false), Some(true), Some(false), Some(false)))
     assertEquals(stage.color, Some(Rgba(255, 255, 255, 1)))
@@ -60,14 +61,14 @@ class SnapScalaModelViewsSpec extends FunSuite {
     assertEquals((costume.name, costume.centerX, costume.centerY, costume.image, costume.embed), (Some("bg"), Some(1.0), Some(2.0), Some("data:a"), Some("x")))
     assertEquals(stage.sounds.map(_.data), Vector(Some("data:s")))
     val watcher = stage.watchers.head
-    assertEquals((watcher.variable, watcher.scope, watcher.style, watcher.selector), (Some("count"), Some("Turtle"), Some("normal"), None))
+    assertEquals((watcher.variable, watcher.scope, watcher.style, watcher.selector), (Some("count"), Some("Turtle"), Some(WatcherStyle.Normal), None))
     assertEquals((watcher.x, watcher.y, watcher.minimum, watcher.maximum, watcher.hidden), (Some(3.0), Some(4.0), Some(0.0), Some(10.0), Some(true)))
   }
 
   test("sprite, variable and script views expose their content") {
     assertEquals((sprite.index, sprite.x, sprite.y, sprite.heading, sprite.scale), (Some(1), Some(10.0), Some(-20.0), Some(90.0), Some(0.5)))
-    assertEquals((sprite.volume, sprite.pan, sprite.rotation, sprite.instrument, sprite.costumeIndex, sprite.pen),
-      (Some(70.0), Some(-3.0), Some(1), Some(2), Some(0), Some("tip")))
+    assertEquals((sprite.volume, sprite.pan, sprite.rotationStyle, sprite.instrument, sprite.costumeIndex, sprite.penPoint),
+      (Some(70.0), Some(-3.0), Some(RotationStyle.Free), Some(2), Some(0), Some(PenPoint.Tip)))
     assertEquals((sprite.hidden, sprite.draggable, sprite.color), (Some(false), Some(true), Some(Rgba(0, 128, 0, 1))))
     val variable = sprite.variables.head
     assertEquals((variable.name, variable.hidden, variable.transient), (Some("count"), Some(true), Some(false)))
@@ -77,7 +78,7 @@ class SnapScalaModelViewsSpec extends FunSuite {
     val blocks = script.blocks
     assertEquals(blocks.map(_.selector), Vector(Some("receiveGo"), None, Some("square %n"), Some("setColor"), Some("doIf"), Some("reportNewList")))
     assertEquals(blocks(1).asInstanceOf[Block].variable, Some("count"))
-    assertEquals(blocks(2).asInstanceOf[CustomBlock].scope, Some("local"))
+    assert(blocks(2).asInstanceOf[CustomBlock].isLocal)
     assertEquals(blocks(2).inputs.collect { case literal: Literal => literal.number }, Vector(Some(3.0)))
     assertEquals(blocks(3).inputs.collect { case color: Color => color.value }, Vector(Some(Rgba(1, 2, 3, 1))))
     val Vector(flag: Literal, option: Literal) = blocks(4).inputs: @unchecked

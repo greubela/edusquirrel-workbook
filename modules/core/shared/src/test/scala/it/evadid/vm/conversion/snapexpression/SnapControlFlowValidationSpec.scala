@@ -26,8 +26,8 @@ class SnapControlFlowValidationSpec extends FunSuite {
 
   test("unsupported statements are described by the construct that blocks Snap export") {
     val describe = SnapControlFlow.describeUnsupportedStatement(_)
-    assertEquals(describe(BeRepeatNr(-1, body())), Some("negative repeat count"))
-    assertEquals(describe(BeRepeatNr(2, body(unsupported))), Some("print(x)"))
+    assertEquals(describe(BeRepeatNr.times(-1, body())), Some("negative repeat count"))
+    assertEquals(describe(BeRepeatNr.times(2, body(unsupported))), Some("print(x)"))
     assertEquals(describe(BeFor(counter, BeSequence.optionalBody(Nil), literal("3"), body())), Some("for range"))
     assertEquals(describe(BeFor(counter, literal("1"), literal("3"), body())), None)
     assertEquals(describe(BeSequence.optionalBody(List(body(), BeExpressionUnparsable("x ==", "bad")))), Some("x =="))
@@ -36,7 +36,7 @@ class SnapControlFlowValidationSpec extends FunSuite {
     assertEquals(describe(BeDefineVariable(BeEntityName.fromLiteral("v"), BeDataType.AnyType, Some(body()))), Some("v = ..."))
     assertEquals(describe(BeAssignVariable(counter, literal("2"))), None)
     assertEquals(SnapControlFlow.validateStatements(List(BeAssignVariable(counter, literal("2")))).isRight, true)
-    assert(SnapControlFlow.validateStatements(List(BeRepeatNr(-1, body()))).isLeft)
+    assert(SnapControlFlow.validateStatements(List(BeRepeatNr.times(-1, body()))).isLeft)
   }
 
   test("supported conditions accept literals, variables and nested operators only") {
@@ -46,9 +46,9 @@ class SnapControlFlowValidationSpec extends FunSuite {
     assert(!SnapControlFlow.isSupportedCondition(body()))
     val comparison = SnapControlFlow.operatorCall("<", List(SnapControlFlow.useVariable(counter), literal("3")))
     assert(SnapControlFlow.isSupportedCondition(SnapControlFlow.operatorCall("not", List(comparison))))
-    assert(!SnapControlFlow.isSupportedCondition(SnapControlFlow.operatorCall("**", List(literal("2"), literal("3")))))
-    assert(SnapControlFlow.isSnapConditionReporter("reportNot"))
-    assert(!SnapControlFlow.isSnapConditionReporter("reportVariadicSum"))
+    assert(!SnapControlFlow.isSupportedCondition(SnapControlFlow.operatorCall("<<", List(literal("2"), literal("3")))))
+    assert(SnapControlFlow.isSnapValueReporter("reportNot"))
+    assert(!SnapControlFlow.isSnapValueReporter("forward"))
   }
 
   test("conditions are inverted without double negation") {
