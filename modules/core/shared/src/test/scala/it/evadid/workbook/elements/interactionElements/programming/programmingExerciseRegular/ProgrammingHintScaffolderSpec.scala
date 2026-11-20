@@ -94,7 +94,8 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
   test("the current Python answer of the interaction is used as hint source") {
     val f = new Fixture(reply("Which value is printed?", "source-1"))
     val python = ProgrammingStateRaw(Python, "print(1)")
-    f.exercise.interactionVariable.setStateFromUserInteraction(python, UpdateImportance.DEFAULT, context = f.context())
+    // A distinct later timestamp: the default answer is stamped when the variable is created.
+    f.exercise.interactionVariable.setStateFromUserInteraction(python, UpdateImportance.DEFAULT, java.time.LocalDateTime.now().plusSeconds(1), f.context())
     f.hint(python).map { result =>
       assertEquals(result.forState, python)
       assertEquals(ujson.read(f.requests.now().head.prompt)("source")("language").str, Python.name)

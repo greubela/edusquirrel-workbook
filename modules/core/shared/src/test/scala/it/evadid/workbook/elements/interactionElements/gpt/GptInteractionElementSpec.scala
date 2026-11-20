@@ -30,7 +30,7 @@ class GptInteractionElementSpec extends FunSuite {
 
   test("the scaffolding chat is initialised once with the task, hints and current answer") {
     val input = TextInteraction("gpt-answer")
-    input.interactionVariable.setStateFromUserInteraction("my answer", UpdateImportance.MAJOR, context = context)
+    input.interactionVariable.setStateFromUserInteraction("my answer", UpdateImportance.MAJOR, java.time.LocalDateTime.now().plusSeconds(1), context)
     val element = GptInteractionElement("gpt", input, task, Seq(hint), Nil)
     assertEquals(element.childrenOfThisElement.map(_.elementId), Seq("gpt_scaffoldingMessenger"))
     element.initScaffoldingIfEmpty(context, MessengerModel.pFallbackStudent, resolver()).flatMap { first =>
