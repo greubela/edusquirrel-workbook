@@ -70,8 +70,7 @@ case class GptInteractionElement(
   def initScaffoldingIfEmpty(context: ExecutionContextInformation, curUser: ChatParticipant, resolver: LanguageMapIdResolver): Future[Boolean] = {
     val curMessages = scaffoldingInteraction.interactionVariable.currentValue.messengerModel.orderedMessages
     if (curMessages.nonEmpty) Future.successful(curMessages.last.author.role == USER)
-    val res = Promise[Unit]()
-    resolver.resolveAll(allContentIds.toSeq).transform {
+    else resolver.resolveAll(allContentIds.toSeq).transform {
       case Success((map, lang)) =>
         // if (map.keySet.size != allContentIds.size) syncControl.syncLogger.logWarn("Could not resolve all content ids. Resolved: " + map.keySet.mkString(", ") + " not: " + allContentIds.filter(!map.contains(_)).mkString(", "))
         Success(initScaffoldingIfEmpty(context, curUser, map, lang))
