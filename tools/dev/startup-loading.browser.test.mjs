@@ -64,6 +64,7 @@ for(const prefix of ['/', '/edusquirrel-workbook/']) {
       await page.getByRole('button',{name:'Start Using Locally',exact:true}).click();
       await page.locator('.section-block').first().click();
       await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
+      await page.locator('dialog[open]').getByRole('tab',{name:'Snap!',exact:true}).click();
       await page.locator('dialog[open] .be-program-snap-renderer__canvas').waitFor();
       await page.locator('.fullscreen-close-button').click();
       releaseLibraries();releaseConfig();
@@ -105,6 +106,7 @@ test('a failed Snap dependency leaves the shell usable and a later editor open r
     await page.locator('.section-block').first().click();
     const open=page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first();
     await open.click();
+    await page.locator('dialog[open]').getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.locator('dialog[open]').getByRole('alert').filter({hasText:'Block editor unavailable'}).waitFor();
     assert.equal(await page.evaluate(()=>typeof window.WorldMorph),'undefined','later dependency scripts must not execute after failure');
     await page.locator('.fullscreen-close-button').click();
