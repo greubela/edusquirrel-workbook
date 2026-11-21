@@ -1,5 +1,12 @@
 # Snap editor design
 
+The native adapter has three owners in `webElements/editor/code/SnapEditor`:
+`SnapMorphicSession` owns the mounted IDE/world and asynchronous lifecycle;
+`SnapPaletteInstaller` installs and releases exercise palettes; `SnapPreviewRenderer`
+creates temporary IDE/world instances and destroys them in `finally`.
+`SnapProjectRuntime` shares stateless project/bootstrap operations. Live handles
+and scheduling state belong to one `Var[SnapSessionResources]` per session.
+
 ## State and conversion
 
 - Snap uses a `Var[ProgrammingStateSnapScalaModel]` view of Eva's central answer Var; only meaningful model changes are published.

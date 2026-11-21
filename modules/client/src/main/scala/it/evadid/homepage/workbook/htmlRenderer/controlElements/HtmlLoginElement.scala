@@ -22,7 +22,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
 
   private val loginSucceededPromise: Promise[AllUserInfo] = Promise()
 
-  private val savedUser = fullInfo.usageControl.tryParsingExistingUser().map(_.user)
+  private val savedUser = fullInfo.userSessionControl.loadSavedProfile().map(_.user)
   private val identity = new LoginIdentityState(
     savedUser.map(_.name).getOrElse(""), savedUser.map(_.mail).getOrElse(""))
   private val nameVar = identity.name
@@ -102,7 +102,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
       createTextInput(nameVar, "login/insertNamePlaceholder", identity.changeName),
       createEmailInput(emailVar, "login/enterMail"),
       actionButton("login/buttonRequestRegistration", action) {
-        action.run(fullInfo.usageControl.tryOnlineRegistration(nameVar.now(), emailVar.now()),
+        action.run(fullInfo.userSessionControl.tryOnlineRegistration(nameVar.now(), emailVar.now()),
           "login/statusRegistered", "login/errorRegistration")
       },
       actionStatus(action)
@@ -118,13 +118,13 @@ case class HtmlLoginElement() extends HtmlAppElement {
         li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit2")),
         li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit3")),
       ),
-      HtmlButtonElement.withTextLabel("login/buttonLocalLogin", _ => fullInfo.usageControl.tryLocalRegistration(None, None)).getDomElement()
+      HtmlButtonElement.withTextLabel("login/buttonLocalLogin", _ => fullInfo.userSessionControl.tryLocalRegistration(None, None)).getDomElement()
     )
   }
 
   private val localContinueBody: Seq[Element] = {
 
-    val uploadInput: ReactiveHtmlElement[HTMLInputElement] = laminarHelper.sessionFileUploadInput(logger, loadedFile => fullInfo.usageControl.tryContinueWithSessionFile(loadedFile))
+    val uploadInput: ReactiveHtmlElement[HTMLInputElement] = laminarHelper.sessionFileUploadInput(logger, loadedFile => fullInfo.userSessionControl.tryContinueWithSessionFile(loadedFile))
 
     List(
       uploadInput,
@@ -198,7 +198,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
           val email = validatedEmail
           val token = tokenVar.now().trim
           if (token.isEmpty) Future.failed(AuthenticationFailure("login/errorTokenRequired"))
-          else fullInfo.usageControl.tryLoginWith(email, SingleAccessToken(token))
+          else fullInfo.userSessionControl.tryLoginWith(email, SingleAccessToken(token))
         }, "login/statusLoggedIn", "login/errorLogin")
       },
       actionStatus(action)

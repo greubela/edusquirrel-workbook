@@ -50,7 +50,7 @@ case class SessionCredentialsEditor(close: () => Unit) extends HtmlAppElement {
       case Failure(error) => message.set(error.getMessage)
       case Success(credentials) =>
         saving.set(true)
-        fullInfo.usageControl.updateCredentials(credentials).onComplete {
+        fullInfo.userSessionControl.updateCredentials(credentials).onComplete {
           case Success(_) => close()
           case Failure(_) => saving.set(false); message.set("Credentials applied. Database synchronization failed; check the connection and schema.")
         }

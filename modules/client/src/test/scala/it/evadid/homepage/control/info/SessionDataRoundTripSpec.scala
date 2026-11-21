@@ -48,7 +48,7 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
 
   test("a session file opens its workbook in a fresh client and restores every answer") {
     val restoredClient = client(None)
-    restoredClient.usageControl.continueWithSession(read[SessionData](downloaded())).map { _ =>
+    restoredClient.userSessionControl.continueWithSession(read[SessionData](downloaded())).map { _ =>
       val opened = restoredClient.current.workbookInfo.get
       assertEquals(opened.loadedWorkbook.workbookId, "workbook/part-1")
       assertEquals(answers(opened), Map("first" -> "my first answer", "second" -> "my second answer"))
@@ -60,7 +60,7 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
     val open = workbook("workbook/part-1", "first", "second")
     val restoredClient = client(Some(open))
     answer(open, "second", "a newer local answer")
-    restoredClient.usageControl.continueWithSession(read[SessionData](file)).map { _ =>
+    restoredClient.userSessionControl.continueWithSession(read[SessionData](file)).map { _ =>
       assert(restoredClient.current.workbookInfo.get.loadedWorkbook eq open.loadedWorkbook)
       assertEquals(answers(open)("first"), "my first answer")
       assertEquals(answers(open)("second"), "a newer local answer", "the newest answer stays current")
@@ -72,7 +72,7 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
   test("answers never leak into another open workbook that reuses the element ids") {
     val other = workbook("workbook/part-2", "first", "second")
     val restoredClient = client(Some(other))
-    restoredClient.usageControl.continueWithSession(read[SessionData](downloaded())).map { _ =>
+    restoredClient.userSessionControl.continueWithSession(read[SessionData](downloaded())).map { _ =>
       assertEquals(restoredClient.current.workbookInfo.get.loadedWorkbook.workbookId, "workbook/part-1")
       assertEquals(answers(other), Map("first" -> "", "second" -> ""))
     }
@@ -100,6 +100,6 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
       def data = "{\"not\": \"a session\"}".getBytes("UTF-8")
       override def toString = "spec file"
     }
-    client(None).usageControl.tryContinueWithSessionFile(file).failed.map(error => assert(error != null))
+    client(None).userSessionControl.tryContinueWithSessionFile(file).failed.map(error => assert(error != null))
   }
 }

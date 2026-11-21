@@ -19,7 +19,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
   private lazy val workbookDomElement: ReactiveHtmlElement[HTMLDivElement] = {
     div(
-      EventStream.periodic(10000).map(_ => fullInfo.usageControl.doOnPeriodicPing()) --> Observer.empty,
+      EventStream.periodic(10000).map(_ => fullInfo.syncControl.ensureSynced()) --> Observer.empty,
       cls := "workbook-app-shell",
       dialogElement,
       mainTag(
@@ -109,7 +109,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
   private def createDomToggleButton(): Element = div(
     cls := "workbook-header-toggle",
-    onClick --> { _ => fullInfo.usageControl.changeDisplay(displayInfo => displayInfo.copy(collapsedNavigation = !displayInfo.collapsedNavigation)) },
+    onClick --> { _ => fullInfo.displayControl.updateDisplay(displayInfo => displayInfo.copy(collapsedNavigation = !displayInfo.collapsedNavigation)) },
     span(
       child <-- collapsedSignal.map { c =>
         if (c) span(text <-- laminarHelper.plaintextStringSignal("basic/showHeader"))

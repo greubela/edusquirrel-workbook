@@ -1,6 +1,7 @@
 package it.evadid.homepage.control.change
 
 import it.evadid.homepage.control.model.{AllDisplayInfo, FullInfo}
+import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.homepage.webElements.HtmlAppElement
 
 case class DisplayControl(fullInfo: FullInfo) {
@@ -10,8 +11,11 @@ case class DisplayControl(fullInfo: FullInfo) {
   def setFullscreen(element: HtmlAppElement): Unit =
     updateDisplay(_.copy(fullscreenElement = Some(element)))
 
-  def updateDisplay(func: AllDisplayInfo => AllDisplayInfo): Unit = {
+  def updateDisplay(func: AllDisplayInfo => AllDisplayInfo): Unit = fullInfo.synchronized {
     fullInfo.homepageInfoState.update(curInfo => curInfo.copy(displayInfo = func(curInfo.displayInfo)))
   }
 
+  def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {
+    fullInfo.homepageInfoState.update(_.copy(currentLanguage = language))
+  }
 }

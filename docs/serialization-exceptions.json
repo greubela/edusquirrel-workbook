@@ -19,7 +19,6 @@
   "modules/client/src/main/scala/it/evadid/homepage/control/change/DisplayControl.scala#DisplayControl:1": "Depends on runtime declaration(s): FullInfo",
   "modules/client/src/main/scala/it/evadid/homepage/control/change/HomepageContentControl.scala#HomepageContentControl:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
   "modules/client/src/main/scala/it/evadid/homepage/control/change/HomepageContentControl.scala#HomepageFileFactory:1": "Depends on runtime declaration(s): FetchFromRemote",
-  "modules/client/src/main/scala/it/evadid/homepage/control/change/HomepageUsageControl.scala#HomepageUsageControl:1": "Depends on runtime declaration(s): FullInfo",
   "modules/client/src/main/scala/it/evadid/homepage/control/change/LanguageMapStorageControl.scala#LanguageMapStorageControl:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
   "modules/client/src/main/scala/it/evadid/homepage/control/change/RemoteInteractionCacheControl.scala#RemoteInteractionCacheControl:1": "Depends on runtime declaration(s): FullInfo",
   "modules/client/src/main/scala/it/evadid/homepage/control/info/HomepageCurrentInfo.scala#HomepageCurrentInfo:1": "Depends on runtime declaration(s): FullInfo",
@@ -188,5 +187,10 @@
   "modules/server/src/main/scala/it/evadid/server/commandHandler/sql/GenericSqlFunctionality.scala#GenericSqlFunctionality:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
   "modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/DeleteInDatabase.scala#DeleteInDatabase:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
   "modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/FetchFromDatabase.scala#FetchFromDatabase:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
-  "modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/UpsertToDatabase.scala#UpsertToDatabase:1": "Constructor contains runtime services, callbacks, state, or an open service interface"
+  "modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/UpsertToDatabase.scala#UpsertToDatabase:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaMethodSource.scala#JavaMethodSource:1": "Transient source analysis with lazy derived navigation; not a saved programming state",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaMethodSource.scala#MethodRange:1": "Transient editor draft range; not a saved programming state",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaMethodEditor.scala#DialogMode:1": "Transient editor dialog state",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/SnapSessionResources.scala#SnapSessionResources:1": "Live Morphic/browser handles, callbacks and scheduling state; never serialized",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/SnapPaletteInstaller.scala#Installation:1": "Live native palette customization handles; released with the mounted editor"
 }

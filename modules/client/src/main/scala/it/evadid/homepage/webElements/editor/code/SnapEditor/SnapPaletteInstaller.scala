@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.state.Var
+import it.evadid.facades.Snap
 import it.evadid.facades.Snap.*
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{LibraryBlock, LibraryTab, SnapCategoryColor}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.SnapExtraPrimitives

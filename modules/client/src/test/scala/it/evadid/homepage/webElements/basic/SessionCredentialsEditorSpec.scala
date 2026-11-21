@@ -18,8 +18,8 @@ class SessionCredentialsEditorSpec extends UiDomSuite {
     .copy(credentials = UserCredentials(databaseConfig = Some(database)))
 
   private def signedIn[T](body: => Future[T]): Future[T] =
-    page.usageControl.changeUser(Some(user)).flatMap(_ => body).transformWith { outcome =>
-      page.usageControl.changeUser(None).transform(_ => outcome)
+    page.userSessionControl.changeUser(Some(user)).flatMap(_ => body).transformWith { outcome =>
+      page.userSessionControl.changeUser(None).transform(_ => outcome)
     }
   private def field(root: dom.Element, caption: String) =
     withText(root, "label", caption).headOption.map(one(_, "input")).getOrElse(fail(s"no field $caption"))
@@ -84,7 +84,7 @@ class SessionCredentialsEditorSpec extends UiDomSuite {
   }
 
   test("without a profile the form explains that one is needed") {
-    page.usageControl.changeUser(None).map { _ =>
+    page.userSessionControl.changeUser(None).map { _ =>
       mounted(SessionCredentialsEditor(() => ()).getDomElement()) { root =>
         assertEquals(withText(root, "label", "Host").size, 0, "no current database connection")
         click(buttonNamed(root, "Apply"))

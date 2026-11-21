@@ -72,12 +72,12 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
     val originalLanguage = fullInfo.signals.currentLanguage.now()
     val close = mount(element)
     try {
-      fullInfo.usageControl.changeLanguage(German)
+      fullInfo.displayControl.changeLanguage(German)
       assertEquals(element.ref.getAttribute("data-tooltip"), "Hinweis")
-      fullInfo.usageControl.changeLanguage(English)
+      fullInfo.displayControl.changeLanguage(English)
       assertEquals(element.ref.getAttribute("data-tooltip"), "Hint")
       assert(element.ref.querySelector(".scaffolding-info-svg-fully") != null, clues(element.ref.outerHTML))
       assertEquals(saved.scaffoldingStatus, ScaffoldingStatus.ScaffoldingFeedback(feedback))
-    } finally { fullInfo.usageControl.changeLanguage(originalLanguage); close() }
+    } finally { fullInfo.displayControl.changeLanguage(originalLanguage); close() }
   }
 }

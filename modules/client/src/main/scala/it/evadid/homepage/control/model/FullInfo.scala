@@ -74,7 +74,9 @@ case class FullInfo(
 
   /* CONTROLS */
 
-  lazy val usageControl: HomepageUsageControl = HomepageUsageControl(this)
+  lazy val userSessionControl: UserSessionControl = new UserSessionControl(this)
+
+  lazy val workbookNavigationControl: WorkbookNavigationControl = new WorkbookNavigationControl(this)
 
   lazy val syncControl: RemoteInteractionCacheControl = RemoteInteractionCacheControl(this)
 

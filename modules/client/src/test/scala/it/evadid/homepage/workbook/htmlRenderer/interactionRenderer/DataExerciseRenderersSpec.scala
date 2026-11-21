@@ -25,11 +25,11 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
   private given ExecutionContext = ExecutionContext.global
   private val previousWorkbook = Var(Option.empty[AllWorkbookInfo])
   override def beforeEach(context: BeforeEach): Unit = previousWorkbook.set(fullInfo.homepageInfoNow().workbookInfo)
-  override def afterEach(context: AfterEach): Unit = fullInfo.usageControl.changeWorkbook(previousWorkbook.now())
+  override def afterEach(context: AfterEach): Unit = fullInfo.workbookNavigationControl.changeWorkbook(previousWorkbook.now())
   private def load(elements: WorkbookElement*): Unit = {
     val section = WorkbookSection("data-tests", WorkbookSection.WorkbookSectionMetadata(LanguageMapContentId("test/section")), elements)
     val workbook = Workbook("data-tests", Workbook.WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("test/title"), Seq(English)), Seq(section))
-    fullInfo.usageControl.changeWorkbook(Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)))
+    fullInfo.workbookNavigationControl.changeWorkbook(Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)))
   }
   private def text(key: String): Signal[String] = Val(Map("programDataFailed" -> "Failed:", "programDataUnavailable" -> "Unavailable:").getOrElse(key, key))
   private def all(root: dom.Element, selector: String): Seq[String] =
