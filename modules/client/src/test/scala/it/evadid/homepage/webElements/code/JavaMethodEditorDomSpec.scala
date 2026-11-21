@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js
 
 /** The method-at-a-time Java editor driven through its class list, view toggles, dialogs and text field. */
-class JavaFunctionBasedEditorDomSpec extends UiDomSuite {
+class JavaMethodEditorDomSpec extends UiDomSuite {
   private given ExecutionContext = ExecutionContext.global
   override protected def jsdomGlobals: List[String] = super.jsdomGlobals :+ "HTMLDialogElement"
   private val logger = Logger.withNameAndPrefixes(Some("java-editor-test"), PrintToStdLogger.printNothing)
@@ -40,7 +40,7 @@ class JavaFunctionBasedEditorDomSpec extends UiDomSuite {
   private def functionButton(root: dom.Element, name: String) = withText(root, ".java-function-editor__function", s"$name()").head
   private def settle: Future[Unit] = eventually(false, attempts = 2).recover(_ => ())
   private def editor(state: Var[ProgrammingState], reference: Option[() => Element] = None) =
-    new JavaFunctionBasedEditor(logger, state, reference = reference)
+    new JavaMethodEditor(logger, state, reference = reference)
 
   test("the public main method opens first; method edits are merged into the full source") {
     val state = Var[ProgrammingState](ProgrammingStateRaw(Java, source))

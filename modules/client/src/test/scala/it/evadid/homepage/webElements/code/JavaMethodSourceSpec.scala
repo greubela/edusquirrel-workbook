@@ -4,8 +4,8 @@ import munit.FunSuite
 import it.evadid.vm.parsing.java.clean.JavaParser
 import it.evadid.vm.parsing.java.clean.model.JavaAST.{JavaClassDef, JavaMethodDef}
 
-class JavaFunctionBasedEditorSpec extends FunSuite {
-  import JavaFunctionBasedEditor.*
+class JavaMethodSourceSpec extends FunSuite {
+  import JavaMethodSource.*
 
   test("discovers classes and direct member functions without matching comments or strings") {
     val source =
@@ -22,61 +22,61 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
         |}
         |""".stripMargin
 
-    val classes = JavaFunctionBasedEditor.discover(source)
+    val classes = JavaMethodSource.discover(source)
 
     assertEquals(classes.map(_.name), List("First", "Second"))
-    assertEquals(classes.head.functions.map(_.name), List("add"))
-    assertEquals(classes.head.functions.head.returnType, "int")
-    assertEquals(classes.head.functions.head.parameters, "int left, int right")
-    assertEquals(classes(1).functions.map(_.name), List("run"))
+    assertEquals(classes.head.methods.map(_.name), List("add"))
+    assertEquals(classes.head.methods.head.returnType, "int")
+    assertEquals(classes.head.methods.head.parameters, "int left, int right")
+    assertEquals(classes(1).methods.map(_.name), List("run"))
   }
 
   test("the generated Turtle library is not listed as a student class, while an edited copy is") {
     val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
       it.evadid.core.datastructures.language.AppLanguage.Python, "forward(10)").toJava.code
     assert(source.contains("class Turtle {"), source)
-    assertEquals(JavaFunctionBasedEditor.discover(source).map(_.name), List("Main"))
+    assertEquals(JavaMethodSource.discover(source).map(_.name), List("Main"))
     val edited = source.replace("move(distance);", "move(2 * distance);")
-    assertEquals(JavaFunctionBasedEditor.discover(edited).map(_.name), List("Main", "Turtle"))
+    assertEquals(JavaMethodSource.discover(edited).map(_.name), List("Main", "Turtle"))
   }
 
   test("replacing and adding a function preserves a parseable full Java program") {
     val source = "class Example {\n  public int add(int left, int right) {\n    return left + right;\n  }\n  public void keep() {}\n}\n"
-    val clazz = JavaFunctionBasedEditor.discover(source).head
-    val original = clazz.functions.head
+    val clazz = JavaMethodSource.discover(source).head
+    val original = clazz.methods.head
     val editedDraft = "\n  public int sum(int left, int right) {\n    return left + right;\n  }"
-    val edited = JavaFunctionBasedEditor.replaceFunction(
+    val edited = JavaMethodSource.replaceMethod(
       source,
       original,
       editedDraft
     )
-    val afterEditClasses = JavaFunctionBasedEditor.discover(edited)
+    val afterEditClasses = JavaMethodSource.discover(edited)
     val afterEdit = afterEditClasses.head
-    val selection = JavaFunctionBasedEditor.findEditedFunction(
+    val selection = JavaMethodSource.findEditedMethod(
       edited,
       afterEditClasses,
       original,
-      FunctionRange(original.start, original.start + editedDraft.length)
+      MethodRange(original.start, original.start + editedDraft.length)
     )
     assertEquals(selection.map(_.name), Some("sum"))
-    val withNewFunction = JavaFunctionBasedEditor.insertFunction(
+    val withNewFunction = JavaMethodSource.insertMethod(
       edited,
       afterEdit,
       "public void reset() {\n    \n  }"
     )
 
-    assert(JavaFunctionBasedEditor.parses(edited))
-    assert(JavaFunctionBasedEditor.parses(withNewFunction))
-    assert(!JavaFunctionBasedEditor.parses("class Example {"))
+    assert(JavaMethodSource.parses(edited))
+    assert(JavaMethodSource.parses(withNewFunction))
+    assert(!JavaMethodSource.parses("class Example {"))
     assertEquals(
-      JavaFunctionBasedEditor.discover(withNewFunction).head.functions.map(_.name),
+      JavaMethodSource.discover(withNewFunction).head.methods.map(_.name),
       List("sum", "keep", "reset")
     )
   }
 
   test("function declarations include static only when selected and remain parseable") {
     List(true, false).foreach { isStatic =>
-      val declaration = functionDeclaration(returnType = "void", name = "draw",
+      val declaration = methodDeclaration(returnType = "void", name = "draw",
         parameters = "int distance", isStatic = isStatic)
       val modifiers = if isStatic then "public static" else "public"
       assertEquals(declaration, s"$modifiers void draw(int distance) {\n    \n  }")
@@ -106,24 +106,24 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
     } {
       val source = original.replace("\n", separator)
       val clazz = discover(source).head
-      val declaration = functionDeclaration(returnType = "void", name = "draw",
+      val declaration = methodDeclaration(returnType = "void", name = "draw",
         parameters = "double distance", isStatic = isStatic)
-      val inserted = insertFunction(source, clazz, declaration)
+      val inserted = insertMethod(source, clazz, declaration)
       val normalized = declaration.replace("\n", separator)
       assertEquals(inserted, source.substring(0, clazz.bodyEnd) + separator + "  " + normalized + separator + source.substring(clazz.bodyEnd))
       assert(parses(inserted))
-      assertEquals(discover(inserted).head.functions.map(_.name), List("main", "keep", "draw"))
+      assertEquals(discover(inserted).head.methods.map(_.name), List("main", "keep", "draw"))
       assertEquals(discover(inserted).map(_.name), List("Drawing", "Other"))
     }
   }
 
   test("owned ranges preserve surrounding source across invalid edits and recovery") {
     val source = "class Example {\r\n  public void edit() {}\r\n  public void keep() { int value = 9; }\r\n}\r\n\t  "
-    val original = discover(source).head.functions.head
+    val original = discover(source).head.methods.head
     val prefix = source.substring(0, original.start)
     val suffix = source.substring(original.end)
     var currentSource = source
-    var range = FunctionRange(original.start, original.end)
+    var range = MethodRange(original.start, original.end)
     val drafts = List(
       "public void edit(",
       "\n  public void edit() {\n    int value = ",
@@ -134,31 +134,31 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
       val (replaced, nextRange) = range.replace(currentSource, draft).get
       assertEquals(replaced, prefix + draft + suffix)
       assertEquals(replaced.substring(nextRange.start, nextRange.end), draft)
-      assertEquals(nextRange, FunctionRange(original.start, original.start + draft.length))
+      assertEquals(nextRange, MethodRange(original.start, original.start + draft.length))
       currentSource = replaced
       range = nextRange
     }
 
-    assertEquals(findEditedFunction(currentSource, discover(currentSource), original, range).map(_.name), Some("repaired"))
-    assertEquals(discover(currentSource).head.functions.map(_.name), List("repaired", "keep"))
+    assertEquals(findEditedMethod(currentSource, discover(currentSource), original, range).map(_.name), Some("repaired"))
+    assertEquals(discover(currentSource).head.methods.map(_.name), List("repaired", "keep"))
   }
 
   test("owned ranges validate UTF-16 bounds and support empty insertions") {
     val source = "\ud83d\ude42 prefix method tail"
     val start = source.indexOf("method")
-    val range = FunctionRange(start, start + "method".length)
+    val range = MethodRange(start, start + "method".length)
     assertEquals(range.replace(source, "replacement"), Some(
-      (source.substring(0, start) + "replacement" + source.substring(range.end), FunctionRange(start, start + 11))
+      (source.substring(0, start) + "replacement" + source.substring(range.end), MethodRange(start, start + 11))
     ))
-    assertEquals(FunctionRange(0, 0).replace(source, "x").map(_._1), Some("x" + source))
-    assertEquals(FunctionRange(source.length, source.length).replace(source, "x").map(_._1), Some(source + "x"))
-    assertEquals(FunctionRange(0, source.length).replace(source, ""), Some(("", FunctionRange(0, 0))))
+    assertEquals(MethodRange(0, 0).replace(source, "x").map(_._1), Some("x" + source))
+    assertEquals(MethodRange(source.length, source.length).replace(source, "x").map(_._1), Some(source + "x"))
+    assertEquals(MethodRange(0, source.length).replace(source, ""), Some(("", MethodRange(0, 0))))
     List(
-      FunctionRange(-1, 0),
-      FunctionRange(0, -1),
-      FunctionRange(3, 2),
-      FunctionRange(0, source.length + 1),
-      FunctionRange(source.length + 1, source.length + 1)
+      MethodRange(-1, 0),
+      MethodRange(0, -1),
+      MethodRange(3, 2),
+      MethodRange(0, source.length + 1),
+      MethodRange(source.length + 1, source.length + 1)
     ).foreach(invalid => assertEquals(invalid.replace(source, "x"), None))
   }
 
@@ -166,20 +166,20 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
     val original = "// Grüße 🙂\nclass Example {\n  public void helper() {}\n\n  public static void main(String[] args) {}\n}\n"
     List("\n", "\r\n", "\r").foreach { separator =>
       val source = original.replace("\n", separator)
-      val selected = initialFunction(source).get
-      val range = FunctionRange(selected.start, selected.end)
+      val selected = initialMethod(source).get
+      val range = MethodRange(selected.start, selected.end)
       assertEquals(firstLineNumber(source, Some(range)), 5)
       val draft = separator + "/* retained */" + separator + source.substring(range.start, range.end)
       val (edited, nextRange) = range.replace(source, draft).get
       assertEquals(firstLineNumber(edited, Some(nextRange)), 5)
       assertEquals(edited.substring(nextRange.start, nextRange.end), draft)
       val moved = "// inserted" + separator + source
-      val movedMain = initialFunction(moved).get
-      assertEquals(firstLineNumber(moved, Some(FunctionRange(movedMain.start, movedMain.end))), 6)
+      val movedMain = initialMethod(moved).get
+      assertEquals(firstLineNumber(moved, Some(MethodRange(movedMain.start, movedMain.end))), 6)
       assertEquals(firstLineNumber(source, None), 1)
-      assertEquals(firstLineNumber(source, Some(FunctionRange(0, source.length + 1))), 1)
+      assertEquals(firstLineNumber(source, Some(MethodRange(0, source.length + 1))), 1)
     }
-    assertEquals(firstLineNumber("class Example { public void helper() {} }", Some(FunctionRange(16, 39))), 1)
+    assertEquals(firstLineNumber("class Example { public void helper() {} }", Some(MethodRange(16, 39))), 1)
   }
 
   test("gutter offsets handle mixed separators, UTF-16 positions and EOF") {
@@ -192,7 +192,7 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
     ).foreach { (source, expectedLines) =>
       assertEquals(expectedLines.length, source.length + 1)
       expectedLines.zipWithIndex.foreach { (expectedLine, offset) =>
-        assertEquals(firstLineNumber(source, Some(FunctionRange(offset, source.length))), expectedLine,
+        assertEquals(firstLineNumber(source, Some(MethodRange(offset, source.length))), expectedLine,
           clue = (source, offset))
       }
     }
@@ -200,17 +200,17 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
 
   private val singleMethodSource = "class Example {\n  public void edit() {}\n  public void keep() {}\n}\n"
 
-  private def candidateFor(draft: String): Option[JavaFunction] = {
-    val original = discover(singleMethodSource).head.functions.head
-    val (source, range) = FunctionRange(original.start, original.end).replace(singleMethodSource, draft).get
-    findEditedFunction(source, discover(source), original, range)
+  private def candidateFor(draft: String): Option[JavaMethod] = {
+    val original = discover(singleMethodSource).head.methods.head
+    val (source, range) = MethodRange(original.start, original.end).replace(singleMethodSource, draft).get
+    findEditedMethod(source, discover(source), original, range)
   }
 
   test("method projection accepts surrounding whitespace and comments without trimming the range") {
     val draft = "\r\n /* \ud83d\ude42 void fake() {} */\r\n public void renamed() {} // retained tail\r\n\t "
     assertEquals(candidateFor(draft).map(_.name), Some("renamed"))
-    val original = discover(singleMethodSource).head.functions.head
-    val (source, range) = FunctionRange(original.start, original.end).replace(singleMethodSource, draft).get
+    val original = discover(singleMethodSource).head.methods.head
+    val (source, range) = MethodRange(original.start, original.end).replace(singleMethodSource, draft).get
     assertEquals(source.substring(range.start, range.end), draft)
     assertEquals(candidateFor("/* incomplete"), None)
   }
@@ -228,26 +228,26 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
 
   test("method projection requires full containment and an unambiguous class") {
     val classes = discover(singleMethodSource)
-    val original = classes.head.functions.head
-    assertEquals(findEditedFunction(singleMethodSource, classes, original,
-      FunctionRange(original.start, original.end - 1)), None)
-    assertEquals(findEditedFunction(singleMethodSource, classes, original,
-      FunctionRange(original.start + 1, original.end)), None)
-    assertEquals(findEditedFunction(singleMethodSource, classes :+ classes.head, original,
-      FunctionRange(original.start, original.end)), None)
-    assertEquals(findEditedFunction(singleMethodSource, classes, original.copy(className = "Missing"),
-      FunctionRange(original.start, original.end)), None)
+    val original = classes.head.methods.head
+    assertEquals(findEditedMethod(singleMethodSource, classes, original,
+      MethodRange(original.start, original.end - 1)), None)
+    assertEquals(findEditedMethod(singleMethodSource, classes, original,
+      MethodRange(original.start + 1, original.end)), None)
+    assertEquals(findEditedMethod(singleMethodSource, classes :+ classes.head, original,
+      MethodRange(original.start, original.end)), None)
+    assertEquals(findEditedMethod(singleMethodSource, classes, original.copy(className = "Missing"),
+      MethodRange(original.start, original.end)), None)
 
     val multipleClasses = singleMethodSource + "class Other { public void untouched() {} }"
     val draft = "public void renamed() {}"
-    val (changed, range) = FunctionRange(original.start, original.end).replace(multipleClasses, draft).get
-    assertEquals(findEditedFunction(changed, discover(changed), original, range).map(_.name), Some("renamed"))
+    val (changed, range) = MethodRange(original.start, original.end).replace(multipleClasses, draft).get
+    assertEquals(findEditedMethod(changed, discover(changed), original, range).map(_.name), Some("renamed"))
   }
 
   test("selection follows the complete signature across source reordering") {
     val source = "class Example { public int value(int n) { return n; } public int value(boolean flag) { return 1; } }"
     val classes = discover(source)
-    val previous = classes.head.functions.head
+    val previous = classes.head.methods.head
     val reordered = discover("class Example { public int value(boolean flag) { return 1; } public int value(int n) { return n; } }")
     assertEquals(findSelection(reordered, previous).map(_.parameters), Some("int n"))
     assertEquals(findSelection(reordered, previous.copy(parameters = "String value")), None)
@@ -257,22 +257,22 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
 
   test("selection rejects duplicate methods and duplicate class names") {
     val classes = discover("class Example { public void edit() {} }")
-    val previous = classes.head.functions.head
-    val duplicateMethod = classes.head.copy(functions = List(previous, previous.copy(start = previous.start + 1)))
+    val previous = classes.head.methods.head
+    val duplicateMethod = classes.head.copy(methods = List(previous, previous.copy(start = previous.start + 1)))
     assertEquals(findSelection(List(duplicateMethod), previous), None)
     assertEquals(findSelection(classes :+ classes.head, previous), None)
     assertEquals(findSelection(Nil, previous), None)
   }
 
   test("method identity ignores offsets but distinguishes signatures") {
-    val original = discover(singleMethodSource).head.functions.head
-    assert(sameFunction(original, original.copy(start = 300, end = 400)))
+    val original = discover(singleMethodSource).head.methods.head
+    assert(sameMethod(original, original.copy(start = 300, end = 400)))
     List(
       original.copy(className = "Other"),
       original.copy(name = "other"),
       original.copy(returnType = "int"),
       original.copy(parameters = "int value")
-    ).foreach(other => assert(!sameFunction(original, other)))
+    ).foreach(other => assert(!sameMethod(original, other)))
   }
 
   test("comment discovery handles LF, CRLF and CR without changing source offsets") {
@@ -281,8 +281,8 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
       val code = source.replace("\n", separator)
       val classes = discover(code)
       assertEquals(classes.map(_.name), List("Example"), clue = separator)
-      assertEquals(classes.head.functions.map(_.name), List("edit"), clue = separator)
-      val method = classes.head.functions.head
+      assertEquals(classes.head.methods.map(_.name), List("edit"), clue = separator)
+      val method = classes.head.methods.head
       assertEquals(code.substring(method.start, method.end), "public void edit() { String value = \"}\"; }")
       assert(parses(code), clue = separator)
     }
@@ -292,10 +292,10 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
     val source = "// unchanged\nclass Example {\r\n\tpublic void keep() {}\r\n\t \r\n}  \t\r\n\r\n"
     val clazz = discover(source).head
     val declaration = "public void reset() {}"
-    val inserted = insertFunction(source, clazz, declaration)
+    val inserted = insertMethod(source, clazz, declaration)
     assert(inserted.startsWith(source.substring(0, clazz.bodyEnd)))
     assert(inserted.endsWith(source.substring(clazz.bodyEnd)))
-    assertEquals(discover(inserted).head.functions.map(_.name), List("keep", "reset"))
+    assertEquals(discover(inserted).head.methods.map(_.name), List("keep", "reset"))
   }
 
   test("initial function selects the unique main and preserves its exact source range") {
@@ -307,15 +307,15 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
         "  private int untouched() { return 7; }\n" +
         "}\n"
 
-    val selected = initialFunction(source)
+    val selected = initialMethod(source)
 
     assertEquals(
       selected.map(function => (function.className, function.name, function.returnType, function.parameters)),
       Some(("Program", "main", "void", "String[] args"))
     )
-    assert(selected.exists(function => FunctionRange(function.start, function.end).isWithin(source)))
+    assert(selected.exists(function => MethodRange(function.start, function.end).isWithin(source)))
     assertEquals(selected.map(function => source.substring(function.start, function.end)), Some(expectedMain))
-    assertEquals(selected.map(function => replaceFunction(source, function, expectedMain)), Some(source))
+    assertEquals(selected.map(function => replaceMethod(source, function, expectedMain)), Some(source))
   }
 
   test("initial function rejects main methods across multiple classes") {
@@ -323,7 +323,7 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
       "class First { public static void main(String[] args) {} }\n" +
         "class Second { public static void main(String[] args) {} }\n"
 
-    assertEquals(initialFunction(source), None)
+    assertEquals(initialMethod(source), None)
   }
 
   test("initial function rejects ambiguous class names and duplicate main signatures") {
@@ -336,8 +336,8 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
         "  public static void main(String[] args) {}\n" +
         "}\n"
 
-    assertEquals(initialFunction(duplicateClassName), None)
-    assertEquals(initialFunction(duplicateMainSignature), None)
+    assertEquals(initialMethod(duplicateClassName), None)
+    assertEquals(initialMethod(duplicateMainSignature), None)
   }
 
   test("initial function rejects missing main and structurally incomplete source") {
@@ -345,7 +345,7 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
       "class Program { public void helper() {} }",
       "class Program { public static void main(String[] args) {}",
       "class Program { public static void main(String[] args) {} /* unclosed"
-    ).foreach(source => assertEquals(initialFunction(source), None, clue = source))
+    ).foreach(source => assertEquals(initialMethod(source), None, clue = source))
   }
 
   test("initial function after a helper matches discovery from the complete fresh source") {
@@ -356,12 +356,12 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
         "    helper();\r\n" +
         "  }\r\n" +
         "}\r\n"
-    val discoveredMain = discover(source).flatMap(_.functions).filter(_.name == "main")
+    val discoveredMain = discover(source).flatMap(_.methods).filter(_.name == "main")
 
     assertEquals(discoveredMain.length, 1)
-    assertEquals(initialFunction(source), discoveredMain.headOption)
+    assertEquals(initialMethod(source), discoveredMain.headOption)
     assertEquals(
-      initialFunction(source).map(function => source.substring(function.start, function.end)),
+      initialMethod(source).map(function => source.substring(function.start, function.end)),
       Some("public static void main(String[] args) {\r\n    helper();\r\n  }")
     )
   }
@@ -375,7 +375,7 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
       "named overload" ->
         "class Program { public static void main(String[] args) {} public void main(int value) {} }"
     ).foreach { case (label, source) =>
-      assertEquals(initialFunction(source), None, clue = label)
+      assertEquals(initialMethod(source), None, clue = label)
     }
   }
 
@@ -397,12 +397,12 @@ class JavaFunctionBasedEditorSpec extends FunSuite {
         "java.lang.String [ ] _args"
       )
     ).foreach { case (source, expectedMain, expectedParameters) =>
-      val selected = initialFunction(source)
+      val selected = initialMethod(source)
       assertEquals(
         selected.map(function => (function.className, function.name, function.returnType, function.parameters)),
         Some(("Program", "main", "void", expectedParameters))
       )
-      assert(selected.exists(function => FunctionRange(function.start, function.end).isWithin(source)))
+      assert(selected.exists(function => MethodRange(function.start, function.end).isWithin(source)))
       assertEquals(selected.map(function => source.substring(function.start, function.end)), Some(expectedMain))
     }
   }
