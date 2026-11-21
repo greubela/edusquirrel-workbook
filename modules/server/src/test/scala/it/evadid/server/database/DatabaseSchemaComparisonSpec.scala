@@ -7,7 +7,10 @@ import net.sf.jsqlparser.statement.create.table.CreateTable
 class DatabaseSchemaComparisonSpec extends FunSuite {
   import DatabaseSchema.*
 
-  private def schema(sql: String): Table = fromDefinition(CCJSqlParserUtil.parse(sql).asInstanceOf[CreateTable])
+  private def schema(sql: String): Table = CCJSqlParserUtil.parse(sql) match {
+    case table: CreateTable => fromDefinition(table)
+    case other => fail(s"Expected a CREATE TABLE test fixture, got: $other")
+  }
   private def differences(expected: Table, actual: Table): Set[String] = DatabaseSchemaComparison.compare(expected, actual).toSet
   private def scripted(name: String): Table = fromScripts(Set(name)).head
 
@@ -26,7 +29,7 @@ class DatabaseSchemaComparisonSpec extends FunSuite {
       case column => column
     })
     assertEquals(differences(expected, actual), Set(
-      "sync_context_id.id type differs: INT vs BIGINT",
+      "sync_context_id.id type differs: INT vs BIGINT UNSIGNED",
       "sync_context_id.id auto-increment differs",
       "sync_context_id.program_id length differs",
       "sync_context_id.program_id nullability differs",
@@ -72,18 +75,18 @@ class DatabaseSchemaComparisonSpec extends FunSuite {
   }
 
   test("timestamp precision, enum value order and enum literal case are significant") {
-    val expected = schema("CREATE TABLE sample (id INT PRIMARY KEY, time DATETIME(6), status ENUM('Ready','Done'))")
-    val actual = schema("CREATE TABLE sample (id INT PRIMARY KEY, time DATETIME(3), status ENUM('ready','Done'))")
+    val expected = schema("CREATE TABLE `sample` (id INT PRIMARY KEY, `time` DATETIME(6), status ENUM('Ready','Done'))")
+    val actual = schema("CREATE TABLE `sample` (id INT PRIMARY KEY, `time` DATETIME(3), status ENUM('ready','Done'))")
     assertEquals(differences(expected, actual), Set("sample.time timestamp precision differs", "sample.status enum values differ"))
     assertEquals(normalizeEnum("enum('Ready','Done')"), expected.columns.find(_.name == "status").get.enumDefinition.get)
-    val reordered = schema("CREATE TABLE sample (id INT PRIMARY KEY, time DATETIME(6), status ENUM('Done','Ready'))")
+    val reordered = schema("CREATE TABLE `sample` (id INT PRIMARY KEY, `time` DATETIME(6), status ENUM('Done','Ready'))")
     assertEquals(differences(expected, reordered), Set("sample.status enum values differ"))
   }
 
   test("column collation overrides the table default; unspecified collation is not imposed") {
-    val expected = schema("CREATE TABLE sample (id INT PRIMARY KEY, label VARCHAR(12) COLLATE ascii_bin) COLLATE utf8mb4_bin")
+    val expected = schema("CREATE TABLE `sample` (id INT PRIMARY KEY, label VARCHAR(12) COLLATE ascii_bin) COLLATE utf8mb4_bin")
     assertEquals(expected.columns.find(_.name == "label").get.collation, Some("ascii_bin"))
-    val unspecified = schema("CREATE TABLE sample (id INT PRIMARY KEY, label VARCHAR(12))")
+    val unspecified = schema("CREATE TABLE `sample` (id INT PRIMARY KEY, label VARCHAR(12))")
     assertEquals(differences(unspecified, expected), Set.empty[String])
   }
 }
