@@ -55,11 +55,11 @@ object HomepageStartupLogic {
 
     preheat()
     val workbook: Option[AllWorkbookInfo] = canLoad.headOption.flatMap(loadWorkbookById)
-    fullInfo.usageControl.changeWorkbook(workbook)
+    fullInfo.workbookNavigationControl.changeWorkbook(workbook)
     workbook.foreach { info =>
       val languages = info.loadedWorkbook.metadata.availableLanguages
       if (!languages.contains(fullInfo.homepageInfoNow().currentLanguage))
-        languages.headOption.foreach(fullInfo.usageControl.changeLanguage)
+        languages.headOption.foreach(fullInfo.displayControl.changeLanguage)
     }
 
     // Mount first. Cache restoration and remote language refresh update its signals later.
@@ -67,7 +67,7 @@ object HomepageStartupLogic {
     fullInfo.contentControl.languageStorage.ensureStartup(CONTINUE_IMMEDIATELY).failed.foreach { err =>
       logger.logExceptionWarn("Language startup unavailable", err)
     }
-    fullInfo.usageControl.tryAutoLogin().failed.foreach { err =>
+    fullInfo.userSessionControl.tryAutoLogin().failed.foreach { err =>
       logger.logWarn(s"auto login was not possible: ${err.getMessage}")
     }
   }

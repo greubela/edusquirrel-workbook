@@ -22,7 +22,7 @@ class WorkbookRenderingSpec extends EditorDomSuite {
 
   factories.foreach { (name, factory) =>
     test(s"$name: every section renders all of its elements") {
-      val control = HtmlFullWorkbookApp.fullInfo.usageControl
+      val control = HtmlFullWorkbookApp.fullInfo.workbookNavigationControl
       control.changeWorkbook(factory(null))
       val workbook = HtmlFullWorkbookApp.fullInfo.current.workbookInfo.getOrElse(fail("the workbook did not open")).loadedWorkbook
       val current = Var("")

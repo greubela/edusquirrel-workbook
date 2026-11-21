@@ -93,3 +93,11 @@ services. Browser checks cover real input, delayed library loading, native edito
 replacement, draft restoration and panel geometry.
 
 The active tab is derived from the current `ProgrammingState`, including the Blocks tab for a `ProgrammingStateBeExpression`. Mounting the editor does not select the first configured tab or convert the answer implicitly. If the native tab is unavailable, the answer remains intact. External controls and Scala tests can await `EvaEditor.setActiveTab(language)` to convert the bound answer and activate that representation. Browser tests select the intended tab explicitly before testing its behavior.
+
+## Java method editing
+
+`webElements/code/JavaMethodEditor` owns method selection and drafts, with separate
+rendering helpers for its toolbar, navigation and workspace. `JavaMethodSource`
+provides one immutable analysis per source value, shared by method selection and
+class navigation. `JavaStructuredMethodEditor` binds this view to structured Java
+states; it does not own a second answer.

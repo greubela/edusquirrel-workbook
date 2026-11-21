@@ -56,7 +56,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     variable.updateHistory(_.addGradings(List(publicResult, hiddenResult)), ExecutionContextInformation.default)
     val sidebar = InteractionInfoSidebar(exercise, None, GradingReporter(exercise)).getDomElement()
     val previous = fullInfo.signals.currentLanguage.now()
-    fullInfo.usageControl.changeLanguage(German)
+    fullInfo.displayControl.changeLanguage(German)
     val close = mount(sidebar)
     try {
       val details = sidebar.ref.querySelector("details.feedback-grading")
@@ -71,7 +71,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       assertEquals(rows.length, 2)
       assert(rows(1).textContent.toLowerCase.contains("gradinghiddentest"), clues(rows(1).textContent)) // the hidden-test label, not its description
       assertEquals(rows(1).querySelectorAll(".feedback-date, .feedback-text").length, 0)
-      fullInfo.usageControl.changeLanguage(English)
+      fullInfo.displayControl.changeLanguage(English)
       assert(sidebar.ref.textContent.contains("Public feedback"))
       details.removeAttribute("open")
       val changed = publicResult.copy(gradingStatus = GradingStatus.Incorrect(), gradingTime = date.plusMinutes(1))
@@ -80,7 +80,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       assert(!details.hasAttribute("open"), "a result update keeps the reader's disclosure choice")
       assertEquals(sidebar.ref.querySelectorAll(".feedback-entry.feedback-status--incorrect").length, 1)
       assertEquals(sidebar.ref.querySelector(".feedback-score-chip").textContent, "1/2")
-    } finally { close(); fullInfo.usageControl.changeLanguage(previous) }
+    } finally { close(); fullInfo.displayControl.changeLanguage(previous) }
   }
 
   test("overview panel and editor sidebar render the same results from the shared reporter") {

@@ -81,7 +81,7 @@ class SessionFileJourneySpec extends EditorDomSuite {
       assert(name.endsWith("-journey-workbook.eva") && name.contains(user.user.id), name)
       assert(!content.contains("signedBackendToken\":{"), "the file holds no credentials")
       val second = client(None, None)
-      second.usageControl.tryContinueWithSessionFile(uploaded(content)).flatMap { _ =>
+      second.userSessionControl.tryContinueWithSessionFile(uploaded(content)).flatMap { _ =>
         assertEquals(second.current.userInfo.map(_.user.id), Some(user.user.id), "the session's user is registered locally")
         assertEquals(second.current.workbookInfo.map(_.loadedWorkbook.workbookId), Some("journey/workbook"))
         val restored = interaction(second, "square").asInstanceOf[TurtleRecreateShapeInteraction]
@@ -100,7 +100,7 @@ class SessionFileJourneySpec extends EditorDomSuite {
 
   test("uploading a file that is not a session leaves the page unchanged") {
     val page = client(Some(workbook()), Some(user))
-    page.usageControl.tryContinueWithSessionFile(uploaded("PK\u0003\u0004 not a session")).failed.map { _ =>
+    page.userSessionControl.tryContinueWithSessionFile(uploaded("PK\u0003\u0004 not a session")).failed.map { _ =>
       assertEquals(page.current.userInfo.map(_.user.id), Some(user.user.id))
       assertEquals(page.current.workbookInfo.map(_.loadedWorkbook.workbookId), Some("journey/workbook"))
     }

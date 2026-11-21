@@ -4,7 +4,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 import com.raquo.laminar.api.L.{canvasTag, *}
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
@@ -18,13 +18,13 @@ import scala.util.Try
 object SnapPreviewEditor {
   def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig,
             humanLanguage: Signal[HumanLanguage]): SnapPreviewEditor =
-    SnapPreviewEditor(state.signal, config, SnapCodeEditorImplDelegateToOriginal(), humanLanguage)
+    SnapPreviewEditor(state.signal, config, SnapMorphicSession(), humanLanguage)
 
   def apply(state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapPreviewEditor =
-    SnapPreviewEditor(state.signal, config, SnapCodeEditorImplDelegateToOriginal())
+    SnapPreviewEditor(state.signal, config, SnapMorphicSession())
 
   def apply(state: Var[ProgrammingState]): SnapPreviewEditor =
-    SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
+    SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, SnapMorphicSession())
 }
 
 case class SnapPreviewEditor(

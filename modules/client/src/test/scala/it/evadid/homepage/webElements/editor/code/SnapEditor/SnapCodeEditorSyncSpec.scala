@@ -8,7 +8,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.{Progra
 import com.raquo.airstream.ownership.{ManualOwner, Owner}
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.state.Var
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{CanvasVisibility, SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{CanvasVisibility, SnapCodeEditorConfig}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.core.datastructures.language.AppLanguage.*
 import munit.FunSuite
@@ -148,7 +148,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val world = js.Dynamic.literal()
       keyboard.asInstanceOf[js.Dynamic].updateDynamic("world")(world)
       keyboard.focus()
-      val result = SnapCodeEditorImplDelegateToOriginal.preserveKeyboardState {
+      val result = SnapPreviewRenderer.preserveKeyboardState {
         keyboard.value = ""
         keyboard.style.top = "0px"
         keyboard.style.left = "0px"
@@ -173,7 +173,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val style = keyboard.style.cssText
       val error = new IllegalStateException("preview failed")
       val thrown = intercept[IllegalStateException] {
-        SnapCodeEditorImplDelegateToOriginal.preserveKeyboardState {
+        SnapPreviewRenderer.preserveKeyboardState {
           keyboard.value = ""
           keyboard.style.cssText = ""
           throw error
@@ -193,7 +193,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val keyboard = dom.document.createElement("textarea").asInstanceOf[dom.HTMLTextAreaElement]
     keyboard.id = "morphic_keyboard"
     try {
-      val result = SnapCodeEditorImplDelegateToOriginal.preserveKeyboardState {
+      val result = SnapPreviewRenderer.preserveKeyboardState {
         dom.document.body.appendChild(keyboard)
         keyboard.value = "preview keyboard"
         "rendered"
@@ -230,7 +230,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   test("closing an editor before the Snap runtime loads does not touch Process") {
-    new SnapCodeEditorImplDelegateToOriginal().pauseWorldCycles()
+    new SnapMorphicSession().pauseWorldCycles()
   }
 
   test("empty-canvas diagnostics distinguish real blocks from empty project containers") {
@@ -364,7 +364,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
 
   test("destroying an uninitialized native editor does not access the unloaded Snap runtime") {
     assert(js.isUndefined(globals.selectDynamic("SpriteMorph")))
-    val impl = new SnapCodeEditorImplDelegateToOriginal()
+    val impl = new SnapMorphicSession()
     impl.destroy()
     impl.destroy()
     assertEquals(impl.currentProjectXml(), None)
