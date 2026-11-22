@@ -9,7 +9,6 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleDrawingPolicy, TurtleGraphic}
 import munit.FunSuite
 import com.raquo.airstream.state.Var
-import com.raquo.airstream.ownership.ManualOwner
 import scala.util.Try
 
 class TurtleJsxGraphRendererSpec extends FunSuite {
@@ -39,14 +38,19 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     }
   }
 
-  private def previewAssessment(state: ProgrammingState): Try[TurtleDrawingGrading.Assessment] = {
-    val owner = new ManualOwner
-    val result = Var(Option.empty[Try[TurtleDrawingGrading.Assessment]])
-    val preview = CompareShapePreview(Var(state), TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"))
-    try {
-      preview.comparisonSignal.foreach(value => result.set(Some(value)))(using owner)
-      result.now().get
-    } finally owner.killSubscriptions()
+  private def previewAssessment(state: ProgrammingState): Try[TurtleDrawingGrading.Assessment] =
+    CompareShapePreview(Var(state), TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes).assessment(state)
+
+  test("previews and graders of one state share a single comparison per target and policy") {
+    val state = ProgrammingStateRaw(Python, "forward(12)")
+    val target = TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0")
+    TurtleDrawingPolicy.values.toList.foreach { policy =>
+      val preview = TurtleDrawingGrading.assess(state, target, policy)
+      val shared = state.toBeExpression.turtleComparison(target, policy)
+      assert(shared eq state.toBeExpression.turtleComparison(target, policy), clues(policy))
+      assertEquals(preview.matches, shared.gradingStatus.isCorrect)
+      assertEquals(preview, TurtleDrawingGrading.assess(state.toBeExpression.turtleCommandExecutionInfo.completedCommands, target, policy))
+    }
   }
 
   test("preview conversion retains Java drafts it cannot display") {

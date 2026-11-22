@@ -154,6 +154,8 @@
   "stepCommand": "Step {step}: {command}",
   "turtleStepsTitle": "Step by step",
   "turtleStepStart": "Start: the turtle is at the origin and has not drawn anything yet.",
+  "renderingWaiting": "Waiting for rendering …",
+  "renderingInProgress": "Rendering …",
   "sortStepsTitle": "Sorting step by step",
   "sortStepStart": "Initial list",
   "sortStepGet": "Read position {index}: {value}",

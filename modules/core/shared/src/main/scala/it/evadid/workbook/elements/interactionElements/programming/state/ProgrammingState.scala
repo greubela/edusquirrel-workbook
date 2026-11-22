@@ -6,6 +6,8 @@ import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 
 import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Java, Python, SnapLanguage, ProgrammingLanguage}
 import it.evadid.vm.simulation.turtle.{TurtleProgramAnalysis, TurtleCommandExecutionInfo}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGradingLogic, TurtleGraphic}
+import java.util.concurrent.atomic.AtomicReference
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapGeneratedImages
@@ -82,6 +84,25 @@ object ProgrammingState {
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState derives ReadWriter {
   lazy val turtleCommandSites = TurtleProgramAnalysis.commandSites(expression)
   lazy val turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleProgramAnalysis(expression)
+  /** The drawing of the completed commands; its trace is computed once for all comparisons. */
+  lazy val turtleGraphic: TurtleGraphic = TurtleGraphic(turtleCommandExecutionInfo.completedCommands)
+  private val turtleComparisons =
+    AtomicReference(Map.empty[(TurtleGraphic, TurtleDrawingPolicy), TurtleGradingLogic.TurtleGraphicComparison])
+
+  /** Graders and previews of the same target share one comparison of this immutable state.
+    * Its line matching is lazy and runs once; the first comparison stored for a key is kept.
+    */
+  def turtleComparison(expected: TurtleGraphic, policy: TurtleDrawingPolicy): TurtleGradingLogic.TurtleGraphicComparison = {
+    val key = (expected, policy)
+    turtleComparisons.get().getOrElse(key, turtleComparisons.synchronized {
+      val stored = turtleComparisons.get()
+      stored.getOrElse(key, {
+        val comparison = TurtleGradingLogic.compare(turtleGraphic, expected, policy)
+        turtleComparisons.set(stored.updated(key, comparison))
+        comparison
+      })
+    })
+  }
   /** Startup run on the default list and sudoku. */
   lazy val programExecution: it.evadid.vm.simulation.ProgramExecution = execute()
 
