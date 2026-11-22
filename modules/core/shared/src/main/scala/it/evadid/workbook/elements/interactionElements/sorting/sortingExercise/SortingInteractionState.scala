@@ -10,7 +10,7 @@ enum AssignmentResult derives upickle.default.ReadWriter {
 
 /** None = unassigned; Some(fieldIndex) = correctly placed and locked in that field. */
 case class SortingInteractionState(
-  placedFieldIndexByItem: List[Option[Int]],
+  placedFieldIndexByItem: Seq[Option[Int]],
   sessionErrorCount: Int = 0,
   lastSessionErrorCount: Int = 0,
   /** Temporary wrong drop shown in a field before the item returns to the source list. */

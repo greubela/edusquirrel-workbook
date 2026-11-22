@@ -1,5 +1,6 @@
 package it.evadid.vm.conversion.snapexpression
 
+import it.evadid.vm.conversion.turtlestitchexpression.{TurtleStitchProgramModel, TurtleStitchToBeExpressionParser, TurtleStitchXmlLoader}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 
@@ -8,7 +9,7 @@ import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.defining.BeDefineFunction
+import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.naming.NamingStyle
 
@@ -21,38 +22,21 @@ import it.evadid.vm.naming.NamingStyle
  */
 object SnapExpressionSupport {
 
-  val ControlFlowExamples: List[String] = List(
-    "if condition:\n    ...\nelse:\n    ...",
-    "while not condition:\n    ...",
-    "for _ in range(n):\n    ...",
-    "for i in range(start, end + 1):\n    ..."
-  )
-
-  val VariableExamples: List[String] = List(
-    "steps = x",
-    "steps = steps + n",
-    "if steps < n:\n    forward(steps)"
-  )
-
-  val UserFunctionExamples: List[String] = List(
-    "def square(n):\n    forward(n)"
-  )
-
   val AllowedSnapSelectors: Set[String] =
     SnapTurtleCatalog.AllowedSnapSelectors ++
       SnapControlFlow.ControlSelectors ++
       SnapControlFlow.VariableSelectors ++
       SnapControlFlow.ConditionSelectors ++
-      SnapControlFlow.ArithmeticSelectors
+      SnapControlFlow.ArithmeticSelectors +
+      // `report` ends a reporter or predicate definition with its value.
+      "doReport" + "doStopThis"
 
-  /** Require whitespace after `block` so `<block-definition>` is not treated as a selector. */
-  private val BlockSelectorPattern = """<block\s[^>]*\bs="([^"]+)"""".r
-  private val CustomBlockPattern = """<custom-block\b[^>]*\bs="([^"]+)"""".r
-  private val BlockDefinitionPattern = """<block-definition\b[^>]*\bs="([^"]+)"""".r
 
   def isScriptStatement(expression: BeExpression): Boolean =
     expression match
-      case _: BeDefineFunction => false
+      case _: BeDefineFunction | _: BeDefineVariable => false
+      // Snap scripts have no comment statements; ConversionResult reports that comments are dropped.
+      case _: it.evadid.vm.code.errors.BeSingleLineComment => false
       // The green-flag hat is Snap execution metadata, not Python source.
       case call: BeFunctionCall => snapSelectorOf(call) != "receiveGo"
       case _ => true
@@ -62,9 +46,6 @@ object SnapExpressionSupport {
 
   def scriptStatementCount(expressions: List[BeExpression]): Int =
     scriptStatements(expressions).size
-
-  def collectUserFunctionNames(expression: BeExpression): Set[String] =
-    collectUserFunctionArities(expression).keySet
 
   def collectUserFunctionArities(expression: BeExpression): Map[String, Int] = {
     val arities = scala.collection.mutable.LinkedHashMap.empty[String, Int]
@@ -83,6 +64,7 @@ object SnapExpressionSupport {
       case whileExpr: it.evadid.vm.code.controlStructures.BeWhile =>
         whileExpr.body.body.foreach(walk)
       case repeat: it.evadid.vm.code.controlStructures.BeRepeatNr =>
+        walk(repeat.amount)
         repeat.body.body.foreach(walk)
       case forExpr: it.evadid.vm.code.controlStructures.BeFor =>
         forExpr.body.body.foreach(walk)
@@ -98,9 +80,17 @@ object SnapExpressionSupport {
    * hats, sprite-local definitions and script/upvar/variadic slots have no Python form,
    * and a call without a matching definition is already an `Undefined!` block in Snap.
    */
-  def unsupportedSnapSelectors(xml: String): List[String] = {
-    val fromBlocks =
-      BlockSelectorPattern.findAllMatchIn(xml).map(_.group(1)).toList.filterNot(AllowedSnapSelectors.contains)
+  def unsupportedSnapSelectors(xml: String): List[String] = unsupportedSnapSelectors(xml, TurtleStitchXmlLoader.load(xml))
+
+  /** Primitive blocks outside the supported set, and custom blocks Python cannot express. */
+  def unsupportedSnapSelectors(xml: String, project: TurtleStitchProgramModel.Project): List[String] = {
+    // Predefined module blocks are implemented with list primitives; their calls are what the program uses.
+    val fromBlocks = TurtleStitchToBeExpressionParser.withoutModuleLibraries(project).allBlocks.toList.collect {
+      case TurtleStitchProgramModel.PrimitiveBlock(Some("doStopThis"), _, inputs, _)
+          if inputs != Vector(TurtleStitchProgramModel.Literal("this block")) =>
+        "stop: only 'this block' has a function-return representation"
+      case TurtleStitchProgramModel.PrimitiveBlock(Some(selector), _, _, _) if !AllowedSnapSelectors.contains(selector) => selector
+    } ++ project.unreadBlocks.map(block => s"'$block' outside a script")
     val definitionProblems = SnapCustomBlockRules.allDefinitions(xml).flatMap(_.pythonIncompatibility)
     val undefinedCalls =
       SnapCustomBlockRules.obsoleteCalls(xml).map(call => s"'${call.spec}' has no matching block definition")
@@ -112,10 +102,6 @@ object SnapExpressionSupport {
 
   def isPrimitiveSelector(selector: String): Boolean =
     AllowedSnapSelectors.contains(selector)
-
-  def isOperatorSelector(selector: String): Boolean =
-    SnapControlFlow.ConditionSelectors.contains(selector) ||
-      SnapControlFlow.ArithmeticSelectors.contains(selector)
 
   /** Keep previous script partitions/positions when statement counts still match; else single script. */
   def reconcileLayout(previous: SnapCanvasLayout, statementCount: Int): SnapCanvasLayout =

@@ -9,7 +9,7 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 object HtmlTurtleStitchExploreProjectRenderer extends LineBasedRenderingFactory[TurtleStitchExploreProjectElement] {
 
   override protected def createRendering(workbookElement: TurtleStitchExploreProjectElement): AtomarLineRendering = {
-    val contentCard1: List[Element] = List(
+    val contentCard1: Seq[Element] = List(
       HtmlTurtleStitchRendererHelper.renderProjectPreviewImage(workbookElement.projectPathRelToResources),
       HtmlTurtleStitchRendererHelper.renderDownloadButton(LanguageMapContentId("TurtleStitch/downloadButton"), workbookElement.projectPathRelToResources)
     )

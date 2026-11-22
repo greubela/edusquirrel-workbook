@@ -1,0 +1,56 @@
+Fetch and update to the newerst version of the branch variable-refactor-night-action
+
+this branch is in the middle of a refactor. the refactoring had multiple stages:
+
+Phase 1: Change InteractionVariableHistory from the old format to an event-based format
+ 
+Phase 2: Use strongly typed structures whereever possible. Do not make dirty hacks by working directly on JSONs (e.g., workbookInteractionHistory) 
+
+Phase 3: Update the caches to use a format more suited for InteractionVariableHistory with a "ranged" fetch (all events between [startTimestamp] and [endTimestamp]). It must be ensured that everything uses at least the precision of LocalDateTime (also in the SQL database. It might be necessary to store the datetime twice there - as timestamp for SQL queries (if necessary) and as String for the exact precision. 
+
+Phase 4: Add two different database formats. The BlobFormat writes the whole interaction history in a single column in a json. The RelationalFormat writes every type of event (answer event, grading event, scaffolding event) into a dedicated relational table. 
+ 
+Phase 5: Change the type parameters of InteractionVariableHistory etc. from [T, GA, SA] standing for TypeOfInteractionState, GradingInfoAdditionalType, ScaffoldingInfoAdditionalType to [F <: InteractionFormat] where InteractionFormat is a SERIALIZABLE sealed trait having different type definitions (basically unifying T, GA, SA into a single Type).
+--> Importantly, InteractionFormat is easily serializable itself, so this allows for InteractionHistoryJson(format: InteractionFormat, historyJson: String) for kind-of-strongly typed exchange of histories between multiple servers.
+--> This InteractionFormat must be independent of existing workbooks or interaction element ids - which might not be known on every system (e.g., when the client builds a custom workbook not shared with the server. the server cannot use the id to resolve the type, it needs the type information directly).
+--> The database should also store the type when storing the json (esp. for BlobFormat. Since an exercise with an exercise id does not change its type, it might be sufficient to store the type as part of the sync context (but not as part of the primary key). Note that 
+--> InteractionFormat should be the central source of all Serializer regarding history and it´s associated types (but it is ok if the WorkbookElementFactory does not live in the InteractionFormat but in the companion object of the specific class. Although in the long term, serialisation of InteractionElements should be simplified and not rely on this very complex factory... it currently works and try to first make everything adhere to the new structure before approaching this task).
+--> Very carefully analyze the Scala Type System when building serializer and try to not build overcomplicated structures. In principle, the different InteractionFormats should work kind of like Enums (finite number of implementing structures, easily serializable by name). However, ideally, an Element that knows it type (via [F <: InteractionFormat] can use a variant of getMyTypeInstance: InteractionFormat getting the value of the case object of F to then access the serializer - so that there is no need to have a dedicated format: InteractionFormat in every constructor. However, if that is not possible, it is possible to carry around the format in all relevant sub-classes (like WorkbookInteractionElement currently has). 
+
+Phase 6: Remove obsolete tests / github actions / ... and make non-compiling tests compile. Ensure that everything is well-tested
+
+Phase 7: Verify that there is no legacy functionality or sth like that. We´re still in development and it is NOT necessary to support legacy formats or old data in databases. there should be clear Exceptions if a InteractionFormat is not known or Serialisation/Deserialisation fails for other reasons. 
+
+Phase 8: Verify all Tests pass, Github Actions are sensible and pass, docs are up to date and concise, etc, and try to fix remaining warnings on the console (when using deployAll) if they are easily fixable. Ensure that the final PR is mergable into main. 
+
+Note that:
+-> the refactor was not finished and various parts of the codebase are in various states of the refactoring process... the code probably does  not compile currently. This isn´t great but it is what it is.
+-> Focus on moving everything to the desired structure (and do not keep legacy information). This is likely a long task, plan accordingly and commit and push regularly (on a new branch "structure-refactor-process"). Keep these instructions in mind. 
+-> Keep docs up to date and remove old information in the docs. the FINAL version of the documentation in the final PR should be concise and focus on the finished structure, not the working process that got there. Store this prompt prominently during the working process so that it survives compression of the working context (a frequent source of mistakes and getting side-tracked / reverting back to old structure in previous attempts)
+-> DatabaseFormatV2 is the old name for RelationalFormat. TextInteraction2 does not exist, only TextInteraction does. Do not keep legacy compatibility or structures. 
+--> 	Codebase Consistency Audit: Check all classes related to WorkbookInteraction, Caches, ExecutionCommands, and Backend Server to ensure they avoid unnecessary abstractions, use strongly typed entities everywhere (failing fast with a sensible exception on serialization errors), maintain clear separation of concerns, and share common logic via concise helper methods instead of duplicating code.
+--> Try to keep methods short and use sensible helper methods and classes that are private/protected wherever possible and importantly have clear names and if necessary a comment description of what they´re doing. If possible, things should be done in a a functional style (with .map .filter .fold and immutable.withAddedElement instead of mutable.addElement) and/or based on events and clear state transitions (using State[...] in core and Var[...] in client for variables that strictly need state - however, try to avoid using state if not necessary). 
+
+Intermediate version of InteractionFormat looked like this: 
+
+sealed trait InteractionFormat derives ReadWriter {
+  type InteractionStateType
+  type GradingInfoType
+  type ScaffoldingInfoType
+
+	// type ExerciseFormat <- not a good idea as Formats might or should get re-used between different Exercises.
+
+  given stateRW: ReadWriter[InteractionStateType] = deferred
+  given gradingRW: ReadWriter[GradingInfoType] = deferred
+  given scaffoldingRW: ReadWriter[ScaffoldingInfoType] = deferred
+
+  lazy val stateSerializer: Serializer[InteractionStateType] = Serializer.fromImplicitRW
+  lazy val gradingInfoSerializer: Serializer[GradingInfoType] = Serializer.fromImplicitRW
+  lazy val scaffoldingInfoSerializer: Serializer[ScaffoldingInfoType] = Serializer.fromImplicitRW
+
+  def historySerializer(using ReadWriter[InteractionVariableHistory[this.type]]): Serializer[InteractionVariableHistory[this.type]] =
+    Serializer.fromImplicitRW
+
+}
+
+

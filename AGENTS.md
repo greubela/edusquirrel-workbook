@@ -1,3 +1,7 @@
+# Active interaction refactor
+
+The full user requirements are retained in [tmp/interaction-refactor/USER_PROMPT.txt](tmp/interaction-refactor/USER_PROMPT.txt). Follow them throughout this branch. Additional requirements are retained in [tmp/interaction-refactor/ADDITIONAL_REQUIREMENTS.txt](tmp/interaction-refactor/ADDITIONAL_REQUIREMENTS.txt).
+
 # Repository directory rules
 
 Read the repository layout and content-placement guide in [README.md](README.md) before choosing a location for new files.
@@ -19,3 +23,22 @@ Client state rule: keep changing application, editor and lifecycle state in `val
 Editor architecture: create only the selected editor, bind it to the central answer Var, and release it on Laminar unmount. Observe Var signals instead of adding editor-listener callbacks; treat all changes alike, without edit/restoration channels or synchronization-baseline stores. Panels are downstream GUI components receiving the central Var and task configuration, not contexts bound or activated by Eva. Run long computations in Futures and use workers where supported. Do not introduce fullscreen lifecycle interfaces or retained hidden editors. Derive UI flags from authoritative state (for example, a native handle determines fallback visibility) instead of storing copies.
 
 Persisted-data policy: the project is in development and supports only current saved schemas. Do not add migration readers, old field/tag aliases, or backward-compatible payloads. Catch malformed/unsupported data at storage boundaries and discard the affected record without crashing or clearing unrelated data.
+
+## Serialization architecture
+
+History APIs carry `[F <: InteractionFormat]`. Formats are sealed singleton values,
+serializable by a stable name independently of workbook definitions and element IDs.
+`InteractionFormat.State[F]`, `Grading[F]` and `Scaffolding[F]` recover their types;
+do not use illegal generic projections such as `F#InteractionStateType`.
+The format owns state, feedback, event and history codecs. Exercise-specific
+constraints belong in `WorkbookInteractionElement.validateState`, not its codec.
+
+History reads use only `fetch-events-from-db-request`; complete reads use
+`LocalDateTime.MIN` and `MAX` bounds. Do not reintroduce a separate full-fetch
+command or dual-operation fallback. Database setup has one source,
+`artifacts/database/setup.sql`, and rejects nonempty databases.
+
+Transport and persisted histories use `InteractionHistoryJson(format, historyJson)`.
+Do not infer a format from an element ID, reconstruct histories with raw JSON, or
+add compatibility readers. See [docs/interaction-format.md](docs/interaction-format.md)
+and [docs/database/interaction-history.md](docs/database/interaction-history.md).

@@ -6,7 +6,7 @@ import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVari
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.tree.*
-import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.vm.code.usage.*
 import it.evadid.vm.io.BeExpressionStructureInfo
 import it.evadid.vm.simulation.*
 import it.evadid.vm.static.BeExpressionStaticInformation
@@ -52,6 +52,9 @@ object BeExpression {
     taggedExpressionRW[BeReturn],
     taggedExpressionRW[BeStartProgram],
 
+    taggedExpressionRW[BeCurrentInstance],
+    taggedExpressionRW[BeMemberAccess],
+    taggedExpressionRW[BeAssignMember],
     taggedExpressionRW[BeAssignVariable],
     taggedExpressionRW[BeFunctionCall],
     taggedExpressionRW[BeUseValue],
@@ -84,6 +87,17 @@ trait BeExpression {
     }
   }
 
+  /** This expression and its descendants, depth first in source order. */
+  def subtree: Vector[BeExpression] =
+    this +: structureInfo.getChildren(false, GlobalScope()).toVector.flatMap {
+      case BeExpressionReference(_, child) => child.subtree
+      case _ => Vector.empty
+    }
+
+  /** The calls of `module`'s functions in this subtree, in source order. */
+  def moduleCalls(module: it.evadid.vm.modules.BeModule[?]): Vector[BeFunctionCall] =
+    subtree.collect { case call: BeFunctionCall if module.owns(call.funcDef) => call }
+
   def recToTree(withExtensions: Boolean, myPosition: BeChildInfo): BeExpressionTree = {
     val root: BeExpressionNode = BeExpressionReference(myPosition, this)
 
@@ -107,9 +121,7 @@ trait BeExpression {
 
   def staticInformationSubtree: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
 
-    private lazy val allExprChildren: List[BeExpression] = {
-      recToTree(false, BeChildInfo(BeChildRole.NoRole, GlobalScope())).values.toList.collect { case BeExpressionReference(_, expr) => expr }
-    }
+    private lazy val allExprChildren: List[BeExpression] = subtree.toList
 
     override def staticType: BeDataType = staticInformationExpression.staticType
 

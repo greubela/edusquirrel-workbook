@@ -4,7 +4,8 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServerHandler, LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
-import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
+import it.evadid.workbook.abstractions.InteractionFormat
+import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.{LocalIndexedDbSyncDefinition, LocalStorageSyncDefinition, SyncDestinationBasedOnHistoryDatabase}
 import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
 import it.evadid.workbook.interaction.sync.*
@@ -17,9 +18,6 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().workbookInfo
   }
 
-
-
-
   def currentHomepageContext: UsageContext = now().toContext
 
   /*def workbookUserData: Option[WorkbookUserDataAnalyzer] = fullInfo.synchronized {
@@ -31,12 +29,12 @@ case class HomepageCurrentInfo(fullInfo: FullInfo) {
     now().userInfo
   }
 
-  def allAvailableInteractions: List[WorkbookInteractionUntyped] = fullInfo.synchronized {
+  def allAvailableInteractions: Seq[WorkbookInteractionElement[? <: InteractionFormat]] = fullInfo.synchronized {
     val default = List()
     now().workbookInfo.map(_.loadedWorkbook.allInteractionsInThisInstance).getOrElse(default)
   }
 
-  def allAvailableLanguages: List[HumanLanguage] = fullInfo.synchronized {
+  def allAvailableLanguages: Seq[HumanLanguage] = fullInfo.synchronized {
     now().workbookInfo.map(_.loadedWorkbook.metadata.availableLanguages).getOrElse(List())
   }
 

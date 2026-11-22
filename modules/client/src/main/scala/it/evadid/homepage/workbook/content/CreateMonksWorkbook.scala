@@ -11,15 +11,14 @@ import it.evadid.workbook.elements.displayElements.WorkbookImageElement.Language
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.HintLabel
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaString, ProgrammingStatePythonString}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleGraphic, TurtleRecreateShapeInteraction}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStateSnapScalaModel}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.*
 import it.evadid.workbook.elements.interactionElements.table.{AnswerTableInteraction, EditableTableCell}
 import it.evadid.workbook.elements.structureElements.{ExerciseGroup, Workbook}
 
-import scala.collection.mutable.ListBuffer
 
 /** Recursion workbook "Die Mönche von Mons Komputarius".
  *
@@ -93,8 +92,8 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   /** Editor task: prompt and a Java turtle editor whose drawing is compared with the sample solution. */
   private def editorTask(id: String, extra: List[WorkbookElement] = Nil): WorkbookElement =
     task(id, List(prompt(id),
-      TurtleRecreateShapeInteraction("monks-" + id, ProgrammingStateJavaString(EditorCode(id)), editorTarget(id),
-        ProgrammingEditorPalette.PythonCompatibleSnap, Map.empty[String, Integer], editorLanguages = EditorLanguages)) ++ extra)
+      TurtleRecreateShapeInteraction("monks-" + id, ProgrammingStateJavaStructured(EditorCode(id)), editorTarget(id),
+        customExerciseConfig = Some(EditorConfig))) ++ extra)
 
   // Building once makes IDs and state references stable across createWorkbook/createEverything calls.
   override lazy val createWorkbook: Workbook = workbook(
@@ -164,11 +163,9 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
             instructionMarkdown(key("koch" + depth)),
             TurtleRecreateShapeInteraction(
               "monks-koch-" + depth,
-              ProgrammingStatePythonString(""),
+              ProgrammingStateSnapScalaModel.empty,
               kochTarget(depth),
-              ProgrammingEditorPalette.PythonCompatibleSnap,
-              Map.empty[String, Integer],
-              editorLanguages = EditorLanguages)))
+              customExerciseConfig = Some(EditorConfig))))
         })
     ),
     User.AndreGreubel
@@ -178,6 +175,9 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
 object CreateMonksWorkbook {
   /** Python is hidden in this workbook for now; learners work in Snap! or Java. */
   val EditorLanguages: List[AppLanguage.ProgrammingLanguage] = List(AppLanguage.SnapLanguage, AppLanguage.Java)
+
+  val EditorConfig: RecreateTurtleDidacticConfig = RecreateTurtleDidacticConfig.defaultForPalette(ProgrammingEditorPalette.PythonCompatibleSnap)
+    .copy(restrictEditorToLanguages = EditorLanguages)
 
   /** One slide: a key image plus the lines shown below it. A line is the key of a spoken dialogue
    * (`...dialogue`, prefixed with the speaker in the text) or of a short narration (`narr-...`).
@@ -368,71 +368,52 @@ object CreateMonksWorkbook {
   /** Records a sample solution as turtle commands. The helper methods mirror [[EditorCode.helpers]],
    * so the recorded strokes are exactly what the Java runner emits for the same solution.
    */
-  private final class Sketch {
-    private val commands = ListBuffer.empty[TurtleCommand[Double]]
+  private object Sketch {
+    import TurtleCommand.*
 
-    def forward(distance: Double): Unit = commands += TurtleCommand.Forward(distance)
-    def turnLeft(degrees: Double): Unit = commands += TurtleCommand.Left(degrees)
-    def turnRight(degrees: Double): Unit = commands += TurtleCommand.Right(degrees)
-    def penUp(): Unit = commands += TurtleCommand.PenUp()
-    def penDown(): Unit = commands += TurtleCommand.PenDown()
+    def stein(breite: Double): List[TurtleCommand[Double]] =
+      List.fill(2)(List(Forward(breite), Left(90.0), Forward(20.0), Left(90.0))).flatten
+    def hoch(): List[TurtleCommand[Double]] = List(PenUp(), Left(90.0), Forward(20.0), Right(90.0), PenDown())
+    def runter(): List[TurtleCommand[Double]] = List(PenUp(), Right(90.0), Forward(20.0), Left(90.0), PenDown())
+    def springe(weite: Double): List[TurtleCommand[Double]] = List(PenUp(), Forward(weite), PenDown())
 
-    def stein(breite: Double): Unit = (0 until 2).foreach { _ =>
-      forward(breite); turnLeft(90); forward(20); turnLeft(90)
-    }
-    def hoch(): Unit = { penUp(); turnLeft(90); forward(20); turnRight(90); penDown() }
-    def runter(): Unit = { penUp(); turnRight(90); forward(20); turnLeft(90); penDown() }
-    def springe(weite: Double): Unit = { penUp(); forward(weite); penDown() }
+    def vieleck(ecken: Int, laenge: Double): List[TurtleCommand[Double]] =
+      List.fill(ecken)(List(Forward(laenge), Left(360.0 / ecken))).flatten
 
-    def vieleck(ecken: Int, laenge: Double): Unit = (0 until ecken).foreach { _ => forward(laenge); turnLeft(360.0 / ecken) }
+    def turm(n: Int): List[TurtleCommand[Double]] =
+      if n <= 0 then Nil else stein(40) ++ hoch() ++ turm(n - 1)
 
-    def turm(n: Int): Unit = if n > 0 then { stein(40); hoch(); turm(n - 1) }
+    def pyramide(n: Int): List[TurtleCommand[Double]] =
+      if n <= 0 then Nil
+      else stein(n * 20) ++ hoch() ++ springe(10) ++ pyramide(n - 1) ++ springe(-10) ++ runter()
 
-    def pyramide(n: Int): Unit = if n > 0 then {
-      stein(n * 20); hoch(); springe(10)
-      pyramide(n - 1)
-      springe(-10); runter()
-    }
+    /** One brick per level; the next level starts two brick heights lower. */
+    def cantor(breite: Double, n: Int): List[TurtleCommand[Double]] =
+      stein(breite) ++ (if n <= 0 then Nil else
+        runter() ++ runter() ++ cantor(breite / 3, n - 1) ++ springe(2 * breite / 3) ++
+          cantor(breite / 3, n - 1) ++ springe(-2 * breite / 3) ++ hoch() ++ hoch())
 
-    /** One brick per level; the next level starts two brick heights lower, so the levels do not touch. */
-    def cantor(breite: Double, n: Int): Unit = {
-      stein(breite)
-      if n > 0 then {
-        runter(); runter()
-        cantor(breite / 3, n - 1)
-        springe(2 * breite / 3)
-        cantor(breite / 3, n - 1)
-        springe(-2 * breite / 3); hoch(); hoch()
-      }
-    }
-
-    def baum(laenge: Double, n: Int): Unit = if n > 0 then {
-      forward(laenge)
-      turnLeft(30); baum(laenge * 0.6, n - 1)
-      turnRight(60); baum(laenge * 0.6, n - 1)
-      turnLeft(30)
-      springe(-laenge)
-    }
-
-    def graphic: TurtleGraphic = TurtleGraphic(commands.toList)
+    def baum(laenge: Double, n: Int): List[TurtleCommand[Double]] =
+      if n <= 0 then Nil
+      else List(Forward(laenge), Left(30.0)) ++ baum(laenge * 0.6, n - 1) ++
+        List(Right(60.0)) ++ baum(laenge * 0.6, n - 1) ++ List(Left(30.0)) ++ springe(-laenge)
   }
 
   /** Target drawing of an editor task, recorded from its sample solution. */
   def editorTarget(id: String): TurtleGraphic = {
-    val sketch = new Sketch
-    id match {
-      case "e1" =>
-        sketch.forward(60); sketch.turnLeft(90); sketch.forward(20); sketch.turnLeft(90)
-        sketch.forward(60); sketch.turnLeft(90); sketch.forward(20)
-      case "e2" => sketch.stein(80); sketch.hoch(); sketch.stein(60); sketch.hoch(); sketch.stein(40)
-      case "e3" => sketch.vieleck(4, 60); sketch.springe(100); sketch.vieleck(6, 40)
-      case "e4" => sketch.turm(5)
-      case "e5" | "e6a" | "e6b" => sketch.pyramide(4); sketch.springe(100); sketch.pyramide(3)
-      case "e7" => sketch.cantor(270, 3)
-      case "e8" => sketch.turnLeft(90); sketch.baum(80, 5)
+    import Sketch.*
+    val commands: List[TurtleCommand[Double]] = id match {
+      case "e1" => List(TurtleCommand.Forward(60.0), TurtleCommand.Left(90.0), TurtleCommand.Forward(20.0),
+        TurtleCommand.Left(90.0), TurtleCommand.Forward(60.0), TurtleCommand.Left(90.0), TurtleCommand.Forward(20.0))
+      case "e2" => stein(80) ++ hoch() ++ stein(60) ++ hoch() ++ stein(40)
+      case "e3" => vieleck(4, 60) ++ springe(100) ++ vieleck(6, 40)
+      case "e4" => turm(5)
+      case "e5" | "e6a" | "e6b" => pyramide(4) ++ springe(100) ++ pyramide(3)
+      case "e7" => cantor(270, 3)
+      case "e8" => List(TurtleCommand.Left(90.0)) ++ baum(80, 5)
       case other => throw IllegalArgumentException(s"No editor target for $other")
     }
-    sketch.graphic
+    TurtleGraphic(commands)
   }
 
   /** Exact vector targets for the line and the first two Koch refinements.

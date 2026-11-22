@@ -84,7 +84,7 @@ class Sha256Spec extends FunSuite {
          serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike)) {
       val e = Sha256Interaction("sha", title, task, Sha256Answer("Grüße 🌍\n", ""))
       assertEquals(serializer.deserialize(serializer.serialize(e)), e)
-      assertEquals(e.serializerInteractionContent.deserialize(e.serializerInteractionContent.serialize(e.initial)), e.initial)
+      assertEquals(e.interactionFormat.stateSerializer.deserialize(e.interactionFormat.stateSerializer.serialize(e.initial)), e.initial)
     }
   }
 }

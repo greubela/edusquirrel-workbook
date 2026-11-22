@@ -258,7 +258,8 @@
     grid-template-columns: minmax(0, 1fr) minmax(16rem, 23%);
 }
 
-.interaction-editor > .interaction-element-info {
+.interaction-editor__side-panel,
+.interaction-editor__side-panel > .interaction-element-info {
     display: contents;
 }
 
@@ -297,7 +298,7 @@
     border-radius: inherit;
 }
 
-.interaction-editor > .interaction-element-info > .interaction-info__hint-body {
+.interaction-editor__side-panel > .interaction-element-info > .interaction-info__hint-body {
     position: static;
     grid-row: 2;
     grid-column: 2;
@@ -313,7 +314,7 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .interaction-editor > .interaction-element-info > .interaction-info__hint-body {
+    .interaction-editor__side-panel > .interaction-element-info > .interaction-info__hint-body {
         position: absolute;
         grid-area: auto;
         z-index: 20;

@@ -14,7 +14,7 @@ private[gpt] object TextInputLlmSupport {
   private given ExecutionContext = ExecutionContext.global
 
   // Capture the language once; all content and the result use that same locale.
-  def resolve(ids: List[LanguageMapContentId], resolver: LanguageMapIdResolver): Future[(HumanLanguage, Map[LanguageMapContentId, String])] =
+  def resolve(ids: Seq[LanguageMapContentId], resolver: LanguageMapIdResolver): Future[(HumanLanguage, Map[LanguageMapContentId, String])] =
     resolver.languageFuture().flatMap { language =>
       Future.traverse(ids.distinct) { id =>
         resolver.resolveMap(id).map { translations =>
@@ -26,7 +26,7 @@ private[gpt] object TextInputLlmSupport {
       }.map(values => language -> values.toMap)
     }
 
-  def send(request: LLMCommands.FeedbackLlmRequest, clients: List[ExecutionClient]): Future[String] = {
+  def send(request: LLMCommands.FeedbackLlmRequest, clients: Seq[ExecutionClient]): Future[String] = {
     val factory = LLMCommands.feedbackLlmCommandFactory
     val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
     clients.find(_.canExecuteCommand(command)) match {

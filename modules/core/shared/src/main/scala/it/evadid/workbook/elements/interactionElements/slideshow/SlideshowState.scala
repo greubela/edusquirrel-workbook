@@ -15,7 +15,7 @@ import java.time.LocalDateTime
  * Transition recording lives here so renderers only decide when navigation happened while the model decides how that navigation is represented.
  */
 case class SlideshowState(
-                           allPanels: List[WorkbookElementReference],
+                           allPanels: Seq[WorkbookElementReference],
                            events: Set[SlideshowProceededEvent]
                          ) {
 
@@ -23,7 +23,7 @@ case class SlideshowState(
 
   lazy val unseenPanels: Set[WorkbookElementReference] = allPanels.filter(curPanel => !seenPanels.contains(curPanel)).toSet
 
-  private lazy val eventsSorted: List[SlideshowProceededEvent] = events.toList.sortBy(_.proceededAt)
+  private lazy val eventsSorted: Seq[SlideshowProceededEvent] = events.toList.sortBy(_.proceededAt)
 
   /**
    * Records that the user moved from one panel index to another and returns the updated slideshow state.

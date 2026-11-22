@@ -10,6 +10,7 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
+import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
@@ -21,7 +22,8 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
 
   test("grading icons count statuses and never expose private grading details") {
     val interaction = exercise
-    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction)
+    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction,
+      it.evadid.homepage.control.info.interaction.GradingReporter(interaction))
     val cases = List(
       (List(GradingStatus.Correct(), GradingStatus.Correct()), "grading-icon-thumbs-up-path"),
       (List(GradingStatus.Correct(), GradingStatus.Incorrect()), "grading-icon-hand-path"),
@@ -30,7 +32,7 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
       val results: Map[WorkbookInteractionGrader[String, MessengerModel], GradingResult[String, MessengerModel]] = interaction.gradingElements.zip(statuses).map { (grader, status) =>
         grader -> GradingResult(grader, "", status, Some(LanguageMap.universalMap[HumanLanguage]("PRIVATE_FEEDBACK")))
       }.toMap
-      val element = icons.deriveGradingSymbol(GradedState("", results))
+      val element = icons.deriveGradingSymbol(GradingSummary(interaction.gradingElements, GradedState("", results)))
       val close = mount(element)
       try {
         assert(element.ref.querySelector(s".$expected") != null, clues(element.ref.outerHTML))
@@ -42,18 +44,19 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
 
   test("grading icons show errors and explicitly unrequested checks") {
     val interaction = exercise
-    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction)
+    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction,
+      it.evadid.homepage.control.info.interaction.GradingReporter(interaction))
     val current: Map[WorkbookInteractionGrader[String, MessengerModel], GradingResult[String, MessengerModel]] =
       interaction.gradingElements.map(grader => grader -> GradingResult(grader, "", GradingStatus.Correct())).toMap
     val grader = interaction.gradingElements.head
     val error = current(grader).copy(gradingStatus = GradingStatus.TestError(it.evadid.distribution.command.SerializedException("execution failure")))
-    val complete = icons.deriveGradingSymbol(GradedState("", current.updated(grader, error)))
+    val complete = icons.deriveGradingSymbol(GradingSummary(interaction.gradingElements, GradedState("", current.updated(grader, error))))
     val closeComplete = mount(complete)
     try {
       assert(complete.ref.querySelector(".grading-error-path") != null)
     } finally closeComplete()
     val unrequested = current(grader).copy(gradingStatus = GradingStatus.NotRequested())
-    val missing = icons.deriveGradingSymbol(GradedState("", current.updated(grader, unrequested)))
+    val missing = icons.deriveGradingSymbol(GradingSummary(interaction.gradingElements, GradedState("", current.updated(grader, unrequested))))
     val closeMissing = mount(missing)
     try assert(missing.ref.querySelector(".grading-start-path") != null)
     finally closeMissing()
@@ -61,19 +64,20 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
 
   test("completed scaffolding remains available when the display language changes") {
     val interaction = exercise
-    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction)
+    val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction,
+      it.evadid.homepage.control.info.interaction.GradingReporter(interaction))
     val feedback = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Hinweis", English -> "Hint"))
-    val saved = ScaffoldingResult[String, Any]("", ScaffoldingStatus.ScaffoldingFeedback(feedback), FeedbackEntity.TestEntity(), None)
-    val element = icons.deriveScaffoldingSymbol(Some(saved))
+    val saved = ScaffoldingResult[String, it.evadid.core.datastructures.chat.MessengerModel]("", ScaffoldingStatus.ScaffoldingFeedback(feedback), FeedbackEntity.TestEntity(), None)
+    val element = icons.deriveScaffoldingSymbol(ScaffoldingReport(Some(saved.scaffoldingStatus)))
     val originalLanguage = fullInfo.signals.currentLanguage.now()
     val close = mount(element)
     try {
-      fullInfo.usageControl.changeLanguage(German)
+      fullInfo.displayControl.changeLanguage(German)
       assertEquals(element.ref.getAttribute("data-tooltip"), "Hinweis")
-      fullInfo.usageControl.changeLanguage(English)
+      fullInfo.displayControl.changeLanguage(English)
       assertEquals(element.ref.getAttribute("data-tooltip"), "Hint")
       assert(element.ref.querySelector(".scaffolding-info-svg-fully") != null, clues(element.ref.outerHTML))
       assertEquals(saved.scaffoldingStatus, ScaffoldingStatus.ScaffoldingFeedback(feedback))
-    } finally { fullInfo.usageControl.changeLanguage(originalLanguage); close() }
+    } finally { fullInfo.displayControl.changeLanguage(originalLanguage); close() }
   }
 }

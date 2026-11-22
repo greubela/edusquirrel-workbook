@@ -1,12 +1,13 @@
 package it.evadid.core.util.io
 
+import it.evadid.workbook.abstractions.InteractionFormat.{TextInteractionFormat}
+
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import it.evadid.core.datastructures.tree.nodeImpl.{NodeBasedTreeNode, NodeBasedTreePosition}
 import it.evadid.core.datastructures.vectorShapes.svg.*
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.distribution.commandTypes.MailCommands.SendMailRequest
-import it.evadid.util.parsing.Js
 import it.evadid.vm.BeProgram
 import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
 import it.evadid.vm.parsing.python.clean.model.{PyAST, PythonType}
@@ -29,18 +30,6 @@ class SystematicDerivedCodecSpec extends FunSuite {
       assertEquals(decoded.forParent(), position.forParent())
       assertEquals(decoded.forChild(3), position.forChild(3))
     }
-  }
-  test("JSON value-class trees preserve duplicate object keys, order and all node kinds") {
-    val value: Js.Val = Js.Obj("same" -> Js.Str("学校"), "same" -> Js.Num(-1.25),
-      "array" -> Js.Arr(Js.True, Js.False, Js.Null, Js.Arr()))
-    roundTrip(value)
-    roundTrip(Js.Str("quoted\"\ntext"))
-    roundTrip(Js.Num(1.25))
-    roundTrip(Js.Arr(Js.Null))
-    roundTrip(Js.Obj("x" -> Js.False))
-  }
-  test("concrete JSON node codecs reject a different node type") {
-    intercept[Exception](read[Js.Str](write[Js.Val](Js.Num(2))))
   }
   test("every SVG command kind preserves its payload and drawing operation") {
     val p = Point(1.25, -2.5)
@@ -155,7 +144,7 @@ class SystematicDerivedCodecSpec extends FunSuite {
   }
   test("workbook interface readers reject incompatible element kinds") {
     val panel: WorkbookElement = TwoColumnPanel("panel", TextInteraction("left"), TextInteraction("right"))
-    intercept[Exception](read[WorkbookInteractionElement[String]](write(panel)))
+    intercept[Exception](read[WorkbookInteractionElement[TextInteractionFormat.type]](write(panel)))
   }
 
   test("standalone section snapshots include prerequisites outside their child list") {

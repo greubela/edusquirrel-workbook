@@ -11,7 +11,7 @@ enum LedgerError derives ReadWriter {
 
 object TeachingLedger {
   /** Applies transfers in order. A rejected history never returns partially updated balances. */
-  def calculate(initial: Map[String, BigInt], transfers: List[LedgerTransfer]): Either[LedgerError, Map[String, BigInt]] = {
+  def calculate(initial: Map[String, BigInt], transfers: Seq[LedgerTransfer]): Either[LedgerError, Map[String, BigInt]] = {
     if (initial.isEmpty || initial.exists((name, balance) => name.trim.isEmpty || name != name.trim || balance < 0))
       Left(LedgerError.InvalidInitialBalances)
     else transfers.foldLeft[Either[LedgerError, Map[String, BigInt]]](Right(initial)) { (result, transfer) =>

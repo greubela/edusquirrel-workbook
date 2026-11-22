@@ -157,9 +157,10 @@ class TurtleGraphicSpec extends FunSuite {
     val graphic = trace(cmd("forward", 10), cmd("pen_up"), cmd("goto", 20, 5), cmd("pen_down"), cmd("setx", 30))
     assertEquals(graphic.renderMovements.map(_.jump).toList, List(false, true, false))
     assertEquals(graphic.renderLines.size, 2)
+    // Render coordinates are SVG (y down); goto takes turtle coordinates (y up).
     point(graphic.renderMovements(1).start, 10, 0)
-    point(graphic.renderMovements(1).end, 20, 5)
-    point(graphic.renderLines.last.end, 30, 5)
+    point(graphic.renderMovements(1).end, 20, -5)
+    point(graphic.renderLines.last.end, 30, -5)
   }
 
   test("signed turns accumulate across zero forward; cancelled and full turns have no angle") {
@@ -251,8 +252,9 @@ class TurtleGraphicSpec extends FunSuite {
     assert(graphic.renderLines.size > 1)
     val travel = graphic.renderMovements.last
     assert(travel.jump)
-    point(travel.start, 10, 20)
-    point(travel.end, 10, 15)
+    // goto(10, 20) is SVG (10, -20); heading 90 points up, so forward(5) reaches turtle y 25.
+    point(travel.start, 10, -20)
+    point(travel.end, 10, -25)
     val fromSvg = TurtleGraphic.TurtleGraphicSvgString(graphic.toSvgPathDString)
     assertEquals(graphic.renderLines.size, fromSvg.renderLines.size)
     graphic.renderLines.zip(fromSvg.renderLines).foreach { (line, svgLine) =>

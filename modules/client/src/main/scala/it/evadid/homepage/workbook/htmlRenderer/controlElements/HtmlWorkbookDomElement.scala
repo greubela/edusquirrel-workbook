@@ -19,6 +19,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
   private lazy val workbookDomElement: ReactiveHtmlElement[HTMLDivElement] = {
     div(
+      EventStream.periodic(10000).map(_ => fullInfo.syncControl.ensureSynced()) --> Observer.empty,
       cls := "workbook-app-shell",
       dialogElement,
       mainTag(
@@ -32,14 +33,16 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   // BODY
 
   private lazy val workbookBodyDomSignal: Signal[Element] = {
-    val workbookSignal = fullInfo.signals.workbook.distinct
+    val workbookSignal = fullInfo.signals.workbook.distinctByFn((previous, next) =>
+      previous == next && previous.zip(next).forall((a, b) => a.loadedWorkbook eq b.loadedWorkbook))
     val userSignal = fullInfo.signals.user.distinct
-    val watchSignal = workbookSignal.combineWith(userSignal)
+    // Construct the registry before any view asks for an interaction's reporters.
+    val watchSignal = workbookSignal.combineWith(userSignal, fullInfo.signals.interactionReporters)
 
     watchSignal.map {
-      case (None, _) => HtmlSelectWorkbookElement().getDomElement()
-      case (_, None) => HtmlLoginElement().getDomElement()
-      case (Some(workbookInfo), Some(userInfo)) => HtmlWorkbookBodyElement(workbookInfo, userInfo).getDomElement()
+      case (None, _, _) => HtmlSelectWorkbookElement().getDomElement()
+      case (_, None, _) => HtmlLoginElement().getDomElement()
+      case (Some(workbookInfo), Some(userInfo), _) => HtmlWorkbookBodyElement(workbookInfo, userInfo).getDomElement()
     }
   }
 
@@ -67,7 +70,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
         laminarHelper.contentIdStringSignal(
           LanguageMapContentId("login/privacyFooterOnlineLogin"),
           PLAINTEXT_UNDERSCORE_REPLACABLE,
-          List(syncDest.size.toString, syncDest.count(!_.isRemote) + "", syncDest.count(_.isRemote) + ""))
+          List(syncDest.size.toString, syncDest.count(!_.isRemote).toString, syncDest.count(_.isRemote).toString))
       }
     })
 
@@ -76,7 +79,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   /** The privacy notice can be closed with its cross; it shows again after a page reload. */
   private lazy val privacyFooterClosed: Var[Boolean] = Var(false)
 
-  private def createDomElement(bodyDom: Element): List[Element] = List(
+  private def createDomElement(bodyDom: Element): Seq[Element] = List(
     div(
       cls := "workbook-header",
       children <-- headerChildren
@@ -101,15 +104,15 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   )
 
 
-  lazy val headerChildren: Signal[List[Element]] = {
+  lazy val headerChildren: Signal[Seq[Element]] = {
     fullInfo.signals.workbook.combineWith(fullInfo.signals.user, collapsedSignal).map(
       (workbook, user, collapsed) => {
         val always = List(
           createTitleLine(workbook, user),
           DropdownMenuControl(workbook, user).getDomElement(),
         )
-        val section: List[Element] = if (collapsed || workbook.isEmpty || user.isEmpty) List() else List(SectionSelectionLine(workbook.get).getDomElement())
-        val language: List[Element] = if (collapsed) List() else List(LanguageSelectionLine().getDomElement())
+        val section: Seq[Element] = if (collapsed || workbook.isEmpty || user.isEmpty) List() else List(SectionSelectionLine(workbook.get).getDomElement())
+        val language: Seq[Element] = if (collapsed) List() else List(LanguageSelectionLine().getDomElement())
         always ++ language ++ section ++ List(createDomToggleButton())
       })
 
@@ -118,7 +121,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
   private def createDomToggleButton(): Element = div(
     cls := "workbook-header-toggle",
-    onClick --> { _ => fullInfo.usageControl.changeDisplay(displayInfo => displayInfo.copy(collapsedNavigation = !displayInfo.collapsedNavigation)) },
+    onClick --> { _ => fullInfo.displayControl.updateDisplay(displayInfo => displayInfo.copy(collapsedNavigation = !displayInfo.collapsedNavigation)) },
     span(
       child <-- collapsedSignal.map { c =>
         if (c) span(text <-- laminarHelper.plaintextStringSignal("basic/showHeader"))

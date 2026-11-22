@@ -11,7 +11,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Sn
  */
 object SnapPaletteCatalog {
 
-  val TabOrder: List[PaletteTab] = List(
+  val TabOrder: Seq[PaletteTab] = List(
     PaletteTab.Motion,
     PaletteTab.Pen,
     PaletteTab.Embroidery,
@@ -20,35 +20,13 @@ object SnapPaletteCatalog {
     PaletteTab.Variables
   )
 
-  val ControlLanguageSelectors: List[String] = List(
-    "doRepeat",
-    "doIf",
-    "doIfElse",
-    "doUntil",
-    "doFor"
-  )
+  val ControlLanguageSelectors: Seq[String] = SnapControlFlow.ControlSelectorOrder
 
-  val OperatorSelectors: List[String] = List(
-    "reportBoolean",
-    "reportVariadicSum",
-    "reportDifference",
-    "reportVariadicProduct",
-    "reportQuotient",
-    "reportModulus",
-    "reportVariadicLessThan",
-    "reportVariadicGreaterThan",
-    "reportVariadicEquals",
-    "reportVariadicLessThanOrEquals",
-    "reportVariadicGreaterThanOrEquals",
-    "reportVariadicNotEquals",
-    "reportVariadicAnd",
-    "reportVariadicOr",
-    "reportNot"
-  )
+  val OperatorSelectors: Seq[String] = SnapControlFlow.OperatorPaletteOrder
 
-  val VariableSelectors: List[String] = List("doSetVar", "doChangeVar")
+  val VariableSelectors: Seq[String] = SnapControlFlow.VariableCommandOrder
 
-  def selectorsForTab(tab: PaletteTab): List[String] =
+  def selectorsForTab(tab: PaletteTab): Seq[String] =
     tab match
       case PaletteTab.Motion | PaletteTab.Pen | PaletteTab.Embroidery =>
         SnapTurtleCatalog.primitivesForTab(tab).map(_.snapSelector)
@@ -61,7 +39,7 @@ object SnapPaletteCatalog {
       case PaletteTab.Other =>
         Nil
 
-  def pythonCompatibleSelectors: List[String] =
+  def pythonCompatibleSelectors: Seq[String] =
     TabOrder.flatMap(selectorsForTab)
 
   def pythonCompatibleSelectorSet: Set[String] =

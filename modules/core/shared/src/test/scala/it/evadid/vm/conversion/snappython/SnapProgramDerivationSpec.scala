@@ -1,9 +1,11 @@
 package it.evadid.vm.conversion.snappython
 
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 
 import it.evadid.vm.BeProgram
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
@@ -28,7 +30,7 @@ class SnapProgramDerivationSpec extends FunSuite {
   }
 
   test("invalid Python apply leaves the stored Snap project and metadata intact") {
-    val source = ProgrammingStateSnapXml(ProgrammingStateSnapXml.mini.snapXml)
+    val source = ProgrammingStateRaw(SnapLanguage, ProgrammingStateSnapScalaModel.mini.toSnapXml.code)
     val stored = ProgrammingState.serializer.serialize(source)
     assert(PythonToSnap.replacing(source, "forward(").isLeft)
     assertEquals(ProgrammingState.serializer.serialize(source), stored)

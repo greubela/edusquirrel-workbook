@@ -1,16 +1,18 @@
 package todomove.webElementsOld.webElements.svg.shapes
 
+import it.evadid.core.datastructures.vectorShapes.blocks.BlockPaths
+
 import it.evadid.core.datastructures.geometry.Bounds
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 
 /**
-  * Test-only accessors for invoking [[ShapeFactory]] helpers that are package-private.
+  * Test-only accessors for the block and Snap path builders.
   */
 object TestShapeFactoryAccess {
 
-  def duck(bounds: Bounds[Double]): SvgPathBuilder[Double] = ShapeFactory.buildDuckShape(bounds)
+  def duck(bounds: Bounds[Double]): SvgPathBuilder[Double] = BlockPaths.buildDuckShape(bounds)
 
-  def literal(bounds: Bounds[Double]): SvgPathBuilder[Double] = ShapeFactory.buildLiteralShape(bounds)
+  def literal(bounds: Bounds[Double]): SvgPathBuilder[Double] = BlockPaths.buildLiteralShape(bounds)
 
   def snapCommand(bounds: Bounds[Double], cSlots: List[Bounds[Double]] = Nil): SvgPathBuilder[Double] =
     SnapShapeFactory.buildSnapCommandShape(

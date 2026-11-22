@@ -1,0 +1,3 @@
+# Resolve sbt, plugins and project dependencies through the shared mirror-first configuration.
+-Dsbt.override.build.repos=true
+-Dsbt.repository.config=project/repositories

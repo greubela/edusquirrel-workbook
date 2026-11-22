@@ -41,7 +41,7 @@ object AppLanguage {
   def allLanguages: Set[AppLanguage] = humanLanguages ++ programmingLanguages ++ List(UniversalLanguage)
 
   val humanLanguages: Set[HumanLanguage] = Set(English, German, French, Ukrainian, Russian, Turkish, Danish, Spanish)
-  val programmingLanguages: Set[ProgrammingLanguage] = Set(Python, Java, JavaScript, Rust, Lisp, Cpp, C, SQL, BlockDisplay)
+  val programmingLanguages: Set[ProgrammingLanguage] = Set(SnapLanguage, Python, Java, JavaScript, Rust, Lisp, Cpp, C, SQL, BlockDisplay)
 
 
 

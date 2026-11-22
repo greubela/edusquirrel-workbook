@@ -1,0 +1,296 @@
+package it.evadid.vm.conversion.parsed
+
+import it.evadid.vm.types.BeDataType.AnyType
+
+import scala.collection.mutable
+
+import it.evadid.core.datastructures.language.*
+import it.evadid.core.datastructures.language.AppLanguage.*
+import it.evadid.vm.code.abstractions.BeExpression
+import it.evadid.vm.code.controlStructures.BeSequence
+import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.naming.{BeEntityName, KnownBeEntityNames}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
+import it.evadid.vm.types.{AssigningNotPossible, AssigningPossibleWithImplicitCast, AssigningPossibleWithSameType, BeDataType}
+
+object SymbolTable {
+  sealed trait KnownStructure derives upickle.default.ReadWriter {
+    def name: String
+  }
+
+  object KnownStructure {
+    final case class Variable(name: String, variable: BeDefineVariable) extends KnownStructure derives upickle.default.ReadWriter
+
+    final case class Function(name: String, function: BeDefineFunction) extends KnownStructure derives upickle.default.ReadWriter
+
+    final case class Operator(name: String, function: BeDefineFunction) extends KnownStructure derives upickle.default.ReadWriter
+
+    final case class Class(name: String, clazz: BeDefineClass) extends KnownStructure derives upickle.default.ReadWriter
+  }
+
+  val defaultKnownStructures: Seq[KnownStructure] =
+    DefaultDefinitions.operatorDefinitionsWithSymbols.map { case (symbol, function) =>
+      KnownStructure.Operator(symbol, function)
+    } ++ DefaultDefinitions.builtinFunctionDefinitions.map { case (name, function) =>
+      KnownStructure.Function(name, function)
+    }
+
+  final case class CurrentlyKnownStructures(
+                                             variables: Map[String, BeDefineVariable],
+                                             functions: Map[String, BeDefineFunction],
+                                             operators: Map[(String, Int), List[BeDefineFunction]],
+                                             classes: Map[String, BeDefineClass]
+                                           ) derives upickle.default.ReadWriter {
+    def addVariable(name: String, variable: BeDefineVariable): CurrentlyKnownStructures =
+      copy(variables = variables.updated(name, variable))
+
+    def addFunction(name: String, function: BeDefineFunction): CurrentlyKnownStructures =
+      copy(functions = functions.updated(name, function))
+
+    def addOperator(name: String, function: BeDefineFunction): CurrentlyKnownStructures = {
+      val key = name -> function.inputs.length
+      val existing = operators.getOrElse(key, List.empty)
+      val updatedList =
+        if (existing.exists(_ eq function)) existing.map(cur => if (cur eq function) function else cur)
+        else existing :+ function
+      copy(
+        functions = functions.updated(name, function),
+        operators = operators.updated(key, updatedList)
+      )
+    }
+
+    def removeOperator(key: (String, Int), function: BeDefineFunction): CurrentlyKnownStructures =
+      copy(operators = operators.updatedWith(key)(_.map(_.filterNot(_ eq function))))
+
+    def addClass(name: String, clazz: BeDefineClass): CurrentlyKnownStructures =
+      copy(classes = classes.updated(name, clazz))
+
+    def +(structure: KnownStructure): CurrentlyKnownStructures = structure match {
+      case KnownStructure.Variable(name, variable) => addVariable(name, variable)
+      case KnownStructure.Function(name, function) => addFunction(name, function)
+      case KnownStructure.Operator(name, function) => addOperator(name, function)
+      case KnownStructure.Class(name, clazz) => addClass(name, clazz)
+    }
+  }
+
+  object CurrentlyKnownStructures {
+    val empty: CurrentlyKnownStructures =
+      CurrentlyKnownStructures(Map.empty, Map.empty, Map.empty[(String, Int), List[BeDefineFunction]], Map.empty)
+
+    def fromKnown(structures: Seq[KnownStructure]): CurrentlyKnownStructures =
+      structures.foldLeft(empty)(_ + _)
+  }
+
+  final class ParseContext(initialKnownStructures: CurrentlyKnownStructures, initialDeclaredNames: Set[String] = Set.empty, val currentClass: Option[BeDefineClass] = None) {
+    private var currentlyKnownStructures: CurrentlyKnownStructures = initialKnownStructures
+    private var scopes: List[mutable.LinkedHashMap[String, BeDefineVariable]] = {
+      val baseScope = mutable.LinkedHashMap[String, BeDefineVariable]()
+      baseScope ++= initialKnownStructures.variables
+      List(baseScope)
+    }
+    private val variablesBuffer = mutable.ListBuffer[BeDefineVariable]()
+    variablesBuffer ++= initialKnownStructures.variables.values
+    private val functionsBuffer = mutable.ListBuffer[BeDefineFunction]()
+    private val classesBuffer = mutable.ListBuffer[BeDefineClass]()
+    classesBuffer ++= initialKnownStructures.classes.values
+    private val functionsByName = mutable.LinkedHashMap[String, BeDefineFunction]()
+    functionsByName ++= initialKnownStructures.functions
+    private val operatorFunctions = mutable.LinkedHashMap[(String, Int), List[BeDefineFunction]]()
+    operatorFunctions ++= initialKnownStructures.operators
+
+    initialKnownStructures.operators.foreach { case ((symbol, _), functions) =>
+      functions.foreach { function =>
+        if (!functionsByName.contains(symbol)) functionsByName.update(symbol, function)
+        if (!functionsBuffer.exists(_ eq function)) functionsBuffer += function
+      }
+    }
+    initialKnownStructures.functions.foreach { case (_, function) =>
+      if (!functionsBuffer.exists(_ eq function)) functionsBuffer += function
+    }
+
+    def pushScope(): Unit = scopes = mutable.LinkedHashMap[String, BeDefineVariable]() :: scopes
+
+    def popScope(): Unit = scopes = scopes.tail
+
+    def assignVariable(name: String, dataType: BeDataType): BeDefineVariable = {
+      lookupVariable(name).getOrElse {
+        val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
+        currentScope.update(name, variable)
+        registerVariable(name, variable)
+        variable
+      }
+    }
+
+    def defineVariable(name: String, dataType: BeDataType): BeDefineVariable = {
+      val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
+      currentScope.update(name, variable)
+      registerVariable(name, variable)
+      variable
+    }
+
+    /** The module-level variable `name`, defined there if no module code has assigned it yet. */
+    def moduleVariable(name: String, dataType: BeDataType): BeDefineVariable =
+      scopes.last.getOrElse(name, {
+        val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
+        scopes.last.update(name, variable)
+        registerVariable(name, variable)
+        variable
+      })
+
+    def lookupVariable(name: String): Option[BeDefineVariable] = scopes.collectFirst { case scope if scope.contains(name) => scope(name) }
+
+    private def currentScope: mutable.LinkedHashMap[String, BeDefineVariable] = scopes.head
+
+    def registerVariable(name: String, variable: BeDefineVariable): Unit = {
+      if (!variablesBuffer.exists(_ eq variable)) variablesBuffer += variable
+      currentlyKnownStructures = currentlyKnownStructures.addVariable(name, variable)
+    }
+
+    /** Binds a function's signature before its body is read, so recursive calls know its parameters and
+      * result; [[registerFunction]] then replaces it with the built definition.
+      */
+    def declareFunction(name: String, signature: BeDefineFunction): Unit = {
+      functionsByName.update(name, signature)
+      currentlyKnownStructures = currentlyKnownStructures.addFunction(name, signature)
+    }
+
+    def registerFunction(name: String, function: BeDefineFunction, isOperator: Boolean = false): Unit = {
+      functionsByName.update(name, function)
+      if (!functionsBuffer.exists(_ eq function)) functionsBuffer += function
+      currentlyKnownStructures =
+        if (isOperator) currentlyKnownStructures.addOperator(name, function)
+        else currentlyKnownStructures.addFunction(name, function)
+    }
+
+    def registerClass(name: String, clazz: BeDefineClass): Unit = {
+      val existing = classesBuffer.indexWhere(_.name.universalInterpretation() == clazz.name.universalInterpretation())
+      if existing < 0 then classesBuffer += clazz else classesBuffer.update(existing, clazz)
+      currentlyKnownStructures = currentlyKnownStructures.addClass(name, clazz)
+    }
+
+    def lookupClass(name: String): Option[BeDefineClass] =
+      currentlyKnownStructures.classes.get(name).orElse(currentlyKnownStructures.classes.values.find(_.name.universalInterpretation() == BeEntityName.fromCodeString(name).universalInterpretation()))
+
+    def classForType(dataType: BeDataType): Option[BeDefineClass] = dataType match {
+      case BeDataType.ClassType(name) => currentlyKnownStructures.classes.values.find(_.name.universalInterpretation() == name.universalInterpretation())
+      case _ => None
+    }
+
+    def snapshotStructures: CurrentlyKnownStructures = currentlyKnownStructures
+
+    private val declaredCallableNames = mutable.Set.from(initialDeclaredNames)
+
+    private[conversion] def sourceCallableNames: Set[String] = declaredCallableNames.toSet
+
+    /** Reserve declarations before reading their bodies or any calls in the block. */
+    def reserveCallableNames(names: Set[String]): Unit = names.foreach { name =>
+      if declaredCallableNames.add(name) then functionsByName.remove(name)
+    }
+
+    private def hasSourceBinding(name: String): Boolean = {
+      val owner = name.takeWhile(_ != '.')
+      declaredCallableNames.contains(owner) || lookupVariable(owner).nonEmpty ||
+        currentlyKnownStructures.classes.contains(owner)
+    }
+
+    def resolveFunction(name: String, arity: Int): BeDefineFunction = {
+      def definition(): BeDefineFunction = {
+        val sourceBinding = hasSourceBinding(name)
+        val turtleMethod = if sourceBinding then None
+          else TurtleCommand.resolveTurtleMethod(name).orElse(it.evadid.vm.simulation.data.DataLibraries.resolveMethod(name))
+        turtleMethod.map { method =>
+          // Preserve the class signature while binding only the arguments supplied by this call.
+          if arity < method.inputs.size then method.copy(inputs = method.inputs.take(arity)) else method
+        }.getOrElse {
+          val canonical = if sourceBinding then None else KnownBeEntityNames.resolveCanonicalNames(name)
+          val params = (0 until arity).map(index => BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)).toList
+          BeDefineFunction(params, None, BeSequence.optionalBody(Nil),
+            BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))),
+            Option.when(canonical.contains(KnownBeEntityNames.resolveSystemMethods("print").get))(it.evadid.vm.code.defining.BeIntrinsic.Print))
+        }
+      }
+      // A callable parameter/local shadows a cached builtin or turtle alias in this scope.
+      if lookupVariable(name.takeWhile(_ != '.')).nonEmpty then definition()
+      else functionsByName.getOrElseUpdate(name, definition())
+    }
+
+    def ensureFunctionArity(name: String, function: BeDefineFunction, arity: Int): BeDefineFunction = {
+      if (arity <= function.inputs.length) function
+      else {
+        val additional = (function.inputs.length until arity).map { index =>
+          BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)
+        }.toList
+        val updated = function.copy(inputs = function.inputs ++ additional)
+        functionsByName.update(name, updated)
+        val idx = functionsBuffer.indexWhere(_ eq function)
+        if (idx >= 0) functionsBuffer.update(idx, updated)
+        // Operators are registered by arity: a widened operator moves from its old key to the new one.
+        val previousKey = name -> function.inputs.length
+        if (operatorFunctions.get(previousKey).exists(_.exists(_ eq function))) {
+          operatorFunctions.update(previousKey, operatorFunctions(previousKey).filterNot(_ eq function))
+          val widenedKey = name -> updated.inputs.length
+          operatorFunctions.update(widenedKey, operatorFunctions.getOrElse(widenedKey, Nil) :+ updated)
+          currentlyKnownStructures = currentlyKnownStructures.removeOperator(previousKey, function).addOperator(name, updated)
+        } else {
+          currentlyKnownStructures = currentlyKnownStructures.addFunction(name, updated)
+        }
+        updated
+      }
+    }
+
+    def resolveOperator(symbol: String, arity: Int, arguments: List[BeExpression]): BeDefineFunction = {
+      val key = symbol -> arity
+      operatorFunctions.get(key) match {
+        case Some(candidates) if candidates.nonEmpty =>
+          val scored = candidates.zipWithIndex.flatMap { case (candidate, index) =>
+            val assignmentResults = candidate.inputs.zip(arguments).map { case (param, argument) =>
+              param.variableType.canTakeValuesFrom(argument.staticInformationExpression.staticType)
+            }
+
+            if (assignmentResults.exists(_.isInstanceOf[AssigningNotPossible])) None
+            else {
+              val score = assignmentResults.map {
+                case _: AssigningPossibleWithSameType => 0
+                case _: AssigningPossibleWithImplicitCast => 1
+                case _ => 2
+              }.sum
+              Some((candidate, score, index))
+            }
+          }
+
+          scored.sortBy { case (_, score, index) => (score, index) }.headOption.map(_._1).getOrElse(candidates.head)
+        case _ =>
+          val params = (0 until arity).map { index =>
+            val paramName = index match {
+              case 0 => "left"
+              case 1 => "right"
+              case other => s"arg$other"
+            }
+            BeDefineVariable(BeEntityName.fromUniversalNameInParts(paramName), AnyType)
+          }.toList
+          val outputVar = Some(BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), AnyType))
+          val function = BeDefineFunction(params, outputVar, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
+          registerOperator(symbol, function)
+          function
+      }
+    }
+
+    private def registerOperator(symbol: String, function: BeDefineFunction): Unit = {
+      val key = symbol -> function.inputs.length
+      val existing = operatorFunctions.getOrElse(key, List.empty)
+      val updatedList =
+        if (existing.exists(_ eq function)) existing.map(cur => if (cur eq function) function else cur)
+        else existing :+ function
+      operatorFunctions.update(key, updatedList)
+      registerFunction(symbol, function, isOperator = true)
+    }
+
+    def definedClasses: List[BeDefineClass] = classesBuffer.toList
+
+    def definedFunctions: List[BeDefineFunction] = functionsBuffer.toList
+
+    def definedVariables: List[BeDefineVariable] = variablesBuffer.toList
+
+    def currentStructures: CurrentlyKnownStructures = currentlyKnownStructures
+  }
+}

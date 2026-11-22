@@ -2,6 +2,7 @@ package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
 import upickle.default.ReadWriter
 import it.evadid.vm.conversion.snapxml.SnapXmlText.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.*
 
 /** Complete, immutable Snap serialization tree. Unknown extension nodes are first-class data.
   * Lexical XML details are retained independently of the typed Snap views, so loading and saving
@@ -85,12 +86,13 @@ object SnapScalaModel {
   }
   final case class Scene(element: Element) extends SnapElement derives ReadWriter {
     def role: Option[String] = element.attribute("role")
-    def paletteMode: Option[String] = element.attribute("palette")
+    /** `palette="single"`: one unified palette instead of category tabs. */
+    def unifiedPalette: Boolean = element.attribute("palette").contains("single")
     def showCategories: Option[Boolean] = element.boolean("categories")
     def showButtons: Option[Boolean] = element.boolean("buttons")
     def clickRun: Option[Boolean] = element.boolean("clickrun")
     def dragData: Option[Boolean] = element.boolean("dragdata")
-    def colorModel: Option[String] = element.attribute("colormodel")
+    def colorModel: Option[ColorModel] = element.attribute("colormodel").fold(Some(ColorModel.Hsv))(ColorModel.fromXml)
     def strict: Option[Boolean] = element.boolean("strict")
     def stage: Option[Stage] = element.named("stage").collectFirst { case s: Stage => s }
     def primitiveDefinitions: Vector[BlockDefinition] = element.contained("primitives", "block-definition").collect { case b: BlockDefinition => b }
@@ -101,7 +103,7 @@ object SnapScalaModel {
     def instrument: Option[Int] = element.integer("instrument")
     def volume: Option[Double] = element.number("volume")
     def pan: Option[Double] = element.number("pan")
-    def lines: Option[String] = element.attribute("lines")
+    def lineEnds: Option[LineEnds] = element.attribute("lines").flatMap(LineEnds.fromXml)
     def ternary: Option[Boolean] = element.boolean("ternary")
     def hyperops: Option[Boolean] = element.boolean("hyperops")
     def codify: Option[Boolean] = element.boolean("codify")
@@ -121,10 +123,10 @@ object SnapScalaModel {
     def index: Option[Int] = element.integer("idx")
     def volume: Option[Double] = element.number("volume")
     def pan: Option[Double] = element.number("pan")
-    def rotation: Option[Int] = element.integer("rotation")
+    def rotationStyle: Option[RotationStyle] = element.attribute("rotation").flatMap(RotationStyle.fromXml)
     def instrument: Option[Int] = element.integer("instrument")
     def costumeIndex: Option[Int] = element.integer("costume")
-    def pen: Option[String] = element.attribute("pen")
+    def penPoint: Option[PenPoint] = element.attribute("pen").flatMap(PenPoint.fromXml)
     def x: Option[Double] = element.number("x")
     def y: Option[Double] = element.number("y")
     def heading: Option[Double] = element.number("heading")
@@ -148,7 +150,8 @@ object SnapScalaModel {
     def variable: Option[String] = element.attribute("var")
   }
   final case class CustomBlock(element: Element) extends BlockLike derives ReadWriter {
-    def scope: Option[String] = element.attribute("scope")
+    /** `scope="local"`: a call to a sprite-local definition. */
+    def isLocal: Boolean = element.attribute("scope").exists(_.nonEmpty)
   }
   final case class BlockDefinition(element: Element) extends SnapElement derives ReadWriter {
     def primitiveSelector: Option[String] = element.attribute("selector")
@@ -157,10 +160,11 @@ object SnapScalaModel {
     def spaceAbove: Option[Boolean] = element.boolean("space")
     def reports: Option[String] = element.attribute("reports")
     def strict: Option[Boolean] = element.boolean("strict")
-    def semantics: Option[String] = element.attribute("semantics")
+    /** `semantics="rule"`: a hat block that fires as a rule rather than an event. */
+    def isRuleHat: Boolean = element.attribute("semantics").contains("rule")
     def spec: Option[String] = element.attribute("s")
-    def category: Option[String] = element.attribute("category")
-    def blockType: Option[String] = element.attribute("type")
+    def category: Option[BlockCategory] = element.attribute("category").map(BlockCategory.fromXml)
+    def blockType: Option[BlockType] = element.attribute("type").flatMap(BlockType.fromXml)
     def body: Vector[Script] = element.named("script").collect { case s: Script => s }
     def inputs: Vector[InputDefinition] = element.contained("inputs", "input").collect { case i: InputDefinition => i }
   }
@@ -184,11 +188,12 @@ object SnapScalaModel {
     }
   }
   final case class ListValue(element: Element) extends SnapElement derives ReadWriter {
-    def atomicCsv: Option[String] = Option.when(structure.contains("atomic"))(text)
+    /** `struct="atomic"`: a flat list saved as one CSV text. */
+    def isAtomic: Boolean = element.attribute("struct").contains("atomic")
+    def atomicCsv: Option[String] = Option.when(isAtomic)(text)
     def linked: Boolean = element.attribute("linked").contains("linked")
     def tail: Option[ListValue] = element.named("list").collectFirst { case l: ListValue => l }
     def items: Vector[Item] = element.named("item").collect { case i: Item => i }
-    def structure: Option[String] = element.attribute("struct")
   }
   final case class Costume(element: Element) extends SnapElement derives ReadWriter {
     def embed: Option[String] = element.attribute("embed")
@@ -206,7 +211,7 @@ object SnapScalaModel {
     def scope: Option[String] = element.attribute("scope")
     def selector: Option[String] = element.attribute("s")
     def variable: Option[String] = element.attribute("var")
-    def style: Option[String] = element.attribute("style")
+    def style: Option[WatcherStyle] = element.attribute("style").flatMap(WatcherStyle.fromXml)
     def x: Option[Double] = element.number("x")
     def y: Option[Double] = element.number("y")
     def minimum: Option[Double] = element.number("min")
@@ -267,8 +272,8 @@ object SnapScalaModel {
   final case class Dispatch(element: Element) extends SnapElement derives ReadWriter
   final case class Wish(element: Element) extends SnapElement derives ReadWriter {
     def spec: Option[String] = element.attribute("s")
-    def blockType: Option[String] = element.attribute("type")
-    def category: Option[String] = element.attribute("category")
+    def blockType: Option[BlockType] = element.attribute("type").flatMap(BlockType.fromXml)
+    def category: Option[BlockCategory] = element.attribute("category").map(BlockCategory.fromXml)
   }
   final case class Scenes(element: Element) extends SnapElement derives ReadWriter
   final case class Sprites(element: Element) extends SnapElement derives ReadWriter

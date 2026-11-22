@@ -24,10 +24,10 @@ object PythonCodeMirrorDiagnostics:
 
     val problems =
       tree.values.toSeq.collect {
-        case BeExpressionReference(_, BeExpressionUnparsable(original, message)) =>
+        case BeExpressionReference(_, BeExpressionUnparsable(original, message, _)) =>
           SourceProblem(original, message, "warning")
-        case BeExpressionReference(_, BeExpressionUnsupported(original)) =>
-          SourceProblem(original, s"Unknown Python structure: $original", "soft")
+        case BeExpressionReference(_, BeExpressionUnsupported(original, _, reason)) =>
+          SourceProblem(original, if reason.nonEmpty then reason else s"Unknown Python structure: $original", "soft")
       }
 
     deduplicate(problems.flatMap(problemToDiagnostic(_, rawPython)))

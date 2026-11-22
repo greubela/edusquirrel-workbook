@@ -1,5 +1,7 @@
 package it.evadid.vm.conversion.snapexpression
 
+import it.evadid.vm.conversion.snapxml.SnapXmlText
+
 import it.evadid.core.datastructures.color.{RGBColor, WebColor}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
@@ -22,7 +24,7 @@ object SnapInputCodec {
   }
 
   def quotePython(value: String): String =
-    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
 
   def parseColor(raw: String): Option[RGBColor] = {
     val value = stripQuotes(raw).trim
@@ -72,28 +74,20 @@ object SnapInputCodec {
   def snapColorXml(color: RGBColor): String =
     s"<color>${snapRgbaString(color)}</color>"
 
-  def escapeXml(value: String): String =
-    value
-      .replace("&", "&amp;")
-      .replace("<", "&lt;")
-      .replace(">", "&gt;")
-      .replace("\"", "&quot;")
-      .replace("'", "&apos;")
-
   def renderLiteral(kind: SnapInputKind, value: String): String =
     kind match
       case SnapInputKind.Color =>
-        parseColor(value).map(snapColorXml).getOrElse(s"<l>${escapeXml(stripQuotes(value))}</l>")
+        parseColor(value).map(snapColorXml).getOrElse(s"<l>${SnapXmlText.escape(stripQuotes(value))}</l>")
       case SnapInputKind.Bool =>
         val normalized =
           if value.equalsIgnoreCase("true") || value == "True" then "true"
           else if value.equalsIgnoreCase("false") || value == "False" then "false"
           else value
-        s"<l>${escapeXml(normalized)}</l>"
+        s"<l>${SnapXmlText.escape(normalized)}</l>"
       case _ =>
-        s"<l>${escapeXml(value)}</l>"
+        s"<l>${SnapXmlText.escape(value)}</l>"
 
-  def isValidForKind(kind: SnapInputKind, expression: BeExpression): Boolean =
+  def isValidForKind(kind: SnapInputKind, expression: BeExpression, userFunctions: Map[String, Int] = Map.empty): Boolean =
     kind match
       case SnapInputKind.Color =>
         expression match
@@ -102,9 +96,9 @@ object SnapInputCodec {
           case _: BeFunctionCall => false
           case _ => false
       case SnapInputKind.Bool =>
-        SnapControlFlow.isSupportedCondition(expression) || SnapControlFlow.isSupportedValue(expression)
+        SnapControlFlow.isSupportedCondition(expression, userFunctions) || SnapControlFlow.isSupportedValue(expression, userFunctions)
       case SnapInputKind.Numeric | SnapInputKind.String =>
-        SnapControlFlow.isSupportedValue(expression)
+        SnapControlFlow.isSupportedValue(expression, userFunctions)
 
   private def inByte(value: Int): Boolean =
     value >= 0 && value <= 255

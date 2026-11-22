@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.workbook.abstractions.InteractionFormat.{TurtleProjectFormat}
+
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -18,9 +20,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 
-private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState], label: LanguageMapContentId) extends HtmlAppElement {
+private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteraction: WorkbookInteractionElement[TurtleProjectFormat.type], label: LanguageMapContentId) extends HtmlAppElement {
 
-  private val acceptedTypes: List[String] = List("text/turtle", "text/xml")
+  private val acceptedTypes: Seq[String] = List("text/turtle", "text/xml")
 
   private lazy val uploadInput: ReactiveHtmlElement[HTMLInputElement] = input(
     hidden := true,

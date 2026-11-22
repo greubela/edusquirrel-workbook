@@ -8,9 +8,11 @@ import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.WorkbookStructuringType.WORKBOOK
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionUntyped, WorkbookStructureElement, WorkbookStructuringType}
+import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structureElements.*
 import it.evadid.workbook.interaction.sync.SyncContext
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import ujson.Value
@@ -20,40 +22,41 @@ import upickle.default.*
 case class Workbook(
                      elementId: String,
                      metadata: WorkbookMetadata,
-                     sections: List[WorkbookSection],
-                   ) extends WorkbookStructureElement[WorkbookSection] derives upickle.default.ReadWriter {
+                     sections: Seq[WorkbookSection],
+                   ) extends WorkbookStructureElement[WorkbookSection] {
 
   val workbookId: String = elementId
 
-  override val groupElements: List[WorkbookSection] = sections
+  override val groupElements: Seq[WorkbookSection] = sections
 
   override lazy val structureType: WorkbookStructuringType = WORKBOOK
 
-  lazy val allContainedInteractionsById: Map[String, WorkbookInteractionUntyped] =
+  lazy val allContainedInteractionsById: Map[String, WorkbookInteractionElement[? <: InteractionFormat]] =
     allInteractionsInThisInstance.map(interaction => interaction.elementId -> interaction).toMap
 
   override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = Workbook.factory
 
 
-  def loadDataNoUserCheck(logger: Logger, data: Map[SyncContext, String], executionContextInformation: ExecutionContextInformation): Unit = {
-    allInteractionsInThisInstance.foreach(curInteraction => {
-      data.keys.foreach(curSyncContext => {
-        if (curInteraction.interactionVariable.keyForSerialization == curSyncContext.keyForSerialisation) {
-          curInteraction.interactionVariable.addSerializedHistory(logger, data(curSyncContext), executionContextInformation)
-        }
-      })
-    })
+  /** Restores saved histories of this workbook into its interactions; the user is not checked. Histories of
+    * other workbooks are ignored, even where their interactions reuse this workbook's element ids.
+    */
+  def restoreHistories(logger: Logger, data: Map[SyncContext, InteractionHistoryJson], executionContextInformation: ExecutionContextInformation): Unit = {
+    val own = data.collect { case (key, history) if key.scenarioId == workbookId => key.keyForSerialisation -> history }
+    allInteractionsInThisInstance.foreach(interaction => own.get(interaction.interactionVariable.keyForSerialization)
+      .foreach(history => interaction.interactionVariable.restoreHistory(logger, history, executionContextInformation)))
   }
 }
 
 
 object Workbook {
+  given ReadWriter[Workbook] = WorkbookElement.subtypeCodec
+
 
   case class WorkbookMetadata(
                                author: Set[User],
                                contributors: Set[User],
                                workbookTitle: LanguageMapContentId,
-                               availableLanguages: List[HumanLanguage]
+                               availableLanguages: Seq[HumanLanguage]
                              ) derives ReadWriter {
 
   }
@@ -77,7 +80,7 @@ object Workbook {
       )
     }
 
-    override lazy val elementMapAndOrderForConstructorLike: Map[Int, List[ConstructorLikeSerializer.VariableDisplayConfig]] = {
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[ConstructorLikeSerializer.VariableDisplayConfig]] = {
       Map(
         0 -> List(VariableDisplayConfig("elementId", true)),
         1 -> List(VariableDisplayConfig("metadata", true)),

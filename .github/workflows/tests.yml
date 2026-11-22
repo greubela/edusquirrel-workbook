@@ -17,12 +17,19 @@ on:
 permissions:
   contents: read
 
+env:
+  # Keep in sync with project/repositories; the mirror is tried before Maven Central.
+  COURSIER_REPOSITORIES: https://maven-central.storage-download.googleapis.com/maven2|https://repo.maven.apache.org/maven2
+  SBT_OPTS: >-
+    -Dsbt.override.build.repos=true
+    -Dsbt.repository.config=${{ github.workspace }}/project/repositories
+
 concurrency:
   group: tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  mysql-accounts:
+  mysql-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -54,6 +61,14 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: sbt
+          # Only scala-tests resolves every module, so only it saves the dependency cache.
+          cache-read-only: true
+          cache-dependency-path: |
+            build.sbt
+            project/*.scala
+            project/*.sbt
+            project/build.properties
+            project/repositories
       - uses: sbt/setup-sbt@v1
       - name: Restore incremental Scala build
         uses: actions/cache/restore@v5
@@ -61,10 +76,10 @@ jobs:
           path: |
             target
             project/target
-          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-${{ github.sha }}
+          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-
-      - name: Test account queries against MySQL
+            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+      - name: Test accounts and both typed history layouts against MySQL
         env:
           SQL_PORT: ${{ job.services.mysql.ports['3306'] }}
         run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'server / MysqlIntegration / test'
@@ -92,6 +107,12 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: sbt
+          cache-dependency-path: |
+            build.sbt
+            project/*.scala
+            project/*.sbt
+            project/build.properties
+            project/repositories
       - uses: sbt/setup-sbt@v1
       - uses: actions/setup-node@v7
         with:
@@ -103,9 +124,9 @@ jobs:
           path: |
             target
             project/target
-          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-${{ github.sha }}
+          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-
+            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
       # Scala.js DOM suites require jsdom while constructing their fixtures.
       - name: Install Node test dependencies
         run: npm ci
@@ -176,6 +197,13 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: 'sbt'
+          cache-read-only: true
+          cache-dependency-path: |
+            build.sbt
+            project/*.scala
+            project/*.sbt
+            project/build.properties
+            project/repositories
 
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
@@ -193,9 +221,9 @@ jobs:
           path: |
             target
             project/target
-          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-${{ github.sha }}
+          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties') }}-
+            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
 
       - name: Test Pages export
         run: node --test tools/dev/assemble-pages.test.mjs
@@ -221,14 +249,14 @@ jobs:
   # Preserve the required "tests" status as the gate for the whole test suite.
   tests:
     if: ${{ always() }}
-    needs: [scala-tests, browser-tests, mysql-accounts]
+    needs: [scala-tests, browser-tests, mysql-integration]
     runs-on: ubuntu-latest
     steps:
       - name: Require every test job to pass
         env:
           SCALA_RESULT: ${{ needs.scala-tests.result }}
           BROWSER_RESULT: ${{ needs.browser-tests.result }}
-          MYSQL_RESULT: ${{ needs.mysql-accounts.result }}
+          MYSQL_RESULT: ${{ needs.mysql-integration.result }}
         run: |
           test "$SCALA_RESULT" = success
           test "$BROWSER_RESULT" = success

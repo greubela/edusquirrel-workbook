@@ -5,9 +5,9 @@ import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.A
 import upickle.default.*
 
 case class SortingReasonInteractionState(
-  placedFieldIndexByItem: List[Option[Int]],
-  reasonsByItem: List[String],
-  reasonConfirmedByItem: List[Boolean],
+  placedFieldIndexByItem: Seq[Option[Int]],
+  reasonsByItem: Seq[String],
+  reasonConfirmedByItem: Seq[Boolean],
   sessionErrorCount: Int = 0,
   lastSessionErrorCount: Int = 0,
   /** Temporary wrong drop shown in a field before the item returns to the source list. */

@@ -1,110 +1,165 @@
-# Interaction history storage behavior
+# History storage and synchronization
 
-The implemented relational schema is defined only in
-[createInteractionHistoryTables.sql](../../artifacts/database/createInteractionHistoryTables.sql).
-It is selected with `DatabaseHistoryFormat.RelationalEvents`.
-All history inserts and upserts, including V2 relational writes, are implemented in
-[UpsertToDatabase.scala](../../modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/UpsertToDatabase.scala).
-`RelationalHistoryStorage` handles V2 reads and deletes; `RelationalHistorySql`
-shares JDBC resource handling and row decoding without defining history writes.
+Histories use typed events and the self-describing
+`InteractionHistoryJson(format, historyJson)` envelope. Servers decode each entry
+through its `InteractionFormat`, independently of workbook definitions or element
+registries. See [formats and event semantics](../interaction-format.md).
 
-A sync context is resolved from the same four strings used by `SyncContext`.
-Repeated stores reuse its internal database ID. Answer upserts are identified by
-context and full-precision timestamp; retries preserve IDs. Replacing a value
-at the same timestamp invalidates feedback for the replaced answer within the
-same transaction. Ordinary edits remain distinct, including repeated identical
-answer values at different times.
+## Classes and ownership
 
-Grading and scaffolding refer to an existing matching answer in that context.
-When a value occurs several times, a new feedback store attaches to its latest
-matching event. Reads reconstruct the current state-keyed Scala history and use
-its merge rules, so feedback for A cannot replace the current answer B. Feedback
-without a matching saved answer is rejected and the store transaction rolls
-back; no artificial edit is created.
+| Class | Responsibility |
+| --- | --- |
+| [HomepageSignalInfo](../../modules/client/src/main/scala/it/evadid/homepage/control/info/HomepageSignalInfo.scala) | Derives the workbook/user/destination/credential environment |
+| [RemoteInteractionCacheControl](../../modules/client/src/main/scala/it/evadid/homepage/control/change/RemoteInteractionCacheControl.scala) | Replaces bindings, restores fetched answers, batches phases and owns user-scoped reset progress |
+| [RemoteHistoryCache](../../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryCache.scala) | Immutable `CacheState`: local histories and per-location confirmed events, read freshness and cursors |
+| [FormattedSyncDestination](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/FormattedSyncDestination.scala) | Converts typed histories to/from envelopes at a destination boundary |
+| [BufferedSyncDestinationHandler](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/destination/BufferedSyncDestinationHandler.scala) | Merges queued deltas per context, serializes batches and completes their result futures |
+| [DatabaseSyncViaBackendServerHandler](../../modules/client/src/main/scala/it/evadid/homepage/workbook/syncDestination/DatabaseSyncViaBackendServerHandler.scala) | Sends database commands using captured credentials and connection configuration |
+| [BackendCommandHandler](../../modules/server/src/main/scala/it/evadid/server/BackendCommandHandler.scala) | Decodes typed requests and authorizes every context |
+| [Server history handlers](../../modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/) | `UpsertToDatabase`, `FetchFromDatabase` and `DeleteInDatabase` dispatch to the selected layout; `HistorySql` owns transactions, typed JDBC parameters and resource cleanup |
 
-The single timestamp value preserves Scala nanoseconds. Timestamps are not
-rounded or used as generated database IDs. Numeric database IDs never cross
-the backend boundary. JSON regular feedback and entity-specific additional data
-are stored separately, then reconstructed using the existing domain codecs.
+Within the client control, `WorkbookBinding` captures an environment and
+`TypedBinding[F]` owns a `Var[RemoteHistoryCache.CacheState[...]]` for each
+interaction. `StateHelper.fromAirstreamVarToState` adapts that same store for
+shared core code. A separate `UserBinding` retains pending operations and reset
+state across workbook or credential changes.
 
-V2 reads and feedback lookup share answer-row decoding. Invalid timestamps or
-importance values are skipped consistently, and reads omit feedback attached to
-those invalid answers while preserving valid answers in the same context.
+## Binding and event flow
 
-The two classic snapshot formats remain independent supported options. This
-implementation does not migrate stored records between formats or introduce
-compatibility readers for obsolete serialized payloads.
- Keyless snapshot replacement
-runs its delete and insert in one transaction, so a failed insert preserves the
-previously saved history.
+1. An interaction update registers its typed history with the current binding.
+2. The cache computes missing events independently for each destination.
+3. A phase registers all requests before flushing shared handlers. Buffered futures
+   complete with the actual read/write result; awaiting queued work requires a flush.
+4. Only the selected binding's signal can restore histories or publish confirmations.
+   Replacing it disconnects old observations and flushes its captured handlers.
 
-## Sync failures
+Bindings are replaced rather than changing active/closing flags. This isolates
+credentials and responses while allowing old and new requests to overlap. Retired
+requests may finish or fail; neither outcome can change a replacement binding.
+UI navigation starts sync after Airstream applies the environment transaction.
 
-`/executeCommand` accepts JSON command bodies with `Content-Encoding: gzip` or
-no content encoding. The browser uses asynchronous native `CompressionStream`
-for requests of at least 1,024 UTF-16 code units when available; smaller requests
-and browsers without this API send plain JSON. This only changes HTTP transport:
-command codecs, database formats and `SyncStrategy` filtering stay unchanged.
-The proxy permits `Content-Encoding` in cross-origin requests.
+`EventSyncStrategy` selects transmissions, not retention. Defaults send
+`SYNC_EVERYTHING` to both backend layouts and `SYNC_MAJOR` to local IndexedDB.
+Stores union events without pruning. IndexedDB merges within one read-write
+transaction. Malformed local records are excluded individually; malformed backend
+requests or persisted database events fail explicitly.
 
-Play's Netty backend decompresses gzip before the existing command parser;
-there is no second application decompressor. Decoded bodies are limited to
-16 MiB, including cumulative history and feedback. Larger bodies return HTTP 413
-with an `ExecutionClientResponse` failure explaining the limit. Both synchronous
-and asynchronous command errors use this envelope; the browser preserves its
-explanation even for non-2xx responses. Transport-level gzip decoding failures are
-handled by Netty before the command boundary and may surface as transport errors.
-Database failures include an actionable reason, SQLState and vendor error code;
-raw vendor messages remain in server logs because they can contain answer data or
-credentials. Failed V2 stores roll back and do not prevent subsequent requests.
+A write acknowledges only its sent delta and does not advance the read cursor.
+Normal reads replay the last received timestamp inclusively. A poll performs a
+full refresh once the last full read is five minutes old, also recovering late
+uploads with older timestamps. Incremental polls are cheaper, but cannot discover
+those events immediately. Explicit window
+reads do not mark unread portions fresh. Independent read failures do not suppress
+healthy writes. The sync icon requires the latest answer and all its associated
+feedback events, including pending feedback; older unsent events do not block it.
 
-An existing sync context is reused for new timestamps. Each `(sync_id, timestamp)`
-is a separate answer; retrying the same event preserves its ID. Growing histories
-can cross HTTP limits independently of database keys or timestamps.
+## Storage layouts and trade-offs
 
-### Confirming synchronization
+| Layout | Representation | Trade-off |
+| --- | --- | --- |
+| `BlobHistoryStorage` / `BlobFormat` | One format name and complete history JSON in `blob_history` per context | Simple storage; merges lock and decode the whole history, and ranges filter decoded events |
+| `RelationalHistoryStorage` / `RelationalFormat` | Format metadata on `sync_context_id`; independent answer, grading and scaffolding event rows | More tables and writes; indexed ranges can fetch feedback without fetching its answer event |
 
-A destination is synced only when its fetched history contains the answers,
-grading and scaffolding selected by its `SyncStrategy` (or newer merged results).
-A recent fetch timestamp alone proves nothing about a store. Store failures reach
-the caller and leave local history available for retry. Successful stores fetch
-again even when their event timestamps predate the previous cache refresh.
+Identity is `(programId, scenarioId, userId, keyForSerialisation)`. The format is
+metadata, not part of the unique key. Changing it is rejected even if the two
+formats share a JSON schema. Case and trailing spaces are significant; numeric
+row IDs stay on the server. Each event receives a client-generated UUID once;
+serialization, copies and retries preserve it. Both layouts merge by this ID.
+Relational writes upsert `(sync_id, event_id)`, preserving the internal row ID.
+Timestamps are never adjusted to manufacture uniqueness: distinct same-time events
+survive, while replaying an event cannot create another row. Saved events without
+an ID are unsupported. History storage grows as new events are recorded; transmission strategies do not provide deletion or retention policies.
 
-### Deploying gzip support
+### Timestamp representation
 
-The public proxy must allow `Content-Encoding` as well as `Authorization` and
-`Content-Type`. Otherwise reads and login can succeed while the browser blocks
-all compressed writes during CORS preflight. This appears as `net::ERR_FAILED`
-with no HTTP response for the POST; no database write reaches the server.
+`timestamp_nano` stores ISO 8601 local date/time text with exactly nine fractional
+digits, e.g. `2026-11-18T12:00:00.123456789`. MySQL `DATETIME` supports only six.
+The binary text index serves range queries, so a duplicate `timestamp_millies`
+column is unnecessary. No epoch-day or nanosecond-of-day encoding is stored.
+Four-digit years sort chronologically; signed/expanded ISO years use safe SQL
+candidate bounds followed by typed filtering to preserve the full `LocalDateTime`
+range. Reads verify the canonical text against the serialized event.
 
-Deploy the current `deployment/server/docker-compose.yml` and recreate the proxy
-from its deployment directory, as well as the backend after replacing its JAR:
+Both layouts decode through the declared format; JDBC bindings accept only
+`String | Long`. `DatabaseHistoryFormat.tables` exposes typed `DatabaseTable`,
+`DatabaseColumn` and `MySqlType` declarations checked against
+[setup.sql](../../artifacts/database/setup.sql).
+Existing event schemas require an explicit update to `timestamp_nano`; setup
+initializes empty databases only and never alters existing tables.
 
-```sh
-docker compose up -d --force-recreate proxy edusquirrel
+## Bulk writes and range reads
+
+Production writes use `bulkStoreToDbCommand` (`sync-histories-to-db-request`).
+A nonempty buffered flush makes one request per destination. Parallel
+`syncContexts` and `histories` sequences retain entry identity; events from different
+interactions never merge. Two contexts sent to blob and relational storage mean
+four context/destination updates in two network requests. The SQL statement count
+can be larger because relational storage writes individual events.
+
+For direct server integrations, supply an authenticated backend client and typed
+envelopes (the two histories may use different formats):
+
+```scala
+import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.commandTypes.SQLCommands
+import it.evadid.sql.BackendDatabase
+import it.evadid.sql.DatabaseHistoryFormat.BlobFormat
+import it.evadid.workbook.interaction.sync.{SyncSuccess, UsageContext}
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import scala.concurrent.{ExecutionContext, Future}
+
+def storePair(backend: ExecutionClient, context: UsageContext,
+    first: InteractionHistoryJson, second: InteractionHistoryJson)
+    (using ExecutionContext): Future[SyncSuccess] = {
+  val request = SQLCommands.BulkStoreToDbRequest(
+    syncContexts = Seq(context.toSyncContext("first_history"), context.toSyncContext("second_history")),
+    histories = Seq(first, second), databaseConfig = BackendDatabase, databaseFormat = BlobFormat)
+  SQLCommands.bulkStoreToDbCommand.sendCommandTo(backend, request).map(_.result)
+}
 ```
 
-Deploy the matching browser bundle separately. GitHub Pages deployment does not
-update the running backend or proxy. Verify the **public** endpoint afterward
-(no login or learner data is sent):
+The backend authorizes every context before storing anything. A batch commits
+atomically; one invalid entry rolls it all back. Retrying exact events is safe.
+
+The sole read command is `fetch-events-from-db-request`, with inclusive bounds;
+complete reads use `LocalDateTime.MIN` and `MAX`. Selection precedes the timestamp
+window. Buffered reads sharing a usage context and strategy query the union of
+keys/windows once, then clip each caller's result to its own bounds.
+
+`/executeCommand` accepts JSON or gzip, with a decoded-body limit of 16 MiB.
+The proxy must permit `Content-Encoding`, `Authorization` and `Content-Type`.
+Errors preserve their failure envelope; SQL diagnostics omit bound values and
+credentials from client-visible cause chains.
+
+## Full reset
+
+`resetAllData()` drains registered operations, deletes the current user's histories
+across all workbooks from every configured backend destination, and clears each
+configured local answer store without decoding records. Authentication and
+unrelated caches survive. Reset also works from the catalogue.
+
+Partial failure keeps sync paused until retry, including across navigation and
+credential changes. A different user has separate reset state; late completions
+cannot change it. Normal user switches start the replacement immediately, while
+a running reset finishes first because it clears shared local stores. Successful
+reset reloads the page. User changes and full resets invalidate pending feedback
+and computation caches so stale completions cannot publish into a new session.
+
+## Verification
+
+`RemoteInteractionCacheControlSpec` covers production buffers and HTTP adaptation
+with controlled responses: workbook/user/credential/destination switches,
+A → B → A, delayed successes/failures, confirmation isolation and reset ownership.
+`RemoteHistoryCacheSpec` and `BufferedSyncDestinationHandlerSpec` cover cache and
+batch contracts. MySQL tests cover both layouts, mixed-format HTTP batches,
+format rejection, exact ISO timestamp storage, signed/expanded years, nanosecond
+range boundaries, corruption rejection, rollback and authorization.
 
 ```sh
-node tools/dev/check-sync-preflight.mjs \
-  https://ypcgzj23.trafficplex.cloud/executeCommand https://evadid.it
+sbt 'client/testOnly *RemoteInteractionCacheControlSpec'
+sbt 'coreJVM/testOnly *RemoteHistoryCacheSpec *BufferedSyncDestinationHandlerSpec'
+# Only against the disposable localhost edusquirrel_account_test database:
+sbt 'server / MysqlIntegration / test'
 ```
 
-This check rejects the older proxy header list even when OPTIONS returns 204.
-The MySQL integration suite additionally sends current gzip store/fetch/delete
-commands for all three supported formats and verifies feedback-only updates to
-an existing answer, V2 row counts and idempotent retries.
-
-### Browser cache schema warnings
-
-Unreadable browser records are excluded from reads; valid records remain usable.
-The warning reports a count without printing stored answers or conversations.
-Old development records (for example histories with `fullHistory.events` from
-before the current history schema) are unsupported and are not migrated. Remove
-those obsolete records using browser developer tools under IndexedDB →
-`EvaDidInteractionDB` → `variableHistoryStore`. This is separate from the server
-database and from the language-triple cache. Such a warning alone does not show
-that an HTTP sync request failed.
+See [setup and connection configuration](README.md) and the [test guide](../core-package-unit-tests.md).

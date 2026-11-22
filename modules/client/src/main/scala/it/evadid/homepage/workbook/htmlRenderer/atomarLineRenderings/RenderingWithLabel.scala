@@ -23,9 +23,6 @@ case class RenderingWithLabel(workbookElement: WorkbookElement, containedElement
     )
   }
 
-  private lazy val lineRendering: RenderingWorkbookElementLine =
-    RenderingWorkbookElementLine(workbookElement, elementsWithoutContainer, s"$cssLabel exercise-instruction")
-
-  override lazy val render: Element = lineRendering.render
+  override lazy val render: Element = AtomarLineRendering.basicLine(workbookElement, elementsWithoutContainer, s"$cssLabel exercise-instruction").render
 }
 

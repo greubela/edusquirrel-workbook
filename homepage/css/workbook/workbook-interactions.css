@@ -1,6 +1,7 @@
 @import url("../generic/colors.css");
 @import url("../generic/dimensions.css");
 @import url("interaction-scaffolding.css");
+@import url("interaction-feedback.css");
 
 /* TEXT EDITOR  */
 
@@ -20,7 +21,6 @@
     max-width: 100%;
     resize: vertical;
 }
-.text-input-feedback__result + .text-input-feedback__result { margin-block-start: var(--space-md); }
 
 /* TURTLE INTERACTIONS */
 
@@ -276,222 +276,7 @@
     font-weight: 600;
 }
 
-/* ========== FEATURE: SnapPythonPopup (BEGIN) ==========
- * Removable with SnapPythonPopup.scala + SnapCodeEditor chrome child.
- * Reuses .sorting-error-popup layout; only Snap-specific bits live here.
- */
-.snap-editor-toolbar {
-    position: absolute;
-    bottom: var(--space-md);
-    right: var(--space-md);
-    z-index: 8;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-sm);
-    max-width: calc(100% - 2 * var(--space-md));
-}
 
-.snap-editor-toolbar__speed {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xs);
-    margin: 0;
-    padding: 0.25rem 0.5rem;
-    border: 1px solid var(--color-button-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-button-background);
-    color: var(--color-text-primary);
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.snap-editor-toolbar__speed-label {
-    white-space: nowrap;
-}
-
-.snap-editor-toolbar__speed-input {
-    width: 4.5rem;
-    margin: 0;
-    padding: 0.15rem 0.35rem;
-    border: 1px solid var(--color-border-soft);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-muted);
-    color: var(--color-text-primary);
-    font: inherit;
-}
-
-.snap-python-button {
-    position: static;
-    border: 1px solid var(--color-button-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-button-background);
-    color: var(--color-text-primary);
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.snap-python-button:hover,
-.snap-python-button:focus-visible {
-    background: var(--color-button-hover);
-}
-
-.snap-python-popup.is-visible {
-    z-index: 9;
-}
-
-.snap-python-popup__content {
-    width: calc(80% - 2 * var(--space-md));
-    max-width: none;
-    max-height: calc(100% - 2 * var(--space-md));
-    padding: var(--space-md);
-    text-align: left;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-    overflow: hidden;
-    min-height: 0;
-}
-
-.snap-python-popup__overview {
-    padding: var(--space-sm) var(--space-md);
-    border: 1px solid var(--color-border-soft);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-muted);
-    flex-shrink: 0;
-}
-
-.snap-python-popup__overview[open] {
-    max-height: 12rem;
-    overflow: auto;
-}
-
-.snap-python-popup__overview-title {
-    margin: 0;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    cursor: pointer;
-    list-style: none;
-}
-
-.snap-python-popup__overview-title::-webkit-details-marker {
-    display: none;
-}
-
-.snap-python-popup__overview-title::before {
-    content: "▸ ";
-    display: inline-block;
-    width: 0.9em;
-}
-
-.snap-python-popup__overview[open] > .snap-python-popup__overview-title::before {
-    content: "▾ ";
-}
-
-.snap-python-popup__overview-note {
-    margin: var(--space-sm) 0;
-    font-size: 0.8rem;
-    color: var(--color-text-secondary);
-}
-
-.snap-python-popup__overview-list {
-    margin: 0;
-    padding-left: 1.1rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-    gap: var(--space-xs) var(--space-md);
-    font-size: 0.8rem;
-    color: var(--color-text-primary);
-}
-
-.snap-python-popup__overview-list code {
-    font-family: var(--color-code-font);
-    font-size: var(--color-code-size);
-    white-space: pre-wrap;
-}
-
-.snap-python-popup__overview-list .cm-keyword {
-    color: var(--color-blue-7);
-    font-weight: 600;
-}
-
-.snap-python-popup__overview-list .cm-accent-name {
-    color: var(--color-blue-6);
-    font-weight: 600;
-}
-
-.snap-python-popup__overview-list .cm-plain-name {
-    color: var(--color-text-primary);
-}
-
-.snap-python-popup__overview-list .cm-receive-go {
-    color: var(--color-green-6);
-    font-weight: 700;
-}
-
-.snap-python-popup__script-hints {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
-}
-
-.snap-python-popup__script-label {
-    margin-bottom: 0;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--color-text-secondary);
-}
-
-.snap-python-popup__warning {
-    padding: var(--space-sm) var(--space-md);
-    border: 1px solid var(--color-outline-blue-soft);
-    border-radius: var(--radius-sm);
-    background: var(--color-background-colored);
-    color: var(--color-text-primary);
-    font-size: 0.875rem;
-}
-
-.snap-python-popup__editor {
-    flex: 1 1 auto;
-    min-height: 10rem;
-    max-height: none;
-    height: auto;
-    overflow: auto;
-    border: 1px solid var(--color-border-soft);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-muted);
-}
-
-.snap-python-popup__editor .code-mirror-editor,
-.snap-python-popup__editor .code-mirror-editor .cm-editor,
-.snap-python-popup__editor .code-mirror-editor .cm-scroller {
-    min-height: 10rem;
-    height: 100%;
-}
-
-.snap-python-popup__editor .code-mirror-editor__fallback {
-    min-height: 10rem;
-    height: 100%;
-}
-
-.snap-python-popup .cm-receive-go {
-    color: var(--color-green-2) !important;
-    font-weight: 700;
-}
-
-.snap-python-popup__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-    align-items: center;
-    flex-shrink: 0;
-}
-
-.snap-python-popup__actions .sorting-error-popup__button {
-    margin-top: 0;
-}
-/* ========== FEATURE: SnapPythonPopup (END) ========== */
 
 /* ProgrammingExercise stage output (Run → simulateGreenFlag PNG) */
 .prog-ex-stage-output {
@@ -635,3 +420,105 @@
     .sorting-fields--cols-3 { grid-template-columns: 1fr; }
     .sorting-field-card--full-width { grid-column: auto; }
 }
+
+/* PROGRAM DATA PREVIEW: number list or sudoku after running main (full Java exercises) */
+
+.program-data-preview { display: grid; gap: var(--space-sm); font-size: 0.875rem; }
+.program-data-preview__pending { margin: 0; color: var(--color-text-muted-light); }
+.program-data-preview__problem { margin: 0; color: var(--feedback-incorrect); overflow-wrap: anywhere; }
+
+.program-data-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.program-data-list__item { display: grid; justify-items: center; gap: 2px; }
+.program-data-list__value {
+    min-width: 2.25rem;
+    padding: var(--space-xs) var(--space-sm);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+.program-data-list__index { color: var(--color-text-muted-light); font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+
+.program-data-sudoku {
+    border-collapse: collapse;
+    margin-inline: auto;
+    border: 2px solid var(--color-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.program-data-sudoku__cell {
+    width: 1.6rem;
+    height: 1.6rem;
+    padding: 0;
+    border: 1px solid var(--color-border-soft);
+    background: var(--color-surface-base);
+    text-align: center;
+    vertical-align: middle;
+}
+.program-data-sudoku tr:nth-child(3n) .program-data-sudoku__cell { border-bottom: 2px solid var(--color-text-primary); }
+.program-data-sudoku .program-data-sudoku__cell:nth-child(3n) { border-right: 2px solid var(--color-text-primary); }
+.program-data-sudoku__cell--given { font-weight: 700; }
+.program-data-sudoku__cell--placed { color: var(--color-accent-strong); background: var(--feedback-pending-surface); }
+
+/* Static source preview of full Java exercises: code reads left-aligned and scrolls when long. */
+.java-full-editor-preview { width: 100%; text-align: start; }
+.java-full-editor-preview pre { max-height: 22rem; margin: 0; overflow: auto; font-size: 0.8rem; }
+
+/* STEP-BY-STEP PANELS: turtle drawing and sorting replays share the navigator */
+
+.step-panel { display: grid; gap: var(--space-sm); min-width: 0; font-size: 0.875rem; text-align: start; }
+.step-panel__caption { margin: 0; min-height: 1.4em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.step-panel__problem { margin: 0; color: var(--feedback-incorrect); overflow-wrap: anywhere; }
+.step-panel__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-xs) var(--space-md); }
+.step-panel__toggle { display: inline-flex; align-items: center; gap: var(--space-xs); cursor: pointer; }
+.step-panel__stats { color: var(--color-text-muted-light); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+.step-navigator { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; }
+.step-navigator:focus-within { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
+.step-navigator button.step-navigator__button,
+.step-navigator button.step-navigator__button:hover,
+.step-navigator button.step-navigator__button:focus {
+    min-width: 2rem;
+    min-height: 2rem;
+    padding: 0 var(--space-sm);
+    border: 1px solid var(--color-button-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+    color: var(--color-text-primary);
+    line-height: 1;
+}
+.step-navigator button.step-navigator__button:hover:not(:disabled) { background: var(--color-surface-muted); }
+.step-navigator button.step-navigator__button:disabled { opacity: 0.45; cursor: default; }
+.step-navigator__range { flex: 1 1 auto; min-width: 4rem; accent-color: var(--color-accent-strong); }
+.step-navigator__position { flex: none; color: var(--color-text-muted-light); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+.sort-steps {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-xs);
+    height: 9rem;
+    margin: 0;
+    padding: var(--space-sm);
+    list-style: none;
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-base);
+}
+.sort-steps--sorted { border-color: var(--feedback-correct); background: var(--feedback-correct-surface); }
+.sort-bar { display: grid; grid-template-rows: minmax(0, 1fr) auto auto; flex: 1 1 0; min-width: 1.4rem; max-width: 3rem; height: 100%; justify-items: stretch; }
+.sort-bar__column { display: flex; align-items: flex-end; min-height: 0; }
+.sort-bar__fill { width: 100%; height: var(--sort-bar-height, 50%); border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--color-gray-4); transition: height 0.15s ease; }
+.sort-bar__value { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sort-bar__index { text-align: center; color: var(--color-text-muted-light); font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+.sort-bar--changed .sort-bar__fill { background: var(--color-accent-strong); }
+.sort-bar--read .sort-bar__fill { background: var(--feedback-partial); }
+.sort-steps--sorted .sort-bar__fill { background: var(--feedback-correct); }
+@media (prefers-reduced-motion: reduce) { .sort-bar__fill { transition: none; } }

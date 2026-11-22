@@ -1,8 +1,11 @@
 package it.evadid.workbook.serialization
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.MaxCommandUsage
+
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
@@ -19,8 +22,9 @@ import it.evadid.workbook.elements.interactionElements.table.*
 import it.evadid.workbook.elements.interactionElements.pixel.*
 import it.evadid.workbook.model.pixel.*
 import it.evadid.workbook.elements.interactionElements.blockchain.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString, ProgrammingStateSnapXml}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava, SortListExercise, SortingMethod}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{ProgramStructureGrader, ProgramStructureRequirement}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.text.*
@@ -89,9 +93,12 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       GptInteractionElement("gpt", input, content("exercise/text"), List(content("hint/text")), List(content("criterion/text"))),
       TurtleStitchExploreProjectElement("turtle-explore", special),
       TurtleStitchRecreateShapeInteractionLegacy("turtle-legacy", special),
-      TurtleRecreateShapeInteraction("turtle-shape", ProgrammingStatePythonString("forward(10)"), TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), ProgrammingEditorPalette.Embroidery, Map("forward" -> Integer.valueOf(2))),
+      TurtleRecreateShapeInteraction("turtle-shape", ProgrammingStateRaw(Python, "forward(10)"), TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultForPalette(ProgrammingEditorPalette.Embroidery).copy(maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2))))),
       ProgrammingExercise("programming", Some(SampleBeTest("assert True")), ProgrammingEditorPalette.Embroidery, Some(special)),
       ProgrammingExerciseFullJava("java", Some(SampleBeTest("assert False"))),
+      SortListExercise("sort", ProgrammingStateRaw(Python, "def sortiere():\n    pass"), "sortiere", Seq(3, 1, 2), Seq(Seq(2, 1), Seq()),
+        SortingMethod.BubbleSort, Seq(Python), Seq(ProgramStructureGrader(ProgramStructureRequirement.UsesLoop, "sort-loop", content("test/loop"))),
+        Some(content("exercise/sort"))),
       MailEditor("mail-editor", inbox, special, allowCompose = false),
       MailInteraction("mail-interaction", inbox, special, allowCompose = false),
       CreateQrCodeInteraction("qr", QrCodeRequirements(minBytes = 2, maxBytes = Some(200), requiredMask = Some(3)), QrCode.fromText(special)),
@@ -128,18 +135,18 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
           case _ => Nil
         }
         val dependencies = (element.allChildrenFullSubtree ++ references).map(_.toSerialized)
-        val roundTripped = WorkbookElementFactory.parseAll(restored :: dependencies).head
+        val roundTripped = WorkbookElementFactory.parseAll(restored +: dependencies).head
         assertEquals(roundTripped, element)
       }
     }
   }
 
-  private def assertStateRoundTrip[T, GA, SA](element: WorkbookInteractionElementFull[T, GA, SA]): Unit = {
-    val serializer = element.serializerInteractionContent
+  private def assertStateRoundTrip[F <: InteractionFormat](element: WorkbookInteractionElement[F]): Unit = {
+    val serializer = InteractionFormat.codecsFor(element.interactionFormat).stateSerializer
     assertEquals(serializer.deserialize(serializer.serialize(element.defaultValue)), element.defaultValue)
   }
 
-  elements.collect { case element: WorkbookInteractionElementFull[?, ?, ?] => element }.foreach { element =>
+  elements.collect { case element: WorkbookInteractionElement[? <: InteractionFormat] => element }.foreach { element =>
     test(s"${element.getClass.getSimpleName} interaction state round-trips") {
       assertStateRoundTrip(element)
     }
@@ -152,9 +159,9 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
   }
 
   test("turtle definitions default to stroke grading without changing their saved source") {
-    val source = ProgrammingStatePythonString(" \r\nforward(10)\n\t ")
+    val source = ProgrammingStateRaw(Python, " \r\nforward(10)\n\t ")
     val original = TurtleRecreateShapeInteraction("turtle-default-policy", source,
-      TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), limitTurtleCommandUsage = Map("forward" -> Integer.valueOf(2)))
+      TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultDidacticConfig.copy(maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2)))))
     val serialized = original.toSerialized
     val legacy = serialized.copy(allConstructorFields = serialized.allConstructorFields - "comparisonPolicy")
     assert(!legacy.allConstructorFields.contains("comparisonPolicy"))
@@ -163,21 +170,21 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     assertEquals(restored.elementId, original.elementId)
     assertEquals(restored.initProgram, source)
     assertEquals(restored.desiredResult, original.desiredResult)
-    assertEquals(restored.limitTurtleCommandUsage, original.limitTurtleCommandUsage)
-    assertEquals(restored.serializerInteractionContent.serialize(source), original.serializerInteractionContent.serialize(source))
+    assertEquals(restored.exerciseConfig.maxCommandUsage, original.exerciseConfig.maxCommandUsage)
+    assertEquals(restored.interactionFormat.stateSerializer.serialize(source), original.interactionFormat.stateSerializer.serialize(source))
   }
 
   test("turtle comparison policies roundtrip through both definition formats without rewriting drafts") {
     val sources: List[ProgrammingState] = List(
-      ProgrammingStatePythonString(" \r\ndef draw(\n\t "),
-      ProgrammingStateJavaString(" \r\npublic class Drawing {\n  static void draw(\t "),
-      ProgrammingStateSnapXml("<project name=\"Grüße\">\r\n  <notes> \\ </notes>\n</project>\t "))
+      ProgrammingStateRaw(Python, " \r\ndef draw(\n\t "),
+      ProgrammingStateRaw(Java, " \r\npublic class Drawing {\n  static void draw(\t "),
+      ProgrammingStateRaw(SnapLanguage, "<project name=\"Grüße\">\r\n  <notes> \\ </notes>\n</project>\t "))
     for {
       policy <- TurtleDrawingPolicy.values
       source <- sources
     } do {
       val original = TurtleRecreateShapeInteraction(s"turtle-policy-$policy", source,
-        TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), limitTurtleCommandUsage = Map("forward" -> Integer.valueOf(2)),
+        TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), customExerciseConfig = Some(RecreateTurtleDidacticConfig.defaultDidacticConfig.copy(maxCommandUsage = MaxCommandUsage(occurrencesInCode = Map("forward" -> 2)))),
         comparisonPolicy = policy)
       val explicit = original.toSerialized.withElementAddedAs("comparisonPolicy", policy)
       val restoredDefinitions = List(
@@ -190,21 +197,25 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
         assertEquals(restored.elementId, original.elementId)
         assertEquals(restored.comparisonPolicy, policy)
         assertEquals(restored.defaultValue, source)
-        val saved = original.serializerInteractionContent.serialize(source)
-        assertEquals(restored.serializerInteractionContent.serialize(source), saved)
-        assertEquals(restored.serializerInteractionContent.deserialize(saved), source)
-        assertEquals(restored.serializerInteractionContent.deserialize(saved).fingerprint(),
+        val saved = original.interactionFormat.stateSerializer.serialize(source)
+        assertEquals(restored.interactionFormat.stateSerializer.serialize(source), saved)
+        assertEquals(restored.interactionFormat.stateSerializer.deserialize(saved), source)
+        assertEquals(restored.interactionFormat.stateSerializer.deserialize(saved).fingerprint(),
           source.fingerprint())
       }
     }
   }
 
   test("invalid turtle definition comparison policies do not fall back to stroke grading") {
-    val original = TurtleRecreateShapeInteraction("turtle-invalid-policy", ProgrammingStatePythonString("forward(10)"),
-      TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), limitTurtleCommandUsage = Map.empty)
+    val original = TurtleRecreateShapeInteraction("turtle-invalid-policy", ProgrammingStateRaw(Python, "forward(10)"),
+      TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"))
     List[ujson.Value](ujson.Str("Other"), ujson.Null, ujson.Num(1), ujson.Bool(true), ujson.Obj()).foreach { policy =>
       val invalid = original.toSerialized.withMapAdded(Map("comparisonPolicy" -> policy))
-      intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(invalid))
+      val error = intercept[it.evadid.distribution.command.SerializedException](WorkbookElementFactory.parse(invalid))
+      assert(error.msg.contains("turtle-invalid-policy"))
+      assert(error.msg.contains("comparisonPolicy"))
+      assert(error.msg.contains("because:"))
+      assert(error.cause.nonEmpty)
     }
   }
 

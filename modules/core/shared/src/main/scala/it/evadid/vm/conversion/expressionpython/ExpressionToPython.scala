@@ -1,20 +1,22 @@
 package it.evadid.vm.conversion.expressionpython
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.ConversionResult.converted
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
-import it.evadid.vm.conversion.javapython.JavaToPython
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.code.abstractions.BeExpression
 
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport.*
 
+import it.evadid.vm.conversion.dependencies.KnownDependencies
+
 object ExpressionToPython {
-  def convert(expression: BeExpression): ProgrammingStatePythonString = expression match {
-    case root: JavaTurtleVmPrograms.Root => converted(JavaToPython.toPython(JavaTurtleVmPrograms.fromRoot(root)))
-    case _ => ProgrammingStatePythonString(printedPython(expression))
-  }
+  /** Source for editing: the main sequence becomes a called `def main()`, see [[PythonEntryPoint]]. */
+  def convert(expression: BeExpression): ProgrammingStateRaw = ProgrammingStateRaw(Python, expression match {
+    case program: it.evadid.vm.code.others.BeStartProgram => printedPython(PythonEntryPoint.wrap(program))
+    case other => printedPython(other)
+  })
 
   /** Preserve the VM's variable, parameter and return types when switching to Python. */
   def printedPython(expression: BeExpression): String = {
@@ -24,14 +26,16 @@ object ExpressionToPython {
       .filter(line => line.trim.startsWith("def ") || variableAnnotation.matches(line))
       .map(_.takeWhile(_ != '='))
       .mkString("\n")
-    val imports = List(
+    // Single-line dependency definitions are imports and lead the module; helpers follow them.
+    val (dependencyImports, helpers) = KnownDependencies.definitionsFor(expression, Python).partition(!_.contains('\n'))
+    val imports = dependencyImports ++ List(
       "Any" -> "from typing import Any",
       "date" -> "from datetime import date"
     ).collect {
       case (typeName, importLine) if
           s"(?:[:|]|->)\\s*$typeName\\b".r.findFirstIn(annotationSource).nonEmpty => importLine
     }
-    if imports.isEmpty then rendered else imports.mkString("", "\n", "\n\n") + rendered
+    Seq(imports.mkString("\n"), helpers.mkString("\n\n")).filter(_.nonEmpty).map(_ + "\n\n").mkString + rendered
   }
 
 }

@@ -39,7 +39,7 @@ case class EvacuationMeasurement(label: String, floor: EvacuationFloorPlan, sett
 }
 
 case class EvacuationExperiment(floor: EvacuationFloorPlan, settings: EvacuationSettings = EvacuationSettings(),
-                                measurements: List[EvacuationMeasurement] = Nil) derives ReadWriter {
+                                measurements: Seq[EvacuationMeasurement] = Nil) derives ReadWriter {
   require(measurements.size <= EvacuationExperiment.maxMeasurements, "Keep at most 12 comparison runs")
 
   def record(run: EvacuationMeasurement): EvacuationExperiment = {

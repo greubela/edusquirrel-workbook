@@ -24,10 +24,10 @@ case object BinaryPixelRenderer extends LineBasedRenderingFactory[BinaryPixelInt
           val position = PixelPosition(r, c)
           val active = image.map(_.at(position))
           val label = textFor("pixelCoordinate").map(_.replace("{row}", (r + 1).toString).replace("{column}", (c + 1).toString))
-          td(if editable then button(typ := "button", cls := "pixel-cell", cls.toggle("pixel-cell--on") <-- active,
+          td(if editable then button(typ := "button", cls := "pixel-cell", cls("pixel-cell--on") <-- active,
             aria.label <-- label, aria.pressed <-- active.map(_.toString), disabled <-- disabledSignal,
             text <-- active.map(b => if b then "1" else "0"), onClick --> (_ => state.update(e.toggle(_, position))))
-          else span(cls := "pixel-cell", cls.toggle("pixel-cell--on") <-- active, text <-- active.map(b => if b then "1" else "0")))
+          else span(cls := "pixel-cell", cls("pixel-cell--on") <-- active, text <-- active.map(b => if b then "1" else "0")))
         }
       )))
     ))

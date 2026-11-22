@@ -1,6 +1,9 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateSnapXml}
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
+import it.evadid.workbook.abstractions.InteractionFormat.{TurtleProjectFormat}
+
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file
 import it.evadid.core.datastructures.file.FileDescription
@@ -47,7 +50,7 @@ object HtmlTurtleStitchRendererHelper {
       }(using ExecutionContext.global), HtmlButtonElement.stdConfig).getDomElement()
   }
 
-  def renderDownloadButton(label: LanguageMapContentId, workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState]): Element = {
+  def renderDownloadButton(label: LanguageMapContentId, workbookInteraction: WorkbookInteractionElement[TurtleProjectFormat.type]): Element = {
     val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + workbookInteraction.elementId + ".xml"
     HtmlButtonElement.withTextLabel(label, event =>
       workbookInteraction.interactionVariable.currentValue.programXml.foreach(f = currentXml => {
@@ -59,7 +62,7 @@ object HtmlTurtleStitchRendererHelper {
     text <-- laminarHelper.plaintextStringSignal(label)
   )
 
-  def renderUploadButton(workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState], label: LanguageMapContentId = LanguageMapContentId("TurtleStitch/uploadButton")): Element = {
+  def renderUploadButton(workbookInteraction: WorkbookInteractionElement[TurtleProjectFormat.type], label: LanguageMapContentId = LanguageMapContentId("TurtleStitch/uploadButton")): Element = {
     HtmlTurtleStitchFileUploadCard(workbookInteraction, label).getDomElement()
   }
 
@@ -67,7 +70,7 @@ object HtmlTurtleStitchRendererHelper {
   Project Preview
    */
 
-  def renderProjectPreviewImage(workbookInteraction: WorkbookInteractionElement[TurtleStitchProjectState]): Element = {
+  def renderProjectPreviewImage(workbookInteraction: WorkbookInteractionElement[TurtleProjectFormat.type]): Element = {
     val xmlSignal: AsyncData[Nothing, String] = workbookInteraction.interactionVariable.asAsync.map(_.programXml.get)
     //xmlSignal.foreach(newContent => println("xml signal changed for workbook interaction " + workbookInteraction.id + ": " + newContent))(using unsafeWindowOwner)
     renderProjectCodePreviewWithAsyncXml(xmlSignal)
@@ -93,7 +96,7 @@ object HtmlTurtleStitchRendererHelper {
       div(
         cls := "preview-content",
         child <-- xmlAsync.observeLoadedValues.toEventStream().map(xml => {
-          val editor = SnapPreviewEditor(Var[ProgrammingState](ProgrammingStateSnapXml(xml)),
+          val editor = SnapPreviewEditor(Var[ProgrammingState](ProgrammingStateRaw(SnapLanguage, xml)),
             SnapCodeEditorConfig.Testing,
             language)
           editor.getDomElement()

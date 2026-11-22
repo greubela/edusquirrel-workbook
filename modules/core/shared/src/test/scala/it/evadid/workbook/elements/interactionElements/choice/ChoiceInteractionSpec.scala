@@ -52,6 +52,6 @@ class ChoiceInteractionSpec extends FunSuite {
   }
   test("answer serialization preserves choices independently of exercise configuration") {
     val answer = ChoiceAnswer(List(1))
-    assertEquals(single.serializerInteractionContent.deserialize(single.serializerInteractionContent.serialize(answer)), answer)
+    assertEquals(single.interactionFormat.stateSerializer.deserialize(single.interactionFormat.stateSerializer.serialize(answer)), answer)
   }
 }

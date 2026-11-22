@@ -28,18 +28,21 @@ case class BeExpressionToLispString(language: HumanLanguage, skipUnparsable: Boo
         s"(progn\n${indent(level + 2)}(progn\n${body.body.map(item => indent(level + 3) + render(item, level + 3)).mkString("\n")}\n${indent(level + 2)})\n${indent(level + 1)})"
       s"(if $conditionText\n${indent(level + 1)}${branch(thenBody)}\n${indent(level + 1)}${branch(elseBody)}\n${indent(level)})"
     case BeWhile(condition, body) => s"(loop while ${render(condition, level)} do ${render(body, level)})"
-    case BeRepeatNr(amount, body) => s"(dotimes (_ $amount) ${render(body, level)})"
+    case BeRepeatNr(amount, body) => s"(dotimes (_ ${render(amount, level)}) ${render(body, level)})"
     case BeDefineVariable(entityName, _, initValue) => s"(defparameter ${name(entityName)} ${initValue.map(render(_, level)).getOrElse("nil")})"
     case function: BeDefineFunction => s"(defun ${name(function.functionTypeInfo.displayName)} () ${render(function.body, level)})"
     case BeDefineClass(entityName, _, _) => s"(defclass ${name(entityName)} () ())"
-    case BeFunctionCall(function, parameters) => s"(${name(function.functionTypeInfo.displayName)} ${parameters.values.map(render(_, level)).mkString(" ")})"
+    case call: BeFunctionCall if call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] =>
+      s"(${name(call.funcDef.functionTypeInfo.displayName)} ${call.arguments.map(render(_, level)).mkString(" ")})"
+    case _: BeFunctionCall | _: it.evadid.vm.code.usage.BeObjectExpression =>
+      throw UnsupportedOperationException("Object expressions are not supported by the Lisp printer.")
     case BeUseValue(BeDataValueLiteral(value), _) => value
     case BeUseValue(BeUseValueReference(variable), _) => name(variable.name)
     case BeUseValue(BeDataValueUnit(), _) => "nil"
     case BeReturn(value) => s"(return ${value.map(render(_, level)).getOrElse("nil")})"
     case BeStartProgram(body) => body.map(render(_, level)).getOrElse("(progn)")
-    case BeExpressionUnsupported(source) => source
-    case BeExpressionUnparsable(source, _) => if (skipUnparsable) "nil" else source
+    case source: BeExpressionUnsupported => source.sourceFor(it.evadid.core.datastructures.language.AppLanguage.Lisp)
+    case source: BeExpressionUnparsable => if (skipUnparsable) "nil" else source.sourceFor(it.evadid.core.datastructures.language.AppLanguage.Lisp)
     case BeSingleLineComment(comment) => s"; $comment"
     case other => s"; ${other.getClass.getSimpleName}"
   }

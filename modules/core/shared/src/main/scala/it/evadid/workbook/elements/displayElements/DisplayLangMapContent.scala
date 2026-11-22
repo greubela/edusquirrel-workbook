@@ -15,7 +15,7 @@ object DisplayLangMapContent {
 
   val factory: NoRefsElementFactory[DisplayLangMapContent] = new NoRefsElementFactory[DisplayLangMapContent]() {
 
-    override lazy val elementMapAndOrderForConstructorLike: Map[Int, List[VariableDisplayConfig]] =
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[VariableDisplayConfig]] =
       Map(
         0 -> List(
           VariableDisplayConfig("elementId", true)),

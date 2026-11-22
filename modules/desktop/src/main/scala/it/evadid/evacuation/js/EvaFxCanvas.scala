@@ -2,7 +2,7 @@ package it.evadid.evacuation.js
 
 import it.evadid.evacuation.core.graphic.model.{EvaColor, EvaFont, EvaImage}
 import it.evadid.evacuation.shared.traits.graphic.{EvaCanvas, EvaMouseListener}
-import javafx.scene.canvas.{Canvas, GraphicsContext}
+import javafx.scene.canvas.Canvas
 import javafx.scene.image.Image
 import javafx.scene.input.MouseButton
 import javafx.scene.paint.{Color, Paint}
@@ -18,7 +18,7 @@ class EvaFxCanvas(width: Double, height: Double) extends EvaCanvas[Canvas] {
 
   private var scalingFactor: Double = 1.0
 
-  private val (canvas, ctx): (Canvas, GraphicsContext) = {
+  private val (canvas, ctx) = {
     val canvas = new Canvas(width, height)
     val ctxL = canvas.getGraphicsContext2D
     ctxL.setFill(Color.WHITE)

@@ -18,12 +18,12 @@ object EvacuationFloorAdapter {
     List(floor, wall, exit, person), floor, DefaultMetaConfig, MatrixDimension(4, 1))
   def decode(plan: EvacuationFloorPlan): EvaFloorMap = {
     val dim = MatrixDimension(plan.cols, plan.rows)
-    val tiles: List[FloorSprite] = plan.tiles.map {
+    val tiles: Seq[FloorSprite] = plan.tiles.map {
       case EvacuationTile.Floor => floor
       case EvacuationTile.Wall => wall
       case EvacuationTile.Exit => exit
     }
-    EvaFloorMap(Matrix(dim, tiles), plan.people.toList.sorted.zipWithIndex.map((index, id) =>
+    EvaFloorMap(Matrix(dim, tiles.toList), plan.people.toList.sorted.zipWithIndex.map((index, id) =>
       Person(id, dim.positions(index), person)).toSet)
   }
   def encode(map: EvaFloorMap): EvacuationFloorPlan = {

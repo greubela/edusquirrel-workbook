@@ -12,6 +12,6 @@ class MailInteractionRendererSpec extends FunSuite {
     val state = InboxStateScaffolding(InboxState.empty)
     val reader = MailInteraction("read")
     val editor = MailEditor("edit")
-    assertEquals(reader.serializerInteractionContent.deserialize(editor.serializerInteractionContent.serialize(state)), state)
+    assertEquals(reader.interactionFormat.stateSerializer.deserialize(editor.interactionFormat.stateSerializer.serialize(state)), state)
   }
 }

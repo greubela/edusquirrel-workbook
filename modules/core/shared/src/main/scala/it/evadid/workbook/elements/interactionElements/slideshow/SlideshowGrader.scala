@@ -14,7 +14,7 @@ import upickle.default.*
 import java.time.LocalDateTime
 import scala.concurrent.Future
 
-case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrader[SlideshowState, Nothing] derives ReadWriter {
+case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrader[SlideshowState, Unit] derives ReadWriter {
 
   override def runningBehavior: GraderRunningBehavior = RUN_ALWAYS
 
@@ -22,7 +22,7 @@ case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrade
 
   override def gradingEntity: FeedbackEntity = TestEntity()
 
-  override protected def handleGrading(state: SlideshowState, contextInformation: ExecutionContextInformation): Future[GradingResult[SlideshowState, Nothing]] = Future {
+  override protected def handleGrading(state: SlideshowState, contextInformation: ExecutionContextInformation): Future[GradingResult[SlideshowState, Unit]] = Future {
 
     val gradingStatus: GradingStatus = if (state.unseenPanels.isEmpty) GradingStatus.Correct() else GradingStatus.PartiallyCorrect()
     val feedbackInformation: LanguageMap[AppLanguage.HumanLanguage] = gradingStatus.match {

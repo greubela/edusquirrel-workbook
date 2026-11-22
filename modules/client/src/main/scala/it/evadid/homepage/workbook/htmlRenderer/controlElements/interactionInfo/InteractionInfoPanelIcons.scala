@@ -15,7 +15,7 @@ object InteractionInfoPanelIcons {
   }
 
   // Sync  Big
-  private def createCloudSyncSvg(additionalCssStr: String, paths: List[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
+  private def createCloudSyncSvg(additionalCssStr: String, paths: Seq[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
       svg.cls := s"info-svg sync-info-svg $additionalCssStr",
       aria.hidden := true,
@@ -49,8 +49,36 @@ object InteractionInfoPanelIcons {
 
   def pathDecoExclamationCircle: ReactiveSvgElement[SVGPathElement] = createSvgPath("path-deco-exclamation-circle", "m 7.4929037,11.285837 a 0.74845709,0.74845709 0 0 0 -0.5300304,0.215679 0.78587994,0.78587994 0 0 0 -0.2170824,0.53139 0.74845709,0.74845709 0 0 0 0.2170824,0.53139 0.86072565,0.86072565 0 0 0 0.2469909,0.157176 A 0.74845709,0.74845709 0 0 0 8.1828289,11.748507 0.74845709,0.74845709 0 0 0 8.0256529,11.501516 0.86072565,0.86072565 0 0 0 7.7786616,11.34434 0.74845709,0.74845709 0 0 0 7.4929037,11.28583 Z")
 
+  /** Compact line icons for feedback panels; they inherit the status color through currentColor. */
+  enum FeedbackIcon {
+    case Passed, Partial, Failed, Pending, Error, NotRun, Check, Hint, Hidden, Grading
+  }
+
+  def createFeedbackIcon(icon: FeedbackIcon): ReactiveSvgElement[SVGSVGElement] = {
+    import FeedbackIcon.*
+    val circle = svg.circle(svg.cx := "12", svg.cy := "12", svg.r := "9")
+    val parts: Seq[ReactiveSvgElement[? <: org.scalajs.dom.SVGElement]] = icon match {
+      case Passed => Seq(circle, svg.path(svg.d := "m8 12.5 2.7 2.7L16 9.8"))
+      case Partial => Seq(circle, svg.path(svg.d := "M12 3a9 9 0 0 1 0 18Z", svg.fill := "currentColor", svg.stroke := "none"))
+      case Failed => Seq(circle, svg.path(svg.d := "m9 9 6 6m0-6-6 6"))
+      case Pending => Seq(svg.path(svg.d := "M12 3a9 9 0 1 0 9 9", svg.cls := "feedback-icon-spin"))
+      case Error => Seq(svg.path(svg.d := "M10.3 4.2 2.6 17.6A2 2 0 0 0 4.3 20.6h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"),
+        svg.path(svg.d := "M12 9.5v4m0 3.2v.1"))
+      case NotRun => Seq(svg.circle(svg.cx := "12", svg.cy := "12", svg.r := "9", svg.strokeDashArray := "2.6 2.9"))
+      case Check => Seq(svg.path(svg.d := "M8 5.8v12.4a1 1 0 0 0 1.5.9l9.6-6.2a1 1 0 0 0 0-1.8L9.5 4.9A1 1 0 0 0 8 5.8Z"))
+      case Hint => Seq(svg.path(svg.d := "M9 18h6M10 21h4M8.5 14.5a6 6 0 1 1 7 0c-.9.7-1.5 1.3-1.5 3.5h-4c0-2.2-.6-2.8-1.5-3.5Z"))
+      case Hidden => Seq(svg.path(svg.d := "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"),
+        svg.circle(svg.cx := "12", svg.cy := "12", svg.r := "3"), svg.path(svg.d := "M3 3 21 21"))
+      case Grading => Seq(svg.path(svg.d := "M9 4.5H7a2 2 0 0 0-2 2V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6.5a2 2 0 0 0-2-2h-2"),
+        svg.path(svg.d := "M9 3.5h6v3H9zM8.5 12.5l2 2 4.5-4.5M8.5 17.5h7"))
+    }
+    svg.svg(svg.cls := s"feedback-icon feedback-icon--${icon.toString.toLowerCase}", aria.hidden := true,
+      svg.viewBox := "0 0 24 24", svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.8",
+      svg.strokeLineCap := "round", svg.strokeLineJoin := "round").amend(parts *)
+  }
+
   // Grading
-  private def createGradingIcon(additionalCssStr: String, paths: List[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
+  private def createGradingIcon(additionalCssStr: String, paths: Seq[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
       svg.cls := s"info-svg grading-info-svg $additionalCssStr",
       aria.hidden := true,
@@ -105,7 +133,7 @@ object InteractionInfoPanelIcons {
 
   // Scaffolding
 
-  private def createScaffoldingIcon(additionalCssStr: String, paths: List[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
+  private def createScaffoldingIcon(additionalCssStr: String, paths: Seq[ReactiveSvgElement[SVGPathElement]]): ReactiveSvgElement[SVGSVGElement] = {
     svg.svg(
       svg.cls := s"info-svg scaffolding-info-svg $additionalCssStr",
       aria.hidden := true,

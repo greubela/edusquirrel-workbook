@@ -61,9 +61,11 @@ test('text feedback preserves cached and in-flight grading across display langua
     const exercise = page.locator('.interaction-element').filter({has:page.locator('.text-input-feedback')});
     const content = exercise.locator('.text-input-feedback');
     const input = content.locator('textarea');
-    const grade = exercise.locator('.grading-info');
-    const hint = exercise.locator('.scaffolding-info');
-    const results = content.locator('.text-input-feedback__result');
+    // The status strip beside the exercise; the shared feedback panel below it holds results and hints.
+    const grade = exercise.locator('.interaction-element-info .grading-info');
+    const hint = exercise.locator('.interaction-element-info .scaffolding-info');
+    const feedback = exercise.locator('.feedback-panel');
+    const results = feedback.locator('.feedback-entry');
     const selectLanguage = flag => page.locator(`.select-language-line > div:has(.flag-fill-${flag})`).click();
     async function waitForHeld() {
       for (let attempt = 0; attempt < 200 && held.length === 0; attempt++) await page.waitForTimeout(25);
@@ -77,6 +79,16 @@ test('text feedback preserves cached and in-flight grading across display langua
     await hint.click();
     await page.waitForFunction(() => [...document.querySelectorAll('.scaffolding-info')].some(
       icon => icon.dataset.tooltip === 'Wann werden keine Karten mehr weitergegeben?'));
+    const hintPanel = feedback.locator('.interaction-hint-panel');
+    const hintMessage = hintPanel.locator('.feedback-text');
+    await hintMessage.waitFor();
+    assert.equal(await hintMessage.innerText(), 'Wann werden keine Karten mehr weitergegeben?');
+    await page.mouse.move(0, 0);
+    assert(await hintMessage.isVisible(), 'the hint stays readable without hovering over its icon');
+    await page.setViewportSize({width:390,height:844});
+    assert(await hintMessage.isVisible(), 'the below-exercise hint is readable on a narrow viewport');
+    assert(await hintMessage.evaluate(element => element.scrollWidth <= element.clientWidth + 1), 'hint text wraps inside its panel');
+    await page.setViewportSize({width:1440,height:1000});
     assert.equal(requests[0].answer, answer);
     assert(requests[0].hints.length === 1 && !requests[0].criterion);
     policy.mode = 'hold';
@@ -87,16 +99,16 @@ test('text feedback preserves cached and in-flight grading across display langua
     assert.equal(requests.length, 2, 'language changes and duplicate clicks join the pending grading');
     policy.mode = 'normal';
     await reply(held.shift(), 'Deine Begründung passt.');
-    await content.getByText('Deine Begründung passt.', {exact: true}).waitFor();
+    await feedback.getByText('Deine Begründung passt.', {exact: true}).waitFor();
     await results.getByText('Partially correct', {exact: true}).waitFor();
     assert.equal(requests.length, 3, 'only the missing classification marker requires one automatic correction');
-    assert(!/CORRECT|INCORRECT|PARTIALL_CORRECT/.test(await content.innerText()));
+    assert(!/CORRECT|INCORRECT|PARTIALL_CORRECT/.test(await exercise.innerText()));
     for (const flag of ['german-red', 'british-blue', 'german-red', 'british-blue']) {
       await selectLanguage(flag);
       await grade.click();
       await hint.click();
       assert.equal(await input.inputValue(), answer);
-      await content.getByText('Deine Begründung passt.', {exact: true}).waitFor();
+      await feedback.getByText('Deine Begründung passt.', {exact: true}).waitFor();
       assert.equal(requests.length, 3, 'completed hints and grades remain valid in every display language');
     }
     await page.waitForFunction(() => new Promise(resolve => {
@@ -115,13 +127,16 @@ test('text feedback preserves cached and in-flight grading across display langua
     await page.reload();
     await page.locator('.section-block').last().click();
     await input.waitFor();
+    await page.waitForFunction(expected => document.querySelector('.text-input-feedback textarea')?.value === expected, answer);
     assert.equal(await input.inputValue(), answer);
-    await content.getByText('Deine Begründung passt.', {exact: true}).waitFor();
+    await feedback.getByText('Deine Begründung passt.', {exact: true}).waitFor();
     assert.equal(requests.length, 3, 'restoring saved feedback does not call the LLM');
+    assert(await hintMessage.isVisible(), 'the saved hint is restored in the below-exercise panel');
     await selectLanguage('british-blue');
     await input.fill('The recursion ends when the tray is empty.');
+    assert(!await hintPanel.isVisible(), 'the old hint is hidden when the answer changes');
     await grade.click();
-    await content.getByText('Clear reasoning.', {exact: true}).waitFor();
+    await feedback.getByText('Clear reasoning.', {exact: true}).waitFor();
     await results.getByText('Correct', {exact: true}).waitFor();
     assert.equal(requests.length, 4, 'a different answer requires a new assessment');
     policy.mode = 'hold';
@@ -133,15 +148,15 @@ test('text feedback preserves cached and in-flight grading across display langua
     await reply(held.shift(), 'Feedback for the old answer.\nCORRECT');
     await page.waitForTimeout(100);
     assert.equal(await results.count(), 1, 'the current answer retains its not-yet-requested status');
-    assert(!await content.innerText().then(text => text.includes('Feedback for the old answer.')));
+    assert(!await exercise.innerText().then(text => text.includes('Feedback for the old answer.')));
     policy.mode = 'invalid';
     const beforeInvalid = requests.length;
     await grade.click();
-    await content.getByText('Check unavailable', {exact: true}).waitFor();
+    await feedback.getByText('Check unavailable', {exact: true}).waitFor();
     assert.equal(requests.length - beforeInvalid, 2, 'an invalid classification gets only one correction attempt');
     policy.mode = 'normal';
     await grade.click();
-    await content.getByText('Clear reasoning.', {exact: true}).waitFor();
+    await feedback.getByText('Clear reasoning.', {exact: true}).waitFor();
     assert.equal(requests.length - beforeInvalid, 3, 'an explicit retry repeats an execution error');
     await grade.click();
     await page.waitForTimeout(100);

@@ -1,6 +1,6 @@
 {
   "defaultReadExerciseInstruction": "Aşağıdaki programdaki komutları okuyun",
-  "defaultExerciseTitle": "Şekli yeniden oluşturun!",
+  "instructionRecreateShape": "Şekli yeniden oluşturun!",
   "providedProjectLabel": "Hazır proje",
   "defaultExecuteExerciseInstruction": "Tahmininizi doğrulayın!",
   "defaultAnalyzeExerciseInstruction": "Oluşmasını beklediğiniz şekli açıklayın",
@@ -10,5 +10,6 @@
   "showExpected": "Beklenen çıktı",
   "uploadTitle": "Proje yükle",
   "uploadButton": "TurtleStitch projesi yükle (XML)",
-  "downloadButton": "Gösterilen projeyi indir"
+  "downloadButton": "Gösterilen projeyi indir",
+  "instructionRecreateShape": "Şekli bir programla yeniden oluştur!"
 }

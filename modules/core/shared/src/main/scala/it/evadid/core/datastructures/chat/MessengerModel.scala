@@ -9,13 +9,13 @@ import upickle.ReadWriter
 import java.time.LocalDateTime
 import upickle.default.*
 
-case class MessengerModel(messages: List[Message]) derives ReadWriter{
+case class MessengerModel(messages: Seq[Message]) derives ReadWriter{
 
-  def orderedMessages: List[Message] =
+  def orderedMessages: Seq[Message] =
     messages.sortBy(_.timestamp)
 
   def addMessage(message: Message): MessengerModel = {
-    val newMessages: List[Message] = (messages :+ message).sortBy(_.timestamp)
+    val newMessages: Seq[Message] = (messages :+ message).sortBy(_.timestamp)
     MessengerModel(newMessages)
   }
 
@@ -47,7 +47,7 @@ object MessengerModel {
 
   def langHint(lang: HumanLanguage) = Message(s"@assistant: Please provide feedback to the student. Do so in ${lang.name} or the language the student used last!", pWorkbook, LocalDateTime.now())
 
-  def getScaffoldingInitMessage(pStudent: ChatParticipant, exerciseText: String, studentAnswer: String, scaffoldingHints: List[String], curLanguage: HumanLanguage): MessengerModel = {
+  def getScaffoldingInitMessage(pStudent: ChatParticipant, exerciseText: String, studentAnswer: String, scaffoldingHints: Seq[String], curLanguage: HumanLanguage): MessengerModel = {
     val exerciseMsgs = List(prefaceExercise, Message(exerciseText, pTeacher))
     val answerMsgs =
       if (studentAnswer.trim.isEmpty) List()

@@ -9,7 +9,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Sn
 object SnapScalaXmlCodec {
   def parse(xml: String): Either[String, Document] = {
     try {
-      require(xml != null && xml.length <= 64 * 1024 * 1024, "Snap XML exceeds the 64 MiB input limit.")
+      if xml == null || xml.length > 64 * 1024 * 1024 then throw IllegalArgumentException("Snap XML exceeds the 64 MiB input limit.")
       Right(Reader(xml).document())
     } catch {
       case NonFatal(error) => Left(Option(error.getMessage).getOrElse("Invalid Snap XML."))
@@ -21,7 +21,7 @@ object SnapScalaXmlCodec {
     private var count = 0
     private def starts(value: String): Boolean = xml.startsWith(value, cursor)
     private def check(ok: Boolean, message: String): Unit =
-      require(ok, s"$message (offset $cursor)")
+      if !ok then throw IllegalArgumentException(s"$message (offset $cursor)")
     private def space(): String = {
       val start = cursor
       while cursor < xml.length && xml.charAt(cursor).isWhitespace do cursor += 1

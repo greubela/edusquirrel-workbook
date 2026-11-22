@@ -14,7 +14,7 @@ const normalized = entries => new Map(Object.entries(entries).map(([key, value])
 
 // Validate language-map contracts without snapshotting individual lessons.
 test('all native workbook and shared UI maps have German and English entries', () => {
-  for (const directory of ['monksworkbook', 'embroideryworkbook', 'embroiderypreviewworkbook',
+  for (const directory of ['2026gdp1', 'monksworkbook', 'embroideryworkbook', 'embroiderypreviewworkbook',
     'plantworkshop', 'blockchainworkbook', 'digitalWorkbooks', 'testworkbook', 'basic',
     'login', 'workbookSelection', 'emailSimulator', 'blockeditor', 'turtlestitch']) {
     const german = normalized(load(directory, 'de'));
@@ -60,7 +60,7 @@ test('every German language-map entry has an explicit nonempty Danish translatio
 
 const placeholders = value => [...value.matchAll(/\{([A-Za-z]\w*)\}/g)].map(match => match[1]).sort();
 test('translations preserve interpolation fields', () => {
-  for (const directory of ['monksworkbook', 'compressionworkbook']) {
+  for (const directory of ['2026gdp1', 'monksworkbook', 'compressionworkbook']) {
     const de = load(directory, 'de'), en = load(directory, 'en');
     for (const [key, value] of Object.entries(en)) {
       assert(Object.hasOwn(de, key), `${directory}/${key}: missing German equivalent`);

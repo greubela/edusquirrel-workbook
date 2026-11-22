@@ -1,33 +1,36 @@
 package it.evadid.workbook.elements.interactionElements.sql
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 /** A database name resolved against the backend's exercise database configuration.
  * Connection credentials deliberately never travel in workbook JSON.
  */
-final case class SqlDatabaseConfig(databaseName: String)
-
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
-
-object SqlDatabaseConfig {
-  given ReadWriter[SqlDatabaseConfig] = macroRW
-}
+final case class SqlDatabaseConfig(databaseName: String) derives ReadWriter
 
 final case class SqlCommandExercise(
                                      override val elementId: String,
                                      databaseConfig: SqlDatabaseConfig,
                                      initialSql: String = "SELECT * FROM table_name;"
-                                   ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
+                                   ) extends WorkbookInteractionElement[TextInteractionFormat.type] {
+
   override val associatedFactory = SqlCommandExercise.factory
   override val defaultValue: String = initialSql
 
-  override lazy val childrenOfThisElement: List[WorkbookElement] = Nil
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = Nil
+
 }
 
-object SqlCommandExercise {
+object SqlCommandExercise  {
+
   val factory: WorkbookElementFactory[SqlCommandExercise] = new WorkbookElementFactory[SqlCommandExercise] {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
 

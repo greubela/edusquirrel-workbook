@@ -9,6 +9,6 @@ class HtmlMailInteractionRendererSpec extends FunSuite {
     val state = InboxStateScaffolding(InboxState.withMails(List(
       Mail("1", "sender@example.com", "Sender", "Subject", "Body", "Posteingang", None, "2026-06-22")
     )))
-    assertEquals(interaction.serializerInteractionContent.deserialize(interaction.serializerInteractionContent.serialize(state)), state)
+    assertEquals(interaction.interactionFormat.stateSerializer.deserialize(interaction.interactionFormat.stateSerializer.serialize(state)), state)
   }
 }

@@ -14,10 +14,10 @@ private[SnapEditor] object CanvasVisibility:
 
   private val EmptyCanvasColorLimit = 3
 
-  def warnIfUnexpectedlyEmpty(renderer: SnapCodeEditorImpl, snapXml: String, canvas: Canvas): Unit =
+  def warnIfUnexpectedlyEmpty(rendererName: String, snapXml: String, canvas: Canvas): Unit =
     if looksLikeProgramWithBlocks(snapXml) && uniqueColorCount(canvas, EmptyCanvasColorLimit + 1) <= EmptyCanvasColorLimit then
       HomepageLoggerInfo.singleton.uiAndDomLogger.logWarn(
-        s"${renderer.getClass.getSimpleName} rendered a Snap project with blocks, " +
+        s"${rendererName} rendered a Snap project with blocks, " +
           s"but the resulting canvas has at most $EmptyCanvasColorLimit unique colors and appears empty."
       )
 

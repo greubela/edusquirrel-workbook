@@ -112,11 +112,12 @@ object BeExpressionToFlowchart {
         val counter = "remaining_" + nodes.size
         val test = node(counter + " > 0", NodeKind.Decision, Some(repetition))
         loop(test, repetition.body, next, Some(counter + " -= 1"))
-        process(counter + " = " + repetition.amount, test)
+        process(counter + " = " + label(repetition.amount), test)
       case repetition: BeFor =>
         val name = repetition.variable.name.getNameIn(English, SnakeCase)
-        val test = node(name + " <= " + label(repetition.end), NodeKind.Decision, Some(repetition))
-        loop(test, repetition.body, next, Some(name + " += 1"))
+        val down = repetition.direction == it.evadid.vm.code.controlStructures.BeFor.Direction.Down
+        val test = node(name + (if down then " >= " else " <= ") + label(repetition.end), NodeKind.Decision, Some(repetition))
+        loop(test, repetition.body, next, Some(name + (if down then " -= 1" else " += 1")))
         process(name + " = " + label(repetition.start), test)
       case returned: BeReturn => process(label(returned), end, Some(returned))
       case _: BeSingleLineComment => next

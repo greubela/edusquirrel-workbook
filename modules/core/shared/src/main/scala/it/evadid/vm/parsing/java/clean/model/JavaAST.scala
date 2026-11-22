@@ -25,6 +25,9 @@ object JavaAST {
 
   sealed trait JavaStatement extends JavaAST derives upickle.default.ReadWriter
   /** Unsupported Java syntax preserved as source text, e.g. an unimplemented switch expression. */
+  /** A `//` comment, kept when the parser retains comments; `text` excludes the slashes. */
+  case class JavaCommentStatement(text: String) extends JavaStatement derives upickle.default.ReadWriter
+
   case class JavaUnparsableStatement(source: String) extends JavaStatement derives upickle.default.ReadWriter
   /** An empty statement, e.g. `;`. */
   case object JavaEmptyStatement extends JavaStatement
@@ -140,6 +143,11 @@ object JavaAST {
   }
 
   case class JavaUpdateExpression(operand: JavaExpression, operator: String, prefix: Boolean) extends JavaExpression {
+    override def getChildren(): Seq[GenericAST] = Seq(operand)
+  }
+
+  /** A cast to a primitive type, e.g. `(int) value`. */
+  case class JavaCastExpression(javaType: JavaType[?], operand: JavaExpression) extends JavaExpression derives upickle.default.ReadWriter {
     override def getChildren(): Seq[GenericAST] = Seq(operand)
   }
 

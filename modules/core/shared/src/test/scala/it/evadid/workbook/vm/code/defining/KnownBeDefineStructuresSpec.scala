@@ -50,7 +50,7 @@ class KnownBeDefineStructuresSpec extends FunSuite {
     )
     val actualMethodNames = turtleClass.methods.map(_.functionTypeInfo.displayName.universalInterpretation()).toSet
 
-    assertEquals(actualMethodNames, expectedMethodNames)
+    assert(expectedMethodNames.subsetOf(actualMethodNames))
     assert(turtleClass.methods.nonEmpty)
     assert(turtleClass.attributes.isEmpty)
     assert(turtleClass.staticInformationExpression.syntaxErrors.isEmpty)

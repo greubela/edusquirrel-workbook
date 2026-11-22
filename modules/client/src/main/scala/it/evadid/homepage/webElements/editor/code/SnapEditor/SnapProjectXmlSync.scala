@@ -1,8 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
-import it.evadid.vm.conversion.javaediting.JavaEditingMetadata
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import com.raquo.airstream.state.Var
 
@@ -13,28 +11,18 @@ private[SnapEditor] final class SnapProjectXmlSync {
   private val loaded = Var(Option.empty[ProgrammingStateSnapScalaModel])
   private val snapshot = Var(Option.empty[ProgrammingStateSnapScalaModel])
 
-  private def clean(xml: String): String = ProgrammingStateSnapXml(xml).removeBloatFromXml.snapXml
-
-  private val runtimePose = """\s+(?:x|y|heading)="[^"]*"""".r
-
-  private def snapshotKey(xml: String): String =
-    if !JavaEditingMetadata.hasSnapMetadata(xml) then xml
-    else SnapXmlParser.elements(xml, "sprite").reverse.foldLeft(xml) { (current, sprite) =>
-      val headerEnd = sprite.start + sprite.outer.indexOf('>')
-      current.substring(0, sprite.start) + runtimePose.replaceAllIn(current.substring(sprite.start, headerEnd), "") +
-        current.substring(headerEnd)
-    }
+  private def clean(xml: String): String = ProgrammingStateRaw(SnapLanguage, xml).removeBloatFromXml.code
 
   private def model(xml: String): ProgrammingStateSnapScalaModel =
-    ProgrammingStateSnapXml(xml).toSnapScalaModel.fold(message => throw IllegalArgumentException(message), _.persistent)
+    ProgrammingStateRaw(SnapLanguage, xml).toSnapScalaModel.fold(message => throw IllegalArgumentException(message), _.persistent)
 
   def markLoaded(xml: String): Unit = loaded.set(Some(model(xml)))
   def isLoaded(xml: String): Boolean = loaded.now().exists(_.meaningfullyEquals(model(xml)))
-  def resetSnapshot(xml: String): Unit = snapshot.set(Some(model(snapshotKey(clean(xml)))))
+  def resetSnapshot(xml: String): Unit = snapshot.set(Some(model(clean(xml))))
 
   def changedSnapshot(xml: String): Option[String] = {
     val next = clean(xml)
-    val key = model(snapshotKey(next))
+    val key = model(next)
     if snapshot.now().exists(_.meaningfullyEquals(key)) then None
     else {
       snapshot.set(Some(key))

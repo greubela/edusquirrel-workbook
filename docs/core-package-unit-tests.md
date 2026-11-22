@@ -32,11 +32,25 @@ npm run test:static
 npm run test:workbooks
 ```
 
+The MySQL integration suite needs a disposable MySQL 8.4, for example in Docker
+(the variables match the CI job):
+
+```sh
+docker run -d --name edu-mysql -p 3306:3306 -e MYSQL_DATABASE=edusquirrel_account_test \
+  -e MYSQL_USER=account_test -e MYSQL_PASSWORD=disposable -e MYSQL_RANDOM_ROOT_PASSWORD=yes mysql:8.4
+SQL_HOST=127.0.0.1 SQL_PORT=3306 SQL_DATABASE=edusquirrel_account_test SQL_USER=account_test \
+  SQL_PW=disposable SERVER_SECRET=disposable sbt 'server / MysqlIntegration / test'
+```
+
+`ProgrammingUnitTestGraderSpec` (coreJVM) grades answers through the worker's
+unit-test harness in a local `python3` via the test-only `CPythonRuntime` client; it
+is skipped when no `python3` is installed.
+
 For a narrow shared package:
 
 ```sh
-sbt 'coreJVM/testOnly *SyncPackageSpec *InteractionHistoryPackageSpec'
-sbt 'coreJS/testOnly *SyncPackageSpec *InteractionHistoryPackageSpec'
+sbt 'coreJVM/testOnly *RemoteHistoryCacheSpec *InteractionHistoryPackageSpec'
+sbt 'coreJS/testOnly *RemoteHistoryCacheSpec *InteractionHistoryPackageSpec'
 ```
 
 The [CI workflow](../.github/workflows/tests.yml) runs every Scala module, static
@@ -70,8 +84,6 @@ Do not freeze chapter counts, lesson wording, button inventories, CSS dimensions
 or source-code spelling in automated tests. Review those when editing content or
 presentation. `WorkbookDefinitionsSpec` checks the current catalogue factories
 for unique element IDs and serialization without fixing their lesson structure.
-Migration-era content snapshots and individual workbook browser tours were removed;
-shared domain tests still cover their algorithms, grading and answer models.
 
 CI caches incremental Scala output separately from downloaded dependencies, with
 build-definition changes starting a new cache family. Scala still checks the
@@ -85,16 +97,7 @@ release-links in parallel with browser checks. Publication waits for the entire
 reusable workflow. The required `tests` status also gates Scala, browser and MySQL
 checks, including failures or cancellations in upstream jobs.
 
-The MySQL job owns the single server assembly/startup check. Browser bundles and
-Pages artifacts use the producing build's attempt-specific name, passed through
-job outputs so deploy-only or browser-only retries can reuse the correct upload.
-
-QR encoder tests retain independent full-matrix fixtures for every version and
-correction level. Overlapping structure, capacity and rendering assertions use
-representative boundaries, including alignment changes and version 32's special
-alignment spacing, instead of repeating every combination.
-
-CI test-job durations also include browser installation and compilation; use
-individual step/suite timings before removing coverage. Ubuntu package-mirror
-delays can dominate Playwright installation and are separate from test execution
-and Pages publishing.
+The MySQL job owns the server assembly/startup check. Browser bundles and Pages
+artifacts use the producing build's attempt-specific name, so retries reuse the
+correct upload. Run MySQL tests only against the disposable localhost database
+specified in the [database test guide](database/interaction-history.md#verification).

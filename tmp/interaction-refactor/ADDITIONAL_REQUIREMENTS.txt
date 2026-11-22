@@ -1,0 +1,45 @@
+Additional user requirements (2026-11-17):
+1. Shorten fully qualified InteractionFormat singleton types using imports.
+2. Preserve good State coverage, including JVM async behavior.
+3. Ensure production synchronization uses RemoteHistoryCache.
+4. Default destinations: backend BlobFormat and RelationalFormat, both SYNC_EVERYTHING; local IndexedDB SYNC_MAJOR. Strategies control transmission, never prune stored events. Sync icon confirms latest answer and all associated grading/scaffolding events.
+5. Prefer Seq over List/Array in public constructors and return types where appropriate.
+6. DatabaseHistoryFormat.tables must be typed DatabaseTable definitions, with DatabaseColumn(columnName,mySqlType) and enum MySqlType.
+7. Assess JsonGrammar against uPickle; remove unnecessary custom JSON parsing.
+8. Move WorkbookElement.Snapshot into serialization as SerializedWorkbook.
+9. Thoroughly test BufferedSyncDestinationHandler.
+10. Add bulk database storage with histories: Seq[InteractionHistoryJson]; buffered flush must use a single network request.
+Original prompt remains authoritative: current formats/operations only, no compatibility fallback; complete tests, deployAll, concise docs, mergeable PR; commit/push regularly.
+
+Post-review fixes authorized on 2026-11-18:
+- Isolate asynchronous feedback and caches by user session; ignore stale completions.
+- Resolve default database references from the receiving backend environment.
+- Restore full reset UI, typed deletion across all workbooks, retry and paused sync.
+- Attempt independent pending writes despite read failures.
+- Integrate incremental reads, periodic full recovery, and phase-level batching.
+- Remove stale refactor guidance and update session serialization documentation.
+
+Binding architecture requested on 2026-11-18:
+- Keep immutable per-location cache snapshots in a central Var for each typed binding.
+- Replace workbook bindings from the environment signal (including user and credentials), without active/closing lifecycle flags.
+- Detached bindings retain their own histories and credentials and can finish flushing while the replacement syncs.
+- Scope full-reset progress to the user across navigation and credential changes; a partial reset must not resume writes.
+
+Further verification requirements (2026-11-18):
+- Binding-switch tests must prove consistency; a retired request may fail after switching away and back.
+- Audit server history and command code for strong types and correct InteractionFormat ownership of codecs; test heterogeneous histories and reject mismatched format metadata.
+
+Follow-up after merging into main (2026-11-18):
+- Start from the newest main and add dedicated InteractionHistoryJson round-trip tests.
+- Make setup.sql create tables in an existing selected database; do not create or switch databases.
+- Fix the deployAll Scala.js cyclic ReadWriter derivation error in DataEntryToSync.
+- Explain the Play server's Java selection and runtime update commands in chat; do not retain the deployment guide in the repository.
+- Keep the PR mergeable with updated main and use the patched Azul Java 21 JRE in deployment/server/docker-compose.yml.
+- After updating from main, run sbt clean and deployAll, inspect detailed diagnostics, and fix all straightforward console warnings without suppressing them.
+- Repair the Pages build's Maven Central HTTP 403 dependency failures and verify resolution without a warm dependency cache.
+- Below-exercise grading panels must also show available scaffolding hints as readable content for the current answer, including hint-only exercises.
+- Outline the existing status calculations and prefer shared grading/sync reporter outputs over calculations duplicated in renderers.
+
+Implement a workbook-instance reporter registry in fullInfo.signals. All icons, sidebars, inline panels and editors share one grading snapshot per relevant update and one sync classification per report. Preserve binding-switch isolation and test reuse, workbook/user switches and subscription/remount behavior.
+
+2026GdP1 workbook: three sections (overview, introduction, parameters), seven recreate-shape tasks and one AI-supported reflection asking for two distinct benefits of loops/functions. Dedicated DE/EN language maps, native catalogue link and HTML entry page. Square sides 100; five-square rows have 100-unit gaps; parameter rows grow 100..500 or alternate 100/200. Final orientations are down/down/up/down/down: the turtle starts facing right, so right-turn squares hang below a shared line and only the third lies above it. Check geometry and requested structure independently. User's latest steering supersedes the initial Snap/Python choice: include Java through JavaStructuredFunctionBasedEditor, without a separate raw editor state. For this worksheet all editor representations must use the shared BeExpression turtle evaluation for execution, preview and grading. Integrate latest main programming-state refactor; do not revive removed state classes or conversion adapters.

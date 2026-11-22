@@ -25,16 +25,17 @@ object HomepageStartupLogic {
       val count = config.get("EDUSQUIRREL_BACKEND_MODULE_WORKERS").flatMap(_.toIntOption).filter(_ >= 0).getOrElse(1)
       Workers.preheat(count, ClientRuntimeConfig.workerUrl)
     }
-    val turtlePages = List("workbookTest", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookMonks")
+    val turtlePages = List("workbook2026GdP1", "workbookTest", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookMonks")
     if turtlePages.exists(id => dom.document.getElementById(id) != null) then {
       Snap.preload().failed.foreach(_ => ())
       JSXGraph.preload().failed.foreach(_ => ())
     }
   }
 
-
-  private val tryToLoad: List[String] = List("landingPage", "loginPage", "plantWorkshopApp", "workbookEmbroidery", "workbookEmbroideryPreview", "workbookPlantWorkshop", "workbookCompression", "workbookMonks", "workbookTest", "workbookPhishing", "workbookImageRecognition", "workbookBlockchain", "workbookEvacuation")
-  private val canLoad: List[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
+  private val tryToLoad: Seq[String] =
+    Seq("landingPage", "loginPage", "plantWorkshopApp", "workbookTest") ++
+      DigitalWorkbookCatalog.entries.flatMap(_.native.map(_.containerId))
+  private val canLoad: Seq[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
 
   def renderElementIntoApp(logger: Logger, domElement: Element): Unit = {
     if (canLoad.isEmpty) {
@@ -54,11 +55,11 @@ object HomepageStartupLogic {
 
     preheat()
     val workbook: Option[AllWorkbookInfo] = canLoad.headOption.flatMap(loadWorkbookById)
-    fullInfo.usageControl.changeWorkbook(workbook)
+    fullInfo.workbookNavigationControl.changeWorkbook(workbook)
     workbook.foreach { info =>
       val languages = info.loadedWorkbook.metadata.availableLanguages
       if (!languages.contains(fullInfo.homepageInfoNow().currentLanguage))
-        languages.headOption.foreach(fullInfo.usageControl.changeLanguage)
+        languages.headOption.foreach(fullInfo.displayControl.changeLanguage)
     }
 
     // Mount first. Cache restoration and remote language refresh update its signals later.
@@ -66,7 +67,7 @@ object HomepageStartupLogic {
     fullInfo.contentControl.languageStorage.ensureStartup(CONTINUE_IMMEDIATELY).failed.foreach { err =>
       logger.logExceptionWarn("Language startup unavailable", err)
     }
-    fullInfo.usageControl.tryAutoLogin().failed.foreach { err =>
+    fullInfo.userSessionControl.tryAutoLogin().failed.foreach { err =>
       logger.logWarn(s"auto login was not possible: ${err.getMessage}")
     }
   }

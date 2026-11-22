@@ -11,16 +11,22 @@ implements `ExecutionClient`; transport errors, crashes, timeouts and closure fa
 pending requests. A timeout terminates the worker. Obtain a new client afterwards;
 execution never silently falls back to the GUI thread.
 
-`fullInfo.defaults.workerBackendExecutor` claims a preheated worker or creates one
+`fullInfo.defaults.workerExecuter` claims a preheated worker or creates one
 on demand. The HTTP backend remains available as `backendExecutor`. See
 [startup loading](browser-startup-loading.md) for pool configuration and
 [execution clients](execution-clients.md) for command definitions and backend selection.
 
 ```scala
-WorkerCommands.parseSnapXml.sendCommandTo(
-  fullInfo.defaults.workerBackendExecutor,
-  WorkerCommands.ParseSnapXmlRequest(xml, "block")
-).map(_.result)
+import it.evadid.distribution.commandTypes.WorkerCommands
+import it.evadid.homepage.control.model.FullInfo
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
+import scala.concurrent.{ExecutionContext, Future}
+
+def parseBlocks(fullInfo: FullInfo, xml: String)
+    (using ExecutionContext): Future[Seq[SnapScalaModel.Element]] =
+  WorkerCommands.parseSnapXml.sendCommandTo(
+    fullInfo.defaults.workerExecuter, WorkerCommands.ParseSnapXmlRequest(xml, "block")
+  ).map(_.result)
 ```
 
 ## Python and supported jobs
@@ -39,10 +45,11 @@ stdout/stderr and recorded callback operations. Packages load before execution.
 Python jobs queue per worker so globals, callbacks and output cannot mix.
 
 ```scala
-WorkerCommands.runPython.sendCommandTo(
-  fullInfo.defaults.workerBackendExecutor,
-  WorkerCommands.RunPythonRequest("print('Hello')\n6 * 7")
-).map(_.result) // value = 42, stdout = "Hello\n"
+def pythonExample(fullInfo: FullInfo)
+    (using ExecutionContext): Future[WorkerCommands.RunPythonResult] =
+  WorkerCommands.runPython.sendCommandTo(
+    fullInfo.defaults.workerExecuter, WorkerCommands.RunPythonRequest("print('Hello')\n6 * 7")
+  ).map(_.result) // value = 42, stdout = "Hello\n"
 ```
 
 `resetGlobals` defaults to true; false retains variables between jobs. Imported

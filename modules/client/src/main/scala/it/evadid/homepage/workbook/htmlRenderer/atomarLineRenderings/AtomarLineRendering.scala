@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.{DomElementCollection, LaminarRenderHelper}
-import it.evadid.workbook.abstractions.WorkbookElement
+import it.evadid.workbook.abstractions.*
 
 trait AtomarLineRendering extends HtmlAppElement {
 
@@ -19,6 +19,11 @@ trait AtomarLineRendering extends HtmlAppElement {
   protected val interactionContentCssString: String = "interaction-element-content"
   protected val structureCssString: String = "structure-element"
 
+  protected def getCssString(workbookElement: WorkbookElement): String = workbookElement match {
+    case d: WorkbookDisplayElement => displayCssString
+    case i: WorkbookInteractionElement[? <: InteractionFormat] => interactionCssString
+    case s: WorkbookStructureElement[?] => structureCssString
+  }
 }
 
 object AtomarLineRendering {
@@ -27,22 +32,25 @@ object AtomarLineRendering {
     RenderingAsContainerTitle(LaminarRenderHelper.singleton.plaintextStringSignal(content), 1)
   }
 
-  def cardLine(workbookElement: WorkbookElement, cards: List[ElementCard]): AtomarLineRendering = {
-
-    val cardContent = div(
+  def cardLineContent(workbookElement: WorkbookElement, cards: Seq[ElementCard]): Element = {
+    div(
       cls := "element-cards",
       div(cls := "element-card-line label-line",
         cards.map(_.labelElement)),
       div(cls := "element-card-line content-line",
         cards.map(_.contentElement))
     )
-
-    RenderingWorkbookElementLine(workbookElement, cardContent, "element-card-grid")
   }
 
-  def basicLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssString: String = ""): RenderingWorkbookElementLine = RenderingWorkbookElementLine(workbookElement, content, additionalCssString)
+  def cardLine(workbookElement: WorkbookElement, cards: Seq[ElementCard]): AtomarLineRendering =
+    basicLine(workbookElement, cardLineContent(workbookElement, cards), "element-card-grid")
 
-  /* HELPER */
+  def basicLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssString: String = ""): AtomarLineRendering = workbookElement match {
+    case d: WorkbookDisplayElement => RenderingDisplayLine(d, content, additionalCssString)
+    case s: WorkbookStructureElement[?] => RenderingStructureLine(s, content, additionalCssString)
+    case i: WorkbookInteractionElement[? <: InteractionFormat] => RenderingInteractionLine(i, content, additionalCssString)
+  }
+
 
 
 }

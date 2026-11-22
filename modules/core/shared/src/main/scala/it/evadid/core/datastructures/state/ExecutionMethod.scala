@@ -1,6 +1,5 @@
 package it.evadid.core.datastructures.state
 
-import java.net.URL
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
@@ -10,9 +9,6 @@ private sealed trait ExecutionMethod {
 }
 
 object ExecutionMethod {
-
-  private given upickle.default.ReadWriter[URL] = upickle.default.readwriter[String].bimap(
-    _.toExternalForm, value => new URL(value))
 
   case class ExecuteLocalSync() extends ExecutionMethod derives upickle.default.ReadWriter {
     override def handleExecution[I, O](func: I => O, input: I, callback: Try[O] => Any): Unit =
@@ -33,7 +29,5 @@ object ExecutionMethod {
   val executeSync = ExecuteLocalSync()
   val executeAsync = ExecuteLocalAsync(ExecutionContext.global)
 
-
-  private case class SendToServer(url: URL) derives upickle.default.ReadWriter
 
 }

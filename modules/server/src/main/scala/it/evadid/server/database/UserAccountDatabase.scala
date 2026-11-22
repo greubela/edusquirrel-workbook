@@ -11,8 +11,10 @@ final class UserAccountDatabase(openConnection: () => Connection) {
   private given ExecutionContext = ExecutionContext.global
 
   def execute[A](logger: Logger)(operation: SqlUserCommands => A): Future[A] = Future {
-    Using.resource(openConnection()) { connection =>
-      operation(SqlUserCommands(connection, logger))
+    SqlFailure("executing user account request", logger) {
+      Using.resource(openConnection()) { connection =>
+        operation(SqlUserCommands(connection, logger))
+      }
     }
   }
 }

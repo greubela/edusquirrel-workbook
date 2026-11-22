@@ -55,7 +55,7 @@ class SquareMiddleHashSpec extends FunSuite {
     val draft = SquareMiddleHashAnswer("", "4.5")
     assertEquals(e.isCorrect(draft), None)
     assertEquals(e.results(draft), List(None, None))
-    assertEquals(e.serializerInteractionContent.deserialize(e.serializerInteractionContent.serialize(draft)), draft)
+    assertEquals(e.interactionFormat.stateSerializer.deserialize(e.interactionFormat.stateSerializer.serialize(draft)), draft)
     intercept[IllegalArgumentException](SquareMiddleHashAnswer("1" * 101))
   }
   test("all tasks and their initial values round-trip through both definition formats") {

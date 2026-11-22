@@ -80,6 +80,32 @@ case class LocalIndexedDbStorageSyncHandler(definition: LocalIndexedDbSyncDefini
     }
   }
 
+  override def updateElementRaw(logger: SyncLogger, key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] =
+    openDatabase().flatMap { db =>
+      val promise = Promise[SyncSuccess]()
+      val transaction = db.transaction(js.Array(definition.storeName), IDBTransactionMode.readwrite)
+      val store = transaction.objectStore(definition.storeName)
+      val request = store.get(key)
+      request.onsuccess = (_: dom.Event) => {
+        try {
+          val previous = if js.isUndefined(request.result) then None
+            else Some(request.result.asInstanceOf[js.Dynamic].value.asInstanceOf[String])
+          store.put(js.Dynamic.literal(id = key, value = update(previous)))
+        } catch case scala.util.control.NonFatal(error) =>
+          promise.tryFailure(error)
+          transaction.abort()
+      }
+      transaction.oncomplete = (_: dom.Event) => {
+        db.close()
+        promise.trySuccess(SyncSuccess(0, 1, 0, LocalDateTime.now()))
+      }
+      transaction.onabort = (_: dom.Event) => {
+        db.close()
+        promise.tryFailure(new RuntimeException(s"IndexedDB update aborted for $key"))
+      }
+      promise.future
+    }
+
   override def readElementRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[String] = {
     openDatabase().flatMap { db =>
       val promise = Promise[String]()

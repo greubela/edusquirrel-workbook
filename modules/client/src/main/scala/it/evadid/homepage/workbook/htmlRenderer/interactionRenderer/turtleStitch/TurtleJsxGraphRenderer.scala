@@ -23,20 +23,20 @@ import scala.util.control.NonFatal
  */
 object TurtleJsxGraphRenderer:
 
-  def render[T: Fractional](program: Signal[List[TurtleCommand[T]]], graphic: TurtleGraphic): DomElementCollection = {
+  def render[T: Fractional](program: Signal[Seq[TurtleCommand[T]]], graphic: TurtleGraphic): DomElementCollection = {
     program.signal.map(curList => {
       render(curList, graphic)
     })
   }
 
   /** Stitch reproduction accepts any pen-up route between the drawn segments. */
-  def renderStrokes[T: Fractional](program: Signal[List[TurtleCommand[T]]], expected: TurtleGraphic): DomElementCollection =
+  def renderStrokes[T: Fractional](program: Signal[Seq[TurtleCommand[T]]], expected: TurtleGraphic): DomElementCollection =
     program.map(commands => render(buildScene(commands, expected, 1e-7, gradeJumps = false), "Turtle drawing"))
 
-  def render[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Element =
+  def render[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic): Element =
     render(buildScene(program, expected), "Turtle drawing")
 
-  def render[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): Element =
+  def render[T: Fractional](program: Seq[TurtleCommand[T]], expected: Seq[LineToRender[T]]): Element =
     render(buildScene(program, expected), "Turtle drawing")
 
   def render(scene: Scene, title: String): Element = {
@@ -103,12 +103,15 @@ object TurtleJsxGraphRenderer:
 
   enum LineResult derives ReadWriter:
     case Correct, Unexpected, Missing, Neutral
+    /** Step-by-step replay: the segment drawn by the current step, and segments of later steps. */
+    case Current, Upcoming
 
   final case class RenderedLine(start: Point[Double], end: Point[Double], result: LineResult, jump: Boolean) derives ReadWriter
 
   final case class RenderedAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int, lineAfter: Int) derives ReadWriter
 
-  final case class Scene(lines: List[RenderedLine], angles: List[RenderedAngle]) derives ReadWriter
+  /** `marker` shows the turtle's position, e.g. after the current step of a replay. */
+  final case class Scene(lines: Seq[RenderedLine], angles: Seq[RenderedAngle], marker: Option[Point[Double]] = None) derives ReadWriter
 
   private[turtleStitch] final case class AngleSector(first: Point[Double], last: Point[Double], degrees: Double) derives upickle.default.ReadWriter
 
@@ -138,13 +141,13 @@ object TurtleJsxGraphRenderer:
     if sweep <= math.Pi then AngleSector(incoming, outgoing, math.toDegrees(sweep))
     else AngleSector(outgoing, incoming, math.toDegrees(fullTurn - sweep))
 
-  private def graphic[T: Fractional](program: List[TurtleCommand[T]]): TurtleGraphic = {
+  private def graphic[T: Fractional](program: Seq[TurtleCommand[T]]): TurtleGraphic = {
     val numeric = summon[Fractional[T]]
     TurtleGraphic.TurtleGraphicProgram(program.map(command =>
       command.mapNumbers(numeric.toDouble)))
   }
 
-  private def renderedLines(lines: List[GradingLine]): List[RenderedLine] = lines.map { graded =>
+  private def renderedLines(lines: Seq[GradingLine]): Seq[RenderedLine] = lines.map { graded =>
     val result = graded.status match
       case TurtleLineStatus.CORRECT => LineResult.Correct
       case TurtleLineStatus.EXPECTED_BUT_MISSING => LineResult.Missing
@@ -152,25 +155,25 @@ object TurtleJsxGraphRenderer:
     RenderedLine(graded.line.start, graded.line.end, result, graded.jump)
   }
 
-  private def renderedAngles(angles: Seq[TurtleGraphic.Angle]): List[RenderedAngle] = angles.map { angle =>
+  private def renderedAngles(angles: Seq[TurtleGraphic.Angle]): Seq[RenderedAngle] = angles.map { angle =>
     RenderedAngle(angle.vertex, angle.fromHeading, angle.degrees, angle.lineBefore, angle.lineAfter)
   }.toList
 
   /** JSXGraph projects the shared-core geometry and grading result into display objects. */
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]], tolerance: Double = 1e-7, gradeJumps: Boolean = true): Scene = {
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: Seq[LineToRender[T]], tolerance: Double = 1e-7, gradeJumps: Boolean = true): Scene = {
     val actual = graphic(program)
     val targets = expected.map(line => TurtleGraphic.Movement(line.start.toDouble, line.end.toDouble, line.jump))
     Scene(renderedLines(TurtleGradingLogic.compareLines(actual.renderMovements, targets, tolerance, gradeJumps)),
       renderedAngles(actual.renderAngles))
   }
 
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Scene =
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic): Scene =
     buildScene(program, expected, 1e-7)
 
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double): Scene =
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double): Scene =
     buildScene(program, expected, tolerance, gradeJumps = true)
 
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene =
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene =
     buildScene(graphic(program), expected, tolerance, gradeJumps)
 
   private[turtleStitch] def buildScene(comparison: TurtleGraphicComparison): Scene =
@@ -182,16 +185,16 @@ object TurtleJsxGraphRenderer:
   }
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */
-  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): JSXGraph.Board =
+  def render[T: Fractional](container: dom.html.Div, program: Seq[TurtleCommand[T]], expected: Seq[LineToRender[T]]): JSXGraph.Board =
     render(container, buildScene(program, expected), "Turtle drawing")
 
   /** Creates the JSXGraph board using the expected graphic for both comparison and angle overlays. */
-  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: TurtleGraphic): JSXGraph.Board =
+  def render[T: Fractional](container: dom.html.Div, program: Seq[TurtleCommand[T]], expected: TurtleGraphic): JSXGraph.Board =
     render(container, buildScene(program, expected), "Turtle drawing")
 
   def render(container: dom.html.Div, scene: Scene, title: String): JSXGraph.Board =
     container.classList.add("turtle-gradig-panel")
-    val points = scene.lines.flatMap(line => List(line.start, line.end))
+    val points = scene.lines.flatMap(line => List(line.start, line.end)) ++ scene.marker
     if points.exists(point => !point.x.isFinite || !point.y.isFinite) then
       throw IllegalArgumentException("The drawing contains non-finite coordinates.")
     val bounds = boundingBox(points.map(p => Point(p.x, -p.y)))
@@ -227,12 +230,7 @@ object TurtleJsxGraphRenderer:
     def createLine(line: RenderedLine, index: Int): Unit = {
       val a = pointObject(line.start);
       val b = pointObject(line.end)
-      val resultClass = line.result match
-        case LineResult.Correct => "turtle-line--correct"
-        case LineResult.Unexpected => "turtle-line--unexpected"
-        case LineResult.Missing => "turtle-line--missing"
-        case LineResult.Neutral => "turtle-line--neutral"
-      val classes = s"turtle-line $resultClass" + (if line.jump then " turtle-line--jump" else "")
+      val classes = lineClasses(line)
       val segment: js.Dynamic = board.create("segment", js.Array(a, b), js.Dynamic.literal(
         cssClass = classes, highlightCssClass = classes, fixed = true
       ))
@@ -266,12 +264,27 @@ object TurtleJsxGraphRenderer:
         else angleEntries.groupBy { case (angle, _) => math.round(angle.degrees * 1e6) }
           .values.map(_.head).toList.sortBy(_._2)
       visibleAngles.foreach { case (angle, index) => createAngle(angle, index) }
+      scene.marker.foreach { position =>
+        board.create("point", js.Array(position.x, -position.y), js.Dynamic.literal(
+          name = "", fixed = true, showInfobox = false, size = 5, cssClass = "turtle-marker", highlightCssClass = "turtle-marker"))
+      }
       if canBatch then board.unsuspendUpdate() else board.update()
       board
     catch
       case NonFatal(error) =>
         JSXGraph.free(board)
         throw error
+
+  /** CSS classes of a rendered segment: its result and, for pen-up travel, the dashed jump style. */
+  private[htmlRenderer] def lineClasses(line: RenderedLine): String =
+    val resultClass = line.result match
+      case LineResult.Correct => "turtle-line--correct"
+      case LineResult.Unexpected => "turtle-line--unexpected"
+      case LineResult.Missing => "turtle-line--missing"
+      case LineResult.Neutral => "turtle-line--neutral"
+      case LineResult.Current => "turtle-line--current"
+      case LineResult.Upcoming => "turtle-line--upcoming"
+    s"turtle-line $resultClass" + (if line.jump then " turtle-line--jump" else "")
 
   private def hoverRelated(scene: Scene, lineIndex: Int, points: collection.mutable.Map[Point[Double], js.Dynamic], angles: collection.mutable.Map[Int, js.Dynamic], board: JSXGraph.Board, active: Boolean): Unit =
     val line = scene.lines(lineIndex)
@@ -293,7 +306,7 @@ object TurtleJsxGraphRenderer:
     val rounded = math.rint(value * 1000.0) / 1000.0
     if rounded == rounded.toLong then rounded.toLong.toString else rounded.toString
 
-  private def boundingBox(points: List[Point[Double]]): Array[Double] =
+  private def boundingBox(points: Seq[Point[Double]]): Array[Double] =
     if points.isEmpty then Array(-10.0, 10.0, 10.0, -10.0)
     else
       val xs = points.map(_.x);

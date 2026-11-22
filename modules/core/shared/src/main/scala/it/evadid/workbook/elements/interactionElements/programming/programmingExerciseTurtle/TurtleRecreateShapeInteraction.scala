@@ -1,57 +1,63 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.grading.GradingImportance.REQUIRED_TEST
 import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
-import it.evadid.workbook.abstractions.scaffolding.WorkbookInteractionScaffolder
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, *}
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateTurtleDidacticConfig.defaultDidacticConfig
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.core.util.io.serializer.*
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
 
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 case class TurtleRecreateShapeInteraction
 (
   override val elementId: String,
   initProgram: ProgrammingState,
   desiredResult: TurtleGraphic,
-  availablePalette: ProgrammingEditorPalette = ProgrammingEditorPalette.BeginnerTurtle,
-  limitTurtleCommandUsage: Map[String, Integer],
   comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes,
-  /** Language tabs offered by the editor, in this order. */
-  editorLanguages: List[ProgrammingLanguage] = TurtleRecreateShapeInteraction.AllEditorLanguages
-) extends WorkbookInteractionElementFull[ProgrammingState, AdditionalProgrammingTestInfo, Unit] derives ReadWriter {
+  customExerciseConfig: Option[RecreateTurtleDidacticConfig] = Some(defaultDidacticConfig),
+  structureTests: Seq[ProgramStructureGrader] = Seq.empty,
+  instructionText: Option[LanguageMapContentId] = None
+) extends WorkbookInteractionElement[TurtleRecreateShapeInteractionFormat.type] {
 
   override val defaultValue: ProgrammingState = initProgram
-  override val serializerInteractionContent: Serializer[ProgrammingState] = ProgrammingState.serializer
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
   override val associatedFactory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = TurtleRecreateShapeInteraction.factory
 
-  override val gradingElements: List[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]] =
-    List(RecreateShapeGrader(desiredResult, REQUIRED_TEST, elementId + "-grader", comparisonPolicy))
+  def exerciseConfig: RecreateTurtleDidacticConfig = customExerciseConfig.getOrElse(RecreateTurtleDidacticConfig.defaultDidacticConfig)
+
+  override val gradingElements: Seq[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]] =
+    List(RecreateShapeGrader(desiredResult, REQUIRED_TEST, elementId + "-grader", comparisonPolicy)) ++
+      TurtleCommandUsageGrader.forLimits(elementId, exerciseConfig.maxCommandUsage) ++ structureTests
   //val scaffoldingElement: Option[WorkbookInteractionScaffolder[ProgrammingState, ?]] = None
+
 }
 
-object TurtleRecreateShapeInteraction {
-  val AllEditorLanguages: List[ProgrammingLanguage] = List(SnapLanguage, Python, Java)
+object TurtleRecreateShapeInteraction  {
 
   val factory: WorkbookElementFactory[TurtleRecreateShapeInteraction] = new SimpleWorkbookElementFactory[TurtleRecreateShapeInteraction]() {
-    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "availablePalette", "limitTurtleCommandUsage", "comparisonPolicy", "editorLanguages")
+    override protected val constructorFieldOrder = List("elementId", "initProgram", "desiredResult", "comparisonPolicy", "customExerciseConfig", "structureTests", "instructionText")
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, element: TurtleRecreateShapeInteraction): WorkbookElementSerializable = {
       val serialized = baseElement
         .withElementAddedAs("initProgram", element.initProgram)
         .withElementAddedAs("desiredResult", element.desiredResult)
-        .withElementAddedAs("availablePalette", element.availablePalette)
-        .withElementAddedAs("limitTurtleCommandUsage", element.limitTurtleCommandUsage)
-      val withPolicy = if element.comparisonPolicy == TurtleDrawingPolicy.Strokes then serialized
-        else serialized.withElementAddedAs("comparisonPolicy", element.comparisonPolicy)
-      if element.editorLanguages == AllEditorLanguages then withPolicy
-      else withPolicy.withElementAddedAs("editorLanguages", element.editorLanguages)
+        .withElementAddedAs("customExerciseConfig", element.customExerciseConfig)
+        .withElementAddedAs("structureTests", element.structureTests)
+        .withElementAddedAs("instructionText", element.instructionText)
+      if element.comparisonPolicy == TurtleDrawingPolicy.Strokes then serialized
+      else serialized.withElementAddedAs("comparisonPolicy", element.comparisonPolicy)
     }
 
     override def finishDeserialization(serialized: WorkbookElementSerializable): TurtleRecreateShapeInteraction =
@@ -59,10 +65,10 @@ object TurtleRecreateShapeInteraction {
         serialized.elementId,
         serialized.getElementAs[ProgrammingState]("initProgram"),
         serialized.getElementAs[TurtleGraphic]("desiredResult"),
-        serialized.getElementAs[ProgrammingEditorPalette]("availablePalette"),
-        serialized.getElementAs[Map[String, Integer]]("limitTurtleCommandUsage"),
         serialized.getOptionalElementAs[TurtleDrawingPolicy]("comparisonPolicy", TurtleDrawingPolicy.Strokes),
-        serialized.getOptionalElementAs[List[ProgrammingLanguage]]("editorLanguages", AllEditorLanguages)
+        serialized.getOptionalElementAs[Option[RecreateTurtleDidacticConfig]]("customExerciseConfig", None),
+        serialized.getElementAs[Seq[ProgramStructureGrader]]("structureTests"),
+        serialized.getElementAs[Option[LanguageMapContentId]]("instructionText"),
       )
   }
 }

@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.airstream.state.Var
@@ -9,7 +9,7 @@ import com.raquo.laminar.api.L.div
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleExecutionProvider
 import it.evadid.homepage.webElements.editor.code.JavaEditorSession
-import it.evadid.vm.simulation.java.JavaTurtleRuntime
+import it.evadid.vm.simulation.java.JavaTurtleInterpreter
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 
 import java.util.concurrent.CancellationException
@@ -30,11 +30,12 @@ final class JavaTurtleEditorExtension(
   private val running = Var(Option.empty[Attempt])
 
   override def turtleCommands(source: ProgrammingState): Option[() => Future[List[TurtleCommand[Double]]]] = source match {
-    case java: ProgrammingStateJavaString => Some(() => run(java))
+    case java @ ProgrammingStateRaw(Java, _) => Some(() => run(java))
+    case java: ProgrammingStateJavaStructured => Some(() => run(java.toJava))
     case _ => None
   }
 
-  def run(source: ProgrammingStateJavaString): Future[List[TurtleCommand[Double]]] = {
+  def run(source: ProgrammingStateRaw): Future[List[TurtleCommand[Double]]] = {
     if running.now().nonEmpty then return Future.failed(IllegalStateException("Java execution is already running."))
     val attempt = new Attempt
     running.set(Some(attempt))
@@ -63,7 +64,7 @@ final class JavaTurtleEditorExtension(
     }
   }
 
-  private def commandsFrom(execution: JavaTurtleRuntime.Execution): List[TurtleCommand[Double]] = {
+  private def commandsFrom(execution: JavaTurtleInterpreter.Execution): List[TurtleCommand[Double]] = {
     JavaEditorSession.requireCompleted(execution)
     execution.commands.toList.map(_.toDrawingCommand)
   }

@@ -1,37 +1,79 @@
 package it.evadid.vm.conversion.turtlestitchexpression
 
+import it.evadid.vm.code.errors.ProgrammingConversionException
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.{BlockInputDefinition, BlockLike, BoolLiteral, ColorLiteral, Comment, Costume, CustomBlockCall, CustomBlockDefinition, Dispatch, InputValue, ListLiteral, Literal, NestedBlock, NestedScript, PrimitiveBlock, Project, Rgba, Scene, Script, Sound, Sprite, Stage, Variable}
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.{BlockCategory, BlockType}
 
 
+/** Maps the lossless Snap document ([[SnapScalaModel]]) to the program model the expression reader uses.
+  * A document is a project (with scenes; without them, its one stage or its own scripts and sprites),
+  * or a fragment: blocks, a script, scripts, a sprite or a block library.
+  */
 object TurtleStitchModelMapper {
+  private type Node = SnapScalaModel.Element
+  extension (node: Node) private def name: String = node.tag
 
   val EmptyProject: Project = Project()
 
-  def toProject(document: TurtleStitchXmlParser.XmlDocument): Project = {
-    val projectNode = Option.when(document.root.name == "project")(document.root)
-    val scenes = projectNode.toList.flatMap { root =>
-      val scenesNode = firstChild(root, "scenes")
-      childrenNamed(scenesNode, "scene").map(parseScene)
-    }.toVector
-
-    projectNode.filter(_ => scenes.nonEmpty).map { root =>
-      val scenesNode = firstChild(root, "scenes")
-      Project(
-        name = attr(root, "name").getOrElse("Untitled"),
-        app = attr(root, "app").getOrElse(""),
-        version = attr(root, "version").getOrElse("2"),
-        notes = textChild(root, "notes").getOrElse(""),
-        thumbnail = textChild(root, "thumbnail").filter(_.nonEmpty),
-        scenes = scenes,
-        selectedScene = attrIntOpt(scenesNode, "select").getOrElse(1),
-        creator = textChild(root, "creator").filter(_.nonEmpty),
-        origCreator = textChild(root, "origCreator").filter(_.nonEmpty),
-        origName = textChild(root, "origName").filter(_.nonEmpty)
-      )
-    }.getOrElse(EmptyProject)
+  def toProject(document: SnapScalaModel.Document): Project = {
+    val project = document.project match {
+      case Some(root) => fromProject(root.element)
+      case None => fragment(document.root.element)
+    }
+    project.copy(unreadBlocks = unread(document.root.element, project))
   }
 
-  private def parseScene(node: TurtleStitchXmlParser.XmlElement): Scene =
+  /** Every block element in the document is read, apart from scratch scripts in a block editor. */
+  private def unread(root: Node, project: Project): Vector[String] = {
+    def label(node: Node) = node.attribute("s").orElse(node.attribute("var")).getOrElse(node.tag)
+    def blocks(node: Node): Vector[String] = node.tag match {
+      case "block" | "custom-block" => label(node) +: node.elements.map(_.element).flatMap(blocks)
+      case "block-definition" => node.elements.map(_.element).filterNot(_.tag == "scripts").flatMap(blocks)
+      case _ => node.elements.map(_.element).flatMap(blocks)
+    }
+    def modelLabel(block: BlockLike) = block match {
+      case PrimitiveBlock(selector, variable, _, _) => selector.orElse(variable).getOrElse("block")
+      case call: CustomBlockCall => call.semanticSpec
+    }
+    blocks(root).diff(project.allBlocks.map(modelLabel)).distinct
+  }
+
+  private def fromProject(root: Node): Project = {
+    val scenesNode = firstChild(root, "scenes")
+    // Without scenes, the older format has one stage; a minimal project holds its scripts itself.
+    val scenes = childrenNamed(scenesNode, "scene").map(parseScene).toVector match {
+      case Vector() => Vector(Scene(name = attr(root, "name").getOrElse("Untitled"),
+        stage = parseStage(firstChild(root, "stage").getOrElse(root))))
+      case found => found
+    }
+    Project(
+      name = attr(root, "name").getOrElse("Untitled"),
+      app = attr(root, "app").getOrElse(""),
+      version = attr(root, "version").getOrElse("2"),
+      notes = textChild(root, "notes").getOrElse(""),
+      thumbnail = textChild(root, "thumbnail").filter(_.nonEmpty),
+      scenes = scenes,
+      selectedScene = attrIntOpt(scenesNode, "select").getOrElse(1),
+      creator = textChild(root, "creator").filter(_.nonEmpty),
+      origCreator = textChild(root, "origCreator").filter(_.nonEmpty),
+      origName = textChild(root, "origName").filter(_.nonEmpty)
+    )
+  }
+
+  private def fragment(root: Node): Project = {
+    def withSprite(sprite: Sprite) = Project(scenes = Vector(Scene(stage = Stage(sprites = Vector(sprite)))))
+    root.name match {
+      case "script" => withSprite(Sprite(scripts = Vector(parseScript(root))))
+      case "scripts" => withSprite(Sprite(scripts = parseScripts(Some(root))))
+      case "block" | "custom-block" => withSprite(Sprite(scripts = Vector(Script(blocks = Vector(parseBlockLike(root))))))
+      case "sprite" => withSprite(parseSprite(root))
+      case "blocks" => Project(scenes = Vector(Scene(customBlocks = parseCustomBlockContainer(Some(root)))))
+      case other => throw ProgrammingConversionException.unparsable(s"<$other> is not a Snap project, script or block.")
+    }
+  }
+
+  private def parseScene(node: Node): Scene =
     Scene(
       name = attr(node, "name").getOrElse("Untitled"),
       notes = textChild(node, "notes").getOrElse(""),
@@ -50,7 +92,7 @@ object TurtleStitchModelMapper {
       variables = parseVariables(firstChild(node, "variables"))
     )
 
-  private def parseStage(node: TurtleStitchXmlParser.XmlElement): Stage = {
+  private def parseStage(node: Node): Stage = {
     val spritesNode = firstChild(node, "sprites")
     Stage(
       name = attr(node, "name").getOrElse("Stage"),
@@ -83,7 +125,7 @@ object TurtleStitchModelMapper {
     )
   }
 
-  private def parseSprite(node: TurtleStitchXmlParser.XmlElement): Sprite = {
+  private def parseSprite(node: Node): Sprite = {
     Sprite(
       name = attr(node, "name").getOrElse("Sprite"),
       idx = attrInt(node, "idx").getOrElse(1),
@@ -111,24 +153,24 @@ object TurtleStitchModelMapper {
     )
   }
 
-  private def parseScripts(scriptsNode: Option[TurtleStitchXmlParser.XmlElement]): Vector[Script] =
+  private def parseScripts(scriptsNode: Option[Node]): Vector[Script] =
     childrenNamed(scriptsNode, "script").map(parseScript).toVector
 
-  private def parseScript(node: TurtleStitchXmlParser.XmlElement): Script =
+  private def parseScript(node: Node): Script =
     Script(
       x = attrDouble(node, "x"),
       y = attrDouble(node, "y"),
       blocks = children(node).filter(isBlockNode).map(parseBlockLike).toVector
     )
 
-  private def parseBlockLike(node: TurtleStitchXmlParser.XmlElement): BlockLike =
+  private def parseBlockLike(node: Node): BlockLike =
     node.name match {
       case "block" => parsePrimitiveBlock(node)
       case "custom-block" => parseCustomBlockCall(node)
       case _ => PrimitiveBlock(selector = Option(node.name))
     }
 
-  private def parsePrimitiveBlock(node: TurtleStitchXmlParser.XmlElement): PrimitiveBlock =
+  private def parsePrimitiveBlock(node: Node): PrimitiveBlock =
     PrimitiveBlock(
       selector = attr(node, "s"),
       variable = attr(node, "var"),
@@ -136,7 +178,7 @@ object TurtleStitchModelMapper {
       comment = firstChild(node, "comment").map(parseComment)
     )
 
-  private def parseCustomBlockCall(node: TurtleStitchXmlParser.XmlElement): CustomBlockCall =
+  private def parseCustomBlockCall(node: Node): CustomBlockCall =
     CustomBlockCall(
       semanticSpec = attr(node, "s").getOrElse(""),
       scope = attr(node, "scope"),
@@ -145,8 +187,13 @@ object TurtleStitchModelMapper {
       comment = firstChild(node, "comment").map(parseComment)
     )
 
-  private def parseInput(node: TurtleStitchXmlParser.XmlElement): Option[InputValue] = node.name match {
-    case "l" => Some(Literal(node.text.trim))
+  private def parseInput(node: Node): Option[InputValue] = node.name match {
+    // A slot holds either text or one nested value: a boolean or a menu option.
+    case "l" => children(node) match {
+      case List(value) if value.name == "bool" => parseInput(value)
+      case List(value) if value.name == "option" => Some(Literal(value.text.trim))
+      case _ => Some(Literal(node.text.trim))
+    }
     case "bool" => Some(BoolLiteral(node.text.trim.equalsIgnoreCase("true")))
     case "color" => Some(ColorLiteral(parseRgba(node.text.trim, Rgba(0, 0, 0, 1.0))))
     case "script" => Some(NestedScript(parseScript(node)))
@@ -156,14 +203,14 @@ object TurtleStitchModelMapper {
     case _ => Some(Literal(node.text.trim))
   }
 
-  private def parseCustomBlockContainer(blocksNode: Option[TurtleStitchXmlParser.XmlElement]): Vector[CustomBlockDefinition] =
+  private def parseCustomBlockContainer(blocksNode: Option[Node]): Vector[CustomBlockDefinition] =
     childrenNamed(blocksNode, "block-definition").map(parseCustomBlockDefinition).toVector
 
-  private def parseCustomBlockDefinition(node: TurtleStitchXmlParser.XmlElement): CustomBlockDefinition =
+  private def parseCustomBlockDefinition(node: Node): CustomBlockDefinition =
     CustomBlockDefinition(
       spec = attr(node, "s").getOrElse(""),
-      blockType = attr(node, "type").getOrElse("command"),
-      category = attr(node, "category").getOrElse("other"),
+      blockType = attr(node, "type").flatMap(BlockType.fromXml).getOrElse(BlockType.Command),
+      category = attr(node, "category").map(BlockCategory.fromXml).getOrElse(BlockCategory.Other),
       selector = attr(node, "selector"),
       primitive = attr(node, "primitive"),
       helper = attr(node, "helper"),
@@ -180,13 +227,13 @@ object TurtleStitchModelMapper {
     )
 
   /** Snap stores the executed body as a direct `<script>` child; `<scripts>` holds editor orphans. */
-  private def parseCustomBlockBody(node: TurtleStitchXmlParser.XmlElement): Vector[Script] = {
+  private def parseCustomBlockBody(node: Node): Vector[Script] = {
     val direct = firstChild(node, "script").map(parseScript).toVector
     if direct.nonEmpty then direct
     else parseScripts(firstChild(node, "scripts"))
   }
 
-  private def parseBlockInputDefinition(node: TurtleStitchXmlParser.XmlElement): BlockInputDefinition =
+  private def parseBlockInputDefinition(node: Node): BlockInputDefinition =
     BlockInputDefinition(
       inputType = attr(node, "type").getOrElse("%s"),
       name = attr(node, "name").getOrElse(""),
@@ -195,7 +242,7 @@ object TurtleStitchModelMapper {
       readonly = attrBool(node, "readonly")
     )
 
-  private def parseVariables(node: Option[TurtleStitchXmlParser.XmlElement]): Vector[Variable] =
+  private def parseVariables(node: Option[Node]): Vector[Variable] =
     childrenNamed(node, "variable").map { variableNode =>
       Variable(
         name = attr(variableNode, "name").getOrElse(""),
@@ -205,8 +252,9 @@ object TurtleStitchModelMapper {
       )
     }.toVector
 
-  private def parseCostumes(node: Option[TurtleStitchXmlParser.XmlElement]): Vector[Costume] =
-    childrenNamed(node, "costume").map { costumeNode =>
+  /** Snap saves a costume list as `<costumes><list><item><costume/></item></list></costumes>`. */
+  private def parseCostumes(node: Option[Node]): Vector[Costume] =
+    node.toList.flatMap(_.elements.flatMap(child => child +: child.descendants)).map(_.element).filter(_.name == "costume").map { costumeNode =>
       Costume(
         name = attr(costumeNode, "name").getOrElse(""),
         centerX = attrDouble(costumeNode, "center-x").getOrElse(0.0),
@@ -217,7 +265,7 @@ object TurtleStitchModelMapper {
       )
     }.toVector
 
-  private def parseWearCostume(node: TurtleStitchXmlParser.XmlElement): Option[Costume] =
+  private def parseWearCostume(node: Node): Option[Costume] =
     children(node).find(_.name == "costume").map { costumeNode =>
       Costume(
         name = attr(costumeNode, "name").getOrElse(""),
@@ -229,7 +277,7 @@ object TurtleStitchModelMapper {
       )
     }
 
-  private def parseSounds(node: Option[TurtleStitchXmlParser.XmlElement]): Vector[Sound] =
+  private def parseSounds(node: Option[Node]): Vector[Sound] =
     childrenNamed(node, "sound").map { soundNode =>
       Sound(
         name = attr(soundNode, "name").getOrElse(""),
@@ -238,10 +286,10 @@ object TurtleStitchModelMapper {
       )
     }.toVector
 
-  private def parseDispatches(node: Option[TurtleStitchXmlParser.XmlElement]): Vector[Dispatch] =
+  private def parseDispatches(node: Option[Node]): Vector[Dispatch] =
     children(node).map(n => Dispatch(attr(n, "name").getOrElse(n.text.trim))).filter(_.name.nonEmpty).toVector
 
-  private def parseComment(node: TurtleStitchXmlParser.XmlElement): Comment =
+  private def parseComment(node: Node): Comment =
     Comment(
       text = node.text,
       x = attrDouble(node, "x"),
@@ -250,7 +298,7 @@ object TurtleStitchModelMapper {
       collapsed = attrBool(node, "collapsed").getOrElse(false)
     )
 
-  private def parseTagMap(node: Option[TurtleStitchXmlParser.XmlElement]): Map[String, String] =
+  private def parseTagMap(node: Option[Node]): Map[String, String] =
     children(node).map(child => child.name -> child.text).toMap
 
   private def parseRgba(value: String, default: Rgba): Rgba = {
@@ -267,38 +315,38 @@ object TurtleStitchModelMapper {
     }
   }
 
-  private def childrenNamed(parent: Option[TurtleStitchXmlParser.XmlElement], name: String): List[TurtleStitchXmlParser.XmlElement] =
+  private def childrenNamed(parent: Option[Node], name: String): List[Node] =
     parent.toList.flatMap(children).filter(_.name == name)
 
-  private def firstChild(parent: TurtleStitchXmlParser.XmlElement, name: String): Option[TurtleStitchXmlParser.XmlElement] =
+  private def firstChild(parent: Node, name: String): Option[Node] =
     children(Some(parent)).find(_.name == name)
 
-  private def firstChild(parent: Option[TurtleStitchXmlParser.XmlElement], name: String): Option[TurtleStitchXmlParser.XmlElement] =
+  private def firstChild(parent: Option[Node], name: String): Option[Node] =
     parent.flatMap(firstChild(_, name))
 
-  private def textChild(parent: TurtleStitchXmlParser.XmlElement, name: String): Option[String] =
+  private def textChild(parent: Node, name: String): Option[String] =
     firstChild(parent, name).map(_.text.trim)
 
-  private def attr(node: TurtleStitchXmlParser.XmlElement, name: String): Option[String] =
-    node.attrs.get(name).map(_.trim).filter(_.nonEmpty)
+  private def attr(node: Node, name: String): Option[String] =
+    node.attribute(name).map(_.trim).filter(_.nonEmpty)
 
-  private def attrBool(node: TurtleStitchXmlParser.XmlElement, name: String): Option[Boolean] =
+  private def attrBool(node: Node, name: String): Option[Boolean] =
     attr(node, name).map(_.equalsIgnoreCase("true"))
 
-  private def attrInt(node: TurtleStitchXmlParser.XmlElement, name: String): Option[Int] =
+  private def attrInt(node: Node, name: String): Option[Int] =
     attr(node, name).flatMap(v => scala.util.Try(v.toInt).toOption)
 
-  private def attrIntOpt(node: Option[TurtleStitchXmlParser.XmlElement], name: String): Option[Int] =
+  private def attrIntOpt(node: Option[Node], name: String): Option[Int] =
     node.flatMap(attrInt(_, name))
 
-  private def attrDouble(node: TurtleStitchXmlParser.XmlElement, name: String): Option[Double] =
+  private def attrDouble(node: Node, name: String): Option[Double] =
     attr(node, name).flatMap(v => scala.util.Try(v.toDouble).toOption)
 
-  private def children(parent: Option[TurtleStitchXmlParser.XmlElement]): List[TurtleStitchXmlParser.XmlElement] =
+  private def children(parent: Option[Node]): List[Node] =
     parent.toList.flatMap(children)
 
-  private def children(parent: TurtleStitchXmlParser.XmlElement): List[TurtleStitchXmlParser.XmlElement] =
-    parent.children
+  private def children(parent: Node): List[Node] =
+    parent.elements.map(_.element).toList
 
-  private def isBlockNode(node: TurtleStitchXmlParser.XmlElement): Boolean = node.name == "block" || node.name == "custom-block"
+  private def isBlockNode(node: Node): Boolean = node.name == "block" || node.name == "custom-block"
 }

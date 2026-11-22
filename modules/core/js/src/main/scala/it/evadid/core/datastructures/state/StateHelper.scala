@@ -4,13 +4,14 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl}
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.sync.UpdateImportance.TEMPORARY
-import it.evadid.workbook.interaction.variable.InteractionVariable
+import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 import it.evadid.workbook.meta.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 object StateHelper {
 
@@ -26,12 +27,44 @@ object StateHelper {
     def toObservableValue: ObservableValue[T] = toState.observable
   }
 
+  implicit class RichInteractionVariable[F <: InteractionFormat](underlying: InteractionVariable[F]) {
+
+    def historySignal: Signal[InteractionVariableHistory[F]] = {
+      val res: Signal[InteractionVariableHistory[F]] = underlying.observableHistoryWithDefault.toSignal(
+        underlying.observableHistoryWithDefault.now().get
+      )
+      res
+    }
+
+  }
 
   implicit class RichObservableValue[T](underlying: ObservableValue[T]) {
 
+    /** Safely exposes Option[T] since underlying.now() can be None. */
+    def toOptionSignal(): Signal[Option[T]] = {
+      val subscription = Var(Option.empty[it.evadid.core.datastructures.state.Subscription[T]])
+      Signal.fromCustomSource[Option[T]](
+        initial = Success(underlying.now()),
+        start = (setCurrentValue, _, _, _) => {
+          setCurrentValue(Success(underlying.now()))
+          subscription.set(Some(underlying.addObserver(
+            handleOnUpdate = value => setCurrentValue(Success(Some(value))),
+            handleOnError = error => setCurrentValue(Failure(error))
+          )))
+        },
+        stop = _ => {
+          subscription.now().foreach(_.cancel())
+          subscription.set(None)
+        }
+      )
+    }
+
+    /** Seed again on mount so an inactive signal never restores an old cache snapshot. */
+    def toSignal(default: => T): Signal[T] = toOptionSignal().map(_.getOrElse(default))
+
     def toEventStream(): EventStream[T] = {
       // Explicitly reference your own package's Subscription to bypass Laminar's name collision
-      var subscription: Option[it.evadid.core.datastructures.state.Subscription[T]] = None
+      val subscription = Var(Option.empty[it.evadid.core.datastructures.state.Subscription[T]])
 
       EventStream.fromCustomSource(
         shouldStart = _ => true,
@@ -41,23 +74,22 @@ object StateHelper {
             handleOnUpdate = v => fireValue(v),
             handleOnError = e => fireError(e)
           )
-          subscription = Some(sub)
+          subscription.set(Some(sub))
         },
         stop = _ => {
-          subscription.foreach(_.cancel())
-          subscription = None
+          subscription.now().foreach(_.cancel())
+          subscription.set(None)
         }
       )
     }
   }
 
-
   implicit class RichSignal[T](underlying: Signal[T]) {
 
     def toObservableValue: ObservableValue[T] = {
       val res = underlying match {
-        case strict: StrictSignal[T] => ObservableValueImpl[T](Some(strict.now()))
-        case signal: Signal[T] => ObservableValueImpl[T](None)
+        case strict: StrictSignal[? <: T] => ObservableValueImpl[T](Some(strict.now()))
+        case _ => ObservableValueImpl[T](None)
       }
       underlying.foreach(next => res.onNewValueArrived(Success.apply(next)))(using unsafeWindowOwner)
       res
@@ -108,21 +140,14 @@ object StateHelper {
 
   }
 
-  implicit class InteractionVariableOnJS[T, GA, SA](interactionVariable: InteractionVariable[T, GA, SA]) {
+  implicit class InteractionVariableOnJS[F <: InteractionFormat](interactionVariable: InteractionVariable[F]) {
 
-    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[T] = {
+    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[InteractionFormat.State[F]] =
+      interactionVariable.createBoundStateWithUpdateImportance(updateImportance, context).toAirstreamVar
 
-      val state = interactionVariable.createBoundStateWithUpdateImportance(updateImportance, context)
-      fromStateToAirstreamVar(state)
-    }
 
-    def createInteractionSignal(context: ExecutionContextInformation): StrictSignal[T] = {
-      // val res = Var[T](interactionVariable.currentValue)
-      //interactionVariable.observableValue.addObserver(newValue => res.set(newValue))
-      //res.signal
-
-      createBoundVarWithUpdateImportance(TEMPORARY, context).signal
-    }
+    def createInteractionSignal(context: ExecutionContextInformation): StrictSignal[InteractionFormat.State[F]] =
+      interactionVariable.observableValue.toSignal(interactionVariable.currentValue).observe(using unsafeWindowOwner)
 
   }
 
@@ -132,10 +157,10 @@ object StateHelper {
     airstreamVar
   }
 
-  def fromAirstreamVarToState[T](airstreamVar: Var[T]): State[T] = {
-    val state = State[T](airstreamVar.now())
-    bindTogether(state, airstreamVar)
-    state
+  def fromAirstreamVarToState[T](airstreamVar: Var[T], owner: Owner = unsafeWindowOwner): State[T] = {
+    val changes = ObservableValueImpl[T](Some(airstreamVar.now()))
+    airstreamVar.signal.distinct.foreach(next => changes.onNewValueArrived(Success(next)))(using owner)
+    State.fromStorage(() => airstreamVar.now(), airstreamVar.set, transform => airstreamVar.update(transform), changes)
   }
 
   def bindTogether[T](state: State[T], airstreamVar: Var[T]): Unit = {

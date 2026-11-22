@@ -1,140 +1,127 @@
-# Database setup and storage
+# Database setup and connections
 
-The authoritative schemas are the executable SQL files under
-[`artifacts/database`](../../artifacts/database/). Column definitions, types,
-indexes and dependencies are documented there rather than duplicated here.
+[setup.sql](../../artifacts/database/setup.sql) is the single schema source for
+MySQL 8.4: account/login-token tables, command/sync logs, relational event tables,
+blob histories and the anonymous logging identity. Both history layouts can share
+one database. See [history storage](interaction-history.md) for their architecture and
+the [timestamp decision](interaction-history.md#timestamp-representation) for exact
+ISO 8601 storage and range-query behavior.
 
-Run the scripts only against an empty MySQL 8.4 database, in this order:
+## Set up an existing empty database
 
-1. [createUserTables.sql](../../artifacts/database/createUserTables.sql)
-2. [createLogTables.sql](../../artifacts/database/createLogTables.sql)
-3. [createClassicHistoryTables.sql](../../artifacts/database/createClassicHistoryTables.sql)
-4. [createInteractionHistoryTables.sql](../../artifacts/database/createInteractionHistoryTables.sql)
+Select an existing database in your SQL client before executing the script, or use:
 
-The interaction-history script is also usable on its own in an empty, separate
-history database. Its user identifiers are logical references, not foreign keys
-to the account database. The log script requires the user script first. The user
-script creates the anonymous logging identity `user-unknown`.
+```sh
+mysql --host=HOST --user=USER --password --database=YOUR_EMPTY_DATABASE < artifacts/database/setup.sql
+```
+
+The script **does not create or switch databases**. The target must already exist;
+it needs table and temporary-table creation privileges, not `CREATE DATABASE`.
+
+| Target state | Setup behavior |
+| --- | --- |
+| Selected database is empty | Creates all application tables and the seed row in that database |
+| Any table or view exists | Fails `setup_requires_empty_database` before application DDL, regardless of names, structure or existing rows |
+| No database selected / database missing | Fails; it does not choose or create a target |
+| Partial schema from an interrupted run | Refuses to continue; it does not repair or complete existing schemas |
+
+Run as a normal batch **without `--force` or an importer option that continues
+after errors**. The guard leaves existing tables and data untouched when execution
+stops on its error. The script never alters, drops or migrates existing tables.
+MySQL DDL is not transactional across tables: a permissions, connection or disk
+failure during initial creation can leave a partial schema.
+
+For disposable development data, remove all tables/views or recreate the dedicated
+database separately, then select it and rerun setup. Deleting rows is insufficient.
+For example, the following permanently removes and recreates a development database;
+these administrative commands are separate from `setup.sql`:
+
+```sql
+DROP DATABASE IF EXISTS edusquirrel_dev;
+CREATE DATABASE edusquirrel_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin;
+```
+
+Then import with `--database=edusquirrel_dev`. On a live database, keep the guard
+and stop-on-error behavior; schema changes require a separately reviewed operation.
 
 ## Inspection and initialization
 
-`EnsureDatabaseProperlySetup` reads MySQL/JDBC schema metadata and compares it
-with the packaged SQL definitions. Inspection does not read application rows,
-run migrations or modify data. Automatic startup inspection and initialization
-remain disabled; deployment does not automatically change existing databases.
-Explicit setup initializes only a completely empty database. Any existing table or view prevents automatic creation, including a
-partially configured or conflicting schema. Explicit `setupIfEmpty` uses the
-same rule. Explicit checks report missing/incompatible structures;
-existing databases are never repaired automatically.
-An advisory lock coordinates concurrent backend initializers; setup rechecks
-emptiness while holding that lock and requires a dedicated auto-commit connection.
+| Class | Responsibility |
+| --- | --- |
+| [DatabaseSqlScripts](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSqlScripts.scala) | Parses the packaged schema and exposes application table definitions |
+| [DatabaseSchemaInspector](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaInspector.scala) | Reads metadata and compares it with the SQL script through pure schema comparison |
+| [DatabaseSchemaMetadata](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaMetadata.scala) | Reads JDBC/MySQL metadata into named column, key and table values |
+| [DatabaseSchemaComparison](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaComparison.scala) | Pure comparison and diagnostics, independently testable without a database |
+| [DatabaseSchemaSetup](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaSetup.scala) | Explicit initialization, guarded against any existing tables, views or routines |
+| [DatabaseRequestConnection](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseRequestConnection.scala) | Resolves connection configuration and verifies the selected layout's required schema |
 
-All scripts are parsed before the first creation statement. MySQL DDL is not
-transactional across tables: a permissions, connection or disk failure during
-initial creation can leave a partial schema, which subsequent runs will report
-and leave untouched.
+Inspection reads metadata, not application rows. `setupIfEmpty` requires a dedicated
+auto-commit connection, parses all definitions before creation and rechecks emptiness
+under an advisory lock. It reads the application section of the same script without
+creating or selecting another database. Startup/deployment does not automatically
+initialize or repair databases. Existing tables/views prevent initialization.
 
-The backend reads `SQL_HOST`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, `SQL_PW`
-and optional `DB_FORMAT` (MySQL by default). Tests execute the very same packaged
-scripts in a disposable database; there is no separate test schema. See the
-[account test instructions](../authentication.md#mysql-account-queries).
+`DatabaseHistoryFormat` selects `BlobFormat` or `RelationalFormat` and exposes
+`DatabaseTable`/`DatabaseColumn`/`MySqlType` metadata. Configuring another layout
+changes the destination; it does not migrate existing data. History user IDs are
+logical references; account log/token tables reference the account `user` table.
 
-## History formats and identity
+## Connection configuration
 
-`DatabaseHistoryFormat` describes a list of required tables. Both
-`ClassicKeylessJson` and `ClassicJsonWithKey` remain supported. The third option,
-`RelationalEvents`, stores answers and feedback independently. Choose the format
-in `SyncDestinationBasedOnHistoryDatabase`; configuring it does not convert data
-from another format. Its companion defines `defaultDatabaseWithKey`,
-`defaultDatabaseKeyless` and `defaultDatabaseV2`; account preferences select these
-presets rather than constructing their own defaults. Online accounts synchronize to all three presets: both classic formats and V2.
+Backend defaults come from `SQL_HOST`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`,
+`SQL_PW` and optional `DB_FORMAT` (default `mysql`). History requests carry one
+`DatabaseConfiguration`, resolved as follows:
 
-Numeric database IDs are implementation details and never enter client payloads
-or determine answer equality. Graders expose a lazy string `key`: SHA-256 of
-canonical constructor content, including grader type. Map/set order and grader
-list position do not affect it. Equal configurations share an identity; changed
-criteria receive a different identity. Non-product custom graders must override
-`identityContent` with stable JSON. Ordinary feedback and entity-specific additional data are
-stored separately. See the [storage behavior](interaction-history.md).
+| Configuration | Resolution |
+| --- | --- |
+| `BackendDatabase` | The receiving backend's environment configuration; default presets contain no server credentials |
+| `DatabaseConfig` | Public address fields; uses backend credentials only when the target matches backend defaults |
+| `DatabaseConfigWithCredentials` | Explicit address and credentials, used as supplied without per-field merging or consulting defaults |
 
-## Command logging and proxy addresses
+`SyncDestinationDefinition` declares destinations; `UserConfig.defaultSyncDestinations`
+enables both backend layouts with `SYNC_EVERYTHING` and browser IndexedDB with
+`SYNC_MAJOR`. The [synchronization guide](interaction-history.md) explains transmission
+versus retention and per-context batching.
 
-`ExecutionCommandFactory.storeLogIntoTable` defaults to `commandLog`; history
-sync commands select `syncedLog`; `None` disables database logging. Custom tables
-need the same writable log structure as the referenced SQL script. Register new
-commands in `ExecutionCommandFactory.knownCommands`; routing is server-owned and
-cannot be overridden through a request payload. Account logs retain identity
-metadata, not submitted tokens or connection settings. Logging failures warn
-without preventing handler execution. Anonymous logging does not grant access
-to authenticated commands.
+`AllUserInfo.credentials: UserCredentials` holds session tokens, an optional database
+connection and optional `LlmConfiguration`. The user menu's **Session connections**
+form edits these; request construction chooses session configuration or the destination
+definition directly. Credentials survive reload in the browser's IndexedDB login cache,
+with backend-token validation, and logout removes them. Account rows, localStorage
+`SavedUserPreferences`, exports and command logs exclude credentials, including
+credentials attached to a destination. See [authentication](../authentication.md).
 
-The Compose deployment trusts only loopback and Caddy's fixed `172.30.0.2`
-address on `172.30.0.0/24`. Automatic container addresses are allocated from
-`172.30.0.128/25`, reserving the lower half for static addresses. Without this
-separation, the backend can acquire `.2` before Caddy starts. Network changes
-require `docker compose down` followed by `docker compose up -d` so Docker
-recreates the network. Play uses
-`play.http.forwarded.trustedProxies`; Caddy overwrites `X-Forwarded-For` with the
-validated direct peer address. Backend port 9000 is not published. If that subnet
-conflicts with the host, adjust the subnet, Caddy address and trusted address
-together and recreate the services. An additional proxy in front of Caddy needs
-explicit Caddy `trusted_proxies` configuration and `{client_ip}` forwarding;
-never trust arbitrary incoming forwarding headers or all private address ranges.
+LLM requests carry `llmConfiguration: Option[LlmConfiguration]`. `Some(config)` is
+used as-is, including an absent API key or token limit. `None` selects server defaults:
+`OPENAI_API_URL` (default `https://api.openai.com/v1/chat/completions`), `OPENAI_MODEL`
+(default `gpt-4o-mini`), `OPENAI_API_KEY` and optional `OPENAI_MAX_TOKENS`. Redirects
+are not followed. Local services may omit an API key; provider error bodies, API keys
+and prompts are excluded from command logs.
 
-## Session connections
+## Logging and proxy addresses
 
-`AllUserInfo.credentials: UserCredentials` holds the backend token, single-use
-login token, optional `DatabaseConfigWithCredentials` and optional `LlmConfiguration`.
-The user menu's **Session connections** form edits custom connections. The full
-current profile is cached in browser IndexedDB and restored after reload, with
-backend-token validation. Logout removes the cached credentials. localStorage
-preferences use `SavedUserPreferences(user, config)`; exported sessions and
-account rows contain no credentials.
+`ExecutionCommandFactory.storeLogIntoTable` defaults to `commandLog`; history commands
+select `syncedLog`, and `None` disables database logging. Custom log tables need the
+same writable columns as the script's log tables. Logging failure warns without
+preventing history commands from executing. Anonymous logging grants no authorization.
 
-Database connections have two explicit types under `DatabaseConfiguration`:
-`DatabaseConfig` contains format, host, port and database; `DatabaseConfigWithCredentials`
-also contains username and password. Both are accepted by sync destinations and
-by the required `databaseConfig` field of every database request. There is no
-parallel credential field or per-field merging. Public default presets live in
-`SyncDestinationDefinition`; all three database formats remain active.
+Both `origin` and `ipAddress` use Play's resolved connection address. In the supplied
+Compose deployment, Caddy is the public entry point and the backend port is not
+published. Play trusts loopback and Caddy at `172.30.0.2`; automatic container addresses
+start at `172.30.0.128/25` within `172.30.0.0/24`, keeping Caddy's address reserved.
+If that subnet conflicts locally, update the network, Caddy address and trusted-proxy
+configuration together, then recreate services with `docker compose down` / `up -d`.
 
-For `DatabaseConfig`, the backend uses credentials from `SQL_*` only if its target
-matches the configured server database. `DatabaseConfigWithCredentials` is used
-as-is without consulting server defaults. The session form provides the latter
-for user-owned databases. Request construction selects session configuration
-or the destination definition directly; it does not rewrite account preferences.
-User-supplied credentials are removed from account persistence, localStorage preferences,
-exports and command logs, including credentials attached directly to a destination.
+Caddy replaces client forwarding headers with its validated peer address. An additional
+proxy/NAT needs an explicit trust arrangement at that hop; never trust arbitrary
+`X-Forwarded-For` values or all private networks. HTTP integration tests cover trusted
+IPv4/IPv6 forwarding and spoof rejection.
 
-Relational history requests validate their required tables before querying. Classic
-snapshot requests execute their existing queries directly: working classic tables
-need not match the creation scripts' exact column types, nullability or collations.
-Malformed snapshot records are skipped individually without accepting old payload
-schemas or modifying stored data. Create custom databases with the corresponding
-SQL scripts first. Startup inspection remains disabled; databases are never
-repaired automatically.
+## Failure diagnostics
 
-If `syncedLog` is missing in an existing deployment, execute its `CREATE TABLE`
-statement from [createLogTables.sql](../../artifacts/database/createLogTables.sql)
-manually, after ensuring the referenced user table exists. Do not rerun the full
-script over existing tables. Logging failures are warnings and do not prevent
-history requests from executing.
-
-LLM requests carry `llmConfiguration: Option[LlmConfiguration]`. Callers pass the
-current session configuration explicitly. `Some(config)` is used as-is, including
-an absent API key or token limit; no fields are filled from server settings.
-`None` selects the server default: `OPENAI_API_URL` (default
-`https://api.openai.com/v1/chat/completions`), `OPENAI_MODEL` (default
-`gpt-4o-mini`), `OPENAI_API_KEY` and optional `OPENAI_MAX_TOKENS`.
-HTTP redirects are not followed. Custom local services may omit a key.
-Database credentials, API keys and prompts are removed from command-log payloads;
-provider error bodies are not retained.
-
-Client IPs are written to `origin` and `ipAddress` in both `commandLog` and
-`syncedLog` from Play's resolved connection address. The MySQL HTTP integration
-tests verify trusted IPv4/IPv6 forwarding and reject spoofed forwarding headers
-from untrusted peers. With the supplied Compose configuration, Caddy must be the
-public entry point: it forwards its socket peer's address and Play trusts only
-Caddy and loopback. If another proxy or NAT hides the original address before
-Caddy, that address cannot be recovered without a trusted forwarding arrangement
-at that hop; do not accept arbitrary client-supplied `X-Forwarded-For` values.
+Parsing errors identify the request/history entity and include a bounded, privacy-filtered
+preview and parser reason. Command pools report attempted handlers and their last failure.
+`SqlFailure` supplies an operation, SQLState explanation and vendor error code. Original
+JDBC errors stay in server logs; their cause chains are omitted from browser responses
+because they can contain bound values or credentials. Unsupported formats and incompatible
+schemas fail explicitly, without fallback readers or automatic repair.

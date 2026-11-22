@@ -1,17 +1,20 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, Java, Python}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.distribution.command.{ExecutionCommand, SerializedException}
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.util.logging.BasicLogger
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
+import it.evadid.vm.compilation.java.turtle.JavaTurtleProgram
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
+import it.evadid.workbook.abstractions.InteractionFormat.ProgrammingExerciseWithLlmScaffoldingAndGrading
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.*
-import it.evadid.workbook.abstractions.scaffolding.{AdditionalInfoLlmScaffolding, ScaffoldingResult, ScaffoldingStatus, WorkbookInteractionScaffolder}
-import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookInteractionElementFull}
+import it.evadid.workbook.abstractions.scaffolding.{AdditionalInfoLlmScaffolding, ScaffoldingResult, WorkbookInteractionScaffolder}
+import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookInteractionElement}
+import it.evadid.workbook.elements.interactionElements.programming
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingHintScaffolder.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestProgramObservation}
@@ -21,7 +24,7 @@ import it.evadid.workbook.meta.ExecutionContextInformation
 import scala.concurrent.Future
 import scala.util.Try
 
-final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElementFull[ProgrammingState, ?, ?],
+final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElement[ProgrammingExerciseWithLlmScaffoldingAndGrading.type],
                                       publicTaskId: LanguageMapContentId)
   extends WorkbookInteractionScaffolder[ProgrammingState, AdditionalInfoLlmScaffolding] {
 
@@ -70,9 +73,10 @@ final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElemen
 
   private def prepare(state: ProgrammingState): Context = {
     val (sourceLanguage, source) = state match {
-      case ProgrammingStateJavaString(code) => Java.name -> code
-      case ProgrammingStatePythonString(code) => Python.name -> code
-      case ProgrammingStateBeExpression(root: JavaTurtleVmPrograms.Root) => Java.name -> root.bindings.source.source
+      case ProgrammingStateRaw(Java, code) => Java.name -> code
+      case ProgrammingStateRaw(Python, code) => Python.name -> code
+      case value: ProgrammingStateJavaStructured => Java.name -> value.toString
+      case value: ProgrammingStatePythonStructured => Python.name -> value.toString
       case _ => throw IllegalArgumentException("Hints currently require Java or Python source text.")
     }
     require(source != null && source.length <= 24000, "The source is too long for a hint.")
@@ -85,7 +89,7 @@ final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElemen
     val history = variable.currentHistory
     require(history.historyStates.lastStateOption.map(_.value).getOrElse(interaction.defaultValue) == state,
       "The answer changed while preparing this hint.")
-    val results: List[GradingResult[ProgrammingState, ?]] =
+    val results: Seq[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] =
       history.historyGrading.gradingsMap.get(state).filter(_.state == state).toList.flatMap(_.graderResultMap.values)
     val graders = interaction.gradingElements.filter { grader =>
       grader.importance != GradingImportance.HIDDEN_TEST && grader.gradingEntity == FeedbackEntity.TestEntity()
@@ -132,22 +136,22 @@ object ProgrammingHintScaffolder {
           ujson.Arr.from(List(ujson.Str(command.name.universalInterpretation())) ++ command.args.map(ujson.Num(_))))))))
   }
 
-  private case class Check(id: String, grader: WorkbookInteractionGrader[ProgrammingState, ?], required: Boolean,
-                           latest: List[(String, Map[HumanLanguage, String], Option[ProgrammingTestProgramObservation])]) {
+  private case class Check(id: String, grader: WorkbookInteractionGrader[ProgrammingState, programming.AdditionalProgrammingTestInfo], required: Boolean,
+                           latest: Seq[(String, Map[HumanLanguage, String], Option[ProgrammingTestProgramObservation])]) {
     def localized(language: HumanLanguage): PublicCheck = {
       val values = latest.map { (status, descriptions, observation) =>
         (status, descriptions.get(language).orElse(descriptions.get(English)), observation)
       }.distinct
       values match {
-        case List((status, description, observation)) => PublicCheck(id, required, status, description, observation)
+        case Seq((status, description, observation)) => PublicCheck(id, required, status, description, observation)
         case _ => PublicCheck(id, required, "unavailable", None)
       }
     }
   }
 
   private case class Context(sourceLanguage: String, source: String, sourceLines: Vector[(String, String)],
-                             checks: List[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
-    def localizedChecks(language: HumanLanguage): List[PublicCheck] = checks.map(_.localized(language))
+                             checks: Seq[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
+    def localizedChecks(language: HumanLanguage): Seq[PublicCheck] = checks.map(_.localized(language))
 
     def evidenceIds(language: HumanLanguage): Set[String] = sourceLines.map(_._1).toSet ++ localizedChecks(language).flatMap {
       case check if evidenceStatuses.contains(check.status) => List(check.id) ++ check.programObservation.map(_ => check.outputId)

@@ -1,0 +1,5 @@
+[repositories]
+local
+# Google's official Maven Central mirror; Maven Central rate-limits bursts from CI runners.
+maven-central-mirror: https://maven-central.storage-download.googleapis.com/maven2/
+maven-central: https://repo.maven.apache.org/maven2/

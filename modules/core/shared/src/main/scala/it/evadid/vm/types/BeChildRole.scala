@@ -60,6 +60,8 @@ object BeChildRole {
 
   case class ValueForVariable(associatedVariable: BeDefineVariable) extends BeChildDataRole derives upickle.default.ReadWriter
 
+  case object Receiver extends BeChildDataRole
+
   case object ValueInAssignment extends BeChildDataRole
 
   /* EDITOR ROLES */

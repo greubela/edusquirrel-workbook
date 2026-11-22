@@ -73,23 +73,23 @@ object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskTogg
         cls := "mode-toggle",
         button(
           cls := "mode-toggle__btn",
-          cls.toggle("mode-toggle__btn--active") <-- stateVar.signal.map(_.isBeginnerMode),
+          cls("mode-toggle__btn--active") <-- stateVar.signal.map(_.isBeginnerMode),
           text <-- laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/beginnerMode")),
           onClick --> { _ => setBeginnerMode(true) }
         ),
         button(
           cls := "mode-toggle__btn",
-          cls.toggle("mode-toggle__btn--active") <-- stateVar.signal.map(state => !state.isBeginnerMode),
+          cls("mode-toggle__btn--active") <-- stateVar.signal.map(state => !state.isBeginnerMode),
           text <-- laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/advancedMode")),
           onClick --> { _ => setBeginnerMode(false) }
         )
       ),
       div(
-        cls.toggle("mode-hidden") <-- stateVar.signal.map(state => !state.isBeginnerMode),
+        cls("mode-hidden") <-- stateVar.signal.map(state => !state.isBeginnerMode),
         children <-- reorderDom.allElementsSignal
       ),
       div(
-        cls.toggle("mode-hidden") <-- stateVar.signal.map(_.isBeginnerMode),
+        cls("mode-hidden") <-- stateVar.signal.map(_.isBeginnerMode),
         codeEditor
       )
     )

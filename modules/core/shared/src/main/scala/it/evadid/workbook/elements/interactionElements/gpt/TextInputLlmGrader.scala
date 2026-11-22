@@ -1,13 +1,16 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
+import it.evadid.core.datastructures.chat
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.LLMCommands.FeedbackLlmRequest
 import it.evadid.workbook.abstractions.FeedbackEntity
+import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
@@ -43,7 +46,7 @@ case class TextInputLlmGrader(
         val conversation = MessengerModel(List(Message(system, MessengerModel.pWorkbook),
           Message(prompt, MessengerModel.pFallbackStudent), Message(Option(response).getOrElse(""), MessengerModel.pAgent)))
 
-        def result(status: GradingStatus, feedback: String, transcript: MessengerModel): GradingResult[String, MessengerModel] =
+        def result(status: GradingStatus, feedback: String, transcript: MessengerModel): GradingResult[String, chat.MessengerModel] =
           GradingResult(this, state, status,
             Option.when(feedback.nonEmpty)(LanguageMap.mapBasedLanguageMap(Map(language -> feedback))), Some(transcript))
 

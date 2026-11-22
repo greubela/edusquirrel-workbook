@@ -28,24 +28,24 @@ object TurtleDrawingGrading {
   ).map((name, arity) => name -> Set(arity)) + ("circle" -> Set(1, 2))
 
   private final case class Drawing(graphic: TurtleGraphic, path: TurtlePathBuilder[Double],
-      lines: List[Segment], lineIndexes: Map[Int, Int])
+      lines: Seq[Segment], lineIndexes: Map[Int, Int])
   final case class Assessment(matches: Boolean, scene: Scene)
 
-  def assess(commands: List[TurtleCommand[Double]], target: TurtleGraphic, policy: TurtleDrawingPolicy): Assessment = {
+  def assess(commands: Seq[TurtleCommand[Double]], target: TurtleGraphic, policy: TurtleDrawingPolicy): Assessment = {
     val comparison = checkedComparison(commands, target, policy)
     Assessment(comparison.gradingStatus.isCorrect, TurtleJsxGraphRenderer.buildScene(comparison))
   }
 
-  def validateDrawing(commands: List[TurtleCommand[Double]]): Unit = {
+  def validateDrawing(commands: Seq[TurtleCommand[Double]]): Unit = {
     checkedDrawing(commands)
     ()
   }
 
-  private def checkedComparison(commands: List[TurtleCommand[Double]], target: TurtleGraphic,
+  private def checkedComparison(commands: Seq[TurtleCommand[Double]], target: TurtleGraphic,
       policy: TurtleDrawingPolicy): TurtleGradingLogic.TurtleGraphicComparison = {
     val actual = checkedDrawing(commands)
     val expected = checkedDrawing(target.toTurtleProgram.toList)
-    def samples(lines: List[Segment]): Long = lines.foldLeft(0L) { (total, line) =>
+    def samples(lines: Seq[Segment]): Long = lines.foldLeft(0L) { (total, line) =>
       val count = math.ceil(line.length / (tolerance / 2.0)) + 1.0
       if !count.isFinite || count > maxSamples then maxSamples + 1
       else (total + count.toLong).min(maxSamples + 1)
@@ -69,7 +69,7 @@ object TurtleDrawingGrading {
         RenderedAngle(angle.vertex, angle.fromHeading, angle.degrees, angle.lineBefore, angle.lineAfter)).toList)
   }
 
-  def drawingScene(commands: List[TurtleCommand[Double]]): Scene = drawingScene(checkedDrawing(commands))
+  def drawingScene(commands: Seq[TurtleCommand[Double]]): Scene = drawingScene(checkedDrawing(commands))
 
   private def drawingScene(drawing: Drawing): Scene = {
     val angles = drawing.graphic.renderAngles.flatMap { angle =>
@@ -84,7 +84,7 @@ object TurtleDrawingGrading {
   private def tooLarge(): Nothing =
     throw IllegalArgumentException("Your drawing is too large to compare. Check the distances in your program.")
 
-  private def checkedDrawing(commands: List[TurtleCommand[Double]]): Drawing = {
+  private def checkedDrawing(commands: Seq[TurtleCommand[Double]]): Drawing = {
     if commands.size > maxCommands then tooLarge()
     var traceWork = 0L
     commands.foreach { command =>

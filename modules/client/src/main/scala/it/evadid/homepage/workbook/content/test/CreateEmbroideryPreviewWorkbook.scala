@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.content.test
 
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
@@ -9,15 +10,15 @@ import it.evadid.homepage.workbook.content.wip.EmbroideryPreviewTargets
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonString
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleGraphic, TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 /** Separate digital edition: preserves the original workbook and its saved responses. */
 case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
-  override val availableLanguages: List[HumanLanguage] = List(German, English)
+  override val availableLanguages: Seq[HumanLanguage] = List(German, English)
 
   override val workbookId: String = "EmbroideryPreviewWorkbook"
 
@@ -45,8 +46,9 @@ case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) exte
 
   private def recreate(id: String, target: TurtleGraphic,
                        initialCode: String = ""): TurtleRecreateShapeInteraction =
-    TurtleRecreateShapeInteraction(id, ProgrammingStatePythonString(initialCode), target,
-      ProgrammingEditorPalette.Embroidery, Map.empty[String, Integer])
+    TurtleRecreateShapeInteraction(id, ProgrammingStateRaw(Python, initialCode), target,
+      TurtleDrawingPolicy.Strokes,
+      Some(RecreateTurtleDidacticConfig.defaultForPalette(ProgrammingEditorPalette.Embroidery)))
 
   private def createRecreateShapeInteraction(shape: String): WorkbookElement =
     recreate(nextId("embroidery-preview-" + shape), EmbroideryPreviewTargets.shape(shape))

@@ -1,6 +1,6 @@
 {
   "defaultReadExerciseInstruction": "Read the commands within the following Program",
-  "defaultExerciseTitle": "Re-Create the Shape!",
+  "instructionRecreateShape": "Recreate the shape with a program!",
   "providedProjectLabel": "Prepared Project",
   "defaultExecuteExerciseInstruction": "Verify your expectation!",
   "defaultAnalyzeExerciseInstruction": "Describe the shape you expect to be created",

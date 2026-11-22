@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
@@ -25,23 +27,11 @@ object TurtleStitchRecreateShapeInteractionLegacy {
 case class TurtleStitchRecreateShapeInteractionLegacy(
                                                  override val elementId: String,
                                                  val filenameRelToResources: String
-                                               ) extends WorkbookInteractionElement[TurtleStitchProjectState] derives upickle.default.ReadWriter {
+                                               ) extends WorkbookInteractionElement[TurtleProjectFormat.type] derives upickle.default.ReadWriter {
   override val associatedFactory = TurtleStitchRecreateShapeInteractionLegacy.factory
 
   override val defaultValue: TurtleStitchProjectState = TurtleStitchProjectState.empty()
 
-  override val serializerInteractionContent: Serializer[TurtleStitchProjectState] = new Serializer[TurtleStitchProjectState] {
-    private val header = "TURTLE_STITCH_STATE_V1\n"
-
-    override def serialize(t: TurtleStitchProjectState): String = header + write(t)
-
-    override def deserialize(s: String): TurtleStitchProjectState =
-      {
-        require(s.startsWith(header), "Unsupported turtle state format")
-        read[TurtleStitchProjectState](s.drop(header.length))
-      }
-  }
-
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
 }

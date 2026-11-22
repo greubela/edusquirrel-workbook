@@ -170,10 +170,13 @@ class SnapCustomBlockRulesSpec extends FunSuite {
     assertEquals(SnapCustomBlockRules.effectiveCategory("Variables", SnapCustomBlockRules.allCategories(xml)), "Variables")
   }
 
-  test("non-command, sprite-local and non-scalar slots are reported as Python-incompatible") {
-    val reporter =
-      s"""<block-definition s="area %size" type="reporter" category="Variables"><inputs><input type="%n"></input></inputs></block-definition>"""
-    assert(SnapCustomBlockRules.allDefinitions(reporter).head.pythonIncompatibility.isDefined)
+  test("hat, sprite-local and non-scalar slots are reported as Python-incompatible; reporters and predicates are not") {
+    val hat =
+      s"""<block-definition s="when ready" type="hat" category="Variables"><inputs></inputs></block-definition>"""
+    assert(SnapCustomBlockRules.allDefinitions(hat).head.pythonIncompatibility.exists(_.contains("hat")))
+    for blockType <- List("reporter", "predicate") do
+      assert(SnapCustomBlockRules.allDefinitions(
+        s"""<block-definition s="area %size" type="$blockType" category="Variables"><inputs><input type="%n"></input></inputs></block-definition>""").head.isPythonCompatible, blockType)
 
     val scripted =
       s"""<block-definition s="twice %action" type="command" category="Variables"><inputs><input type="%cs"></input></inputs></block-definition>"""
@@ -199,7 +202,7 @@ class SnapCustomBlockRulesSpec extends FunSuite {
     sources.foreach { source =>
       val result = PythonToSnap.applyPython(source)
       assert(result.isRight, clue = s"$source -> $result")
-      val xml = result.toOption.get.snapXml
+      val xml = result.toOption.get.code
       assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = s"$source -> $xml")
     }
   }

@@ -1,11 +1,12 @@
 package it.evadid.vm.test
 
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestGrader
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
 import upickle.default.ReadWriter
 
 sealed trait BeTestSuite derives ReadWriter {
-  def graders: List[ProgrammingTestGrader]
+  val graders: List[ProgrammingTestGrader]
 }
 
 case class ProgrammingTestSuite(graders: List[ProgrammingTestGrader]) extends BeTestSuite derives ReadWriter {
@@ -17,7 +18,7 @@ case class ProgrammingTestSuite(graders: List[ProgrammingTestGrader]) extends Be
 }
 
 case class SampleBeTest(pythonTestCode: String) extends BeTestSuite derives ReadWriter {
-  override def graders: List[ProgrammingTestGrader] =
+  override val graders: List[ProgrammingTestGrader] =
     List(ProgrammingUnitTestGrader(ProgrammingUnitTestGrader.SampleTestId, pythonTestCode))
 }
 

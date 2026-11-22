@@ -156,7 +156,7 @@ class QrCodeSpec extends FunSuite {
     }
     assert(element.toStringConstructorLike.contains("requirements"))
     assert(element.toStringConstructorLike.contains("initialCode"))
-    assertEquals(element.serializerInteractionContent.deserialize(element.serializerInteractionContent.serialize(initial)), initial)
+    assertEquals(element.interactionFormat.stateSerializer.deserialize(element.interactionFormat.stateSerializer.serialize(initial)), initial)
     assert(!CreateQrCodeInteraction("empty").isPassed)
   }
 }
