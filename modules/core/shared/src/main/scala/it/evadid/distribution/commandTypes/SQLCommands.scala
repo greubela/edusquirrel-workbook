@@ -75,25 +75,29 @@ object SQLCommands {
 
 
   lazy val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess] = ExecutionCommandFactory[StoreToDbRequest, SyncSuccess](
-    "sync-to-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
+    "sync-to-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials),
+    requiresLogin = true
   )
 
   lazy val bulkStoreToDbCommand: ExecutionCommandFactory[BulkStoreToDbRequest, SyncSuccess] =
     ExecutionCommandFactory[BulkStoreToDbRequest, SyncSuccess]("sync-histories-to-db-request",
-      storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials))
+      storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials), requiresLogin = true)
 
   lazy val fetchEventsFromDbCommand: ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse](
-    "fetch-events-from-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
+    "fetch-events-from-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials),
+    requiresLogin = true
   )
 
   // A distinct command prevents an older server from acknowledging a reset
   // while ignoring its all-workbook scope and deleting only the current workbook.
   lazy val resetUserHistoriesDbCommand: ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess] = ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess](
-    "reset-user-histories-in-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
+    "reset-user-histories-in-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials),
+    requiresLogin = true
   )
 
   lazy val clearValuesDbCommand: ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess] = ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess](
-    "clear-values-in-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials)
+    "clear-values-in-db-request", storeLogIntoTable = Some(DatabaseTable.syncedLog), privacyFilter = Some(redactCredentials),
+    requiresLogin = true
   )
 
 }

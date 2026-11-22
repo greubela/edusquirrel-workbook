@@ -38,9 +38,9 @@ credentials and responses while allowing old and new requests to overlap. Retire
 requests may finish or fail; neither outcome can change a replacement binding.
 UI navigation starts sync after Airstream applies the environment transaction.
 
-Backend databases store, read and delete histories only for a verified account.
-`DatabaseSyncViaBackendServerHandler` therefore fails these requests locally, without
-sending them, when its user has no signed token or the token has expired.
+Backend databases store, read and delete histories only for a verified account. These
+commands are `requiresLogin` factories: the browser's remote client, which attaches the
+signed token, fails them locally without a token or with an expired one.
 
 `EventSyncStrategy` selects transmissions, not retention. Defaults send
 `SYNC_MAJOR` to both backend layouts and `SYNC_LAST` to local IndexedDB.

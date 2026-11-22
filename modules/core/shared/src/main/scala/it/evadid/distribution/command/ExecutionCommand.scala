@@ -13,6 +13,8 @@ case class ExecutionCommand(name: String, json: ujson.Value) derives ReadWriter{
     ExecutionCommandFactory.forName(name)
       .fold(this)(_.stripPrivacySensitiveInformation(this))
 
+  def requiresLogin: Boolean = ExecutionCommandFactory.forName(name).exists(_.requiresLogin)
+
   // Routing is server-owned metadata, never supplied in the wire payload.
   def storeLogIntoTable: Option[DatabaseTable] =
     ExecutionCommandFactory.forName(name).map(_.storeLogIntoTable).getOrElse(Some(DatabaseTable.commandLog))

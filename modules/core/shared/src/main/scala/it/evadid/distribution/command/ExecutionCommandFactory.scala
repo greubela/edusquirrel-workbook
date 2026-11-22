@@ -24,10 +24,14 @@ object ExecutionCommandFactory {
   def forName(name: String): Option[ExecutionCommandFactory[?, ?]] = knownCommands.find(_.name == name)
 }
 
+/** `requiresLogin`: the backend runs the command only for a verified signed token, so a remote client
+  * without a valid token fails it locally instead of sending it.
+  */
 case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
                                                                   name: String,
                                                                   private val privacyFilter: Option[ujson.Value => ujson.Value] = None,
-                                                                  storeLogIntoTable: Option[DatabaseTable] = Some(DatabaseTable.commandLog)
+                                                                  storeLogIntoTable: Option[DatabaseTable] = Some(DatabaseTable.commandLog),
+                                                                  requiresLogin: Boolean = false
                                                                 ) {
 
   given ec: ExecutionContext = ExecutionContext.global

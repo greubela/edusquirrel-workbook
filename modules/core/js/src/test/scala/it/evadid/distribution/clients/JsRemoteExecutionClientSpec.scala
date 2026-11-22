@@ -186,9 +186,41 @@ class JsRemoteExecutionClientSpec extends FunSuite {
         "Could not read backend response body (HTTP 200); the connection closed or the response was interrupted.")
     }
   }
+
+  test("login-only commands without a valid token fail locally; other commands are still sent") {
+    import it.evadid.core.datastructures.user.{User, UserTokenInfo}
+    import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
+    import it.evadid.distribution.command.ExecutionCommand
+    import it.evadid.distribution.commandTypes.{SQLCommands, UserCommands}
+    import java.time.LocalDateTime
+    def signed(expiresAt: LocalDateTime) = Some(SignedToken(UserTokenInfo(User.createNewUser("Ada", "ada@school.example"),
+      LocalDateTime.now().minusDays(1), expiresAt), "signature"))
+    val requests = scala.collection.mutable.ListBuffer.empty[String]
+    val originalFetch = js.Dynamic.global.fetch
+    js.Dynamic.global.fetch = ((url: String, init: dom.RequestInit) => {
+      requests += init.body.asInstanceOf[String]
+      js.Promise.resolve(new dom.Response("{}"))
+    }): js.Function2[String, dom.RequestInit, js.Promise[dom.Response]]
+    def execute(token: Option[SignedToken], name: String) =
+      JsRemoteExecutionClient("localhost", 443, token).executeResponse(BasicLogger(), ExecutionCommand(name, ujson.Obj()))
+        .transform(result => scala.util.Success(result.failed.toOption.map(_.getMessage)))
+    val store = SQLCommands.bulkStoreToDbCommand.name
+    (for {
+      withoutToken <- execute(None, store)
+      expired <- execute(signed(LocalDateTime.now().minusMinutes(1)), SQLCommands.fetchEventsFromDbCommand.name)
+      _ = assertEquals(requests.toList, Nil, "nothing is sent that the backend would refuse")
+      _ <- execute(None, UserCommands.loginCommand.name)
+      _ <- execute(signed(LocalDateTime.now().plusDays(1)), store)
+    } yield {
+      assert(withoutToken.exists(_.contains("requires a signed-in account")), withoutToken)
+      assert(expired.exists(_.contains("expired")), expired)
+      assertEquals(requests.size, 2, "public commands and commands with a valid token are sent")
+    }).andThen { case _ => js.Dynamic.global.fetch = originalFetch }
+  }
 }
 
 /** A browser compression stream that cannot be created, e.g. when the encoder is unavailable. */
 private class RejectingCompressionStream(format: String) extends js.Object {
   throw js.JavaScriptException(js.Error(s"$format compression is unavailable"))
+
 }
