@@ -22,7 +22,8 @@ case class HtmlLoginElement() extends HtmlAppElement {
 
   private val loginSucceededPromise: Promise[AllUserInfo] = Promise()
 
-  private val savedUser = fullInfo.userSessionControl.loadSavedProfile().map(_.user)
+  // The last recognized user, also after an automatic login failed and its cached login was cleared.
+  private val savedUser = fullInfo.userSessionControl.loginIdentity.now()
   private val identity = new LoginIdentityState(
     savedUser.map(_.name).getOrElse(""), savedUser.map(_.mail).getOrElse(""))
   private val nameVar = identity.name
@@ -51,6 +52,13 @@ case class HtmlLoginElement() extends HtmlAppElement {
   lazy val domElement: Element = {
     div(
       cls := "container-login",
+      // An identity recognized after the page was built fills the fields unless the user has typed already.
+      fullInfo.userSessionControl.loginIdentity.signal.changes.collect { case Some(user) => user } --> { user =>
+        if nameVar.now().trim.isEmpty && emailVar.now().trim.isEmpty then {
+          identity.changeName(user.name)
+          identity.changeEmail(user.mail)
+        }
+      },
       div(
         cls := "container-login-section section-register",
         titleElement("login/titleLoginRegister", 1),

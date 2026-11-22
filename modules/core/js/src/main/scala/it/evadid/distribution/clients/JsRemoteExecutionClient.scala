@@ -8,6 +8,7 @@ import org.scalajs.dom
 import org.scalajs.dom.{RequestCredentials, Response}
 import upickle.default.*
 
+import java.time.LocalDateTime
 import scala.concurrent.Future
 import scala.scalajs.js
 import scala.util.control.NonFatal
@@ -75,7 +76,18 @@ private case class JsRemoteExecutionClient(hostname: String, port: Int, token: O
       // Successful login responses can contain credentials; never echo the body or raw parser error.
       throw SerializedException("Could not decode backend execution response: expected the current JSON response format. Check that client and server use the same version and that the proxy returns the backend response.")
 
-  override protected def sendTo(logger: Logger, ip: String, port: Int, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
+  /** The backend refuses login-only commands without a valid token: fail them here, before serializing or sending. */
+  override protected def sendTo(logger: Logger, ip: String, port: Int, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] =
+    if !executionCommand.requiresLogin then send(logger, executionCommand)
+    else token match {
+      case Some(signed) if signed.info.expiresAt.isAfter(LocalDateTime.now()) => send(logger, executionCommand)
+      case Some(signed) => Future.failed(SerializedException(
+        s"Command ${executionCommand.name} requires a signed-in account, but the session expired at ${signed.info.expiresAt}; it was not sent."))
+      case None => Future.failed(SerializedException(
+        s"Command ${executionCommand.name} requires a signed-in account; it was not sent."))
+    }
+
+  private def send(logger: Logger, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] = {
     val body = write(executionCommand)
     val dest = if (hostname.startsWith("http")) s"$hostname:$port/executeCommand" else s"https://$hostname:$port/executeCommand"
 

@@ -9,7 +9,9 @@ import upickle.default.*
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-/** Browser persistence for the current session and credential-free profile preferences. */
+/** Browser persistence for the current session and credential-free profile preferences.
+  * Anonymous placeholder users are never stored.
+  */
 private[change] final class UserSessionStorage(logger: Logger, syncLogger: SyncLogger)(using ExecutionContext) {
   private val allUserInfoStorageKey: String = "edusquirrel-alluserinfo"
 
@@ -17,7 +19,7 @@ private[change] final class UserSessionStorage(logger: Logger, syncLogger: SyncL
   private val sessionCache = LocalIndexedDbStorageSyncHandler(LocalIndexedDbStorageSyncHandler.instanceForCaching)
 
   def saveSession(info: Option[AllUserInfo]): Future[Unit] = {
-    val stored = info match {
+    val stored = info.filterNot(_.user.isAnonymous) match {
       case Some(user) => sessionCache.storeElementRaw(syncLogger, sessionStorageKey, write(user))
       case None => sessionCache.removeKeyRaw(syncLogger, sessionStorageKey)
     }
@@ -67,7 +69,7 @@ private[change] final class UserSessionStorage(logger: Logger, syncLogger: SyncL
   def saveProfile(info: Option[AllUserInfo]): Unit = {
     try {
       LocalStorageSyncHandler.removeKey(allUserInfoStorageKey)
-      info.foreach { user =>
+      info.filterNot(_.user.isAnonymous).foreach { user =>
         logger.logInfo(s"Loading user $user")
         val serialized = write(SavedUserPreferences(user.user, user.config.withoutCredentials))
         LocalStorageSyncHandler.instance.storeElementRaw(syncLogger, allUserInfoStorageKey, serialized)
