@@ -99,13 +99,16 @@ class UserSessionControlSpec extends EditorDomSuite {
     }
   }
 
-  test("automatic login restores a saved local profile, but needs a token for online accounts") {
+  test("automatic login restores a named local profile; an online account it cannot sign in keeps only its pre-fill") {
     val local = AllUserInfo.createNewUser("Local Learner", "local@school.example", localConfig)
     val control = page().userSessionControl
     for {
       nothing <- control.tryAutoLogin().failed.map(_.getMessage)
       _ = dom.window.localStorage.setItem("edusquirrel-alluserinfo", write(SavedUserPreferences(student.user, student.config)))
       online <- failure(control.tryAutoLogin())
+      _ = assertEquals(control.fullInfo.current.userInfo, None, "the login page shows")
+      _ = assertEquals(control.loginIdentity.now(), Some(student.user), "pre-filled with the cached account")
+      _ = assertEquals(dom.window.localStorage.getItem("edusquirrel-alluserinfo"), null, "the cached login is cleared")
       _ = dom.window.localStorage.setItem("edusquirrel-alluserinfo", write(SavedUserPreferences(local.user, local.config)))
       _ <- control.tryAutoLogin()
     } yield {
@@ -116,21 +119,38 @@ class UserSessionControlSpec extends EditorDomSuite {
     }
   }
 
-  test("login-or-registration falls back to a local profile when the backend refuses, and creates anonymous profiles") {
+  test("an online account the backend cannot confirm is never continued locally or anonymously") {
     val control = page().userSessionControl
-    val offline = control.tryLoginOrLocalRegistration(Some(student.user), Some(student.config)).map { _ =>
-      val user = control.fullInfo.current.userInfo.get
-      assertEquals(user.user, student.user, "the session's user continues locally")
-      assertEquals(user.config, student.config)
-    }
     for {
-      _ <- offline
-      anonymous = page().userSessionControl
-      _ <- anonymous.tryLoginOrLocalRegistration(None, None)
+      _ <- control.tryLoginOrLocalRegistration(Some(student.user), Some(student.config)).failed
     } yield {
-      val user = anonymous.fullInfo.current.userInfo.get
-      assertEquals(user.user.name, "Anonymous")
-      assertEquals(user.config, UserConfig(UserConfig.defaultSyncDestinations, false))
+      assertEquals(control.fullInfo.current.userInfo, None, "the login page shows")
+      assertEquals(control.loginIdentity.now(), Some(student.user), "pre-filled with the account")
+    }
+  }
+
+  test("a local start without a name is anonymous for this visit only; cached anonymous profiles are discarded") {
+    val control = page().userSessionControl
+    val local = AllUserInfo.createNewUser("Local Learner", "local@school.example", localConfig)
+    for {
+      _ <- control.tryLocalRegistration(Some(local.user), Some(localConfig))
+      _ <- control.tryLoginOrLocalRegistration(None, None)
+      _ = {
+        val user = control.fullInfo.current.userInfo.get
+        assert(user.user.isAnonymous)
+        assertEquals(user.config, UserConfig(UserConfig.defaultSyncDestinations, false))
+        assertEquals(dom.window.localStorage.getItem("edusquirrel-alluserinfo"), null, "anonymous users are not saved")
+        assertEquals(control.loginIdentity.now(), Some(local.user), "the login page keeps the last named user")
+      }
+      // A profile saved by an earlier version is discarded instead of being restored.
+      _ = dom.window.localStorage.setItem("edusquirrel-alluserinfo", write(SavedUserPreferences(User.createAnonymous(), localConfig)))
+      next = page().userSessionControl
+      reason <- next.tryAutoLogin().failed.map(_.getMessage)
+    } yield {
+      assertEquals(reason, "Anonymous sessions are not restored")
+      assertEquals(next.fullInfo.current.userInfo, None)
+      assertEquals(next.loginIdentity.now(), None, "an anonymous profile does not pre-fill the login page")
+      assertEquals(dom.window.localStorage.getItem("edusquirrel-alluserinfo"), null)
     }
   }
 

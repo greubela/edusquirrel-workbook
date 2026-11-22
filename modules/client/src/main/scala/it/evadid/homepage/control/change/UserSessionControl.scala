@@ -15,6 +15,7 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import upickle.default.*
 
+import com.raquo.airstream.state.Var
 import scala.concurrent.*
 import scala.util.{Failure, Success}
 
@@ -26,6 +27,11 @@ final class UserSessionControl(val fullInfo: FullInfo) {
   private lazy val storage = new UserSessionStorage(logger, fullInfo.syncControl.syncLogger)
 
   def loadSavedProfile(): Option[AllUserInfo] = storage.loadSavedProfile()
+
+  /** Name and email the login page pre-fills: the last recognized user, kept after its cached login is cleared. */
+  lazy val loginIdentity: Var[Option[User]] = Var(loadSavedProfile().map(_.user).filterNot(_.isAnonymous))
+
+  private def rememberIdentity(user: User): Unit = if !user.isAnonymous then loginIdentity.set(Some(user))
 
   private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken], cachedCredentials: UserCredentials = UserCredentials()): Future[?] = {
     val loginReq = LoginRequest(userMail.trim.toLowerCase, token)
@@ -96,14 +102,16 @@ final class UserSessionControl(val fullInfo: FullInfo) {
     }
   }
 
+  /** An online account is never continued as a local profile: if it cannot be signed in, the login page
+    * shows its name and email.
+    */
   def tryLoginOrLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = {
     if (withUser.nonEmpty && withConfig.nonEmpty && withConfig.get.isOnlineAccount) {
       logger.logInfo("TryLoginOrLocalRegistration -> requested with online account, trying to log in")
-      tryOnlineRegistration(withUser.get.name, withUser.get.mail).recoverWith {
-        case (err: Throwable) => {
-          logger.logExceptionWarn(s"TryLoginOrLocalRegistration did not succeed for user ${withUser.get}, likely because of missing credentials. Using local mode!", err)
-          tryLocalRegistration(withUser, withConfig)
-        }
+      tryOnlineRegistration(withUser.get.name, withUser.get.mail).recoverWith { case err =>
+        logger.logExceptionWarn(s"Could not sign in ${withUser.get}; the login page shows the account instead", err)
+        rememberIdentity(withUser.get)
+        Future.failed(err)
       }
     } else {
       tryLocalRegistration(withUser, withConfig)
@@ -113,7 +121,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
   /** Completes once the local profile is the page's user. */
   def tryLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = Future {
     val userConfig: UserConfig = withConfig.getOrElse(UserConfig(UserConfig.defaultSyncDestinations, false))
-    val user: User = withUser.getOrElse(User.createNewUser("Anonymous", "no-reply@evadid.it"))
+    val user: User = withUser.getOrElse(User.createAnonymous())
     AllUserInfo(user, UserCredentials(signedBackendToken = None), userConfig)
   }.flatMap(allUserInfo => changeUser(Some(allUserInfo))).map(_ => ())
 
@@ -144,15 +152,23 @@ final class UserSessionControl(val fullInfo: FullInfo) {
     }
   }
 
+  /** Signs in only a named local profile or an online account whose cached token the backend accepts. Otherwise
+    * the login page stays, pre-filled with the cached name and email, and the cached login is cleared.
+    */
   def tryAutoLogin(): Future[?] = storage.restoreSession().flatMap { cached =>
     cached.orElse(loadSavedProfile()) match {
       case None => Future.failed(SerializedException("No cached login available"))
-      case Some(info) if info.config.isOnlineAccount =>
-        info.credentials.signedBackendToken match {
-          case Some(token) => tryServerLoginWith(info.user.mail, Right(token), info.credentials)
-          case None => Future.failed(AuthenticationFailure("login/errorLogin"))
+      case Some(info) =>
+        rememberIdentity(info.user)
+        val restored: Future[?] =
+          if info.user.isAnonymous then Future.failed(SerializedException("Anonymous sessions are not restored"))
+          else if info.config.isOnlineAccount then info.credentials.signedBackendToken.fold(
+            Future.failed(AuthenticationFailure("login/errorLogin")))(token => tryServerLoginWith(info.user.mail, Right(token), info.credentials))
+          else changeUser(Some(info))
+        restored.recoverWith { case error =>
+          clearSavedLogin()
+          Future.failed(error)
         }
-      case Some(info) => changeUser(Some(info))
     }
   }
 
@@ -194,6 +210,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
   }
 
   private def installUser(newUserInfo: Option[AllUserInfo]): Unit = {
+    newUserInfo.foreach(info => rememberIdentity(info.user))
     storage.saveProfile(newUserInfo)
     // Browser storage is optional. It must never prevent clearing session credentials.
     if (fullInfo.current.userInfo.map(_.user.personId) != newUserInfo.map(_.user.personId)) {
