@@ -12,7 +12,13 @@ import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Try}
 
-/** Typed additive cache used by workbook synchronization; each destination tracks confirmed event deltas. */
+/** Typed additive cache used by workbook synchronization.
+  *
+  * A destination's known events come only from reads: a requested write is not evidence that the destination
+  * stored it. A store sends the strategy's selection minus the events already read from that destination and
+  * returns; the buffered writer merges repeated requests until it flushes. A later read (the periodic
+  * synchronization or an explicit sync) confirms what arrived, so lost writes stay unconfirmed and are resent.
+  */
 final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryReaderWriter[K, F]](
     syncLogger: SyncLogger, cacheStrategies: Map[RW, EventSyncStrategy],
     state: State[CacheState[K, F, RW]]) {
@@ -38,6 +44,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
   private def later(a: Option[LocalDateTime], b: Option[LocalDateTime]): Option[LocalDateTime] = (a.toList ++ b).maxOption
   private def missing(local: History, known: History, strategy: EventSyncStrategy): History =
     InteractionVariableHistory(InteractionEvents(local.cleanWithStrategy(strategy).events.values -- known.events.values))
+
 
   def mergeLocal(histories: Map[K, History]): Unit = state.update(_.withLocalHistories(histories))
 
@@ -122,7 +129,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
               fetchedThrough = if trackProgress then later(previous.fetchedThrough, history.events.timestampLastChanged) else previous.fetchedThrough))
           }
           val histories = received.foldLeft(current.histories) { case (histories, (key, history)) =>
-            histories.updated(key, histories.getOrElse(key, empty).mergeWith(history))
+            histories.updated(key, histories.getOrElse(key, empty).mergeWith(history).cleanedHistory())
           }
           current.copy(histories = histories, destinations = current.destinations.updated(cache, remote))
         }
@@ -143,18 +150,9 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
       Option.when(delta.events.values.nonEmpty)(key -> delta)
     }.toMap
     if deltas.isEmpty then Future.unit else {
-      val pending = cache.writer.writeAll(syncLogger, deltas)
+      val written = cache.writer.writeAll(syncLogger, deltas)
       cache.writer.flush(syncLogger, forceFlush)
-      pending.map[Unit] { _ =>
-        state.update { latest =>
-          val remote = deltas.foldLeft(latest.destinations(cache)) { case (values, (key, delta)) =>
-            val previous = values.getOrElse(key, RemoteHistoryValue.empty)
-            // Acknowledging a write never advances the independent read cursor.
-            values.updated(key, previous.copy(history = previous.history.mergeWith(delta)))
-          }
-          latest.copy(destinations = latest.destinations.updated(cache, remote))
-        }
-      }
+      written.map(_ => ())
     }
   }.andThen { case Failure(error) => syncLogger.logExceptionWarn(s"Could not store event histories for ${histories.size} keys", error) }
 
@@ -192,7 +190,7 @@ object RemoteHistoryCache {
       destinations: Map[RW, Map[K, RemoteHistoryValue[F]]]) {
     def withLocalHistories(incoming: Map[K, InteractionVariableHistory[F]]): CacheState[K, F, RW] =
       copy(histories = incoming.foldLeft(histories) { case (merged, (key, history)) =>
-        merged.updated(key, merged.getOrElse(key, InteractionVariableHistory(InteractionEvents.empty[F])).mergeWith(history))
+        merged.updated(key, merged.getOrElse(key, InteractionVariableHistory(InteractionEvents.empty[F])).mergeWith(history).cleanedHistory())
       })
   }
 

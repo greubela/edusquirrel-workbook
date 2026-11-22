@@ -70,9 +70,10 @@ value equality after decoding. State/feedback history views are derived projecti
 not separate persisted stores. A newer grading start represents a retry in progress;
 completion wins a timestamp tie. Graders are matched by their canonical content key.
 
-Starts default to `TEMPORARY`, completions to `MAJOR`. `clean()` removes temporary
-events only when explicitly requested. `cleanWithStrategy` selects transmissions;
-`SYNC_MAJOR` includes feedback associated with its selected answers. See [state and synchronization](state-and-serialization.md)
+Starts default to `TEMPORARY`, completions to `MAJOR`. `cleanedHistory()` drops
+superseded DEFAULT and TEMPORARY answers with their own feedback. `cleanWithStrategy`
+selects transmissions; `SYNC_MAJOR` and `SYNC_LAST` include feedback associated with
+their selected answers. See [state and synchronization](state-and-serialization.md)
 and [database storage](database/interaction-history.md).
 
 ## Verification

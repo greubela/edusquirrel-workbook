@@ -74,6 +74,14 @@ translations. Synchronization includes feedback updates even when the answer is 
 Step-by-step replays live in `htmlRenderer/interactionRenderer/steps/`. `StepNavigator` owns only the
 selected step (step 0 = initial state; a new execution jumps to its end); the panels derive everything
 else from the central answer `Var`, running the shared interpreter debounced in a Future.
+
+Costly drawings use [`DeferredRendering`](../modules/client/src/main/scala/it/evadid/homepage/webElements/basic/DeferredRendering.scala):
+a view is redrawn only after the answer has rested for one second; meanwhile the previous drawing stays,
+dimmed, under a localized status (`basic/renderingWaiting`, `basic/renderingInProgress`). Superseded
+states are never prepared. `CompareShapePreview` and `TurtleStepPanel` draw this way, each mounted view
+redrawing one JSXGraph board (`TurtleJsxGraphRenderer.render(scenes, title)`). Angles are filled curves with
+labels created on hover: JSXGraph angle objects end a suspended update and redraw the board for each angle. The preview and
+`RecreateShapeGrader` share one `ProgrammingStateBeExpression.turtleComparison(target, policy)` per state.
 `TurtleStepPanel` draws the strokes of the first k turtle commands on the JSXGraph board (current step
 highlighted, later strokes faint, turtle marker) and appears in recreate-shape editors.
 `SortStepPanel` replays the `ListCommand`s of a `SortListExercise`, the sorting counterpart of

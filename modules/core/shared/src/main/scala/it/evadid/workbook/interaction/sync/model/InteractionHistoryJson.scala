@@ -18,8 +18,9 @@ case class InteractionHistoryJson(format: InteractionFormat, historyJson: String
     }
   }
 
+  /** Stored records merge additively; superseded DEFAULT and TEMPORARY answers do not accumulate. */
   def merge(other: InteractionHistoryJson): InteractionHistoryJson =
-    InteractionHistoryJson.fromHistory(format, toTyped.mergeWith(other.typedAs(format)))
+    InteractionHistoryJson.fromHistory(format, toTyped.mergeWith(other.typedAs(format)).cleanedHistory())
 
   def cleanWithStrategy(strategy: EventSyncStrategy): InteractionHistoryJson =
     InteractionHistoryJson.fromHistory(format, toTyped.cleanWithStrategy(strategy))

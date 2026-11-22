@@ -1,11 +1,11 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
 import it.evadid.core.datastructures.geometry.Point
-import it.evadid.core.datastructures.vectorShapes.svg.{TurtleDrawingComparison, TurtlePathBuilder}
-import it.evadid.core.datastructures.vectorShapes.svg.TurtleDrawingComparison.{Segment, TurtleComparisonResult}
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleDrawingComparison.Segment
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedAngle, RenderedLine, Scene}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic, TurtleGradingLogic}
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 
 object TurtleDrawingGrading {
@@ -27,24 +27,33 @@ object TurtleDrawingGrading {
     "arc" -> 2, "arcleft" -> 2, "arc_left" -> 2, "arcright" -> 2, "arc_right" -> 2, "dot" -> 1
   ).map((name, arity) => name -> Set(arity)) + ("circle" -> Set(1, 2))
 
-  private final case class Drawing(graphic: TurtleGraphic, path: TurtlePathBuilder[Double],
-      lines: Seq[Segment], lineIndexes: Map[Int, Int])
+  private final case class Drawing(graphic: TurtleGraphic, lines: Seq[Segment], lineIndexes: Map[Int, Int])
   final case class Assessment(matches: Boolean, scene: Scene)
 
   def assess(commands: Seq[TurtleCommand[Double]], target: TurtleGraphic, policy: TurtleDrawingPolicy): Assessment = {
-    val comparison = checkedComparison(commands, target, policy)
-    Assessment(comparison.gradingStatus.isCorrect, TurtleJsxGraphRenderer.buildScene(comparison))
+    val actual = TurtleGraphic(commands)
+    assessment(checkedComparison(actual, target, policy)(TurtleGradingLogic.compare(actual, target, policy)))
+  }
+
+  /** Shares the state's comparison with the graders of the same target and policy. */
+  def assess(state: ProgrammingState, target: TurtleGraphic, policy: TurtleDrawingPolicy): Assessment = {
+    val expression = state.toBeExpression
+    assessment(checkedComparison(expression.turtleGraphic, target, policy)(expression.turtleComparison(target, policy)))
   }
 
   def validateDrawing(commands: Seq[TurtleCommand[Double]]): Unit = {
-    checkedDrawing(commands)
+    checkedDrawing(TurtleGraphic(commands))
     ()
   }
 
-  private def checkedComparison(commands: Seq[TurtleCommand[Double]], target: TurtleGraphic,
-      policy: TurtleDrawingPolicy): TurtleGradingLogic.TurtleGraphicComparison = {
-    val actual = checkedDrawing(commands)
-    val expected = checkedDrawing(target.toTurtleProgram.toList)
+  private def assessment(comparison: TurtleGradingLogic.TurtleGraphicComparison): Assessment =
+    Assessment(comparison.gradingStatus.isCorrect, TurtleJsxGraphRenderer.buildScene(comparison))
+
+  /** Rejects drawings too large to compare before `compare` runs. */
+  private def checkedComparison(actualGraphic: TurtleGraphic, target: TurtleGraphic, policy: TurtleDrawingPolicy)(
+      compare: => TurtleGradingLogic.TurtleGraphicComparison): TurtleGradingLogic.TurtleGraphicComparison = {
+    val actual = checkedDrawing(actualGraphic)
+    val expected = checkedDrawing(target)
     def samples(lines: Seq[Segment]): Long = lines.foldLeft(0L) { (total, line) =>
       val count = math.ceil(line.length / (tolerance / 2.0)) + 1.0
       if !count.isFinite || count > maxSamples then maxSamples + 1
@@ -55,13 +64,13 @@ object TurtleDrawingGrading {
     if policy == TurtleDrawingPolicy.Coverage && (actualSamples + expectedSamples > maxSamples ||
       actualSamples * expected.lines.size + expectedSamples * actual.lines.size > maxComparisons) then tooLarge()
     if actual.graphic.renderMovements.size.toLong * expected.graphic.renderMovements.size > maxComparisons then tooLarge()
-    TurtleGradingLogic.compare(actual.graphic, expected.graphic, policy)
+    compare
   }
 
-  def targetScene(target: TurtleGraphic): Scene = drawingScene(checkedDrawing(target.toTurtleProgram.toList))
+  def targetScene(target: TurtleGraphic): Scene = drawingScene(checkedDrawing(target))
 
   def targetScene(target: TurtleGraphic, policy: TurtleDrawingPolicy): Scene = {
-    val drawing = checkedDrawing(target.toTurtleProgram.toList)
+    val drawing = checkedDrawing(target)
     if policy == TurtleDrawingPolicy.Coverage then drawingScene(drawing)
     else Scene(drawing.graphic.renderMovements.map(movement =>
       RenderedLine(movement.start, movement.end, LineResult.Neutral, movement.jump)).toList,
@@ -69,7 +78,7 @@ object TurtleDrawingGrading {
         RenderedAngle(angle.vertex, angle.fromHeading, angle.degrees, angle.lineBefore, angle.lineAfter)).toList)
   }
 
-  def drawingScene(commands: Seq[TurtleCommand[Double]]): Scene = drawingScene(checkedDrawing(commands))
+  def drawingScene(commands: Seq[TurtleCommand[Double]]): Scene = drawingScene(checkedDrawing(TurtleGraphic(commands)))
 
   private def drawingScene(drawing: Drawing): Scene = {
     val angles = drawing.graphic.renderAngles.flatMap { angle =>
@@ -84,7 +93,9 @@ object TurtleDrawingGrading {
   private def tooLarge(): Nothing =
     throw IllegalArgumentException("Your drawing is too large to compare. Check the distances in your program.")
 
-  private def checkedDrawing(commands: Seq[TurtleCommand[Double]]): Drawing = {
+  /** Validates the graphic's commands and display range, reusing its cached trace. */
+  private def checkedDrawing(graphic: TurtleGraphic): Drawing = {
+    val commands = graphic.toTurtleProgram
     if commands.size > maxCommands then tooLarge()
     var traceWork = 0L
     commands.foreach { command =>
@@ -108,7 +119,6 @@ object TurtleDrawingGrading {
       traceWork += work
       if traceWork > maxSamples then tooLarge()
     }
-    val graphic = TurtleGraphic.TurtleGraphicProgram(commands)
     val movements = graphic.renderMovements.toList
     if movements.size > maxSamples then tooLarge()
     val selected = movements.zipWithIndex.filter { (movement, _) =>
@@ -124,9 +134,6 @@ object TurtleDrawingGrading {
     if points.exists(point => !point.x.isFinite || !point.y.isFinite) ||
       List(xs.min - padding, xs.max + padding, ys.min - padding, ys.max + padding).exists(!_.isFinite) then
       throw IllegalArgumentException("Your drawing exceeds the display range. Check its distances and angles.")
-    val path = lines.foldLeft(TurtlePathBuilder[Double]()) { (builder, line) =>
-      builder.penUp().goto(line.from.x, line.from.y).penDown().goto(line.to.x, line.to.y)
-    }
-    Drawing(graphic, path, lines, lineIndexes)
+    Drawing(graphic, lines, lineIndexes)
   }
 }

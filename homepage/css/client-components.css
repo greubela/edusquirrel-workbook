@@ -34,6 +34,13 @@
     stroke-opacity: 0.1;
 }
 
+/* Hover texts (angle degrees, point coordinates) contrast with the lines and the grey sectors. */
+.turtle-gradig-panel .turtle-hover-label {
+    fill: var(--color-accent-strong);
+    color: var(--color-accent-strong);
+    font-weight: 600;
+}
+
 .turtle-gradig-panel .is-emphasized {
     fill-opacity: 1;
     stroke-opacity: 1;

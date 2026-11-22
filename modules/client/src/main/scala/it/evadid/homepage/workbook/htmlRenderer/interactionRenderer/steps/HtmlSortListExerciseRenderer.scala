@@ -14,7 +14,6 @@ import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, Ty
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.SortListExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
-import it.evadid.workbook.interaction.sync.UpdateImportance
 
 /** Sorting counterpart of the recreate-turtle renderer: editor, current source and a step-by-step replay. */
 case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortListExercise] {
@@ -34,7 +33,7 @@ case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortL
       key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
 
   override protected def createRendering(element: SortListExercise): AtomarLineRendering = {
-    val boundVar = element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val boundVar = element.interactionVariable.createBoundStateForTyping(() => fullInfo.keyboardInput.lastKey.now(), fullInfo.workbookContextInformation).toAirstreamVar
     val gradingReporter = fullInfo.signals.reportersFor(element).grading
     def stepsCard = sortStepsCard(element, boundVar)
 

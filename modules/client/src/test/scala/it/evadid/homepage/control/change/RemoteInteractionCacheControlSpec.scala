@@ -156,6 +156,19 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     }
   }
 
+  /** Restored histories schedule their own stores after the current task; this lets them run and flushes them,
+    * so later request windows hold only the requests a test causes.
+    */
+  private def settled(fixture: Fixture): Future[Unit] = {
+    val due = Promise[Unit]()
+    js.timers.setTimeout(0)(due.success(()))
+    due.future.flatMap(_ => fixture.info.syncControl.storeAll(true))
+  }
+
+  /** Writes are confirmed only by reading them back: the periodic synchronization's next read. */
+  private def synchronizedAndRead(fixture: Fixture): Future[Unit] =
+    fixture.info.syncControl.ensureSynced().flatMap(_ => fixture.info.syncControl.fetchAll(true))
+
   test("one phase batches all interaction keys, and subsequent polls use inclusive incremental windows") {
     val fixture = new Fixture
     fixture.withHttp {
@@ -185,11 +198,14 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
   test("an unavailable read destination does not block writes to a healthy destination") {
     val fixture = new Fixture
     fixture.failBlobReads.set(true)
+    fixture.elements.head.interactionVariable.setStateFromUserInteraction("offline edit", UpdateImportance.MAJOR,
+      context = ExecutionContextInformation.default)
     fixture.withHttp {
       fixture.info.syncControl.ensureSynced().failed.map { _ =>
         val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name).map(command => read[BulkStoreToDbRequest](command.json))
-        assert(writes.exists(_.databaseFormat == defaultDatabase.format))
-        assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("saved-0", "saved-1"))
+        assert(writes.exists(request => request.databaseFormat == defaultDatabase.format &&
+          request.histories.exists(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == "offline edit"))))
+        assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("offline edit", "saved-1"))
       }
     }
   }
@@ -197,7 +213,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
   test("reopening a reused workbook for another user clears its answers and feedback ownership") {
     val fixture = new Fixture
     fixture.withHttp {
-      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+      fixture.info.syncControl.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
         val previousContext = fixture.info.workbookContextInformation
         val workbook = fixture.info.homepageInfoNow().workbookInfo
         fixture.info.homepageInfoState.update(_.copy(workbookInfo = None))
@@ -274,7 +290,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
   test("partial reset invalidates pre-reset synchronization confirmations") {
     val fixture = new Fixture
     fixture.withHttp {
-      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+      synchronizedAndRead(fixture).flatMap { _ =>
         val report = fixture.info.syncControl.createReportFor(fixture.elements.head).observe(using unsafeWindowOwner)
         val sharedReporter = fixture.info.signals.reportersFor(fixture.elements.head).sync
         val summary = sharedReporter.report.observe(using unsafeWindowOwner)
@@ -289,10 +305,38 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     }
   }
 
+  test("under SYNC_MAJOR a temporary answer stays unsynced until an explicit sync commits, writes and reads it") {
+    val fixture = new Fixture
+    val owner = new ManualOwner
+    val majorOnly = fixture.user.config.copy(syncDestinations = Seq(
+      SyncInformation(defaultDatabase, EventSyncStrategy.SYNC_MAJOR), SyncInformation(defaultBlobDatabase, EventSyncStrategy.SYNC_MAJOR)))
+    fixture.info.homepageInfoState.update(_.copy(userInfo = Some(fixture.user.copy(config = majorOnly))))
+    val variable = fixture.elements.head.interactionVariable
+    def written(answer: String) = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
+      .flatMap(command => read[BulkStoreToDbRequest](command.json).histories)
+      .exists(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == answer))
+    fixture.withHttp {
+      synchronizedAndRead(fixture).flatMap(_ => settled(fixture)).flatMap { _ =>
+        val summary = fixture.info.signals.reportersFor(fixture.elements.head).sync.report.observe(using owner)
+        variable.setStateFromUserInteraction("half-typed", UpdateImportance.TEMPORARY, context = fixture.info.workbookContextInformation)
+        settled(fixture).flatMap(_ => fixture.info.syncControl.fetchAll(true)).flatMap { _ =>
+          assert(!written("half-typed"), "a temporary answer is not sent to SYNC_MAJOR destinations")
+          assertEquals(summary.now().confirmed, 0, "the latest answer is not synchronized")
+          variable.commitCurrentState(fixture.info.workbookContextInformation)
+          fixture.info.syncControl.synchronize(variable)
+        }.map { _ =>
+          assert(written("half-typed"))
+          assertEquals(variable.currentHistory.historyStates.lastStateOption.map(_.updateImportance), Some(UpdateImportance.MAJOR))
+          assertEquals(summary.now().confirmed, 2)
+        }
+      }.andThen { case _ => owner.killSubscriptions() }
+    }
+  }
+
   test("an edit inside an Airstream transaction stores its new history at both destinations") {
     val fixture = new Fixture
     fixture.withHttp {
-      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+      fixture.info.syncControl.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
         val owner = new ManualOwner
         val editing = Var(0)
         val finished = Promise[Unit]()
@@ -546,6 +590,9 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         val context = original.copy(scenarioId = other.loadedWorkbook.workbookId)
         fixture.seed(context, "current workbook", LocalDateTime.now().plusDays(2))
         fixture.info.homepageInfoState.update(_.copy(workbookInfo = Some(other)))
+        // An older edit in the new workbook: it must be written there, while the newer saved answer stays current.
+        interactions.head.interactionVariable.setStateFromUserInteraction("older edit", UpdateImportance.MAJOR,
+          LocalDateTime.now(), fixture.info.workbookContextInformation)
         fixture.info.syncControl.ensureSynced().flatMap { _ =>
           val current = interactions.map(_.interactionVariable.currentHistory)
           assertEquals(interactions.map(_.interactionVariable.currentValue), Seq.fill(2)("current workbook"))
@@ -554,8 +601,11 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
             assertEquals(fixture.elements.map(_.interactionVariable.currentHistory), initial)
             assertEquals(interactions.map(_.interactionVariable.currentHistory), current)
             val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
-              .flatMap(command => read[BulkStoreToDbRequest](command.json).syncContexts)
-            assert(writes.nonEmpty && writes.forall(_.toUsageContext == context))
+              .flatMap(command => read[BulkStoreToDbRequest](command.json).entries).map(entry => entry.syncContext -> entry.history)
+            assert(writes.exists(_._1.toUsageContext == context))
+            // The detached binding may finish its own pending stores, but never with the detached read's answers.
+            assert(writes.forall((key, history) => key.toUsageContext == context ||
+              key.toUsageContext == original && !history.typedAs(TextInteractionFormat).allStates.exists(_.newState == "late original workbook")))
           }
         }
       }.andThen { case _ => gate.release() }
@@ -645,7 +695,10 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
                 assertEquals(report.now().get.destinationsWithSufficientWrites.size, 0)
                 assertEquals(summary.now().confirmed, 0)
                 newGate.release()
-                replacement.map { _ =>
+                replacement.flatMap { _ =>
+                  assertEquals(report.now().get.destinationsWithSufficientWrites.size, 0, "written, but not read back yet")
+                  fixture.info.syncControl.fetchAll(true)
+                }.map { _ =>
                   assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)
                   assertEquals(summary.now().confirmed, 2)
                   assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq.fill(2)(replacementAnswer))
@@ -703,7 +756,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     val fixture = new Fixture
     val owner = new ManualOwner
     fixture.withHttp {
-      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+      fixture.info.syncControl.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
         val onlyRelational = fixture.user.config.copy(syncDestinations = Seq(
           SyncInformation(defaultDatabase, EventSyncStrategy.SYNC_EVERYTHING)))
         fixture.info.homepageInfoState.update(_.copy(userInfo = Some(fixture.user.copy(config = onlyRelational))))
@@ -713,7 +766,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         val sharedReporter = fixture.info.signals.reportersFor(fixture.elements.head).sync
         val summary = sharedReporter.report.observe(using owner)
         fixture.requests.set(Vector.empty)
-        fixture.info.syncControl.ensureSynced().map { _ =>
+        fixture.info.syncControl.ensureSynced().flatMap { _ =>
           val reads = fixture.requests.now().filter(_.name == fetchEventsFromDbCommand.name)
             .map(command => read[FetchEventsFromDbRequest](command.json))
           val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
@@ -725,6 +778,8 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           assertEquals(writes.head.databaseFormat, defaultDatabase.format)
           assertEquals(report.now().get.allSyncDestinations.size, 1)
           assertEquals(summary.now().total, 1)
+          fixture.info.syncControl.fetchAll(true)
+        }.map { _ =>
           assertEquals(report.now().get.destinationsWithSufficientWrites.size, 1)
           assertEquals(summary.now().confirmed, 1)
         }
@@ -736,7 +791,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     val fixture = new Fixture
     val owner = new ManualOwner
     fixture.withHttp {
-      fixture.info.syncControl.ensureSynced().flatMap { _ =>
+      synchronizedAndRead(fixture).flatMap { _ =>
         val report = fixture.info.syncControl.createReportFor(fixture.elements.head).observe(using owner)
         val sharedReporter = fixture.info.signals.reportersFor(fixture.elements.head).sync
         val summary = sharedReporter.report.observe(using owner)

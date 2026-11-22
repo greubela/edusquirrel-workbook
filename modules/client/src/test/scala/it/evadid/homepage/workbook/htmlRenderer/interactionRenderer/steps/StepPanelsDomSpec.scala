@@ -11,6 +11,7 @@ import org.scalajs.dom
 import upickle.default.*
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.*
 
 class StepPanelsDomSpec extends EditorDomSuite {
   private given ExecutionContext = ExecutionContext.global
@@ -34,17 +35,19 @@ class StepPanelsDomSpec extends EditorDomSuite {
 
   test("the turtle panel replays the commands of the bound answer and follows changes") {
     val state: Var[ProgrammingState] = Var(ProgrammingStateRaw(Python, "forward(100)\nright(90)\nforward(50)\n"))
-    val panel = new TurtleStepPanel(state, text).getDomElement()
+    val panel = new TurtleStepPanel(state, text, 50.millis).getDomElement()
     val close = mount(panel)
     val root = panel.ref
     (for {
       _ <- eventually(find(root, ".step-navigator__position") == "3 / 3", find(root, ".step-panel"))
+      _ = assert(root.querySelector(".deferred-rendering__status--hidden") != null)
       _ = assertEquals(find(root, ".step-panel__caption"), "Step 3: forward(50)")
       _ = click(root, "stepPrevious")
       _ = assertEquals(find(root, ".step-panel__caption"), "Step 2: right(90)")
       _ = click(root, "stepFirst")
       _ = assertEquals(find(root, ".step-panel__caption"), "turtleStepStart")
       _ = state.set(ProgrammingStateRaw(Python, "forward(10)\n"))
+      _ = assertEquals(find(root, ".deferred-rendering__status"), "renderingwaiting")
       _ <- eventually(find(root, ".step-navigator__position") == "1 / 1", "debounced update")
       _ = state.set(ProgrammingStateRaw(Java, "public class Main { void broken( }"))
       _ <- eventually(find(root, ".step-panel__problem").startsWith("Unavailable:"), find(root, ".step-panel"))

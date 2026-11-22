@@ -39,19 +39,28 @@ requests may finish or fail; neither outcome can change a replacement binding.
 UI navigation starts sync after Airstream applies the environment transaction.
 
 `EventSyncStrategy` selects transmissions, not retention. Defaults send
-`SYNC_EVERYTHING` to both backend layouts and `SYNC_MAJOR` to local IndexedDB.
-Stores union events without pruning. IndexedDB merges within one read-write
+`SYNC_MAJOR` to both backend layouts and `SYNC_LAST` to local IndexedDB.
+Stores union events and apply `cleanedHistory()`, so superseded DEFAULT and
+TEMPORARY answers do not accumulate. IndexedDB merges within one read-write
 transaction. Malformed local records are excluded individually; malformed backend
 requests or persisted database events fail explicitly.
 
-A write acknowledges only its sent delta and does not advance the read cursor.
-Normal reads replay the last received timestamp inclusively. A poll performs a
+A destination's known events come only from reads: a requested or acknowledged
+write is not evidence that it was stored. A store sends the strategy's selection
+minus the events read from that destination and returns; the buffered handler
+merges repeated requests until it flushes, and lost writes are resent. The periodic
+synchronization's next read, or an explicit sync from the sync icon (commit the
+current answer as MAJOR, store, flush, read), confirms them. History updates schedule
+their store after the current task; a replaced binding runs its pending stores
+before its final flush. Normal reads replay the last received timestamp inclusively. A poll performs a
 full refresh once the last full read is five minutes old, also recovering late
 uploads with older timestamps. Incremental polls are cheaper, but cannot discover
 those events immediately. Explicit window
 reads do not mark unread portions fresh. Independent read failures do not suppress
 healthy writes. The sync icon requires the latest answer and all its associated
 feedback events, including pending feedback; older unsent events do not block it.
+Under `SYNC_MAJOR` a TEMPORARY latest answer therefore shows as unsynchronized
+until it is committed.
 
 ## Storage layouts and trade-offs
 

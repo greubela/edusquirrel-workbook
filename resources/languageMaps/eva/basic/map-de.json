@@ -153,6 +153,8 @@
   "stepCommand": "Schritt {step}: {command}",
   "turtleStepsTitle": "Schritt für Schritt",
   "turtleStepStart": "Start: Die Turtle steht im Ursprung und hat noch nichts gezeichnet.",
+  "renderingWaiting": "Warte auf das Zeichnen …",
+  "renderingInProgress": "Wird gezeichnet …",
   "sortStepsTitle": "Sortieren Schritt für Schritt",
   "sortStepStart": "Ausgangsliste",
   "sortStepGet": "Lies Position {index}: {value}",

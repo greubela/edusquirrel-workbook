@@ -43,11 +43,11 @@ class InteractionVariableHistorySpec extends FunSuite {
   private def history(events: Event*) = InteractionVariableHistory[F](InteractionEvents(events.toSet))
   private def values(events: Iterable[Event]) = events.map(_.associatedState).toSet
 
-  test("normalization drops the initial default answer and its feedback once the user has answered") {
+  test("cleaning drops the initial default answer and its feedback once the user has answered") {
     val start = answer("start", 0, DEFAULT)
     val typed = answer("typed", 2)
     val feedback = gradingDone("typed", 3)
-    val normalized = history(start, gradingDone("start", 1), typed, feedback).normalize()
+    val normalized = history(start, gradingDone("start", 1), typed, feedback).cleanedHistory()
     assertEquals(normalized.events.values, Set(typed, feedback))
     assertEquals(values(normalized.events.values), Set("typed"))
     assertEquals(normalized.allStates.size, 1)
@@ -55,12 +55,12 @@ class InteractionVariableHistorySpec extends FunSuite {
   }
 
   test("normalization keeps only the latest of several defaults and keeps feedback for values that are still answered") {
-    val onlyDefaults = history(answer("old", 0, DEFAULT), answer("new", 1, DEFAULT), gradingDone("old", 2)).normalize()
+    val onlyDefaults = history(answer("old", 0, DEFAULT), answer("new", 1, DEFAULT), gradingDone("old", 2)).cleanedHistory()
     assertEquals(values(onlyDefaults.events.values), Set("new"))
-    val repeated = history(answer("same", 0, DEFAULT), answer("same", 1), gradingDone("same", 2)).normalize()
+    val repeated = history(answer("same", 0, DEFAULT), answer("same", 1), gradingDone("same", 2)).cleanedHistory()
     assertEquals(repeated.allStates.map(_.updateImportance), Set(MINOR))
     assertEquals(repeated.gradingEvents.size, 1, "the feedback still belongs to an answer in the history")
-    assertEquals(history().normalize(), history())
+    assertEquals(history().cleanedHistory(), history())
   }
 
   test("the latest answer includes timestamp ties and exactly the feedback for those answers") {
@@ -147,18 +147,31 @@ class InteractionVariableHistorySpec extends FunSuite {
     assertEquals(history().timestampLastChanged, None)
   }
 
-  test("persistence cleanup drops in-flight starts but keeps answers and completed feedback") {
-    val cleaned = history(answer("a", 1), gradingStarted("a", 2), gradingDone("a", 3), hintStarted("a", 4), hintDone("a", 5),
-      answer("typing", 6, TEMPORARY)).clean()
-    assertEquals(cleaned.events.values.map(_.getClass.getSimpleName),
-      Set("AnswerChangedEvent", "GradingCompletedEvent", "ScaffoldingCompletedEvent"))
-    assertEquals(cleaned.allStates.map(_.newState), Set("a"))
+  test("cleaning drops superseded TEMPORARY answers with their own feedback and keeps the current answer") {
+    val typing = history(answer("a", 1), gradingDone("a", 2), answer("typing", 3, TEMPORARY), gradingStarted("typing", 4))
+    assertEquals(typing.cleanedHistory(), typing, "the current answer stays, even when it is temporary")
+    val committed = history(answer("a", 1), gradingDone("a", 2), answer("typing", 3, TEMPORARY), gradingStarted("typing", 4),
+      hintStarted("a", 5), answer("b", 6, MAJOR)).cleanedHistory()
+    assertEquals(committed.allStates.map(_.newState), Set("a", "b"))
+    assertEquals(values(committed.events.values), Set("a", "b"), "in-flight feedback of retained answers stays")
+  }
+
+  test("SYNC_MAJOR skips TEMPORARY answers; SYNC_LAST sends only the current answer") {
+    val typing = history(answer("start", 0, DEFAULT), answer("a", 1, MAJOR), gradingDone("a", 2), answer("b", 3),
+      gradingDone("b", 4), answer("typing", 5, TEMPORARY), gradingStarted("typing", 6))
+    assertEquals(values(typing.cleanWithStrategy(EventSyncStrategy.SYNC_MAJOR).events.values), Set("a", "b"),
+      "major answers and the latest committed (MINOR) answer, with feedback")
+    assertEquals(values(typing.cleanWithStrategy(EventSyncStrategy.SYNC_LAST).events.values), Set("typing"))
+    assertEquals(typing.cleanWithStrategy(EventSyncStrategy.SYNC_EVERYTHING), typing)
+    val untouched = history(answer("start", 0, DEFAULT), gradingDone("start", 1))
+    assertEquals(untouched.cleanWithStrategy(EventSyncStrategy.SYNC_LAST), untouched)
+    assertEquals(untouched.cleanWithStrategy(EventSyncStrategy.SYNC_MAJOR), untouched)
   }
 
   test("every sync strategy is stable: selecting again keeps the same events") {
     val sample = history(answer("start", 0, DEFAULT), answer("a", 1), answer("b", 2, MAJOR), gradingDone("b", 3),
       answer("c", 4, TEMPORARY), hintStarted("c", 5), answer("d", 6), answer("e", 6), gradingDone("a", 7))
-    val strategies = Seq(EventSyncStrategy.SYNC_EVERYTHING, EventSyncStrategy.SYNC_MAJOR, EventSyncStrategy.KEEP_MINOR,
+    val strategies = Seq(EventSyncStrategy.SYNC_EVERYTHING, EventSyncStrategy.SYNC_MAJOR, EventSyncStrategy.SYNC_LAST, EventSyncStrategy.KEEP_MINOR,
       EventSyncStrategy.KEEP_LAST_FIVE, EventSyncStrategy.KEEP_LAST_AND_MAJOR, EventSyncStrategy.KEEP_LAST,
       EventSyncStrategy.KEEP_LAST_MAJOR, EventSyncStrategy.Since(t(4)))
     strategies.foreach { strategy =>

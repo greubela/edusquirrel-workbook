@@ -28,6 +28,12 @@ trait SyncControl {
   def storeAndFetch(forceFlush: Boolean = false): Future[Unit] = phases(storeAll(forceFlush), fetchAll(forceFlush))
   def ensureSynced(): Future[Unit] = fetchAndStore(true)
 
+  /** Explicit synchronization of one interaction (e.g. its sync icon): writes and flushes its pending events,
+    * then reads it back, since only events read from a destination count as synchronized.
+    */
+  def synchronize[F <: InteractionFormat](interactionVariable: InteractionVariable[F]): Future[Unit] =
+    phases(store(interactionVariable, forceFlush = true), fetchAll(forceFlush = true))
+
   def syncLogger: SyncLogger
 
 }

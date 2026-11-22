@@ -4,30 +4,31 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.basic.DeferredRendering
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedAngle, RenderedLine, Scene}
 import it.evadid.vm.simulation.turtle.{TurtleCommandExecutionInfo, TurtleExecutionStatus}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.FiniteDuration
 
 /**
  * Replays how the turtle drawing of the central answer state is created, one command per step, on the
  * same JSXGraph board as the comparison panel: earlier strokes are drawn, the current step's strokes are
  * highlighted, later strokes stay faint (so the view keeps its bounds), and a marker shows the turtle.
  */
-final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal[String]) extends HtmlAppElement {
+final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal[String],
+    delay: FiniteDuration = DeferredRendering.defaultDelay) extends HtmlAppElement {
   private given ExecutionContext = ExecutionContext.global
 
+  // Runs the program only once the answer has rested; step navigation itself stays immediate.
+  private val rendering = new DeferredRendering[ProgrammingState, TurtleCommandExecutionInfo[Double]](
+    state.signal, _.toBeExpression.turtleCommandExecutionInfo, delay)
+
   private val executions: Signal[Option[Either[String, TurtleCommandExecutionInfo[Double]]]] =
-    state.signal.changes.debounce(300).toSignal(state.now()).flatMapSwitch { value =>
-      Signal.fromFuture(Future {
-        try Right(value.toBeExpression.turtleCommandExecutionInfo)
-        catch { case NonFatal(error) => Left(Option(error.getMessage).getOrElse(error.getClass.getSimpleName)) }
-      })
-    }
+    rendering.result.map(_.map(_.toEither.left.map(error => Option(error.getMessage).getOrElse(error.getClass.getSimpleName))))
 
   private val commands: Signal[Vector[TurtleCommand[Double]]] =
     executions.map(_.flatMap(_.toOption).fold(Vector.empty)(_.executedTurtleCommandsInOrder.toVector)).distinct
@@ -35,7 +36,9 @@ final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal
   private val navigator = new StepNavigator(commands.map(_.size), text)
 
   override def getDomElement(): Element = div(cls := "step-panel turtle-step-panel",
-    child <-- commands.combineWith(navigator.step).map((all, step) => TurtleJsxGraphRenderer.render(TurtleStepPanel.scene(all, step), "Turtle steps")),
+    rendering.status(id => text(id.entryKey)),
+    // One board follows every program and step; stepping redraws it instead of creating a new one.
+    TurtleJsxGraphRenderer.render(commands.combineWith(navigator.step).map((all, step) => TurtleStepPanel.scene(all, step)), "Turtle steps"),
     navigator.element,
     p(cls := "step-panel__caption", aria.live := "polite", child.text <-- commands.combineWith(navigator.step).flatMapSwitch { (all, step) =>
       if step == 0 then text("turtleStepStart")

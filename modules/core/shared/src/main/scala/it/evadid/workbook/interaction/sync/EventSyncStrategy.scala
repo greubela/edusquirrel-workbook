@@ -53,18 +53,36 @@ object EventSyncStrategy {
       events.filter(event => event.timestamp.isAfter(timestamp) || (includeBoundary && event.timestamp == timestamp))
   }
 
-  /** Send major answers and the current answer, together with all their feedback lifecycle events. */
+  /** Send major answers and the latest answer that is not TEMPORARY, with all their feedback lifecycle events.
+    * A TEMPORARY answer is not sent until a later MAJOR answer or an explicit sync commits it.
+    */
   case object SYNC_MAJOR extends EventSyncStrategy {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]): Set[InteractionEvent[F]] = {
-      val answers = events.collect { case event: AnswerChangedEvent[F] => event }
-      val nonDefault = answers.filter(_.updateImportance != UpdateImportance.DEFAULT)
-      val candidates = if nonDefault.nonEmpty then nonDefault else answers
-      val latest = candidates.map(_.timestamp).maxOption
-      val selected = candidates.filter(event => event.updateImportance == UpdateImportance.MAJOR || latest.contains(event.timestamp))
-      val states = selected.map(_.associatedState)
+      val settled = answers(events).filter(_.updateImportance != UpdateImportance.TEMPORARY)
+      val states = (settled.filter(_.updateImportance == UpdateImportance.MAJOR) ++ latest(settled)).map(_.associatedState)
       events.filter(event => event.updateImportance == UpdateImportance.MAJOR || states(event.associatedState))
     }
   }
+
+  /** Send the latest answer of any importance with all its feedback lifecycle events, e.g. for local storage. */
+  case object SYNC_LAST extends EventSyncStrategy {
+    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]): Set[InteractionEvent[F]] = {
+      val states = latest(answers(events)).map(_.associatedState)
+      events.filter(event => states(event.associatedState))
+    }
+  }
+
+  private def answers[F <: InteractionFormat](events: Set[InteractionEvent[F]]): Set[AnswerChangedEvent[F]] =
+    events.collect { case event: AnswerChangedEvent[F] => event }
+
+  /** Answers tied for the latest timestamp; a DEFAULT answer counts only if no other answer exists. */
+  private def latest[F <: InteractionFormat](answers: Set[AnswerChangedEvent[F]]): Set[AnswerChangedEvent[F]] = {
+    val nonDefault = answers.filter(_.updateImportance != UpdateImportance.DEFAULT)
+    val candidates = if nonDefault.nonEmpty then nonDefault else answers
+    val newest = candidates.map(_.timestamp).maxOption
+    candidates.filter(event => newest.contains(event.timestamp))
+  }
+
   val KEEP_MINOR: EventSyncStrategy = KeepImportance(Set(UpdateImportance.MINOR, UpdateImportance.MAJOR))
   val KEEP_LAST_FIVE: EventSyncStrategy = KeepLatestCount(5)
   val KEEP_LAST_AND_MAJOR: EventSyncStrategy = KeepLatestAndImportance(Set(UpdateImportance.MAJOR))

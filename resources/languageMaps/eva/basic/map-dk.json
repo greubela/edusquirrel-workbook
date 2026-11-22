@@ -153,6 +153,8 @@
   "stepCommand": "Trin {step}: {command}",
   "turtleStepsTitle": "Trin for trin",
   "turtleStepStart": "Start: Turtlen står i origo og har ikke tegnet noget endnu.",
+  "renderingWaiting": "Venter på tegning …",
+  "renderingInProgress": "Tegner …",
   "sortStepsTitle": "Sortering trin for trin",
   "sortStepStart": "Startliste",
   "sortStepGet": "Læs position {index}: {value}",

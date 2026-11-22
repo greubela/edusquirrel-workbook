@@ -1,5 +1,7 @@
 package it.evadid.homepage.control.model
 
+import it.evadid.homepage.control.info.KeyboardInput
+
 import it.evadid.llm.LlmConfiguration
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.English
@@ -71,6 +73,8 @@ case class FullInfo(
   lazy val signals: HomepageSignalInfo = HomepageSignalInfo(this)
 
   lazy val current: HomepageCurrentInfo = HomepageCurrentInfo(this)
+
+  lazy val keyboardInput: KeyboardInput = KeyboardInput.installed
 
   /* CONTROLS */
 

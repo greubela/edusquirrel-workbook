@@ -37,6 +37,8 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     val initialized = ListBuffer.empty[(dom.html.Div, js.Dynamic)]
     val freed = ListBuffer.empty[js.Dynamic]
     val updateCalls = ListBuffer.empty[(String, Int)]
+    val removed = ListBuffer.empty[Obj]
+    val boundsSet = ListBuffer.empty[js.Array[Double]]
     private def board(): js.Dynamic =
       val created = js.Dynamic.literal(
         create = ((kind: String, parents: js.Array[js.Dynamic], attrs: js.Dynamic) => {
@@ -45,7 +47,12 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
           objects += obj
           obj.value
         }): js.Function3[String, js.Array[js.Dynamic], js.Dynamic, js.Dynamic],
-        update = (() => { updateCalls += (("update", objects.size)); () }): js.Function0[Unit]
+        update = (() => { updateCalls += (("update", objects.size)); () }): js.Function0[Unit],
+        removeObject = ((value: js.Dynamic) => objects.find(_.value == value).foreach { obj =>
+          removed += obj
+          objects -= obj
+        }): js.Function1[js.Dynamic, Unit],
+        setBoundingBox = ((next: js.Array[Double], _: Boolean) => { boundsSet += next; () }): js.Function2[js.Array[Double], Boolean, Unit]
       )
       if batchUpdates then
         created.updateDynamic("suspendUpdate")((() => { updateCalls += (("suspend", objects.size)); () }): js.Function0[Unit])
@@ -81,6 +88,18 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     def ofKind(kind: String): List[Obj] = objects.filter(_.kind == kind).toList
     def parent(obj: Obj, index: Int): Obj = objects.find(_.value == obj.parents(index)).get
     def coords(obj: Obj): Point[Double] = Point(obj.parents(0).asInstanceOf[Double], obj.parents(1).asInstanceOf[Double])
+    /** A sector curve's vertex, first and last arc points: it starts and ends at the vertex. */
+    def sector(curve: Obj): (Point[Double], Point[Double], Point[Double]) =
+      val xs = curve.parents(0).asInstanceOf[js.Array[Double]]
+      val ys = curve.parents(1).asInstanceOf[js.Array[Double]]
+      assertEquals((xs.head, ys.head), (xs.last, ys.last))
+      (Point(xs.head, ys.head), Point(xs(1), ys(1)), Point(xs(xs.length - 2), ys(ys.length - 2)))
+    def radius(curve: Obj): Double =
+      val (vertex, first, _) = sector(curve)
+      math.hypot(first.x - vertex.x, first.y - vertex.y)
+    /** The hover label of an angle, if it was created; it shows the degrees while visible. */
+    def angleLabel: Option[(String, Boolean)] = ofKind("text").headOption.map(text =>
+      (text.parents(2).asInstanceOf[String], js.isUndefined(text.attrs.visible) || text.attrs.visible.asInstanceOf[Boolean]))
 
   private def withDom[A](test: => A): A =
     val restore = installDom()
@@ -174,22 +193,30 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     }
   }
 
-  test("reactive stroke rendering releases each replaced board through the shared scene lifecycle") {
+  test("a changing scene redraws one board: previous objects and hover labels go, equal scenes are kept") {
     withDom {
       import L.*
-      val graph = new Graph
+      val graph = new Graph(batchUpdates = true)
       graph.withLibrary {
         val host = dom.document.createElement("div")
         dom.document.body.appendChild(host)
-        val commands = Var(List(cmd("forward", 10)))
+        val commands = Var(List(cmd("forward", 10), cmd("right", 90), cmd("forward", 10)))
         val expected = TurtleGraphic.TurtleGraphicProgram(commands.now())
-        val preview = TurtleJsxGraphRenderer.renderStrokes(commands.signal, expected)
-        val mounted = L.render(host, div(children <-- preview.allElementsSignal))
+        val mounted = L.render(host, div(TurtleJsxGraphRenderer.renderStrokes(commands.signal, expected)))
         try
           assertEquals(graph.initialized.size, 1)
+          val first = graph.objects.toList
+          graph.ofKind("curve").head.fire("over")
+          val label = graph.ofKind("text").head
           commands.set(List(cmd("forward", 5)))
-          assertEquals(graph.initialized.size, 2)
-          assertEquals(graph.freed.toList, List(graph.initialized.head._2))
+          assertEquals(graph.initialized.size, 1, "the board is reused")
+          assertEquals(graph.freed.toList, Nil)
+          assertEquals(graph.removed.toSet, (first :+ label).toSet)
+          assertEquals(graph.boundsSet.size, 1)
+          assertEquals(graph.ofKind("segment").size, 3, "the drawn stroke and the two missing target strokes")
+          val drawn = graph.objects.toList
+          commands.set(List(cmd("forward", 5)))
+          assertEquals(graph.objects.toList, drawn, "an equal scene is not drawn again")
         finally mounted.unmount()
         assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
       }
@@ -307,11 +334,10 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
       assertEquals(graph.renderer, "svg")
       assertEquals(graph.containerClass, "turtle-gradig-panel")
       val segments = graph.ofKind("segment")
-      val arc = graph.ofKind("angle").head
-      val radius = arc.attrs.radius.asInstanceOf[Double]
+      val arc = graph.ofKind("curve").head
+      val radius = graph.radius(arc)
       assert(radius > 0 && radius <= 20)
-      assertEquals(arc.attrs.selectDynamic("type").asInstanceOf[String], "sector")
-      assertEquals(arc.attrs.orthoType.asInstanceOf[String], "sector")
+      assert(arc.attrs.hasInnerPoints.asInstanceOf[Boolean], "the whole sector reacts to hovering")
       // The incoming ray points back toward the previous endpoint. Use the
       // effective signed turn to choose the smaller angle between the lines.
       val effectiveTurn = ((signed + 180.0) % 360.0 + 360.0) % 360.0 - 180.0
@@ -326,25 +352,28 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
           assertEquals(classes.contains("turtle-line--jump"), penUp)
           assert(classes.contains("turtle-line--correct"))
         }
-        point(graph.coords(graph.parent(arc, 0)), vertex.x + radius * math.cos(firstHeading), -vertex.y + radius * math.sin(firstHeading))
-        point(graph.coords(graph.parent(arc, 1)), vertex.x, -vertex.y)
-        point(graph.coords(graph.parent(arc, 2)), vertex.x + radius * math.cos(lastHeading), -vertex.y + radius * math.sin(lastHeading))
+        val (center, first, last) = graph.sector(arc)
+        point(first, vertex.x + radius * math.cos(firstHeading), -vertex.y + radius * math.sin(firstHeading))
+        point(center, vertex.x, -vertex.y)
+        point(last, vertex.x + radius * math.cos(lastHeading), -vertex.y + radius * math.sin(lastHeading))
         graph.ofKind("point").foreach { p =>
           val xy = graph.coords(p)
           assert(xy.x >= graph.bounds(0) && xy.x <= graph.bounds(2))
           assert(xy.y <= graph.bounds(1) && xy.y >= graph.bounds(3))
         }
       verifyCoordinates()
+      assertEquals(graph.angleLabel, None, "angle labels are created on first hover")
       (segments :+ arc).foreach { obj =>
         obj.fire("over")
         assertEquals(arc.attrs.cssClass.asInstanceOf[String], "turtle-angle is-emphasized")
-        assertEquals(arc.attrs.name.asInstanceOf[String], s"${cornerDegrees.toString.stripSuffix(".0")}°")
+        assertEquals(graph.angleLabel, Some((s"${cornerDegrees.toString.stripSuffix(".0")}°", true)))
         verifyCoordinates()
         obj.fire("out")
         assertEquals(arc.attrs.cssClass.asInstanceOf[String], "turtle-angle")
-        assertEquals(arc.attrs.name.asInstanceOf[String], "")
+        assertEquals(graph.angleLabel.map(_._2), Some(false))
         verifyCoordinates()
       }
+      assertEquals(graph.ofKind("text").size, 1, "one label per angle is reused")
     }
 
   test("result classes and hover callbacks leave presentation values to CSS") {
@@ -458,31 +487,30 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
       assertEquals((angle.lineBefore, angle.lineAfter), (0, 1))
       val graph = new Graph
       graph.render(actual, graphic = Some(expected))
-      val arc = graph.ofKind("angle").head
-      val radius = arc.attrs.radius.asInstanceOf[Double]
+      val arc = graph.ofKind("curve").head
+      val radius = graph.radius(arc)
       val radians = math.toRadians(signed)
       val start = Point(50 - radius, 0.0)
       val end = Point(50 + radius * math.cos(radians), radius * math.sin(radians))
       def verifyCoordinates(): Unit =
         val effectiveTurn = ((signed + 180.0) % 360.0 + 360.0) % 360.0 - 180.0
         val (first, last) = if effectiveTurn > 0 then (end, start) else (start, end)
-        point(graph.coords(graph.parent(arc, 0)), first.x, first.y)
-        point(graph.coords(graph.parent(arc, 1)), 50, 0)
-        point(graph.coords(graph.parent(arc, 2)), last.x, last.y)
+        val (center, firstPoint, lastPoint) = graph.sector(arc)
+        point(firstPoint, first.x, first.y)
+        point(center, 50, 0)
+        point(lastPoint, last.x, last.y)
         graph.ofKind("segment").zip(scene.lines).foreach { (segment, line) =>
           point(graph.coords(graph.parent(segment, 0)), line.start.x, -line.start.y)
           point(graph.coords(graph.parent(segment, 1)), line.end.x, -line.end.y)
           assertEquals(segment.attrs.cssClass.asInstanceOf[String].split(" ").contains("turtle-line--jump"), line.jump)
         }
-        assertEquals(arc.attrs.selectDynamic("type").asInstanceOf[String], "sector")
-        assertEquals(arc.attrs.orthoType.asInstanceOf[String], "sector")
       verifyCoordinates()
       (graph.ofKind("segment") :+ arc).foreach { obj =>
         obj.fire("over")
-        assertEquals(arc.attrs.name.asInstanceOf[String], s"${math.abs(180.0 - degrees % 360.0).toInt}°")
+        assertEquals(graph.angleLabel, Some((s"${math.abs(180.0 - degrees % 360.0).toInt}°", true)))
         verifyCoordinates()
         obj.fire("out")
-        assertEquals(arc.attrs.name.asInstanceOf[String], "")
+        assertEquals(graph.angleLabel.map(_._2), Some(false))
         verifyCoordinates()
       }
     }
@@ -496,13 +524,17 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     assertEquals(fallback.updateCalls.toList, List(("update", fallback.objects.size)))
   }
 
-  test("axis and endpoint labels use internal SVG rendering") {
+  test("axis, endpoint and angle labels use internal SVG rendering with the contrasting hover style") {
     val graph = new Graph
-    graph.render(List(cmd("forward", 10)))
+    graph.render(List(cmd("forward", 10), cmd("right", 90), cmd("forward", 10)))
     assertEquals(graph.axisLabelDisplay, "internal")
     graph.ofKind("point").foreach { point =>
       assertEquals(point.attrs.label.display.asInstanceOf[String], "internal")
+      assertEquals(point.attrs.label.cssClass.asInstanceOf[String], "turtle-hover-label")
     }
+    graph.ofKind("curve").head.fire("over")
+    val label = graph.ofKind("text").head
+    assertEquals((label.attrs.display.asInstanceOf[String], label.attrs.cssClass.asInstanceOf[String]), ("internal", "turtle-hover-label"))
   }
 
   test("dense repeating patterns retain all lines with representative angle overlays") {
@@ -510,5 +542,5 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     val polygon = List.fill(180)(List(cmd("forward", 3), cmd("right", 2))).flatten
     graph.render(polygon)
     assertEquals(graph.ofKind("segment").size, 180)
-    assertEquals(graph.ofKind("angle").size, 1)
+    assertEquals(graph.ofKind("curve").size, 1)
   }

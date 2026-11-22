@@ -37,7 +37,9 @@ class InteractionHistoryScaffoldingSpec extends FunSuite {
     val c = InteractionVariableHistory.empty[F].addState(InteractionVariableState("draft", UpdateImportance.TEMPORARY, t0.plusSeconds(2)))
     val merged = a.mergeWith(Seq(b, c))
     assertEquals(merged.size, 3)
-    assertEquals(merged.clean().size, 2, "temporary answers are not persisted")
+    assertEquals(merged.cleanedHistory(), merged, "the current temporary answer stays")
+    val committed = merged.addState(InteractionVariableState("final", UpdateImportance.MAJOR, t0.plusSeconds(3)))
+    assertEquals(committed.cleanedHistory().size, 3, "a superseded temporary answer is dropped")
     val rebuilt = InteractionVariableHistory.fromResults[F](Set(InteractionVariableState("answer", UpdateImportance.MAJOR, t0)),
       scaffoldings = Set(finished(t0.plusSeconds(1))))
     assertEquals(rebuilt.size, 2)

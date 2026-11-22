@@ -30,6 +30,12 @@
     aspect-ratio: 1;
 }
 
+/* Deferred drawings: the previous drawing stays visible, dimmed, until the current state is drawn. */
+.deferred-rendering { display: flex; flex-direction: column; gap: var(--space-xs); }
+.deferred-rendering--outdated > :not(.deferred-rendering__status) { opacity: 0.55; transition: opacity 0.2s; }
+.deferred-rendering__status { margin: 0; min-height: 1.4em; color: var(--color-text-muted-light); font-size: 0.85rem; }
+.deferred-rendering__status--hidden { visibility: hidden; }
+
 /* BUTTONS */
 
 .workbook-element.button-line {

@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 // Scala unit tests render only placeholders for missing labels, so check here that every label
-// key the feedback panels, step-by-step panels, data previews and 2026GdP1 use is translated.
+// key the feedback panels, step-by-step panels, deferred renderings, data previews and 2026GdP1 use is translated.
 const root = path.resolve(import.meta.dirname, '../..');
 const client = 'modules/client/src/main/scala/it/evadid/homepage/workbook';
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
@@ -29,6 +29,7 @@ test('feedback, step and data-preview labels exist in German, English and Danish
     read(`${client}/htmlRenderer/interactionRenderer/basic/ProgramDataPreview.scala`),
     read(`${client}/htmlRenderer/interactionRenderer/basic/HtmlProgrammingExerciseFullJavaRenderer.scala`),
     read(`${client}/htmlRenderer/interactionRenderer/turtleStitch/HtmlTurtleRecreateShapeRenderer.scala`),
+    read('modules/client/src/main/scala/it/evadid/homepage/webElements/basic/DeferredRendering.scala'),
   ].join('\n');
   const keys = new Set([
     ...matches(files, /"basic\/([A-Za-z]+)"/g),

@@ -3,7 +3,7 @@ package it.evadid.workbook.interaction.variable
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, UpdateImportance}
+import it.evadid.workbook.interaction.sync.EventSyncStrategy
 import it.evadid.workbook.interaction.variable.events.*
 
 import java.time.LocalDateTime
@@ -35,7 +35,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
     scaffoldingEvents.collect { case event: ScaffoldingCompletedEvent[F] => event.result })
   /** Confirmation requires the latest answer (including ties) and every feedback event for it. */
   def latestAnswerEvents: Set[InteractionEvent[F]] = {
-    val candidates = normalize().allStates
+    val candidates = cleanedHistory().allStates
     val latest = candidates.map(_.timestamp).maxOption
     val answers = candidates.filter(event => latest.contains(event.timestamp))
     val states = answers.map(_.associatedState)
@@ -81,8 +81,10 @@ case class InteractionVariableHistory[F <: InteractionFormat](
   def addScaffoldings(results: Iterable[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]]): InteractionVariableHistory[F] =
     results.foldLeft(this)(_.addScaffolding(_))
 
-  /** Interactive normalization removes superseded default answers, without dropping independent delta feedback. */
-  def normalize(): InteractionVariableHistory[F] = {
+  /** Removes superseded DEFAULT and TEMPORARY answers with the feedback of only those answers; see
+    * [[InteractionVariableStateHistory.cleanedHistory]]. Feedback of retained answers stays.
+    */
+  def cleanedHistory(): InteractionVariableHistory[F] = {
     val states = historyStates.cleanedHistory().events
     val obsolete = allStates.filterNot(event => states(InteractionVariableState(event.newState, event.updateImportance, event.timestamp)))
     val obsoleteValues = obsolete.map(_.associatedState) -- states.map(_.value)
@@ -126,10 +128,6 @@ case class InteractionVariableHistory[F <: InteractionFormat](
 
   def cleanWithStrategy(syncStrategy: EventSyncStrategy): InteractionVariableHistory[F] =
     copy(events = InteractionEvents(syncStrategy.selectEvents(events.values)))
-
-  /** Persistence cleanup only: no answer, grading or scaffolding events are synthesized. */
-  def clean(): InteractionVariableHistory[F] =
-    copy(events = InteractionEvents(events.values.filter(_.updateImportance != UpdateImportance.TEMPORARY)))
 }
 
 object InteractionVariableHistory {

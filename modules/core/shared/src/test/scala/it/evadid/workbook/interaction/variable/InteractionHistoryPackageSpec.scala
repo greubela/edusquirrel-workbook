@@ -45,13 +45,13 @@ class InteractionHistoryPackageSpec extends FunSuite {
     assertEquals(first.addState(state), first)
   }
 
-  test("empty histories have no states and clean to empty") {
+  test("empty histories have no states and stay empty when cleaned") {
     val empty = InteractionVariableHistory.empty[TextInteractionFormat.type]
     assertEquals(empty.allStates.size, 0)
-    assertEquals(empty.clean().events.values.size, 0)
+    assertEquals(empty.cleanedHistory().events.values.size, 0)
   }
   
-  test("adding events creates history and clean removes TEMPORARY events") {
+  test("adding events creates history and cleaning removes superseded TEMPORARY answers") {
     val tempAnswer = AnswerChangedEvent[TextInteractionFormat.type]("1", time.plusSeconds(5), UpdateImportance.TEMPORARY)
     val majorAnswer = AnswerChangedEvent[TextInteractionFormat.type]("2", time.plusSeconds(10), UpdateImportance.MAJOR)
     val history = InteractionVariableHistory.empty[TextInteractionFormat.type]
@@ -60,8 +60,8 @@ class InteractionHistoryPackageSpec extends FunSuite {
     
     assertEquals(history.events.values.size, 2)
     assertEquals(history.allStates.size, 2)
-    assertEquals(history.clean().events.values.size, 1)
-    assertEquals(history.clean().events.values.head.asInstanceOf[AnswerChangedEvent[TextInteractionFormat.type]].newState, "2")
+    assertEquals(history.cleanedHistory().events.values.size, 1)
+    assertEquals(history.cleanedHistory().events.values.head.asInstanceOf[AnswerChangedEvent[TextInteractionFormat.type]].newState, "2")
   }
   
   test("canonical history codecs preserve roundtrip") {

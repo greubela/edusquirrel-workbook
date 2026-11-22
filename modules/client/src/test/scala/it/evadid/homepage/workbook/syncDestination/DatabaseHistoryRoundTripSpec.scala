@@ -101,14 +101,14 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
       def answer(value: String, second: Int, importance: UpdateImportance): InteractionEvent[text.type] =
         AnswerChangedEvent[text.type](value, at.plusSeconds(second), importance)
       val local = InteractionVariableHistory(InteractionEvents(Set(answer("draft", 1, UpdateImportance.MINOR),
-        answer("submitted", 2, UpdateImportance.MAJOR), answer("typing", 3, UpdateImportance.DEFAULT))))
+        answer("submitted", 2, UpdateImportance.MAJOR), answer("typing", 3, UpdateImportance.TEMPORARY))))
       val target = destination(text, handler(database, definition), definition, strategy = strategy)
       val session = cache(target, strategy)
       for {
         _ <- session.requestStore(target, Map(key -> local))
         restored <- cache(target, strategy).fetchAll(Set(key))
         _ = assertEquals(restored(key).map(_.associatedState), Seq("submitted", "typing"))
-        _ <- session.requestStore(target, Map(key -> local.addEvent(answer("retyped", 4, UpdateImportance.DEFAULT))))
+        _ <- session.requestStore(target, Map(key -> local.addEvent(answer("retyped", 4, UpdateImportance.TEMPORARY))))
         again <- cache(target, strategy).fetchAll(Set(key))
       } yield assertEquals(again(key).map(_.associatedState), Seq("submitted", "retyped"),
         "the superseded latest answer is no longer selected")
@@ -173,7 +173,10 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
       session.requestStore(target, Map(key -> textHistory("offline" -> 1))).failed.flatMap { _ =>
         assertEquals(session.reports.now().get(key).pendingWrites(target).events.values.size, 1)
         database.offline.set(false)
-        session.storeAll().flatMap(_ => cache(target).fetchAll(Set(key))).map { restored =>
+        session.storeAll().flatMap { _ =>
+          assertEquals(session.reports.now().get(key).syncedDestinations, Set.empty, "written, but not read back yet")
+          session.fetchAll(Set(key))
+        }.map { restored =>
           assertEquals(restored(key).map(_.associatedState), Seq("offline"))
           assertEquals(session.reports.now().get(key).syncedDestinations, Set(target))
         }

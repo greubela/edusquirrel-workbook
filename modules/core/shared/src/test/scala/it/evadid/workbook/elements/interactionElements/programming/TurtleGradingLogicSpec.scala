@@ -88,4 +88,22 @@ class TurtleGradingLogicSpec extends FunSuite {
     assertEquals(TurtleGradingLogic.compareLines(halves, List(stroke)).map(_.status),
       List(EXISTING_BUT_UNEXPECTED, EXISTING_BUT_UNEXPECTED, EXPECTED_BUT_MISSING))
   }
+
+  test("one state shares its comparison per target and policy, and grades with it") {
+    import it.evadid.core.datastructures.language.AppLanguage.Python
+    import it.evadid.workbook.abstractions.grading.GradingImportance.REQUIRED_TEST
+    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleDrawingPolicy}
+    import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+    import it.evadid.workbook.meta.ExecutionContextInformation
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val state = ProgrammingStateRaw(Python, "forward(10)")
+    val target = graphic(cmd("forward", 10))
+    val expression = state.toBeExpression
+    val strokes = expression.turtleComparison(target, TurtleDrawingPolicy.Strokes)
+    assert(strokes eq expression.turtleComparison(target, TurtleDrawingPolicy.Strokes))
+    assert(strokes ne expression.turtleComparison(target, TurtleDrawingPolicy.Coverage))
+    assert(strokes.actual eq expression.turtleGraphic, "the state's drawing is traced once")
+    RecreateShapeGrader(target, REQUIRED_TEST).gradeStateSafe(state, false, ExecutionContextInformation.default)
+      .map(result => assertEquals(result.gradingStatus, strokes.gradingStatus))
+  }
 }
