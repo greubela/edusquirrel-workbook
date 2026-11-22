@@ -10,12 +10,12 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /** Compares the bound answer with the target, sharing the comparison with the exercise's grader.
   *
   * The board is redrawn only after the answer has rested (see [[DeferredRendering]]); all views of one
-  * preview share its prepared assessment, while each mounted view owns its JSXGraph board.
+  * preview share its prepared assessment, while each mounted view owns and reuses one JSXGraph board.
   */
 final case class CompareShapePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic, policy: TurtleDrawingPolicy,
     delay: FiniteDuration = DeferredRendering.defaultDelay) extends HtmlAppElement {
@@ -28,9 +28,15 @@ final case class CompareShapePreview(boundVar: Var[ProgrammingState], expected: 
 
   private lazy val rendering = new DeferredRendering(boundVar.signal, assess, delay)
 
-  private def view(assessment: Try[TurtleDrawingGrading.Assessment]): Element = assessment match {
-    case Success(value) => TurtleJsxGraphRenderer.render(value.scene, "Turtle drawing")
-    case Failure(exception) => div(cls := "turtle-preview__error", s"Error while trying to draw turtle: ${exception.getMessage}")
+  /** One board follows the successful assessments; a failure hides it behind its message until the next success. */
+  private def view(assessments: Signal[Try[TurtleDrawingGrading.Assessment]]): Element = {
+    val scenes = assessments.scanLeft(_.toOption.map(_.scene))((last, next) => next.toOption.map(_.scene).orElse(last))
+    div(
+      child.maybe <-- assessments.map(_.failed.toOption.map(_.getMessage)).distinct.map(_.map(message =>
+        div(cls := "turtle-preview__error", s"Error while trying to draw turtle: $message"))),
+      div(display <-- assessments.map(assessment => if assessment.isSuccess then "" else "none"),
+        child.maybe <-- scenes.map(_.isDefined).distinct.map(drawn =>
+          Option.when(drawn)(TurtleJsxGraphRenderer.render(scenes.map(_.get), "Turtle drawing")))))
   }
 
   override def getDomElement(): L.Element =

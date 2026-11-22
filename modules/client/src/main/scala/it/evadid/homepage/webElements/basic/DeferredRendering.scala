@@ -26,7 +26,7 @@ final class DeferredRendering[S, R](source: Signal[S], prepare: S => R, delay: F
     settled.flatMapSwitch(state => EventStream.fromFuture(afterPaint().map(_ => Prepared(state, Try(prepare(state))))))
       .toWeakSignal
 
-  /** Only a new result rebuilds the view; an equal result of a newer state keeps the existing drawing. */
+  /** Only a new result updates the view; an equal result of a newer state keeps the existing drawing. */
   val result: Signal[Option[Try[R]]] = prepared.map(_.map(_.result)).distinct
 
   val phase: Signal[Phase] = source.combineWith(settled, prepared).map { (current, started, done) =>
@@ -41,12 +41,14 @@ final class DeferredRendering[S, R](source: Signal[S], prepare: S => R, delay: F
       cls("deferred-rendering__status--hidden") <-- phase.map(_ == Phase.Ready),
       child.text <-- phase.flatMapSwitch(phase => statusText(phase).fold(Val(""))(text)))
 
-  /** Status line followed by the latest drawing; `view` receives each new result. */
-  def element(text: LanguageMapContentId => Signal[String])(view: Try[R] => Element): Element =
+  /** Status line followed by the drawing. `view` is built once, when the first result is ready, and then follows
+    * the results, so a view can keep its board instead of being rebuilt.
+    */
+  def element(text: LanguageMapContentId => Signal[String])(view: Signal[Try[R]] => Element): Element =
     div(cls := "deferred-rendering",
       cls("deferred-rendering--outdated") <-- phase.map(_ != Phase.Ready),
       status(text),
-      child.maybe <-- result.map(_.map(view)))
+      child.maybe <-- result.map(_.isDefined).distinct.map(ready => Option.when(ready)(view(result.map(_.get)))))
 }
 
 object DeferredRendering {
