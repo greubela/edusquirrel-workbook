@@ -9,7 +9,6 @@ import com.raquo.laminar.api.L.div
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleExecutionProvider
 import it.evadid.homepage.webElements.editor.code.JavaEditorSession
-import it.evadid.vm.compilation.java.turtle.JavaTurtleSymbolResolver
 import it.evadid.vm.simulation.java.JavaTurtleInterpreter
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 
@@ -67,12 +66,7 @@ final class JavaTurtleEditorExtension(
 
   private def commandsFrom(execution: JavaTurtleInterpreter.Execution): List[TurtleCommand[Double]] = {
     JavaEditorSession.requireCompleted(execution)
-    execution.commands.toList.map { command =>
-      command.command match {
-        case JavaTurtleSymbolResolver.TurtleCommand.Forward => TurtleCommand.Forward(command.value)
-        case JavaTurtleSymbolResolver.TurtleCommand.TurnRight => TurtleCommand.Right(command.value)
-      }
-    }
+    execution.commands.toList.map(_.toDrawingCommand)
   }
 
   def stop(): Unit = {

@@ -29,7 +29,7 @@ object SnapExpressionSupport {
       SnapControlFlow.ConditionSelectors ++
       SnapControlFlow.ArithmeticSelectors +
       // `report` ends a reporter or predicate definition with its value.
-      "doReport"
+      "doReport" + "doStopThis"
 
 
   def isScriptStatement(expression: BeExpression): Boolean =
@@ -86,6 +86,9 @@ object SnapExpressionSupport {
   def unsupportedSnapSelectors(xml: String, project: TurtleStitchProgramModel.Project): List[String] = {
     // Predefined module blocks are implemented with list primitives; their calls are what the program uses.
     val fromBlocks = TurtleStitchToBeExpressionParser.withoutModuleLibraries(project).allBlocks.toList.collect {
+      case TurtleStitchProgramModel.PrimitiveBlock(Some("doStopThis"), _, inputs, _)
+          if inputs != Vector(TurtleStitchProgramModel.Literal("this block")) =>
+        "stop: only 'this block' has a function-return representation"
       case TurtleStitchProgramModel.PrimitiveBlock(Some(selector), _, _, _) if !AllowedSnapSelectors.contains(selector) => selector
     } ++ project.unreadBlocks.map(block => s"'$block' outside a script")
     val definitionProblems = SnapCustomBlockRules.allDefinitions(xml).flatMap(_.pythonIncompatibility)

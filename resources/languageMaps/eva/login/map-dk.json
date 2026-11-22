@@ -36,5 +36,6 @@
   "errorLogin": "Login mislykkedes. Prøv igen senere.",
   "insertNamePlaceholder": "Dit navn",
   "enterMail": "E-mailadresse",
-  "uploadFile": "Upload en fil med dine fremskridt"
+  "uploadFile": "Upload en fil med dine fremskridt",
+  "privacyFooterClose": "Luk privatlivsmeddelelse"
 }

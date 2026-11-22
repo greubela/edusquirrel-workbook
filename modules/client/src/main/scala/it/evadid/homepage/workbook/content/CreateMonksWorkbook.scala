@@ -1,27 +1,34 @@
 package it.evadid.homepage.workbook.content
 
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.file.CopyrightInfo
-import it.evadid.core.datastructures.file.CopyrightInfo.AiGenerated
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.user.User
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_TYPE
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.HintLabel
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleRecreateShapeInteraction}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleGraphic, TurtleRecreateShapeInteraction}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStateSnapScalaModel}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette.PythonCompatibleSnap
+import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.*
+import it.evadid.workbook.elements.interactionElements.table.{AnswerTableInteraction, EditableTableCell}
 import it.evadid.workbook.elements.structureElements.{ExerciseGroup, Workbook}
 
-/** First digital edition of "Rekursion mit den Mönchen von Mons Komputarius" (29.04.2025).
- * Stable exercise IDs keep responses attached to their original PDF task numbers.
+
+/** Recursion workbook "Die Mönche von Mons Komputarius".
+ *
+ * Sections 0 (monks), 1 (tower), 2 (editor basics and the building-brick methods),
+ * 3 (drawing recursively with bricks) and 4 (Koch curve). Task titles are numbered per section
+ * ("Aufgabe 2.3") in the language maps.
+ *
+ * The programming tasks E1–E8 open the Eva editor with Java starting code; their targets are recorded
+ * from the sample solutions in [[CreateMonksWorkbook.editorTarget]]. Element IDs are stable per task
+ * (`monks-a2`, `monks-e5`, ...) and independent of the displayed numbers.
  */
 case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
@@ -29,58 +36,125 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
 
   override val workbookId: String = "MonksWorkbook"
 
-  override def availableLanguages: Seq[AppLanguage.HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
+  override def availableLanguages: List[AppLanguage.HumanLanguage] = List(AppLanguage.German, AppLanguage.English)
 
   private def key(name: String): String = "monksworkbook/" + name
 
+  private def lm(name: String): LanguageMapContentId = LanguageMapContentId(key(name))
+
   private def panel(scene: Scene): WorkbookDisplayElement =
-    ExerciseGroup("monks-panel-" + scene.id, List(
+    ExerciseGroup("monks-panel-" + scene.id,
       LanguageMapBasedWorkbookImageElement(
         "monks-image-" + scene.id,
         LanguageMapContentId(key(scene.imageKey)),
         TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES,
-        Some(LanguageMapContentId(key(scene.dialogueKey))),
+        Some(LanguageMapContentId(key(scene.lines.head))),
         Some(CopyrightInfo.fromAi)
-      ),
-      instructionLabeledPair(key("dialoguelabel"), key(scene.dialogueKey), HintLabel)
-    ))
+      ) :: scene.lines.map(line => instructionMarkdown(key(line))))
 
-  private def task(number: String): WorkbookElement =
-    container(key("task" + number + "title"), List(
-      instructionMarkdown(key("task" + number)),
-      TextInteraction("monks-answer-" + number)))
+  // ---- task builders: the task `id` determines the container title and all language-map keys
+
+  private def task(id: String, elements: List[WorkbookElement]): WorkbookElement =
+    container(key(id + "title"), elements)
+
+  private def text(name: String): WorkbookElement = instructionMarkdown(key(name))
+
+  private def prompt(id: String): WorkbookElement = text(id + "prompt")
+
+  /** Options are `<id>-opt0..n-1` unless explicit option keys are given. */
+  private def choice(id: String, expected: List[Int], optionCount: Int, multiple: Boolean = false,
+                     optionKeys: Option[List[String]] = None): ChoiceInteraction =
+    ChoiceInteraction("monks-" + id, lm(id + "-question"),
+      optionKeys.getOrElse(List.tabulate(optionCount)(i => s"$id-opt$i")).map(lm), multiple, Some(expected))
+
+  /** One single-choice row per statement; `answers` name the correct category for each `<id>-row<i>`. */
+  private def assign(id: String, categories: List[String], answers: List[String]): List[WorkbookElement] =
+    answers.zipWithIndex.map { (answer, i) =>
+      ChoiceInteraction(s"monks-$id-$i", lm(s"$id-row$i"), categories.map(c => lm("cat-" + c)),
+        expected = Some(List(categories.indexOf(answer))))
+    }
+
+  /** Free-input table. A cell lists accepted spellings separated by `|`; `columns` and `rowHeader` are full
+   * language-map keys. */
+  private def table(id: String, columns: List[String], answers: List[List[String]], rowHeader: String): AnswerTableInteraction =
+    AnswerTableInteraction("monks-" + id, lm(id + "-caption"),
+      answers.indices.map(i => lm(s"$id-row$i")).toList, columns.map(lm),
+      answers.map(_.map(cell => EditableTableCell(expected = Some(cell.split('|').toList)))), Some(lm(rowHeader)))
+
+  /** One question per row, answered in a single column. */
+  private def singleColumn(id: String, answers: List[String]): AnswerTableInteraction =
+    table(id, List("answercolumn"), answers.map(List(_)), "questioncolumn")
+
+  /** `items` are listed in their correct order; the interaction shuffles them. */
+  private def reorder(id: String, itemCount: Int): ReorderMapIdInteraction =
+    ReorderMapIdInteraction("monks-" + id, List.tabulate(itemCount)(i => lm(s"$id-item$i")), seed = id.hashCode.toLong)
+
+  /** Editor task: prompt and a Java turtle editor whose drawing is compared with the sample solution. */
+  private def editorTask(id: String, extra: List[WorkbookElement] = Nil): WorkbookElement =
+    task(id, List(prompt(id),
+      TurtleRecreateShapeInteraction("monks-" + id, ProgrammingStateJavaStructured(EditorCode(id)), editorTarget(id),
+        customExerciseConfig = Some(EditorConfig))) ++ extra)
 
   // Building once makes IDs and state references stable across createWorkbook/createEverything calls.
   override lazy val createWorkbook: Workbook = workbook(
     key("workbooktitle"),
     List(
-      // story
-      section("monks-story", key("storytitle"),
-        List(
-          container(key("task1atitle"), List(
-            instructionMarkdown(key("introduction")),
-            instructionMarkdown(key("task1a")),
-            Slideshow("monks-theater", theaterScenes.map(panel)))
-          ),
-          container(key("task1btitle"),
-            List(
-              instructionMarkdown(key("task1b")),
-              TextInteraction("monks-answer-1b"),
-              instructionMarkdown(key("recursionexplanation"))
-            ) ++ List(
-              "1c", "1d", "1e", "1f", "1g"
-            ).map(task),
-          ),
-        )),
-      section("monks-recursion", key("sortingtitle"), List(
-        container(key("task2atitle"),
-          List(
-            instructionMarkdown(key("task2a")),
-            Slideshow("monks-counting-story", countingScenes.map(panel))
-          ) ++
-            List("2b", "2c", "2d", "2e", "2f", "2g", "2h").map(task) ++
-            List(instructionMarkdown(key("functionalexplanation"))) ++ List("2i", "2j").map(task)
-        ))),
+      section("monks-story", key("parta"), List(
+        container(key("parta"), List(
+          text("introduction"),
+          Slideshow("monks-theater", theaterScenes.map(panel)),
+          text("schemaintro"), text("schemacode"))),
+        task("a1", List(prompt("a1"), reorder("a1", 8))),
+        task("a2", List(singleColumn("a2", List("3", "5", "5 4 2|5,4,2|5, 4, 2|5 , 4 , 2", "5")))),
+        task("a3", List(choice("a3", List(1), 4))),
+        // "none" stays an option (distractor) so stored selections of the remaining rows stay valid.
+        task("a4", List(prompt("a4")) ++ assign("a4",
+          List("abort", "simplify", "call", "combine", "first", "none"),
+          List("simplify", "call", "abort", "combine", "first"))),
+        // The story as code: one method with four gaps, one question per gap.
+        task("ac", List(text("ac-intro"), text("ac-code"),
+          choice("ac-1", List(0), 3), choice("ac-2", List(1), 3), choice("ac-3", List(2), 3), choice("ac-4", List(1), 3))),
+        // Refers to the gaps of task "ac" instead of showing the finished method, which would spoil "ac".
+        task("a5", List(prompt("a5")) ++ assign("a5",
+          List("abort", "simplify", "call", "combine"),
+          List("abort", "simplify", "simplify", "call", "combine"))),
+        task("a6", List(choice("a6", List(1, 3, 5), 6, multiple = true))),
+        task("a7", List(choice("a7", List(1, 3, 5), 6, multiple = true))),
+        task("a8", List(text("a8intro"),
+          choice("a8a", List(1), 4),
+          singleColumn("a8b", List("6")),
+          choice("a8c", List(2), 4))))),
+
+      section("monks-tower", key("partc"), List(
+        container(key("partc"), List(
+          prompt("c0"),
+          Slideshow("monks-counting-story", countingScenes.map(panel)))),
+        task("c1", List(prompt("c1")) ++ assign("c1",
+          List("abort", "simplify", "call", "combine", "state"),
+          List("simplify", "state", "call", "abort", "combine"))),
+        task("c2", List(
+          table("c2", List("c2-col0", "c2-col1", "c2-col2"), List(List("2", "1", "1"), List("1", "2", "2"), List("0", "3", "3")),
+            "c2-rowheader"),
+          singleColumn("c2b", List("4")))),
+        task("c3", List(prompt("c3"), text("c3code")) ++ assign("c3",
+          List("variant-a", "variant-b", "variant-c"), List("variant-a", "variant-b", "variant-c"))),
+        task("c4", List(singleColumn("c4", List("6", "3", "5", "3")))),
+        task("c5", List(text("functionalexplanation"), choice("c5", List(1, 3, 4, 5), 6, multiple = true))))),
+
+      // Placed right before the drawing section, so learners use the editor directly after getting to know it.
+      section("monks-editor", key("partzero"), List(
+        container(key("partzero"), List(text("zerointro"))),
+        editorTask("e1"), editorTask("e2"), editorTask("e3"))),
+
+      // Drawing with the building-brick methods from the editor section (tower, pyramids, contract).
+      section("monks-bridge", key("partd"), List(
+        container(key("partd"), List(text("partdintro"))),
+        editorTask("e4"), editorTask("e5"), editorTask("e6a"), editorTask("e6b"),
+        task("d1", List(choice("d1a", List(1), 4), choice("d1b", List(1, 3), 5, multiple = true), text("d1note"))),
+        editorTask("e7", List(singleColumn("e7b", List("15")))),
+        editorTask("e8", List(singleColumn("e8b", List("7")))))),
+
+      // Section 3 (Koch curve) is authored separately and intentionally unchanged.
       section("monks-koch", key("kochtitle"),
         List(container(key("kochintroductioncont"), List(
           instructionMarkdown(key("kochintroduction"))
@@ -89,10 +163,9 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
             instructionMarkdown(key("koch" + depth)),
             TurtleRecreateShapeInteraction(
               "monks-koch-" + depth,
-              ProgrammingStateRaw(Python, ""),
+              ProgrammingStateSnapScalaModel.empty,
               kochTarget(depth),
-              TurtleDrawingPolicy.Strokes,
-              Some(RecreateTurtleDidacticConfig.defaultForPalette(PythonCompatibleSnap)))))
+              customExerciseConfig = Some(EditorConfig))))
         })
     ),
     User.AndreGreubel
@@ -100,105 +173,248 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
 }
 
 object CreateMonksWorkbook {
-  /** One speaking turn or one visual action/state per frame. Empty speaker
-   * means silence (the dialogue is exactly "..."). Action labels document
-   * the sequence; they are never displayed as stage directions.
+  /** Python is hidden in this workbook for now; learners work in Snap! or Java. */
+  val EditorLanguages: List[AppLanguage.ProgrammingLanguage] = List(AppLanguage.SnapLanguage, AppLanguage.Java)
+
+  val EditorConfig: RecreateTurtleDidacticConfig = RecreateTurtleDidacticConfig.defaultForPalette(ProgrammingEditorPalette.PythonCompatibleSnap)
+    .copy(restrictEditorToLanguages = EditorLanguages)
+
+  /** One slide: a key image plus the lines shown below it. A line is the key of a spoken dialogue
+   * (`...dialogue`, prefixed with the speaker in the text) or of a short narration (`narr-...`).
+   * Several beats of the story are aggregated into one slide so the stories stay short.
    */
-  case class Scene(id: String, imageKey: String, dialogueKey: String = "silence",
-                   speaker: Option[String] = None, action: Option[String] = None) derives upickle.default.ReadWriter {
-    require(speaker.isEmpty || action.isEmpty, "A speaking frame cannot also perform an action")
-    require(speaker.nonEmpty || dialogueKey == "silence", "Silent frames use only an ellipsis")
+  case class Scene(id: String, imageKey: String, lines: List[String]) derives upickle.default.ReadWriter {
+    require(lines.nonEmpty, "A slide needs at least one line")
   }
 
-  val theaterScenes: Seq[Scene] = List(
-    Scene("arrival", "fileimage1", action = Some("travel")),
-    Scene("entrance", "fileimage2", dialogueKey = "entrancedialogue", speaker = Some("R")),
-    Scene("master-wait", "filebeattemplepause"),
-    Scene("warning", "filebeatmasterwarning", dialogueKey = "warningdialogue", speaker = Some("M")),
-    Scene("shout", "filebeattravelershout", dialogueKey = "shoutdialogue", speaker = Some("R")),
-    Scene("shout-pause", "filebeattemplepause"),
-    Scene("cards-demand", "fileimage3", dialogueKey = "cards-demanddialogue", speaker = Some("R")),
-    Scene("help-wait", "filebeattemplepause"),
-    Scene("in-deed-one", "filebeathelpmaster", dialogueKey = "in-deed-onedialogue", speaker = Some("M")),
-    Scene("help-uncertain", "filebeathelpuncertain", dialogueKey = "help-uncertaindialogue", speaker = Some("R")),
-    Scene("help-pause-one", "filebeattemplepause"),
-    Scene("in-deed-two", "filebeathelpmaster", dialogueKey = "in-deed-onedialogue", speaker = Some("M")),
-    Scene("help-question", "filebeathelpquestion", dialogueKey = "help-questiondialogue", speaker = Some("R")),
-    Scene("help-pause-two", "filebeattemplepause"),
-    Scene("in-deed-three", "filebeathelpmaster", dialogueKey = "in-deed-onedialogue", speaker = Some("M")),
-    Scene("help-long-pause", "filebeattemplepause"),
-    Scene("help-insistent", "filebeathelpinsistent", dialogueKey = "help-insistentdialogue", speaker = Some("R")),
-    Scene("journey-question", "filebeatjourneyquestion", dialogueKey = "journey-questiondialogue", speaker = Some("M")),
-    Scene("journey-answer", "filebeatjourneyanswer", dialogueKey = "journey-answerdialogue", speaker = Some("R")),
-    Scene("return-question", "filebeatreturnquestion", dialogueKey = "return-questiondialogue", speaker = Some("M")),
-    Scene("return-answer", "filebeatreturnanswer", dialogueKey = "return-answerdialogue", speaker = Some("R")),
-    Scene("patience", "filebeatpatiencespeaking", dialogueKey = "patiencedialogue", speaker = Some("M")),
-    Scene("tray-offered", "filebeattrayoffered", action = Some("offer-tray")),
-    Scene("tray-instruction", "filebeattrayinstruction", dialogueKey = "tray-instructiondialogue", speaker = Some("M")),
-    Scene("cards-deposited", "filebeatcardsdeposited", action = Some("deposit-cards")),
-    Scene("tray-to-master", "filebeattraytomaster", action = Some("carry-tray")),
-    Scene("watch", "filebeatwatchinstruction", dialogueKey = "watchdialogue", speaker = Some("M")),
-    Scene("select-9-before", "filebeatselect9before", action = Some("select-9-before")),
-    Scene("select-9-lifting", "filebeatselect9lifting", action = Some("select-9-lifting")),
-    Scene("select-9-held", "filebeatselect9held", action = Some("select-9-held")),
-    Scene("select-7-before", "filebeatselect7before", action = Some("select-7-before")),
-    Scene("select-7-lifting", "filebeatselect7lifting", action = Some("select-7-lifting")),
-    Scene("select-7-held", "filebeatselect7held", action = Some("select-7-held")),
-    Scene("select-4-before", "filebeatselect4before", action = Some("select-4-before")),
-    Scene("select-4-lifting", "filebeatselect4lifting", action = Some("select-4-lifting")),
-    Scene("select-4-held", "filebeatselect4held", action = Some("select-4-held")),
-    Scene("select-2-before", "filebeatselect2before", action = Some("select-2-before")),
-    Scene("select-2-lifting", "filebeatselect2lifting", action = Some("select-2-lifting")),
-    Scene("select-2-held", "filebeatselect2held", action = Some("select-2-held")),
-    Scene("waiting-monks", "filebeatwaitingmonks"),
-    Scene("empty-delivery", "filebeatemptydelivery", action = Some("handoff-empty-tray")),
-    Scene("empty-pause", "filebeatemptywait"),
-    Scene("empty", "filebeatemptyspeaking", dialogueKey = "emptydialogue", speaker = Some("M")),
-    Scene("giveback", "filebeatreturninstruction", dialogueKey = "givebackdialogue", speaker = Some("M")),
-    Scene("empty-return", "filebeatemptyreturn", action = Some("return-empty-tray")),
-    Scene("empty-carry", "filebeatemptycarry", action = Some("carry-empty-tray")),
-    Scene("insert-2-right", "filebeatinsert2right", action = Some("insert-2-right")),
-    Scene("insert-2-moving", "filebeatinsert2moving", action = Some("insert-2-moving")),
-    Scene("insert-2-left", "filebeatinsert2left", action = Some("insert-2-left")),
-    Scene("shift-4-before", "filebeatshift4before", action = Some("shift-4-before")),
-    Scene("shift-4-moving", "filebeatshift4moving", action = Some("shift-4-moving")),
-    Scene("insert-4-right", "filebeatinsert4right", action = Some("insert-4-right")),
-    Scene("insert-4-moving", "filebeatinsert4moving", action = Some("insert-4-moving")),
-    Scene("insert-4-left", "filebeatinsert4left", action = Some("insert-4-left")),
-    Scene("shift-7-before", "filebeatshift7before", action = Some("shift-7-before")),
-    Scene("shift-7-moving", "filebeatshift7moving", action = Some("shift-7-moving")),
-    Scene("insert-7-right", "filebeatinsert7right", action = Some("insert-7-right")),
-    Scene("insert-7-moving", "filebeatinsert7moving", action = Some("insert-7-moving")),
-    Scene("insert-7-left", "filebeatinsert7left", action = Some("insert-7-left")),
-    Scene("shift-9-before", "filebeatshift9before", action = Some("shift-9-before")),
-    Scene("shift-9-moving", "filebeatshift9moving", action = Some("shift-9-moving")),
-    Scene("insert-9-right", "filebeatinsert9right", action = Some("insert-9-right")),
-    Scene("insert-9-moving", "filebeatinsert9moving", action = Some("insert-9-moving")),
-    Scene("insert-9-left", "filebeatinsert9left", action = Some("insert-9-left")),
-    Scene("sorted-delivery", "filebeatsorteddelivery", action = Some("handoff-sorted-tray")),
-    Scene("sorted", "filebeatsortedspeaking", dialogueKey = "sorteddialogue", speaker = Some("M")),
-    Scene("understood", "filebeatunderstoodspeaking", dialogueKey = "understooddialogue", speaker = Some("R")),
-    Scene("farewell", "filebeatfarewellspeaking", dialogueKey = "farewelldialogue", speaker = Some("M")),
-    Scene("farewell-walk", "fileimage13", action = Some("walk-away")))
+  val theaterScenes: List[Scene] = List(
+    Scene("arrival", "fileimage2", List("narr-arrival", "entrancedialogue")),
+    Scene("warning", "filebeattravelershout", List("warningdialogue", "shoutdialogue")),
+    Scene("help", "filebeathelpquestion", List("narr-help", "cards-demanddialogue", "in-deed-onedialogue",
+      "help-uncertaindialogue", "in-deed-onedialogue", "help-questiondialogue", "in-deed-onedialogue")),
+    Scene("journey", "filebeatreturnanswer", List("help-insistentdialogue", "journey-questiondialogue",
+      "journey-answerdialogue", "return-questiondialogue", "return-answerdialogue")),
+    Scene("patience", "filebeatpatiencespeaking", List("patiencedialogue")),
+    Scene("tray", "filebeattraytomaster", List("tray-instructiondialogue", "narr-tray", "watchdialogue")),
+    Scene("select-a", "filebeatselect7held", List("narr-select-a")),
+    Scene("select-b", "filebeatselect2held", List("narr-select-b")),
+    Scene("empty", "filebeatemptyspeaking", List("narr-empty", "emptydialogue", "givebackdialogue")),
+    Scene("insert-a", "filebeatinsert4left", List("narr-insert-a")),
+    Scene("insert-b", "filebeatinsert9left", List("narr-insert-b")),
+    Scene("sorted", "filebeatunderstoodspeaking", List("narr-sorted", "sorteddialogue", "understooddialogue")),
+    Scene("farewell", "fileimage13", List("farewelldialogue", "narr-farewell")))
 
-  val countingScenes: Seq[Scene] = List(
-    Scene("family", "filebeatfamilychildintro", dialogueKey = "familydialogue", speaker = Some("K")),
-    Scene("family-father-reply", "filebeatfamilyfatherreply", dialogueKey = "family-father-replydialogue", speaker = Some("R")),
-    Scene("family-child-question", "filebeatfamilychildquestion", dialogueKey = "family-child-questiondialogue", speaker = Some("K")),
-    Scene("family-father-hurry", "filebeatfamilyfatherhurry", dialogueKey = "family-father-hurrydialogue", speaker = Some("R")),
-    Scene("family-pause", "filebeatfamilypause"),
-    Scene("count-explanation", "filebeatfamilysolution", dialogueKey = "count-explanationdialogue", speaker = Some("R")),
-    Scene("count-paper", "filebeatcountpaper", action = Some("count-paper")),
-    Scene("count-remove", "filebeatcountremove", action = Some("count-remove")),
-    Scene("count-place", "filebeatcountplace", action = Some("count-place")),
-    Scene("count-tally", "filebeatcounttally", action = Some("count-tally")),
-    Scene("count-remove-yellow", "filebeatcountremoveyellow", action = Some("count-remove-yellow")),
-    Scene("count-place-yellow", "filebeatcountplaceyellow", action = Some("count-place-yellow")),
-    Scene("count-tally-two", "filebeatcounttallytwo", action = Some("count-tally-two")),
-    Scene("count-remove-blue", "filebeatcountremoveblue", action = Some("count-remove-blue")),
-    Scene("count-place-blue", "filebeatcountplaceblue", action = Some("count-place-blue")),
-    Scene("count-tally-three", "filebeatcounttallythree", action = Some("count-tally-three")),
-    Scene("count-empty", "filebeatcountempty"))
+  val countingScenes: List[Scene] = List(
+    Scene("family", "filebeatfamilychildquestion", List("familydialogue", "family-father-replydialogue",
+      "family-child-questiondialogue")),
+    Scene("count-red", "filebeatcounttally", List("count-explanationdialogue", "narr-count-red")),
+    Scene("count-yellow", "filebeatcounttallytwo", List("narr-count-yellow")),
+    Scene("count-blue", "filebeatcountempty", List("narr-count-blue", "count-resultdialogue", "count-brokendialogue",
+      "count-rememberdialogue", "narr-count-rebuild", "count-grandmadialogue")))
+
+  /** Java starting code of the editor tasks E1–E8. Section 0 lets the learner write the building-brick methods
+   * `stein`, `hoch`, `runter` and `springe`; from E4 on they are prefilled ([[EditorCode.helpers]]).
+   * Identifiers follow the German task texts; the class name is free, `Turtle` is reserved by the runner.
+   */
+  object EditorCode {
+    val helpers: String =
+      """    static void stein(double breite) {
+        |        Turtle.forward(breite);
+        |        Turtle.turnLeft(90);
+        |        Turtle.forward(20);
+        |        Turtle.turnLeft(90);
+        |        Turtle.forward(breite);
+        |        Turtle.turnLeft(90);
+        |        Turtle.forward(20);
+        |        Turtle.turnLeft(90);
+        |    }
+        |
+        |    static void hoch() {
+        |        Turtle.penUp();
+        |        Turtle.turnLeft(90);
+        |        Turtle.forward(20);
+        |        Turtle.turnRight(90);
+        |        Turtle.penDown();
+        |    }
+        |
+        |    static void runter() {
+        |        Turtle.penUp();
+        |        Turtle.turnRight(90);
+        |        Turtle.forward(20);
+        |        Turtle.turnLeft(90);
+        |        Turtle.penDown();
+        |    }
+        |
+        |    static void springe(double weite) {
+        |        Turtle.penUp();
+        |        Turtle.forward(weite);
+        |        Turtle.penDown();
+        |    }
+        |""".stripMargin
+
+    private def program(body: String, withHelpers: Boolean = false): String =
+      "public class Zeichnung {\n" + (if withHelpers then helpers + "\n" else "") + body.stripMargin + "}\n"
+
+    private val pyramidMain: String =
+      """    public static void main(String[] args) {
+        |        zeichnePyramide(4);
+        |        springe(100);
+        |        zeichnePyramide(3);
+        |    }
+        |"""
+
+    private val byTask: Map[String, String] = Map(
+      "e1" -> program(
+        """    public static void main(String[] args) {
+          |        Turtle.forward(60);
+          |        Turtle.turnLeft(90);
+          |        // TODO
+          |    }
+          |"""),
+      "e2" -> program(
+        """    static void stein(double breite) {
+          |        // TODO
+          |    }
+          |
+          |    static void hoch() {
+          |        // TODO
+          |    }
+          |
+          |    static void runter() {
+          |        // TODO
+          |    }
+          |
+          |    public static void main(String[] args) {
+          |        stein(80);
+          |        hoch();
+          |        // TODO
+          |    }
+          |"""),
+      "e3" -> program(
+        """    static void vieleck(int ecken, double laenge) {
+          |        // TODO
+          |    }
+          |
+          |    static void springe(double weite) {
+          |        // TODO
+          |    }
+          |
+          |    public static void main(String[] args) {
+          |        vieleck(4, 60);
+          |        // TODO
+          |    }
+          |"""),
+      "e4" -> program(
+        """    static void zeichneTurm(int n) {
+          |        // TODO
+          |    }
+          |
+          |    public static void main(String[] args) {
+          |        zeichneTurm(5);
+          |    }
+          |""", withHelpers = true),
+      "e5" -> program(
+        """    static void zeichnePyramide(int n) {
+          |        // TODO
+          |    }
+          |
+          |""" + pyramidMain, withHelpers = true),
+      "e6a" -> program(
+        """    static void zeichnePyramide(int n) {
+          |        stein(n * 20);
+          |        hoch();
+          |        springe(10);
+          |        zeichnePyramide(n - 1);
+          |        springe(-10);
+          |        runter();
+          |    }
+          |
+          |""" + pyramidMain, withHelpers = true),
+      "e6b" -> program(
+        """    static void zeichnePyramide(int n) {
+          |        if (n == 0) {
+          |            return;
+          |        }
+          |        stein(n * 20);
+          |        hoch();
+          |        springe(10);
+          |        zeichnePyramide(n - 1);
+          |    }
+          |
+          |""" + pyramidMain, withHelpers = true),
+      "e7" -> program(
+        """    static void cantor(double breite, int n) {
+          |        // TODO
+          |    }
+          |
+          |    public static void main(String[] args) {
+          |        cantor(270, 3);
+          |    }
+          |""", withHelpers = true),
+      "e8" -> program(
+        """    static void baum(double laenge, int n) {
+          |        // TODO
+          |    }
+          |
+          |    public static void main(String[] args) {
+          |        Turtle.turnLeft(90); // die Turtle schaut nach oben
+          |        baum(80, 5);
+          |    }
+          |""", withHelpers = true))
+
+    def apply(id: String): String = byTask.getOrElse(id, throw IllegalArgumentException(s"No starting code for $id"))
+  }
+
+  /** Records a sample solution as turtle commands. The helper methods mirror [[EditorCode.helpers]],
+   * so the recorded strokes are exactly what the Java runner emits for the same solution.
+   */
+  private object Sketch {
+    import TurtleCommand.*
+
+    def stein(breite: Double): List[TurtleCommand[Double]] =
+      List.fill(2)(List(Forward(breite), Left(90.0), Forward(20.0), Left(90.0))).flatten
+    def hoch(): List[TurtleCommand[Double]] = List(PenUp(), Left(90.0), Forward(20.0), Right(90.0), PenDown())
+    def runter(): List[TurtleCommand[Double]] = List(PenUp(), Right(90.0), Forward(20.0), Left(90.0), PenDown())
+    def springe(weite: Double): List[TurtleCommand[Double]] = List(PenUp(), Forward(weite), PenDown())
+
+    def vieleck(ecken: Int, laenge: Double): List[TurtleCommand[Double]] =
+      List.fill(ecken)(List(Forward(laenge), Left(360.0 / ecken))).flatten
+
+    def turm(n: Int): List[TurtleCommand[Double]] =
+      if n <= 0 then Nil else stein(40) ++ hoch() ++ turm(n - 1)
+
+    def pyramide(n: Int): List[TurtleCommand[Double]] =
+      if n <= 0 then Nil
+      else stein(n * 20) ++ hoch() ++ springe(10) ++ pyramide(n - 1) ++ springe(-10) ++ runter()
+
+    /** One brick per level; the next level starts two brick heights lower. */
+    def cantor(breite: Double, n: Int): List[TurtleCommand[Double]] =
+      stein(breite) ++ (if n <= 0 then Nil else
+        runter() ++ runter() ++ cantor(breite / 3, n - 1) ++ springe(2 * breite / 3) ++
+          cantor(breite / 3, n - 1) ++ springe(-2 * breite / 3) ++ hoch() ++ hoch())
+
+    def baum(laenge: Double, n: Int): List[TurtleCommand[Double]] =
+      if n <= 0 then Nil
+      else List(Forward(laenge), Left(30.0)) ++ baum(laenge * 0.6, n - 1) ++
+        List(Right(60.0)) ++ baum(laenge * 0.6, n - 1) ++ List(Left(30.0)) ++ springe(-laenge)
+  }
+
+  /** Target drawing of an editor task, recorded from its sample solution. */
+  def editorTarget(id: String): TurtleGraphic = {
+    import Sketch.*
+    val commands: List[TurtleCommand[Double]] = id match {
+      case "e1" => List(TurtleCommand.Forward(60.0), TurtleCommand.Left(90.0), TurtleCommand.Forward(20.0),
+        TurtleCommand.Left(90.0), TurtleCommand.Forward(60.0), TurtleCommand.Left(90.0), TurtleCommand.Forward(20.0))
+      case "e2" => stein(80) ++ hoch() ++ stein(60) ++ hoch() ++ stein(40)
+      case "e3" => vieleck(4, 60) ++ springe(100) ++ vieleck(6, 40)
+      case "e4" => turm(5)
+      case "e5" | "e6a" | "e6b" => pyramide(4) ++ springe(100) ++ pyramide(3)
+      case "e7" => cantor(270, 3)
+      case "e8" => List(TurtleCommand.Left(90.0)) ++ baum(80, 5)
+      case other => throw IllegalArgumentException(s"No editor target for $other")
+    }
+    TurtleGraphic(commands)
+  }
 
   /** Exact vector targets for the line and the first two Koch refinements.
    * Screen coordinates have y pointing down, so the triangular peak is above
@@ -207,7 +423,7 @@ object CreateMonksWorkbook {
   def kochTarget(depth: Int): TurtleLineBasedProgram = {
     require(depth >= 0 && depth <= 2, "This practice uses Koch depths 0, 1 and 2")
 
-    def segments(start: Point[Double], end: Point[Double], remaining: Int): Seq[Line[Double]] = {
+    def segments(start: Point[Double], end: Point[Double], remaining: Int): List[Line[Double]] = {
       if (remaining == 0) List(Line(start, end))
       else {
         val dx = (end.x - start.x) / 3

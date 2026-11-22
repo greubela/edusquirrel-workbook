@@ -266,6 +266,11 @@ object TurtleStitchToBeExpressionParser {
           case "doUntil" => Some(parseDoUntil(block, phaseOne))
           case "doSetVar" => Some(parseDoSetVar(block, phaseOne))
           case "doChangeVar" => Some(parseDoChangeVar(block, phaseOne))
+          case "doStopThis" => block.inputs.toList match {
+            case List(Literal("this block")) => Some(BeReturn(None))
+            case _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
+              "Only stop this block can be converted to a function return.")
+          }
           case "doReport" => Some(BeReturn(Some(block.inputs.headOption.map(parseInputValue(_, None, phaseOne)).getOrElse(BeExpression.pass))))
           case name if SnapControlFlow.isSnapValueReporter(name) =>
             Some(reporterExpressionFromModel(block, phaseOne))

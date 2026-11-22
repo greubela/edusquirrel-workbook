@@ -211,6 +211,7 @@ object SnapProjectXml {
     case whileExpr: BeWhile => renderDoUntil(whileExpr)
     case repeat: BeRepeatNr => renderRepeat(repeat)
     case forExpr: BeFor => renderDoFor(forExpr)
+    case BeReturn(None) => """<block s="doStopThis"><l><option>this block</option></l></block>"""
     case BeReturn(Some(value)) => s"""<block s="doReport">${renderReported(value)}</block>"""
     case _ => ""
   }

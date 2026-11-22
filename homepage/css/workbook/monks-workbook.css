@@ -5,6 +5,27 @@
     box-sizing: border-box;
 }
 
+/* The slide content holds the image and the dialogue: let it grow instead of clipping the text. */
+.monks-workbook .slide-deck-content.slide-deck-image {
+    display: block;
+    aspect-ratio: auto;
+    overflow: visible;
+}
+
+.monks-workbook .slide-deck-content img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 60vh;
+    margin: 0 auto;
+}
+
+.monks-workbook .slide-deck-content .markdown-content {
+    font-size: 1.05rem;
+    line-height: 1.6;
+}
+
 .monks-workbook .slide-deck-column {
     min-width: 0;
     overflow-wrap: anywhere;

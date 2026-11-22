@@ -5,6 +5,7 @@ import com.raquo.laminar.codecs.StringAsIsCodec
 import com.raquo.laminar.keys.HtmlAttr
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
+import it.evadid.homepage.workbook.htmlRenderer.InlineMarkdown
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.workbook.elements.interactionElements.table.*
 import it.evadid.workbook.interaction.sync.UpdateImportance
@@ -15,7 +16,7 @@ case object AnswerTableRenderer extends LineBasedRenderingFactory[AnswerTableInt
     val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
     def cell(row: Int, column: Int, config: AnswerTableCell): Element = config match {
-      case FixedTableCell(content) => td(text <-- laminarHelper.plaintextStringSignal(content))
+      case FixedTableCell(content) => td(InlineMarkdown.element(laminarHelper.plaintextStringSignal(content)))
       case editable: EditableTableCell =>
         val index = e.editableIndex(row, column).get
         val label = laminarHelper.plaintextStringSignal(e.rowLabels(row))
@@ -32,11 +33,11 @@ case object AnswerTableRenderer extends LineBasedRenderingFactory[AnswerTableInt
     }
     val dom = div(cls := "answer-table",
       div(cls := "answer-table__scroll", table(
-        caption(text <-- laminarHelper.plaintextStringSignal(e.caption)),
-        thead(tr(th(text <-- laminarHelper.plaintextStringSignal("digitalWorkbooks/tableRow")),
-          e.columnLabels.map(id => th(headerScope := "col", text <-- laminarHelper.plaintextStringSignal(id))))),
+        caption(InlineMarkdown.element(laminarHelper.plaintextStringSignal(e.caption))),
+        thead(tr(th(text <-- e.rowHeader.fold(laminarHelper.plaintextStringSignal("digitalWorkbooks/tableRow"))(id => laminarHelper.plaintextStringSignal(id))),
+          e.columnLabels.map(id => th(headerScope := "col", InlineMarkdown.element(laminarHelper.plaintextStringSignal(id)))))),
         tbody(e.rows.zipWithIndex.map((cells, row) => tr(
-          th(headerScope := "row", text <-- laminarHelper.plaintextStringSignal(e.rowLabels(row))),
+          th(headerScope := "row", InlineMarkdown.element(laminarHelper.plaintextStringSignal(e.rowLabels(row)))),
           cells.zipWithIndex.map((config, column) => cell(row, column, config)))))
       )),
       p(cls := "answer-table__feedback", role := "status", aria.live := "polite",

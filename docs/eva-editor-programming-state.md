@@ -14,6 +14,14 @@ answer, rather than resuming an inactive editor with a stale draft.
 Language transformations live in shared core under [`vm.conversion`](programming-conversions.md).
 Use the direct conversion methods on `ProgrammingState`; its owned derivations cache parsing and target projections.
 
+Exercise and panel interfaces accept `ProgrammingState`; authored starter programs
+and language editors use its typed representations wherever possible:
+`ProgrammingStateJavaStructured`, `ProgrammingStatePythonStructured` and
+`ProgrammingStateSnapScalaModel`. Reserve `ProgrammingStateRaw` for boundaries
+that strictly require source text or XML, rather than using it as the default
+answer representation. An unfinished method can remain in a structured Java
+class; incomplete text alone does not require a raw state.
+
 The central Var is the answer. A change is a change, regardless of whether it
 comes from an editor, restoration, conversion or another component. Use signals
 to observe it. Do not add `onStateEdited`, input-listener constructor arguments,

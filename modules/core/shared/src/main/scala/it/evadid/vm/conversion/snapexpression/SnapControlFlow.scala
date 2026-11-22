@@ -124,6 +124,7 @@ object SnapControlFlow {
         isSupportedAssignment(assign, userFunctions)
       case BeReturn(Some(value)) =>
         isSupportedValue(value, userFunctions) || isSupportedCondition(value, userFunctions)
+      case BeReturn(None) => true
       case ifElse: BeIfElse =>
         isSupportedConditionSequence(ifElse.condition, userFunctions) &&
           bodyHasSupported(ifElse.thenBody, userFunctions) &&
@@ -166,8 +167,7 @@ object SnapControlFlow {
       case BeReturn(Some(value)) =>
         if isSupportedValue(value, userFunctions) || isSupportedCondition(value, userFunctions) then None
         else Some("return ...")
-      case BeReturn(None) =>
-        Some("return without a value")
+      case BeReturn(None) => None
       case variable: BeDefineVariable =>
         variable.initValue.flatMap(value => describeUnsupportedStatement(BeAssignVariable(variable, value), userFunctions))
       case ifElse: BeIfElse =>

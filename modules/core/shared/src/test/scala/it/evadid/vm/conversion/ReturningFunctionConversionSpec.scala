@@ -66,10 +66,28 @@ class ReturningFunctionConversionSpec extends FunSuite {
     assert(java.contains("static double half(double v)"), java)
   }
 
-  test("a return without a value has no Snap representation and is reported") {
-    val program = ProgrammingStateRaw(Python, "def stop_early(n: float) -> None:\n    if n > 3:\n        return\n    forward(n)\n\nstop_early(2)\n")
-    val result = program.convertToLanguage(SnapLanguage)
-    assertEquals(result.finalState, None)
-    assert(result.conversionInfo.exists(_.warningMsg.contains("return without a value")), result.conversionInfo.toString)
+  test("a command's early return uses stop this block and returns to its caller") {
+    val program = ProgrammingStatePythonStructured("def stop_early(n: float) -> None:\n    if n > 3:\n        return\n    forward(n)\n\nstop_early(5)\nstop_early(2)\nforward(9)\n")
+    val snap = convert(program, SnapLanguage)
+    assert(snap.toSnapXml.code.contains("<option>this block</option>"))
+    assertEquals(turtle(snap), List[TurtleCommand[Double]](Forward(2), Forward(9)))
+    assertEquals(turtle(convert(snap, Python)), turtle(program))
+    assertEquals(turtle(convert(snap, Java)), turtle(program))
+  }
+
+  test("an early return inside a loop exits the function rather than only the loop") {
+    val program = ProgrammingStatePythonStructured("def draw(n: float) -> None:\n    while n > 0:\n        if n == 2:\n            return\n        forward(n)\n        n = n - 1\n    forward(99)\n\ndraw(3)\nforward(8)\n")
+    val snap = convert(program, SnapLanguage)
+    assertEquals(turtle(snap), List[TurtleCommand[Double]](Forward(3), Forward(8)))
+    assertEquals(turtle(convert(snap, Java)), turtle(program))
+    assertEquals(turtle(convert(snap, Python)), turtle(program))
+  }
+
+  test("other stop choices cannot silently become a function return") {
+    for choice <- List("all", "this script", "other scripts in sprite", "") do {
+      val xml = s"""<script><block s="doStopThis"><l><option>$choice</option></l></block></script>"""
+      val state = it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec.parse(xml).fold(fail(_), ProgrammingStateSnapScalaModel(_))
+      assert(state.convertToLanguage(Python).finalState.isEmpty, choice)
+    }
   }
 }

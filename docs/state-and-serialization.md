@@ -88,11 +88,10 @@ Use `bimap` when the two conversions express a valid view of the same value:
 
 ```scala
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
-import it.evadid.core.datastructures.language.AppLanguage.Python
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
 
 def pythonView(program: Var[ProgrammingState]): Var[String] =
-  program.bimap(_.toPython.code)(code => ProgrammingStateRaw(Python, code))
+  program.bimap(_.toPythonStructured.toString)(code => ProgrammingStatePythonStructured(code))
 ```
 
 This pattern is suitable when the selected editor is bound to its native

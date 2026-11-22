@@ -86,6 +86,9 @@ final class MarkdownToHtml {
       isHeading(trimmed) || trimmed.startsWith(">") || isListLine(trimmed)
   }
 
+  /** Inline markup only (emphasis, code, links) without paragraph or block wrappers, for labels and cells. */
+  def transformInline(text: String): String = parseInline(text)
+
   private def parseInline(text: String): String = {
     // Protect literal punctuation, code and generated tags from subsequent markup passes.
     // Choose a prefix absent from the input so user text can never become a placeholder.
@@ -184,4 +187,6 @@ object MarkdownToHtml {
   private val parser = new MarkdownToHtml
 
   def transform(markdown: String): String = parser.transform(markdown)
+
+  def transformInline(text: String): String = parser.transformInline(text)
 }

@@ -34,4 +34,22 @@ class JavaTurtleArithmeticSpec extends FunSuite {
     assertEquals(JavaTurtlePythonExport.doubleLiteral(2.0), "2.0")
     assertEquals(JavaTurtlePythonExport.doubleLiteral(1e300).toDouble, 1e300)
   }
+  test("left turns and pen commands retain their typed drawing commands and report values") {
+    val compiled = program("Turtle.penUp(); Turtle.turnLeft(90); Turtle.forward(20); Turtle.turnRight(90); Turtle.penDown();")
+    val execution = JavaTurtleInterpreter.runVm(compiled)
+    assertEquals(execution.status, JavaTurtleInterpreter.Status.Completed)
+    import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
+    assertEquals(execution.commands.map(_.toDrawingCommand), Vector[TurtleCommand[Double]](
+      TurtleCommand.PenUp(), TurtleCommand.Left(90), TurtleCommand.Forward(20), TurtleCommand.Right(90), TurtleCommand.PenDown()))
+    val exported = JavaTurtlePythonExport.render(compiled).source
+    assert(exported.contains("_command(\"penup\", 0)"))
+    assert(exported.contains("_command(\"pendown\", 0)"))
+    assert(exported.contains("_command(\"left\","))
+  }
+
+  test("pen commands reject arguments and turns require a numeric argument") {
+    for call <- List("Turtle.penUp(1);", "Turtle.penDown(0);", "Turtle.turnLeft();", "Turtle.turnLeft(true);") do
+      assert(JavaTurtleCompiler.compile(s"class Main { public static void main(String[] args) { $call } }").isLeft, call)
+  }
+
 }

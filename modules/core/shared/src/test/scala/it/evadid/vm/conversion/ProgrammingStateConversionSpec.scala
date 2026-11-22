@@ -306,10 +306,9 @@ class ProgrammingStateConversionSpec extends FunSuite {
     }
   }
 
-  test("generic Python expression states with returns reject Snap without mutation") {
+  test("generic Python reporter functions with untyped outputs reject Snap without mutation") {
     List(
-      "def value(n):\n    return n\nvalue(2)\n",
-      "def draw(n):\n    while n > 0:\n        if n == 2:\n            return\n        forward(n)\n        n = n - 1\ndraw(3)\n"
+      "def value(n):\n    return n\nvalue(2)\n"
     ).foreach { source =>
       val raw = ProgrammingStateRaw(Python, source)
       val rawFingerprint = raw.fingerprint()

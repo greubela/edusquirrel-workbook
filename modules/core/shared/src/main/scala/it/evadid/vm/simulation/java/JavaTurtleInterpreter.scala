@@ -1,6 +1,7 @@
 package it.evadid.vm.simulation.java
 
 import it.evadid.core.datastructures.state.State
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleProgram as P}
 import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleTrace as J}
 import scala.collection.mutable
@@ -17,7 +18,16 @@ object JavaTurtleInterpreter {
     case Failed(problem: Failure)
   }
 
-  case class Command(command: R.TurtleCommand, value: Double)
+  /** One emitted turtle call. Commands without an argument (pen up/down) carry the value 0. */
+  case class Command(command: R.TurtleCommand, value: Double) {
+    def toDrawingCommand: TurtleCommand[Double] = command match {
+      case R.TurtleCommand.Forward => TurtleCommand.Forward(value)
+      case R.TurtleCommand.TurnRight => TurtleCommand.Right(value)
+      case R.TurtleCommand.TurnLeft => TurtleCommand.Left(value)
+      case R.TurtleCommand.PenUp => TurtleCommand.PenUp()
+      case R.TurtleCommand.PenDown => TurtleCommand.PenDown()
+    }
+  }
   case class Execution(status: Status, commands: Vector[Command], steps: Int)
 
   object Limits {
@@ -327,8 +337,9 @@ object JavaTurtleInterpreter {
         target match {
           case R.CallTarget.Helper(id) => start(id, values.map(_.value), node = Some(node), dependencies = values.map(_.dependency))
           case R.CallTarget.Turtle(command) => values.map(_.value) match {
-            case Vector(E.Value.IntValue(value)) => emit(frame, node, command, value.toDouble, values.head.dependency)
-            case Vector(E.Value.DoubleValue(value)) => emit(frame, node, command, value, values.head.dependency)
+            case Vector() if command.arity == 0 => emit(frame, node, command, 0.0, None)
+            case Vector(E.Value.IntValue(value)) if command.arity == 1 => emit(frame, node, command, value.toDouble, values.head.dependency)
+            case Vector(E.Value.DoubleValue(value)) if command.arity == 1 => emit(frame, node, command, value, values.head.dependency)
             case _ => Left(status(E.Failure.TypeMismatch))
           }
         }

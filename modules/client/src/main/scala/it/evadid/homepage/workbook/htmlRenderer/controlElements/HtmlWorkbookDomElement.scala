@@ -76,6 +76,9 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
 
   }
 
+  /** The privacy notice can be closed with its cross; it shows again after a page reload. */
+  private lazy val privacyFooterClosed: Var[Boolean] = Var(false)
+
   private def createDomElement(bodyDom: Element): Seq[Element] = List(
     div(
       cls := "workbook-header",
@@ -84,9 +87,18 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
     bodyDom,
     footerTag(
       cls := "workbook-footer",
+      display <-- privacyFooterClosed.signal.map(closed => if closed then "none" else ""),
       div(
         cls := "workbook-footer-content",
-        span(text <-- privacyFooterStringSignal)
+        span(text <-- privacyFooterStringSignal),
+        button(
+          typ := "button",
+          cls := "workbook-footer-close",
+          aria.label <-- laminarHelper.plaintextStringSignal("login/privacyFooterClose"),
+          title <-- laminarHelper.plaintextStringSignal("login/privacyFooterClose"),
+          "×",
+          onClick --> { _ => privacyFooterClosed.set(true) }
+        )
       )
     )
   )

@@ -14,48 +14,71 @@ in four-frame sheets, mechanically separated and exported as individual images.
 The separate artwork under `resources/img/art/marie/monkworkbook/` uses a
 different style and is not mixed into the slideshow.
 
-The theater now has 69 frames and the tower continuation has 17. Each frame has
-one dialogue pane: one speaking turn with that speaker's mouth open, or `...`
-with everyone silent. Speech and actions are separate frames. Shared artwork
-is used only with the same caption (for example, the master's “In der Tat!”).
-There is no stage-direction pane.
+The theater is aggregated into 13 slides and the tower continuation into 4
+(`CreateMonksWorkbook.theaterScenes` / `countingScenes`). Each slide shows one key
+image from the `beats/` set with the dialogue lines of that part of the story
+below it, plus short italic narration lines (`narr-*` keys) that replace the
+action-only frames. Unused beat images remain available in the folder.
 
-Each card selection shows the tray before lifting, the lift, and the retained
-card. Each return shows the retained card at the right, moving left, and resting
+The full beat-image asset set contains the tray before lifting, the lift, and the retained
+card for each selection. Each return shows the retained card at the right, moving left, and resting
 at the left. Shifting the smaller cards right is a separate action. The result
 is **9, 7, 4, 2** from left to right, matching the script's insertion of each
 retained maximum at the left. These illustrative values are not prescribed by
 the source PDF.
 
-The counting story uses three bricks: red above yellow above blue. Removing a
-brick, placing it aside, and drawing its tally each have a separate image. The
+The counting artwork uses three bricks: red above yellow above blue. Removing a
+brick, placing it aside, and drawing its tally each have a separate available image. The
 last frame shows the empty tower position and three tally marks.
 
-The fifteen text responses keep their original task IDs (1b–1g and 2b–2j).
-A fourth section adds three independent `TurtleRecreateShapeInteraction`
-exercises, `monks-koch-0` through `monks-koch-2`: a straight line, one triangular
-bump, and the next Koch iteration. Each starts unsolved and supports the Python
-and block editors, including user-defined recursive functions. Targets contain
-1, 4 and 16 connected segments, with total horizontal extent 270.
+## Structure
 
-Model, recursion and serialization checks:
+`CreateMonksWorkbook` builds five sections with stable element IDs (`monks-a2`, `monks-e5`, ...).
+Displayed task titles are numbered per section ("Aufgabe 2.3" / "Task 2.3") in the language maps and
+are independent of the element IDs.
 
-```
-sbt 'client/testOnly *MonksWorkbookSpec' 'coreJVM/testOnly *TurtleProgramAnalysisSpec'
-node tools/dev/monks-workbook.test.mjs
-```
+| Section | Content |
+| --- | --- |
+| `monks-story` (0) | Theater slideshow, recursion scheme, tasks A1–A4, the story as code (`ac`: one method with four gaps), A5–A8 (tasks 0.1–0.9) |
+| `monks-tower` (1) | Counting slideshow (story ending in the last slide), tasks C1–C5 (1.1–1.5) |
+| `monks-editor` (2) | Editor introduction; E1–E3 (tasks 2.1–2.3) introduce the brick methods `stein`, `hoch`, `runter`, `springe` |
+| `monks-bridge` (3) | Drawing recursively with bricks: E4–E6b, D1, E7 (Cantor wall), E8 (3.1–3.7) |
+| `monks-koch` (4) | Koch curve practice (4.1–4.3) |
 
-After `buildClientDev`, the optional browser check navigates every story frame
-and solves all three Koch targets, checking that code survives reopening:
+Task types map to existing interactions: `ChoiceInteraction` (choice, multiple select and one
+row per assignment), `AnswerTableInteraction` (graded inputs; accepted spellings separated by `|`)
+and `ReorderMapIdInteraction`. Language-map keys derive from the task ID (`<id>-question`,
+`<id>-opt<i>`, `<id>-row<i>`). Code snippets are language-dependent (German or English identifiers
+and comments) and live in `map-de.json` / `map-en.json`; `map-universal.json` holds image paths and
+names that need no translation.
 
-```
-MONKS_BROWSER_TEST=1 node tools/dev/monks-workbook.test.mjs
-```
+The programming tasks E1–E8 are `TurtleRecreateShapeInteraction`s with Java starting code
+(`CreateMonksWorkbook.EditorCode`; from E4 on the brick methods from section 2 are prefilled). Each target drawing is
+recorded from the sample solution (`CreateMonksWorkbook.editorTarget`) with the same helper
+methods, so the strokes match what the checked Java runner emits. The runner supports
+`Turtle.forward`, `Turtle.turnRight`, `Turtle.turnLeft`, `Turtle.penUp` and `Turtle.penDown`.
+Starter programs are `ProgrammingStateJavaStructured`; the Koch tasks start with
+`ProgrammingStateSnapScalaModel.empty`. Exercise interfaces accept `ProgrammingState`.
+`RecreateTurtleDidacticConfig` restricts the editor to Snap! and Java; no separate
+language configuration is added to the interaction. An early Java `return;` maps
+to Snap's native `stop this block`, returning from the current call only.
+Grading uses the default stroke policy: pen-up moves are ignored, duplicated strokes count as
+unexpected, so returning along a drawn line must happen with the pen lifted (`springe`).
 
-It requires Chromium (`CHROMIUM_PATH`, default `/usr/bin/chromium`). The local
-routing fixture blocks external requests; `CODEMIRROR_TEST_BUNDLE` can point to
-a bundle of `homepage/js/CodeMirrorLoader.js` using its pinned CDN packages for
-an offline editor check.
+## Validation
+
+`MonksWorkbookSpec` checks the typed starter states, conversion of every Java starter
+to Snap, bounded execution of the missing-base-case task, and the solved pyramid's
+commands before and after Snap conversion. `WorkbookDefinitionsSpec` covers the
+workbook's definition and history serializers, including custom table headers.
+`tools/dev/monks-workbook.browser.test.mjs` exercises both stories, table headings,
+inline code choices and Java/Snap editing through the current renderer.
+
+## Open items
+
+- E6a relies on the Java runner's call-depth limit reporting an execution limit.
+- Unit-test tasks, recursion-versus-loop checks and further story images are not part of this edition.
+- The Danish texts were machine-translated and still need proofreading.
 
 The homepage card uses the separate square promotional tablet mock-up at
 `resources/img/art/mockup/monks-workbook.png`; it is not part of the slideshow.
