@@ -16,14 +16,14 @@ import scala.concurrent.Future
 import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-class JavaStructuredFunctionBasedEditorSpec extends EditorDomSuite {
+class JavaStructuredMethodEditorSpec extends EditorDomSuite {
   private val logger = Logger.withNameAndPrefixes(Some("structured-editor-test"), PrintToStdLogger.printNothing)
   private val code = "class Helper { void other() {} }\n\nclass Main { static void helper() {} static void main(String[] args) { forward(10); } }"
   private def field = dom.document.querySelector("textarea").asInstanceOf[dom.html.TextArea]
   private def edited(): Unit = field.dispatchEvent(js.Dynamic.newInstance(
     dom.window.asInstanceOf[js.Dynamic].Event)("input", js.Dynamic.literal(bubbles = true)).asInstanceOf[dom.Event])
   private def withEditor(state: Var[ProgrammingStateJavaStructured])(body: => Future[Unit]): Future[Unit] = {
-    val close = mount(new JavaStructuredFunctionBasedEditor(logger, state).getDomElement())
+    val close = mount(new JavaStructuredMethodEditor(logger, state).getDomElement())
     Future.unit.flatMap(_ => body).andThen { case _ => close() }
   }
 
@@ -73,10 +73,10 @@ class JavaStructuredFunctionBasedEditorSpec extends EditorDomSuite {
   }
 
   test("structured selection prefers Main and leaves the string editor's public-main rule intact") {
-    assertEquals(JavaFunctionBasedEditor.initialFunction(code), None)
-    assertEquals(JavaFunctionBasedEditor.initialFunction(code, requirePublicMain = false).map(_.name), Some("main"))
+    assertEquals(JavaMethodSource.initialMethod(code), None)
+    assertEquals(JavaMethodSource.initialMethod(code, requirePublicMain = false).map(_.name), Some("main"))
     val withOtherMain = "class Other { public static void main(String[] args) {} }\n" + code
-    assertEquals(JavaFunctionBasedEditor.initialFunction(withOtherMain, requirePublicMain = false).map(_.className), Some("Main"))
+    assertEquals(JavaMethodSource.initialMethod(withOtherMain, requirePublicMain = false).map(_.className), Some("Main"))
   }
 
   test("Eva switches between the structured Java tab and the unchanged Python string editor") {
@@ -86,7 +86,7 @@ class JavaStructuredFunctionBasedEditorSpec extends EditorDomSuite {
     val state = Var[ProgrammingState](ProgrammingStateJavaStructured(code))
     val config = CodeMirrorEditorConfig.Default
     val editor = EvaEditor(logger, state, Nil, Var(EvaEditorConfig(enabledLanguages = List(Java, Python))),
-      Some(List(JavaStructuredFunctionBasedEditor.forEvaTab(logger, config), CodeMirrorEditor.pythonEditorForEva(logger, config))),
+      Some(List(JavaStructuredMethodEditor.forEvaTab(logger, config), CodeMirrorEditor.pythonEditorForEva(logger, config))),
       labels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading"), it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_"))))
     val close = mount(editor.getDomElement())
     editor.setActiveTab(Python).flatMap { _ =>

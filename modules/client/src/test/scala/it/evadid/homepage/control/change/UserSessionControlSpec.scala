@@ -17,7 +17,7 @@ import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Sign-in, registration and session changes against an in-memory backend. */
-class HomepageUsageControlSpec extends EditorDomSuite {
+class UserSessionControlSpec extends EditorDomSuite {
   private given ExecutionContext = ExecutionContext.global
   override protected def jsdomGlobals: List[String] = super.jsdomGlobals :+ "localStorage"
   private val backend = FakeBackend()
@@ -34,7 +34,7 @@ class HomepageUsageControlSpec extends EditorDomSuite {
   }
 
   test("registration validates mail and name, reports refused accounts and signs in with the issued token") {
-    val control = page().usageControl
+    val control = page().userSessionControl
     val issued = Var(Vector.empty[CreateAccountRequest])
     val responses = Var(List(CreateAccountResponse(false, None), CreateAccountResponse(true, None)))
     backend.answer(UserCommands.createAccountCommand) { request =>
@@ -63,7 +63,7 @@ class HomepageUsageControlSpec extends EditorDomSuite {
   }
 
   test("signing in with an access token reports unknown users, invalid tokens and missing accounts") {
-    val control = page().usageControl
+    val control = page().userSessionControl
     val token = SingleAccessToken("123456")
     val logins = Var(Vector.empty[LoginRequest])
     val responses = Var(List(LoginResponse(false, false, None), LoginResponse(true, false, None), LoginResponse(true, true, None)))
@@ -92,7 +92,7 @@ class HomepageUsageControlSpec extends EditorDomSuite {
   }
 
   test("an unreachable backend fails the login with a readable error") {
-    val control = page().usageControl
+    val control = page().userSessionControl
     control.tryLoginWith("ada@school.example", SingleAccessToken("1")).failed.map { error =>
       assert(error.getMessage.contains("503"), error.getMessage)
       assertEquals(control.fullInfo.current.userInfo, None)
@@ -101,7 +101,7 @@ class HomepageUsageControlSpec extends EditorDomSuite {
 
   test("automatic login restores a saved local profile, but needs a token for online accounts") {
     val local = AllUserInfo.createNewUser("Local Learner", "local@school.example", localConfig)
-    val control = page().usageControl
+    val control = page().userSessionControl
     for {
       nothing <- control.tryAutoLogin().failed.map(_.getMessage)
       _ = dom.window.localStorage.setItem("edusquirrel-alluserinfo", write(SavedUserPreferences(student.user, student.config)))
@@ -117,7 +117,7 @@ class HomepageUsageControlSpec extends EditorDomSuite {
   }
 
   test("login-or-registration falls back to a local profile when the backend refuses, and creates anonymous profiles") {
-    val control = page().usageControl
+    val control = page().userSessionControl
     val offline = control.tryLoginOrLocalRegistration(Some(student.user), Some(student.config)).map { _ =>
       val user = control.fullInfo.current.userInfo.get
       assertEquals(user.user, student.user, "the session's user continues locally")
@@ -125,7 +125,7 @@ class HomepageUsageControlSpec extends EditorDomSuite {
     }
     for {
       _ <- offline
-      anonymous = page().usageControl
+      anonymous = page().userSessionControl
       _ <- anonymous.tryLoginOrLocalRegistration(None, None)
     } yield {
       val user = anonymous.fullInfo.current.userInfo.get
@@ -136,7 +136,7 @@ class HomepageUsageControlSpec extends EditorDomSuite {
 
   test("changing users resets the feedback session; repeating a change or signing out keeps state consistent") {
     val info = page()
-    val control = info.usageControl
+    val control = info.userSessionControl
     val first = AllUserInfo.createNewUser("First", "first@school.example", localConfig)
     val second = AllUserInfo.createNewUser("Second", "second@school.example", localConfig)
     val session = info.feedbackSession.now()
@@ -159,13 +159,13 @@ class HomepageUsageControlSpec extends EditorDomSuite {
 
   test("credentials, display, language and workbook settings change only the page's state") {
     val info = page()
-    val control = info.usageControl
+    val control = info.userSessionControl
     val user = AllUserInfo.createNewUser("Cred", "cred@school.example", localConfig)
-    control.changeDisplay(_.copy(collapsedNavigation = true))
+    info.displayControl.updateDisplay(_.copy(collapsedNavigation = true))
     assert(info.homepageInfoNow().displayInfo.collapsedNavigation)
-    control.changeLanguage(AppLanguage.German)
+    info.displayControl.changeLanguage(AppLanguage.German)
     assertEquals(info.homepageInfoNow().currentLanguage, AppLanguage.German)
-    control.updateWorkbookConfig(identity)
+    info.workbookNavigationControl.updateWorkbookConfig(identity)
     assertEquals(info.homepageInfoNow().workbookInfo, None, "no workbook, nothing to configure")
     val llm = it.evadid.llm.LlmConfiguration("http://localhost:1234/v1/chat/completions", "local-model", None, Some(100))
     for {

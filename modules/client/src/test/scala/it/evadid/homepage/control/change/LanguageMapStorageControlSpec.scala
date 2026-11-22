@@ -26,7 +26,7 @@ class LanguageMapStorageControlSpec extends EditorDomSuite {
     assert(text(info, "emailSimulator/title").contains("Language data loading"))
     info.contentControl.languageStorage.ensureStartup(STARTUP_STRATEGY.CONTINUE_AFTER_FULL_LOAD).map { _ =>
       assertEquals(text(info, "emailSimulator/title"), "Mail Simulator")
-      info.usageControl.changeLanguage(AppLanguage.German)
+      info.displayControl.changeLanguage(AppLanguage.German)
       assertEquals(text(info, "emailSimulator/title"), "Mail-Simulator")
       val requested = site.requested.now()
       assert(requested.contains("/resources/languageMaps/eva/emailSimulator/map-de.json"), requested.take(5).toString)

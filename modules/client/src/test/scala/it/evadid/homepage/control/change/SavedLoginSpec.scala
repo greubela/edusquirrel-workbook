@@ -14,7 +14,7 @@ import upickle.default.write
 /** The saved login in browser storage holds the user and public settings only, and is discarded when unusable. */
 class SavedLoginSpec extends EditorDomSuite {
   private val key = "edusquirrel-alluserinfo"
-  private def control = FullInfo(HomepageInfo(AppLanguage.English, None, None, AllDisplayInfo(false, None), LanguageMapStorage.empty)).usageControl
+  private def control = FullInfo(HomepageInfo(AppLanguage.English, None, None, AllDisplayInfo(false, None), LanguageMapStorage.empty)).userSessionControl
   override def beforeEach(context: BeforeEach): Unit = dom.window.localStorage.clear()
 
   private val credentials = DatabaseConfigWithCredentials("mysql", "db.example", "3306", "school", "private-user", "private-password")
@@ -23,7 +23,7 @@ class SavedLoginSpec extends EditorDomSuite {
 
   test("a saved login restores the user and settings, never credentials") {
     dom.window.localStorage.setItem(key, write(SavedUserPreferences(user.user, user.config.withoutCredentials)))
-    val restored = control.tryParsingExistingUser().getOrElse(fail("the saved login was not restored"))
+    val restored = control.loadSavedProfile().getOrElse(fail("the saved login was not restored"))
     assertEquals(restored.user, user.user)
     assertEquals(restored.config, user.config.withoutCredentials)
     assertEquals(restored.credentials, UserCredentials())
@@ -32,7 +32,7 @@ class SavedLoginSpec extends EditorDomSuite {
 
   test("no saved login reads as none and leaves storage alone") {
     dom.window.localStorage.setItem("unrelated", "kept")
-    assertEquals(control.tryParsingExistingUser(), None)
+    assertEquals(control.loadSavedProfile(), None)
     assertEquals(dom.window.localStorage.getItem("unrelated"), "kept")
   }
 
@@ -42,7 +42,7 @@ class SavedLoginSpec extends EditorDomSuite {
     List("{not json", "[]", """{"user": {}, "config": {}}""", ujson.write(withCredentials)).foreach { saved =>
       dom.window.localStorage.setItem(key, saved)
       dom.window.localStorage.setItem("unrelated", "kept")
-      assertEquals(control.tryParsingExistingUser(), None, saved)
+      assertEquals(control.loadSavedProfile(), None, saved)
       assertEquals(dom.window.localStorage.getItem(key), null, s"the unusable entry is removed: $saved")
       assertEquals(dom.window.localStorage.getItem("unrelated"), "kept")
     }

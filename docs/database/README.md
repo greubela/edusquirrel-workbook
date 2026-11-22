@@ -49,7 +49,10 @@ and stop-on-error behavior; schema changes require a separately reviewed operati
 | Class | Responsibility |
 | --- | --- |
 | [DatabaseSqlScripts](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSqlScripts.scala) | Parses the packaged schema and exposes application table definitions |
-| [EnsureDatabaseProperlySetup](../../modules/server/src/main/scala/it/evadid/server/database/EnsureDatabaseProperlySetup.scala) | Inspects metadata, reports missing/incompatible structures, and explicitly initializes empty databases |
+| [DatabaseSchemaInspector](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaInspector.scala) | Reads metadata and compares it with the SQL script through pure schema comparison |
+| [DatabaseSchemaMetadata](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaMetadata.scala) | Reads JDBC/MySQL metadata into named column, key and table values |
+| [DatabaseSchemaComparison](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaComparison.scala) | Pure comparison and diagnostics, independently testable without a database |
+| [DatabaseSchemaSetup](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaSetup.scala) | Explicit initialization, guarded against any existing tables, views or routines |
 | [DatabaseRequestConnection](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseRequestConnection.scala) | Resolves connection configuration and verifies the selected layout's required schema |
 
 Inspection reads metadata, not application rows. `setupIfEmpty` requires a dedicated

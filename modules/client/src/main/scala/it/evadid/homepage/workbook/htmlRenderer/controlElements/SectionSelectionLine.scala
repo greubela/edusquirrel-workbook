@@ -12,7 +12,7 @@ private case class SectionSelectionLine(workbook: AllWorkbookInfo) extends HtmlA
   private def sections: Seq[WorkbookSection] = workbook.loadedWorkbook.sections
 
   private def selectSection(section: WorkbookSection): Unit = {
-    fullInfo.usageControl.updateWorkbookConfig(_.copy(activeSection = Some(section)))
+    fullInfo.workbookNavigationControl.updateWorkbookConfig(_.copy(activeSection = Some(section)))
   }
 
   private def isSectionActiveSignal(section: WorkbookSection): Signal[Boolean] = {

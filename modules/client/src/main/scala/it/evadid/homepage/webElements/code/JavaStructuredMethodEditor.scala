@@ -16,7 +16,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.*
   * Text that parses to the current structured state is left as typed, so formatting the
   * structure cannot represent (trailing blank lines, comment placement) is not rewritten mid-edit.
   */
-final class JavaStructuredFunctionBasedEditor(
+final class JavaStructuredMethodEditor(
     logger: Logger,
     val state: Var[ProgrammingStateJavaStructured],
     reference: Option[() => Element] = None,
@@ -29,7 +29,7 @@ final class JavaStructuredFunctionBasedEditor(
     case ProgrammingStateRaw(Java, code) => ProgrammingStateJavaStructured(code)
     case other => other.toJavaStructured
   }
-  private val editor = new JavaFunctionBasedEditor(logger, source, reference, appearance,
+  private val editor = new JavaMethodEditor(logger, source, reference, appearance,
     editorConfig, conversionMarker, loadingLabel, requirePublicMain = false,
     sameSource = (left, right) => left == right || ProgrammingStateJavaStructured(left) == ProgrammingStateJavaStructured(right))
 
@@ -37,7 +37,7 @@ final class JavaStructuredFunctionBasedEditor(
   override def getDomElement(): Element = editor.getDomElement()
 }
 
-object JavaStructuredFunctionBasedEditor {
+object JavaStructuredMethodEditor {
   def forEvaTab(logger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Java"): EvaEditorTab = new EvaEditorTab {
     override val language = it.evadid.core.datastructures.language.AppLanguage.Java
     override val label = tabLabel
@@ -55,7 +55,7 @@ object JavaStructuredFunctionBasedEditor {
         case value @ ProgrammingStateRaw(Java, _) => value.toJavaStructured
         case _ => ProgrammingStateJavaStructured(Map.empty)
       }(identity)
-      new JavaStructuredFunctionBasedEditor(logger, structured, appearance = Some(appearance),
+      new JavaStructuredMethodEditor(logger, structured, appearance = Some(appearance),
         editorConfig = config, conversionMarker = marker, loadingLabel = loading)
     }
   }

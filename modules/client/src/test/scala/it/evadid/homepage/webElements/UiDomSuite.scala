@@ -78,7 +78,7 @@ trait UiDomSuite extends EditorDomSuite {
     val section = WorkbookSection("ui-section", WorkbookSectionMetadata(LanguageMapContentId("ui/section")), interactions)
     val workbook = Workbook("ui/workbook", WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("ui/title"),
       Seq(AppLanguage.English)), Seq(section))
-    val control = HtmlFullWorkbookApp.fullInfo.usageControl
+    val control = HtmlFullWorkbookApp.fullInfo.workbookNavigationControl
     control.changeWorkbook(Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)))
     try body finally control.changeWorkbook(None)
   }

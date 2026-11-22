@@ -9,7 +9,7 @@ This allows servers to exchange histories for workbooks they do not know.
 | `SerializedWorkbook` (`workbook.jsonFactory`) | Root ID and serialized element definitions; collects children and section prerequisites, rejecting conflicting IDs |
 | `WorkbookElementFactory` | Encodes element definitions and resolves graph references when reconstructing elements |
 | `SessionData` (`homepage.control.info`) | Save timestamp, user identity, public user configuration, workbook definition and `Map[SyncContext, InteractionHistoryJson]` |
-| `WorkbookUserDataAnalyzer` / `HomepageUsageControl` | Export/download and login/import orchestration |
+| `WorkbookUserDataAnalyzer` / `UserSessionControl` | Export/download and login/import orchestration |
 
 `Workbook` and `WorkbookSection` supply explicit companion `given ReadWriter`
 instances; they do not need `derives ReadWriter`. These delegate to the
@@ -45,7 +45,7 @@ def exportSession(info: HomepageInfo): Option[String] =
 ```
 
 `createSessionData` returns `None` without a workbook or user. The UI imports through
-`HomepageUsageControl.tryContinueWithSessionFile`, which parses the file and calls
+`UserSessionControl.tryContinueWithSessionFile`, which parses the file and calls
 `continueWithSession`: it signs in as the session's user if needed, opens the session's
 workbook (the open one when it has the same ID, else the definition stored in the file)
 and calls `Workbook.restoreHistories`. A workbook restores only histories whose context
@@ -66,3 +66,12 @@ the session in a fresh client. Shared tests run on both JVM and Scala.js:
 sbt 'coreJVM/testOnly *WorkbookSerializerSpec' 'coreJS/testOnly *WorkbookSerializerSpec'
 sbt 'client/testOnly *WorkbookDefinitionsSpec *SessionDataRoundTripSpec'
 ```
+
+## Client ownership
+
+`FullInfo.userSessionControl` handles authentication and user transitions;
+`UserSessionStorage` owns browser persistence. `workbookNavigationControl` handles
+workbook/section changes, and `displayControl` handles display and language changes.
+Call these owners directly. User transitions still invalidate feedback and reset
+interaction bindings when the person changes; browser storage keys and schemas
+are unchanged by this separation.

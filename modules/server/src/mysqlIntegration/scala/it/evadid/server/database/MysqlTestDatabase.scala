@@ -28,7 +28,7 @@ object MysqlTestDatabase {
 
   def reset(connection: Connection): Unit = {
     clearSchema(connection)
-    val report = EnsureDatabaseProperlySetup.setupIfEmpty(connection)
+    val report = DatabaseSchemaSetup.setupIfEmpty(connection)
     require(report.valid, report.toString)
   }
 }

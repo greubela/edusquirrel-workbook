@@ -128,7 +128,7 @@ class InteractionReportersSpec extends EditorDomSuite {
     val owner = new ManualOwner
     try {
       val selected = Var(Option.empty[AllWorkbookInfo])
-      selected.signal.changes.foreach(full.usageControl.changeWorkbook)(using owner)
+      selected.signal.changes.foreach(full.workbookNavigationControl.changeWorkbook)(using owner)
       val rendered = full.signals.workbook.combineWith(full.signals.interactionReporters).map { (loaded, _) =>
         loaded.toSeq.flatMap(_.loadedWorkbook.allContainedInteractionsById.values).map(full.signals.reportersFor)
       }.observe(using owner)

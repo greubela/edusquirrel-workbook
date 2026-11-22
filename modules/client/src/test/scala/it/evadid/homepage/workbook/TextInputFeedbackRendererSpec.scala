@@ -24,11 +24,11 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
   import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
   private val previousWorkbook = Var(Option.empty[AllWorkbookInfo])
   override def beforeEach(context: BeforeEach): Unit = previousWorkbook.set(fullInfo.homepageInfoNow().workbookInfo)
-  override def afterEach(context: AfterEach): Unit = fullInfo.usageControl.changeWorkbook(previousWorkbook.now())
+  override def afterEach(context: AfterEach): Unit = fullInfo.workbookNavigationControl.changeWorkbook(previousWorkbook.now())
   private def loadExercise(exercise: TextInputWithScaffoldingAndGrading): Unit = {
     val section = WorkbookSection("feedback-tests", WorkbookSection.WorkbookSectionMetadata(LanguageMapContentId("test/section")), Seq(exercise))
     val workbook = Workbook("feedback-tests", Workbook.WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("test/title"), Seq(English)), Seq(section))
-    fullInfo.usageControl.changeWorkbook(Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)))
+    fullInfo.workbookNavigationControl.changeWorkbook(Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)))
   }
 
   private def hintExercise(id: String) = TextInputWithScaffoldingAndGrading(id, LanguageMapContentId("test/task"),
@@ -36,7 +36,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
 
   test("the below-exercise panel restores hints without grading and preserves a collapsed hint across language changes") {
     val previous = fullInfo.signals.currentLanguage.now()
-    fullInfo.usageControl.changeLanguage(English)
+    fullInfo.displayControl.changeLanguage(English)
     val exercise = hintExercise("renderer-saved-hint")
     val content = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "English hint\nSecond line", German -> "Deutscher Hinweis"))
     exercise.interactionVariable.updateHistory(_.addScaffolding(ScaffoldingResult[String, MessengerModel]("",
@@ -51,11 +51,11 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
       val details = panel
       assert(details.hasAttribute("open"))
       details.removeAttribute("open")
-      fullInfo.usageControl.changeLanguage(German)
+      fullInfo.displayControl.changeLanguage(German)
       assertEquals(panel.querySelector(".feedback-hint-text").textContent, "Deutscher Hinweis")
       assert(!details.hasAttribute("open"))
       assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 0)
-    } finally { close(); fullInfo.usageControl.changeLanguage(previous) }
+    } finally { close(); fullInfo.displayControl.changeLanguage(previous) }
   }
 
   test("the shared bottom panel shows only completed hints for the current answer") {

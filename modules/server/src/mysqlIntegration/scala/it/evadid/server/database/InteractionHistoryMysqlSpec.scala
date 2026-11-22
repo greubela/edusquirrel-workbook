@@ -392,16 +392,16 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   test("schema inspection and setup leave existing rows untouched and create nothing on conflict") {
     store(history())
     MysqlTestDatabase.withConnection { connection =>
-      assert(EnsureDatabaseProperlySetup.inspect(connection).valid)
-      assert(!EnsureDatabaseProperlySetup.setupIfEmpty(connection).created)
+      assert(DatabaseSchemaInspector.inspect(connection).valid)
+      assert(!DatabaseSchemaSetup.setupIfEmpty(connection).created)
       assertEquals(read[History](fetch()(sync)), history())
       MysqlTestDatabase.clearSchema(connection)
       Using.resource(connection.createStatement()) { statement =>
         statement.executeUpdate("CREATE TABLE user (id INT NOT NULL PRIMARY KEY, marker VARCHAR(20))")
         statement.executeUpdate("INSERT INTO user VALUES (1,'untouched')")
-        val before = EnsureDatabaseProperlySetup.inspect(connection)
+        val before = DatabaseSchemaInspector.inspect(connection)
         assert(before.conflicts.nonEmpty)
-        val after = EnsureDatabaseProperlySetup.setupIfEmpty(connection)
+        val after = DatabaseSchemaSetup.setupIfEmpty(connection)
         assertEquals(after.existingTables, Set("user"))
         assert(!after.created)
         Using.resource(statement.executeQuery("SELECT marker FROM user WHERE id=1")) { rows =>
@@ -415,10 +415,10 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     MysqlTestDatabase.withConnection { connection =>
       Using.resource(connection.createStatement())(_.executeUpdate(
         "ALTER TABLE sync_context_id MODIFY program_id VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL"))
-      val report = EnsureDatabaseProperlySetup.inspect(connection)
+      val report = DatabaseSchemaInspector.inspect(connection)
       assert(report.conflicts.exists(_.contains("collation")), report.toString)
-      assert(!EnsureDatabaseProperlySetup.setupIfEmpty(connection).created)
-      assertEquals(EnsureDatabaseProperlySetup.inspect(connection).conflicts, report.conflicts)
+      assert(!DatabaseSchemaSetup.setupIfEmpty(connection).created)
+      assertEquals(DatabaseSchemaInspector.inspect(connection).conflicts, report.conflicts)
     }
   }
 
@@ -428,10 +428,10 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       Using.resource(connection.createStatement()) { statement =>
         DatabaseSqlScripts.statements.foreach(sql => statement.executeUpdate(sql.toString))
       }
-      val report = EnsureDatabaseProperlySetup.inspect(connection)
+      val report = DatabaseSchemaInspector.inspect(connection)
       assertEquals(report.existingTables, (RelationalFormat.tables ++ BlobFormat.tables).map(_.name).toSet ++ Set("user", "loginTokens", "commandLog", "syncedLog"))
       assertEquals(report.conflicts, Nil)
-      assert(!EnsureDatabaseProperlySetup.setupIfEmpty(connection).created)
+      assert(!DatabaseSchemaSetup.setupIfEmpty(connection).created)
     }
   }
 
@@ -439,9 +439,9 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     store(history())
     MysqlTestDatabase.withConnection { connection =>
       Using.resource(connection.createStatement())(_.executeUpdate("ALTER TABLE answer_event ADD UNIQUE KEY wrong_single_answer (sync_id)"))
-      val report = EnsureDatabaseProperlySetup.inspect(connection)
+      val report = DatabaseSchemaInspector.inspect(connection)
       assert(report.conflicts.exists(_.contains("unexpected uniqueness")), report.toString)
-      assert(!EnsureDatabaseProperlySetup.setupIfEmpty(connection).created)
+      assert(!DatabaseSchemaSetup.setupIfEmpty(connection).created)
       intercept[IllegalArgumentException](fetch())
       assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
     }
@@ -457,7 +457,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       MysqlTestDatabase.withConnection { connection =>
         ready.countDown()
         assert(ready.await(5, java.util.concurrent.TimeUnit.SECONDS))
-        EnsureDatabaseProperlySetup.setupIfEmpty(connection)
+        DatabaseSchemaSetup.setupIfEmpty(connection)
       }
     })
     val results = Await.result(Future.sequence(attempts), 20.seconds)

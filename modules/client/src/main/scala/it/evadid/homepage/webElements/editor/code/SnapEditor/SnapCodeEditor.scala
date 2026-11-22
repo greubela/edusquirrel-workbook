@@ -11,7 +11,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{SnapCodeEditorConfig, SnapCodeEditorImplDelegateToOriginal}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import org.scalajs.dom
@@ -140,13 +140,13 @@ object SnapCodeEditor {
 
   def apply(logger: Logger, state: Var[ProgrammingState], config: SnapCodeEditorConfig,
             humanLanguage: Signal[HumanLanguage]): SnapCodeEditor =
-    SnapCodeEditor(logger, state, config, SnapCodeEditorImplDelegateToOriginal(), humanLanguage)
+    SnapCodeEditor(logger, state, config, SnapMorphicSession(), humanLanguage)
 
   def apply(logger: Logger,state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapCodeEditor =
     apply(logger, state, config, Val(English))
 
   def apply(logger: Logger,state: Var[ProgrammingState]): SnapCodeEditor =
-    SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapCodeEditorImplDelegateToOriginal())
+    SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapMorphicSession())
 
   def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig, humanLanguage: Signal[HumanLanguage],
       tabLabel: String = "Snap!"): EvaEditorTab = new EvaEditorTab {
@@ -154,6 +154,6 @@ object SnapCodeEditor {
     override val label = tabLabel
     override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
         marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement =
-      SnapCodeEditor(tabLogger, state, config, SnapCodeEditorImplDelegateToOriginal(), humanLanguage, marker, loading)
+      SnapCodeEditor(tabLogger, state, config, SnapMorphicSession(), humanLanguage, marker, loading)
   }
 }

@@ -32,7 +32,7 @@ class DatabaseSetupMysqlSpec extends FunSuite {
       executeScript(connection)
       assertEquals(connection.getCatalog, selected)
       assertEquals(tables(connection), DatabaseSqlScripts.tables.map(table => DatabaseSqlScripts.identifier(table.getTable.getName)).toSet)
-      assert(EnsureDatabaseProperlySetup.inspect(connection).valid)
+      assert(DatabaseSchemaInspector.inspect(connection).valid)
     }
   }
 

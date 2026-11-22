@@ -1,7 +1,6 @@
 package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.file.LoadedFile
-import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.user.*
 import it.evadid.core.datastructures.user.User.SingleAccessToken
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
@@ -11,111 +10,22 @@ import it.evadid.distribution.commandTypes.UserCommands
 import it.evadid.distribution.commandTypes.UserCommands.{CreateAccountRequest, LoginRequest, LoginResponse}
 import it.evadid.homepage.control.info.{SessionData, WorkbookUserDataAnalyzer}
 import it.evadid.homepage.control.model.*
-import it.evadid.homepage.workbook.content.WorkbookFactory
-import it.evadid.homepage.workbook.syncDestination.{LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
 import it.evadid.workbook.interaction.sync.SyncResetState
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import upickle.default.*
 
-import java.time.LocalDateTime
 import scala.concurrent.*
 import scala.util.{Failure, Success}
 
-case class HomepageUsageControl(fullInfo: FullInfo) {
-
+/** Authentication, session restoration and user transitions; navigation has its own control. */
+final class UserSessionControl(val fullInfo: FullInfo) {
   private given ExecutionContext = ExecutionContext.global
-
   private def interactions: Seq[WorkbookInteractionElement[? <: InteractionFormat]] = fullInfo.current.allAvailableInteractions
-
   private val logger = fullInfo.loggerSystemInfo.contentControlLogger
+  private lazy val storage = new UserSessionStorage(logger, fullInfo.syncControl.syncLogger)
 
-  def doOnPeriodicPing(): Unit = {
-    println(s"periodic ping @ ${LocalDateTime.now()}.")
-
-    fullInfo.syncControl.ensureSynced()
-  }
-
-  def changeDisplay(func: AllDisplayInfo => AllDisplayInfo): Unit = fullInfo.synchronized {
-    updateInfoWithoutContextChange((curInfo: HomepageInfo) => curInfo.copy(displayInfo = func(curInfo.displayInfo)))
-  }
-
-  private[change] def updateInfoWithoutContextChange(func: HomepageInfo => HomepageInfo): Future[?] = fullInfo.synchronized {
-
-    fullInfo.homepageInfoState.update(func)
-    Future.successful(())
-  }
-
-  def changeWorkbook(factory: WorkbookFactory): Unit = fullInfo.synchronized {
-    changeWorkbook(Some(factory.createEverything))
-  }
-
-  def changeWorkbook(newWorkbook: Option[AllWorkbookInfo]): Unit = fullInfo.synchronized {
-    val previous = fullInfo.homepageInfoNow().workbookInfo
-    val sameInstance = previous.zip(newWorkbook).forall((a, b) => a.loadedWorkbook eq b.loadedWorkbook)
-    if (previous != newWorkbook || !sameInstance) {
-      fullInfo.homepageInfoState.update(_.copy(workbookInfo = newWorkbook))
-      // Var updates inside a UI observer run in a child transaction. Select the binding after that update.
-      if (newWorkbook.nonEmpty) Future.unit.flatMap(_ => fullInfo.syncControl.ensureSynced())
-    }
-  }
-
-  def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = fullInfo.synchronized {
-    if (fullInfo.homepageInfoState.now().workbookInfo.nonEmpty) {
-      updateInfoWithoutContextChange(curInfo => curInfo.copy(workbookInfo = curInfo.workbookInfo.map(info => info.copy(config = func(info.config)))))
-      //cacheControl.fetchAndStore(interactions.map(_.interactionVariable))
-    } else {
-      logger.logWarn("[WARN] ignore updated workbook config because there is no workbook loaded!")
-    }
-  }
-
-  /* USER */
-  private val allUserInfoStorageKey: String = "edusquirrel-alluserinfo"
-
-  private val sessionStorageKey = "edusquirrel-session"
-  private val sessionCache = LocalIndexedDbStorageSyncHandler(LocalIndexedDbStorageSyncHandler.instanceForCaching)
-
-  private def saveSession(info: Option[AllUserInfo]): Future[Unit] = {
-    val stored = info match {
-      case Some(user) => sessionCache.storeElementRaw(fullInfo.syncControl.syncLogger, sessionStorageKey, write(user))
-      case None => sessionCache.removeKeyRaw(fullInfo.syncControl.syncLogger, sessionStorageKey)
-    }
-    stored.map(_ => ()).recover { case scala.util.control.NonFatal(error) =>
-      logger.logExceptionWarn("Could not update cached login", error)
-    }
-  }
-
-  private def restoreSession(): Future[Option[AllUserInfo]] =
-    sessionCache.readElementRaw(fullInfo.syncControl.syncLogger, sessionStorageKey).transformWith {
-      case Failure(_: NoSuchElementException) => Future.successful(None)
-      case Failure(error) =>
-        logger.logExceptionWarn("Could not read cached login", error)
-        Future.successful(None)
-      case Success(raw) => scala.util.Try(read[AllUserInfo](raw)) match {
-        case Success(info) => Future.successful(Some(info))
-        case Failure(_) =>
-          logger.logWarn("Discarded an invalid cached login; please sign in again.")
-          saveSession(None).map(_ => None)
-      }
-    }
-
-  def tryParsingExistingUser(): Option[AllUserInfo] = {
-    val restored: scala.util.Try[Option[AllUserInfo]] = scala.util.Try(Option(org.scalajs.dom.window.localStorage.getItem(allUserInfoStorageKey)))
-      .flatMap {
-        case None => Success(None)
-        case Some(raw) => scala.util.Try {
-          val json = ujson.read(raw)
-          require(json.obj.keySet.toSet == Set("user", "config"), "Saved credentials are not supported")
-          val saved = read[SavedUserPreferences](json)
-          Some(AllUserInfo(saved.user, UserCredentials(), saved.config))
-        }
-      }
-    restored.recover { case scala.util.control.NonFatal(_) =>
-      scala.util.Try(org.scalajs.dom.window.localStorage.removeItem(allUserInfoStorageKey))
-      logger.logWarn("Discarded an invalid saved login; please sign in again.")
-      None
-    }.get
-  }
+  def loadSavedProfile(): Option[AllUserInfo] = storage.loadSavedProfile()
 
   private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken], cachedCredentials: UserCredentials = UserCredentials()): Future[?] = {
     val loginReq = LoginRequest(userMail.trim.toLowerCase, token)
@@ -152,8 +62,8 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   private def clearSavedLogin(): Unit = {
-    saveSession(None)
-    scala.util.Try(LocalStorageSyncHandler.removeKey(allUserInfoStorageKey))
+    storage.saveSession(None)
+    storage.clearSavedProfile()
   }
 
   def tryLoginWith(mail: String, singleAccessToken: SingleAccessToken): Future[?] = {
@@ -180,7 +90,7 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     login.map { _ =>
       if fullInfo.current.userInfo.isEmpty || sameUser then {
         val workbook = session.workbookToContinue(fullInfo.current.workbookInfo)
-        changeWorkbook(Some(workbook))
+        fullInfo.workbookNavigationControl.changeWorkbook(Some(workbook))
         workbook.loadedWorkbook.restoreHistories(logger, session.knownUsageData, fullInfo.workbookContextInformation)
       } else logger.logWarn("Ignored a session file of another user")
     }
@@ -234,8 +144,8 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
     }
   }
 
-  def tryAutoLogin(): Future[?] = restoreSession().flatMap { cached =>
-    cached.orElse(tryParsingExistingUser()) match {
+  def tryAutoLogin(): Future[?] = storage.restoreSession().flatMap { cached =>
+    cached.orElse(loadSavedProfile()) match {
       case None => Future.failed(SerializedException("No cached login available"))
       case Some(info) if info.config.isOnlineAccount =>
         info.credentials.signedBackendToken match {
@@ -247,26 +157,6 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   }
 
   def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = fullInfo.synchronized {
-
-    def actuallySetNewUser(): Unit = {
-      try {
-        LocalStorageSyncHandler.removeKey(allUserInfoStorageKey)
-        newUserInfo.foreach { allUserInfo =>
-          logger.logInfo(s"Loading user ${allUserInfo.toString}")
-          val serialized = write(SavedUserPreferences(allUserInfo.user, allUserInfo.config.withoutCredentials))
-          LocalStorageSyncHandler.instance.storeElementRaw(fullInfo.syncControl.syncLogger, allUserInfoStorageKey, serialized)
-            .failed.foreach(error => logger.logExceptionWarn("Could not save user preferences", error))
-        }
-      } catch case scala.util.control.NonFatal(error) =>
-        logger.logExceptionWarn("Could not update saved user preferences", error)
-      // Browser storage is optional. It must never prevent clearing session credentials.
-      if (fullInfo.current.userInfo.map(_.user.personId) != newUserInfo.map(_.user.personId)) {
-        fullInfo.invalidateFeedbackSession()
-        interactions.foreach(_.interactionVariable.resetForNewSession())
-      }
-      fullInfo.homepageInfoState.update(_.copy(userInfo = newUserInfo))
-    }
-
     val oldUser = fullInfo.homepageInfoNow().userInfo
     logger.logInfo(s"Change User: ${oldUser.map(_.user.mail).getOrElse("none")} -> ${newUserInfo.map(_.user.mail).getOrElse("none")}")
 
@@ -285,14 +175,14 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
         case _ => Future.unit
       }
       ready.flatMap(_ => {
-        actuallySetNewUser()
-        saveSession(newUserInfo).flatMap { _ =>
+        installUser(newUserInfo)
+        storage.saveSession(newUserInfo).flatMap { _ =>
           if (newUserInfo.isEmpty || fullInfo.current.workbookInfo.isEmpty) Future.successful(()) else {
             fullInfo.syncControl.ensureSynced()
           }
         }
       }).recover {
-        err => logger.logExceptionWarn("Ignore Fetch and Load!", err)
+        err => logger.logExceptionWarn("Could not complete the user session change", err)
       }
     }
   }
@@ -300,16 +190,16 @@ case class HomepageUsageControl(fullInfo: FullInfo) {
   def updateCredentials(credentials: UserCredentials): Future[?] = {
     require(fullInfo.current.userInfo.nonEmpty, "Create or log in to a profile first")
     fullInfo.homepageInfoState.update(info => info.copy(userInfo = info.userInfo.map(_.copy(credentials = credentials))))
-    saveSession(fullInfo.current.userInfo).flatMap(_ => fullInfo.syncControl.ensureSynced())
+    storage.saveSession(fullInfo.current.userInfo).flatMap(_ => fullInfo.syncControl.ensureSynced())
   }
 
-  def changeLanguage(language: HumanLanguage): Unit = fullInfo.synchronized {
-    fullInfo.homepageInfoState.update(_.copy(currentLanguage = language))
+  private def installUser(newUserInfo: Option[AllUserInfo]): Unit = {
+    storage.saveProfile(newUserInfo)
+    // Browser storage is optional. It must never prevent clearing session credentials.
+    if (fullInfo.current.userInfo.map(_.user.personId) != newUserInfo.map(_.user.personId)) {
+      fullInfo.invalidateFeedbackSession()
+      interactions.foreach(_.interactionVariable.resetForNewSession())
+    }
+    fullInfo.homepageInfoState.update(_.copy(userInfo = newUserInfo))
   }
-
-}
-
-object HomepageUsageControl {
-
-
 }

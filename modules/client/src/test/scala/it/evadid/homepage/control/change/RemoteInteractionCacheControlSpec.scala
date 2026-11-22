@@ -395,7 +395,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         val session = it.evadid.homepage.control.info.SessionData.createSessionData(fixture.info.homepageInfoNow()
           .copy(workbookInfo = Some(studied))).get
         val sessionEvents = answered.map(_.interactionVariable.currentHistory.events.values.map(_.eventId)).reduce(_ ++ _)
-        fixture.info.usageControl.continueWithSession(session).flatMap(_ => fixture.info.syncControl.storeAll(true)).map { _ =>
+        fixture.info.userSessionControl.continueWithSession(session).flatMap(_ => fixture.info.syncControl.storeAll(true)).map { _ =>
           assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("from the session 0", "from the session 1"))
           assertEveryLocalEventSent(fixture, heldBefore)
           val sent = sentEventIds(fixture)
@@ -478,7 +478,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
       oldRead.future.flatMap { _ =>
         val other = AllUserInfo.createNewUser("Next user", "replacement@example.invalid", fixture.user.config)
         val newToken = signed(other, "new-session")
-        fixture.info.usageControl.changeUser(Some(other.copy(credentials = UserCredentials(signedBackendToken = Some(newToken))))).flatMap { _ =>
+        fixture.info.userSessionControl.changeUser(Some(other.copy(credentials = UserCredentials(signedBackendToken = Some(newToken))))).flatMap { _ =>
           fixture.elements.foreach(_.interactionVariable.setStateFromUserInteraction("new user's answer", UpdateImportance.MAJOR,
             context = fixture.info.workbookContextInformation))
           fixture.info.syncControl.ensureSynced()
@@ -681,7 +681,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           if command.name == fetchEventsFromDbCommand.name && read[FetchEventsFromDbRequest](command.json).usageContext == context then gate.hold()
           else Future.unit)
         val select = Var(false)
-        select.signal.changes.foreach(_ => fixture.info.usageControl.changeWorkbook(Some(other)))(using owner)
+        select.signal.changes.foreach(_ => fixture.info.workbookNavigationControl.changeWorkbook(Some(other)))(using owner)
         fixture.requests.set(Vector.empty)
         select.set(true)
         // Await the navigation's own reads before making any explicit request for the new binding.
@@ -743,7 +743,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)
         assertEquals(summary.now().confirmed, 2)
         fixture.requests.set(Vector.empty)
-        fixture.info.usageControl.changeLanguage(AppLanguage.German)
+        fixture.info.displayControl.changeLanguage(AppLanguage.German)
         fixture.info.homepageInfoState.update(info => info.copy(displayInfo = info.displayInfo.copy(collapsedNavigation = true)))
         assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)
         assertEquals(summary.now().confirmed, 2)
