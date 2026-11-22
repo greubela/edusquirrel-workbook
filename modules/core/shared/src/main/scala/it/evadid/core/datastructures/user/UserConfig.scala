@@ -15,9 +15,10 @@ case class UserConfig(syncDestinations: Seq[SyncInformation], isOnlineAccount: B
 object UserConfig {
   lazy val defaultSyncDestinations: Seq[SyncInformation] = {
     List(
-      SyncInformation(defaultBrowserHistory, SYNC_MAJOR),
-      SyncInformation(defaultDatabase, SYNC_EVERYTHING),
-      SyncInformation(defaultBlobDatabase, SYNC_EVERYTHING)
+      // Local storage keeps the current answer; remote destinations receive committed (non-TEMPORARY) answers.
+      SyncInformation(defaultBrowserHistory, SYNC_LAST),
+      SyncInformation(defaultDatabase, SYNC_MAJOR),
+      SyncInformation(defaultBlobDatabase, SYNC_MAJOR)
     )
   }
 

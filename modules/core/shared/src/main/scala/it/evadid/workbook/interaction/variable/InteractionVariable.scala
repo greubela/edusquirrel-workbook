@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic.De
 import it.evadid.core.datastructures.state.{ExecutionMethod, State}
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interaction.sync.{TypingUpdateImportance, UpdateImportance}
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
 import it.evadid.workbook.meta.ExecutionContextInformation
@@ -100,6 +100,12 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
     outerState
   }
 
+  /** Binds a code editor: each change's importance follows [[TypingUpdateImportance]] for the latest typed key. */
+  def createBoundStateForTyping(lastKey: () => Option[TypingUpdateImportance.TypedKey], context: ExecutionContextInformation): State[InteractionFormat.State[F]] =
+    createBoundStateWithUpdateLogic(change => TypingUpdateImportance.decide(lastKey(),
+      currentHistory.allStates.filter(_.updateImportance == UpdateImportance.MAJOR).map(_.timestamp).maxOption,
+      change.newState.timestamp), context)
+
   def createBoundStateWithUpdateImportance(importance: UpdateImportance, context: ExecutionContextInformation): State[InteractionFormat.State[F]] = this.synchronized {
     createBoundStateWithUpdateLogic(_ => importance, context)
   }
@@ -116,7 +122,7 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
     Try(received.events.values.foreach(event => underlyingInteraction.validateState(event.associatedState))).fold(
       error => logger.logExceptionWarn(s"Discarded the stored history of $keyForSerialization: the exercise rejects one of its answers", error),
       _ => {
-        val merged = currentHistory.mergeWith(received).normalize()
+        val merged = currentHistory.mergeWith(received).cleanedHistory()
         if merged != currentHistory then updateHistory(_ => merged, context)
       })
   }
@@ -129,7 +135,7 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
       val withCurrentState = if (transformedHistory.historyStates.lastStateOption.isEmpty)
         transformedHistory.addState(defaultState)
       else transformedHistory
-      withCurrentState.normalize()
+      withCurrentState.cleanedHistory()
     })
     if (executionContextInformation.syncControl.nonEmpty) {
       executionContextInformation.syncControl.get.store(this, false)
@@ -139,6 +145,13 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
 
   def resetLocalHistory(): Unit = this.synchronized {
     updateHistory(_ => defaultHistory, ExecutionContextInformation.default)
+  }
+
+  /** Commits a TEMPORARY current answer as MAJOR, so strategies that skip TEMPORARY answers send it. */
+  def commitCurrentState(context: ExecutionContextInformation): Unit = this.synchronized {
+    val last = safeLastState
+    if last.updateImportance == UpdateImportance.TEMPORARY then
+      setStateFromUserInteraction(last.value, UpdateImportance.MAJOR, LocalDateTime.now(), context)
   }
 
   def updateStateFromUserInteraction(updater: InteractionFormat.State[F] => InteractionFormat.State[F], updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now(), context: ExecutionContextInformation): Unit = this.synchronized {

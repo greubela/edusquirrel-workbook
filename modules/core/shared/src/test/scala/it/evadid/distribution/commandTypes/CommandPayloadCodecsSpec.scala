@@ -56,7 +56,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
     val defaults = UserConfig.defaultSyncDestinations
     assertEquals(defaults.size, 3)
     assertEquals(defaults.map(info => info.syncDestination -> info.syncStrategy).toSet,
-      Set[(it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition, it.evadid.workbook.interaction.sync.EventSyncStrategy)](defaultBrowserHistory -> SYNC_MAJOR, defaultDatabase -> SYNC_EVERYTHING, defaultBlobDatabase -> SYNC_EVERYTHING))
+      Set[(it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition, it.evadid.workbook.interaction.sync.EventSyncStrategy)](defaultBrowserHistory -> SYNC_LAST, defaultDatabase -> SYNC_MAJOR, defaultBlobDatabase -> SYNC_MAJOR))
     assertEquals(read[UserConfig](write(UserConfig.onlineDefaults)), UserConfig.onlineDefaults)
   }
 

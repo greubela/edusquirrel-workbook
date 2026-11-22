@@ -115,10 +115,14 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     }
   }
 
+  private final case class DeferredStore(completion: Promise[Unit], run: () => Future[Unit])
+  private val deferredStores = Var(Map.empty[(WorkbookBinding, String), DeferredStore])
+
   private val environments = fullInfo.signals.syncEnvironmentSignal.combineWith(userBinding).observe(using unsafeWindowOwner)
   private val binding: StrictSignal[WorkbookBinding] = environments.changes
     .scanLeft(new WorkbookBinding(environments.now()._1, environments.now()._2)) { (previous, next) =>
       val replacement = new WorkbookBinding(next._1, next._2)
+      deferredStores.now().keys.filter(_._1 eq previous).foreach(runDeferred)
       previous.detach()
       replacement
     }.observe(using unsafeWindowOwner)
@@ -139,9 +143,46 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     val current = binding.now()
     current.batch(current.interactions.map(_.snapshot), forceFlush)(_.fetch())
   }
+  /** History updates return to the UI at once: the cache is compared and written after the current task.
+    * Updates of one interaction before that point (an answer and its grading starts) share one store. The store
+    * belongs to the binding of the update; when that binding is replaced first, it runs before the final flush.
+    */
   override def store[F <: InteractionFormat](variable: InteractionVariable[F], forceFlush: Boolean): Future[Unit] = {
+    val requested = binding.now()
+    if forceFlush then storeNow(requested, variable, forceFlush)
+    else {
+      // Colliding interaction IDs of another workbook never join this binding's pending store.
+      val pending = (requested, variable.keyForSerialization)
+      deferredStores.now().get(pending).fold {
+        val deferred = DeferredStore(Promise[Unit](), () => storeNow(requested, variable, forceFlush = false))
+        deferredStores.update(_.updated(pending, deferred))
+        afterCurrentTask().foreach(_ => runDeferred(pending))
+        deferred.completion.future
+      }(_.completion.future)
+    }
+  }
+
+  /** Runs a pending store once: when it is due or, earlier, when its binding is replaced. */
+  private def runDeferred(pending: (WorkbookBinding, String)): Unit =
+    deferredStores.now().get(pending).foreach { deferred =>
+      deferredStores.update(_ - pending)
+      deferred.completion.completeWith(attempt(deferred.run()))
+    }
+
+  override def synchronize[F <: InteractionFormat](variable: InteractionVariable[F]): Future[Unit] = {
     val current = binding.now()
+    val selected = current.interactions.filter(_.variable eq variable).map(_.snapshot)
+    current.batch(selected, forceFlush = true)(_.store()).transformWith(stored =>
+      current.batch(selected, forceFlush = true)(_.fetch()).transform(fetched => stored.flatMap(_ => fetched)))
+  }
+
+  private def storeNow[F <: InteractionFormat](current: WorkbookBinding, variable: InteractionVariable[F], forceFlush: Boolean): Future[Unit] =
     current.batch(current.interactions.filter(_.variable eq variable).map(_.snapshot), forceFlush)(_.store())
+
+  private def afterCurrentTask(): Future[Unit] = {
+    val due = Promise[Unit]()
+    scala.scalajs.js.timers.setTimeout(0)(due.success(()))
+    due.future
   }
 
   // A phase chain must retain its original binding even if the selected user/workbook changes between phases.

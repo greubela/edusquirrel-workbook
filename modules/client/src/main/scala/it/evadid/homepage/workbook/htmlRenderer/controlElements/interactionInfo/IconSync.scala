@@ -27,8 +27,16 @@ case class IconSync[F <: InteractionFormat](fullInfo: FullInfo, laminarHelper: L
       case Status.Synced => ("basic/syncInfoTooltipFull", Seq(report.total.toString))
     }
     val tooltip = laminarHelper.contentIdStringSignal(key, PLAINTEXT_UNDERSCORE_REPLACABLE, arguments)
-    InteractionInfoPanel.infoPanelIcon("sync-info", icon, tooltip, None).amend(
+    InteractionInfoPanel.infoPanelIcon("sync-info", icon, tooltip, Some(_ => onSyncRequested())).amend(
       role := "img", tabIndex := 0, aria.label <-- tooltip,
       span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/syncInfoLabel")))
+  }
+
+  /** Like the grading icon, a click starts the work: the current answer is committed and synchronized. */
+  def onSyncRequested(): Unit = {
+    val variable = workbookInteractionElement.interactionVariable
+    variable.commitCurrentState(fullInfo.workbookContextInformation)
+    fullInfo.syncControl.synchronize(variable)
+    ()
   }
 }

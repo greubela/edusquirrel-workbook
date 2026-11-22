@@ -18,7 +18,6 @@ import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT
 import it.evadid.workbook.abstractions.{LangMapContentIdType, TypeOfTextDisplay}
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
 
@@ -29,7 +28,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
         key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
 
   override protected def createRendering(workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
-    val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val boundVar = workbookElement.interactionVariable.createBoundStateForTyping(() => fullInfo.keyboardInput.lastKey.now(), fullInfo.workbookContextInformation).toAirstreamVar
 
     val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
     val shapeGradingPreview = CompareShapePreview(boundVar, workbookElement.desiredResult, workbookElement.comparisonPolicy)

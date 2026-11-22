@@ -129,8 +129,13 @@ answer/start/completion events. The format singleton provides all associated
 codecs; see [interaction formats](interaction-format.md) for the types and wire
 contract. Update a bound state instead of writing directly to storage.
 
-`createBoundStateWithUpdateLogic` chooses significance from each edit. Importance
-is not a debounce interval or a guarantee of immediate persistence:
+`createBoundStateWithUpdateLogic` chooses significance from each edit. Code editors
+bind with `createBoundStateForTyping`: [`TypingUpdateImportance`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/TypingUpdateImportance.scala)
+reads the typed key (recorded by the client's `KeyboardInput`) rather than a state
+difference. Whitespace and `()[]{}.,-+*;` commit (MAJOR), as does any keystroke five
+seconds after the last MAJOR answer and any change without a recent key; other
+keystrokes are TEMPORARY. Importance is not a debounce interval or a guarantee of
+immediate persistence:
 
 | Importance | Meaning |
 | --- | --- |
@@ -140,12 +145,14 @@ is not a debounce interval or a guarantee of immediate persistence:
 | `MAJOR` | Significant edit or completed feedback |
 
 `EventSyncStrategy` selects events to transmit and never prunes persisted history.
-`SYNC_EVERYTHING` sends all missing events. `SYNC_MAJOR` selects major events plus
-the current answer and all feedback associated with selected answers, including
-pending lifecycle events. Other importance strategies filter individual events;
-latest/count strategies retain timestamp ties. `Since` includes its boundary.
-`clean()` removes temporary events only when explicitly called; synchronization
-uses the destination strategy.
+`SYNC_EVERYTHING` sends all missing events, TEMPORARY ones included. `SYNC_MAJOR`
+selects major answers plus the latest answer that is not TEMPORARY; `SYNC_LAST`
+selects only the latest answer. Both include all feedback associated with selected
+answers, including pending lifecycle events. Other importance strategies filter
+individual events; latest/count strategies retain timestamp ties. `Since` includes
+its boundary. `cleanedHistory()` is the one history cleanup: it drops DEFAULT answers
+once another answer exists and TEMPORARY answers once a later answer exists, with
+feedback tied only to them; the current answer always stays.
 
 Grading and scaffolding run through `interactionVariable.control`. Pending requests
 are shared; explicit retries rerun execution errors and unexecuted tests while
