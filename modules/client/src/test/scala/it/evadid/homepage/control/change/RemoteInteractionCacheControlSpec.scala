@@ -43,6 +43,9 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
 
   private def signed(user: AllUserInfo, value: String): SignedToken =
     SignedToken(UserTokenInfo(user.user, at, at.plusYears(2)), value)
+  /** Backend synchronization requires a signed-in account. */
+  private def signedIn(user: AllUserInfo): AllUserInfo =
+    user.copy(credentials = user.credentials.copy(signedBackendToken = Some(signed(user, s"${user.user.id}-token"))))
 
   /** Freeze both destination responses at a known point; no sleeps or scheduler assumptions. */
   private class ResponseGate {
@@ -67,9 +70,9 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     val beforeResponse = Var[ExecutionCommand => Future[Unit]](_ => Future.unit)
     val authorization = Var(Vector.empty[(ExecutionCommand, String)])
     val elements = Seq(TextInteraction("first"), TextInteraction("second"))
-    val user = AllUserInfo.createNewUser("Student", "fixture@example.invalid", UserConfig(Seq(
+    val user = signedIn(AllUserInfo.createNewUser("Student", "fixture@example.invalid", UserConfig(Seq(
       SyncInformation(defaultDatabase, EventSyncStrategy.SYNC_EVERYTHING),
-      SyncInformation(defaultBlobDatabase, EventSyncStrategy.SYNC_EVERYTHING)), true))
+      SyncInformation(defaultBlobDatabase, EventSyncStrategy.SYNC_EVERYTHING)), true)))
     val section = WorkbookSection("section", WorkbookSectionMetadata(LanguageMapContentId("fixture/section")), elements)
     val workbook = Workbook("workbook", WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("fixture/title"), Seq(AppLanguage.English)), Seq(section))
     val info = FullInfo(HomepageInfo(AppLanguage.English,
@@ -217,7 +220,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         val previousContext = fixture.info.workbookContextInformation
         val workbook = fixture.info.homepageInfoNow().workbookInfo
         fixture.info.homepageInfoState.update(_.copy(workbookInfo = None))
-        val other = AllUserInfo.createNewUser("Other student", "other@example.invalid", fixture.user.config)
+        val other = signedIn(AllUserInfo.createNewUser("Other student", "other@example.invalid", fixture.user.config))
         fixture.info.invalidateFeedbackSession()
         fixture.info.homepageInfoState.update(_.copy(userInfo = Some(other)))
         fixture.info.homepageInfoState.update(_.copy(workbookInfo = workbook))
@@ -280,7 +283,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
       fixture.info.syncControl.resetAllData().failed.map { _ =>
         assert(fixture.info.syncControl.resetState.now().isInstanceOf[SyncResetState.Failed])
         fixture.info.invalidateFeedbackSession()
-        val other = AllUserInfo.createNewUser("Next user", "next@example.invalid", fixture.user.config)
+        val other = signedIn(AllUserInfo.createNewUser("Next user", "next@example.invalid", fixture.user.config))
         fixture.info.homepageInfoState.update(_.copy(userInfo = Some(other)))
         assertEquals(fixture.info.syncControl.resetState.now(), SyncResetState.Idle)
       }
@@ -462,7 +465,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           fixture.info.homepageInfoState.update(_.copy(workbookInfo = None))
           assert(fixture.info.syncControl.resetState.now().isInstanceOf[SyncResetState.Failed])
           fixture.info.homepageInfoState.update(_.copy(workbookInfo = workbook,
-            userInfo = Some(fixture.user.copy(credentials = UserCredentials(singleAccessToken = Some(SingleAccessToken("replacement")))))))
+            userInfo = Some(fixture.user.copy(credentials = fixture.user.credentials.copy(singleAccessToken = Some(SingleAccessToken("replacement")))))))
           fixture.requests.set(Vector.empty)
           fixture.info.syncControl.ensureSynced().flatMap { _ =>
             assert(fixture.info.syncControl.resetState.now().isInstanceOf[SyncResetState.Failed])
@@ -563,7 +566,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     fixture.withHttp {
       val reset = fixture.info.syncControl.resetAllData()
       deleting.future.flatMap { _ =>
-        val other = AllUserInfo.createNewUser("Next user", "next@example.invalid", fixture.user.config)
+        val other = signedIn(AllUserInfo.createNewUser("Next user", "next@example.invalid", fixture.user.config))
         fixture.info.invalidateFeedbackSession()
         fixture.info.homepageInfoState.update(_.copy(userInfo = Some(other)))
         assertEquals(fixture.info.syncControl.resetState.now(), SyncResetState.Idle)

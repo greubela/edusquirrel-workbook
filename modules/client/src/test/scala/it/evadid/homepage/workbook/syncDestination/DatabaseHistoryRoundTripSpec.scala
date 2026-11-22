@@ -14,6 +14,8 @@ import it.evadid.workbook.interaction.sync.destination.SyncDestinationHistoryHan
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
+import it.evadid.core.datastructures.user.{User, UserTokenInfo}
+import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import java.time.LocalDateTime
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,8 +32,31 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
   private val programming = ProgrammingExerciseWithLlmScaffoldingAndGrading
   private val layouts = Seq(defaultDatabase, defaultBlobDatabase)
 
-  private def handler(database: InMemoryHistoryDatabase, definition: SyncDestinationBasedOnHistoryDatabase): SyncDestinationHistoryHandler =
-    DatabaseSyncViaBackendServerHandler(logger, definition, database.client, BackendDatabase)
+  private def token(expiresAt: LocalDateTime): SignedToken =
+    SignedToken(UserTokenInfo(User("Student", "student", "student@example.org"), at, expiresAt), "signature")
+
+  private def handler(database: InMemoryHistoryDatabase, definition: SyncDestinationBasedOnHistoryDatabase,
+      signedToken: Option[SignedToken] = Some(token(LocalDateTime.now().plusDays(1)))): SyncDestinationHistoryHandler =
+    DatabaseSyncViaBackendServerHandler(logger, definition, database.client, BackendDatabase, signedToken)
+
+  test("without a valid signed token, storing, fetching and deleting fail locally and send nothing") {
+    val database = InMemoryHistoryDatabase()
+    val key = usage.toSyncContext("answer")
+    val json = InteractionHistoryJson.fromHistory(text, textHistory("a" -> 1)).serialized
+    def attempts(history: SyncDestinationHistoryHandler): Future[Seq[String]] = Future.sequence(Seq(
+      history.storeHistoriesJson(Map(key -> json)), history.readHistoriesJson(usage),
+      history.readHistoriesInRange(usage, Seq(key), at, at.plusDays(1), EventSyncStrategy.SYNC_EVERYTHING),
+      history.clearValue(key), history.clearAllHistories(usage)
+    ).map(_.failed.map(_.getMessage)))
+    for {
+      anonymous <- attempts(handler(database, defaultDatabase, None))
+      expired <- attempts(handler(database, defaultDatabase, Some(token(LocalDateTime.now().minusMinutes(1)))))
+    } yield {
+      assert(anonymous.forall(_.contains("without a signed-in account")), anonymous)
+      assert(expired.forall(_.contains("session expired")), expired)
+      assertEquals(database.commands.now(), Vector.empty, "nothing reaches the backend")
+    }
+  }
 
   private def textHistory(values: (String, Int)*): InteractionVariableHistory[text.type] =
     InteractionVariableHistory(InteractionEvents(values.map((value, second) =>

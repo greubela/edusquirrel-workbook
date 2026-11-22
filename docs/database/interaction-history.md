@@ -38,6 +38,10 @@ credentials and responses while allowing old and new requests to overlap. Retire
 requests may finish or fail; neither outcome can change a replacement binding.
 UI navigation starts sync after Airstream applies the environment transaction.
 
+Backend databases store, read and delete histories only for a verified account.
+`DatabaseSyncViaBackendServerHandler` therefore fails these requests locally, without
+sending them, when its user has no signed token or the token has expired.
+
 `EventSyncStrategy` selects transmissions, not retention. Defaults send
 `SYNC_MAJOR` to both backend layouts and `SYNC_LAST` to local IndexedDB.
 Stores union events and apply `cleanedHistory()`, so superseded DEFAULT and

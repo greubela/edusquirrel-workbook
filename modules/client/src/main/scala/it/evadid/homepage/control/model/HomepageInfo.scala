@@ -29,9 +29,10 @@ case class HomepageInfo(
 
   private def resolveSyncDefinition(dest: SyncDestinationDefinition, fullInfo: FullInfo): SyncDestinationHistoryHandler = dest.match{
     case db: SyncDestinationBasedOnHistoryDatabase =>
-      val backend = fullInfo.defaults.backendExecutorWithCredentials(userInfo.flatMap(_.credentials.signedBackendToken))
+      val token = userInfo.flatMap(_.credentials.signedBackendToken)
+      val backend = fullInfo.defaults.backendExecutorWithCredentials(token)
       val database = userInfo.flatMap(_.credentials.databaseConfig).getOrElse(db.databaseConfig)
-      val handler = DatabaseSyncViaBackendServerHandler(fullInfo.loggerSystemInfo.syncControlLogger, db, backend, database)
+      val handler = DatabaseSyncViaBackendServerHandler(fullInfo.loggerSystemInfo.syncControlLogger, db, backend, database, token)
       if db.buffered then handler.toBuffered else handler
     case li: LocalIndexedDbSyncDefinition => LocalIndexedDbStorageSyncHandler(li).withSyncLogger(fullInfo.loggerSystemInfo.syncControlLogger).forHistory()
     case ls: LocalStorageSyncDefinition => LocalStorageSyncHandler(ls).withSyncLogger(fullInfo.loggerSystemInfo.syncControlLogger).forHistory()
