@@ -1,6 +1,5 @@
 package it.evadid.homepage.control.model
 
-import it.evadid.homepage.control.info.KeyboardInput
 
 import it.evadid.llm.LlmConfiguration
 import com.raquo.laminar.api.L.*
@@ -74,7 +73,6 @@ case class FullInfo(
 
   lazy val current: HomepageCurrentInfo = HomepageCurrentInfo(this)
 
-  lazy val keyboardInput: KeyboardInput = KeyboardInput.installed
 
   /* CONTROLS */
 

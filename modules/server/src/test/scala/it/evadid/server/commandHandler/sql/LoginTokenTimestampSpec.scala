@@ -80,7 +80,7 @@ class LoginTokenTimestampSpec extends FunSuite {
     val accounts = SqlUserCommands(connection, BasicLogger()).findUserWithMail("fixture@example.org")
     assertEquals(accounts.map(_.user.id), List("one", "two"))
     assertEquals(accounts.head.config, configured)
-    assertEquals(accounts.last.config, UserConfig.onlineDefaults)
+    assertEquals(accounts.last.config, UserConfig.defaults(isLocalAccount = false))
     assertEquals(upickle.default.read[UserConfig](upickle.default.write(accounts.last.config)), accounts.last.config)
     assertEquals(prematureReads, 0)
   }

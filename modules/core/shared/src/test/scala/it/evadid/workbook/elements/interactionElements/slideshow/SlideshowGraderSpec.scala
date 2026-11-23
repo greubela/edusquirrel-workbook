@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.slideshow
 
+
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
 import it.evadid.workbook.abstractions.grading.GradingStatus
@@ -19,14 +20,14 @@ class SlideshowGraderSpec extends FunSuite {
     val first = exercise.defaultValue.recordTransitionByIndex(0, 0)
     val finished = first.recordTransitionByIndex(0, 1).recordTransitionByIndex(1, 2)
     Future.traverse(Seq(exercise.defaultValue, first, finished)) { state =>
-      exercise.gradingElements.head.gradeStateSafe(state, false, TestExecutionContext()).map(_.gradingStatus)
+      exercise.gradingElements.head.gradeStateSafe(state, false, MAJOR, TestExecutionContext()).map(_.gradingStatus)
     }.map(statuses => assertEquals(statuses, Seq(GradingStatus.Incorrect(), GradingStatus.PartiallyCorrect(), GradingStatus.Correct())))
   }
   test("one displayed slide completes a single-slide deck and records its timestamp by reference") {
     val exercise = Slideshow("single", Seq(slide(0)))
     val state = exercise.defaultValue.recordTransitionByIndex(0, 0)
     assertEquals(state.timestampsWhereUserSwitchedFromOrToPanel(slide(0)), state.events.map(_.proceededAt))
-    exercise.gradingElements.head.gradeStateSafe(state, false, TestExecutionContext()).map(result => assertEquals(result.gradingStatus, GradingStatus.Correct()))
+    exercise.gradingElements.head.gradeStateSafe(state, false, MAJOR, TestExecutionContext()).map(result => assertEquals(result.gradingStatus, GradingStatus.Correct()))
   }
   test("automatic grading is stored and round-trips with the slideshow format") {
     val exercise = deck

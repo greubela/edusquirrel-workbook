@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.table
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
@@ -11,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class AnswerTableInteractionSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private def correctCells(answer: TableAnswer): Future[Int] = Future.traverse(table.gradingElements)(
-    _.gradeStateSafe(answer, false, TestExecutionContext())).map(_.count(_.gradingStatus.isCorrect))
+    _.gradeStateSafe(answer, false, UpdateImportance.MAJOR, TestExecutionContext())).map(_.count(_.gradingStatus.isCorrect))
   private def id(s: String) = LanguageMapContentId(s"test/$s")
   private val binary = EditableTableCell(Some(List("1")), List("0", "1"))
   private val table = AnswerTableInteraction("table", id("caption"), List(id("row1"), id("row2")),

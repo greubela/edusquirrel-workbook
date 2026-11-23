@@ -71,7 +71,7 @@ class UserPackageSpec extends FunSuite {
 
   test("online defaults include both backend history layouts") {
     import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
-    val remote = UserConfig.onlineDefaults.syncDestinations.map(_.syncDestination).collect {
+    val remote = UserConfig.defaults(isLocalAccount = false).syncDestinations.map(_.syncDestination).collect {
       case database: SyncDestinationBasedOnHistoryDatabase => database
     }
     assertEquals(remote, Seq(defaultDatabase, defaultBlobDatabase))

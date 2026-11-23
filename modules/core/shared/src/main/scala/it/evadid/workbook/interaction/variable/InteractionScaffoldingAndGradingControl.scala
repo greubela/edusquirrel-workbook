@@ -1,5 +1,6 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.core.datastructures.storage.AsyncDataCache
 import it.evadid.core.datastructures.storage.CacheElementStatus.*
 import it.evadid.distribution.command.SerializedException
@@ -68,7 +69,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
       val saved = interactionVariable.currentHistory.historyGrading.gradingsMap(forState)
       val storedKeys = saved.graderResultMap.keys.map(_.key).toSet
       if interactionVariable.underlyingInteraction.gradingElements.exists(grader => !storedKeys(grader.key) &&
-        (forceGrading || grader.runningBehavior == it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS)) then
+        grader.shouldRunGrader(forceGrading, importanceOf(forState))) then
         startGrading(contextInformation, forceGrading, forState)
       else retryGradingIfNecessary(contextInformation, forceGrading,
         saved.fillMapForUnavailable(interactionVariable.underlyingInteraction.gradingElements, NotRequested()))
@@ -89,7 +90,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
     if (!forceGrading || existing.shouldRetry.isEmpty) Future.successful(existing)
     else {
       recordGradingStart(existing.shouldRetry, existing.state, contextInformation)
-      val futureRes = existing.retryFailed(contextInformation, forceGrading)
+      val futureRes = existing.retryFailed(contextInformation, forceGrading, importanceOf(existing.state))
       val published = futureRes.map { gradedState =>
         interactionVariable.publishFeedback(generation, contextInformation)(_.addGrading(gradedState))
         gradedState
@@ -99,6 +100,11 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
     }
   }
 
+  /** The importance the answer was recorded with (its latest event); an answer without an event has DEFAULT importance. */
+  private def importanceOf(forState: InteractionStateType): UpdateImportance =
+    interactionVariable.currentHistory.allStates.filter(_.newState == forState).maxByOption(_.timestamp)
+      .map(_.updateImportance).getOrElse(UpdateImportance.DEFAULT)
+
   private def startGrading(contextInformation: ExecutionContextInformation, forceGrading: Boolean, forState: InteractionStateType): Future[GradedState[InteractionStateType, GradingInfoType]] = interactionVariable.synchronized {
     val graders: Seq[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]] = interactionVariable.underlyingInteraction.gradingElements
     val activeKeys = graders.map(_.key).toSet
@@ -106,8 +112,9 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
       .map(_.graderResultMap.filter((grader, _) => activeKeys(grader.key))).getOrElse(Map.empty)
     val storedKeys = existing.keys.map(_.key).toSet
     val selected = graders.filterNot(grader => storedKeys(grader.key))
-    recordGradingStart(selected.filter(grader => forceGrading || grader.runningBehavior == it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS), forState, contextInformation)
-    val futureRes = GradedState.executeGradingSafe(selected, forState, forceGrading, contextInformation)
+    val importance = importanceOf(forState)
+    recordGradingStart(selected.filter(_.shouldRunGrader(forceGrading, importance)), forState, contextInformation)
+    val futureRes = GradedState.executeGradingSafe(selected, forState, forceGrading, importance, contextInformation)
       .map(_.merge(GradedState(forState, existing)))(using contextInformation.futureExecutionContext)
     val published = futureRes.map { gradedState =>
       interactionVariable.publishFeedback(generation, contextInformation)(_.addGrading(gradedState))

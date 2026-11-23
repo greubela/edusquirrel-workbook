@@ -11,6 +11,7 @@ import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, Scaffoldi
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.support.TestExecutionContext
 import munit.FunSuite
 
@@ -21,11 +22,12 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
   private val context = TestExecutionContext()
 
   private class CountingGrader(status: GradingStatus = GradingStatus.Correct(), failFirst: Boolean = false,
-      synchronous: Boolean = false, gate: Option[Promise[Unit]] = None, retryGate: Option[Promise[Unit]] = None) extends WorkbookInteractionGrader[String, MessengerModel] {
+      synchronous: Boolean = false, gate: Option[Promise[Unit]] = None, retryGate: Option[Promise[Unit]] = None,
+      behavior: GraderRunningBehavior = GraderRunningBehavior.RUN_ALWAYS) extends WorkbookInteractionGrader[String, MessengerModel] {
     override val key = java.util.UUID.randomUUID().toString
     val calls = State(0)
     override val importance = GradingImportance.REQUIRED_TEST
-    override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS
+    override val runningBehavior = behavior
     override val gradingEntity = FeedbackEntity.TestEntity()
     override protected def handleGrading(state: String, context: it.evadid.workbook.meta.ExecutionContextInformation): Future[GradingResult[String, MessengerModel]] = {
       calls.update(_ + 1)
@@ -71,6 +73,26 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
         assertEquals(incorrect.calls.now(), 1)
       }
     }
+
+  test("unrequested grading follows each grader's behaviour for the answer's importance; a request always grades") {
+    val onEveryChange = new CountingGrader()
+    val onMinor = new CountingGrader(behavior = GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR)
+    val manual = new CountingGrader(behavior = GraderRunningBehavior.RUN_ONLY_MANUALLY)
+    val value = variable(List(onEveryChange, onMinor, manual))
+    def statuses(graded: GradedState[String, MessengerModel]) =
+      List(onEveryChange, onMinor, manual).map(grader => graded.graderResultMap(grader).gradingStatus.isCorrect)
+    value.setStateFromUserInteraction("half-typed", UpdateImportance.TEMPORARY, context = context)
+    value.control.getOrCalculateGrading(context).flatMap { temporary =>
+      assertEquals(statuses(temporary), List(true, false, false))
+      value.setStateFromUserInteraction("finished word", UpdateImportance.MINOR, context = context)
+      value.control.getOrCalculateGrading(context)
+    }.flatMap { minor =>
+      assertEquals(statuses(minor), List(true, true, false))
+      value.setStateFromUserInteraction("half-typed again", UpdateImportance.TEMPORARY, context = context)
+      // A request joins a pending automatic grading; requesting afterwards grades the skipped graders.
+      value.control.getOrCalculateGrading(context).flatMap(_ => value.control.getOrCalculateGrading(context, forceGrading = true))
+    }.map(requested => assertEquals(statuses(requested), List(true, true, true)))
+  }
 
   test("concurrent requests share the pending attempt, including a retry") {
     val gate = Promise[Unit]()

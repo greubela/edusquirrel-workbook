@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.choice
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import it.evadid.core.datastructures.language.{LanguageMapContentId, WorkbookContent}
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction.*
@@ -16,7 +18,7 @@ class WorkbookContentChoiceInteractionSpec extends FunSuite {
   private val single = WorkbookContentChoiceInteraction("single", ChoiceConfig(id("prompt"), Some(false), GraderRunningBehavior.RUN_ALWAYS), options)
   private val multiple = single.copy(elementId = "multi", config = single.config.copy(allowMultipleSelected = Some(true)))
   private def selected(e: WorkbookContentChoiceInteraction, indices: Int*) = indices.foldLeft(e.defaultValue)((s, i) => e.select(s, i, true))
-  private def grade(e: WorkbookContentChoiceInteraction, state: ChoiceState) = e.gradingElements.head.gradeStateSafe(state, false, TestExecutionContext())
+  private def grade(e: WorkbookContentChoiceInteraction, state: ChoiceState) = e.gradingElements.head.gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
 
   test("single selection replaces the previous choice; stale unchecking is ignored") {
     val state = selected(single, 0, 1)

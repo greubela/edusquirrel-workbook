@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
@@ -30,7 +32,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
       Future.traverse(TurtleDrawingPolicy.values.toList) { policy =>
         val visual = TurtleDrawingGrading.assess(source.toBeExpression.turtleCommandExecutionInfo.completedCommands, target, policy)
         RecreateShapeGrader(target, GradingImportance.REQUIRED_TEST, comparisonPolicy = policy)
-          .gradeStateSafe(source, false, ExecutionContextInformation.default).map { saved =>
+          .gradeStateSafe(source, false, UpdateImportance.MAJOR, ExecutionContextInformation.default).map { saved =>
             assertEquals(visual.matches, saved.gradingStatus.isCorrect, clues(code, policy))
             assertEquals(visual.scene.lines.forall(_.result == LineResult.Correct), saved.gradingStatus.isCorrect)
           }

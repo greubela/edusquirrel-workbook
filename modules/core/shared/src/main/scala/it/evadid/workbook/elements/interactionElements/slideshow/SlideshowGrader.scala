@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, Workboo
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
-import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS
+import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR
 import it.evadid.workbook.abstractions.grading.GradingImportance.{OPTIONAL_TEST, REQUIRED_TEST}
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.grading.GradingStatus.Correct
@@ -17,7 +17,7 @@ import scala.concurrent.Future
 
 case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrader[SlideshowState, Unit] derives ReadWriter {
 
-  override def runningBehavior: GraderRunningBehavior = RUN_ALWAYS
+  override def runningBehavior: GraderRunningBehavior = RUN_ON_AT_LEAST_MINOR
 
   override def importance: GradingImportance = if (isRequired) REQUIRED_TEST else OPTIONAL_TEST
 

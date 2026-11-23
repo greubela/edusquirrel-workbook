@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import org.scalajs.dom
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.content.DigitalWorkbookCatalog
@@ -38,6 +39,9 @@ case class HtmlSelectWorkbookElement() extends HtmlAppElement {
 
   private lazy val domElement: Element = sectionTag(
     cls := "workbook-catalog",
+    // A body class instead of `body:has(.workbook-catalog)`: root :has() rules restyle the page on every DOM change.
+    onMountCallback(_ => dom.document.body.classList.add(HtmlSelectWorkbookElement.catalogShownClass)),
+    onUnmountCallback(_ => dom.document.body.classList.remove(HtmlSelectWorkbookElement.catalogShownClass)),
     div(cls := "workbook-catalog-intro", p(text <-- textFor("workbookSelection/introduction"))),
     div(cls := "workbook-catalog-heading",
       h2(text <-- textFor("workbookSelection/digitalTitle")),
@@ -51,4 +55,8 @@ case class HtmlSelectWorkbookElement() extends HtmlAppElement {
   )
 
   override def getDomElement(): Element = domElement
+}
+
+object HtmlSelectWorkbookElement {
+  val catalogShownClass = "workbook-catalog-shown"
 }

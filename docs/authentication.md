@@ -45,7 +45,7 @@ discarded, and requesting a code creates a new one. Only native JDBC timestamp
 values are accepted at this boundary; no legacy-format reader is provided.
 
 Account identity and configurable preferences are separate: invalid database
-preferences are discarded and replaced by `UserConfig.onlineDefaults`. They must
+preferences are discarded and replaced by `UserConfig.defaults(isLocalAccount = false)`. They must
 not prevent login-code delivery or account lookup. No legacy schema is decoded.
 Creation and account updates use distinct command names, and updates require the
 authenticated user's ID. All account operations run through

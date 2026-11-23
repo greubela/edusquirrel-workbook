@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
@@ -25,7 +26,7 @@ class ReporterExerciseSpec extends FunSuite {
   private val answer = ProgrammingStateRaw(Python, reporters)
 
   private def grade(source: ProgrammingState): Future[GradingStatus] =
-    RecreateShapeGrader(square, GradingImportance.REQUIRED_TEST).gradeStateSafe(source, true, TestExecutionContext()).map(_.gradingStatus)
+    RecreateShapeGrader(square, GradingImportance.REQUIRED_TEST).gradeStateSafe(source, true, MAJOR, TestExecutionContext()).map(_.gradingStatus)
 
   test("an answer built from reporters and predicates grades correct in Python, Java and Snap") {
     val sources = List[ProgrammingState](answer, answer.toJava, answer.toSnapXml, answer.toSnapScalaModel.toOption.get,

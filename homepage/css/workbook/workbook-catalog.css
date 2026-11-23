@@ -65,8 +65,8 @@
     .workbook-catalog-link { transition: none; }
     .workbook-catalog-link:hover, .workbook-catalog-link:focus-visible { transform: none; }
 }
-body:has(.workbook-catalog) {
+body.workbook-catalog-shown {
     background: linear-gradient(135deg, var(--color-catalog-background-start), var(--color-catalog-background-end));
 }
-body:has(.workbook-catalog) .workbook-footer { position: static; }
-body:has(.workbook-catalog) .workbook-footer-content { max-height: none; padding: var(--space-md); box-sizing: border-box; }
+body.workbook-catalog-shown .workbook-footer { position: static; }
+body.workbook-catalog-shown .workbook-footer-content { max-height: none; padding: var(--space-md); box-sizing: border-box; }

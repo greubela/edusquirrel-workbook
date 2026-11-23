@@ -1,9 +1,9 @@
 package it.evadid.workbook.abstractions.grading
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
-import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ALWAYS
 import it.evadid.workbook.abstractions.grading.GradingStatus.*
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputLlmGrader
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
@@ -29,9 +29,15 @@ trait WorkbookInteractionGrader[T, GA] {
     case Right(err) => Future.successful(GradingResult[T, GA](this, state, TestError(SerializedException(err))))
   }
 
-  def gradeStateSafe(state: T, forceGrading: Boolean, contextInformation: ExecutionContextInformation): Future[GradingResult[T, GA]] =
+  /** Two independent reasons to run: the caller requested grading (`forceGrading`, e.g. the user's check button),
+   * or, unrequested, this grader's `runningBehavior` runs it automatically for an answer of `importance`. */
+  def shouldRunGrader(forceGrading: Boolean, importance: UpdateImportance): Boolean =
+    forceGrading || runningBehavior.runsAutomatically(importance)
+
+  /** `importance` is the update importance the answer was recorded with. */
+  def gradeStateSafe(state: T, forceGrading: Boolean, importance: UpdateImportance, contextInformation: ExecutionContextInformation): Future[GradingResult[T, GA]] =
     try {
-      if (runningBehavior == RUN_ALWAYS || forceGrading) handleGrading(state, contextInformation).recoverWith {
+      if (shouldRunGrader(forceGrading, importance)) handleGrading(state, contextInformation).recoverWith {
         case err: Throwable => failWith(state, Right(err))
       }
       else Future.successful(GradingResult[T, GA](this, state, NotRequested()))
