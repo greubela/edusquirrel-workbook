@@ -1,5 +1,16 @@
-/* UmlStructureSelector: classes of a Java answer as UML boxes; every name, attribute and function is a button. */
+/* UmlStructureSelector: classes of a Java answer as UML boxes; every name, attribute and function is a button.
+   Colors come from the editor appearance theme when present, otherwise from the shared workbook tokens. */
 .uml-structure-selector {
+    --uml-ink: var(--editor-code-ink, var(--color-text-primary));
+    --uml-surface: var(--editor-code-surface, var(--color-surface-base));
+    --uml-line: var(--space-borders) solid var(--editor-ink, var(--color-ink));
+    --uml-header: var(--editor-atmosphere-blue, var(--color-blue-0));
+    --uml-header-alt: var(--editor-atmosphere-pearl, var(--color-surface-subtle));
+    --uml-hover: var(--editor-hover, var(--color-surface-subtle));
+    --uml-selected: var(--editor-selected, var(--color-surface-muted));
+    --uml-accent: var(--editor-accent, var(--color-accent-active));
+    --uml-focus: var(--editor-focus, var(--color-focus));
+
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
@@ -10,25 +21,26 @@
 .uml-class {
     display: flex;
     flex-direction: column;
-    min-width: 12rem;
+    min-width: var(--uml-class-min-width);
     max-width: 100%;
     overflow: hidden;
-    border: 2px solid var(--color-uml-class-border);
+    border: var(--uml-line);
     border-radius: var(--radius-md);
-    background: var(--color-uml-class-surface);
-    font-family: var(--color-code-font);
+    background: var(--uml-surface);
+    font-family: var(--code-font-family, var(--color-code-font));
+    font-size: var(--code-font-size, var(--color-code-size));
 }
 
 .uml-class__header {
     display: flex;
     justify-content: center;
     padding: var(--space-md);
-    background: var(--color-uml-class-header);
-    border-bottom: 2px solid var(--color-uml-class-border);
+    background: var(--uml-header);
+    border-bottom: var(--uml-line);
 }
 
 .uml-class:nth-child(even) .uml-class__header {
-    background: var(--color-uml-class-header-alt);
+    background: var(--uml-header-alt);
 }
 
 .uml-class__compartment {
@@ -39,48 +51,50 @@
 }
 
 .uml-class__compartment + .uml-class__compartment {
-    border-top: 2px solid var(--color-uml-class-border);
+    border-top: var(--uml-line);
 }
 
-.uml-entry {
+.uml-structure-selector .uml-entry,
+.uml-structure-selector .uml-entry:focus {
     display: block;
     width: 100%;
     padding: var(--space-xs) var(--space-sm);
     border: 1px solid transparent;
     border-radius: var(--radius-sm);
     background: transparent;
-    color: var(--color-text-primary);
+    color: var(--uml-ink);
     font: inherit;
     text-align: left;
     white-space: pre;
     cursor: pointer;
 }
 
-.uml-class__header .uml-entry {
+.uml-structure-selector .uml-class__header .uml-entry {
     width: auto;
     text-align: center;
 }
 
-.uml-entry:hover {
-    background: var(--color-uml-entry-hover);
+.uml-structure-selector .uml-entry:hover {
+    background: var(--uml-hover);
 }
 
-.uml-entry:focus-visible {
-    outline: 2px solid var(--color-accent-active);
-    outline-offset: 1px;
+.uml-structure-selector .uml-entry:focus-visible {
+    outline: 2px solid var(--uml-focus);
+    outline-offset: var(--space-xs);
 }
 
-.uml-entry--selected,
-.uml-entry--selected:hover {
-    border-color: var(--color-accent-active);
-    background: var(--color-uml-entry-selected);
+.uml-structure-selector .uml-entry--selected,
+.uml-structure-selector .uml-entry--selected:hover,
+.uml-structure-selector .uml-entry--selected:focus {
+    border-color: var(--uml-accent);
+    background: var(--uml-selected);
 }
 
 /* UML notation: static members are underlined, abstract classes and functions italic. */
-.uml-entry--static {
+.uml-structure-selector .uml-entry--static {
     text-decoration: underline;
 }
 
-.uml-entry--abstract {
+.uml-structure-selector .uml-entry--abstract {
     font-style: italic;
 }

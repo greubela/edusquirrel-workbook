@@ -42,7 +42,7 @@ case class UmlStructureSelector(underlyingState: Signal[ProgrammingStateJavaStru
     cls := "uml-structure-selector",
     children <-- diagram.map(_.classes).split(_.name)((_, _, umlClass) => renderClass(umlClass)))
 
-  private def renderClass(umlClass: Signal[UmlClass]): Element = section(
+  private def renderClass(umlClass: Signal[UmlClass]): Element = sectionTag(
     cls := "uml-class",
     div(cls := "uml-class__header",
       entry(umlClass.map(_.key), umlClass.map(_.name), cls("uml-entry--abstract") <-- umlClass.map(_.isAbstract))),
