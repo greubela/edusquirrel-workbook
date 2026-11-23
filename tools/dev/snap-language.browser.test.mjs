@@ -16,6 +16,14 @@ test('test workbook preserves edits across human languages, programming language
     page.setDefaultTimeout(60000);
     const errors = [];
     await page.addInitScript(() => {
+      // Reload persistence needs a named profile; anonymous sessions end on navigation.
+      if (!localStorage.getItem('edusquirrel-alluserinfo')) localStorage.setItem('edusquirrel-alluserinfo', JSON.stringify({
+        user:{name:'Snap student',id:'snap-language-student',mail:'snap@example.test'},
+        config:{isOnlineAccount:false,syncDestinations:[{
+          syncDestination:{$type:'LocalIndexedDbSyncDefinition',dbName:'EvaDidInteractionDB',storeName:'variableHistoryStore',dbVersion:1},
+          syncStrategy:{$type:'SYNC_EVERYTHING'}
+        }]}
+      }));
       window.snapHistoryWrites = [];
       window.snapCommittedHistoryWrites = [];
       const put = IDBObjectStore.prototype.put;
@@ -73,7 +81,6 @@ test('test workbook preserves edits across human languages, programming language
     });
     await installCodeMirrorModules(page);
     await page.goto(origin + '/homepage/workbookDesign/index.html');
-    await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
     await page.waitForFunction(() => window.snapLanguagePreviews?.some(p => p.language === 'en' && p.specs.includes('move %n steps')));
     const preview = page.locator('.be-program-snap-renderer__canvas:not(dialog *)').first();

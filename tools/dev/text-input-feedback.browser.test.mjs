@@ -18,6 +18,16 @@ test('text feedback preserves cached and in-flight grading across display langua
   try {
     const page = await browser.newPage({viewport:{width:1440,height:1000}});
     page.setDefaultTimeout(60000);
+    // A stable local identity restores the same answer and feedback after reload.
+    await page.addInitScript(() => {
+      if (!localStorage.getItem('edusquirrel-alluserinfo')) localStorage.setItem('edusquirrel-alluserinfo', JSON.stringify({
+        user:{name:'Feedback student',id:'text-feedback-student',mail:'feedback@example.test'},
+        config:{isOnlineAccount:false,syncDestinations:[{
+          syncDestination:{$type:'LocalIndexedDbSyncDefinition',dbName:'EvaDidInteractionDB',storeName:'variableHistoryStore',dbVersion:1},
+          syncStrategy:{$type:'SYNC_EVERYTHING'}
+        }]}
+      }));
+    });
     const errors = [], requests = [], held = [];
     const policy = {mode:'normal'};
     const headers = {'access-control-allow-origin':origin, 'access-control-allow-credentials':'true',
@@ -56,7 +66,6 @@ test('text feedback preserves cached and in-flight grading across display langua
     });
     await installCodeMirrorModules(page);
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
-    await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').last().click();
     const exercise = page.locator('.interaction-element').filter({has:page.locator('.text-input-feedback')});
     const content = exercise.locator('.text-input-feedback');
