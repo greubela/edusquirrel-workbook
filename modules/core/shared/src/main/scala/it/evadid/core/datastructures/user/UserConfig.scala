@@ -24,4 +24,7 @@ object UserConfig {
 
   def onlineDefaults: UserConfig = UserConfig(defaultSyncDestinations, isOnlineAccount = true)
 
+  /** Local users cannot sign in to the backend, so they keep their answers only in the browser. */
+  def localDefaults: UserConfig = UserConfig(Seq(SyncInformation(defaultBrowserHistory, SYNC_LAST)), isOnlineAccount = false)
+
 }

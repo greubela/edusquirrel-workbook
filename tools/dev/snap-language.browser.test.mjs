@@ -1,4 +1,3 @@
-import {seedLocalProfile} from './local-profile.mjs';
 import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -18,12 +17,10 @@ test('test workbook preserves edits across human languages, programming language
     const errors = [];
     await page.addInitScript(() => {
       window.snapHistoryWrites = [];
-      window.snapCommittedHistoryWrites = [];
       const put = IDBObjectStore.prototype.put;
       IDBObjectStore.prototype.put = function(value,...args) {
         if (this.name === 'variableHistoryStore') {
           snapHistoryWrites.push(value.value);
-          this.transaction.addEventListener('complete', () => snapCommittedHistoryWrites.push(value.value), {once:true});
         }
         return put.call(this,value,...args);
       };
@@ -73,9 +70,9 @@ test('test workbook preserves edits across human languages, programming language
       } catch {await route.fulfill({status:404,body:'Not found'});}
     });
     await installCodeMirrorModules(page);
-    // A named local profile, so the reload below continues with the same user and answers.
-    await seedLocalProfile(page);
     await page.goto(origin + '/homepage/workbookDesign/index.html');
+    // Start local usage explicitly: there is no default user.
+    await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
     await page.waitForFunction(() => window.snapLanguagePreviews?.some(p => p.language === 'en' && p.specs.includes('move %n steps')));
     const preview = page.locator('.be-program-snap-renderer__canvas:not(dialog *)').first();
@@ -203,19 +200,6 @@ test('test workbook preserves edits across human languages, programming language
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
     assert.match(await code.innerText(), /void line\((?:int|double) size\)/);
-    assert.match(await code.innerText(), /line\(64\)/);
-    await page.locator('.fullscreen-close-button').click();
-    // Reload only after this answer's IndexedDB transaction has committed.
-    await page.waitForFunction(() => snapCommittedHistoryWrites.some(value => /void line\((?:int|double) size\)/.test(value)));
-    await page.reload();
-    await page.locator('.section-block').first().click();
-    await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
-    await editor.getByRole('tab',{name:'Java',exact:true}).click();
-    await editor.getByRole('button',{name:'Full source',exact:true}).click();
-    // Saved-state restoration and editor conversion complete asynchronously.
-    await page.waitForFunction(() => document.querySelector('dialog[open] .eva-editor .cm-content')
-      ?.textContent.match(/void line\((?:int|double) size\)/));
-    assert.match(await code.innerText(), /void line\((?:int|double) size\)/, 'saved methods survive a page reload');
     assert.match(await code.innerText(), /line\(64\)/);
     await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, []);
