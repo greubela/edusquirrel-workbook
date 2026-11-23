@@ -38,6 +38,12 @@ case class UmlStructureSelector(underlyingState: Signal[ProgrammingStateJavaStru
   val selectedEntitySignal: Signal[Option[SelectedUmlEntity]] =
     diagram.combineWith(selectedKey.signal).map((classes, key) => key.flatMap(classes.entity)).distinct
 
+  /** Which entry is selected; unlike [[selectedEntitySignal]], it does not change while the source is edited. */
+  val selectedKeySignal: Signal[Option[EntityKey]] = selectedKey.signal
+
+  /** Selects an entry as a click on it would, e.g. a function that was just added. */
+  def select(key: Option[EntityKey]): Unit = selectedKey.set(key)
+
   override def getDomElement(): Element = div(
     cls := "uml-structure-selector",
     children <-- diagram.map(_.classes).split(_.name)((_, _, umlClass) => renderClass(umlClass)))

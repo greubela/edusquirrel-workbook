@@ -1,0 +1,212 @@
+package it.evadid.homepage.webElements.code
+
+import com.raquo.airstream.core.AirstreamError
+import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
+import it.evadid.homepage.webElements.UiDomSuite
+import it.evadid.homepage.webElements.editor.code.EditorDomSuite
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
+import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.PrintToStdLogger
+import it.evadid.vm.naming.BeEntityName
+import it.evadid.workbook.elements.interactionElements.programming.state.*
+import org.scalajs.dom
+
+import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js
+
+/** The UML diagram selects what the class or function editor below it shows. */
+class JavaComponentEditorSpec extends UiDomSuite {
+  override protected def jsdomGlobals: List[String] = super.jsdomGlobals :+ "HTMLDialogElement"
+  private val logger = Logger.withNameAndPrefixes(Some("java-component-test"), PrintToStdLogger.printNothing)
+  private val mainClass = "public class Main {\n  public static void main(String[] args) {\n    forward(10);\n  }\n\n" +
+    "  static int twice(int x) {\n    return x * 2;\n  }\n}"
+  private val helperClass = "class Helper {\n  int size = 3;\n  void other() {}\n}"
+  private val main = BeEntityName.fromCodeString("Main")
+  private val dialogs = EditorDomSuite.window.HTMLDialogElement.prototype
+  /** jsdom has no modal dialogs; opening and closing toggle the `open` attribute as browsers do. */
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    dialogs.updateDynamic("showModal")(((self: js.Dynamic) => self.setAttribute("open", "")): js.ThisFunction0[js.Dynamic, Unit])
+    dialogs.updateDynamic("close")(((self: js.Dynamic) => self.removeAttribute("open")): js.ThisFunction0[js.Dynamic, Unit])
+  }
+  override def afterAll(): Unit = {
+    js.special.delete(dialogs, "showModal"); js.special.delete(dialogs, "close")
+    super.afterAll()
+  }
+
+  private def answer(source: String = mainClass + "\n\n" + helperClass) = Var(ProgrammingStateJavaStructured(source))
+  private def editor(state: Var[ProgrammingStateJavaStructured], reference: Option[() => Element] = None) =
+    new JavaComponentEditor(logger, state, reference = reference)
+  private def field(root: dom.Element) = one(root, "textarea.code-mirror-editor__fallback")
+  private def heading(root: dom.Element) = one(root, ".java-function-editor__workspace-heading h3").textContent
+  private def status(root: dom.Element) = one(root, ".java-function-editor__sync").textContent
+  private def entry(root: dom.Element, label: String) = withText(root, ".uml-entry", label).find(_.textContent == label)
+    .getOrElse(fail(s"No diagram entry '$label'"))
+  private def classCode(state: Var[ProgrammingStateJavaStructured], name: String) =
+    state.now().definedClasses(BeEntityName.fromCodeString(name))
+
+  test("the entry point opens in the function editor; its edits change only that method") {
+    val state = answer()
+    val component = editor(state)
+    assert(!component.dismissOnOutsideClick)
+    mountedAsync(component.getDomElement()) { root =>
+      assertEquals(status(root), "Function view")
+      assertEquals(heading(root), "Main.main")
+      assert(valueOf(field(root)).startsWith("public static void main(String[] args)"), valueOf(field(root)))
+      assertEquals(entry(root, "+main(args: String[]): void").getAttribute("aria-pressed"), "true")
+      assertEquals(all(root, ".uml-class").size, 2)
+      typeInto(field(root), "public static void main(String[] args) {\n    forward(20);\n  }")
+      eventually(classCode(state, "Main").contains("forward(20)"), "method written").flatMap { _ =>
+        assertEquals(classCode(state, "Main"), mainClass.replace("forward(10)", "forward(20)"))
+        assertEquals(classCode(state, "Helper"), helperClass)
+        typeInto(field(root), "public static void main(String[] args) {\n    forward(")
+        eventually(classCode(state, "Main").contains("forward(\n"), "unfinished draft kept")
+      }.map { _ =>
+        assert(!one(root, ".java-function-editor__draft-warning").classList.contains("java-function-editor__draft-warning--hidden"))
+        assert(isDisabled(one(root, "fieldset.java-component-editor__diagram")), "the diagram waits for balanced source")
+        assert(isDisabled(buttonNamed(root, "Add class")))
+        assert(classCode(state, "Main").contains("static int twice"))
+      }
+    }
+  }
+
+  test("classes and attributes open the class editor, functions the function editor, and Full source everything") {
+    val state = answer()
+    mountedAsync(editor(state, Some(() => p("Draw a square"))).getDomElement()) { root =>
+      assertEquals(one(root, "aside[aria-label='Task reference']").textContent, "Draw a square")
+      click(entry(root, "Helper"))
+      assertEquals(status(root), "Class view")
+      assertEquals(heading(root), "class Helper")
+      assertEquals(valueOf(field(root)), helperClass)
+      click(entry(root, "~twice(x: int): int"))
+      assertEquals(status(root), "Function view")
+      assertEquals(heading(root), "Main.twice")
+      assert(valueOf(field(root)).startsWith("static int twice(int x)"))
+      click(entry(root, "~size: int"))
+      assertEquals(heading(root), "class Helper", "an attribute is edited in its class")
+      click(buttonNamed(root, "Full source"))
+      assertEquals(status(root), "Full source")
+      assertEquals(valueOf(field(root)), state.now().toString)
+      click(buttonNamed(root, "Selection"))
+      assertEquals(status(root), "Class view")
+      click(buttonNamed(root, "Full source"))
+      click(entry(root, "Main"))
+      assertEquals(status(root), "Class view", "choosing in the diagram leaves the full source")
+      typeInto(field(root), mainClass.replace("x * 2", "x + x"))
+      eventually(classCode(state, "Main").contains("x + x"), "class edit written").map { _ =>
+        val toggle = buttonNamed(root, "Hide classes")
+        click(toggle)
+        assertEquals(toggle.getAttribute("aria-expanded"), "false")
+        assert(root.classList.contains("java-function-based-editor--structure-collapsed"))
+      }
+    }
+  }
+
+  test("adding a class and a function validates names and opens the new entry") {
+    val state = answer()
+    mountedAsync(editor(state).getDomElement()) { root =>
+      def dialog = one(root, "dialog")
+      def dialogField(caption: String) = withText(dialog, "label", caption).map(one(_, "input")).head
+      def submit(label: String) = click(buttonNamed(dialog, label))
+      def error = one(dialog, "[role=alert]").textContent
+      click(buttonNamed(root, "Add class"))
+      typeInto(dialogField("Class name"), "1Bad")
+      submit("Add class")
+      assertEquals(error, "Enter a valid Java class name.")
+      typeInto(dialogField("Class name"), "Helper")
+      submit("Add class")
+      assertEquals(error, "A class with this name already exists.")
+      typeInto(dialogField("Class name"), "Tool")
+      submit("Add class")
+      assertEquals(all(root, "dialog").size, 0)
+      assertEquals(classCode(state, "Tool"), "class Tool {\n}")
+      assertEquals(heading(root), "class Tool")
+      click(buttonNamed(one(root, ".java-function-editor__diagram-actions"), "Add function"))
+      typeInto(dialogField("Function name"), "")
+      submit("Add function")
+      assertEquals(error, "Enter a valid Java function name.")
+      typeInto(dialogField("Function name"), "greet")
+      typeInto(dialogField("Return type"), "String")
+      typeInto(dialogField("Parameters"), "String")
+      submit("Add function")
+      assertEquals(error, "The function signature or current Java source is invalid.")
+      typeInto(dialogField("Parameters"), "String name")
+      click(withText(dialog, "label", "Static method").map(one(_, "input")).head)
+      submit("Add function")
+      assertEquals(all(root, "dialog").size, 0)
+      assert(classCode(state, "Tool").contains("public String greet(String name) {"), classCode(state, "Tool"))
+      assertEquals(heading(root), "Tool.greet")
+      assertEquals(entry(root, "+greet(name: String): String").getAttribute("aria-pressed"), "true")
+      click(buttonNamed(root, "Add class"))
+      dispatch(one(root, "dialog"), "cancel")
+      assertEquals(all(root, "dialog").size, 0, "Escape closes the dialog")
+      Future.unit
+    }
+  }
+
+  test("outside changes refresh the open method; a removed selection shows the placeholder") {
+    val state = answer()
+    mounted(editor(state).getDomElement()) { root =>
+      state.set(ProgrammingStateJavaStructured(mainClass.replace("forward(10)", "forward(80)") + "\n\n" + helperClass))
+      assert(valueOf(field(root)).contains("forward(80)"))
+      state.set(ProgrammingStateJavaStructured(helperClass))
+      assertEquals(status(root), "No selection")
+      assert(one(root, ".java-function-editor__editor-placeholder").textContent.contains("Choose a class or function"))
+    }
+  }
+
+  test("a program without a single entry point starts in the full source") {
+    val state = answer("class Main {\n  void draw() {}\n}")
+    mounted(editor(state).getDomElement()) { root =>
+      assertEquals(status(root), "Full source")
+      click(entry(root, "~draw(): void"))
+      assertEquals(heading(root), "Main.draw")
+    }
+    assertEquals(JavaComponentEditor.entryFunction(answer().now()).map(_.method.name), Some("main"))
+    val otherMain = answer("class Other { public static void main(String[] args) {} }\n" + mainClass)
+    assertEquals(JavaComponentEditor.entryFunction(otherMain.now()).map(_.className), Some(main), "class Main is preferred")
+  }
+
+  private val evaLabels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading"),
+    it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_")))
+  private def textarea = dom.document.querySelector("textarea").asInstanceOf[dom.html.TextArea]
+
+  test("the Eva Java tab projects raw transport and publishes structured method edits") {
+    val state = Var[ProgrammingState](ProgrammingStateRaw(Java, mainClass))
+    val eva = EvaEditor(logger, state, Nil, Var(EvaEditorConfig(enabledLanguages = Seq(Java))), labels = evaLabels)
+    val close = mount(eva.getDomElement())
+    Future.unit.flatMap { _ =>
+      assert(textarea.value.contains("forward(10)"), textarea.value)
+      typeInto(textarea, "public static void main(String[] args) { forward(45); }")
+      eventually(state.now().toString.contains("forward(45)"), "edit published")
+    }.map(_ => assert(state.now().isInstanceOf[ProgrammingStateJavaStructured])).andThen { case _ => close() }
+  }
+
+  test("Eva switches between the Java component editor and the Python editor") {
+    val errors = Var(Vector.empty[Throwable])
+    val collectErrors: Throwable => Unit = error => errors.update(_ :+ error)
+    AirstreamError.registerUnhandledErrorCallback(collectErrors)
+    val state = Var[ProgrammingState](ProgrammingStateJavaStructured("class Main { static void main(String[] args) { forward(10); } }"))
+    val config = CodeMirrorEditorConfig.Default
+    val eva = EvaEditor(logger, state, Nil, Var(EvaEditorConfig(enabledLanguages = List(Java, Python))),
+      Some(List(JavaComponentEditor.forEvaTab(logger, config), CodeMirrorEditor.pythonEditorForEva(logger, config))), labels = evaLabels)
+    val close = mount(eva.getDomElement())
+    eva.setActiveTab(Python).flatMap { _ =>
+      assert(state.now().isInstanceOf[ProgrammingStatePythonStructured])
+      typeInto(textarea, textarea.value.replace("forward(10)", "forward(35)"))
+      eva.setActiveTab(Java)
+    }.map { _ =>
+      assert(state.now().isInstanceOf[ProgrammingStateJavaStructured])
+      assert(textarea.value.contains("forward(35)"), textarea.value)
+      assert(!textarea.value.contains("class Main"), "Java opens the function editor")
+      assertEquals(errors.now(), Vector.empty)
+    }.andThen { case _ =>
+      close()
+      AirstreamError.unregisterUnhandledErrorCallback(collectErrors)
+    }
+  }
+}

@@ -79,22 +79,7 @@
 .java-function-editor__section-title { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .java-function-editor__section-heading > div,
 .java-function-editor__workspace-heading > div { min-width: 0; }
-.java-function-editor__class-row {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 12px;
-    min-height: 0;
-    overflow: auto;
-    scrollbar-color: var(--editor-scrollbar) transparent;
-    scrollbar-width: thin;
-}
-.java-function-editor__class-card { flex: 0 0 auto; min-width: 0; padding: 10px 4px; }
-.java-function-editor__class-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--editor-border); }
-.java-function-editor__class-name { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-.java-function-editor__function-list { display: flex; flex-direction: column; gap: 4px; padding-top: 7px; }
-.java-function-editor__empty-class { color: var(--editor-muted); }
-.java-function-based-editor.editor-appearance :is(.java-function-editor__button, .java-function-editor__function) {
+.java-function-based-editor.editor-appearance .java-function-editor__button {
     min-height: 38px;
     min-width: 44px;
     padding: 8px 12px;
@@ -109,47 +94,24 @@
 }
 .java-function-editor__button { display: inline-flex; align-items: center; justify-content: center; overflow-wrap: anywhere; }
 .java-function-based-editor.editor-appearance .java-function-editor__button--small { padding-inline: 10px; font-size: 12px; }
-.java-function-based-editor.editor-appearance .java-function-editor__function {
-    width: 100%;
-    border-color: transparent;
-    border-radius: 11px;
-    background: transparent;
-    font-family: Consolas, "JetBrains Mono", monospace;
-    text-align: left;
-    overflow-wrap: anywhere;
-}
 .java-function-based-editor.editor-appearance .java-function-editor__button--primary {
     border-color: var(--editor-button-primary);
     background: var(--editor-button-primary);
     box-shadow: inset 0 1px var(--editor-glass-shine), 0 5px 12px -8px var(--editor-shadow);
     color: var(--editor-on-primary);
 }
-.java-function-based-editor.editor-appearance .java-function-editor__function--selected {
-    border-color: var(--editor-border-strong);
-    background: linear-gradient(135deg, var(--editor-glass-lens), transparent 90%), var(--editor-selected);
-    box-shadow: inset 0 1px var(--editor-glass-shine), 0 4px 14px -9px var(--editor-shadow);
-    color: var(--editor-accent);
-}
-.java-function-based-editor.editor-appearance :is(.java-function-editor__button, .java-function-editor__function):hover:not(:disabled) { border-color: var(--editor-border-strong); background: var(--editor-hover); color: var(--editor-ink); }
+.java-function-based-editor.editor-appearance .java-function-editor__button:hover:not(:disabled) { border-color: var(--editor-border-strong); background: var(--editor-hover); color: var(--editor-ink); }
 .java-function-based-editor.editor-appearance .java-function-editor__button--primary:hover:not(:disabled) { border-color: var(--editor-focus); background: var(--editor-button-primary); color: var(--editor-on-primary); }
-.java-function-based-editor.editor-appearance :is(.java-function-editor__button, .java-function-editor__function):focus { border-color: var(--editor-focus); }
+.java-function-based-editor.editor-appearance .java-function-editor__button:focus { border-color: var(--editor-focus); }
 .java-function-based-editor :is(button, input, textarea):focus-visible { outline: 2px solid var(--editor-focus); outline-offset: 2px; }
-.java-function-editor__button:disabled,
-.java-function-editor__function:disabled { opacity: 0.55; cursor: not-allowed; }
-.java-function-editor__function-name,
-.java-function-editor__function-signature { display: block; }
-.java-function-editor__function-name { font-size: 13px; }
-.java-function-editor__function-signature { margin-top: 3px; color: var(--editor-muted); font-size: 11px; }
+.java-function-editor__button:disabled { opacity: 0.55; cursor: not-allowed; }
 .java-function-editor__view-toggle { gap: 3px; padding: 3px; border-radius: 23px; box-shadow: inset 0 1px var(--editor-glass-shine); }
 .java-function-based-editor .java-function-editor__view-toggle .java-function-editor__button { padding: 7px 11px; border-color: transparent; background: transparent; color: var(--editor-muted); font-size: 12px; }
 .java-function-based-editor .java-function-editor__view-toggle .java-function-editor__button--primary { border-color: var(--editor-border); background: var(--editor-selected); box-shadow: none; color: var(--editor-accent); }
 .java-function-based-editor .java-function-editor__view-toggle .java-function-editor__button--primary:hover:not(:disabled) { background: var(--editor-selected); color: var(--editor-accent); }
-.java-function-editor__compact-navigation { display: none; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; max-width: 100%; margin-top: 8px; color: var(--editor-muted); font-size: 12px; }
-.java-function-editor__compact-navigation select { min-width: 0; min-height: 38px; max-width: 100%; padding: 7px 10px; border: 1px solid var(--editor-border); border-radius: 9px; background: var(--editor-chrome-surface); color: var(--editor-ink); font: inherit; }
-.java-function-editor__compact-navigation select:focus-visible { outline: 2px solid var(--editor-focus); outline-offset: 2px; }
-.java-function-based-editor--structure-collapsed .java-function-editor__compact-navigation { display: flex; }
 .java-function-editor__editor-panel,
 .java-function-editor__method,
+.java-function-editor__class,
 .java-function-editor__source,
 .java-function-based-editor .code-mirror-editor { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; background: var(--editor-code-surface); }
 .java-function-based-editor .code-mirror-editor { overflow: hidden; }
@@ -216,6 +178,18 @@
 .java-function-based-editor--structure-collapsed .java-function-editor__diagram-section { display: none; }
 .java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed { grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); grid-template-areas: "header header" "workspace reference"; }
 
+/* JavaComponentEditor: the class diagram above the editor of the selected class or function. */
+.java-function-editor__diagram-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.java-component-editor__diagram { min-width: 0; margin: 0; padding: 0; border: 0; }
+.java-component-editor__diagram:disabled { opacity: 0.55; }
+.java-component-editor .java-function-editor__diagram-section { overflow: auto; scrollbar-color: var(--editor-scrollbar) transparent; scrollbar-width: thin; }
+@media (min-width: 761px) {
+    .java-function-based-editor.java-component-editor { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto fit-content(40%) minmax(0, 1fr); grid-template-areas: "header" "navigation" "workspace"; }
+    .java-component-editor.java-function-based-editor--with-reference { grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); grid-template-areas: "header header" "navigation reference" "workspace reference"; }
+    .java-function-based-editor.java-component-editor.java-function-based-editor--structure-collapsed { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "header" "workspace"; }
+    .java-component-editor.java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed { grid-template-areas: "header header" "workspace reference"; }
+}
+
 @media (max-width: 1024px) {
     .java-function-based-editor--with-reference { grid-template-columns: 202px minmax(0, 1fr) 280px; }
 }
@@ -240,7 +214,6 @@
         background: var(--editor-code-surface);
         box-shadow: 0 10px 24px -8px var(--editor-shadow);
     }
-    .java-function-editor__compact-navigation { display: flex; }
     .java-function-based-editor--structure-collapsed { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "header" "workspace"; }
     .java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed { grid-template-rows: auto minmax(0, 1.4fr) minmax(0, 1fr); grid-template-areas: "header" "workspace" "reference"; }
     .java-function-editor__topbar { gap: 6px; padding: 8px 0; }
@@ -251,8 +224,6 @@
     .java-function-editor__sync { display: none; }
     .java-function-editor__workspace-heading { padding: 8px; gap: 6px; }
     .java-function-editor__workspace-heading > div:first-child { display: none; }
-    .java-function-editor__compact-navigation { margin: 0; width: 100%; flex-wrap: nowrap; }
-    .java-function-editor__compact-navigation select { flex: 1; width: 0; }
     .java-function-editor__view-toggle { padding: 2px; }
 }
 @media (max-width: 520px) {
@@ -281,7 +252,6 @@
     .java-function-editor__sync,
     .java-function-editor__workspace-heading > div:first-child { display: none; }
     .java-function-editor__workspace-heading { padding: 6px; gap: 6px; }
-    .java-function-editor__compact-navigation { margin: 0; }
 }
 @media (max-height: 600px) and (max-width: 760px) {
     .java-function-based-editor .java-function-editor__view-toggle { width: auto; flex: 0 0 auto; }
@@ -292,13 +262,10 @@
     .java-function-editor__view-toggle .java-function-editor__button::before { font: 14px/1 monospace; }
     .java-function-editor__view-toggle .java-function-editor__button:first-child::before { content: "ƒ"; }
     .java-function-editor__view-toggle .java-function-editor__button:last-child::before { content: "{ }"; }
-    .java-function-editor__compact-navigation { flex: 1; width: auto; }
-    .java-function-editor__compact-navigation > span { display: none; }
 }
 @media (pointer: coarse) {
-    .java-function-based-editor.editor-appearance :is(.java-function-editor__button, .java-function-editor__function),
+    .java-function-based-editor.editor-appearance .java-function-editor__button,
     .java-function-based-editor .java-function-editor__field input { min-height: 44px; }
-    .java-function-editor__compact-navigation select { min-height: 44px; }
     .java-function-based-editor .cm-scroller,
     .java-function-based-editor .code-mirror-editor__fallback,
     .java-function-based-editor .java-function-editor__field input { font-size: 16px; }

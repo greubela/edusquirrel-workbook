@@ -5,18 +5,11 @@ import it.evadid.vm.parsing.java.clean.JavaParser
 import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.conversion.structured.SourceStructure
 
-/** One immutable source analysis shared by method selection and class navigation. */
-private[code] final case class JavaMethodSource(code: String) {
-  lazy val classes: List[JavaMethodSource.JavaClass] = JavaMethodSource.discover(code)
-  lazy val balanced: Boolean = SourceStructure.balanced(code)
-  def initialMethod(requirePublicMain: Boolean): Option[JavaMethodSource.JavaMethod] =
-    JavaMethodSource.entryMethod(code, classes, balanced, requirePublicMain)
-}
-
+/** Methods of Java class sources, for selecting and editing one method at a time. */
 object JavaMethodSource {
 
-
-  private[code] final case class JavaMethod(
+  /** A method of a class source: its signature and the offsets from its first token to its `}`. */
+  final case class JavaMethod(
                                                className: String,
                                                name: String,
                                                returnType: String,
@@ -25,10 +18,7 @@ object JavaMethodSource {
                                                end: Int
                                              ) derives upickle.default.ReadWriter
 
-  private[code] final case class JavaClass(name: String, bodyStart: Int, bodyEnd: Int, methods: List[JavaMethod]) derives upickle.default.ReadWriter
-
-  private[code] def methodKey(function: JavaMethod): String =
-    s"${function.className}:${function.start}:${function.end}"
+  final case class JavaClass(name: String, bodyStart: Int, bodyEnd: Int, methods: List[JavaMethod]) derives upickle.default.ReadWriter
 
   private[code] final case class MethodRange(start: Int, end: Int) {
     def isWithin(source: String): Boolean = start >= 0 && end >= start && end <= source.length
@@ -50,9 +40,9 @@ object JavaMethodSource {
   private[code] def parses(code: String): Boolean =
     JavaParser.parse(code).isRight && structurallyBalanced(code)
 
-  private[code] def initialMethod(source: String, requirePublicMain: Boolean = true): Option[JavaMethod] = {
-    JavaMethodSource(source).initialMethod(requirePublicMain)
-  }
+  /** The `static void main(String[] args)` entry point, if it is the only `main` (of class `Main`, if present). */
+  private[code] def initialMethod(source: String, requirePublicMain: Boolean = true): Option[JavaMethod] =
+    entryMethod(source, discover(source), SourceStructure.balanced(source), requirePublicMain)
 
   private def entryMethod(source: String, currentClasses: List[JavaClass], balanced: Boolean,
       requirePublicMain: Boolean): Option[JavaMethod] = {
