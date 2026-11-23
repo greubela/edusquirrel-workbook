@@ -22,6 +22,10 @@ trait SyncDestinationHandlerBasic {
 
   def updateElement(key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess]
 
+  /** The stored values of `keys`; missing keys are absent. */
+  def readElements(keys: Set[String])(using ec: ExecutionContext): Future[Map[String, String]] =
+    readAll.map(_.filter((key, _) => keys(key)))
+
   def readElement(key: String)(implicit ec: ExecutionContext): Future[String]
 
   def readAll(implicit ec: ExecutionContext): Future[Map[String, String]]
@@ -81,6 +85,9 @@ object SyncDestinationHandlerBasic {
     }
 
     def readAll(implicit ec: ExecutionContext): Future[Map[String, String]] = basicHandler.readDestinationRaw(syncLogger)(using ec)
+
+    override def readElements(keys: Set[String])(using ec: ExecutionContext): Future[Map[String, String]] =
+      if keys.isEmpty then Future.successful(Map.empty) else basicHandler.readElementsRaw(syncLogger, keys)
 
     // Raw
     def withReplacedSyncLogger(newLogger: SyncLogger): SyncDestinationHandlerBasic = SyncDestinationHandlerBasic(basicHandler, newLogger)

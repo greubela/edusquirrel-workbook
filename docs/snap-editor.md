@@ -3,7 +3,8 @@
 The native adapter has three owners in `webElements/editor/code/SnapEditor`:
 `SnapMorphicSession` owns the mounted IDE/world and asynchronous lifecycle;
 `SnapPaletteInstaller` installs and releases exercise palettes; `SnapPreviewRenderer`
-creates temporary IDE/world instances and destroys them in `finally`.
+creates temporary IDE/world instances and destroys them in `finally`. Each render blocks the page, so
+`SnapPreviewScheduler` starts them one per browser task, once a canvas nears the viewport.
 `SnapProjectRuntime` shares stateless project/bootstrap operations. Live handles
 and scheduling state belong to one `Var[SnapSessionResources]` per session.
 

@@ -42,16 +42,19 @@ case class SnapPreviewEditor(
       heightAttr := 1,
       onMountCallback { ctx =>
         val active = Var(true)
-        new Subscription(ctx.owner, () => active.set(false))
         val canvas: Canvas = ctx.thisNode.ref.asInstanceOf[dom.HTMLCanvasElement]
-        impl.whenReady(language, () => {
-          if active.now() then
-            renderingError.set(None)
-            impl.changeLanguage(language)
-            impl.renderPreviewInto(currentState, canvas, config)
-        }, error => {
-          if active.now() then renderingError.set(Some(s"Block preview unavailable: ${error.getMessage}"))
-        })
+        // Each render blocks the page: they start one per task, once the canvas nears the viewport.
+        val stopWaiting = SnapPreviewScheduler.whenVisible(canvas) { () =>
+          if active.now() then impl.whenReady(language, () => {
+            if active.now() then
+              renderingError.set(None)
+              impl.changeLanguage(language)
+              impl.renderPreviewInto(currentState, canvas, config)
+          }, error => {
+            if active.now() then renderingError.set(Some(s"Block preview unavailable: ${error.getMessage}"))
+          })
+        }
+        new Subscription(ctx.owner, () => { active.set(false); stopWaiting() })
       }
     )
   }

@@ -166,6 +166,25 @@ case class LocalIndexedDbStorageSyncHandler(definition: LocalIndexedDbSyncDefini
     promise.future
   }
 
+  /** One read-only transaction with a `get` per key; missing keys are absent. */
+  override def readElementsRaw(logger: SyncLogger, keys: Set[String])(using ec: ExecutionContext): Future[Map[String, String]] =
+    openDatabase().flatMap { db =>
+      val promise = Promise[Map[String, String]]()
+      val transaction = db.transaction(js.Array(definition.storeName), IDBTransactionMode.readonly)
+      val store = transaction.objectStore(definition.storeName)
+      val requests = keys.toList.map(key => key -> store.get(key))
+      transaction.oncomplete = (_: dom.Event) => {
+        db.close()
+        promise.trySuccess(requests.flatMap((key, request) =>
+          Option.unless(js.isUndefined(request.result))(key -> request.result.asInstanceOf[js.Dynamic].value.asInstanceOf[String])).toMap)
+      }
+      transaction.onabort = (_: dom.Event) => {
+        db.close()
+        promise.tryFailure(new RuntimeException("IndexedDB read aborted"))
+      }
+      promise.future
+    }
+
   override def readDestinationRaw(logger: SyncLogger)(implicit ec: ExecutionContext): Future[Map[String, String]] = {
     openDatabase().flatMap { db =>
       val promise = Promise[Map[String, String]]()

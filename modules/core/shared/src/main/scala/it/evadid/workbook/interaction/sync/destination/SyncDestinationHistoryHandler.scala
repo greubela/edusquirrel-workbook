@@ -109,6 +109,15 @@ object SyncDestinationHistoryHandler {
         })
       }
 
+      /** Reads only the requested records and parses each once; polling one interaction does not read the store. */
+      override def readHistoriesInRange(usageContext: UsageContext, keys: Seq[SyncContext], starting: LocalDateTime,
+          until: LocalDateTime, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
+        require(!until.isBefore(starting), "History range end must not precede its start")
+        typed.readElementsTyped(keys.filter(_.toUsageContext == usageContext).toSet).map(stored =>
+          InteractionHistoryJson.readable(stored)(InteractionHistoryJson.deserialize, strategy, starting, until,
+            (key, error) => syncLogger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error)))
+      }
+
       override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
         typed.readFullStore.map(curMap => {
           val data = curMap.filter((context, json) => context.toUsageContext == usageContext && validHistory(json, syncLogger))

@@ -56,7 +56,9 @@ merges repeated requests until it flushes, and lost writes are resent. The perio
 synchronization's next read, or an explicit sync from the sync icon (commit the
 current answer as MAJOR, store, flush, read), confirms them. History updates schedule
 their store after the current task; a replaced binding runs its pending stores
-before its final flush. Normal reads replay the last received timestamp inclusively. A poll performs a
+before its final flush. Normal reads replay the last received timestamp inclusively; a history read empty
+has no cursor and is read fully again, so an answer created before that read is still confirmed (rather than
+rewritten on every poll). Basic (local) destinations read only the polled records, each parsed once. A poll performs a
 full refresh once the last full read is five minutes old, also recovering late
 uploads with older timestamps. Incremental polls are cheaper, but cannot discover
 those events immediately. Explicit window

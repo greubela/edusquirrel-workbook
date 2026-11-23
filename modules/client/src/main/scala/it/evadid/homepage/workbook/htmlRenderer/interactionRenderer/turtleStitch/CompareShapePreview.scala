@@ -33,7 +33,7 @@ final case class CompareShapePreview(boundVar: Var[ProgrammingState], expected: 
   private def view(assessments: Signal[Try[TurtleDrawingGrading.Assessment]]): Element = {
     val scenes = assessments.scanLeft(_.toOption.map(_.scene))((last, next) => next.toOption.map(_.scene).orElse(last))
     div(
-      child.maybe <-- assessments.map(_.failed.toOption.map(_.getMessage)).distinct.map(_.map(message =>
+      child.maybe <-- assessments.map(_.fold(error => Some(error.getMessage), _ => None)).distinct.map(_.map(message =>
         div(cls := "turtle-preview__error", s"Error while trying to draw turtle: $message"))),
       div(display <-- assessments.map(assessment => if assessment.isSuccess then "" else "none"),
         child.maybe <-- scenes.distinct.map(_.map(scene => TurtleJsxGraphRenderer.render(scene, "Turtle drawing")))))

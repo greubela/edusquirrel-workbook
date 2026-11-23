@@ -81,4 +81,29 @@ class BrowserHistoryStorageRoundTripSpec extends EditorDomSuite {
       assertEquals((window(good).map(_.associatedState), window.getOrElse(broken, Nil)), (Seq("mine"), Nil), "range reads discard it too")
     }
   }
+
+  test("polls confirm an answer created before an empty read and stop writing it") {
+    val text = TextInteractionFormat
+    val target = FormattedSyncDestination(SyncInformationWithContext(SyncInformation(definition, EventSyncStrategy.SYNC_LAST), usage,
+      _ => LocalStorageSyncHandler(definition).withSyncLogger(logger).forHistory()), text)
+    val polled = RemoteHistoryCache[SyncContext, text.type, FormattedSyncDestination[text.type]](logger, Map(target -> EventSyncStrategy.SYNC_LAST))
+    val key = usage.toSyncContext("untouched")
+    val storageKey = SyncContext.serializer.serialize(key)
+    // An unanswered exercise: its DEFAULT answer is older than the first (empty) read of the destination.
+    val untouched = InteractionVariableHistory[text.type](InteractionEvents(Set(AnswerChangedEvent[text.type]("", at, UpdateImportance.DEFAULT))))
+    def poll() = {
+      polled.mergeLocal(Map(key -> untouched))
+      polled.refreshFrom(target, Set(key), LocalDateTime.now().minusMinutes(5)).flatMap(_ => polled.requestStore(target, Map(key -> untouched)))
+    }
+    for {
+      _ <- poll()
+      written = dom.window.localStorage.getItem(storageKey)
+      _ <- poll()
+      _ = dom.window.localStorage.setItem(storageKey, "marker")
+      _ <- poll()
+    } yield {
+      assert(written != null, "the first poll writes the answer")
+      assertEquals(dom.window.localStorage.getItem(storageKey), "marker", "once read back, the answer is not written again")
+    }
+  }
 }

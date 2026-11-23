@@ -79,14 +79,15 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
       .map(response => combine(List(response)))
   }
 
-  /** Normal polls replay the last event; periodic full reads also recover late uploads with older timestamps. */
+  /** Normal polls replay the last event; periodic full reads also recover late uploads with older timestamps.
+    * The window starts at the newest event read, never at a read's completion time: a history read empty is read
+    * fully again, so an answer created before that read and written after it is still confirmed. */
   def refreshFrom(destination: RW, keys: Set[K], fullRefreshBefore: LocalDateTime,
       forceFlush: Boolean = false): Future[Map[K, Seq[InteractionEvent[F]]]] = attempt {
     require(cacheStrategies.contains(destination), "Cannot read an unconfigured history destination")
     val known = state.now().destinations(destination)
     val windows = keys.groupBy { key =>
-      known.get(key).filter(_.fullFetchCompleted.exists(time => !time.isBefore(fullRefreshBefore)))
-        .flatMap(value => value.fetchedThrough.orElse(value.fetchCompleted))
+      known.get(key).filter(_.fullFetchCompleted.exists(time => !time.isBefore(fullRefreshBefore))).flatMap(_.fetchedThrough)
     }
     Future.traverse(windows.toSeq) { (cursor, selected) =>
       fetch(destination, selected, cursor, LocalDateTime.MAX, forceFlush, trackProgress = true)

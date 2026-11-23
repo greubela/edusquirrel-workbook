@@ -6,7 +6,8 @@ import it.evadid.workbook.meta.InteractionVariableSyncReport
 
 /** A single classification drives both sync icon and tooltip. */
 final class SyncReporter(source: Signal[Option[InteractionVariableSyncReport[SyncInformationWithContext]]]) {
-  val report: Signal[SyncReporter.Report] = source.map(SyncReporter.summarize)
+  /** Distinct: every poll re-reports each interaction, and views rebuild their icon for each new report. */
+  val report: Signal[SyncReporter.Report] = source.map(SyncReporter.summarize).distinct
 }
 
 object SyncReporter {

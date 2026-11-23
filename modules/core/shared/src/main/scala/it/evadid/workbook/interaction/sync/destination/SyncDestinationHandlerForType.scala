@@ -19,6 +19,9 @@ trait SyncDestinationHandlerForType[K, V] {
 
   def readFullStore(implicit ec: ExecutionContext): Future[Map[K, V]]
 
+  /** The stored values of `keys`; missing keys and unreadable values are absent. */
+  def readElementsTyped(keys: Set[K])(using ec: ExecutionContext): Future[Map[K, V]]
+
   def storeAll(valueMap: Map[K, V])(implicit ec: ExecutionContext): Future[SyncSuccess]
 
   def forSpecificKey(key: K): SyncDestinationForKey[K, V] = new SyncDestinationForKey[K, V]() {
@@ -87,6 +90,12 @@ object SyncDestinationHandlerForType {
     }
 
     override def readFullStore(implicit ec: ExecutionContext): Future[Map[K, V]] = basic.readAll.map(deserializeAndWarn)
+
+    override def readElementsTyped(keys: Set[K])(using ec: ExecutionContext): Future[Map[K, V]] = {
+      val serialized = keys.flatMap(key => keySerializer.trySerialize(key).toOption.map(_ -> key)).toMap
+      basic.readElements(serialized.keySet).map(_.flatMap((stored, value) =>
+        valueSerializer.tryDeserialize(value).toOption.map(serialized(stored) -> _)))
+    }
 
   }
 }

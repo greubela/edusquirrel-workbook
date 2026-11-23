@@ -55,7 +55,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
   private trait InteractionBinding {
     def variable: InteractionVariable[? <: InteractionFormat]
     def snapshot: InteractionSnapshot
-    def restoration: Signal[Option[Restoration]]
+    def restoration: EventStream[Restoration]
     def report: Signal[Option[InteractionVariableSyncReport[SyncInformationWithContext]]]
   }
 
@@ -82,7 +82,9 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
         }
       }
     }
-    val restoration: Signal[Option[Restoration]] = cacheState.signal.map(_.histories.get(key).map(TypedRestoration(variable, _)))
+    /** The merged history, published only when it changes: every poll updates this interaction's cache state. */
+    val restoration: EventStream[Restoration] = cacheState.signal.map(_.histories.get(key)).distinct.changes
+      .collect { case Some(history) => TypedRestoration(variable, history) }
     val report: Signal[Option[InteractionVariableSyncReport[SyncInformationWithContext]]] =
       cache.reports.toSignal(Map.empty).map(_.get(key).map(current =>
         InteractionVariableSyncReport(destinations.map(_.information), current.syncedDestinations.map(_.information))))
@@ -94,13 +96,14 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     val context: ExecutionContextInformation = fullInfo.workbookContextInformation
     val interactions: Seq[InteractionBinding] = environment.toSeq.flatMap(owner =>
       owner.interactions.toSeq.map(interaction => new TypedBinding(interaction, owner, subscriptions)))
-    val restorations: Signal[Seq[Restoration]] = Signal.combineSeq(interactions.map(_.restoration)).map(_.flatten)
+    // Merged, not combined: a combined signal re-published every interaction whenever one of them changed.
+    val restorations: EventStream[Restoration] = EventStream.mergeSeq(interactions.map(_.restoration))
 
     def flush(): Unit = environment.foreach(_.syncDestinations.foreach(_.handler.flush(true)))
     def detach(): Unit = {
       // Detaching observers does not cancel requests. Their captured handlers still flush normally.
       subscriptions.killSubscriptions()
-      Try(flush()).failed.foreach(error => syncLogger.logExceptionWarn("Could not flush the previous workbook", error))
+      try flush() catch case scala.util.control.NonFatal(error) => syncLogger.logExceptionWarn("Could not flush the previous workbook", error)
     }
     def batch[A](selected: Seq[A], forceFlush: Boolean)(operation: A => Future[Unit]): Future[Unit] =
       if !user.enabled then Future.unit else {
@@ -128,11 +131,13 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     }.observe(using unsafeWindowOwner)
 
   // Switching subscriptions prevents old reads from publishing into a replacement workbook.
-  binding.flatMapSwitch(current => current.restorations.map(updates => (current, updates)))
-    .foreach { (current, updates) =>
+  binding.flatMapSwitch(current => current.restorations.map(update => (current, update)))
+    .foreach { (current, update) =>
       // Each restoration is isolated: one interaction that cannot be restored never blocks the others.
-      if current.user.enabled then updates.foreach(update => Try(update.publish(current.context)).failed.foreach(error =>
-        syncLogger.logExceptionWarn("Could not restore an interaction history", error)))
+      // (Not `Try(...).failed`: on success that allocates an exception, for every interaction on every poll.)
+      if current.user.enabled then
+        try update.publish(current.context)
+        catch case scala.util.control.NonFatal(error) => syncLogger.logExceptionWarn("Could not restore an interaction history", error)
     }(using unsafeWindowOwner)
 
   override def storeAll(forceFlush: Boolean): Future[Unit] = {

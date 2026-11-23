@@ -24,6 +24,11 @@ trait SyncDestinationHandler {
 
   def readDestinationRaw(logger: SyncLogger)(implicit ec: ExecutionContext): Future[Map[String, String]]
 
+  /** The stored values of `keys`; missing keys are absent. Destinations that can read single records override this
+    * instead of reading everything. */
+  def readElementsRaw(logger: SyncLogger, keys: Set[String])(using ec: ExecutionContext): Future[Map[String, String]] =
+    readDestinationRaw(logger).map(_.filter((key, _) => keys(key)))
+
   def underlyingDefinition: SyncDestinationDefinition
 
   def withSyncLogger(logger: SyncLogger): SyncDestinationHandlerBasic = SyncDestinationHandlerBasic(this, logger)
