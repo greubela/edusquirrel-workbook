@@ -29,8 +29,12 @@ test('monk stories and revised tasks work with the current editor and interactio
     await page.goto(origin + '/homepage/monksWorkbook/');
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
-    assert.equal(await page.locator('.section-block').count(), 5);
-    await page.locator('.section-block').first().click();
+    assert.equal(await page.locator('.section-block').count(), 7);
+    const labels = JSON.parse(await readFile(path.join(root, 'resources/languageMaps/eva/monksworkbook/map-de.json'), 'utf8'));
+    const section = key => page.locator('.section-block').filter({hasText: labels[key]});
+    assert.equal(await section('welcomeTitle').count(), 1);
+    assert.equal(await section('finishTitle').count(), 1);
+    await section('parta').click();
     const counter = page.locator('.slide-deck-counter');
     await counter.getByText('1/13', {exact:true}).waitFor();
     const next = page.locator('.slide-deck-navigation button').last();
@@ -56,10 +60,10 @@ test('monk stories and revised tasks work with the current editor and interactio
     await reorder.locator('button.feedback-action--primary').click();
     await reorder.locator('.feedback-entry.feedback-status--incorrect').waitFor();
     assert(await page.locator('.choice-interaction code').count() > 0, 'code options render as inline code');
-    await page.locator('.section-block').nth(1).click();
+    await section('partc').click();
     await counter.getByText('1/4', {exact:true}).waitFor();
     await page.locator('.answer-table thead th').getByText('Zeitpunkt', {exact:true}).waitFor();
-    await page.locator('.section-block').nth(2).click();
+    await section('partzero').click();
     const open = () => page.locator('.workbook-body').getByRole('button', {name:/Editor.*öffnen|Open editor/i}).first();
     await open().click();
     const dialog = page.locator('dialog[open]');
@@ -86,7 +90,7 @@ test('monk stories and revised tasks work with the current editor and interactio
     await dialog.getByRole('button', {name:'Full source',exact:true}).click();
     assert.match(await code.innerText(), /Turtle\.forward\(60/);
     await page.locator('.fullscreen-close-button').click();
-    await page.locator('.section-block').nth(4).click();
+    await section('kochtitle').click();
     assert.equal(await page.locator('.workbook-body').getByRole('button', {name:/Editor.*öffnen|Open editor/i}).count(), 3);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
