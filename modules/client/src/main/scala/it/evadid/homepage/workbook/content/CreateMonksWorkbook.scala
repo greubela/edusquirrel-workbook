@@ -146,11 +146,11 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
         container(key("partzero"), List(text("zerointro"))),
         editorTask("e1"), editorTask("e2"), editorTask("e3"))),
 
-      // Drawing with the building-brick methods from the editor section (tower, pyramids, contract).
+      // Drawing with the building-brick methods from the editor section (tower, pyramids, stairs).
       section("monks-bridge", key("partd"), List(
         container(key("partd"), List(text("partdintro"))),
-        editorTask("e4"), editorTask("e5"), editorTask("e6a"), editorTask("e6b"),
-        task("d1", List(choice("d1a", List(1), 4), choice("d1b", List(1, 3), 5, multiple = true), text("d1note"))))),
+        editorTask("e4"), editorTask("e5"), editorTask("e6b"), editorTask("e6a"),
+        task("d1", List(choice("d1a", List(1), 4), choice("d1b", List(1, 3), 5, multiple = true))))),
 
       // Section 3 (Koch curve) is authored separately and intentionally unchanged.
       section("monks-koch", key("kochtitle"),
@@ -317,29 +317,34 @@ object CreateMonksWorkbook {
           |    }
           |
           |""" + pyramidMain, withHelpers = true),
+      // The faulty programs draw stairs, so the pyramid from e5 does not already fix them.
       "e6a" -> program(
-        """    static void zeichnePyramide(int n) {
+        """    static void zeichneTreppe(int n) {
           |        stein(n * 20);
           |        hoch();
-          |        springe(10);
-          |        zeichnePyramide(n - 1);
-          |        springe(-10);
-          |        runter();
+          |        zeichneTreppe(n - 1);
           |    }
           |
-          |""" + pyramidMain, withHelpers = true),
+          |    public static void main(String[] args) {
+          |        zeichneTreppe(4);
+          |    }
+          |""", withHelpers = true),
       "e6b" -> program(
-        """    static void zeichnePyramide(int n) {
+        """    static void zeichneTreppe(int n) {
           |        if (n == 0) {
           |            return;
           |        }
           |        stein(n * 20);
           |        hoch();
-          |        springe(10);
-          |        zeichnePyramide(n - 1);
+          |        zeichneTreppe(n - 1);
           |    }
           |
-          |""" + pyramidMain, withHelpers = true))
+          |    public static void main(String[] args) {
+          |        zeichneTreppe(4);
+          |        springe(120);
+          |        zeichneTreppe(3);
+          |    }
+          |""", withHelpers = true))
 
     def apply(id: String): String = byTask.getOrElse(id, throw IllegalArgumentException(s"No starting code for $id"))
   }
@@ -365,6 +370,10 @@ object CreateMonksWorkbook {
     def pyramide(n: Int): List[TurtleCommand[Double]] =
       if n <= 0 then Nil
       else stein(n * 20) ++ hoch() ++ springe(10) ++ pyramide(n - 1) ++ springe(-10) ++ runter()
+
+    /** Stairs aligned on the left; `back` returns the turtle to where the call began. */
+    def treppe(n: Int, back: Boolean): List[TurtleCommand[Double]] =
+      if n <= 0 then Nil else stein(n * 20) ++ hoch() ++ treppe(n - 1, back) ++ (if back then runter() else Nil)
   }
 
   /** Target drawing of an editor task, recorded from its sample solution. */
@@ -376,7 +385,9 @@ object CreateMonksWorkbook {
       case "e2" => stein(80) ++ hoch() ++ stein(60) ++ hoch() ++ stein(40)
       case "e3" => vieleck(4, 60) ++ springe(100) ++ vieleck(6, 40)
       case "e4" => turm(5)
-      case "e5" | "e6a" | "e6b" => pyramide(4) ++ springe(100) ++ pyramide(3)
+      case "e5" => pyramide(4) ++ springe(100) ++ pyramide(3)
+      case "e6a" => treppe(4, back = false)
+      case "e6b" => treppe(4, back = true) ++ springe(120) ++ treppe(3, back = true)
       case other => throw IllegalArgumentException(s"No editor target for $other")
     }
     TurtleGraphic(commands)

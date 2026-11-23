@@ -44,6 +44,14 @@ class MonksWorkbookSpec extends FunSuite {
     assertEquals(shared.executionStatus, it.evadid.vm.simulation.turtle.TurtleExecutionStatus.LimitExceeded)
   }
 
+  test("the stairs without the way back miss the target until the turtle returns") {
+    def drawing(code: String) = checked(code).commands.map(_.toDrawingCommand).toSeq
+    val code = CreateMonksWorkbook.EditorCode("e6b")
+    val expected = CreateMonksWorkbook.editorTarget("e6b").toTurtleProgram
+    assertNotEquals(drawing(code), expected)
+    assertEquals(drawing(code.replace("zeichneTreppe(n - 1);", "zeichneTreppe(n - 1);\n        runter();")), expected)
+  }
+
   test("a solved recursive pyramid draws the same target after switching through Snap") {
     val body = """if (n == 0) { return; }
                  |stein(n * 20);
