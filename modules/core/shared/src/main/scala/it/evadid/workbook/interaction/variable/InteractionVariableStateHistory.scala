@@ -38,7 +38,7 @@ case class InteractionVariableStateHistory[T]
     withAddedEvents(Set(event))
   }
 
-  override val toString: String = s"InteractionVariableHistory.fromResults(${events.size} events, latest: ${InfoUtil.datetimeFormattedForLog(lastStateOption.map(_.timestamp))})"
+  override lazy val toString: String = s"InteractionVariableHistory.fromResults(${events.size} events, latest: ${InfoUtil.datetimeFormattedForLog(lastStateOption.map(_.timestamp))})"
 
 }
 
