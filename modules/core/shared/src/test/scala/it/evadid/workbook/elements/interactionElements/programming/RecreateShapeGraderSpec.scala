@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus}
@@ -18,7 +19,7 @@ class RecreateShapeGraderSpec extends FunSuite {
     val commands = state.toBeExpression.turtleCommandExecutionInfo.completedCommands
     assertEquals(commands.size, 5, clues(commands))
     Future.traverse(List(state, state.toSnapXml, state.toJava)) { source =>
-      RecreateShapeGrader(target, GradingImportance.REQUIRED_TEST).gradeStateSafe(source, true, TestExecutionContext()).map { result =>
+      RecreateShapeGrader(target, GradingImportance.REQUIRED_TEST).gradeStateSafe(source, true, MAJOR, TestExecutionContext()).map { result =>
         assertEquals(result.gradingStatus, GradingStatus.Correct(), clues(source, commands))
       }
     }
@@ -34,6 +35,7 @@ class RecreateShapeGraderSpec extends FunSuite {
       Future.traverse(TurtleDrawingPolicy.values.toList.zip(grades)) { (policy, expected) =>
         val interaction = TurtleRecreateShapeInteraction(s"policy-$policy", ProgrammingStateRaw(Python, program),
           TurtleGraphic.TurtleGraphicSvgString(path), comparisonPolicy = policy)
+        // The unedited default answer has no event, so its grading must be requested.
         interaction.interactionVariable.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true).map { result =>
           assertEquals(result.testsWithResults.head.gradingStatus, expected, clues(policy, program))
         }

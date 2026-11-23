@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
-import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, WorkbookContent}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
@@ -13,8 +13,11 @@ import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.meta.ExecutionContextInformation
+
 import scala.concurrent.Future
 import upickle.default.ReadWriter
+
+import java.time.LocalDateTime
 
 enum CommandUsageMeasure derives ReadWriter {
   case OccurrencesInCode, CallsDuringExecution
@@ -33,7 +36,7 @@ case class TurtleCommandUsageGrader(
   private val canonicalCommand = TurtleCommand.resolveCanonicalNames(command)
     .getOrElse(throw IllegalArgumentException(s"Unknown turtle command: ${command.universalInterpretation()}"))
 
-  override val runningBehavior: GraderRunningBehavior = GraderRunningBehavior.RUN_ALWAYS
+  override val runningBehavior: GraderRunningBehavior = GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR
   override val gradingEntity: FeedbackEntity = FeedbackEntity.TestEntity()
 
   override protected def handleGrading(state: ProgrammingState, contextInformation: ExecutionContextInformation)
@@ -53,8 +56,9 @@ case class TurtleCommandUsageGrader(
         info.nrOfCommandExecutedIgnoreParameter(canonicalCommand)
     }
     val status = if count <= maximum then GradingStatus.Correct() else GradingStatus.Incorrect()
-    GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status,
-      feedbackInformation = Some(description(count)))
+    val res: GradingResult[ProgrammingState, AdditionalProgrammingTestInfo] =
+     GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, Some(WorkbookContent(description(count))), None, LocalDateTime.now())
+    res
   }(using contextInformation.futureExecutionContext)
 
   private def description(count: Int): LanguageMap[HumanLanguage] =

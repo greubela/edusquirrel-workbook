@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.content.WorkbookFactory
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.*
 import it.evadid.workbook.elements.interactionElements.pixel.*
 import it.evadid.workbook.elements.interactionElements.table.*
@@ -21,7 +21,7 @@ case class CreateImageRecognitionWorkbook(fullInfo: FullInfo) extends WorkbookFa
     section("image-introduction", "digitalWorkbooks/introTitle", List(container("digitalWorkbooks/introTitle", List(
       instructionPlaintext("digitalWorkbooks/adaptationScope"),
       instructionPlaintext("digitalWorkbooks/introText"),
-      ChoiceInteraction("image-prior-opinion", id("opinionPrompt"), List(id("opinionYes"), id("opinionNo"), id("opinionUnsure"))),
+      contentChoice("image-prior-opinion", id("opinionPrompt"), List(id("opinionYes"), id("opinionNo"), id("opinionUnsure"))),
       createTextInput("image-opinion-reason")
     )))),
     section("image-threshold-neuron", "digitalWorkbooks/neuronTitle", List(container("digitalWorkbooks/neuronTitle", List(
@@ -29,8 +29,8 @@ case class CreateImageRecognitionWorkbook(fullInfo: FullInfo) extends WorkbookFa
       CreateImageRecognitionWorkbook.binaryTable,
       instructionPlaintext("digitalWorkbooks/neuronTask"),
       CreateImageRecognitionWorkbook.poolExercise,
-      ChoiceInteraction("image-threshold-boundary", id("boundaryPrompt"), List(id("active"), id("inactive")), expected = Some(List(0))),
-      ChoiceInteraction("image-weight-effects", id("weightPrompt"), List(id("effectWeighted"), id("effectThreshold"), id("effectAlwaysRight")),
+      contentChoice("image-threshold-boundary", id("boundaryPrompt"), List(id("active"), id("inactive")), expected = Some(List(0))),
+      contentChoice("image-weight-effects", id("weightPrompt"), List(id("effectWeighted"), id("effectThreshold"), id("effectAlwaysRight")),
         allowMultiple = true, expected = Some(List(0, 1))),
       instructionPlaintext("digitalWorkbooks/reflection"), createTextInput("image-neuron-reflection")
     )))),
@@ -40,7 +40,7 @@ case class CreateImageRecognitionWorkbook(fullInfo: FullInfo) extends WorkbookFa
       CreateImageRecognitionWorkbook.pixelRecreation,
       instructionPlaintext("digitalWorkbooks/pixelProbeTask"),
       CreateImageRecognitionWorkbook.pixelExperiment,
-      ChoiceInteraction("image-pixel-uniqueness", id("pixelUniqueness"), List(id("opinionYes"), id("opinionNo")), expected = Some(List(1))),
+      contentChoice("image-pixel-uniqueness", id("pixelUniqueness"), List(id("opinionYes"), id("opinionNo")), expected = Some(List(1))),
       instructionPlaintext("digitalWorkbooks/pixelReflection"), createTextInput("image-pixel-reflection")
     )))),
     section("image-generalization", "digitalWorkbooks/generalizationTitle", List(container("digitalWorkbooks/generalizationTitle", List(

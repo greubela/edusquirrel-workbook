@@ -63,9 +63,20 @@ whereas answer tables save entered strings.
 An interaction attaches independent `WorkbookInteractionGrader[T, GA]` checks and
 at most one `WorkbookInteractionScaffolder[T, SA]`. Results belong to the exact
 answer assessed, with localized feedback and optional typed additional data.
-`InteractionVariable` requests automatic grading on history updates; each grader's
-`runningBehavior` decides whether it executes. LLM grading and hints require an
-explicit request through the shared info panel.
+`WorkbookInteractionGrader.shouldRunGrader(forceGrading, importance)` keeps two reasons apart:
+`forceGrading` says the caller requested grading (the check button) and always runs the grader;
+otherwise its `runningBehavior` decides for the answer's recorded `UpdateImportance`
+(`RUN_ALWAYS`, `RUN_ON_AT_LEAST_MINOR`, which skips TEMPORARY typing and unedited DEFAULT answers,
+or `RUN_ONLY_MANUALLY`). `InteractionVariable` requests unforced grading on history updates.
+LLM grading and hints require an explicit request through the shared info panel.
+
+Choice options and grading feedback carry `WorkbookContent` (a language-map ID,
+a translated map, or literal content); `LaminarRenderHelper.workbookContentSignal`
+resolves these without flattening the saved model to strings. `WorkbookContentChoiceInteraction`,
+slideshow completion, reorder constraints and answer-table cells attach serializable
+graders registered in their `InteractionFormat`. Renderers update answers; the shared
+grading panel reports correctness. Reorder checks run on request, while choices,
+table cells and slideshow visits are graded automatically.
 
 Pending and completed computations are cached by answer, independently of display
 language. A language change reuses them; result merges retain available feedback

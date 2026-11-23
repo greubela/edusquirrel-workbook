@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import it.evadid.workbook.abstractions.InteractionFormat.{ProgrammingExerciseWithLlmScaffoldingAndGrading}
 
 import com.raquo.laminar.api.L.*
@@ -24,7 +26,7 @@ import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 
 case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFactory[ProgrammingExerciseFullJava] {
   private[homepage] def editorState(element: ProgrammingExerciseFullJava, syncControl: SyncControl): Var[ProgrammingState] =
-    element.interactionVariable.createBoundStateForTyping(() => fullInfo.keyboardInput.lastKey.now(), fullInfo.workbookContextInformation).toAirstreamVar
+    element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
   private[homepage] def createNewEditor(
                                          element: ProgrammingExerciseFullJava,

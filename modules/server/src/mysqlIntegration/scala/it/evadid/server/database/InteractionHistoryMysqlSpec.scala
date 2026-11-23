@@ -9,7 +9,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
-import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
+import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId, WorkbookContent}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.sql.DatabaseHistoryFormat
@@ -54,7 +54,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(LanguageMapContentId(s"test/criterion-$index"), Map.empty))
   private def history(value: String = "first", at: LocalDateTime = time): History = {
     val grades = (0 to 1).map { index =>
-      GradingResult(grader(index), value, GradingStatus.Correct(), Some(LanguageMap.universalMap("regular grading feedback")),
+      GradingResult(grader(index), value, GradingStatus.Correct(), Some(WorkbookContent(LanguageMap.universalMap("regular grading feedback"))),
         Some(transcript), at.plusSeconds(1))
     }
     val scaffolding = ScaffoldingResult(value, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("regular scaffolding feedback")),
@@ -91,7 +91,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     val user = User("Sync test", context.userId, "sync-test@example.test")
     MysqlTestDatabase.withConnection { connection =>
       it.evadid.server.commandHandler.sql.SqlUserCommands(connection, logger)
-        .upsertUser(user, it.evadid.core.datastructures.user.UserConfig.onlineDefaults)
+        .upsertUser(user, it.evadid.core.datastructures.user.UserConfig.defaults(isLocalAccount = false))
     }
     val token = AuthHandling.createToken(user)
     try run { command =>

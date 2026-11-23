@@ -1,179 +1,67 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderCorrectness, ReorderInteraction, ReorderInteractionState}
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.interaction.sync.UpdateImportance.MINOR
-
-import java.time.LocalDateTime
+import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderInteraction, ReorderInteractionState}
+import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
+import org.scalajs.dom
 
 object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderInteraction.ReorderCodeInteraction | ReorderInteraction.ReorderMapIdInteraction] {
-
   override protected def createRendering(reorder: ReorderInteraction.ReorderCodeInteraction | ReorderInteraction.ReorderMapIdInteraction): AtomarLineRendering = {
-    val dom: Element = reorder match {
-      case codeInteraction: ReorderInteraction.ReorderCodeInteraction =>
-        renderReorder(
-          codeInteraction.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.workbookContextInformation),
-          state => ReorderCorrectness.isOrderCorrect(codeInteraction, state),
-          (state, itemId: Int) => {
-            val contentElement: Element = pre(code(state.elements(itemId)))
-            val hintOpt = codeInteraction.hints.lift(itemId)
-            hintOpt match {
-              case Some(hintId) =>
-                div(
-                  cls := "reorder-item-content",
-                  contentElement,
-                  span(
-                    cls := "reorder-item-hint",
-                    text <-- laminarHelper.plaintextStringSignal(hintId)
-                  )
-                )
-              case None =>
-                contentElement
-            }
-          },
-          itemCssClass = "reorder-item--code"
-        )
-      case mapIds: ReorderInteraction.ReorderMapIdInteraction =>
-        renderReorder(
-          mapIds.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.workbookContextInformation),
-          state => state.sanitizedCurrentOrder == state.correctOrder,
-          (state, itemId) => span(text <-- laminarHelper.plaintextStringSignal(state.elements(itemId))),
-          itemCssClass = ""
-        )
+    val disabled = reorder.isDisabledState.toAirstreamVar
+    val dom = reorder match {
+      case exercise: ReorderInteraction.ReorderCodeInteraction =>
+        renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation), disabled,
+          (state, index) => div(cls := "reorder-item-content", pre(code(state.elements(index))),
+            exercise.hints.lift(index).map(id => span(cls := "reorder-item-hint", text <-- laminarHelper.plaintextStringSignal(id)))),
+          "reorder-item--code")
+      case exercise: ReorderInteraction.ReorderMapIdInteraction =>
+        renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation), disabled,
+          (state, index) => span(text <-- laminarHelper.plaintextStringSignal(state.elements(index))), "")
     }
-
-    AtomarLineRendering.basicLine(reorder, dom, "reorder-interaction")
+    AtomarLineRendering.basicLine(reorder, dom)
   }
 
-  private def renderReorder[T](
-                                stateVar: Var[ReorderInteractionState[T]],
-                                isCorrect: ReorderInteractionState[T] => Boolean,
-                                renderElementContent: (ReorderInteractionState[T], Int) => Element,
-                                itemCssClass: String
-                              ): Element = {
-    val draggingId: Var[Option[Int]] = Var(None)
-    val hoverIndex: Var[Option[Int]] = Var(None)
-
-    def sanitizeOrder(order: Seq[Int], state: ReorderInteractionState[T]): Seq[Int] = {
-      val validIndices = state.elements.indices.toSet
-      if (order.length == state.elements.length && order.toSet == validIndices) order
-      else state.correctOrder
-    }
-
-    def moveItem(current: Seq[Int], draggedId: Int, insertIndex: Int): Seq[Int] = {
-      val fromIndex = current.indexOf(draggedId)
-      if (fromIndex < 0) return current
-      val clean = current.filterNot(_ == draggedId)
-      val adjustedInsertIndex = if (insertIndex > fromIndex) insertIndex - 1 else insertIndex
-      val safeIndex = adjustedInsertIndex.max(0).min(clean.length)
-      val (front, back) = clean.splitAt(safeIndex)
-      front ++ List(draggedId) ++ back
-    }
-
-    def dropIndex(container: org.scalajs.dom.html.Div, mouseY: Double): Int = {
+  private def renderReorder[T](state: Var[ReorderInteractionState[T]], disabled: Var[Boolean],
+      content: (ReorderInteractionState[T], Int) => Element, itemCss: String): Element = {
+    val dragging = Var(Option.empty[Int])
+    val hover = Var(Option.empty[Int])
+    def dropIndex(container: dom.html.Div, mouseY: Double): Int = {
       val items = container.querySelectorAll(".reorder-item")
-      var newIndex = items.length
-      var found = false
-      var i = 0
-      while (i < items.length && !found) {
-        val rect = items.item(i).asInstanceOf[org.scalajs.dom.html.Div].getBoundingClientRect()
-        val middleY = rect.top + (rect.height / 2)
-        if (mouseY < middleY) {
-          newIndex = i
-          found = true
-        }
-        i += 1
-      }
-      newIndex
+      (0 until items.length).find { index =>
+        val rect = items.item(index).asInstanceOf[dom.html.Div].getBoundingClientRect()
+        mouseY < rect.top + rect.height / 2
+      }.getOrElse(items.length)
     }
-
-    def renderItem(state: ReorderInteractionState[T], itemId: Int): Element = {
-      val baseCls = if (itemCssClass.nonEmpty) s"reorder-item $itemCssClass" else "reorder-item"
-      div(
-        cls := baseCls,
-        cls("reorder-item--dragging") <-- draggingId.signal.map(_.contains(itemId)),
-        draggable := true,
-        onDragStart --> (_ => draggingId.set(Some(itemId))),
-        onDragEnd --> (_ => {
-          draggingId.set(None)
-          hoverIndex.set(None)
-        }),
-        renderElementContent(state, itemId)
-      )
-    }
-
-    def updateOrder(rawOrder: Seq[Int]): Unit = {
-      stateVar.update { state =>
-        val sanitized = sanitizeOrder(rawOrder, state)
-        if sanitized != state.currentOrder then state.copy(currentOrder = sanitized) else state
-      }
-    }
-
-    val feedbackVar: Var[Option[LanguageMapContentId]] = Var(None)
-
-    def checkSolution(): Unit = {
-      val state = stateVar.now()
-
-      if (isCorrect(state)) {
-        feedbackVar.set(Some(LanguageMapContentId("basic/reorderFeedbackSuccess")))
-      } else {
-        feedbackVar.set(Some(LanguageMapContentId("basic/reorderFeedbackWrongOrder")))
-      }
-    }
-
-    div(
-      cls := "workbook-interaction reorder-interaction",
-      div(
-        cls := "reorder-list",
-        onDragOver.preventDefault --> { e =>
-          val container = e.currentTarget.asInstanceOf[org.scalajs.dom.html.Div]
-          hoverIndex.set(Some(dropIndex(container, e.clientY)))
+    div(cls := "workbook-interaction reorder-interaction",
+      div(cls := "reorder-list",
+        onDragOver.preventDefault --> { event =>
+          if !disabled.now() then hover.set(Some(dropIndex(event.currentTarget.asInstanceOf[dom.html.Div], event.clientY)))
         },
-        onDrop.preventDefault --> { e =>
-          val container = e.currentTarget.asInstanceOf[org.scalajs.dom.html.Div]
-          val targetIdx = dropIndex(container, e.clientY)
-          draggingId.now() match {
-            case Some(idToMove) =>
-              val state = stateVar.now()
-              val updated = moveItem(sanitizeOrder(state.currentOrder, state), idToMove, targetIdx)
-              updateOrder(updated)
-              feedbackVar.set(None)
-            case _ =>
+        onDrop.preventDefault --> { event =>
+          if !disabled.now() then dragging.now().foreach { index =>
+            val target = dropIndex(event.currentTarget.asInstanceOf[dom.html.Div], event.clientY)
+            state.update(_.moveElementToIndex(index, target))
           }
-          draggingId.set(None)
-          hoverIndex.set(None)
+          dragging.set(None)
+          hover.set(None)
         },
-        children <-- stateVar.signal.combineWith(hoverIndex.signal).map {
-          case (state, hover) =>
-            val ordered = sanitizeOrder(state.currentOrder, state)
-            val visible = ordered.map(itemId => renderItem(state, itemId))
-            hover match {
-              case Some(index) =>
-                val safe = index.max(0).min(visible.length)
-                val (front, back) = visible.splitAt(safe)
-                front ++ List(div(cls := "drop-placeholder")) ++ back
-              case None =>
-                visible
-            }
-        }
-      ),
-      button(
-        cls := "btn-check",
-        text <-- laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/checkSolution")),
-        onClick --> { _ => checkSolution() }
-      ),
-      div(
-        cls := "reorder-feedback",
-        child.text <-- feedbackVar.signal.flatMapSwitch {
-          case Some(contentId) => laminarHelper.plaintextStringSignal(contentId)
-          case None => Val("")
-        }
-      )
-    )
+        children <-- state.signal.combineWith(hover.signal).map { (answer, target) =>
+          val items = answer.currentOrder.map { index => div(
+            cls := s"reorder-item $itemCss",
+            cls("reorder-item--dragging") <-- dragging.signal.map(_.contains(index)),
+            draggable <-- disabled.signal.map(!_),
+            onDragStart --> { event => if disabled.now() then event.preventDefault() else dragging.set(Some(index)) },
+            onDragEnd --> (_ => { dragging.set(None); hover.set(None) }),
+            content(answer, index))
+          }
+          target match {
+            case Some(index) => items.take(index) ++ Seq(div(cls := "drop-placeholder")) ++ items.drop(index)
+            case None => items
+          }
+        }))
   }
 }

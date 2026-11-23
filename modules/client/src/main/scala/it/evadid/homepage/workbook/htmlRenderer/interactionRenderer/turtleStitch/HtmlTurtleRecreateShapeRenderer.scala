@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
@@ -40,7 +42,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     Try(target.renderMovements.flatMap(movement => List(movement.start, movement.end)).distinct).getOrElse(Nil)
 
   override protected def createRendering(workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
-    val boundVar = workbookElement.interactionVariable.createBoundStateForTyping(() => fullInfo.keyboardInput.lastKey.now(), fullInfo.workbookContextInformation).toAirstreamVar
+    val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
     // Drawings and the shape grading follow the last run instead of every edit; typing alone never starts the program.
     // A requested grading joins a still running automatic one, which skips the shape grader; so it is requested after that.

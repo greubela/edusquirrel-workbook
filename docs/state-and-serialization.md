@@ -130,12 +130,15 @@ codecs; see [interaction formats](interaction-format.md) for the types and wire
 contract. Update a bound state instead of writing directly to storage.
 
 `createBoundStateWithUpdateLogic` chooses significance from each edit. Code editors
-bind with `createBoundStateForTyping`: [`TypingUpdateImportance`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/TypingUpdateImportance.scala)
-reads the typed key (recorded by the client's `KeyboardInput`) rather than a state
-difference. Whitespace and `()[]{}.,-+*;` commit (MAJOR), as does any keystroke five
-seconds after the last MAJOR answer and any change without a recent key; other
-keystrokes are TEMPORARY. Importance is not a debounce interval or a guarantee of
-immediate persistence:
+keep keystrokes local: the EvaEditor's views edit a [`TypingDraft`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/TypingDraft.scala)
+through the client's [`TypingDraftBinding`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/abstractions/TypingDraftBinding.scala),
+and only committed values reach the answer, bound with MAJOR importance.
+[`TypingUpdateImportance`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/TypingUpdateImportance.scala)
+classifies each edit by the key typed in the editor: whitespace and `()[]{}.,-+*;`
+commit, as do a keystroke five seconds after the last commit and a change without a
+recent key; other keystrokes are TEMPORARY edits, committed when one stays the latest
+for a one-second quiet period, when focus leaves the editor or when it closes.
+Importance is not a debounce interval or a guarantee of immediate persistence:
 
 | Importance | Meaning |
 | --- | --- |

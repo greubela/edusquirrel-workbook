@@ -1,5 +1,10 @@
 {
   "workbooktitle": "Rekursion med munkene fra Mons Komputarius",
+  "welcome": "Velkommen til programmeringsøvelse nr. 4 i GdP!\n\nDenne gang prøver vi noget nyt med denne digitale arbejdsbog. Opgaverne er struktureret lidt anderledes, og der er flere slags opgaver end programmering alene.\n\nDe fleste opgaver har en form for automatisk bedømmelse. Den giver dig feedback, men er ikke bindende: Vi retter stadig besvarelserne manuelt efter aflevering.\n\nVi håber, at du kan lide det og lærer noget. Fortæl os gerne til sidst, hvad du synes :-)",
+  "welcomeTitle": "Oversigt",
+  "finishTitle": "Aflevering",
+  "finish": "Næsten færdig!\n\nHvis du vil give os feedback, kan du udfylde spørgeskemaet. Uanset hvad kan du aflevere din besvarelse med knappen nedenfor.\n\nNår du har afleveret, behøver du ikke gøre mere. Kun i denne øvelse er det ikke nødvendigt også at aflevere via Moodle!",
+  "introMonks": "Først gennemgår vi rekursion igen ... med en (fjollet) historie!",
   "storytitle": "1a · Munkene fra Mons Komputarius",
   "sortingtitle": "1b–1g · Forstå rekursion",
   "countingtitle": "2 · Anvend rekursion",

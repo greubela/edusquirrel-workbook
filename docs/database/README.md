@@ -78,9 +78,10 @@ Backend defaults come from `SQL_HOST`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`,
 | `DatabaseConfig` | Public address fields; uses backend credentials only when the target matches backend defaults |
 | `DatabaseConfigWithCredentials` | Explicit address and credentials, used as supplied without per-field merging or consulting defaults |
 
-`SyncDestinationDefinition` declares destinations; `UserConfig.defaultSyncDestinations`
-enables both backend layouts with `SYNC_MAJOR` and browser IndexedDB with
-`SYNC_LAST`. The [synchronization guide](interaction-history.md) explains transmission
+`SyncDestinationDefinition` declares destinations; `UserConfig.defaultSyncDestinations(isLocalAccount)`
+is their one default: browser IndexedDB with `SYNC_LAST` for every account, plus both
+backend layouts with `SYNC_MAJOR` for online accounts. Local accounts cannot sign in to
+the backend and sync only to the browser. The [synchronization guide](interaction-history.md) explains transmission
 versus retention and per-context batching.
 
 `AllUserInfo.credentials: UserCredentials` holds session tokens, an optional database

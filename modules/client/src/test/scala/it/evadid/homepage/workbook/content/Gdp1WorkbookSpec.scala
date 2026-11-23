@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import munit.FunSuite
 import it.evadid.core.datastructures.language.AppLanguage.{SnapLanguage, Python, Java}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
@@ -41,7 +43,7 @@ class Gdp1WorkbookSpec extends FunSuite {
   tasks.zip(solutions).zipWithIndex.foreach { case ((task, source), index) =>
     test(s"task ${index + 1}: an independently authored solution passes every drawing and structure test") {
       val state = ProgrammingStatePythonStructured(source)
-      Future.traverse(task.gradingElements)(_.gradeStateSafe(state, true, ExecutionContextInformation.default)).map { results =>
+      Future.traverse(task.gradingElements)(_.gradeStateSafe(state, true, UpdateImportance.MAJOR, ExecutionContextInformation.default)).map { results =>
         results.foreach(result => assert(result.gradingStatus.isCorrect, clues(task.elementId, result.grader, result.gradingStatus)))
       }
     }
@@ -68,7 +70,7 @@ class Gdp1WorkbookSpec extends FunSuite {
   test("all reference solutions also pass after conversion to Snap blocks") {
     Future.traverse(tasks.zip(solutions)) { (task, source) =>
       val snap = ProgrammingStatePythonStructured(source).toSnapXml
-      Future.traverse(task.gradingElements)(_.gradeStateSafe(snap, true, ExecutionContextInformation.default)).map { results =>
+      Future.traverse(task.gradingElements)(_.gradeStateSafe(snap, true, UpdateImportance.MAJOR, ExecutionContextInformation.default)).map { results =>
         results.foreach(result => assert(result.gradingStatus.isCorrect, clues(task.elementId, result.grader, result.gradingStatus)))
       }
     }
@@ -77,7 +79,7 @@ class Gdp1WorkbookSpec extends FunSuite {
   test("all reference solutions pass as structured Java programs using the shared interpreter") {
     Future.traverse(tasks.zip(solutions)) { (task, source) =>
       val java = ProgrammingStatePythonStructured(source).toJavaStructured
-      Future.traverse(task.gradingElements)(_.gradeStateSafe(java, true, ExecutionContextInformation.default)).map { results =>
+      Future.traverse(task.gradingElements)(_.gradeStateSafe(java, true, UpdateImportance.MAJOR, ExecutionContextInformation.default)).map { results =>
         results.foreach(result => assert(result.gradingStatus.isCorrect, clues(task.elementId, java, result.grader, result.gradingStatus)))
       }
     }
@@ -96,7 +98,7 @@ class Gdp1WorkbookSpec extends FunSuite {
     val examples = Seq(tasks(1) -> square, tasks(2) -> withFunction, tasks(3) -> withFunction.replace("quadrat", "anderer_name"),
       tasks(4) -> increasing.replace("distanz", "andere_laenge"))
     Future.traverse(examples) { (task, code) =>
-      Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStatePythonStructured(code), true, ExecutionContextInformation.default)).map { results =>
+      Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStatePythonStructured(code), true, UpdateImportance.MAJOR, ExecutionContextInformation.default)).map { results =>
         assert(results.head.gradingStatus.isCorrect, clues(task.elementId, results.head.gradingStatus))
         assert(results.tail.exists(!_.gradingStatus.isCorrect), task.elementId)
       }
@@ -181,7 +183,7 @@ class Gdp1WorkbookSpec extends FunSuite {
   private val sudokuSolution = solved(CreateGdp1Workbook.sudokuProgram, fitsStub -> fitsBody, solveStub -> solveBody)
 
   private def failedTests(task: ProgrammingExerciseFullJava, source: String): Future[Seq[String]] =
-    Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStateJavaStructured(source), true, ExecutionContextInformation.default)).map { results =>
+    Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStateJavaStructured(source), true, UpdateImportance.MAJOR, ExecutionContextInformation.default)).map { results =>
       results.foreach(result => assert(result.gradingStatus.isCorrect || result.gradingStatus == GradingStatus.Incorrect(),
         clues(task.elementId, result.grader, result.gradingStatus, result.feedbackInformation)))
       results.filterNot(_.gradingStatus.isCorrect).map(_.grader.asInstanceOf[ProgramDataTestGrader].publicDescription.entryKey)
@@ -192,7 +194,7 @@ class Gdp1WorkbookSpec extends FunSuite {
     Future.traverse(cases) { (name, source) =>
       val task = javaTask(name)
       failedTests(task, source).map(failed => assertEquals(failed, Nil, name)).flatMap { _ =>
-        Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStateRaw(Java, source), true, ExecutionContextInformation.default))
+        Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStateRaw(Java, source), true, UpdateImportance.MAJOR, ExecutionContextInformation.default))
           .map(results => assert(results.forall(_.gradingStatus.isCorrect), name))
       }
     }
@@ -201,7 +203,7 @@ class Gdp1WorkbookSpec extends FunSuite {
   test("Java section: starting programs fail with explanations instead of execution errors") {
     Future.traverse(Seq("swap", "bubble", "sudoku")) { name =>
       val task = javaTask(name)
-      Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStateJavaStructured(task.startingProgram), true, ExecutionContextInformation.default))
+      Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStateJavaStructured(task.startingProgram), true, UpdateImportance.MAJOR, ExecutionContextInformation.default))
         .map { results =>
           assert(results.exists(_ .gradingStatus == GradingStatus.Incorrect()), name)
           assert(results.forall(result => result.gradingStatus.isCorrect || result.feedbackInformation.nonEmpty), name)
@@ -268,7 +270,7 @@ class Gdp1WorkbookSpec extends FunSuite {
       |""".stripMargin
 
   private def sortResults(state: it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState) =
-    Future.traverse(sortTask.gradingElements)(_.gradeStateSafe(state, true, ExecutionContextInformation.default))
+    Future.traverse(sortTask.gradingElements)(_.gradeStateSafe(state, true, UpdateImportance.MAJOR, ExecutionContextInformation.default))
 
   test("sort exercise: a swap-based solution passes every generated test in Python and after conversion to Java and Snap") {
     assertEquals(sortTask.sortTests.size, SortListExercise.defaultTestLists.size)
@@ -313,7 +315,7 @@ class Gdp1WorkbookSpec extends FunSuite {
 
   test("structure grading results round-trip through InteractionHistoryJson") {
     val task = tasks(3)
-    Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStatePythonStructured(withFunction), true, ExecutionContextInformation.default)).map { results =>
+    Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStatePythonStructured(withFunction), true, UpdateImportance.MAJOR, ExecutionContextInformation.default)).map { results =>
       val history = InteractionVariableHistory.empty[TurtleRecreateShapeInteractionFormat.type].addGradings(results)
       val envelope = InteractionHistoryJson.fromHistory(TurtleRecreateShapeInteractionFormat, history)
       val restored = read[InteractionHistoryJson](write(envelope))

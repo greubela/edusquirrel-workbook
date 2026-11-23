@@ -4,7 +4,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, ProgrammingLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
+import it.evadid.homepage.webElements.editor.abstractions.{SimpleWebEditor, TypingDraftBinding}
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.util.logging.Logger
 import it.evadid.vm.code.errors.{ProgrammingConversionError, ProgrammingConversionException, ProgrammingConversionKind}
@@ -17,7 +17,11 @@ import it.evadid.vm.conversion.{ConversionInfo, ConversionResult}
 import it.evadid.util.logging.LoggingLevel
 
 
-/** One editor bound to the answer; panels only observe that same answer. */
+/** One editor bound to the answer; panels only observe that same answer.
+  *
+  * Code views edit a local draft ([[TypingDraftBinding]]): keystrokes inside a token stay in the editor and
+  * reach the answer, and therefore panels, grading and storage, only when committed.
+  */
 case class EvaEditor(
                       logger: Logger,
                       underlyingVar: Var[ProgrammingState],
@@ -28,10 +32,12 @@ case class EvaEditor(
                       labels: EvaEditorLabels
                     ) extends SimpleWebEditor[ProgrammingState, EvaEditorConfig] {
   val appearance = EditorAppearance()
+  private val typing = TypingDraftBinding(underlyingVar)
+  private val draft = typing.draft
 
   def currentConfig: EvaEditorConfig = config.now()
   private val tabs = choices.getOrElse(EvaEditorConfig.tabs(logger, currentConfig, labels, humanLanguage)).distinctBy(_.language)
-  private val selected = underlyingVar.signal.map(source => tabs.find(_.language == source.associatedLanguage)).distinct
+  private val selected = draft.signal.map(source => tabs.find(_.language == source.associatedLanguage)).distinct
   private val lastConversion = Var(Option.empty[ConversionResult])
   private val request = Var(Option.empty[AnyRef])
   private val focused = Var(Option.empty[ProgrammingLanguage])
@@ -58,7 +64,7 @@ case class EvaEditor(
   private val marker: Signal[Option[ProgrammingConversionError]] = lastConversion.signal.map(
     _.flatMap(failure).map(_.error))
 
-  def selectedLanguage: Option[ProgrammingLanguage] = tabs.find(_.language == underlyingVar.now().associatedLanguage).map(_.language)
+  def selectedLanguage: Option[ProgrammingLanguage] = tabs.find(_.language == draft.now().associatedLanguage).map(_.language)
 
   def error: Option[Throwable] = lastConversion.now().flatMap(failure)
 
@@ -70,18 +76,18 @@ case class EvaEditor(
       lastConversion.set(None)
       Future.unit
     case Some(tab) =>
-      val source = underlyingVar.now()
+      val source = draft.now()
       val token = new Object
       request.set(Some(token))
       checkConversion(tab, source).map { outcome =>
-        if mounted.now() && request.now().contains(token) && underlyingVar.now() == source then {
+        if mounted.now() && request.now().contains(token) && draft.now() == source then {
           outcome.finalState.foreach(commit)
           lastConversion.set(Some(outcome))
         }
       }
   }
 
-  private def checkConversion(tab: EvaEditorTab, source: ProgrammingState = underlyingVar.now()): Future[ConversionResult] =
+  private def checkConversion(tab: EvaEditorTab, source: ProgrammingState = draft.now()): Future[ConversionResult] =
     if source.associatedLanguage == tab.language then Future.successful(ConversionResult(source, Some(source), Seq.empty))
     else conversionChecks.now().get(tab.language) match {
       case Some(PendingConversion(`source`, result)) => result
@@ -91,7 +97,7 @@ case class EvaEditor(
         val pending = PendingConversion(source, result)
         conversionChecks.update(_.updated(tab.language, pending))
         result.foreach { outcome =>
-          if mounted.now() && underlyingVar.now() == source then
+          if mounted.now() && draft.now() == source then
             conversionChecks.update { checks =>
               if checks.get(tab.language).contains(pending) then
                 checks.updated(tab.language, CompletedConversion(source, outcome))
@@ -103,7 +109,7 @@ case class EvaEditor(
 
   private def commit(converted: ProgrammingState): Unit = {
     lastConversion.set(None)
-    underlyingVar.set(converted)
+    typing.commit(converted)
     request.set(None)
   }
 
@@ -122,7 +128,7 @@ case class EvaEditor(
   }
 
   private def tabButton(tab: EvaEditorTab): Element = {
-    val status = underlyingVar.signal.combineWith(conversionChecks.signal).map { (source, checks) =>
+    val status = draft.signal.combineWith(conversionChecks.signal).map { (source, checks) =>
       checks.get(tab.language) match {
         case Some(CompletedConversion(`source`, result)) => failure(result).map(describeConversionError)
         case _ => None
@@ -164,6 +170,7 @@ case class EvaEditor(
   override def getDomElement(): Element = div(
     cls <-- selected.map(tab => "eva-editor editor-appearance" + tab.fold("")(_.css)),
     dataAttr("editor-theme") <-- appearance.theme,
+    typing.binders,
     onMountCallback { context =>
       mounted.set(true)
       appearance.watch(context.owner)
@@ -173,7 +180,7 @@ case class EvaEditor(
       request.set(None)
       conversionChecks.set(Map.empty)
     },
-    underlyingVar.signal.changes --> { _ =>
+    draft.signal.changes --> { _ =>
       request.set(None)
       focused.set(None)
       lastConversion.set(None)
@@ -190,7 +197,7 @@ case class EvaEditor(
         case _ => None
       }),
     div(cls := "eva-editor__content", child <-- selected.map {
-      case Some(tab) => tab.create(underlyingVar, appearance, marker, labels.loading).getDomElement()
+      case Some(tab) => tab.create(draft, appearance, marker, labels.loading).getDomElement()
       case None => div(child.text <-- labels.unavailable)
     }),
     panels.map(_.getDomElement())

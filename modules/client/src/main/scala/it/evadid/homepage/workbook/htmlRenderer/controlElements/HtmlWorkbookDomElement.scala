@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.homepage.webElements.basic.PageScrollLock
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.keys.EventProp
 import com.raquo.laminar.nodes.ReactiveHtmlElement
@@ -185,6 +186,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
           } else if (!isOpen && nativeDialog.open) {
             nativeDialog.close()
           }
+          if isOpen then PageScrollLock.hold(nativeDialog) else PageScrollLock.release(nativeDialog)
         }(using ctx.owner)
       },
       div(

@@ -24,7 +24,7 @@ import scala.util.Using
 /** Explicitly invoked against a disposable local MySQL database; never sends mail. */
 class UserAccountMysqlSpec extends FunSuite {
   private val logger = BasicLogger()
-  private val config = UserConfig.onlineDefaults
+  private val config = UserConfig.defaults(isLocalAccount = false)
   private val alice = User("Änne O'Connor 🐿", "alice", "Alice@Example.Invalid")
   private val bob = User("Bob", "bob", "bob@example.invalid")
   private def normalized(user: User): User = user.copy(mail = user.mail.toLowerCase)
@@ -220,7 +220,7 @@ class UserAccountMysqlSpec extends FunSuite {
       }
     }
     val token = queries { control =>
-      assertEquals(control.readUserInfoFromDb(alice.id), Some(UserInDatabase(normalized(alice), UserConfig.onlineDefaults)))
+      assertEquals(control.readUserInfoFromDb(alice.id), Some(UserInDatabase(normalized(alice), UserConfig.defaults(isLocalAccount = false))))
       assertEquals(control.readUserInfoFromDb(bob.id).map(_.config), Some(otherSettings))
       control.ensureAndGetUserTokenFromDb(alice.id, logger).get
     }

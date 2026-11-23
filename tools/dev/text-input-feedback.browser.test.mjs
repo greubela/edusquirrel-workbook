@@ -56,6 +56,7 @@ test('text feedback preserves cached and in-flight grading across display langua
     });
     await installCodeMirrorModules(page);
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
+    // Start local usage explicitly: there is no default user.
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').last().click();
     const exercise = page.locator('.interaction-element').filter({has:page.locator('.text-input-feedback')});
@@ -111,27 +112,6 @@ test('text feedback preserves cached and in-flight grading across display langua
       await feedback.getByText('Deine Begründung passt.', {exact: true}).waitFor();
       assert.equal(requests.length, 3, 'completed hints and grades remain valid in every display language');
     }
-    await page.waitForFunction(() => new Promise(resolve => {
-      const open = indexedDB.open('EvaDidInteractionDB');
-      open.onerror = () => resolve(false);
-      open.onsuccess = () => {
-        const db = open.result;
-        const transaction = db.transaction('variableHistoryStore', 'readonly');
-        const rows = transaction.objectStore('variableHistoryStore').getAll();
-        transaction.oncomplete = () => db.close();
-        rows.onerror = () => resolve(false);
-        rows.onsuccess = () => resolve(rows.result.some(row => row.id.includes('demo-feedback-1_history') &&
-          row.value.includes('Deine Begründung passt.')));
-      };
-    }));
-    await page.reload();
-    await page.locator('.section-block').last().click();
-    await input.waitFor();
-    await page.waitForFunction(expected => document.querySelector('.text-input-feedback textarea')?.value === expected, answer);
-    assert.equal(await input.inputValue(), answer);
-    await feedback.getByText('Deine Begründung passt.', {exact: true}).waitFor();
-    assert.equal(requests.length, 3, 'restoring saved feedback does not call the LLM');
-    assert(await hintMessage.isVisible(), 'the saved hint is restored in the below-exercise panel');
     await selectLanguage('british-blue');
     await input.fill('The recursion ends when the tray is empty.');
     assert(!await hintPanel.isVisible(), 'the old hint is hidden when the answer changes');

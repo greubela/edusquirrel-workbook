@@ -30,6 +30,14 @@ views with `bimap` where appropriate; for example the Python editor binds the co
 field of the central Python state directly. Java's method fragment is a view of
 the current source, not a separately saved program.
 
+Keystrokes stay in the editor: Eva's language views edit the draft of a
+[`TypingDraftBinding`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/abstractions/TypingDraftBinding.scala)
+over the central Var, an immutable core `TypingDraft` holding the last committed answer
+and the TEMPORARY edits typed since. A token-ending key, a five-second interval, a
+change without a key (blocks), a language switch, a one-second quiet period, leaving
+the editor and unmounting commit the draft to the central Var; panels, grading and
+storage see only commits. Any other change of the central Var replaces the draft.
+
 Conversions and their availability checks execute in `Future`s. A successful
 language switch writes the converted representation to the central Var and thus
 replaces the editor. A failed conversion leaves the current draft and editor in

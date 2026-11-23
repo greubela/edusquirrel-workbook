@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
@@ -34,7 +36,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
   override protected def createRendering(workbookElement: ProgrammingExercise): AtomarLineRendering = {
 
-    val boundVar = workbookElement.interactionVariable.createBoundStateForTyping(() => fullInfo.keyboardInput.lastKey.now(), fullInfo.workbookContextInformation).toAirstreamVar
+    val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
     val editorConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.forPalette(workbookElement.editorPalette)
 

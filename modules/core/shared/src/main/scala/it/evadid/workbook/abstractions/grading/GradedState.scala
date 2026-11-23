@@ -1,5 +1,7 @@
 package it.evadid.workbook.abstractions.grading
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import it.evadid.distribution.command.SerializedException
 import it.evadid.util.MapUtils
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
@@ -29,11 +31,11 @@ case class GradedState[T, GA]
   def totalEvaluation(): GradingStatus =
     it.evadid.workbook.meta.GradingSummary(graderResultMap.keys.toSeq, this).status
 
-  def retryFailed(contextInformation: ExecutionContextInformation, forceGrading: Boolean): Future[GradedState[T, GA]] = {
+  def retryFailed(contextInformation: ExecutionContextInformation, forceGrading: Boolean, importance: UpdateImportance): Future[GradedState[T, GA]] = {
     if (!forceGrading || shouldRetry.isEmpty) Future.successful(this)
     else {
       GradedState
-        .executeGradingSafe(shouldRetry, state, forceGrading, contextInformation)
+        .executeGradingSafe(shouldRetry, state, forceGrading, importance, contextInformation)
         .map(_.merge(this))(using contextInformation.futureExecutionContext)
     }
   }
@@ -58,10 +60,10 @@ object GradedState {
 
   def apply[T, GA](state:T) = new GradedState[T, GA](state, Map())
 
-  def executeGradingSafe[T, GA](graders: IterableOnce[WorkbookInteractionGrader[T, GA]], state:T, forceGrading: Boolean, context: ExecutionContextInformation): Future[GradedState[T, GA]] = {
+  def executeGradingSafe[T, GA](graders: IterableOnce[WorkbookInteractionGrader[T, GA]], state:T, forceGrading: Boolean, importance: UpdateImportance, context: ExecutionContextInformation): Future[GradedState[T, GA]] = {
     given ExecutionContext = context.futureExecutionContext
 
-    val graderRes: Future[Seq[GradingResult[T, GA]]] = Future.traverse(graders.iterator.toList.distinctBy(_.key))(curGrader => curGrader.gradeStateSafe(state, forceGrading, context))
+    val graderRes: Future[Seq[GradingResult[T, GA]]] = Future.traverse(graders.iterator.toList.distinctBy(_.key))(curGrader => curGrader.gradeStateSafe(state, forceGrading, importance, context))
     graderRes.map(graderResults => {
       GradedState(state, graderResults.map(curRes => curRes.grader -> curRes).toMap)
     })(using context.futureExecutionContext)

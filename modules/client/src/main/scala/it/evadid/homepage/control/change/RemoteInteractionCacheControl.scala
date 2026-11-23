@@ -95,9 +95,6 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     val interactions: Seq[InteractionBinding] = environment.toSeq.flatMap(owner =>
       owner.interactions.toSeq.map(interaction => new TypedBinding(interaction, owner, subscriptions)))
     val restorations: Signal[Seq[Restoration]] = Signal.combineSeq(interactions.map(_.restoration)).map(_.flatten)
-    // Typing records TEMPORARY answers (see TypingUpdateImportance); a pause commits them. Failures are logged by the variable.
-    fullInfo.keyboardInput.lastKey.changes.debounce(TypingUpdateImportance.idleCommitDelay.toMillis.toInt)
-      .foreach(_ => interactions.foreach(interaction => Try(interaction.variable.commitCurrentState(context))))(using subscriptions)
 
     def flush(): Unit = environment.foreach(_.syncDestinations.foreach(_.handler.flush(true)))
     def detach(): Unit = {

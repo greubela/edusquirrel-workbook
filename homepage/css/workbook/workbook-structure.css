@@ -24,8 +24,10 @@ body {
 
 /* FULLSCREEN DIALOG*/
 
-html:has(dialog[open]),
-body:has(dialog[open]) {
+/* Set by PageScrollLock while a modal dialog is open. A root :has(dialog[open]) rule would restyle the whole
+   page whenever matching DOM changes anywhere, e.g. on every keystroke in an editor. */
+html.page-scroll-locked,
+html.page-scroll-locked body {
     overflow: hidden !important;
 }
 

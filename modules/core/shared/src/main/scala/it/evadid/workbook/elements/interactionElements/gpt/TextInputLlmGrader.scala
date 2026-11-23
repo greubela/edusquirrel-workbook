@@ -14,6 +14,7 @@ import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
+import java.time.LocalDateTime
 import scala.concurrent.Future
 
 case class TextInputLlmGrader(
@@ -46,9 +47,13 @@ case class TextInputLlmGrader(
         val conversation = MessengerModel(List(Message(system, MessengerModel.pWorkbook),
           Message(prompt, MessengerModel.pFallbackStudent), Message(Option(response).getOrElse(""), MessengerModel.pAgent)))
 
-        def result(status: GradingStatus, feedback: String, transcript: MessengerModel): GradingResult[String, chat.MessengerModel] =
-          GradingResult(this, state, status,
-            Option.when(feedback.nonEmpty)(LanguageMap.mapBasedLanguageMap(Map(language -> feedback))), Some(transcript))
+        def result(status: GradingStatus, feedback: String, transcript: MessengerModel): GradingResult[String, chat.MessengerModel] = {
+          if(feedback.nonEmpty){
+            GradingResult(this, state, status, LanguageMap.mapBasedLanguageMap(Map(language -> feedback)), Some(transcript))
+          }else{
+            GradingResult(this, state, status, None, Some(transcript), LocalDateTime.now())
+          }
+        }
 
         TextInputLlmGrader.parse(response) match {
           case Some((feedback, status)) => Future.successful(result(status, feedback, conversation))

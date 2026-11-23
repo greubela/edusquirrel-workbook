@@ -1,5 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
+import it.evadid.core.datastructures.language.WorkbookContent
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.AppLanguage.{English, Danish}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
@@ -31,7 +35,7 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
     assertEquals(constraints.size, 3)
     assertEquals(constraints.map(_.key).distinct.size, 3)
     assert(constraints.forall(_.importance == GradingImportance.REQUIRED_TEST))
-    Future.traverse(interaction.gradingElements)(_.gradeStateSafe(loop, true, TestExecutionContext())).map { results =>
+    Future.traverse(interaction.gradingElements)(_.gradeStateSafe(loop, true, UpdateImportance.MAJOR, TestExecutionContext())).map { results =>
       assertEquals(results.head.gradingStatus, GradingStatus.Correct())
       assertEquals(results.tail.map(_.gradingStatus), List(GradingStatus.Correct(), GradingStatus.Correct(), GradingStatus.Incorrect()))
     }
@@ -45,9 +49,9 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
       (CommandUsageMeasure.CallsDuringExecution, 3, GradingStatus.Incorrect()))
     Future.traverse(List(loop, loop.toSnapXml, loop.toJava)) { state =>
       Future.traverse(cases) { (measure, maximum, expected) =>
-        grader("fd", maximum, measure).gradeStateSafe(state, false, TestExecutionContext()).map { result =>
+        grader("fd", maximum, measure).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext()).map { result =>
           assertEquals(result.gradingStatus, expected, clues(state, measure))
-          val feedback = result.feedbackInformation.get
+          val feedback = result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get
           assert(feedback.tryGetInLanguage(English).exists(_.contains(maximum.toString)))
           assert(feedback.tryGetInLanguage(Danish).exists(_.nonEmpty))
         }
@@ -63,8 +67,8 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
       }
     }""")
     for {
-      source <- grader("forward", 1, CommandUsageMeasure.OccurrencesInCode).gradeStateSafe(java, false, TestExecutionContext())
-      runtime <- grader("forward", 3, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(java, false, TestExecutionContext())
+      source <- grader("forward", 1, CommandUsageMeasure.OccurrencesInCode).gradeStateSafe(java, false, UpdateImportance.MAJOR, TestExecutionContext())
+      runtime <- grader("forward", 3, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(java, false, UpdateImportance.MAJOR, TestExecutionContext())
     } yield {
       assertEquals(source.gradingStatus, GradingStatus.Correct())
       assertEquals(runtime.gradingStatus, GradingStatus.Incorrect())
@@ -77,8 +81,8 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
       .collect { case g: TurtleCommandUsageGrader => g }
     assertEquals(constraints.size, 1)
     for {
-      allowed <- constraints.head.gradeStateSafe(state, false, TestExecutionContext())
-      rotation <- grader("turn", 2, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(state, false, TestExecutionContext())
+      allowed <- constraints.head.gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
+      rotation <- grader("turn", 2, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
     } yield {
       assertEquals(allowed.gradingStatus, GradingStatus.Correct())
       assertEquals(rotation.gradingStatus, GradingStatus.Incorrect())
@@ -89,8 +93,8 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
   test("unused definitions and untaken branches count in source but not as executed calls") {
     val state = ProgrammingStateRaw(Python, "def unused():\n    forward(1)\nif False:\n    fd(2)")
     for {
-      source <- grader("forward", 1, CommandUsageMeasure.OccurrencesInCode).gradeStateSafe(state, false, TestExecutionContext())
-      runtime <- grader("forward", 0, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(state, false, TestExecutionContext())
+      source <- grader("forward", 1, CommandUsageMeasure.OccurrencesInCode).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
+      runtime <- grader("forward", 0, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
     } yield {
       assertEquals(source.gradingStatus, GradingStatus.Incorrect())
       assertEquals(runtime.gradingStatus, GradingStatus.Correct())
@@ -100,10 +104,10 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
   test("partial execution and malformed programs never produce a successful execution-limit result") {
     val infinite = ProgrammingStateRaw(Python, "while True:\n    pass")
     for {
-      source <- grader("forward", 0, CommandUsageMeasure.OccurrencesInCode).gradeStateSafe(infinite, false, TestExecutionContext())
-      runtime <- grader("forward", 0, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(infinite, false, TestExecutionContext())
+      source <- grader("forward", 0, CommandUsageMeasure.OccurrencesInCode).gradeStateSafe(infinite, false, UpdateImportance.MAJOR, TestExecutionContext())
+      runtime <- grader("forward", 0, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(infinite, false, UpdateImportance.MAJOR, TestExecutionContext())
       invalid <- grader("forward", 0, CommandUsageMeasure.OccurrencesInCode)
-        .gradeStateSafe(ProgrammingStateRaw(Python, "forward("), false, TestExecutionContext())
+        .gradeStateSafe(ProgrammingStateRaw(Python, "forward("), false, UpdateImportance.MAJOR, TestExecutionContext())
     } yield {
       assertEquals(source.gradingStatus, GradingStatus.Correct())
       assert(runtime.gradingStatus.isError)
@@ -118,9 +122,9 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
     Future.traverse(CommandUsageMeasure.values.toList) { measure =>
       Future.traverse(List(withNativeCall, saved)) { state =>
         for {
-          user <- grader("forward", 0, measure).gradeStateSafe(userOnly, false, TestExecutionContext())
-          forbidden <- grader("forward", 0, measure).gradeStateSafe(state, false, TestExecutionContext())
-          one <- grader("forward", 1, measure).gradeStateSafe(state, false, TestExecutionContext())
+          user <- grader("forward", 0, measure).gradeStateSafe(userOnly, false, UpdateImportance.MAJOR, TestExecutionContext())
+          forbidden <- grader("forward", 0, measure).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
+          one <- grader("forward", 1, measure).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
         } yield {
           assertEquals(user.gradingStatus, GradingStatus.Correct())
           assertEquals(forbidden.gradingStatus, GradingStatus.Incorrect(), clues(measure))
@@ -153,7 +157,7 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
     val g: ProgrammingTestGrader = original.gradingElements.collectFirst { case g: TurtleCommandUsageGrader => g }.get
     assertEquals(read[ProgrammingTestGrader](write(g)), g)
     assertEquals(readBinary[ProgrammingTestGrader](writeBinary(g)), g)
-    g.gradeStateSafe(loop, false, TestExecutionContext()).map { result =>
+    g.gradeStateSafe(loop, false, UpdateImportance.MAJOR, TestExecutionContext()).map { result =>
       assertEquals(read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](write(result)), result)
       assertEquals(readBinary[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](writeBinary(result)), result)
     }

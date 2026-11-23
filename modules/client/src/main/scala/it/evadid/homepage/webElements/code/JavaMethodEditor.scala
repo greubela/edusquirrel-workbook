@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.code
 
+import it.evadid.homepage.webElements.basic.PageScrollLock
 import it.evadid.core.datastructures.language.AppLanguage.Java
 
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw, ProgrammingStateJavaStructured}
@@ -268,6 +269,7 @@ final class JavaMethodEditor
       },
       onMountCallback(ctx => ctx.thisNode.ref.asInstanceOf[dom.html.Dialog].showModal()),
       onUnmountCallback(node => node.ref.asInstanceOf[dom.html.Dialog].close()),
+      PageScrollLock.whileMounted,
       h2(cls := "java-function-editor__dialog-title", if isClassDialog then "Add class" else "Add function"),
       if isClassDialog then modalField("Class name", classNameDraft)
       else div(cls := "java-function-editor__dialog-fields",

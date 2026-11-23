@@ -1,12 +1,19 @@
 package it.evadid.workbook.elements.interactionElements.table
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import munit.FunSuite
 import upickle.default.*
+import it.evadid.workbook.support.TestExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 class AnswerTableInteractionSpec extends FunSuite {
+  private given ExecutionContext = ExecutionContext.global
+  private def correctCells(answer: TableAnswer): Future[Int] = Future.traverse(table.gradingElements)(
+    _.gradeStateSafe(answer, false, UpdateImportance.MAJOR, TestExecutionContext())).map(_.count(_.gradingStatus.isCorrect))
   private def id(s: String) = LanguageMapContentId(s"test/$s")
   private val binary = EditableTableCell(Some(List("1")), List("0", "1"))
   private val table = AnswerTableInteraction("table", id("caption"), List(id("row1"), id("row2")),
@@ -34,19 +41,18 @@ class AnswerTableInteractionSpec extends FunSuite {
     assertEquals(table.update(updated, 1, 1, text).values.last, text)
   }
   test("grading counts only expected cells and accepts trimmed alternatives case sensitively") {
-    assertEquals(table.grade(table.defaultValue), Some(TableGrade(0, 2)))
-    assertEquals(table.grade(TableAnswer(List("1", " hi ", ""))), Some(TableGrade(2, 2)))
-    assert(table.grade(TableAnswer(List("1", "hello", ""))).get.passed)
-    assertEquals(table.grade(TableAnswer(List("1", "HELLO", "reflection"))), Some(TableGrade(1, 2)))
     assert(!table.isAnswered(TableAnswer(List("1", "hello", "   "))))
     assert(table.isAnswered(TableAnswer(List("1", "hello", "reflection"))))
     assert(!table.isAnswered(TableAnswer(List("2", "hello", "reflection"))))
+    assertEquals(table.gradingElements.size, 2)
+    Future.traverse(Seq(table.defaultValue, TableAnswer(Seq("1", " hi ", "")), TableAnswer(Seq("1", "hello", "")),
+      TableAnswer(Seq("1", "HELLO", "reflection"))))(correctCells).map(counts => assertEquals(counts, Seq(0, 2, 2, 1)))
   }
   test("ungraded tables require all cells but do not invent correctness") {
     val reflection = table.copy(rows = List(
       List(FixedTableCell(id("given")), EditableTableCell()),
       List(EditableTableCell(), EditableTableCell())))
-    assertEquals(reflection.grade(reflection.defaultValue), None)
+    assert(reflection.gradingElements.isEmpty)
     assert(!reflection.isAnswered(reflection.defaultValue))
     assert(reflection.isAnswered(TableAnswer(List("a", "b", "c"))))
   }
@@ -64,7 +70,6 @@ class AnswerTableInteractionSpec extends FunSuite {
   test("wrong stored dimensions cannot be updated, graded, saved or restored") {
     val invalid = TableAnswer(List("1"))
     intercept[IllegalArgumentException](table.update(invalid, 0, 1, "1"))
-    intercept[IllegalArgumentException](table.grade(invalid))
     intercept[IllegalArgumentException](table.isAnswered(invalid))
     intercept[IllegalArgumentException](table.validateState(invalid))
     intercept[IllegalArgumentException](table.validateState(table.interactionFormat.stateSerializer.deserialize(write(invalid))))
@@ -77,5 +82,18 @@ class AnswerTableInteractionSpec extends FunSuite {
     val answer = TableAnswer(List("1", " hi ", "Quotes: \"Grüße\"\n\\"))
     assertEquals(table.interactionFormat.stateSerializer.deserialize(table.interactionFormat.stateSerializer.serialize(answer)), answer)
     assertEquals(table.interactionFormat.stateSerializer.deserialize(table.interactionFormat.stateSerializer.serialize(table.defaultValue)), table.defaultValue)
+  }
+
+  test("per-cell results are persisted with their registered table graders") {
+    val answer = TableAnswer(Seq("1", "hello", "reflection"))
+    val context = TestExecutionContext()
+    table.interactionVariable.setStateFromUserInteraction(answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = context)
+    table.interactionVariable.control.getOrCalculateGrading(context).map { result =>
+      assertEquals(result.testsWithResults.size, 2)
+      assert(result.testsWithResults.forall(_.gradingStatus.isCorrect))
+      val history = table.interactionVariable.currentHistory
+      val serializer = table.interactionFormat.historySerializer
+      assertEquals(serializer.deserialize(serializer.serialize(history)), history)
+    }
   }
 }

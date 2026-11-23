@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook
 
+import it.evadid.core.datastructures.language.WorkbookContent
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
@@ -50,9 +52,8 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val exercise = ProgrammingExercise("feedback-sidebar", Some(ProgrammingTestSuite(List(public, hidden))))
     val variable = exercise.interactionVariable
     val source = variable.currentValue
-    val publicResult = GradingResult(public, source, GradingStatus.Correct(), Some(feedback), None, date)
-    val hiddenResult = GradingResult(hidden, source, GradingStatus.Correct(),
-      Some(LanguageMap.universalMap[HumanLanguage]("SECRET-HIDDEN-FEEDBACK")), None, LocalDateTime.parse("1999-01-01T01:02:03"))
+    val publicResult = GradingResult(public, source, GradingStatus.Correct(), Some(WorkbookContent(feedback)), None, date)
+    val hiddenResult = GradingResult(hidden, source, GradingStatus.Correct(), Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("SECRET-HIDDEN-FEEDBACK"))), None, LocalDateTime.parse("1999-01-01T01:02:03"))
     variable.updateHistory(_.addGradings(List(publicResult, hiddenResult)), ExecutionContextInformation.default)
     val sidebar = InteractionInfoSidebar(exercise, None, GradingReporter(exercise)).getDomElement()
     val previous = fullInfo.signals.currentLanguage.now()
@@ -100,7 +101,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       assert(!overview.ref.querySelector("details.feedback-grading").hasAttribute("open"), "unchecked results start collapsed")
       val statuses = List(GradingStatus.Correct(), GradingStatus.PartiallyCorrect(), GradingStatus.Incorrect())
       variable.updateHistory(_.addGradings(tests.zip(statuses).map((test, status) =>
-        GradingResult(test, variable.currentValue, status, Some(feedback), None, date))), ExecutionContextInformation.default)
+        GradingResult(test, variable.currentValue, status, Some(WorkbookContent(feedback)), None, date))), ExecutionContextInformation.default)
       assertEquals(rows(overview.ref), rows(sidebar.ref))
       assertEquals(rows(overview.ref).map(_._1.split(' ').last), Seq("feedback-status--correct", "feedback-status--partial", "feedback-status--incorrect"))
       assertEquals(overview.ref.querySelector(".feedback-score-chip").textContent, sidebar.ref.querySelector(".feedback-score-chip").textContent)
@@ -114,8 +115,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val test = grader("visible")
     val exercise = ProgrammingExercise("feedback-current-answer", Some(ProgrammingTestSuite(List(test))))
     val variable = exercise.interactionVariable
-    variable.updateHistory(_.addGrading(GradingResult(test, variable.currentValue, GradingStatus.Correct(),
-      Some(LanguageMap.universalMap[HumanLanguage]("FEEDBACK-FOR-OLD-ANSWER")))), ExecutionContextInformation.default)
+    variable.updateHistory(_.addGrading(GradingResult(test, variable.currentValue, GradingStatus.Correct(), Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("FEEDBACK-FOR-OLD-ANSWER"))), None, java.time.LocalDateTime.now())), ExecutionContextInformation.default)
     val sidebar = InteractionInfoSidebar(exercise, None, GradingReporter(exercise)).getDomElement()
     val close = mount(sidebar)
     try {

@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.content.WorkbookFactory
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.evacuation.*
 import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
 import it.evadid.workbook.elements.structureElements.Workbook
@@ -17,7 +17,7 @@ case class CreateEvacuationWorkbook(fullInfo: FullInfo) extends WorkbookFactory 
   private def doorPlot(id: String, title: String): CoordinatePlotInteraction = CoordinatePlotInteraction(id,
     LanguageMapContentId(s"digitalWorkbooks/$title"), LanguageMapContentId("digitalWorkbooks/evacuationDoorWidth"),
     LanguageMapContentId("digitalWorkbooks/evacuationDoorTime"), PlotAxis(0, 3, 0.5), PlotAxis(0, 30, 10))
-  private def relationship(id: String, prompt: String): ChoiceInteraction = ChoiceInteraction(id,
+  private def relationship(id: String, prompt: String): WorkbookContentChoiceInteraction = contentChoice(id,
     LanguageMapContentId(s"digitalWorkbooks/$prompt"),
     List("Linear", "Quadratic", "Exponential", "Inverse", "Direct", "Other")
       .map(kind => LanguageMapContentId(s"digitalWorkbooks/plotRelationship$kind")))

@@ -9,7 +9,7 @@ import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
 import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.HintLabel
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleGraphic, TurtleRecreateShapeInteraction}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStateSnapScalaModel}
@@ -63,14 +63,14 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
 
   /** Options are `<id>-opt0..n-1` unless explicit option keys are given. */
   private def choice(id: String, expected: List[Int], optionCount: Int, multiple: Boolean = false,
-                     optionKeys: Option[List[String]] = None): ChoiceInteraction =
-    ChoiceInteraction("monks-" + id, lm(id + "-question"),
+                     optionKeys: Option[List[String]] = None): WorkbookContentChoiceInteraction =
+    contentChoice("monks-" + id, lm(id + "-question"),
       optionKeys.getOrElse(List.tabulate(optionCount)(i => s"$id-opt$i")).map(lm), multiple, Some(expected))
 
   /** One single-choice row per statement; `answers` name the correct category for each `<id>-row<i>`. */
   private def assign(id: String, categories: List[String], answers: List[String]): List[WorkbookElement] =
     answers.zipWithIndex.map { (answer, i) =>
-      ChoiceInteraction(s"monks-$id-$i", lm(s"$id-row$i"), categories.map(c => lm("cat-" + c)),
+      contentChoice(s"monks-$id-$i", lm(s"$id-row$i"), categories.map(c => lm("cat-" + c)),
         expected = Some(List(categories.indexOf(answer))))
     }
 
@@ -99,6 +99,9 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   override lazy val createWorkbook: Workbook = workbook(
     key("workbooktitle"),
     List(
+      section("welcomeTitle", key("welcomeTitle"), List[WorkbookElement](
+        text("welcome"),
+      )),
       section("monks-story", key("parta"), List(
         container(key("parta"), List(
           text("introduction"),
@@ -164,7 +167,16 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
               ProgrammingStateSnapScalaModel.empty,
               kochTarget(depth),
               customExerciseConfig = Some(EditorConfig))))
-        })
+        }),
+      section("finishTitle", key("finishTitle"), List[WorkbookElement](
+        text("finish"),
+        container(key("survey"), List(
+          text("survey-todo"))
+        ),
+        container(key("submit"), List(
+          text("submit-todo"))
+        ),
+      )),
     ),
     User.AndreGreubel
   )

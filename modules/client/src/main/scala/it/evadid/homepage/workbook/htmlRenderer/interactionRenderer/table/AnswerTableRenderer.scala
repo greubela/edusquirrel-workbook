@@ -41,10 +41,8 @@ case object AnswerTableRenderer extends LineBasedRenderingFactory[AnswerTableInt
           cells.zipWithIndex.map((config, column) => cell(row, column, config)))))
       )),
       p(cls := "answer-table__feedback", role := "status", aria.live := "polite",
-        text <-- state.signal.map(answer => e.grade(answer).map(g => ("tableProgress", g.correct, g.total))
-          .getOrElse((if e.isAnswered(answer) then "tableSaved" else "tableIncomplete", 0, 0)))
-          .flatMapSwitch((key, count, total) => laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")
-            .map(_.replace("{count}", count.toString).replace("{total}", total.toString))))
+        text <-- state.signal.map(answer => if e.isAnswered(answer) then "tableSaved" else "tableIncomplete")
+          .flatMapSwitch(key => laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")))
     )
     AtomarLineRendering.basicLine(e, dom)
   }

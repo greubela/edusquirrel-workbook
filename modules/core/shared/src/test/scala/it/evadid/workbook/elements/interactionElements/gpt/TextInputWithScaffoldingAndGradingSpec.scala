@@ -1,5 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
+import it.evadid.core.datastructures.language.WorkbookContent
+
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus
 
 import it.evadid.workbook.support.TestExecutionContext
@@ -58,14 +62,14 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     }
     val grader = TextInputLlmGrader(task, None, ContentForLlmInteraction(criterion, Map.empty))
     def grade(answer: String = "Meine Antwort", forced: Boolean = true) =
-      grader.gradeStateSafe(answer, forced, TestExecutionContext(List(client), languageMapIdResolver = Some(resolver)))
+      grader.gradeStateSafe(answer, forced, UpdateImportance.MAJOR, TestExecutionContext(List(client), languageMapIdResolver = Some(resolver)))
   }
 
   test("session configuration is carried by grading, classification retries and scaffolding requests") {
     val f = new Fixture(List(Right("Please classify again"), Right("CORRECT"), Right("A helpful hint")))
     val configuration = Some(it.evadid.llm.LlmConfiguration("https://own.example/chat", "own-model", Some("session-key")))
     val context = TestExecutionContext(List(f.client), languageMapIdResolver = Some(f.resolver), llmConfiguration = configuration)
-    f.grader.gradeStateSafe("answer", true, context).flatMap { result =>
+    f.grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, context).flatMap { result =>
       assertEquals(result.gradingStatus, GradingStatus.Correct())
       TextInputLlmScaffolder(task, None, ContentForLlmInteraction(hint, Map.empty))
         .handleFeedbackGeneration("answer", context).map { _ =>
@@ -82,8 +86,8 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       f.grade().map { result =>
         assertEquals(result.gradingStatus, expected)
         assertEquals(result.gradedState, "Meine Antwort")
-        assertEquals(result.feedbackInformation.get.tryGetInLanguage(German), Some("Ein Hinweis."))
-        assertEquals(result.feedbackInformation.get.tryGetInLanguage(English), None)
+        assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.tryGetInLanguage(German), Some("Ein Hinweis."))
+        assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.tryGetInLanguage(English), None)
         assertEquals(result.grader, f.grader)
         assert(result.grader.gradingEntity.isInstanceOf[FeedbackEntity.LlmEntity])
         assertEquals(result.additionalData.get.messages.last.text, s"Ein Hinweis.\r\n$marker \n")
@@ -112,7 +116,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val f = new Fixture(List(Right("Deine Erklärung ist teilweise richtig."), Right("PARTIALL_CORRECT\n")))
     f.grade().map { result =>
       assertEquals(result.gradingStatus, GradingStatus.PartiallyCorrect())
-      assertEquals(result.feedbackInformation.get.getInLanguage(German), "Deine Erklärung ist teilweise richtig.")
+      assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.getInLanguage(German), "Deine Erklärung ist teilweise richtig.")
       assertEquals(f.requests.now().size, 2)
       assert(f.requests.now().last.systemPrompt.contains("ONLY one of CORRECT, INCORRECT, PARTIALL_CORRECT"))
       val retry = ujson.read(f.requests.now().last.prompt)
@@ -171,9 +175,9 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
 
   test("missing clients and missing localization context fail safely") {
     val f = new Fixture
-    f.grader.gradeStateSafe("answer", true, TestExecutionContext(languageMapIdResolver = Some(f.resolver))).flatMap { missingClient =>
+    f.grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, TestExecutionContext(languageMapIdResolver = Some(f.resolver))).flatMap { missingClient =>
       assert(missingClient.gradingStatus.isInstanceOf[GradingStatus.TestError])
-      f.grader.gradeStateSafe("answer", true, TestExecutionContext(List(f.client))).map { missingResolver =>
+      f.grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, TestExecutionContext(List(f.client))).map { missingResolver =>
         assert(missingResolver.gradingStatus.isInstanceOf[GradingStatus.TestError])
         assertEquals(f.requests.now(), Vector.empty)
       }
@@ -186,7 +190,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       val prompt = ujson.read(f.requests.now().head.prompt)
       assertEquals(prompt("criterion").str, "Explain why.")
       assertEquals(prompt("feedbackLanguage").str, German.name)
-      assertEquals(result.feedbackInformation.get.getInLanguage(German), "Gut begründet.")
+      assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.getInLanguage(German), "Gut begründet.")
     }
   }
 
@@ -205,13 +209,13 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val resolver = new LanguageMapIdResolver(f.language.observable) {
       override def resolveMap(id: LanguageMapContentId) = { started.trySuccess(()); pending.future }
     }
-    val result = f.grader.gradeStateSafe("answer", true, TestExecutionContext(List(f.client), languageMapIdResolver = Some(resolver)))
+    val result = f.grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, TestExecutionContext(List(f.client), languageMapIdResolver = Some(resolver)))
     started.future.flatMap { _ =>
       f.language.set(English)
       pending.success(LanguageMap.mapBasedLanguageMap(Map(German -> "Aufgabe", English -> "Task")))
       result.map { grade =>
         assertEquals(ujson.read(f.requests.now().head.prompt)("feedbackLanguage").str, German.name)
-        assertEquals(grade.feedbackInformation.get.availableLanguages, Set[HumanLanguage](German))
+        assertEquals(grade.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.availableLanguages, Set[HumanLanguage](German))
       }
     }
   }
@@ -223,7 +227,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       f.grade("An updated answer").map { result =>
         assertEquals(ujson.read(f.requests.now().last.prompt)("answer").str, "An updated answer")
         assertEquals(ujson.read(f.requests.now().last.prompt)("criterion").str, "English: test/criterion")
-        assertEquals(result.feedbackInformation.get.tryGetInLanguage(English), Some("Good."))
+        assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.tryGetInLanguage(English), Some("Good."))
       }
     }
   }
@@ -234,7 +238,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val example = LanguageMapContentId("test/example-answer")
     val reply = LanguageMapContentId("test/example-feedback")
     val grader = TextInputLlmGrader(task, Some(solution), ContentForLlmInteraction(criterion, Map(example -> reply)))
-    grader.gradeStateSafe("answer", true, TestExecutionContext(List(f.client), Some(f.resolver))).map { result =>
+    grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, TestExecutionContext(List(f.client), Some(f.resolver))).map { result =>
       val prompt = ujson.read(f.requests.now().head.prompt)
       assertEquals(prompt("solution").str, "Deutsch: test/solution")
       assertEquals(prompt("examples")(0)("answer").str, "Deutsch: test/example-answer")
@@ -354,7 +358,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
         assertEquals(a, b)
         val result = element.interactionVariable.currentHistory.historyGrading.gradingsMap("answer").testsWithResults.head
         assertEquals(result.gradingStatus, GradingStatus.Correct())
-        assertEquals(result.feedbackInformation.flatMap(_.tryGetInLanguage(German)), Some("Bestehendes Feedback."))
+        assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.flatMap(_.tryGetInLanguage(German)), Some("Bestehendes Feedback."))
         grade().map { cached =>
           assertEquals(cached, a)
           assertEquals(requests.now(), Vector(German.name))
