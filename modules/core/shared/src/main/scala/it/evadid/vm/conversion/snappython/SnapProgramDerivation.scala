@@ -8,7 +8,7 @@ import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchToBeExpressionParser
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapXml
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
 
 /**
@@ -33,24 +33,25 @@ object SnapProgramDerivation {
         )
   }
 
-  def fromState(state: ProgrammingStateSnapXml): DerivedView =
-    fromXml(state.snapXml)
+  def fromState(state: ProgrammingStateRaw): DerivedView =
+    fromXml(state.code)
 
   def fromXml(xml: String): DerivedView = {
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = it.evadid.vm.conversion.snapexpression.SnapToExpression.parseWithLayout(xml)
     val program = BeProgram(parsed.expression)
-    val python = ExpressionToPython.printedPython(parsed.expression)
     val unsupported = SnapExpressionSupport.unsupportedSnapSelectors(xml)
     val astOk = SnapExpressionSupport.validateSubset(program.fullProgram).isRight
     val pythonCompatible = unsupported.isEmpty && astOk
+    val python = if pythonCompatible then ExpressionToPython.printedPython(parsed.expression) else ""
     DerivedView(program, parsed.canvasLayout, python, pythonCompatible, unsupported)
   }
   /** One Snap top-level script rendered as Python (plus canvas position). */
   final case class ScriptView(index: Int, x: Int, y: Int, python: String) derives upickle.default.ReadWriter
 
   /** Partition top-level BeProgram statements by derived canvas layout. */
-  def scriptsOf(state: ProgrammingStateSnapXml): List[ScriptView] = {
+  def scriptsOf(state: ProgrammingStateRaw): List[ScriptView] = {
     val derived = SnapProgramDerivation.fromState(state)
+    if !derived.pythonCompatible then return Nil
     val statements =
       SnapExpressionSupport.scriptStatements(
         SnapExpressionSupport.topLevelStatements(derived.program.fullProgram)
@@ -62,7 +63,7 @@ object SnapProgramDerivation {
             !SnapExpressionSupport.layoutMatches(derived.canvasLayout, statements.size) then
           List((156, 66, statements))
         else
-          splitByLayout(statements, derived.canvasLayout.scripts)
+          splitByLayout(statements, derived.canvasLayout.scripts.toList)
       chunks.zipWithIndex.map { case ((x, y, chunk), idx) =>
         ScriptView(idx + 1, x, y, renderStatements(chunk))
       }

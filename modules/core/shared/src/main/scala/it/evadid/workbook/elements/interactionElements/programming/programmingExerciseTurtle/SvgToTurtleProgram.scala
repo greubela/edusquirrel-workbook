@@ -13,8 +13,8 @@ import scala.collection.mutable.ListBuffer
 final class SvgToTurtleProgram {
   import SvgToTurtleProgram.*
 
-  def transform(pathData: String): List[TurtleCommand[Double]] = convert(pathData)
-  def apply(pathData: String): List[TurtleCommand[Double]] = transform(pathData)
+  def transform(pathData: String): Seq[TurtleCommand[Double]] = convert(pathData)
+  def apply(pathData: String): Seq[TurtleCommand[Double]] = transform(pathData)
 }
 
 object SvgToTurtleProgram {
@@ -25,9 +25,9 @@ object SvgToTurtleProgram {
 
   private val Token = "([AaCcHhLlMmQqSsTtVvZz])|([-+]?(?:(?:\\d+(?:\\.\\d*)?)|(?:\\.\\d+))(?:[eE][-+]?\\d+)?)".r
 
-  def apply(pathData: String): List[TurtleCommand[Double]] = convert(pathData)
+  def apply(pathData: String): Seq[TurtleCommand[Double]] = convert(pathData)
 
-  def convert(pathData: String): List[TurtleCommand[Double]] = {
+  def convert(pathData: String): Seq[TurtleCommand[Double]] = {
     val matches = Token.findAllMatchIn(pathData).toList
     val ignored = Token.replaceAllIn(pathData, "").replaceAll("[\\s,]", "")
     require(ignored.isEmpty, s"Invalid SVG path data near '$ignored'")
@@ -37,7 +37,7 @@ object SvgToTurtleProgram {
   }
 
   /** Each entry is a destination and whether the trip to it draws ink. */
-  private def parse(tokens: List[String]): List[(Point, Boolean)] = {
+  private def parse(tokens: Seq[String]): Seq[(Point, Boolean)] = {
     val out = ListBuffer.empty[(Point, Boolean)]
     var i = 0
     var command = ' '
@@ -115,7 +115,7 @@ object SvgToTurtleProgram {
   }
 
   private def arcPoints(start: Point, end: Point, rxInput: Double, ryInput: Double,
-                        rotationDegrees: Double, largeArc: Boolean, sweep: Boolean): List[Point] = {
+                        rotationDegrees: Double, largeArc: Boolean, sweep: Boolean): Seq[Point] = {
     var rx = math.abs(rxInput); var ry = math.abs(ryInput)
     if rx == 0 || ry == 0 || start == end then return if start == end then Nil else List(end)
     val phi = math.toRadians(rotationDegrees % 360); val cosPhi = math.cos(phi); val sinPhi = math.sin(phi)
@@ -145,7 +145,7 @@ object SvgToTurtleProgram {
     }.toList
   }
 
-  private def turtleCommands(destinations: List[(Point, Boolean)]): List[TurtleCommand[Double]] = {
+  private def turtleCommands(destinations: Seq[(Point, Boolean)]): Seq[TurtleCommand[Double]] = {
     val result = ListBuffer.empty[TurtleCommand[Double]]
     var current = Point(0, 0); var heading = 0.0; var penDown = true
     destinations.foreach { (next, draw) =>

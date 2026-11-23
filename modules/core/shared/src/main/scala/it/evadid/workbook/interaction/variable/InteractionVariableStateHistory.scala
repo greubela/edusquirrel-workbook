@@ -1,7 +1,7 @@
 package it.evadid.workbook.interaction.variable
 
 import it.evadid.core.util.InfoUtil
-import it.evadid.workbook.interaction.sync.SyncStrategy
+import it.evadid.workbook.interaction.sync.EventSyncStrategy
 import upickle.default.*
 import it.evadid.workbook.interaction.sync.UpdateImportance.*
 import java.time.LocalDateTime
@@ -16,10 +16,14 @@ case class InteractionVariableStateHistory[T]
 
   def latestChangeTimestamp: Option[LocalDateTime] = events.iterator.map(_.timestamp).maxOption
 
+  /** Drops DEFAULT answers once another answer exists and TEMPORARY answers once a later answer exists.
+    * The latest answer always remains.
+    */
   def cleanedHistory(): InteractionVariableStateHistory[T] = {
     val nonDefault = events.filter(_.updateImportance != DEFAULT)
-    if (nonDefault.nonEmpty) this.copy(events = nonDefault)
-    else this.copy(events = lastStateOption.toSet)
+    val candidates = if nonDefault.nonEmpty then nonDefault else lastStateOption.toSet
+    val latest = candidates.iterator.map(_.timestamp).maxOption
+    copy(events = candidates.filter(state => state.updateImportance != TEMPORARY || latest.contains(state.timestamp)))
   }
 
   def updateEvents(eventFunc: Set[InteractionVariableState[T]] => Set[InteractionVariableState[T]]): InteractionVariableStateHistory[T] = {
@@ -34,7 +38,7 @@ case class InteractionVariableStateHistory[T]
     withAddedEvents(Set(event))
   }
 
-  override val toString: String = s"InteractionVariableHistory(${events.size} events, latest: ${InfoUtil.datetimeFormattedForLog(lastStateOption.map(_.timestamp))})"
+  override val toString: String = s"InteractionVariableHistory.fromResults(${events.size} events, latest: ${InfoUtil.datetimeFormattedForLog(lastStateOption.map(_.timestamp))})"
 
 }
 

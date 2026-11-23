@@ -4,7 +4,7 @@ import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.distribution.formats.WorkerExecutionProtocol.{Request, Response}
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
-import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence as Evidence, JavaTurtleRuntime as T}
+import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence as Evidence, JavaTurtleInterpreter as T}
 import munit.FunSuite
 import upickle.default.*
 import scala.concurrent.{ExecutionContext, Future}
@@ -36,8 +36,8 @@ class BackendWorkerTest extends FunSuite {
   test("Snap XML parsing preserves nested elements, Unicode and attributes") {
     val xml = "<project><block s=\"外\"><block s=\"inner\"/></block></project>"
     send("xml", parseSnapXml.name, writeJs(ParseSnapXmlRequest(xml, "block"))).map { reply =>
-      val result = reply.response.result.toOption.get.getAs[List[it.evadid.vm.conversion.snapxml.SnapXmlParser.Element]]
-      assertEquals(result.map(_.attrOrEmpty("s")), List("外", "inner"))
+      val result = reply.response.result.toOption.get.getAs[List[it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.Element]]
+      assertEquals(result.map(_.attribute("s").getOrElse("")), List("外", "inner"))
     }(using scala.concurrent.ExecutionContext.global)
   }
   test("QR worker computes a full symbol with the same result as the shared model") {

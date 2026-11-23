@@ -1,5 +1,6 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import upickle.default.*
 

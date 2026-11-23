@@ -1,10 +1,12 @@
 package it.evadid.vm.conversion.expressionsnap
 
+import it.evadid.vm.conversion.snapxml.SnapXmlText
+
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapexpression.SnapInputCodec
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
+import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
 
 import upickle.default.ReadWriter
 
@@ -13,6 +15,7 @@ import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.{BlockCategory, BlockType}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
@@ -26,8 +29,8 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
  */
 object SnapCustomBlockMerge {
 
-  /** Palette category for blocks Python declares from scratch. */
-  val DefaultNewBlockCategory: String = SnapTurtleCatalog.PaletteTab.Variables.toString
+  /** Palette category for blocks Python declares from scratch: the exercise palette's own Variables tab. */
+  val DefaultNewBlockCategory: BlockCategory = BlockCategory.fromXml(SnapTurtleCatalog.PaletteTab.Variables.toString)
 
   /** Everything the write-back needs to emit one `<block-definition>` and its calls. */
   final case class CustomBlockPlan(
@@ -35,8 +38,8 @@ object SnapCustomBlockMerge {
       spec: String,
       slotNames: List[String],
       slotTypes: List[String],
-      blockType: String,
-      category: String,
+      blockType: BlockType,
+      category: BlockCategory,
       extraAttributes: String,
       commentXml: String,
       variablesXml: String,
@@ -61,7 +64,7 @@ object SnapCustomBlockMerge {
     def toXml(bodyXml: String): String = {
       val script = if bodyXml.nonEmpty then s"<script>$bodyXml</script>" else ""
       val attributes =
-        s"""s="${SnapInputCodec.escapeXml(spec)}" type="${SnapInputCodec.escapeXml(blockType)}" category="${SnapInputCodec.escapeXml(category)}"$extraAttributes"""
+        s"""s="${SnapXmlText.escape(spec)}" type="${blockType.xml}" category="${SnapXmlText.escape(category.xml)}"$extraAttributes"""
       s"<block-definition $attributes>" +
         commentXml + variablesXml + headerXml + codeXml + translationsXml + inputsXml + script + scriptsXml +
         "</block-definition>"
@@ -75,7 +78,7 @@ object SnapCustomBlockMerge {
 
     def get(pythonName: String): Option[CustomBlockPlan] = byPythonName.get(pythonName)
 
-    def categories: List[String] = ordered.map(_.category).distinct
+    def categories: List[BlockCategory] = ordered.map(_.category).distinct
   }
 
   object CustomBlockPlans {
@@ -104,7 +107,7 @@ object SnapCustomBlockMerge {
   def planFor(
       defs: List[BeDefineFunction],
       previousXml: String,
-      newBlockCategory: String = DefaultNewBlockCategory
+      newBlockCategory: BlockCategory = DefaultNewBlockCategory
   ): CustomBlockPlans = {
     val existingByName =
       SnapCustomBlockRules
@@ -116,18 +119,27 @@ object SnapCustomBlockMerge {
       val pythonName = SnapExpressionSupport.pythonNameOf(defn)
       val parameters = defn.inputs.map(SnapControlFlow.variableName)
       val pythonSlots = SnapTurtleCatalog.uniqueSlotNames(parameters)
-      val candidates = existingByName.getOrElse(pythonName, Nil).filterNot(c => claimed.contains(c.element.start))
+      val candidates = existingByName.getOrElse(pythonName, Nil).filterNot(c => claimed.contains(c.position))
       val matched = candidates.find(_.arity == parameters.size).orElse(candidates.headOption)
-      matched.foreach(existing => claimed += existing.element.start)
-      matched match
+      matched.foreach(existing => claimed += existing.position)
+      val plan = matched match
         case Some(existing) if existing.arity == parameters.size && existing.slotNames == pythonSlots =>
           preservedPlan(pythonName, parameters, existing)
         case Some(existing) if existing.arity == parameters.size =>
-          renamedSlotsPlan(pythonName, parameters, pythonSlots, existing)
+          renamedSlotsPlan(pythonName, parameters, pythonSlots.toList, existing)
         case Some(existing) => reshapedPlan(pythonName, parameters, existing)
         case None => freshPlan(pythonName, parameters, newBlockCategory)
+      // Python decides whether the block reports a value; the existing definition keeps everything else.
+      plan.copy(blockType = blockTypeOf(defn))
     }
     new CustomBlockPlans(plans)
+  }
+
+  /** Snap's block type for a definition: one returning a truth value is a predicate, any other value a reporter. */
+  def blockTypeOf(defn: BeDefineFunction): BlockType = defn.outputs match {
+    case None => BlockType.Command
+    case Some(output) if output.variableType == it.evadid.vm.types.BeDataType.Boolean => BlockType.Predicate
+    case Some(_) => BlockType.Reporter
   }
 
   /** Existing definition kept as is; only the body will be replaced. */
@@ -140,10 +152,10 @@ object SnapCustomBlockMerge {
     CustomBlockPlan(
       pythonName = pythonName,
       spec = existing.spec,
-      slotNames = slotNames,
+      slotNames = slotNames.toList,
       slotTypes = slotNames.map(existing.typeOf),
       blockType = existing.blockType,
-      category = existing.rawCategory,
+      category = existing.category,
       extraAttributes = extraAttributes(existing.element),
       commentXml = childOuter(existing, "comment", ""),
       variablesXml = childOuter(existing, "variables", ""),
@@ -169,10 +181,10 @@ object SnapCustomBlockMerge {
     CustomBlockPlan(
       pythonName = pythonName,
       spec = SnapCustomBlockRules.rewriteSpecSlots(existing.spec, slotNames),
-      slotNames = slotNames,
+      slotNames = slotNames.toList,
       slotTypes = slotTypes,
       blockType = existing.blockType,
-      category = existing.rawCategory,
+      category = existing.category,
       extraAttributes = extraAttributes(existing.element),
       commentXml = childOuter(existing, "comment", ""),
       variablesXml = childOuter(existing, "variables", ""),
@@ -201,10 +213,10 @@ object SnapCustomBlockMerge {
     CustomBlockPlan(
       pythonName = pythonName,
       spec = label + slotNames.map(name => s" %$name").mkString,
-      slotNames = slotNames,
+      slotNames = slotNames.toList,
       slotTypes = slotTypes,
       blockType = existing.blockType,
-      category = existing.rawCategory,
+      category = existing.category,
       extraAttributes = extraAttributes(existing.element, dropIdentity = true),
       commentXml = childOuter(existing, "comment", ""),
       variablesXml = childOuter(existing, "variables", ""),
@@ -219,15 +231,15 @@ object SnapCustomBlockMerge {
   }
 
   /** Block declared in Python only: single label word, numeric slots. */
-  private def freshPlan(pythonName: String, parameters: List[String], category: String): CustomBlockPlan = {
+  private def freshPlan(pythonName: String, parameters: List[String], category: BlockCategory): CustomBlockPlan = {
     val slotNames = SnapTurtleCatalog.uniqueSlotNames(parameters)
     val slotTypes = List.fill(slotNames.size)("%n")
     CustomBlockPlan(
       pythonName = pythonName,
       spec = SnapTurtleCatalog.customBlockSemanticSpec(pythonName, parameters),
-      slotNames = slotNames,
+      slotNames = slotNames.toList,
       slotTypes = slotTypes,
-      blockType = "command",
+      blockType = BlockType.Command,
       category = category,
       extraAttributes = "",
       commentXml = "",
@@ -243,41 +255,29 @@ object SnapCustomBlockMerge {
 
   private def inputsXmlFor(slotTypes: List[String]): String =
     slotTypes
-      .map(slotType => s"""<input type="${SnapInputCodec.escapeXml(slotType)}"></input>""")
+      .map(slotType => s"""<input type="${SnapXmlText.escape(slotType)}"></input>""")
       .mkString("<inputs>", "", "</inputs>")
 
   /** Keep Snap's declared types when they exist; never persist an empty `<inputs>` list. */
   private def inputsXmlOf(existing: SnapCustomBlockRules.SnapCustomBlock, slotTypes: List[String]): String =
     val xml = childOuter(existing, "inputs", "")
-    val declaredInputs = SnapXmlParser.child(existing.element.inner, "inputs")
-      .toList.flatMap(inputs => SnapXmlParser.children(inputs.inner).filter(_.tag == "input"))
-    if declaredInputs.size == slotTypes.size then xml else inputsXmlFor(slotTypes)
+    if existing.element.inputs.size == slotTypes.size then xml else inputsXmlFor(slotTypes)
 
   private def childOuter(
       existing: SnapCustomBlockRules.SnapCustomBlock,
       tag: String,
       fallback: String
   ): String =
-    SnapXmlParser.child(existing.element.inner, tag).map(_.outer).getOrElse(fallback)
-
-  private val ManagedAttributePattern = """\s+(?:s|type|category)="[^"]*"""".r
-  private val IdentityAttributePattern = """\s+(?:selector|primitive)="[^"]*"""".r
+    existing.element.element.named(tag).headOption.map(_.element.toXml).getOrElse(fallback)
 
   /**
-   * `selector`, `primitive`, `helper`, `space`, `semantics` — kept in their original order.
+   * `selector`, `primitive`, `helper`, `space`, `semantics` — kept in their original order and spelling.
    * On reshape, `selector`/`primitive` are dropped: they name the old spec, and a leftover
    * primitive selector would bootstrap the definition out of `globalBlocks`.
    */
-  private def extraAttributes(element: SnapXmlParser.Element, dropIdentity: Boolean = false): String = {
-    val headerEnd = element.outer.indexOf('>')
-    if headerEnd < 0 then ""
-    else
-      val header = element.outer.substring(0, headerEnd).stripSuffix("/")
-      val withoutTag = header.dropWhile(ch => ch != ' ' && ch != '\t' && ch != '\n')
-      val withoutManaged = ManagedAttributePattern.replaceAllIn(withoutTag, "")
-      val remaining =
-        if dropIdentity then IdentityAttributePattern.replaceAllIn(withoutManaged, "").trim
-        else withoutManaged.trim
-      if remaining.isEmpty then "" else " " + remaining
+  private def extraAttributes(definition: SnapScalaModel.BlockDefinition, dropIdentity: Boolean = false): String = {
+    val managed = Set("s", "type", "category") ++ (if dropIdentity then Set("selector", "primitive") else Set.empty)
+    definition.element.attributes.filterNot(attribute => managed(attribute.name))
+      .map(attribute => " " + attribute.toXml.dropWhile(_.isWhitespace)).mkString
   }
 }

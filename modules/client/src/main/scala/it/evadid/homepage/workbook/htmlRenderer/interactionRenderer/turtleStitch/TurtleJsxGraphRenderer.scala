@@ -3,7 +3,6 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitc
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGradingLogic, TurtleGraphic}
 import TurtleGradingLogic.{GradingLine, TurtleGraphicComparison, TurtleLineStatus}
 import it.evadid.facades
@@ -12,6 +11,7 @@ import org.scalajs.dom
 import upickle.default.*
 
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters.*
 import scala.util.control.NonFatal
 
 
@@ -23,65 +23,71 @@ import scala.util.control.NonFatal
  */
 object TurtleJsxGraphRenderer:
 
-  def render[T: Fractional](program: Signal[List[TurtleCommand[T]]], graphic: TurtleGraphic): DomElementCollection = {
-    program.signal.map(curList => {
-      render(curList, graphic)
-    })
-  }
+  def render[T: Fractional](program: Signal[Seq[TurtleCommand[T]]], graphic: TurtleGraphic): Element =
+    render(program.map(commands => buildScene(commands, graphic)), "Turtle drawing")
 
   /** Stitch reproduction accepts any pen-up route between the drawn segments. */
-  def renderStrokes[T: Fractional](program: Signal[List[TurtleCommand[T]]], expected: TurtleGraphic): DomElementCollection =
-    program.map(commands => render(buildScene(commands, expected, 1e-7, gradeJumps = false), "Turtle drawing"))
+  def renderStrokes[T: Fractional](program: Signal[Seq[TurtleCommand[T]]], expected: TurtleGraphic): Element =
+    render(program.map(commands => buildScene(commands, expected, 1e-7, gradeJumps = false)), "Turtle drawing")
 
-  def render[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Element =
+  def render[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic): Element =
     render(buildScene(program, expected), "Turtle drawing")
 
-  def render[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): Element =
+  def render[T: Fractional](program: Seq[TurtleCommand[T]], expected: Seq[LineToRender[T]]): Element =
     render(buildScene(program, expected), "Turtle drawing")
 
-  def render(scene: Scene, title: String): Element = {
-    val mounted = Var(Option.empty[AnyRef])
-    val dispose = Var(Option.empty[() => Unit])
+  def render(scene: Scene, title: String): Element = render(Val(scene), title)
+
+  /** One JSXGraph board per mounted element: each new scene replaces the previous objects on the same board.
+    * The board is created once the library is loaded and released on unmount.
+    */
+  def render(scenes: Signal[Scene], title: String): Element = {
+    val drawing = Var(Option.empty[Drawing])
+    def release(): Unit = {
+      drawing.now().foreach(current => JSXGraph.free(current.board))
+      drawing.set(None)
+    }
+    def show(container: dom.html.Div, scene: Scene): Unit = {
+      // A new board replaces an earlier warning.
+      if drawing.now().isEmpty && container.classList.contains("turtle-gradig-panel--unavailable") then container.textContent = ""
+      scala.util.Try(redraw(drawing.now(), container, scene, title)) match {
+        case scala.util.Success(next) =>
+          drawing.set(Some(next))
+          container.classList.remove("turtle-gradig-panel--unavailable")
+          container.setAttribute("aria-busy", "false")
+        case scala.util.Failure(error) =>
+          release()
+          showError(container, error)
+      }
+    }
     div(
       cls := "turtle-gradig-panel",
-      onMountCallback(event => {
-        import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-        val token = new Object
-        mounted.set(Some(token))
-        val container = event.thisNode.ref
-        container.setAttribute("aria-busy", "true")
-        def showError(error: Throwable): Unit = {
-          container.setAttribute("aria-busy", "false")
-          container.classList.add("turtle-gradig-panel--unavailable")
-          container.textContent = error match {
-            case _: IllegalArgumentException => "This drawing is outside the supported display range."
-            case _ => "The drawing preview is unavailable. Try reloading the page."
-          }
-        }
-        def draw(): Unit = {
-          scala.util.Try {
-            val board = render(container, scene, title)
-            dispose.set(Some(() => JSXGraph.free(board)))
-            container.classList.remove("turtle-gradig-panel--unavailable")
-            container.setAttribute("aria-busy", "false")
-          }.failed.foreach(showError)
-        }
-        val loading = facades.JSXGraph
-        if loading.available then draw()
-        else scala.util.Try(loading.preload()).fold(
-          showError,
-          ready => {
-            ready.map(_ => if mounted.now().contains(token) then draw())
-              .failed.foreach(error => if mounted.now().contains(token) then showError(error))
-            ()
-          })
+      aria.busy := true,
+      onMountBind(context => scenes.combineWith(libraryLoaded) --> {
+        case (scene, Some(scala.util.Success(_))) => show(context.thisNode.ref, scene)
+        case (_, Some(scala.util.Failure(error))) => showError(context.thisNode.ref, error)
+        case (_, None) => ()
       }),
-      onUnmountCallback(_ => {
-        mounted.set(None)
-        dispose.now().foreach(_())
-        dispose.set(None)
-      })
+      onUnmountCallback(_ => release())
     )
+  }
+
+  /** Loads JSXGraph on demand; the signal completes with the loading outcome. */
+  private def libraryLoaded: Signal[Option[scala.util.Try[Unit]]] = {
+    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+    if facades.JSXGraph.available then Val(Some(scala.util.Success(())))
+    else scala.util.Try(facades.JSXGraph.preload()).fold(
+      error => Val(Some(scala.util.Failure(error))),
+      loading => Signal.fromFuture(loading.transform(outcome => scala.util.Success(outcome))))
+  }
+
+  private def showError(container: dom.html.Div, error: Throwable): Unit = {
+    container.setAttribute("aria-busy", "false")
+    container.classList.add("turtle-gradig-panel--unavailable")
+    container.textContent = error match {
+      case _: IllegalArgumentException => "This drawing is outside the supported display range."
+      case _ => "The drawing preview is unavailable. Try reloading the page."
+    }
   }
 
   /* Factories */
@@ -103,12 +109,15 @@ object TurtleJsxGraphRenderer:
 
   enum LineResult derives ReadWriter:
     case Correct, Unexpected, Missing, Neutral
+    /** Step-by-step replay: the segment drawn by the current step, and segments of later steps. */
+    case Current, Upcoming
 
   final case class RenderedLine(start: Point[Double], end: Point[Double], result: LineResult, jump: Boolean) derives ReadWriter
 
   final case class RenderedAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int, lineAfter: Int) derives ReadWriter
 
-  final case class Scene(lines: List[RenderedLine], angles: List[RenderedAngle]) derives ReadWriter
+  /** `marker` shows the turtle's position, e.g. after the current step of a replay. */
+  final case class Scene(lines: Seq[RenderedLine], angles: Seq[RenderedAngle], marker: Option[Point[Double]] = None) derives ReadWriter
 
   private[turtleStitch] final case class AngleSector(first: Point[Double], last: Point[Double], degrees: Double) derives upickle.default.ReadWriter
 
@@ -138,13 +147,13 @@ object TurtleJsxGraphRenderer:
     if sweep <= math.Pi then AngleSector(incoming, outgoing, math.toDegrees(sweep))
     else AngleSector(outgoing, incoming, math.toDegrees(fullTurn - sweep))
 
-  private def graphic[T: Fractional](program: List[TurtleCommand[T]]): TurtleGraphic = {
+  private def graphic[T: Fractional](program: Seq[TurtleCommand[T]]): TurtleGraphic = {
     val numeric = summon[Fractional[T]]
     TurtleGraphic.TurtleGraphicProgram(program.map(command =>
       command.mapNumbers(numeric.toDouble)))
   }
 
-  private def renderedLines(lines: List[GradingLine]): List[RenderedLine] = lines.map { graded =>
+  private def renderedLines(lines: Seq[GradingLine]): Seq[RenderedLine] = lines.map { graded =>
     val result = graded.status match
       case TurtleLineStatus.CORRECT => LineResult.Correct
       case TurtleLineStatus.EXPECTED_BUT_MISSING => LineResult.Missing
@@ -152,25 +161,25 @@ object TurtleJsxGraphRenderer:
     RenderedLine(graded.line.start, graded.line.end, result, graded.jump)
   }
 
-  private def renderedAngles(angles: Seq[TurtleGraphic.Angle]): List[RenderedAngle] = angles.map { angle =>
+  private def renderedAngles(angles: Seq[TurtleGraphic.Angle]): Seq[RenderedAngle] = angles.map { angle =>
     RenderedAngle(angle.vertex, angle.fromHeading, angle.degrees, angle.lineBefore, angle.lineAfter)
   }.toList
 
   /** JSXGraph projects the shared-core geometry and grading result into display objects. */
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: List[LineToRender[T]], tolerance: Double = 1e-7, gradeJumps: Boolean = true): Scene = {
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: Seq[LineToRender[T]], tolerance: Double = 1e-7, gradeJumps: Boolean = true): Scene = {
     val actual = graphic(program)
     val targets = expected.map(line => TurtleGraphic.Movement(line.start.toDouble, line.end.toDouble, line.jump))
     Scene(renderedLines(TurtleGradingLogic.compareLines(actual.renderMovements, targets, tolerance, gradeJumps)),
       renderedAngles(actual.renderAngles))
   }
 
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic): Scene =
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic): Scene =
     buildScene(program, expected, 1e-7)
 
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double): Scene =
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double): Scene =
     buildScene(program, expected, tolerance, gradeJumps = true)
 
-  def buildScene[T: Fractional](program: List[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene =
+  def buildScene[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic, tolerance: Double, gradeJumps: Boolean): Scene =
     buildScene(graphic(program), expected, tolerance, gradeJumps)
 
   private[turtleStitch] def buildScene(comparison: TurtleGraphicComparison): Scene =
@@ -182,118 +191,172 @@ object TurtleJsxGraphRenderer:
   }
 
   /** Creates the JSXGraph board inside `container` and returns the board object. */
-  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: List[LineToRender[T]]): JSXGraph.Board =
+  def render[T: Fractional](container: dom.html.Div, program: Seq[TurtleCommand[T]], expected: Seq[LineToRender[T]]): JSXGraph.Board =
     render(container, buildScene(program, expected), "Turtle drawing")
 
   /** Creates the JSXGraph board using the expected graphic for both comparison and angle overlays. */
-  def render[T: Fractional](container: dom.html.Div, program: List[TurtleCommand[T]], expected: TurtleGraphic): JSXGraph.Board =
+  def render[T: Fractional](container: dom.html.Div, program: Seq[TurtleCommand[T]], expected: TurtleGraphic): JSXGraph.Board =
     render(container, buildScene(program, expected), "Turtle drawing")
 
   def render(container: dom.html.Div, scene: Scene, title: String): JSXGraph.Board =
-    container.classList.add("turtle-gradig-panel")
-    val points = scene.lines.flatMap(line => List(line.start, line.end))
+    redraw(None, container, scene, title).board
+
+  /** A scene drawn on a board; `labels` holds the angle labels created on first hover. */
+  private final case class Drawing(board: JSXGraph.Board, scene: Scene, objects: Seq[js.Dynamic],
+      labels: Var[Map[Int, js.Dynamic]])
+
+  /** Draws `scene` on the previous board, or on a new one. An unchanged scene keeps its drawing. */
+  private def redraw(previous: Option[Drawing], container: dom.html.Div, scene: Scene, title: String): Drawing =
+    previous match {
+      case Some(current) if current.scene == scene => current
+      case Some(current) =>
+        val bounds = displayBounds(scene)
+        val board = current.board
+        board.suspendUpdate()
+        (current.objects ++ current.labels.now().values).reverseIterator.foreach(board.removeObject)
+        board.setBoundingBox(js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), true)
+        draw(board, scene, bounds)
+      case None =>
+        val bounds = displayBounds(scene)
+        container.classList.add("turtle-gradig-panel")
+        // SVG tick labels avoid a forced HTML layout for each label on every board update.
+        val axisOptions = js.Dynamic.literal(ticks = js.Dynamic.literal(label = js.Dynamic.literal(display = "internal")))
+        val board = JSXGraph.board(container, js.Dynamic.literal(
+          title = Option(title).map(_.trim).filter(_.nonEmpty).getOrElse("Turtle drawing"),
+          renderer = "svg", boundingbox = js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), axis = true,
+          defaultAxes = js.Dynamic.literal(x = axisOptions, y = axisOptions),
+          keepaspectratio = true, showCopyright = false
+        )).createLoadedInstance()
+        try draw(board, scene, bounds)
+        catch
+          case NonFatal(error) =>
+            JSXGraph.free(board)
+            throw error
+    }
+
+  /** JSXGraph bounds of the scene; rejects coordinates the board cannot display. */
+  private def displayBounds(scene: Scene): Array[Double] =
+    val points = scene.lines.flatMap(line => List(line.start, line.end)) ++ scene.marker
     if points.exists(point => !point.x.isFinite || !point.y.isFinite) then
       throw IllegalArgumentException("The drawing contains non-finite coordinates.")
     val bounds = boundingBox(points.map(p => Point(p.x, -p.y)))
     if bounds.exists(!_.isFinite) || !((bounds(2) - bounds(0)).isFinite && (bounds(1) - bounds(3)).isFinite) ||
       bounds(2) <= bounds(0) || bounds(1) <= bounds(3) then
       throw IllegalArgumentException("The drawing exceeds the supported display range.")
-    // SVG tick labels avoid a forced HTML layout for each label on every board update.
-    val axisOptions = js.Dynamic.literal(ticks = js.Dynamic.literal(label = js.Dynamic.literal(display = "internal")))
-    val board = JSXGraph.board(container, js.Dynamic.literal(
-      title = Option(title).map(_.trim).filter(_.nonEmpty).getOrElse("Turtle drawing"),
-      renderer = "svg", boundingbox = js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), axis = true,
-      defaultAxes = js.Dynamic.literal(x = axisOptions, y = axisOptions),
-      keepaspectratio = true, showCopyright = false
-    )).createLoadedInstance()
+    bounds
 
+  private val hoverLabel = js.Dynamic.literal(display = "internal", cssClass = "turtle-hover-label", highlightCssClass = "turtle-hover-label")
+
+  /** Creates the scene's objects in one suspended update. Angles are filled curves: JSXGraph angle objects
+    * end the suspended update and redraw the whole board for every angle.
+    */
+  private def draw(board: JSXGraph.Board, scene: Scene, bounds: Array[Double]): Drawing =
     // Dense embroidery targets otherwise redraw the entire board after each object.
     val canBatch = js.typeOf(board.asInstanceOf[js.Dynamic].selectDynamic("suspendUpdate")) == "function" &&
       js.typeOf(board.asInstanceOf[js.Dynamic].selectDynamic("unsuspendUpdate")) == "function"
+    if canBatch then board.suspendUpdate()
 
-    val pointObjects = scala.collection.mutable.Map.empty[Point[Double], js.Dynamic]
-    val angleObjects = scala.collection.mutable.Map.empty[Int, js.Dynamic]
+    val pointObjects: Map[Point[Double], js.Dynamic] =
+      scene.lines.flatMap(line => List(line.start, line.end)).distinct.map { point =>
+        point -> board.create("point", js.Array(point.x, -point.y), js.Dynamic.literal(
+          name = "", fixed = true, showInfobox = false, label = hoverLabel,
+          cssClass = "turtle-point", highlightCssClass = "turtle-point is-emphasized"))
+      }.toMap
 
-    def pointObject(point: Point[Double]): js.Dynamic = pointObjects.getOrElseUpdate(point, createPoint(point))
-
-
-    def createPoint(point: Point[Double]): js.Dynamic = {
-      board.create("point", js.Array(point.x, -point.y), js.Dynamic.literal(
-        name = "", fixed = true, showInfobox = false, label = js.Dynamic.literal(display = "internal"),
-        cssClass = "turtle-point", highlightCssClass = "turtle-point is-emphasized"
-      ))
+    val segments = scene.lines.map { line =>
+      val classes = lineClasses(line)
+      board.create("segment", js.Array(pointObjects(line.start), pointObjects(line.end)), js.Dynamic.literal(
+        cssClass = classes, highlightCssClass = classes, fixed = true))
     }
 
-    def createLine(line: RenderedLine, index: Int): Unit = {
-      val a = pointObject(line.start);
-      val b = pointObject(line.end)
-      val resultClass = line.result match
-        case LineResult.Correct => "turtle-line--correct"
-        case LineResult.Unexpected => "turtle-line--unexpected"
-        case LineResult.Missing => "turtle-line--missing"
-        case LineResult.Neutral => "turtle-line--neutral"
-      val classes = s"turtle-line $resultClass" + (if line.jump then " turtle-line--jump" else "")
-      val segment: js.Dynamic = board.create("segment", js.Array(a, b), js.Dynamic.literal(
-        cssClass = classes, highlightCssClass = classes, fixed = true
-      ))
-      segment.on("over", (_: js.Any) => hoverRelated(scene, index, pointObjects, angleObjects, board, active = true))
-      segment.on("out", (_: js.Any) => hoverRelated(scene, index, pointObjects, angleObjects, board, active = false))
-    }
-
-    def createAngle(angle: RenderedAngle, index: Int): Unit = {
+    // Hundreds of repeated angle sectors obscure dense stitch patterns. Keep one representative of each turn there.
+    val angleEntries = scene.angles.zipWithIndex
+    val visibleAngles = if angleEntries.size <= 128 then angleEntries
+      else angleEntries.groupBy { case (angle, _) => math.round(angle.degrees * 1e6) }
+        .values.map(_.head).toList.sortBy(_._2)
+    val sectors: Map[Int, (js.Dynamic, AngleSector, Double)] = visibleAngles.map { case (angle, index) =>
       def length(line: RenderedLine): Double = math.hypot(line.end.x - line.start.x, line.end.y - line.start.y)
       val radius = math.min((bounds(2) - bounds(0)) / 18.0,
         math.min(length(scene.lines(angle.lineBefore)), length(scene.lines(angle.lineAfter))) / 4.0)
       val sector = angleSector(scene, angle, radius)
+      val outline = sectorOutline(Point(angle.vertex.x, -angle.vertex.y), sector, radius)
+      index -> (board.create("curve", js.Array(outline.map(_.x).toJSArray, outline.map(_.y).toJSArray), js.Dynamic.literal(
+        // Hovering anywhere inside the sector, not only on its outline.
+        cssClass = "turtle-angle", highlightCssClass = "turtle-angle", fixed = true, withLabel = false, hasInnerPoints = true)), sector, radius)
+    }.toMap
 
-      def helper(point: Point[Double]): js.Dynamic = board.create("point", js.Array(point.x, point.y), js.Dynamic.literal(visible = false, fixed = true))
-
-      val arc = board.create("angle", js.Array(helper(sector.first), pointObject(angle.vertex), helper(sector.last)), js.Dynamic.literal(
-        name = "", radius = radius, `type` = "sector", orthoType = "sector", selection = "auto", cssClass = "turtle-angle", highlightCssClass = "turtle-angle is-emphasized", fixed = true
-      ))
-      arc.on("over", (_: js.Any) => setAngleHover(arc, sector.degrees, active = true, board))
-      arc.on("out", (_: js.Any) => setAngleHover(arc, sector.degrees, active = false, board))
-      angleObjects(index) = arc
+    val marker = scene.marker.map { position =>
+      board.create("point", js.Array(position.x, -position.y), js.Dynamic.literal(
+        name = "", fixed = true, showInfobox = false, withLabel = false, size = 5,
+        cssClass = "turtle-marker", highlightCssClass = "turtle-marker"))
     }
 
-    try
-      if canBatch then board.suspendUpdate()
-      scene.lines.zipWithIndex.foreach { case (line, index) => createLine(line, index) }
-      // Hundreds of repeated angle sectors obscure dense stitch patterns and are
-      // expensive JSXGraph objects. Keep one representative of each turn there.
-      val angleEntries = scene.angles.zipWithIndex
-      val visibleAngles = if angleEntries.size <= 128 then angleEntries
-        else angleEntries.groupBy { case (angle, _) => math.round(angle.degrees * 1e6) }
-          .values.map(_.head).toList.sortBy(_._2)
-      visibleAngles.foreach { case (angle, index) => createAngle(angle, index) }
-      if canBatch then board.unsuspendUpdate() else board.update()
-      board
-    catch
-      case NonFatal(error) =>
-        JSXGraph.free(board)
-        throw error
-
-  private def hoverRelated(scene: Scene, lineIndex: Int, points: collection.mutable.Map[Point[Double], js.Dynamic], angles: collection.mutable.Map[Int, js.Dynamic], board: JSXGraph.Board, active: Boolean): Unit =
-    val line = scene.lines(lineIndex)
-    List(line.start, line.end).foreach { p =>
-      points.get(p).foreach(_.setAttribute(js.Dynamic.literal(
-        name = (if active then s"(${format(p.x)}, ${format(p.y)})" else ""),
-        cssClass = (if active then "turtle-point is-emphasized" else "turtle-point")
-      )))
+    val labels = Var(Map.empty[Int, js.Dynamic])
+    def hoverAngle(index: Int, active: Boolean): Unit = sectors.get(index).foreach { (curve, sector, radius) =>
+      curve.setAttribute(js.Dynamic.literal(cssClass = if active then "turtle-angle is-emphasized" else "turtle-angle"))
+      labels.now().get(index) match {
+        case Some(label) => label.setAttribute(js.Dynamic.literal(visible = active))
+        case None if active =>
+          // Created on first hover: measuring many text labels while drawing is costly.
+          val position = sectorLabelPosition(Point(scene.angles(index).vertex.x, -scene.angles(index).vertex.y), sector, radius)
+          labels.update(_.updated(index, board.create("text", js.Array(position.x, position.y, s"${format(sector.degrees)}°"),
+            js.Dynamic.literal(fixed = true, display = "internal", anchorX = "middle", anchorY = "middle",
+              cssClass = "turtle-hover-label", highlightCssClass = "turtle-hover-label"))))
+        case None => ()
+      }
     }
-    scene.angles.zipWithIndex.filter { case (a, _) => a.lineBefore == lineIndex || a.lineAfter == lineIndex }.foreach { case (a, i) => angles.get(i).foreach(setAngleHover(_, angleSector(scene, a, 1.0).degrees, active, board)) }
-    board.update()
+    def hoverLine(index: Int, active: Boolean): Unit = {
+      val line = scene.lines(index)
+      List(line.start, line.end).foreach(point => pointObjects.get(point).foreach(_.setAttribute(js.Dynamic.literal(
+        name = if active then s"(${format(point.x)}, ${format(point.y)})" else "",
+        cssClass = if active then "turtle-point is-emphasized" else "turtle-point"))))
+      scene.angles.zipWithIndex.filter((angle, _) => angle.lineBefore == index || angle.lineAfter == index)
+        .foreach((_, angleIndex) => hoverAngle(angleIndex, active))
+    }
+    segments.zipWithIndex.foreach { (segment, index) =>
+      segment.on("over", (_: js.Any) => { hoverLine(index, active = true); board.update() })
+      segment.on("out", (_: js.Any) => { hoverLine(index, active = false); board.update() })
+    }
+    sectors.foreach { case (index, (curve, _, _)) =>
+      curve.on("over", (_: js.Any) => { hoverAngle(index, active = true); board.update() })
+      curve.on("out", (_: js.Any) => { hoverAngle(index, active = false); board.update() })
+    }
 
-  private def setAngleHover(obj: js.Dynamic, degrees: Double, active: Boolean, board: JSXGraph.Board): Unit =
-    obj.setAttribute(js.Dynamic.literal(name = (if active then s"${format(degrees)}°" else ""),
-      cssClass = (if active then "turtle-angle is-emphasized" else "turtle-angle")))
-    board.update()
+    if canBatch then board.unsuspendUpdate() else board.update()
+    Drawing(board, scene, pointObjects.values.toList ++ segments ++ sectors.toList.sortBy(_._1).map(_._2._1) ++ marker, labels)
+
+  /** Closed outline of an angle sector in JSXGraph coordinates: vertex, arc from `first` to `last`, vertex. */
+  private[turtleStitch] def sectorOutline(vertex: Point[Double], sector: AngleSector, radius: Double): List[Point[Double]] =
+    val start = math.atan2(sector.first.y - vertex.y, sector.first.x - vertex.x)
+    val sweep = math.toRadians(sector.degrees)
+    val steps = math.max(8, math.ceil(sector.degrees / 5.0).toInt)
+    val arc = (0 to steps).map { step =>
+      val angle = start + sweep * step / steps
+      Point(vertex.x + radius * math.cos(angle), vertex.y + radius * math.sin(angle))
+    }.toList
+    vertex :: arc ::: List(vertex)
+
+  /** The angle's label sits outside its arc, on the sector's bisector. */
+  private[turtleStitch] def sectorLabelPosition(vertex: Point[Double], sector: AngleSector, radius: Double): Point[Double] =
+    val middle = math.atan2(sector.first.y - vertex.y, sector.first.x - vertex.x) + math.toRadians(sector.degrees) / 2
+    Point(vertex.x + 1.6 * radius * math.cos(middle), vertex.y + 1.6 * radius * math.sin(middle))
+
+  /** CSS classes of a rendered segment: its result and, for pen-up travel, the dashed jump style. */
+  private[htmlRenderer] def lineClasses(line: RenderedLine): String =
+    val resultClass = line.result match
+      case LineResult.Correct => "turtle-line--correct"
+      case LineResult.Unexpected => "turtle-line--unexpected"
+      case LineResult.Missing => "turtle-line--missing"
+      case LineResult.Neutral => "turtle-line--neutral"
+      case LineResult.Current => "turtle-line--current"
+      case LineResult.Upcoming => "turtle-line--upcoming"
+    s"turtle-line $resultClass" + (if line.jump then " turtle-line--jump" else "")
 
   private def format(value: Double): String =
     val rounded = math.rint(value * 1000.0) / 1000.0
     if rounded == rounded.toLong then rounded.toLong.toString else rounded.toString
 
-  private def boundingBox(points: List[Point[Double]]): Array[Double] =
+  private def boundingBox(points: Seq[Point[Double]]): Array[Double] =
     if points.isEmpty then Array(-10.0, 10.0, 10.0, -10.0)
     else
       val xs = points.map(_.x);

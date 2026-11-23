@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import munit.FunSuite
 import upickle.default.*
@@ -10,16 +10,16 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 
 class ProgrammingStateSerializationSpec extends FunSuite {
   test("current programming states round-trip as JSON, MessagePack and interaction content") {
-    val xml = ProgrammingStateSnapXml("\n<project name='🐢'><notes>draft &amp; notes</notes><scripts/></project>\r\n")
+    val xml = ProgrammingStateRaw(SnapLanguage, "\n<project name='🐢'><notes>draft &amp; notes</notes><scripts/></project>\r\n")
     val states: List[ProgrammingState] = List(
-      ProgrammingStatePythonString("\tdef unfinished(\r\n  "),
-      ProgrammingStateJavaString("\r\npublic class Drawing {\t"), xml,
+      ProgrammingStateRaw(Python, "\tdef unfinished(\r\n  "),
+      ProgrammingStateRaw(Java, "\r\npublic class Drawing {\t"), xml,
       xml.toSnapScalaModel.toOption.get, ProgrammingStateBeExpression(BeExpression.pass))
     val interaction = ProgrammingExercise("current-codec")
     states.foreach { state =>
       assertEquals(read[ProgrammingState](write(state)), state)
       assertEquals(readBinary[ProgrammingState](writeBinary(state)), state)
-      val restored = interaction.serializerInteractionContent.deserialize(interaction.serializerInteractionContent.serialize(state))
+      val restored = interaction.interactionFormat.stateSerializer.deserialize(interaction.interactionFormat.stateSerializer.serialize(state))
       assertEquals(restored, state)
       assertEquals(ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(state)), state)
       assertEquals(restored.fingerprint(), state.fingerprint())
@@ -27,26 +27,26 @@ class ProgrammingStateSerializationSpec extends FunSuite {
   }
   test("empty source, Unicode, line separators and opaque strings stay content") {
     List("", " ", "\t\r\n\n  ", "🐢\r\n\u0000").foreach { code =>
-      val states: List[ProgrammingState] = List(ProgrammingStatePythonString(code), ProgrammingStateJavaString(code),
-        ProgrammingStateSnapXml(code))
+      val states: List[ProgrammingState] = List(ProgrammingStateRaw(Python, code), ProgrammingStateRaw(Java, code),
+        ProgrammingStateRaw(SnapLanguage, code))
       states.foreach(state => assertEquals(read[ProgrammingState](write(state)), state))
     }
   }
-  test("checked Java expression states serialize their source and recover executable semantics") {
-    val java = ProgrammingStateJavaString("\r\nclass Drawing { public static void main(String[] args) { Turtle.forward(12); } }\t\n")
+  test("Java expressions serialize their neutral tree and recover executable semantics") {
+    val java = ProgrammingStateRaw(Java, "\r\nclass Drawing { public static void main(String[] args) { Turtle.forward(12); } }\t\n")
     val expression = java.toBeExpression
     val restored = read[ProgrammingState](write[ProgrammingState](expression))
     assert(restored.isInstanceOf[ProgrammingStateBeExpression])
-    assertEquals(restored.toJava, java)
+    assertEquals(restored.toJava, expression.toJava)
     assertEquals(restored.fingerprint(), expression.fingerprint())
-    assertEquals(restored.toBeExpression.deriveTurtleCommands, expression.deriveTurtleCommands)
+    assertEquals(restored.toBeExpression.turtleCommandExecutionInfo.completedCommands, expression.turtleCommandExecutionInfo.completedCommands)
     val binary = readBinary[ProgrammingState](writeBinary[ProgrammingState](expression))
-    assertEquals(binary.toJava, java)
+    assertEquals(binary.toJava, expression.toJava)
   }
   test("both programming interactions use the current implicit state codec") {
-    val state = ProgrammingStateJavaString("\nclass Drawing {\r\n")
-    List(ProgrammingExercise("regular").serializerInteractionContent,
-      ProgrammingExerciseFullJava("java").serializerInteractionContent).foreach { serializer =>
+    val state = ProgrammingStateRaw(Java, "\nclass Drawing {\r\n")
+    List(ProgrammingExercise("regular").interactionFormat.stateSerializer,
+      ProgrammingExerciseFullJava("java").interactionFormat.stateSerializer).foreach { serializer =>
       assertEquals(serializer.serialize(state), write[ProgrammingState](state))
       assertEquals(serializer.deserialize(serializer.serialize(state)), state)
     }

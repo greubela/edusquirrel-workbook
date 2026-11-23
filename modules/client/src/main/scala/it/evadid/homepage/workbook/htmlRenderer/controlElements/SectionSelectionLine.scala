@@ -9,10 +9,10 @@ import it.evadid.workbook.elements.structureElements.WorkbookSection
 
 private case class SectionSelectionLine(workbook: AllWorkbookInfo) extends HtmlAppElement {
 
-  private def sections: List[WorkbookSection] = workbook.loadedWorkbook.sections
+  private def sections: Seq[WorkbookSection] = workbook.loadedWorkbook.sections
 
   private def selectSection(section: WorkbookSection): Unit = {
-    fullInfo.usageControl.updateWorkbookConfig(_.copy(activeSection = Some(section)))
+    fullInfo.workbookNavigationControl.updateWorkbookConfig(_.copy(activeSection = Some(section)))
   }
 
   private def isSectionActiveSignal(section: WorkbookSection): Signal[Boolean] = {
@@ -30,7 +30,7 @@ private case class SectionSelectionLine(workbook: AllWorkbookInfo) extends HtmlA
       }),
       div(
         cls := "section-block-part section-block-number",
-        text <-- Signal.fromValue(nr + "")
+        text <-- Signal.fromValue(nr.toString)
       ),
       div(
         cls := "section-block-part section-block-description",

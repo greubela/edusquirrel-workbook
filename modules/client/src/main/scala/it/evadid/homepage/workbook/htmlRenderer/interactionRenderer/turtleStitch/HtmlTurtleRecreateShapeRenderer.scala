@@ -1,85 +1,83 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
-
 import com.raquo.airstream.state.Var
-import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
+import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.JavaTurtleEditorExtension
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels, *}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementSingle
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
+import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.EditorWithWorkbookPanel
+import it.evadid.workbook.abstractions.RoleInWorkbook.EXERCISE_DESCRIPTION
+import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT
+import it.evadid.workbook.abstractions.{LangMapContentIdType, TypeOfTextDisplay}
+import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
-import it.evadid.workbook.interaction.sync.UpdateImportance
-
-import scala.util.Try
-import scala.concurrent.Future
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
 
-  private[turtleStitch] def hasProgram(state: ProgrammingState): Boolean = state match {
-    case ProgrammingStateJavaString(code) => code.trim.nonEmpty
-    case ProgrammingStatePythonString(code) => code.trim.nonEmpty
-    case other => Try(other.toPython.code.trim.nonEmpty).getOrElse(true)
-  }
-
-  private[turtleStitch] def commandsForPreview(state: ProgrammingState): Try[List[TurtleCommand[Double]]] =
-    Try(state match
-      case java: ProgrammingStateJavaString => java.toLegacyTurtleCommands
-      case _ => state.toBeExpression.deriveTurtleCommands
-    )
-
-  def createInteractivePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic,
-                               policy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes): ElementCard = {
-    ElementCard(
-      LanguageMapContentId("basic/turtleGradingPanel"),
-      div(child <-- boundVar.signal.flatMapSwitch { state =>
-        EventStream.fromFuture(Future {
-        commandsForPreview(state).flatMap(commands => Try(TurtleDrawingGrading.assess(commands, expected, policy)))
-          .map(result => TurtleJsxGraphRenderer.render(result.scene, "Turtle drawing"))
-          .getOrElse(div("Preview unavailable for this draft."))
-        })
-      }.startWith(div("Preparing drawing…")))
-    )
-  }
+  /** Editor side module replaying the drawing of the bound answer step by step. */
+  private[homepage] def turtleStepsCard(boundVar: Var[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState]): ElementCard =
+    ElementCard(LanguageMapContentId("basic/turtleStepsTitle"),
+      new it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps.TurtleStepPanel(boundVar,
+        key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
 
   override protected def createRendering(workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
-    val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val boundVar = workbookElement.interactionVariable.createBoundStateForTyping(() => fullInfo.keyboardInput.lastKey.now(), fullInfo.workbookContextInformation).toAirstreamVar
 
-    val snapEditorConfig: SnapCodeEditorConfig = workbookElement.availablePalette match
-      case ProgrammingEditorPalette.Default => SnapCodeEditorConfig.Testing
-      case ProgrammingEditorPalette.PythonCompatibleSnap => SnapCodeEditorConfig.PythonCompatibleTesting
-      case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
-      case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.PythonCompatibleTesting
+    val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
+    val shapeGradingPreview = CompareShapePreview(boundVar, workbookElement.desiredResult, workbookElement.comparisonPolicy)
 
-    val editorConfig = EvaEditorConfig(enabledLanguages = workbookElement.editorLanguages, snapConfig = snapEditorConfig)
-    def editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, List(new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension(
-        boundVar, Some(workbookElement.desiredResult), workbookElement.comparisonPolicy)), editorConfig, humanLanguage = fullInfo.signals.currentLanguage,
-        labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal(_)))
+    val associatedInstruction = DisplayLangMapContent(workbookElement.elementId + "-sidebar-instruction", workbookElement.instructionText.getOrElse(LanguageMapContentId("turtlestitch/instructionRecreateShape")), LangMapContentIdType(EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN))
 
-    lazy val codePreview = SnapPreviewEditor(boundVar, snapEditorConfig, fullInfo.signals.currentLanguage).getDomElement()
-    val programPreview = boundVar.signal.map(hasProgram).distinct.map { hasProgram =>
-      if hasProgram then codePreview
-      else p(text <-- laminarHelper.plaintextStringSignal("basic/turtleNoProgramYet"))
+    def createShapeGradingCard: ElementCard = {
+      ElementCard(LanguageMapContentId("basic/turtleGradingPanel"), shapeGradingPreview.getDomElement())
     }
-    val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), programPreview)
 
-    def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(InteractionInfoPanel.withEditor(workbookElement, editor))
+    def createCodePreview(): HtmlAppElement = {
+      val defaultConfig: SnapCodeEditorConfig = SnapCodeEditorConfig()
+      SnapPreviewEditor(boundVar, SnapCodeEditorConfig(), fullInfo.signals.currentLanguage)
+    }
 
-    val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
-    val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
+    def createEditor(): HtmlAppElement = {
 
-    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, canvasCard,
-      createInteractivePreview(boundVar, workbookElement.desiredResult, workbookElement.comparisonPolicy)))
+
+      val useConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.forPalette(workbookElement.exerciseConfig.availablePalette)
+      val draw = new TurtleTaskEditorExtension(boundVar, None, sharedExecution = true)
+      val evaEditor = EvaEditor(
+        fullInfo.loggerSystemInfo.uiAndDomLogger,
+        boundVar,
+        List(draw),
+        Var(EvaEditorConfig(enabledLanguages = workbookElement.exerciseConfig.allowedEditorLanguages, snapConfig = useConfig)),
+        humanLanguage = fullInfo.signals.currentLanguage,
+        labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
+      val editor = EditorWithWorkbookPanel(workbookElement, Some(associatedInstruction), gradingReporter,
+        List(createShapeGradingCard, turtleStepsCard(boundVar)), evaEditor)
+
+      editor
+    }
+
+    def openEditorButtonPressed(): Unit = {
+      fullInfo.displayControl.setFullscreen(createEditor())
+    }
+
+    def createCards(): Seq[ElementCard] = {
+      val buttonContent = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => openEditorButtonPressed())
+      List(
+        ElementCard(LanguageMapContentId("basic/openEditor"), buttonContent.getDomElement()),
+        ElementCard(LanguageMapContentId("basic/canvas"), createCodePreview().getDomElement()),
+        createShapeGradingCard
+      )
+    }
+
+
+    AtomarLineRendering.cardLine(workbookElement, createCards())
   }
+
+
 }

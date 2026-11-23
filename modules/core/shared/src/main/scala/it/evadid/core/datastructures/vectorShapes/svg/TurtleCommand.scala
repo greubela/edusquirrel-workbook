@@ -1,6 +1,9 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
-import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.naming.{BeEntityName, NamingStyle}
+import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.types.BeDataType
+import it.evadid.vm.types.BeDataType.{Boolean as BooleanType, Numeric as NumericType, String as StringType, Unit as UnitType}
 import upickle.default.*
 
 /** Typed drawing operations. Text aliases and argument lists are decoded at language boundaries. */
@@ -10,29 +13,29 @@ sealed trait TurtleCommand[+T] derives ReadWriter {
   def name: BeEntityName = this match {
     case Unsupported(entityName, _, _) => entityName
     case Stitch(mode, _, _) => mode.name
-    case Forward(_) => BeEntityName.fromUniversalNameInParts("forward")
-    case Backward(_) => BeEntityName.fromUniversalNameInParts("backward")
-    case Left(_) => BeEntityName.fromUniversalNameInParts("left")
-    case Right(_) => BeEntityName.fromUniversalNameInParts("right")
-    case SetHeading(_) => BeEntityName.fromUniversalNameInParts("setheading")
-    case SetX(_) => BeEntityName.fromUniversalNameInParts("setx")
-    case SetY(_) => BeEntityName.fromUniversalNameInParts("sety")
-    case Dot(_) => BeEntityName.fromUniversalNameInParts("dot")
-    case PenSize(_) => BeEntityName.fromUniversalNameInParts("pensize")
-    case Speed(_) => BeEntityName.fromUniversalNameInParts("speed")
-    case Goto(_, _) => BeEntityName.fromUniversalNameInParts("goto")
-    case Towards(_, _) => BeEntityName.fromUniversalNameInParts("towards")
-    case ArcLeft(_, _) => BeEntityName.fromUniversalNameInParts("arc_left")
-    case ArcRight(_, _) => BeEntityName.fromUniversalNameInParts("arc_right")
-    case PenUp() => BeEntityName.fromUniversalNameInParts("pen_up")
-    case PenDown() => BeEntityName.fromUniversalNameInParts("pen_down")
-    case ShowTurtle() => BeEntityName.fromUniversalNameInParts("showturtle")
-    case HideTurtle() => BeEntityName.fromUniversalNameInParts("hideturtle")
-    case Home() => BeEntityName.fromUniversalNameInParts("home")
-    case Reset() => BeEntityName.fromUniversalNameInParts("reset")
-    case Clear() => BeEntityName.fromUniversalNameInParts("clear")
-    case Circle(_, _, _) => BeEntityName.fromUniversalNameInParts("circle")
-    case Color(_) => BeEntityName.fromUniversalNameInParts("color")
+    case Forward(_) => TurtleCommand.canonicalNames("forward")
+    case Backward(_) => TurtleCommand.canonicalNames("backward")
+    case Left(_) => TurtleCommand.canonicalNames("left")
+    case Right(_) => TurtleCommand.canonicalNames("right")
+    case SetHeading(_) => TurtleCommand.canonicalNames("setheading")
+    case SetX(_) => TurtleCommand.canonicalNames("setx")
+    case SetY(_) => TurtleCommand.canonicalNames("sety")
+    case Dot(_) => TurtleCommand.canonicalNames("dot")
+    case PenSize(_) => TurtleCommand.canonicalNames("pensize")
+    case Speed(_) => TurtleCommand.canonicalNames("speed")
+    case Goto(_, _) => TurtleCommand.canonicalNames("goto")
+    case Towards(_, _) => TurtleCommand.canonicalNames("towards")
+    case ArcLeft(_, _) => TurtleCommand.canonicalNames("arc_left")
+    case ArcRight(_, _) => TurtleCommand.canonicalNames("arc_right")
+    case PenUp() => TurtleCommand.canonicalNames("pen_up")
+    case PenDown() => TurtleCommand.canonicalNames("pen_down")
+    case ShowTurtle() => TurtleCommand.canonicalNames("showturtle")
+    case HideTurtle() => TurtleCommand.canonicalNames("hideturtle")
+    case Home() => TurtleCommand.canonicalNames("home")
+    case Reset() => TurtleCommand.canonicalNames("reset")
+    case Clear() => TurtleCommand.canonicalNames("clear")
+    case Circle(_, _, _) => TurtleCommand.canonicalNames("circle")
+    case Color(_) => TurtleCommand.canonicalNames("color")
   }
 
   /** Derived argument views for VM observation/formatting, never separately stored state. */
@@ -98,7 +101,7 @@ sealed trait TurtleCommand[+T] derives ReadWriter {
 enum TurtleStitchMode derives ReadWriter {
   case Running, Cross, Bean, Zigzag, Z, Satin, Tatami, Jump, Tie, Trim, StopRunning
 
-  def name: BeEntityName = BeEntityName.fromUniversalNameInParts(this match {
+  def name: BeEntityName = TurtleCommand.resolveCanonicalNames(this match {
     case Running => "running_stitch"
     case Cross => "cross_stitch"
     case Bean => "bean_stitch"
@@ -110,7 +113,7 @@ enum TurtleStitchMode derives ReadWriter {
     case Tie => "tie_stitch"
     case Trim => "trim_stitch"
     case StopRunning => "stop_running"
-  })
+  }).get
 }
 
 object TurtleCommand {
@@ -143,57 +146,185 @@ object TurtleCommand {
   case class Unsupported[+T](entityName: BeEntityName, numeric: Seq[T], text: Seq[String]) extends TurtleCommand[T] derives ReadWriter
 
 
+  private val canonicalNames: Map[String, BeEntityName] = List(
+    List("forward", "fd") -> "forward",
+    List("backward", "back", "bk") -> "backward",
+    List("left", "lt", "turn_left", "turnleft") -> "left",
+    List("right", "rt", "turn", "turn_right", "turnright") -> "right",
+    List("setheading", "seth", "set_heading") -> "setheading",
+    List("setx", "set_x", "setxposition") -> "setx",
+    List("sety", "set_y", "setyposition") -> "sety",
+    List("dot") -> "dot",
+    List("pensize", "setsize", "width") -> "pensize",
+    List("speed") -> "speed",
+    List("goto", "setpos", "setposition", "goto_x_y", "gotoxy") -> "goto",
+    List("towards") -> "towards",
+    List("arc", "arcleft", "arc_left") -> "arc_left",
+    List("arcright", "arc_right") -> "arc_right",
+    List("penup", "pu", "up", "pen_up") -> "pen_up",
+    List("pendown", "pd", "down", "pen_down") -> "pen_down",
+    List("showturtle", "st", "show_turtle") -> "showturtle",
+    List("hideturtle", "ht", "hide_turtle") -> "hideturtle",
+    List("home") -> "home",
+    List("reset") -> "reset",
+    List("clear", "clearscreen", "clear_screen") -> "clear",
+    List("circle") -> "circle",
+    List("color", "pencolor", "pen_color", "setcolor", "set_color") -> "color",
+    List("running_stitch", "runningstitch") -> "running_stitch",
+    List("cross_stitch", "crossstitch") -> "cross_stitch",
+    List("bean_stitch", "beanstitch") -> "bean_stitch",
+    List("zigzag_stitch", "zigzagstitch") -> "zigzag_stitch",
+    List("z_stitch", "zstitch") -> "z_stitch",
+    List("satin_stitch", "satinstitch") -> "satin_stitch",
+    List("tatami_stitch", "tatamistitch") -> "tatami_stitch",
+    List("jump_stitch", "jumpstitch") -> "jump_stitch",
+    List("tie_stitch", "tiestitch") -> "tie_stitch",
+    List("trim_stitch", "trimstitch", "trim") -> "trim_stitch",
+    List("stop_running", "stoprunning") -> "stop_running"
+  ).flatMap { (aliases, canonical) =>
+    val name = BeEntityName.fromUniversalNameInParts(canonical)
+    aliases.map(_ -> name)
+  }.toMap
+
+  /** Resolve a known turtle alias without constructing a temporary entity name.
+    * Only unqualified names and the explicit turtle/Turtle qualifier are recognized.
+    */
+  def resolveCanonicalNames(sourceName: String): Option[BeEntityName] = {
+    val source = sourceName.trim
+    val unqualified = source.split("\\.", -1).toList match {
+      case name :: Nil => Some(name)
+      case owner :: name :: Nil if owner == "turtle" || owner == "Turtle" => Some(name)
+      case _ => None
+    }
+    unqualified.flatMap { name =>
+      val normalized = name.toLowerCase.replace('-', '_')
+      canonicalNames.get(normalized).orElse(
+        canonicalNames.get(NamingStyle.fromAnyNotationToParts(name).mkString("_")))
+    }
+  }
+
+  def resolveCanonicalNames(name: BeEntityName): Option[BeEntityName] =
+    resolveCanonicalNames(name.universalInterpretation())
+
+  /** The same alias normalization is used for source occurrences and execution. */
+  def canonicalName(name: BeEntityName): BeEntityName = resolveCanonicalNames(name).getOrElse(name)
+
+  private type FunctionSignature = (String, List[(String, BeDataType)], Option[BeDataType])
+
+  private val turtleMethodSignatures: List[FunctionSignature] = List(
+    ("forward", List("distance" -> NumericType), Some(UnitType)),
+    ("backward", List("distance" -> NumericType), Some(UnitType)),
+    ("left", List("angle" -> NumericType), Some(UnitType)),
+    ("right", List("angle" -> NumericType), Some(UnitType)),
+    ("penUp", Nil, Some(UnitType)),
+    ("penDown", Nil, Some(UnitType)),
+    ("circle", List("radius" -> NumericType), Some(UnitType)),
+    ("goto", List("x" -> NumericType, "y" -> NumericType), Some(UnitType)),
+    ("setheading", List("angle" -> NumericType), Some(UnitType)),
+    ("speed", List("value" -> NumericType), Some(UnitType)),
+    ("color", List("value" -> StringType), Some(UnitType)),
+    ("pensize", List("width" -> NumericType), Some(UnitType)),
+    ("home", Nil, Some(UnitType)),
+    ("runningStitch", List("steps" -> NumericType), Some(UnitType)),
+    ("crossStitch", List("width" -> NumericType, "height" -> NumericType, "center" -> BooleanType), Some(UnitType)),
+    ("beanStitch", List("length" -> NumericType), Some(UnitType)),
+    ("zigzagStitch", List("density" -> NumericType, "width" -> NumericType, "center" -> BooleanType), Some(UnitType)),
+    ("ZStitch", List("density" -> NumericType, "width" -> NumericType, "center" -> BooleanType), Some(UnitType)),
+    ("satinStitch", List("width" -> NumericType, "center" -> BooleanType), Some(UnitType)),
+    ("tatamiStitch", List("width" -> NumericType, "interval" -> NumericType, "center" -> BooleanType), Some(UnitType)),
+    ("jumpStitch", List("enabled" -> BooleanType), Some(UnitType)),
+    ("tieStitch", Nil, Some(UnitType)),
+    ("trimStitch", Nil, Some(UnitType)),
+    ("stopRunning", Nil, Some(UnitType)),
+    ("setx", List("x" -> NumericType), Some(UnitType)),
+    ("sety", List("y" -> NumericType), Some(UnitType)),
+    ("towards", List("x" -> NumericType, "y" -> NumericType), Some(UnitType)),
+    ("dot", List("size" -> NumericType), Some(UnitType)),
+    ("arc_left", List("radius" -> NumericType, "extent" -> NumericType), Some(UnitType)),
+    ("arc_right", List("radius" -> NumericType, "extent" -> NumericType), Some(UnitType)),
+    ("showturtle", Nil, Some(UnitType)),
+    ("hideturtle", Nil, Some(UnitType)),
+    ("reset", Nil, Some(UnitType)),
+    ("clear", Nil, Some(UnitType))
+  )
+
+  /** One shared, typed turtle definition; methods retain the canonical name objects. */
+  lazy val turtleClass: BeDefineClass = {
+    val definition = BeDefineClass.withMethods(
+    BeEntityName.fromUniversalNameInParts("turtle"), Nil,
+    turtleMethodSignatures.map { (alias, inputs, output) =>
+      def variable(name: String, dataType: BeDataType): BeDefineVariable =
+        BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
+      BeDefineClass.MethodSignature(
+        resolveCanonicalNames(alias).getOrElse(throw IllegalArgumentException(s"Unknown turtle method: $alias")),
+        inputs.map((name, dataType) => variable(name, dataType)),
+        output.map(dataType => variable("result", dataType)))
+    })
+    definition.copy(methods = definition.methods.map(method => method.copy(functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod()), intrinsic = Some(it.evadid.vm.code.defining.BeIntrinsic.Turtle))))
+  }
+
+  def isTurtleMethod(definition: BeDefineFunction): Boolean =
+    definition.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Turtle)
+
+  def resolveTurtleMethod(sourceName: String): Option[BeDefineFunction] =
+    resolveCanonicalNames(sourceName).flatMap { name =>
+      turtleClass.methods.find(_.functionTypeInfo.displayName == name)
+    }
+
+  def resolveTurtleMethod(name: BeEntityName): Option[BeDefineFunction] =
+    resolveTurtleMethod(name.universalInterpretation())
+
   def fromText[T: Fractional](name: String, args: Seq[T] = Nil, stringArgs: Seq[String] = Nil): TurtleCommand[T] =
     fromCall(BeEntityName.fromCodeString(name.trim.toLowerCase.replace('-', '_')), args, stringArgs)
 
   def fromCall[T: Fractional](name: BeEntityName, args: Seq[T] = Nil, stringArgs: Seq[String] = Nil): TurtleCommand[T] = {
-    val normalized = name.universalInterpretation().trim.toLowerCase.replace('-', '_')
+    val normalized = canonicalName(name).universalInterpretation().trim.toLowerCase.replace('-', '_')
     def one(make: T => TurtleCommand[T]): Option[TurtleCommand[T]] = if args.size == 1 && stringArgs.isEmpty then args.headOption.map(make) else None
     def two(make: (T, T) => TurtleCommand[T]): Option[TurtleCommand[T]] = args match {
       case Seq(first, second) if stringArgs.isEmpty => Some(make(first, second))
       case _ => None
     }
     val decoded: Option[TurtleCommand[T]] = normalized match {
-      case "forward" | "fd" => one(Forward(_))
-      case "backward" | "back" | "bk" => one(Backward(_))
-      case "left" | "lt" | "turn_left" | "turnleft" => one(Left(_))
-      case "right" | "rt" | "turn" | "turn_right" | "turnright" => one(Right(_))
-      case "setheading" | "seth" | "set_heading" => one(SetHeading(_))
-      case "setx" | "set_x" | "setxposition" => one(SetX(_))
-      case "sety" | "set_y" | "setyposition" => one(SetY(_))
+      case "forward" => one(Forward(_))
+      case "backward" => one(Backward(_))
+      case "left" => one(Left(_))
+      case "right" => one(Right(_))
+      case "setheading" => one(SetHeading(_))
+      case "setx" => one(SetX(_))
+      case "sety" => one(SetY(_))
       case "dot" => one(Dot(_))
-      case "pensize" | "setsize" | "width" => one(PenSize(_))
+      case "pensize" => one(PenSize(_))
       case "speed" => one(Speed(_))
-      case "goto" | "setpos" | "setposition" | "goto_x_y" | "gotoxy" => two(Goto(_, _))
+      case "goto" => two(Goto(_, _))
       case "towards" => two(Towards(_, _))
-      case "arc" | "arcleft" | "arc_left" => two(ArcLeft(_, _))
-      case "arcright" | "arc_right" => two(ArcRight(_, _))
-      case "penup" | "pu" | "up" | "pen_up" => Option.when(args.isEmpty && stringArgs.isEmpty)(PenUp())
-      case "pendown" | "pd" | "down" | "pen_down" => Option.when(args.isEmpty && stringArgs.isEmpty)(PenDown())
-      case "showturtle" | "st" | "show_turtle" => Option.when(args.isEmpty && stringArgs.isEmpty)(ShowTurtle())
-      case "hideturtle" | "ht" | "hide_turtle" => Option.when(args.isEmpty && stringArgs.isEmpty)(HideTurtle())
+      case "arc_left" => two(ArcLeft(_, _))
+      case "arc_right" => two(ArcRight(_, _))
+      case "pen_up" => Option.when(args.isEmpty && stringArgs.isEmpty)(PenUp())
+      case "pen_down" => Option.when(args.isEmpty && stringArgs.isEmpty)(PenDown())
+      case "showturtle" => Option.when(args.isEmpty && stringArgs.isEmpty)(ShowTurtle())
+      case "hideturtle" => Option.when(args.isEmpty && stringArgs.isEmpty)(HideTurtle())
       case "home" => Option.when(args.isEmpty && stringArgs.isEmpty)(Home())
       case "reset" => Option.when(args.isEmpty && stringArgs.isEmpty)(Reset())
-      case "clear" | "clearscreen" | "clear_screen" => Option.when(args.isEmpty && stringArgs.isEmpty)(Clear())
+      case "clear" => Option.when(args.isEmpty && stringArgs.isEmpty)(Clear())
       case "circle" => if args.nonEmpty && args.size <= 3 && stringArgs.isEmpty then args.headOption.map(radius => Circle(radius, args.lift(1), args.lift(2))) else None
-      case "color" | "pencolor" | "pen_color" | "setcolor" | "set_color" =>
+      case "color" =>
         stringArgs.headOption.orElse {
           if args.size >= 3 then {
             val n = summon[Fractional[T]]
             Some(s"rgb(${n.toDouble(args(0)).toInt},${n.toDouble(args(1)).toInt},${n.toDouble(args(2)).toInt})")
           } else None
         }.map(Color(_))
-      case "running_stitch" | "runningstitch" => Some(Stitch(TurtleStitchMode.Running, args, stringArgs))
-      case "cross_stitch" | "crossstitch" => Some(Stitch(TurtleStitchMode.Cross, args, stringArgs))
-      case "bean_stitch" | "beanstitch" => Some(Stitch(TurtleStitchMode.Bean, args, stringArgs))
-      case "zigzag_stitch" | "zigzagstitch" => Some(Stitch(TurtleStitchMode.Zigzag, args, stringArgs))
-      case "z_stitch" | "zstitch" => Some(Stitch(TurtleStitchMode.Z, args, stringArgs))
-      case "satin_stitch" | "satinstitch" => Some(Stitch(TurtleStitchMode.Satin, args, stringArgs))
-      case "tatami_stitch" | "tatamistitch" => Some(Stitch(TurtleStitchMode.Tatami, args, stringArgs))
-      case "jump_stitch" | "jumpstitch" => Some(Stitch(TurtleStitchMode.Jump, args, stringArgs))
-      case "tie_stitch" | "tiestitch" => Some(Stitch(TurtleStitchMode.Tie, args, stringArgs))
-      case "trim_stitch" | "trimstitch" | "trim" => Some(Stitch(TurtleStitchMode.Trim, args, stringArgs))
-      case "stop_running" | "stoprunning" => Some(Stitch(TurtleStitchMode.StopRunning, args, stringArgs))
+      case "running_stitch" => Some(Stitch(TurtleStitchMode.Running, args, stringArgs))
+      case "cross_stitch" => Some(Stitch(TurtleStitchMode.Cross, args, stringArgs))
+      case "bean_stitch" => Some(Stitch(TurtleStitchMode.Bean, args, stringArgs))
+      case "zigzag_stitch" => Some(Stitch(TurtleStitchMode.Zigzag, args, stringArgs))
+      case "z_stitch" => Some(Stitch(TurtleStitchMode.Z, args, stringArgs))
+      case "satin_stitch" => Some(Stitch(TurtleStitchMode.Satin, args, stringArgs))
+      case "tatami_stitch" => Some(Stitch(TurtleStitchMode.Tatami, args, stringArgs))
+      case "jump_stitch" => Some(Stitch(TurtleStitchMode.Jump, args, stringArgs))
+      case "tie_stitch" => Some(Stitch(TurtleStitchMode.Tie, args, stringArgs))
+      case "trim_stitch" => Some(Stitch(TurtleStitchMode.Trim, args, stringArgs))
+      case "stop_running" => Some(Stitch(TurtleStitchMode.StopRunning, args, stringArgs))
       case _ => None
     }
     decoded.getOrElse(Unsupported(name, args, stringArgs))

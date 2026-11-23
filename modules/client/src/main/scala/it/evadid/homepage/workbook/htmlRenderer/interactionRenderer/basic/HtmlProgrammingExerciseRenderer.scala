@@ -1,30 +1,29 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
-
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
-import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.state.ExecutionMethod
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
-import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.JavaTurtleEditorExtension
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.{JavaTurtleEditorExtension, TurtleTaskEditorExtension}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.{DomElementList, DomElementSingle}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
+import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.EditorWithWorkbookPanel
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
 import todomove.datastructures.web.file.FullImage
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -35,20 +34,28 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
   override protected def createRendering(workbookElement: ProgrammingExercise): AtomarLineRendering = {
 
-    val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val boundVar = workbookElement.interactionVariable.createBoundStateForTyping(() => fullInfo.keyboardInput.lastKey.now(), fullInfo.workbookContextInformation).toAirstreamVar
 
-    val editorConfig: SnapCodeEditorConfig = workbookElement.editorPalette match
-      case ProgrammingEditorPalette.Default => SnapCodeEditorConfig.Testing
-      case ProgrammingEditorPalette.PythonCompatibleSnap => SnapCodeEditorConfig.PythonCompatibleTesting
-      case ProgrammingEditorPalette.BeginnerTurtle => SnapCodeEditorConfig.BeginnerTurtleTesting
-      case ProgrammingEditorPalette.Embroidery => SnapCodeEditorConfig.PythonCompatibleTesting
+    val editorConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.forPalette(workbookElement.editorPalette)
 
     val javaExecution = new JavaTurtleEditorExtension(boundVar)
     val execution = new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleProgramExecution(List(javaExecution))
-    def editor = EvaEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, boundVar, Nil, EvaEditorConfig(snapConfig = editorConfig), humanLanguage = fullInfo.signals.currentLanguage,
-      labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal(_)))
 
-    def buttonPressed(): Unit = fullInfo.displayControl.setFullscreen(InteractionInfoPanel.withEditor(workbookElement, editor))
+    val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
+
+    def editor = EvaEditor(
+      fullInfo.loggerSystemInfo.uiAndDomLogger,
+      boundVar,
+      Nil,
+      Var(EvaEditorConfig(snapConfig = editorConfig)),
+      humanLanguage = fullInfo.signals.currentLanguage,
+      labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal)
+    )
+
+    def buttonPressed(): Unit = {
+      val wrappedEditor = EditorWithWorkbookPanel(workbookElement, None, gradingReporter, List(), editor)
+      fullInfo.displayControl.setFullscreen(wrappedEditor)
+    }
 
     val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
     val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
@@ -66,7 +73,9 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       Try {
         val current = boundVar.now()
         current match
-          case java: ProgrammingStateJavaString if java.isClassProgram =>
+          case java @ ProgrammingStateRaw(Java, _) if java.isClassProgram =>
+            throw IllegalArgumentException("Full Java classes require the checked Java runner.")
+          case _: ProgrammingStateJavaStructured =>
             throw IllegalArgumentException("Full Java classes require the checked Java runner.")
           case _ => ()
         SvgLaminarRenderer.render(

@@ -133,7 +133,7 @@ case class EvaFloorMap(floorMatrix: Matrix[FloorSprite], persons: Set[Person]) d
       floorMapToInsert.persons.foreach(person => map.put(person.pos.cPos.add(insertAtPosition), person.sprite))
 
       map.toList.zipWithIndex.map(tup => {
-        val (((pos, sprite), index)): ((MatrixPosition, PersonSprite), Int) = tup
+        val (((pos, sprite), index)) = tup
         Person(index, pos.in(curMatrix.dim), sprite)
       })
     }

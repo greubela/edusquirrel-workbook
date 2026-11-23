@@ -1,6 +1,6 @@
 # Full Snap project model in shared core
 
-`ProgrammingStateSnapScalaModel` represents the complete **saved Snap project**, independently of the smaller executable Turtle subset. It lives alongside `ProgrammingStateSnapXml` in [ProgrammingState.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/ProgrammingState.scala). Existing workbooks can continue using the XML representation.
+`ProgrammingStateSnapScalaModel` represents the complete **saved Snap project**, independently of the smaller executable Turtle subset. XML transport uses `ProgrammingStateRaw(SnapLanguage, code)` in [ProgrammingState.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/ProgrammingState.scala). Prefer the typed model for saved answers.
 
 All project node types live in
 [SnapScalaModel.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapScalaModel.scala).
@@ -10,13 +10,24 @@ or expand cyclic references.
 
 Each Snap node has one authoritative `Element` containing ordered attributes and child nodes. Its typed accessors expose numbers, booleans, geometry, scripts and other domain values. Optional accessors distinguish absent values from explicit values; they do not invent defaults or overwrite unrecognized attribute values. `Extension` retains unknown/version-specific elements and dynamic code-mapping tags. New native Snap fields therefore survive before Scala-specific accessors are added.
 
+## Closed vocabularies
+
+Where the bundled serializer (`turtlestitchsrc/store.js`) writes a fixed set of values, the accessor is typed by
+[SnapVocabulary.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapVocabulary.scala):
+`PenPoint`, `RotationStyle`, `LineEnds`, `ColorModel`, `BlockType`, `WatcherStyle` and `BlockCategory`
+(Snap's built-ins, TurtleStitch's `embroidery`, or `Custom(name)` for a `<palette>` category; names are
+case-sensitive). Flags written only in one spelling are booleans (`Scene.unifiedPalette`, `BlockDefinition.isRuleHat`,
+`CustomBlock.isLocal`, `ListValue.isAtomic`). An absent or unrecognized value reads as `None`; the raw attribute stays
+in the element. Slot types (`%n`, `%mult%s`, …) and a watcher's owner name remain strings.
+
 ## Conversion and editing
 
 ```scala
 import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.*
 
-val xmlState = ProgrammingStateSnapXml(
+val xmlState = ProgrammingStateRaw(SnapLanguage,
   "<project name='Example'><scenes><scene><stage><sprites>" +
     "<sprite name='Turtle' x='0'><scripts/></sprite>" +
     "</sprites></stage></scene></scenes></project>"
@@ -32,7 +43,7 @@ val changed = typed.copy(model = typed.model.transform {
     sprite.withAttribute("x", "12.5")
   case node => node
 })
-val savedXml: ProgrammingStateSnapXml = changed.toSnapXml
+val savedXml: ProgrammingStateRaw = changed.toSnapXml
 ```
 
 `transform` visits nodes from children to parents. Copies preserve the other nodes, assets, identities and extension content. To author a tree directly, construct typed nodes around `Element`, for example `Project(Element("project", selfClosing = true))` and `Document(Vector(project))`. Attribute edits accept decoded values and escape them for XML.
@@ -56,9 +67,17 @@ Formatting identity is **not a required contract**. The current reader also reta
 ## Checks
 
 ```sh
-sbt 'coreJVM/testOnly *ProgrammingStateSnapScalaModelSpec *SnapScalaWorkbookProjectsSpec'
+sbt 'coreJVM/testOnly *ProgrammingStateSnapScalaModelSpec *SnapScalaWorkbookProjectsSpec *NativeSnapFormatSpec'
 sbt 'coreJS/testOnly *ProgrammingStateSnapScalaModelSpec'
 sbt 'client/testOnly *EvaEditorSpec *SnapCodeEditorSyncSpec'
 ```
 
 Shared tests exercise full projects, single-stage legacy projects, block libraries, separate media modules, immutable edits, malformed input and serialization on both JVM and Scala.js. The JVM fixture check reads all eight published embroidery projects, including their complete image payloads. Client checks cover typed state publication and preservation of legacy metadata.
+
+`NativeSnapFormatSpec` reads projects saved by the bundled TurtleStitch editor itself
+(`modules/core/jvm/src/test/resources/snap-native/`): the published embroidery projects, our writer's output for a
+set of Python and Java programs, and a project with the editor's wider vocabulary. Each must read losslessly, have no
+unclassified element, give every closed-vocabulary attribute a typed value and, for our programs, mean the same
+program after the editor saved it. `NativeSnapFixtures` documents regeneration with
+`tools/dev/generate-native-snap-fixtures.mjs`, which loads each project with the same extra primitives
+(`SnapExtraPrimitives`) as our editor.

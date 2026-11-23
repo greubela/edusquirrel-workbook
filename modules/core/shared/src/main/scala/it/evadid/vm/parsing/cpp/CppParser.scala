@@ -8,7 +8,7 @@ import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.conversion.pythonexpression.DefaultDefinitions
+import it.evadid.vm.conversion.parsed.DefaultDefinitions
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
 
 /**
@@ -52,7 +52,7 @@ object CppParser {
   final case class ParseResult(sequence: BeSequence, unsupportedStatements: List[String]) derives upickle.default.ReadWriter
 
   def parseCppWithDiagnostics(source: String): ParseResult = {
-    val stripped = stripWrappers(removeBlockComments(removeLineComments(source)))
+    val stripped = stripWrappers(removeComments(source))
     val (expressions, unsupported) = parseStatements(stripped)
     ParseResult(BeSequence.optionalBody(expressions), unsupported)
   }
@@ -61,29 +61,29 @@ object CppParser {
     parseCppWithDiagnostics(source).sequence
   }
 
-  private def removeLineComments(source: String): String =
-    source
-      .linesIterator
-      .map { line =>
-        val idx = line.indexOf("//")
-        if (idx >= 0) line.substring(0, idx) else line
+  /** Removes line and block comments in one pass, keeping comment markers inside string and character literals. */
+  private def removeComments(source: String): String = {
+    @scala.annotation.tailrec
+    def loop(i: Int, inString: Option[Char], out: StringBuilder): String =
+      if (i >= source.length) out.toString
+      else {
+        val ch = source.charAt(i)
+        val next = if (i + 1 < source.length) source.charAt(i + 1) else '\u0000'
+        inString match {
+          case Some(quote) =>
+            if (ch == '\\' && i + 1 < source.length) loop(i + 2, inString, out.append(ch).append(next))
+            else loop(i + 1, if (ch == quote) None else inString, out.append(ch))
+          case None if ch == '"' || ch == '\'' => loop(i + 1, Some(ch), out.append(ch))
+          case None if ch == '/' && next == '/' =>
+            val lineEnd = source.indexOf('\n', i)
+            loop(if (lineEnd < 0) source.length else lineEnd, None, out)
+          case None if ch == '/' && next == '*' =>
+            val blockEnd = source.indexOf("*/", i + 2)
+            loop(if (blockEnd < 0) source.length else blockEnd + 2, None, out.append(' '))
+          case None => loop(i + 1, None, out.append(ch))
+        }
       }
-      .mkString("\n")
-
-  private def removeBlockComments(source: String): String = {
-    val out = new StringBuilder
-    var i = 0
-    while (i < source.length) {
-      if (i + 1 < source.length && source.charAt(i) == '/' && source.charAt(i + 1) == '*') {
-        i += 2
-        while (i + 1 < source.length && !(source.charAt(i) == '*' && source.charAt(i + 1) == '/')) i += 1
-        if (i + 1 < source.length) i += 2
-      } else {
-        out.append(source.charAt(i))
-        i += 1
-      }
-    }
-    out.toString
+    loop(0, None, new StringBuilder)
   }
 
   private def stripWrappers(source: String): String = {
@@ -249,13 +249,18 @@ object CppParser {
         } else if (startsWithKeyword("for")) {
           expressions += parseForLoop(unsupported)
         } else {
+          val statementStart = i
           val stmtText = readUntilStatementEnd().trim
-          if (stmtText.nonEmpty) {
+          if (i == statementStart) {
+            // A closing brace without a matching block: report it and continue after it.
+            unsupported += peek.toString
+            i += 1
+          } else if (stmtText.nonEmpty) {
             parseSimpleStatement(stmtText) match {
               case Right(expr) => expressions += expr
               case Left(bad) =>
                 if (bad.trim.nonEmpty) unsupported += bad
-                expressions += BeExpressionUnsupported(bad)
+                expressions += BeExpressionUnsupported(bad, parsedFromLanguage = Some(Cpp))
             }
           }
         }
@@ -278,7 +283,7 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ while: condition parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       skipWhitespace()
@@ -290,7 +295,7 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ while: body parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       val conditionSeq = parseCondition(conditionText, context)
@@ -320,7 +325,7 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ if: condition parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       skipWhitespace()
@@ -332,7 +337,7 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ if: body parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       val conditionSeq = parseCondition(conditionText, context)
@@ -360,7 +365,7 @@ object CppParser {
                 val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
                 val msg = s"C++ else: body parse error: $err"
                 unsupported += original
-                return BeExpressionUnparsable(original, msg)
+                return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
             }
 
             context.pushScope()
@@ -390,7 +395,7 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ for: header parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       skipWhitespace()
@@ -402,14 +407,14 @@ object CppParser {
           val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
           val msg = s"C++ for: body parse error: $err"
           unsupported += original
-          return BeExpressionUnparsable(original, msg)
+          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
       }
 
       val parts = splitTopLevel(headerText, ';').map(_.trim)
       if (parts.length != 3) {
         val original = s"for(${headerText.trim}){...}"
         unsupported += original
-        return BeExpressionUnsupported(original)
+        return BeExpressionUnsupported(original, parsedFromLanguage = Some(Cpp))
       }
 
       val initPart = parts(0)
@@ -422,11 +427,11 @@ object CppParser {
           val (bodyExpressions, bodyUnsupported) = new Parser(bodyText, context).parseStatementsUntil(stopChar = None)
           context.popScope()
           bodyUnsupported.foreach(stmt => if (stmt.trim.nonEmpty) unsupported += stmt)
-          BeRepeatNr(amount, BeSequence.optionalBody(bodyExpressions))
+          BeRepeatNr.times(amount, BeSequence.optionalBody(bodyExpressions))
         case None =>
           val original = s"for(${headerText.trim}){...}"
           unsupported += original
-          BeExpressionUnsupported(original)
+          BeExpressionUnsupported(original, parsedFromLanguage = Some(Cpp))
       }
     }
 
@@ -568,7 +573,7 @@ object CppParser {
         val rightExpr = rightVar.map(v => parseOperand(right, v.variableType, context)).getOrElse(parseOperand(right, BeDataType.AnyType, context))
 
         val valueMap: Map[BeDefineVariable, BeExpression] = (leftVar.toList.map(_ -> leftExpr) ++ rightVar.toList.map(_ -> rightExpr)).toMap
-        BeSequence.conditionalBody(List(BeFunctionCall(funcDef, valueMap)))
+        BeSequence.conditionalBody(List(BeFunctionCall.fromDefinition(funcDef, valueMap)))
       }
     }
   }
@@ -586,12 +591,12 @@ object CppParser {
     trimmed match {
       case CallPattern(name, argsText) =>
         parseFunctionCall(name, argsText)
+      case _ if BeDataType.Boolean.isValidLiteral(trimmed) =>
+        BeUseValue(BeDataValueLiteral(trimmed), None)
       case ident if ident.matches("^[A-Za-z_][A-Za-z0-9_]*$") =>
         val defVar = context.assignVariable(ident, expectedType)
         BeUseValue(BeUseValueReference(defVar), None)
       case _ if BeDataType.Numeric.isValidLiteral(trimmed) || scala.util.Try(BigDecimal(trimmed)).isSuccess =>
-        BeUseValue(BeDataValueLiteral(trimmed), None)
-      case _ if BeDataType.Boolean.isValidLiteral(trimmed) =>
         BeUseValue(BeDataValueLiteral(trimmed), None)
       case _ if BeDataType.String.isValidLiteral(trimmed) =>
         BeUseValue(BeDataValueLiteral(trimmed), None)
@@ -674,7 +679,7 @@ object CppParser {
       par -> BeUseValue(BeDataValueLiteral(literal), Some(par))
     }.toMap
 
-    BeFunctionCall(funcDef, valueMap)
+    BeFunctionCall.fromDefinition(funcDef, valueMap)
   }
 
   private def splitArgs(argsText: String): List[String] = {

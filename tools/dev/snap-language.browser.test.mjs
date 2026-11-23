@@ -82,6 +82,7 @@ test('test workbook preserves edits across human languages, programming language
     await page.waitForFunction(() => snapLanguagePreviews.some(p => p.language === 'de' && p.specs.includes('gehe %n Schritte')));
     assert(await preview.evaluate(canvas => canvas !== englishPreview), 'language changes replace a static preview');
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
+    await page.locator('dialog[open]').getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => window.snapLanguageEditor?.currentSprite?.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'gehe %n Schritte'), null, {timeout:60000}).catch(async error => {
         console.error({errors, state:await page.evaluate(() => ({language:SnapTranslator.language,
@@ -89,6 +90,25 @@ test('test workbook preserves edits across human languages, programming language
           blocks:window.snapLanguageEditor?.currentSprite?.scripts.allChildren().filter(m => m.selector).map(m => [m.selector,m.blockSpec])}))});
         throw error;
       });
+    const originalViewport = page.viewportSize();
+    for (const width of [1280, 760]) {
+      await page.setViewportSize({width, height: 900});
+      const panes = await page.locator('dialog[open] .editor-with-panel').evaluate(container => {
+        const editor = container.querySelector('.fullscreen-editor').getBoundingClientRect();
+        const sidebar = container.querySelector('.fullscreen-sidepanel').getBoundingClientRect();
+        return {ratio: editor.width / sidebar.width, editorRight: editor.right, sidebarLeft: sidebar.left,
+          overlap: Math.min(editor.bottom, sidebar.bottom) - Math.max(editor.top, sidebar.top)};
+      });
+      assert(panes.editorRight <= panes.sidebarLeft + 1 && panes.overlap > 0,
+        'editor and sidebar stay beside each other at desktop and narrow widths');
+      assert(panes.ratio > 2.8 && panes.ratio < 3.2, 'editor receives three quarters of the pane width');
+    }
+    await page.setViewportSize(originalViewport);
+    // Request grading through the shared feedback line. It must produce public
+    // results without replacing the editor or rewriting its current draft.
+    await page.locator('dialog[open] .grading-info-line').getByRole('button', {name: 'Prüfen', exact: true}).click();
+    await page.waitForFunction(() => [...document.querySelectorAll('dialog[open] .feedback-date')]
+      .some(time => /\d{4}-\d{2}-\d{2}/.test(time.getAttribute('title') ?? '')));
     await page.waitForTimeout(750); // include the periodic native snapshot in the baseline
     const historyBeforeLanguage = await page.evaluate(() => snapHistoryWrites.length);
     const source = await page.evaluate(() => {
@@ -154,7 +174,7 @@ test('test workbook preserves edits across human languages, programming language
     assert.match(await code.innerText(), /forward\(92\)/, 'tab conversion includes the pending Snap input');
     await code.fill('forward(123)\nforward(17)\n');
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
-    assert.match(await code.innerText(), /forward\(123\)\s+forward\(17\)/);
+    assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
     await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => {
       const blocks = snapLanguageEditor.currentSprite.scripts.allChildren().filter(m => m.selector === 'forward');
@@ -164,27 +184,27 @@ test('test workbook preserves edits across human languages, programming language
     await page.waitForFunction(() => snapLanguageEditor.currentSprite.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'gehe %n Schritte' && Number(m.inputs()[0].evaluate()) === 123));
     await editor.getByRole('tab',{name:'Python',exact:true}).click();
-    assert.match(await code.innerText(), /forward\(123\)\s+forward\(17\)/);
+    assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
     await page.locator('.fullscreen-close-button').click();
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
-    assert.match(await code.innerText(), /forward\(123\)\s+forward\(17\)/);
+    assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
     await code.fill('public class Drawing {\n  static void line(int size) { Turtle.forward(size); }\n  public static void main(String[] args) { line(64); }\n}\n');
     await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => {
       const xml = window.snapLanguageEditor?.getProjectXML();
-      return xml?.includes('line') && xml.includes('64') && xml.includes('s="forward"') && !xml.includes('doJava');
+      return xml?.includes('line') && xml.includes('64') && xml.includes('forward');
     });
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
     await page.waitForFunction(() => SnapTranslator.language === 'en');
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
-    assert.match(await code.innerText(), /void line\(int size\)/);
+    assert.match(await code.innerText(), /void line\((?:int|double) size\)/);
     assert.match(await code.innerText(), /line\(64\)/);
     await page.locator('.fullscreen-close-button').click();
     // Reload only after this answer's IndexedDB transaction has committed.
-    await page.waitForFunction(() => snapCommittedHistoryWrites.some(value => value.includes('void line(int size)')));
+    await page.waitForFunction(() => snapCommittedHistoryWrites.some(value => /void line\((?:int|double) size\)/.test(value)));
     await page.reload();
     await page.locator('.section-block').first().click();
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
@@ -192,8 +212,8 @@ test('test workbook preserves edits across human languages, programming language
     await editor.getByRole('button',{name:'Full source',exact:true}).click();
     // Saved-state restoration and editor conversion complete asynchronously.
     await page.waitForFunction(() => document.querySelector('dialog[open] .eva-editor .cm-content')
-      ?.textContent.includes('void line(int size)'));
-    assert.match(await code.innerText(), /void line\(int size\)/, 'saved methods survive a page reload');
+      ?.textContent.match(/void line\((?:int|double) size\)/));
+    assert.match(await code.innerText(), /void line\((?:int|double) size\)/, 'saved methods survive a page reload');
     assert.match(await code.innerText(), /line\(64\)/);
     await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, []);

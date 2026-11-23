@@ -1,6 +1,6 @@
 # Snap turtle-command execution service
 
-[SnapTurtleCommandExecution.scala](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/execution/SnapTurtleCommandExecution.scala) provides asynchronous execution of a saved `ProgrammingStateSnapXml` snapshot. `SnapCodeEditor.getCurrentTurtleCommands()` is implemented: it calls `captureCurrentProject()`, flushes pending live-IDE edits, and delegates the resulting snapshot to the service. Callers that already hold a saved snapshot can use `commandsFor` directly. The service returns a future; consumers should show their own running/error state and preserve the captured program while awaiting it.
+[SnapTurtleCommandExecution.scala](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/execution/SnapTurtleCommandExecution.scala) provides asynchronous execution of a saved `ProgrammingStateRaw(SnapLanguage, xml)` snapshot. `SnapCodeEditor.getCurrentTurtleCommands()` is implemented: it calls `captureCurrentProject()`, flushes pending live-IDE edits, and delegates the resulting snapshot to the service. Callers that already hold a saved snapshot can use `commandsFor` directly. The service returns a future; consumers should show their own running/error state and preserve the captured program while awaiting it.
 
 ## Derivation and execution
 
@@ -35,7 +35,7 @@ with a dedicated worker and lazy Pyodide initialization. Startup and execution
 have deadlines; cancellation or timeout discards the worker so late results
 cannot affect a newer run. The consuming execution service owns the worker lifetime.
 
-The service does not mount an IDE or change saved XML. Current synchronous derivation on `ProgrammingStateBeExpression` is a separate operation; see [Eva programming state](eva-editor-programming-state.md).
+The service does not mount an IDE or change saved XML. Synchronous analysis on `ProgrammingStateBeExpression` is a separate operation: `turtleCommandExecutionInfo` exposes source call sites, executed commands and completion status. See [turtle program analysis](programming-conversions.md#turtle-source-occurrences-and-execution) and [Eva programming state](eva-editor-programming-state.md).
 
 ## Verification
 

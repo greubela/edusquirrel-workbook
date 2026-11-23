@@ -1,11 +1,13 @@
 package it.evadid.vm.parsing.java.clean
 
+import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
+
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleInputLimits, JavaTurtleResolution, JavaTurtleSemantics, JavaTurtleSource, JavaTurtleStructure}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleInputLimits, JavaTurtleSymbolResolver, JavaTurtleSemanticValidator, JavaTurtleSourceParser, JavaTurtleStructureValidator}
 import it.evadid.vm.simulation.java.JavaTurtleEvaluation as E
-import it.evadid.vm.simulation.java.JavaTurtleRuntime as T
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleVmExpressions as X, JavaTurtleVmPrograms as P}
+import it.evadid.vm.simulation.java.JavaTurtleInterpreter as T
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleExpressionCompiler as X, JavaTurtleProgram as P}
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {
@@ -72,17 +74,17 @@ class JavaParserTest extends FunSuite {
        |}
        |""".stripMargin
 
-  private def sourceProblem(source: String): JavaTurtleSource.Diagnostic =
-    JavaTurtleSource.parse(source).swap.fold(_ => fail(s"Unexpectedly accepted: $source"), identity)
+  private def sourceProblem(source: String): JavaTurtleSourceParser.Diagnostic =
+    JavaTurtleSourceParser.parse(source).swap.fold(_ => fail(s"Unexpectedly accepted: $source"), identity)
 
-  private def structuredSource(source: String): JavaTurtleStructure.StructuredSource = {
-    val parsed = JavaTurtleSource.parse(source).fold(problem => fail(problem.message), identity)
-    JavaTurtleStructure.check(parsed).fold(problem => fail(problem.message), identity)
+  private def structuredSource(source: String): JavaTurtleStructureValidator.StructuredSource = {
+    val parsed = JavaTurtleSourceParser.parse(source).fold(problem => fail(problem.message), identity)
+    JavaTurtleStructureValidator.check(parsed).fold(problem => fail(problem.message), identity)
   }
 
-  private def structureProblem(source: String): JavaTurtleSource.Diagnostic = {
-    val parsed = JavaTurtleSource.parse(source).fold(problem => fail(problem.message), identity)
-    JavaTurtleStructure.check(parsed).swap.fold(_ => fail(s"Unexpectedly accepted structure: $source"), identity)
+  private def structureProblem(source: String): JavaTurtleSourceParser.Diagnostic = {
+    val parsed = JavaTurtleSourceParser.parse(source).fold(problem => fail(problem.message), identity)
+    JavaTurtleStructureValidator.check(parsed).swap.fold(_ => fail(s"Unexpectedly accepted structure: $source"), identity)
   }
 
   private def turtleClass(members: String, header: String = "class Drawing"): String =
@@ -91,24 +93,24 @@ class JavaParserTest extends FunSuite {
   private val mainMethod = "public static void main(String[] args) {}"
 
   private def sourceStatement(source: String): JavaStatement = {
-    val parsed = JavaTurtleSource.parse(source).fold(problem => fail(problem.message), identity)
+    val parsed = JavaTurtleSourceParser.parse(source).fold(problem => fail(problem.message), identity)
     assertEquals(parsed.program.statements.size, 1, clue = source)
     parsed.program.statements.head.statement
   }
 
-  private def checkedSource(source: String): JavaTurtleSemantics.TypedSource =
-    JavaTurtleSemantics.check(structuredSource(source)).fold(problem => fail(s"${problem.message}\n$source"), identity)
+  private def checkedSource(source: String): JavaTurtleSemanticValidator.TypedSource =
+    JavaTurtleSemanticValidator.check(structuredSource(source)).fold(problem => fail(s"${problem.message}\n$source"), identity)
 
-  private def semanticProblem(source: String): JavaTurtleSource.Diagnostic =
-    JavaTurtleSemantics.check(structuredSource(source)).swap.fold(_ => fail(s"Unexpectedly accepted semantics: $source"), identity)
+  private def semanticProblem(source: String): JavaTurtleSourceParser.Diagnostic =
+    JavaTurtleSemanticValidator.check(structuredSource(source)).swap.fold(_ => fail(s"Unexpectedly accepted semantics: $source"), identity)
 
   private def semanticSource(body: String): String =
     turtleClass(s"static void run(int distance, boolean flag) { $body } $mainMethod")
 
-  private def resolvedSource(source: String): JavaTurtleResolution.ResolvedSource =
-    JavaTurtleResolution.resolve(checkedSource(source)).fold(problem => fail(s"${problem.message}\n$source"), identity)
+  private def resolvedSource(source: String): JavaTurtleSymbolResolver.ResolvedSource =
+    JavaTurtleSymbolResolver.resolve(checkedSource(source)).fold(problem => fail(s"${problem.message}\n$source"), identity)
 
-  private def resolvedMethod(source: JavaTurtleResolution.ResolvedSource, name: String): JavaTurtleResolution.Method =
+  private def resolvedMethod(source: JavaTurtleSymbolResolver.ResolvedSource, name: String): JavaTurtleSymbolResolver.Method =
     source.methods.find(_.name == name).getOrElse(fail(s"Missing resolved method: $name"))
 
   test("Java AST nodes expose child nodes for traversal") {
@@ -202,7 +204,7 @@ class JavaParserTest extends FunSuite {
     }
     for separator <- Seq("", " ", "\t", "\r\n", "/* names */") do {
       val source = turtleClass(s"public static void main(String[]${separator}args) { Turtle.forward(2); }")
-      assert(P.compile(source).isRight, clue = source)
+      assert(JavaTurtleCompiler.compile(source).isRight, clue = source)
     }
   }
 
@@ -384,7 +386,7 @@ class JavaParserTest extends FunSuite {
       "int i = 0; while (i < 4) { Turtle.forward(sideLength); Turtle.turnRight(90); i = i + 1; }"
     ) do {
       val source = "\r\n\r\n" + turtleSource(loop)
-      val parsed = JavaTurtleSource.parse(source).fold(problem => fail(problem.message), identity)
+      val parsed = JavaTurtleSourceParser.parse(source).fold(problem => fail(problem.message), identity)
       assertEquals(parsed.source, source)
       assertEquals(unsupportedStatements(parsed.program), Set.empty[String])
     }
@@ -394,13 +396,13 @@ class JavaParserTest extends FunSuite {
     val body =
       "int longueur = 40; int floatCount = 0; int intensity = 1; " +
         "/* long double 010 'quoted' */ Turtle.forward(longueur); // byte short\r\n"
-    assert(JavaTurtleSource.parse(turtleSource(body) + "// comment at EOF").isRight)
+    assert(JavaTurtleSourceParser.parse(turtleSource(body) + "// comment at EOF").isRight)
   }
 
   test("turtle source rejects unterminated block comments") {
     for source <- Seq("/*", turtleSource("Turtle.forward(40);") + "/* unfinished", turtleSource("/* unfinished")) do {
       val problem = sourceProblem(source)
-      assertEquals(problem.problem, JavaTurtleSource.Problem.UnclosedComment)
+      assertEquals(problem.problem, JavaTurtleSourceParser.Problem.UnclosedComment)
       assertEquals(problem.range, Some(JavaSourceMap.SourceRange(source.indexOf("/*"), source.length)))
     }
   }
@@ -413,7 +415,7 @@ class JavaParserTest extends FunSuite {
       val source = turtleSource(s"$prefix$name value = 1; Turtle.forward(40);")
       assert(JavaParser.parse(source).isRight, clue = source)
       val problem = sourceProblem(source)
-      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedType)
+      assertEquals(problem.problem, JavaTurtleSourceParser.Problem.UnsupportedType)
       val start = source.indexOf(s"$name value")
       assertEquals(problem.range, Some(JavaSourceMap.SourceRange(start, start + name.length)))
     }
@@ -421,11 +423,11 @@ class JavaParserTest extends FunSuite {
 
   test("turtle source accepts integers and plain finite decimals and rejects other numeric forms") {
     for number <- Seq("0", "10", "40", "100", "0.0", "10.0", "10.5", "0.25") do
-      assert(JavaTurtleSource.parse(turtleSource(s"Turtle.forward($number);")).isRight)
+      assert(JavaTurtleSourceParser.parse(turtleSource(s"Turtle.forward($number);")).isRight)
     for number <- Seq("00", "010", "0x10", "0b10", "1_000", "1L", ".5", "1.", "1e2", "1.0e2", "1.0D", "1.0f", "1.2.3") do {
       val source = turtleSource(s"Turtle.forward($number);")
       val problem = sourceProblem(source)
-      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedNumber, clue = number)
+      assertEquals(problem.problem, JavaTurtleSourceParser.Problem.UnsupportedNumber, clue = number)
       val start = source.indexOf(s"($number)") + 1
       assertEquals(problem.range, Some(JavaSourceMap.SourceRange(start, start + number.length)))
     }
@@ -442,18 +444,18 @@ class JavaParserTest extends FunSuite {
     for number <- Seq("9" * 309 + ".0", "0." + "0" * 325 + "1") do {
       val invalid = turtleSource(s"Turtle.forward($number);")
       val problem = sourceProblem(invalid)
-      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedNumber)
+      assertEquals(problem.problem, JavaTurtleSourceParser.Problem.UnsupportedNumber)
       val start = invalid.indexOf(number)
       assertEquals(problem.range, Some(JavaSourceMap.SourceRange(start, start + number.length)))
     }
-    assert(JavaTurtleSource.parse(turtleSource("Turtle.forward(0." + "0" * 32 + ");")).isRight)
+    assert(JavaTurtleSourceParser.parse(turtleSource("Turtle.forward(0." + "0" * 32 + ");")).isRight)
   }
 
   test("turtle source rejects quoted values without relying on permissive string parsing") {
     val invalidEscape = "\"bad" + "\\" + "q\""
     for value <- Seq("\"hello\"", "'x'", "'ab'", invalidEscape, "\"line\nbreak\"") do {
       val problem = sourceProblem(turtleSource(s"String value = $value;"))
-      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedLiteral, clue = value)
+      assertEquals(problem.problem, JavaTurtleSourceParser.Problem.UnsupportedLiteral, clue = value)
     }
   }
 
@@ -462,7 +464,7 @@ class JavaParserTest extends FunSuite {
     for body <- Seq(s"${slash}u0069nt value = 1;", s"${slash}uu0069nt value = 1;", s"// ${slash}u000a long value = 1;") do {
       val source = turtleSource(body)
       val problem = sourceProblem(source)
-      assertEquals(problem.problem, JavaTurtleSource.Problem.UnicodeEscape)
+      assertEquals(problem.problem, JavaTurtleSourceParser.Problem.UnicodeEscape)
       assertEquals(problem.range.map(_.start), Some(source.indexOf(slash)))
     }
   }
@@ -471,7 +473,7 @@ class JavaParserTest extends FunSuite {
     for body <- Seq("sideLength <<= 1;", "Turtle.forward(sideLength << 1);") do {
       val source = turtleSource(body)
       val problem = sourceProblem(source)
-      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+      assertEquals(problem.problem, JavaTurtleSourceParser.Problem.UnsupportedSyntax)
       assertEquals(problem.range, None)
     }
   }
@@ -479,7 +481,7 @@ class JavaParserTest extends FunSuite {
   test("turtle source parse failures refer to the untrimmed source") {
     val source = "\r\n\r\n}"
     val problem = sourceProblem(source)
-    assertEquals(problem.problem, JavaTurtleSource.Problem.ParseFailure)
+    assertEquals(problem.problem, JavaTurtleSourceParser.Problem.ParseFailure)
     assertEquals(problem.range, Some(JavaSourceMap.SourceRange(4, 5)))
   }
 
@@ -492,27 +494,27 @@ class JavaParserTest extends FunSuite {
   test("turtle input bounds source length before scanning and preserves accepted text") {
     val source = "/* 😀 */\r\n" + turtleClass(mainMethod)
     val padded = source + " " * (JavaTurtleInputLimits.MaxSourceCharacters - source.length)
-    assertEquals(JavaTurtleSource.parse(padded).toOption.get.source, padded)
+    assertEquals(JavaTurtleSourceParser.parse(padded).toOption.get.source, padded)
     val problem = sourceProblem(padded + " ")
-    assertEquals(problem.problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(problem.problem, JavaTurtleSourceParser.Problem.InputLimit)
     assertEquals(problem.range, Some(JavaSourceMap.SourceRange(padded.length, padded.length + 1)))
     assertEquals(sourceProblem("/*" + " " * JavaTurtleInputLimits.MaxSourceCharacters).problem,
-      JavaTurtleSource.Problem.InputLimit)
+      JavaTurtleSourceParser.Problem.InputLimit)
   }
 
   test("turtle input bounds names and numbers without replacing ordinary range errors") {
     val length = JavaTurtleInputLimits.MaxTokenCharacters
-    assert(JavaTurtleSource.parse("int " + "x" * length + ";").isRight)
-    assert(JavaTurtleSource.parse("int value = " + "9" * length + ";").isRight)
+    assert(JavaTurtleSourceParser.parse("int " + "x" * length + ";").isRight)
+    assert(JavaTurtleSourceParser.parse("int value = " + "9" * length + ";").isRight)
     for token <- Seq("x" * (length + 1), "9" * (length + 1)) do {
       val source = "/* 😀 */\r\n" + s"int value = $token;"
       val problem = sourceProblem(source)
       val start = source.indexOf(token)
-      assertEquals(problem.problem, JavaTurtleSource.Problem.InputLimit)
+      assertEquals(problem.problem, JavaTurtleSourceParser.Problem.InputLimit)
       assertEquals(problem.range, Some(JavaSourceMap.SourceRange(start, start + token.length)))
     }
     assertEquals(semanticProblem(semanticSource("int value = " + "9" * length + ";")).problem,
-      JavaTurtleSource.Problem.IntegerRange)
+      JavaTurtleSourceParser.Problem.IntegerRange)
   }
 
   test("turtle input bounds delimiter depth including the class and main wrapper") {
@@ -520,23 +522,23 @@ class JavaParserTest extends FunSuite {
     def nested(count: Int): String = turtleClass(
       "public static void main(String[] args) { Turtle.forward(" + "(" * count + "1" + ")" * count + "); }")
     resolvedSource(nested(groups))
-    assertEquals(sourceProblem(nested(groups + 1)).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(nested(groups + 1)).problem, JavaTurtleSourceParser.Problem.InputLimit)
     for body <- Seq("(" * 512 + "1" + ")" * 512 + ";", "if (true) {" * 64 + "}" * 64,
       "Turtle.forward(" + "(" * 16 + "1" + "]" * 16 + ");") do
-      assertEquals(sourceProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.InputLimit)
+      assertEquals(sourceProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.InputLimit)
     resolvedSource(semanticSource("/* " + "({[!" * 256 + " */ Turtle.forward(1);"))
   }
 
   test("turtle input bounds recursive sections without resetting at comments or commas") {
     val limit = JavaTurtleInputLimits.MaxSegmentTokens
     val atLimit = "+ " * (limit - 2) + "1;"
-    assertEquals(sourceProblem(atLimit).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(atLimit).problem, JavaTurtleSourceParser.Problem.InputLimit)
     assertEquals(sourceProblem(atLimit).range, None)
     val assigned = "a = " * 63 + "1;"
-    assertEquals(sourceProblem(assigned).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(assigned).problem, JavaTurtleSourceParser.Problem.InputLimit)
     assertEquals(sourceProblem(assigned).range, None)
     val list = "final " + "List<" * 53 + "int" + ">" * 53 + " value;"
-    assertEquals(sourceProblem(list).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(list).problem, JavaTurtleSourceParser.Problem.InputLimit)
     assertEquals(sourceProblem(list).range, None)
     val blocks = JavaTurtleInputLimits.MaxNesting - 2
     def inBlocks(body: String): String = turtleClass("public static void main(String[] args) {" +
@@ -545,47 +547,47 @@ class JavaParserTest extends FunSuite {
     for source <- Seq(inBlocks("int value = " + "+ " * (limit - 5) + "1;"), inBlocks(list),
       turtleClass("public static void main(String[] args) { int value = " +
         "+ " * 95 + "(" * 14 + "1" + ")" * 14 + "; }")) do {
-      assertEquals(sourceProblem(source).problem, JavaTurtleSource.Problem.InputLimit)
+      assertEquals(sourceProblem(source).problem, JavaTurtleSourceParser.Problem.InputLimit)
       assertEquals(sourceProblem(source).range, None)
     }
     for source <- Seq(
       "+/* separate */ " * limit + "1;", "a = " * limit + "1;",
       "List<" * limit + "int" + ">" * limit + " value;",
       "+ " * 60 + "f(0, " + "+ " * 70 + "1);"
-    ) do assertEquals(sourceProblem(source).problem, JavaTurtleSource.Problem.InputLimit)
-    assert(JavaTurtleSource.parse("Turtle.forward(" + "1 + " * 30 + "1);").isRight)
-    assert(JavaTurtleSource.parse("a" + ".a" * 62 + " = 1;").isRight)
-    assertEquals(sourceProblem("a" + ".a" * 63 + " = 1;").problem, JavaTurtleSource.Problem.InputLimit)
-    assert(JavaTurtleSource.parse("++value;").isRight)
+    ) do assertEquals(sourceProblem(source).problem, JavaTurtleSourceParser.Problem.InputLimit)
+    assert(JavaTurtleSourceParser.parse("Turtle.forward(" + "1 + " * 30 + "1);").isRight)
+    assert(JavaTurtleSourceParser.parse("a" + ".a" * 62 + " = 1;").isRight)
+    assertEquals(sourceProblem("a" + ".a" * 63 + " = 1;").problem, JavaTurtleSourceParser.Problem.InputLimit)
+    assert(JavaTurtleSourceParser.parse("++value;").isRight)
   }
 
   test("turtle input bounds token count independently of syntax node count") {
     def target(parts: Int): String = Vector.fill(parts)("a").mkString(".") + " = 1;"
     val source = turtleClass("public static void main(String[] args) {" + target(63) * 63 + target(55) + "}")
-    assert(JavaTurtleSource.parse(source).isRight)
-    assertEquals(sourceProblem(source + ";").problem, JavaTurtleSource.Problem.InputLimit)
-    assert(JavaTurtleSource.parse(source + "/* (){}[] if ++ == */\r\n// ignored").isRight)
+    assert(JavaTurtleSourceParser.parse(source).isRight)
+    assertEquals(sourceProblem(source + ";").problem, JavaTurtleSourceParser.Problem.InputLimit)
+    assert(JavaTurtleSourceParser.parse(source + "/* (){}[] if ++ == */\r\n// ignored").isRight)
   }
 
   test("turtle input bounds total if statements and deep else-if syntax separately") {
     val body = "if (true) {} " * JavaTurtleInputLimits.MaxIfStatements
     resolvedSource(semanticSource(body))
-    assertEquals(sourceProblem(semanticSource(body + "if (true) {} ")).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(semanticSource(body + "if (true) {} ")).problem, JavaTurtleSourceParser.Problem.InputLimit)
     val prefix = "if (true) {} else " * 28
     val atDepth = turtleClass(s"public static void main(String[] args) { $prefix if (true) {} }")
     resolvedSource(atDepth)
     assertEquals(sourceProblem(atDepth.replace("if (true) {} }", "if (true) {;} }")).problem,
-      JavaTurtleSource.Problem.InputLimit)
+      JavaTurtleSourceParser.Problem.InputLimit)
     assertEquals(sourceProblem(semanticSource("if (false) {} else " * 512 + "{}")).problem,
-      JavaTurtleSource.Problem.InputLimit)
+      JavaTurtleSourceParser.Problem.InputLimit)
   }
 
   test("turtle input bounds syntax nodes without recursive AST traversal") {
     val source = turtleClass("public static void main(String[] args) {" +
       ";" * (JavaTurtleInputLimits.MaxAstNodes - 7) + "}")
     resolvedSource(source)
-    assertEquals(sourceProblem(source.replace(";}", ";;}")).problem, JavaTurtleSource.Problem.InputLimit)
-    assertEquals(sourceProblem("1" + " * 1" * 63 + ";").problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(source.replace(";}", ";;}")).problem, JavaTurtleSourceParser.Problem.InputLimit)
+    assertEquals(sourceProblem("1" + " * 1" * 63 + ";").problem, JavaTurtleSourceParser.Problem.InputLimit)
   }
 
   test("turtle input bounds methods before call graph analysis") {
@@ -596,7 +598,7 @@ class JavaParserTest extends FunSuite {
       }.mkString + "public static void main(String[] args) { m0(); }")
     val limit = JavaTurtleInputLimits.MaxMethods
     assertEquals(resolvedSource(chain(limit - 1)).methods.size, limit)
-    assertEquals(sourceProblem(chain(limit)).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(chain(limit)).problem, JavaTurtleSourceParser.Problem.InputLimit)
     assertEquals(resolvedSource(chain(limit - 1, cycle = true)).methods.size, limit)
   }
 
@@ -605,14 +607,14 @@ class JavaParserTest extends FunSuite {
     val limit = JavaTurtleInputLimits.MaxParameters
     resolvedSource(turtleClass(s"static void move(${parameters(limit)}) {} $mainMethod"))
     assertEquals(sourceProblem(turtleClass(s"static void move(${parameters(limit + 1)}) {} $mainMethod")).problem,
-      JavaTurtleSource.Problem.InputLimit)
+      JavaTurtleSourceParser.Problem.InputLimit)
     val locals = JavaTurtleInputLimits.MaxLocalsPerMethod
     val body = (0 until locals).map(index => s"int x$index = 0;").mkString
     resolvedSource(semanticSource(body))
-    assertEquals(sourceProblem(semanticSource(body + "int extra;")).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(semanticSource(body + "int extra;")).problem, JavaTurtleSourceParser.Problem.InputLimit)
     val siblingScopes = "for (int i = 0; i < 1; i += 1) {} " * locals
     resolvedSource(semanticSource(siblingScopes))
-    assertEquals(sourceProblem(semanticSource(siblingScopes + "int i;")).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(semanticSource(siblingScopes + "int i;")).problem, JavaTurtleSourceParser.Problem.InputLimit)
   }
 
   test("turtle input counts the main parameter in the program-wide variable limit") {
@@ -621,7 +623,7 @@ class JavaParserTest extends FunSuite {
       s"static void m$method() {" + (0 until count).map(index => s"int x$index;").mkString + "}"
     }.mkString + mainMethod)
     resolvedSource(program(127))
-    assertEquals(sourceProblem(program(128)).problem, JavaTurtleSource.Problem.InputLimit)
+    assertEquals(sourceProblem(program(128)).problem, JavaTurtleSourceParser.Problem.InputLimit)
   }
 
   test("turtle input checks array and list type wrappers outside the AST children") {
@@ -632,8 +634,8 @@ class JavaParserTest extends FunSuite {
       for javaType <- Seq(array, list, "List<" + "int" + "[]" * (depth - 1) + ">") do
         for source <- Seq(s"$javaType value;", s"$javaType move() {}", s"new $javaType();",
           s"class Drawing extends $javaType {}", s"class Drawing implements $javaType {}") do {
-          if depth == limit then assert(JavaTurtleSource.parse(source).isRight, clue = source)
-          else assertEquals(sourceProblem(source).problem, JavaTurtleSource.Problem.InputLimit, clue = source)
+          if depth == limit then assert(JavaTurtleSourceParser.parse(source).isRight, clue = source)
+          else assertEquals(sourceProblem(source).problem, JavaTurtleSourceParser.Problem.InputLimit, clue = source)
         }
     }
   }
@@ -641,7 +643,7 @@ class JavaParserTest extends FunSuite {
   test("turtle input counters do not leak between parses or affect legacy Java") {
     val valid = turtleSource("Turtle.forward(sideLength);")
     for invalid <- Seq("(" * 512, "+ " * 512 + "1;", ";" * 8193, "x" * 129 + ";") do {
-      assertEquals(sourceProblem(invalid).problem, JavaTurtleSource.Problem.InputLimit)
+      assertEquals(sourceProblem(invalid).problem, JavaTurtleSourceParser.Problem.InputLimit)
       assertEquals(resolvedSource(valid).source, valid)
     }
     assert(JavaParser.parse("int " + "x" * 129 + ";").isRight)
@@ -679,7 +681,7 @@ class JavaParserTest extends FunSuite {
     for source <- Seq("", ";", "Turtle.forward(40);", "static void run() {}", valid + "class Other {}",
       "package demo; " + valid, "import java.util.List; " + valid, valid + ";") do {
       val problem = structureProblem(source)
-      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = source)
+      assertEquals(problem.problem, JavaTurtleSourceParser.Problem.UnsupportedStructure, clue = source)
       assertEquals(problem.range, None)
     }
   }
@@ -687,12 +689,12 @@ class JavaParserTest extends FunSuite {
   test("turtle structure rejects unsupported class modifiers and inheritance") {
     for header <- Seq("private class Drawing", "protected class Drawing", "static class Drawing", "final class Drawing",
       "abstract class Drawing", "public public class Drawing", "class Drawing extends Base", "class Drawing implements Runnable") do
-      assertEquals(structureProblem(turtleClass(mainMethod, header)).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = header)
+      assertEquals(structureProblem(turtleClass(mainMethod, header)).problem, JavaTurtleSourceParser.Problem.UnsupportedStructure, clue = header)
   }
 
   test("turtle structure excludes fields and nested classes") {
     for member <- Seq("int width = 40;", "static int width;", "class Nested {}", ";") do
-      assertEquals(structureProblem(turtleClass(member + mainMethod)).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = member)
+      assertEquals(structureProblem(turtleClass(member + mainMethod)).problem, JavaTurtleSourceParser.Problem.UnsupportedStructure, clue = member)
   }
 
   test("turtle structure requires explicit static void helper methods") {
@@ -700,19 +702,19 @@ class JavaParserTest extends FunSuite {
       "static String move", "static static void move", "public private static void move", "protected static void move",
       "final static void move", "abstract static void move") do {
       val source = turtleClass(s"$header() {} $mainMethod")
-      assertEquals(structureProblem(source).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = header)
+      assertEquals(structureProblem(source).problem, JavaTurtleSourceParser.Problem.UnsupportedStructure, clue = header)
     }
   }
 
   test("turtle structure requires the supported main signature") {
-    assertEquals(structureProblem(turtleClass("static void move() {}")).problem, JavaTurtleSource.Problem.MissingMain)
+    assertEquals(structureProblem(turtleClass("static void move() {}")).problem, JavaTurtleSourceParser.Problem.MissingMain)
     for header <- Seq("static void main(String[] args)", "public void main(String[] args)", "private static void main(String[] args)",
       "public static static void main(String[] args)", "public static int main(String[] args)",
       "public static void main()", "public static void main(int[] args)", "public static void main(String args)",
       "public static void main(String[][] args)", "public static void main(java.lang.String[] args)",
       "public static void main(String[] args, int extra)") do {
       val problem = structureProblem(turtleClass(s"$header {}"))
-      assertEquals(problem.problem, JavaTurtleSource.Problem.InvalidMain, clue = header)
+      assertEquals(problem.problem, JavaTurtleSourceParser.Problem.InvalidMain, clue = header)
     }
   }
 
@@ -720,24 +722,24 @@ class JavaParserTest extends FunSuite {
     for methods <- Seq("static void move() {} static void move() {}", "static void move(int x) {} static void move(boolean x) {}",
       s"$mainMethod public static void main(int value) {}") do {
       val source = turtleClass(methods + (if methods.contains("main") then "" else mainMethod))
-      assertEquals(structureProblem(source).problem, JavaTurtleSource.Problem.DuplicateDeclaration, clue = source)
+      assertEquals(structureProblem(source).problem, JavaTurtleSourceParser.Problem.DuplicateDeclaration, clue = source)
     }
   }
 
   test("turtle structure requires distinct parameters of supported types") {
     assertEquals(structureProblem(turtleClass(s"static void move(int x, int x) {} $mainMethod")).problem,
-      JavaTurtleSource.Problem.DuplicateDeclaration)
+      JavaTurtleSourceParser.Problem.DuplicateDeclaration)
     for parameter <- Seq("String value", "Object value", "Point value", "int[] values", "boolean[] values", "int[][] values", "List<String> values") do
       assertEquals(structureProblem(turtleClass(s"static void move($parameter) {} $mainMethod")).problem,
-        JavaTurtleSource.Problem.UnsupportedType, clue = parameter)
+        JavaTurtleSourceParser.Problem.UnsupportedType, clue = parameter)
     for method <- Seq(s"static void move(final int x) {} $mainMethod", "public static void main(final String[] args) {}") do
-      assertEquals(structureProblem(turtleClass(method)).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = method)
+      assertEquals(structureProblem(turtleClass(method)).problem, JavaTurtleSourceParser.Problem.UnsupportedStructure, clue = method)
   }
 
   test("turtle structure rejects unavailable class names without restricting contextual parameter names") {
     for name <- Seq("String", "Turtle", "var", "yield", "record", "sealed", "permits", "_", "const", "goto") do
       assertEquals(structureProblem(turtleClass(mainMethod, s"class $name")).problem,
-        JavaTurtleSource.Problem.InvalidIdentifier, clue = name)
+        JavaTurtleSourceParser.Problem.InvalidIdentifier, clue = name)
     assertEquals(structuredSource(turtleClass("public static void main(String[] record) {} static void var(int record) {}"))
       .main.parameters.head.name, "record")
   }
@@ -747,7 +749,7 @@ class JavaParserTest extends FunSuite {
       for members <- Seq(s"static void $name() {} $mainMethod", s"static void move(int $name) {} $mainMethod",
         s"public static void main(String[] $name) {}", s"static void move() { int $name = 0; } $mainMethod",
         s"static void move() { for (int $name = 0; true; ) {} } $mainMethod") do
-        assertEquals(structureProblem(turtleClass(members)).problem, JavaTurtleSource.Problem.InvalidIdentifier, clue = members)
+        assertEquals(structureProblem(turtleClass(members)).problem, JavaTurtleSourceParser.Problem.InvalidIdentifier, clue = members)
   }
 
   test("turtle structure finds forbidden nested declarations in every supported block") {
@@ -756,7 +758,7 @@ class JavaParserTest extends FunSuite {
         s"while (true) { $declaration }", s"for (; true; ) { $declaration }", s"try { $declaration } catch (Exception ex) {}",
         s"try {} catch (Exception ex) { $declaration }", s"try {} finally { $declaration }") do {
         val source = turtleClass(s"static void move() { $body } $mainMethod")
-        assertEquals(structureProblem(source).problem, JavaTurtleSource.Problem.UnsupportedStructure, clue = body)
+        assertEquals(structureProblem(source).problem, JavaTurtleSourceParser.Problem.UnsupportedStructure, clue = body)
       }
   }
 
@@ -765,15 +767,16 @@ class JavaParserTest extends FunSuite {
     assertEquals(checked.methods.head.body.statements.size, 3)
   }
 
-  test("turtle source rejects constructors and omitted method return types before structure checking") {
-    for members <- Seq(s"Drawing() {} $mainMethod", s"static move() {} $mainMethod", "public static main(String[] args) {}") do
-      assertEquals(sourceProblem(turtleClass(members)).problem, JavaTurtleSource.Problem.ParseFailure, clue = members)
+  test("turtle structure rejects constructors and methods without return types after general parsing") {
+    for members <- Seq(s"Drawing() {} $mainMethod", s"static move() {} $mainMethod") do
+      assertEquals(structureProblem(turtleClass(members)).problem, JavaTurtleSourceParser.Problem.UnsupportedStructure, clue = members)
+    assertEquals(structureProblem(turtleClass("public static main(String[] args) {}")).problem, JavaTurtleSourceParser.Problem.InvalidMain)
   }
 
   test("turtle source excludes alternative Java array parameter spellings") {
     for parameter <- Seq("String args[]", "String... args") do {
       val source = turtleClass(s"public static void main($parameter) {}")
-      assert(JavaTurtleSource.parse(source).isLeft, clue = source)
+      assert(JavaTurtleSourceParser.parse(source).isLeft, clue = source)
     }
   }
 
@@ -812,9 +815,9 @@ class JavaParserTest extends FunSuite {
     val loop = sourceStatement("for (int i = 0; i < 4; (i = i + 1)) {}").asInstanceOf[JavaForStatement]
     assert(loop.update.head.isInstanceOf[JavaParenthesizedExpression])
     assert(loop.update.head.getChildren().head.isInstanceOf[JavaAssignmentExpression])
-    assertEquals(sourceProblem("Turtle.forward((distance << 1));").problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+    assertEquals(sourceProblem("Turtle.forward((distance << 1));").problem, JavaTurtleSourceParser.Problem.UnsupportedSyntax)
     assertEquals(structureProblem(turtleSource("Turtle.forward((distance)); static void nested() {}")).problem,
-      JavaTurtleSource.Problem.UnsupportedStructure)
+      JavaTurtleSourceParser.Problem.UnsupportedStructure)
   }
 
   test("turtle semantics accepts the full for and while square references") {
@@ -845,12 +848,12 @@ class JavaParserTest extends FunSuite {
         "public static void main(String[] args) { draw(10, 1); draw(10.5, 2); }"
     ))
     checkedSource(semanticSource("double value; if (flag) { value = distance; } else { value = 10.5; } Turtle.forward(value);"))
-    assertEquals(semanticProblem(semanticSource("double value = 2147483648;")).problem, JavaTurtleSource.Problem.IntegerRange)
+    assertEquals(semanticProblem(semanticSource("double value = 2147483648;")).problem, JavaTurtleSourceParser.Problem.IntegerRange)
     checkedSource(semanticSource("double value = 2147483648.0;"))
   }
 
   test("turtle resolution widens after integer division and preserves numeric Turtle arguments") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val resolved = resolvedSource(turtleClass(
       "static void draw(double length) { Turtle.forward(length / 3); } " +
         "public static void main(String[] args) { double whole = 10 / 3; double thirds = 10.0 / 3; " +
@@ -880,11 +883,11 @@ class JavaParserTest extends FunSuite {
       checkedSource(semanticSource(s"while ($condition) {}"))
       checkedSource(semanticSource(s"double value; if ($condition) { value = 10.5; } Turtle.forward(value);"))
       assertEquals(semanticProblem(semanticSource(s"while (!($condition)) {}")).problem,
-        JavaTurtleSource.Problem.UnreachableStatement, clue = condition)
+        JavaTurtleSourceParser.Problem.UnreachableStatement, clue = condition)
     }
     for condition <- Seq("0.0 != -0.0", "0.0 / 0.0 == 0.0 / 0.0", "0.0 / 0.0 < 1.0") do
       assertEquals(semanticProblem(semanticSource(s"while ($condition) {}")).problem,
-        JavaTurtleSource.Problem.UnreachableStatement, clue = condition)
+        JavaTurtleSourceParser.Problem.UnreachableStatement, clue = condition)
     checkedSource(semanticSource("double infinity = 1.0 / 0.0; double nan = 0.0 / 0.0;"))
   }
 
@@ -892,23 +895,23 @@ class JavaParserTest extends FunSuite {
     for body <- Seq("int value = 1.0;", "distance = 1.0;", "double value = true;", "boolean value = 1.0;",
       "flag = 1.0;", "double value = flag + 1.0;", "double value = !1.0;", "boolean value = 1.0 == flag;",
       "if (1.0) {}", "double value = 1.0; value += flag;") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.TypeMismatch, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.TypeMismatch, clue = body)
     for body <- Seq("run(1.0, flag);", "Turtle.forward(true);", "Turtle.turnRight(false);") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.ArgumentMismatch, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.ArgumentMismatch, clue = body)
     assertEquals(semanticProblem(turtleClass("static void draw(double value) {} public static void main(String[] args) { draw(true); }")).problem,
-      JavaTurtleSource.Problem.ArgumentMismatch)
+      JavaTurtleSourceParser.Problem.ArgumentMismatch)
     for operator <- Seq("+=", "-=", "*=", "/=", "%=") do {
       val problem = semanticProblem(semanticSource(s"distance $operator 1.0;"))
-      assertEquals(problem.problem, JavaTurtleSource.Problem.UnsupportedSyntax)
+      assertEquals(problem.problem, JavaTurtleSourceParser.Problem.UnsupportedSyntax)
       assert(problem.message.contains("double-to-int"), clue = problem.message)
     }
   }
 
   test("turtle double support keeps casts and value-returning methods outside the pilot") {
     for body <- Seq("double value = (double)distance;", "int value = (int)1.5;") do
-      assertEquals(sourceProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnsupportedSyntax, clue = body)
+      assertEquals(sourceProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.UnsupportedSyntax, clue = body)
     assertEquals(structureProblem(turtleClass(s"static double value() { return 1.5; } $mainMethod")).problem,
-      JavaTurtleSource.Problem.UnsupportedStructure)
+      JavaTurtleSourceParser.Problem.UnsupportedStructure)
     val recursive = turtleClass(s"static void draw(double length, int depth) { draw(length / 3, depth - 1); } $mainMethod")
     checkedSource(recursive)
   }
@@ -930,22 +933,22 @@ class JavaParserTest extends FunSuite {
     ))
     for body <- Seq("Turtle.forward(missing);", "before = 1; int before;", "if (flag) { int size = 1; } Turtle.forward(size);",
       "for (int i = 0; i < 4; i = i + 1) {} Turtle.forward(i);", "while (flag) { int size = 1; flag = false; } Turtle.forward(size);") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnknownVariable, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.UnknownVariable, clue = body)
   }
 
   test("turtle semantics rejects overlapping local and parameter declarations") {
     for body <- Seq("int distance = 1;", "int value = 1; if (flag) { int value = 2; }", "int value; int value;",
       "int i = 0; for (int i = 0; i < 4; i = i + 1) {}") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.DuplicateDeclaration, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.DuplicateDeclaration, clue = body)
     assertEquals(semanticProblem(turtleClass("public static void main(String[] args) { int args = 1; }")).problem,
-      JavaTurtleSource.Problem.DuplicateDeclaration)
+      JavaTurtleSourceParser.Problem.DuplicateDeclaration)
   }
 
   test("turtle semantics requires initialization before reads and compound assignments") {
     checkedSource(semanticSource("int value; value = distance; Turtle.forward(value);"))
     for body <- Seq("int value; Turtle.forward(value);", "int value = value;", "int value; value += 1;",
       "int value; boolean draw = value > 0;", "int value; if (flag) { value = 1; } Turtle.forward(value);") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UninitializedVariable, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.UninitializedVariable, clue = body)
   }
 
   test("turtle semantics joins initialized branches and handles returning paths") {
@@ -954,7 +957,7 @@ class JavaParserTest extends FunSuite {
       "int value; if (flag) { value = 10; } else { return; } Turtle.forward(value);") do
       checkedSource(semanticSource(body))
     for body <- Seq("return; Turtle.forward(1);", "if (flag) { return; } else { return; } Turtle.forward(1);") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnreachableStatement, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.UnreachableStatement, clue = body)
   }
 
   test("turtle semantics distinguishes constant condition flow from statement reachability") {
@@ -962,7 +965,7 @@ class JavaParserTest extends FunSuite {
       "int value; if (false) { Turtle.forward(value); }", "int value; if (true) { return; } Turtle.forward(value);",
       "if (false) { return; } Turtle.forward(1);") do checkedSource(semanticSource(body))
     for body <- Seq("if (false) { int value; Turtle.forward(value); }", "if (true) { return; } int value; Turtle.forward(value);") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UninitializedVariable, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.UninitializedVariable, clue = body)
   }
 
   test("turtle semantics carries short-circuit definite assignment without inventing constants") {
@@ -972,17 +975,17 @@ class JavaParserTest extends FunSuite {
       "while (false && 1 / 0 > 0) {} Turtle.forward(1);", "while (true || 1 / 0 > 0) {} Turtle.forward(1);",
       "while (1 / 0 == 0) {} Turtle.forward(1);") do checkedSource(semanticSource(body))
     assertEquals(semanticProblem(semanticSource("boolean value; boolean result = flag && value;")).problem,
-      JavaTurtleSource.Problem.UninitializedVariable)
+      JavaTurtleSourceParser.Problem.UninitializedVariable)
   }
 
   test("turtle semantics respects zero iterations for assignments and for initialization") {
     for body <- Seq("int value; while (flag) { value = 1; flag = false; } Turtle.forward(value);",
       "int value; for (int i = 0; i < 4; i = i + 1) { value = 1; } Turtle.forward(value);") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UninitializedVariable, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.UninitializedVariable, clue = body)
     checkedSource(semanticSource("int i; for (i = 0; i < 4; i = i + 1) {} Turtle.forward(i);"))
     checkedSource(semanticSource("int value; for (int i = 0; i < 4; i = i + value) { value = 1; }"))
     assertEquals(semanticProblem(semanticSource("for (int i = 0; i < 4; i = i + value) { int value = 1; }")).problem,
-      JavaTurtleSource.Problem.UnknownVariable)
+      JavaTurtleSourceParser.Problem.UnknownVariable)
   }
 
   test("turtle semantics checks non-completing loop bodies and constant loop reachability") {
@@ -990,14 +993,14 @@ class JavaParserTest extends FunSuite {
       "int value; for (int i = 0; i < 4; Turtle.forward(value)) { return; }") do checkedSource(semanticSource(body))
     for body <- Seq("while (false) {}", "for (; false; ) {}", "while (true) {} Turtle.forward(1);",
       "for (;;) {} Turtle.forward(1);", "while (2147483647 + 1 < 0) {} Turtle.forward(1);") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnreachableStatement, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.UnreachableStatement, clue = body)
   }
 
   test("turtle semantics checks decimal int boundaries with preserved operand syntax") {
     for value <- Seq("0", "2147483647", "-2147483648", "(-2147483648)", "- -2147483648", "2147483647 + 1") do
       checkedSource(semanticSource(s"int value = $value; Turtle.forward(value);"))
     for value <- Seq("2147483648", "+2147483648", "-(2147483648)", "-2147483649", "99999999999999999999999") do
-      assertEquals(semanticProblem(semanticSource(s"int value = $value;")).problem, JavaTurtleSource.Problem.IntegerRange, clue = value)
+      assertEquals(semanticProblem(semanticSource(s"int value = $value;")).problem, JavaTurtleSourceParser.Problem.IntegerRange, clue = value)
   }
 
   test("turtle semantics folds int constants with Java overflow and division rules") {
@@ -1010,7 +1013,7 @@ class JavaParserTest extends FunSuite {
       checkedSource(semanticSource(s"while ($condition) {}"))
       checkedSource(semanticSource(s"int value; if ($condition) { value = 1; } Turtle.forward(value);"))
       assertEquals(semanticProblem(semanticSource(s"while (!($condition)) {}")).problem,
-        JavaTurtleSource.Problem.UnreachableStatement, clue = condition)
+        JavaTurtleSourceParser.Problem.UnreachableStatement, clue = condition)
     }
   }
 
@@ -1019,18 +1022,18 @@ class JavaParserTest extends FunSuite {
       "int value = flag + 1;", "boolean value = flag < true;", "boolean value = distance == flag;",
       "boolean value = distance && flag;", "int value = !distance;", "int value = -flag;", "if (1) {}", "while (1) {}",
       "for (; 1; ) {}", "return distance;", "int value = run(distance, flag);") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.TypeMismatch, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.TypeMismatch, clue = body)
   }
 
   test("turtle semantics rejects wrong call argument counts and types") {
     for body <- Seq("Turtle.forward();", "Turtle.forward(1, 2);", "Turtle.forward(true);", "Turtle.turnRight(false);",
       "run(distance);", "run(flag, distance);") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.ArgumentMismatch, clue = body)
-    assertEquals(semanticProblem(semanticSource("missing(distance);")).problem, JavaTurtleSource.Problem.UnknownMethod)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.ArgumentMismatch, clue = body)
+    assertEquals(semanticProblem(semanticSource("missing(distance);")).problem, JavaTurtleSourceParser.Problem.UnknownMethod)
   }
 
   test("turtle value calls report method errors before a missing return value") {
-    import JavaTurtleSource.Problem
+    import JavaTurtleSourceParser.Problem
     for (expression, expected) <- Seq(
       "Math.sqrt(distance)" -> Problem.UnsupportedSyntax,
       "Math.abs(-distance)" -> Problem.UnsupportedSyntax,
@@ -1048,26 +1051,26 @@ class JavaParserTest extends FunSuite {
   test("turtle semantics resolves static receiver shadowing at the point of use") {
     checkedSource(semanticSource("Turtle.forward(distance); int Turtle = 1; int Drawing = 2;"))
     for body <- Seq("int Turtle = 1; Turtle.forward(distance);", "int Drawing = 1; Drawing.run(distance, flag);") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.TypeMismatch, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.TypeMismatch, clue = body)
     assertEquals(semanticProblem(turtleClass(s"static void move(int Turtle) { Turtle.forward(1); } $mainMethod")).problem,
-      JavaTurtleSource.Problem.TypeMismatch)
+      JavaTurtleSourceParser.Problem.TypeMismatch)
   }
 
   test("turtle semantics rejects statement and callee grouping without stripping parentheses") {
     for body <- Seq("1;", "distance + 1;", "(run(distance, flag));", "(distance = 1);", "(Turtle).forward(1);",
       "(run)(distance, flag);", "for (int i = 0; i < 4; (i = i + 1)) {}") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnsupportedSyntax, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.UnsupportedSyntax, clue = body)
   }
 
   test("turtle semantics excludes assignments in value positions and unsupported constructs") {
     for body <- Seq("Turtle.forward(distance = 1);", "int value = (distance = 1);", "if (flag = true) {}",
       "if (flag && (distance = 1) > 0) {}", "while (flag) { break; }", "while (flag) { continue; }",
       "try {} finally {}", "throw distance;", "Math.abs(distance);", "new Point();", "main();", "final int value = 1;") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnsupportedSyntax, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.UnsupportedSyntax, clue = body)
     for body <- Seq("int[] values;", "String text;", "Object value;", "List<String> values;", "int value = null;") do
-      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSource.Problem.UnsupportedType, clue = body)
+      assertEquals(semanticProblem(semanticSource(body)).problem, JavaTurtleSourceParser.Problem.UnsupportedType, clue = body)
     assertEquals(semanticProblem(turtleClass("public static void main(String[] args) { Turtle.forward(args); }")).problem,
-      JavaTurtleSource.Problem.UnsupportedType)
+      JavaTurtleSourceParser.Problem.UnsupportedType)
   }
 
   test("turtle semantics accepts direct mutual and unused helper recursion") {
@@ -1083,13 +1086,13 @@ class JavaParserTest extends FunSuite {
         "Drawing.draw(depth - 1, length / 3); } public static void main(String[] args) { draw(3, 10.5); }"
     ))
     for (body, expected) <- Seq(
-      "int pending; if (depth > 0) { draw(depth - 1, pending); }" -> JavaTurtleSource.Problem.UninitializedVariable,
-      "draw(depth - 1, missing);" -> JavaTurtleSource.Problem.UnknownVariable,
-      "draw(depth - 1);" -> JavaTurtleSource.Problem.ArgumentMismatch,
-      "draw(1.0, length);" -> JavaTurtleSource.Problem.ArgumentMismatch,
-      "if (depth > 0) { int depth = 1; draw(depth, length); }" -> JavaTurtleSource.Problem.DuplicateDeclaration,
-      "main();" -> JavaTurtleSource.Problem.UnsupportedSyntax,
-      "Drawing.main();" -> JavaTurtleSource.Problem.UnsupportedSyntax
+      "int pending; if (depth > 0) { draw(depth - 1, pending); }" -> JavaTurtleSourceParser.Problem.UninitializedVariable,
+      "draw(depth - 1, missing);" -> JavaTurtleSourceParser.Problem.UnknownVariable,
+      "draw(depth - 1);" -> JavaTurtleSourceParser.Problem.ArgumentMismatch,
+      "draw(1.0, length);" -> JavaTurtleSourceParser.Problem.ArgumentMismatch,
+      "if (depth > 0) { int depth = 1; draw(depth, length); }" -> JavaTurtleSourceParser.Problem.DuplicateDeclaration,
+      "main();" -> JavaTurtleSourceParser.Problem.UnsupportedSyntax,
+      "Drawing.main();" -> JavaTurtleSourceParser.Problem.UnsupportedSyntax
     ) do
       assertEquals(semanticProblem(turtleClass(s"static void draw(int depth, double length) { $body } $mainMethod")).problem,
         expected, clue = body)
@@ -1098,15 +1101,15 @@ class JavaParserTest extends FunSuite {
   test("turtle semantics distinguishes contextual calls and Object signature collisions") {
     checkedSource(turtleClass(s"static void yield() {} public static void main(String[] args) { Drawing.yield(); }"))
     assertEquals(semanticProblem(turtleClass("static void yield() {} public static void main(String[] args) { yield(); }")).problem,
-      JavaTurtleSource.Problem.UnsupportedSyntax)
+      JavaTurtleSourceParser.Problem.UnsupportedSyntax)
     for name <- Seq("wait", "notify", "notifyAll", "toString", "hashCode", "getClass", "clone", "finalize") do
       assertEquals(semanticProblem(turtleClass(s"static void $name() {} $mainMethod")).problem,
-        JavaTurtleSource.Problem.UnsupportedStructure, clue = name)
+        JavaTurtleSourceParser.Problem.UnsupportedStructure, clue = name)
     checkedSource(turtleClass(s"static void wait(int value) {} public static void main(String[] args) { wait(1); }"))
   }
 
   test("turtle resolution preserves the full square references and main wrapper") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val squareId = MethodId(0)
     val mainId = MethodId(1)
     val size = Variable(VariableId(squareId, 0), "sideLength", ValueType.IntValue)
@@ -1134,7 +1137,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("turtle resolution separates sibling and successive loop variable identities") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val resolved = resolvedSource(semanticSource(
       "if (flag) { int size = distance; Turtle.forward(size); } else { int size = distance; Turtle.forward(size); } " +
         "for (int i = 0; i < 2; i = i + 1) { Turtle.turnRight(i); } " +
@@ -1163,7 +1166,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("turtle resolution binds forward calls without mixing variable and method namespaces") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val resolved = resolvedSource(turtleClass(
       "static void first(int value) { Drawing.second(value); } static void second(int value) { Turtle.forward(value); } " +
         "public static void main(String[] input) { int second = 40; first(second); Drawing.second(second); second(second); }"
@@ -1186,7 +1189,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("turtle resolution distinguishes helpers named like facade commands") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val resolved = resolvedSource(turtleClass(
       "static void forward(int n) { Turtle.turnRight(n); } public static void main(String[] args) { forward(1); Turtle.forward(2); }"
     ))
@@ -1197,7 +1200,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("turtle resolution retains grouping control structures return and short-circuit nodes") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val resolved = resolvedSource(semanticSource(
       "int value = (distance + 1) * 2; boolean draw = flag && distance > 0 || distance < -10; " +
         "if (draw) { value += 1; } else { value = value - 1; } while (flag) { flag = false; } " +
@@ -1229,7 +1232,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("turtle resolution preserves uninitialized declarations empty statements and parameter assignments") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val owner = MethodId(0)
     val distance = Variable(VariableId(owner, 0), "distance", ValueType.IntValue)
     val flag = Variable(VariableId(owner, 1), "flag", ValueType.BooleanValue)
@@ -1248,7 +1251,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("turtle resolution binds outer update variables without leaking body declarations") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val resolved = resolvedSource(semanticSource(
       "int step; for (int i = 0; i < 4; i = i + step) { int temporary = 1; step = temporary; } " +
         "int temporary = 40; Turtle.forward(temporary);"
@@ -1267,7 +1270,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("turtle resolution maps every supported arithmetic assignment and comparison operator") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val value = Variable(VariableId(MethodId(0), 2), "value", ValueType.IntValue)
     val distance = Variable(VariableId(MethodId(0), 0), "distance", ValueType.IntValue)
     for (symbol, binary, assignment) <- Seq(
@@ -1292,7 +1295,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("turtle resolution retains int minimum syntax without prematurely folding arithmetic") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val resolved = resolvedSource(semanticSource(
       "int value = -2147483648; int other = (-2147483648); int wrapped = - -2147483648; " +
         "int product = 2147483647 * 2147483647; Turtle.forward(value);"
@@ -1304,7 +1307,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("turtle resolution preserves argument and operand order without evaluating division by zero") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val resolved = resolvedSource(turtleClass(
       "static void pair(int a, int b) { Turtle.forward(a); Turtle.forward(b); } " +
         "static void run(int n, boolean flag) { pair(n / 0, n % 0); boolean draw = flag && n / 0 > 0 || !flag && n % 0 == 0; } " +
@@ -1326,9 +1329,9 @@ class JavaParserTest extends FunSuite {
   test("turtle resolution is deterministic and keeps the exact original source") {
     val source = "\r\n" + turtleSource("for (int i = 0; i < 4; i += 1) { Turtle.forward(sideLength); Turtle.turnRight(90); }")
     val typed = checkedSource(source)
-    val first = JavaTurtleResolution.resolve(typed).fold(problem => fail(problem.message), identity)
+    val first = JavaTurtleSymbolResolver.resolve(typed).fold(problem => fail(problem.message), identity)
     resolvedSource(semanticSource("int unrelated = distance;"))
-    val second = JavaTurtleResolution.resolve(typed).fold(problem => fail(problem.message), identity)
+    val second = JavaTurtleSymbolResolver.resolve(typed).fold(problem => fail(problem.message), identity)
     assertEquals(first.typedSource, typed)
     assertEquals(first.source, source)
     assertEquals(first.methods, second.methods)
@@ -1415,21 +1418,21 @@ class JavaParserTest extends FunSuite {
         "for (n++; n < 3; ++n) { Turtle.forward(n); } Turtle.forward(++distance + value--);"
     ))
     for (body, expected) <- Seq(
-      "int n; n++;" -> JavaTurtleSource.Problem.UninitializedVariable,
-      "int n; ++n;" -> JavaTurtleSource.Problem.UninitializedVariable,
-      "flag++;" -> JavaTurtleSource.Problem.TypeMismatch,
-      "++flag;" -> JavaTurtleSource.Problem.TypeMismatch,
-      "unknown++;" -> JavaTurtleSource.Problem.UnknownVariable,
-      "int n = 0; (n + 1)++;" -> JavaTurtleSource.Problem.UnsupportedSyntax,
-      "int n = 0; ++(n++);" -> JavaTurtleSource.Problem.UnsupportedSyntax,
-      "int n = 0; n++++;" -> JavaTurtleSource.Problem.UnsupportedSyntax,
-      "int n = 0; n.field++;" -> JavaTurtleSource.Problem.UnsupportedSyntax,
-      "int n = 0; n[0]++;" -> JavaTurtleSource.Problem.UnsupportedSyntax,
-      "Turtle.forward(1)++;" -> JavaTurtleSource.Problem.UnsupportedSyntax,
-      "++1;" -> JavaTurtleSource.Problem.UnsupportedSyntax
+      "int n; n++;" -> JavaTurtleSourceParser.Problem.UninitializedVariable,
+      "int n; ++n;" -> JavaTurtleSourceParser.Problem.UninitializedVariable,
+      "flag++;" -> JavaTurtleSourceParser.Problem.TypeMismatch,
+      "++flag;" -> JavaTurtleSourceParser.Problem.TypeMismatch,
+      "unknown++;" -> JavaTurtleSourceParser.Problem.UnknownVariable,
+      "int n = 0; (n + 1)++;" -> JavaTurtleSourceParser.Problem.UnsupportedSyntax,
+      "int n = 0; ++(n++);" -> JavaTurtleSourceParser.Problem.UnsupportedSyntax,
+      "int n = 0; n++++;" -> JavaTurtleSourceParser.Problem.UnsupportedSyntax,
+      "int n = 0; n.field++;" -> JavaTurtleSourceParser.Problem.UnsupportedSyntax,
+      "int n = 0; n[0]++;" -> JavaTurtleSourceParser.Problem.UnsupportedSyntax,
+      "Turtle.forward(1)++;" -> JavaTurtleSourceParser.Problem.UnsupportedSyntax,
+      "++1;" -> JavaTurtleSourceParser.Problem.UnsupportedSyntax
     ) do assertEquals(semanticProblem(semanticSource(body)).problem, expected, clue = body)
     assertEquals(semanticProblem(turtleClass("public static void main(String[] args) { args++; }")).problem,
-      JavaTurtleSource.Problem.UnsupportedType)
+      JavaTurtleSourceParser.Problem.UnsupportedType)
   }
 
   test("turtle updates preserve old and new values evaluation order short circuit and overflow") {
@@ -1449,7 +1452,7 @@ class JavaParserTest extends FunSuite {
         "for (i--; i > 0; --i) { Turtle.forward(i); } Turtle.forward(i); }"
     )
     val resolved = resolvedSource(source)
-    val program = P.adapt(resolved).fold(problem => fail(problem.message), identity)
+    val program = JavaTurtleCompiler.compileResolved(resolved).fold(problem => fail(problem.message), identity)
     val execution = T.runVm(program)
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution, T.run(resolved))
@@ -1461,13 +1464,12 @@ class JavaParserTest extends FunSuite {
   }
 
   test("mutating Java expression adapters preserve binding identity and failures after updates") {
-    import JavaTurtleResolution.*
+    import JavaTurtleSymbolResolver.*
     val source = resolvedSource(turtleClass("public static void main(String[] args) { int n = 2; Turtle.forward(n++ + ++n); }"))
-    val program = P.adapt(source).fold(problem => fail(problem.message), identity)
+    val program = JavaTurtleCompiler.compileResolved(source).fold(problem => fail(problem.message), identity)
     val n = resolvedMethod(source, "main").body.statements.head.asInstanceOf[Declare].variable
     val definition = program.bindings.definition(n).fold(problem => fail(problem.message), identity)
     val expression = program.root.entryPoint.body.statements(1).node.asInstanceOf[P.Node.Call].arguments.head
-    assert(expression.expression.staticInformationExpression.hasSideEffects)
     var current: E.Value = E.Value.IntValue(2)
     val read: X.Reader = actual => { assert(actual eq definition); Right(current) }
     val write: X.Writer = (actual, value) => { assert(actual eq definition); current = value; Right(()) }
@@ -1604,9 +1606,9 @@ class JavaParserTest extends FunSuite {
     for body <- Vector("if (true) int x = 1;", "if (true) class Local {}", "if (true) void local() {}",
       "while (true) int x = 1;", "for (;;) int x = 1;", "if (true) return; else int x = 1;",
       "if (true) return; else else return;", "if (true) else return;", "else return;") do
-      assert(JavaTurtleSource.parse(turtleSource(body)).isLeft, clue = body)
+      assert(JavaTurtleSourceParser.parse(turtleSource(body)).isLeft, clue = body)
     for body <- Vector("if (true) return 3;", "if (true) missing();", "int x; if (true) Turtle.forward(x);") do
-      assert(P.compile(turtleSource(body)).isLeft, clue = body)
+      assert(JavaTurtleCompiler.compile(turtleSource(body)).isLeft, clue = body)
   }
 
   test("single return bodies retain their source range across comments and CRLF") {
@@ -1634,16 +1636,16 @@ class JavaParserTest extends FunSuite {
       val source = turtleClass("public static void main(String[] args) { " +
         (1 to count).foldLeft("return;")((body, _) => wrap(body)) + " }")
       assert(JavaTurtleInputLimits.checkParserInput(source).isRight)
-      assert(JavaTurtleSource.parse(source).isLeft)
+      assert(JavaTurtleSourceParser.parse(source).isLeft)
     }
-    assert(JavaTurtleSource.parse(turtleSource("for (;;) " * 512 + "return;")).isLeft)
+    assert(JavaTurtleSourceParser.parse(turtleSource("for (;;) " * 512 + "return;")).isLeft)
   }
 
   test("body depth allows ordinary braced nesting and sequential loops") {
     val braced = (1 to 14).foldLeft("return;")((body, _) => "for (;;) { " + body + " }")
     val bodies = Vector(braced, "for (;;) " * 8 + "return;",
       "for (int i = 0; i < 1; i++) Turtle.forward(i); " * 40)
-    bodies.foreach(body => assert(P.compile(turtleSource(body)).isRight, clue = body))
+    bodies.foreach(body => assert(JavaTurtleCompiler.compile(turtleSource(body)).isRight, clue = body))
   }
 
   test("parameters loop headers and synthetic else-if blocks follow AST child paths") {
@@ -1678,7 +1680,7 @@ class JavaParserTest extends FunSuite {
     assertEquals(sourceTexts(retained)(_.isInstanceOf[JavaParenthesizedExpression]),
       Vector("((a + b))", "(a + b)", "(c - d)"))
     assertEquals(sourceTexts(retained) { case JavaOperationBinary(_, "+", _) => true; case _ => false }, Vector("a + b"))
-    val checked = JavaTurtleSource.parse(turtleSource("Turtle.forward((sideLength + 1));"))
+    val checked = JavaTurtleSourceParser.parse(turtleSource("Turtle.forward((sideLength + 1));"))
       .fold(problem => fail(problem.message), identity)
     assertSourceTree(checked.sourceMap)
     assert(checked.program eq checked.sourceMap.program)

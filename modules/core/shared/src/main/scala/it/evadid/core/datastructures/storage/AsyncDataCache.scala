@@ -103,7 +103,7 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
 
   // public api
 
-  def removeFromCache(toDelete: List[I] = List()): Unit = syncLock.synchronized {
+  def removeFromCache(toDelete: Seq[I] = List()): Unit = syncLock.synchronized {
     cachedRequests.synchronized {
       toDelete.foreach(curInput => {
         cachedRequests.get(curInput).foreach(curRequest => {
@@ -179,13 +179,13 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
   }
 
   private def appendCacheInfoToMsg(msg: String): String = syncLock.synchronized {
-    val cached: List[CachedRequest[I, O]] = cachedRequests.toList.map(_._2)
-    val succeeded: List[SucceededRequest[I, O]] = cached.collect { case finished: SucceededRequest[I, O] => finished }
-    val failed: List[FailedRequest[I, O]] = cached.collect { case finished: FailedRequest[I, O] => finished }
-    val deleted: List[DeletedRequest[I, O]] = cached.collect { case deleted: DeletedRequest[I, O] => deleted }
-    val started: List[StartedRequest[I, O]] = cached.collect { case started: StartedRequest[I, O] => started }
+    val cached: Seq[CachedRequest[I, O]] = cachedRequests.toList.map(_._2)
+    val succeeded: Seq[SucceededRequest[I, O]] = cached.collect { case finished: SucceededRequest[I, O] => finished }
+    val failed: Seq[FailedRequest[I, O]] = cached.collect { case finished: FailedRequest[I, O] => finished }
+    val deleted: Seq[DeletedRequest[I, O]] = cached.collect { case deleted: DeletedRequest[I, O] => deleted }
+    val started: Seq[StartedRequest[I, O]] = cached.collect { case started: StartedRequest[I, O] => started }
 
-    val cacheInfoLines: List[String] = List(
+    val cacheInfoLines: Seq[String] = List(
       s"cache status: currently ${cachedRequests.size} elements (${started.size} loading + ${succeeded.size} finished + ${failed.size} failed + ${deleted.size} deleted)",
       Logger.formatPerformance("cache", cache_hits, cache_hits + cache_misses, "cache hits", "total requests"),
       Logger.formatPerformance("fetching", succeeded.size, succeeded.size + failed.size, "succeeded elements", "succeeded + failed elements")

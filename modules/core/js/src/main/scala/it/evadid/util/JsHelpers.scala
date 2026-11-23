@@ -18,11 +18,8 @@ object JsHelpers {
 
     def fromJsOrDefault(in: TYPE_JS, default: TYPE_SCALA): TYPE_SCALA = fromJsToScala(in).getOrElse(default)
 
-    def fromJsToScala(in: TYPE_JS): Option[TYPE_SCALA] = {
-      try Some(in.asInstanceOf[TYPE_SCALA])
-      catch case _ => try Some(parseFromJs(in))
-      catch case _ => None
-    }
+    /** A cast to the erased Scala type checks nothing, so every value is parsed. */
+    def fromJsToScala(in: TYPE_JS): Option[TYPE_SCALA] = scala.util.Try(parseFromJs(in)).toOption
 
     def unsafeFromJsToScala(in: TYPE_JS): TYPE_SCALA = fromJsToScala(in).get
   }
@@ -44,7 +41,8 @@ object JsHelpers {
 
   val doubleHelper: ConvertScalaAndJs[Double, js.Any] = new ConvertScalaAndJs[Double, js.Any] {
     override def fromScalaToJs(in: Double): js.Any = in
-    override def parseFromJs(in: js.Any): Double = in.toString.toDouble
+    override def parseFromJs(in: js.Any): Double =
+      if js.typeOf(in) == "number" then in.asInstanceOf[Double] else in.toString.toDouble
   }
 
 

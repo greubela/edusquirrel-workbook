@@ -87,13 +87,14 @@ case class TurtlePathBuilder[T : Fractional](
 
   def backward(distance: T): TurtlePathBuilder[T] = forward(-distance)
 
-  def getY(): T = turtleState.y
+  /** The turtle's y coordinate, pointing up as in Python and Snap; the SVG geometry stores it negated. */
+  def getY(): T = SvgPathBuilder.fromDouble[T](snapNearZero(-turtleState.y.toDouble))
 
   def heading(): T = turtleState.headingDeg
 
   def towards(x: T, y: T): T = {
     val dx = x.toDouble - turtleState.x.toDouble
-    val dy = turtleState.y.toDouble - y.toDouble
+    val dy = y.toDouble - getY().toDouble
     val angleDeg = Math.toDegrees(Math.atan2(dy, dx))
     SvgPathBuilder.fromDouble[T](angleDeg)
   }
@@ -101,12 +102,13 @@ case class TurtlePathBuilder[T : Fractional](
   def setHeading(degrees: T): TurtlePathBuilder[T] =
     this.copy(turtleState = turtleState.copy(headingDeg = wrapHeading(degrees)))
 
+  /** Moves to turtle coordinates (y up), like `forward`, which draws in the SVG geometry with y down. */
   def goto(x: T, y: T): TurtlePathBuilder[T] = {
-    val endPoint = Point[T](x, y)
+    val endPoint = Point[T](x, SvgPathBuilder.fromDouble[T](snapNearZero(-y.toDouble)))
     appendGeometry(endPoint, turtleState.penDown)
   }
 
-  def setX(x: T): TurtlePathBuilder[T] = goto(x, turtleState.y)
+  def setX(x: T): TurtlePathBuilder[T] = goto(x, getY())
 
   def setY(y: T): TurtlePathBuilder[T] = goto(turtleState.x, y)
 
@@ -156,12 +158,15 @@ case class TurtlePathBuilder[T : Fractional](
 
   def arcRight(radius: T, extentDeg: T): TurtlePathBuilder[T] = drawArc(radius, extentDeg, turnLeft = false)
 
+  /** CPython's `turtle.circle`: chords between points on the circle, with a half turn before and after,
+    * so the turtle ends exactly on the circle. `turnLeft = false` mirrors it for `arc_right`.
+    */
   private def drawArc(radius: T, extentDeg: T, turnLeft: Boolean): TurtlePathBuilder[T] = {
-    val extent = extentDeg.toDouble
-    val steps = math.max(8, math.round(math.abs(extent) / 10.0).toInt)
-    val length = SvgPathBuilder.fromDouble[T]((2 * Math.PI * radius.toDouble) * (extent / 360.0) / steps)
-    val rotation = SvgPathBuilder.fromDouble[T](extent / steps * (if turnLeft then 1 else -1))
-    (0 until steps).foldLeft(this)((builder, _) => builder.forward(length).left(rotation))
+    val (steps, length, turn) = TurtlePathBuilder.arcSteps(radius.toDouble, extentDeg.toDouble, turnLeft)
+    val halfTurn = SvgPathBuilder.fromDouble[T](turn / 2)
+    val stepTurn = SvgPathBuilder.fromDouble[T](turn)
+    val stepLength = SvgPathBuilder.fromDouble[T](length)
+    (0 until steps).foldLeft(left(halfTurn))((builder, _) => builder.forward(stepLength).left(stepTurn)).left(-halfTurn)
   }
 
   def getX(): T = turtleState.x
@@ -199,6 +204,17 @@ case class TurtlePathBuilder[T : Fractional](
 }
 
 object TurtlePathBuilder {
+  val SnapHeadingDeg: Double = 90
+
+  /** Steps, chord length and turn per step of CPython's `turtle.circle(radius, extent)`; shared by the Java `Turtle`. */
+  def arcSteps(radius: Double, extent: Double, turnLeft: Boolean): (Int, Double, Double) = {
+    val steps = 1 + (math.min(11 + math.abs(radius) / 6.0, 59.0) * math.abs(extent) / 360.0).toInt
+    val turn = extent / steps
+    val length = 2 * radius * math.sin(math.toRadians(turn / 2))
+    val (signedLength, signedTurn) = if radius < 0 then (-length, -turn) else (length, turn)
+    (steps, signedLength, if turnLeft then signedTurn else -signedTurn)
+  }
+
   given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[TurtlePathBuilder[T]] =
     upickle.default.readwriter[(Point[T], TurtleState[T], List[TurtleCommand[T]], SvgPathBuilderImmutable[T], List[TurtleStyledSegment[T]], SvgPathBuilderImmutable[T])].bimap(value => (value.startPoint, value.turtleState, value.turtleCommands, value.svgPathBuilder, value.styledSegments, value.currentSegmentPath), value => TurtlePathBuilder[T](value._1, value._2, value._3, value._4, value._5, value._6))
 

@@ -1,13 +1,15 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaString, ProgrammingStatePythonString}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleDrawingPolicy, TurtleGraphic}
 import munit.FunSuite
+import com.raquo.airstream.state.Var
+import scala.util.Try
 
 class TurtleJsxGraphRendererSpec extends FunSuite {
   private def coverage(commands: List[TurtleCommand[Double]], target: TurtleGraphic) =
@@ -23,10 +25,10 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
       ("forward(5)\nforward(5)", "M0 0 L10 0"),
       ("forward(10)\npen_up()\ngoto_x_y(10, 5)\ngoto_x_y(20, 0)\npen_down()\nforward(10)", "M0 0 L10 0 M20 0 L30 0"))
     Future.traverse(cases) { (code, path) =>
-      val source = ProgrammingStatePythonString(code)
+      val source = ProgrammingStateRaw(Python, code)
       val target = TurtleGraphic.TurtleGraphicSvgString(path)
       Future.traverse(TurtleDrawingPolicy.values.toList) { policy =>
-        val visual = TurtleDrawingGrading.assess(source.toBeExpression.deriveTurtleCommands, target, policy)
+        val visual = TurtleDrawingGrading.assess(source.toBeExpression.turtleCommandExecutionInfo.completedCommands, target, policy)
         RecreateShapeGrader(target, GradingImportance.REQUIRED_TEST, comparisonPolicy = policy)
           .gradeStateSafe(source, false, ExecutionContextInformation.default).map { saved =>
             assertEquals(visual.matches, saved.gradingStatus.isCorrect, clues(code, policy))
@@ -36,33 +38,45 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     }
   }
 
+  private def previewAssessment(state: ProgrammingState): Try[TurtleDrawingGrading.Assessment] =
+    CompareShapePreview(Var(state), TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes).assessment(state)
+
+  test("previews and graders of one state share a single comparison per target and policy") {
+    val state = ProgrammingStateRaw(Python, "forward(12)")
+    val target = TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0")
+    TurtleDrawingPolicy.values.toList.foreach { policy =>
+      val preview = TurtleDrawingGrading.assess(state, target, policy)
+      val shared = state.toBeExpression.turtleComparison(target, policy)
+      assert(shared eq state.toBeExpression.turtleComparison(target, policy), clues(policy))
+      assertEquals(preview.matches, shared.gradingStatus.isCorrect)
+      assertEquals(preview, TurtleDrawingGrading.assess(state.toBeExpression.turtleCommandExecutionInfo.completedCommands, target, policy))
+    }
+  }
+
   test("preview conversion retains Java drafts it cannot display") {
-    List("class Drawing {", "class Drawing { static void main(String[] args) {} }").foreach { code =>
-      val state = ProgrammingStateJavaString(code)
+    List("class Drawing {").foreach { code =>
+      val state = ProgrammingStateRaw(Java, code)
       val fingerprint = state.fingerprint()
-      assert(HtmlTurtleRecreateShapeRenderer.commandsForPreview(state).isFailure)
+      assert(previewAssessment(state).isFailure)
       assertEquals(state.fingerprint(), fingerprint)
       assertEquals(state.code, code)
     }
   }
 
-  test("the program card recognizes Java classes and unfinished text without converting them") {
-    val sources: List[ProgrammingState] = List(ProgrammingStateJavaString("class Drawing {}"),
-      ProgrammingStateJavaString(" \r\nclass Drawing {\t "), ProgrammingStatePythonString("forward(\n\t "))
-    sources.foreach { source =>
-      val fingerprint = source.fingerprint()
-      assert(HtmlTurtleRecreateShapeRenderer.hasProgram(source))
-      assertEquals(source.fingerprint(), fingerprint)
-    }
-    assert(!HtmlTurtleRecreateShapeRenderer.hasProgram(ProgrammingStateJavaString(" \r\n\t ")))
-    assert(!HtmlTurtleRecreateShapeRenderer.hasProgram(ProgrammingStatePythonString(" \r\n\t ")))
+  test("shape preview evaluates complete Java classes through the shared expression tree") {
+    val code = "class Drawing { static void main(String[] args) { Turtle.forward(12); } }"
+    val state = ProgrammingStateRaw(Java, code)
+    val assessment = previewAssessment(state).get
+    assert(assessment.matches)
+    assertEquals(state.code, code)
+    val empty = previewAssessment(ProgrammingStateRaw(Java, "class Drawing { static void main(String[] args) {} }")).get
+    assert(!empty.matches)
   }
 
-  test("preview conversion still derives supported turtle commands") {
-    assertEquals(
-      HtmlTurtleRecreateShapeRenderer.commandsForPreview(ProgrammingStatePythonString("forward(12)")).get,
-      List(TurtleCommand.Forward[Double](12.0))
-    )
+  test("shape preview assesses supported turtle commands") {
+    val assessment = previewAssessment(ProgrammingStateRaw(Python, "forward(12)")).get
+    assert(assessment.matches)
+    assert(assessment.scene.lines.forall(_.result == LineResult.Correct))
   }
 
   private def assertPoint(actual: Point[Double], expected: Point[Double]): Unit = {
@@ -290,8 +304,9 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     assert(!result.matches)
     val scene = result.scene
     assertEquals(scene.lines.map(_.result), List(LineResult.Correct, LineResult.Missing, LineResult.Unexpected))
-    assertPoint(scene.lines.last.start, Point(30.0, 30.0))
-    assertPoint(scene.lines.last.end, Point(35.0, 30.0))
+    // Scenes are in SVG coordinates (y down); goto takes turtle coordinates (y up).
+    assertPoint(scene.lines.last.start, Point(30.0, -30.0))
+    assertPoint(scene.lines.last.end, Point(35.0, -30.0))
     assertEquals(scene.angles.map(angle => (angle.lineBefore, angle.lineAfter)), List((0, 1)))
     assertEqualsDouble(TurtleJsxGraphRenderer.angleSector(scene, scene.angles.head, 2).degrees, 90.0, 1e-7)
   }
@@ -301,7 +316,8 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
       command("forward", 10), command("right", 90), command("forward", 10)))
     val split = List(command("penup"), command("forward", 2), command("pendown"),
       command("forward", 5), command("forward", 5), command("right", 90), command("forward", 5), command("forward", 5))
-    val reversed = List(command("penup"), command("goto", 12, 10), command("pendown"),
+    // The target turns right, which is downwards: turtle y -10.
+    val reversed = List(command("penup"), command("goto", 12, -10), command("pendown"),
       command("goto", 12, 0), command("goto", 2, 0))
     val nearby = List(command("penup"), command("forward", 2), command("pendown"),
       command("forward", 9.9), command("right", 90), command("forward", 10))

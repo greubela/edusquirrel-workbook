@@ -4,15 +4,18 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.distribution.commandTypes.SqlEditorCommands.{Request, Response}
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
-import upickle.default.ReadWriter
-
-import upickle.default.*
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import upickle.default.ReadWriter
+import upickle.default.*
 object LabeledNumberInteraction {
+
 
   /**
    * Describes the kind of numeric value a [[LabeledNumberInteraction]] edits.
@@ -47,7 +50,6 @@ object LabeledNumberInteraction {
       )
     }
   }
-
 }
 
 case class LabeledNumberInteraction(
@@ -56,10 +58,11 @@ case class LabeledNumberInteraction(
                                      numberType: NumberType,
                                      override val defaultValue: String = "0",
                                      diff: BigDecimal = BigDecimal(1),
-                                   ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
+                                   ) extends WorkbookInteractionElement[TextInteractionFormat.type] {
+
   override val associatedFactory = LabeledNumberInteraction.factory
 
-  lazy val childrenOfThisElement: List[WorkbookElement] = List()
-  override val serializerInteractionContent: Serializer[String] = Serializer.fromUpickleJson(summon[ReadWriter[String]])
+  lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
+
 
 }

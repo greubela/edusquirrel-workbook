@@ -9,7 +9,7 @@ import it.evadid.core.datastructures.vectorShapes.atomar.AppShapeDrawingRoutineE
 import it.evadid.core.datastructures.vectorShapes.compositions.CompositionBlockStack
 import it.evadid.core.datastructures.vectorShapes.config.AppShapeElementConfig
 import it.evadid.core.datastructures.vectorShapes.helper.AlignmentInParent
-import it.evadid.core.datastructures.vectorShapes.svg.{BeExpressionToTurtleCommands, SvgPathBuilder, SvgPathBuilderImmutable, TurtlePathBuilder}
+import it.evadid.core.datastructures.vectorShapes.svg.{SvgPathBuilder, SvgPathBuilderImmutable, TurtlePathBuilder}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.TurtlePenStyle
 import it.evadid.util.logging.Logger
 import it.evadid.vm.code.abstractions.BeExpression
@@ -21,8 +21,8 @@ object VmToSvg {
     renderTurtlePathBuilder(
       TurtlePathBuilder(
         Point(0.0, 0.0),
-        BeExpressionToTurtleCommands(expression),
-        BeExpressionToTurtleCommands.SnapHeadingDeg
+        it.evadid.vm.simulation.turtle.TurtleProgramAnalysis(expression).completedCommands,
+        TurtlePathBuilder.SnapHeadingDeg
       )
     )
 

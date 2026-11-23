@@ -13,6 +13,10 @@
 .turtle-gradig-panel .turtle-line--neutral { stroke: var(--color-gray-12); }
 .turtle-gradig-panel--unavailable { padding: var(--space-lg); color: var(--color-accent-error); }
 .turtle-gradig-panel .turtle-line--jump { stroke-dasharray: var(--space-sm) var(--space-sm); }
+/* Step-by-step replay: strokes of the current step stand out, later strokes stay faint. */
+.turtle-gradig-panel .turtle-line--current { stroke: var(--color-accent-strong); stroke-width: calc(var(--space-xs) * 1.6); }
+.turtle-gradig-panel .turtle-line--upcoming { stroke: var(--color-gray-4); stroke-opacity: 0.45; }
+.turtle-gradig-panel .turtle-marker { fill: var(--color-accent-strong); stroke: var(--color-surface-base); stroke-width: 2px; }
 
 .turtle-gradig-panel .turtle-point {
     fill: var(--color-accent-error);
@@ -28,6 +32,13 @@
     stroke-width: 1px;
     fill-opacity: 0.9;
     stroke-opacity: 0.1;
+}
+
+/* Hover texts (angle degrees, point coordinates) contrast with the lines and the grey sectors. */
+.turtle-gradig-panel .turtle-hover-label {
+    fill: var(--color-accent-strong);
+    color: var(--color-accent-strong);
+    font-weight: 600;
 }
 
 .turtle-gradig-panel .is-emphasized {

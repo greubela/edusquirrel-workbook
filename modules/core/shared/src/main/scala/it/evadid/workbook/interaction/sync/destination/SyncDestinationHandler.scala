@@ -17,6 +17,9 @@ trait SyncDestinationHandler {
 
   def storeElementRaw(logger: SyncLogger, key: String, value: String)(using ec: ExecutionContext): Future[SyncSuccess]
 
+  /** Atomically replace one value using its current contents; no asynchronous gap inside the update. */
+  def updateElementRaw(logger: SyncLogger, key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess]
+
   def readElementRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[String]
 
   def readDestinationRaw(logger: SyncLogger)(implicit ec: ExecutionContext): Future[Map[String, String]]

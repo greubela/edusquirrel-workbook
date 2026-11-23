@@ -69,13 +69,13 @@ class UserPackageSpec extends FunSuite {
     assert(info.toString.contains("logged in: false"))
   }
 
-  test("online defaults retain both classic destinations and include the relational V2 destination") {
+  test("online defaults include both backend history layouts") {
     import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
     val remote = UserConfig.onlineDefaults.syncDestinations.map(_.syncDestination).collect {
       case database: SyncDestinationBasedOnHistoryDatabase => database
     }
-    assertEquals(remote, List(defaultDatabaseWithKey, defaultDatabaseKeyless, defaultDatabaseV2))
-    assertEquals(remote.map(_.format).distinct.size, 3)
+    assertEquals(remote, Seq(defaultDatabase, defaultBlobDatabase))
+    assertEquals(remote.map(_.format).distinct.size, 2)
   }
 
   test("saved preferences exclude all session secrets and public database information has no credentials") {
@@ -87,9 +87,9 @@ class UserPackageSpec extends FunSuite {
       llmApiConfig = Some(LlmConfiguration("https://example.com/chat", "model", Some("llm-secret"))),
       databaseConfig = Some(DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "owner", "db-secret")))
     val destination = it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
-      credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalEvents)
+      credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalFormat, buffered = false)
     val config = UserConfig(List(it.evadid.workbook.interaction.sync.SyncInformation(destination,
-      it.evadid.workbook.interaction.sync.SyncStrategy.SYNC_MAJOR)), isOnlineAccount = false)
+      it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_LAST_MAJOR)), isOnlineAccount = false)
     val info = AllUserInfo(user, credentials, config)
     assertEquals(read[AllUserInfo](write(info)), info)
     val saved = write(SavedUserPreferences(info.user, info.config.withoutCredentials))

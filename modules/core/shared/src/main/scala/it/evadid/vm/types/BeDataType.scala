@@ -1,5 +1,6 @@
 package it.evadid.vm.types
 
+import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.util.io.Serializer
@@ -32,11 +33,13 @@ object BeDataType {
     {
       case AnyType => ujson.Str("Singleton(AnyType$)")
       case atomic: BeDataTypeAtomic => writeJs(atomic)(using rwAtom)
+      case named: ClassType => writeJs(named)
       case union: BeUnionAllowedTypes => writeJs(union)
     },
     {
       case ujson.Str("Singleton(AnyType$)") => AnyType
       case json: ujson.Str => read[BeDataTypeAtomic](json)(using rwAtom)
+      case json: ujson.Obj if json.obj.contains("className") => read[ClassType](json)
       case json: ujson.Obj => read[BeUnionAllowedTypes](json)
       case _ => throw new IllegalArgumentException("Invalid data type representation")
     }
@@ -55,15 +58,21 @@ object BeDataType {
   }
 
 
+  case class ClassType(className: BeEntityName) extends BeUnionType derives ReadWriter {
+    def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(NamingStyle.fromAnyNotationToParts(className.universalInterpretation()).map(_.capitalize).mkString)
+    def formatValueForDisplay(value: String): LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(value)
+    def isValidLiteral(value: String): Boolean = false
+    def canTakeValuesFrom(other: BeDataType): BeDataTypeAssigningPossible = other match {
+      case AnyType => AssigningPossibleWithImplicitCast(this)
+      case value if value == this => AssigningPossibleWithSameType(this)
+      case BeUnionAllowedTypes(types) if types.contains(this) => AssigningPossibleWithImplicitCast(this)
+      case _ => AssigningNotPossible()
+    }
+  }
+
   case object AnyType extends BeUnionType with AutoSerializableSingleton[AnyType.type] {
-    private val displayMap: LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap("Any") /*LanguageMap.concatLanguageMaps[
-      ProgrammingLanguage
-    ](
-      List(
-        LanguageMap.mapBasedLanguageMap(Map(Python -> "Any", Java -> "Object")),
-        LanguageMap.universalMap("Any")
-      )
-    )*/
+    private val displayMap: LanguageMap[ProgrammingLanguage] =
+      LanguageMap.mapBasedLanguageMapWithFallback[ProgrammingLanguage](Map(Python -> "Any", Java -> "Object"), "Any")
 
     def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = displayMap
 
@@ -93,14 +102,12 @@ object BeDataType {
       other match {
         case AnyType => AssigningPossibleWithImplicitCast(this)
         case BeUnionAllowedTypes(otherTypes) => {
-          val typeIntersection = BeDataType.allowedTypesIntersection(
-            BeUnionAllowedTypes(Set(this)),
-            BeUnionAllowedTypes(otherTypes)
-          )
+          val typeIntersection = BeDataType.allowedTypesIntersection(this, BeUnionAllowedTypes(otherTypes))
           if (typeIntersection.isEmpty) AssigningNotPossible()
           else if (typeIntersection.get == this) AssigningPossibleWithSameType(this)
           else AssigningPossibleWithImplicitCast(typeIntersection.get)
         }
+        case named: ClassType => if dataTypes.contains(named) then AssigningPossibleWithImplicitCast(named) else AssigningNotPossible()
         case BeDataTypeAtomic(_, _, _, otherAllowedImplicitCasts) => {
           if (dataTypes.contains(other)) AssigningPossibleWithImplicitCast(other)
           else AssigningNotPossible()
@@ -122,9 +129,13 @@ object BeDataType {
   def typeIntersection(typeA: BeUnionType, typeB: BeUnionType): Option[BeDataType] = {
     if (typeA == AnyType) Some(typeB)
     else if (typeB == AnyType) Some(typeA)
-    else if (typeA.isInstanceOf[BeUnionAllowedTypes] && typeB.isInstanceOf[BeUnionAllowedTypes]) {
-      allowedTypesIntersection(typeA.asInstanceOf[BeUnionAllowedTypes], typeB.asInstanceOf[BeUnionAllowedTypes])
-    } else ???
+    else {
+      def members(value: BeUnionType): BeUnionAllowedTypes = value match {
+        case union: BeUnionAllowedTypes => union
+        case single => BeUnionAllowedTypes(Set(single))
+      }
+      allowedTypesIntersection(members(typeA), members(typeB))
+    }
   }
 
   /*trait ClassDataType extends BeDataType {
@@ -171,6 +182,7 @@ object BeDataType {
         else AssigningNotPossible()
       }
       case AnyType => AssigningPossibleWithImplicitCast(this)
+      case _: ClassType => AssigningNotPossible()
       case BeDataTypeAtomic(_, _, _, otherAllowedImplicitCasts) => {
         if (other == this) AssigningPossibleWithSameType(this)
         else if (otherAllowedImplicitCasts.contains(this)) AssigningPossibleWithImplicitCast(this)

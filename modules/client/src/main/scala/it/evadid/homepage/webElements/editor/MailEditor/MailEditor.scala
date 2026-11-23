@@ -52,14 +52,14 @@ case class MailEditor(underlyingVar: Var[InboxStateScaffolding], account: String
     div(cls := "mail-workspace",
       navTag(cls := "mail-folders", aria.label <-- labelText("folders"),
         MailFolder.all.zip(List("📥", "📤", "★", "▣", "♲")).map { (f, icon) => button(
-          typ := "button", cls.toggle("is-selected") <-- folder.signal.map(_ == f),
+          typ := "button", cls("is-selected") <-- folder.signal.map(_ == f),
           aria.pressed <-- folder.signal.map(v => (v == f).toString), span(icon), span(text <-- labelText(f)),
           span(cls := "mail-count", text <-- underlyingVar.signal.map(_.inboxState.getMailsInFolder(f).size.toString)),
           onClick --> (_ => selectFolder(f))) }),
       div(cls := "mail-list", role := "list", children <-- mails.combineWith(selection.signal).map { (ms, chosen) =>
         if (ms.isEmpty) List(p(text <-- labelText("emptyFolder"))) else ms.map(m => button(
-          typ := "button", cls := "mail-list-item", cls.toggle("is-unread") := !m.read,
-          cls.toggle("is-selected") := chosen.contains(m.id), aria.pressed := chosen.contains(m.id).toString,
+          typ := "button", cls := "mail-list-item", cls("is-unread") := !m.read,
+          cls("is-selected") := chosen.contains(m.id), aria.pressed := chosen.contains(m.id).toString,
           span(cls := "mail-sender", (if (m.read) "" else "● ") + m.senderName),
           span(m.subject), timeTag(m.timestamp), onClick --> (_ => selectMail(m.id))))
       }),

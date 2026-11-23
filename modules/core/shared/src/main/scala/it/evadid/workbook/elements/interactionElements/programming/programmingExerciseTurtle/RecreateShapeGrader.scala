@@ -1,6 +1,5 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
 
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
@@ -28,8 +27,7 @@ case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val import
                                         contextInformation: ExecutionContextInformation
                                       ): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
 
-    val actual = TurtleGraphic(state.toBeExpression.deriveTurtleCommands)
-    val comparison = TurtleGradingLogic.compare(actual, desiredResult, comparisonPolicy)
+    val comparison = state.toBeExpression.turtleComparison(desiredResult, comparisonPolicy)
     GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, comparison.gradingStatus)
   }(using contextInformation.futureExecutionContext)
 

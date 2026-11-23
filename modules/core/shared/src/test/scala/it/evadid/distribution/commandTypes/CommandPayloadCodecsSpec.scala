@@ -1,5 +1,6 @@
 package it.evadid.distribution.commandTypes
 
+import it.evadid.sql.BackendDatabase
 import it.evadid.distribution.clients.LocalExecutionClient
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory, SerializedException}
 import it.evadid.util.logging.{BasicLogger, Logger}
@@ -15,7 +16,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
 
   test("command log destinations come from registered definitions, with a default and sync override") {
     import it.evadid.sql.DatabaseTable
-    val syncNames = Set(SQLCommands.StoreToDbCommand.name, SQLCommands.fetchFromDbCommand.name, SQLCommands.clearValuesDbCommand.name)
+    val syncNames = Set(SQLCommands.StoreToDbCommand.name, SQLCommands.bulkStoreToDbCommand.name, SQLCommands.fetchEventsFromDbCommand.name, SQLCommands.clearValuesDbCommand.name, SQLCommands.resetUserHistoriesDbCommand.name)
     val definitions = ExecutionCommandFactory.knownCommands
     assertEquals(definitions.map(_.name).distinct.size, definitions.size)
     definitions.foreach { definition =>
@@ -29,6 +30,46 @@ class CommandPayloadCodecsSpec extends FunSuite {
     assertEquals(forged.storeLogIntoTable, Some(DatabaseTable.syncedLog))
   }
 
+  test("bulk histories round-trip with matching keys, redact credentials and reject ambiguous entries") {
+    import SQLCommands.*
+    import it.evadid.sql.*
+    import it.evadid.workbook.interaction.sync.UsageContext
+    import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+    import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
+    import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+    val key = UsageContext("program", "workbook", "user").toSyncContext("one")
+    val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type])
+    val credentials = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "test", "private-user", "private-password")
+    val request = BulkStoreToDbRequest(Vector(key), Vector(history), credentials, DatabaseHistoryFormat.BlobFormat)
+    assertEquals(read[BulkStoreToDbRequest](write(request)), request)
+    assertEquals(request.entries.map(_.syncContext), Seq(key))
+    val command = ExecutionCommand(bulkStoreToDbCommand.name, writeJs(request))
+    assert(!command.stripPrivacySensitiveInformation().toJson.contains("private-"))
+    intercept[IllegalArgumentException](request.copy(histories = Seq.empty))
+    intercept[IllegalArgumentException](request.copy(syncContexts = Seq(key, key), histories = Seq(history, history)))
+  }
+
+  test("default synchronization uses both backend formats and IndexedDB with explicit send strategies") {
+    import it.evadid.core.datastructures.user.UserConfig
+    import it.evadid.workbook.interaction.sync.EventSyncStrategy.*
+    import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
+    val defaults = UserConfig.defaultSyncDestinations
+    assertEquals(defaults.size, 3)
+    assertEquals(defaults.map(info => info.syncDestination -> info.syncStrategy).toSet,
+      Set[(it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition, it.evadid.workbook.interaction.sync.EventSyncStrategy)](defaultBrowserHistory -> SYNC_LAST, defaultDatabase -> SYNC_MAJOR, defaultBlobDatabase -> SYNC_MAJOR))
+    assertEquals(read[UserConfig](write(UserConfig.onlineDefaults)), UserConfig.onlineDefaults)
+  }
+
+  test("full resets use an explicit current command and reject ambiguous scopes") {
+    import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
+    import it.evadid.workbook.interaction.sync.UsageContext
+    val request = SQLCommands.DeleteInDbRequest(UsageContext("program", "workbook", "user"), None,
+      BackendDatabase, DatabaseHistoryFormat.RelationalFormat, allWorkbooks = true)
+    assertEquals(read[SQLCommands.DeleteInDbRequest](write(request)), request)
+    assertEquals(ExecutionCommandFactory.forName("reset-user-histories-in-db-request"), Some(SQLCommands.resetUserHistoriesDbCommand))
+    intercept[IllegalArgumentException](request.copy(limitToKey = Some("one-variable")))
+  }
+
   test("database table destinations serialize and reject SQL identifier injection") {
     import it.evadid.sql.DatabaseTable
     val value = DatabaseTable("customLog")
@@ -40,15 +81,10 @@ class CommandPayloadCodecsSpec extends FunSuite {
   test("default sync requests use the current explicit database wire fields on JVM and JavaScript") {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
     import it.evadid.workbook.interaction.sync.UsageContext
-    val request = SQLCommands.FetchAllFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"),
-      DatabaseConfig.defaultDb, None, DatabaseHistoryFormat.ClassicJsonWithKey)
+    val request = SQLCommands.FetchEventsFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"), Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, BackendDatabase, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.SYNC_EVERYTHING)
     val encoded = writeJs(request)
-    val config = encoded("databaseConfig")
-    assertEquals(config.obj.keySet.toSet, Set("$type", "dbFormat", "host", "port", "database"))
-    assertEquals(config("database").str, "db_332371_12")
-    assertEquals(config("host").str, "herrgreubel.lima-db.de")
-    assertEquals(config("dbFormat").str, "mysql")
-    assertEquals(config("port").str, "3306")
+    assertEquals(encoded("databaseConfig"), ujson.Str("BackendDatabase"))
+    assert(!write(request).contains("herrgreubel"))
   }
 
   test("both explicit database configurations work in destinations and requests while logs exclude credentials") {
@@ -58,11 +94,11 @@ class CommandPayloadCodecsSpec extends FunSuite {
     val context = UsageContext("program", "scenario", "user")
     val supplied = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "private-owner", "private-password")
     List[DatabaseConfiguration](supplied.withoutCredentials, supplied).foreach { config =>
-      val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.ClassicJsonWithKey)
+      val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.RelationalFormat, buffered = false)
       assertEquals(read[SyncDestinationBasedOnHistoryDatabase](write(destination)), destination)
-      val request = SQLCommands.FetchAllFromDbRequest(context, config, None, DatabaseHistoryFormat.ClassicJsonWithKey)
-      assertEquals(read[SQLCommands.FetchAllFromDbRequest](write(request)), request)
-      val command = ExecutionCommand(SQLCommands.fetchFromDbCommand.name, writeJs(request))
+      val request = SQLCommands.FetchEventsFromDbRequest(context, Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, config, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.SYNC_EVERYTHING)
+      assertEquals(read[SQLCommands.FetchEventsFromDbRequest](write(request)), request)
+      val command = ExecutionCommand(SQLCommands.fetchEventsFromDbCommand.name, writeJs(request))
       val safe = command.stripPrivacySensitiveInformation()
       assert(!safe.toJson.contains("private-"))
       assertEquals(read[DatabaseConfiguration](safe.json("databaseConfig")), config.withoutCredentials)
@@ -245,7 +281,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
       case error: SerializedException =>
         assert(error.msg.contains("sourceLength"))
         assert(!error.toJson.contains("private"))
-        assertEquals(error.cause, None)
+        assert(error.cause.nonEmpty)
         assertEquals(write(malformed), before)
         assert(!logger.getOut().contains("private") && !logger.getErr().contains("private"))
       case other => fail("Unexpected parse failure: " + other.getClass.getName)
@@ -262,7 +298,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
         case error: SerializedException =>
           assert(error.msg.contains("promptLength"))
           assert(!error.toJson.contains("private"))
-          assertEquals(error.cause, None)
+          assert(error.cause.nonEmpty)
         case other => fail(s"Unexpected parse failure: ${other.getClass.getName}")
       }
       val denied = factory.toLocalExecutionClient((_, _) => Future.successful("unused"), (_, _) => false)

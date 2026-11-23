@@ -24,6 +24,10 @@ object JSXGraph {
     def unsuspendUpdate(): Unit = js.native
 
     def update(): Unit = js.native
+
+    def removeObject(element: js.Any): Unit = js.native
+
+    def setBoundingBox(bounds: js.Array[Double], keepAspectRatio: Boolean): Unit = js.native
   }
 
   def available: Boolean = {

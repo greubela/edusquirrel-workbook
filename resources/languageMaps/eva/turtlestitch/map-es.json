@@ -1,6 +1,6 @@
 {
   "defaultReadExerciseInstruction": "Lee los comandos del siguiente programa",
-  "defaultExerciseTitle": "¡Recrea la figura!",
+  "instructionRecreateShape": "¡Recrea la figura!",
   "providedProjectLabel": "Proyecto proporcionado",
   "defaultExecuteExerciseInstruction": "¡Comprueba tu hipótesis!",
   "defaultAnalyzeExerciseInstruction": "Describe la figura que esperas que se cree",
@@ -10,5 +10,6 @@
   "showExpected": "Resultado esperado",
   "uploadTitle": "Subir proyecto",
   "uploadButton": "Subir proyecto de TurtleStitch (XML)",
-  "downloadButton": "Descargar el proyecto mostrado"
+  "downloadButton": "Descargar el proyecto mostrado",
+  "instructionRecreateShape": "¡Reproduce la figura con un programa!"
 }

@@ -1,7 +1,7 @@
 package it.evadid.distribution.commandTypes
 
 import it.evadid.distribution.commandTypes.WorkerCommands.*
-import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence as Evidence, JavaTurtleRuntime as T, JavaTurtleTrace as J}
+import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence as Evidence, JavaTurtleInterpreter as T, JavaTurtleTrace as J}
 import munit.FunSuite
 import upickle.default.*
 

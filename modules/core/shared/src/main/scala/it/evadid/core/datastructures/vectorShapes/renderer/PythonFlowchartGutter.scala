@@ -2,16 +2,18 @@ package it.evadid.core.datastructures.vectorShapes.renderer
 
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.tree.BeExpressionReference
-import it.evadid.vm.conversion.pythonexpression.{PythonNormalizer, PythonParser}
-import it.evadid.vm.conversion.pythonexpression.normalization.PythonNormalizationModel.*
+import it.evadid.vm.conversion.pythonexpression.PythonToExpression
+import it.evadid.vm.conversion.structured.SourceStructure
+import it.evadid.vm.parsing.python.clean.PythonAstParserSimple
+import it.evadid.vm.parsing.python.clean.model.PyAST.*
 import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeScope}
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
 /** A line-addressed graph for an editor gutter. Source is never rewritten.
-  * The existing BeExpression parser decides support; its normalization tree
-  * supplies statement boundaries, including rewritten elif/augmented assignments.
+  * The Python conversion decides support; the fastparse syntax tree supplies statements and
+  * [[SourceStructure.pythonCodeLines]] their physical rows.
   */
 object PythonFlowchartGutter {
   case class Node(line: Int, kind: String, depth: Int, label: String) derives upickle.default.ReadWriter
@@ -34,59 +36,64 @@ object PythonFlowchartGutter {
 
   /** Parses exactly `source`. `None` means the program is incomplete or unsupported. */
   private def parseChart(source: String): Option[Chart] = try {
-    val expression = PythonParser.default.parsePython(source)
-    val expressions = expression.recToTree(false, BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())).values
-      .collect { case BeExpressionReference(_, value) => value }
+    val expression = PythonToExpression.program(source).fullProgram
+    val expressions = expression.subtree
     if (expressions.exists {
       case _: BeExpressionUnparsable | _: BeExpressionUnsupported => true
       case _ => false
     }) None
     else {
-      val normalizer = PythonNormalizer.default
-      // Use the normalizer's own tokenization, one physical line at a time.
-      // Inline comments occupy the same row as their statement; blank rows stay
-      // in the document but do not acquire executable nodes.
-      val tokens = normalizer.normalizeLineEndings(source).split("\n", -1).toList.zipWithIndex.flatMap {
-        case (line, index) => normalizer.extractRawLines(line).map(raw => (index + 1, raw.text))
-      }.toVector
-      var cursor = 0
-      def consume(): Int = {
-        require(cursor < tokens.size, "Cannot align normalized statement to source")
-        val line = tokens(cursor)._1
-        cursor += 1
-        line
+      val program = PythonAstParserSimple.parse(source).fold(error => throw error, identity)
+      // Statements consume code rows in order; comment-only and blank rows stay without nodes.
+      val rows = SourceStructure.pythonCodeLines(normalized(source))
+      def row(cursor: Int): SourceStructure.CodeLine = rows.lift(cursor).getOrElse(throw IllegalArgumentException("Cannot align statement to source"))
+      def startsWith(cursor: Int, keyword: String): Boolean = rows.lift(cursor).exists(next => keywordOf(next.code) == keyword)
+      def body(statements: Seq[PyStatement], depth: Int, cursor: Int): (List[Positioned], Int) =
+        statements.foldLeft((List.empty[Positioned], cursor)) { case ((done, current), statement) =>
+          val (items, next) = position(statement, depth, current)
+          (done ++ items, next)
+        }
+      def position(statement: PyStatement, depth: Int, cursor: Int): (List[Positioned], Int) = statement match {
+        case PyEmptyStatement | _: PyCommentStatement => (Nil, cursor)
+        case PyBreakStatement | PyContinueStatement | _: PyTryStatement =>
+          throw IllegalArgumentException("Unsupported control-flow statement")
+        case PyIfStatement(_, yes, no) =>
+          val (thenBody, afterThen) = body(yes.statements, depth + 1, cursor + 1)
+          // An elif is the nested decision itself; only a physical else consumes a row.
+          val (elseLine, otherwise, next) =
+            if startsWith(afterThen, "elif") then {
+              val (nested, after) = body(no.statements, depth, afterThen)
+              (None, nested, after)
+            } else if startsWith(afterThen, "else") then {
+              val (elseBody, after) = body(no.statements, depth + 1, afterThen + 1)
+              (Some(row(afterThen).row), elseBody, after)
+            } else (None, Nil, afterThen)
+          (List(Positioned(row(cursor).row, row(cursor).code, depth, thenBody, otherwise, "decision", elseLine)), next)
+        case loop @ (_: PyWhileStatement | _: PyForStatement) =>
+          val statements = loop match {
+            case value: PyWhileStatement => value.bodyBlock.statements
+            case value: PyForStatement => value.bodyBlock.statements
+          }
+          val (items, next) = body(statements, depth + 1, cursor + 1)
+          (List(Positioned(row(cursor).row, row(cursor).code, depth, items, kind = "loop")), next)
+        case definition: PyFunctionDef =>
+          val header = cursor + definition.decorators.size
+          val (items, next) = body(definition.block.statements, depth + 1, header + 1)
+          (List(Positioned(row(header).row, row(header).code, depth, items, kind = "function")), next)
+        case definition: PyClassDef =>
+          val (items, next) = body(definition.block.statements, depth + 1, cursor + 1)
+          (List(Positioned(row(cursor).row, row(cursor).code, depth, items, kind = "class")), next)
+        case _ => (List(Positioned(row(cursor).row, row(cursor).code, depth)), cursor + 1)
       }
-      def position(statements: List[Statement], depth: Int): List[Positioned] = statements.map {
-        case SimpleStatement(text) =>
-          // The current parser treats these keywords as unresolved names,
-          // rather than providing control-flow expressions for them.
-          require(!Set("break", "continue").contains(text), "Unsupported control-flow keyword")
-          Positioned(consume(), text, depth)
-        case CompoundStatement(header, body) =>
-          val line = consume()
-          val kind = if (header.startsWith("while ") || header.startsWith("for ")) "loop"
-            else if (header.startsWith("def ")) "function"
-            else if (header.startsWith("class ")) "class"
-            else "process"
-          Positioned(line, header, depth, position(body, depth + 1), kind = kind)
-        case IfStatement(condition, yes, no) =>
-          require(yes.nonEmpty, "Missing conditional body")
-          val line = consume()
-          val thenBody = position(yes, depth + 1)
-          // Normalization lowers elif to else + if. Only a physical else
-          // consumes a token; an elif is consumed by the nested decision.
-          val elseLine = Option.when(no.nonEmpty && cursor < tokens.size && tokens(cursor)._2 == "else:")(consume())
-          val elseDepth = if elseLine.nonEmpty then depth + 1 else depth
-          Positioned(line, condition, depth, thenBody, no.toList.flatMap(position(_, elseDepth)), "decision", elseLine)
-      }
-      val positioned = position(normalizer.runPipeline(source).statementTree.statements, 0)
-      require(cursor == tokens.size, "Cannot align all source statements")
-      // A header without a body is stored as a plain statement, not an unparsable node.
-      if (headerWithoutBody(positioned)) None else Some(build(positioned))
+      val (positioned, consumed) = body(program.statements.map(_.statement), 0, 0)
+      require(consumed == rows.size, "Cannot align all source statements")
+      Some(build(positioned))
     }
   } catch {
     case NonFatal(_) => None
   }
+
+  private def normalized(source: String): String = PythonAstParserSimple.normalizeLineEndingsAndDetab(source)
 
   private val CompoundKeywords = Set("for", "while", "if", "elif", "else", "def", "class")
   private val UnsupportedKeywords = Set("break", "continue", "try", "except", "finally")
@@ -94,9 +101,7 @@ object PythonFlowchartGutter {
 
   /** `break`, `continue` and `try`/`except` stay empty instead of hiding behind a prefix. */
   private def hasUnsupportedStatement(source: String): Boolean =
-    PythonNormalizer.default.normalizeLineEndings(source).split("\n", -1).exists { line =>
-      UnsupportedKeywords.contains(keywordOf(line))
-    }
+    SourceStructure.pythonCodeLines(normalized(source)).exists(row => UnsupportedKeywords.contains(keywordOf(row.code)))
 
   /**
    * Keeps a finished prefix while the tail is still being typed.
@@ -104,16 +109,16 @@ object PythonFlowchartGutter {
    * Line numbers of the kept source stay put because the edit is only at the tail.
    */
   private def recoverIncompleteTail(source: String): Option[Chart] = {
-    val lines = PythonNormalizer.default.normalizeLineEndings(source).split("\n", -1).toVector
-    val normalized = lines.mkString("\n")
-    val codeRows = lines.indices.filter(i => codeOf(lines(i)).nonEmpty).reverse.take(MaxDroppedLines)
+    val text = normalized(source)
+    val lines = text.split("\n", -1).toVector
+    val codeRows = SourceStructure.pythonCodeLines(text).map(_.row - 1).reverse.take(MaxDroppedLines)
     codeRows.iterator.flatMap { last =>
       val kept = lines.take(last + 1)
       val candidate =
-        if (isCompoundHeader(kept(last))) withPass(kept, last)
+        if (isCompoundHeader(codeOf(kept(last)))) withPass(kept, last)
         else kept.mkString("\n")
       // parseChart already rejected the original source; skip that candidate.
-      Option.when(candidate != normalized)(candidate).flatMap(parseChart)
+      Option.when(candidate != text)(candidate).flatMap(parseChart)
     }.nextOption()
   }
 
@@ -124,23 +129,14 @@ object PythonFlowchartGutter {
     (before :+ passLine :++ after).mkString("\n")
   }
 
-  private def headerWithoutBody(items: List[Positioned]): Boolean = items.exists { item =>
-    (item.kind == "process" && isCompoundHeader(item.text) && item.body.isEmpty) ||
-      headerWithoutBody(item.body) || headerWithoutBody(item.otherwise)
-  }
+  private def isCompoundHeader(code: String): Boolean =
+    CompoundKeywords.contains(keywordOf(code)) && code.endsWith(":")
 
-  private def isCompoundHeader(line: String): Boolean =
-    CompoundKeywords.contains(keywordOf(line)) && codeOf(line).endsWith(":")
+  private def keywordOf(code: String): String =
+    code.trim.takeWhile(ch => ch.isLetterOrDigit || ch == '_')
 
-  private def keywordOf(line: String): String =
-    codeOf(line).takeWhile(ch => ch.isLetterOrDigit || ch == '_')
-
-  /** First non-comment token on the line; comments and strings come from extractRawLines. */
-  private def codeOf(line: String): String =
-    PythonNormalizer.default.extractRawLines(line)
-      .map(_.text)
-      .find(text => !text.startsWith("#"))
-      .getOrElse("")
+  /** The line's code without its comment. */
+  private def codeOf(line: String): String = SourceStructure.pythonCodeLines(line).headOption.map(_.code).getOrElse("")
 
   private def build(statements: List[Positioned]): Chart = {
     val nodes = mutable.ListBuffer.empty[Node]

@@ -41,10 +41,10 @@ test('login validates accounts, restores cached credentials after reload and cle
     const requestHeaders = [];
     const errors = [];
     const missingTranslations = [];
-    const destinations = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalEvents'].map(format => ({
-      syncDestination: {$type:'SyncDestinationBasedOnHistoryDatabase', format,
+    const destinations = ['BlobFormat', 'RelationalFormat'].map(format => ({
+      syncDestination: {$type:'SyncDestinationBasedOnHistoryDatabase', format, buffered:false,
         databaseConfig: {$type:'DatabaseConfig', dbFormat:'mysql', host:'herrgreubel.lima-db.de', port:'3306', database:'db_332371_12'}},
-      syncStrategy: {$type:'DesiredRelevance', desired:['MAJOR']}
+      syncStrategy: {$type:'KeepImportance', importance:['MAJOR']}
     }));
     let transportFailure = false;
     let validLogin = false;
@@ -69,8 +69,8 @@ test('login validates accounts, restores cached credentials after reload and cle
           value = {userKnown:true,tokenValid:validLogin,allUserInfo:validLogin ? {
             user,credentials:{signedBackendToken:token,singleAccessToken:null,llmApiConfig:null,databaseConfig:null},config:{syncDestinations:destinations,isOnlineAccount:true}} : null};
         }
-        else if (command.name === 'fetch-from-db-request') value = {fetchedElements:[]};
-        else if (command.name === 'sync-to-db-request' || command.name === 'clear-values-in-db-request') value = {elementsAdded:1,elementsChanged:0,elementsRemoved:0,timestampCommitted:'2026-11-09T12:00:00'};
+        else if (command.name === 'fetch-events-from-db-request') value = {fetchedElements:[]};
+        else if (command.name === 'sync-histories-to-db-request' || command.name === 'clear-values-in-db-request') value = {elementsAdded:1,elementsChanged:0,elementsRemoved:0,timestampCommitted:'2026-11-09T12:00:00'};
         else if (command.name === 'auth-mail-request') value = {associatedUser:null,sent:!unknownAccount};
         else throw new Error('Unexpected command ' + command.name);
         return route.fulfill({headers,contentType:'application/json',body:response(command,value)});
@@ -130,10 +130,10 @@ test('login validates accounts, restores cached credentials after reload and cle
     await login.locator('button').first().click();
     await page.waitForFunction(() => /No account|kein Konto/i.test(document.querySelector('.section-continue [role="status"]').textContent));
     unknownAccount = false;
-    const defaultFetches = ['ClassicJsonWithKey', 'ClassicKeylessJson', 'RelationalEvents'].map(format => page.waitForRequest(request => {
+    const defaultFetches = ['BlobFormat', 'RelationalFormat'].map(format => page.waitForRequest(request => {
       if (request.method() !== 'POST' || !request.url().endsWith('/executeCommand')) return false;
       const payload = readCommandRequest(request);
-      return payload?.name === 'fetch-from-db-request' && payload.json.databaseFormat === format;
+      return payload?.name === 'fetch-events-from-db-request' && payload.json.databaseFormat === format;
     }));
     validLogin = true;
     await login.locator('button').last().click();
@@ -159,9 +159,15 @@ test('login validates accounts, restores cached credentials after reload and cle
     await connections.getByLabel('Use my LLM configuration').check();
     await connections.getByLabel('Chat completion URL').fill('https://fixture.invalid/chat');
     await connections.getByLabel('API key').fill('ephemeral-browser-key');
+    const customFetch = page.waitForRequest(request => {
+      if (new URL(request.url()).pathname !== '/executeCommand' || request.method() !== 'POST') return false;
+      const command = readCommandRequest(request);
+      return command.name === 'fetch-events-from-db-request' && command.json.databaseConfig.$type === 'DatabaseConfigWithCredentials';
+    });
     await connections.getByRole('button', {name:'Apply', exact:true}).click();
+    await customFetch;
     await connections.waitFor({state:'detached'});
-    assert(requests.some(command => command.name === 'fetch-from-db-request' && command.json.databaseConfig.$type === 'DatabaseConfigWithCredentials'), 'custom database sync uses the explicit credential-bearing configuration');
+    assert(requests.some(command => command.name === 'fetch-events-from-db-request' && command.json.databaseConfig.$type === 'DatabaseConfigWithCredentials'), 'custom database sync uses the explicit credential-bearing configuration');
     assert(!await page.evaluate(() => /ephemeral-browser-key|ephemeral-database-password/.test(JSON.stringify(localStorage))));
     const cached = await cachedSession(page);
     assert.equal(cached.credentials.signedBackendToken.tokenStringWithSignature, 'mock-token');

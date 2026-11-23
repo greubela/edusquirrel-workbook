@@ -8,7 +8,7 @@ case class UnicodeCharacter(position: Int, glyph: String, codePoint: Int, wellFo
 }
 object UnicodeCharacter {
   // MessagePack encodes strings as UTF-8, which cannot retain an unpaired UTF-16 surrogate.
-  private case class StoredCharacter(position: Int, glyphCodeUnits: List[Int], codePoint: Int, wellFormed: Boolean) derives ReadWriter
+  private case class StoredCharacter(position: Int, glyphCodeUnits: Seq[Int], codePoint: Int, wellFormed: Boolean) derives ReadWriter
   given ReadWriter[UnicodeCharacter] = upickle.default.readwriter[StoredCharacter].bimap(
     c => StoredCharacter(c.position, c.glyph.iterator.map(_.toInt).toList, c.codePoint, c.wellFormed),
     c => {
@@ -19,7 +19,7 @@ object UnicodeCharacter {
 }
 object UnicodeText {
   /** No normalization: visually similar and canonically equivalent strings remain distinguishable. */
-  def characters(text: String): List[UnicodeCharacter] = {
+  def characters(text: String): Seq[UnicodeCharacter] = {
     val result = List.newBuilder[UnicodeCharacter]
     var offset = 0
     var position = 1

@@ -11,7 +11,7 @@ import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 
 case class CreateEmbroideryWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
 
-  override val availableLanguages: List[HumanLanguage] = List(German, English, Spanish, French, Ukrainian, Danish, Turkish)
+  override val availableLanguages: Seq[HumanLanguage] = List(German, English, Spanish, French, Ukrainian, Danish, Turkish)
 
   override val workbookId: String = "EmbroideryWorkbook" // todo: Lang map should automatically prefix this
 

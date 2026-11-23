@@ -46,7 +46,7 @@ object HtmlDisplayLangMapContentRenderer extends LineBasedRenderingFactory[Displ
       case _ => instructionPlaintextToElement
     }
 
-    val signal: Signal[List[Element]] = laminarHelper.plaintextStringSignal(contentId).map(transformFunction).map(List(_))
+    val signal: Signal[Seq[Element]] = laminarHelper.plaintextStringSignal(contentId).map(transformFunction).map(List(_))
 
     AtomarLineRendering.basicLine(workbookElement, signal)
   }

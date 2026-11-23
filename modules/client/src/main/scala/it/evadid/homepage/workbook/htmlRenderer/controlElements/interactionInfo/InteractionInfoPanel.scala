@@ -1,51 +1,37 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.{child, div, *}
+import org.scalajs.dom.{HTMLDivElement, MouseEvent}
 import com.raquo.laminar.nodes.{ReactiveHtmlElement, ReactiveSvgElement}
-import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel.interactionInfoCssString
-import it.evadid.workbook.abstractions.WorkbookInteractionUntyped
-import it.evadid.workbook.interaction.sync.UpdateImportance.DEFAULT
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import org.scalajs.dom.{HTMLDivElement, MouseEvent}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookDisplayElement, WorkbookInteractionElement}
+import it.evadid.homepage.control.info.interaction.GradingReporter
 
-case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionUntyped) extends HtmlAppElement {
+case class InteractionInfoPanel[F <: InteractionFormat](
+                                 workbookInteractionElement: WorkbookInteractionElement[F],
+                                 gradingReporter: GradingReporter)
+  extends HtmlAppElement {
 
-  val iconGradingScaffolding = IconGradingAndScaffolding(fullInfo, laminarHelper, workbookInteractionElement)
+  val iconGradingScaffolding = IconGradingAndScaffolding(fullInfo, laminarHelper, workbookInteractionElement, gradingReporter)
   val iconSync = IconSync(fullInfo, laminarHelper, workbookInteractionElement)
 
-
-  def historyToCss(curHistory: InteractionVariableHistory[?, ?, ?]): String =
-    if (curHistory.historyStates.lastStateOption.exists(_.updateImportance != DEFAULT)) {
-      interactionInfoCssString + " status-interacted"
-    } else {
-      interactionInfoCssString + " -default?"
-    }
-
-  def classSignalGradedEntity: EventStream[String] = {
-    val gradingSignal = iconGradingScaffolding.gradingReporter.currentGradingSignal.toEventStream()
-    val historySignal = iconGradingScaffolding.gradingReporter.currentHistorySignal.toEventStream()
-    gradingSignal.combineWith(historySignal).map((curGradedState, curHistory) => try {
-      if (curGradedState.totalEvaluation().isCorrect) {
-        if (curGradedState.doesEvaluationRelyOnLlm()) interactionInfoCssString + " status-correct-ai"
-        else interactionInfoCssString + " status-correct"
-      } else historyToCss(curHistory)
-    } catch case (err: Throwable) => interactionInfoCssString + s" -err:${err.getMessage}")
-  }
-
-  def classSignalCss: EventStream[String] = {
-    if (!iconGradingScaffolding.gradingReporter.isGradingSupported) iconGradingScaffolding.gradingReporter.currentHistorySignal.toEventStream().map(historyToCss)
-    else classSignalGradedEntity
+  val classSignalCss: Signal[String] = gradingReporter.report.map { report =>
+    if report.grading.status.isCorrect then
+      interactionInfoCssString + (if report.grading.reliesOnLlm then " status-correct-ai" else " status-correct")
+    else if report.interacted then interactionInfoCssString + " status-interacted"
+    else interactionInfoCssString
   }
 
 
   lazy val domElement: Element = {
     div(cls <-- classSignalCss,
       div(cls := "interaction-info__icons",
-        div(cls := "grading-report-icon", child <-- iconGradingScaffolding.gradingReporter.currentGradingSignal.toEventStream().map(iconGradingScaffolding.deriveGradingSymbol)),
-        div(cls := "scaffolding-report-icon", child <-- iconGradingScaffolding.gradingReporter.currentScaffoldingSignal.toEventStream().map(iconGradingScaffolding.deriveScaffoldingSymbol)),
+        div(cls := "grading-report-icon", child <-- gradingReporter.summary.map(iconGradingScaffolding.deriveGradingSymbol)),
+        div(cls := "scaffolding-report-icon", child <-- gradingReporter.scaffolding.map(iconGradingScaffolding.deriveScaffoldingSymbol)),
         div(cls := "sync-report-icon", child <-- iconSync.syncReport.map(iconSync.deriveSyncSymbol)),
       )
     )
@@ -56,18 +42,6 @@ case class InteractionInfoPanel(workbookInteractionElement: WorkbookInteractionU
 }
 
 object InteractionInfoPanel {
-
-  def withEditor(interaction: WorkbookInteractionUntyped, editor: HtmlAppElement): HtmlAppElement =
-    if interaction.scaffoldingElement.isEmpty && interaction.gradingElements.isEmpty then editor
-    else new HtmlAppElement {
-      override def dismissOnOutsideClick: Boolean = editor.dismissOnOutsideClick
-
-      override def getDomElement(): Element = div(cls := "interaction-editor",
-        InteractionInfoPanel(interaction).getDomElement(),
-        div(cls := "interaction-editor__content", editor.getDomElement()))
-    }
-
-  /* CSS info */
 
   protected val interactionInfoCssString: String = "interaction-element-info"
 

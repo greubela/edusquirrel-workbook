@@ -21,7 +21,8 @@ object DigitalWorkbookCatalog {
     Entry(id, author, "img/art/mockup/" + image, "../" + page + "/",
       Some(NativeWorkbook(container, page, factory)), inProgress = true)
 
-  val entries: List[Entry] = List(
+  val entries: Seq[Entry] = List(
+    workbook("2026GdP1", "André Greubel", "monks-workbook.png", "workbook2026GdP1", "2026GdP1", CreateGdp1Workbook.apply),
     workbook("evacuation", "André Greubel", "Evakuierung.jpg", "workbookEvacuation", "evacuationWorkbook", CreateEvacuationWorkbook.apply),
     workbook("plant", "Yanneck Dimitrov", "pflanzengiessen.jpg", "workbookPlantWorkshop", "plantWorkshopWorkbook", info => CreatePlantworkshopWorkbook(info)),
     workbook("blockchain", "Till Favier", "Bitcoin.png", "workbookBlockchain", "blockchainWorkbook", CreateBlockchainWorkbook.apply),

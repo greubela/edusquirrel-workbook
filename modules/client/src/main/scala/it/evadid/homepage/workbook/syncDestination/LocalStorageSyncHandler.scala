@@ -26,9 +26,9 @@ object LocalStorageSyncHandler {
   }
 
   def resetCompleteStorage(): SyncSuccess = {
-    println("[UGLY WARN IN LOCALSTORAGESYNC] clearing all local storage!")
+    val removed = dom.window.localStorage.length
     dom.window.localStorage.clear()
-    SyncSuccess(0, 0, dom.window.localStorage.length, LocalDateTime.now())
+    SyncSuccess(0, 0, removed, LocalDateTime.now())
   }
 
   def removeKey(key: String): SyncSuccess = {
@@ -48,6 +48,11 @@ case class LocalStorageSyncHandler(localStorageSyncDefinition: LocalStorageSyncD
     SyncSuccess(1, 0, 0, LocalDateTime.now())
   }
 
+  override def updateElementRaw(logger: SyncLogger, key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] = Future {
+    storage.setItem(key, update(Option(storage.getItem(key))))
+    SyncSuccess(0, 1, 0, LocalDateTime.now())
+  }
+
   override def underlyingDefinition: SyncDestinationDefinition = localStorageSyncDefinition
 
   override def clearAll(logger: SyncLogger)(using ec: ExecutionContext): Future[SyncSuccess] = Future {
@@ -58,7 +63,7 @@ case class LocalStorageSyncHandler(localStorageSyncDefinition: LocalStorageSyncD
     LocalStorageSyncHandler.removeKey(key)
   }
 
-  override def readElementRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[String] = readDestinationRaw(logger)(ec).transformWith {
+  override def readElementRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[String] = readDestinationRaw(logger)(using ec).transformWith {
     case Success(map) =>
       if (map.contains(key)) Future.successful(map(key))
       else Future.failed(SerializedException(s"Read ${map.size} elements from local storage map, but key ${key.take(60)} is not present!"))

@@ -12,7 +12,15 @@ answer, rather than resuming an inactive editor with a stale draft.
 ## State and conversion
 
 Language transformations live in shared core under [`vm.conversion`](programming-conversions.md).
-Import `ProgrammingStateConversions.*` for the state conversion extension methods.
+Use the direct conversion methods on `ProgrammingState`; its owned derivations cache parsing and target projections.
+
+Exercise and panel interfaces accept `ProgrammingState`; authored starter programs
+and language editors use its typed representations wherever possible:
+`ProgrammingStateJavaStructured`, `ProgrammingStatePythonStructured` and
+`ProgrammingStateSnapScalaModel`. Reserve `ProgrammingStateRaw` for boundaries
+that strictly require source text or XML, rather than using it as the default
+answer representation. An unfinished method can remain in a structured Java
+class; incomplete text alone does not require a raw state.
 
 The central Var is the answer. A change is a change, regardless of whether it
 comes from an editor, restoration, conversion or another component. Use signals
@@ -36,9 +44,8 @@ including Pyodide and the checked Java runtime. Native libraries still need
 callbacks at their JavaScript boundary. Keep those callbacks inside the adapter;
 Scala consumers observe the bound Var or a supplied diagnostic signal.
 
-The [conversion design review](programming-conversion-review.md) examines repeated
-transformations, metadata routing and Java semantic guarantees. Its alternatives
-are pending a separate decision; the conversion bridge is unchanged.
+Language switching uses the shared, language-neutral expression pipeline described in
+[programming conversions](programming-conversions.md). Checked Java execution is separate.
 
 ## Mounting and panels
 
@@ -61,7 +68,7 @@ CodeMirror keeps one optional native handle. The fallback textarea's visibility
 is derived from that handle. Diagnostics arrive as a signal; there is no pending
 diagnostic store or copied current-document state. The mount owns the optional
 flowchart analysis and releases it with the native handle. The gutter reuses
-`NestedBlockRenderer`’s flow overlay, mapped to physical source rows; CodeMirror
+the block editor's `FlowLayout` overlay, mapped to physical source rows; CodeMirror
 alone renders the editable content. Parsing stays in the worker. The library loader
 shares one asynchronous module request between startup warmup and editors;
 failure/timeout leaves the fallback usable and allows a later retry.
@@ -74,20 +81,31 @@ immutable calculations and derived signals to additional stores. See
 package. Use `toBeExpression`, `toJava`, `toPython`, `toSnapXml` and instance `fingerprint()`;
 there are no nested type aliases or alternate conversion names.
 
-For workbook initial programs: beginner turtle / native Snap tasks should start from
-`ProgrammingStateSnapXml` (for example `SnapProjectXml.mini`), not from
-`ProgrammingStateJavaString(...).toSnapXml`. The latter is correct for Eva language
-switching on full Java classes, but it produces Java editing-bridge Snap (custom blocks
-and project notes), not a normal Snap turtle project.
+Expression states (`ProgrammingStateBeExpression`) belong to the `BlockDisplay` language and open in
+the [block editor](block-editor.md) tab; the Snap editor still shows them in previews.
+
+Workbook initial programs can use any supported representation. Language conversion
+uses `BeExpression`; generated Snap is an ordinary project without Java metadata.
+Unsupported constructs are rejected, including class declarations that Snap cannot represent.
 
 ## Persistence and verification
 
 Interactions use the current implicit `ProgrammingState` codec. JSON and
-MessagePack preserve source text and full Snap projects. Checked Java expression
-states save their source and recompile on read. This is a development schema;
+MessagePack preserve source text and full Snap projects. Expression
+states serialize their language-neutral tree. This is a development schema;
 historical readers and migration aliases are deliberately unsupported.
 
 Tests cover single-editor construction and mounting, direct state observation,
 conversion failure/cancellation, unmount cleanup and the owning execution
 services. Browser checks cover real input, delayed library loading, native editor
 replacement, draft restoration and panel geometry.
+
+The active tab is derived from the current `ProgrammingState`, including the Blocks tab for a `ProgrammingStateBeExpression`. Mounting the editor does not select the first configured tab or convert the answer implicitly. If the native tab is unavailable, the answer remains intact. External controls and Scala tests can await `EvaEditor.setActiveTab(language)` to convert the bound answer and activate that representation. Browser tests select the intended tab explicitly before testing its behavior.
+
+## Java method editing
+
+`webElements/code/JavaMethodEditor` owns method selection and drafts, with separate
+rendering helpers for its toolbar, navigation and workspace. `JavaMethodSource`
+provides one immutable analysis per source value, shared by method selection and
+class navigation. `JavaStructuredMethodEditor` binds this view to structured Java
+states; it does not own a second answer.

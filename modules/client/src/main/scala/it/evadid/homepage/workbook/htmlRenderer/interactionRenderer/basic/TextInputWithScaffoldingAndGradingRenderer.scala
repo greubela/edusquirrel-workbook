@@ -2,12 +2,10 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.language.AppLanguage.English
-import it.evadid.core.datastructures.state.StateHelper.{StateBasedVar, RichObservableValue}
+import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.editor.SimpleTextEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.abstractions.grading.GradingStatus
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 
@@ -17,39 +15,15 @@ object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFact
     val variable = element.interactionVariable
     val answer = variable.createBoundStateWithUpdateLogic( TextInteraction.decideTextareaUpdateImportance, fullInfo.workbookContextInformation).toAirstreamVar
     def label(key: String) = laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
-    val feedback: Signal[List[Element]] = {
-      val history = variable.observableHistoryWithDefault.toEventStream().toSignal(variable.currentHistory)
-      history.combineWith(answer.signal, fullInfo.signals.currentLanguage).map { (saved, source, language) =>
-        element.gradingElements.flatMap { grader =>
-          saved.historyGrading.gradingsMap.get(source).filter(_.state == source).flatMap(_.graderResultMap.get(grader))
-            .filter(result => result.gradedState == source && result.grader == grader).toList.map { result =>
-              val key = result.gradingStatus match {
-                case GradingStatus.Correct() => "textGradingCorrect"
-                case GradingStatus.Incorrect() => "textGradingIncorrect"
-                case GradingStatus.PartiallyCorrect() => "textGradingPartiallyCorrect"
-                case GradingStatus.TestError(_) => "gradingError"
-                case GradingStatus.NotFinished() => "gradingLoading"
-                case GradingStatus.NotRequested() => "gradingNotRun"
-              }
-              div(cls := "text-input-feedback__result",
-                strong(child.text <-- label(key)),
-                result.feedbackInformation.filter(_.availableLanguages.nonEmpty).map(_.getWithLanguagePreference(List(language, English))).map(text =>
-                  p(cls := "interaction-scaffolding__message", text)))
-            }
-        }
-      }
-    }
+    val reporter = fullInfo.signals.reportersFor(element).grading
     val content = div(
       cls := "text-input-feedback",
       p(cls := "text-input-feedback__task", child.text <-- laminarHelper.plaintextStringSignal(element.instructionText)),
       SimpleTextEditor(answer).getDomElement().amend(aria.label <-- laminarHelper.plaintextStringSignal(element.instructionText)),
-      Option.when(element.gradingElements.nonEmpty)(
-        div(cls := "interaction-scaffolding",
-          p(cls := "interaction-scaffolding__notice", child.text <-- label("gradingNotice")),
-          div(role := "status", aria.live := "polite",
-            children <-- feedback)))
+      Option.when(reporter.isGradingSupported || reporter.isScaffoldingSupported)(
+        p(cls := "interaction-scaffolding__notice", child.text <-- label("gradingNotice")))
     )
-    // basicLine supplies the shared grading, synchronization and hint controls.
+    // basicLine appends the shared feedback panel (results and hints) and the status icons.
     AtomarLineRendering.basicLine(element, content)
   }
 }

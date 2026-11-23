@@ -10,11 +10,10 @@ import it.evadid.homepage.control.startup.ClientRuntimeConfig
 
 case class HomepageDefaults(fullInfo: FullInfo) {
 
-  lazy val defaultLanguagesAvailable: List[HumanLanguage] = List(German, English)
+  lazy val defaultLanguagesAvailable: Seq[HumanLanguage] = List(German, English)
 
 
   private[control] lazy val defaultBackend: RemoteExecutionConfig = RemoteExecutionConfig("ypcgzj23.trafficplex.cloud", 443)
-
 
   /** Claim the Scala.js startup pool rather than starting a second worker. */
   lazy val workerExecuter: WebWorkerExecutionClient =

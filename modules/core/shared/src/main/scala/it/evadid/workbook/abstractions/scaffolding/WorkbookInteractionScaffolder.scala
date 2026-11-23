@@ -1,16 +1,18 @@
 package it.evadid.workbook.abstractions.scaffolding
 
 import cats.mtl.syntax.state
-import it.evadid.workbook.abstractions.FeedbackEntity
+import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.meta.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait WorkbookInteractionScaffolder[T, A] {
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
+trait WorkbookInteractionScaffolder[T, SA] {
 
-  private def failWith(state: T, err: Either[String, Throwable]): Future[ScaffoldingResult[T, A]] = Future.successful(ScaffoldingResult.forError(state, err, scaffoldingEntity))
+  private def failWith(state: T, err: Either[String, Throwable]): Future[ScaffoldingResult[T, SA]] = Future.successful(ScaffoldingResult.forError(state, err, scaffoldingEntity))
 
-  def generateFeedbackSafe(state: T, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[T, A]] =
+  def generateFeedbackSafe(state: T, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[T, SA]] =
     try {
       handleFeedbackGeneration(state, contextInformation).recoverWith {
         case err: Throwable => failWith(state, Right(err))
@@ -23,7 +25,7 @@ trait WorkbookInteractionScaffolder[T, A] {
 
   def scaffoldingEntity: FeedbackEntity
 
-  def handleFeedbackGeneration(currentState: T, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[T, A]]
+  def handleFeedbackGeneration(currentState: T, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[T, SA]]
 
 
 }

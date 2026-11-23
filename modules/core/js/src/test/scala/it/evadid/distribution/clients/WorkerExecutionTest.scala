@@ -98,5 +98,20 @@ class WorkerExecutionTest extends FunSuite {
     fake.fail(SerializedException("worker unavailable"))
     reply.map(value => assertEquals(value.resultOp,Some("fallback")))
   }
-
+  test("worker timeouts must be positive and finite") {
+    List(0.0, -1.0, Double.PositiveInfinity, Double.NaN).foreach { timeout =>
+      intercept[IllegalArgumentException](client(new Fake, timeout))
+    }
+  }
+  test("a worker that cannot accept messages fails the request and is terminated") {
+    val fake = new Fake {
+      override def postMessage(message: String): Unit = throw IllegalStateException("worker is closing")
+    }
+    val worker = client(fake)
+    worker.executeResponse(logger,command).failed.map { error =>
+      assertEquals(error.getMessage,"worker is closing")
+      assert(fake.terminated)
+      assert(!worker.canExecuteCommand(command))
+    }
+  }
 }

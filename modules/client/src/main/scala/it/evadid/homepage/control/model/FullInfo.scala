@@ -1,5 +1,7 @@
 package it.evadid.homepage.control.model
 
+import it.evadid.homepage.control.info.KeyboardInput
+
 import it.evadid.llm.LlmConfiguration
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.English
@@ -25,13 +27,21 @@ case class FullInfo(
 
   val defaults: HomepageDefaults = HomepageDefaults(this)
 
-  lazy val workbookContextInformation: ExecutionContextInformation = new ExecutionContextInformation() {
-    private val currentLanguageObservable = signals.currentLanguage.toObservableValue
+  private[homepage] val feedbackSession = Var[AnyRef](new Object)
+  private[homepage] def invalidateFeedbackSession(): Unit = feedbackSession.set(new Object)
 
-    override def llmConfiguration: Option[LlmConfiguration] =
+  private lazy val currentLanguageObservable = signals.currentLanguage.toObservableValue
+
+  def workbookContextInformation: ExecutionContextInformation = {
+    val owner = feedbackSession.now()
+    val backendToken = homepageInfoNow().userInfo.flatMap(_.credentials.signedBackendToken)
+    new ExecutionContextInformation() {
+    override def isCurrent: Boolean = feedbackSession.now() eq owner
+
+    override val llmConfiguration: Option[LlmConfiguration] =
       homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig)
 
-    override def availableExecutionClients: List[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutor)
+    override lazy val availableExecutionClients: Seq[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutorWithCredentials(backendToken))
 
     override def getCurrentLanguage: AppLanguage.HumanLanguage = currentLanguageObservable.now().getOrElse(English)
 
@@ -45,6 +55,7 @@ case class FullInfo(
 
     override def syncControl: Option[SyncControl] = Some(FullInfo.this.syncControl)
   }
+  }
 
 
   private[control] val homepageInfoState: Var[HomepageInfo] = Var(defaultInfo)
@@ -53,7 +64,7 @@ case class FullInfo(
 
   /* INFO */
 
-  //lazy val executorForParallelism: List[ExecutionClient] = List(backendExecutor)
+  //lazy val executorForParallelism: Seq[ExecutionClient] = List(backendExecutor)
   //ExecuteOnRemoteServer("http://localhost", 9000),
   //ExecuteOnWebWorker(FileFactory.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath),:
 
@@ -63,11 +74,15 @@ case class FullInfo(
 
   lazy val current: HomepageCurrentInfo = HomepageCurrentInfo(this)
 
+  lazy val keyboardInput: KeyboardInput = KeyboardInput.installed
+
   /* CONTROLS */
 
-  lazy val usageControl: HomepageUsageControl = HomepageUsageControl(this)
+  lazy val userSessionControl: UserSessionControl = new UserSessionControl(this)
 
-  lazy val syncControl: SyncControl = RemoteInteractionCacheControl(this)
+  lazy val workbookNavigationControl: WorkbookNavigationControl = new WorkbookNavigationControl(this)
+
+  lazy val syncControl: RemoteInteractionCacheControl = RemoteInteractionCacheControl(this)
 
   lazy val displayControl: DisplayControl = DisplayControl(this)
 

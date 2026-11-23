@@ -3,7 +3,8 @@ package it.evadid.homepage.workbook.htmlRenderer
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.file.{CopyrightInfo, LoadedFile}
-import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
+import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.util.logging.Logger
@@ -45,15 +46,17 @@ case class LaminarRenderHelper() derives upickle.default.ReadWriter {
 
   /* Signal Fetching */
 
+  def plaintextStringSignal(content: LanguageMap[HumanLanguage]): Signal[String] = fullInfo.signals.stringFromLanguageMap(content)
+
   def plaintextStringSignal(contentIdAsString: String): Signal[String] = plaintextStringSignal(LanguageMapContentId.apply(contentIdAsString))
 
   def plaintextStringSignal(contentId: LanguageMapContentId): Signal[String] = contentIdStringSignal(contentId, PLAINTEXT, List())
 
-  def contentIdStringSignal(contentIdAsString: String, typeOfTextDisplay: TypeOfTextDisplay, additionalInfo: List[String]): Signal[String] = {
+  def contentIdStringSignal(contentIdAsString: String, typeOfTextDisplay: TypeOfTextDisplay, additionalInfo: Seq[String]): Signal[String] = {
     contentIdStringSignal(LanguageMapContentId.apply(contentIdAsString), typeOfTextDisplay, additionalInfo)
   }
 
-  def contentIdStringSignal(contentId: LanguageMapContentId, typeOfTextDisplay: TypeOfTextDisplay, additionalInfo: List[String] = List()): Signal[String] = {
+  def contentIdStringSignal(contentId: LanguageMapContentId, typeOfTextDisplay: TypeOfTextDisplay, additionalInfo: Seq[String] = List()): Signal[String] = {
     val plaintext = HtmlFullWorkbookApp.fullInfo.signals.stringFromLanguageMapId(contentId)
     typeOfTextDisplay.match {
       case PLAINTEXT_UNDERSCORE_REPLACABLE => plaintext.map(str => replaceUnderscores(str, additionalInfo, Some(contentId)))
@@ -67,7 +70,7 @@ case class LaminarRenderHelper() derives upickle.default.ReadWriter {
 
   /* Helper */
 
-  private def replaceUnderscores(plaintextUnderscoreReplaceable: String, additionalInfo: List[String], contentId: Option[LanguageMapContentId] = None): String = {
+  private def replaceUnderscores(plaintextUnderscoreReplaceable: String, additionalInfo: Seq[String], contentId: Option[LanguageMapContentId] = None): String = {
     val singleUnderscores = plaintextUnderscoreReplaceable.replaceAll("_+", "_")
     val parts = singleUnderscores.split("_")
     val toInsert = parts.size - 1
@@ -97,7 +100,7 @@ case class LaminarRenderHelper() derives upickle.default.ReadWriter {
     input(
       hidden := true,
       typ := "file",
-      accept := "json",
+      accept := ".eva,application/json",
       onChange --> { event =>
         val inputElement = event.target.asInstanceOf[org.scalajs.dom.html.Input]
         if (inputElement.files.length > 0) {

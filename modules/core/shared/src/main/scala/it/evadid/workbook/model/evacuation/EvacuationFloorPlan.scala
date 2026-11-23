@@ -7,7 +7,7 @@ enum EvacuationTile derives ReadWriter {
   case Floor, Wall, Exit
 }
 
-case class EvacuationFloorPlan(cols: Int, rows: Int, tiles: List[EvacuationTile], people: Set[Int] = Set.empty) derives ReadWriter {
+case class EvacuationFloorPlan(cols: Int, rows: Int, tiles: Seq[EvacuationTile], people: Set[Int] = Set.empty) derives ReadWriter {
   require(cols >= 1 && cols <= EvacuationFloorPlan.maxDimension && rows >= 1 && rows <= EvacuationFloorPlan.maxDimension,
     "Floor dimensions must be between 1 and 40")
   require(tiles.size == cols * rows, "The floor must have one tile per cell")

@@ -34,7 +34,7 @@ object UserCommands {
   case class UpdateAccountResponse(accountChanged: Boolean, token: SignedToken) derives ReadWriter
 
   lazy val updateAccountCommand: ExecutionCommandFactory[UpdateAccountRequest, UpdateAccountResponse] = ExecutionCommandFactory(
-    "update-account", privacyFilter = Some(identityForLog(Some("allUserInfo")))
+    "update-account", privacyFilter = Some(identityForLog(Some("allUserInfo"))), requiresLogin = true
   )
 
   case class CreateAccountRequest(userInfo: AllUserInfo) derives ReadWriter

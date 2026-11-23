@@ -2,30 +2,33 @@ package it.evadid.workbook.elements.interactionElements.codeTaskToggle
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
-import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.jsonFactory.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import upickle.default.*
-
-import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.abstractions.InteractionFormat.*
 case class SketchDownloadInteraction(
                                       override val elementId: String,
                                       buttonLabel: LanguageMapContentId,
                                       filenameRelativeToWorkbookResources: String,
                                       sketchContent: String,
                                       unlockWhenReorderCorrect: String
-                                    ) extends WorkbookInteractionElement[String] derives upickle.default.ReadWriter {
+                                    ) extends WorkbookInteractionElement[TextInteractionFormat.type] {
+
   override val associatedFactory = SketchDownloadInteraction.factory
 
   override val defaultValue: String = ""
 
-  override val serializerInteractionContent: Serializer[String] = Serializer.fromUpickleJson(summon[ReadWriter[String]])
-
-  override lazy val childrenOfThisElement: List[WorkbookElement] = List()
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
 }
 
-object SketchDownloadInteraction {
+object SketchDownloadInteraction  {
+
   val factory = new SimpleWorkbookElementFactory[SketchDownloadInteraction]() {
     override protected val constructorFieldOrder = List("elementId", "buttonLabel", "filename", "sketchContent", "unlockWhenReorderCorrect")
 
@@ -41,5 +44,4 @@ object SketchDownloadInteraction {
       SketchDownloadInteraction(f.elementId, f.getElementAs[LanguageMapContentId]("buttonLabel"), f.getElementAs("filename"), f.getElementAs("sketchContent"), f.getElementAs("unlockWhenReorderCorrect"))
     }
   }
-
- }
+}

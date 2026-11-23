@@ -25,10 +25,10 @@ object TurtleGradingLogic {
     lazy val linesOfActual: Seq[Movement] = actual.renderMovements
     lazy val linesOfExpected: Seq[Movement] = expected.renderMovements
     lazy val coverageResult: Option[TurtleComparisonResult] = Option.when(coverage) {
-      def segments(movements: Seq[Movement]): List[Segment] = movements.filterNot(_.jump).map(m => Segment(m.start, m.end)).toList
+      def segments(movements: Seq[Movement]): Seq[Segment] = movements.filterNot(_.jump).map(m => Segment(m.start, m.end)).toList
       TurtleDrawingComparison.compareSegments(segments(linesOfExpected), segments(linesOfActual), tolerance)
     }
-    lazy val difference: List[GradingLine] = coverageResult match {
+    lazy val difference: Seq[GradingLine] = coverageResult match {
       case None => compareLines(linesOfActual, linesOfExpected, tolerance, gradeJumps)
       case Some(result) =>
         val missing = result.missing.toSet
@@ -45,7 +45,7 @@ object TurtleGradingLogic {
     }
 
     /** Target angles retain correct references even when lines are missing or duplicated. */
-    lazy val angles: List[Angle] = {
+    lazy val angles: Seq[Angle] = {
       val indices = difference.zipWithIndex.flatMap { (line, index) => line.expectedIndex.map(_ -> index) }.toMap
       expected.renderAngles.filter { angle =>
         gradeJumps || (!linesOfExpected(angle.lineBefore).jump && !linesOfExpected(angle.lineAfter).jump)
@@ -61,7 +61,7 @@ object TurtleGradingLogic {
       gradeJumps = policy == TurtleDrawingPolicy.Segments, coverage = policy == TurtleDrawingPolicy.Coverage)
 
   def compareLines(actual: Seq[Movement], expected: Seq[Movement], tolerance: Double = 0.1,
-                   gradeJumps: Boolean = true): List[GradingLine] = {
+                   gradeJumps: Boolean = true): Seq[GradingLine] = {
     require(tolerance.isFinite && tolerance >= 0, "Turtle tolerance must be finite and nonnegative")
     require((actual.iterator ++ expected.iterator).forall { movement =>
       List(movement.start.x, movement.start.y, movement.end.x, movement.end.y).forall(_.isFinite)

@@ -63,6 +63,8 @@ object PyAST {
     case PyBreakStatement => StoredAst("PyBreakStatement", ujson.Null)
     case PyContinueStatement => StoredAst("PyContinueStatement", ujson.Null)
     case PyEmptyStatement => StoredAst("PyEmptyStatement", ujson.Null)
+    case node: PyCommentStatement => StoredAst("PyCommentStatement", upickle.default.writeJs(node))
+    case node: PyRawExpression => StoredAst("PyRawExpression", upickle.default.writeJs(node))
     case other => throw new IllegalArgumentException(s"Unsupported Python AST node: ${other.getClass.getName}")
   }
 
@@ -101,6 +103,8 @@ object PyAST {
     case "PyBreakStatement" => PyBreakStatement
     case "PyContinueStatement" => PyContinueStatement
     case "PyEmptyStatement" => PyEmptyStatement
+    case "PyCommentStatement" => upickle.default.read[PyCommentStatement](value.payload)
+    case "PyRawExpression" => upickle.default.read[PyRawExpression](value.payload)
     case other => throw new IllegalArgumentException(s"Unknown Python AST node: $other")
   }
 
@@ -150,6 +154,12 @@ object PyAST {
   /** A blank source line with no semantic statement. */
   case object PyEmptyStatement extends PyStatement
 
+  /** An expression kept as source text because it has no structured form here, such as a lambda. */
+  case class PyRawExpression(source: String) extends PyExpression derives upickle.default.ReadWriter
+
+  /** A `#` comment on its own line or after a statement, without the `#`. */
+  case class PyCommentStatement(text: String) extends PyStatement derives upickle.default.ReadWriter
+
 
 
   sealed trait PythonImportStatement extends PyStatement with NamedElement derives upickle.default.ReadWriter {
@@ -196,7 +206,8 @@ object PyAST {
 
   // Exception Handling
   /** A try statement with handlers, e.g. `try: ... except ValueError: ...`. */
-  case class PyTryStatement(body: PyExecutionBlock, exceptStatements: List[PyExceptClause], elseBlock: Option[PyExecutionBlock]) extends PyStatement derives upickle.default.ReadWriter {
+  case class PyTryStatement(body: PyExecutionBlock, exceptStatements: List[PyExceptClause], elseBlock: Option[PyExecutionBlock],
+      source: String = "") extends PyStatement derives upickle.default.ReadWriter {
     override def getChildren(): Seq[GenericAST] = List(body) ++ exceptStatements ++ elseBlock.toList
   }
 
@@ -277,13 +288,15 @@ object PyAST {
     override def getChildren(): Seq[GenericAST] = callee +: args
   }
 
-  /** A function definition, e.g. `def add(a, b): return a + b`. */
-  case class PyFunctionDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement with NamedElement derives upickle.default.ReadWriter {
+  /** A function definition, e.g. `def add(a, b): return a + b`; `source` includes its decorators. */
+  case class PyFunctionDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean,
+      returnType: Option[PythonType[?]] = None, decorators: List[String] = Nil, source: String = "") extends PyStatement with NamedElement derives upickle.default.ReadWriter {
     override def getChildren(): Seq[GenericAST] = parameters ++ List(block)
   }
 
   /** A class definition, e.g. `class Turtle:` or `class Shape(Base):`. */
-  case class PyClassDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean) extends PyStatement with NamedElement derives upickle.default.ReadWriter {
+  case class PyClassDef(name: String, parameters: List[PyAssignment], block: PyExecutionBlock, isAsync: Boolean,
+      source: String = "") extends PyStatement with NamedElement derives upickle.default.ReadWriter {
     override def getChildren(): Seq[GenericAST] = parameters ++ List(block)
   }
 
@@ -382,7 +395,7 @@ object PyAST {
 
     println(res)
 
-    println(res.right.get.statements.mkString("\n"))
+    println(res.fold(error => throw new IllegalArgumentException(error.toString), _.statements.mkString("\n")))
 
   }
 

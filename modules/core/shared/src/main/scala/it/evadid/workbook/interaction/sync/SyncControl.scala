@@ -1,55 +1,39 @@
 package it.evadid.workbook.interaction.sync
 
+import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.observable.ObservableValue
-import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.variable.InteractionVariable.InteractionVariableUntyped
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.variable.InteractionVariable
 import it.evadid.workbook.meta.InteractionVariableSyncReport
 
-import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 trait SyncControl {
 
   private given ExecutionContext = ExecutionContext.global
 
-  def ensureCachesAreAtLeastThisRecent(maxAge: LocalDateTime): Future[Unit]
+  def storeAll(forceFlush: Boolean = false): Future[Unit]
 
-  def createObservableReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): ObservableValue[InteractionVariableSyncReport[T, GA, SA]]
+  def fetchAll(forceFlush: Boolean = false): Future[Unit]
 
-  def createCurrentReport[T, GA, SA](forVariable: InteractionVariable[T, GA, SA]): InteractionVariableSyncReport[T, GA, SA]
+  def store[F <: InteractionFormat](interactionVariable: InteractionVariable[F], forceFlush: Boolean = false): Future[Unit]
 
-  def requestStore(from: List[InteractionVariableUntyped]): Future[Unit]
+  private def phases(first: => Future[Unit], second: => Future[Unit]): Future[Unit] = {
+    def attempt(operation: => Future[Unit]) = scala.util.Try(operation).fold(Future.failed, identity)
+    attempt(first).transformWith(before => attempt(second).transform(after => before.flatMap(_ => after)))
+  }
+
+  def fetchAndStore(forceFlush: Boolean = false): Future[Unit] = phases(fetchAll(forceFlush), storeAll(forceFlush))
+  def storeAndFetch(forceFlush: Boolean = false): Future[Unit] = phases(storeAll(forceFlush), fetchAll(forceFlush))
+  def ensureSynced(): Future[Unit] = fetchAndStore(true)
+
+  /** Explicit synchronization of one interaction (e.g. its sync icon): writes and flushes its pending events,
+    * then reads it back, since only events read from a destination count as synchronized.
+    */
+  def synchronize[F <: InteractionFormat](interactionVariable: InteractionVariable[F]): Future[Unit] =
+    phases(store(interactionVariable, forceFlush = true), fetchAll(forceFlush = true))
 
   def syncLogger: SyncLogger
-
-  def controlLogger: Logger
-
-  def updateAllCaches(): Future[Unit] = ensureCachesAreAtLeastThisRecent(LocalDateTime.now())
-
-  def requestStore[T, GA, SA](from: InteractionVariable[T, GA, SA]): Future[Unit] = requestStore(List(from))
-
-  def load(into: List[InteractionVariableUntyped]): Future[Unit]
-
-  def updateAndStoreAll(from: List[InteractionVariableUntyped]): Future[Unit] = updateAllCaches().transformWith(_ => requestStore(from))
-
-  def ensureFetchAndLoad(from: List[InteractionVariableUntyped]): Future[Unit] = {
-    updateAllCaches()
-      .flatMap(_ => load(from))
-  }
-
-  def ensureAllStored(from: List[InteractionVariableUntyped]): Future[Unit] = {
-    ensureCachesContainLastElementsToWrite(from)
-      .flatMap(_ => load(from))
-      .flatMap(_ => requestStore(from))
-  }
-
-  def storeAndReset(from: List[InteractionVariableUntyped]): Future[Unit] = {
-    ensureAllStored(from)
-      .map(_ => from.foreach(_.resetLocalHistory()))
-  }
-
-  def ensureCachesContainLastElementsToWrite(variables: List[InteractionVariableUntyped]): Future[Unit]
 
 }

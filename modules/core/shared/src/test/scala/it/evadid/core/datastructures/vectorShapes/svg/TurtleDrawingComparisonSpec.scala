@@ -7,7 +7,7 @@ import munit.FunSuite
 class TurtleDrawingComparisonSpec extends FunSuite {
 
   private def build(commands: List[TurtleCommand[Double]]): TurtlePathBuilder[Double] =
-    TurtlePathBuilder(Point(0.0, 0.0), commands, BeExpressionToTurtleCommands.SnapHeadingDeg)
+    TurtlePathBuilder(Point(0.0, 0.0), commands, TurtlePathBuilder.SnapHeadingDeg)
 
   private def square(side: Double): List[TurtleCommand[Double]] =
     List.fill(4)(List(TurtleCommand.Forward(side), TurtleCommand.Left(90.0))).flatten
@@ -168,12 +168,13 @@ class TurtleDrawingComparisonSpec extends FunSuite {
   }
 
   test("stepped polygon matches a circle command of the same radius") {
-    // circle() turns left, same as repeated left(); chord length equals 2*pi*r/36.
+    // circle() walks CPython's chords: a half turn, then forward and turn per step, then a half turn back.
     val radius = 10.0 * 36.0 / (2.0 * math.Pi)
-    val stepped = build(List.fill(36)(List(
-      TurtleCommand.Forward(10.0),
-      TurtleCommand.Left(10.0)
-    )).flatten)
+    val (steps, chord, turn) = TurtlePathBuilder.arcSteps(radius, 360.0, turnLeft = true)
+    val stepped = build((TurtleCommand.Left(turn / 2) +: List.fill(steps)(List(
+      TurtleCommand.Forward(chord),
+      TurtleCommand.Left(turn)
+    )).flatten) :+ TurtleCommand.Left(-turn / 2))
     val rounded = build(List(TurtleCommand.fromText("circle", List(radius))))
     val result = TurtleDrawingComparison.compare(stepped, rounded)
     assert(result.matches, clue = result)

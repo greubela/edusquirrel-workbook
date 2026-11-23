@@ -15,9 +15,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 class CodeMirrorEditorMountSpec extends FunSuite {
   test("mount yields, updates gutter numbering without rebuilding and releases native handles") {
     val globals = js.Dynamic.global.globalThis
-    val requireFn = js.Dynamic.global.selectDynamic("require")
-    val root = js.Dynamic.global.process.cwd().asInstanceOf[String]
-    val window = js.Dynamic.newInstance(requireFn(root + "/node_modules/jsdom").JSDOM)("<html><body></body></html>").window
+    val window = EditorDomSuite.window
     val names = List("window", "document", "Element", "Node")
     val previous = names.map(name => (name, globals.selectDynamic(name),
       js.Dynamic.global.Object.prototype.hasOwnProperty.call(globals, name).asInstanceOf[Boolean]))
@@ -93,7 +91,6 @@ class CodeMirrorEditorMountSpec extends FunSuite {
           if (existed) globals.updateDynamic(name)(value)
           else js.Dynamic.global.Reflect.deleteProperty(globals, name)
         }
-        window.close()
       }
       assertEquals(destroyed.now(), 4)
       result

@@ -25,6 +25,8 @@ import upickle.default.*
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
+import it.evadid.workbook.abstractions.InteractionFormat.*
+
 class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private val task = LanguageMapContentId("test/task")
@@ -280,8 +282,8 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val f = new Fixture
     f.grade().map { result =>
       assertEquals(read[GradingResult[String, MessengerModel]](write(result)), result)
-      val history = InteractionVariableHistory[String, MessengerModel, MessengerModel](InteractionVariableStateHistory[String](Set.empty), new InteractionVariableGradingHistory[String, MessengerModel](Map(result.gradedState -> GradedState(result.gradedState, Map(result.grader -> result)))), new InteractionVariableScaffoldingHistory[String, MessengerModel](scaffoldingMap = Map.empty))
-      assertEquals(read[InteractionVariableHistory[String, MessengerModel, MessengerModel]](write(history)), history)
+      val history = InteractionVariableHistory.empty[TextInputWithLlmGradingAndScaffoldingFormat.type].addGrading(result)
+      assertEquals(read[InteractionVariableHistory[TextInputWithLlmGradingAndScaffoldingFormat.type]](write(history)), history)
     }
   }
 
@@ -301,7 +303,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
         Set(s"Deutsch: ${criterion.fullId}", s"Deutsch: ${secondCriterion.fullId}"))
       assert(!f.resolutions.now().contains(hint))
       val variable = element.interactionVariable
-      assertEquals(variable.serializerHistory.deserialize(variable.serializerHistory.serialize(variable.currentHistory)), variable.currentHistory)
+      assertEquals(variable.underlyingInteraction.interactionFormat.historySerializer.deserialize(variable.underlyingInteraction.interactionFormat.historySerializer.serialize(variable.currentHistory)), variable.currentHistory)
     }
   }
 

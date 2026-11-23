@@ -1,9 +1,9 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import munit.FunSuite
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaString
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 
 class SnapProjectXmlSyncSpec extends FunSuite {
   private def xml(code: String, image: String): String =
@@ -53,14 +53,14 @@ class SnapProjectXmlSyncSpec extends FunSuite {
     assertEquals(sync.changedSnapshot(xml("program", "image")), Some(clean("program")))
   }
 
-  test("running a typed Java project does not publish its sprite pose as a source edit") {
-    val source = ProgrammingStateJavaString("class Drawing { public static void main(String[] args) { Turtle.forward(12); } }").toSnapXml.snapXml
+  test("converted projects use the same pose and source tracking as native projects") {
+    val source = ProgrammingStateRaw(Java, "class Drawing { public static void main(String[] args) { Turtle.forward(12); } }").toSnapXml.code
     val moved = source.replace("x=\"0\" y=\"0\" heading=\"90\"", "x=\"12\" y=\"3\" heading=\"180\"")
     assert(moved != source)
     val sync = new SnapProjectXmlSync
     sync.markLoaded(source)
     sync.resetSnapshot(source)
-    assertEquals(sync.changedSnapshot(moved), None)
+    assertEquals(sync.changedSnapshot(moved), Some(moved))
     assert(sync.isLoaded(source))
     assert(!sync.isLoaded(moved))
     val edited = moved.replace("<l>12</l>", "<l>23</l>")

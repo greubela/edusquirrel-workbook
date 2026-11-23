@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.vm.conversion.ProgrammingStateConversions.*
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.vm.conversion.pythonexpression.PythonToExpression
@@ -8,7 +8,7 @@ import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
-import it.evadid.vm.conversion.snapxml.SnapXmlParser
+import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
@@ -30,8 +30,8 @@ class SnapExpressionSupportSpec extends FunSuite {
     val statements = SnapExpressionSupport.topLevelStatements(program.fullProgram)
     val call = statements.collectFirst { case c: it.evadid.vm.code.usage.BeFunctionCall => c }.get
     assertEquals(SnapExpressionSupport.pythonName(call), "forward")
-    val args = SnapControlFlow.orderedArgs(call)
-    assert(args.forall(SnapControlFlow.isSupportedValue), clue = args.map(_.getClass.getName).mkString(","))
+    val args = call.arguments
+    assert(args.forall(SnapControlFlow.isSupportedValue(_)), clue = args.map(_.getClass.getName).mkString(","))
     assertEquals(SnapExpressionSupport.validateSubset(program.fullProgram), Right(statements))
   }
 
@@ -45,7 +45,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     )
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""s="receiveGo""""), clue = xml)
     assert(xml.contains("""s="forward""""), clue = xml)
     assert(xml.contains("""s="turn""""), clue = xml)
@@ -56,7 +56,7 @@ class SnapExpressionSupportSpec extends FunSuite {
   test("applyPython puts all Python statements below one green-flag hat") {
     val result = PythonToSnap.applyPython("forward(10)\nturn(90)")
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     val script = """(?s)<script x="156" y="66">(.*?)</script>""".r
       .findFirstMatchIn(xml)
       .map(_.group(1))
@@ -69,12 +69,12 @@ class SnapExpressionSupportSpec extends FunSuite {
   }
 
   test("green-flag hat is omitted when Snap generated from Python is converted back") {
-    val snap = ProgrammingStatePythonString("forward(10)\nturn(90)").toSnapXml
+    val snap = ProgrammingStateRaw(Python, "forward(10)\nturn(90)").toSnapXml
     val python = snap.toPython.code
 
     assert(!python.contains("receive_go"), clue = python)
     assert(python.contains("forward(10)"), clue = python)
-    assert(python.contains("turn_right(90)"), clue = python)
+    assert(python.contains("right(90)"), clue = python)
   }
 
   test("applyPython rejects unknown calls") {
@@ -103,7 +103,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     )
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""s="reportVariadicProduct""""), clue = xml)
   }
 
@@ -119,9 +119,9 @@ class SnapExpressionSupportSpec extends FunSuite {
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("i: float = 1"), clue = python)
     assert(python.contains("while i < 3:"), clue = python)
-    assert(python.contains("i: float = i + 1"), clue = python)
+    assert(python.contains("i = i + 1"), clue = python)
     assert(python.contains("forward(i)"), clue = python)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""s="doSetVar""""), clue = xml)
     assert(xml.contains("""s="doUntil""""), clue = xml)
   }
@@ -129,7 +129,7 @@ class SnapExpressionSupportSpec extends FunSuite {
   test("applyPython accepts arithmetic outside change-variable pattern") {
     val result = PythonToSnap.applyPython("i = 1 * 2")
     assert(result.isRight, clue = result)
-    assert(result.toOption.get.snapXml.contains("""s="reportVariadicProduct""""), clue = result.toOption.get.snapXml)
+    assert(result.toOption.get.code.contains("""s="reportVariadicProduct""""), clue = result.toOption.get.code)
   }
 
   test("applyPython accepts augmented assignment as change pattern") {
@@ -141,8 +141,8 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(result.isRight, clue = result)
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("steps: float = 1"), clue = python)
-    assert(python.contains("steps: float = steps + 2"), clue = python)
-    assert(result.toOption.get.snapXml.contains("""s="doChangeVar""""), clue = result.toOption.get.snapXml)
+    assert(python.contains("steps = steps + 2"), clue = python)
+    assert(result.toOption.get.code.contains("""s="doChangeVar""""), clue = result.toOption.get.code)
   }
 
   test("applyPython accepts control-flow subset") {
@@ -159,7 +159,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     )
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""s="doRepeat""""), clue = xml)
     assert(xml.contains("""s="doUntil""""), clue = xml)
     assert(xml.contains("""s="doIfElse""""), clue = xml)
@@ -195,7 +195,7 @@ class SnapExpressionSupportSpec extends FunSuite {
       layout
     )
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""<script x="70" y="80"><block s="receiveGo"></block>"""), clue = xml)
     assert(xml.contains("""<script x="200" y="150"><block s="receiveGo"></block>"""), clue = xml)
     assertEquals("""s="receiveGo""".r.findAllIn(xml).size, 2)
@@ -215,7 +215,7 @@ class SnapExpressionSupportSpec extends FunSuite {
       layout
     )
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""<script x="156" y="66">"""), clue = xml)
     assert(!xml.contains("""<script x="70" y="80">"""), clue = xml)
   }
@@ -223,7 +223,7 @@ class SnapExpressionSupportSpec extends FunSuite {
   test("empty python clears scripts") {
     val result = PythonToSnap.applyPython("")
     assert(result.isRight, clue = result)
-    assertEquals(result.toOption.get.snapXml, SnapProjectXml.empty)
+    assertEquals(result.toOption.get.code, SnapProjectXml.empty)
   }
 
   test("python to state fingerprint is stable for positional calls") {
@@ -231,8 +231,8 @@ class SnapExpressionSupportSpec extends FunSuite {
     val stored = ProgrammingState.serializer.serialize(a)
     val restored = ProgrammingState.serializer.deserialize(stored)
     assert(stored.contains("12345"), clue = stored)
-    assertEquals(restored.toSnapXml.snapXml, a.snapXml)
-    assert(restored.toSnapXml.snapXml.contains("""s="forward""""), clue = restored.toSnapXml.snapXml)
+    assertEquals(restored.toSnapXml.code, a.code)
+    assert(restored.toSnapXml.code.contains("""s="forward""""), clue = restored.toSnapXml.code)
   }
 
   test("applyPython accepts full python-compatible palette program") {
@@ -257,18 +257,18 @@ class SnapExpressionSupportSpec extends FunSuite {
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("receive_go()"), clue = python)
     assert(python.contains("do_wait(1)"), clue = python)
-    assert(python.contains("down()"), clue = python)
+    assert(python.contains("pen_down()"), clue = python)
     assert(python.contains("steps: float = 10"), clue = python)
     assert(python.contains("for _ in range(4):"), clue = python)
     assert(python.contains("forward(50)"), clue = python)
-    assert(python.contains("turn(90)"), clue = python)
+    assert(python.contains("right(90)"), clue = python)
     assert(python.contains("if steps < 20:"), clue = python)
-    assert(python.contains("goto_x_y(10, 20)"), clue = python)
-    assert(python.contains("set_heading(90)"), clue = python)
+    assert(python.contains("goto(10, 20)"), clue = python)
+    assert(python.contains("setheading(90)"), clue = python)
     assert(python.contains("while not False:"), clue = python)
     assert(python.contains("up()"), clue = python)
     assert(python.contains("clear()"), clue = python)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""s="doWait""""), clue = xml)
     assert(xml.contains("""s="doRepeat""""), clue = xml)
     assert(xml.contains("""s="doIfElse""""), clue = xml)
@@ -282,7 +282,10 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(reported.contains("wait"), clue = reported)
     assert(reported.exists(_.contains("'foo'")), clue = reported)
     assert(!SnapExpressionSupport.isPythonCompatibleXml(xml))
-    assert(SnapExpressionSupport.isPythonCompatibleXml("""<project><block s="forward"><l>1</l></block></project>"""))
+    assert(SnapExpressionSupport.isPythonCompatibleXml("""<project><scripts><script><block s="forward"><l>1</l></block></script></scripts></project>"""))
+    // A block outside any script is not part of the program, so it is reported instead of dropped.
+    assertEquals(SnapExpressionSupport.unsupportedSnapSelectors("""<project><block s="forward"><l>1</l></block></project>"""),
+      List("'forward' outside a script"))
   }
 
   test("unsupportedSnapSelectors allows a custom-block whose definition declares the same blockSpec") {
@@ -291,10 +294,13 @@ class SnapExpressionSupportSpec extends FunSuite {
     assertEquals(SnapExpressionSupport.unsupportedSnapSelectors(xml), Nil)
   }
 
-  test("unsupportedSnapSelectors reports reporter and script-slot custom blocks by spec") {
+  test("unsupportedSnapSelectors reports hat and script-slot custom blocks by spec, not reporters") {
+    val hat =
+      """<project><blocks><block-definition s="when ready" type="hat"><inputs></inputs></block-definition></blocks></project>"""
+    assert(SnapExpressionSupport.unsupportedSnapSelectors(hat).exists(_.contains("when ready")))
     val reporter =
       """<project><blocks><block-definition s="area %size" type="reporter"><inputs><input type="%n"></input></inputs></block-definition></blocks></project>"""
-    assert(SnapExpressionSupport.unsupportedSnapSelectors(reporter).exists(_.contains("area %size")))
+    assertEquals(SnapExpressionSupport.unsupportedSnapSelectors(reporter), Nil)
     val scripted =
       """<project><blocks><block-definition s="twice %action" type="command"><inputs><input type="%cs"></input></inputs></block-definition></blocks></project>"""
     assert(SnapExpressionSupport.unsupportedSnapSelectors(scripted).exists(_.contains("%cs")))
@@ -320,8 +326,9 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
-    assert(xml.contains("""<block s="doFor"><l>_</l>"""), clue = xml)
+    val xml = result.toOption.get.code
+    // An unused counter is a repeat; its count may be computed, here a variable.
+    assert(xml.contains("""<block s="doRepeat"><block var="edges"/>"""), clue = xml)
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
     assert(python.contains("for _ in range(edges):"), clue = python)
     assert(!python.contains("for 0 in range"), clue = python)
@@ -339,7 +346,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""s="doFor""""), clue = xml)
     assert(xml.contains("""s="reportVariadicProduct""""), clue = xml)
     assert(xml.contains("""s="turnLeft""""), clue = xml)
@@ -347,7 +354,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(xml.contains("""s="setColor""""), clue = xml)
     assert(xml.contains("""s="home""""), clue = xml)
     val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
-    assert(python.contains("for i in range(1, 4 + 1):"), clue = python)
+    assert(python.contains("for i in range(1, 5):"), clue = python)
     assert(python.contains("forward(i * 10)"), clue = python)
   }
 
@@ -360,7 +367,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""<block-definition s="square %n""""), clue = xml)
     assert(xml.contains("""category="Variables""""), clue = xml)
     val definition = """(?s)<block-definition[^>]*>.*?</block-definition>""".r.findFirstIn(xml).getOrElse("")
@@ -379,7 +386,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     )
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""<block-definition s="square %size""""), clue = xml)
     assert(xml.contains("""<custom-block s="square %n">"""), clue = xml)
     assertEquals(SnapCustomBlockRules.globalDefinitions(xml).map(_.blockSpec), List("square %n"))
@@ -394,7 +401,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     )
     assert(emptyResult.isRight, clue = emptyResult)
-    val xml = emptyResult.toOption.get.snapXml
+    val xml = emptyResult.toOption.get.code
     assert(xml.contains("""<block-definition s="square %n""""), clue = xml)
     assert(xml.contains("""category="Variables""""), clue = xml)
     val definition = """(?s)<block-definition[^>]*>.*?</block-definition>""".r.findFirstIn(xml).getOrElse("")
@@ -412,7 +419,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(tooMany.swap.toOption.get.contains("forward"), clue = tooMany)
     val tooFew = PythonToSnap.applyPython("goto_x_y(1)")
     assert(tooFew.isLeft, clue = tooFew)
-    assert(tooFew.swap.toOption.get.contains("goto_x_y"), clue = tooFew)
+    assert(tooFew.swap.toOption.get.contains("goto"), clue = tooFew)
   }
 
   test("applyPython drops extra custom-call arguments to match the def") {
@@ -423,7 +430,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""<custom-block s="square %n"><l>1</l></custom-block>"""), clue = xml)
     assert(!xml.contains("<l>2</l>"), clue = xml)
   }
@@ -455,7 +462,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     )
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""s="setXPosition""""), clue = xml)
     assert(xml.contains("""s="setYPosition""""), clue = xml)
     assert(xml.contains("""s="setSize""""), clue = xml)
@@ -472,7 +479,7 @@ class SnapExpressionSupportSpec extends FunSuite {
   test("applyPython accepts color aliases and rgb strings") {
     val result = PythonToSnap.applyPython("""pencolor("rgb(0, 128, 0)")""")
     assert(result.isRight, clue = result)
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assert(xml.contains("""s="setColor""""), clue = xml)
     assert(xml.contains("<color>"), clue = xml)
   }
@@ -484,7 +491,7 @@ class SnapExpressionSupportSpec extends FunSuite {
   private def applied(python: String, previousXml: String): String = {
     val result = PythonToSnap.applyPython(python, SnapCanvasLayout.empty, previousXml)
     assert(result.isRight, clue = s"$python -> $result")
-    val xml = result.toOption.get.snapXml
+    val xml = result.toOption.get.code
     assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
     xml
   }
@@ -569,7 +576,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     val definition = SnapCustomBlockRules.globalDefinitions(xml).head
     assertEquals(definition.spec, "draw %distance")
     assertEquals(definition.slots.map(_.slotType), List("%s"))
-    assertEquals(SnapXmlParser.child(definition.element.inner, "inputs").map(_.outer), Some(inputs))
+    assertEquals(definition.element.element.named("inputs").headOption.map(_.element.toXml), Some(inputs))
   }
 
   test("applyPython keeps parameterless definitions without input slots") {

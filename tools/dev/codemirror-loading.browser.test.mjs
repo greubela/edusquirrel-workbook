@@ -19,6 +19,8 @@ async function fixture(browser, fail = false, openEditor = true, forceTimer = fa
   let release;
   const gate = new Promise(resolve => { release = resolve; });
   let requests = 0;
+  let markStarted;
+  const started = new Promise(resolve => { markStarted = resolve; });
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
     if (url.origin !== origin) return route.abort();
@@ -29,11 +31,11 @@ async function fixture(browser, fail = false, openEditor = true, forceTimer = fa
       await route.fulfill({body, contentType: mime[path.extname(file)] || 'application/octet-stream'});
     } catch { await route.fulfill({status:404,body:'Not found'}); }
   });
-  await installCodeMirrorModules(page, {gate, fail, onRequest: () => requests++});
+  await installCodeMirrorModules(page, {gate, fail, onRequest: () => { requests++; markStarted(); }});
   await page.goto(origin + '/homepage/workbookDesign/index.html', {waitUntil:'domcontentloaded'});
   await page.locator('.section-register .login-area').nth(1).locator('button').click();
   await page.locator('.section-block').first().click();
-  await page.waitForFunction(() => performance.getEntriesByType('resource').some(entry => entry.name.includes('esm.sh/')));
+  await started;
   assert.equal(requests, 1, 'startup preheats without opening an editor');
   assert.equal(await page.locator('dialog[open]').count(), 0);
   if (openEditor) await page.getByRole('button', {name:/Editor.*öffnen|Open editor/i}).first().click();
@@ -49,7 +51,9 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     const fallback = dialog.locator('.code-mirror-editor__fallback');
     await fallback.fill('forward(77)\n');
-    await page.waitForFunction(() => performance.getEntriesByType('resource').some(entry => entry.name.includes('esm.sh/')));
+    assert.equal(requests(), 1, 'opening and editing share the pending startup load');
+    assert.equal(await page.evaluate(() => !!window.EduSquirrelCodeMirror), false,
+      'the native editor stays pending until the module gate is released');
     await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
     release();
     await page.waitForFunction(() => !!window.EduSquirrelCodeMirror);

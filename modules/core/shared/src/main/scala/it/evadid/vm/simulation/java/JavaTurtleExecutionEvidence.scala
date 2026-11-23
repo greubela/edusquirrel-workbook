@@ -1,8 +1,8 @@
 package it.evadid.vm.simulation.java
 
 import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport as Y
-import it.evadid.vm.conversion.javaexpression.checked.{JavaTurtleResolution as R, JavaTurtleVmPrograms as P}
-import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleRuntime as T, JavaTurtleTrace as J}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleProgram as P}
+import it.evadid.vm.simulation.java.{JavaTurtleEvaluation as E, JavaTurtleInterpreter as T, JavaTurtleTrace as J}
 import upickle.default.ReadWriter
 
 object JavaTurtleExecutionEvidence {
@@ -71,7 +71,7 @@ object JavaTurtleExecutionEvidence {
     }
   }
 
-  final class Prepared private[JavaTurtleExecutionEvidence](program: P.Program, val context: Context) {
+  final class Prepared private[JavaTurtleExecutionEvidence](program: P, val context: Context) {
     val code: String = Y.invocationSource(Y.renderObserved(program, context.budget.maxEvents),
       context.method, context.arguments, context.limits)
 
@@ -99,7 +99,7 @@ object JavaTurtleExecutionEvidence {
     }
   }
 
-  def prepare(program: P.Program, method: Option[R.MethodId] = None, arguments: Vector[E.Value] = Vector.empty,
+  def prepare(program: P, method: Option[R.MethodId] = None, arguments: Vector[E.Value] = Vector.empty,
       limits: T.Limits = T.Limits(), budget: J.Budget = J.Budget()): Prepared = {
     require(method.nonEmpty || arguments.isEmpty, "Main does not accept invocation arguments.")
     new Prepared(program, Context(program.bindings.source.source, method, arguments, limits, budget))

@@ -36,7 +36,7 @@ The [worker execution backend](docs/worker-execution-backend.md) documents backg
 
 The [authentication guide](docs/authentication.md) describes registration, email/token login, failure diagnosis and regression checks.
 
-The [database guide](docs/database/README.md) links the authoritative SQL setup scripts and explains schema inspection, history formats and proxy-aware logging. The [interaction-history guide](docs/database/interaction-history.md) describes storage behavior.
+The [database guide](docs/database/README.md) links the authoritative SQL setup script and explains schema inspection, history formats and proxy-aware logging. The [interaction-history guide](docs/database/interaction-history.md) describes storage behavior. The [interaction-format guide](docs/interaction-format.md) describes the singleton formats, typed event histories and transport envelope.
 
 ### Choosing a location for new content
 
@@ -67,8 +67,9 @@ Start with [MainApp.scala](modules/client/src/main/scala/MainApp.scala) and [Hom
 Shared workbook abstractions live in
 [WorkbookElement.scala](modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala).
 Their implementations are under `modules/core/shared/src/main/scala/it/evadid/workbook/elements/`.
-Interactions own typed saved state, codecs and grading/scaffolding definitions;
-structure elements compose them into workbooks. See the
+Interactions declare their `InteractionFormat` and grading/scaffolding definitions;
+the format owns saved-state and feedback codecs. Structure elements compose them
+into workbooks. See the
 [interaction architecture](docs/workbook-interaction-architecture.md) for the contracts.
 
 [HtmlRenderFactory.scala](modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/HtmlRenderFactory.scala) maps shared elements to browser renderers. [CreateTestWorkbook.scala](modules/client/src/main/scala/it/evadid/homepage/workbook/content/test/CreateTestWorkbook.scala) provides small authoring examples, including QR and email interactions. Factories are organized under `content/`, `content/test/` and `content/wip/`; a package name alone does not establish which components are implemented. Runtime context and language/storage controls live under `modules/client/src/main/scala/it/evadid/homepage/control/`.
@@ -80,6 +81,7 @@ structure elements compose them into workbooks. See the
 | [homepage/index.html](homepage/index.html) | Classic catalogue, including PDF/ZIP editions |
 | [workbooks](homepage/workbooks/index.html) | Laminar catalogue of available digital workbooks; browsing is public |
 | [evacuationWorkbook](homepage/evacuationWorkbook/index.html) | Partial evacuation adaptation with local EVA2 playback, locker/door comparisons with saved graphs, a budget plan and model critique |
+| [2026GdP1](homepage/2026GdP1/index.html) | Seven turtle tasks on loops, functions and parameters plus a reflection; [authoring notes](docs/2026-gdp1-workbook.md) (DE/EN; Snap/Python/Java) |
 | [workbookDesign](homepage/workbookDesign/index.html) | Test workbook and interaction examples, including local EVA2 floor construction |
 | [monksWorkbook](homepage/monksWorkbook/index.html) | Mons Komputarius stories, sorting, towers and Koch recursion practice (DE/EN) |
 | [embroideryWorkbook](homepage/embroideryWorkbook/index.html) | Embroidery workbook |
@@ -89,7 +91,7 @@ structure elements compose them into workbooks. See the
 | [blockchainWorkbook](homepage/blockchainWorkbook/index.html) | Blockchain learner activities, mining simulator and energy/final assessment; equivalence review pending |
 | [imageRecognitionWorkbook](homepage/imageRecognitionWorkbook/index.html) | Partial image-recognition workbook with neuron/pixel experiments, robustness and school-chatbot assessment |
 | [phishingWorkbook](homepage/phishingWorkbook/index.html) | Mail simulator, warning/domain/Unicode analysis, attachment risks and checklist; partial adaptation |
-| [plantWorkshop](homepage/plantWorkshop/index.html) | Retained legacy entry page; the former standalone Scala application was removed |
+| [plantWorkshop](homepage/plantWorkshop/index.html) | Plant-workshop HTML entry page; use the native catalogue for workbook navigation |
 | [feedback-demo](homepage/feedback-demo/index.html) | Feedback demonstration |
 
 See [catalogue and cache startup](docs/laminar-workbook-catalog-and-cache.md) for the public registry, IndexedDB lifecycle and startup checks.
@@ -154,6 +156,19 @@ The [test workflow](.github/workflows/tests.yml) runs these checks and every Sca
 module on pull requests and, through the Pages workflow, before publication from main. Individual test files can still be run
 with `node --test`.
 
+Standard sbt launchers read [.sbtopts](.sbtopts), so local builds and CI resolve
+sbt, plugins and Scala dependencies through Google's Maven Central mirror,
+falling back to Maven Central, as listed in [project/repositories](project/repositories);
+Maven Central rate-limits bursts from shared runners. Dependency and compiler cache keys
+include that configuration. Only `scala-tests`, which resolves every module, saves the
+dependency cache, so a JVM-only job cannot publish an incomplete one.
+
+If an agent reports Maven Central HTTP 429/403 errors, check its launcher: a managed
+wrapper may override `.sbtopts`, `sbt.repository.config`, or `COURSIER_REPOSITORIES`.
+It must use this repository's configuration and preserve explicit caller overrides;
+setting a mirror in the build alone cannot fix a launcher that forces a different
+repository. Keep dependency caches between runs rather than deleting them to retry.
+
 ## Deployment
 
 [scala.yml](.github/workflows/scala.yml) builds optimized client/worker artifacts and MathWorld on pushes to main. It runs [assemble-pages.mjs](tools/dev/assemble-pages.mjs), which publishes the homepage directory, resources, newest worker/client artifacts and root-level page redirects. It requires the MathWorld `dist/index.html` build too:
@@ -176,6 +191,9 @@ avoid exhaustive class/method lists and historical test-run logs.
 
 - [Digital workbook migration](docs/digital-workbook-migration.md): analysis of linked PDF/ZIP exercises, missing editors and the Blockchain, image-recognition and Phishing adaptations.
 - [Interaction architecture](docs/workbook-interaction-architecture.md): module and editor boundaries, element types, grading/scaffolding, localization and dependency loading.
+- [Interaction formats](docs/interaction-format.md): singleton types, event semantics and self-describing history exchange.
+- [History synchronization](docs/database/interaction-history.md): binding ownership, class responsibilities, per-context batching and storage trade-offs.
+- [Session export](docs/session-data-serialization.md): workbook graphs, public session snapshots and import validation.
 - [State and serialization](docs/state-and-serialization.md): source-of-truth bindings, update importance, history and default uPickle codecs with examples.
 - [Execution clients](docs/execution-clients.md): local, HTTP and implemented worker backends; typed command definitions and calls.
 - [Worker execution](docs/worker-execution-backend.md): supported jobs, transport/lifecycle and browser verification.
@@ -183,13 +201,13 @@ avoid exhaustive class/method lists and historical test-run logs.
 - [Email simulator](docs/email-simulator.md): state, grading, content handling and verification.
 - [QR interaction](docs/qr-code-interaction.md): encoding model, requirements, region colors and reference tests.
 - [Plant workshop](docs/PlantWorkshop_Quickstart.md): implemented sections and remaining migration work.
-- [Eva programming state](docs/eva-editor-programming-state.md) and [Snap editor](docs/snap-editor.md): representations and editor lifecycle.
+- [Eva programming state](docs/eva-editor-programming-state.md), [Snap editor](docs/snap-editor.md) and [block editor](docs/block-editor.md): representations and editor lifecycle.
 - [Snap command execution service](docs/snap-turtle-command-execution-overview.md): implemented snapshot extraction, Pyodide boundary and editor integration.
 - [Core extraction proposals](docs/core-extraction-proposals.md): reviewed dependency boundaries and proposed follow-up tasks.
 - [Programming conversions](docs/programming-conversions.md): shared VM transformation packages and their state conversion API.
-- [Python parsing](docs/python-parsing-architecture.md): normalization and parser responsibilities.
-- [Core test audit](docs/core-package-unit-tests.md): test locations, behavioral expectations and verification commands.
-- [Testing and serialization audit](docs/testing-and-serialization-audit.md): regression coverage, default codecs and decisions about previously skipped/manual tests.
+- [Source parsing](docs/python-parsing-architecture.md): fastparse grammars, the shared parsed model and lexical structure.
+- [Core test guide](docs/core-package-unit-tests.md): test locations, behavioral expectations and verification commands.
+- [Testing and serialization audit](docs/testing-and-serialization-audit.md): codec contracts, the serialization inventory and behavioral verification.
 - [Workbook interaction roadmap](WORKBOOK_INTERACTIONS.md): reusable capabilities and edition priorities.
 
 Markdown under bundled third-party libraries documents those distributions. Imported teaching projects retain their conceptual and historical documents; their upstream setup/team instructions do not describe the EduSquirrel repository workflow. MathWorld's README and deployment guide explain its integration here.

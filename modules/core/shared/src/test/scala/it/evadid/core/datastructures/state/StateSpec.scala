@@ -39,9 +39,10 @@ class StateSpec extends FunSuite {
     assertEquals(text.observable.now(), Some("70"))
   }
 
-  test("a failing reverse mapping leaves the base unchanged") {
+  test("a failing update or reverse mapping leaves the base unchanged") {
     val base = State(2)
     val text = base.biMap[String](_.toString, _.toInt)
+    intercept[IllegalArgumentException](base.update(_ => throw IllegalArgumentException("failed update")))
     intercept[NumberFormatException](text.set("invalid"))
     assertEquals(base.now(), 2)
     assertEquals(text.now(), "2")

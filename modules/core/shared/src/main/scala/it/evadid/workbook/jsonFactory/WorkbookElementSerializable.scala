@@ -1,6 +1,8 @@
 package it.evadid.workbook.jsonFactory
 
 import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
+import it.evadid.core.util.io.ParsingContext
+import scala.util.control.NonFatal
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.jsonFactory.WorkbookElementSerializable.regularSerializer
@@ -50,11 +52,11 @@ case class WorkbookElementSerializable(
 
   // Multiple Objects
   def withElementsAdded(key: String, value: Seq[String]): WorkbookElementSerializable = {
-    withMapAdded(Map(key -> writeJs[List[String]](value.toList)))
+    withMapAdded(Map(key -> writeJs[Seq[String]](value.toList)))
   }
 
   def withElementsAddedAs[T](key: String, elements: Seq[T])(implicit rw: Writer[T]): WorkbookElementSerializable = {
-    withMapAdded(Map(key -> writeJs[List[T]](elements.toList)))
+    withMapAdded(Map(key -> writeJs[Seq[T]](elements.toList)))
   }
 
   // Map
@@ -74,8 +76,8 @@ case class WorkbookElementSerializable(
       throw SerializedException(s"Key $elementKey not present in Element ${elementId}!")
     } else try {
       read(elementValue.get)
-    } catch case (err: Throwable) => {
-      throw SerializedException(s"Error at deserializing key $elementKey from Element ${elementId} (value ${elementValue.get})", Some(err))
+    } catch case NonFatal(err) => {
+      throw SerializedException(s"Error parsing workbook element '$elementId' field '$elementKey': could not parse '${ParsingContext.preview(elementValue.get.toString)}' because: ${ParsingContext.reason(err)}", err)
     }
   }
 
@@ -89,24 +91,24 @@ case class WorkbookElementSerializable(
       defaultValue
     } else try {
       read(elementValue.get)
-    } catch case (err: Throwable) => {
-      throw SerializedException(s"Error at deserializing key $elementKey from Element $elementId (value ${elementValue.get})", Some(err))
+    } catch case NonFatal(err) => {
+      throw SerializedException(s"Error parsing workbook element '$elementId' field '$elementKey': could not parse '${ParsingContext.preview(elementValue.get.toString)}' because: ${ParsingContext.reason(err)}", err)
     }
   }
 
   // Get Multiple
-  def getElements(elementKey: String): List[String] = {
-    read[List[String]](allConstructorFields(elementKey))
+  def getElements(elementKey: String): Seq[String] = {
+    read[Seq[String]](allConstructorFields(elementKey))
   }
 
-  def getElementsAs[T](elementKey: String)(implicit rw: Reader[T]): List[T] = {
-    read[List[T]](allConstructorFields(elementKey))
+  def getElementsAs[T](elementKey: String)(implicit rw: Reader[T]): Seq[T] = {
+    read[Seq[T]](allConstructorFields(elementKey))
   }
 
 
   // Other
 
-  def getElementsAsSerializableElement(elementKey: String): List[WorkbookElementSerializable] = {
+  def getElementsAsSerializableElement(elementKey: String): Seq[WorkbookElementSerializable] = {
     getElementsAs(elementKey)(using regularSerializer)
   }
 
@@ -121,8 +123,8 @@ case class WorkbookElementSerializable(
     resolveReference(getElementAs[WorkbookElementReference](elementKey), parsedElements)
   }
 
-  def getAndResolveWorkbookElements[T <: WorkbookElement](elementKey: String, parsedElements: Map[String, WorkbookElement]): List[T] = {
-    val refs: List[WorkbookElementReference] = getElementsAs[WorkbookElementReference](elementKey)
+  def getAndResolveWorkbookElements[T <: WorkbookElement](elementKey: String, parsedElements: Map[String, WorkbookElement]): Seq[T] = {
+    val refs: Seq[WorkbookElementReference] = getElementsAs[WorkbookElementReference](elementKey)
     refs.map(curRef => resolveReference[T](curRef, parsedElements))
   }
 

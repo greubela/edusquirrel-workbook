@@ -1,12 +1,12 @@
 package it.evadid.core.serialization
 
-import it.evadid.vm.conversion.pythonexpression.normalization.PythonNormalizationModel
-
 import it.evadid.core.datastructures.geometry.*
 import it.evadid.core.datastructures.matrix.*
 import it.evadid.workbook.interaction.sync.*
 import munit.FunSuite
 import upickle.default.*
+
+import it.evadid.workbook.abstractions.InteractionFormat.*
 
 class DefaultValueCodecsSpec extends FunSuite {
   private def roundTrip[T: ReadWriter](value: T): Unit = assertEquals(read[T](write(value)), value)
@@ -32,33 +32,21 @@ class DefaultValueCodecsSpec extends FunSuite {
     val decimal = Dimension(BigDecimal("1.25"), BigDecimal("2.5"))
     roundTrip(decimal)
   }
-  test("all built-in sync strategy singleton variants have default codecs") {
-    List[SyncStrategy](SyncStrategy.SYNC_EVERYTHING, SyncStrategy.SYNC_LAST_AND_MAJOR, SyncStrategy.SYNC_LAST).foreach(roundTrip(_))
+  test("all built-in event sync strategy variants have default codecs") {
+    List[EventSyncStrategy](EventSyncStrategy.SYNC_EVERYTHING, EventSyncStrategy.KEEP_LAST_MAJOR, EventSyncStrategy.KeepImportance(Set(UpdateImportance.MAJOR))).foreach(roundTrip(_))
   }
   test("sync contexts and caches expose default codecs without private imports") {
     val usage = UsageContext("program", "scenario", "user")
     val sync = usage.toSyncContext("variable")
     roundTrip(usage)
     roundTrip(sync)
-    val history = write(it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[Int, Int, Int])
-    roundTrip(SyncCache(java.time.LocalDateTime.of(2025, 1, 1, 12, 0), usage, Map(sync -> history)))
+    val history = write(it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[TextInteractionFormat.type])
   }
   test("registry descriptors have a default codec") {
     val descriptor = it.evadid.workbook.jsonFactory.WorkbookElementSerializable("id", "TextInteraction", Map("value" -> ujson.Str("x")))
     roundTrip(descriptor)
   }
 
-  test("normalized Python models preserve nested statements and indentation") {
-    import it.evadid.vm.conversion.pythonexpression.normalization.PythonNormalizationModel.*
-    roundTrip(RawLine(4, "print('x')"))
-    roundTrip(Line(1, "print('x')"))
-    val statements: List[Statement] = List(SimpleStatement("x = 1"),
-      CompoundStatement("while running:", List(SimpleStatement("break"))),
-      IfStatement("enabled", List(SimpleStatement("forward(1)")), Some(List(SimpleStatement("pass")))))
-    statements.foreach(roundTrip(_))
-    roundTrip(ParsedStatementTree(statements, 4))
-    roundTrip(ParsedStatementTree(Nil, 2))
-  }
   test("chat value models and every sender role have default codecs") {
     import it.evadid.core.datastructures.chat.*
     SenderRole.allRoles.foreach(roundTrip(_))

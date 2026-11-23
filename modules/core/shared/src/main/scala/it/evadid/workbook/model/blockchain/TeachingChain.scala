@@ -24,9 +24,9 @@ case class MiningResult(nonce: Int, attempts: Int, found: Boolean) derives upick
   def nextNonce: Option[Int] = Option.when(nonce < Int.MaxValue)(nonce + 1)
 }
 
-case class TeachingChain(blocks: List[TeachingBlock]) derives ReadWriter {
+case class TeachingChain(blocks: Seq[TeachingBlock]) derives ReadWriter {
   require(blocks.nonEmpty && blocks.size <= TeachingChain.maxBlocks, "A teaching chain contains one to eight blocks")
-  lazy val hashes: List[String] = blocks.zipWithIndex.foldLeft(List.empty[String]) { case (previous, (block, index)) =>
+  lazy val hashes: Seq[String] = blocks.zipWithIndex.foldLeft(List.empty[String]) { case (previous, (block, index)) =>
     previous :+ block.hash(index, previous.lastOption.getOrElse(TeachingChain.genesisPreviousHash))
   }
 
@@ -35,7 +35,7 @@ case class TeachingChain(blocks: List[TeachingBlock]) derives ReadWriter {
     if index == 0 then TeachingChain.genesisPreviousHash else hashes(index - 1)
   }
 
-  def proofs(zeros: Int): List[Boolean] = {
+  def proofs(zeros: Int): Seq[Boolean] = {
     TeachingChain.validateDifficulty(zeros)
     hashes.map(_.startsWith("0" * zeros))
   }

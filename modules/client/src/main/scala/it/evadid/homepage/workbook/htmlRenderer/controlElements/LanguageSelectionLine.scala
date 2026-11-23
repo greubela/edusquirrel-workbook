@@ -12,7 +12,7 @@ import it.evadid.workbook.elements.structureElements.Workbook
 private case class LanguageSelectionLine() extends HtmlAppElement {
 
   private def createDomForLanguageSelectionFlag(currentLanguage: HumanLanguage): Element = div(
-    onClick --> { _ => fullInfo.usageControl.changeLanguage(currentLanguage) },
+    onClick --> { _ => fullInfo.displayControl.changeLanguage(currentLanguage) },
     LanguageSelectionLine.flagImgMap(30)(currentLanguage)
   )
 

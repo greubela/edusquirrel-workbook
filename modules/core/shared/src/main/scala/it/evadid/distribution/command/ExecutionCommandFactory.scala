@@ -14,9 +14,9 @@ import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 object ExecutionCommandFactory {
-  lazy val knownCommands: List[ExecutionCommandFactory[?, ?]] = List(
+  lazy val knownCommands: Seq[ExecutionCommandFactory[?, ?]] = List(
     UserCommands.loginCommand, UserCommands.updateAccountCommand, UserCommands.createAccountCommand, UserCommands.authMailCommand,
-    SQLCommands.StoreToDbCommand, SQLCommands.fetchFromDbCommand, SQLCommands.clearValuesDbCommand,
+    SQLCommands.StoreToDbCommand, SQLCommands.bulkStoreToDbCommand, SQLCommands.fetchEventsFromDbCommand, SQLCommands.clearValuesDbCommand, SQLCommands.resetUserHistoriesDbCommand,
     MailCommands.sendMailCommand, LLMCommands.completeLLMCommandFactory, LLMCommands.feedbackLlmCommandFactory,
     SqlEditorCommands.execute, WorkerCommands.health, WorkerCommands.parseSnapXml, WorkerCommands.pythonFlowchart,
     WorkerCommands.calculateQrCode, WorkerCommands.runPython, WorkerCommands.javaExecutionEvidence)
@@ -24,10 +24,14 @@ object ExecutionCommandFactory {
   def forName(name: String): Option[ExecutionCommandFactory[?, ?]] = knownCommands.find(_.name == name)
 }
 
+/** `requiresLogin`: the backend runs the command only for a verified signed token, so a remote client
+  * without a valid token fails it locally instead of sending it.
+  */
 case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
                                                                   name: String,
                                                                   private val privacyFilter: Option[ujson.Value => ujson.Value] = None,
-                                                                  storeLogIntoTable: Option[DatabaseTable] = Some(DatabaseTable.commandLog)
+                                                                  storeLogIntoTable: Option[DatabaseTable] = Some(DatabaseTable.commandLog),
+                                                                  requiresLogin: Boolean = false
                                                                 ) {
 
   given ec: ExecutionContext = ExecutionContext.global

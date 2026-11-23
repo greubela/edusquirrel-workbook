@@ -3,60 +3,76 @@ package it.evadid.workbook.elements.interactionElements.programming.state
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
 
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleResolution
 
-import it.evadid.core.datastructures.language.AppLanguage.Java
-import it.evadid.core.datastructures.vectorShapes.svg.BeExpressionToTurtleCommands
-import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
+import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Java, Python, SnapLanguage, ProgrammingLanguage}
+import it.evadid.vm.simulation.turtle.{TurtleProgramAnalysis, TurtleCommandExecutionInfo}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGradingLogic, TurtleGraphic}
+import java.util.concurrent.atomic.AtomicReference
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.conversion.javaexpression.checked.JavaTurtleVmPrograms
-import it.evadid.vm.simulation.java.JavaTurtleRuntime
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapGeneratedImages
-import it.evadid.vm.conversion.ConversionResult
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
+import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.command.ExecutionCommand
+import it.evadid.distribution.commandTypes.WorkerCommands
+import it.evadid.distribution.commandTypes.WorkerCommands.RunPythonResult
+import it.evadid.util.logging.BasicLogger
+import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
+import it.evadid.vm.naming.BeEntityName
+import it.evadid.vm.conversion.structured.{SourceStructure, StructuredProgramConversions}
 
 /** The source representation currently edited by a programming exercise. */
 sealed trait ProgrammingState {
-  def associatedLanguage: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage = this match {
-    case _: ProgrammingStateSnapXml | _: ProgrammingStateSnapScalaModel => it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
-    case _: ProgrammingStateJavaString => Java
-    case _: ProgrammingStatePythonString => it.evadid.core.datastructures.language.AppLanguage.Python
-    case _ => it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
+  lazy val derivations: it.evadid.vm.conversion.ProgrammingStateDerivations =
+    new it.evadid.vm.conversion.ProgrammingStateDerivations(this)
+  def convertToLanguage(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage): it.evadid.vm.conversion.ConversionResult = derivations.convertToLanguage(language)
+  def toBeExpression: ProgrammingStateBeExpression = derivations.expression
+  def toJava: ProgrammingStateRaw = derivations.java
+  def toPython: ProgrammingStateRaw = derivations.python
+  def toSnapXml: ProgrammingStateRaw = derivations.snap
+  def toJavaStructured: ProgrammingStateJavaStructured = derivations.javaStructured
+  def toPythonStructured: ProgrammingStatePythonStructured = derivations.pythonStructured
+
+  def associatedLanguage: ProgrammingLanguage = this match {
+    case ProgrammingStateRaw(language, _) => language
+    case _: ProgrammingStateSnapScalaModel => SnapLanguage
+    case _: ProgrammingStateJavaStructured => Java
+    case _: ProgrammingStatePythonStructured => Python
+    case _: ProgrammingStateBeExpression => BlockDisplay
   }
 
-  def fingerprint(): String = this match
-    case ProgrammingStateBeExpression(root: JavaTurtleVmPrograms.Root) => s"java:${root.bindings.source.source}"
+  def fingerprint(): String = this match {
     case ProgrammingStateBeExpression(expression) => s"expression:${expression.toString}"
-    case ProgrammingStateSnapXml(xml) => s"snap:$xml"
+    case ProgrammingStateRaw(language, code) => s"${language.name.toLowerCase}:$code"
     case snap: ProgrammingStateSnapScalaModel => s"snap:${snap.model.toXml}"
-    case ProgrammingStatePythonString(code) => s"python:$code"
-    case ProgrammingStateJavaString(code) => s"java:$code"
+    case state: ProgrammingStateJavaStructured => s"java:${state.toString}"
+    case state: ProgrammingStatePythonStructured => s"python:${state.toString}"
+  }
 }
 
 object ProgrammingState {
 
   // One current wire schema, derived from typed payloads. No historical tags or migration paths.
   private enum Payload derives ReadWriter {
-    case Xml(value: ProgrammingStateSnapXml)
+    case Raw(value: ProgrammingStateRaw)
     case SnapModel(value: ProgrammingStateSnapScalaModel)
-    case PythonSource(value: ProgrammingStatePythonString)
-    case JavaSource(value: ProgrammingStateJavaString)
+    case JavaStructured(value: ProgrammingStateJavaStructured)
+    case PythonStructured(value: ProgrammingStatePythonStructured)
     case Expression(value: ProgrammingStateBeExpression)
   }
   given ReadWriter[ProgrammingState] =
     readwriter[Payload].bimap({
-      case value: ProgrammingStateSnapXml => Payload.Xml(value)
+      case value: ProgrammingStateRaw => Payload.Raw(value)
       case value: ProgrammingStateSnapScalaModel => Payload.SnapModel(value)
-      case value: ProgrammingStatePythonString => Payload.PythonSource(value)
-      case value: ProgrammingStateJavaString => Payload.JavaSource(value)
+      case value: ProgrammingStateJavaStructured => Payload.JavaStructured(value)
+      case value: ProgrammingStatePythonStructured => Payload.PythonStructured(value)
       case value: ProgrammingStateBeExpression => Payload.Expression(value)
     }, {
-      case Payload.Xml(value) => value
+      case Payload.Raw(value) => value
       case Payload.SnapModel(value) => value
-      case Payload.PythonSource(value) => value
-      case Payload.JavaSource(value) => value
+      case Payload.JavaStructured(value) => value
+      case Payload.PythonStructured(value) => value
       case Payload.Expression(value) => value
     })
 
@@ -65,66 +81,66 @@ object ProgrammingState {
 
 }
 
-final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState {
-  def deriveTurtleCommands: List[TurtleCommand[Double]] = expression match {
-    case root: JavaTurtleVmPrograms.Root =>
-      val execution = JavaTurtleRuntime.runVm(JavaTurtleVmPrograms.fromRoot(root))
-      if execution.status != JavaTurtleRuntime.Status.Completed then
-        throw IllegalArgumentException(s"Java execution did not complete: ${execution.status}.")
-      execution.commands.toList.map { command =>
-        if !command.value.isFinite then throw IllegalArgumentException("A drawing command needs a finite number.")
-        command.toDrawingCommand
-      }
-    case _ => BeExpressionToTurtleCommands(expression)
+final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState derives ReadWriter {
+  lazy val turtleCommandSites = TurtleProgramAnalysis.commandSites(expression)
+  lazy val turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleProgramAnalysis(expression)
+  /** The drawing of the completed commands; its trace is computed once for all comparisons. */
+  lazy val turtleGraphic: TurtleGraphic = TurtleGraphic(turtleCommandExecutionInfo.completedCommands)
+  private val turtleComparisons =
+    AtomicReference(Map.empty[(TurtleGraphic, TurtleDrawingPolicy), TurtleGradingLogic.TurtleGraphicComparison])
+
+  /** Graders and previews of the same target share one comparison of this immutable state.
+    * Its line matching is lazy and runs once; the first comparison stored for a key is kept.
+    */
+  def turtleComparison(expected: TurtleGraphic, policy: TurtleDrawingPolicy): TurtleGradingLogic.TurtleGraphicComparison = {
+    val key = (expected, policy)
+    turtleComparisons.get().getOrElse(key, turtleComparisons.synchronized {
+      val stored = turtleComparisons.get()
+      stored.getOrElse(key, {
+        val comparison = TurtleGradingLogic.compare(turtleGraphic, expected, policy)
+        turtleComparisons.set(stored.updated(key, comparison))
+        comparison
+      })
+    })
   }
+  /** Startup run on the default list and sudoku. */
+  lazy val programExecution: it.evadid.vm.simulation.ProgramExecution = execute()
+
+  /** The commands `module`'s functions executed in the startup run, e.g. `moduleCommands(BeModules.Turtle)`. */
+  def moduleCommands[C](module: it.evadid.vm.modules.BeModule[C]): List[C] = programExecution.moduleCommands(module)
+
+  def execute(world: it.evadid.vm.simulation.data.DataWorld = it.evadid.vm.simulation.data.DataWorld(),
+      entry: it.evadid.vm.simulation.ProgramEntry = it.evadid.vm.simulation.ProgramEntry.Startup,
+      limits: it.evadid.vm.simulation.turtle.TurtleExecutionLimits = it.evadid.vm.simulation.turtle.TurtleExecutionLimits()
+  ): it.evadid.vm.simulation.ProgramExecution =
+    it.evadid.vm.simulation.BeProgramInterpreter.run(expression, world, entry, limits)
 
   override val toString: String = s"ProgrammingStateBeExpression(${expression.toString.take(300)})"
 
 }
 
-object ProgrammingStateBeExpression {
-  // Checked VM nodes contain runtime bindings rather than a persistent BeExpression tree.
-  // Store their source and recompile it on read; all other expressions use their tree codec.
-  private enum Content derives ReadWriter {
-    case Tree(expression: BeExpression)
-    case CheckedJava(source: String)
+
+/** Transport and in-progress source. Prefer the structured language states for saved answers. */
+final case class ProgrammingStateRaw(language: ProgrammingLanguage, code: String) extends ProgrammingState derives ReadWriter {
+  def toSnapScalaModel: Either[String, ProgrammingStateSnapScalaModel] = derivations.snapModel
+
+  def removeBloatFromXml: ProgrammingStateRaw = {
+    val cleaned = if language == SnapLanguage then SnapGeneratedImages.remove(code) else code
+    if cleaned == code then this else copy(code = cleaned)
   }
-  given ReadWriter[ProgrammingStateBeExpression] = readwriter[Content].bimap(
-    state => state.expression match {
-      case root: JavaTurtleVmPrograms.Root => Content.CheckedJava(root.bindings.source.source)
-      case expression => Content.Tree(expression)
-    }, {
-      case Content.Tree(expression) => ProgrammingStateBeExpression(expression)
-      case Content.CheckedJava(source) =>
-        val program = JavaTurtleVmPrograms.compile(source).fold(
-          diagnostic => ConversionResult.rejectAt(diagnostic.message, source, diagnostic.range.map(_.start)), identity)
-        ProgrammingStateBeExpression(program.root)
-    })
-}
-
-final case class ProgrammingStateSnapXml(snapXml: String) extends ProgrammingState derives ReadWriter {
-
-  /** Drop regenerated preview/pen images without changing scripts or authored costumes. */
-  def removeBloatFromXml: ProgrammingStateSnapXml = {
-    val cleaned = SnapGeneratedImages.remove(snapXml)
-    if cleaned == snapXml then this else copy(snapXml = cleaned)
+  def isClassProgram: Boolean = {
+    require(language == Java, "Class-program validation requires Java source.")
+    derivations.isJavaClass
   }
-
-  override val toString: String = s"ProgrammingStateSnapXml(${snapXml.toString.take(300)})"
-}
-
-object ProgrammingStateSnapXml {
-  def unapply(state: ProgrammingStateSnapXml): Some[String] = Some(state.snapXml)
-  def mini: ProgrammingStateSnapXml = ProgrammingStateSnapXml(SnapProjectXml.mini)
-  def empty: ProgrammingStateSnapXml = ProgrammingStateSnapXml(SnapProjectXml.empty)
-}
-
-final case class ProgrammingStatePythonString(code: String) extends ProgrammingState derives ReadWriter {
-  override val toString: String = s"ProgrammingStatePythonString(${code.toString.take(300)})"
-}
-
-final case class ProgrammingStateJavaString(code: String) extends ProgrammingState derives ReadWriter {
-  override val toString: String = s"ProgrammingStateJavaString(${code.toString.take(300)})"
+  def compileForExecution = {
+    require(language == Java, "The checked Java runner requires Java source.")
+    derivations.javaExecutionProgram
+  }
+  def toLegacyTurtleCommands: List[it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand[Double]] = {
+    require(!isClassProgram, "Full Java classes require the checked Java runner.")
+    toBeExpression.turtleCommandExecutionInfo.completedCommands
+  }
+  override val toString: String = s"ProgrammingStateRaw($language, ${code.take(300)})"
 }
 
 /** Full Snap project state. Converting representations preserves native project XML.
@@ -140,8 +156,64 @@ final case class ProgrammingStateSnapScalaModel(
 }
 
 object ProgrammingStateSnapScalaModel {
+  lazy val empty: ProgrammingStateSnapScalaModel = fromXml(SnapProjectXml.empty)
+  lazy val mini: ProgrammingStateSnapScalaModel = fromXml(SnapProjectXml.mini)
+  private def fromXml(xml: String): ProgrammingStateSnapScalaModel =
+    it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec.parse(xml)
+      .fold(message => throw IllegalArgumentException(message), ProgrammingStateSnapScalaModel(_))
+
   private case class Saved(model: snap.SnapScalaModel.Document) derives ReadWriter
   given ReadWriter[ProgrammingStateSnapScalaModel] = upickle.default.readwriter[Saved].bimap(
     state => Saved(state.model.withoutGeneratedImages),
     saved => ProgrammingStateSnapScalaModel(saved.model.withoutGeneratedImages))
+}
+
+/** Class values are full source declarations, including bodies that the VM cannot yet parse. */
+final case class ProgrammingStateJavaStructured(definedClasses: Map[BeEntityName, String]) extends ProgrammingState derives ReadWriter {
+  override def toString: String = definedClasses.values.mkString("\n\n")
+}
+object ProgrammingStateJavaStructured {
+  /** Loose code, including none at all, becomes `Main.main`: an empty program is a `Main` class with an empty entry point. */
+  def apply(source: String): ProgrammingStateJavaStructured = {
+    val parts = SourceStructure.java(source)
+    if parts.remaining.isEmpty && parts.definedClasses.nonEmpty then new ProgrammingStateJavaStructured(parts.definedClasses)
+    else StructuredProgramConversions.javaWithLooseCode(parts.definedClasses, parts.remaining)
+  }
+}
+
+/** Classes precede module-level variables, functions and startup code when printed. */
+final case class ProgrammingStatePythonStructured(definedClasses: Map[BeEntityName, String], mainScript: String) extends ProgrammingState derives ReadWriter {
+  /** Execute this source on the supplied worker client, preserving stdout/stderr on the console.
+    * Turtle operations print their calls; they do not create a drawing window.
+    */
+  def startExecution()(using client: ExecutionClient, ec: ExecutionContext): Future[RunPythonResult] = {
+    val request = WorkerCommands.RunPythonRequest(toString, logTurtleCalls = true)
+    val command = ExecutionCommand(WorkerCommands.runPython.name, upickle.default.writeJs(request))
+    val logger = BasicLogger()
+    client.executeResponse(logger, command).map { response =>
+      response.result match {
+        case Right(encoded) =>
+          val result = encoded.getAs[RunPythonResult]
+          print(result.stdout)
+          Console.err.print(result.stderr)
+          result
+        case Left(error) =>
+          print(response.additionalOutput.loggerOut)
+          Console.err.print(response.additionalOutput.loggerError)
+          throw error
+      }
+    }
+  }
+
+  override def toString: String = (definedClasses.values.toList :+ mainScript).filter(_.nonEmpty).mkString("\n\n")
+}
+object ProgrammingStatePythonStructured {
+  /** The main program of an empty source: an explicit entry point, called at the end. */
+  lazy val emptyMainScript: String =
+    it.evadid.vm.conversion.expressionpython.ExpressionToPython.convert(it.evadid.vm.BeProgram.empty.fullProgram).code.trim
+  def apply(source: String): ProgrammingStatePythonStructured = {
+    val parts = SourceStructure.python(source)
+    new ProgrammingStatePythonStructured(parts.definedClasses,
+      if parts.remaining.isEmpty && parts.definedClasses.isEmpty then emptyMainScript else parts.remaining)
+  }
 }

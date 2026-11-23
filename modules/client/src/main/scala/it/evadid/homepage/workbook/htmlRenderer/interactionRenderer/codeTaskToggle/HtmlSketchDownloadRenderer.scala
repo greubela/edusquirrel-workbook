@@ -13,7 +13,7 @@ object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownlo
     val enabledSignal = fullInfo.signals.workbook.flatMapSwitch {
       case Some(workbookInfo) =>
         workbookInfo.loadedWorkbook.allContainedInteractionsById.get(download.unlockWhenReorderCorrect) match {
-          case Some(reorder: ReorderInteraction[?]) =>
+          case Some(reorder: ReorderInteraction.ReorderCodeInteraction) =>
             reorder.interactionVariable
               .createInteractionSignal(fullInfo.workbookContextInformation)
               .map(state => ReorderCorrectness.isOrderCorrect(reorder, state))

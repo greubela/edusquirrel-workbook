@@ -20,7 +20,7 @@ object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer
 
   
   
-  private def renderAllChildren(container: ExerciseContainer): List[Element] = try {
+  private def renderAllChildren(container: ExerciseContainer): Seq[Element] = try {
     val title = AtomarLineRendering.exerciseContainerTitleLine(container.containerTitle).render
     val rest = container.childrenOfThisElement.map(HtmlRenderFactory.render).map(_.getDomElement())
     List(title) ++ rest
