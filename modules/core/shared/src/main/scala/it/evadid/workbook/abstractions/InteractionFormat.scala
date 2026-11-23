@@ -6,7 +6,6 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.scaffolding.AdditionalInfoLlmScaffolding
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.MessengerModelScaffolding
 import it.evadid.workbook.elements.interactionElements.blockchain.{Sha256Answer, SquareMiddleHashAnswer}
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceAnswer
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.CodeTaskToggleState
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{InboxState, InboxStateScaffolding}
 import it.evadid.workbook.elements.interactionElements.neuron.NeuronParameters
@@ -30,9 +29,10 @@ import it.evadid.workbook.model.pixel.BinaryPixelImage
 import it.evadid.workbook.model.plot.PlotAnswer
 import it.evadid.workbook.model.qr.QrCode
 import it.evadid.workbook.abstractions.grading.{GradingResult, WorkbookInteractionGrader}
+import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction.ChoiceState
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputLlmGrader
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleCommandUsageGrader, ProgramStructureGrader}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{ProgramStructureGrader, RecreateShapeGrader, TurtleCommandUsageGrader}
 import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
 import upickle.default.*
 
@@ -122,7 +122,7 @@ object InteractionFormat {
   case object LabeledCheckboxInteractionFormat extends Typed[Boolean, Unit, Unit]
   case object MessagingInteractionFormat extends Typed[MessengerModelScaffolding, Unit, Unit]
   case object TextInputWithLlmGradingAndScaffoldingFormat extends Typed[String, MessengerModel, MessengerModel](textGraders)
-  case object ChoiceInteractionFormat extends Typed[ChoiceAnswer, Unit, Unit]
+  case object ChoiceInteractionFormat extends Typed[ChoiceState, Unit, Unit]
   case object ProgrammingExerciseWithLlmScaffoldingAndGrading extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding](programmingGraders)
   case object SqlCommandExerciseFormat extends Typed[String, Unit, Unit]
   case object QrCodeInteractionFormat extends Typed[QrCode, Unit, Unit]

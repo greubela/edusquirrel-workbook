@@ -9,7 +9,7 @@ import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDispl
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
-import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, WorkbookImageElement, LabeledWorkbookElement}
+import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, LabeledWorkbookElement, WorkbookImageElement}
 import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
@@ -25,7 +25,7 @@ import upickle.default.*
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.choice.*
 import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
 import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
 import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
@@ -151,7 +151,7 @@ object WorkbookElementFactory {
     classOf[CompressionExperimentInteraction].getSimpleName -> CompressionExperimentInteraction.factory,
     classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
     classOf[MailInteraction].getSimpleName -> MailInteraction.factory,
-    classOf[ChoiceInteraction].getSimpleName -> ChoiceInteraction.factory,
+    classOf[WorkbookContentChoiceInteraction].getSimpleName -> WorkbookContentChoiceInteraction.factory,
     classOf[AnswerTableInteraction].getSimpleName -> AnswerTableInteraction.factory,
     classOf[CoordinatePlotInteraction].getSimpleName -> CoordinatePlotInteraction.factory,
     classOf[BinaryPixelInteraction].getSimpleName -> BinaryPixelInteraction.factory,

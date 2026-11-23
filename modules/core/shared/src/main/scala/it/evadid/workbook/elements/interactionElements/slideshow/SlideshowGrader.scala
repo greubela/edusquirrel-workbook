@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.slideshow
 
-import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
+import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, WorkbookContent}
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
@@ -25,11 +26,11 @@ case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrade
   override protected def handleGrading(state: SlideshowState, contextInformation: ExecutionContextInformation): Future[GradingResult[SlideshowState, Unit]] = Future {
 
     val gradingStatus: GradingStatus = if (state.unseenPanels.isEmpty) GradingStatus.Correct() else GradingStatus.PartiallyCorrect()
-    val feedbackInformation: LanguageMap[AppLanguage.HumanLanguage] = gradingStatus.match {
+    val feedbackInformation: LanguageMap[HumanLanguage] = gradingStatus.match {
       case Correct() => LanguageMap.universalMap("All done!")
       case _ => LanguageMap.universalMap(s"Missing ${state.unseenPanels} Panels!")
     }
-
-    GradingResult(this, state, gradingStatus, Some(feedbackInformation))
+    val res: GradingResult[SlideshowState, Unit] = GradingResult[SlideshowState, Unit](this, state, gradingStatus, Some(WorkbookContent(feedbackInformation)), None, LocalDateTime.now())
+    res
   }
 }

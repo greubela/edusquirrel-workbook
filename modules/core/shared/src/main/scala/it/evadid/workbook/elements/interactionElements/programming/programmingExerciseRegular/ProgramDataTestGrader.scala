@@ -1,18 +1,19 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
-import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
+import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId, WorkbookContent}
 import it.evadid.vm.modules.BeModules
-import it.evadid.vm.simulation.{ProgramEntry, ProgramExecution}
-import it.evadid.vm.simulation.data.{DataWorld, ListCommand, SudokuGrid}
+import it.evadid.vm.simulation.data.{DataWorld, ListCommand}
 import it.evadid.vm.simulation.turtle.{TurtleExecutionLimits, TurtleExecutionStatus}
+import it.evadid.vm.simulation.{ProgramEntry, ProgramExecution}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
-import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.ReadWriter
 
+import java.time.LocalDateTime
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
@@ -48,34 +49,42 @@ enum DataExpectation derives ReadWriter {
  * on `world` and checks `expectations`. Failures explain what differed; hidden tests stay silent.
  */
 case class ProgramDataTestGrader(
-    testId: String,
-    publicDescription: LanguageMapContentId,
-    function: String,
-    arguments: Seq[Double],
-    world: DataWorld,
-    expectations: Seq[DataExpectation],
-    importance: GradingImportance = GradingImportance.REQUIRED_TEST,
-    limits: TurtleExecutionLimits = ProgramDataTestGrader.defaultLimits,
-    /** Values for `{name}` placeholders in the description, e.g. the list a generated test sorts. */
-    publicDescriptionArguments: Map[String, String] = Map.empty
-) extends ProgrammingTestGrader derives ReadWriter {
+                                  testId: String,
+                                  publicDescription: LanguageMapContentId,
+                                  function: String,
+                                  arguments: Seq[Double],
+                                  world: DataWorld,
+                                  expectations: Seq[DataExpectation],
+                                  importance: GradingImportance = GradingImportance.REQUIRED_TEST,
+                                  limits: TurtleExecutionLimits = ProgramDataTestGrader.defaultLimits,
+
+                                  /** Values for `{name}` placeholders in the description, e.g. the list a generated test sorts. */
+                                  publicDescriptionArguments: Map[String, String] = Map.empty
+                                ) extends ProgrammingTestGrader derives ReadWriter {
   require(testId.nonEmpty && testId == testId.trim, "A data test needs a nonempty ID.")
   require(expectations.nonEmpty, "A data test needs at least one expectation.")
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
   override val gradingEntity = FeedbackEntity.TestEntity()
 
   override protected def handleGrading(state: ProgrammingState, context: ExecutionContextInformation)
-      : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
+  : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
     val (status, message) = evaluate(state)
-    GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status,
-      message.filter(_ => importance != GradingImportance.HIDDEN_TEST))
+    val res: GradingResult[ProgrammingState, AdditionalProgrammingTestInfo] = if (message.nonEmpty) {
+      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, message.map(WorkbookContent(_)), None, LocalDateTime.now())
+    } else {
+      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, None, None, LocalDateTime.now())
+    }
+
+    res
   }(using context.futureExecutionContext)
 
   /** Status plus an optional explanation; exposed for authoring checks. */
   def evaluate(state: ProgrammingState): (GradingStatus, Option[LanguageMap[HumanLanguage]]) = {
     import ProgramDataTestGrader.text
     val execution = try Right(state.toBeExpression.execute(world, ProgramEntry.Call(function, arguments), limits))
-      catch { case NonFatal(error) => Left(Option(error.getMessage).getOrElse(error.getClass.getSimpleName)) }
+    catch {
+      case NonFatal(error) => Left(Option(error.getMessage).getOrElse(error.getClass.getSimpleName))
+    }
     execution match {
       case Left(problem) =>
         (GradingStatus.Incorrect(), Some(text(s"Das Programm kann so noch nicht ausgeführt werden: $problem",
@@ -101,6 +110,7 @@ case class ProgramDataTestGrader(
     import DataExpectation.*
     import ProgramDataTestGrader.text
     def list(values: Seq[Int]) = values.mkString("[", ", ", "]")
+
     val listCommands = run.moduleCommands(BeModules.NumberList)
     val swaps = listCommands.collect { case swap: ListCommand.Swap => swap }
     val used = listCommands.map(ListOperation.of).toSet
