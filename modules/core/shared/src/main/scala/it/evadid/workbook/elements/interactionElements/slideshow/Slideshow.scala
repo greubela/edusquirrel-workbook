@@ -1,9 +1,10 @@
 package it.evadid.workbook.elements.interactionElements.slideshow
 
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.{DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.InteractionFormat.SlideshowFormat
+import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
@@ -19,11 +20,10 @@ case class Slideshow(
     indexOf(element.asRef)
   }
 
-  def getPanel(index: Int): Option[WorkbookElement] = if(index < panels.length && index >= 0) Some(panels(index)) else None
+  def getPanel(index: Int): Option[WorkbookElement] = if (index < panels.length && index >= 0) Some(panels(index)) else None
 
   def indexOf(element: WorkbookElementReference): Option[Int] = {
     panels.zipWithIndex.filter(_._1.asRef.referencedId == element.referencedId).map(_._2).headOption
-
   }
 
   override val associatedFactory = Slideshow.factory
@@ -32,10 +32,13 @@ case class Slideshow(
 
   override val defaultValue = SlideshowState(panels.map(_.asRef), Set.empty)
 
+  private val allFinishedGrader: WorkbookInteractionGrader[InteractionStateType, GradingInfoType] = ??? // todo: correct when everything seen, incorrect when nothing seen, partially correct when some stuff seen, some not seen.
+
+  override val gradingElements: Seq[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]] = List(allFinishedGrader)
 
 }
 
-object Slideshow  {
+object Slideshow {
 
   val factory: WorkbookElementFactory[Slideshow] = new WorkbookElementFactory[Slideshow] {
     override lazy val elementMapAndOrderForConstructorLike = Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("panels", false)))
