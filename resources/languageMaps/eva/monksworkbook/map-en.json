@@ -204,12 +204,6 @@
   "d1b-opt3": "That the turtle is afterwards back where the call with 3 began.",
   "d1b-opt4": "That the call with 3 knows how wide the layer below it is.",
   "d1note": "As with the monks, every call has a **contract**: you only think about your own level and rely on the contract of the call.",
-  "e7prompt": "Write a recursive method `cantor(breite, n)` that draws a **Cantor wall**: one brick; below it, a brick of a third of the width only under its left and its right third; below those again under their left and right thirds, and so on.\n\n- Draw a brick of width `breite`.\n- If `n == 0`, you are done.\n- Otherwise: leave a gap of one brick height with `runter()` twice and call `cantor` for the **left third** with a third of the width and `n - 1`.\n- Then go right by two thirds of the width with `springe` and do the same for the **right third**.\n- Finally, bring the turtle back to where the call began with `springe` and `hoch()` twice.",
-  "e7b-caption": "How many bricks are drawn in total for `cantor(270, 3)`?",
-  "e7b-row0": "Number of bricks",
-  "e8prompt": "Write a recursive method `baum(laenge, n)` that draws a tree. A tree consists of a trunk on which two smaller trees grow: one tilted to the left, one to the right.\n\n- For `n == 0` there is nothing to do.\n- Otherwise: draw the trunk (`laenge` forward).\n- Turn 30° to the left and draw a tree with 60 % of the length and `n - 1`.\n- Turn 60° to the right and draw another such tree.\n- Turn the turtle back to the original direction and bring it back to the foot of the trunk with `springe(-laenge)`.",
-  "e8b-caption": "How many branches (lines) does `baum(80, 3)` draw?",
-  "e8b-row0": "Number of branches",
   "e1title": "Task 2.1",
   "e2title": "Task 2.2",
   "e3title": "Task 2.3",
@@ -231,7 +225,5 @@
   "e5title": "Task 3.2",
   "e6atitle": "Task 3.3",
   "e6btitle": "Task 3.4",
-  "d1title": "Task 3.5",
-  "e7title": "Task 3.6",
-  "e8title": "Task 3.7"
+  "d1title": "Task 3.5"
 }

@@ -9,7 +9,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.{Progra
 import munit.FunSuite
 
 class MonksWorkbookSpec extends FunSuite {
-  private val editorIds = List("e1", "e2", "e3", "e4", "e5", "e6a", "e6b", "e7", "e8")
+  private val editorIds = List("e1", "e2", "e3", "e4", "e5", "e6a", "e6b")
   private def checked(code: String): JavaTurtleInterpreter.Execution =
     JavaTurtleInterpreter.runVm(JavaTurtleCompiler.compile(code).fold(problem => fail(problem.message), identity))
 

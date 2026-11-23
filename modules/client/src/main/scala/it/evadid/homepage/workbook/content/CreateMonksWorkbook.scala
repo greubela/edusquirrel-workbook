@@ -26,7 +26,7 @@ import it.evadid.workbook.elements.structureElements.{ExerciseGroup, Workbook}
  * 3 (drawing recursively with bricks) and 4 (Koch curve). Task titles are numbered per section
  * ("Aufgabe 2.3") in the language maps.
  *
- * The programming tasks E1–E8 open the Eva editor with Java starting code; their targets are recorded
+ * The programming tasks E1–E6 open the Eva editor with Java starting code; their targets are recorded
  * from the sample solutions in [[CreateMonksWorkbook.editorTarget]]. Element IDs are stable per task
  * (`monks-a2`, `monks-e5`, ...) and independent of the displayed numbers.
  */
@@ -150,9 +150,7 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
       section("monks-bridge", key("partd"), List(
         container(key("partd"), List(text("partdintro"))),
         editorTask("e4"), editorTask("e5"), editorTask("e6a"), editorTask("e6b"),
-        task("d1", List(choice("d1a", List(1), 4), choice("d1b", List(1, 3), 5, multiple = true), text("d1note"))),
-        editorTask("e7", List(singleColumn("e7b", List("15")))),
-        editorTask("e8", List(singleColumn("e8b", List("7")))))),
+        task("d1", List(choice("d1a", List(1), 4), choice("d1b", List(1, 3), 5, multiple = true), text("d1note"))))),
 
       // Section 3 (Koch curve) is authored separately and intentionally unchanged.
       section("monks-koch", key("kochtitle"),
@@ -212,7 +210,7 @@ object CreateMonksWorkbook {
     Scene("count-blue", "filebeatcountempty", List("narr-count-blue", "count-resultdialogue", "count-brokendialogue",
       "count-rememberdialogue", "narr-count-rebuild", "count-grandmadialogue")))
 
-  /** Java starting code of the editor tasks E1–E8. Section 0 lets the learner write the building-brick methods
+  /** Java starting code of the editor tasks E1–E6. Section 0 lets the learner write the building-brick methods
    * `stein`, `hoch`, `runter` and `springe`; from E4 on they are prefilled ([[EditorCode.helpers]]).
    * Identifiers follow the German task texts; the class name is free, `Turtle` is reserved by the runner.
    */
@@ -341,26 +339,7 @@ object CreateMonksWorkbook {
           |        zeichnePyramide(n - 1);
           |    }
           |
-          |""" + pyramidMain, withHelpers = true),
-      "e7" -> program(
-        """    static void cantor(double breite, int n) {
-          |        // TODO
-          |    }
-          |
-          |    public static void main(String[] args) {
-          |        cantor(270, 3);
-          |    }
-          |""", withHelpers = true),
-      "e8" -> program(
-        """    static void baum(double laenge, int n) {
-          |        // TODO
-          |    }
-          |
-          |    public static void main(String[] args) {
-          |        Turtle.turnLeft(90); // die Turtle schaut nach oben
-          |        baum(80, 5);
-          |    }
-          |""", withHelpers = true))
+          |""" + pyramidMain, withHelpers = true))
 
     def apply(id: String): String = byTask.getOrElse(id, throw IllegalArgumentException(s"No starting code for $id"))
   }
@@ -386,17 +365,6 @@ object CreateMonksWorkbook {
     def pyramide(n: Int): List[TurtleCommand[Double]] =
       if n <= 0 then Nil
       else stein(n * 20) ++ hoch() ++ springe(10) ++ pyramide(n - 1) ++ springe(-10) ++ runter()
-
-    /** One brick per level; the next level starts two brick heights lower. */
-    def cantor(breite: Double, n: Int): List[TurtleCommand[Double]] =
-      stein(breite) ++ (if n <= 0 then Nil else
-        runter() ++ runter() ++ cantor(breite / 3, n - 1) ++ springe(2 * breite / 3) ++
-          cantor(breite / 3, n - 1) ++ springe(-2 * breite / 3) ++ hoch() ++ hoch())
-
-    def baum(laenge: Double, n: Int): List[TurtleCommand[Double]] =
-      if n <= 0 then Nil
-      else List(Forward(laenge), Left(30.0)) ++ baum(laenge * 0.6, n - 1) ++
-        List(Right(60.0)) ++ baum(laenge * 0.6, n - 1) ++ List(Left(30.0)) ++ springe(-laenge)
   }
 
   /** Target drawing of an editor task, recorded from its sample solution. */
@@ -409,8 +377,6 @@ object CreateMonksWorkbook {
       case "e3" => vieleck(4, 60) ++ springe(100) ++ vieleck(6, 40)
       case "e4" => turm(5)
       case "e5" | "e6a" | "e6b" => pyramide(4) ++ springe(100) ++ pyramide(3)
-      case "e7" => cantor(270, 3)
-      case "e8" => List(TurtleCommand.Left(90.0)) ++ baum(80, 5)
       case other => throw IllegalArgumentException(s"No editor target for $other")
     }
     TurtleGraphic(commands)

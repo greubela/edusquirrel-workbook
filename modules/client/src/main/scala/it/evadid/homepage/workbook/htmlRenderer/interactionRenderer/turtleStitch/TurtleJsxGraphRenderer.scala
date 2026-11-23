@@ -116,8 +116,11 @@ object TurtleJsxGraphRenderer:
 
   final case class RenderedAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int, lineAfter: Int) derives ReadWriter
 
-  /** `marker` shows the turtle's position, e.g. after the current step of a replay. */
-  final case class Scene(lines: Seq[RenderedLine], angles: Seq[RenderedAngle], marker: Option[Point[Double]] = None) derives ReadWriter
+  /** `marker` shows the turtle's position, e.g. after the current step of a replay. `frame` lists points that
+    * stay visible whatever is drawn (e.g. the target drawing), so a partial or empty program does not zoom in.
+    */
+  final case class Scene(lines: Seq[RenderedLine], angles: Seq[RenderedAngle], marker: Option[Point[Double]] = None,
+      frame: Seq[Point[Double]] = Nil) derives ReadWriter
 
   private[turtleStitch] final case class AngleSector(first: Point[Double], last: Point[Double], degrees: Double) derives upickle.default.ReadWriter
 
@@ -210,14 +213,14 @@ object TurtleJsxGraphRenderer:
     previous match {
       case Some(current) if current.scene == scene => current
       case Some(current) =>
-        val bounds = displayBounds(scene)
+        val bounds = fitToContainer(displayBounds(scene), container)
         val board = current.board
         board.suspendUpdate()
         (current.objects ++ current.labels.now().values).reverseIterator.foreach(board.removeObject)
         board.setBoundingBox(js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), true)
         draw(board, scene, bounds)
       case None =>
-        val bounds = displayBounds(scene)
+        val bounds = fitToContainer(displayBounds(scene), container)
         container.classList.add("turtle-gradig-panel")
         // SVG tick labels avoid a forced HTML layout for each label on every board update.
         val axisOptions = js.Dynamic.literal(ticks = js.Dynamic.literal(label = js.Dynamic.literal(display = "internal")))
@@ -236,7 +239,7 @@ object TurtleJsxGraphRenderer:
 
   /** JSXGraph bounds of the scene; rejects coordinates the board cannot display. */
   private def displayBounds(scene: Scene): Array[Double] =
-    val points = scene.lines.flatMap(line => List(line.start, line.end)) ++ scene.marker
+    val points = scene.lines.flatMap(line => List(line.start, line.end)) ++ scene.marker ++ scene.frame
     if points.exists(point => !point.x.isFinite || !point.y.isFinite) then
       throw IllegalArgumentException("The drawing contains non-finite coordinates.")
     val bounds = boundingBox(points.map(p => Point(p.x, -p.y)))
@@ -244,6 +247,25 @@ object TurtleJsxGraphRenderer:
       bounds(2) <= bounds(0) || bounds(1) <= bounds(3) then
       throw IllegalArgumentException("The drawing exceeds the supported display range.")
     bounds
+
+  /** With `keepaspectratio`, JSXGraph fits only one axis of the bounding box to the board; a drawing whose shape
+    * differs from the board's (e.g. wide on a square board) is cut off and looks zoomed in. Widening the box to the
+    * board's aspect ratio, around the same centre, shows the whole drawing. An unmeasured board counts as square.
+    */
+  private[turtleStitch] def fitToContainer(bounds: Array[Double], container: dom.html.Div): Array[Double] =
+    def dimension(name: String): Double = container.asInstanceOf[js.Dynamic].selectDynamic(name).asInstanceOf[Any] match
+      case value: Double if value.isFinite && value > 0 => value
+      case _ => 0.0
+    val (width, height) = (dimension("clientWidth"), dimension("clientHeight"))
+    val ratio = if width > 0 && height > 0 then width / height else 1.0
+    fitToRatio(bounds, ratio)
+
+  /** `bounds` (left, top, right, bottom) widened along one axis so that width / height equals `ratio`. */
+  private[turtleStitch] def fitToRatio(bounds: Array[Double], ratio: Double): Array[Double] =
+    val (dx, dy) = (bounds(2) - bounds(0), bounds(1) - bounds(3))
+    val (centreX, centreY) = ((bounds(0) + bounds(2)) / 2, (bounds(1) + bounds(3)) / 2)
+    val (width, height) = if dx / dy >= ratio then (dx, dx / ratio) else (dy * ratio, dy)
+    Array(centreX - width / 2, centreY + height / 2, centreX + width / 2, centreY - height / 2)
 
   private val hoverLabel = js.Dynamic.literal(display = "internal", cssClass = "turtle-hover-label", highlightCssClass = "turtle-hover-label")
 

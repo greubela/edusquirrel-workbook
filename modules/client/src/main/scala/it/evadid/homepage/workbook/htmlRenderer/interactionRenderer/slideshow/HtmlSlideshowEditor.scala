@@ -64,11 +64,11 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
 
     val dom = div(
       cls := "slide-deck-container",
-      navigation(),
       div(
         cls := "slide-deck-content slide-deck-image" ,
         child <-- currentIndex.map(curIndex => createSlideshowPanelDom(workbookElement, curIndex))
-      )
+      ),
+      navigation()
     )
 
     AtomarLineRendering.basicLine(workbookElement, dom, "slide-deck")

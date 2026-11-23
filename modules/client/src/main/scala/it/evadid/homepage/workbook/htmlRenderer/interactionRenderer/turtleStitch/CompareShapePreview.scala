@@ -12,12 +12,12 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
-/** Compares the bound answer with the target, sharing the comparison with the exercise's grader.
+/** Compares the source program with the target, sharing the comparison with the exercise's grader.
   *
-  * The board is redrawn only after the answer has rested (see [[DeferredRendering]]); all views of one
+  * The board is redrawn only after the source has rested (see [[DeferredRendering]]); all views of one
   * preview share its prepared assessment, while each mounted view owns and reuses one JSXGraph board.
   */
-final case class CompareShapePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic, policy: TurtleDrawingPolicy,
+final case class CompareShapePreview(source: Signal[ProgrammingState], expected: TurtleGraphic, policy: TurtleDrawingPolicy,
     delay: FiniteDuration = DeferredRendering.defaultDelay) extends HtmlAppElement {
 
   private given ExecutionContext = ExecutionContext.global
@@ -26,7 +26,7 @@ final case class CompareShapePreview(boundVar: Var[ProgrammingState], expected: 
 
   private[turtleStitch] def assessment(state: ProgrammingState): Try[TurtleDrawingGrading.Assessment] = Try(assess(state))
 
-  private lazy val rendering = new DeferredRendering(boundVar.signal, assess, delay)
+  private lazy val rendering = new DeferredRendering(source, assess, delay)
 
   /** One board follows the successful assessments; a failure hides it behind its message until the next success. */
   private def view(assessments: Signal[Try[TurtleDrawingGrading.Assessment]]): Element = {

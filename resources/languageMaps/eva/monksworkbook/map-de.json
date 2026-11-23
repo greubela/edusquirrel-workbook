@@ -204,12 +204,6 @@
   "d1b-opt3": "Dass die Turtle danach wieder dort steht, wo der Aufruf mit 3 begonnen hat.",
   "d1b-opt4": "Dass der Aufruf mit 3 weiß, wie breit die Schicht darunter ist.",
   "d1note": "Wie bei den Mönchen hat jeder Aufruf einen **Vertrag**: Man denkt nur über die eigene Ebene nach und verlässt sich auf den Vertrag des Aufrufs.",
-  "e7prompt": "Schreibe eine rekursive Methode `cantor(breite, n)`, die eine **Cantor-Mauer** zeichnet: einen Stein; darunter nur unter dem linken und dem rechten Drittel je einen Stein mit einem Drittel der Breite; darunter wieder unter deren linken und rechten Dritteln usw.\n\n- Zeichne einen Stein der Breite `breite`.\n- Ist `n == 0`, bist du fertig.\n- Sonst: mit zweimal `runter()` eine Steinhöhe Abstand lassen und für das **linke Drittel** `cantor` mit einem Drittel der Breite und `n - 1` aufrufen.\n- Dann mit `springe` um zwei Drittel der Breite nach rechts gehen und dasselbe für das **rechte Drittel** tun.\n- Bringe die Turtle anschließend mit `springe` und zweimal `hoch()` wieder dorthin zurück, wo der Aufruf begonnen hat.",
-  "e7b-caption": "Wie viele Steine werden bei `cantor(270, 3)` insgesamt gezeichnet?",
-  "e7b-row0": "Anzahl der Steine",
-  "e8prompt": "Schreibe eine rekursive Methode `baum(laenge, n)`, die einen Baum zeichnet. Ein Baum besteht aus einem Stamm, auf dem zwei kleinere Bäume wachsen: einer nach links geneigt, einer nach rechts.\n\n- Bei `n == 0` ist nichts zu tun.\n- Sonst: den Stamm zeichnen (`laenge` nach vorne).\n- Um 30° nach links drehen und einen Baum mit 60 % der Länge und `n - 1` zeichnen.\n- Um 60° nach rechts drehen und noch einen solchen Baum zeichnen.\n- Die Turtle wieder in die ursprüngliche Richtung drehen und mit `springe(-laenge)` an den Fuß des Stamms zurückbringen.",
-  "e8b-caption": "Wie viele Äste (Linien) zeichnet `baum(80, 3)`?",
-  "e8b-row0": "Anzahl der Äste",
   "e1title": "Aufgabe 2.1",
   "e2title": "Aufgabe 2.2",
   "e3title": "Aufgabe 2.3",
@@ -231,7 +225,5 @@
   "e5title": "Aufgabe 3.2",
   "e6atitle": "Aufgabe 3.3",
   "e6btitle": "Aufgabe 3.4",
-  "d1title": "Aufgabe 3.5",
-  "e7title": "Aufgabe 3.6",
-  "e8title": "Aufgabe 3.7"
+  "d1title": "Aufgabe 3.5"
 }
