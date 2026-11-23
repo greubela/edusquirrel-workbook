@@ -78,6 +78,7 @@ object CodeMirror {
 
     @js.native trait Selection extends js.Object {
       val main: SelectionRange = js.native
+      val ranges: js.Array[SelectionRange] = js.native
     }
 
     @js.native trait State extends js.Object {
@@ -187,6 +188,7 @@ object CodeMirror {
       val historyKeymap: js.Array[js.Object] = js.native
       val foldKeymap: js.Array[js.Object] = js.native
       val searchKeymap: js.Array[js.Object] = js.native
+      val closeBracketsKeymap: js.Array[js.Object] = js.native
       val defaultHighlightStyle: js.Object = js.native
       val oneDark: Extension = js.native
       val MySQL: js.Object = js.native
@@ -206,6 +208,8 @@ object CodeMirror {
       def foldGutter(): Extension = js.native
 
       def indentOnInput(): Extension = js.native
+
+      def closeBrackets(): Extension = js.native
 
       def bracketMatching(): Extension = js.native
 
@@ -238,6 +242,7 @@ object CodeMirror {
       val decorations: DecorationsFacet = js.native
       val editorAttributes: Facet[js.Object] = js.native
       val updateListener: Facet[js.Function1[ViewUpdate, Unit]] = js.native
+      val inputHandler: Facet[js.Function4[View, Int, Int, String, Boolean]] = js.native
     }
 
     @js.native trait DecorationsFacet extends js.Object {
@@ -331,6 +336,7 @@ object CodeMirror {
     "https://esm.sh/@codemirror/commands@6.11.1?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1",
     "https://esm.sh/@codemirror/language@6.13.1?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15",
     "https://esm.sh/@codemirror/search@6.7.2?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15",
+    "https://esm.sh/@codemirror/autocomplete@6.20.4?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1",
     "https://esm.sh/@codemirror/lang-python@6.2.1?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1,@codemirror/autocomplete@6.20.4",
     "https://esm.sh/@codemirror/lang-sql@6.10.0?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1,@codemirror/autocomplete@6.20.4",
     "https://esm.sh/@codemirror/lang-cpp@6.0.3?deps=@codemirror/state@6.7.6,@codemirror/view@6.43.15,@codemirror/language@6.13.1",

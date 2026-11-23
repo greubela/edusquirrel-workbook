@@ -43,18 +43,49 @@ private[evadid] object CodeMirrorRuntime {
     }
   }
 
-  private lazy val sharedExtensions: js.Array[Extension] = js.Array(
+  /** Enter as in VS Code (see CodeIndentation); several cursors keep CodeMirror's own Enter. */
+  private def newlineAndIndent(target: js.Object, python: Boolean): Boolean = {
+    val view = target.asInstanceOf[View]
+    val selected = view.state.selection.main
+    view.state.selection.ranges.length == 1 && {
+      val doc = view.state.doc
+      val edit = CodeIndentation.enter(doc.sliceString(0, selected.from), doc.sliceString(selected.to, doc.length), indent, python)
+      val from = selected.from - edit.deleteBefore
+      view.dispatch(view.state.update(js.Dynamic.literal(
+        changes = js.Dynamic.literal(from = from, to = selected.to, insert = edit.insert),
+        selection = js.Dynamic.literal(anchor = from + edit.cursor), scrollIntoView = true, userEvent = "input")))
+      true
+    }
+  }
+
+  /** A closing brace typed on a blank line moves to the indentation of the line opening its block. */
+  private val closingBraceIndentation: Extension = Libraries.EditorView.inputHandler.of((view: View, from: Int, to: Int, text: String) =>
+    text == "}" && from == to && view.state.doc.sliceString(from, math.min(from + 1, view.state.doc.length)) != "}" && {
+      val lineStart = view.state.doc.lineAt(from).from
+      CodeIndentation.closingBrace(view.state.doc.sliceString(0, from), indent).exists { indentation =>
+        view.dispatch(view.state.update(js.Dynamic.literal(
+          changes = js.Dynamic.literal(from = lineStart, to = from, insert = indentation + "}"),
+          selection = js.Dynamic.literal(anchor = lineStart + indentation.length + 1), userEvent = "input")))
+        true
+      }
+    })
+
+  private def sharedExtensions(python: Boolean): js.Array[Extension] = js.Array(
     Libraries.EditorView.editorAttributes.of(js.Dynamic.literal(`class` = "edusquirrel-code-mirror")),
     Libraries.EditorState.tabSize.of(4), Libraries.indentUnit.of(indent),
     Libraries.highlightActiveLineGutter(), Libraries.drawSelection(),
-    Libraries.foldGutter(), Libraries.indentOnInput(), Libraries.bracketMatching(),
+    // Before closeBrackets, so its handler sees a closing brace first.
+    closingBraceIndentation, Libraries.closeBrackets(),
+    Libraries.foldGutter(), Libraries.bracketMatching(),
     Libraries.highlightActiveLine(), Libraries.highlightSelectionMatches(),
     Libraries.indentationMarkers(js.Dynamic.literal(thickness = 1, highlightActiveBlock = true, hideFirstIndent = false)),
     Libraries.syntaxHighlighting(Libraries.defaultHighlightStyle, js.Dynamic.literal(fallback = true)),
     Libraries.keymap.of(js.Array[js.Object](js.Dynamic.literal(
       key = "Tab", run = ((target: js.Object) => indentWithSpaces(target)): js.Function1[js.Object, Boolean],
       shift = ((target: js.Object) => Libraries.indentLess(target)): js.Function1[js.Object, Boolean]
-    )).concat(Libraries.defaultKeymap, Libraries.historyKeymap, Libraries.foldKeymap, Libraries.searchKeymap)),
+    ), js.Dynamic.literal(
+      key = "Enter", run = ((target: js.Object) => newlineAndIndent(target, python)): js.Function1[js.Object, Boolean]
+    )).concat(Libraries.closeBracketsKeymap, Libraries.defaultKeymap, Libraries.historyKeymap, Libraries.foldKeymap, Libraries.searchKeymap)),
     diagnostics.field
   )
 
@@ -62,8 +93,11 @@ private[evadid] object CodeMirrorRuntime {
     case "java" => js.Array[Extension]()
     case "sql" => Libraries.sql(js.Dynamic.literal(dialect = Libraries.MySQL))
     case "cpp" | "c" | "c++" => Libraries.cpp()
-    case _ => Libraries.python()
+    // Python's tree is reliable enough to re-indent `else:` and the like as they are typed.
+    case _ => js.Array[Extension](Libraries.python(), Libraries.indentOnInput())
   }
+
+  private def isPython(language: String): Boolean = !Set("java", "sql", "cpp", "c", "c++")(language)
 
   def createEditor(config: EditorConfig): CodeMirrorHandle = {
     if !CodeMirrorApi.available then throw IllegalStateException("CodeMirror libraries are not loaded.")
@@ -102,7 +136,7 @@ private[evadid] object CodeMirrorRuntime {
 
     private val state = Libraries.EditorState.create(js.Dynamic.literal(
       doc = text(initial),
-      extensions = js.Array[Extension](flowchart, sharedExtensions, CodeMirrorHighlighting.extension(editorTheme.nonEmpty),
+      extensions = js.Array[Extension](flowchart, sharedExtensions(isPython(language)), CodeMirrorHighlighting.extension(editorTheme.nonEmpty),
         if isJava then js.Array[Extension](
           CodeMirrorJavaLineEndings.field.init((_: State) => CodeMirrorJavaLineEndings.parse(initial)),
           CodeMirrorJavaLineEndings.historyEffects, javaHistory.of(Libraries.history()))
